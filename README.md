@@ -25,13 +25,13 @@ The STACKIT Landing Zone Accelerator provides a comprehensive Terraform-based fr
 
 | Module | Description |
 |--------|-------------|
-| `terraform-stackit-connectivityglobal` | Network areas and regional IP range management including transfer networks and nameservers |
-| `terraform-stackit-connectivityregional` | Regional connectivity project with WAN/LAN networks, pfSense firewall appliance, public IP, and network area routing |
-| `terraform-stackit-devops` | DevOps project with RBAC and managed Git instance |
-| `terraform-stackit-governance` | Resource Manager folder hierarchy, custom roles, and organization and folder-level role assignments |
-| `terraform-stackit-landingzone` | Landing zone project with RBAC, networking, Secrets Manager, Object Storage, service accounts, and SKE Kubernetes cluster |
-| `terraform-stackit-management` | Management project with Secrets Manager, Object Storage, service accounts, and observability |
-| `terraform-stackit-sandbox` | Sandbox projects with RBAC role assignments for experimentation workloads |
+| `connectivity-global` | Network areas and regional IP range management including transfer networks and nameservers |
+| `connectivity-regional` | Regional connectivity project with WAN/LAN networks, pfSense firewall appliance, public IP, and network area routing |
+| `devops` | DevOps project with RBAC and managed Git instance |
+| `governance` | Resource Manager folder hierarchy, custom roles, and organization and folder-level role assignments |
+| `landing-zone` | Landing zone project with RBAC, networking, Secrets Manager, Object Storage, service accounts, and SKE Kubernetes cluster |
+| `management` | Management project with Secrets Manager, Object Storage, service accounts, and observability |
+| `sandboxes` | Sandbox projects with RBAC role assignments for experimentation workloads |
 
 ## 🚀 Getting Started
 
