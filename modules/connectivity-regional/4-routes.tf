@@ -7,6 +7,12 @@
 resource "stackit_network_area_route" "default" {
   organization_id = var.organization_id
   network_area_id = var.network_area_id
-  prefix          = "0.0.0.0/0"
-  next_hop        = stackit_network_interface.wan.ipv4
+  destination = {
+    type  = "cidrv4"
+    value = "0.0.0.0/0"
+  }
+  next_hop = {
+    type  = "ipv4"
+    value = stackit_network_interface.wan.ipv4
+  }
 }

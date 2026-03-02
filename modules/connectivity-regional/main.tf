@@ -9,11 +9,11 @@ terraform {
   }
 }
 
-provider "stackit" {
-  default_region        = var.region
-  enable_beta_resources = true
-  experiments           = ["iam", "routing-tables", "network"]
-}
+# provider "stackit" {
+#   default_region        = var.region
+#   enable_beta_resources = true
+#   experiments           = ["iam", "routing-tables", "network"]
+# }
 
 locals {
   naming_pattern = "${var.company_code}-pltfm-${var.project_code}-${var.region}-${var.env}"
