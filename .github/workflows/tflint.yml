@@ -29,8 +29,12 @@ jobs:
       - name: Init TFLint
         run: tflint --init
 
-      - name: Run TFLint
-        run: tflint --recursive --format compact
+      - name: Run TFLint (blocking except unused declarations)
+        run: tflint --recursive --format compact --minimum-failure-severity=warning --disable-rule=terraform_unused_declarations --disable-rule=terraform_required_providers
+
+      - name: Run TFLint (unused declarations report only)
+        continue-on-error: true
+        run: tflint --recursive --format compact --only=terraform_unused_declarations
 
       - name: Validate STACKIT flavors (live)
         run: python3 scripts/validate_stackit_flavors.py

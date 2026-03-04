@@ -38,8 +38,8 @@ resource "vault_kv_secret_v2" "object_storage_credentials" {
   delete_all_versions = true
   data_json = jsonencode(
     {
-      ACCESS_KEY        = "${stackit_objectstorage_credential.this.access_key}",
-      SECRET_ACCESS_KEY = "${stackit_objectstorage_credential.this.secret_access_key}"
+      ACCESS_KEY        = stackit_objectstorage_credential.this.access_key,
+      SECRET_ACCESS_KEY = stackit_objectstorage_credential.this.secret_access_key
     }
   )
 }
