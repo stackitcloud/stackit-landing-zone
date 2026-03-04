@@ -4,7 +4,7 @@ plugin "terraform" {
 }
 
 config {
-  module = true
+  call_module_type = "all"
 }
 
 rule "terraform_required_providers" {
