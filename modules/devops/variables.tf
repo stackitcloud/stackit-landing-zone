@@ -61,6 +61,11 @@ variable "git_flavor" {
   type        = string
   description = "The flavor of the Git instance."
   default     = null # "git-100", git-10
+
+  validation {
+    condition     = var.git_flavor == null || can(regex("^git-[0-9]+$", var.git_flavor))
+    error_message = "git_flavor must match STACKIT Git flavor format (e.g. git-10 or git-100). Validate available flavors in the STACKIT Git API documentation."
+  }
 }
 
 variable "allowed_network_ranges" {

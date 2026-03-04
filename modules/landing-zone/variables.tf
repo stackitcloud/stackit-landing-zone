@@ -105,6 +105,15 @@ variable "kubernetes_clusters" {
   }))
   description = "Map of Kubernetes clusters to create. The key is used as a suffix for the cluster name."
   default     = {}
+
+  validation {
+    condition = alltrue(flatten([
+      for cluster in values(var.kubernetes_clusters) : [
+        for node_pool in cluster.node_pools : can(regex("^[a-z][0-9]+\\.[0-9]+$", node_pool.machine_type))
+      ]
+    ]))
+    error_message = "Each node_pools[*].machine_type must match STACKIT machine type format (e.g. c1.2). Validate available flavors with: stackit server machine-type list"
+  }
 }
 
 variable "custom_roles" {

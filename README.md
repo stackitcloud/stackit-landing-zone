@@ -57,6 +57,36 @@ terraform apply
 - [Getting Started](docs/getting-started.md)
 - [Deployment Guide](docs/deployment-guide.md)
 
+## 🔍 Linting (TFLint)
+
+The repository includes automated Terraform linting with `tflint` in GitHub Actions.
+
+- Workflow: `.github/workflows/tflint.yml`
+- Config: `.tflint.hcl`
+
+Run locally:
+
+```bash
+tflint --init
+tflint --recursive
+```
+
+Additionally, Terraform variable validations enforce flavor naming patterns for:
+
+- `modules/connectivity-regional` (`firewall_flavor`)
+- `modules/devops` (`git_flavor`)
+- `modules/landing-zone` (`kubernetes_clusters[*].node_pools[*].machine_type`)
+
+Use `stackit server machine-type list` and the STACKIT Git API docs to verify currently available flavors.
+
+For live validation against current STACKIT SKUs, CI also runs:
+
+```bash
+python3 scripts/validate_stackit_flavors.py
+```
+
+By default it uses `https://pim.api.stackit.cloud/v1/skus` and fails if a configured flavor is not currently available.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

@@ -75,6 +75,11 @@ variable "firewall_flavor" {
   type        = string
   description = "Firewall VM Flavor"
   default     = "c1.2"
+
+  validation {
+    condition     = can(regex("^[a-z][0-9]+\\.[0-9]+$", var.firewall_flavor))
+    error_message = "firewall_flavor must match STACKIT machine type format (e.g. c1.2). Validate available flavors with: stackit server machine-type list"
+  }
 }
 
 variable "vnet_range" {
