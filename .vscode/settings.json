@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "*.mmd": "mermaid",
+    "*.mmd.md": "markdown"
+  }
+}
