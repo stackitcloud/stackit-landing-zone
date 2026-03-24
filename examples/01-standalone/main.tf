@@ -47,7 +47,7 @@ module "devops" {
 module "sandboxes" {
   source = "../../modules/sandboxes"
 
-  naming_pattern      = "${var.company_code}-sbx"
+  naming_prefix      = "${var.company_code}-sbx"
   parent_container_id = module.governance.folder_container_ids.sandbox
   sandboxes           = var.sandboxes
 }

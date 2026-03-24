@@ -33,9 +33,9 @@ module "management" {
 module "connectivity_global" {
   source = "../../modules/connectivity-global"
 
-  organization_id       = var.organization_id
-  labels                = var.labels
-  network_areas         = var.network_areas
+  organization_id = var.organization_id
+  labels          = var.labels
+  network_areas   = var.network_areas
 }
 
 #############################
@@ -80,7 +80,7 @@ module "devops" {
 module "sandboxes" {
   source = "../../modules/sandboxes"
 
-  naming_pattern      = "${var.company_code}-sbx"
+  naming_prefix       = "${var.company_code}-sbx"
   parent_container_id = module.governance.folder_container_ids.sandbox
   sandboxes           = var.sandboxes
 }
@@ -93,8 +93,9 @@ module "landing_zone" {
   source   = "../../modules/landing-zone"
   for_each = var.landing_zones
 
-  parent_container_id   = module.governance.folder_container_ids.landing_zones_public
+  parent_container_id   = each.value.corporate ? module.governance.folder_container_ids.landing_zones_corporate : module.governance.folder_container_ids.landing_zones_public
   naming_pattern        = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
+  network_area_id       = each.value.corporate ? module.connectivity_global.network_area_ids[var.connectivity_regional_network_area] : null
   owner_email           = each.value.owner_email
   labels                = var.labels
   role_assignments      = each.value.role_assignments

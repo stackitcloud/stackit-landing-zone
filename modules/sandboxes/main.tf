@@ -6,7 +6,7 @@ resource "stackit_resourcemanager_project" "this" {
   for_each = { for sandbox in var.sandboxes : sandbox.project_name => sandbox }
 
   parent_container_id = var.parent_container_id
-  name                = "${var.naming_pattern}-${each.value.project_name}"
+  name                = "${var.naming_prefix}-${each.value.project_name}"
   owner_email         = each.value.project_owner_email
 
   lifecycle {

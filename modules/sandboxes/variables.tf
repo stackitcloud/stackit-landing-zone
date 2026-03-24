@@ -3,15 +3,9 @@ variable "parent_container_id" {
   description = "Parent container ID (folder or organization) where the project will be created."
 }
 
-variable "naming_pattern" {
+variable "naming_prefix" {
   type        = string
-  description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-net-prod\"."
-}
-
-variable "project_name" {
-  type        = string
-  description = "Name of the STACKIT project to create."
-  default     = null
+  description = "Naming prefix for all resources in this module."
 }
 
 variable "sandboxes" {
