@@ -17,3 +17,14 @@ output "service_account_email" {
   description = "The email of the created service account."
   value       = stackit_service_account.automation.email
 }
+
+output "secretsmanager_username" {
+  description = "The username of the default Secrets Manager user."
+  value       = stackit_secretsmanager_user.default.username
+}
+
+output "secretsmanager_password" {
+  description = "The password of the default Secrets Manager user."
+  value       = stackit_secretsmanager_user.default.password
+  sensitive   = true
+}

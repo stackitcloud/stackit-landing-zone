@@ -31,15 +31,15 @@ resource "stackit_objectstorage_credential" "this" {
   credentials_group_id = stackit_objectstorage_credentials_group.this.credentials_group_id
 }
 
-# resource "vault_kv_secret_v2" "object_storage_credentials" {
-#   mount               = stackit_secretsmanager_instance.this.instance_id
-#   name                = "service_account_key_${stackit_service_account.automation.name}"
-#   cas                 = 1
-#   delete_all_versions = true
-#   data_json = jsonencode(
-#     {
-#       ACCESS_KEY        = stackit_objectstorage_credential.this.access_key,
-#       SECRET_ACCESS_KEY = stackit_objectstorage_credential.this.secret_access_key
-#     }
-#   )
-# }
+resource "vault_kv_secret_v2" "object_storage_credentials" {
+  mount               = stackit_secretsmanager_instance.this.instance_id
+  name                = "service_account_key_${stackit_service_account.automation.name}"
+  cas                 = 1
+  delete_all_versions = true
+  data_json = jsonencode(
+    {
+      ACCESS_KEY        = stackit_objectstorage_credential.this.access_key,
+      SECRET_ACCESS_KEY = stackit_objectstorage_credential.this.secret_access_key
+    }
+  )
+}
