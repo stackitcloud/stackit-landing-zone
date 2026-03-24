@@ -2,19 +2,26 @@
 ## NETWORK AREA ##
 ##################
 
-resource "stackit_network_area" "areas" {
+locals {
+  project_labels = merge(
+    var.network_area_id != null ? { "networkArea" = var.network_area_id } : {},
+    var.labels
+  )
+}
+
+resource "stackit_network_area" "this" {
   for_each = { for na in var.network_areas : na.name => na }
 
   organization_id = var.organization_id
-  name            = "${local.naming_pattern}-${each.key}"
+  name            = each.key
   labels          = length(local.project_labels) > 0 ? local.project_labels : null
 }
 
-resource "stackit_network_area_region" "areas" {
+resource "stackit_network_area_region" "this" {
   for_each = { for na in var.network_areas : na.name => na }
 
   organization_id = var.organization_id
-  network_area_id = stackit_network_area.areas[each.key].network_area_id
+  network_area_id = stackit_network_area.this[each.key].network_area_id
 
   ipv4 = {
     network_ranges        = each.value.network_ranges
@@ -30,12 +37,12 @@ resource "stackit_network_area_region" "areas" {
 ## NETWORK AREA - ROUTING ##
 ############################
 
-# resource "stackit_network_area_route" "main" {
-#   organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-#   network_area_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-#   prefix          = "192.168.0.0/24"
-#   next_hop        = "192.168.0.0"
-#   labels = {
-#     "key" = "value"
-#   }
-# }
+resource "stackit_network_area_route" "this" {
+  for_each = { for r in var.network_area_routes : r.name => r }
+
+  organization_id = var.organization_id
+  network_area_id = stackit_network_area.this[each.value.network_area_name].network_area_id
+
+  destination = each.value.destination
+  next_hop    = each.value.next_hop
+}

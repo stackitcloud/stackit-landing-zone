@@ -50,13 +50,13 @@ Now you can enter the WebUI via the FloatingIP on port 443 the default login is 
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10 |
-| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | 0.83.0 |
+| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >=0.88.0 |
 
 ### Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.83.0 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.88.0 |
 
 ### Modules
 
@@ -66,36 +66,32 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [stackit_authorization_project_role_assignment.assignments](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/authorization_project_role_assignment) | resource |
-| [stackit_image.pfsense_image](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/image) | resource |
-| [stackit_network.lan](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/network) | resource |
-| [stackit_network.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/network) | resource |
-| [stackit_network_area_route.default](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/network_area_route) | resource |
-| [stackit_network_interface.lan](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/network_interface) | resource |
-| [stackit_network_interface.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/network_interface) | resource |
-| [stackit_public_ip.wan-ip](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/public_ip) | resource |
-| [stackit_resourcemanager_project.project](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/resourcemanager_project) | resource |
-| [stackit_server.pfsense_Server](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/server) | resource |
-| [stackit_volume.pfsense_vol](https://registry.terraform.io/providers/stackitcloud/stackit/0.83.0/docs/resources/volume) | resource |
+| [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
+| [stackit_image.pfsense](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/image) | resource |
+| [stackit_network.lan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
+| [stackit_network.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
+| [stackit_network_area_route.default](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_area_route) | resource |
+| [stackit_network_interface.lan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
+| [stackit_network_interface.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
+| [stackit_public_ip.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/public_ip) | resource |
+| [stackit_resourcemanager_project.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/resourcemanager_project) | resource |
+| [stackit_server.pfsense](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server) | resource |
+| [stackit_volume.pfsense](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/volume) | resource |
 
 ### Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_company_code"></a> [company\_code](#input\_company\_code) | Company code used in resource naming conventions. | `string` | n/a | yes |
-| <a name="input_company_name"></a> [company\_name](#input\_company\_name) | Name of the company folder to create. | `string` | n/a | yes |
+| <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-net-prod". | `string` | n/a | yes |
 | <a name="input_network_area_id"></a> [network\_area\_id](#input\_network\_area\_id) | Network Area ID to deploy resources into. Required if network is enabled. | `string` | n/a | yes |
 | <a name="input_organization_id"></a> [organization\_id](#input\_organization\_id) | Organization ID, required for network area route configuration. | `string` | n/a | yes |
 | <a name="input_owner_email"></a> [owner\_email](#input\_owner\_email) | Email address of the owner for the folders. Required for STACKIT resource manager. | `string` | n/a | yes |
 | <a name="input_parent_container_id"></a> [parent\_container\_id](#input\_parent\_container\_id) | Parent container ID (folder or organization) where the project will be created. | `string` | n/a | yes |
-| <a name="input_project_code"></a> [project\_code](#input\_project\_code) | Optional project code for the STACKIT project. | `string` | n/a | yes |
-| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name of the STACKIT project to create. | `string` | n/a | yes |
-| <a name="input_env"></a> [env](#input\_env) | Environment identifier (e.g., dev, staging, prod) used in resource naming conventions. | `string` | `"dev"` | no |
 | <a name="input_firewall_flavor"></a> [firewall\_flavor](#input\_firewall\_flavor) | Firewall VM Flavor | `string` | `"c1.2"` | no |
 | <a name="input_firewall_ip"></a> [firewall\_ip](#input\_firewall\_ip) | IP address of the firewall | `string` | `"10.0.0.220"` | no |
 | <a name="input_firewall_zone"></a> [firewall\_zone](#input\_firewall\_zone) | STACKIT Availability Zone | `string` | `"eu01-m"` | no |
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all folders. | `map(string)` | `{}` | no |
-| <a name="input_region"></a> [region](#input\_region) | STACKIT region for regional resources. | `string` | `"eu01"` | no |
+| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name of the STACKIT project to create. | `string` | `null` | no |
 | <a name="input_role_assignments"></a> [role\_assignments](#input\_role\_assignments) | List of role assignments for the project. Subject can be a user email or service account email. | <pre>list(object({<br/>    role    = string<br/>    subject = string<br/>  }))</pre> | `[]` | no |
 | <a name="input_vnet_range"></a> [vnet\_range](#input\_vnet\_range) | CIDR range for the project VNet. Required if network is enabled. | `string` | `"10.0.0.0/24"` | no |
 

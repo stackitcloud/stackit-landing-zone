@@ -12,8 +12,8 @@
 #   }
 # }
 
-resource "stackit_image" "pfsense_image" {
-  project_id      = stackit_resourcemanager_project.project.project_id
+resource "stackit_image" "pfsense" {
+  project_id      = stackit_resourcemanager_project.this.project_id
   name            = "pfsense-2.7.2-amd64-image"
   local_file_path = "./pfsense.qcow2"
   disk_format     = "qcow2"
@@ -23,21 +23,21 @@ resource "stackit_image" "pfsense_image" {
     uefi = false
   }
 
-  # depends_on      = [terraform_data.pfsense_image_file]
+  # depends_on = [terraform_data.pfsense_image_file]
 }
 
 ############
 ## VOLUME ##
 ############
 
-resource "stackit_volume" "pfsense_vol" {
-  project_id        = stackit_resourcemanager_project.project.project_id
+resource "stackit_volume" "pfsense" {
+  project_id        = stackit_resourcemanager_project.this.project_id
   name              = "pfsense-2.7.2-root"
   availability_zone = var.firewall_zone
   size              = 16
   performance_class = "storage_premium_perf4"
   source = {
-    id   = stackit_image.pfsense_image.image_id
+    id   = stackit_image.pfsense.image_id
     type = "image"
   }
 }
@@ -47,12 +47,12 @@ resource "stackit_volume" "pfsense_vol" {
 ############
 
 # after rollout: https://docs.stackit.cloud/products/quick-deployments/pfsense-firewall/tutorials/configure-pfsense/
-resource "stackit_server" "pfsense_Server" {
-  project_id = stackit_resourcemanager_project.project.project_id
+resource "stackit_server" "pfsense" {
+  project_id = stackit_resourcemanager_project.this.project_id
   name       = "pfSense"
   boot_volume = {
     source_type = "volume"
-    source_id   = stackit_volume.pfsense_vol.volume_id
+    source_id   = stackit_volume.pfsense.volume_id
   }
   availability_zone = var.firewall_zone
   machine_type      = var.firewall_flavor

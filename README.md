@@ -94,3 +94,28 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+<!-- BEGIN_TF_DOCS -->
+### Requirements
+
+No requirements.
+
+### Providers
+
+No providers.
+
+### Modules
+
+No modules.
+
+### Resources
+
+No resources.
+
+### Inputs
+
+No inputs.
+
+### Outputs
+
+No outputs.
+<!-- END_TF_DOCS -->

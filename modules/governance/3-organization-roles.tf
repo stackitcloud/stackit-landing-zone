@@ -1,6 +1,6 @@
-##########################
-## ORG ROLE ASSIGNMENTS ##
-##########################
+#########################################
+## ORGANIZATION LEVEL ROLE ASSIGNMENTS ##
+#########################################
 
 resource "stackit_authorization_organization_role_assignment" "owner" {
   for_each = toset(var.organization_owners)

@@ -1,16 +1,33 @@
-terraform {
-  required_version = ">= 1.10"
+#############
+## PROJECT ##
+#############
 
-  required_providers {
-    stackit = {
-      source  = "stackitcloud/stackit"
-      version = "0.85.0"
-    }
+resource "stackit_resourcemanager_project" "this" {
+  for_each = { for sandbox in var.sandboxes : sandbox.project_name => sandbox }
+
+  parent_container_id = var.parent_container_id
+  name                = "${var.naming_prefix}-${each.value.project_name}"
+  owner_email         = each.value.project_owner_email
+
+  lifecycle {
+    ignore_changes = [labels] # provider bug
   }
 }
 
-provider "stackit" {
-  default_region        = var.region
-  enable_beta_resources = true
-  experiments           = ["iam", "routing-tables", "network"]
+resource "stackit_authorization_project_role_assignment" "this" {
+  for_each = {
+    for assignment in flatten([
+      for sandbox in var.sandboxes : [
+        for email in coalesce(sandbox.owner_emails, []) : {
+          key          = "${sandbox.project_name}-${email}"
+          project_name = sandbox.project_name
+          email        = email
+        }
+      ]
+    ]) : assignment.key => assignment
+  }
+
+  resource_id = stackit_resourcemanager_project.this[each.value.project_name].project_id
+  role        = "owner"
+  subject     = each.value.email
 }

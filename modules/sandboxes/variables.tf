@@ -1,23 +1,11 @@
-variable "company_code" {
-  type        = string
-  description = "Company code used in resource naming conventions."
-}
-
 variable "parent_container_id" {
   type        = string
   description = "Parent container ID (folder or organization) where the project will be created."
 }
 
-variable "labels" {
-  type        = map(string)
-  description = "Additional labels to apply to all folders."
-  default     = {}
-}
-
-variable "region" {
+variable "naming_prefix" {
   type        = string
-  description = "STACKIT region for regional resources."
-  default     = "eu01"
+  description = "Naming prefix for all resources in this module."
 }
 
 variable "sandboxes" {

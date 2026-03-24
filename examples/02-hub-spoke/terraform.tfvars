@@ -38,9 +38,9 @@ landing_zone_admins = [
   "lz-admin@example.com"
 ]
 
-##############################
-## CONNECTIVITY - GLOBAL    ##
-##############################
+###########################
+## CONNECTIVITY - GLOBAL ##
+###########################
 
 # Network areas define the overall IP address space available for projects
 # Each area gets a transfer network (for inter-project routing) and one or more ranges
@@ -61,9 +61,9 @@ network_areas = [
   }
 ]
 
-################################
-## CONNECTIVITY - REGIONAL    ##
-################################
+#############################
+## CONNECTIVITY - REGIONAL ##
+#############################
 
 # Must match a name from the network_areas list above
 connectivity_regional_network_area = "corporate"
@@ -132,38 +132,6 @@ landing_zones = {
         permissions = ["project.resources.read", "project.resources.write"]
       }
     ]
-
-    kubernetes_clusters = {
-      "main" = {
-        kubernetes_version = "1.31"
-        node_pools = [
-          {
-            name               = "system"
-            machine_type       = "c1.3"
-            availability_zones = ["eu01-m"]
-            minimum            = 2
-            maximum            = 5
-          },
-          {
-            name               = "workers"
-            machine_type       = "c1.4"
-            availability_zones = ["eu01-m"]
-            minimum            = 3
-            maximum            = 10
-            labels             = { "workload" = "general" }
-          }
-        ]
-        extensions = {
-          acl = {
-            enabled       = true
-            allowed_cidrs = ["10.0.0.0/8"]
-          }
-          dns = {
-            enabled = true
-          }
-        }
-      }
-    }
   }
 
   "data-platform" = {
@@ -174,9 +142,6 @@ landing_zones = {
     corporate    = true
 
     network_prefix_length = 24
-
-    # No Kubernetes — just a project with network connectivity
-    kubernetes_clusters = {}
   }
 
   # Public landing zone — no network area, uses STACKIT's default public networking

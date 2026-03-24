@@ -1,47 +1,35 @@
-variable "owner_email" {
+variable "firewall_flavor" {
   type        = string
-  description = "Email address of the owner for the folders. Required for STACKIT resource manager."
+  description = "Firewall VM Flavor"
+  default     = "c1.2"
+
+  validation {
+    condition     = can(regex("^[a-z][0-9]+\\.[0-9]+$", var.firewall_flavor))
+    error_message = "firewall_flavor must match STACKIT machine type format (e.g. c1.2). Validate available flavors with: stackit server machine-type list"
+  }
 }
 
-variable "project_name" {
+variable "firewall_ip" {
   type        = string
-  description = "Name of the STACKIT project to create."
+  description = "IP address of the firewall"
+  default     = "10.0.0.220"
 }
 
-variable "project_code" {
+variable "firewall_zone" {
   type        = string
-  description = "Optional project code for the STACKIT project."
+  description = "STACKIT Availability Zone"
+  default     = "eu01-m"
 }
 
-variable "company_name" {
-  type        = string
-  description = "Name of the company folder to create."
+variable "labels" {
+  type        = map(string)
+  description = "Additional labels to apply to all folders."
+  default     = {}
 }
 
-variable "company_code" {
+variable "naming_pattern" {
   type        = string
-  description = "Company code used in resource naming conventions."
-}
-
-variable "role_assignments" {
-  type = list(object({
-    role    = string
-    subject = string
-  }))
-  description = "List of role assignments for the project. Subject can be a user email or service account email."
-  default     = []
-}
-
-variable "region" {
-  type        = string
-  description = "STACKIT region for regional resources."
-  default     = "eu01"
-}
-
-variable "env" {
-  type        = string
-  description = "Environment identifier (e.g., dev, staging, prod) used in resource naming conventions."
-  default     = "dev"
+  description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-net-prod\"."
 }
 
 variable "network_area_id" {
@@ -54,10 +42,9 @@ variable "organization_id" {
   description = "Organization ID, required for network area route configuration."
 }
 
-variable "labels" {
-  type        = map(string)
-  description = "Additional labels to apply to all folders."
-  default     = {}
+variable "owner_email" {
+  type        = string
+  description = "Email address of the owner for the folders. Required for STACKIT resource manager."
 }
 
 variable "parent_container_id" {
@@ -65,30 +52,23 @@ variable "parent_container_id" {
   description = "Parent container ID (folder or organization) where the project will be created."
 }
 
-variable "firewall_zone" {
+variable "project_name" {
   type        = string
-  description = "STACKIT Availability Zone"
-  default     = "eu01-m"
+  description = "Name of the STACKIT project to create."
+  default     = null
 }
 
-variable "firewall_flavor" {
-  type        = string
-  description = "Firewall VM Flavor"
-  default     = "c1.2"
-
-  validation {
-    condition     = can(regex("^[a-z][0-9]+\\.[0-9]+$", var.firewall_flavor))
-    error_message = "firewall_flavor must match STACKIT machine type format (e.g. c1.2). Validate available flavors with: stackit server machine-type list"
-  }
+variable "role_assignments" {
+  type = list(object({
+    role    = string
+    subject = string
+  }))
+  description = "List of role assignments for the project. Subject can be a user email or service account email."
+  default     = []
 }
 
 variable "vnet_range" {
   type        = string
   description = "CIDR range for the project VNet. Required if network is enabled."
   default     = "10.0.0.0/24"
-}
-variable "firewall_ip" {
-  type        = string
-  description = "IP address of the firewall"
-  default     = "10.0.0.220"
 }

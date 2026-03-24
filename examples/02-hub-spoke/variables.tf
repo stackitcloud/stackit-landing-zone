@@ -52,15 +52,9 @@ variable "platform_admins" {
   default     = []
 }
 
-variable "landing_zone_admins" {
-  type        = list(string)
-  description = "List of landing zone administrators."
-  default     = []
-}
-
-##############################
-## CONNECTIVITY - GLOBAL    ##
-##############################
+###########################
+## CONNECTIVITY - GLOBAL ##
+###########################
 
 variable "network_areas" {
   type = list(object({
@@ -75,9 +69,9 @@ variable "network_areas" {
   description = "List of network areas to create with their IP ranges and configuration."
 }
 
-################################
-## CONNECTIVITY - REGIONAL    ##
-################################
+#############################
+## CONNECTIVITY - REGIONAL ##
+#############################
 
 variable "connectivity_regional_network_area" {
   type        = string
@@ -144,46 +138,6 @@ variable "landing_zones" {
       description = string
       permissions = list(string)
     })), [])
-    kubernetes_clusters = optional(map(object({
-      kubernetes_version                   = string
-      enable_kubernetes_version_updates    = optional(bool, true)
-      enable_machine_image_version_updates = optional(bool, true)
-      hibernations = optional(list(object({
-        start    = string
-        end      = string
-        timezone = optional(string, "Europe/Berlin")
-      })), [])
-      node_pools = list(object({
-        name               = string
-        machine_type       = string
-        availability_zones = list(string)
-        os_version_min     = optional(string)
-        minimum            = number
-        maximum            = number
-        max_surge          = optional(number)
-        max_unavailable    = optional(number)
-        labels             = optional(map(string))
-        taints = optional(list(object({
-          key    = string
-          value  = string
-          effect = string
-        })))
-      }))
-      extensions = optional(object({
-        acl = optional(object({
-          allowed_cidrs = list(string)
-          enabled       = bool
-        }))
-        dns = optional(object({
-          enabled = bool
-          zones   = optional(list(string))
-        }))
-        observability = optional(object({
-          enabled     = bool
-          instance_id = optional(string)
-        }))
-      }))
-    })), {})
   }))
   description = "Map of landing zones to create. Set corporate = true for network area connectivity, false for public."
   default     = {}

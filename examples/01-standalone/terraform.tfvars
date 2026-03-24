@@ -32,11 +32,6 @@ platform_admins = [
   "platform-admin@example.com"
 ]
 
-# Users with admin access to the Landing Zones folders
-landing_zone_admins = [
-  "lz-admin@example.com"
-]
-
 # Sandbox projects for experimentation / PoCs
 sandboxes = [
   {
@@ -48,8 +43,7 @@ sandboxes = [
 
 # Landing zones keyed by a unique identifier
 landing_zones = {
-  "app-frontend" = {
-    project_name = "Frontend App"
+  "fe-dev" = {
     project_code = "fe"
     owner_email  = "frontend-team@example.com"
     env          = "dev"
@@ -60,35 +54,5 @@ landing_zones = {
         subject = "frontend-lead@example.com"
       }
     ]
-
-    custom_roles = [
-      {
-        name        = "deployer"
-        description = "Can deploy workloads"
-        permissions = ["project.resources.read", "project.resources.write"]
-      }
-    ]
-
-    # Omit kubernetes_clusters to skip SKE provisioning, or define clusters:
-    kubernetes_clusters = {
-      "main" = {
-        kubernetes_version = "1.31"
-        node_pools = [
-          {
-            name               = "default"
-            machine_type       = "c1.3"
-            availability_zones = ["eu01-m"]
-            minimum            = 2
-            maximum            = 4
-          }
-        ]
-        extensions = {
-          acl = {
-            enabled       = true
-            allowed_cidrs = ["0.0.0.0/0"]
-          }
-        }
-      }
-    }
   }
 }

@@ -3,8 +3,8 @@
 #####################
 
 resource "stackit_service_account" "automation" {
-  project_id = stackit_resourcemanager_project.project.project_id
-  name       = substr(replace("${local.naming_pattern}-automation", "-", ""), 0, 20)
+  project_id = stackit_resourcemanager_project.this.project_id
+  name       = substr(replace("${var.naming_pattern}-automation", "-", ""), 0, 20)
 }
 
 resource "time_rotating" "key_rotate" {
@@ -12,7 +12,7 @@ resource "time_rotating" "key_rotate" {
 }
 
 resource "stackit_service_account_key" "automation" {
-  project_id            = stackit_resourcemanager_project.project.project_id
+  project_id            = stackit_resourcemanager_project.this.project_id
   service_account_email = stackit_service_account.automation.email
   ttl_days              = 90
 
