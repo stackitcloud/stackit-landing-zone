@@ -36,5 +36,6 @@ jobs:
         continue-on-error: true
         run: tflint --recursive --format compact --only=terraform_unused_declarations
 
-      - name: Validate STACKIT flavors (live)
-        run: python3 scripts/validate_stackit_flavors.py
+      # runs 6h
+      # - name: Validate STACKIT flavors (live)
+      #   run: python3 scripts/validate_stackit_flavors.py
