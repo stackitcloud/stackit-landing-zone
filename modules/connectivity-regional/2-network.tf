@@ -2,43 +2,28 @@
 ## NETWORKS ##
 ##############
 
-# will get auto assigned a free range from the network area (needs to be, because for a public ip it needs to be routed)
-resource "stackit_network" "wan" {
+# will get auto assigned a free range from the network area 
+resource "stackit_network" "hub" {
   project_id = stackit_resourcemanager_project.this.project_id
-  name       = "wan"
-  #ipv4_nameservers = ["208.67.222.222", "9.9.9.9"] provider bug
-  routed = true
-
-  depends_on = [stackit_network.lan]
-}
-
-# this is not used, because it is not routed (not reachable by other projects)
-# the wan interface actually handles the internal and external traffic
-# actually lan should be reachable internally and wan not
-resource "stackit_network" "lan" {
-  project_id       = stackit_resourcemanager_project.this.project_id
-  name             = "lan"
-  ipv4_nameservers = ["208.67.222.222", "9.9.9.9"]
-  ipv4_prefix      = var.vnet_range
-  ipv4_gateway     = var.firewall_ip
-  routed           = false
+  name       = "hub_network"
+  routed     = true
 }
 
 ################
 ## INTERFACES ##
 ################
 
-# the firewall will see a private ip, because stackit handles NAT (public ip is not attached directly)
 resource "stackit_network_interface" "wan" {
+  name       = "vtnet0_wan"
   project_id = stackit_resourcemanager_project.this.project_id
-  network_id = stackit_network.wan.network_id
+  network_id = stackit_network.hub.network_id
   security   = false
 }
 
 resource "stackit_network_interface" "lan" {
+  name       = "vtnet1_lan"
   project_id = stackit_resourcemanager_project.this.project_id
-  network_id = stackit_network.lan.network_id
-  ipv4       = var.firewall_ip
+  network_id = stackit_network.hub.network_id
   security   = false
 }
 
@@ -46,7 +31,7 @@ resource "stackit_network_interface" "lan" {
 ## PUBLIC IP ##
 ###############
 
-resource "stackit_public_ip" "wan" {
+resource "stackit_public_ip" "wan-ip" {
   project_id           = stackit_resourcemanager_project.this.project_id
   network_interface_id = stackit_network_interface.wan.network_interface_id
 }

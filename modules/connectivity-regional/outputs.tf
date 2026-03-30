@@ -1,10 +1,10 @@
-output "pfsense_public_ip" {
+output "firewall_public_ip" {
   description = "The public IP address of the pfSense firewall WAN interface."
-  value       = stackit_public_ip.wan.ip
+  value       = stackit_public_ip.wan-ip.ip
 }
 
-output "pfsense_wan_ip" {
-  description = "The internal network area IP of the pfSense WAN interface (used as next hop in routes)."
+output "firewall_next_hop_ip" {
+  description = "The IP address to be used as next hop for the default route in the landing zones (pfSense WAN IP)."
   value       = stackit_network_interface.wan.ipv4
 }
 
