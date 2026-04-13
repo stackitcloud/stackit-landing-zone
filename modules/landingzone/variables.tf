@@ -35,3 +35,8 @@ variable "members" { # TODO: type & desc
   type        = any
   description = "List of role assignments for the project. Subject can be a user email or service account email."
 }
+
+variable "network_prefix" {
+  type        = string
+  description = "Prefix for the default network."
+}
