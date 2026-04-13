@@ -30,7 +30,8 @@ variable "region" {
   description = "STACKIT region for regional resources."
   default     = "eu01"
 }
+
 variable "members" { # TODO: type & desc
-  type = any
+  type        = any
   description = "List of role assignments for the project. Subject can be a user email or service account email."
 }
