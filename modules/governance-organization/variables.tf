@@ -7,3 +7,8 @@ variable "members" { # TODO: type & desc
   type = any
   description = "List of role assignments for the project. Subject can be a user email or service account email."
 }
+
+variable "network_areas" { # TODO: type & desc
+  type = any
+  description = "List of role assignments for the project. Subject can be a user email or service account email."
+}
