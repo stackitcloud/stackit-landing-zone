@@ -78,6 +78,7 @@ module "landing_zone" {
   source   = "../../modules/landing-zone"
   for_each = var.landing_zones
 
+  organization_id       = var.organization_id
   parent_container_id   = module.governance.folder_container_ids["landing_zones"]
   naming_pattern        = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
   owner_email           = each.value.owner_email

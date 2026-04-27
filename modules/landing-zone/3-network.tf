@@ -6,7 +6,7 @@ resource "stackit_routing_table" "this" {
   organization_id = var.organization_id
   network_area_id = var.network_area_id
   name            = var.naming_pattern
-  system_routes   = false 
+  system_routes   = false
 
   labels = local.labels
 }

@@ -27,14 +27,9 @@ output "connectivity_regional_project_id" {
   value       = module.connectivity_regional.project_id
 }
 
-output "connectivity_regional_pfsense_public_ip" {
-  description = "The public IP of the pfSense firewall."
-  value       = module.connectivity_regional.pfsense_public_ip
-}
-
-output "connectivity_regional_pfsense_wan_ip" {
-  description = "The internal WAN IP of the pfSense firewall (used as next hop)."
-  value       = module.connectivity_regional.pfsense_wan_ip
+output "connectivity_regional_firewall_public_ip" {
+  description = "The public IP of the firewall."
+  value       = module.connectivity_regional.firewall_public_ip
 }
 
 output "sandbox_projects" {
