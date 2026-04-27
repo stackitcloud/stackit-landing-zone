@@ -5,7 +5,7 @@ output "firewall_public_ip" {
 
 output "firewall_next_hop_ip" {
   description = "The IP address to be used as next hop for the default route in the landing zones (pfSense WAN IP)."
-  value       = stackit_network_interface.wan.ipv4
+  value       = stackit_network_interface.lan.ipv4
 }
 
 output "project_container_id" {

@@ -125,4 +125,5 @@ module "landing_zone" {
   role_assignments      = each.value.role_assignments
   network_prefix_length = each.value.network_prefix_length
   custom_roles          = each.value.custom_roles
+  firewall_next_hop_ip  = module.connectivity_regional.firewall_next_hop_ip
 }
