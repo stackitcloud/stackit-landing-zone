@@ -46,10 +46,10 @@ variable "organization_auditors" {
   default     = []
 }
 
-variable "platform_admins" {
-  type        = list(string)
-  description = "List of platform administrators."
-  default     = []
+variable "devops_enabled" {
+  type        = bool
+  description = "Whether to deploy the DevOps module (Git repository project)."
+  default     = true
 }
 
 variable "sandboxes" {

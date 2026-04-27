@@ -28,40 +28,33 @@ organization_auditors = [
   "auditor@example.com"
 ]
 
-# Users with admin access to the Platform folder (DevOps, Management, Connectivity)
-platform_admins = [
-  "platform-admin@example.com"
-]
-
 ###########################
 ## CONNECTIVITY - GLOBAL ##
 ###########################
-
-# Network areas define the overall IP address space available for projects
-# Each area gets a transfer network (for inter-project routing) and one or more ranges
-network_areas = [
-  {
-    name = "corporate"
-    # IP ranges that will be sliced into per-project subnets
-    network_ranges = [
-      { prefix = "10.1.0.0/16" },
-      { prefix = "10.2.0.0/16" }
-    ]
-    # Transfer network used for routing between projects in this area
-    transfer_network_range = "10.255.0.0/24"
-    # Controls the subnet sizes assigned to individual projects
-    min_prefix_length     = 24
-    max_prefix_length     = 28
-    default_prefix_length = 25
-  }
-]
 
 #############################
 ## CONNECTIVITY - REGIONAL ##
 #############################
 
-# Must match a name from the network_areas list above
-connectivity_regional_network_area = "corporate"
+# Name of the network area for this region
+network_area_name = "corporate"
+
+# IP ranges that will be sliced into per-project subnets
+network_ranges = [
+  { prefix = "10.1.0.0/16" },
+  { prefix = "10.2.0.0/16" }
+]
+
+# Transfer network used for routing between projects in this area
+transfer_network_range = "10.255.0.0/24"
+
+# Controls the subnet sizes assigned to individual projects
+min_prefix_length     = 24
+max_prefix_length     = 28
+default_prefix_length = 25
+
+# Set to false to skip firewall deployment (network area and routing still created)
+# firewall_enabled = false
 
 # Availability zone for the firewall VM
 firewall_zone = "eu01-m"

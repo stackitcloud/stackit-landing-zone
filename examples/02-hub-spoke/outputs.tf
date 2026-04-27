@@ -9,7 +9,7 @@ output "governance_folder_ids" {
 
 output "devops_project_id" {
   description = "The project ID of the DevOps project."
-  value       = module.devops.project_id
+  value       = length(module.devops) > 0 ? module.devops[0].project_id : null
 }
 
 output "management_project_id" {
@@ -17,14 +17,14 @@ output "management_project_id" {
   value       = module.management.project_id
 }
 
-output "connectivity_global_network_area_ids" {
-  description = "Map of network area names to their IDs."
-  value       = module.connectivity_global.network_area_ids
+output "connectivity_regional_network_area_id" {
+  description = "The network area ID created by the regional module."
+  value       = module.connectivity_regional.network_area_id
 }
 
-output "connectivity_regional_project_id" {
-  description = "The project ID of the regional connectivity project."
-  value       = module.connectivity_regional.project_id
+output "connectivity_global_project_id" {
+  description = "The project ID of the connectivity project."
+  value       = module.connectivity_global.project_id
 }
 
 output "connectivity_regional_firewall_public_ip" {
@@ -34,7 +34,7 @@ output "connectivity_regional_firewall_public_ip" {
 
 output "sandbox_projects" {
   description = "The created sandbox projects."
-  value       = module.sandboxes.projects
+  value       = length(module.sandboxes) > 0 ? module.sandboxes[0].projects : {}
 }
 
 output "landing_zone_projects" {

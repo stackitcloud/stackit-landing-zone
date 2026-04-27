@@ -46,36 +46,57 @@ variable "organization_auditors" {
   default     = []
 }
 
-variable "platform_admins" {
-  type        = list(string)
-  description = "List of platform administrators."
-  default     = []
+variable "devops_enabled" {
+  type        = bool
+  description = "Whether to deploy the DevOps module (Git repository project)."
+  default     = true
 }
 
 ###########################
 ## CONNECTIVITY - GLOBAL ##
 ###########################
 
-variable "network_areas" {
-  type = list(object({
-    name                   = string
-    network_ranges         = list(object({ prefix = string }))
-    transfer_network_range = string
-    max_prefix_length      = optional(number, 28)
-    min_prefix_length      = optional(number, 24)
-    default_prefix_length  = optional(number, 28)
-    default_nameservers    = optional(list(string), null)
-  }))
-  description = "List of network areas to create with their IP ranges and configuration."
-}
-
 #############################
 ## CONNECTIVITY - REGIONAL ##
 #############################
 
-variable "connectivity_regional_network_area" {
+variable "network_area_name" {
   type        = string
-  description = "Name key of the network area (from network_areas) to use for the regional connectivity project."
+  description = "Name of the network area for this region."
+}
+
+variable "network_ranges" {
+  type        = list(object({ prefix = string }))
+  description = "IP ranges that will be sliced into per-project subnets."
+}
+
+variable "transfer_network_range" {
+  type        = string
+  description = "Transfer network CIDR used for routing between projects in this area."
+}
+
+variable "max_prefix_length" {
+  type        = number
+  description = "Maximum prefix length for subnets assigned to projects."
+  default     = 28
+}
+
+variable "min_prefix_length" {
+  type        = number
+  description = "Minimum prefix length for subnets assigned to projects."
+  default     = 24
+}
+
+variable "default_prefix_length" {
+  type        = number
+  description = "Default prefix length for subnets assigned to projects."
+  default     = 28
+}
+
+variable "firewall_enabled" {
+  type        = bool
+  description = "Whether to deploy the pfSense firewall. Set to false for connectivity without a firewall (network area and routing are still created)."
+  default     = true
 }
 
 variable "firewall_zone" {

@@ -36,7 +36,6 @@ No resources.
 | <a name="input_organization_id"></a> [organization\_id](#input\_organization\_id) | Container ID of the root organization. | `string` | n/a | yes |
 | <a name="input_organization_owners"></a> [organization\_owners](#input\_organization\_owners) | List of organization owners. | `list(string)` | `[]` | no |
 | <a name="input_owner_email"></a> [owner\_email](#input\_owner\_email) | Email address of the owner. Required for STACKIT resource manager. | `string` | n/a | yes |
-| <a name="input_platform_admins"></a> [platform\_admins](#input\_platform\_admins) | List of platform administrators. | `list(string)` | `[]` | no |
 | <a name="input_region"></a> [region](#input\_region) | STACKIT region for regional resources. | `string` | `"eu01"` | no |
 | <a name="input_sandboxes"></a> [sandboxes](#input\_sandboxes) | List of sandboxes to create. | <pre>list(object({<br/>    project_name        = string<br/>    owner_emails        = optional(list(string))<br/>    project_owner_email = string<br/>  }))</pre> | `[]` | no |
 

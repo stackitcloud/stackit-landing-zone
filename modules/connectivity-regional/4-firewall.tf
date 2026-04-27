@@ -13,7 +13,9 @@
 # }
 
 resource "stackit_image" "pfsense_image" {
-  project_id      = stackit_resourcemanager_project.this.project_id
+  count = var.firewall_enabled ? 1 : 0
+
+  project_id      = var.project_id
   name            = "pfsense-2.7.2-amd64-image"
   local_file_path = "./pfsense.qcow2"
   disk_format     = "qcow2"
@@ -31,13 +33,15 @@ resource "stackit_image" "pfsense_image" {
 ############
 
 resource "stackit_volume" "pfsense_vol" {
-  project_id        = stackit_resourcemanager_project.this.project_id
+  count = var.firewall_enabled ? 1 : 0
+
+  project_id        = var.project_id
   name              = "pfsense-2.7.2-root"
   availability_zone = var.firewall_zone
   size              = 16
   performance_class = "storage_premium_perf4"
   source = {
-    id   = stackit_image.pfsense_image.image_id
+    id   = stackit_image.pfsense_image[0].image_id
     type = "image"
   }
 }
@@ -48,17 +52,19 @@ resource "stackit_volume" "pfsense_vol" {
 
 # after rollout: https://docs.stackit.cloud/products/quick-deployments/pfsense-firewall/tutorials/configure-pfsense/
 resource "stackit_server" "pfsense_Server" {
-  project_id = stackit_resourcemanager_project.this.project_id
+  count = var.firewall_enabled ? 1 : 0
+
+  project_id = var.project_id
   name       = "pfSense"
   boot_volume = {
     source_type = "volume"
-    source_id   = stackit_volume.pfsense_vol.volume_id
+    source_id   = stackit_volume.pfsense_vol[0].volume_id
   }
   availability_zone = var.firewall_zone
   machine_type      = var.firewall_flavor
 
   network_interfaces = [
-    stackit_network_interface.wan.network_interface_id, # vtnet0 = WAN
-    stackit_network_interface.lan.network_interface_id  # vtnet1 = LAN
+    stackit_network_interface.wan[0].network_interface_id, # vtnet0 = WAN
+    stackit_network_interface.lan[0].network_interface_id  # vtnet1 = LAN
   ]
 }

@@ -9,7 +9,7 @@ output "governance_folder_ids" {
 
 output "devops_project_id" {
   description = "The project ID of the DevOps project."
-  value       = module.devops.project_id
+  value       = length(module.devops) > 0 ? module.devops[0].project_id : null
 }
 
 output "management_project_id" {
@@ -19,7 +19,7 @@ output "management_project_id" {
 
 output "sandbox_projects" {
   description = "The created sandbox projects."
-  value       = module.sandboxes.projects
+  value       = length(module.sandboxes) > 0 ? module.sandboxes[0].projects : {}
 }
 
 output "landing_zone_projects" {

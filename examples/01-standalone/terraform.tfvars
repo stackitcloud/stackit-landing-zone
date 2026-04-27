@@ -27,11 +27,6 @@ organization_auditors = [
   "auditor@example.com"
 ]
 
-# Users with admin access to the Platform folder (DevOps, Management)
-platform_admins = [
-  "platform-admin@example.com"
-]
-
 # Sandbox projects for experimentation / PoCs
 sandboxes = [
   {

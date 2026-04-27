@@ -56,9 +56,11 @@ module "management" {
 module "connectivity_global" {
   source = "../../modules/connectivity-global"
 
-  organization_id = var.organization_id
-  labels          = var.labels
-  network_areas   = var.network_areas
+  owner_email         = var.owner_email
+  naming_pattern      = "${var.company_code}-pltfm-net-prod"
+  parent_container_id = module.governance.folder_container_ids["platform"]
+  organization_id     = var.organization_id
+  labels              = var.labels
 }
 
 #############################
@@ -68,18 +70,20 @@ module "connectivity_global" {
 module "connectivity_regional" {
   source = "../../modules/connectivity-regional"
 
-  owner_email         = var.owner_email
-  naming_pattern      = "${var.company_code}-pltfm-hub-prod"
-  parent_container_id = module.governance.folder_container_ids["platform"]
-  organization_id     = var.organization_id
-  network_area_id     = module.connectivity_global.network_area_ids[var.connectivity_regional_network_area]
-  labels              = var.labels
-  firewall_zone       = var.firewall_zone
-  firewall_flavor     = var.firewall_flavor
-  vnet_range          = var.connectivity_vnet_range
-  firewall_ip         = var.firewall_ip
-
-  # for multiple regions define alias
+  project_id             = module.connectivity_global.project_id
+  organization_id        = var.organization_id
+  network_area_name      = var.network_area_name
+  network_ranges         = var.network_ranges
+  transfer_network_range = var.transfer_network_range
+  min_prefix_length      = var.min_prefix_length
+  max_prefix_length      = var.max_prefix_length
+  default_prefix_length  = var.default_prefix_length
+  labels                 = var.labels
+  firewall_enabled       = var.firewall_enabled
+  firewall_zone          = var.firewall_zone
+  firewall_flavor        = var.firewall_flavor
+  vnet_range             = var.connectivity_vnet_range
+  firewall_ip            = var.firewall_ip
 }
 
 ############
@@ -88,6 +92,7 @@ module "connectivity_regional" {
 
 module "devops" {
   source = "../../modules/devops"
+  count  = var.devops_enabled ? 1 : 0
 
   owner_email         = var.owner_email
   naming_pattern      = "${var.company_code}-pltfm-devops-prod"
@@ -102,6 +107,7 @@ module "devops" {
 
 module "sandboxes" {
   source = "../../modules/sandboxes"
+  count  = length(var.sandboxes) > 0 ? 1 : 0
 
   naming_prefix       = "${var.company_code}-sbx"
   parent_container_id = module.governance.folder_container_ids["sandboxes"]
@@ -119,7 +125,7 @@ module "landing_zone" {
   organization_id       = var.organization_id 
   parent_container_id   = each.value.corporate ? module.governance.folder_container_ids["landing_zones_corporate"] : module.governance.folder_container_ids["landing_zones_public"]
   naming_pattern        = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
-  network_area_id       = each.value.corporate ? module.connectivity_global.network_area_ids[var.connectivity_regional_network_area] : null
+  network_area_id       = each.value.corporate ? module.connectivity_regional.network_area_id : null
   owner_email           = each.value.owner_email
   labels                = var.labels
   role_assignments      = each.value.role_assignments

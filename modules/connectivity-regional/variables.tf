@@ -1,3 +1,9 @@
+variable "firewall_enabled" {
+  type        = bool
+  description = "Whether to deploy the pfSense firewall and associated WAN/LAN networks. Set to false for connectivity without a firewall."
+  default     = true
+}
+
 variable "firewall_flavor" {
   type        = string
   description = "Firewall VM Flavor"
@@ -23,48 +29,57 @@ variable "firewall_zone" {
 
 variable "labels" {
   type        = map(string)
-  description = "Additional labels to apply to all folders."
+  description = "Additional labels to apply to all resources."
   default     = {}
 }
 
-variable "naming_pattern" {
+variable "network_area_name" {
   type        = string
-  description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-net-prod\"."
+  description = "Name of the network area to create for this region."
 }
 
-variable "network_area_id" {
+variable "network_ranges" {
+  type        = list(object({ prefix = string }))
+  description = "IP ranges that will be sliced into per-project subnets."
+}
+
+variable "transfer_network_range" {
   type        = string
-  description = "Network Area ID to deploy resources into. Required if network is enabled."
+  description = "Transfer network CIDR used for routing between projects in this area."
+}
+
+variable "max_prefix_length" {
+  type        = number
+  description = "Maximum prefix length for subnets assigned to projects."
+  default     = 28
+}
+
+variable "min_prefix_length" {
+  type        = number
+  description = "Minimum prefix length for subnets assigned to projects."
+  default     = 24
+}
+
+variable "default_prefix_length" {
+  type        = number
+  description = "Default prefix length for subnets assigned to projects."
+  default     = 28
+}
+
+variable "default_nameservers" {
+  type        = list(string)
+  description = "Default nameservers for the network area."
+  default     = ["1.0.0.1", "1.1.1.1"]
 }
 
 variable "organization_id" {
   type        = string
-  description = "Organization ID, required for network area route configuration."
+  description = "Organization ID, required for network area and route configuration."
 }
 
-variable "owner_email" {
+variable "project_id" {
   type        = string
-  description = "Email address of the owner for the folders. Required for STACKIT resource manager."
-}
-
-variable "parent_container_id" {
-  type        = string
-  description = "Parent container ID (folder or organization) where the project will be created."
-}
-
-variable "project_name" {
-  type        = string
-  description = "Name of the STACKIT project to create."
-  default     = null
-}
-
-variable "role_assignments" {
-  type = list(object({
-    role    = string
-    subject = string
-  }))
-  description = "List of role assignments for the project. Subject can be a user email or service account email."
-  default     = []
+  description = "Project ID of the connectivity project (created by connectivity-global)."
 }
 
 variable "vnet_range" {
