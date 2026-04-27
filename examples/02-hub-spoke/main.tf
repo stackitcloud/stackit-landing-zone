@@ -116,6 +116,7 @@ module "landing_zone" {
   source   = "../../modules/landing-zone"
   for_each = var.landing_zones
 
+  organization_id       = var.organization_id 
   parent_container_id   = each.value.corporate ? module.governance.folder_container_ids["landing_zones_corporate"] : module.governance.folder_container_ids["landing_zones_public"]
   naming_pattern        = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
   network_area_id       = each.value.corporate ? module.connectivity_global.network_area_ids[var.connectivity_regional_network_area] : null
