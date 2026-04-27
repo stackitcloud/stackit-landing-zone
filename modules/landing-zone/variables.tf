@@ -1,3 +1,8 @@
+variable "organization_id" {
+  type        = string
+  description = "Container ID of the root organization."
+}
+
 variable "custom_roles" {
   type = list(object({
     name        = string
@@ -53,4 +58,16 @@ variable "role_assignments" {
   }))
   description = "List of role assignments for the project. Subject can be a user email or service account email."
   default     = []
+}
+
+variable "firewall_next_hop_ip" {
+  type        = string
+  description = "IP address of the firewall next hop."
+  default     = null
+}
+
+variable "ipv4_nameservers" {
+  type        = list(string)
+  description = "List of IPv4 nameservers for the network."
+  default     = null
 }
