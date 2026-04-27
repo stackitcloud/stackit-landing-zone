@@ -52,18 +52,23 @@ variable "devops_enabled" {
   default     = true
 }
 
-###########################
-## CONNECTIVITY - GLOBAL ##
-###########################
+variable "dns_zones" {
+  type = map(object({
+    dns_name      = string
+    name          = optional(string, null)
+    contact_email = optional(string, null)
+    type          = optional(string, "primary")
+    acl           = optional(string, null)
+    description   = optional(string, null)
+    default_ttl   = optional(number, 3600)
+  }))
+  description = "Map of DNS zone keys to DNS zone configuration. Name defaults to dns_name if not set."
+  default     = {}
+}
 
 #############################
 ## CONNECTIVITY - REGIONAL ##
 #############################
-
-variable "network_area_name" {
-  type        = string
-  description = "Name of the network area for this region."
-}
 
 variable "network_ranges" {
   type        = list(object({ prefix = string }))

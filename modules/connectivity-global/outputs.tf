@@ -17,3 +17,8 @@ output "dns_zone_ids" {
   description = "Map of DNS zone keys to their zone IDs"
   value       = { for k, z in stackit_dns_zone.this : k => z.zone_id }
 }
+
+output "dns_zone_dns_names" {
+  description = "Map of DNS zone keys to their DNS names"
+  value       = { for k, z in stackit_dns_zone.this : k => z.dns_name }
+}

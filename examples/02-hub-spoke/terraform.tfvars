@@ -28,16 +28,12 @@ organization_auditors = [
   "auditor@example.com"
 ]
 
-###########################
-## CONNECTIVITY - GLOBAL ##
-###########################
-
-#############################
-## CONNECTIVITY - REGIONAL ##
-#############################
-
-# Name of the network area for this region
-network_area_name = "corporate"
+# DNS zones managed in the connectivity project
+dns_zones = {
+  "prodyna" = {
+    dns_name = "prodyna.stackit.run"
+  }
+}
 
 # IP ranges that will be sliced into per-project subnets
 network_ranges = [

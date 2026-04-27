@@ -61,6 +61,7 @@ module "connectivity_global" {
   parent_container_id = module.governance.folder_container_ids["platform"]
   organization_id     = var.organization_id
   labels              = var.labels
+  dns_zones           = var.dns_zones
 }
 
 #############################
@@ -72,7 +73,7 @@ module "connectivity_regional" {
 
   project_id             = module.connectivity_global.project_id
   organization_id        = var.organization_id
-  network_area_name      = var.network_area_name
+  network_area_name      = "${var.company_code}-pltfm-hub-prod"
   network_ranges         = var.network_ranges
   transfer_network_range = var.transfer_network_range
   min_prefix_length      = var.min_prefix_length
@@ -122,14 +123,15 @@ module "landing_zone" {
   source   = "../../modules/landing-zone"
   for_each = var.landing_zones
 
-  organization_id       = var.organization_id 
-  parent_container_id   = each.value.corporate ? module.governance.folder_container_ids["landing_zones_corporate"] : module.governance.folder_container_ids["landing_zones_public"]
-  naming_pattern        = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
-  network_area_id       = each.value.corporate ? module.connectivity_regional.network_area_id : null
-  owner_email           = each.value.owner_email
-  labels                = var.labels
-  role_assignments      = each.value.role_assignments
-  network_prefix_length = each.value.network_prefix_length
-  custom_roles          = each.value.custom_roles
-  firewall_next_hop_ip  = module.connectivity_regional.firewall_next_hop_ip
+  organization_id        = var.organization_id 
+  parent_container_id    = each.value.corporate ? module.governance.folder_container_ids["landing_zones_corporate"] : module.governance.folder_container_ids["landing_zones_public"]
+  naming_pattern         = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
+  dns_zone_name          = "${each.value.project_code}.${each.value.env}.${var.region}.${values(module.connectivity_global.dns_zone_dns_names)[0]}"
+  network_area_id        = each.value.corporate ? module.connectivity_regional.network_area_id : null
+  owner_email            = each.value.owner_email
+  labels                 = var.labels
+  role_assignments       = each.value.role_assignments
+  network_prefix_length  = each.value.network_prefix_length
+  custom_roles           = each.value.custom_roles
+  firewall_next_hop_ip   = module.connectivity_regional.firewall_next_hop_ip
 }

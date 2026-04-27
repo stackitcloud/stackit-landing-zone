@@ -41,14 +41,14 @@ variable "role_assignments" {
 
 variable "dns_zones" {
   type = map(object({
-    name          = string
     dns_name      = string
+    name          = optional(string, null)
     contact_email = optional(string, null)
     type          = optional(string, "primary")
     acl           = optional(string, null)
     description   = optional(string, null)
     default_ttl   = optional(number, 3600)
   }))
-  description = "Map of DNS zone keys to DNS zone configuration."
+  description = "Map of DNS zone keys to DNS zone configuration. Name defaults to dns_name if not set."
   default     = {}
 }

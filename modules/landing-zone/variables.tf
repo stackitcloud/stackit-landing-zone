@@ -71,3 +71,9 @@ variable "ipv4_nameservers" {
   description = "List of IPv4 nameservers for the network."
   default     = null
 }
+
+variable "dns_zone_name" {
+  type        = string
+  description = "Full DNS zone domain name for this landing zone. Set to null to skip DNS zone creation."
+  default     = null
+}
