@@ -70,62 +70,28 @@ variable "dns_zones" {
 ## CONNECTIVITY - REGIONAL ##
 #############################
 
-variable "network_ranges" {
-  type        = list(object({ prefix = string }))
-  description = "IP ranges that will be sliced into per-project subnets."
+variable "network_area" {
+  type = object({
+    ranges                = list(string)
+    transfer_network      = string
+    min_prefix_length     = optional(number, 24)
+    max_prefix_length     = optional(number, 28)
+    default_prefix_length = optional(number, 28)
+  })
+  description = "Network area configuration including IP ranges, transfer network, and prefix length settings."
 }
 
-variable "transfer_network_range" {
-  type        = string
-  description = "Transfer network CIDR used for routing between projects in this area."
-}
-
-variable "max_prefix_length" {
-  type        = number
-  description = "Maximum prefix length for subnets assigned to projects."
-  default     = 28
-}
-
-variable "min_prefix_length" {
-  type        = number
-  description = "Minimum prefix length for subnets assigned to projects."
-  default     = 24
-}
-
-variable "default_prefix_length" {
-  type        = number
-  description = "Default prefix length for subnets assigned to projects."
-  default     = 28
-}
-
-variable "firewall_enabled" {
-  type        = bool
-  description = "Whether to deploy the pfSense firewall. Set to false for connectivity without a firewall (network area and routing are still created)."
-  default     = true
-}
-
-variable "firewall_zone" {
-  type        = string
-  description = "STACKIT Availability Zone for the firewall VM."
-  default     = "eu01-m"
-}
-
-variable "firewall_flavor" {
-  type        = string
-  description = "Firewall VM flavor."
-  default     = "c1.2"
-}
-
-variable "connectivity_vnet_range" {
-  type        = string
-  description = "CIDR range for the connectivity project VNet."
-  default     = "10.0.0.0/24"
-}
-
-variable "firewall_ip" {
-  type        = string
-  description = "Static IP address for the firewall LAN interface."
-  default     = "10.0.0.220"
+variable "firewall" {
+  type = object({
+    zone       = string
+    flavor     = string
+    lan_ip     = string
+    lan_prefix = string
+    wan_ip     = string
+    wan_prefix = string
+  })
+  description = "pfSense firewall configuration. Set to null to skip firewall deployment."
+  default     = null
 }
 
 ###############

@@ -17,19 +17,19 @@ output "management_project_id" {
   value       = module.management.project_id
 }
 
-output "connectivity_regional_network_area_id" {
+output "connectivity_network_area_id" {
   description = "The network area ID created by the regional module."
-  value       = module.connectivity_regional.network_area_id
+  value       = module.connectivity.network_area_id
 }
 
-output "connectivity_global_project_id" {
+output "connectivity_project_id" {
   description = "The project ID of the connectivity project."
-  value       = module.connectivity_global.project_id
+  value       = module.connectivity.project_id
 }
 
-output "connectivity_regional_firewall_public_ip" {
+output "connectivity_firewall_public_ip" {
   description = "The public IP of the firewall."
-  value       = module.connectivity_regional.firewall_public_ip
+  value       = module.connectivity.firewall_public_ip
 }
 
 output "sandbox_projects" {

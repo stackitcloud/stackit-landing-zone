@@ -42,7 +42,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_custom_roles"></a> [custom\_roles](#input\_custom\_roles) | List of custom roles to create for the project. | <pre>list(object({<br/>    name        = string<br/>    description = string<br/>    permissions = list(string)<br/>  }))</pre> | n/a | yes |
-| <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-net-prod". | `string` | n/a | yes |
+| <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-hub-prod". | `string` | n/a | yes |
 | <a name="input_owner_email"></a> [owner\_email](#input\_owner\_email) | Email address of the project owner. Required for project creation. | `string` | n/a | yes |
 | <a name="input_parent_container_id"></a> [parent\_container\_id](#input\_parent\_container\_id) | Parent container ID (folder or organization) where the project will be created. | `string` | n/a | yes |
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all resources. | `map(string)` | `{}` | no |

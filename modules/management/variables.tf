@@ -6,7 +6,7 @@ variable "project_name" {
 
 variable "naming_pattern" {
   type        = string
-  description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-net-prod\"."
+  description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-hub-prod\"."
 }
 
 variable "labels" {

@@ -14,7 +14,7 @@ variable "custom_roles" {
 
 variable "naming_pattern" {
   type        = string
-  description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-net-prod\"."
+  description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-hub-prod\"."
 }
 
 variable "labels" {
@@ -25,8 +25,14 @@ variable "labels" {
 
 variable "network_area_id" {
   type        = string
-  description = "Network Area ID to deploy resources into. Required if network is enabled."
+  description = "Network Area ID to deploy resources into. Required if corporate is true."
   default     = null
+}
+
+variable "corporate" {
+  type        = bool
+  description = "Whether this landing zone uses corporate networking (network area + routing). Set to false for public internet."
+  default     = false
 }
 
 variable "network_prefix_length" {
