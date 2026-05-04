@@ -21,3 +21,11 @@ resource "stackit_network_area_region" "this" {
     default_nameservers   = var.network_area.default_nameservers
   }
 }
+
+# This gives STACKIT time to de-register projects that were attached to the network area
+# Error: Network area ready for deletion waiting: found non-GenericOpenApiError: network area with id ... has still active projects
+resource "time_sleep" "wait_before_network_area_region_destroy" {
+  destroy_duration = "120s"
+
+  depends_on = [stackit_network_area_region.this]
+}

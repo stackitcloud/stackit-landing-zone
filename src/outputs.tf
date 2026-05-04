@@ -19,17 +19,17 @@ output "management_project_id" {
 
 output "connectivity_network_area_id" {
   description = "The network area ID created by the regional module."
-  value       = module.connectivity.network_area_id
+  value       = try(module.connectivity[0].network_area_id, null)
 }
 
 output "connectivity_project_id" {
   description = "The project ID of the connectivity project."
-  value       = module.connectivity.project_id
+  value       = try(module.connectivity[0].project_id, null)
 }
 
 output "connectivity_firewall_public_ip" {
   description = "The public IP of the firewall."
-  value       = module.connectivity.firewall_public_ip
+  value       = try(module.connectivity[0].firewall_public_ip, null)
 }
 
 output "sandbox_projects" {
