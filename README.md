@@ -60,15 +60,6 @@ Three ready-to-use configurations are provided in `src/config/`:
 | **Hub-Spoke** | `hub-and-spoke.tfvars` | Adds a connectivity hub with a network area and DNS zones. Corporate landing zones connect via the network area. |
 | **Hub-Spoke + Firewall** | `hub-and-spoke-firewall.tfvars` | Full hub-spoke topology with a pfSense firewall appliance on the WAN/LAN boundary. |
 
-### Key Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `connectivity` | `object` / `null` | Set to `null` to skip the connectivity module entirely (standalone). Include `network_area` and optionally `firewall` for hub-spoke variants. |
-| `devops` | `object` / `null` | Set to `null` to skip DevOps deployment. Provide `git_flavor` and `allowed_network_ranges` to enable. |
-| `landing_zones` | `map(object)` | Map of landing zones. Set `corporate = true` to attach to the network area, `false` for public. |
-| `sandboxes` | `list(object)` | List of sandbox projects for experimentation. |
-
 ## 🧪 Testing
 
 Tests for all three flavours are located in `src/tests/` and use the native OpenTofu test framework:
