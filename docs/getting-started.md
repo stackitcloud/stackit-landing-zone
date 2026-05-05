@@ -82,6 +82,9 @@ Create a service account key and configure it for the STACKIT Terraform provider
 ```bash
 mkdir -p ~/.stackit
 stackit service-account key create --email bootstrap-sa-ap82bsi8@sa.stackit.cloud --project-id <PROJECT_ID> -y --verbosity error > ~/.stackit/credentials.json
+
+# Hint: ~ doesnt work for referencing the home folder; if using mise you can ommit this
+export STACKIT_SERVICE_ACCOUNT_KEY_PATH=/home/<USER>/.stackit/credentials.json
 ```
 
 Refer to the [STACKIT Terraform provider documentation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs) for all supported authentication methods.
@@ -117,7 +120,7 @@ tofu init
 tofu apply
 ```
 
-Hint: if you didnt suffix your tfvars file with .auto.tfvars run `tofu apply -var-file ./config` 
+Hint: if you didnt suffix your tfvars file with .auto.tfvars run `tofu apply -var-file ./config/<flavor>.tfvars` 
 
 Review the plan and confirm with `yes`.
 
