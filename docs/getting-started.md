@@ -57,7 +57,11 @@ stackit auth login
 A short-lived project is needed to create the initial service account for Terraform/OpenTofu authentication:
 
 ```bash
-stackit project create tmp-bootstrap
+# get the organization id
+stackit organization list
+
+# create the project
+stackit project create --name tmp-bootstrap --parent-id <ORGANIZATION_ID>
 ```
 
 Note the `project_id` from the output.
@@ -65,13 +69,10 @@ Note the `project_id` from the output.
 ### 5. Create a bootstrap service account
 
 ```bash
-stackit service-account create bootstrap-sa --project-id <PROJECT_ID>
-```
+stackit service-account create --name bootstrap-sa --project-id <PROJECT_ID>
 
-Grant the service account **owner** permissions at the **organization level** so it can provision all resources:
-
-```bash
-stackit organization member add <ORGANIZATION_ID> --subject <SERVICE_ACCOUNT_EMAIL> --role organization.owner
+# Grant the service account owner permissions at the organization level so it can provision all resources:
+stackit organization member add <SERVICE_ACCOUNT_EMAIL> --role organization.owner --organization-id <ORGANIZATION_ID>
 ```
 
 ### 6. Configure service account credentials
@@ -90,7 +91,7 @@ Refer to the [STACKIT Terraform provider documentation](https://registry.terrafo
 Copy and edit the `.tfvars` file matching your chosen deployment flavour:
 
 ```bash
-cp config/standalone.tfvars terraform.tfvars
+cp config/standalone.tfvars terraform.auto.tfvars
 ```
 
 Update the values to match your organization. Required variables:
@@ -113,10 +114,10 @@ tofu init
 ### 9. Deploy the landing zone
 
 ```bash
-tofu apply -var-file=config/<flavour>.tfvars
+tofu apply
 ```
 
-Replace `<flavour>` with `standalone`, `hub-and-spoke`, or `hub-and-spoke-firewall`.
+Hint: if you didnt suffix your tfvars file with .auto.tfvars run `tofu apply -var-file ./config` 
 
 Review the plan and confirm with `yes`.
 

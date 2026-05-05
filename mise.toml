@@ -1,0 +1,3 @@
+[tools]
+opentofu = "1.11.6"
+"github:stackitcloud/stackit-cli" = "0.61.0"
