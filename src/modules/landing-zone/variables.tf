@@ -83,3 +83,9 @@ variable "dns_zone_name" {
   description = "Full DNS zone domain name for this landing zone. Set to null to skip DNS zone creation."
   default     = null
 }
+
+variable "secretsmanager_acls" {
+  type = list(string)
+  description = "List of ACL rules for the Secrets Manager instance. Set to empty list for no ACLs or null to skip Secrets Manager creation."
+  default = []
+}

@@ -38,6 +38,10 @@ variables {
     allowed_network_ranges = ["0.0.0.0/0"]
   }
 
+  observability = {
+    plan_name = "Observability-Starter-EU01"
+  }
+
   connectivity = {
     dns_zones = {
       "test-corp" = {

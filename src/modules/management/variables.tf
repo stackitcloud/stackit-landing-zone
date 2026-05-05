@@ -30,6 +30,20 @@ variable "parent_container_id" {
   description = "Parent container ID (folder or organization) where the project will be created."
 }
 
+variable "observability" {
+  type = object({
+    plan_name                              = optional(string, "Observability-Starter-EU01")
+    acl                                    = optional(list(string), [])
+    logs_retention_days                    = optional(number, 30)
+    traces_retention_days                  = optional(number, 30)
+    metrics_retention_days                 = optional(number, 90)
+    metrics_retention_days_5m_downsampling = optional(number, 90)
+    metrics_retention_days_1h_downsampling = optional(number, 90)
+  })
+  description = "Observability instance configuration. Set to null to skip observability deployment."
+  default     = null
+}
+
 variable "role_assignments" {
   type = list(object({
     role    = string

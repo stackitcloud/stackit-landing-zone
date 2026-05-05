@@ -26,6 +26,7 @@ module "management" {
   parent_container_id = module.governance.folder_container_ids["platform"]
   organization_id     = var.organization_id
   labels              = var.labels
+  observability       = var.observability
 }
 
 ##################

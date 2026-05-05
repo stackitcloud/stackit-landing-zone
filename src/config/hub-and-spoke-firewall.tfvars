@@ -71,6 +71,14 @@ connectivity = {
 #   allowed_network_ranges = ["0.0.0.0/0"]
 # }
 
+#####################
+## MANAGEMENT      ##
+#####################
+
+observability = {
+  plan_name = "Observability-Starter-EU01"
+}
+
 ###############
 ## SANDBOXES ##
 ###############
