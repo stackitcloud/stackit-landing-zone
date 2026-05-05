@@ -6,7 +6,7 @@ resource "stackit_image" "firewall" {
   count = var.firewall != null ? 1 : 0
 
   project_id      = stackit_resourcemanager_project.this.project_id
-  name            = var.firewall.image_name
+  name            = var.firewall.name
   local_file_path = "./firewall-image.qcow2"
   disk_format     = "qcow2"
   min_disk_size   = 10
@@ -24,7 +24,7 @@ resource "stackit_volume" "firewall" {
   count = var.firewall != null ? 1 : 0
 
   project_id        = stackit_resourcemanager_project.this.project_id
-  name              = var.firewall.image_name
+  name              = var.firewall.name
   availability_zone = var.firewall.zone
   size              = var.firewall.volume_size
   performance_class = var.firewall.volume_performance_class
@@ -43,7 +43,7 @@ resource "stackit_server" "firewall" {
   count = var.firewall != null ? 1 : 0
 
   project_id = stackit_resourcemanager_project.this.project_id
-  name       = var.firewall.image_name
+  name       = var.firewall.name
   boot_volume = {
     source_type = "volume"
     source_id   = stackit_volume.firewall[0].volume_id

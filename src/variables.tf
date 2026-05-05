@@ -124,15 +124,15 @@ variable "connectivity" {
       default_prefix_length = optional(number, 28)
     }), null)
     firewall = optional(object({
-      zone              = string
-      flavor            = string
-      image_name               = string
+      zone                     = string
+      flavor                   = string
+      name                     = string
       volume_performance_class = optional(string, "storage_premium_perf4")
       volume_size              = optional(number, 16)
-      lan_network_range = string
-      wan_network_range = string
-      lan_ip            = optional(string, null)
-      wan_ip            = optional(string, null)
+      lan_network_range        = string
+      wan_network_range        = string
+      lan_ip                   = optional(string, null)
+      wan_ip                   = optional(string, null)
     }), null)
   })
   description = "Connectivity configuration including DNS zones, network area, and firewall. Set firewall/network_area to null to skip deployment."

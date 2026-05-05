@@ -56,7 +56,7 @@ connectivity = {
   firewall = {
     zone              = "eu01-m"
     flavor            = "c1.2"
-    image_name        = "pfsense-2.7.2"
+    name              = "pfsense-2.7.2"
     lan_network_range = "10.0.0.0/28"
     wan_network_range = "10.0.0.16/28"
   }

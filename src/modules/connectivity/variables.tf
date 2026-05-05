@@ -16,7 +16,7 @@ variable "firewall" {
   type = object({
     zone                     = string
     flavor                   = string
-    image_name               = string
+    name                     = string
     volume_performance_class = optional(string, "storage_premium_perf4")
     volume_size              = optional(number, 16)
     lan_network_range        = string

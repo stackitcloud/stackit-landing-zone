@@ -85,7 +85,7 @@ variable "dns_zone_name" {
 }
 
 variable "secretsmanager_acls" {
-  type = list(string)
+  type        = list(string)
   description = "List of ACL rules for the Secrets Manager instance. Set to empty list for no ACLs or null to skip Secrets Manager creation."
-  default = []
+  default     = []
 }
