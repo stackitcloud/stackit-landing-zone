@@ -57,30 +57,30 @@ variable "devops" {
 
 variable "rm_folders" {
   type = map(object({
-    name        = string
-    description = optional(string, null)
+    name          = string
+    description   = optional(string, null)
     owner_emails  = list(string)
     reader_emails = list(string)
   }))
   description = "Map of resource manager folders to create under the root organization."
-  default     = {
+  default = {
     platform = {
-      name          = "Platform"
+      name          = "Platform 3"
       owner_emails  = []
       reader_emails = []
     }
     landing_zones_corporate = {
-      name          = "Landing Zones - Corporate"
+      name          = "Landing Zones - Corporate 3"
       owner_emails  = []
       reader_emails = []
     }
     landing_zones_public = {
-      name          = "Landing Zones - Public"
+      name          = "Landing Zones - Public 3"
       owner_emails  = []
       reader_emails = []
     }
     sandboxes = {
-      name          = "Sandboxes"
+      name          = "Sandboxes 3"
       owner_emails  = []
       reader_emails = []
     }
@@ -112,13 +112,16 @@ variable "connectivity" {
     firewall = optional(object({
       zone              = string
       flavor            = string
+      image_name               = string
+      volume_performance_class = optional(string, "storage_premium_perf4")
+      volume_size              = optional(number, 16)
       lan_network_range = string
       wan_network_range = string
       lan_ip            = optional(string, null)
       wan_ip            = optional(string, null)
     }), null)
   })
-  description = "Connectivity configuration including DNS zones, network area, and pfSense firewall. Set firewall/network_area to null to skip deployment."
+  description = "Connectivity configuration including DNS zones, network area, and firewall. Set firewall/network_area to null to skip deployment."
   default     = null
 }
 

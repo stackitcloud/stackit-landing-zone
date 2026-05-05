@@ -41,10 +41,10 @@ output "landing_zone_projects" {
   description = "Map of landing zone project IDs."
   value = {
     for k, v in module.landing_zone : k => {
-      project_id    = v.project_id
-      project_name  = v.project_name
-      dns_zone_name = v.dns_zone_dns_name
-      landing_zone_type = v.landing_zone_type
+      project_id                = v.project_id
+      project_name              = v.project_name
+      dns_zone_name             = v.dns_zone_dns_name
+      landing_zone_type         = v.landing_zone_type
       connected_network_area_id = v.connected_network_area_id == null ? "" : v.connected_network_area_id
     }
   }

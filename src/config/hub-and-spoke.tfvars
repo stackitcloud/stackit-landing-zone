@@ -57,10 +57,10 @@ connectivity = {
 ## DEVOPS ##
 ############
 
-devops = {
-  git_flavor = "git-10"
-  allowed_network_ranges = ["0.0.0.0/0"]
-}
+# devops = {
+#   git_flavor = "git-10"
+#   allowed_network_ranges = ["0.0.0.0/0"]
+# }
 
 ###############
 ## SANDBOXES ##

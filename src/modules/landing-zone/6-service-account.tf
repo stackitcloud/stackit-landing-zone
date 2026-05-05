@@ -20,11 +20,3 @@ resource "stackit_service_account_key" "automation" {
     rotation = time_rotating.key_rotate.id
   }
 }
-
-# resource "vault_kv_secret_v2" "service_account_key_automation" {
-#   mount               = stackit_secretsmanager_instance.this.instance_id
-#   name                = "service_account_key_${stackit_service_account.automation.name}"
-#   cas                 = 1
-#   delete_all_versions = true
-#   data_json           = stackit_service_account_key.automation.json
-# }

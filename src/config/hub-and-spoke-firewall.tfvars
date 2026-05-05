@@ -54,8 +54,9 @@ connectivity = {
 
   # Delete the variable to skip firewall deployment (network area and routing still created)
   firewall = {
-    zone       = "eu01-m"
-    flavor     = "c1.2"
+    zone              = "eu01-m"
+    flavor            = "c1.2"
+    image_name        = "pfsense-2.7.2"
     lan_network_range = "10.0.0.0/28"
     wan_network_range = "10.0.0.16/28"
   }
@@ -65,10 +66,10 @@ connectivity = {
 ## DEVOPS ##
 ############
 
-devops = {
-  git_flavor = "git-10"
-  allowed_network_ranges = ["0.0.0.0/0"]
-}
+# devops = {
+#   git_flavor = "git-10"
+#   allowed_network_ranges = ["0.0.0.0/0"]
+# }
 
 ###############
 ## SANDBOXES ##

@@ -1,47 +1,35 @@
-#####################
-## PFSENSE - IMAGE ##
-#####################
+###########
+## IMAGE ##
+###########
 
-# resource "terraform_data" "pfsense_image_file" {
-#   triggers_replace = [
-#     timestamp()
-#   ]
-
-#   provisioner "local-exec" {
-#     command = "curl -o pfsense.qcow2 https://pfsense.object.storage.eu01.onstackit.cloud/pfsense-ce-2.7.2-amd64-10-12-2024.qcow2"
-#   }
-# }
-
-resource "stackit_image" "pfsense_image" {
+resource "stackit_image" "firewall" {
   count = var.firewall != null ? 1 : 0
 
   project_id      = stackit_resourcemanager_project.this.project_id
-  name            = "pfsense-2.7.2-amd64-image"
-  local_file_path = "./pfsense.qcow2"
+  name            = var.firewall.image_name
+  local_file_path = "./firewall-image.qcow2"
   disk_format     = "qcow2"
   min_disk_size   = 10
   min_ram         = 2
   config = {
     uefi = false
   }
-
-  # depends_on      = [terraform_data.pfsense_image_file]
 }
 
 ############
 ## VOLUME ##
 ############
 
-resource "stackit_volume" "pfsense_vol" {
+resource "stackit_volume" "firewall" {
   count = var.firewall != null ? 1 : 0
 
   project_id        = stackit_resourcemanager_project.this.project_id
-  name              = "pfsense-2.7.2-root"
+  name              = var.firewall.image_name
   availability_zone = var.firewall.zone
-  size              = 16
-  performance_class = "storage_premium_perf4"
+  size              = var.firewall.volume_size
+  performance_class = var.firewall.volume_performance_class
   source = {
-    id   = stackit_image.pfsense_image[0].image_id
+    id   = stackit_image.firewall[0].image_id
     type = "image"
   }
 }
@@ -51,14 +39,14 @@ resource "stackit_volume" "pfsense_vol" {
 ############
 
 # after rollout: https://docs.stackit.cloud/products/quick-deployments/pfsense-firewall/tutorials/configure-pfsense/
-resource "stackit_server" "pfsense_Server" {
+resource "stackit_server" "firewall" {
   count = var.firewall != null ? 1 : 0
 
   project_id = stackit_resourcemanager_project.this.project_id
-  name       = "pfSense"
+  name       = var.firewall.image_name
   boot_volume = {
     source_type = "volume"
-    source_id   = stackit_volume.pfsense_vol[0].volume_id
+    source_id   = stackit_volume.firewall[0].volume_id
   }
   availability_zone = var.firewall.zone
   machine_type      = var.firewall.flavor

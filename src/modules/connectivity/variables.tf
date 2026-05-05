@@ -14,14 +14,17 @@ variable "dns_zones" {
 
 variable "firewall" {
   type = object({
-    zone       = string
-    flavor     = string
-    lan_network_range = string
-    wan_network_range = string
-    lan_ip     = optional(string, null)
-    wan_ip     = optional(string, null)
+    zone                     = string
+    flavor                   = string
+    image_name               = string
+    volume_performance_class = optional(string, "storage_premium_perf4")
+    volume_size              = optional(number, 16)
+    lan_network_range        = string
+    wan_network_range        = string
+    lan_ip                   = optional(string, null)
+    wan_ip                   = optional(string, null)
   })
-  description = "pfSense firewall configuration. Set to null to skip firewall deployment (network area and routing are still created). lan_network_range and wan_network_range must be CIDRs within the network area range. lan_ip and wan_ip are optional; when omitted, the 5th address of the respective prefix is used (STACKIT reserves the first usable address as the gateway)."
+  description = "Firewall configuration. Set to null to skip firewall deployment (network area and routing are still created). lan_network_range and wan_network_range must be CIDRs within the network area range. lan_ip and wan_ip are optional; when omitted, the 5th address of the respective prefix is used (STACKIT reserves the first usable address as the gateway)."
   default     = null
 
   validation {
