@@ -77,11 +77,11 @@ stackit organization member add <SERVICE_ACCOUNT_EMAIL> --role organization.owne
 
 ### 6. Configure service account credentials
 
-Create a service account key and configure it for the STACKIT Terraform provider. Set the following environment variables:
+Create a service account key and configure it for the STACKIT Terraform provider:
 
 ```bash
-export STACKIT_SERVICE_ACCOUNT_EMAIL=<SERVICE_ACCOUNT_EMAIL>
-export STACKIT_SERVICE_ACCOUNT_TOKEN=<SERVICE_ACCOUNT_TOKEN>
+mkdir -p ~/.stackit
+stackit service-account key create --email bootstrap-sa-ap82bsi8@sa.stackit.cloud --project-id <PROJECT_ID> -y --verbosity error > ~/.stackit/credentials.json
 ```
 
 Refer to the [STACKIT Terraform provider documentation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs) for all supported authentication methods.
