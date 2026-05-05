@@ -7,17 +7,12 @@
 
 # Landing Zone Accelerator
 
-**Accelerate your STACKIT cloud adoption with production-ready, modular landing zones.**
-
 [![Terraform](https://img.shields.io/badge/Terraform-1.10+-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
 [![OpenTofu](https://img.shields.io/badge/OpenTofu-1.11+-FFDA18?logo=opentofu&logoColor=black)](https://opentofu.org/)
 [![STACKIT](https://img.shields.io/badge/STACKIT-Cloud-00A9E0)](https://www.stackit.de/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
----
-
 The STACKIT Landing Zone Accelerator provides a comprehensive Terraform-based framework for deploying secure, scalable, and well-architected cloud environments on STACKIT. Built with enterprise best practices, it enables teams to quickly establish governance, networking, and security foundations.
-
 
 ## 📚 Documentation
 
