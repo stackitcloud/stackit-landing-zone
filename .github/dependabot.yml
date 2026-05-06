@@ -2,7 +2,9 @@ version: 2
 updates:
   - package-ecosystem: "terraform"
     directories:
-      - "/modules/*"
+      - "/src"
+      - "/src/modules/*"
+      - "/stackit-verified-modules/*"
     schedule:
       interval: "weekly"
       day: "sunday"
