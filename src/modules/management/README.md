@@ -59,6 +59,7 @@ No modules.
 
 | Name | Description |
 |------|-------------|
+| <a name="output_bucket_name_tfstate"></a> [bucket\_name\_tfstate](#output\_bucket\_name\_tfstate) | The name of the tfstate object storage bucket. |
 | <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |
 | <a name="output_project_id"></a> [project\_id](#output\_project\_id) | The project ID of the created STACKIT project. |
 | <a name="output_project_name"></a> [project\_name](#output\_project\_name) | The name of the created STACKIT project. |
