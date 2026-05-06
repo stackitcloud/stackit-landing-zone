@@ -2,15 +2,15 @@
 
 This guide walks you through deploying the STACKIT Landing Zone from scratch.
 
-> [!NOTE]
-> Resource Manager folders can only be deleted 7 days after the last project within them has been removed. As a result, applying and destroying everything in a single run is not possible.
-
 ## Prerequisites
 
 - A **STACKIT organization** with your user account registered
 - **Owner permissions** on the STACKIT organization
 - **STACKIT CLI** installed ([Installation guide](https://github.com/stackitcloud/stackit-cli/blob/main/INSTALLATION.md))
 - **OpenTofu** (>= 1.10) or **Terraform** (>= 1.10) installed
+
+> [!NOTE]
+> This guide uses `tofu` commands throughout. If you are using Terraform, replace `tofu` with `terraform` — all commands work identically.
 
 ## Deployment Flavours
 
@@ -25,7 +25,7 @@ Three ready-to-use configurations are provided in `src/config/`:
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
 
 > [!NOTE]
-> This single-root-module approach works well for smaller environments. At larger scale — typically beyond 10 landing zones — you may encounter STACKIT API rate limits during applies and slower plan/refresh cycles due to a growing state file. Tools like [Terragrunt](https://terragrunt.gruntwork.io/) can help by splitting landing zones into isolated state files and orchestrating root module calls with proper concurrency controls. If you are planning a larger enterprise deployment, reach out to [STACKIT](https://stackit.de) or a partner offering a verified landing zone solution via the [STACKIT Marketplace](https://marketplace.stackit.cloud).
+> This single-root-module approach works well for smaller environments. At larger scale — typically beyond 10 landing zones — you may encounter STACKIT API rate limits during applies and slower plan/refresh cycles due to a growing state file. Tools like [Terragrunt](https://terragrunt.gruntwork.io/), [Terramate](https://terramate.io/), or [Spacelift](https://spacelift.io/) can help by splitting landing zones into isolated state files and orchestrating root module calls with proper concurrency controls. If you are planning a larger enterprise deployment, reach out to [STACKIT](https://stackit.de) or a partner offering a verified landing zone solution via the [STACKIT Marketplace](https://marketplace.stackit.cloud).
 
 ---
 
@@ -209,6 +209,9 @@ The temporary bootstrap project with the service account is no longer needed:
 ```bash
 stackit project delete --project-id <BOOTSTRAP_PROJECT_ID>
 ```
+
+> [!NOTE]
+> Resource Manager folders can only be deleted 7 days after the last project within them has been removed. Running `tofu apply` followed by `tofu destroy` will therefore fail — the destroy will error when attempting to delete the folders while projects are still within their retention period.
 
 ---
 
