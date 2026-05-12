@@ -34,3 +34,18 @@ resource "vault_kv_secret_v2" "service_account_key_automation" {
   delete_all_versions = true
   data_json           = stackit_service_account_key.automation.json
 }
+
+##############################
+## FEDERATED IDENTITY PROVIDER
+##############################
+
+resource "stackit_service_account_federated_identity_provider" "this" {
+  for_each = { for idx, fip in var.federated_identity_providers : fip.name => fip }
+
+  project_id            = stackit_resourcemanager_project.this.project_id
+  service_account_email = stackit_service_account.automation.email
+  name                  = each.value.name
+  issuer                = each.value.issuer
+
+  assertions = each.value.assertions
+}
