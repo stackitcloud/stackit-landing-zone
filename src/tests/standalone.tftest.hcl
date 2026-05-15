@@ -1,5 +1,5 @@
 variables {
-  owner_email     = "matthias.hauber@prodyna.com"
+  owner_email     = "example@digits.schwarz"
   company_name    = "Test Corp"
   company_code    = "tst"
   organization_id = "b76b54b6-f55d-41a1-b3c3-30252f8b97cc"
@@ -44,7 +44,7 @@ variables {
   sandboxes = [
     {
       project_name        = "Test Sandbox"
-      project_owner_email = "matthias.hauber@prodyna.com"
+      project_owner_email = "example@digits.schwarz"
     }
   ]
 
@@ -52,7 +52,7 @@ variables {
     "test-public" = {
       project_name = "Test Public LZ"
       project_code = "tpub"
-      owner_email  = "matthias.hauber@prodyna.com"
+      owner_email  = "example@digits.schwarz"
       env          = "test"
       corporate    = false
     }
