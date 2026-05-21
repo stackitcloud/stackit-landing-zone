@@ -52,3 +52,17 @@ variable "role_assignments" {
   description = "List of role assignments for the project. Subject can be a user email or service account email."
   default     = []
 }
+
+variable "federated_identity_providers" {
+  type = list(object({
+    name   = string
+    issuer = string
+    assertions = list(object({
+      item     = string
+      operator = string
+      value    = string
+    }))
+  }))
+  description = "List of federated identity providers to configure for the management service account."
+  default     = []
+}

@@ -35,6 +35,26 @@ labels = {
 #   plan_name = "Observability-Starter-EU01"
 # }
 
+# # Federated identity providers for the management service account (e.g. GitHub Actions OIDC)
+# federated_identity_providers = [
+#   {
+#     name   = "gh-actions"
+#     issuer = "https://token.actions.githubusercontent.com"
+#     assertions = [
+#       {
+#         item     = "aud"
+#         operator = "equals"
+#         value    = "sts.accounts.stackit.cloud"
+#       },
+#       {
+#         item     = "sub"
+#         operator = "equals"
+#         value    = "repo:my-org/my-repo:ref:refs/heads/main"
+#       }
+#     ]
+#   }
+# ]
+
 ##################
 ## CONNECTIVITY ##
 ##################
