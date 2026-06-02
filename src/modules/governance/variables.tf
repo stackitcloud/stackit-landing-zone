@@ -41,7 +41,7 @@ variable "rm_folders" {
 
 variable "rm_folder_parent_id" {
   type        = string
-  description = "ID of the parent folder under which the company folder will be created. If not provided, the company folder will be created under the organization."
+  description = "ID of the parent folder under which the resource manager folders will be created. If not provided, the resource manager folders will be created under the organization."
   default     = null
 }
 

@@ -4,9 +4,9 @@
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10 |
-| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | 0.93.0 |
-| <a name="requirement_time"></a> [time](#requirement\_time) | 0.13.1 |
-| <a name="requirement_vault"></a> [vault](#requirement\_vault) | 5.7.0 |
+| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | 0.96.0 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | 0.14.0 |
+| <a name="requirement_vault"></a> [vault](#requirement\_vault) | 5.9.0 |
 
 ## Providers
 
@@ -43,7 +43,8 @@ No resources.
 | <a name="input_organization_owners"></a> [organization\_owners](#input\_organization\_owners) | List of organization owners. | `list(string)` | `[]` | no |
 | <a name="input_owner_email"></a> [owner\_email](#input\_owner\_email) | Email address of the owner. Required for STACKIT resource manager. | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | STACKIT region for regional resources. | `string` | `"eu01"` | no |
-| <a name="input_rm_folders"></a> [rm\_folders](#input\_rm\_folders) | Map of resource manager folders to create under the root organization. | <pre>map(object({<br/>    name          = string<br/>    description   = optional(string, null)<br/>    owner_emails  = list(string)<br/>    reader_emails = list(string)<br/>  }))</pre> | <pre>{<br/>  "landing_zones_corporate": {<br/>    "name": "Landing Zones - Corporate 4",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "landing_zones_public": {<br/>    "name": "Landing Zones - Public 4",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "platform": {<br/>    "name": "Platform 4",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "sandboxes": {<br/>    "name": "Sandboxes 4",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  }<br/>}</pre> | no |
+| <a name="input_rm_folder_parent_id"></a> [rm\_folder\_parent\_id](#input\_rm\_folder\_parent\_id) | ID of the parent folder under which the resource manager folders will be created. If not provided, the resource manager folders will be created under the organization. | `string` | `null` | no |
+| <a name="input_rm_folders"></a> [rm\_folders](#input\_rm\_folders) | Map of resource manager folders to create under the root organization. | <pre>map(object({<br/>    name          = string<br/>    description   = optional(string, null)<br/>    owner_emails  = list(string)<br/>    reader_emails = list(string)<br/>  }))</pre> | <pre>{<br/>  "landing_zones_corporate": {<br/>    "name": "Landing Zones - Corporate",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "landing_zones_public": {<br/>    "name": "Landing Zones - Public",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "platform": {<br/>    "name": "Platform",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "sandboxes": {<br/>    "name": "Sandboxes",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  }<br/>}</pre> | no |
 | <a name="input_sandboxes"></a> [sandboxes](#input\_sandboxes) | List of sandboxes to create. | <pre>list(object({<br/>    project_name        = string<br/>    owner_emails        = optional(list(string))<br/>    project_owner_email = string<br/>  }))</pre> | `[]` | no |
 
 ## Outputs
