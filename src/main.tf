@@ -7,6 +7,7 @@ module "governance" {
 
   owner_email           = var.owner_email
   organization_id       = var.organization_id
+  rm_folder_parent_id   = var.rm_folder_parent_id
   labels                = var.labels
   organization_owners   = var.organization_owners
   organization_auditors = var.organization_auditors

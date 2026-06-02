@@ -30,7 +30,7 @@ resource "stackit_resourcemanager_folder" "this" {
   for_each = var.rm_folders
 
   name                = each.value.name
-  parent_container_id = var.organization_id
+  parent_container_id = var.rm_folder_parent_id != null ? var.rm_folder_parent_id : var.organization_id
   owner_email         = var.owner_email
   # labels              = length(var.labels) > 0 ? var.labels : null # provider bug: empty map becomes null after apply
 

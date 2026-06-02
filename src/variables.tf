@@ -22,6 +22,12 @@ variable "organization_id" {
   description = "Container ID of the root organization."
 }
 
+variable "rm_folder_parent_id" {
+  type        = string
+  description = "ID of the parent folder under which the resource manager folders will be created. If not provided, the resource manager folders will be created under the organization."
+  default     = null
+}
+
 variable "region" {
   type        = string
   description = "STACKIT region for regional resources."
