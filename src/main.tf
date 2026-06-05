@@ -22,12 +22,13 @@ module "governance" {
 module "management" {
   source = "./modules/management"
 
-  owner_email         = var.owner_email
-  naming_pattern      = "${var.company_code}-pltfm-mgmt-prod"
-  parent_container_id = module.governance.folder_container_ids["platform"]
-  organization_id     = var.organization_id
-  labels              = var.labels
-  observability       = var.observability
+  owner_email                  = var.owner_email
+  naming_pattern               = "${var.company_code}-pltfm-mgmt-prod"
+  parent_container_id          = module.governance.folder_container_ids["platform"]
+  organization_id              = var.organization_id
+  labels                       = var.labels
+  observability                = var.observability
+  federated_identity_providers = var.federated_identity_providers
 }
 
 ##################

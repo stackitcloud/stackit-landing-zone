@@ -75,6 +75,20 @@ variable "observability" {
   default     = null
 }
 
+variable "federated_identity_providers" {
+  type = list(object({
+    name   = string
+    issuer = string
+    assertions = list(object({
+      item     = string
+      operator = string
+      value    = string
+    }))
+  }))
+  description = "List of federated identity providers to configure for the management service account."
+  default     = []
+}
+
 variable "rm_folders" {
   type = map(object({
     name          = string
