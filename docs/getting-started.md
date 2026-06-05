@@ -20,7 +20,7 @@ Three ready-to-use configurations are provided in `src/config/`:
 |---------|-------------|-------------|
 | **Standalone** | `standalone.tfvars` | Governance, management, devops, and public landing zones only. No network area or firewall. |
 | **Hub-Spoke** | `hub-and-spoke.tfvars` | Adds a connectivity hub with a network area and DNS zones. Corporate landing zones connect via the network area. |
-| **Hub-Spoke + Firewall** | `hub-and-spoke-firewall.tfvars` | Full hub-spoke topology with a pfSense firewall appliance on the WAN/LAN boundary. |
+| **Hub-Spoke + Firewall** | `hub-and-spoke-firewall.tfvars` | Full hub-spoke topology with an OPNsense firewall appliance on the WAN/LAN boundary. |
 
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
 
@@ -52,12 +52,12 @@ git clone https://github.com/stackitcloud/stackit-landing-zone.git
 cd stackit-landing-zone/src
 ```
 
-### 2. Download the pfSense firewall image (Hub-Spoke + Firewall only)
+### 2. Download the OPNsense firewall image (Hub-Spoke + Firewall only)
 
-If you are deploying the Hub-Spoke + Firewall flavour, download the pfSense image into the `src/` directory:
+If you are deploying the Hub-Spoke + Firewall flavour, download the OPNsense image into the `src/` directory:
 
 ```bash
-curl -o firewall-image.qcow2 https://pfsense.object.storage.eu01.onstackit.cloud/pfsense-ce-2.7.2-amd64-10-12-2024.qcow2
+curl -o firewall-image.qcow2 https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2
 ```
 
 ### 3. Authenticate with STACKIT
@@ -231,6 +231,6 @@ stackit project delete --project-id <BOOTSTRAP_PROJECT_ID>
 
 ## Post-Deployment (Optional)
 
-### Configure pfSense firewall
+### Configure OPNsense firewall
 
-If you deployed the Hub-Spoke + Firewall flavour, configure the pfSense appliance as described in the [STACKIT pfSense documentation](https://docs.stackit.cloud/products/quick-deployments/pfsense-firewall/tutorials/configure-pfsense/).
+If you deployed the Hub-Spoke + Firewall flavour, configure the OPNsense. Guidance will be available soon in the STACKIT docs.
