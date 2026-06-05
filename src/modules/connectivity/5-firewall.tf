@@ -9,7 +9,7 @@ resource "stackit_image" "firewall" {
   name            = var.firewall.name
   local_file_path = "./firewall-image.qcow2"
   disk_format     = "qcow2"
-  min_disk_size   = 10
+  min_disk_size   = 16
   min_ram         = 2
   config = {
     uefi = false
@@ -38,7 +38,6 @@ resource "stackit_volume" "firewall" {
 ## SERVER ##
 ############
 
-# after rollout: https://docs.stackit.cloud/products/quick-deployments/pfsense-firewall/tutorials/configure-pfsense/
 resource "stackit_server" "firewall" {
   count = var.firewall != null ? 1 : 0
 
