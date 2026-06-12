@@ -61,6 +61,75 @@ variable "devops" {
   default     = null
 }
 
+variable "platform_kubernetes" {
+  type = map(object({
+    region = string
+    network = optional(object({
+      mode                      = optional(string, "public")
+      sna_network_area_id       = optional(string, null)
+      sna_network_prefix_length = optional(number, 24)
+    }), {})
+    dns = optional(object({
+      enabled      = optional(bool, true)
+      create_zones = optional(bool, true)
+      zones        = optional(list(string), [])
+    }), {})
+    observability = optional(object({
+      enabled   = optional(bool, true)
+      plan_name = optional(string, "Observability-Starter-EU01")
+      acl       = optional(list(string), [])
+      name      = optional(string, null)
+    }), {})
+    encrypted_volumes = optional(object({
+      enabled            = optional(bool, false)
+      storage_class_name = optional(string, "stackit-encrypted-premium")
+      kms_keyring_name   = optional(string, "ske-volume-keyring")
+      kms_key_name       = optional(string, "ske-volume-key")
+      kms_key_version    = optional(string, "1")
+    }), {})
+    debug_bastion = optional(object({
+      enabled             = optional(bool, false)
+      name                = optional(string, null)
+      availability_zone   = optional(string, null)
+      machine_type        = optional(string, "g2i.1")
+      image_id            = optional(string, "7b10e105-295b-4369-b6e0-567ec940a02b")
+      boot_volume_size    = optional(number, 20)
+      ssh_public_key      = optional(string, null)
+      ssh_public_key_path = optional(string, "~/.ssh/id_rsa.pub")
+      ssh_allowed_cidrs   = optional(list(string), ["0.0.0.0/0"])
+      assign_public_ip    = optional(bool, true)
+      install_kubectl     = optional(bool, true)
+    }), {})
+    role_assignments = optional(list(object({
+      role    = string
+      subject = string
+    })), [])
+    cluster = object({
+      name                   = string
+      kubernetes_version_min = optional(string, null)
+      node_pools = optional(list(object({
+        name               = string
+        machine_type       = string
+        minimum            = number
+        maximum            = number
+        availability_zones = list(string)
+        volume_size        = optional(number, 20)
+        volume_type        = optional(string, "storage_premium_perf1")
+        os_name            = optional(string, "flatcar")
+        labels             = optional(map(string), {})
+      })), [])
+      maintenance = optional(object({
+        enable_kubernetes_version_updates    = optional(bool, true)
+        enable_machine_image_version_updates = optional(bool, true)
+        start                                = optional(string, "01:00:00Z")
+        end                                  = optional(string, "02:00:00Z")
+      }), {})
+    })
+  }))
+  description = "Map of central, region-scoped platform Kubernetes deployments. Empty map skips deployment."
+  default     = {}
+}
+
 variable "observability" {
   type = object({
     plan_name                              = optional(string, "Observability-Starter-EU01")
@@ -195,7 +264,104 @@ variable "landing_zones" {
       description = string
       permissions = list(string)
     })), [])
+    observability = optional(object({
+      enabled   = optional(bool, false)
+      plan_name = optional(string, "Observability-Starter-EU01")
+      acl       = optional(list(string), [])
+      name      = optional(string, null)
+    }), {})
+    namespace_service = optional(object({
+      enabled        = optional(bool, false)
+      namespace      = optional(string, null)
+      dns_subdomain  = optional(string, null)
+      secretsmanager = optional(bool, true)
+      demo = optional(object({
+        enabled                    = optional(bool, false)
+        image                      = optional(string, "hashicorp/http-echo:1.0.0")
+        ingress_class_name         = optional(string, "lz-demo")
+        install_ingress_controller = optional(bool, true)
+        external_secret_enabled    = optional(bool, true)
+        dashboard_example_enabled  = optional(bool, true)
+      }), {})
+      sample_load = optional(object({
+        enabled = optional(bool, false)
+        image   = optional(string, "busybox:1.36")
+      }), {})
+      secrets_enforcement = optional(object({
+        enabled                   = optional(bool, false)
+        mode                      = optional(string, "audit")
+        allow_opaque_secret_types = optional(list(string), [])
+        break_glass = optional(object({
+          enabled    = optional(bool, true)
+          ttl_hours  = optional(number, 24)
+          principals = optional(list(string), [])
+        }), {})
+      }), {})
+      kubernetes_access = optional(object({
+        enabled              = optional(bool, true)
+        service_account_name = optional(string, null)
+      }), {})
+      labels      = optional(map(string), {})
+      annotations = optional(map(string), {})
+    }), {})
   }))
   description = "Map of landing zones to create. Set corporate = true for network area connectivity, false for public."
   default     = {}
+
+  validation {
+    condition = alltrue([
+      for lz in values(var.landing_zones) :
+      lz.namespace_service.namespace == null ? true : (
+        length(lz.namespace_service.namespace) <= 63 &&
+        can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", lz.namespace_service.namespace))
+      )
+    ])
+    error_message = "If namespace_service.namespace is set, it must be a valid Kubernetes DNS-1123 label (<=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric)."
+  }
+
+  validation {
+    condition = alltrue([
+      for lz in values(var.landing_zones) :
+      lz.namespace_service.dns_subdomain == null ? true : (
+        length(lz.namespace_service.dns_subdomain) <= 63 &&
+        can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", lz.namespace_service.dns_subdomain))
+      )
+    ])
+    error_message = "If namespace_service.dns_subdomain is set, it must be a valid DNS label (<=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric)."
+  }
+
+  validation {
+    condition = alltrue([
+      for lz in values(var.landing_zones) :
+      lz.namespace_service.dns_subdomain == null || lz.namespace_service.enabled
+    ])
+    error_message = "namespace_service.dns_subdomain can only be set when namespace_service.enabled is true."
+  }
+
+  validation {
+    condition = alltrue([
+      for lz in values(var.landing_zones) :
+      lz.namespace_service.kubernetes_access.service_account_name == null ? true : (
+        length(lz.namespace_service.kubernetes_access.service_account_name) <= 63 &&
+        can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", lz.namespace_service.kubernetes_access.service_account_name))
+      )
+    ])
+    error_message = "If namespace_service.kubernetes_access.service_account_name is set, it must be a valid Kubernetes DNS-1123 label (<=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric)."
+  }
+
+  validation {
+    condition = alltrue([
+      for lz in values(var.landing_zones) :
+      contains(["audit", "soft", "strict"], lower(lz.namespace_service.secrets_enforcement.mode))
+    ])
+    error_message = "namespace_service.secrets_enforcement.mode must be one of: audit, soft, strict."
+  }
+
+  validation {
+    condition = alltrue([
+      for lz in values(var.landing_zones) :
+      lz.namespace_service.secrets_enforcement.break_glass.ttl_hours > 0
+    ])
+    error_message = "namespace_service.secrets_enforcement.break_glass.ttl_hours must be greater than 0."
+  }
 }
