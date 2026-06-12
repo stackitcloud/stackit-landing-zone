@@ -7,7 +7,7 @@ resource "stackit_image" "firewall" {
 
   project_id      = stackit_resourcemanager_project.this.project_id
   name            = var.firewall.name
-  local_file_path = "./firewall-image.qcow2"
+  local_file_path = var.firewall != null ? "${path.root}/firewall-image.qcow2" : null
   disk_format     = "qcow2"
   min_disk_size   = 16
   min_ram         = 2
