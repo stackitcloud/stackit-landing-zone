@@ -6,7 +6,7 @@ resource "stackit_network" "lan" {
   count = var.firewall != null ? 1 : 0
 
   project_id  = stackit_resourcemanager_project.this.project_id
-  name        = "lan_network"
+  name        = "lan"
   ipv4_prefix = var.firewall.lan_network_range
   routed      = true
 }

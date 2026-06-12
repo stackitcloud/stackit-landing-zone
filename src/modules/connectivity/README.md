@@ -62,7 +62,7 @@ No modules.
 |------|-------------|
 | <a name="output_dns_zone_dns_names"></a> [dns\_zone\_dns\_names](#output\_dns\_zone\_dns\_names) | Map of DNS zone keys to their DNS names |
 | <a name="output_dns_zone_ids"></a> [dns\_zone\_ids](#output\_dns\_zone\_ids) | Map of DNS zone keys to their zone IDs |
-| <a name="output_firewall_next_hop_ip"></a> [firewall\_next\_hop\_ip](#output\_firewall\_next\_hop\_ip) | The IP address to be used as next hop for the default route in the landing zones (firewall WAN IP). |
+| <a name="output_firewall_next_hop_ip"></a> [firewall\_next\_hop\_ip](#output\_firewall\_next\_hop\_ip) | The IP address to be used as next hop for the default route in the landing zones (firewall LAN IP). |
 | <a name="output_firewall_public_ip"></a> [firewall\_public\_ip](#output\_firewall\_public\_ip) | The public IP address of the firewall WAN interface. |
 | <a name="output_network_area_id"></a> [network\_area\_id](#output\_network\_area\_id) | The ID of the created network area. |
 | <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |
