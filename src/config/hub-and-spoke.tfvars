@@ -86,6 +86,40 @@ connectivity = {
 #   allowed_network_ranges = ["0.0.0.0/0"]
 # }
 
+# platform_kubernetes = {
+#   "eu01" = {
+#     region = "eu01"
+#     network = {
+#       mode = "sna"
+#     }
+#     cluster = {
+#       name                   = "pltfmk8s"
+#       kubernetes_version_min = "1.35"
+#       node_pools = [
+#         {
+#           name               = "small-a"
+#           machine_type       = "g3i.4"
+#           minimum            = 2
+#           maximum            = 2
+#           availability_zones = ["eu01-1"]
+#         },
+#         {
+#           name               = "small-b"
+#           machine_type       = "g3i.4"
+#           minimum            = 2
+#           maximum            = 2
+#           availability_zones = ["eu01-2"]
+#         }
+#       ]
+#     }
+#
+#     # Defaults to disabled. Set true to enable encrypted storage class setup.
+#     encrypted_volumes = {
+#       enabled = false
+#     }
+#   }
+# }
+
 ###############
 ## SANDBOXES ##
 ###############
@@ -112,6 +146,14 @@ landing_zones = {
     # Set corporate = true for network area connectivity, false for public internet
     corporate             = true
     network_prefix_length = 24
+
+    # Optional: create namespace service in central platform Kubernetes cluster
+    # namespace_service = {
+    #   enabled        = true
+    #   namespace      = "data-prod"
+    #   dns_subdomain  = "app"
+    #   secretsmanager = true
+    # }
   }
 
   # Public landing zone — no network area, uses STACKIT's default public networking
