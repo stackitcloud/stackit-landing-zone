@@ -2,6 +2,9 @@
 
 This guide walks you through deploying the STACKIT Landing Zone from scratch.
 
+> [!NOTE]
+> The modules in this Terraform repository are not intended to be used directly. Clone the repository and adjust the modules to your specific requirements. No guarantees are made about migration paths or that the modules will remain unchanged.
+
 ## Prerequisites
 
 - A **STACKIT organization** with your user account registered
@@ -23,20 +26,6 @@ Three ready-to-use configurations are provided in `src/config/`:
 | **Hub-Spoke + Firewall** | `hub-and-spoke-firewall.tfvars` | Full hub-spoke topology with an OPNsense firewall appliance on the WAN/LAN boundary. |
 
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
-
-### Architecture previews
-
-#### Standalone
-
-![Standalone architecture](diagrams/standalone-architecture.svg)
-
-#### Hub-Spoke
-
-![Hub-Spoke architecture](diagrams/hub-and-spoke-architecture.svg)
-
-#### Hub-Spoke + Firewall
-
-![Hub-Spoke + Firewall architecture](diagrams/hub-and-spoke-firewall-architecture.svg)
 
 > [!NOTE]
 > This single-root-module approach works well for smaller environments. At larger scale — typically beyond 10 landing zones — you may encounter STACKIT API rate limits during applies and slower plan/refresh cycles due to a growing state file. Tools like [Terragrunt](https://terragrunt.gruntwork.io/), [Terramate](https://terramate.io/), or [Spacelift](https://spacelift.io/) can help by splitting landing zones into isolated state files and orchestrating root module calls with proper concurrency controls. If you are planning a larger enterprise deployment, reach out to [STACKIT](https://stackit.de) or a partner offering a verified landing zone solution via the [STACKIT Marketplace](https://marketplace.stackit.cloud/de/catalog?marketplaceFilters=industries:Service%20%26%20IT%20Provider,deliveryMethod:PROFESSIONAL_SERVICE,categories:DevOps).

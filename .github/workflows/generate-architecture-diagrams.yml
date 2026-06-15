@@ -6,18 +6,18 @@ on:
     paths:
       - "src/**"
       - "modules/**"
-      - "assets/**"
-      - "docs/scripts/generate_example_architecture.py"
-      - "docs/diagram-generation.md"
+      - "docs/diagrams/assets/**"
+      - "docs/diagrams/scripts/generate_example_architecture.py"
+      - "docs/diagrams/README.md"
   push:
     branches:
       - main
     paths:
       - "src/**"
       - "modules/**"
-      - "assets/**"
-      - "docs/scripts/generate_example_architecture.py"
-      - "docs/diagram-generation.md"
+      - "docs/diagrams/assets/**"
+      - "docs/diagrams/scripts/generate_example_architecture.py"
+      - "docs/diagrams/README.md"
 
 permissions:
   contents: write
@@ -44,7 +44,7 @@ jobs:
         run: npm install -g @mermaid-js/mermaid-cli
 
       - name: Generate architecture diagrams
-        run: python3 docs/scripts/generate_example_architecture.py --out-dir docs/diagrams
+        run: python3 docs/diagrams/scripts/generate_example_architecture.py --out-dir docs/diagrams
 
       - name: Render Mermaid SVG diagrams
         run: |

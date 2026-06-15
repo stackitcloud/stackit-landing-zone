@@ -43,3 +43,5 @@ openai.token
 .env
 .env.local
 .cache/
+.agents
+.claude

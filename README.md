@@ -8,7 +8,7 @@
 # Landing Zone Accelerator
 
 [![Terraform](https://img.shields.io/badge/Terraform-1.15+-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
-[![OpenTofu](https://img.shields.io/badge/OpenTofu-1.11+-FFDA18?logo=opentofu&logoColor=black)](https://opentofu.org/)
+[![OpenTofu](https://img.shields.io/badge/OpenTofu-1.12+-FFDA18?logo=opentofu&logoColor=black)](https://opentofu.org/)
 [![STACKIT](https://img.shields.io/badge/STACKIT-Cloud-004E5A)](https://www.stackit.de/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -17,6 +17,7 @@ The STACKIT Landing Zone Accelerator provides a comprehensive Terraform-based fr
 ## 📚 Documentation
 
 - [Getting Started](docs/getting-started.md)
+- [Architecture/Modules](docs/architecture.md)
 
 ## 🤝 Contributing
 

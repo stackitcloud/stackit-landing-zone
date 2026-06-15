@@ -38,4 +38,4 @@ jobs:
 
       # runs 6h
       # - name: Validate STACKIT flavors (live)
-      #   run: python3 docs/scripts/validate_stackit_flavors.py
+      #   run: python3 docs/diagrams/scripts/validate_stackit_flavors.py
