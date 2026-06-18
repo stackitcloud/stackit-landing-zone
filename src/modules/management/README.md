@@ -36,6 +36,7 @@ No modules.
 | [stackit_secretsmanager_instance.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/secretsmanager_instance) | resource |
 | [stackit_secretsmanager_user.default](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/secretsmanager_user) | resource |
 | [stackit_service_account.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account) | resource |
+| [stackit_service_account_federated_identity_provider.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account_federated_identity_provider) | resource |
 | [stackit_service_account_key.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account_key) | resource |
 | [time_rotating.key_rotate](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/rotating) | resource |
 | [vault_kv_secret_v2.object_storage_credentials](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/kv_secret_v2) | resource |
@@ -46,6 +47,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_federated_identity_providers"></a> [federated\_identity\_providers](#input\_federated\_identity\_providers) | List of federated identity providers to configure for the management service account. | <pre>list(object({<br/>    name   = string<br/>    issuer = string<br/>    assertions = list(object({<br/>      item     = string<br/>      operator = string<br/>      value    = string<br/>    }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all folders. | `map(string)` | `{}` | no |
 | <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-hub-prod". | `string` | n/a | yes |
 | <a name="input_observability"></a> [observability](#input\_observability) | Observability instance configuration. Set to null to skip observability deployment. | <pre>object({<br/>    plan_name                              = optional(string, "Observability-Starter-EU01")<br/>    acl                                    = optional(list(string), [])<br/>    logs_retention_days                    = optional(number, 30)<br/>    traces_retention_days                  = optional(number, 30)<br/>    metrics_retention_days                 = optional(number, 90)<br/>    metrics_retention_days_5m_downsampling = optional(number, 90)<br/>    metrics_retention_days_1h_downsampling = optional(number, 90)<br/>  })</pre> | `null` | no |
