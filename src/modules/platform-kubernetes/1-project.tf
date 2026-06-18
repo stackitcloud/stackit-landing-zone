@@ -1,7 +1,7 @@
 locals {
   project_labels = merge(
     { "region" = var.region },
-    var.network.mode == "sna" && var.network.sna_network_area_id != null ? { "networkArea" = var.network.sna_network_area_id } : {},
+    var.network.sna_enabled && var.network.sna_network_area_id != null ? { "networkArea" = var.network.sna_network_area_id } : {},
     var.labels
   )
 }

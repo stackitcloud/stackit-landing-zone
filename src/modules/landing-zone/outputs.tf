@@ -48,18 +48,18 @@ output "observability_grafana_url" {
   value       = var.observability.enabled ? stackit_observability_instance.this[0].grafana_url : null
 }
 
+output "observability_metrics_push_url" {
+  description = "The Prometheus remote-write URL of the optional landing zone observability instance."
+  value       = var.observability.enabled ? stackit_observability_instance.this[0].metrics_push_url : null
+}
+
 output "observability_grafana_admin_user" {
-  description = "The initial Grafana admin user of the optional landing zone observability instance."
+  description = "The Grafana admin username of the optional landing zone observability instance."
   value       = var.observability.enabled ? stackit_observability_instance.this[0].grafana_initial_admin_user : null
 }
 
 output "observability_grafana_admin_password" {
-  description = "The initial Grafana admin password of the optional landing zone observability instance."
-  value       = var.observability.enabled ? stackit_observability_instance.this[0].grafana_initial_admin_password : null
+  description = "The Grafana admin password of the optional landing zone observability instance."
   sensitive   = true
-}
-
-output "observability_metrics_push_url" {
-  description = "The Prometheus remote-write URL of the optional landing zone observability instance."
-  value       = var.observability.enabled ? stackit_observability_instance.this[0].metrics_push_url : null
+  value       = var.observability.enabled ? stackit_observability_instance.this[0].grafana_initial_admin_password : null
 }

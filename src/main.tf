@@ -75,6 +75,7 @@ module "platform_kubernetes" {
   for_each = var.platform_kubernetes
 
   owner_email         = var.owner_email
+  organization_id     = var.organization_id
   naming_pattern      = "${var.company_code}-pltfm-k8s-${each.value.region}"
   parent_container_id = module.governance.folder_container_ids["platform"]
   labels              = var.labels
@@ -86,8 +87,10 @@ module "platform_kubernetes" {
   debug_bastion       = each.value.debug_bastion
 
   network = {
-    mode                = each.value.network.mode
-    sna_network_area_id = each.value.network.sna_network_area_id != null ? each.value.network.sna_network_area_id : try(module.connectivity[0].network_area_id, null)
+    sna_enabled               = each.value.network.sna_enabled
+    sna_network_area_id       = each.value.network.sna_network_area_id != null ? each.value.network.sna_network_area_id : try(module.connectivity[0].network_area_id, null)
+    firewall_next_hop_ip      = try(module.connectivity[0].firewall_next_hop_ip, null)
+    sna_network_prefix_length = each.value.network.sna_network_prefix_length
   }
 
   dns = {

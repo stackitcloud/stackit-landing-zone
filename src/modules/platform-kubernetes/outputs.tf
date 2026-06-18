@@ -19,11 +19,11 @@ output "debug_bastion" {
   description = "Debug bastion metadata when enabled for private cluster troubleshooting."
   value = local.debug_bastion_enabled ? {
     enabled              = true
-    server_id            = stackit_server.debug_bastion[0].server_id
-    network_interface_id = stackit_network_interface.debug_bastion[0].network_interface_id
-    public_ip            = var.debug_bastion.assign_public_ip ? stackit_public_ip.debug_bastion[0].ip : null
-    ssh_user             = "ubuntu"
-    ssh_command          = var.debug_bastion.assign_public_ip ? "ssh ubuntu@${stackit_public_ip.debug_bastion[0].ip}" : null
+    server_id            = module.debug_bastion[0].server_id
+    network_interface_id = module.debug_bastion[0].network_interface_id
+    public_ip            = module.debug_bastion[0].public_ip
+    ssh_user             = module.debug_bastion[0].ssh_user
+    ssh_command          = module.debug_bastion[0].ssh_command
     } : {
     enabled              = false
     server_id            = null
@@ -37,6 +37,11 @@ output "debug_bastion" {
 output "observability_instance_id" {
   description = "The observability instance ID used for cluster extension."
   value       = var.observability.enabled ? stackit_observability_instance.this[0].instance_id : null
+}
+
+output "observability_targets_url" {
+  description = "The Prometheus query endpoint URL of the optional platform observability instance."
+  value       = var.observability.enabled ? stackit_observability_instance.this[0].targets_url : null
 }
 
 output "project_container_id" {

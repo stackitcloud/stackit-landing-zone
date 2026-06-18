@@ -3,16 +3,46 @@ variable "cluster" {
     name                   = string
     kubernetes_version_min = optional(string, null)
     node_pools = optional(list(object({
-      name               = string
-      machine_type       = string
-      minimum            = number
-      maximum            = number
-      availability_zones = list(string)
-      volume_size        = optional(number, 20)
-      volume_type        = optional(string, "storage_premium_perf1")
-      os_name            = optional(string, "flatcar")
-      labels             = optional(map(string), {})
-    })), [])
+      name                    = string
+      machine_type            = string
+      minimum                 = number
+      maximum                 = number
+      availability_zones      = list(string)
+      allow_system_components = optional(bool, false)
+      volume_size             = optional(number, 20)
+      volume_type             = optional(string, "storage_premium_perf1")
+      os_name                 = optional(string, "flatcar")
+      labels                  = optional(map(string), {})
+      })), [
+      {
+        name                    = "system"
+        machine_type            = "g3i.4"
+        minimum                 = 2
+        maximum                 = 2
+        availability_zones      = ["eu01-1"]
+        allow_system_components = true
+        volume_size             = 20
+        volume_type             = "storage_premium_perf1"
+        os_name                 = "flatcar"
+        labels = {
+          "workload-role" = "system"
+        }
+      },
+      {
+        name                    = "application"
+        machine_type            = "g3i.4"
+        minimum                 = 2
+        maximum                 = 2
+        availability_zones      = ["eu01-2"]
+        allow_system_components = false
+        volume_size             = 20
+        volume_type             = "storage_premium_perf1"
+        os_name                 = "flatcar"
+        labels = {
+          "workload-role" = "application"
+        }
+      }
+    ])
     maintenance = optional(object({
       enable_kubernetes_version_updates    = optional(bool, true)
       enable_machine_image_version_updates = optional(bool, true)
@@ -61,6 +91,14 @@ variable "debug_bastion" {
   })
   description = "Optional debug bastion VM in the SNA network with SSH access to test SKE connectivity from inside the private network."
   default     = {}
+
+  validation {
+    condition = !var.debug_bastion.enabled || (
+      try(trimspace(var.debug_bastion.ssh_public_key), "") != "" ||
+      try(trimspace(var.debug_bastion.ssh_public_key_path), "") != ""
+    )
+    error_message = "debug_bastion requires ssh_public_key or ssh_public_key_path when enabled."
+  }
 }
 
 variable "labels" {
@@ -76,11 +114,12 @@ variable "naming_pattern" {
 
 variable "network" {
   type = object({
-    mode                      = optional(string, "public")
+    sna_enabled               = optional(bool, false)
     sna_network_area_id       = optional(string, null)
+    firewall_next_hop_ip      = optional(string, null)
     sna_network_prefix_length = optional(number, 24)
   })
-  description = "Network mode for SKE. mode=public configures public control plane, mode=sna configures SNA and requires sna_network_area_id at apply time."
+  description = "Network settings for SKE. Set sna_enabled=true and provide sna_network_area_id for SNA; otherwise the cluster runs in public control-plane mode."
   default     = {}
 }
 
@@ -98,6 +137,11 @@ variable "observability" {
 variable "owner_email" {
   type        = string
   description = "Email address of the project owner. Required for project creation."
+}
+
+variable "organization_id" {
+  type        = string
+  description = "Organization ID used for routing table resources in network-area scope."
 }
 
 variable "parent_container_id" {

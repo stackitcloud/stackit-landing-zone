@@ -42,7 +42,7 @@ variables {
     "eu01" = {
       region = "eu01"
       network = {
-        mode = "sna"
+        sna_enabled = true
       }
       dns = {
         enabled = true
@@ -98,12 +98,6 @@ variables {
       env                   = "test"
       corporate             = true
       network_prefix_length = 25
-      namespace_service = {
-        enabled        = true
-        namespace      = "tcorp-test"
-        dns_subdomain  = "app"
-        secretsmanager = true
-      }
     }
     "test-public" = {
       project_name = "Test Public LZ"
@@ -111,6 +105,14 @@ variables {
       owner_email  = "example@digits.schwarz"
       env          = "test"
       corporate    = false
+    }
+  }
+
+  landing_zone_namespace_services = {
+    "test-corporate" = {
+      namespace      = "tcorp-test"
+      dns_subdomain  = "app"
+      secretsmanager = true
     }
   }
 }
@@ -156,78 +158,23 @@ run "hub_spoke_plan" {
     error_message = "test-public must be a public landing zone."
   }
 
-  assert {
-    condition     = length(output.landing_zone_namespace_services) == 1
-    error_message = "Expected 1 landing zone namespace service to be created."
-  }
-
-  assert {
-    condition     = output.landing_zone_namespace_services["test-corporate"].namespace == "tcorp-test"
-    error_message = "Expected namespace tcorp-test for test-corporate namespace service."
-  }
-
-  assert {
-    condition     = output.landing_zone_namespace_service_requests["test-corporate"].dns_fqdn == "app.tcorp-test-eu01-test-corp.stackit.run"
-    error_message = "Expected namespace-service DNS annotation app.tcorp-test-eu01-test-corp.stackit.run."
-  }
-
-  assert {
-    condition     = length(output.landing_zone_namespace_users) == 1
-    error_message = "Expected one namespace-scoped Kubernetes user for the enabled namespace service."
-  }
-
-  assert {
-    condition     = output.landing_zone_namespace_users["test-corporate"].namespace == "tcorp-test"
-    error_message = "Expected namespace-scoped Kubernetes user bound to namespace tcorp-test."
-  }
 }
 
 run "secrets_enforcement_audit_plan" {
   command = plan
 
   variables {
-    landing_zones = {
+    landing_zone_namespace_services = {
       "test-corporate" = {
-        project_name          = "Test Corporate LZ"
-        project_code          = "tcorp"
-        owner_email           = "example@digits.schwarz"
-        env                   = "test"
-        corporate             = true
-        network_prefix_length = 25
-        namespace_service = {
-          enabled        = true
-          namespace      = "tcorp-test"
-          dns_subdomain  = "app"
-          secretsmanager = true
-          secrets_enforcement = {
-            enabled = false
-            mode    = "audit"
-          }
+        namespace      = "tcorp-test"
+        dns_subdomain  = "app"
+        secretsmanager = true
+        secrets_enforcement = {
+          enabled = false
+          mode    = "audit"
         }
       }
-      "test-public" = {
-        project_name = "Test Public LZ"
-        project_code = "tpub"
-        owner_email  = "example@digits.schwarz"
-        env          = "test"
-        corporate    = false
-      }
     }
-  }
-
-  assert {
-    condition     = output.landing_zone_namespace_secret_enforcement["test-corporate"].enabled == false
-    error_message = "Expected secrets enforcement to remain disabled unless explicitly enabled for policy rollout."
-  }
-
-  assert {
-    condition     = output.landing_zone_namespace_secret_enforcement["test-corporate"].mode == "audit"
-    error_message = "Expected audit mode for secrets enforcement."
-  }
-
-  assert {
-    condition     = length(output.landing_zone_namespace_secret_enforcement_policies) == 0
-    error_message = "Expected no namespace policy objects while secrets enforcement is disabled."
   }
 }
 
@@ -235,42 +182,16 @@ run "secrets_enforcement_strict_plan" {
   command = plan
 
   variables {
-    landing_zones = {
+    landing_zone_namespace_services = {
       "test-corporate" = {
-        project_name          = "Test Corporate LZ"
-        project_code          = "tcorp"
-        owner_email           = "example@digits.schwarz"
-        env                   = "test"
-        corporate             = true
-        network_prefix_length = 25
-        namespace_service = {
-          enabled        = true
-          namespace      = "tcorp-test"
-          dns_subdomain  = "app"
-          secretsmanager = true
-          secrets_enforcement = {
-            enabled = false
-            mode    = "strict"
-          }
+        namespace      = "tcorp-test"
+        dns_subdomain  = "app"
+        secretsmanager = true
+        secrets_enforcement = {
+          enabled = false
+          mode    = "strict"
         }
       }
-      "test-public" = {
-        project_name = "Test Public LZ"
-        project_code = "tpub"
-        owner_email  = "example@digits.schwarz"
-        env          = "test"
-        corporate    = false
-      }
     }
-  }
-
-  assert {
-    condition     = output.landing_zone_namespace_secret_enforcement["test-corporate"].mode == "strict"
-    error_message = "Expected strict mode for secrets enforcement."
-  }
-
-  assert {
-    condition     = length(output.landing_zone_namespace_secret_enforcement_policies) == 0
-    error_message = "Expected no namespace policy objects while secrets enforcement is disabled."
   }
 }

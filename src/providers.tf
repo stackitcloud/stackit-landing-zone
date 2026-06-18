@@ -5,12 +5,11 @@ provider "stackit" {
 }
 
 locals {
-  platform_kubernetes_cluster_key = try(one([
-    for key, value in module.platform_kubernetes : key
-    if value.ske_cluster_region == var.region
-  ]), null)
+  platform_kubernetes_cluster_key = try(one(keys(module.platform_kubernetes)), null)
 
-  platform_kubernetes_kube_config = local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].kube_config : null
+  platform_kubernetes_kube_config = var.platform_kubernetes_kube_config_override != null ? var.platform_kubernetes_kube_config_override : (
+    local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].kube_config : null
+  )
 }
 
 provider "kubernetes" {

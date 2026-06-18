@@ -37,7 +37,7 @@ resource "stackit_routing_table_route" "wan" {
 #############
 
 resource "stackit_network" "wan" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   project_id       = stackit_resourcemanager_project.this.project_id
   name             = "wan_network"
@@ -47,7 +47,7 @@ resource "stackit_network" "wan" {
 }
 
 resource "stackit_network_interface" "wan" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   name       = "vtnet0_wan"
   project_id = stackit_resourcemanager_project.this.project_id
@@ -57,7 +57,7 @@ resource "stackit_network_interface" "wan" {
 }
 
 resource "stackit_public_ip" "wan-ip" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   project_id           = stackit_resourcemanager_project.this.project_id
   network_interface_id = stackit_network_interface.wan[0].network_interface_id

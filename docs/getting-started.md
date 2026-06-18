@@ -16,11 +16,11 @@ This guide walks you through deploying the STACKIT Landing Zone from scratch.
 
 Three ready-to-use configurations are provided in `src/config/`:
 
-| Flavour | Config file | Description |
-|---------|-------------|-------------|
-| **Standalone** | `standalone.tfvars` | Governance, management, devops, and public landing zones only. No network area or firewall. |
-| **Hub-Spoke** | `hub-and-spoke.tfvars` | Adds a connectivity hub with a network area and DNS zones. Corporate landing zones connect via the network area. |
-| **Hub-Spoke + Firewall** | `hub-and-spoke-firewall.tfvars` | Full hub-spoke topology with an OPNsense firewall appliance on the WAN/LAN boundary. |
+| Flavour                  | Config file                     | Description                                                                                                      |
+| ------------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Standalone**           | `standalone.tfvars`             | Governance, management, devops, and public landing zones only. No network area or firewall.                      |
+| **Hub-Spoke**            | `hub-and-spoke.tfvars`          | Adds a connectivity hub with a network area and DNS zones. Corporate landing zones connect via the network area. |
+| **Hub-Spoke + Firewall** | `hub-and-spoke-firewall.tfvars` | Full hub-spoke topology with an OPNsense firewall appliance on the WAN/LAN boundary.                             |
 
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
 
@@ -120,12 +120,12 @@ cp config/standalone.tfvars terraform.auto.tfvars
 
 Update the values to match your organization. Required variables:
 
-| Variable | Description |
-|----------|-------------|
-| `owner_email` | Technical owner email registered in STACKIT |
-| `company_name` | Company name for folder naming |
-| `company_code` | Short prefix for resource naming (e.g. `exc`) |
-| `organization_id` | Root organization container ID |
+| Variable          | Description                                   |
+| ----------------- | --------------------------------------------- |
+| `owner_email`     | Technical owner email registered in STACKIT   |
+| `company_name`    | Company name for folder naming                |
+| `company_code`    | Short prefix for resource naming (e.g. `exc`) |
+| `organization_id` | Root organization container ID                |
 
 ### 8. Initialize OpenTofu/Terraform
 
@@ -170,6 +170,7 @@ terraform {
   }
 }
 ```
+
 In the STACKIT Portal, navigate to the management project → Secrets Manager → Secrets. Open the secret prefixed with `object_storage_credentials_` and copy the `ACCESS_KEY` and `SECRET_ACCESS_KEY` values.
 
 Set the S3 backend credentials:
@@ -230,6 +231,47 @@ stackit project delete --project-id <BOOTSTRAP_PROJECT_ID>
 ---
 
 ## Post-Deployment (Optional)
+
+### DNS automation for Gateway API resources
+
+For Gateway API resources (for example Envoy Gateway with `Gateway` + `HTTPRoute`), use DNS records directly via `stackit_dns_record_set` until native provider support for `extensions.dns.gatewayApi` is available.
+
+For the existing sample content in this repository (`landing_zone_sample_gateway` + `landing_zone_sample_http_route` in `src/namespace-service.tf`), the DNS record is created automatically based on the Envoy Gateway LoadBalancer endpoint discovered via `kubernetes_resources`.
+
+Implementation pattern:
+
+```hcl
+# Discover Envoy-managed LoadBalancer service endpoint for each sample gateway
+data "kubernetes_resources" "landing_zone_sample_gateway_service" {
+  provider = kubernetes.platform
+
+  api_version    = "v1"
+  kind           = "Service"
+  namespace      = "envoy-gateway-system"
+  label_selector = "gateway.envoyproxy.io/owning-gateway-name=<gateway-name>,gateway.envoyproxy.io/owning-gateway-namespace=<namespace>"
+}
+
+# Create A or CNAME record depending on endpoint type
+resource "stackit_dns_record_set" "landing_zone_sample_gateway" {
+  project_id = module.landing_zone["corp-exmpl"].project_id
+  zone_id    = module.landing_zone["corp-exmpl"].dns_zone_id
+
+  name = "app.${module.landing_zone["corp-exmpl"].dns_zone_dns_name}"
+  type = local.endpoint.ip != null ? "A" : "CNAME"
+  ttl  = 60
+
+  records = [coalesce(local.endpoint.ip, local.endpoint.hostname)]
+
+  lifecycle {
+    precondition {
+      condition     = local.endpoint.ip != null || local.endpoint.hostname != null
+      error_message = "Gateway load balancer endpoint is not available yet for DNS record creation."
+    }
+  }
+}
+```
+
+This ensures a stable, Terraform-managed DNS path without external scripts until provider-native `gatewayApi` DNS extension support is available.
 
 ### Configure OPNsense firewall
 
