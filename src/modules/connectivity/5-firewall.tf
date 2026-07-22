@@ -2,12 +2,17 @@
 ## IMAGE ##
 ###########
 
+locals {
+  firewall_image_path = fileexists("${path.root}/firewall-image.qcow2") ? "${path.root}/firewall-image.qcow2" : "/dev/null"
+  firewall_enabled    = var.firewall != null
+}
+
 resource "stackit_image" "firewall" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   project_id      = stackit_resourcemanager_project.this.project_id
   name            = var.firewall.name
-  local_file_path = "./firewall-image.qcow2"
+  local_file_path = local.firewall_image_path
   disk_format     = "qcow2"
   min_disk_size   = 16
   min_ram         = 2
@@ -21,7 +26,7 @@ resource "stackit_image" "firewall" {
 ############
 
 resource "stackit_volume" "firewall" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   project_id        = stackit_resourcemanager_project.this.project_id
   name              = var.firewall.name
@@ -39,7 +44,7 @@ resource "stackit_volume" "firewall" {
 ############
 
 resource "stackit_server" "firewall" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   project_id = stackit_resourcemanager_project.this.project_id
   name       = var.firewall.name

@@ -66,6 +66,40 @@ module "devops" {
   allowed_network_ranges = var.devops.allowed_network_ranges
 }
 
+#########################
+## PLATFORM KUBERNETES ##
+#########################
+
+module "platform_kubernetes" {
+  source   = "./modules/platform-kubernetes"
+  for_each = var.platform_kubernetes
+
+  owner_email         = var.owner_email
+  organization_id     = var.organization_id
+  naming_pattern      = "${var.company_code}-pltfm-k8s-${each.value.region}"
+  parent_container_id = module.governance.folder_container_ids["platform"]
+  labels              = var.labels
+  region              = each.value.region
+  role_assignments    = each.value.role_assignments
+  cluster             = each.value.cluster
+  observability       = each.value.observability
+  encrypted_volumes   = each.value.encrypted_volumes
+  debug_bastion       = each.value.debug_bastion
+
+  network = {
+    sna_enabled               = each.value.network.sna_enabled
+    sna_network_area_id       = each.value.network.sna_network_area_id != null ? each.value.network.sna_network_area_id : try(module.connectivity[0].network_area_id, null)
+    firewall_next_hop_ip      = try(module.connectivity[0].firewall_next_hop_ip, null)
+    sna_network_prefix_length = each.value.network.sna_network_prefix_length
+  }
+
+  dns = {
+    enabled      = each.value.dns.enabled
+    create_zones = each.value.dns.create_zones
+    zones        = length(each.value.dns.zones) > 0 ? each.value.dns.zones : compact(distinct([for lz in values(module.landing_zone) : try(lz.dns_zone_dns_name, null)]))
+  }
+}
+
 ###############
 ## SANDBOXES ##
 ###############
@@ -98,5 +132,6 @@ module "landing_zone" {
   role_assignments      = each.value.role_assignments
   network_prefix_length = each.value.network_prefix_length
   custom_roles          = each.value.custom_roles
+  observability         = each.value.observability
   firewall_next_hop_ip  = var.connectivity != null && var.connectivity.firewall != null ? module.connectivity[0].firewall_next_hop_ip : null # if firewall is enabled, pass the next hop IP to the landing zones for route configuration
 }

@@ -10,12 +10,12 @@ output "dns_zone_ids" {
 
 output "firewall_next_hop_ip" {
   description = "The IP address to be used as next hop for the default route in the landing zones (firewall LAN IP)."
-  value       = var.firewall != null ? stackit_network_interface.lan[0].ipv4 : null
+  value       = local.firewall_enabled ? stackit_network_interface.lan[0].ipv4 : null
 }
 
 output "firewall_public_ip" {
   description = "The public IP address of the firewall WAN interface."
-  value       = var.firewall != null ? stackit_public_ip.wan-ip[0].ip : null
+  value       = local.firewall_enabled ? stackit_public_ip.wan-ip[0].ip : null
 }
 
 output "network_area_id" {

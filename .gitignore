@@ -31,6 +31,7 @@ override.tf.json
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*
+*tfplan*
 
 # Ignore CLI configuration files
 .terraformrc
@@ -43,3 +44,7 @@ openai.token
 .env
 .env.local
 .cache/
+
+# Local persistent E2E runtime variables (canonical for this troubleshooting phase)
+src/config/e2e.tfvars
+src/config/e2e-bootstrap.override.tfvars
