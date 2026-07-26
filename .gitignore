@@ -44,6 +44,8 @@ openai.token
 .env
 .env.local
 .cache/
+.agents
+.claude
 
 # Local persistent E2E runtime variables (canonical for this troubleshooting phase)
 src/config/e2e.tfvars
