@@ -219,6 +219,38 @@ Traffic flow for a corporate landing zone (firewall flavor):
 
 East-west traffic between corporate LZs stays within the Network Area and can be permitted or denied by firewall policies.
 
+## Site-to-Site VPN (optional)
+
+Any hub-spoke flavor can terminate an IPsec VPN in the connectivity project, connecting the Network Area to on-premises or another cloud. Enable it with the `connectivity.vpn` block — see the commented example in `src/config/hub-and-spoke.tfvars`.
+
+The gateway is highly available: it runs two tunnels in separate availability zones, each with its own public IP. Because both sides need the other's address, roll it out in two applies — provision the gateway with `connections = {}`, read `tofu output connectivity_vpn_public_ips`, configure the remote peer, then add the connection.
+
+Pre-shared keys are kept out of the config object in the separate `vpn_pre_shared_keys` variable, so the tunnel topology stays committable:
+
+```bash
+export TF_VAR_vpn_pre_shared_keys='{"onprem"={"tunnel1"="<20+ chars>","tunnel2"="<20+ chars>"}}'
+```
+
+Routes to the remote prefixes are distributed through the Network Area automatically, so every corporate landing zone reaches the remote site without per-spoke configuration.
+
+### What goes through the firewall
+
+In the firewall flavor, three of the four traffic directions can be forced through the appliance. The inbound VPN direction cannot.
+
+| Direction | Through the firewall? | Mechanism |
+|---|---|---|
+| LZ → Internet | Yes, by default | Default route of the landing zone routing table points at the firewall LAN address. |
+| LZ → LZ | Yes, by default | `system_routes = false` suppresses project-to-project routes, so spoke-to-spoke falls to the default route. Symmetric, because both spokes behave alike. |
+| LZ → on-premises (VPN) | Only with `dynamic_routes = false` | VPN prefixes are then no longer learned and traffic falls to the default route. |
+| on-premises → LZ (VPN) | **No** | Inbound VPN traffic reaches the spoke directly and is not steerable. |
+
+Inbound VPN traffic bypasses the appliance because `static_routes` of a VPN connection are distributed as *dynamic* routes across the Network Area, and a remote prefix is always more specific than `0.0.0.0/0`. The VPN gateway itself forwards through a STACKIT-managed routing table that cannot be modified or reassigned.
+
+> [!WARNING]
+> Setting `dynamic_routes = false` on its own makes matters worse, not better: outbound traffic then goes through the firewall while inbound still bypasses it, and a stateful firewall drops the half-flow it sees.
+
+If VPN traffic has to be inspected, terminate the tunnel on the OPNsense appliance itself instead of using the managed gateway — it is already the default route for every corporate landing zone, so both directions stay symmetric. The trade-off is losing the managed gateway's active-active HA. [docs/opnsense/README.md](opnsense/README.md) has the measurements behind this.
+
 ## Resource Naming
 
 All resources follow a consistent convention driven by `company_code`:

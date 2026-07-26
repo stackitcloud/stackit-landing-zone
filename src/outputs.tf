@@ -37,6 +37,26 @@ output "connectivity_firewall_public_ip" {
   value       = try(module.connectivity[0].firewall_public_ip, null)
 }
 
+output "connectivity_vpn_gateway_id" {
+  description = "The ID of the hub VPN gateway."
+  value       = try(module.connectivity[0].vpn_gateway_id, null)
+}
+
+output "connectivity_vpn_public_ips" {
+  description = "Public IPs of the hub VPN gateway tunnels. Configure the remote peer against these."
+  value       = try(module.connectivity[0].vpn_public_ips, {})
+}
+
+output "connectivity_vpn_internal_next_hop_ips" {
+  description = "Network area side IPs of the hub VPN gateway tunnels."
+  value       = try(module.connectivity[0].vpn_internal_next_hop_ips, {})
+}
+
+output "connectivity_vpn_connection_ids" {
+  description = "Map of hub VPN connection keys to their connection IDs."
+  value       = try(module.connectivity[0].vpn_connection_ids, {})
+}
+
 output "platform_kubernetes_projects" {
   description = "Map of platform Kubernetes projects and cluster metadata per key."
   value = {

@@ -75,6 +75,39 @@ connectivity = {
     max_prefix_length     = 28
     default_prefix_length = 25
   }
+
+  # Optional: site-to-site IPsec VPN terminating in the hub, bridging the network area to
+  # on-premises or another cloud. Uncomment to enable — it provisions a billed VPN gateway.
+  #
+  # Roll out in two steps, because each side needs the other's public IP:
+  #   1. Apply with connections = {} to provision the gateway.
+  #   2. Read `tofu output connectivity_vpn_public_ips` and configure the remote peer.
+  #   3. Fill in remote_address below and apply again.
+  #
+  # Pre-shared keys are deliberately not stored here. Supply them separately:
+  #   export TF_VAR_vpn_pre_shared_keys='{"onprem"={"tunnel1"="<20+ chars>","tunnel2"="<20+ chars>"}}'
+  #
+  # vpn = {
+  #   plan_id      = "p100"           # p100 = 1 connection, p500 = 3, p1000 = 5
+  #   routing_type = "ROUTE_BASED"    # or POLICY_BASED
+  #
+  #   availability_zones = {
+  #     tunnel1 = "eu01-1"
+  #     tunnel2 = "eu01-2"
+  #   }
+  #
+  #   connections = {
+  #     "onprem" = {
+  #       # Remote prefixes reachable through the tunnel, installed as routes in the network area
+  #       static_routes = ["192.0.2.0/24"]
+  #
+  #       # Point each tunnel at a different remote endpoint if the peer is redundant,
+  #       # otherwise use the same address twice.
+  #       tunnel1 = { remote_address = "198.51.100.10" }
+  #       tunnel2 = { remote_address = "203.0.113.10" }
+  #     }
+  #   }
+  # }
 }
 
 ############

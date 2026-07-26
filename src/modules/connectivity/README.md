@@ -4,15 +4,15 @@
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10 |
-| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >=0.93.0 |
-| <a name="requirement_time"></a> [time](#requirement\_time) | >= 0.13.0 |
+| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | 0.101.0 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.14.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
 | <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.93.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | >= 0.13.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | ~> 0.14.0 |
 
 ## Modules
 
@@ -22,23 +22,26 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
-| [stackit_dns_zone.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/dns_zone) | resource |
-| [stackit_image.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/image) | resource |
-| [stackit_network.lan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
-| [stackit_network.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
-| [stackit_network_area.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_area) | resource |
-| [stackit_network_area_region.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_area_region) | resource |
-| [stackit_network_interface.lan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
-| [stackit_network_interface.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
-| [stackit_public_ip.wan-ip](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/public_ip) | resource |
-| [stackit_resourcemanager_project.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/resourcemanager_project) | resource |
-| [stackit_routing_table.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/routing_table) | resource |
-| [stackit_routing_table_route.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/routing_table_route) | resource |
-| [stackit_server.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server) | resource |
-| [stackit_volume.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/volume) | resource |
+| [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/authorization_project_role_assignment) | resource |
+| [stackit_dns_zone.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/dns_zone) | resource |
+| [stackit_image.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/image) | resource |
+| [stackit_network.lan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network) | resource |
+| [stackit_network.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network) | resource |
+| [stackit_network_area.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_area) | resource |
+| [stackit_network_area_region.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_area_region) | resource |
+| [stackit_network_interface.lan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_interface) | resource |
+| [stackit_network_interface.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_interface) | resource |
+| [stackit_public_ip.wan-ip](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/public_ip) | resource |
+| [stackit_resourcemanager_project.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/resourcemanager_project) | resource |
+| [stackit_routing_table.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/routing_table) | resource |
+| [stackit_routing_table_route.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/routing_table_route) | resource |
+| [stackit_server.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/server) | resource |
+| [stackit_volume.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/volume) | resource |
+| [stackit_vpn_connection.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/vpn_connection) | resource |
+| [stackit_vpn_gateway.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/vpn_gateway) | resource |
 | [time_sleep.wait_before_network_area_region_destroy](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
 | [time_sleep.wait_for_network_area](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
+| [stackit_vpn_gateway_status.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/data-sources/vpn_gateway_status) | data source |
 
 ## Inputs
 
@@ -55,6 +58,8 @@ No modules.
 | <a name="input_parent_container_id"></a> [parent\_container\_id](#input\_parent\_container\_id) | Parent container ID (folder or organization) where the project will be created. | `string` | n/a | yes |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name of the STACKIT project to create. Falls back to naming\_pattern if not set. | `string` | `null` | no |
 | <a name="input_role_assignments"></a> [role\_assignments](#input\_role\_assignments) | List of role assignments for the project. Subject can be a user email or service account email. | <pre>list(object({<br/>    role    = string<br/>    subject = string<br/>  }))</pre> | `[]` | no |
+| <a name="input_vpn"></a> [vpn](#input\_vpn) | IPsec VPN gateway for the hub, attached to the network area through the connectivity project. Set to null to skip. The gateway is HA: it terminates two tunnels in separate availability zones, each with its own public IP. Connections are created in a second apply once the remote peer addresses are known. Supports POLICY\_BASED and ROUTE\_BASED routing. | <pre>object({<br/>    display_name = optional(string, null)<br/>    plan_id      = optional(string, "p100")<br/>    routing_type = optional(string, "ROUTE_BASED")<br/>    availability_zones = object({<br/>      tunnel1 = string<br/>      tunnel2 = string<br/>    })<br/>    connections = optional(map(object({<br/>      display_name   = optional(string, null)<br/>      enabled        = optional(bool, true)<br/>      local_subnets  = optional(list(string), null)<br/>      remote_subnets = optional(list(string), null)<br/>      static_routes  = optional(list(string), null)<br/>      tunnel1 = object({<br/>        remote_address = string<br/>        peering = optional(object({<br/>          local_address  = string<br/>          remote_address = string<br/>        }), null)<br/>        phase1 = optional(object({<br/>          encryption_algorithms = optional(list(string), ["aes256"])<br/>          integrity_algorithms  = optional(list(string), ["sha2_384"])<br/>          dh_groups             = optional(list(string), ["ecp384"])<br/>          rekey_time            = optional(number, null)<br/>        }), {})<br/>        phase2 = optional(object({<br/>          encryption_algorithms = optional(list(string), ["aes256"])<br/>          integrity_algorithms  = optional(list(string), ["sha2_384"])<br/>          dh_groups             = optional(list(string), ["ecp384"])<br/>          rekey_time            = optional(number, null)<br/>          dpd_action            = optional(string, null)<br/>          start_action          = optional(string, null)<br/>        }), {})<br/>      })<br/>      tunnel2 = object({<br/>        remote_address = string<br/>        peering = optional(object({<br/>          local_address  = string<br/>          remote_address = string<br/>        }), null)<br/>        phase1 = optional(object({<br/>          encryption_algorithms = optional(list(string), ["aes256"])<br/>          integrity_algorithms  = optional(list(string), ["sha2_384"])<br/>          dh_groups             = optional(list(string), ["ecp384"])<br/>          rekey_time            = optional(number, null)<br/>        }), {})<br/>        phase2 = optional(object({<br/>          encryption_algorithms = optional(list(string), ["aes256"])<br/>          integrity_algorithms  = optional(list(string), ["sha2_384"])<br/>          dh_groups             = optional(list(string), ["ecp384"])<br/>          rekey_time            = optional(number, null)<br/>          dpd_action            = optional(string, null)<br/>          start_action          = optional(string, null)<br/>        }), {})<br/>      })<br/>    })), {})<br/>  })</pre> | `null` | no |
+| <a name="input_vpn_pre_shared_keys"></a> [vpn\_pre\_shared\_keys](#input\_vpn\_pre\_shared\_keys) | Pre-shared keys per VPN connection key, one per tunnel. Kept separate from var.vpn so the connection topology stays committable; supply through TF\_VAR\_vpn\_pre\_shared\_keys or a gitignored tfvars file. Minimum 20 characters. | <pre>map(object({<br/>    tunnel1 = string<br/>    tunnel2 = string<br/>  }))</pre> | `{}` | no |
 
 ## Outputs
 
@@ -68,4 +73,8 @@ No modules.
 | <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |
 | <a name="output_project_id"></a> [project\_id](#output\_project\_id) | The project ID of the created STACKIT project. |
 | <a name="output_project_name"></a> [project\_name](#output\_project\_name) | The name of the created STACKIT project. |
+| <a name="output_vpn_connection_ids"></a> [vpn\_connection\_ids](#output\_vpn\_connection\_ids) | Map of VPN connection keys to their connection IDs. |
+| <a name="output_vpn_gateway_id"></a> [vpn\_gateway\_id](#output\_vpn\_gateway\_id) | The ID of the VPN gateway in the hub. |
+| <a name="output_vpn_internal_next_hop_ips"></a> [vpn\_internal\_next\_hop\_ips](#output\_vpn\_internal\_next\_hop\_ips) | Map of VPN tunnel names to their network area side IP. Ping targets to verify a tunnel carries traffic into the SNA. |
+| <a name="output_vpn_public_ips"></a> [vpn\_public\_ips](#output\_vpn\_public\_ips) | Map of VPN tunnel names to their public IP. These are the addresses the remote peer has to be configured against. |
 <!-- END_TF_DOCS -->

@@ -47,6 +47,8 @@ module "connectivity" {
   dns_zones           = var.connectivity.dns_zones
   network_area        = var.connectivity.network_area
   firewall            = var.connectivity.firewall
+  vpn                 = var.connectivity.vpn
+  vpn_pre_shared_keys = var.vpn_pre_shared_keys
 }
 
 ############

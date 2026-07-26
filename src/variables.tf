@@ -261,9 +261,77 @@ variable "connectivity" {
       lan_ip                   = optional(string, null)
       wan_ip                   = optional(string, null)
     }), null)
+    vpn = optional(object({
+      display_name = optional(string, null)
+      plan_id      = optional(string, "p100")
+      routing_type = optional(string, "ROUTE_BASED")
+      availability_zones = object({
+        tunnel1 = string
+        tunnel2 = string
+      })
+      connections = optional(map(object({
+        display_name   = optional(string, null)
+        enabled        = optional(bool, true)
+        local_subnets  = optional(list(string), null)
+        remote_subnets = optional(list(string), null)
+        static_routes  = optional(list(string), null)
+        tunnel1 = object({
+          remote_address = string
+          peering = optional(object({
+            local_address  = string
+            remote_address = string
+          }), null)
+          phase1 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+          }), {})
+          phase2 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+            dpd_action            = optional(string, null)
+            start_action          = optional(string, null)
+          }), {})
+        })
+        tunnel2 = object({
+          remote_address = string
+          peering = optional(object({
+            local_address  = string
+            remote_address = string
+          }), null)
+          phase1 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+          }), {})
+          phase2 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+            dpd_action            = optional(string, null)
+            start_action          = optional(string, null)
+          }), {})
+        })
+      })), {})
+    }), null)
   })
-  description = "Connectivity configuration including DNS zones, network area, and firewall. Set firewall/network_area to null to skip deployment."
+  description = "Connectivity configuration including DNS zones, network area, firewall, and VPN. Set firewall/network_area/vpn to null to skip deployment."
   default     = null
+}
+
+variable "vpn_pre_shared_keys" {
+  type = map(object({
+    tunnel1 = string
+    tunnel2 = string
+  }))
+  description = "Pre-shared keys per connectivity.vpn.connections key, one per tunnel. Kept out of the connectivity object so the topology stays committable; supply through TF_VAR_vpn_pre_shared_keys or a gitignored tfvars file. Minimum 20 characters."
+  default     = {}
+  sensitive   = true
 }
 
 ###############
@@ -315,7 +383,7 @@ variable "landing_zones" {
 
 variable "landing_zone_namespace_services" {
   type = map(object({
-    demo_enabled   = optional(bool, false)
+    demo_enabled = optional(bool, false)
     demo_metrics_ingestion = optional(object({
       enabled         = optional(bool, false)
       target_urls     = optional(list(string), [])

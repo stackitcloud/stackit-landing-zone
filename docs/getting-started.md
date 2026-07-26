@@ -27,6 +27,8 @@ Three ready-to-use configurations are provided in `src/config/`:
 
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
 
+Both hub-spoke flavours can additionally terminate a site-to-site IPsec VPN in the hub. It is disabled by default — see the commented `connectivity.vpn` block in the `.tfvars` file and [Site-to-Site VPN](architecture.md#site-to-site-vpn-optional). If you deploy the firewall flavour, read [what traffic the firewall actually sees](architecture.md#what-goes-through-the-firewall) before relying on it for VPN inspection.
+
 > [!NOTE]
 > This single-root-module approach works well for smaller environments. At larger scale — typically beyond 10 landing zones — you may encounter STACKIT API rate limits during applies and slower plan/refresh cycles due to a growing state file. Tools like [Terragrunt](https://terragrunt.gruntwork.io/), [Terramate](https://terramate.io/), or [Spacelift](https://spacelift.io/) can help by splitting landing zones into isolated state files and orchestrating root module calls with proper concurrency controls. If you are planning a larger enterprise deployment, reach out to [STACKIT](https://stackit.de) or a partner offering a verified landing zone solution via the [STACKIT Marketplace](https://marketplace.stackit.cloud/de/catalog?marketplaceFilters=industries:Service%20%26%20IT%20Provider,deliveryMethod:PROFESSIONAL_SERVICE,categories:DevOps).
 
