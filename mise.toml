@@ -1,6 +1,6 @@
 [tools]
-opentofu = "1.12.1"
-"github:stackitcloud/stackit-cli" = "0.64.0"
+opentofu = "1.12.5"
+"github:stackitcloud/stackit-cli" = "0.67.0"
 
 [env]
 STACKIT_SERVICE_ACCOUNT_KEY_PATH = "{{env.HOME}}/.stackit/credentials.json"
