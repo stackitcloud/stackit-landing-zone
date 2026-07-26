@@ -34,6 +34,13 @@ variable "region" {
   default     = "eu01"
 }
 
+variable "platform_kubernetes_kube_config_override" {
+  type        = string
+  description = "Optional raw kubeconfig used by kubernetes/helm platform providers when no platform_kubernetes module output is available."
+  default     = null
+  sensitive   = true
+}
+
 variable "labels" {
   type        = map(string)
   description = "Additional labels to apply to all resources."
@@ -59,6 +66,106 @@ variable "devops" {
   })
   description = "DevOps module configuration. Set to null to skip deployment."
   default     = null
+}
+
+variable "platform_kubernetes" {
+  type = map(object({
+    region = string
+    network = optional(object({
+      sna_enabled               = optional(bool, false)
+      sna_network_area_id       = optional(string, null)
+      firewall_next_hop_ip      = optional(string, null)
+      sna_network_prefix_length = optional(number, 24)
+    }), {})
+    dns = optional(object({
+      enabled      = optional(bool, true)
+      create_zones = optional(bool, true)
+      zones        = optional(list(string), [])
+    }), {})
+    observability = optional(object({
+      enabled   = optional(bool, true)
+      plan_name = optional(string, "Observability-Starter-EU01")
+      acl       = optional(list(string), [])
+      name      = optional(string, null)
+    }), {})
+    encrypted_volumes = optional(object({
+      enabled            = optional(bool, false)
+      storage_class_name = optional(string, "stackit-encrypted-premium")
+      kms_keyring_name   = optional(string, "ske-volume-keyring")
+      kms_key_name       = optional(string, "ske-volume-key")
+      kms_key_version    = optional(string, "1")
+    }), {})
+    debug_bastion = optional(object({
+      enabled             = optional(bool, false)
+      name                = optional(string, null)
+      availability_zone   = optional(string, null)
+      machine_type        = optional(string, "g2i.1")
+      image_id            = optional(string, "7b10e105-295b-4369-b6e0-567ec940a02b")
+      boot_volume_size    = optional(number, 20)
+      ssh_public_key      = optional(string, null)
+      ssh_public_key_path = optional(string, "~/.ssh/id_rsa.pub")
+      ssh_allowed_cidrs   = optional(list(string), ["0.0.0.0/0"])
+      assign_public_ip    = optional(bool, true)
+      install_kubectl     = optional(bool, true)
+    }), {})
+    role_assignments = optional(list(object({
+      role    = string
+      subject = string
+    })), [])
+    cluster = object({
+      name                   = string
+      kubernetes_version_min = optional(string, null)
+      node_pools = optional(list(object({
+        name                    = string
+        machine_type            = string
+        minimum                 = number
+        maximum                 = number
+        availability_zones      = list(string)
+        allow_system_components = optional(bool, false)
+        volume_size             = optional(number, 20)
+        volume_type             = optional(string, "storage_premium_perf1")
+        os_name                 = optional(string, "flatcar")
+        labels                  = optional(map(string), {})
+        })), [
+        {
+          name                    = "system"
+          machine_type            = "g3i.4"
+          minimum                 = 2
+          maximum                 = 2
+          availability_zones      = ["eu01-1"]
+          allow_system_components = true
+          volume_size             = 20
+          volume_type             = "storage_premium_perf1"
+          os_name                 = "flatcar"
+          labels = {
+            "workload-role" = "system"
+          }
+        },
+        {
+          name                    = "application"
+          machine_type            = "g3i.4"
+          minimum                 = 2
+          maximum                 = 2
+          availability_zones      = ["eu01-2"]
+          allow_system_components = false
+          volume_size             = 20
+          volume_type             = "storage_premium_perf1"
+          os_name                 = "flatcar"
+          labels = {
+            "workload-role" = "application"
+          }
+        }
+      ])
+      maintenance = optional(object({
+        enable_kubernetes_version_updates    = optional(bool, true)
+        enable_machine_image_version_updates = optional(bool, true)
+        start                                = optional(string, "01:00:00Z")
+        end                                  = optional(string, "02:00:00Z")
+      }), {})
+    })
+  }))
+  description = "Map of central, region-scoped platform Kubernetes deployments. Empty map skips deployment."
+  default     = {}
 }
 
 variable "observability" {
@@ -195,7 +302,127 @@ variable "landing_zones" {
       description = string
       permissions = list(string)
     })), [])
+    observability = optional(object({
+      enabled   = optional(bool, false)
+      plan_name = optional(string, "Observability-Starter-EU01")
+      acl       = optional(list(string), [])
+      name      = optional(string, null)
+    }), {})
   }))
   description = "Map of landing zones to create. Set corporate = true for network area connectivity, false for public."
   default     = {}
+}
+
+variable "landing_zone_namespace_services" {
+  type = map(object({
+    demo_enabled   = optional(bool, false)
+    demo_metrics_ingestion = optional(object({
+      enabled         = optional(bool, false)
+      target_urls     = optional(list(string), [])
+      scheme          = optional(string, "https")
+      metrics_path    = optional(string, "/")
+      scrape_interval = optional(string, "70s")
+      scrape_timeout  = optional(string, "30s")
+    }), {})
+    namespace      = optional(string, null)
+    dns_subdomain  = optional(string, null)
+    secretsmanager = optional(bool, true)
+    sample_load = optional(object({
+      enabled = optional(bool, false)
+      image   = optional(string, "busybox:1.36")
+    }), {})
+    secrets_enforcement = optional(object({
+      enabled                   = optional(bool, false)
+      mode                      = optional(string, "audit")
+      allow_opaque_secret_types = optional(list(string), [])
+      break_glass = optional(object({
+        enabled    = optional(bool, true)
+        ttl_hours  = optional(number, 24)
+        principals = optional(list(string), [])
+      }), {})
+    }), {})
+    kubernetes_access = optional(object({
+      enabled              = optional(bool, true)
+      service_account_name = optional(string, null)
+    }), {})
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+  }))
+  description = "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone."
+  default     = {}
+
+  validation {
+    condition = alltrue([
+      for svc in values(var.landing_zone_namespace_services) :
+      svc.namespace == null ? true : (
+        length(svc.namespace) <= 63 &&
+        can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", svc.namespace))
+      )
+    ])
+    error_message = "If landing_zone_namespace_services.<key>.namespace is set, it must be a valid Kubernetes DNS-1123 label (<=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric)."
+  }
+
+  validation {
+    condition = alltrue([
+      for svc in values(var.landing_zone_namespace_services) :
+      svc.dns_subdomain == null ? true : (
+        length(svc.dns_subdomain) <= 63 &&
+        can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", svc.dns_subdomain))
+      )
+    ])
+    error_message = "If landing_zone_namespace_services.<key>.dns_subdomain is set, it must be a valid DNS label (<=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric)."
+  }
+
+  validation {
+    condition = alltrue([
+      for svc in values(var.landing_zone_namespace_services) :
+      svc.kubernetes_access.service_account_name == null ? true : (
+        length(svc.kubernetes_access.service_account_name) <= 63 &&
+        can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", svc.kubernetes_access.service_account_name))
+      )
+    ])
+    error_message = "If landing_zone_namespace_services.<key>.kubernetes_access.service_account_name is set, it must be a valid Kubernetes DNS-1123 label (<=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric)."
+  }
+
+  validation {
+    condition = alltrue([
+      for svc in values(var.landing_zone_namespace_services) :
+      contains(["audit", "soft", "strict"], lower(svc.secrets_enforcement.mode))
+    ])
+    error_message = "landing_zone_namespace_services.<key>.secrets_enforcement.mode must be one of: audit, soft, strict."
+  }
+
+  validation {
+    condition = alltrue([
+      for svc in values(var.landing_zone_namespace_services) :
+      svc.secrets_enforcement.break_glass.ttl_hours > 0
+    ])
+    error_message = "landing_zone_namespace_services.<key>.secrets_enforcement.break_glass.ttl_hours must be greater than 0."
+  }
+
+  validation {
+    condition = alltrue([
+      for key in keys(var.landing_zone_namespace_services) : contains(keys(var.landing_zones), key)
+    ])
+    error_message = "Every key in landing_zone_namespace_services must also exist in landing_zones."
+  }
+
+  validation {
+    condition = (
+      length(var.landing_zone_namespace_services) ==
+      length(distinct([
+        for key, svc in var.landing_zone_namespace_services :
+        svc.namespace != null ? svc.namespace : trim(replace(lower(replace("${var.landing_zones[key].project_code}-${var.landing_zones[key].env}", "/[^a-zA-Z0-9-]/", "-")), "/-{2,}/", "-"), "-")
+      ]))
+    )
+    error_message = "Each enabled namespace service must resolve to a unique namespace name."
+  }
+
+  validation {
+    condition = alltrue([
+      for key, svc in var.landing_zone_namespace_services :
+      length(svc.namespace != null ? svc.namespace : trim(replace(lower(replace("${var.landing_zones[key].project_code}-${var.landing_zones[key].env}", "/[^a-zA-Z0-9-]/", "-")), "/-{2,}/", "-"), "-")) > 0
+    ])
+    error_message = "Each enabled namespace service must resolve to a non-empty namespace name."
+  }
 }

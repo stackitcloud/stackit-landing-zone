@@ -38,6 +38,41 @@ variables {
     allowed_network_ranges = ["0.0.0.0/0"]
   }
 
+  platform_kubernetes = {
+    "eu01" = {
+      region = "eu01"
+      network = {
+        sna_enabled = true
+      }
+      dns = {
+        enabled = true
+        zones   = ["apps.test-corp.stackit.run"]
+      }
+      observability = {
+        enabled = false
+      }
+      cluster = {
+        name = "pltfmk8s"
+        node_pools = [
+          {
+            name               = "small-a"
+            machine_type       = "g3i.4"
+            minimum            = 2
+            maximum            = 2
+            availability_zones = ["eu01-1"]
+          },
+          {
+            name               = "small-b"
+            machine_type       = "g3i.4"
+            minimum            = 2
+            maximum            = 2
+            availability_zones = ["eu01-2"]
+          }
+        ]
+      }
+    }
+  }
+
   connectivity = {
     dns_zones = {
       "test-corp" = {
@@ -72,6 +107,14 @@ variables {
       corporate    = false
     }
   }
+
+  landing_zone_namespace_services = {
+    "test-corporate" = {
+      namespace      = "tcorp-test"
+      dns_subdomain  = "app"
+      secretsmanager = true
+    }
+  }
 }
 
 # Validates hub-spoke without firewall: connectivity module is created, no firewall.
@@ -83,6 +126,21 @@ run "hub_spoke_plan" {
   assert {
     condition     = output.connectivity_firewall_public_ip == null
     error_message = "Firewall public IP must be null when no firewall is configured."
+  }
+
+  assert {
+    condition     = length(output.platform_kubernetes_projects) == 1
+    error_message = "Expected 1 platform Kubernetes project to be configured."
+  }
+
+  assert {
+    condition     = output.platform_kubernetes_projects["eu01"].ske_cluster_region == "eu01"
+    error_message = "Platform Kubernetes cluster region must be eu01."
+  }
+
+  assert {
+    condition     = contains(output.platform_kubernetes_projects["eu01"].dns_extension_zones, "apps.test-corp.stackit.run")
+    error_message = "Platform Kubernetes DNS extension must include apps.test-corp.stackit.run."
   }
 
   assert {
@@ -98,5 +156,42 @@ run "hub_spoke_plan" {
   assert {
     condition     = output.landing_zone_projects["test-public"].landing_zone_type == "public"
     error_message = "test-public must be a public landing zone."
+  }
+
+}
+
+run "secrets_enforcement_audit_plan" {
+  command = plan
+
+  variables {
+    landing_zone_namespace_services = {
+      "test-corporate" = {
+        namespace      = "tcorp-test"
+        dns_subdomain  = "app"
+        secretsmanager = true
+        secrets_enforcement = {
+          enabled = false
+          mode    = "audit"
+        }
+      }
+    }
+  }
+}
+
+run "secrets_enforcement_strict_plan" {
+  command = plan
+
+  variables {
+    landing_zone_namespace_services = {
+      "test-corporate" = {
+        namespace      = "tcorp-test"
+        dns_subdomain  = "app"
+        secretsmanager = true
+        secrets_enforcement = {
+          enabled = false
+          mode    = "strict"
+        }
+      }
+    }
   }
 }

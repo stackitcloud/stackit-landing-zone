@@ -1,0 +1,215 @@
+{
+  "id": null,
+  "uid": "${dashboard_uid}",
+  "title": "${dashboard_title}",
+  "tags": ["stackit", "landing-zone", "namespace", "demo"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "refresh": 1,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource_uid}"
+        },
+        "query": {
+          "query": "label_values(lz_demo_resource_count, namespace)",
+          "refId": "NamespaceVariableQuery"
+        },
+        "current": {
+          "text": "${namespace}",
+          "value": "${namespace}"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Pods ($namespace)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+            "expr": "sum(lz_demo_resource_count{namespace=~\"$namespace\",resource=\"pods\"}) or vector(0)",
+          "legendFormat": "pods"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Services ($namespace)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "B",
+            "expr": "sum(lz_demo_resource_count{namespace=~\"$namespace\",resource=\"services\"}) or vector(0)",
+          "legendFormat": "services"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Gateways ($namespace)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "C",
+            "expr": "sum(lz_demo_resource_count{namespace=~\"$namespace\",resource=\"gateways\"}) or vector(0)",
+          "legendFormat": "gateways"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Scrape Up ($namespace)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "D",
+            "expr": "sum(up{namespace=~\"$namespace\"}) or vector(0)",
+            "legendFormat": "up"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Resource Count Trend ($namespace)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "E",
+            "expr": "sum by(resource) (lz_demo_resource_count{namespace=~\"$namespace\"}) or vector(0)",
+            "legendFormat": "{{resource}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Scrape Health ($namespace)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "F",
+            "expr": "sum(scrape_samples_scraped{namespace=~\"$namespace\"}) or vector(0)",
+            "legendFormat": "samples"
+        },
+        {
+          "refId": "G",
+            "expr": "sum(scrape_duration_seconds{namespace=~\"$namespace\"}) or vector(0)",
+            "legendFormat": "duration"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      }
+    }
+  ]
+}

@@ -37,6 +37,20 @@ output "connectivity_firewall_public_ip" {
   value       = try(module.connectivity[0].firewall_public_ip, null)
 }
 
+output "platform_kubernetes_projects" {
+  description = "Map of platform Kubernetes projects and cluster metadata per key."
+  value = {
+    for k, v in module.platform_kubernetes : k => {
+      project_id                = v.project_id
+      project_name              = v.project_name
+      ske_cluster_name          = v.ske_cluster_name
+      ske_cluster_region        = v.ske_cluster_region
+      observability_instance_id = v.observability_instance_id
+      dns_extension_zones       = v.dns_extension_zones
+    }
+  }
+}
+
 output "sandbox_projects" {
   description = "The created sandbox projects."
   value       = length(module.sandboxes) > 0 ? module.sandboxes[0].projects : {}
@@ -46,11 +60,20 @@ output "landing_zone_projects" {
   description = "Map of landing zone project IDs."
   value = {
     for k, v in module.landing_zone : k => {
-      project_id                = v.project_id
-      project_name              = v.project_name
-      dns_zone_name             = v.dns_zone_dns_name
-      landing_zone_type         = v.landing_zone_type
-      connected_network_area_id = v.connected_network_area_id == null ? "" : v.connected_network_area_id
+      project_id                     = v.project_id
+      project_name                   = v.project_name
+      dns_zone_name                  = v.dns_zone_dns_name
+      secretsmanager_instance_id     = v.secretsmanager_instance_id
+      observability_instance_id      = v.observability_instance_id
+      observability_grafana_url      = v.observability_grafana_url
+      observability_metrics_push_url = v.observability_metrics_push_url
+      landing_zone_type              = v.landing_zone_type
+      connected_network_area_id      = v.connected_network_area_id == null ? "" : v.connected_network_area_id
     }
   }
+}
+
+output "landing_zone_namespace_demo_samples" {
+  description = "Demo sample references for namespace services."
+  value       = nonsensitive(module.namespace_service_demo.samples)
 }

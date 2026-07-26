@@ -89,3 +89,14 @@ variable "secretsmanager_acls" {
   description = "List of ACL rules for the Secrets Manager instance. Set to empty list for no ACLs or null to skip Secrets Manager creation."
   default     = []
 }
+
+variable "observability" {
+  type = object({
+    enabled   = optional(bool, false)
+    plan_name = optional(string, "Observability-Starter-EU01")
+    acl       = optional(list(string), [])
+    name      = optional(string, null)
+  })
+  description = "Optional observability instance configuration in the landing zone project."
+  default     = {}
+}

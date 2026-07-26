@@ -3,7 +3,7 @@
 #############
 
 resource "stackit_network" "lan" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   project_id  = stackit_resourcemanager_project.this.project_id
   name        = "lan"
@@ -12,7 +12,7 @@ resource "stackit_network" "lan" {
 }
 
 resource "stackit_network_interface" "lan" {
-  count = var.firewall != null ? 1 : 0
+  count = local.firewall_enabled ? 1 : 0
 
   name       = "vtnet1_lan"
   project_id = stackit_resourcemanager_project.this.project_id
