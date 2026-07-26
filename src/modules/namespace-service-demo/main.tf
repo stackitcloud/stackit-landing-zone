@@ -2,7 +2,7 @@ terraform {
   required_providers {
     stackit = {
       source  = "stackitcloud/stackit"
-      version = "~> 0.99.0"
+      version = "~> 0.104.0"
     }
     grafana = {
       source  = "grafana/grafana"
