@@ -1,6 +1,15 @@
-#############################
-## LANDING ZONE NAMESPACES ##
-#############################
+################################
+## LANDING ZONE ON KUBERNETES ##
+################################
+
+# The Kubernetes side of a landing zone: every entry in landing_zone_namespace_services
+# gets a tenant slice of the shared platform cluster — its own namespace, a scoped service
+# account with a Role limited to that namespace, and optionally a Kyverno policy that
+# blocks direct Secret management so credentials have to come through the Secrets Manager.
+#
+# The sample workload behind sample_load is demo material, not part of the landing zone
+# contract: a pod, a Gateway API route and a DNS record that together prove the path from
+# the internet to a namespace works. Drop it once real workloads move in.
 
 locals {
   secrets_enforcement_default_exempt_principals = [

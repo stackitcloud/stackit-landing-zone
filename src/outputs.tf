@@ -52,6 +52,11 @@ output "connectivity_vpn_internal_next_hop_ips" {
   value       = try(module.connectivity[0].vpn_internal_next_hop_ips, {})
 }
 
+output "firewall_admin_url" {
+  description = "Where to reach the OPNsense web GUI. Only reachable from inside the network area once the policy blocks the WAN."
+  value       = try(var.connectivity.firewall, null) != null ? local.firewall_endpoint : null
+}
+
 output "connectivity_vpn_connection_ids" {
   description = "Map of hub VPN connection keys to their connection IDs."
   value       = try(module.connectivity[0].vpn_connection_ids, {})

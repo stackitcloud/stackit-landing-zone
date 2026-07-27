@@ -33,6 +33,7 @@ All modules live under `src/modules/`. The root `src/main.tf` calls them in depe
 | `devops` | `src/modules/devops/` | Optional DevOps project with managed Git instance |
 | `landing-zone` | `src/modules/landing-zone/` | Per-workload project: network, RBAC, Secrets Manager, object storage, DNS child zone, routing |
 | `sandboxes` | `src/modules/sandboxes/` | Lightweight sandbox projects for experimentation |
+| `firewall-config` | `src/modules/firewall-config/` | Optional: rules, NAT and internet hardening pushed to the OPNsense appliance through its API |
 
 ### Governance
 
@@ -103,9 +104,12 @@ When `connectivity.firewall` is set, a VM running OPNsense (provided as a `.qcow
 | `vtnet0` (WAN) | `wan_network`: attached to the WAN routing table | Outbound internet egress, assigned a static public IP |
 | `vtnet1` (LAN) | `lan_network`: a dedicated private subnet | Internal next-hop for all corporate landing zone traffic |
 
-The firewall's LAN IP is exported as `firewall_next_hop_ip` and passed to every corporate landing zone so they can point their default route at it.
+The firewall's LAN IP is exported as `firewall_next_hop_ip` and passed to every corporate landing zone so they can point their default route at it. Everything the platform sends outwards therefore crosses the appliance.
 
-Source: `src/modules/connectivity/`
+Both interfaces are DHCP clients and pick up the fixed addresses STACKIT assigns them. The image boots with almost no policy: only the two default `allow LAN to any` rules (IPv4 and IPv6), no gateways, no static routes, no IPsec, and outbound NAT on `automatic`. It filters nothing until a policy is pushed.
+
+> [!WARNING]
+> After the first apply the web GUI answers on the public IP to the whole internet, and it still carries the `root` password shipped in the image, which is identical on every copy. Port 443 is open, 80 and 22 are not, and there is no security group in front of the WAN interface. Pushing the policy closes it, so do not leave a deployment sitting between the two applies — see [Configure OPNsense firewall](getting-started.md#configure-opnsense-firewall). Binding the GUI to the LAN interface only (**System → Settings → Administration → Listen Interfaces**) is the alternative that does not depend on the ruleset.
 
 ### Landing Zone
 
@@ -235,21 +239,22 @@ Routes to the remote prefixes are distributed through the Network Area automatic
 
 ### What goes through the firewall
 
-In the firewall flavor, three of the four traffic directions can be forced through the appliance. The inbound VPN direction cannot.
+In the firewall flavor, two of the four traffic directions run through the appliance cleanly. Neither VPN direction can be filtered with the managed gateway: one breaks if you try, the other is not steerable at all.
 
 | Direction | Through the firewall? | Mechanism |
 |---|---|---|
-| LZ → Internet | Yes, by default | Default route of the landing zone routing table points at the firewall LAN address. |
-| LZ → LZ | Yes, by default | `system_routes = false` suppresses project-to-project routes, so spoke-to-spoke falls to the default route. Symmetric, because both spokes behave alike. |
-| LZ → on-premises (VPN) | Only with `dynamic_routes = false` | VPN prefixes are then no longer learned and traffic falls to the default route. |
-| on-premises → LZ (VPN) | **No** | Inbound VPN traffic reaches the spoke directly and is not steerable. |
+| LZ → Internet | Yes, by default | Default route of the landing zone routing table points at the firewall LAN address. Needs an `outbound_nat` entry too, otherwise traffic reaches the appliance and stops there. |
+| LZ → LZ | Yes, by default | `system_routes = false` suppresses project-to-project routes, so spoke-to-spoke falls to the default route. Needs a static route back into the Network Area, otherwise the traffic leaves through WAN and the egress NAT rewrites the source address. |
+| LZ → on-premises (VPN) | **No** | The VPN prefix beats `0.0.0.0/0`, so it bypasses the appliance. |
+| on-premises → LZ (VPN) | **No** | Delivered straight to the spoke through the STACKIT-managed routing table. Not steerable. |
 
 Inbound VPN traffic bypasses the appliance because `static_routes` of a VPN connection are distributed as *dynamic* routes across the Network Area, and a remote prefix is always more specific than `0.0.0.0/0`. The VPN gateway itself forwards through a STACKIT-managed routing table that cannot be modified or reassigned.
 
 > [!WARNING]
-> Setting `dynamic_routes = false` on its own makes matters worse, not better: outbound traffic then goes through the firewall while inbound still bypasses it, and a stateful firewall drops the half-flow it sees.
+> Setting `dynamic_routes = false` does not fix the outbound direction, it breaks it. Outbound then goes through the firewall while inbound still bypasses it, and the stateful filter drops the half-flow it sees.
 
-If VPN traffic has to be inspected, terminate the tunnel on the OPNsense appliance itself instead of using the managed gateway — it is already the default route for every corporate landing zone, so both directions stay symmetric. The trade-off is losing the managed gateway's active-active HA. [docs/opnsense/README.md](opnsense/README.md) has the measurements behind this.
+If VPN traffic has to be inspected, terminate the tunnel on the OPNsense appliance itself instead of using the managed gateway — it is already the default route for every corporate landing zone, so both directions stay symmetric. The trade-off is losing the managed gateway's active-active HA.
+
 
 ## Resource Naming
 

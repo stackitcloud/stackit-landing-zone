@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.10, < 2.0"
+  required_version = ">= 1.11"
 
   required_providers {
     stackit = {
@@ -8,15 +8,15 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 3.0"
+      version = "3.2.1"
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 3.0"
+      version = "3.2.0"
     }
     time = {
       source  = "hashicorp/time"
-      version = "~> 0.14.0"
+      version = "0.14.0"
     }
     vault = {
       source  = "hashicorp/vault"
@@ -24,7 +24,11 @@ terraform {
     }
     grafana = {
       source  = "grafana/grafana"
-      version = "~> 3.0"
+      version = "4.41.0"
+    }
+    opnsense = {
+      source  = "browningluke/opnsense"
+      version = "0.24.0"
     }
   }
 }

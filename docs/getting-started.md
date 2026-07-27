@@ -27,6 +27,8 @@ Three ready-to-use configurations are provided in `src/config/`:
 
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
 
+The firewall flavour takes one extra step: the appliance boots unconfigured and its policy is pushed in a second apply, from the `firewall_config` block that ships commented out in the same `.tfvars` file. Until then it filters nothing and its web GUI is reachable from the internet — see [Configure OPNsense firewall](#configure-opnsense-firewall).
+
 Both hub-spoke flavours can additionally terminate a site-to-site IPsec VPN in the hub. It is disabled by default — see the commented `connectivity.vpn` block in the `.tfvars` file and [Site-to-Site VPN](architecture.md#site-to-site-vpn-optional). If you deploy the firewall flavour, read [what traffic the firewall actually sees](architecture.md#what-goes-through-the-firewall) before relying on it for VPN inspection.
 
 > [!NOTE]
@@ -263,7 +265,3 @@ resource "stackit_dns_record_set" "landing_zone_sample_gateway" {
 ```
 
 This ensures a stable, Terraform-managed DNS path without external scripts until provider-native `gatewayApi` DNS extension support is available.
-
-### Configure OPNsense firewall
-
-If you deployed the Hub-Spoke + Firewall flavour, configure the OPNsense. Guidance will be available soon in the STACKIT docs.

@@ -51,6 +51,23 @@ module "connectivity" {
   vpn_pre_shared_keys = var.vpn_pre_shared_keys
 }
 
+#####################
+## FIREWALL POLICY ##
+#####################
+
+module "firewall_config" {
+  source = "./modules/firewall-config"
+  count  = local.firewall_config_enabled ? 1 : 0
+
+  aliases       = var.firewall_config.aliases
+  routes        = var.firewall_config.routes
+  rules         = var.firewall_config.rules
+  outbound_nat  = var.firewall_config.outbound_nat
+  port_forwards = var.firewall_config.port_forwards
+
+  depends_on = [terraform_data.firewall_api_bootstrap, module.connectivity]
+}
+
 ############
 ## DEVOPS ##
 ############

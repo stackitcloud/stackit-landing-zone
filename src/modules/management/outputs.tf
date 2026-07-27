@@ -33,3 +33,7 @@ output "bucket_name_tfstate" {
   description = "The name of the tfstate object storage bucket."
   value       = stackit_objectstorage_bucket.tfstate.name
 }
+output "secretsmanager_instance_id" {
+  description = "The ID of the Secrets Manager instance, usable as the vault mount."
+  value       = stackit_secretsmanager_instance.this.instance_id
+}

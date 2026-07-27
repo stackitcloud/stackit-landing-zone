@@ -76,28 +76,18 @@ connectivity = {
     default_prefix_length = 25
   }
 
-  # Delete the variable to skip firewall deployment (network area and routing still created)
+  # Delete the variable to skip firewall deployment
   firewall = {
     zone              = "eu01-m"
     flavor            = "c1.2"
     name              = "opnsense-26.1"
-    lan_network_range = "10.0.0.0/28"
-    wan_network_range = "10.0.0.16/28"
+    lan_network_range = "10.0.2.0/28"
+    wan_network_range = "10.0.2.16/28"
   }
 
-  # Optional: site-to-site IPsec VPN terminating in the hub. Uncomment to enable — it
-  # provisions a billed VPN gateway.
+  # Optional: site-to-site IPsec VPN terminating in the hub. Uncomment to enable
   #
-  # Note for this flavour: traffic arriving from the VPN reaches the landing zones directly
-  # and does NOT pass the firewall. See docs/opnsense/README.md for why, and for the design
-  # that does put every direction through the firewall.
-  #
-  # Roll out in two steps, because each side needs the other's public IP:
-  #   1. Apply with connections = {} to provision the gateway.
-  #   2. Read `tofu output connectivity_vpn_public_ips` and configure the remote peer.
-  #   3. Fill in remote_address below and apply again.
-  #
-  # Pre-shared keys are deliberately not stored here. Supply them separately:
+  # Pre-shared keys need to be supplied separately:
   #   export TF_VAR_vpn_pre_shared_keys='{"onprem"={"tunnel1"="<20+ chars>","tunnel2"="<20+ chars>"}}'
   #
   # vpn = {
@@ -122,6 +112,98 @@ connectivity = {
   #   }
   # }
 }
+
+#####################
+## FIREWALL POLICY ##
+#####################
+
+# Rules and NAT pushed to the OPNsense appliance through its API.
+#
+# Setup: export TF_VAR_firewall_admin_password='...' and run `tofu apply` twice. The
+# first pass creates the appliance and derives the API key, the second pushes the
+# policy. A provider config must resolve at plan time, so the key cannot be created
+# and used in the same run.
+#
+# The API listens on the firewall's LAN address, so OpenTofu has to run inside the network area or site-to-site VPN
+# That source must be in fw_management before the block rule below, or you lock yourself out
+#
+# firewall_config = {
+#   aliases = {
+#     fw_management = {
+#       description = "May administer the firewall"
+#       content     = ["10.0.0.0/16", "203.0.113.10/32"]
+#     }
+#     trusted_internal = {
+#       description = "Network area plus VPN remote prefixes"
+#       content     = ["10.0.0.0/16", "192.0.2.0/24"]
+#     }
+#   }
+#
+#   rules = {
+#     # The image ships a FLOATING rule passing TCP/443 from any source to the firewall,
+#     # so the GUI is public after a plain deploy. These rules lock it down
+#     allow-webgui-from-management = {
+#       sequence         = 10
+#       action           = "pass"
+#       interfaces       = [] # floating
+#       protocol         = "TCP"
+#       source_net       = "fw_management"
+#       destination_net  = "(self)"
+#       destination_port = "443"
+#     }
+#
+#     block-webgui-from-everywhere-else = {
+#       sequence         = 20
+#       action           = "block"
+#       interfaces       = [] # floating
+#       protocol         = "TCP"
+#       source_net       = "any"
+#       destination_net  = "(self)"
+#       destination_port = "443"
+#       log              = true
+#     }
+#
+#     allow-icmp-from-trusted = {
+#       sequence   = 100
+#       action     = "pass"
+#       interfaces = ["lan"]
+#       protocol   = "ICMP"
+#       source_net = "trusted_internal"
+#     }
+#   }
+#
+#   # Without an entry the landing zones reach nothing, since their default route ends here.
+#   # target_ip takes an address, an alias, or <int>ip.
+#   outbound_nat = {
+#     network-area-egress = {
+#       sequence   = 100
+#       interface  = "wan"
+#       source_net = "10.0.0.0/16"
+#       target_ip  = "wanip"
+#     }
+
+#     # Leave traffic untranslated, e.g. towards a site-to-site peer.
+#     # no-nat-towards-onprem = {
+#     #   sequence        = 10
+#     #   interface       = "wan"
+#     #   source_net      = "10.0.0.0/16"
+#     #   destination_net = "192.0.2.0/24"
+#     #   disable_nat     = true
+#     # }
+#   }
+#
+#   # Inbound NAT. Only rewrites the destination — unlike the GUI the provider adds no
+#   # filter rule, so each forward needs its own pass rule above.
+#   port_forwards = {
+#     # web-to-dmz = {
+#     #   source_net       = "198.51.100.0/24"
+#     #   destination_net  = "wanip"
+#     #   destination_port = "443"
+#     #   target_ip        = "10.0.0.20"
+#     #   target_port      = "8443" # omit to keep the destination port
+#     # }
+#   }
+# }
 
 ############
 ## DEVOPS ##
