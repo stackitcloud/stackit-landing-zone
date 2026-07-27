@@ -15,12 +15,12 @@ output "project_name" {
 
 output "dns_zone_dns_name" {
   description = "The DNS name of the landing zone's child DNS zone."
-  value       = var.dns_zone_name != null ? stackit_dns_zone.this[0].dns_name : null
+  value       = try(stackit_dns_zone.this[0].dns_name, null)
 }
 
 output "dns_zone_id" {
   description = "The ID of the landing zone's child DNS zone."
-  value       = var.dns_zone_name != null ? stackit_dns_zone.this[0].zone_id : null
+  value       = try(stackit_dns_zone.this[0].zone_id, null)
 }
 
 output "connected_network_area_id" {
