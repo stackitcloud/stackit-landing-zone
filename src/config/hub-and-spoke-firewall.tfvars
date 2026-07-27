@@ -117,31 +117,72 @@ connectivity = {
 ## FIREWALL POLICY ##
 #####################
 
-# Rules and NAT pushed to the OPNsense appliance through its API.
+# Rules, routes and NAT pushed to the OPNsense appliance through its API.
 #
-# Setup: export TF_VAR_firewall_admin_password='...' and run `tofu apply` twice. The
-# first pass creates the appliance and derives the API key, the second pushes the
-# policy. A provider config must resolve at plan time, so the key cannot be created
-# and used in the same run.
-#
-# The API listens on the firewall's LAN address, so OpenTofu has to run inside the network area or site-to-site VPN
-# That source must be in fw_management before the block rule below, or you lock yourself out
+# The firewall needs to exist before configuring it. Bootstrapping is described here:
+# docs/getting-started.md#configure-opnsense-firewall 
 #
 # firewall_config = {
+#   endpoint = "https://198.51.100.20" # check bootstrap docs
+#
 #   aliases = {
+#     # Everything routed inside the network area: all landing zones plus the appliance's
+#     # own LAN and WAN prefixes. Keep in sync with connectivity.network_area.ranges.
+#     network_area = {
+#       description = "All prefixes routed inside the STACKIT network area"
+#       content     = ["10.0.0.0/16"]
+#     }
+#
+#     # Sources allowed to reach the web GUI and the API. The whole network area is the
+#     # loosest setting that still keeps the GUI off the public internet. Narrow it to the
+#     # subnet the OpenTofu runner and the operators sit in once that is known.
 #     fw_management = {
 #       description = "May administer the firewall"
-#       content     = ["10.0.0.0/16", "203.0.113.10/32"]
+#       content     = ["10.0.0.0/16", "203.0.113.10/32"] # check bootstrap docs
 #     }
-#     trusted_internal = {
-#       description = "Network area plus VPN remote prefixes"
-#       content     = ["10.0.0.0/16", "192.0.2.0/24"]
+#
+#     # Resolvers handed to the landing zones through network_area.default_nameservers.
+#     # The landing zones reach them through this appliance, so they need an explicit rule
+#     # as soon as the blanket internet rule is switched off.
+#     platform_dns = {
+#       type        = "host"
+#       description = "Resolvers the landing zones are pointed at"
+#       content     = ["1.1.1.1", "1.0.0.1"]
+#     }
+#
+#     # Example of a domain based allow rule. A host alias accepts FQDNs and OPNsense re-resolves them on a timer
+#     ubuntu_update_servers = {
+#       type        = "host"
+#       description = "Canonical archive, security and changelog mirrors"
+#       content = [
+#         "archive.ubuntu.com",
+#         "security.ubuntu.com",
+#         "changelogs.ubuntu.com",
+#         "esm.ubuntu.com",
+#       ]
+#     }
+#
+#     ubuntu_update_ports = {
+#       type        = "port"
+#       description = "Ports the Ubuntu mirrors are served on"
+#       content     = ["80", "443"]
+#     }
+#   }
+#
+#   # Both appliance interfaces are DHCP clients on a /28 and the default route leaves
+#   # through WAN, so without this the landing zone prefixes are only reachable the long way
+#   # round: spoke bound traffic would be sent to the WAN gateway and re-enter the network
+#   # area from the outside. That also drags LZ-to-LZ traffic through the WAN interface,
+#   # where the egress NAT rule would rewrite it and hide the real source address.
+#   routes = {
+#     network-area-via-lan = {
+#       network     = "10.0.0.0/16"
+#       gateway     = "LAN_DHCP"
+#       description = "Landing zones sit behind the LAN interface"
 #     }
 #   }
 #
 #   rules = {
-#     # The image ships a FLOATING rule passing TCP/443 from any source to the firewall,
-#     # so the GUI is public after a plain deploy. These rules lock it down
 #     allow-webgui-from-management = {
 #       sequence         = 10
 #       action           = "pass"
@@ -162,34 +203,87 @@ connectivity = {
 #       destination_port = "443"
 #       log              = true
 #     }
+
+#     allow-lz-to-dns = {
+#       sequence         = 100
+#       action           = "pass"
+#       interfaces       = ["lan"]
+#       protocol         = "TCP/UDP"
+#       source_net       = "network_area"
+#       destination_net  = "platform_dns"
+#       destination_port = "53"
+#     }
 #
-#     allow-icmp-from-trusted = {
-#       sequence   = 100
-#       action     = "pass"
-#       interfaces = ["lan"]
-#       protocol   = "ICMP"
-#       source_net = "trusted_internal"
+#     allow-lz-to-lz-https = {
+#       sequence         = 110
+#       action           = "pass"
+#       interfaces       = ["lan"]
+#       protocol         = "TCP"
+#       source_net       = "network_area"
+#       destination_net  = "network_area"
+#       destination_port = "443"
+#     }
+#
+#     allow-lz-to-lz-icmp = {
+#       sequence        = 120
+#       action          = "pass"
+#       interfaces      = ["lan"]
+#       protocol        = "ICMP"
+#       source_net      = "network_area"
+#       destination_net = "network_area"
+#     }
+#
+#     block-lz-to-lz = {
+#       sequence        = 130
+#       action          = "block"
+#       interfaces      = ["lan"]
+#       protocol        = "any"
+#       source_net      = "network_area"
+#       destination_net = "network_area"
+#       log             = true
+#     }
+#
+#     allow-lz-to-ubuntu-updates = {
+#       sequence         = 160
+#       action           = "pass"
+#       interfaces       = ["lan"]
+#       protocol         = "TCP"
+#       source_net       = "network_area"
+#       destination_net  = "ubuntu_update_servers"
+#       destination_port = "ubuntu_update_ports"
+#     }
+#
+#     allow-lz-to-internet = {
+#       sequence        = 200
+#       action          = "pass"
+#       interfaces      = ["lan"]
+#       protocol        = "any"
+#       source_net      = "network_area"
+#       destination_net = "any"
+#       description     = "Blanket egress. Disable this to switch to default-deny."
 #     }
 #   }
 #
 #   # Without an entry the landing zones reach nothing, since their default route ends here.
-#   # target_ip takes an address, an alias, or <int>ip.
+#   # target_ip takes an address, an alias, or <int>ip. These are applied regardless of the
+#   # appliance's Outbound NAT mode, which the API cannot change and which stays automatic.
 #   outbound_nat = {
+#     no-nat-inside-network-area = {
+#       sequence        = 10
+#       interface       = "wan"
+#       source_net      = "network_area"
+#       destination_net = "network_area"
+#       disable_nat     = true
+#     }
+#
+#     # The public IP is bound to the WAN interface address, so egress has to be translated
+#     # to exactly that address for the platform to reach the internet at all.
 #     network-area-egress = {
 #       sequence   = 100
 #       interface  = "wan"
-#       source_net = "10.0.0.0/16"
+#       source_net = "network_area"
 #       target_ip  = "wanip"
 #     }
-
-#     # Leave traffic untranslated, e.g. towards a site-to-site peer.
-#     # no-nat-towards-onprem = {
-#     #   sequence        = 10
-#     #   interface       = "wan"
-#     #   source_net      = "10.0.0.0/16"
-#     #   destination_net = "192.0.2.0/24"
-#     #   disable_nat     = true
-#     # }
 #   }
 #
 #   # Inbound NAT. Only rewrites the destination — unlike the GUI the provider adds no

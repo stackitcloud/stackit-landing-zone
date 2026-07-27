@@ -63,7 +63,12 @@ resource "terraform_data" "firewall_api_bootstrap" {
 }
 
 resource "vault_kv_secret_v2" "firewall_api_credentials" {
-  count = (try(var.connectivity.firewall, null) != null && (local.firewall_bootstrapped_credentials != null || !var.firewall_bootstrap)) ? 1 : 0
+  count = (
+    try(var.connectivity.firewall, null) != null && (
+      local.firewall_bootstrapped_credentials != null ||
+      (var.firewall_config != null && !var.firewall_bootstrap)
+    )
+  ) ? 1 : 0
 
   mount               = module.management.secretsmanager_instance_id
   name                = "firewall_api_${replace(var.company_code, "-", "_")}_pltfm_hub_prod"
@@ -81,7 +86,11 @@ resource "vault_kv_secret_v2" "firewall_api_credentials" {
 #############################################
 
 ephemeral "vault_kv_secret_v2" "firewall_api" {
-  count = (try(var.connectivity.firewall, null) != null && !var.firewall_bootstrap) ? 1 : 0
+  count = (
+    try(var.connectivity.firewall, null) != null &&
+    var.firewall_config != null &&
+    !var.firewall_bootstrap
+  ) ? 1 : 0
 
   mount = module.management.secretsmanager_instance_id
   name  = "firewall_api_${replace(var.company_code, "-", "_")}_pltfm_hub_prod"

@@ -128,6 +128,14 @@ tofu init
 
 ### 9. Deploy the landing zone
 
+If you enabled the `connectivity.vpn` block, export the pre-shared keys as an environment variable first. They are kept out of the `tfvars` on purpose:
+
+```bash
+export TF_VAR_vpn_pre_shared_keys='{"onprem"={"tunnel1"="<20+ chars>","tunnel2"="<20+ chars>"}}'
+```
+
+In any case run opentofu to deploy the infrastructure:
+
 ```bash
 tofu apply
 ```
@@ -225,11 +233,93 @@ stackit project delete --project-id <BOOTSTRAP_PROJECT_ID>
 
 ## Post-Deployment (Optional)
 
+### Configure OPNsense firewall
+
+Step 9 boots the appliance but leaves it unconfigured: it filters nothing and its web GUI answers on the public IP. Pushing a policy is a **second apply**, because the API key is derived from the appliance login and a provider configuration has to resolve before any resource is planned, so a key created during an apply cannot configure the provider in that same run.
+
+What the policy does, and which traffic directions it can actually see, is in [What goes through the firewall](architecture.md#what-goes-through-the-firewall).
+
+> [!NOTE]
+> The policy is pushed with the [`browningluke/opnsense`](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs) provider. It maps OPNsense's expanded read format back to what was written, so in-place updates and drift detection work — the generic `Mastercard/restapi` provider cannot do this and makes objects effectively write-once. It is community maintained and its author advises against production use, so weigh that before relying on it.
+
+**1. Decide which firewall interface OpenTofu should talk to**
+
+*Public: OpenTofu runs outside the Network Area* — a workstation, or a CI runner on the public internet. This is the normal case for a first deployment, because nothing is inside the area yet. Traffic goes over the appliance's public address:
+
+```bash
+tofu output connectivity_firewall_public_ip   # the endpoint
+curl -s https://ifconfig.me                   # your own public address
+```
+
+*Private: OpenTofu runs inside the Network Area* — a CI runner in a landing zone, a jumphost, or an established site-to-site VPN. Nothing to look up: the LAN address is the default, and your source address is already covered by `10.0.0.0/16`.
+
+**2. Enable the policy**
+
+Uncomment the `firewall_config` block in `config/hub-and-spoke-firewall.tfvars`. It comes with default rules: internet egress with NAT, spoke-to-spoke limited to HTTPS and ICMP, and the two floating rules that take the web GUI off the internet.
+
+Two entries need your values, and what you put there follows from step 1:
+
+```hcl
+# Example for public
+
+endpoint      = "https://<connectivity_firewall_public_ip>"
+fw_management = {
+  content = ["10.0.0.0/16", "<your public address>/32"]
+}
+
+
+# Example for private
+
+# omit endpoint
+fw_management = {
+  content = ["10.0.0.0/16"]
+}
+```
+
+> [!WARNING]
+> Whatever runs OpenTofu must be covered by the `fw_management` alias before this apply. Otherwise the same run that closes the GUI cuts off its own path to the API, and recovery goes through the serial console (`stackit server console <server-id> --project-id <connectivity-project-id>`).
+>
+> A dynamic home or office address will eventually change and lock out a later run.
+
+**3. Bootstrap the API key, then push the policy**
+
+```bash
+tofu apply -var firewall_bootstrap=true && tofu apply -var firewall_bootstrap=true
+```
+
+The first pass derives the API key (waiting for the appliance to finish booting, which takes a few minutes) and caches it in `src/.firewall-api-credentials.json`, gitignored. The second stores it in the management Secrets Manager and pushes aliases, static routes, rules and NAT. Two passes are unavoidable: the provider needs the key at plan time, and a value created during an apply cannot configure a provider in that same run, which is why they chain safely as one command.
+
+The appliance login it uses comes from `firewall_admin_password`, which defaults to the `root` password baked into the STACKIT OPNsense image, so nothing has to be exported for a fresh deployment.
+
+> [!IMPORTANT]
+> That default is baked into the image, and between the two applies the web GUI is reachable from the internet. Change the password on the appliance (**System → Access → Users**). The password is only used to derive the API key. Once the key exists, it is no longer read at all.
+
+**4. Drop the bootstrap variable and delete the cache file**
+
+From here on every apply is a plain `tofu apply` with no variables:
+
+```bash
+rm src/.firewall-api-credentials.json
+tofu apply
+```
+
+**Rotating the key**
+
+Re-running the bootstrap revokes every existing API key on the appliance and mints a fresh one, which immediately invalidates the copy in the Secrets Manager. The follow-up is therefore not optional: bump `firewall_api_secret_version` by one, so the new key is written through. Forgetting the bump fails loudly with a 401 instead of silently keeping a dead key.
+
+```bash
+rm -f src/.firewall-api-credentials.json
+tofu apply -var firewall_bootstrap=true   # mints the new key
+# bump firewall_api_secret_version in your tfvars, then
+tofu apply -var firewall_bootstrap=true   # writes it to the Secrets Manager
+rm src/.firewall-api-credentials.json
+```
+
 ### DNS automation for Gateway API resources
 
 For Gateway API resources (for example Envoy Gateway with `Gateway` + `HTTPRoute`), use DNS records directly via `stackit_dns_record_set` until native provider support for `extensions.dns.gatewayApi` is available.
 
-For the existing sample content in this repository (`landing_zone_sample_gateway` + `landing_zone_sample_http_route` in `src/namespace-service.tf`), the DNS record is created automatically based on the Envoy Gateway LoadBalancer endpoint discovered via `kubernetes_resources`.
+For the existing sample content in this repository (`landing_zone_sample_gateway` + `landing_zone_sample_http_route` in `src/_landing-zone-kubernetes.tf`), the DNS record is created automatically based on the Envoy Gateway LoadBalancer endpoint discovered via `kubernetes_resources`.
 
 Implementation pattern:
 
