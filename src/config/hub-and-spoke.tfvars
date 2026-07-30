@@ -74,17 +74,14 @@ connectivity = {
     min_prefix_length     = 24
     max_prefix_length     = 28
     default_prefix_length = 25
+
+    # Resolvers handed to every network in the area. Left out, the STACKIT resolvers of the configured region apply
+    # default_nameservers = ["192.214.161.53", "213.17.17.17", "188.34.111.111"]
   }
 
-  # Optional: site-to-site IPsec VPN terminating in the hub, bridging the network area to
-  # on-premises or another cloud. Uncomment to enable — it provisions a billed VPN gateway.
+  # Optional: site-to-site IPsec VPN terminating in the hub. Uncomment to enable
   #
-  # Roll out in two steps, because each side needs the other's public IP:
-  #   1. Apply with connections = {} to provision the gateway.
-  #   2. Read `tofu output connectivity_vpn_public_ips` and configure the remote peer.
-  #   3. Fill in remote_address below and apply again.
-  #
-  # Pre-shared keys are deliberately not stored here. Supply them separately:
+  # Pre-shared keys need to be supplied separately:
   #   export TF_VAR_vpn_pre_shared_keys='{"onprem"={"tunnel1"="<20+ chars>","tunnel2"="<20+ chars>"}}'
   #
   # vpn = {

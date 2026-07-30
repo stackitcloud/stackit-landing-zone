@@ -249,6 +249,8 @@ variable "connectivity" {
       min_prefix_length     = optional(number, 24)
       max_prefix_length     = optional(number, 28)
       default_prefix_length = optional(number, 28)
+      # Unset means the STACKIT resolvers of var.region, see modules/connectivity/1-network-area.tf.
+      default_nameservers = optional(list(string), null)
     }), null)
     firewall = optional(object({
       zone                     = string

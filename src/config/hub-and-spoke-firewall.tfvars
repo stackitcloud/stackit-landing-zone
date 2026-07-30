@@ -74,6 +74,9 @@ connectivity = {
     min_prefix_length     = 24
     max_prefix_length     = 28
     default_prefix_length = 25
+
+    # Resolvers handed to every network in the area. Left out, the STACKIT resolvers of the configured region apply
+    # default_nameservers = ["192.214.161.53", "213.17.17.17", "188.34.111.111"]
   }
 
   # Delete the variable to skip firewall deployment
@@ -147,7 +150,7 @@ connectivity = {
 #     platform_dns = {
 #       type        = "host"
 #       description = "Resolvers the landing zones are pointed at"
-#       content     = ["1.1.1.1", "1.0.0.1"]
+#       content     = ["192.214.161.53", "213.17.17.17", "188.34.111.111"] # STACKIT resolvers, eu01
 #     }
 #
 #     # Example of a domain based allow rule. A host alias accepts FQDNs and OPNsense re-resolves them on a timer
@@ -193,6 +196,7 @@ connectivity = {
 #       destination_port = "443"
 #     }
 #
+#     # Block everything else to the web GUI since the firewall image allows all traffic by default
 #     block-webgui-from-everywhere-else = {
 #       sequence         = 20
 #       action           = "block"

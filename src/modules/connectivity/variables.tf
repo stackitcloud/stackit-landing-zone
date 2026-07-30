@@ -51,9 +51,9 @@ variable "network_area" {
     min_prefix_length     = optional(number, 24)
     max_prefix_length     = optional(number, 28)
     default_prefix_length = optional(number, 28)
-    default_nameservers   = optional(list(string), ["1.0.0.1", "1.1.1.1"])
+    default_nameservers   = optional(list(string), null)
   })
-  description = "Network area configuration including IP ranges, transfer network, and prefix length settings."
+  description = "Network area configuration including IP ranges, transfer network, and prefix length settings. default_nameservers falls back to the STACKIT resolvers of var.region when unset."
 }
 
 variable "network_area_name" {
@@ -81,6 +81,12 @@ variable "project_name" {
   type        = string
   description = "Name of the STACKIT project to create. Falls back to naming_pattern if not set."
   default     = null
+}
+
+variable "region" {
+  type        = string
+  description = "STACKIT region the network area region is created in. Also selects the default resolvers when network_area.default_nameservers is unset."
+  default     = "eu01"
 }
 
 variable "role_assignments" {

@@ -23,6 +23,11 @@ output "network_area_id" {
   value       = stackit_network_area.this.network_area_id
 }
 
+output "network_area_nameservers" {
+  description = "Resolvers configured as the network area default, either from network_area.default_nameservers or the STACKIT resolvers of the region."
+  value       = local.network_area_nameservers
+}
+
 output "project_container_id" {
   description = "The container ID of the created STACKIT project."
   value       = stackit_resourcemanager_project.this.container_id
