@@ -74,7 +74,7 @@ variable "firewall_next_hop_ip" {
 
 variable "ipv4_nameservers" {
   type        = list(string)
-  description = "List of IPv4 nameservers for the network."
+  description = "List of IPv4 nameservers for the network. Null takes the network area defaults on creation and leaves an existing network untouched."
   default     = null
 }
 

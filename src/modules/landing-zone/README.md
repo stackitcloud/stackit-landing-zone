@@ -47,7 +47,7 @@ No modules.
 | <a name="input_custom_roles"></a> [custom\_roles](#input\_custom\_roles) | List of custom roles to create for the project. | <pre>list(object({<br/>    name        = string<br/>    description = string<br/>    permissions = list(string)<br/>  }))</pre> | n/a | yes |
 | <a name="input_dns_zone_name"></a> [dns\_zone\_name](#input\_dns\_zone\_name) | Full DNS zone domain name for this landing zone. Set to null to skip DNS zone creation. | `string` | `null` | no |
 | <a name="input_firewall_next_hop_ip"></a> [firewall\_next\_hop\_ip](#input\_firewall\_next\_hop\_ip) | IP address of the firewall next hop. | `string` | `null` | no |
-| <a name="input_ipv4_nameservers"></a> [ipv4\_nameservers](#input\_ipv4\_nameservers) | List of IPv4 nameservers for the network. | `list(string)` | `null` | no |
+| <a name="input_ipv4_nameservers"></a> [ipv4\_nameservers](#input\_ipv4\_nameservers) | List of IPv4 nameservers for the network. Null takes the network area defaults on creation and leaves an existing network untouched. | `list(string)` | `null` | no |
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all resources. | `map(string)` | `{}` | no |
 | <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-hub-prod". | `string` | n/a | yes |
 | <a name="input_network_area_id"></a> [network\_area\_id](#input\_network\_area\_id) | Network Area ID to deploy resources into. Required if corporate is true. | `string` | `null` | no |

@@ -34,6 +34,11 @@ checksum = "sha256:f2a44a0ff3393c18e76159b5e0fe3a55042f17bda90900a282b3d2f69100f
 url = "https://github.com/stackitcloud/stackit-cli/releases/download/v0.67.0/stackit-cli_0.67.0_darwin_amd64.tar.gz"
 url_api = "https://api.github.com/repos/stackitcloud/stackit-cli/releases/assets/483324208"
 
+[tools."github:stackitcloud/stackit-cli"."platforms.windows-arm64"]
+checksum = "sha256:d0c937bb48183df19a9bbb68f7512215cc924b4dc1f6e930397392881aadae92"
+url = "https://github.com/stackitcloud/stackit-cli/releases/download/v0.67.0/stackit-cli_0.67.0_windows_arm64.zip"
+url_api = "https://api.github.com/repos/stackitcloud/stackit-cli/releases/assets/483324155"
+
 [tools."github:stackitcloud/stackit-cli"."platforms.windows-x64"]
 checksum = "sha256:7d9f2eabb6d0e9b7e8238fbe56508dcc36264184301694c7e0bd4ab34aebaba7"
 url = "https://github.com/stackitcloud/stackit-cli/releases/download/v0.67.0/stackit-cli_0.67.0_windows_amd64.zip"
@@ -66,6 +71,10 @@ url = "https://github.com/opentofu/opentofu/releases/download/v1.12.5/tofu_1.12.
 [tools.opentofu."platforms.macos-x64"]
 checksum = "sha256:1012d8f3d4567bcbcd1f2c7d766feca39a30bced32fb8be47e1887fbbee2456d"
 url = "https://github.com/opentofu/opentofu/releases/download/v1.12.5/tofu_1.12.5_darwin_amd64.tar.gz"
+
+[tools.opentofu."platforms.windows-arm64"]
+checksum = "sha256:af11850b496f3720e0184084c56d8b43aa74ea92d2338978bf368d70c96473f1"
+url = "https://github.com/opentofu/opentofu/releases/download/v1.12.5/tofu_1.12.5_windows_amd64.tar.gz"
 
 [tools.opentofu."platforms.windows-x64"]
 checksum = "sha256:af11850b496f3720e0184084c56d8b43aa74ea92d2338978bf368d70c96473f1"

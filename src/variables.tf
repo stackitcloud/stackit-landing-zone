@@ -249,6 +249,8 @@ variable "connectivity" {
       min_prefix_length     = optional(number, 24)
       max_prefix_length     = optional(number, 28)
       default_prefix_length = optional(number, 28)
+      # Unset means the STACKIT resolvers of var.region, see modules/connectivity/1-network-area.tf.
+      default_nameservers = optional(list(string), null)
     }), null)
     firewall = optional(object({
       zone                     = string
@@ -261,9 +263,204 @@ variable "connectivity" {
       lan_ip                   = optional(string, null)
       wan_ip                   = optional(string, null)
     }), null)
+    vpn = optional(object({
+      display_name = optional(string, null)
+      plan_id      = optional(string, "p100")
+      routing_type = optional(string, "ROUTE_BASED")
+      availability_zones = object({
+        tunnel1 = string
+        tunnel2 = string
+      })
+      connections = optional(map(object({
+        display_name   = optional(string, null)
+        enabled        = optional(bool, true)
+        local_subnets  = optional(list(string), null)
+        remote_subnets = optional(list(string), null)
+        static_routes  = optional(list(string), null)
+        tunnel1 = object({
+          remote_address = string
+          peering = optional(object({
+            local_address  = string
+            remote_address = string
+          }), null)
+          phase1 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+          }), {})
+          phase2 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+            dpd_action            = optional(string, null)
+            start_action          = optional(string, null)
+          }), {})
+        })
+        tunnel2 = object({
+          remote_address = string
+          peering = optional(object({
+            local_address  = string
+            remote_address = string
+          }), null)
+          phase1 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+          }), {})
+          phase2 = optional(object({
+            encryption_algorithms = optional(list(string), ["aes256"])
+            integrity_algorithms  = optional(list(string), ["sha2_384"])
+            dh_groups             = optional(list(string), ["ecp384"])
+            rekey_time            = optional(number, null)
+            dpd_action            = optional(string, null)
+            start_action          = optional(string, null)
+          }), {})
+        })
+      })), {})
+    }), null)
   })
-  description = "Connectivity configuration including DNS zones, network area, and firewall. Set firewall/network_area to null to skip deployment."
+  description = "Connectivity configuration including DNS zones, network area, firewall, and VPN. Set firewall/network_area/vpn to null to skip deployment."
   default     = null
+}
+
+variable "vpn_pre_shared_keys" {
+  type = map(object({
+    tunnel1 = string
+    tunnel2 = string
+  }))
+  description = "Pre-shared keys per connectivity.vpn.connections key, one per tunnel. Kept out of the connectivity object so the topology stays committable; supply through TF_VAR_vpn_pre_shared_keys or a gitignored tfvars file. Minimum 20 characters."
+  default     = {}
+  sensitive   = true
+}
+
+######################
+## FIREWALL CONFIG  ##
+######################
+
+variable "firewall_config" {
+  type = object({
+    # Defaults to https://<firewall LAN IP>, derived from connectivity.firewall.
+    endpoint = optional(string, null)
+    insecure = optional(bool, true)
+
+
+    aliases = optional(map(object({
+      type        = optional(string, "network")
+      enabled     = optional(bool, true)
+      description = optional(string, null)
+      content     = optional(list(string), [])
+      update_freq = optional(number, null)
+      stats       = optional(bool, false)
+    })), {})
+
+    routes = optional(map(object({
+      enabled     = optional(bool, true)
+      network     = string
+      gateway     = string
+      description = optional(string, null)
+    })), {})
+
+    rules = optional(map(object({
+      sequence           = optional(number, 100)
+      enabled            = optional(bool, true)
+      action             = optional(string, "pass")
+      direction          = optional(string, "in")
+      interfaces         = optional(list(string), ["lan"])
+      protocol           = optional(string, "any")
+      ip_protocol        = optional(string, "inet")
+      quick              = optional(bool, true)
+      source_net         = optional(string, "any")
+      source_port        = optional(string, null)
+      source_invert      = optional(bool, false)
+      destination_net    = optional(string, "any")
+      destination_port   = optional(string, null)
+      destination_invert = optional(bool, false)
+      log                = optional(bool, false)
+      description        = optional(string, null)
+    })), {})
+
+    outbound_nat = optional(map(object({
+      sequence        = optional(number, 200)
+      enabled         = optional(bool, true)
+      interface       = optional(string, "wan")
+      protocol        = optional(string, "any")
+      ip_protocol     = optional(string, "inet")
+      source_net      = optional(string, "any")
+      destination_net = optional(string, "any")
+      target_ip       = optional(string, "wanip")
+      disable_nat     = optional(bool, false)
+      log             = optional(bool, false)
+      description     = optional(string, null)
+    })), {})
+
+    port_forwards = optional(map(object({
+      sequence         = optional(number, 100)
+      enabled          = optional(bool, true)
+      interfaces       = optional(list(string), ["wan"])
+      protocol         = optional(string, "TCP")
+      ip_protocol      = optional(string, "inet")
+      source_net       = optional(string, "any")
+      destination_net  = optional(string, "wanip")
+      destination_port = string
+      target_ip        = string
+      target_port      = optional(string, null)
+      nat_reflection   = optional(string, "default")
+      log              = optional(bool, true)
+      description      = optional(string, null)
+    })), {})
+  })
+  description = "Policy pushed to the OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched."
+  default     = null
+
+  validation {
+    condition     = var.firewall_config == null || try(var.connectivity.firewall, null) != null
+    error_message = "firewall_config requires connectivity.firewall to be set, there is no appliance to push a policy to otherwise."
+  }
+
+  validation {
+    condition = var.firewall_config == null || alltrue([
+      for p in values(var.firewall_config.port_forwards) : p.source_net != "any" || !p.enabled
+    ])
+    error_message = "port_forwards[*].source_net must be narrowed from \"any\", or the entry disabled. An unrestricted forward exposes the target to the whole internet."
+  }
+}
+
+variable "firewall_admin_username" {
+  type        = string
+  description = "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root."
+  default     = "root"
+}
+
+variable "firewall_admin_password" {
+  type        = string
+  description = "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead."
+  default     = "STACKIT123!"
+  sensitive   = true
+}
+
+variable "firewall_bootstrap" {
+  type        = bool
+  description = "Pass -var firewall_bootstrap=true on the two greenfield applies that create the OPNsense API key. It suppresses the Secrets Manager read, which would otherwise fail at plan time because the secret does not exist yet. Never set it on an established deployment: without the bootstrap cache file it plans the destruction of the policy and the stored key. The steady state needs no variable at all."
+  default     = false
+}
+
+variable "firewall_api_secret_version" {
+  type        = number
+  description = "Write version of the OPNsense API key in the Secrets Manager. The key is only transmitted when this number changes, so bump it by one after a re-bootstrap has produced a fresh key, otherwise the Secrets Manager keeps serving the old one."
+  default     = 1
+}
+
+variable "firewall_api_credentials" {
+  type = object({
+    api_key    = string
+    api_secret = string
+  })
+  description = "OPNsense API key and secret. Bootstrap them once from the appliance login with src/modules/firewall-config/scripts/bootstrap-api-key.sh, then supply through TF_VAR_firewall_api_credentials or a gitignored tfvars file. Kept out of firewall_config so the policy stays committable."
+  default     = null
+  sensitive   = true
 }
 
 ###############
@@ -315,7 +512,7 @@ variable "landing_zones" {
 
 variable "landing_zone_namespace_services" {
   type = map(object({
-    demo_enabled   = optional(bool, false)
+    demo_enabled = optional(bool, false)
     demo_metrics_ingestion = optional(object({
       enabled         = optional(bool, false)
       target_urls     = optional(list(string), [])

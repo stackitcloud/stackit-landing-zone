@@ -2,11 +2,11 @@ terraform {
   required_providers {
     stackit = {
       source  = "stackitcloud/stackit"
-      version = "~> 0.99.0"
+      version = "0.104.0"
     }
     grafana = {
       source  = "grafana/grafana"
-      version = "~> 3.0"
+      version = "4.41.0"
     }
   }
 }
@@ -19,7 +19,7 @@ locals {
 
   services_with_observability = {
     for key, value in var.services : key => value
-    if (
+    if(
       try(value.observability_grafana_url, null) != null &&
       try(value.observability_admin_user, null) != null &&
       try(value.observability_instance_id, null) != null &&
@@ -137,8 +137,8 @@ resource "grafana_dashboard" "namespace_overview" {
 
   for_each = local.services_with_observability
 
-  folder      = grafana_folder.stackit_managed[0].uid
-  overwrite   = true
+  folder    = grafana_folder.stackit_managed[0].uid
+  overwrite = true
   config_json = templatefile("${path.module}/dashboards/namespace-overview.json.tmpl", {
     dashboard_uid   = local.dashboard_uid[each.key]
     dashboard_title = "${each.key} Namespace Overview"

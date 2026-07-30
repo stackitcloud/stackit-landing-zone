@@ -1,6 +1,15 @@
-#############################
-## LANDING ZONE NAMESPACES ##
-#############################
+################################
+## LANDING ZONE ON KUBERNETES ##
+################################
+
+# The Kubernetes side of a landing zone: every entry in landing_zone_namespace_services
+# gets a tenant slice of the shared platform cluster — its own namespace, a scoped service
+# account with a Role limited to that namespace, and optionally a Kyverno policy that
+# blocks direct Secret management so credentials have to come through the Secrets Manager.
+#
+# The sample workload behind sample_load is demo material, not part of the landing zone
+# contract: a pod, a Gateway API route and a DNS record that together prove the path from
+# the internet to a namespace works. Drop it once real workloads move in.
 
 locals {
   secrets_enforcement_default_exempt_principals = [
@@ -10,7 +19,7 @@ locals {
 
   landing_zone_namespace_services = {
     for key, value in var.landing_zone_namespace_services : key => {
-      demo_enabled             = value.demo_enabled
+      demo_enabled = value.demo_enabled
       demo_metrics_ingestion = {
         enabled         = value.demo_metrics_ingestion.enabled
         target_urls     = value.demo_metrics_ingestion.target_urls
@@ -46,25 +55,25 @@ locals {
 
   landing_zone_namespace_demo_services = {
     for key, value in local.landing_zone_namespace_services : key => {
-      namespace                  = value.namespace
-      use_secretsmanager         = value.use_secretsmanager
-      landing_zone_project_id    = module.landing_zone[key].project_id
-      secretsmanager_instance_id = module.landing_zone[key].secretsmanager_instance_id
-      observability_instance_id  = module.landing_zone[key].observability_instance_id
-      observability_grafana_url  = module.landing_zone[key].observability_grafana_url
-      observability_admin_user   = module.landing_zone[key].observability_grafana_admin_user
-      demo_metrics_ingestion_enabled         = value.demo_metrics_ingestion.enabled
-      demo_metrics_ingestion_target_urls     = length(value.demo_metrics_ingestion.target_urls) > 0 ? value.demo_metrics_ingestion.target_urls : (
+      namespace                      = value.namespace
+      use_secretsmanager             = value.use_secretsmanager
+      landing_zone_project_id        = module.landing_zone[key].project_id
+      secretsmanager_instance_id     = module.landing_zone[key].secretsmanager_instance_id
+      observability_instance_id      = module.landing_zone[key].observability_instance_id
+      observability_grafana_url      = module.landing_zone[key].observability_grafana_url
+      observability_admin_user       = module.landing_zone[key].observability_grafana_admin_user
+      demo_metrics_ingestion_enabled = value.demo_metrics_ingestion.enabled
+      demo_metrics_ingestion_target_urls = length(value.demo_metrics_ingestion.target_urls) > 0 ? value.demo_metrics_ingestion.target_urls : (
         value.sample_load.enabled && value.dns_fqdn != null ? ["${value.dns_fqdn}:80"] : []
       )
       demo_metrics_ingestion_scheme          = value.demo_metrics_ingestion.scheme
       demo_metrics_ingestion_metrics_path    = value.demo_metrics_ingestion.metrics_path
       demo_metrics_ingestion_scrape_interval = value.demo_metrics_ingestion.scrape_interval
       demo_metrics_ingestion_scrape_timeout  = value.demo_metrics_ingestion.scrape_timeout
-      platform_project_id                = local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].project_id : null
-      platform_observability_instance_id = local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].observability_instance_id : null
-      platform_observability_targets_url = local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].observability_targets_url : null
-      dns_zone_name              = module.landing_zone[key].dns_zone_dns_name
+      platform_project_id                    = local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].project_id : null
+      platform_observability_instance_id     = local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].observability_instance_id : null
+      platform_observability_targets_url     = local.platform_kubernetes_cluster_key != null ? module.platform_kubernetes[local.platform_kubernetes_cluster_key].observability_targets_url : null
+      dns_zone_name                          = module.landing_zone[key].dns_zone_dns_name
     }
     if value.demo_enabled
   }
@@ -405,14 +414,14 @@ resource "kubernetes_pod_v1" "landing_zone_sample_load" {
     namespace = each.value.metadata[0].namespace
 
     labels = {
-      "app.kubernetes.io/name"      = "sample-load"
+      "app.kubernetes.io/name"     = "sample-load"
       "stackit.cloud/landing-zone" = each.key
       "stackit.cloud/sample-load"  = "true"
     }
   }
 
   spec {
-    restart_policy = "Never"
+    restart_policy       = "Never"
     enable_service_links = false
 
     container {
@@ -459,7 +468,7 @@ resource "kubernetes_service_v1" "landing_zone_sample_load" {
     namespace = each.value.metadata[0].namespace
 
     labels = {
-      "app.kubernetes.io/name"      = "sample-load"
+      "app.kubernetes.io/name"     = "sample-load"
       "stackit.cloud/landing-zone" = each.key
       "stackit.cloud/sample-load"  = "true"
     }
@@ -500,7 +509,7 @@ resource "kubernetes_manifest" "landing_zone_sample_gateway" {
         "external-dns.alpha.kubernetes.io/hostname" = each.value.dns_fqdn
       }
       labels = {
-        "app.kubernetes.io/name"      = "sample-load"
+        "app.kubernetes.io/name"     = "sample-load"
         "stackit.cloud/landing-zone" = each.key
         "stackit.cloud/sample-load"  = "true"
       }
@@ -549,7 +558,7 @@ resource "kubernetes_manifest" "landing_zone_sample_http_route" {
       name      = "${kubernetes_service_v1.landing_zone_sample_load[each.key].metadata[0].name}-route"
       namespace = kubernetes_namespace_v1.landing_zone[each.key].metadata[0].name
       labels = {
-        "app.kubernetes.io/name"      = "sample-load"
+        "app.kubernetes.io/name"     = "sample-load"
         "stackit.cloud/landing-zone" = each.key
         "stackit.cloud/sample-load"  = "true"
       }

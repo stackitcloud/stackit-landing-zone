@@ -50,3 +50,10 @@ openai.token
 # Local persistent E2E runtime variables (canonical for this troubleshooting phase)
 src/config/e2e.tfvars
 src/config/e2e-bootstrap.override.tfvars
+
+# Cached OPNsense API key created by the firewall bootstrap
+.firewall-api-credentials.json
+src/.firewall-api-credentials.json
+
+# Ignore QEMU disk images (firewall)
+*.qcow2

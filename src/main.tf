@@ -44,9 +44,29 @@ module "connectivity" {
   parent_container_id = module.governance.folder_container_ids["platform"]
   organization_id     = var.organization_id
   labels              = var.labels
+  region              = var.region
   dns_zones           = var.connectivity.dns_zones
   network_area        = var.connectivity.network_area
   firewall            = var.connectivity.firewall
+  vpn                 = var.connectivity.vpn
+  vpn_pre_shared_keys = var.vpn_pre_shared_keys
+}
+
+#####################
+## FIREWALL POLICY ##
+#####################
+
+module "firewall_config" {
+  source = "./modules/firewall-config"
+  count  = local.firewall_config_enabled ? 1 : 0
+
+  aliases       = var.firewall_config.aliases
+  routes        = var.firewall_config.routes
+  rules         = var.firewall_config.rules
+  outbound_nat  = var.firewall_config.outbound_nat
+  port_forwards = var.firewall_config.port_forwards
+
+  depends_on = [terraform_data.firewall_api_bootstrap, module.connectivity]
 }
 
 ############
@@ -131,7 +151,8 @@ module "landing_zone" {
   labels                = var.labels
   role_assignments      = each.value.role_assignments
   network_prefix_length = each.value.network_prefix_length
-  custom_roles          = each.value.custom_roles
-  observability         = each.value.observability
-  firewall_next_hop_ip  = var.connectivity != null && var.connectivity.firewall != null ? module.connectivity[0].firewall_next_hop_ip : null # if firewall is enabled, pass the next hop IP to the landing zones for route configuration
+  ipv4_nameservers     = try(module.connectivity[0].network_area_nameservers, null)
+  custom_roles         = each.value.custom_roles
+  observability        = each.value.observability
+  firewall_next_hop_ip = var.connectivity != null && var.connectivity.firewall != null ? module.connectivity[0].firewall_next_hop_ip : null # if firewall is enabled, pass the next hop IP to the landing zones for route configuration
 }
