@@ -4,7 +4,7 @@ terraform {
   required_providers {
     stackit = {
       source  = "stackitcloud/stackit"
-      version = "0.104.0"
+      version = "0.106.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -24,7 +24,7 @@ terraform {
     }
     grafana = {
       source  = "grafana/grafana"
-      version = "4.41.0"
+      version = "4.42.0"
     }
     opnsense = {
       source  = "browningluke/opnsense"
