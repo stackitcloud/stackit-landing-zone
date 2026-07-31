@@ -182,6 +182,20 @@ variable "observability" {
   default     = null
 }
 
+variable "audit_logs" {
+  type = object({
+    retention_days = optional(number, 180)
+    acl            = optional(list(string), ["0.0.0.0/0"])
+    s3_object_lock = optional(bool, true)
+    link_scopes = optional(list(object({
+      resource_type = string # organization, folder, project
+      resource_id   = string
+    })), null)
+  })
+  description = "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link_scopes defaults to a single organization-wide link. retention_days applies to both the Logs instance and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock is off by default and turns on GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment."
+  default     = null
+}
+
 variable "federated_identity_providers" {
   type = list(object({
     name   = string

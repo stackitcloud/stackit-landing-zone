@@ -7,7 +7,7 @@ resource "stackit_service_account" "automation" {
   name       = substr(replace("${var.naming_pattern}-automation", "-", ""), 0, 20)
 }
 
-resource "time_rotating" "key_rotate" {
+resource "time_rotating" "automation" {
   rotation_days = 60
 }
 
@@ -17,7 +17,7 @@ resource "stackit_service_account_key" "automation" {
   ttl_days              = 90
 
   rotate_when_changed = {
-    rotation = time_rotating.key_rotate.id
+    rotation = time_rotating.automation.id
   }
 }
 
