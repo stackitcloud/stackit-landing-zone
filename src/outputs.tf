@@ -22,6 +22,21 @@ output "management_bucket_name_tfstate" {
   value       = module.management.bucket_name_tfstate
 }
 
+output "audit_logs_instance_id" {
+  description = "The ID of the Logs instance receiving audit logs. Null when audit_logs is not configured."
+  value       = module.management.audit_logs_instance_id
+}
+
+output "audit_logs_datasource_url" {
+  description = "Datasource URL of the audit Logs instance, usable as a Grafana datasource."
+  value       = module.management.audit_logs_datasource_url
+}
+
+output "audit_telemetry_router_id" {
+  description = "The ID of the Telemetry Router collecting audit logs."
+  value       = module.management.audit_telemetry_router_id
+}
+
 output "connectivity_network_area_id" {
   description = "The network area ID created by the regional module."
   value       = try(module.connectivity[0].network_area_id, null)

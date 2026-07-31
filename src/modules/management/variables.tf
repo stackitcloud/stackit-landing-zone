@@ -66,3 +66,30 @@ variable "federated_identity_providers" {
   description = "List of federated identity providers to configure for the management service account."
   default     = []
 }
+
+variable "audit_logs" {
+  type = object({
+    retention_days = optional(number, 30)
+    acl            = optional(list(string), null)
+    s3_object_lock = optional(bool, true)
+    link_scopes = optional(list(object({
+      resource_type = string # organization, folder, project
+      resource_id   = string
+    })), null)
+  })
+  description = "Audit logs configuration. The router forwards to two destinations: OTLP into the Logs instance for querying, and S3 into the audit bucket for long-term archive. retention_days applies to both, driving the Logs instance retention and, when s3_object_lock is enabled, the archive bucket's default retention. link_scopes defaults to a single organization-wide link; set it to attach individual folders or projects instead."
+  default     = null
+
+  validation {
+    condition = alltrue([
+      for scope in try(var.audit_logs.link_scopes, []) == null ? [] : try(var.audit_logs.link_scopes, []) :
+      contains(["organization", "folder", "project"], scope.resource_type)
+    ])
+    error_message = "audit_logs.link_scopes[*].resource_type must be one of: organization, folder, project."
+  }
+
+  validation {
+    condition     = try(!var.audit_logs.s3_object_lock || (var.audit_logs.retention_days >= 1 && var.audit_logs.retention_days <= 365), true)
+    error_message = "audit_logs.retention_days must be between 1 and 365 when s3_object_lock is enabled, since that is the STACKIT object storage maximum."
+  }
+}

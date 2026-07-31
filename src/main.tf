@@ -28,6 +28,7 @@ module "management" {
   organization_id              = var.organization_id
   labels                       = var.labels
   observability                = var.observability
+  audit_logs                   = var.audit_logs
   federated_identity_providers = var.federated_identity_providers
 }
 
