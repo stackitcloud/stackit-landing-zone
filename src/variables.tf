@@ -184,7 +184,7 @@ variable "observability" {
 
 variable "audit_logs" {
   type = object({
-    retention_days = optional(number, 30)
+    retention_days = optional(number, 180)
     acl            = optional(list(string), ["0.0.0.0/0"])
     s3_object_lock = optional(bool, true)
     link_scopes = optional(list(object({

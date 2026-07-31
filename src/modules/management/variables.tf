@@ -69,7 +69,7 @@ variable "federated_identity_providers" {
 
 variable "audit_logs" {
   type = object({
-    retention_days = optional(number, 30)
+    retention_days = optional(number, 180)
     acl            = optional(list(string), null)
     s3_object_lock = optional(bool, true)
     link_scopes = optional(list(object({

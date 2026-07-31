@@ -38,7 +38,7 @@ labels = {
 # # Route organization-wide audit logs into a Logs instance in the management project.
 # # Omit link_scopes for a single organization-wide link, or list folders/projects explicitly.
 # audit_logs = {
-#   retention_days = 30
+#   retention_days = 180
 # }
 
 # # Federated identity providers for the management service account (e.g. GitHub Actions OIDC)
