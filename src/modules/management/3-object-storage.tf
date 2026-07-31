@@ -1,13 +1,3 @@
-####################
-## OBJECT STORAGE ##
-####################
-
-resource "stackit_objectstorage_compliance_lock" "this" {
-  count = try(var.audit_logs.s3_object_lock, false) ? 1 : 0
-
-  project_id = stackit_resourcemanager_project.this.project_id
-}
-
 #############
 ## BUCKETS ##
 #############
@@ -26,11 +16,22 @@ resource "stackit_objectstorage_bucket" "tfstate" {
   ]
 }
 
+resource "stackit_objectstorage_compliance_lock" "this" {
+  count = try(var.audit_logs.s3_object_lock, false) ? 1 : 0
+
+  project_id = stackit_resourcemanager_project.this.project_id
+
+  depends_on = [
+    stackit_objectstorage_bucket.default,
+    stackit_objectstorage_bucket.tfstate,
+  ]
+}
+
 resource "stackit_objectstorage_bucket" "audit_logs" {
   name       = "${var.naming_pattern}-audit-logs"
   project_id = stackit_resourcemanager_project.this.project_id
 
-  object_lock = local.audit_object_lock ? true : null
+  object_lock = try(var.audit_logs.s3_object_lock, false) ? true : null
 
   depends_on = [
     stackit_objectstorage_bucket.tfstate,       # "project.create_conflict","msg":"Two concurrent calls try to create the same project"}]}
@@ -39,7 +40,7 @@ resource "stackit_objectstorage_bucket" "audit_logs" {
 }
 
 resource "stackit_objectstorage_default_retention" "audit_logs" {
-  count = local.audit_object_lock ? 1 : 0
+  count = try(var.audit_logs.s3_object_lock, false) ? 1 : 0
 
   project_id  = stackit_resourcemanager_project.this.project_id
   bucket_name = stackit_objectstorage_bucket.audit_logs.name

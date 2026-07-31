@@ -55,7 +55,7 @@ resource "stackit_telemetryrouter_destination" "audit_logs" {
   config = {
     config_type = "OpenTelemetry"
     opentelemetry = {
-      uri          = stackit_logs_instance.audit[0].ingest_otlp_url
+      uri          = "https://${stackit_logs_instance.audit[0].ingest_otlp_url}"
       bearer_token = stackit_logs_access_token.audit_write[0].access_token
     }
   }
@@ -128,9 +128,10 @@ resource "vault_kv_secret_v2" "audit_logs" {
   delete_all_versions = true
   data_json = jsonencode(
     {
-      INGEST_OTLP_URL = stackit_logs_instance.audit[0].ingest_otlp_url
-      QUERY_URL       = stackit_logs_instance.audit[0].query_url
-      DATASOURCE_URL  = stackit_logs_instance.audit[0].datasource_url
+      # The API returns these without a scheme; store them ready to use.
+      INGEST_OTLP_URL = "https://${stackit_logs_instance.audit[0].ingest_otlp_url}"
+      QUERY_URL       = "https://${stackit_logs_instance.audit[0].query_url}"
+      DATASOURCE_URL  = "https://${stackit_logs_instance.audit[0].datasource_url}"
       WRITE_TOKEN     = stackit_logs_access_token.audit_write[0].access_token
       READ_TOKEN      = stackit_logs_access_token.audit_read[0].access_token
       ROUTER_TOKEN    = stackit_telemetryrouter_access_token.audit_link[0].access_token
