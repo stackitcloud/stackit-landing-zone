@@ -51,6 +51,12 @@ module "connectivity" {
   firewall            = var.connectivity.firewall
   vpn                 = var.connectivity.vpn
   vpn_pre_shared_keys = var.vpn_pre_shared_keys
+
+  # Only read when connectivity.firewall.ha is set, to log into both appliances and push
+  # their node-local CARP settings. Unset endpoint means the primary's public IP.
+  firewall_admin_endpoint = try(var.firewall_config.endpoint, null)
+  firewall_admin_username = var.firewall_admin_username
+  firewall_admin_password = var.firewall_admin_password
 }
 
 #####################
@@ -61,11 +67,18 @@ module "firewall_config" {
   source = "./modules/firewall-config"
   count  = local.firewall_config_enabled ? 1 : 0
 
-  aliases       = var.firewall_config.aliases
+  aliases       = merge(var.firewall_config.aliases, local.firewall_ha_aliases)
   routes        = var.firewall_config.routes
-  rules         = var.firewall_config.rules
+  rules         = merge(var.firewall_config.rules, local.firewall_ha_rules)
   outbound_nat  = var.firewall_config.outbound_nat
   port_forwards = var.firewall_config.port_forwards
+
+  # OPNsense never replicates API-written config on its own, so the policy is pushed to
+  # the peer explicitly after every change.
+  endpoint       = local.firewall_endpoint
+  ha_sync        = local.firewall_ha_enabled
+  admin_username = var.firewall_admin_username
+  admin_password = var.firewall_admin_password
 
   depends_on = [terraform_data.firewall_api_bootstrap, module.connectivity]
 }
@@ -152,8 +165,8 @@ module "landing_zone" {
   labels                = var.labels
   role_assignments      = each.value.role_assignments
   network_prefix_length = each.value.network_prefix_length
-  ipv4_nameservers     = try(module.connectivity[0].network_area_nameservers, null)
-  custom_roles         = each.value.custom_roles
-  observability        = each.value.observability
-  firewall_next_hop_ip = var.connectivity != null && var.connectivity.firewall != null ? module.connectivity[0].firewall_next_hop_ip : null # if firewall is enabled, pass the next hop IP to the landing zones for route configuration
+  ipv4_nameservers      = try(module.connectivity[0].network_area_nameservers, null)
+  custom_roles          = each.value.custom_roles
+  observability         = each.value.observability
+  firewall_next_hop_ip  = var.connectivity != null && var.connectivity.firewall != null ? module.connectivity[0].firewall_next_hop_ip : null # if firewall is enabled, pass the next hop IP to the landing zones for route configuration
 }

@@ -11,6 +11,7 @@ This guide walks you through deploying the STACKIT Landing Zone from scratch.
 - **Owner permissions** on the STACKIT organization
 - **STACKIT CLI** installed ([Installation guide](https://github.com/stackitcloud/stackit-cli/blob/main/INSTALLATION.md))
 - **OpenTofu** (>= 1.10) or **Terraform** (>= 1.10) installed
+- **`bash`, `curl` and `jq`** on the machine running OpenTofu, for the Hub-Spoke + Firewall flavour only. The API key bootstrap and the HA configuration are shell provisioners; `jq` is used by the HA scripts
 
 > [!NOTE]
 > This guide uses `tofu` commands throughout. If you are using Terraform, replace `tofu` with `terraform` — all commands work identically.
@@ -27,7 +28,7 @@ Three ready-to-use configurations are provided in `src/config/`:
 
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
 
-The firewall flavour takes one extra step: the appliance boots unconfigured and its policy is pushed in a second apply, from the `firewall_config` block that ships commented out in the same `.tfvars` file. Until then it filters nothing and its web GUI is reachable from the internet — see [Configure OPNsense firewall](#configure-opnsense-firewall).
+The firewall flavour takes one extra step: the appliance boots unconfigured and its policy is pushed in a second apply, from the `firewall_config` block that ships commented out in the same `.tfvars` file. Until then it filters nothing and its web GUI is reachable from the internet — see [Configure OPNsense firewall](#configure-opnsense-firewall). It deploys a single appliance by default, which is the default route of every corporate landing zone and therefore a single point of failure; the commented `connectivity.firewall.ha` block turns it into an active/passive CARP pair — see [Make the firewall highly available](#make-the-firewall-highly-available).
 
 Both hub-spoke flavours can additionally terminate a site-to-site IPsec VPN in the hub. It is disabled by default — see the commented `connectivity.vpn` block in the `.tfvars` file and [Site-to-Site VPN](architecture.md#site-to-site-vpn-optional). If you deploy the firewall flavour, read [what traffic the firewall actually sees](architecture.md#what-goes-through-the-firewall) before relying on it for VPN inspection.
 
@@ -308,6 +309,28 @@ tofu apply -var firewall_bootstrap=true   # mints the new key
 tofu apply -var firewall_bootstrap=true   # writes it to the Secrets Manager
 rm src/.firewall-api-credentials.json
 ```
+
+### Make the firewall highly available
+
+A single appliance is the default route of every corporate landing zone, so losing it takes the platform offline. Uncomment the `ha` block in `connectivity.firewall` to deploy a second appliance in another availability zone as an active/passive CARP pair:
+
+```hcl
+ha = {
+  backup_zone = "eu01-1" # must differ from firewall.zone
+}
+```
+
+`tofu apply` then does the rest. It deploys the backup, logs into both appliances to write their node-local CARP settings (backup first, primary last, so the primary wins the election), and adds the `fw_cluster` alias plus the `allow-fw-carp` and `allow-fw-pfsync` rules to the policy — those are injected automatically, there is nothing to add to the `.tfvars`.
+
+Two consequences are worth knowing before you enable it:
+
+- **The landing zone routes change.** `firewall_next_hop_ip` becomes the CARP virtual IP (`.6` of `lan_network_range`) instead of the primary's LAN address, so every corporate landing zone gets a rewritten default route in the same apply. Expect a short interruption while those routes are updated.
+- **The public IP does not fail over.** STACKIT binds a public IP 1:1 to a NIC. Egress from the backup is translated to the backup's own address, and inbound port forwards stay on the primary until you repoint DNS at `tofu output connectivity_firewall_backup_public_ip`. Long-lived outbound connections break for the duration of an outage; new ones recover in seconds.
+
+What exactly fails over, and what was measured, is in [High availability](architecture.md#high-availability-optional).
+
+> [!IMPORTANT]
+> The backup appliance boots with the same image default password as the primary and its web GUI answers on its own public IP until the policy is pushed. The lockout warning above applies to both nodes.
 
 ### Kubernetes: DNS automation for Gateway API resources
 

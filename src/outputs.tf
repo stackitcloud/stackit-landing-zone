@@ -48,8 +48,18 @@ output "connectivity_project_id" {
 }
 
 output "connectivity_firewall_public_ip" {
-  description = "The public IP of the firewall."
+  description = "The public IP of the firewall (primary node)."
   value       = try(module.connectivity[0].firewall_public_ip, null)
+}
+
+output "connectivity_firewall_backup_public_ip" {
+  description = "The public IP of the backup firewall. Null without connectivity.firewall.ha. It does not take over the primary's address on failover; egress from the backup is translated to this one."
+  value       = try(module.connectivity[0].firewall_backup_public_ip, null)
+}
+
+output "connectivity_firewall_next_hop_ip" {
+  description = "The next hop the corporate landing zone routes point at. The CARP LAN VIP under HA, otherwise the firewall LAN IP."
+  value       = try(module.connectivity[0].firewall_next_hop_ip, null)
 }
 
 output "connectivity_vpn_gateway_id" {

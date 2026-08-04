@@ -111,6 +111,29 @@ Both interfaces are DHCP clients and pick up the fixed addresses STACKIT assigns
 > [!WARNING]
 > After the first apply the web GUI answers on the public IP to the whole internet, and it still carries the `root` password shipped in the image, which is identical on every copy. Port 443 is open, 80 and 22 are not, and there is no security group in front of the WAN interface. Pushing the policy closes it, so do not leave a deployment sitting between the two applies — see [Configure OPNsense firewall](getting-started.md#configure-opnsense-firewall). Binding the GUI to the LAN interface only (**System → Settings → Administration → Listen Interfaces**) is the alternative that does not depend on the ruleset.
 
+#### High availability (optional)
+
+A single appliance is a single point of failure for every corporate landing zone: it is their default route. Setting `connectivity.firewall.ha` turns it into an active/passive CARP pair.
+
+| | Primary | Backup |
+|---|---|---|
+| Availability zone | `firewall.zone` | `firewall.ha.backup_zone` (must differ) |
+| LAN address | `.4` of `lan_network_range` | `.5` |
+| WAN address | `.4` of `wan_network_range` | `.5` |
+| Public IP | own, static | own, static |
+| CARP advskew | 0 (wins the election) | 100 |
+
+A CARP virtual IP on the LAN — `.6` of `lan_network_range` by default — replaces the primary's LAN address in the `firewall_next_hop_ip` output, so the landing zone routes point at the VIP instead of at a node. Failover moves the VIP to the surviving node in about a second and the routes never change.
+
+**CARP runs in unicast mode** (OPNsense >= 24.7). Not a preference: the STACKIT fabric delivers traffic *to* the CARP virtual MAC but drops advertisements sourced *from* it, so multicast CARP ends in a split brain. The module refuses to configure a node whose OPNsense has no unicast `peer` field.
+
+Two things are pushed outside the OPNsense provider, because it only ever talks to the primary:
+
+- `modules/connectivity/scripts/configure-ha.sh` writes the node-local half into each appliance during apply: the CARP VIP, `advskew`, the pfsync peer, and the XMLRPC sync target. These are exactly the settings the config sync does not replicate. It authenticates with the appliance login, so it works on the backup, which has no API key and never needs one.
+- `modules/firewall-config/scripts/sync-ha-peer.sh` replicates the policy to the backup after every change. OPNsense's XMLRPC sync only fires on GUI saves, never on API writes, so without this the backup runs an empty ruleset and black-holes traffic the moment it becomes CARP master.
+
+The `fw_cluster` alias and the `allow-fw-carp` / `allow-fw-pfsync` rules that let the two nodes talk are injected into `firewall_config` automatically when HA is on, sequenced at 90 and 91 — ahead of every rule the example policy ships. They are not in the `.tfvars` because a `block-lz-to-lz` rule placed above them silently kills the election and the state sync.
+
 ### Landing Zone
 
 Instantiated once per workload/environment via `for_each` over the `landing_zones` variable. Each instance creates a fully isolated STACKIT project containing:

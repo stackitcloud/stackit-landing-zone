@@ -1,0 +1,5 @@
+* text=auto
+
+# These run through bash, including from a local-exec provisioner on Windows checkouts.
+# CRLF makes them fail with a syntax error on the first line.
+*.sh text eol=lf
