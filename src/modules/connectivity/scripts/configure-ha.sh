@@ -144,6 +144,11 @@ if [[ "$ROLE" == "primary" ]]; then
   want[synchronizetoip]="${SYNC_TO_ENDPOINT:?primary role needs SYNC_TO_ENDPOINT}"
   want[username]="$USERNAME"
   want[password]="$PASSWORD"
+  # Exactly the sections firewall-config manages. An empty syncitems does NOT mean
+  # "sync everything" on OPNsense 26.1: measured 2026-08-04, the XMLRPC sync then
+  # replicates nothing at all while still answering {"status":"ok"} — the backup would
+  # sit without a policy and black-hole traffic the moment it becomes MASTER.
+  want[syncitems]="aliases,categories,rules,nat,staticroutes"
 fi
 
 hasync_payload="{}"
@@ -155,10 +160,10 @@ for key in "${!want[@]}"; do
   fi
 done
 
-# syncitems stays at the OPNsense default (everything). The one item that must not
-# replicate — this node's VIP with its own advskew and unicast peer — is excluded via
-# nosync on the VIP itself. The sync only ever runs when firewall-config's ha_sync
-# trigger fires it; OPNsense never fires it on its own for API-written config.
+# The one item that must never replicate — this node's VIP with its own advskew and
+# unicast peer — is not in syncitems, and additionally carries nosync on the VIP
+# itself. The sync only ever runs when firewall-config's ha_sync trigger fires it;
+# OPNsense never fires it on its own for API-written config.
 
 result="$(api /api/core/hasync/set -d "$(jq -n --argjson h "$hasync_payload" '{hasync: $h}')")"
 if [[ "$(jqr '.result' <<<"$result")" == "failed" ]]; then
