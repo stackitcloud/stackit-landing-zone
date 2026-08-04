@@ -23,14 +23,52 @@ variable "firewall" {
     wan_network_range        = string
     lan_ip                   = optional(string, null)
     wan_ip                   = optional(string, null)
+
+    # Active/passive HA. Adds a second appliance in backup_zone plus a CARP virtual IP on
+    # the LAN that becomes the platform next hop. CARP runs in unicast mode (OPNsense
+    # >= 24.7) because the STACKIT fabric does not deliver advertisements sourced from
+    # the shared virtual MAC — multicast CARP splits the brain (measured 2026-08-02).
+    # Node-local settings are pushed by scripts/configure-ha.sh during apply.
+    ha = optional(object({
+      backup_zone   = string
+      backup_name   = optional(string, null) # defaults to "<name>-backup"
+      backup_lan_ip = optional(string, null) # defaults to the 6th address of lan_network_range
+      backup_wan_ip = optional(string, null) # defaults to the 6th address of wan_network_range
+      lan_vip       = optional(string, null) # defaults to the 7th address of lan_network_range
+      vhid          = optional(number, 1)
+    }), null)
   })
-  description = "Firewall configuration. Set to null to skip firewall deployment (network area and routing are still created). lan_network_range and wan_network_range must be CIDRs within the network area range. lan_ip and wan_ip are optional; when omitted, the 5th address of the respective prefix is used (STACKIT reserves the first usable address as the gateway)."
+  description = "Firewall configuration. Set to null to skip firewall deployment (network area and routing are still created). lan_network_range and wan_network_range must be CIDRs within the network area range. lan_ip and wan_ip are optional; when omitted, the 5th address of the respective prefix is used (STACKIT reserves the first usable address as the gateway). Set ha for an active/passive CARP pair; the LAN VIP then replaces the primary's LAN IP as the platform next hop."
   default     = null
 
   validation {
     condition     = var.firewall == null || can(regex("^[a-z][0-9]+\\.[0-9]+$", var.firewall.flavor))
     error_message = "firewall.flavor must match STACKIT machine type format (e.g. c1.2). Validate available flavors with: stackit server machine-type list"
   }
+
+  validation {
+    condition     = var.firewall == null || try(var.firewall.ha, null) == null || var.firewall.ha.backup_zone != var.firewall.zone
+    error_message = "firewall.ha.backup_zone must differ from firewall.zone — a backup appliance in the same availability zone shares its failure domain."
+  }
+}
+
+variable "firewall_admin_endpoint" {
+  type        = string
+  description = "Base URL the HA configuration logs into the primary appliance with. Defaults to the primary's public IP, which is the only address reachable from outside the network area. Set it to the LAN address when OpenTofu runs inside the area, matching firewall_config.endpoint. The backup node is always configured over its own public IP: before HA exists it has no other reachable address."
+  default     = null
+}
+
+variable "firewall_admin_username" {
+  type        = string
+  description = "Appliance login used to push the node-local HA settings. The STACKIT OPNsense image ships with root. Only used when firewall.ha is set."
+  default     = "root"
+}
+
+variable "firewall_admin_password" {
+  type        = string
+  description = "Password of firewall_admin_username. Defaults to the password baked into the STACKIT OPNsense image. Only used when firewall.ha is set."
+  default     = "STACKIT123!"
+  sensitive   = true
 }
 
 variable "labels" {

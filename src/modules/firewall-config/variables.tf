@@ -4,6 +4,31 @@ variable "category_name" {
   default     = "landing-zone"
 }
 
+variable "endpoint" {
+  type        = string
+  description = "Base URL of the OPNsense API on the primary node, e.g. https://10.0.2.4. Only used by the HA sync trigger; the provider itself is configured in the root module."
+  default     = null
+}
+
+variable "ha_sync" {
+  type        = bool
+  description = "Push this policy to the HA peer after every change (POST /api/core/hasync_status/restart_all on the primary). Required for the active/passive CARP pair: OPNsense's own config sync never fires on API writes, so without it the backup runs an empty ruleset. Enabled automatically when connectivity.firewall.ha is set."
+  default     = false
+}
+
+variable "admin_username" {
+  type        = string
+  description = "Appliance login used by the HA sync trigger. Only used when ha_sync is set."
+  default     = "root"
+}
+
+variable "admin_password" {
+  type        = string
+  description = "Password of admin_username, used by the HA sync trigger. Defaults to the password baked into the STACKIT OPNsense image. Only used when ha_sync is set."
+  default     = "STACKIT123!"
+  sensitive   = true
+}
+
 variable "aliases" {
   type = map(object({
     type        = optional(string, "network")

@@ -110,4 +110,54 @@ run "hub_spoke_firewall_plan" {
     condition     = output.landing_zone_projects["test-public"].landing_zone_type == "public"
     error_message = "test-public must be a public landing zone."
   }
+
+  assert {
+    condition     = output.connectivity_firewall_next_hop_ip == "10.0.0.4"
+    error_message = "Without HA the landing zones must be routed at the primary's LAN IP."
+  }
+
+  assert {
+    condition     = output.connectivity_firewall_backup_public_ip == null
+    error_message = "Without HA there must be no backup appliance."
+  }
+}
+
+# Same flavour with the active/passive CARP pair. The VIP and both node addresses are
+# derived from lan_network_range, so they are known at plan time even though the
+# appliances are not.
+run "hub_spoke_firewall_ha_plan" {
+  command = plan
+
+  variables {
+    connectivity = {
+      dns_zones = {
+        "test-corp" = {
+          dns_name = "test-corp.stackit.run"
+        }
+      }
+      network_area = {
+        ranges                = ["10.0.0.0/16"]
+        transfer_network      = "10.255.0.0/24"
+        min_prefix_length     = 24
+        max_prefix_length     = 28
+        default_prefix_length = 25
+      }
+      firewall = {
+        zone              = "eu01-m"
+        flavor            = "c1.2"
+        lan_network_range = "10.0.0.0/28"
+        wan_network_range = "10.0.0.16/28"
+        name              = "opnsense-26.1"
+
+        ha = {
+          backup_zone = "eu01-1"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = output.connectivity_firewall_next_hop_ip == "10.0.0.6"
+    error_message = "Under HA the landing zones must be routed at the CARP LAN VIP, not at a node address."
+  }
 }

@@ -95,3 +95,65 @@ ephemeral "vault_kv_secret_v2" "firewall_api" {
   mount = module.management.secretsmanager_instance_id
   name  = "firewall_api_${replace(var.company_code, "-", "_")}_pltfm_hub_prod"
 }
+
+#################################
+## FIREWALL  HIGH AVAILABILITY ##
+#################################
+
+# CARP and pfsync between the two appliances have to pass ahead of every block rule, and
+# the alias content is the pair's LAN addresses, which only the connectivity module knows.
+# Neither can come from the .tfvars, so both are injected here whenever HA is on. This is
+# not a convenience: block-lz-to-lz (any protocol, network_area to network_area) silently
+# kills the CARP election and the state sync, and a split cluster black-holes traffic.
+#
+# Injected last, so these three keys win over an entry of the same name in the .tfvars.
+locals {
+    firewall_ha_enabled = try(var.connectivity.firewall.ha, null) != null
+
+    firewall_ha_aliases = local.firewall_ha_enabled ? {
+      fw_cluster = {
+        type        = "host"
+        enabled     = true
+        description = "LAN addresses of the firewall HA pair"
+        content     = try(module.connectivity[0].firewall_cluster_lan_ips, [])
+        update_freq = null
+        stats       = false
+      }
+    } : {}
+
+    firewall_ha_rule_defaults = {
+      sequence           = 100
+      enabled            = true
+      action             = "pass"
+      direction          = "in"
+      interfaces         = ["lan"]
+      protocol           = "any"
+      ip_protocol        = "inet"
+      quick              = true
+      source_net         = "fw_cluster"
+      source_port        = null
+      source_invert      = false
+      destination_net    = "fw_cluster"
+      destination_port   = null
+      destination_invert = false
+      log                = false
+      description        = null
+    }
+
+    # 90/91 puts them ahead of every landing zone rule, which start at 100 — block-lz-to-lz
+    # in particular. They sit behind the two floating GUI rules at 10/20, which match TCP on
+    # port 443 only and can therefore never swallow CARP or pfsync.
+    firewall_ha_rules = local.firewall_ha_enabled ? {
+      allow-fw-carp = merge(local.firewall_ha_rule_defaults, {
+        sequence    = 90
+        protocol    = "CARP"
+        description = "Unicast CARP advertisements between the HA pair"
+      })
+
+      allow-fw-pfsync = merge(local.firewall_ha_rule_defaults, {
+        sequence    = 91
+        protocol    = "PFSYNC"
+        description = "pfsync state replication between the HA pair"
+      })
+    } : {}
+}
