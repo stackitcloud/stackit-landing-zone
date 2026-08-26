@@ -276,6 +276,19 @@ variable "connectivity" {
       wan_network_range        = string
       lan_ip                   = optional(string, null)
       wan_ip                   = optional(string, null)
+
+      # Active/passive CARP pair. Adds a second appliance in backup_zone and a CARP
+      # virtual IP on the LAN that replaces the primary's LAN IP as the next hop the
+      # landing zone routes point at, so a node failure never touches the routes.
+      # See docs/architecture.md#high-availability-optional.
+      ha = optional(object({
+        backup_zone   = string
+        backup_name   = optional(string, null) # defaults to "<name>-backup"
+        backup_lan_ip = optional(string, null) # defaults to the 6th address of lan_network_range
+        backup_wan_ip = optional(string, null) # defaults to the 6th address of wan_network_range
+        lan_vip       = optional(string, null) # defaults to the 7th address of lan_network_range
+        vhid          = optional(number, 1)
+      }), null)
     }), null)
     vpn = optional(object({
       display_name = optional(string, null)

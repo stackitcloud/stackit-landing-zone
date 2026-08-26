@@ -9,13 +9,23 @@ output "dns_zone_ids" {
 }
 
 output "firewall_next_hop_ip" {
-  description = "The IP address to be used as next hop for the default route in the landing zones (firewall LAN IP)."
-  value       = local.firewall_enabled ? stackit_network_interface.lan[0].ipv4 : null
+  description = "The IP address to be used as next hop for the default route in the landing zones. The CARP LAN VIP under HA, otherwise the firewall LAN IP."
+  value       = local.firewall_ha_enabled ? local.firewall_lan_vip : (local.firewall_enabled ? stackit_network_interface.lan[0].ipv4 : null)
 }
 
 output "firewall_public_ip" {
-  description = "The public IP address of the firewall WAN interface."
+  description = "The public IP address of the firewall WAN interface (primary node)."
   value       = local.firewall_enabled ? stackit_public_ip.wan-ip[0].ip : null
+}
+
+output "firewall_backup_public_ip" {
+  description = "The public IP address of the backup firewall's WAN interface. Null without HA."
+  value       = local.firewall_ha_enabled ? stackit_public_ip.wan-ip_backup[0].ip : null
+}
+
+output "firewall_cluster_lan_ips" {
+  description = "LAN addresses of the firewall HA pair, for the fw_cluster alias in the policy. Empty without HA."
+  value       = local.firewall_ha_enabled ? [local.firewall_lan_ip, local.firewall_backup_lan_ip] : []
 }
 
 output "network_area_id" {

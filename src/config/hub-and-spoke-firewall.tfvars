@@ -92,6 +92,19 @@ connectivity = {
     name              = "opnsense-26.1"
     lan_network_range = "10.0.2.0/28"
     wan_network_range = "10.0.2.16/28"
+
+    # Optional: active/passive CARP pair across availability zones. Uncomment to enable
+    #
+    # A second appliance is deployed in backup_zone. Node IPs default to .4/.5 of each
+    # range, the LAN VIP to .6 — the VIP replaces the primary's LAN IP as the next hop the
+    # landing zone routes point at, so a node failure never touches the routes (measured
+    # failover: about one second for new connections). The CARP shared secret is generated
+    # by the module, and the fw_cluster alias plus the CARP and pfsync rules are added to
+    # firewall_config automatically. See docs/architecture.md#high-availability-optional.
+    #
+    # ha = {
+    #   backup_zone = "eu01-1"
+    # }
   }
 
   # Optional: site-to-site IPsec VPN terminating in the hub. Uncomment to enable

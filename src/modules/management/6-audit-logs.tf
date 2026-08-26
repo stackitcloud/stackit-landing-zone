@@ -49,7 +49,7 @@ resource "stackit_telemetryrouter_destination" "audit_logs" {
 
   project_id   = stackit_resourcemanager_project.this.project_id
   instance_id  = stackit_telemetryrouter_instance.audit[0].instance_id
-  display_name = "${var.naming_pattern}-audit-logs"
+  display_name = substr("${var.naming_pattern}-audit-logs", 0, 32) # API rejects display names longer than 32 characters
   description  = "Forwards the audit log stream into the Logs instance"
 
   config = {
@@ -66,7 +66,7 @@ resource "stackit_telemetryrouter_destination" "audit_archive" {
 
   project_id   = stackit_resourcemanager_project.this.project_id
   instance_id  = stackit_telemetryrouter_instance.audit[0].instance_id
-  display_name = "${var.naming_pattern}-audit-archive"
+  display_name = substr("${var.naming_pattern}-archive", 0, 32) # API rejects display names longer than 32 characters
   description  = "Archives the audit log stream to object storage for long-term retention"
 
   config = {
