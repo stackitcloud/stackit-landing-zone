@@ -1,41 +1,118 @@
-name: tflint
+name: Terraform Quality
 
 on:
   pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/tflint.yml"
   push:
     branches:
       - main
+    paths:
+      - "src/**"
+      - ".github/workflows/tflint.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tflint:
+  format:
+    name: Format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: 1.9.8
+          tofu_version: "1.12.5"
+
+      - name: Check formatting
+        run: tofu -chdir=src fmt -check -diff -recursive
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.12.5"
+
+      - name: Initialize and validate Terraform configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t terraform_directories < <(
+            find src -type f -name '*.tf' -not -path '*/.terraform/*' -printf '%h\n' | sort -u
+          )
+
+          for directory in "${terraform_directories[@]}"; do
+            echo "Validating $directory"
+            tofu -chdir="$directory" init -backend=false -input=false -no-color
+            tofu -chdir="$directory" validate -no-color
+          done
+
+  test:
+    name: Configuration Tests
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    timeout-minutes: 30
+    env:
+      STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.12.5"
+
+      - name: Configure STACKIT credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$STACKIT_SERVICE_ACCOUNT_KEY"
+          install -d -m 700 "$HOME/.stackit"
+          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$HOME/.stackit/credentials.json"
+          chmod 600 "$HOME/.stackit/credentials.json"
+
+      - name: Initialize test configuration
+        run: tofu -chdir=src init -backend=false -input=false -no-color
+
+      - name: Run configuration tests
+        run: tofu -chdir=src test -no-color
+
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v4
         with:
-          tflint_version: latest
+          tflint_version: v0.60.0
 
       - name: Show version
         run: tflint --version
 
       - name: Init TFLint
-        run: tflint --init
+        run: tflint --chdir=src --init
 
       - name: Run TFLint (blocking except unused declarations)
-        run: tflint --recursive --format compact --minimum-failure-severity=warning --disable-rule=terraform_unused_declarations --disable-rule=terraform_required_providers
+        run: tflint --chdir=src --recursive --format compact --minimum-failure-severity=warning --disable-rule=terraform_unused_declarations --disable-rule=terraform_required_providers
 
       - name: Run TFLint (unused declarations report only)
         continue-on-error: true
-        run: tflint --recursive --format compact --only=terraform_unused_declarations
-
-      # runs 6h
-      # - name: Validate STACKIT flavors (live)
-      #   run: python3 docs/diagrams/scripts/validate_stackit_flavors.py
+        run: tflint --chdir=src --recursive --format compact --only=terraform_unused_declarations
