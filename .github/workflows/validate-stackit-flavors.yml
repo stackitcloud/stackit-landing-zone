@@ -1,0 +1,21 @@
+name: Validate STACKIT Flavors
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate live flavors
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configured flavors against STACKIT SKUs
+        run: python3 docs/diagrams/scripts/validate_stackit_flavors.py
