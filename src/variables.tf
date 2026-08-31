@@ -81,6 +81,7 @@ variable "platform_kubernetes" {
       enabled      = optional(bool, true)
       create_zones = optional(bool, true)
       zones        = optional(list(string), [])
+      gateway_api  = optional(bool, true)
     }), {})
     observability = optional(object({
       enabled   = optional(bool, true)

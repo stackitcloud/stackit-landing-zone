@@ -32,8 +32,9 @@ resource "stackit_ske_cluster" "this" {
       instance_id = var.observability.enabled ? stackit_observability_instance.this[0].instance_id : null
     }
     dns = {
-      enabled = var.dns.enabled && length(local.effective_dns_zones) > 0
-      zones   = local.effective_dns_zones
+      enabled     = var.dns.enabled && length(local.effective_dns_zones) > 0
+      zones       = local.effective_dns_zones
+      gateway_api = var.dns.gateway_api
     }
   }
 
