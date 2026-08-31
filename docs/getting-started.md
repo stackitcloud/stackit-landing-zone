@@ -334,41 +334,21 @@ What exactly fails over, and what was measured, is in [High availability](archit
 
 ### Kubernetes: DNS automation for Gateway API resources
 
-For Gateway API resources (for example Envoy Gateway with `Gateway` + `HTTPRoute`), use DNS records directly via `stackit_dns_record_set` until native provider support for `extensions.dns.gatewayApi` is available.
-
-For the existing sample content in this repository (`landing_zone_sample_gateway` + `landing_zone_sample_http_route` in `src/_landing-zone-kubernetes.tf`), the DNS record is created automatically based on the Envoy Gateway LoadBalancer endpoint discovered via `kubernetes_resources`.
-
-Implementation pattern:
+Native `extensions.dns.gateway_api` support is now available in the STACKIT Terraform provider (since v0.109.0). Enable it in your `platform_kubernetes` configuration:
 
 ```hcl
-# Discover Envoy-managed LoadBalancer service endpoint for each sample gateway
-data "kubernetes_resources" "landing_zone_sample_gateway_service" {
-  provider = kubernetes.platform
-
-  api_version    = "v1"
-  kind           = "Service"
-  namespace      = "envoy-gateway-system"
-  label_selector = "gateway.envoyproxy.io/owning-gateway-name=<gateway-name>,gateway.envoyproxy.io/owning-gateway-namespace=<namespace>"
-}
-
-# Create A or CNAME record depending on endpoint type
-resource "stackit_dns_record_set" "landing_zone_sample_gateway" {
-  project_id = module.landing_zone["corp-exmpl"].project_id
-  zone_id    = module.landing_zone["corp-exmpl"].dns_zone_id
-
-  name = "app.${module.landing_zone["corp-exmpl"].dns_zone_dns_name}"
-  type = local.endpoint.ip != null ? "A" : "CNAME"
-  ttl  = 60
-
-  records = [coalesce(local.endpoint.ip, local.endpoint.hostname)]
-
-  lifecycle {
-    precondition {
-      condition     = local.endpoint.ip != null || local.endpoint.hostname != null
-      error_message = "Gateway load balancer endpoint is not available yet for DNS record creation."
+platform_kubernetes = {
+  my-cluster = {
+    dns = {
+      enabled     = true
+      gateway_api = true
     }
+    # ...
   }
 }
 ```
 
-This ensures a stable, Terraform-managed DNS path without external scripts until provider-native `gatewayApi` DNS extension support is available.
+With `gateway_api = true`, the SKE DNS extension configures ExternalDNS to handle Gateway API resources (`Gateway`, `HTTPRoute`) automatically. You no longer need to manage `stackit_dns_record_set` records or discover LoadBalancer endpoints manually via `kubernetes_resources`.
+
+> [!NOTE]
+> The Gateway API CRDs must be installed in the cluster before enabling this option. ExternalDNS will be configured at the next cluster reconcile.
