@@ -74,6 +74,7 @@ variable "platform_kubernetes" {
     network = optional(object({
       sna_enabled               = optional(bool, false)
       sna_network_area_id       = optional(string, null)
+      network_area_key          = optional(string, "default")
       firewall_next_hop_ip      = optional(string, null)
       sna_network_prefix_length = optional(number, 24)
     }), {})
@@ -248,14 +249,17 @@ variable "rm_folders" {
 
 variable "connectivity" {
   type = object({
+    naming_pattern = optional(string, null)
     dns_zones = optional(map(object({
-      dns_name      = string
-      name          = optional(string, null)
-      contact_email = optional(string, null)
-      type          = optional(string, "primary")
-      acl           = optional(string, null)
-      description   = optional(string, null)
-      default_ttl   = optional(number, 3600)
+      dns_name         = string
+      network_area_key = optional(string, "default")
+      region           = optional(string, null)
+      name             = optional(string, null)
+      contact_email    = optional(string, null)
+      type             = optional(string, "primary")
+      acl              = optional(string, null)
+      description      = optional(string, null)
+      default_ttl      = optional(number, 3600)
     })), {})
     network_area = optional(object({
       ranges                = list(string)
@@ -266,6 +270,15 @@ variable "connectivity" {
       # Unset means the STACKIT resolvers of var.region, see modules/connectivity/1-network-area.tf.
       default_nameservers = optional(list(string), null)
     }), null)
+    network_areas = optional(map(object({
+      name                  = optional(string, null)
+      ranges                = list(string)
+      transfer_network      = string
+      min_prefix_length     = optional(number, 24)
+      max_prefix_length     = optional(number, 28)
+      default_prefix_length = optional(number, 28)
+      default_nameservers   = optional(list(string), null)
+    })), null)
     firewall = optional(object({
       zone                     = string
       flavor                   = string
@@ -290,6 +303,25 @@ variable "connectivity" {
         vhid          = optional(number, 1)
       }), null)
     }), null)
+    firewalls = optional(map(object({
+      zone                     = string
+      flavor                   = string
+      name                     = string
+      volume_performance_class = optional(string, "storage_premium_perf4")
+      volume_size              = optional(number, 16)
+      lan_network_range        = string
+      wan_network_range        = string
+      lan_ip                   = optional(string, null)
+      wan_ip                   = optional(string, null)
+      ha = optional(object({
+        backup_zone   = string
+        backup_name   = optional(string, null)
+        backup_lan_ip = optional(string, null)
+        backup_wan_ip = optional(string, null)
+        lan_vip       = optional(string, null)
+        vhid          = optional(number, 1)
+      }), null)
+    })), null)
     vpn = optional(object({
       display_name = optional(string, null)
       plan_id      = optional(string, "p100")
@@ -349,8 +381,34 @@ variable "connectivity" {
       })), {})
     }), null)
   })
-  description = "Connectivity configuration including DNS zones, network area, firewall, and VPN. Set firewall/network_area/vpn to null to skip deployment."
+  description = "Connectivity configuration including DNS zones, network areas, firewalls, and VPN. Use network_areas with descriptive keys that reflect any business, security, tenant, or regional boundary; network_area and firewall remain supported for existing single-area configurations. Use firewalls for per-area appliance settings."
   default     = null
+
+  validation {
+    condition     = var.connectivity == null || var.connectivity.network_area == null || var.connectivity.network_areas == null
+    error_message = "Set either connectivity.network_area or connectivity.network_areas, not both."
+  }
+
+  validation {
+    condition     = var.connectivity == null || var.connectivity.firewall == null || var.connectivity.firewalls == null
+    error_message = "Set either connectivity.firewall or connectivity.firewalls, not both."
+  }
+
+  validation {
+    condition     = var.connectivity == null || var.connectivity.firewalls == null || var.connectivity.network_areas == null || (length(setsubtract(toset(keys(var.connectivity.firewalls)), toset(keys(var.connectivity.network_areas)))) == 0 && length(setsubtract(toset(keys(var.connectivity.network_areas)), toset(keys(var.connectivity.firewalls)))) == 0)
+    error_message = "connectivity.firewalls keys must exactly match connectivity.network_areas keys."
+  }
+}
+
+variable "connectivity_regions" {
+  type        = map(any)
+  description = "Regional connectivity configuration for the statically supported eu01 and eu02 hubs. Set to null to use the single-region connectivity input."
+  default     = null
+
+  validation {
+    condition     = var.connectivity_regions == null || length(setsubtract(toset(keys(var.connectivity_regions)), toset(["eu01", "eu02"]))) == 0
+    error_message = "connectivity_regions supports only eu01 and eu02. Add a static provider alias and module instance before using another region."
+  }
 }
 
 variable "vpn_pre_shared_keys" {
@@ -439,7 +497,7 @@ variable "firewall_config" {
       description      = optional(string, null)
     })), {})
   })
-  description = "Policy pushed to the OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched."
+  description = "Policy pushed to one OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched."
   default     = null
 
   validation {
@@ -514,13 +572,16 @@ variable "landing_zones" {
     project_code = string
     owner_email  = string
     # Set to true for corporate landing zones (connected to network area), false for public
-    corporate = optional(bool, true)
-    env       = optional(string, "dev")
+    corporate        = optional(bool, true)
+    network_area_key = optional(string, "default")
+    region           = optional(string, null)
+    env              = optional(string, "dev")
     role_assignments = optional(list(object({
       role    = string
       subject = string
     })), [])
-    network_prefix_length = optional(number, null)
+    network_prefix_length  = optional(number, null)
+    secretsmanager_enabled = optional(bool, true)
     custom_roles = optional(list(object({
       name        = string
       description = string
@@ -533,8 +594,23 @@ variable "landing_zones" {
       name      = optional(string, null)
     }), {})
   }))
-  description = "Map of landing zones to create. Set corporate = true for network area connectivity, false for public."
+  description = "Map of landing zones to create. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions."
   default     = {}
+
+  validation {
+    condition = alltrue([
+      for landing_zone in values(var.landing_zones) : !landing_zone.corporate || (
+        var.connectivity_regions != null
+        ? landing_zone.region != null && contains(keys(var.connectivity_regions), landing_zone.region) && contains(keys(try(var.connectivity_regions[landing_zone.region].network_areas, {})), landing_zone.network_area_key)
+        : var.connectivity != null && (
+          var.connectivity.network_areas != null
+          ? contains(keys(var.connectivity.network_areas), landing_zone.network_area_key)
+          : var.connectivity.network_area != null && landing_zone.network_area_key == "default"
+        )
+      )
+    ])
+    error_message = "Every corporate landing zone must reference an existing network area; with connectivity_regions, also set its supported region."
+  }
 }
 
 variable "landing_zone_namespace_services" {

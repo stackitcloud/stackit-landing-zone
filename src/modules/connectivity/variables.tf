@@ -1,15 +1,21 @@
 variable "dns_zones" {
   type = map(object({
-    dns_name      = string
-    name          = optional(string, null)
-    contact_email = optional(string, null)
-    type          = optional(string, "primary")
-    acl           = optional(string, null)
-    description   = optional(string, null)
-    default_ttl   = optional(number, 3600)
+    dns_name         = string
+    network_area_key = optional(string, "default")
+    name             = optional(string, null)
+    contact_email    = optional(string, null)
+    type             = optional(string, "primary")
+    acl              = optional(string, null)
+    description      = optional(string, null)
+    default_ttl      = optional(number, 3600)
   }))
   description = "Map of DNS zone keys to DNS zone configuration. Name defaults to dns_name if not set."
   default     = {}
+
+  validation {
+    condition     = alltrue([for zone in values(var.dns_zones) : contains(keys(var.network_areas), zone.network_area_key)])
+    error_message = "Every dns_zones[*].network_area_key must identify an entry in network_areas."
+  }
 }
 
 variable "firewall" {
@@ -52,6 +58,35 @@ variable "firewall" {
   }
 }
 
+variable "firewalls" {
+  type = map(object({
+    zone                     = string
+    flavor                   = string
+    name                     = string
+    volume_performance_class = optional(string, "storage_premium_perf4")
+    volume_size              = optional(number, 16)
+    lan_network_range        = string
+    wan_network_range        = string
+    lan_ip                   = optional(string, null)
+    wan_ip                   = optional(string, null)
+    ha = optional(object({
+      backup_zone   = string
+      backup_name   = optional(string, null)
+      backup_lan_ip = optional(string, null)
+      backup_wan_ip = optional(string, null)
+      lan_vip       = optional(string, null)
+      vhid          = optional(number, 1)
+    }), null)
+  }))
+  description = "Map of network area keys to firewall configuration. Use this for multiple network areas; keys must match network_areas."
+  default     = null
+
+  validation {
+    condition     = var.firewalls == null || alltrue([for firewall in values(var.firewalls) : can(regex("^[a-z][0-9]+\\.[0-9]+$", firewall.flavor))])
+    error_message = "Every firewalls[*].flavor must match STACKIT machine type format (e.g. c1.2)."
+  }
+}
+
 variable "firewall_admin_endpoint" {
   type        = string
   description = "Base URL the HA configuration logs into the primary appliance with. Defaults to the primary's public IP, which is the only address reachable from outside the network area. Set it to the LAN address when OpenTofu runs inside the area, matching firewall_config.endpoint. The backup node is always configured over its own public IP: before HA exists it has no other reachable address."
@@ -82,23 +117,21 @@ variable "naming_pattern" {
   description = "Naming prefix for all resources in this module, e.g. \"myco-pltfm-hub-prod\"."
 }
 
-variable "network_area" {
-  type = object({
+variable "network_areas" {
+  type = map(object({
+    name                  = optional(string, null)
     ranges                = list(string)
     transfer_network      = string
-    min_prefix_length     = optional(number, 24)
     max_prefix_length     = optional(number, 28)
+    min_prefix_length     = optional(number, 24)
     default_prefix_length = optional(number, 28)
     default_nameservers   = optional(list(string), null)
-  })
-  description = "Network area configuration including IP ranges, transfer network, and prefix length settings. default_nameservers falls back to the STACKIT resolvers of var.region when unset."
+  }))
+  description = "Map of network area keys to configuration. Keys are stable references for DNS zones, landing zones, and outputs."
+  default     = {}
 }
 
-variable "network_area_name" {
-  type        = string
-  description = "Name of the network area to create for this region."
-  default     = null
-}
+# Removed variable "network_area_name" as it is no longer needed when using a list of network areas.
 
 variable "organization_id" {
   type        = string
