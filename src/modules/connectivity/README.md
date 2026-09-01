@@ -82,6 +82,6 @@ No modules.
 
 ## Multiple Network Areas
 
-Pass `network_areas` as a map with meaningful keys, such as `prod` and `nonprod`. A separate connectivity project, network area, routing table, and optional VPN gateway is created for every key. Reference a key from `dns_zones.<zone>.network_area_key`; consumers of this module receive maps keyed the same way.
+Pass `network_areas` as a map with meaningful keys, such as `finance`, `research`, or `tenant_a`. A separate connectivity project, network area, routing table, and optional VPN gateway is created for every key. Reference a key from `dns_zones.<zone>.network_area_key`; consumers of this module receive maps keyed the same way.
 
-The firewall input is intentionally single-area: its LAN and WAN CIDRs are global inputs. Do not combine it with more than one network area. The root module's `connectivity.network_area` input remains available for a legacy single-area setup and maps to the `default` key.
+Use `firewalls` to configure one appliance with independent LAN/WAN CIDRs per network area. The legacy `firewall` input remains available for a single-area setup and maps to every configured area. The root module's `connectivity.network_area` input remains available for a legacy single-area setup and maps to the `default` key.

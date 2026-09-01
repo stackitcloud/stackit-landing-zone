@@ -85,13 +85,21 @@ network_area = {
 
 Each key creates its own SNA, connectivity project, WAN routing table, and DNS defaults. Corporate landing zones select their domain with `network_area_key`; DNS zones use `dns_zones.<zone>.network_area_key`. Platform Kubernetes uses `platform_kubernetes.<key>.network.network_area_key`. Connectivity projects are labeled with the SNA ID and the corresponding key, and the `*_by_area` outputs use the same keys.
 
-For example, regulated workloads can use a dedicated `regulated` SNA while shared workloads use `shared`. The same model also separates tenants, business units, or connectivity zones. See [the complete multi-area configuration](../src/config/hub-and-spoke-multi-area.tfvars). [Getting Started](getting-started.md#deployment-flavours) describes all available scenarios.
+Use multiple SNAs only for a required private network boundary. Suitable reasons include regulatory separation, tenant isolation in a shared company-level STACKIT organization, and business units with independent ownership, address plans, or external connectivity requirements. See [the complete regulated/shared configuration](../src/config/hub-and-spoke-multi-area.tfvars), [the finance/research configuration](../src/config/hub-and-spoke-finance-research.tfvars), and [the tenant-isolation configuration](../src/config/hub-and-spoke-tenant-isolation.tfvars).
+
+#### Shared Services Across SNAs
+
+A STACKIT project can attach to exactly one SNA. A centrally operated private service, such as an internal Git platform, therefore cannot be directly attached to both a `prod` and a `nonprod` SNA. SNAs also have no shared private routing path.
+
+Choose multiple SNAs only when this constraint is intentional. Shared services must be public or SaaS services secured by IAM and network restrictions, be duplicated per SNA, or be connected through explicit external endpoints, such as site-to-site VPN over the internet. The latter adds operational and security responsibilities and must be designed and verified separately. A shared SNA with separate projects, IAM roles, and subnet allocations is usually the simpler choice when workloads need frequent private access to the same platform services.
 
 The legacy `connectivity.network_area` input remains supported for single-area deployments and maps to the `default` key. Existing scalar connectivity outputs continue to reference that legacy default area.
 
 #### Multi-Region Deployments
 
-The root module has one STACKIT provider default region, so every SNA in one execution is created in that region. For an active topology with one SNA per region, such as `eu01` and `eu02` connected through VPN, deploy one root stack per region and exchange VPN tunnel endpoints through the outputs. A future single-stack multi-region implementation requires statically declared STACKIT provider aliases because Terraform cannot select provider aliases dynamically from `network_areas`.
+The root module supports a single-stack topology in `eu01` and `eu02` through static STACKIT provider aliases. Each region receives its own connectivity hub, SNA, landing zones, and optional Platform Kubernetes cluster; select the region explicitly in the configuration. Provider aliases cannot be selected dynamically, so supporting another region requires a corresponding provider alias and regional module instances.
+
+Regional hubs remain isolated by default. Inter-region connectivity requires explicit external VPN endpoints and routes; it is not created by the multi-region scenario. See [the complete multi-region configuration](../src/config/hub-and-spoke-multi-region.tfvars).
 
 #### WAN Routing Table
 
