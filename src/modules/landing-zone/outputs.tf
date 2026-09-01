@@ -35,7 +35,7 @@ output "landing_zone_type" {
 
 output "secretsmanager_instance_id" {
   description = "The ID of the landing zone Secrets Manager instance."
-  value       = stackit_secretsmanager_instance.this.instance_id
+  value       = try(stackit_secretsmanager_instance.this[0].instance_id, null)
 }
 
 output "observability_instance_id" {
