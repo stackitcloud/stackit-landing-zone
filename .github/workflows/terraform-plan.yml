@@ -127,7 +127,7 @@ jobs:
 
       - name: Summarize plan
         id: summary
-        if: steps.plan.outputs.exit_code == '0' || steps.plan.outputs.exit_code == '2'
+        if: env.PLAN_REQUESTED == 'true' && steps.plan.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
