@@ -57,6 +57,9 @@ jobs:
 
           for directory in "${terraform_directories[@]}"; do
             echo "Validating $directory"
+            # The STACKIT image schema validates local_file_path even though
+            # validate never uploads or otherwise reads the image contents.
+            touch "$directory/firewall-image.qcow2"
             tofu -chdir="$directory" init -backend=false -input=false -no-color
             tofu -chdir="$directory" validate -no-color
           done
@@ -66,6 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     timeout-minutes: 30
+    environment: terraform-plan
     env:
       STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
     steps:
@@ -81,10 +85,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$STACKIT_SERVICE_ACCOUNT_KEY"
+          if [[ -z "$STACKIT_SERVICE_ACCOUNT_KEY" ]]; then
+            echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
+            exit 1
+          fi
           install -d -m 700 "$HOME/.stackit"
           printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$HOME/.stackit/credentials.json"
           chmod 600 "$HOME/.stackit/credentials.json"
+
+      - name: Create firewall image placeholder for mocked tests
+        run: touch src/firewall-image.qcow2
 
       - name: Initialize test configuration
         run: tofu -chdir=src init -backend=false -input=false -no-color

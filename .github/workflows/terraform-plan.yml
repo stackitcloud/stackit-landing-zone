@@ -1,0 +1,245 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: terraform-plan-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  TOFU_VERSION: "1.12.5"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_FILE: ${{ vars.TF_PLAN_VAR_FILE || 'config/hub-and-spoke-prod-nonprod-firewall.tfvars' }}
+  OPNSENSE_IMAGE_URL: "https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2"
+  OPNSENSE_IMAGE_SHA256: "5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068"
+
+jobs:
+  plan:
+    name: PR Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: terraform-plan
+    env:
+      # Secrets are deliberately never exposed to code from forks.
+      PLAN_REQUESTED: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+      STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_EC2_METADATA_DISABLED: "true"
+      TF_VAR_owner_email: ${{ vars.TF_VAR_OWNER_EMAIL }}
+      TF_VAR_company_name: ${{ vars.TF_VAR_COMPANY_NAME }}
+      TF_VAR_company_code: ${{ vars.TF_VAR_COMPANY_CODE }}
+      TF_VAR_organization_id: ${{ vars.TF_VAR_ORGANIZATION_ID }}
+      TF_VAR_region: ${{ vars.TF_VAR_REGION }}
+      TF_VAR_connectivity: ${{ vars.TF_VAR_CONNECTIVITY }}
+      TF_VAR_landing_zones: ${{ vars.TF_VAR_LANDING_ZONES }}
+    steps:
+      - name: Checkout pull request
+        if: env.PLAN_REQUESTED == 'true'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Restore OPNsense image cache
+        id: opnsense-image-cache
+        if: env.PLAN_REQUESTED == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: src/firewall-image.qcow2
+          key: opnsense-image-${{ env.OPNSENSE_IMAGE_SHA256 }}
+
+      - name: Download OPNsense image
+        if: env.PLAN_REQUESTED == 'true' && steps.opnsense-image-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl \
+            --fail \
+            --location \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --output src/firewall-image.qcow2.part \
+            "$OPNSENSE_IMAGE_URL"
+          mv src/firewall-image.qcow2.part src/firewall-image.qcow2
+
+      - name: Verify OPNsense image
+        if: env.PLAN_REQUESTED == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$OPNSENSE_IMAGE_SHA256  src/firewall-image.qcow2" | sha256sum --check --strict
+
+      - name: Setup OpenTofu
+        if: env.PLAN_REQUESTED == 'true'
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Configure STACKIT credentials
+        if: env.PLAN_REQUESTED == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$STACKIT_SERVICE_ACCOUNT_KEY" ]]; then
+            echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
+            exit 1
+          fi
+          if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+            echo "::error::S3 backend credentials are missing from the terraform-plan environment."
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.stackit"
+          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$HOME/.stackit/credentials.json"
+          chmod 600 "$HOME/.stackit/credentials.json"
+
+      - name: Check variable file
+        if: env.PLAN_REQUESTED == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$TF_VAR_FILE" = /* || "$TF_VAR_FILE" == *".."* || ! -f "src/$TF_VAR_FILE" ]]; then
+            echo "::error::TF_PLAN_VAR_FILE must reference an existing file below src (current value: $TF_VAR_FILE)."
+            exit 1
+          fi
+
+      - name: Initialize
+        if: env.PLAN_REQUESTED == 'true'
+        run: tofu -chdir=src init -input=false -no-color
+
+      - name: Build GitHub variable overrides
+        id: overrides
+        if: env.PLAN_REQUESTED == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          override_file="$RUNNER_TEMP/github-overrides.tfvars.json"
+          jq -n \
+            --arg owner_email "$TF_VAR_owner_email" \
+            --arg company_name "$TF_VAR_company_name" \
+            --arg company_code "$TF_VAR_company_code" \
+            --arg organization_id "$TF_VAR_organization_id" \
+            --arg region "$TF_VAR_region" \
+            --arg connectivity "$TF_VAR_connectivity" \
+            --arg landing_zones "$TF_VAR_landing_zones" \
+            'def optional_string($name; $value): if $value == "" then {} else {($name): $value} end;
+             def optional_json($name; $value): if $value == "" then {} else {($name): ($value | fromjson)} end;
+             optional_string("owner_email"; $owner_email) +
+             optional_string("company_name"; $company_name) +
+             optional_string("company_code"; $company_code) +
+             optional_string("organization_id"; $organization_id) +
+             optional_string("region"; $region) +
+             optional_json("connectivity"; $connectivity) +
+             optional_json("landing_zones"; $landing_zones)' > "$override_file"
+          echo "file=$override_file" >> "$GITHUB_OUTPUT"
+
+      - name: Create plan
+        id: plan
+        if: env.PLAN_REQUESTED == 'true'
+        shell: bash
+        run: |
+          set +e
+          tofu -chdir=src plan \
+            -input=false \
+            -no-color \
+            -detailed-exitcode \
+            -var-file="$TF_VAR_FILE" \
+            -var-file="${{ steps.overrides.outputs.file }}" \
+            -out=tfplan
+          exit_code=$?
+          set -e
+
+          case "$exit_code" in
+            0) result="No changes" ;;
+            2) result="Changes detected" ;;
+            *) result="Plan failed" ;;
+          esac
+
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+          # Exit code 2 means a valid plan containing changes.
+          [[ "$exit_code" -eq 0 || "$exit_code" -eq 2 ]]
+
+      - name: Summarize plan
+        id: summary
+        if: env.PLAN_REQUESTED == 'true' && steps.plan.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu -chdir=src show -json tfplan > "$RUNNER_TEMP/tfplan.json"
+
+          add=$(jq '[.resource_changes[]? | select(.change.actions == ["create"])] | length' "$RUNNER_TEMP/tfplan.json")
+          change=$(jq '[.resource_changes[]? | select(.change.actions == ["update"])] | length' "$RUNNER_TEMP/tfplan.json")
+          destroy=$(jq '[.resource_changes[]? | select(.change.actions == ["delete"])] | length' "$RUNNER_TEMP/tfplan.json")
+          replace=$(jq '[.resource_changes[]? | select((.change.actions | index("create")) and (.change.actions | index("delete")))] | length' "$RUNNER_TEMP/tfplan.json")
+
+          if (( add + change + destroy + replace == 0 )); then
+            result="No changes"
+          else
+            result="Changes detected"
+          fi
+
+          echo "add=$add" >> "$GITHUB_OUTPUT"
+          echo "change=$change" >> "$GITHUB_OUTPUT"
+          echo "destroy=$destroy" >> "$GITHUB_OUTPUT"
+          echo "replace=$replace" >> "$GITHUB_OUTPUT"
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+
+      - name: Comment plan result
+        if: always() && env.PLAN_REQUESTED == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          PLAN_RESULT: ${{ steps.summary.outputs.result || steps.plan.outputs.result }}
+          PLAN_ADD: ${{ steps.summary.outputs.add }}
+          PLAN_CHANGE: ${{ steps.summary.outputs.change }}
+          PLAN_DESTROY: ${{ steps.summary.outputs.destroy }}
+          PLAN_REPLACE: ${{ steps.summary.outputs.replace }}
+        with:
+          script: |
+            const marker = '<!-- terraform-plan-summary -->';
+            const succeeded = process.env.PLAN_OUTCOME === 'success';
+            const icon = succeeded ? '✅' : '❌';
+            const result = process.env.PLAN_RESULT || 'Plan failed before completion';
+            const counts = succeeded
+              ? `| Add | Change | Destroy | Replace |\n|---:|---:|---:|---:|\n| ${process.env.PLAN_ADD} | ${process.env.PLAN_CHANGE} | ${process.env.PLAN_DESTROY} | ${process.env.PLAN_REPLACE} |\n\n`
+              : '';
+            const body = `${marker}\n## ${icon} Terraform Plan: ${result}\n\n${counts}` +
+              `Configuration: \`src/${process.env.TF_VAR_FILE}\`  \n` +
+              `Commit: \`${context.payload.pull_request.head.sha.slice(0, 7)}\`  \n` +
+              `[Workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const previous = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body?.includes(marker)
+            );
+
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Explain why the plan was skipped
+        if: env.PLAN_REQUESTED != 'true'
+        run: |
+          echo "Terraform plan is skipped for fork pull requests because repository secrets are unavailable."

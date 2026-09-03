@@ -3,7 +3,7 @@
 ###########
 
 locals {
-  firewall_image_path = fileexists("${path.root}/firewall-image.qcow2") ? "${path.root}/firewall-image.qcow2" : "/dev/null"
+  firewall_image_path = "${path.root}/firewall-image.qcow2"
   firewalls = var.firewalls != null ? var.firewalls : var.firewall != null ? {
     for key, area in var.network_areas : key => var.firewall
   } : {}
