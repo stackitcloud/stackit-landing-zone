@@ -31,9 +31,11 @@ to add, change, destroy, and replace. A new commit reruns the plan. Pull request
 from forks are skipped because GitHub secrets must not be exposed to untrusted
 repositories.
 
-The workflow expects:
+The workflow uses the protected `terraform-plan` environment. A CODEOWNER must
+approve the job before GitHub releases its credentials; administrator bypass is
+disabled. The workflow expects:
 
-- the repository secret `STACKIT_SERVICE_ACCOUNT_KEY` containing the STACKIT
+- the environment secret `STACKIT_SERVICE_ACCOUNT_KEY` containing the STACKIT
   service-account key JSON;
 - optionally, the repository variable `TF_PLAN_VAR_FILE`, set to a path below
   `src/` (the default is
