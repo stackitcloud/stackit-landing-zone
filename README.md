@@ -63,10 +63,12 @@ Only a CODEOWNER may request either variant. Starting it requires explicit
 confirmation for a manual run, followed in both cases by approval from a CODEOWNER
 through the protected `terraform-plan` environment.
 Administrator bypass is disabled. The workflow creates a fresh plan and applies
-that exact saved plan. It rejects plans containing delete or replacement actions;
-full destroy remains unsupported while STACKIT projects use soft deletion and
-prevent their parent folders from being deleted immediately. Apply also fails
-closed unless OpenTofu has initialized a persistent remote state backend.
+that exact saved plan. Normal delete and replacement actions are allowed so the
+landing zone can evolve, but deleting or replacing Resource Manager folders is
+blocked. A full destroy workflow is deliberately not provided while STACKIT
+projects use soft deletion and prevent their parent folders from being deleted
+immediately. Apply also fails closed unless OpenTofu has initialized a persistent
+remote state backend.
 
 Terraform state is stored in the versioned STACKIT Object Storage bucket
 `lza-terraform-state` under `landing-zone/terraform.tfstate`. The S3 backend uses

@@ -203,7 +203,7 @@ jobs:
             -var-file="${{ steps.overrides.outputs.file }}" \
             -out=tfplan
 
-      - name: Reject destructive changes and summarize
+      - name: Protect resource-manager folders and summarize
         shell: bash
         run: |
           set -euo pipefail
@@ -213,61 +213,24 @@ jobs:
           change=$(jq '[.resource_changes[]? | select(.change.actions == ["update"])] | length' "$RUNNER_TEMP/tfplan.json")
           destroy=$(jq '[.resource_changes[]? | select(.change.actions == ["delete"])] | length' "$RUNNER_TEMP/tfplan.json")
           replace=$(jq '[.resource_changes[]? | select((.change.actions | index("create")) and (.change.actions | index("delete")))] | length' "$RUNNER_TEMP/tfplan.json")
-          approved_recovery=$(jq '
-            def replacement:
-              ((.change.actions | index("create")) != null) and
-              ((.change.actions | index("delete")) != null);
-            def approved_firewall_recovery:
-              replacement and (
-                (.address == "module.connectivity[0].stackit_image.firewall[\"nonprod\"]" and
-                 .change.before.id == "a1b26c3e-7268-49b1-a067-fe49f11ab806,eu01,a1f01453-4132-4159-9ec2-3e1b220744a1" and
-                 .change.before.local_file_path == "/dev/null" and
-                 .change.after.local_file_path == "./firewall-image.qcow2") or
-                (.address == "module.connectivity[0].stackit_image.firewall[\"prod\"]" and
-                 .change.before.id == "cb37a8f3-463e-4908-828a-1e25dd08db35,eu01,fdfe511f-e644-4eec-80df-1f436388b91d" and
-                 .change.before.local_file_path == "/dev/null" and
-                 .change.after.local_file_path == "./firewall-image.qcow2") or
-                (.address == "module.connectivity[0].stackit_volume.firewall[\"nonprod\"]" and
-                 .change.before.volume_id == "d8047f6d-8f15-4d48-a574-7a62e0e84f24") or
-                (.address == "module.connectivity[0].stackit_volume.firewall[\"prod\"]" and
-                 .change.before.volume_id == "7a741653-f1ae-4493-980f-0af8a53c6deb")
-              );
-            [.resource_changes[]? | select(approved_firewall_recovery)] | length
-          ' "$RUNNER_TEMP/tfplan.json")
-          disallowed_destructive=$(jq '
-            def replacement:
-              ((.change.actions | index("create")) != null) and
-              ((.change.actions | index("delete")) != null);
-            def approved_firewall_recovery:
-              replacement and (
-                (.address == "module.connectivity[0].stackit_image.firewall[\"nonprod\"]" and
-                 .change.before.id == "a1b26c3e-7268-49b1-a067-fe49f11ab806,eu01,a1f01453-4132-4159-9ec2-3e1b220744a1" and
-                 .change.before.local_file_path == "/dev/null" and
-                 .change.after.local_file_path == "./firewall-image.qcow2") or
-                (.address == "module.connectivity[0].stackit_image.firewall[\"prod\"]" and
-                 .change.before.id == "cb37a8f3-463e-4908-828a-1e25dd08db35,eu01,fdfe511f-e644-4eec-80df-1f436388b91d" and
-                 .change.before.local_file_path == "/dev/null" and
-                 .change.after.local_file_path == "./firewall-image.qcow2") or
-                (.address == "module.connectivity[0].stackit_volume.firewall[\"nonprod\"]" and
-                 .change.before.volume_id == "d8047f6d-8f15-4d48-a574-7a62e0e84f24") or
-                (.address == "module.connectivity[0].stackit_volume.firewall[\"prod\"]" and
-                 .change.before.volume_id == "7a741653-f1ae-4493-980f-0af8a53c6deb")
-              );
-            [.resource_changes[]? |
-             select((.change.actions | index("delete")) != null) |
-             select((approved_firewall_recovery | not))] | length
-          ' "$RUNNER_TEMP/tfplan.json")
+          folder_delete=$(jq '[.resource_changes[]? |
+            select(.type == "stackit_resourcemanager_folder") |
+            select((.change.actions | index("delete")) != null)] | length' "$RUNNER_TEMP/tfplan.json")
 
           {
             echo "## Terraform Apply plan"
             echo
-            echo "| Add | Change | Destroy | Replace | Approved one-time recovery |"
+            echo "| Add | Change | Destroy | Replace | Protected folder deletions |"
             echo "|---:|---:|---:|---:|---:|"
-            echo "| $add | $change | $destroy | $replace | $approved_recovery |"
+            echo "| $add | $change | $destroy | $replace | $folder_delete |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if (( disallowed_destructive > 0 )); then
-            echo "::error::Apply blocked: $disallowed_destructive destructive operations are not part of the one-time firewall recovery allowlist."
+          if (( folder_delete > 0 )); then
+            echo "::error::Apply blocked: the plan deletes or replaces $folder_delete resource-manager folder(s)."
+            jq -r '.resource_changes[]? |
+              select(.type == "stackit_resourcemanager_folder") |
+              select((.change.actions | index("delete")) != null) |
+              "::error::Protected folder: \(.address)"' "$RUNNER_TEMP/tfplan.json"
             exit 1
           fi
 
