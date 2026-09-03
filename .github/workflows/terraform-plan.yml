@@ -16,6 +16,8 @@ env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TF_VAR_FILE: ${{ vars.TF_PLAN_VAR_FILE || 'config/hub-and-spoke-prod-nonprod-firewall.tfvars' }}
+  OPNSENSE_IMAGE_URL: "https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2"
+  OPNSENSE_IMAGE_SHA256: "5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068"
 
 jobs:
   plan:
@@ -41,6 +43,36 @@ jobs:
       - name: Checkout pull request
         if: env.PLAN_REQUESTED == 'true'
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Restore OPNsense image cache
+        id: opnsense-image-cache
+        if: env.PLAN_REQUESTED == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: src/firewall-image.qcow2
+          key: opnsense-image-${{ env.OPNSENSE_IMAGE_SHA256 }}
+
+      - name: Download OPNsense image
+        if: env.PLAN_REQUESTED == 'true' && steps.opnsense-image-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl \
+            --fail \
+            --location \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --output src/firewall-image.qcow2.part \
+            "$OPNSENSE_IMAGE_URL"
+          mv src/firewall-image.qcow2.part src/firewall-image.qcow2
+
+      - name: Verify OPNsense image
+        if: env.PLAN_REQUESTED == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$OPNSENSE_IMAGE_SHA256  src/firewall-image.qcow2" | sha256sum --check --strict
 
       - name: Setup OpenTofu
         if: env.PLAN_REQUESTED == 'true'
