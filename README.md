@@ -37,6 +37,8 @@ disabled. The workflow expects:
 
 - the environment secret `STACKIT_SERVICE_ACCOUNT_KEY` containing the STACKIT
   service-account key JSON;
+- the environment secrets `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for the
+  STACKIT Object Storage state backend;
 - optionally, the repository variable `TF_PLAN_VAR_FILE`, set to a path below
   `src/` (the default is
   `config/hub-and-spoke-prod-nonprod-firewall.tfvars`).
@@ -64,6 +66,10 @@ that exact saved plan. It rejects plans containing delete or replacement actions
 full destroy remains unsupported while STACKIT projects use soft deletion and
 prevent their parent folders from being deleted immediately. Apply also fails
 closed unless OpenTofu has initialized a persistent remote state backend.
+
+Terraform state is stored in the versioned STACKIT Object Storage bucket
+`lza-terraform-state` under `landing-zone/terraform.tfstate`. The S3 backend uses
+an adjacent lock file to serialize plan and apply operations.
 
 ## 📄 License
 

@@ -57,6 +57,9 @@ jobs:
     environment: terraform-plan
     env:
       STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_EC2_METADATA_DISABLED: "true"
       TF_VAR_owner_email: ${{ vars.TF_VAR_OWNER_EMAIL }}
       TF_VAR_company_name: ${{ vars.TF_VAR_COMPANY_NAME }}
       TF_VAR_company_code: ${{ vars.TF_VAR_COMPANY_CODE }}
@@ -79,6 +82,10 @@ jobs:
           set -euo pipefail
           if [[ -z "$STACKIT_SERVICE_ACCOUNT_KEY" ]]; then
             echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
+            exit 1
+          fi
+          if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+            echo "::error::S3 backend credentials are missing from the terraform-plan environment."
             exit 1
           fi
           install -d -m 700 "$HOME/.stackit"
