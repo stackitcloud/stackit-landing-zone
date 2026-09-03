@@ -23,6 +23,35 @@ The STACKIT Landing Zone Accelerator provides a comprehensive Terraform-based fr
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Optional Terraform plan for pull requests
+
+Add the `terraform-plan` label to a pull request to run an authenticated plan. The
+workflow updates a single pull-request comment with the numbers of resources to
+add, change, destroy, and replace. A new commit reruns the plan while the label is
+present. Pull requests from forks are skipped because GitHub secrets must not be
+exposed to untrusted repositories.
+
+The workflow expects:
+
+- the repository secret `STACKIT_SERVICE_ACCOUNT_KEY` containing the STACKIT
+  service-account key JSON;
+- optionally, the repository variable `TF_PLAN_VAR_FILE`, set to a path below
+  `src/` (the default is
+  `config/hub-and-spoke-prod-nonprod-firewall.tfvars`).
+
+Values in that file can be overridden with the repository variables
+`TF_VAR_OWNER_EMAIL`, `TF_VAR_COMPANY_NAME`, `TF_VAR_COMPANY_CODE`,
+`TF_VAR_ORGANIZATION_ID`, `TF_VAR_REGION`, `TF_VAR_CONNECTIVITY`, and
+`TF_VAR_LANDING_ZONES`. The last two values must be JSON objects. Empty or missing
+variables do not override the selected tfvars file. The workflow writes the
+configured values to a second, higher-priority tfvars file so the overrides take
+precedence over the explicitly selected base file.
+
+To make a failed plan prevent merging, add the status check
+`Terraform Plan / PR Plan` as a required check in the ruleset or branch protection
+for the target branch. When no plan is requested, this check succeeds without
+accessing STACKIT.
+
 ## 📄 License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
