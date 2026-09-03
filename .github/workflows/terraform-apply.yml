@@ -198,4 +198,4 @@ jobs:
           fi
 
       - name: Apply reviewed plan
-        run: tofu -chdir=src apply -input=false -no-color -auto-approve tfplan
+        run: tofu -chdir=src apply -input=false -no-color -auto-approve -parallelism=2 tfplan
