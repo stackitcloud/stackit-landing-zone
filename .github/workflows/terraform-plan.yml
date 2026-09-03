@@ -2,7 +2,6 @@ name: Terraform Plan
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, labeled]
 
 permissions:
   contents: read
@@ -25,7 +24,7 @@ jobs:
     timeout-minutes: 30
     env:
       # Secrets are deliberately never exposed to code from forks.
-      PLAN_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'terraform-plan') && github.event.pull_request.head.repo.full_name == github.repository }}
+      PLAN_REQUESTED: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
       STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
       TF_VAR_owner_email: ${{ vars.TF_VAR_OWNER_EMAIL }}
       TF_VAR_company_name: ${{ vars.TF_VAR_COMPANY_NAME }}
@@ -203,4 +202,4 @@ jobs:
       - name: Explain why the plan was skipped
         if: env.PLAN_REQUESTED != 'true'
         run: |
-          echo "Terraform plan was not requested. Add the 'terraform-plan' label to a same-repository pull request to run it."
+          echo "Terraform plan is skipped for fork pull requests because repository secrets are unavailable."
