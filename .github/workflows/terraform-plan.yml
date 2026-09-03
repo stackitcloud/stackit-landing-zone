@@ -138,17 +138,24 @@ jobs:
           destroy=$(jq '[.resource_changes[]? | select(.change.actions == ["delete"])] | length' "$RUNNER_TEMP/tfplan.json")
           replace=$(jq '[.resource_changes[]? | select((.change.actions | index("create")) and (.change.actions | index("delete")))] | length' "$RUNNER_TEMP/tfplan.json")
 
+          if (( add + change + destroy + replace == 0 )); then
+            result="No changes"
+          else
+            result="Changes detected"
+          fi
+
           echo "add=$add" >> "$GITHUB_OUTPUT"
           echo "change=$change" >> "$GITHUB_OUTPUT"
           echo "destroy=$destroy" >> "$GITHUB_OUTPUT"
           echo "replace=$replace" >> "$GITHUB_OUTPUT"
+          echo "result=$result" >> "$GITHUB_OUTPUT"
 
       - name: Comment plan result
         if: always() && env.PLAN_REQUESTED == 'true'
         uses: actions/github-script@v7
         env:
           PLAN_OUTCOME: ${{ steps.plan.outcome }}
-          PLAN_RESULT: ${{ steps.plan.outputs.result }}
+          PLAN_RESULT: ${{ steps.summary.outputs.result || steps.plan.outputs.result }}
           PLAN_ADD: ${{ steps.summary.outputs.add }}
           PLAN_CHANGE: ${{ steps.summary.outputs.change }}
           PLAN_DESTROY: ${{ steps.summary.outputs.destroy }}
