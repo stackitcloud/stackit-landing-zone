@@ -57,10 +57,11 @@ the plan fails.
 
 ### Terraform apply
 
-The `Terraform Apply` workflow is started manually from the Actions page. Only a
-CODEOWNER may request it, and it only accepts the `main` branch. Starting it
-requires explicit confirmation, followed by approval from a CODEOWNER through the
-protected `terraform-plan` environment.
+The `Terraform Apply` workflow is started manually from the Actions page for
+`main`, or for an internal pull request by adding the `terraform-apply` label.
+Only a CODEOWNER may request either variant. Starting it requires explicit
+confirmation for a manual run, followed in both cases by approval from a CODEOWNER
+through the protected `terraform-plan` environment.
 Administrator bypass is disabled. The workflow creates a fresh plan and applies
 that exact saved plan. It rejects plans containing delete or replacement actions;
 full destroy remains unsupported while STACKIT projects use soft deletion and

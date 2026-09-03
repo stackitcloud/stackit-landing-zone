@@ -1,6 +1,8 @@
 name: Terraform Apply
 
 on:
+  pull_request:
+    types: [labeled]
   workflow_dispatch:
     inputs:
       confirm_apply:
@@ -25,9 +27,13 @@ env:
 jobs:
   authorize:
     name: Authorize request
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'terraform-apply'
     runs-on: ubuntu-latest
     env:
       REQUEST_ACTOR: ${{ github.actor }}
+      REQUEST_EVENT: ${{ github.event_name }}
+      REQUEST_LABEL: ${{ github.event.label.name }}
+      PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
     steps:
       - name: Enforce authorized requester, main branch, and confirmation
         shell: bash
@@ -40,14 +46,32 @@ jobs:
               exit 1
               ;;
           esac
-          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "::error::Terraform Apply may only run from the main branch."
-            exit 1
-          fi
-          if [[ "${{ inputs.confirm_apply }}" != "true" ]]; then
-            echo "::error::Apply was not explicitly confirmed."
-            exit 1
-          fi
+          case "$REQUEST_EVENT" in
+            workflow_dispatch)
+              if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+                echo "::error::A manually dispatched Terraform Apply may only run from main."
+                exit 1
+              fi
+              if [[ "${{ inputs.confirm_apply }}" != "true" ]]; then
+                echo "::error::Apply was not explicitly confirmed."
+                exit 1
+              fi
+              ;;
+            pull_request)
+              if [[ "$REQUEST_LABEL" != "terraform-apply" ]]; then
+                echo "::error::Pull request Apply requires the terraform-apply label."
+                exit 1
+              fi
+              if [[ "$PR_HEAD_REPOSITORY" != "$GITHUB_REPOSITORY" ]]; then
+                echo "::error::Terraform Apply is not available to fork pull requests."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Unsupported event: $REQUEST_EVENT"
+              exit 1
+              ;;
+          esac
 
   apply:
     name: Apply
@@ -68,7 +92,7 @@ jobs:
       TF_VAR_connectivity: ${{ vars.TF_VAR_CONNECTIVITY }}
       TF_VAR_landing_zones: ${{ vars.TF_VAR_LANDING_ZONES }}
     steps:
-      - name: Checkout main
+      - name: Checkout selected revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup OpenTofu
