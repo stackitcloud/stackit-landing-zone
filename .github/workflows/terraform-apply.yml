@@ -1,0 +1,170 @@
+name: Terraform Apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_apply:
+        description: "Confirm that the reviewed configuration should be applied"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-apply
+  cancel-in-progress: false
+
+env:
+  TOFU_VERSION: "1.12.5"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_FILE: ${{ vars.TF_PLAN_VAR_FILE || 'config/hub-and-spoke-prod-nonprod-firewall.tfvars' }}
+
+jobs:
+  authorize:
+    name: Authorize request
+    runs-on: ubuntu-latest
+    env:
+      REQUEST_ACTOR: ${{ github.actor }}
+    steps:
+      - name: Enforce authorized requester, main branch, and confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "|lweberru|mahauber|simpe00|dweezl|" in
+            *"|$REQUEST_ACTOR|"*) ;;
+            *)
+              echo "::error::$REQUEST_ACTOR is not authorized to request Terraform Apply."
+              exit 1
+              ;;
+          esac
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Terraform Apply may only run from the main branch."
+            exit 1
+          fi
+          if [[ "${{ inputs.confirm_apply }}" != "true" ]]; then
+            echo "::error::Apply was not explicitly confirmed."
+            exit 1
+          fi
+
+  apply:
+    name: Apply
+    needs: authorize
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: terraform-plan
+    env:
+      STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
+      TF_VAR_owner_email: ${{ vars.TF_VAR_OWNER_EMAIL }}
+      TF_VAR_company_name: ${{ vars.TF_VAR_COMPANY_NAME }}
+      TF_VAR_company_code: ${{ vars.TF_VAR_COMPANY_CODE }}
+      TF_VAR_organization_id: ${{ vars.TF_VAR_ORGANIZATION_ID }}
+      TF_VAR_region: ${{ vars.TF_VAR_REGION }}
+      TF_VAR_connectivity: ${{ vars.TF_VAR_CONNECTIVITY }}
+      TF_VAR_landing_zones: ${{ vars.TF_VAR_LANDING_ZONES }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Configure STACKIT credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$STACKIT_SERVICE_ACCOUNT_KEY" ]]; then
+            echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.stackit"
+          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$HOME/.stackit/credentials.json"
+          chmod 600 "$HOME/.stackit/credentials.json"
+
+      - name: Check variable file
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$TF_VAR_FILE" = /* || "$TF_VAR_FILE" == *".."* || ! -f "src/$TF_VAR_FILE" ]]; then
+            echo "::error::TF_PLAN_VAR_FILE must reference an existing file below src (current value: $TF_VAR_FILE)."
+            exit 1
+          fi
+
+      - name: Initialize
+        run: tofu -chdir=src init -input=false -no-color
+
+      - name: Require a remote state backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          backend_type=$(jq -r '.backend.type // "local"' src/.terraform/terraform.tfstate)
+          if [[ "$backend_type" == "local" ]]; then
+            echo "::error::Apply blocked: a persistent remote state backend is not configured."
+            exit 1
+          fi
+          echo "Using remote state backend: $backend_type"
+
+      - name: Build GitHub variable overrides
+        id: overrides
+        shell: bash
+        run: |
+          set -euo pipefail
+          override_file="$RUNNER_TEMP/github-overrides.tfvars.json"
+          jq -n \
+            --arg owner_email "$TF_VAR_owner_email" \
+            --arg company_name "$TF_VAR_company_name" \
+            --arg company_code "$TF_VAR_company_code" \
+            --arg organization_id "$TF_VAR_organization_id" \
+            --arg region "$TF_VAR_region" \
+            --arg connectivity "$TF_VAR_connectivity" \
+            --arg landing_zones "$TF_VAR_landing_zones" \
+            'def optional_string($name; $value): if $value == "" then {} else {($name): $value} end;
+             def optional_json($name; $value): if $value == "" then {} else {($name): ($value | fromjson)} end;
+             optional_string("owner_email"; $owner_email) +
+             optional_string("company_name"; $company_name) +
+             optional_string("company_code"; $company_code) +
+             optional_string("organization_id"; $organization_id) +
+             optional_string("region"; $region) +
+             optional_json("connectivity"; $connectivity) +
+             optional_json("landing_zones"; $landing_zones)' > "$override_file"
+          echo "file=$override_file" >> "$GITHUB_OUTPUT"
+
+      - name: Create apply plan
+        run: |
+          tofu -chdir=src plan \
+            -input=false \
+            -no-color \
+            -var-file="$TF_VAR_FILE" \
+            -var-file="${{ steps.overrides.outputs.file }}" \
+            -out=tfplan
+
+      - name: Reject destructive changes and summarize
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu -chdir=src show -json tfplan > "$RUNNER_TEMP/tfplan.json"
+
+          add=$(jq '[.resource_changes[]? | select(.change.actions == ["create"])] | length' "$RUNNER_TEMP/tfplan.json")
+          change=$(jq '[.resource_changes[]? | select(.change.actions == ["update"])] | length' "$RUNNER_TEMP/tfplan.json")
+          destroy=$(jq '[.resource_changes[]? | select(.change.actions == ["delete"])] | length' "$RUNNER_TEMP/tfplan.json")
+          replace=$(jq '[.resource_changes[]? | select((.change.actions | index("create")) and (.change.actions | index("delete")))] | length' "$RUNNER_TEMP/tfplan.json")
+
+          {
+            echo "## Terraform Apply plan"
+            echo
+            echo "| Add | Change | Destroy | Replace |"
+            echo "|---:|---:|---:|---:|"
+            echo "| $add | $change | $destroy | $replace |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( destroy > 0 || replace > 0 )); then
+            echo "::error::Apply blocked: the plan contains $destroy destroy and $replace replacement operations."
+            exit 1
+          fi
+
+      - name: Apply reviewed plan
+        run: tofu -chdir=src apply -input=false -no-color -auto-approve tfplan

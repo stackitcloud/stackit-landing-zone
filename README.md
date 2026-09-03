@@ -53,6 +53,18 @@ The status check `Terraform Plan / PR Plan` must be configured as a required che
 in the ruleset or branch protection for the target branch to prevent merging when
 the plan fails.
 
+### Terraform apply
+
+The `Terraform Apply` workflow is started manually from the Actions page. Only a
+CODEOWNER may request it, and it only accepts the `main` branch. Starting it
+requires explicit confirmation, followed by approval from a CODEOWNER through the
+protected `terraform-plan` environment.
+Administrator bypass is disabled. The workflow creates a fresh plan and applies
+that exact saved plan. It rejects plans containing delete or replacement actions;
+full destroy remains unsupported while STACKIT projects use soft deletion and
+prevent their parent folders from being deleted immediately. Apply also fails
+closed unless OpenTofu has initialized a persistent remote state backend.
+
 ## 📄 License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
