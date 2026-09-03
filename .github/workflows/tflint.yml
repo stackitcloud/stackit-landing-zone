@@ -66,6 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     timeout-minutes: 30
+    environment: terraform-plan
     env:
       STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
     steps:
@@ -81,7 +82,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$STACKIT_SERVICE_ACCOUNT_KEY"
+          if [[ -z "$STACKIT_SERVICE_ACCOUNT_KEY" ]]; then
+            echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
+            exit 1
+          fi
           install -d -m 700 "$HOME/.stackit"
           printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$HOME/.stackit/credentials.json"
           chmod 600 "$HOME/.stackit/credentials.json"
