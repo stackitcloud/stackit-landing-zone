@@ -2,7 +2,7 @@ variables {
   owner_email     = "example@digits.schwarz"
   company_name    = "Test Corp"
   company_code    = "tst"
-  organization_id = "b76b54b6-f55d-41a1-b3c3-30252f8b97cc"
+  organization_id = "00000000-0000-0000-0000-000000000000"
   region          = "eu01"
 
   labels = {

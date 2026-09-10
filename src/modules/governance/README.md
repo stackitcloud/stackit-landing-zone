@@ -2,15 +2,15 @@
 ## Requirements
 
 | Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10 |
-| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >=0.93.0 |
-| <a name="requirement_time"></a> [time](#requirement\_time) | >= 0.13.0 |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11 |
+| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >= 0.114.0 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | >= 0.14.1 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.93.0 |
 
 ## Modules
@@ -20,7 +20,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [stackit_authorization_folder_role_assignment.owners](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_folder_role_assignment) | resource |
 | [stackit_authorization_folder_role_assignment.readers](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_folder_role_assignment) | resource |
 | [stackit_authorization_organization_role_assignment.auditor](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_organization_role_assignment) | resource |
@@ -31,7 +31,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_custom_roles"></a> [custom\_roles](#input\_custom\_roles) | List of custom roles to create at the organization level. | <pre>list(object({<br/>    name        = string<br/>    description = string<br/>    permissions = list(string)<br/>  }))</pre> | `[]` | no |
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all folders. | `map(string)` | `{}` | no |
 | <a name="input_organization_auditors"></a> [organization\_auditors](#input\_organization\_auditors) | List of organization role assignments for organization auditors. | `list(string)` | `[]` | no |
@@ -44,7 +44,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_custom_role_ids"></a> [custom\_role\_ids](#output\_custom\_role\_ids) | Map of custom role names to their role IDs |
 | <a name="output_folder_container_ids"></a> [folder\_container\_ids](#output\_folder\_container\_ids) | Map of all folder keys to their container IDs for easy reference |
 | <a name="output_organization_role_assignments"></a> [organization\_role\_assignments](#output\_organization\_role\_assignments) | Map of organization-level role assignment subjects grouped by role |

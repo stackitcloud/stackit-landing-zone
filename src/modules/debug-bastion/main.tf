@@ -1,3 +1,7 @@
+##################
+## BASTION HOST ##
+##################
+
 locals {
   ssh_public_key = var.enabled ? try(
     trimspace(var.ssh_public_key),
@@ -21,6 +25,10 @@ EOT
   ) : null
 }
 
+##############
+## KEY PAIR ##
+##############
+
 resource "stackit_key_pair" "this" {
   count = var.enabled ? 1 : 0
 
@@ -39,6 +47,10 @@ resource "stackit_key_pair" "this" {
     }
   }
 }
+
+####################
+## SECURITY GROUP ##
+####################
 
 resource "stackit_security_group" "this" {
   count = var.enabled ? 1 : 0
@@ -70,6 +82,10 @@ resource "stackit_security_group_rule" "ssh" {
   }
 }
 
+#######################
+## NETWORK INTERFACE ##
+#######################
+
 resource "stackit_network_interface" "this" {
   count = var.enabled ? 1 : 0
 
@@ -79,6 +95,10 @@ resource "stackit_network_interface" "this" {
   security           = true
   security_group_ids = [stackit_security_group.this[0].security_group_id]
 }
+
+############
+## SERVER ##
+############
 
 resource "stackit_server" "this" {
   count = var.enabled ? 1 : 0
@@ -100,6 +120,10 @@ resource "stackit_server" "this" {
   ]
   user_data = local.user_data
 }
+
+###############
+## PUBLIC IP ##
+###############
 
 resource "stackit_public_ip" "this" {
   count = var.enabled && var.assign_public_ip ? 1 : 0

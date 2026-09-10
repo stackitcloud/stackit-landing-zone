@@ -168,5 +168,5 @@ module "landing_zone" {
   ipv4_nameservers      = try(module.connectivity[0].network_area_nameservers, null)
   custom_roles          = each.value.custom_roles
   observability         = each.value.observability
-  firewall_next_hop_ip  = var.connectivity != null && var.connectivity.firewall != null ? module.connectivity[0].firewall_next_hop_ip : null # if firewall is enabled, pass the next hop IP to the landing zones for route configuration
+  firewall_next_hop_ip  = var.connectivity != null && var.connectivity.firewall != null ? module.connectivity[0].firewall_next_hop_ip : null
 }

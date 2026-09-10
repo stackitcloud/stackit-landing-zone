@@ -3,6 +3,18 @@ repos:
     rev: v2.2.2
     hooks:
       - id: tofu_fmt
-      - id: tofu_docs
-        args:
-          - --args=--config=.terraform-docs.yml
+
+  - repo: local
+    hooks:
+      - id: terraform-docs
+        name: terraform-docs
+        entry: >-
+          mise exec -- terraform-docs markdown table
+          --recursive
+          --recursive-path modules
+          --output-file README.md
+          --output-mode inject
+          src
+        language: system
+        pass_filenames: false
+        files: ^src/.*\.(tf|tofu|terraform\.lock\.hcl)$

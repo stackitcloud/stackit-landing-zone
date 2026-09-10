@@ -4,10 +4,10 @@
 # and the pfsync/XMLRPC synchronization settings. Everything else (rules, NAT, aliases)
 # reaches the backup through the XMLRPC sync this script switches on.
 #
-# CARP runs in unicast mode on purpose. Measured on STACKIT (2026-08-02): the fabric
-# delivers frames *to* the CARP virtual MAC, but advertisements sourced *from* the shared
-# virtual MAC never reach the peer — multicast CARP therefore splits the brain, while
-# unicast advertisements (sent from the real MAC) elect cleanly with sub-second failover.
+# CARP runs in unicast mode. On STACKIT the fabric delivers frames *to* the CARP virtual
+# MAC, but advertisements sourced *from* the shared virtual MAC never reach the peer:
+# multicast CARP splits the brain, while unicast advertisements (sent from the real MAC)
+# elect cleanly with sub-second failover.
 #
 # Authenticates with the admin login through a GUI session cookie + CSRF token, exactly
 # like ../../firewall-config/scripts/bootstrap-api-key.sh, so it works on a node the OpenTofu provider has no API key
@@ -145,9 +145,9 @@ if [[ "$ROLE" == "primary" ]]; then
   want[username]="$USERNAME"
   want[password]="$PASSWORD"
   # Exactly the sections firewall-config manages. An empty syncitems does NOT mean
-  # "sync everything" on OPNsense 26.1: measured 2026-08-04, the XMLRPC sync then
-  # replicates nothing at all while still answering {"status":"ok"} — the backup would
-  # sit without a policy and black-hole traffic the moment it becomes MASTER.
+  # "sync everything" on OPNsense 26.1: the XMLRPC sync then replicates nothing at all
+  # while still answering {"status":"ok"}, and the backup sits without a policy and
+  # black-holes traffic the moment it becomes MASTER.
   want[syncitems]="aliases,categories,rules,nat,staticroutes"
 fi
 
