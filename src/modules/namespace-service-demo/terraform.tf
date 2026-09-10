@@ -6,13 +6,9 @@ terraform {
       source  = "stackitcloud/stackit"
       version = ">= 0.114.0"
     }
-    time = {
-      source  = "hashicorp/time"
-      version = ">= 0.14.1"
-    }
-    vault = {
-      source  = "hashicorp/vault"
-      version = ">= 5.11.0"
+    grafana = {
+      source  = "grafana/grafana"
+      version = ">= 4.45.2"
     }
   }
 }

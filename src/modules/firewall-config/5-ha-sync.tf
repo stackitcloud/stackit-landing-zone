@@ -5,9 +5,8 @@
 # Replicates this policy to the HA peer after every change. OPNsense's XMLRPC config
 # sync only fires on GUI saves; configuration written through the REST API is never
 # pushed on its own, so without this step the backup node runs with an empty ruleset
-# and black-holes traffic the moment it becomes CARP master (measured 2026-08-02:
-# 86 s outage instead of ~1 s). The peer's own CARP VIP is excluded from the sync via
-# its nosync flag, set by connectivity/scripts/configure-ha.sh.
+# and black-holes traffic the moment it becomes CARP master. The peer's own CARP VIP is
+# excluded from the sync via its nosync flag, set by connectivity/scripts/configure-ha.sh.
 resource "terraform_data" "ha_sync" {
   count = var.ha_sync ? 1 : 0
 

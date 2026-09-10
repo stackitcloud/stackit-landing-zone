@@ -5,11 +5,10 @@
 # the hood (verified against the stable/26.1 HasyncStatusController source). This is the
 # API twin of the GUI's "Synchronize and reconfigure all" button.
 #
-# Needed because OPNsense's XMLRPC config sync only fires on GUI saves — configuration
+# Needed because OPNsense's XMLRPC config sync only fires on GUI saves. Configuration
 # written through the REST API (i.e. everything OpenTofu does) is never replicated on
-# its own (measured 2026-08-02: policy applied via API, peer stayed empty until this
-# endpoint was called). The peer's CARP VIP survives the sync because configure-ha.sh
-# creates it with nosync=1.
+# its own. The peer's CARP VIP survives the sync because configure-ha.sh creates it
+# with nosync=1.
 #
 # Authenticates with the admin login through a GUI session cookie + CSRF token, like
 # bootstrap-api-key.sh.

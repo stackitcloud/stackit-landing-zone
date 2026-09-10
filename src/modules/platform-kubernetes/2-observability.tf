@@ -1,3 +1,7 @@
+###################
+## OBSERVABILITY ##
+###################
+
 resource "stackit_observability_instance" "this" {
   count = var.observability.enabled ? 1 : 0
 

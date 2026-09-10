@@ -157,8 +157,8 @@ The generic [`Mastercard/restapi`](https://registry.terraform.io/providers/Maste
 provider also drives this API, but OPNsense answers reads in an expanded form (every
 select field becomes an options object with `selected` flags) that never matches what was
 written. Suppressing the resulting permanent diff with `ignore_all_server_changes` also
-suppresses diffs coming from the configuration, which makes objects write-once — measured:
-adding a CIDR to an alias reported `No changes` while the appliance kept the old content.
+suppresses diffs coming from the configuration, which makes objects write-once: adding a
+CIDR to an alias reports `No changes` while the appliance keeps the old content.
 
 `browningluke/opnsense` maps the two forms internally, so in-place updates and drift
 detection work. It is community maintained and its author advises against production use.
@@ -170,14 +170,15 @@ escape hatch for that specific object.
 
 | Name | Version |
 | ---- | ------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10 |
-| <a name="requirement_opnsense"></a> [opnsense](#requirement\_opnsense) | 0.24.0 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11 |
+| <a name="requirement_opnsense"></a> [opnsense](#requirement\_opnsense) | >= 0.26.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
 | <a name="provider_opnsense"></a> [opnsense](#provider\_opnsense) | 0.24.0 |
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
 
@@ -187,19 +188,24 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
-| [opnsense_firewall_alias.this](https://registry.terraform.io/providers/browningluke/opnsense/0.24.0/docs/resources/firewall_alias) | resource |
-| [opnsense_firewall_category.this](https://registry.terraform.io/providers/browningluke/opnsense/0.24.0/docs/resources/firewall_category) | resource |
-| [opnsense_firewall_filter.this](https://registry.terraform.io/providers/browningluke/opnsense/0.24.0/docs/resources/firewall_filter) | resource |
-| [opnsense_firewall_nat.this](https://registry.terraform.io/providers/browningluke/opnsense/0.24.0/docs/resources/firewall_nat) | resource |
-| [opnsense_firewall_nat_port_forward.this](https://registry.terraform.io/providers/browningluke/opnsense/0.24.0/docs/resources/firewall_nat_port_forward) | resource |
-| [opnsense_route.this](https://registry.terraform.io/providers/browningluke/opnsense/0.24.0/docs/resources/route) | resource |
+| [opnsense_firewall_alias.this](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs/resources/firewall_alias) | resource |
+| [opnsense_firewall_category.this](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs/resources/firewall_category) | resource |
+| [opnsense_firewall_filter.this](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs/resources/firewall_filter) | resource |
+| [opnsense_firewall_nat.this](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs/resources/firewall_nat) | resource |
+| [opnsense_firewall_nat_port_forward.this](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs/resources/firewall_nat_port_forward) | resource |
+| [opnsense_route.this](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs/resources/route) | resource |
+| [terraform_data.ha_sync](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_admin_password"></a> [admin\_password](#input\_admin\_password) | Password of admin\_username, used by the HA sync trigger. Defaults to the password baked into the STACKIT OPNsense image. Only used when ha\_sync is set. | `string` | `"STACKIT123!"` | no |
+| <a name="input_admin_username"></a> [admin\_username](#input\_admin\_username) | Appliance login used by the HA sync trigger. Only used when ha\_sync is set. | `string` | `"root"` | no |
 | <a name="input_aliases"></a> [aliases](#input\_aliases) | Firewall aliases keyed by alias name. Reference an alias from a rule, route or NAT entry by using its key wherever a network is expected. type = "host" also accepts FQDNs, which the appliance re-resolves periodically. | <pre>map(object({<br/>    type        = optional(string, "network")<br/>    enabled     = optional(bool, true)<br/>    description = optional(string, null)<br/>    content     = optional(list(string), [])<br/>    update_freq = optional(number, null)<br/>    stats       = optional(bool, false)<br/>  }))</pre> | `{}` | no |
 | <a name="input_category_name"></a> [category\_name](#input\_category\_name) | OPNsense category every object created by this module is tagged with, so managed objects are recognisable in the GUI. | `string` | `"landing-zone"` | no |
+| <a name="input_endpoint"></a> [endpoint](#input\_endpoint) | Base URL of the OPNsense API on the primary node, e.g. https://10.0.2.4. Only used by the HA sync trigger; the provider itself is configured in the root module. | `string` | `null` | no |
+| <a name="input_ha_sync"></a> [ha\_sync](#input\_ha\_sync) | Push this policy to the HA peer after every change (POST /api/core/hasync\_status/restart\_all on the primary). Required for the active/passive CARP pair: OPNsense's own config sync never fires on API writes, so without it the backup runs an empty ruleset. Enabled automatically when connectivity.firewall.ha is set. | `bool` | `false` | no |
 | <a name="input_outbound_nat"></a> [outbound\_nat](#input\_outbound\_nat) | Additional outbound NAT rules keyed by name. target\_ip accepts an address, an alias, or <int>ip such as wanip. | <pre>map(object({<br/>    sequence        = optional(number, 200)<br/>    enabled         = optional(bool, true)<br/>    interface       = optional(string, "wan")<br/>    protocol        = optional(string, "any")<br/>    ip_protocol     = optional(string, "inet")<br/>    source_net      = optional(string, "any")<br/>    destination_net = optional(string, "any")<br/>    target_ip       = optional(string, "wanip")<br/>    disable_nat     = optional(bool, false)<br/>    log             = optional(bool, false)<br/>    description     = optional(string, null)<br/>  }))</pre> | `{}` | no |
 | <a name="input_port_forwards"></a> [port\_forwards](#input\_port\_forwards) | Inbound port forwards from the internet keyed by name. Every entry punches a hole through the WAN, so keep the list short and set source\_net where possible. | <pre>map(object({<br/>    sequence         = optional(number, 100)<br/>    enabled          = optional(bool, true)<br/>    interfaces       = optional(list(string), ["wan"])<br/>    protocol         = optional(string, "TCP")<br/>    ip_protocol      = optional(string, "inet")<br/>    source_net       = optional(string, "any")<br/>    destination_net  = optional(string, "wanip")<br/>    destination_port = string<br/>    target_ip        = string<br/>    target_port      = optional(string, null)<br/>    nat_reflection   = optional(string, "default")<br/>    log              = optional(bool, true)<br/>    description      = optional(string, null)<br/>  }))</pre> | `{}` | no |
 | <a name="input_routes"></a> [routes](#input\_routes) | Static routes keyed by name. gateway must name a gateway that exists on the appliance; the STACKIT image ships LAN\_DHCP and WAN\_DHCP. | <pre>map(object({<br/>    enabled     = optional(bool, true)<br/>    network     = string<br/>    gateway     = string<br/>    description = optional(string, null)<br/>  }))</pre> | `{}` | no |

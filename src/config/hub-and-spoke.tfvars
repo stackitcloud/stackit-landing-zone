@@ -3,7 +3,7 @@
 ######################
 
 # Email of the technical owner registered in STACKIT
-owner_email = "eu01-fhnnk51@ske.sa.stackit.cloud"
+owner_email = "owner@example.com"
 
 # Company name used for folder naming in the resource manager
 company_name = "Example Corp"
@@ -12,7 +12,7 @@ company_name = "Example Corp"
 company_code = "exc"
 
 # Root organization container ID from STACKIT resource manager
-organization_id = "b76b54b6-f55d-41a1-b3c3-30252f8b97cc"
+organization_id = "00000000-0000-0000-0000-000000000000"
 
 region = "eu01"
 
@@ -148,7 +148,7 @@ connectivity = {
 sandboxes = [
   {
     project_name        = "Sandbox Team Alpha"
-    project_owner_email = "eu01-fhnnk51@ske.sa.stackit.cloud"
+    project_owner_email = "owner@example.com"
   }
 ]
 
@@ -160,7 +160,7 @@ landing_zones = {
   "corp-exmpl" = {
     project_name = "Data Platform"
     project_code = "data"
-    owner_email  = "eu01-fhnnk51@ske.sa.stackit.cloud"
+    owner_email  = "owner@example.com"
     env          = "prod"
 
     # Set corporate = true for network area connectivity, false for public internet
@@ -173,7 +173,7 @@ landing_zones = {
   "public-exmpl" = {
     project_name = "External API Gateway"
     project_code = "api"
-    owner_email  = "eu01-fhnnk51@ske.sa.stackit.cloud"
+    owner_email  = "owner@example.com"
     env          = "prod"
     corporate    = false
 
