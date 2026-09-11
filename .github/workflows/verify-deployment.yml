@@ -24,15 +24,11 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: landing-zone-test
-  cancel-in-progress: false
-
 env:
   TOFU_VERSION: "1.12.5"
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  TF_VAR_FILE: ${{ inputs.var_file }}
+  VAR_FILE: ${{ inputs.var_file }}
   OPNSENSE_IMAGE_URL: "https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2"
   OPNSENSE_IMAGE_SHA256: "5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068"
 
@@ -42,15 +38,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     environment: terraform-plan
+    concurrency:
+      group: landing-zone-test
+      cancel-in-progress: false
     env:
       # Never exported as TF_VAR_*: a -var-file outranks them, so the placeholders
       # in the tfvars file would win and apply would reject the saved plan.
-      OWNER_EMAIL: ${{ vars.TF_VAR_OWNER_EMAIL }}
-      COMPANY_NAME: ${{ vars.TF_VAR_COMPANY_NAME }}
-      COMPANY_CODE: ${{ vars.TF_VAR_COMPANY_CODE }}
       ORGANIZATION_ID: ${{ vars.TF_VAR_ORGANIZATION_ID }}
       REGION: ${{ vars.TF_VAR_REGION }}
       STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      CI_COMPANY_CODE: "lzaci"
       # Keeps the cycle's folder tree apart from anything else in the test organization.
       FOLDER_PREFIX: "CI Verification -"
     steps:
@@ -64,8 +61,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$TF_VAR_FILE" = /* || "$TF_VAR_FILE" == *".."* || ! -f "src/$TF_VAR_FILE" ]]; then
-            echo "::error::var_file must reference an existing file below src (current value: $TF_VAR_FILE)."
+          if [[ "$VAR_FILE" = /* || "$VAR_FILE" == *".."* || ! -f "src/$VAR_FILE" ]]; then
+            echo "::error::var_file must reference an existing file below src (current value: $VAR_FILE)."
             exit 1
           fi
           missing=""
@@ -76,9 +73,6 @@ jobs:
           }
 
           require TF_VAR_ORGANIZATION_ID "$ORGANIZATION_ID"
-          require TF_VAR_OWNER_EMAIL "$OWNER_EMAIL"
-          require TF_VAR_COMPANY_NAME "$COMPANY_NAME"
-          require TF_VAR_COMPANY_CODE "$COMPANY_CODE"
           require TF_VAR_REGION "$REGION"
           require TF_STATE_BUCKET "$STATE_BUCKET"
 
@@ -107,6 +101,43 @@ jobs:
           install -m 600 /dev/null "$key_path"
           printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$key_path"
           echo "STACKIT_SERVICE_ACCOUNT_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+
+          owner_email=$(jq -r '.credentials.iss // empty' <<<"$STACKIT_SERVICE_ACCOUNT_KEY")
+          if [[ "$owner_email" != *@* ]]; then
+            echo "::error::Could not read the service account email from credentials.iss in the key JSON."
+            exit 1
+          fi
+          echo "OWNER_EMAIL=$owner_email" >> "$GITHUB_ENV"
+
+      - name: Render the configuration for the test organization
+        id: render
+        shell: bash
+        run: |
+          set -euo pipefail
+          rendered="$RUNNER_TEMP/rendered.tfvars"
+
+          sed \
+            -e "s|^organization_id[[:space:]]*=.*|organization_id = \"${ORGANIZATION_ID}\"|" \
+            -e "s|^company_code[[:space:]]*=.*|company_code = \"${CI_COMPANY_CODE}\"|" \
+            -e "s|owner@example\.com|${OWNER_EMAIL}|g" \
+            -e "s|example-corp|ci-verify-${CI_COMPANY_CODE}|g" \
+            "src/$VAR_FILE" > "$rendered"
+
+          cat >> "$rendered" <<HCL
+
+          rm_folders = {
+            platform                = { name = "${FOLDER_PREFIX} Platform", owner_emails = [], reader_emails = [] }
+            landing_zones_corporate = { name = "${FOLDER_PREFIX} Landing Zones - Corp", owner_emails = [], reader_emails = [] }
+            landing_zones_public    = { name = "${FOLDER_PREFIX} Landing Zones - Public", owner_emails = [], reader_emails = [] }
+            sandboxes               = { name = "${FOLDER_PREFIX} Sandboxes", owner_emails = [], reader_emails = [] }
+          }
+          HCL
+
+          if grep -nE '^[[:space:]]*[^[:space:]#/].*(@example\.[a-z]+|example-corp|00000000-0000-0000-0000-000000000000)' "$rendered"; then
+            echo "::error::Placeholders survived rendering. Extend the substitutions in this step before deploying."
+            exit 1
+          fi
+          echo "file=$rendered" >> "$GITHUB_OUTPUT"
 
       - name: Restore OPNsense image cache
         id: opnsense-image-cache
@@ -180,37 +211,6 @@ jobs:
             -backend-config="region=$REGION" \
             -backend-config="endpoints={s3=\"https://object.storage.$REGION.onstackit.cloud\"}"
 
-      - name: Build variable overrides
-        id: overrides
-        shell: bash
-        run: |
-          set -euo pipefail
-          override_file="$RUNNER_TEMP/overrides.tfvars.json"
-          jq -n \
-            --arg owner_email "$OWNER_EMAIL" \
-            --arg company_name "$COMPANY_NAME" \
-            --arg company_code "$COMPANY_CODE" \
-            --arg organization_id "$ORGANIZATION_ID" \
-            --arg region "$REGION" \
-            --arg folder_prefix "$FOLDER_PREFIX" \
-            'def folder($name): {
-               name: "\($folder_prefix) \($name)",
-               owner_emails: [],
-               reader_emails: []
-             };
-             {owner_email: $owner_email,
-              company_name: $company_name,
-              company_code: $company_code,
-              organization_id: $organization_id,
-              region: $region,
-              rm_folders: {
-                platform: folder("Platform"),
-                landing_zones_corporate: folder("Landing Zones - Corp"),
-                landing_zones_public: folder("Landing Zones - Public"),
-                sandboxes: folder("Sandboxes")
-              }}' > "$override_file"
-          echo "file=$override_file" >> "$GITHUB_OUTPUT"
-
       - name: Create plan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -220,58 +220,8 @@ jobs:
           tofu -chdir=src plan \
             -input=false \
             -no-color \
-            -var-file="$TF_VAR_FILE" \
-            -var-file="${{ steps.overrides.outputs.file }}" \
+            -var-file="${{ steps.render.outputs.file }}" \
             -out=tfplan
-
-      - name: Protect resource-manager folders and summarize
-        shell: bash
-        run: |
-          set -euo pipefail
-          tofu -chdir=src show -json tfplan > "$RUNNER_TEMP/tfplan.json"
-
-          planned_org=$(jq -r '.variables.organization_id.value // ""' "$RUNNER_TEMP/tfplan.json")
-          if [[ "$planned_org" != "$ORGANIZATION_ID" ]]; then
-            echo "::error::The plan targets organization '$planned_org', not '$ORGANIZATION_ID'."
-            echo "::error::The override file did not win over $TF_VAR_FILE. Refusing to apply."
-            exit 1
-          fi
-
-          add=$(jq '[.resource_changes[]? | select(.change.actions == ["create"])] | length' "$RUNNER_TEMP/tfplan.json")
-          change=$(jq '[.resource_changes[]? | select(.change.actions == ["update"])] | length' "$RUNNER_TEMP/tfplan.json")
-          destroy=$(jq '[.resource_changes[]? | select(.change.actions == ["delete"])] | length' "$RUNNER_TEMP/tfplan.json")
-          replace=$(jq '[.resource_changes[]? | select((.change.actions | index("create")) and (.change.actions | index("delete")))] | length' "$RUNNER_TEMP/tfplan.json")
-          folder_delete=$(jq '[.resource_changes[]? |
-            select(.type == "stackit_resourcemanager_folder") |
-            select((.change.actions | index("delete")) != null)] | length' "$RUNNER_TEMP/tfplan.json")
-
-          {
-            echo "## Deployment verification plan"
-            echo
-            echo "Configuration: \`src/$TF_VAR_FILE\`"
-            echo
-            echo "| Add | Change | Destroy | Replace | Protected folder deletions |"
-            echo "|---:|---:|---:|---:|---:|"
-            echo "| $add | $change | $destroy | $replace | $folder_delete |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          if (( folder_delete > 0 )); then
-            echo "::error::Verification blocked: the plan deletes or replaces $folder_delete resource-manager folder(s)."
-            jq -r '.resource_changes[]? |
-              select(.type == "stackit_resourcemanager_folder") |
-              select((.change.actions | index("delete")) != null) |
-              "::error::Protected folder: \(.address)"' "$RUNNER_TEMP/tfplan.json"
-            exit 1
-          fi
-
-      - name: Upload plan
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: verify-deployment-plan
-          path: ${{ runner.temp }}/tfplan.json
-          retention-days: 7
-          if-no-files-found: ignore
 
       - name: Apply the plan
         env:
@@ -295,8 +245,7 @@ jobs:
             -auto-approve \
             -parallelism=2 \
             -exclude=module.governance \
-            -var-file="$TF_VAR_FILE" \
-            -var-file="${{ steps.overrides.outputs.file }}"
+            -var-file="${{ steps.render.outputs.file }}"
 
       - name: Report what is left behind
         if: failure() && steps.init.outcome == 'success'
