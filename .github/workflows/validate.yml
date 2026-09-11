@@ -1,0 +1,141 @@
+name: Validate
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/validate.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - ".github/workflows/validate.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TOFU_VERSION: "1.12.5"
+  TFLINT_VERSION: "v0.60.0"
+  TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Check formatting
+        run: tofu -chdir=src fmt -check -diff -recursive
+
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@1cf010d3c7aef302051ccdb68c14c5dc2efa34ef # v6.3.1
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+
+      - name: Show version
+        run: tflint --version
+
+      - name: Init TFLint
+        run: tflint --chdir=src --init
+
+      - name: Run TFLint (blocking except unused declarations)
+        run: tflint --chdir=src --recursive --format compact --minimum-failure-severity=warning --disable-rule=terraform_unused_declarations --disable-rule=terraform_required_providers
+
+      - name: Run TFLint (unused declarations report only)
+        continue-on-error: true
+        run: tflint --chdir=src --recursive --format compact --only=terraform_unused_declarations
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Cache provider plugins
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: tofu-plugins-${{ runner.os }}-${{ env.TOFU_VERSION }}-${{ hashFiles('src/**/terraform.tf') }}
+          restore-keys: |
+            tofu-plugins-${{ runner.os }}-${{ env.TOFU_VERSION }}-
+
+      - name: Initialize and validate Terraform configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          mapfile -t terraform_directories < <(
+            find src -type f -name '*.tf' -not -path '*/.terraform/*' -printf '%h\n' | sort -u
+          )
+
+          for directory in "${terraform_directories[@]}"; do
+            echo "Validating $directory"
+            tofu -chdir="$directory" init -backend=false -input=false -no-color
+            tofu -chdir="$directory" validate -no-color
+          done
+
+  test:
+    name: Configuration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Cache provider plugins
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: tofu-plugins-${{ runner.os }}-${{ env.TOFU_VERSION }}-${{ hashFiles('src/**/terraform.tf') }}
+          restore-keys: |
+            tofu-plugins-${{ runner.os }}-${{ env.TOFU_VERSION }}-
+
+      - name: Initialize test configuration
+        run: |
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          tofu -chdir=src init -backend=false -input=false -no-color
+
+      - name: Run configuration tests
+        run: tofu -chdir=src test -no-color

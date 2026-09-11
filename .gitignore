@@ -41,3 +41,5 @@ src/.firewall-api-credentials.json
 
 # macOS
 .DS_Store
+
+src/backend_ci.tf

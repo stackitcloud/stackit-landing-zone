@@ -1,0 +1,261 @@
+name: Verify Deployment
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Revision to verify"
+        required: false
+        type: string
+        default: ""
+      var_file:
+        description: "Variable file below src/ that the cycle deploys"
+        required: false
+        type: string
+        default: "config/hub-and-spoke-firewall.tfvars"
+  workflow_dispatch:
+    inputs:
+      var_file:
+        description: "Variable file below src/ that the cycle deploys"
+        required: false
+        type: string
+        default: "config/hub-and-spoke-firewall.tfvars"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: landing-zone-test
+  cancel-in-progress: false
+
+env:
+  TOFU_VERSION: "1.12.5"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_FILE: ${{ inputs.var_file }}
+  OPNSENSE_IMAGE_URL: "https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2"
+  OPNSENSE_IMAGE_SHA256: "5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068"
+
+jobs:
+  cycle:
+    name: Plan, apply and destroy
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: terraform-plan
+    env:
+      STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
+      TF_VAR_owner_email: ${{ vars.TF_VAR_OWNER_EMAIL }}
+      TF_VAR_company_name: ${{ vars.TF_VAR_COMPANY_NAME }}
+      TF_VAR_company_code: ${{ vars.TF_VAR_COMPANY_CODE }}
+      TF_VAR_organization_id: ${{ vars.TF_VAR_ORGANIZATION_ID }}
+      TF_VAR_region: ${{ vars.TF_VAR_REGION }}
+    steps:
+      - name: Checkout revision under verification
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Check inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$TF_VAR_FILE" = /* || "$TF_VAR_FILE" == *".."* || ! -f "src/$TF_VAR_FILE" ]]; then
+            echo "::error::var_file must reference an existing file below src (current value: $TF_VAR_FILE)."
+            exit 1
+          fi
+          missing=""
+          require() {
+            if [[ -z "$2" ]]; then
+              missing="$missing $1"
+            fi
+          }
+
+          require TF_VAR_ORGANIZATION_ID "$TF_VAR_organization_id"
+          require TF_VAR_OWNER_EMAIL "$TF_VAR_owner_email"
+          require TF_VAR_COMPANY_NAME "$TF_VAR_company_name"
+          require TF_VAR_COMPANY_CODE "$TF_VAR_company_code"
+          require TF_VAR_REGION "$TF_VAR_region"
+          require TF_STATE_BUCKET "${{ vars.TF_STATE_BUCKET }}"
+
+          if [[ -n "$missing" ]]; then
+            echo "::error::Missing repository or environment variables:$missing"
+            echo "::error::An unset variable becomes an empty string, not a default. Refusing to deploy."
+            exit 1
+          fi
+
+      - name: Configure STACKIT credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$STACKIT_SERVICE_ACCOUNT_KEY" ]]; then
+            echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.stackit"
+          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$HOME/.stackit/credentials.json"
+          chmod 600 "$HOME/.stackit/credentials.json"
+
+      - name: Restore OPNsense image cache
+        id: opnsense-image-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: src/firewall-image.qcow2
+          key: opnsense-image-${{ env.OPNSENSE_IMAGE_SHA256 }}
+
+      - name: Download OPNsense image
+        if: steps.opnsense-image-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl \
+            --fail \
+            --location \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --output src/firewall-image.qcow2.part \
+            "$OPNSENSE_IMAGE_URL"
+          mv src/firewall-image.qcow2.part src/firewall-image.qcow2
+
+      - name: Verify OPNsense image
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$OPNSENSE_IMAGE_SHA256  src/firewall-image.qcow2" | sha256sum --check --strict
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Select the test state backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > src/backend_ci.tf <<'HCL'
+          terraform {
+            backend "s3" {
+              use_path_style              = true
+              use_lockfile                = true
+              skip_credentials_validation = true
+              skip_region_validation      = true
+              skip_metadata_api_check     = true
+              skip_requesting_account_id  = true
+              skip_s3_checksum            = true
+            }
+          }
+          HCL
+
+      - name: Initialize against the test state
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+            echo "::error::State backend credentials are missing from the terraform-plan environment."
+            exit 1
+          fi
+          tofu -chdir=src init \
+            -input=false \
+            -no-color \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=landing-zone-test/terraform.tfstate" \
+            -backend-config="region=${{ vars.TF_VAR_REGION }}" \
+            -backend-config="endpoints={s3=\"https://object.storage.${{ vars.TF_VAR_REGION }}.onstackit.cloud\"}"
+
+      - name: Create plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: |
+          tofu -chdir=src plan \
+            -input=false \
+            -no-color \
+            -var-file="$TF_VAR_FILE" \
+            -out=tfplan
+
+      - name: Protect resource-manager folders and summarize
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu -chdir=src show -json tfplan > "$RUNNER_TEMP/tfplan.json"
+
+          add=$(jq '[.resource_changes[]? | select(.change.actions == ["create"])] | length' "$RUNNER_TEMP/tfplan.json")
+          change=$(jq '[.resource_changes[]? | select(.change.actions == ["update"])] | length' "$RUNNER_TEMP/tfplan.json")
+          destroy=$(jq '[.resource_changes[]? | select(.change.actions == ["delete"])] | length' "$RUNNER_TEMP/tfplan.json")
+          replace=$(jq '[.resource_changes[]? | select((.change.actions | index("create")) and (.change.actions | index("delete")))] | length' "$RUNNER_TEMP/tfplan.json")
+          folder_delete=$(jq '[.resource_changes[]? |
+            select(.type == "stackit_resourcemanager_folder") |
+            select((.change.actions | index("delete")) != null)] | length' "$RUNNER_TEMP/tfplan.json")
+
+          {
+            echo "## Deployment verification plan"
+            echo
+            echo "Configuration: \`src/$TF_VAR_FILE\`"
+            echo
+            echo "| Add | Change | Destroy | Replace | Protected folder deletions |"
+            echo "|---:|---:|---:|---:|---:|"
+            echo "| $add | $change | $destroy | $replace | $folder_delete |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( folder_delete > 0 )); then
+            echo "::error::Verification blocked: the plan deletes or replaces $folder_delete resource-manager folder(s)."
+            jq -r '.resource_changes[]? |
+              select(.type == "stackit_resourcemanager_folder") |
+              select((.change.actions | index("delete")) != null) |
+              "::error::Protected folder: \(.address)"' "$RUNNER_TEMP/tfplan.json"
+            exit 1
+          fi
+
+      - name: Upload plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verify-deployment-plan
+          path: ${{ runner.temp }}/tfplan.json
+          retention-days: 7
+
+      - name: Apply the plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: tofu -chdir=src apply -input=false -no-color -auto-approve -parallelism=2 tfplan
+
+      - name: Destroy everything except the folder skeleton
+        if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu -chdir=src destroy \
+            -input=false \
+            -no-color \
+            -auto-approve \
+            -parallelism=2 \
+            -exclude=module.governance \
+            -var-file="$TF_VAR_FILE"
+
+      - name: Report what is left behind
+        if: failure()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Resources still present in the test organization"
+            echo
+            echo '```'
+            tofu -chdir=src state list || echo "State could not be read."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
