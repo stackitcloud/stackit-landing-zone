@@ -43,7 +43,6 @@ jobs:
     timeout-minutes: 120
     environment: terraform-plan
     env:
-      STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
       # Never exported as TF_VAR_*: a -var-file outranks them, so the placeholders
       # in the tfvars file would win and apply would reject the saved plan.
       OWNER_EMAIL: ${{ vars.TF_VAR_OWNER_EMAIL }}
@@ -88,6 +87,8 @@ jobs:
           fi
 
       - name: Configure STACKIT credentials
+        env:
+          STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -151,6 +152,7 @@ jobs:
           HCL
 
       - name: Initialize against the test state
+        id: init
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -243,11 +245,13 @@ jobs:
           fi
 
       - name: Upload plan
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verify-deployment-plan
           path: ${{ runner.temp }}/tfplan.json
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Apply the plan
         env:
@@ -257,7 +261,7 @@ jobs:
         run: tofu -chdir=src apply -input=false -no-color -auto-approve -parallelism=2 tfplan
 
       - name: Destroy everything except the folder skeleton
-        if: always()
+        if: always() && steps.init.outcome == 'success'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -275,7 +279,7 @@ jobs:
             -var-file="${{ steps.overrides.outputs.file }}"
 
       - name: Report what is left behind
-        if: failure()
+        if: failure() && steps.init.outcome == 'success'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
