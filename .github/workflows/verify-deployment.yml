@@ -51,6 +51,8 @@ jobs:
       ORGANIZATION_ID: ${{ vars.TF_VAR_ORGANIZATION_ID }}
       REGION: ${{ vars.TF_VAR_REGION }}
       STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      # Keeps the cycle's folder tree apart from anything else in the test organization.
+      FOLDER_PREFIX: "CI Verification -"
     steps:
       - name: Checkout revision under verification
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -190,11 +192,23 @@ jobs:
             --arg company_code "$COMPANY_CODE" \
             --arg organization_id "$ORGANIZATION_ID" \
             --arg region "$REGION" \
-            '{owner_email: $owner_email,
+            --arg folder_prefix "$FOLDER_PREFIX" \
+            'def folder($name): {
+               name: "\($folder_prefix) \($name)",
+               owner_emails: [],
+               reader_emails: []
+             };
+             {owner_email: $owner_email,
               company_name: $company_name,
               company_code: $company_code,
               organization_id: $organization_id,
-              region: $region}' > "$override_file"
+              region: $region,
+              rm_folders: {
+                platform: folder("Platform"),
+                landing_zones_corporate: folder("Landing Zones - Corporate"),
+                landing_zones_public: folder("Landing Zones - Public"),
+                sandboxes: folder("Sandboxes")
+              }}' > "$override_file"
           echo "file=$override_file" >> "$GITHUB_OUTPUT"
 
       - name: Create plan
