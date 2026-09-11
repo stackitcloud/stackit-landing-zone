@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   TOFU_VERSION: "1.12.5"
@@ -44,6 +45,8 @@ jobs:
     env:
       # Never exported as TF_VAR_*: a -var-file outranks them, so the placeholders
       # in the tfvars file would win and apply would reject the saved plan.
+      STACKIT_USE_OIDC: "true"
+      STACKIT_SERVICE_ACCOUNT_EMAIL: ${{ vars.STACKIT_SERVICE_ACCOUNT_EMAIL }}
       ORGANIZATION_ID: ${{ vars.TF_VAR_ORGANIZATION_ID }}
       REGION: ${{ vars.TF_VAR_REGION }}
       STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
@@ -72,6 +75,7 @@ jobs:
             fi
           }
 
+          require STACKIT_SERVICE_ACCOUNT_EMAIL "$STACKIT_SERVICE_ACCOUNT_EMAIL"
           require TF_VAR_ORGANIZATION_ID "$ORGANIZATION_ID"
           require TF_VAR_REGION "$REGION"
           require TF_STATE_BUCKET "$STATE_BUCKET"
@@ -81,33 +85,6 @@ jobs:
             echo "::error::An unset variable becomes an empty string, not a default. Refusing to deploy."
             exit 1
           fi
-
-      - name: Configure STACKIT credentials
-        env:
-          STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "$STACKIT_SERVICE_ACCOUNT_KEY" ]]; then
-            echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
-            exit 1
-          fi
-          if ! jq -e 'type == "object"' <<<"$STACKIT_SERVICE_ACCOUNT_KEY" >/dev/null 2>&1; then
-            echo "::error::STACKIT_SERVICE_ACCOUNT_KEY is not a JSON object. Expected the service account key JSON."
-            exit 1
-          fi
-
-          key_path="$RUNNER_TEMP/stackit-service-account-key.json"
-          install -m 600 /dev/null "$key_path"
-          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$key_path"
-          echo "STACKIT_SERVICE_ACCOUNT_KEY_PATH=$key_path" >> "$GITHUB_ENV"
-
-          owner_email=$(jq -r '.credentials.iss // empty' <<<"$STACKIT_SERVICE_ACCOUNT_KEY")
-          if [[ "$owner_email" != *@* ]]; then
-            echo "::error::Could not read the service account email from credentials.iss in the key JSON."
-            exit 1
-          fi
-          echo "OWNER_EMAIL=$owner_email" >> "$GITHUB_ENV"
 
       - name: Render the configuration for the test organization
         id: render
@@ -119,7 +96,7 @@ jobs:
           sed \
             -e "s|^organization_id[[:space:]]*=.*|organization_id = \"${ORGANIZATION_ID}\"|" \
             -e "s|^company_code[[:space:]]*=.*|company_code = \"${CI_COMPANY_CODE}\"|" \
-            -e "s|owner@example\.com|${OWNER_EMAIL}|g" \
+            -e "s|owner@example\.com|${STACKIT_SERVICE_ACCOUNT_EMAIL}|g" \
             -e "s|example-corp|ci-verify-${CI_COMPANY_CODE}|g" \
             "src/$VAR_FILE" > "$rendered"
 
