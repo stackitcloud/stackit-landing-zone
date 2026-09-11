@@ -2,15 +2,9 @@ name: Validate
 
 on:
   pull_request:
-    paths:
-      - "src/**"
-      - ".github/workflows/validate.yml"
   push:
     branches:
       - main
-    paths:
-      - "src/**"
-      - ".github/workflows/validate.yml"
 
 permissions:
   contents: read
