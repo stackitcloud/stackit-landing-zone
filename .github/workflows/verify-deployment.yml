@@ -43,12 +43,14 @@ jobs:
     timeout-minutes: 120
     environment: terraform-plan
     env:
-      STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
-      TF_VAR_owner_email: ${{ vars.TF_VAR_OWNER_EMAIL }}
-      TF_VAR_company_name: ${{ vars.TF_VAR_COMPANY_NAME }}
-      TF_VAR_company_code: ${{ vars.TF_VAR_COMPANY_CODE }}
-      TF_VAR_organization_id: ${{ vars.TF_VAR_ORGANIZATION_ID }}
-      TF_VAR_region: ${{ vars.TF_VAR_REGION }}
+      # Never exported as TF_VAR_*: a -var-file outranks them, so the placeholders
+      # in the tfvars file would win and apply would reject the saved plan.
+      OWNER_EMAIL: ${{ vars.TF_VAR_OWNER_EMAIL }}
+      COMPANY_NAME: ${{ vars.TF_VAR_COMPANY_NAME }}
+      COMPANY_CODE: ${{ vars.TF_VAR_COMPANY_CODE }}
+      ORGANIZATION_ID: ${{ vars.TF_VAR_ORGANIZATION_ID }}
+      REGION: ${{ vars.TF_VAR_REGION }}
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
     steps:
       - name: Checkout revision under verification
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,12 +73,12 @@ jobs:
             fi
           }
 
-          require TF_VAR_ORGANIZATION_ID "$TF_VAR_organization_id"
-          require TF_VAR_OWNER_EMAIL "$TF_VAR_owner_email"
-          require TF_VAR_COMPANY_NAME "$TF_VAR_company_name"
-          require TF_VAR_COMPANY_CODE "$TF_VAR_company_code"
-          require TF_VAR_REGION "$TF_VAR_region"
-          require TF_STATE_BUCKET "${{ vars.TF_STATE_BUCKET }}"
+          require TF_VAR_ORGANIZATION_ID "$ORGANIZATION_ID"
+          require TF_VAR_OWNER_EMAIL "$OWNER_EMAIL"
+          require TF_VAR_COMPANY_NAME "$COMPANY_NAME"
+          require TF_VAR_COMPANY_CODE "$COMPANY_CODE"
+          require TF_VAR_REGION "$REGION"
+          require TF_STATE_BUCKET "$STATE_BUCKET"
 
           if [[ -n "$missing" ]]; then
             echo "::error::Missing repository or environment variables:$missing"
@@ -85,6 +87,8 @@ jobs:
           fi
 
       - name: Configure STACKIT credentials
+        env:
+          STACKIT_SERVICE_ACCOUNT_KEY: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -148,6 +152,7 @@ jobs:
           HCL
 
       - name: Initialize against the test state
+        id: init
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -162,10 +167,29 @@ jobs:
           tofu -chdir=src init \
             -input=false \
             -no-color \
-            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="bucket=$STATE_BUCKET" \
             -backend-config="key=landing-zone-test/terraform.tfstate" \
-            -backend-config="region=${{ vars.TF_VAR_REGION }}" \
-            -backend-config="endpoints={s3=\"https://object.storage.${{ vars.TF_VAR_REGION }}.onstackit.cloud\"}"
+            -backend-config="region=$REGION" \
+            -backend-config="endpoints={s3=\"https://object.storage.$REGION.onstackit.cloud\"}"
+
+      - name: Build variable overrides
+        id: overrides
+        shell: bash
+        run: |
+          set -euo pipefail
+          override_file="$RUNNER_TEMP/overrides.tfvars.json"
+          jq -n \
+            --arg owner_email "$OWNER_EMAIL" \
+            --arg company_name "$COMPANY_NAME" \
+            --arg company_code "$COMPANY_CODE" \
+            --arg organization_id "$ORGANIZATION_ID" \
+            --arg region "$REGION" \
+            '{owner_email: $owner_email,
+              company_name: $company_name,
+              company_code: $company_code,
+              organization_id: $organization_id,
+              region: $region}' > "$override_file"
+          echo "file=$override_file" >> "$GITHUB_OUTPUT"
 
       - name: Create plan
         env:
@@ -177,6 +201,7 @@ jobs:
             -input=false \
             -no-color \
             -var-file="$TF_VAR_FILE" \
+            -var-file="${{ steps.overrides.outputs.file }}" \
             -out=tfplan
 
       - name: Protect resource-manager folders and summarize
@@ -184,6 +209,13 @@ jobs:
         run: |
           set -euo pipefail
           tofu -chdir=src show -json tfplan > "$RUNNER_TEMP/tfplan.json"
+
+          planned_org=$(jq -r '.variables.organization_id.value // ""' "$RUNNER_TEMP/tfplan.json")
+          if [[ "$planned_org" != "$ORGANIZATION_ID" ]]; then
+            echo "::error::The plan targets organization '$planned_org', not '$ORGANIZATION_ID'."
+            echo "::error::The override file did not win over $TF_VAR_FILE. Refusing to apply."
+            exit 1
+          fi
 
           add=$(jq '[.resource_changes[]? | select(.change.actions == ["create"])] | length' "$RUNNER_TEMP/tfplan.json")
           change=$(jq '[.resource_changes[]? | select(.change.actions == ["update"])] | length' "$RUNNER_TEMP/tfplan.json")
@@ -213,11 +245,13 @@ jobs:
           fi
 
       - name: Upload plan
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verify-deployment-plan
           path: ${{ runner.temp }}/tfplan.json
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Apply the plan
         env:
@@ -227,7 +261,7 @@ jobs:
         run: tofu -chdir=src apply -input=false -no-color -auto-approve -parallelism=2 tfplan
 
       - name: Destroy everything except the folder skeleton
-        if: always()
+        if: always() && steps.init.outcome == 'success'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -241,10 +275,11 @@ jobs:
             -auto-approve \
             -parallelism=2 \
             -exclude=module.governance \
-            -var-file="$TF_VAR_FILE"
+            -var-file="$TF_VAR_FILE" \
+            -var-file="${{ steps.overrides.outputs.file }}"
 
       - name: Report what is left behind
-        if: failure()
+        if: failure() && steps.init.outcome == 'success'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
