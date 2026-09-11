@@ -12,10 +12,10 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_random"></a> [random](#provider\_random) | >= 3.9.0 |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.93.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.9.0 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
-| <a name="provider_time"></a> [time](#provider\_time) | >= 0.14.1 |
+| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
 
 ## Modules
 

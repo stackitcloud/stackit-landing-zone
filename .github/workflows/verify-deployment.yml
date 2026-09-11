@@ -205,7 +205,7 @@ jobs:
               region: $region,
               rm_folders: {
                 platform: folder("Platform"),
-                landing_zones_corporate: folder("Landing Zones - Corporate"),
+                landing_zones_corporate: folder("Landing Zones - Corp"),
                 landing_zones_public: folder("Landing Zones - Public"),
                 sandboxes: folder("Sandboxes")
               }}' > "$override_file"
