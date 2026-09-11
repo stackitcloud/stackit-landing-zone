@@ -11,7 +11,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.93.0 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
 
 ## Modules
 

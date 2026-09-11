@@ -177,7 +177,7 @@ escape hatch for that specific object.
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_opnsense"></a> [opnsense](#provider\_opnsense) | 0.24.0 |
+| <a name="provider_opnsense"></a> [opnsense](#provider\_opnsense) | 0.26.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
