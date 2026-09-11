@@ -96,9 +96,15 @@ jobs:
             echo "::error::Environment secret STACKIT_SERVICE_ACCOUNT_KEY is missing or empty."
             exit 1
           fi
-          install -d -m 700 "$HOME/.stackit"
-          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$HOME/.stackit/credentials.json"
-          chmod 600 "$HOME/.stackit/credentials.json"
+          if ! jq -e 'type == "object"' <<<"$STACKIT_SERVICE_ACCOUNT_KEY" >/dev/null 2>&1; then
+            echo "::error::STACKIT_SERVICE_ACCOUNT_KEY is not a JSON object. Expected the service account key JSON."
+            exit 1
+          fi
+
+          key_path="$RUNNER_TEMP/stackit-service-account-key.json"
+          install -m 600 /dev/null "$key_path"
+          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY" > "$key_path"
+          echo "STACKIT_SERVICE_ACCOUNT_KEY_PATH=$key_path" >> "$GITHUB_ENV"
 
       - name: Restore OPNsense image cache
         id: opnsense-image-cache
