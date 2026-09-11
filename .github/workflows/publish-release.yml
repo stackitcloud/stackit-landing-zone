@@ -13,71 +13,31 @@ permissions:
   id-token: write
   attestations: write
 
-env:
-  TOFU_VERSION: "1.11.4"
-
 jobs:
-  validate-modules:
-    name: Format and Validate Modules
-    runs-on: ubuntu-latest
+  verify-deployment:
+    name: Verify Deployment
     if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/verify-deployment.yml
+    secrets: inherit
+    with:
+      ref: ${{ github.sha }}
+
+  publish:
+    name: Publish
+    needs: verify-deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          tofu_version: ${{ env.TOFU_VERSION }}
-
-      - name: Initialize and validate all modules
-        run: |
-          echo "Initializing and validating all Terraform modules..."
-          failed_modules=""
-          
-          for module in modules/*/; do
-            echo "============================================"
-            echo "Processing: $module"
-            echo "============================================"
-            
-            cd "$module"
-            
-            echo "Running tofu init..."
-            if ! tofu init -backend=false; then
-              echo "::error::tofu init failed for $module"
-              failed_modules="$failed_modules $module"
-              cd - > /dev/null
-              continue
-            fi
-            
-            echo "Running tofu validate..."
-            if ! tofu validate; then
-              echo "::error::tofu validate failed for $module"
-              failed_modules="$failed_modules $module"
-            else
-              echo "✓ $module validated successfully"
-            fi
-            
-            cd - > /dev/null
-          done
-          
-          if [[ -n "$failed_modules" ]]; then
-            echo "::error::The following modules failed validation:$failed_modules"
-            exit 1
-          fi
-          
-          echo "All modules validated successfully!"
+          persist-credentials: false
 
       - name: Determine version
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ inputs.version }}"
-          else
-            VERSION="${{ github.ref_name }}"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Release version: $VERSION"
+          echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          echo "Release version: ${{ inputs.version }}"
 
       - name: Create GitHub Release
         env:
@@ -87,8 +47,7 @@ jobs:
 
           gh release create "$VERSION" \
             --title "$VERSION" \
-            --generate-notes \
-            $PRERELEASE_FLAG
+            --generate-notes
 
       - name: Download release artifacts for attestation
         env:
@@ -102,7 +61,7 @@ jobs:
 
       - name: Generate provenance attestation
         id: attestation
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: release-artifacts/*
 
