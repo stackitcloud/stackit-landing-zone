@@ -60,6 +60,14 @@ mock_provider "stackit" {
   }
 }
 
+mock_provider "stackit" {
+  alias = "eu01"
+}
+
+mock_provider "stackit" {
+  alias = "eu02"
+}
+
 variables {
   owner_email     = "example@digits.schwarz"
   company_name    = "Test Corp"
