@@ -1,3 +1,7 @@
+##################################
+## SKE INTERNAL SERVICE ACCOUNT ##
+##################################
+
 data "stackit_service_accounts" "ske_internal" {
   count = var.encrypted_volumes.enabled ? 1 : 0
 
@@ -6,6 +10,10 @@ data "stackit_service_accounts" "ske_internal" {
 
   depends_on = [stackit_ske_cluster.this]
 }
+
+#################
+## KMS KEYRING ##
+#################
 
 resource "stackit_kms_keyring" "this" {
   count = var.encrypted_volumes.enabled ? 1 : 0
@@ -24,6 +32,10 @@ resource "stackit_kms_key" "this" {
   algorithm    = "aes_256_gcm"
   purpose      = "symmetric_encrypt_decrypt"
 }
+
+#########################
+## KMS SERVICE ACCOUNT ##
+#########################
 
 resource "stackit_service_account" "kms_manager" {
   count = var.encrypted_volumes.enabled ? 1 : 0

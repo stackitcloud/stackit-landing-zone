@@ -1,0 +1,242 @@
+name: Verify Deployment
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Revision to verify"
+        required: false
+        type: string
+        default: ""
+      var_file:
+        description: "Variable file below src/ that the cycle deploys"
+        required: false
+        type: string
+        default: "config/hub-and-spoke-firewall.tfvars"
+  workflow_dispatch:
+    inputs:
+      var_file:
+        description: "Variable file below src/ that the cycle deploys"
+        required: false
+        type: string
+        default: "config/hub-and-spoke-firewall.tfvars"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TOFU_VERSION: "1.12.5"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  VAR_FILE: ${{ inputs.var_file }}
+  OPNSENSE_IMAGE_URL: "https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2"
+  OPNSENSE_IMAGE_SHA256: "5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068"
+
+jobs:
+  cycle:
+    name: Plan, apply and destroy
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: terraform-plan
+    concurrency:
+      group: landing-zone-test
+      cancel-in-progress: false
+    env:
+      # Never exported as TF_VAR_*: a -var-file outranks them, so the placeholders
+      # in the tfvars file would win and apply would reject the saved plan.
+      STACKIT_USE_OIDC: "true"
+      STACKIT_SERVICE_ACCOUNT_EMAIL: ${{ vars.STACKIT_SERVICE_ACCOUNT_EMAIL }}
+      ORGANIZATION_ID: ${{ vars.TF_VAR_ORGANIZATION_ID }}
+      REGION: ${{ vars.TF_VAR_REGION }}
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      CI_COMPANY_CODE: "lzaci"
+      # Keeps the cycle's folder tree apart from anything else in the test organization.
+      FOLDER_PREFIX: "CI Verification -"
+    steps:
+      - name: Checkout revision under verification
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Check inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$VAR_FILE" = /* || "$VAR_FILE" == *".."* || ! -f "src/$VAR_FILE" ]]; then
+            echo "::error::var_file must reference an existing file below src (current value: $VAR_FILE)."
+            exit 1
+          fi
+          missing=""
+          require() {
+            if [[ -z "$2" ]]; then
+              missing="$missing $1"
+            fi
+          }
+
+          require STACKIT_SERVICE_ACCOUNT_EMAIL "$STACKIT_SERVICE_ACCOUNT_EMAIL"
+          require TF_VAR_ORGANIZATION_ID "$ORGANIZATION_ID"
+          require TF_VAR_REGION "$REGION"
+          require TF_STATE_BUCKET "$STATE_BUCKET"
+
+          if [[ -n "$missing" ]]; then
+            echo "::error::Missing repository or environment variables:$missing"
+            echo "::error::An unset variable becomes an empty string, not a default. Refusing to deploy."
+            exit 1
+          fi
+
+      - name: Render the configuration for the test organization
+        id: render
+        shell: bash
+        run: |
+          set -euo pipefail
+          rendered="$RUNNER_TEMP/rendered.tfvars"
+
+          sed \
+            -e "s|^organization_id[[:space:]]*=.*|organization_id = \"${ORGANIZATION_ID}\"|" \
+            -e "s|^company_code[[:space:]]*=.*|company_code = \"${CI_COMPANY_CODE}\"|" \
+            -e "s|owner@example\.com|${STACKIT_SERVICE_ACCOUNT_EMAIL}|g" \
+            -e "s|example-corp|ci-verify-${CI_COMPANY_CODE}|g" \
+            "src/$VAR_FILE" > "$rendered"
+
+          cat >> "$rendered" <<HCL
+
+          rm_folders = {
+            platform                = { name = "${FOLDER_PREFIX} Platform", owner_emails = [], reader_emails = [] }
+            landing_zones_corporate = { name = "${FOLDER_PREFIX} Landing Zones - Corp", owner_emails = [], reader_emails = [] }
+            landing_zones_public    = { name = "${FOLDER_PREFIX} Landing Zones - Public", owner_emails = [], reader_emails = [] }
+            sandboxes               = { name = "${FOLDER_PREFIX} Sandboxes", owner_emails = [], reader_emails = [] }
+          }
+          HCL
+
+          if grep -nE '^[[:space:]]*[^[:space:]#/].*(@example\.[a-z]+|example-corp|00000000-0000-0000-0000-000000000000)' "$rendered"; then
+            echo "::error::Placeholders survived rendering. Extend the substitutions in this step before deploying."
+            exit 1
+          fi
+          echo "file=$rendered" >> "$GITHUB_OUTPUT"
+
+      - name: Restore OPNsense image cache
+        id: opnsense-image-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: src/firewall-image.qcow2
+          key: opnsense-image-${{ env.OPNSENSE_IMAGE_SHA256 }}
+
+      - name: Download OPNsense image
+        if: steps.opnsense-image-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl \
+            --fail \
+            --location \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --output src/firewall-image.qcow2.part \
+            "$OPNSENSE_IMAGE_URL"
+          mv src/firewall-image.qcow2.part src/firewall-image.qcow2
+
+      - name: Verify OPNsense image
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$OPNSENSE_IMAGE_SHA256  src/firewall-image.qcow2" | sha256sum --check --strict
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Select the test state backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > src/backend_ci.tf <<'HCL'
+          terraform {
+            backend "s3" {
+              use_path_style              = true
+              use_lockfile                = true
+              skip_credentials_validation = true
+              skip_region_validation      = true
+              skip_metadata_api_check     = true
+              skip_requesting_account_id  = true
+              skip_s3_checksum            = true
+            }
+          }
+          HCL
+
+      - name: Initialize against the test state
+        id: init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+            echo "::error::State backend credentials are missing from the terraform-plan environment."
+            exit 1
+          fi
+          tofu -chdir=src init \
+            -input=false \
+            -no-color \
+            -backend-config="bucket=$STATE_BUCKET" \
+            -backend-config="key=landing-zone-test/terraform.tfstate" \
+            -backend-config="region=$REGION" \
+            -backend-config="endpoints={s3=\"https://object.storage.$REGION.onstackit.cloud\"}"
+
+      - name: Create plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: |
+          tofu -chdir=src plan \
+            -input=false \
+            -no-color \
+            -var-file="${{ steps.render.outputs.file }}" \
+            -out=tfplan
+
+      - name: Apply the plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: tofu -chdir=src apply -input=false -no-color -auto-approve -parallelism=2 tfplan
+
+      - name: Destroy everything except the folder skeleton
+        if: always() && steps.init.outcome == 'success'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu -chdir=src destroy \
+            -input=false \
+            -no-color \
+            -auto-approve \
+            -parallelism=2 \
+            -exclude=module.governance \
+            -var-file="${{ steps.render.outputs.file }}"
+
+      - name: Report what is left behind
+        if: failure() && steps.init.outcome == 'success'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Resources still present in the test organization"
+            echo
+            echo '```'
+            tofu -chdir=src state list || echo "State could not be read."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

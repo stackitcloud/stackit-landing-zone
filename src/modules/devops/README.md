@@ -2,15 +2,15 @@
 ## Requirements
 
 | Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10 |
-| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >=0.93.0 |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11 |
+| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >= 0.114.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.88.0 |
+| ---- | ------- |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
 
 ## Modules
 
@@ -19,7 +19,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
 | [stackit_git.git](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/git) | resource |
 | [stackit_resourcemanager_project.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/resourcemanager_project) | resource |
@@ -27,7 +27,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_allowed_network_ranges"></a> [allowed\_network\_ranges](#input\_allowed\_network\_ranges) | List of allowed network ranges for Git instance ACL. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre> | no |
 | <a name="input_company_name"></a> [company\_name](#input\_company\_name) | Name of the company folder to create. | `string` | n/a | yes |
 | <a name="input_git_flavor"></a> [git\_flavor](#input\_git\_flavor) | The flavor of the Git instance. | `string` | `null` | no |
@@ -42,7 +42,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |
 | <a name="output_project_id"></a> [project\_id](#output\_project\_id) | The project ID of the created STACKIT project. |
 | <a name="output_project_name"></a> [project\_name](#output\_project\_name) | The name of the created STACKIT project. |

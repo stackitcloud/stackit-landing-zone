@@ -1,3 +1,7 @@
+###################
+## DEBUG BASTION ##
+###################
+
 locals {
   debug_bastion_enabled      = var.debug_bastion.enabled && var.network.sna_enabled
   debug_bastion_short_prefix = trim(replace(substr(var.naming_pattern, 0, 14), "/-{2,}/", "-"), "-")

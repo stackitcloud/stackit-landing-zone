@@ -33,7 +33,7 @@ variable "firewall" {
     # Active/passive HA. Adds a second appliance in backup_zone plus a CARP virtual IP on
     # the LAN that becomes the platform next hop. CARP runs in unicast mode (OPNsense
     # >= 24.7) because the STACKIT fabric does not deliver advertisements sourced from
-    # the shared virtual MAC — multicast CARP splits the brain (measured 2026-08-02).
+    # the shared virtual MAC, so multicast CARP splits the brain.
     # Node-local settings are pushed by scripts/configure-ha.sh during apply.
     ha = optional(object({
       backup_zone   = string

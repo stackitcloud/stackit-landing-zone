@@ -241,6 +241,11 @@ variable "rm_folders" {
       reader_emails = []
     }
   }
+
+  validation {
+    condition     = alltrue([for folder in values(var.rm_folders) : length(folder.name) >= 1 && length(folder.name) <= 40])
+    error_message = "Every rm_folders[*].name must be between 1 and 40 characters, as required by the STACKIT Resource Manager API."
+  }
 }
 
 ##################

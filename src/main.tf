@@ -275,7 +275,7 @@ module "landing_zone" {
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
-  firewall_next_hop_ip   = var.connectivity != null && var.connectivity.firewall != null ? try(module.connectivity[0].firewall_next_hop_ip[each.value.network_area_key], null) : null # if firewall is enabled, pass the next hop IP to the landing zones for route configuration
+  firewall_next_hop_ip   = var.connectivity != null && var.connectivity.firewall != null ? try(module.connectivity[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
 }
 
 module "landing_zone_eu01" {

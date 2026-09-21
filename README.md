@@ -21,7 +21,7 @@ The STACKIT Landing Zone Accelerator provides a comprehensive Terraform-based fr
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup, the conventions this repository follows, and what a pull request should contain.
 
 ## 📄 License
 

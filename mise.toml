@@ -1,6 +1,8 @@
 [tools]
-opentofu = "1.12.5"
-"github:stackitcloud/stackit-cli" = "0.67.0"
+opentofu = "1.12.6"
+"github:stackitcloud/stackit-cli" = "0.72.0"
+pre-commit = "4.6.2"
+terraform-docs = "0.24.0"
 
 [env]
 STACKIT_SERVICE_ACCOUNT_KEY_PATH = "{{env.HOME}}/.stackit/credentials.json"

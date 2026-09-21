@@ -1,17 +1,6 @@
-terraform {
-  required_version = ">= 1.11"
-
-  required_providers {
-    stackit = {
-      source  = "stackitcloud/stackit"
-      version = "0.106.0"
-    }
-    grafana = {
-      source  = "grafana/grafana"
-      version = "4.42.0"
-    }
-  }
-}
+############################
+## NAMESPACE SERVICE DEMO ##
+############################
 
 locals {
   services_with_secrets = {
@@ -66,6 +55,10 @@ provider "grafana" {
   auth = "${local.grafana_provider_user}:${nonsensitive(local.grafana_provider_pass)}"
 }
 
+#####################
+## SECRETS MANAGER ##
+#####################
+
 resource "stackit_secretsmanager_user" "external_secret_demo" {
   for_each = local.services_with_secrets
 
@@ -74,6 +67,10 @@ resource "stackit_secretsmanager_user" "external_secret_demo" {
   description   = "Demo ExternalSecret reader for ${each.key}"
   write_enabled = true
 }
+
+###################
+## OBSERVABILITY ##
+###################
 
 resource "stackit_observability_credential" "platform_metrics_reader" {
   for_each = local.services_with_observability
@@ -108,6 +105,10 @@ resource "stackit_observability_scrapeconfig" "namespace_demo_ingestion" {
     }
   ]
 }
+
+#############
+## GRAFANA ##
+#############
 
 resource "grafana_folder" "stackit_managed" {
   provider = grafana.observability
