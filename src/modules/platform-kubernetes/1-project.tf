@@ -1,3 +1,7 @@
+#############
+## PROJECT ##
+#############
+
 locals {
   project_labels = merge(
     { "region" = var.region },

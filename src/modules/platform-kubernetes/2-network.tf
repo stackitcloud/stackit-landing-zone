@@ -1,3 +1,7 @@
+##############
+## DNS ZONE ##
+##############
+
 locals {
   dns_extension_zones = distinct(compact(var.dns.zones))
 }
@@ -11,6 +15,10 @@ resource "stackit_dns_zone" "ske_extension" {
   contact_email = var.owner_email
 }
 
+#############################
+## NETWORK AREA MEMBERSHIP ##
+#############################
+
 resource "time_sleep" "wait_for_network_area_membership" {
   count = var.network.sna_enabled ? 1 : 0
 
@@ -19,6 +27,10 @@ resource "time_sleep" "wait_for_network_area_membership" {
 
   depends_on = [stackit_resourcemanager_project.this]
 }
+
+#############
+## ROUTING ##
+#############
 
 resource "stackit_routing_table" "sna_egress" {
   count = var.network.sna_enabled && var.network.sna_network_area_id != null && var.network.firewall_next_hop_ip != null ? 1 : 0
@@ -50,6 +62,10 @@ resource "stackit_routing_table_route" "sna_default_route" {
 
   labels = local.project_labels
 }
+
+#############
+## NETWORK ##
+#############
 
 resource "stackit_network" "sna" {
   count = var.network.sna_enabled ? 1 : 0

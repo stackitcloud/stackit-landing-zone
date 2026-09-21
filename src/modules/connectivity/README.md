@@ -2,17 +2,20 @@
 ## Requirements
 
 | Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10 |
-| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | 0.101.0 |
-| <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.14.0 |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11 |
+| <a name="requirement_random"></a> [random](#requirement\_random) | >= 3.9.0 |
+| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >= 0.114.0 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | >= 0.14.1 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.93.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | ~> 0.14.0 |
+| ---- | ------- |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.9.0 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
+| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
 
 ## Modules
 
@@ -21,34 +24,45 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
-| [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/authorization_project_role_assignment) | resource |
-| [stackit_dns_zone.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/dns_zone) | resource |
-| [stackit_image.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/image) | resource |
-| [stackit_network.lan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network) | resource |
-| [stackit_network.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network) | resource |
-| [stackit_network_area.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_area) | resource |
-| [stackit_network_area_region.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_area_region) | resource |
-| [stackit_network_interface.lan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_interface) | resource |
-| [stackit_network_interface.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/network_interface) | resource |
-| [stackit_public_ip.wan-ip](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/public_ip) | resource |
-| [stackit_resourcemanager_project.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/resourcemanager_project) | resource |
-| [stackit_routing_table.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/routing_table) | resource |
-| [stackit_routing_table_route.wan](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/routing_table_route) | resource |
-| [stackit_server.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/server) | resource |
-| [stackit_volume.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/volume) | resource |
-| [stackit_vpn_connection.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/vpn_connection) | resource |
-| [stackit_vpn_gateway.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/resources/vpn_gateway) | resource |
+| ---- | ---- |
+| [random_password.carp](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
+| [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
+| [stackit_dns_zone.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/dns_zone) | resource |
+| [stackit_image.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/image) | resource |
+| [stackit_network.lan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
+| [stackit_network.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
+| [stackit_network_area.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_area) | resource |
+| [stackit_network_area_region.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_area_region) | resource |
+| [stackit_network_interface.lan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
+| [stackit_network_interface.lan_backup](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
+| [stackit_network_interface.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
+| [stackit_network_interface.wan_backup](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
+| [stackit_public_ip.wan-ip](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/public_ip) | resource |
+| [stackit_public_ip.wan-ip_backup](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/public_ip) | resource |
+| [stackit_resourcemanager_project.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/resourcemanager_project) | resource |
+| [stackit_routing_table.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/routing_table) | resource |
+| [stackit_routing_table_route.wan](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/routing_table_route) | resource |
+| [stackit_server.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server) | resource |
+| [stackit_server.firewall_backup](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server) | resource |
+| [stackit_volume.firewall](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/volume) | resource |
+| [stackit_volume.firewall_backup](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/volume) | resource |
+| [stackit_vpn_connection.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/vpn_connection) | resource |
+| [stackit_vpn_gateway.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/vpn_gateway) | resource |
+| [terraform_data.firewall_ha_backup](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
+| [terraform_data.firewall_ha_primary](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [time_sleep.wait_before_network_area_region_destroy](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
 | [time_sleep.wait_for_network_area](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
-| [stackit_vpn_gateway_status.this](https://registry.terraform.io/providers/stackitcloud/stackit/0.101.0/docs/data-sources/vpn_gateway_status) | data source |
+| [stackit_vpn_gateway_status.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/data-sources/vpn_gateway_status) | data source |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_dns_zones"></a> [dns\_zones](#input\_dns\_zones) | Map of DNS zone keys to DNS zone configuration. Name defaults to dns\_name if not set. | <pre>map(object({<br/>    dns_name      = string<br/>    name          = optional(string, null)<br/>    contact_email = optional(string, null)<br/>    type          = optional(string, "primary")<br/>    acl           = optional(string, null)<br/>    description   = optional(string, null)<br/>    default_ttl   = optional(number, 3600)<br/>  }))</pre> | `{}` | no |
-| <a name="input_firewall"></a> [firewall](#input\_firewall) | Firewall configuration. Set to null to skip firewall deployment (network area and routing are still created). lan\_network\_range and wan\_network\_range must be CIDRs within the network area range. lan\_ip and wan\_ip are optional; when omitted, the 5th address of the respective prefix is used (STACKIT reserves the first usable address as the gateway). | <pre>object({<br/>    zone                     = string<br/>    flavor                   = string<br/>    name                     = string<br/>    volume_performance_class = optional(string, "storage_premium_perf4")<br/>    volume_size              = optional(number, 16)<br/>    lan_network_range        = string<br/>    wan_network_range        = string<br/>    lan_ip                   = optional(string, null)<br/>    wan_ip                   = optional(string, null)<br/>  })</pre> | `null` | no |
+| <a name="input_firewall"></a> [firewall](#input\_firewall) | Firewall configuration. Set to null to skip firewall deployment (network area and routing are still created). lan\_network\_range and wan\_network\_range must be CIDRs within the network area range. lan\_ip and wan\_ip are optional; when omitted, the 5th address of the respective prefix is used (STACKIT reserves the first usable address as the gateway). Set ha for an active/passive CARP pair; the LAN VIP then replaces the primary's LAN IP as the platform next hop. | <pre>object({<br/>    zone                     = string<br/>    flavor                   = string<br/>    name                     = string<br/>    volume_performance_class = optional(string, "storage_premium_perf4")<br/>    volume_size              = optional(number, 16)<br/>    lan_network_range        = string<br/>    wan_network_range        = string<br/>    lan_ip                   = optional(string, null)<br/>    wan_ip                   = optional(string, null)<br/><br/>    # Active/passive HA. Adds a second appliance in backup_zone plus a CARP virtual IP on<br/>    # the LAN that becomes the platform next hop. CARP runs in unicast mode (OPNsense<br/>    # >= 24.7) because the STACKIT fabric does not deliver advertisements sourced from<br/>    # the shared virtual MAC, so multicast CARP splits the brain.<br/>    # Node-local settings are pushed by scripts/configure-ha.sh during apply.<br/>    ha = optional(object({<br/>      backup_zone   = string<br/>      backup_name   = optional(string, null) # defaults to "<name>-backup"<br/>      backup_lan_ip = optional(string, null) # defaults to the 6th address of lan_network_range<br/>      backup_wan_ip = optional(string, null) # defaults to the 6th address of wan_network_range<br/>      lan_vip       = optional(string, null) # defaults to the 7th address of lan_network_range<br/>      vhid          = optional(number, 1)<br/>    }), null)<br/>  })</pre> | `null` | no |
+| <a name="input_firewall_admin_endpoint"></a> [firewall\_admin\_endpoint](#input\_firewall\_admin\_endpoint) | Base URL the HA configuration logs into the primary appliance with. Defaults to the primary's public IP, which is the only address reachable from outside the network area. Set it to the LAN address when OpenTofu runs inside the area, matching firewall\_config.endpoint. The backup node is always configured over its own public IP: before HA exists it has no other reachable address. | `string` | `null` | no |
+| <a name="input_firewall_admin_password"></a> [firewall\_admin\_password](#input\_firewall\_admin\_password) | Password of firewall\_admin\_username. Defaults to the password baked into the STACKIT OPNsense image. Only used when firewall.ha is set. | `string` | `"STACKIT123!"` | no |
+| <a name="input_firewall_admin_username"></a> [firewall\_admin\_username](#input\_firewall\_admin\_username) | Appliance login used to push the node-local HA settings. The STACKIT OPNsense image ships with root. Only used when firewall.ha is set. | `string` | `"root"` | no |
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all resources. | `map(string)` | `{}` | no |
 | <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-hub-prod". | `string` | n/a | yes |
 | <a name="input_network_area"></a> [network\_area](#input\_network\_area) | Network area configuration including IP ranges, transfer network, and prefix length settings. default\_nameservers falls back to the STACKIT resolvers of var.region when unset. | <pre>object({<br/>    ranges                = list(string)<br/>    transfer_network      = string<br/>    min_prefix_length     = optional(number, 24)<br/>    max_prefix_length     = optional(number, 28)<br/>    default_prefix_length = optional(number, 28)<br/>    default_nameservers   = optional(list(string), null)<br/>  })</pre> | n/a | yes |
@@ -65,11 +79,13 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_dns_zone_dns_names"></a> [dns\_zone\_dns\_names](#output\_dns\_zone\_dns\_names) | Map of DNS zone keys to their DNS names |
 | <a name="output_dns_zone_ids"></a> [dns\_zone\_ids](#output\_dns\_zone\_ids) | Map of DNS zone keys to their zone IDs |
-| <a name="output_firewall_next_hop_ip"></a> [firewall\_next\_hop\_ip](#output\_firewall\_next\_hop\_ip) | The IP address to be used as next hop for the default route in the landing zones (firewall LAN IP). |
-| <a name="output_firewall_public_ip"></a> [firewall\_public\_ip](#output\_firewall\_public\_ip) | The public IP address of the firewall WAN interface. |
+| <a name="output_firewall_backup_public_ip"></a> [firewall\_backup\_public\_ip](#output\_firewall\_backup\_public\_ip) | The public IP address of the backup firewall's WAN interface. Null without HA. |
+| <a name="output_firewall_cluster_lan_ips"></a> [firewall\_cluster\_lan\_ips](#output\_firewall\_cluster\_lan\_ips) | LAN addresses of the firewall HA pair, for the fw\_cluster alias in the policy. Empty without HA. |
+| <a name="output_firewall_next_hop_ip"></a> [firewall\_next\_hop\_ip](#output\_firewall\_next\_hop\_ip) | The IP address to be used as next hop for the default route in the landing zones. The CARP LAN VIP under HA, otherwise the firewall LAN IP. |
+| <a name="output_firewall_public_ip"></a> [firewall\_public\_ip](#output\_firewall\_public\_ip) | The public IP address of the firewall WAN interface (primary node). |
 | <a name="output_network_area_id"></a> [network\_area\_id](#output\_network\_area\_id) | The ID of the created network area. |
 | <a name="output_network_area_nameservers"></a> [network\_area\_nameservers](#output\_network\_area\_nameservers) | Resolvers configured as the network area default, either from network\_area.default\_nameservers or the STACKIT resolvers of the region. |
 | <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |

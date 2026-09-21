@@ -8,8 +8,8 @@
 # blocks direct Secret management so credentials have to come through the Secrets Manager.
 #
 # The sample workload behind sample_load is demo material, not part of the landing zone
-# contract: a pod and a Service that together prove the path from the internet to a
-# namespace works. Drop it once real workloads move in.
+# contract: a pod and a Gateway API route that together prove the path from the internet
+# to a namespace works. Drop it once real workloads move in.
 
 locals {
   secrets_enforcement_default_exempt_principals = [
@@ -109,6 +109,57 @@ resource "helm_release" "kyverno" {
   timeout          = 600
   atomic           = true
   cleanup_on_fail  = true
+}
+
+resource "helm_release" "demo_envoy_gateway" {
+  provider = helm.platform
+  count    = length([for svc in values(local.landing_zone_namespace_services) : svc if svc.sample_load.enabled && svc.dns_fqdn != null]) > 0 ? 1 : 0
+
+  name             = "lz-demo-envoy-gateway"
+  namespace        = "envoy-gateway-system"
+  chart            = "oci://docker.io/envoyproxy/gateway-helm"
+  create_namespace = true
+  wait             = false
+  timeout          = 600
+  atomic           = false
+  cleanup_on_fail  = false
+
+  set = [
+    {
+      name  = "deployment.type"
+      value = "Kubernetes"
+    },
+    {
+      name  = "service.type"
+      value = "LoadBalancer"
+    },
+  ]
+}
+
+resource "kubernetes_manifest" "landing_zone_gateway_class" {
+  provider = kubernetes.platform
+  count    = length([for svc in values(local.landing_zone_namespace_services) : svc if svc.sample_load.enabled && svc.dns_fqdn != null]) > 0 ? 1 : 0
+
+  manifest = {
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "GatewayClass"
+    metadata = {
+      name = "eg"
+    }
+    spec = {
+      controllerName = "gateway.envoyproxy.io/gatewayclass-controller"
+    }
+  }
+
+  computed_fields = [
+    "metadata",
+    "spec",
+    "status",
+  ]
+
+  depends_on = [
+    helm_release.demo_envoy_gateway,
+  ]
 }
 
 resource "kubernetes_manifest" "landing_zone_secret_enforcement_policy" {
@@ -431,5 +482,115 @@ resource "kubernetes_service_v1" "landing_zone_sample_load" {
 
     type = "ClusterIP"
   }
+}
+
+resource "kubernetes_manifest" "landing_zone_sample_gateway" {
+  provider = kubernetes.platform
+
+  for_each = {
+    for key, value in local.landing_zone_namespace_services : key => value
+    if value.sample_load.enabled && value.dns_fqdn != null
+  }
+
+  manifest = {
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "Gateway"
+    metadata = {
+      name      = "${kubernetes_service_v1.landing_zone_sample_load[each.key].metadata[0].name}-gw"
+      namespace = kubernetes_namespace_v1.landing_zone[each.key].metadata[0].name
+      annotations = {
+        "external-dns.alpha.kubernetes.io/hostname" = each.value.dns_fqdn
+      }
+      labels = {
+        "app.kubernetes.io/name"     = "sample-load"
+        "stackit.cloud/landing-zone" = each.key
+        "stackit.cloud/sample-load"  = "true"
+      }
+    }
+    spec = {
+      gatewayClassName = "eg"
+      listeners = [
+        {
+          name     = "http"
+          protocol = "HTTP"
+          port     = 80
+          allowedRoutes = {
+            namespaces = {
+              from = "Same"
+            }
+          }
+        }
+      ]
+    }
+  }
+
+  computed_fields = [
+    "metadata",
+    "spec",
+    "status",
+  ]
+
+  depends_on = [
+    kubernetes_manifest.landing_zone_gateway_class,
+    helm_release.demo_envoy_gateway,
+  ]
+}
+
+resource "kubernetes_manifest" "landing_zone_sample_http_route" {
+  provider = kubernetes.platform
+
+  for_each = {
+    for key, value in local.landing_zone_namespace_services : key => value
+    if value.sample_load.enabled && value.dns_fqdn != null
+  }
+
+  manifest = {
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
+    metadata = {
+      name      = "${kubernetes_service_v1.landing_zone_sample_load[each.key].metadata[0].name}-route"
+      namespace = kubernetes_namespace_v1.landing_zone[each.key].metadata[0].name
+      labels = {
+        "app.kubernetes.io/name"     = "sample-load"
+        "stackit.cloud/landing-zone" = each.key
+        "stackit.cloud/sample-load"  = "true"
+      }
+    }
+    spec = {
+      parentRefs = [
+        {
+          name = kubernetes_manifest.landing_zone_sample_gateway[each.key].manifest.metadata.name
+        }
+      ]
+      rules = [
+        {
+          matches = [
+            {
+              path = {
+                type  = "PathPrefix"
+                value = "/"
+              }
+            }
+          ]
+          backendRefs = [
+            {
+              name = kubernetes_service_v1.landing_zone_sample_load[each.key].metadata[0].name
+              port = 80
+            }
+          ]
+        }
+      ]
+    }
+  }
+
+  computed_fields = [
+    "metadata",
+    "spec",
+    "status",
+  ]
+
+  depends_on = [
+    kubernetes_manifest.landing_zone_sample_gateway,
+  ]
 }
 

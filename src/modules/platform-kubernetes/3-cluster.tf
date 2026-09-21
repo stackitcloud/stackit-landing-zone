@@ -1,3 +1,7 @@
+#################
+## SKE CLUSTER ##
+#################
+
 locals {
   effective_dns_zones = var.dns.create_zones ? sort([
     for zone in values(stackit_dns_zone.ske_extension) : zone.dns_name

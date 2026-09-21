@@ -130,7 +130,7 @@ A CARP virtual IP on the LAN — `.6` of `lan_network_range` by default — repl
 Two things are pushed outside the OPNsense provider, because it only ever talks to the primary:
 
 - `modules/connectivity/scripts/configure-ha.sh` writes the node-local half into each appliance during apply: the CARP VIP, `advskew`, the pfsync peer, and the XMLRPC sync target. These are exactly the settings the config sync does not replicate. It authenticates with the appliance login, so it works on the backup, which has no API key and never needs one.
-- `modules/firewall-config/scripts/sync-ha-peer.sh` replicates the policy to the backup after every change. OPNsense's XMLRPC sync only fires on GUI saves, never on API writes, so without this the backup runs an empty ruleset and black-holes traffic the moment it becomes CARP master.
+- `modules/firewall-config/scripts/sync-ha-peer.sh` replicates the policy to the backup after every change. OPNsense's XMLRPC sync only fires on GUI saves, never on API writes, so without this the backup runs an empty ruleset and black-holes traffic the moment it becomes CARP master. A failover test without the policy sync measured an 86 second outage, against about one second with it.
 
 The `fw_cluster` alias and the `allow-fw-carp` / `allow-fw-pfsync` rules that let the two nodes talk are injected into `firewall_config` automatically when HA is on, sequenced at 90 and 91 — ahead of every rule the example policy ships. They are not in the `.tfvars` because a `block-lz-to-lz` rule placed above them silently kills the election and the state sync.
 
@@ -159,6 +159,14 @@ The `corporate` flag is the key switch:
 | `false` | Standalone network | Internet directly | No DNS delegation |
 
 Source: `src/modules/landing-zone/`
+
+### Landing Zone on Kubernetes
+
+Every entry in `landing_zone_namespace_services` gets a tenant slice of the shared platform cluster: its own namespace, a scoped service account with a Role limited to that namespace, and optionally a Kyverno policy that blocks direct Secret management, so credentials have to come through the Secrets Manager.
+
+The sample workload behind `sample_load` is demo material and not part of the landing zone contract. It deploys a pod, a Gateway API route and a DNS record that together prove the path from the internet to a namespace works. Remove it once real workloads move in.
+
+Source: `src/_landing-zone-kubernetes.tf`, `src/modules/namespace-service-demo/`
 
 ### DevOps (optional)
 
