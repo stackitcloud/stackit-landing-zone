@@ -351,4 +351,4 @@ platform_kubernetes = {
 With the default `gateway_api = true`, the SKE DNS extension configures ExternalDNS to handle Gateway API resources (`Gateway`, `HTTPRoute`) automatically. You no longer need to manage DNS records or discover LoadBalancer endpoints manually.
 
 > [!NOTE]
-> The Gateway API CRDs must be installed in the cluster while this option is enabled. Set `gateway_api = false` until the CRDs are available; ExternalDNS will be configured at the next cluster reconcile after enabling it.
+> The SKE DNS extension does not install Gateway API CRDs. The optional Envoy Gateway demo installs them automatically. For other Gateway API implementations, install compatible CRDs separately. Once the CRDs are available, ExternalDNS is configured during the next cluster reconcile; no additional OpenTofu apply is required.
