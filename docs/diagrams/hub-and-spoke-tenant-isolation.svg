@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+  <title id="title">Three-tenant isolation topology</title>
+  <desc id="desc">Tenant A, Tenant B and Tenant C share one STACKIT organization but each has a separate Network Area, private address space, workload project and owner with no private connectivity between tenants.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #10213b; }
+      .heading { font: 700 20px Arial, sans-serif; fill: #10213b; }
+      .label { font: 700 16px Arial, sans-serif; fill: #10213b; }
+      .small { font: 400 13px Arial, sans-serif; fill: #53657b; }
+      .tag { font: 700 12px Arial, sans-serif; fill: #10213b; }
+      .icon { fill: none; stroke: #0b4b70; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .structure { fill: none; stroke: #51657c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .private-flow { fill: none; stroke: #00a6b8; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .boundary { fill: none; stroke: #708397; stroke-width: 2; stroke-dasharray: 7 7; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51657c"/></marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#00a6b8"/></marker>
+    <symbol id="folder" viewBox="0 0 32 32"><path class="icon" d="M3 9h10l3 3h13v14H3zM3 12h26"/></symbol>
+    <symbol id="management" viewBox="0 0 32 32"><path class="icon" d="M5 9h22v17H5zM9 6h14v3M10 15h12M10 20h8"/></symbol>
+    <symbol id="network" viewBox="0 0 32 32"><path class="icon" d="M16 5v22M6 11l10 5l10-5M6 21l10-5l10 5M4 8h4v5H4zm20 0h4v5h-4zM14 24h4v4h-4z"/></symbol>
+    <symbol id="app" viewBox="0 0 32 32"><rect class="icon" x="5" y="5" width="22" height="22" rx="4"/><path class="icon" d="M10 13h12M10 19h7"/></symbol>
+    <symbol id="shield" viewBox="0 0 32 32"><path class="icon" d="M16 4l10 4v7c0 7-4 11-10 14C10 26 6 22 6 15V8zM11 16l3 3l7-8"/></symbol>
+  </defs>
+
+  <rect width="1600" height="930" fill="#f7fafc"/>
+  <text x="55" y="39" class="title">Three-tenant isolation</text>
+
+  <rect x="55" y="62" width="1490" height="250" rx="25" fill="#f2fbfc" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#folder" x="82" y="82" width="30" height="30"/><text x="124" y="104" class="heading">Example Corp organization</text>
+  <rect x="82" y="128" width="1436" height="62" rx="14" fill="#edf2f7" stroke="#cad8e3"/>
+  <text x="105" y="153" class="label">Folders</text>
+  <rect x="350" y="141" width="230" height="36" rx="9" fill="#e7f7fa" stroke="#00a6b8"/><text x="465" y="164" text-anchor="middle" class="tag">platform</text>
+  <rect x="1020" y="141" width="280" height="36" rx="9" fill="#f0fbf3" stroke="#27a667"/><text x="1160" y="164" text-anchor="middle" class="tag">landing_zones_corporate</text>
+  <rect x="82" y="210" width="1436" height="76" rx="14" fill="#fff" stroke="#cad8e3"/>
+  <text x="105" y="235" class="label">Projects</text>
+  <rect x="250" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#management" x="259" y="239" width="25" height="25"/><text x="350" y="257" text-anchor="middle" class="tag">Management</text>
+  <rect x="440" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#network" x="449" y="239" width="25" height="25"/><text x="540" y="257" text-anchor="middle" class="tag">Connectivity</text>
+  <rect x="800" y="232" width="190" height="40" rx="9" fill="#f0fbf3" stroke="#27a667" stroke-width="2"/><use href="#app" x="810" y="239" width="25" height="25"/><text x="905" y="257" text-anchor="middle" class="tag">Tenant A Workload</text>
+  <rect x="1010" y="232" width="190" height="40" rx="9" fill="#f4f5ff" stroke="#6978c9" stroke-width="2"/><use href="#app" x="1020" y="239" width="25" height="25"/><text x="1115" y="257" text-anchor="middle" class="tag">Tenant B Workload</text>
+  <rect x="1220" y="232" width="190" height="40" rx="9" fill="#fff7eb" stroke="#ed8b24" stroke-width="2"/><use href="#app" x="1230" y="239" width="25" height="25"/><text x="1325" y="257" text-anchor="middle" class="tag">Tenant C Workload</text>
+  <path d="M465 177V205H335V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M465 177V205H525V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1160 177V205H895V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1160 177V205H1105V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1160 177V205H1315V232" class="structure" marker-end="url(#arrow-gray)"/>
+
+  <rect x="55" y="345" width="290" height="505" rx="25" fill="#effafd" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#management" x="82" y="370" width="34" height="34"/><text x="128" y="396" class="heading">Platform</text>
+  <text x="128" y="420" class="small">Shared governance only</text>
+  <rect x="82" y="455" width="236" height="140" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#management" x="104" y="478" width="32" height="32"/><text x="148" y="501" class="label">Management</text>
+  <text x="104" y="540" class="tag">Organization controls</text><text x="104" y="565" class="small">Independent tenant owners</text>
+  <rect x="82" y="625" width="236" height="180" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#network" x="104" y="648" width="32" height="32"/><text x="148" y="671" class="label">Connectivity</text>
+  <text x="104" y="710" class="tag">Three Network Areas</text><text x="104" y="735" class="small">No shared routes</text><text x="104" y="758" class="small">Independent address spaces</text>
+  <use href="#shield" x="270" y="648" width="26" height="26"/>
+
+  <rect x="385" y="345" width="360" height="505" rx="25" fill="#f0fbf3" stroke="#27a667" stroke-width="3"/>
+  <use href="#network" x="412" y="370" width="34" height="34"/><text x="458" y="396" class="heading">Tenant A Domain</text>
+  <text x="458" y="420" class="small">Owner tenant-a@example.com</text>
+  <rect x="415" y="455" width="300" height="170" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#network" x="438" y="478" width="32" height="32"/><text x="482" y="501" class="label">tenant-a-sna</text>
+  <rect x="438" y="530" width="254" height="64" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="565" y="553" text-anchor="middle" class="tag">10.0.0.0/16</text><text x="565" y="574" text-anchor="middle" class="small">transfer 10.1.0.0/24</text>
+  <rect x="415" y="665" width="300" height="130" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#app" x="438" y="688" width="32" height="32"/><text x="482" y="711" class="label">Tenant A Workload</text><text x="438" y="747" class="tag">Corporate / prod / prefix 24</text><text x="438" y="770" class="small">area key tenant_a</text>
+  <path d="M565 665V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <rect x="785" y="345" width="360" height="505" rx="25" fill="#f4f5ff" stroke="#6978c9" stroke-width="3"/>
+  <use href="#network" x="812" y="370" width="34" height="34"/><text x="858" y="396" class="heading">Tenant B Domain</text>
+  <text x="858" y="420" class="small">Owner tenant-b@example.com</text>
+  <rect x="815" y="455" width="300" height="170" rx="18" fill="#fff" stroke="#b8c0eb" stroke-width="2"/>
+  <use href="#network" x="838" y="478" width="32" height="32"/><text x="882" y="501" class="label">tenant-b-sna</text>
+  <rect x="838" y="530" width="254" height="64" rx="9" fill="#f5f6ff" stroke="#cdd2ef"/><text x="965" y="553" text-anchor="middle" class="tag">10.2.0.0/16</text><text x="965" y="574" text-anchor="middle" class="small">transfer 10.3.0.0/24</text>
+  <rect x="815" y="665" width="300" height="130" rx="18" fill="#fff" stroke="#b8c0eb" stroke-width="2"/>
+  <use href="#app" x="838" y="688" width="32" height="32"/><text x="882" y="711" class="label">Tenant B Workload</text><text x="838" y="747" class="tag">Corporate / prod / prefix 24</text><text x="838" y="770" class="small">area key tenant_b</text>
+  <path d="M965 665V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <rect x="1185" y="345" width="360" height="505" rx="25" fill="#fff7eb" stroke="#ed8b24" stroke-width="3"/>
+  <use href="#network" x="1212" y="370" width="34" height="34"/><text x="1258" y="396" class="heading">Tenant C Domain</text>
+  <text x="1258" y="420" class="small">Owner tenant-c@example.com</text>
+  <rect x="1215" y="455" width="300" height="170" rx="18" fill="#fff" stroke="#f4c57f" stroke-width="2"/>
+  <use href="#network" x="1238" y="478" width="32" height="32"/><text x="1282" y="501" class="label">tenant-c-sna</text>
+  <rect x="1238" y="530" width="254" height="64" rx="9" fill="#fffaf4" stroke="#f4d7a7"/><text x="1365" y="553" text-anchor="middle" class="tag">10.4.0.0/16</text><text x="1365" y="574" text-anchor="middle" class="small">transfer 10.5.0.0/24</text>
+  <rect x="1215" y="665" width="300" height="130" rx="18" fill="#fff" stroke="#f4c57f" stroke-width="2"/>
+  <use href="#app" x="1238" y="688" width="32" height="32"/><text x="1282" y="711" class="label">Tenant C Workload</text><text x="1238" y="747" class="tag">Corporate / prod / prefix 24</text><text x="1238" y="770" class="small">area key tenant_c</text>
+  <path d="M1365 665V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <path d="M765 380V825" class="boundary"/>
+  <path d="M1165 380V825" class="boundary"/>
+  <text x="965" y="875" text-anchor="middle" class="small">No private routing between Tenant A, Tenant B and Tenant C</text>
+  <g transform="translate(76 905)">
+    <line x1="0" y1="0" x2="38" y2="0" class="private-flow"/><text x="50" y="5" class="small">private traffic inside each tenant only</text>
+    <line x1="330" y1="0" x2="368" y2="0" class="boundary"/><text x="380" y="5" class="small">hard tenant boundary</text>
+  </g>
+</svg>

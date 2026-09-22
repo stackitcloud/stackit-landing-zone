@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+  <title id="title">Hub-and-spoke landing zone with centralized firewall</title>
+  <desc id="desc">The organization contains platform, corporate, and public projects. Corporate traffic enters the shared Network Area and exits through OPNsense. Public traffic reaches the internet directly. Both landing zones send telemetry to management.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #10213b; }
+      .heading { font: 700 20px Arial, sans-serif; fill: #10213b; }
+      .label { font: 700 16px Arial, sans-serif; fill: #10213b; }
+      .small { font: 400 13px Arial, sans-serif; fill: #53657b; }
+      .tag { font: 700 12px Arial, sans-serif; fill: #10213b; }
+      .icon { fill: none; stroke: #0b4b70; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .structure { fill: none; stroke: #51657c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .private-flow { fill: none; stroke: #00a6b8; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .inspected-flow { fill: none; stroke: #d84343; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .public-flow { fill: none; stroke: #ed8b24; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51657c"/></marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#00a6b8"/></marker>
+    <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#d84343"/></marker>
+    <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#ed8b24"/></marker>
+    <symbol id="folder" viewBox="0 0 32 32"><path class="icon" d="M3 9h10l3 3h13v14H3zM3 12h26"/></symbol>
+    <symbol id="management" viewBox="0 0 32 32"><path class="icon" d="M5 9h22v17H5zM9 6h14v3M10 15h12M10 20h8"/></symbol>
+    <symbol id="network" viewBox="0 0 32 32"><path class="icon" d="M16 5v22M6 11l10 5l10-5M6 21l10-5l10 5M4 8h4v5H4zm20 0h4v5h-4zM14 24h4v4h-4z"/></symbol>
+    <symbol id="app" viewBox="0 0 32 32"><rect class="icon" x="5" y="5" width="22" height="22" rx="4"/><path class="icon" d="M10 13h12M10 19h7"/></symbol>
+    <symbol id="firewall" viewBox="0 0 32 32"><path class="icon" d="M5 7h22v19H5zM5 13h22M5 20h22M11 7v6m10 0v7m-10 0v6m10-6v6"/></symbol>
+    <symbol id="telemetry" viewBox="0 0 32 32"><path class="icon" d="M5 24h22M7 21l5-6l4 3l7-10M21 8h2v2"/></symbol>
+    <symbol id="internet" viewBox="0 0 32 32"><circle class="icon" cx="16" cy="16" r="12"/><path class="icon" d="M4 16h24M16 4c4 4 6 8 6 12s-2 8-6 12M16 4c-4 4-6 8-6 12s2 8 6 12"/></symbol>
+  </defs>
+
+  <rect width="1600" height="930" fill="#f7fafc"/>
+  <text x="55" y="39" class="title">Hub-and-spoke + firewall</text>
+
+  <rect x="55" y="62" width="1490" height="250" rx="25" fill="#f2fbfc" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#folder" x="82" y="82" width="30" height="30"/><text x="124" y="104" class="heading">Organization</text>
+  <rect x="82" y="128" width="1436" height="62" rx="14" fill="#edf2f7" stroke="#cad8e3"/>
+  <text x="105" y="153" class="label">Folders</text>
+  <rect x="290" y="141" width="190" height="36" rx="9" fill="#e7f7fa" stroke="#00a6b8"/><text x="385" y="164" text-anchor="middle" class="tag">platform</text>
+  <rect x="730" y="141" width="235" height="36" rx="9" fill="#f0fbf3" stroke="#27a667"/><text x="848" y="164" text-anchor="middle" class="tag">landing_zones_corporate</text>
+  <rect x="1150" y="141" width="215" height="36" rx="9" fill="#fff7eb" stroke="#ed8b24"/><text x="1258" y="164" text-anchor="middle" class="tag">landing_zones_public</text>
+  <rect x="82" y="210" width="1436" height="76" rx="14" fill="#fff" stroke="#cad8e3"/>
+  <text x="105" y="235" class="label">Projects</text>
+  <rect x="270" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#management" x="280" y="239" width="25" height="25"/><text x="365" y="257" text-anchor="middle" class="tag">Management</text>
+  <rect x="465" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#network" x="475" y="239" width="25" height="25"/><text x="560" y="257" text-anchor="middle" class="tag">Connectivity</text>
+  <rect x="770" y="232" width="185" height="40" rx="9" fill="#f0fbf3" stroke="#27a667" stroke-width="2"/><use href="#app" x="780" y="239" width="25" height="25"/><text x="875" y="257" text-anchor="middle" class="tag">Data Platform</text>
+  <rect x="1175" y="232" width="205" height="40" rx="9" fill="#fff7eb" stroke="#ed8b24" stroke-width="2"/><use href="#app" x="1185" y="239" width="25" height="25"/><text x="1287" y="257" text-anchor="middle" class="tag">External API Gateway</text>
+  <path d="M385 177V204H355V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M385 177V204H550V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M848 177V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1258 177V232" class="structure" marker-end="url(#arrow-gray)"/>
+
+  <rect x="55" y="345" width="650" height="505" rx="25" fill="#effafd" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#network" x="82" y="370" width="34" height="34"/><text x="128" y="396" class="heading">Platform Landing Zone</text>
+  <text x="128" y="420" class="small">Shared management and inspected network egress</text>
+  <rect x="82" y="450" width="265" height="335" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#management" x="104" y="472" width="32" height="32"/><text x="148" y="495" class="label">Management</text>
+  <rect x="104" y="530" width="220" height="52" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><use href="#telemetry" x="119" y="543" width="25" height="25"/><text x="219" y="552" text-anchor="middle" class="tag">Observability</text><text x="219" y="570" text-anchor="middle" class="small">logs and metrics</text>
+  <rect x="104" y="604" width="220" height="52" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><use href="#management" x="119" y="617" width="25" height="25"/><text x="219" y="626" text-anchor="middle" class="tag">State and secrets</text><text x="219" y="644" text-anchor="middle" class="small">platform automation</text>
+  <rect x="372" y="450" width="305" height="335" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#network" x="394" y="472" width="32" height="32"/><text x="438" y="495" class="label">Connectivity</text>
+  <rect x="394" y="530" width="260" height="52" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><use href="#network" x="408" y="543" width="25" height="25"/><text x="533" y="552" text-anchor="middle" class="tag">Shared Network Area</text><text x="533" y="570" text-anchor="middle" class="small">10.0.0.0/16 + central DNS</text>
+  <rect x="394" y="620" width="260" height="72" rx="9" fill="#fff2f1" stroke="#d84343" stroke-width="2"/><use href="#firewall" x="410" y="638" width="30" height="30"/><text x="535" y="648" text-anchor="middle" class="label">OPNsense firewall</text><text x="535" y="669" text-anchor="middle" class="small">inspection + NAT + static egress IP</text>
+  <rect x="454" y="721" width="140" height="42" rx="21" fill="#edf2f7" stroke="#708397"/><use href="#internet" x="465" y="730" width="24" height="24"/><text x="538" y="747" text-anchor="middle" class="tag">WAN network</text>
+
+  <rect x="745" y="345" width="520" height="255" rx="25" fill="#f0fbf3" stroke="#27a667" stroke-width="3"/>
+  <use href="#app" x="772" y="370" width="34" height="34"/><text x="818" y="396" class="heading">Corporate Landing Zone</text>
+  <text x="818" y="420" class="small">Data Platform / production / eu01</text>
+  <rect x="775" y="458" width="205" height="62" rx="10" fill="#fff" stroke="#9bd2b1" stroke-width="2"/><use href="#network" x="790" y="473" width="28" height="28"/><text x="892" y="486" text-anchor="middle" class="tag">Private network</text><text x="892" y="505" text-anchor="middle" class="small">attached to SNA</text>
+  <rect x="1010" y="458" width="225" height="62" rx="10" fill="#fff" stroke="#9bd2b1" stroke-width="2"/><use href="#app" x="1025" y="473" width="28" height="28"/><text x="1134" y="486" text-anchor="middle" class="tag">Corporate workload</text><text x="1134" y="505" text-anchor="middle" class="small">default route via firewall</text>
+  <rect x="775" y="542" width="205" height="38" rx="9" fill="#fff" stroke="#9bd2b1"/><text x="878" y="566" text-anchor="middle" class="tag">Delegated DNS zone</text>
+  <rect x="1010" y="542" width="225" height="38" rx="9" fill="#fff" stroke="#9bd2b1"/><text x="1122" y="566" text-anchor="middle" class="tag">Secrets + object storage</text>
+
+  <rect x="745" y="630" width="520" height="220" rx="25" fill="#fff7eb" stroke="#ed8b24" stroke-width="3"/>
+  <use href="#app" x="772" y="655" width="34" height="34"/><text x="818" y="681" class="heading">Public Landing Zone</text>
+  <text x="818" y="705" class="small">External API Gateway / production / eu01</text>
+  <rect x="775" y="742" width="205" height="62" rx="10" fill="#fff" stroke="#f4c57f" stroke-width="2"/><use href="#network" x="790" y="757" width="28" height="28"/><text x="892" y="770" text-anchor="middle" class="tag">Standalone network</text><text x="892" y="789" text-anchor="middle" class="small">not attached to SNA</text>
+  <rect x="1010" y="742" width="225" height="62" rx="10" fill="#fff" stroke="#f4c57f" stroke-width="2"/><use href="#app" x="1025" y="757" width="28" height="28"/><text x="1134" y="770" text-anchor="middle" class="tag">Public workload</text><text x="1134" y="789" text-anchor="middle" class="small">direct internet access</text>
+
+  <rect x="1345" y="535" width="170" height="100" rx="50" fill="#edf2f7" stroke="#708397" stroke-width="2"/>
+  <use href="#internet" x="1368" y="566" width="36" height="36"/><text x="1450" y="580" text-anchor="middle" class="label">Internet</text><text x="1450" y="602" text-anchor="middle" class="small">ingress / egress</text>
+
+  <path d="M1010 489H980" class="private-flow" marker-end="url(#arrow-teal)"/>
+  <path d="M775 489H705V556H654" class="private-flow" marker-end="url(#arrow-teal)"/>
+  <path d="M524 582V620" class="inspected-flow" marker-end="url(#arrow-red)"/>
+  <path d="M524 692V721" class="inspected-flow" marker-end="url(#arrow-red)"/>
+  <path d="M594 742H690V870H1305V585H1345" class="inspected-flow" marker-end="url(#arrow-red)"/>
+  <path d="M1235 773H1300V615H1345" class="public-flow" marker-end="url(#arrow-orange)"/>
+  <text x="1275" y="751" class="small">direct public path</text>
+  <g transform="translate(76 905)">
+    <line x1="0" y1="0" x2="38" y2="0" class="private-flow"/><text x="50" y="5" class="small">private traffic</text>
+    <line x1="190" y1="0" x2="228" y2="0" class="inspected-flow"/><text x="240" y="5" class="small">inspected egress</text>
+    <line x1="410" y1="0" x2="448" y2="0" class="public-flow"/><text x="460" y="5" class="small">direct internet</text>
+  </g>
+</svg>

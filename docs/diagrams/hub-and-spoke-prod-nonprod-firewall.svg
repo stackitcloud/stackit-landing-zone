@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+  <title id="title">Production and non-production topology with firewalls</title>
+  <desc id="desc">Production and non-production each use an isolated Network Area and a dedicated OPNsense firewall. Development and test share the non-production domain.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #10213b; }
+      .heading { font: 700 20px Arial, sans-serif; fill: #10213b; }
+      .label { font: 700 16px Arial, sans-serif; fill: #10213b; }
+      .small { font: 400 13px Arial, sans-serif; fill: #53657b; }
+      .tag { font: 700 12px Arial, sans-serif; fill: #10213b; }
+      .icon { fill: none; stroke: #0b4b70; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .structure { fill: none; stroke: #51657c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .private-flow { fill: none; stroke: #00a6b8; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .inspected-flow { fill: none; stroke: #d84343; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .boundary { fill: none; stroke: #708397; stroke-width: 2; stroke-dasharray: 7 7; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51657c"/></marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#00a6b8"/></marker>
+    <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#d84343"/></marker>
+    <symbol id="folder" viewBox="0 0 32 32"><path class="icon" d="M3 9h10l3 3h13v14H3zM3 12h26"/></symbol>
+    <symbol id="management" viewBox="0 0 32 32"><path class="icon" d="M5 9h22v17H5zM9 6h14v3M10 15h12M10 20h8"/></symbol>
+    <symbol id="network" viewBox="0 0 32 32"><path class="icon" d="M16 5v22M6 11l10 5l10-5M6 21l10-5l10 5M4 8h4v5H4zm20 0h4v5h-4zM14 24h4v4h-4z"/></symbol>
+    <symbol id="app" viewBox="0 0 32 32"><rect class="icon" x="5" y="5" width="22" height="22" rx="4"/><path class="icon" d="M10 13h12M10 19h7"/></symbol>
+    <symbol id="firewall" viewBox="0 0 32 32"><path class="icon" d="M5 7h22v19H5zM5 13h22M5 20h22M11 7v6m10 0v7m-10 0v6m10-6v6"/></symbol>
+    <symbol id="internet" viewBox="0 0 32 32"><circle class="icon" cx="16" cy="16" r="12"/><path class="icon" d="M4 16h24M16 4c4 4 6 8 6 12s-2 8-6 12M16 4c-4 4-6 8-6 12s2 8 6 12"/></symbol>
+  </defs>
+
+  <rect width="1600" height="930" fill="#f7fafc"/>
+  <text x="55" y="39" class="title">Production and non-production with firewalls</text>
+
+  <rect x="55" y="62" width="1490" height="250" rx="25" fill="#f2fbfc" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#folder" x="82" y="82" width="30" height="30"/><text x="124" y="104" class="heading">Example Corp organization</text>
+  <rect x="82" y="128" width="1436" height="62" rx="14" fill="#edf2f7" stroke="#cad8e3"/>
+  <text x="105" y="153" class="label">Folders</text>
+  <rect x="350" y="141" width="230" height="36" rx="9" fill="#e7f7fa" stroke="#00a6b8"/><text x="465" y="164" text-anchor="middle" class="tag">platform</text>
+  <rect x="1020" y="141" width="280" height="36" rx="9" fill="#f0fbf3" stroke="#27a667"/><text x="1160" y="164" text-anchor="middle" class="tag">landing_zones_corporate</text>
+  <rect x="82" y="210" width="1436" height="76" rx="14" fill="#fff" stroke="#cad8e3"/>
+  <text x="105" y="235" class="label">Projects</text>
+  <rect x="260" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#management" x="269" y="239" width="25" height="25"/><text x="360" y="257" text-anchor="middle" class="tag">Management</text>
+  <rect x="450" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#network" x="459" y="239" width="25" height="25"/><text x="550" y="257" text-anchor="middle" class="tag">Connectivity</text>
+  <rect x="800" y="232" width="195" height="40" rx="9" fill="#fff5f1" stroke="#d06b52" stroke-width="2"/><use href="#app" x="810" y="239" width="25" height="25"/><text x="905" y="257" text-anchor="middle" class="tag">Production Workload</text>
+  <rect x="1015" y="232" width="215" height="40" rx="9" fill="#f0fbf3" stroke="#27a667" stroke-width="2"/><use href="#app" x="1025" y="239" width="25" height="25"/><text x="1130" y="257" text-anchor="middle" class="tag">Development Workload</text>
+  <rect x="1250" y="232" width="190" height="40" rx="9" fill="#f0fbf3" stroke="#27a667" stroke-width="2"/><use href="#app" x="1260" y="239" width="25" height="25"/><text x="1350" y="257" text-anchor="middle" class="tag">Test Workload</text>
+  <path d="M465 177V205H345V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M465 177V205H535V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1160 177V205H898V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1160 177V205H1123V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1160 177V205H1345V232" class="structure" marker-end="url(#arrow-gray)"/>
+
+  <rect x="55" y="345" width="700" height="505" rx="25" fill="#fff5f1" stroke="#d06b52" stroke-width="3"/>
+  <use href="#network" x="82" y="370" width="34" height="34"/><text x="128" y="396" class="heading">Production Domain</text>
+  <text x="128" y="420" class="small">Dedicated SNA, firewall and production landing zone</text>
+  <rect x="85" y="455" width="640" height="170" rx="18" fill="#fff" stroke="#e2a291" stroke-width="2"/>
+  <use href="#network" x="108" y="478" width="32" height="32"/><text x="152" y="501" class="label">Prod Connectivity</text>
+  <rect x="108" y="530" width="240" height="64" rx="9" fill="#fff8f5" stroke="#edc0b4"/><text x="228" y="553" text-anchor="middle" class="tag">prod-sna</text><text x="228" y="574" text-anchor="middle" class="small">10.0.0.0/16 | transfer 10.1.0.0/24</text>
+  <rect x="410" y="510" width="285" height="95" rx="12" fill="#fff2f1" stroke="#d84343" stroke-width="2"/>
+  <use href="#firewall" x="425" y="539" width="26" height="26"/><text x="575" y="533" text-anchor="middle" class="label">opnsense-prod</text><text x="575" y="556" text-anchor="middle" class="small">LAN 10.0.2.0/28</text><text x="575" y="578" text-anchor="middle" class="small">WAN 10.0.2.16/28 | c1.2 / eu01-m</text>
+  <rect x="85" y="665" width="300" height="130" rx="18" fill="#fff" stroke="#e2a291" stroke-width="2"/>
+  <use href="#app" x="108" y="688" width="32" height="32"/><text x="152" y="711" class="label">Production Workload</text>
+  <text x="108" y="747" class="tag">Corporate / prod / prefix 24</text><text x="108" y="770" class="small">network_area_key prod</text>
+  <rect x="470" y="690" width="225" height="82" rx="41" fill="#edf2f7" stroke="#708397" stroke-width="2"/>
+  <use href="#internet" x="490" y="714" width="34" height="34"/><text x="600" y="724" text-anchor="middle" class="label">Internet</text><text x="600" y="747" text-anchor="middle" class="small">inspected egress</text>
+  <path d="M235 665V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+  <path d="M348 562H410" class="inspected-flow" marker-end="url(#arrow-red)"/>
+  <path d="M552 605V650H582V690" class="inspected-flow" marker-end="url(#arrow-red)"/>
+
+  <rect x="795" y="345" width="750" height="505" rx="25" fill="#f0fbf3" stroke="#27a667" stroke-width="3"/>
+  <use href="#network" x="822" y="370" width="34" height="34"/><text x="868" y="396" class="heading">Non-Production Domain</text>
+  <text x="868" y="420" class="small">Shared nonprod SNA and firewall for development and test</text>
+  <rect x="825" y="455" width="690" height="170" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#network" x="848" y="478" width="32" height="32"/><text x="892" y="501" class="label">Nonprod Connectivity</text>
+  <rect x="848" y="530" width="250" height="64" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="973" y="553" text-anchor="middle" class="tag">nonprod-sna</text><text x="973" y="574" text-anchor="middle" class="small">10.2.0.0/16 | transfer 10.3.0.0/24</text>
+  <rect x="1210" y="510" width="280" height="95" rx="12" fill="#fff2f1" stroke="#d84343" stroke-width="2"/>
+  <use href="#firewall" x="1225" y="539" width="26" height="26"/><text x="1370" y="533" text-anchor="middle" class="label">opnsense-nonprod</text><text x="1370" y="556" text-anchor="middle" class="small">LAN 10.2.2.0/28</text><text x="1370" y="578" text-anchor="middle" class="small">WAN 10.2.2.16/28 | c1.2 / eu01-m</text>
+  <rect x="825" y="665" width="200" height="130" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#app" x="848" y="688" width="32" height="32"/><text x="892" y="711" class="label">Development</text><text x="848" y="747" class="tag">dev / prefix 24</text><text x="848" y="770" class="small">area key nonprod</text>
+  <rect x="1045" y="665" width="200" height="130" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#app" x="1068" y="688" width="32" height="32"/><text x="1112" y="711" class="label">Test</text><text x="1068" y="747" class="tag">test / prefix 24</text><text x="1068" y="770" class="small">area key nonprod</text>
+  <rect x="1270" y="690" width="220" height="82" rx="41" fill="#edf2f7" stroke="#708397" stroke-width="2"/>
+  <use href="#internet" x="1290" y="714" width="34" height="34"/><text x="1400" y="724" text-anchor="middle" class="label">Internet</text><text x="1400" y="747" text-anchor="middle" class="small">inspected egress</text>
+  <path d="M925 665V635H925V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+  <path d="M1145 665V635H1030V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+  <path d="M1098 562H1210" class="inspected-flow" marker-end="url(#arrow-red)"/>
+  <path d="M1350 605V650H1380V690" class="inspected-flow" marker-end="url(#arrow-red)"/>
+
+  <path d="M775 380V825" class="boundary"/>
+  <text x="775" y="875" text-anchor="middle" class="small">isolated SNAs</text>
+  <g transform="translate(76 905)">
+    <line x1="0" y1="0" x2="38" y2="0" class="private-flow"/><text x="50" y="5" class="small">private traffic</text>
+    <line x1="190" y1="0" x2="228" y2="0" class="inspected-flow"/><text x="240" y="5" class="small">firewall-inspected traffic</text>
+    <line x1="470" y1="0" x2="508" y2="0" class="boundary"/><text x="520" y="5" class="small">no cross-environment routing</text>
+  </g>
+</svg>

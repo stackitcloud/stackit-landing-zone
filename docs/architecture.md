@@ -204,35 +204,75 @@ Source: `src/modules/sandboxes/`
 
 ## Deployment Flavors
 
-Complete reference configurations are provided in `src/config/`. Select the one that matches your network requirements; [Getting Started](getting-started.md#deployment-flavours) lists all available scenarios.
+Complete reference configurations are provided in `src/config/`. The diagrams below intentionally focus on topology boundaries, traffic paths, and the projects a user receives rather than every provisioned resource. Select the configuration that matches your network and isolation requirements; [Getting Started](getting-started.md#deployment-flavours) describes how to deploy it.
 
 ### Standalone
 
-The simplest configuration. Provisions governance, management, and one or more landing zone projects. No shared network infrastructure — each landing zone uses an independent network suitable for internet-facing or isolated workloads.
+The simplest configuration. It provisions governance, management, a sandbox, and a public landing zone with an independent network. No shared Network Area or connectivity hub is created.
 
-![Standalone architecture](diagrams/standalone-architecture.svg)
+![Standalone topology](diagrams/standalone.svg)
 
-**Use when:** workloads do not require private connectivity to each other or to on-premises systems.
+Configuration: [`standalone.tfvars`](../src/config/standalone.tfvars)
 
 ### Hub-Spoke
 
-Adds a connectivity hub with a shared Network Area. All corporate landing zones are attached to this area, enabling private east-west traffic between projects and a shared IP address plan. DNS zones are managed centrally in the hub project.
+Adds a connectivity hub with a shared Network Area and central DNS. The corporate Data Platform joins the private area, while the public API landing zone retains an independent network.
 
-![Hub-Spoke architecture](diagrams/hub-and-spoke-architecture.svg)
+![Hub-and-spoke topology](diagrams/hub-and-spoke.svg)
 
-**Use when:** workloads need private connectivity to each other and a shared DNS namespace, but centralized traffic inspection is not required.
+Configuration: [`hub-and-spoke.tfvars`](../src/config/hub-and-spoke.tfvars)
 
 ### Hub-Spoke + Firewall
 
-Extends the hub-spoke topology with a firewall VM deployed in the connectivity project. All corporate landing zones route their default traffic through the firewall LAN interface, enabling centralized egress inspection and east-west traffic control.
+Extends the hub-spoke topology with an OPNsense firewall. Corporate traffic uses the appliance for centralized inspection and consistent egress, while the public landing zone remains direct.
 
-![Hub-Spoke + Firewall architecture](diagrams/hub-and-spoke-firewall-architecture.svg)
+![Hub-and-spoke topology with firewall](diagrams/hub-and-spoke-firewall.svg)
 
-**Use when:** compliance requirements mandate traffic inspection, or centralized egress control with a consistent public IP is needed.
+Configuration: [`hub-and-spoke-firewall.tfvars`](../src/config/hub-and-spoke-firewall.tfvars)
+
+### Finance + Research
+
+Creates independent private connectivity domains for two business units in the same organization. Each unit has its own owner, address plan, connectivity project, Network Area, and workload landing zone.
+
+![Finance and research topology](diagrams/hub-and-spoke-finance-research.svg)
+
+Configuration: [`hub-and-spoke-finance-research.tfvars`](../src/config/hub-and-spoke-finance-research.tfvars)
+
+### Multi-Area
+
+Separates regulated and shared workloads into distinct Network Areas and DNS zones. The two private domains have no implicit routing between them.
+
+![Multi-area topology](diagrams/hub-and-spoke-multi-area.svg)
+
+Configuration: [`hub-and-spoke-multi-area.tfvars`](../src/config/hub-and-spoke-multi-area.tfvars)
+
+### Multi-Region
+
+Creates independent regional hubs in `eu01` and `eu02`, each with its own Network Area, workload landing zone, and Platform Kubernetes cluster. Inter-region connectivity is deliberately not implicit.
+
+![Multi-region topology](diagrams/hub-and-spoke-multi-region.svg)
+
+Configuration: [`hub-and-spoke-multi-region.tfvars`](../src/config/hub-and-spoke-multi-region.tfvars)
+
+### Prod / Nonprod + Firewalls
+
+Separates production and non-production into independent Network Areas with dedicated OPNsense firewalls. Development and test share the non-production domain but remain separate landing zones.
+
+![Production and non-production topology with firewalls](diagrams/hub-and-spoke-prod-nonprod-firewall.svg)
+
+Configuration: [`hub-and-spoke-prod-nonprod-firewall.tfvars`](../src/config/hub-and-spoke-prod-nonprod-firewall.tfvars)
+
+### Tenant Isolation
+
+Creates three private tenant domains inside one organization. Every tenant receives a dedicated Network Area, address plan, workload landing zone, and owner without private routing to the other tenants.
+
+![Three-tenant isolation topology](diagrams/hub-and-spoke-tenant-isolation.svg)
+
+Configuration: [`hub-and-spoke-tenant-isolation.tfvars`](../src/config/hub-and-spoke-tenant-isolation.tfvars)
 
 ## Network Topology
 
-The three deployment flavors differ only in what the connectivity module deploys and how landing zone traffic is routed.
+The eight deployment flavors build on three base networking modes. These modes differ in what the connectivity module deploys and how landing zone traffic is routed.
 
 ### Standalone
 
