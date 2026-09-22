@@ -21,7 +21,7 @@ resource "stackit_network_area" "this" {
   for_each = { for idx, na in var.network_areas : idx => na }
 
   organization_id = var.organization_id
-  name            = each.value.name != null ? each.value.name : "${var.naming_pattern}-${each.key}"
+  name            = each.value.name != null ? each.value.name : each.key == "default" ? var.naming_pattern : "${var.naming_pattern}-${each.key}"
   labels          = merge(var.labels, { "preview/routingtables" = "true" })
 }
 

@@ -185,7 +185,7 @@ resource "terraform_data" "firewall_ha_primary" {
   ]
 
   provisioner "local-exec" {
-    command     = "bash '${path.module}/scripts/configure-ha.sh' 'https://${local.network_area_firewall[each.key].wan_ip}' primary"
+    command     = "bash '${path.module}/scripts/configure-ha.sh' '${coalesce(var.firewall_admin_endpoint, "https://${local.network_area_firewall[each.key].wan_ip}")}' primary"
     interpreter = ["/usr/bin/env", "bash", "-c"]
 
     environment = {

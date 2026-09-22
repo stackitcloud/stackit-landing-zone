@@ -604,17 +604,23 @@ variable "landing_zones" {
 
   validation {
     condition = alltrue([
-      for landing_zone in values(var.landing_zones) : !landing_zone.corporate || (
-        var.connectivity_regions != null
-        ? landing_zone.region != null && contains(keys(var.connectivity_regions), landing_zone.region) && contains(keys(try(var.connectivity_regions[landing_zone.region].network_areas, {})), landing_zone.network_area_key)
-        : var.connectivity != null && (
-          var.connectivity.network_areas != null
-          ? contains(keys(var.connectivity.network_areas), landing_zone.network_area_key)
-          : var.connectivity.network_area != null && landing_zone.network_area_key == "default"
+      for landing_zone in values(var.landing_zones) : (
+        var.connectivity_regions == null || (
+          landing_zone.region != null && contains(keys(var.connectivity_regions), landing_zone.region)
+        )
+        ) && (
+        !landing_zone.corporate || (
+          var.connectivity_regions != null
+          ? contains(keys(try(var.connectivity_regions[landing_zone.region].network_areas, {})), landing_zone.network_area_key)
+          : var.connectivity != null && (
+            var.connectivity.network_areas != null
+            ? contains(keys(var.connectivity.network_areas), landing_zone.network_area_key)
+            : var.connectivity.network_area != null && landing_zone.network_area_key == "default"
+          )
         )
       )
     ])
-    error_message = "Every corporate landing zone must reference an existing network area; with connectivity_regions, also set its supported region."
+    error_message = "With connectivity_regions, every landing zone must set a supported region. Every corporate landing zone must also reference an existing network area."
   }
 }
 

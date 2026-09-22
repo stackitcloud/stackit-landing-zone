@@ -6,7 +6,7 @@ locals {
   vpn_network_areas = var.vpn == null ? {} : { for idx, na in var.network_areas : idx => na }
   vpn_connections = var.vpn == null ? {} : {
     for pair in setproduct(keys(local.vpn_network_areas), keys(var.vpn.connections)) :
-    "${pair[0]}/${pair[1]}" => merge(var.vpn.connections[pair[1]], {
+    (pair[0] == "default" ? pair[1] : "${pair[0]}/${pair[1]}") => merge(var.vpn.connections[pair[1]], {
       network_area_key = pair[0]
       connection_key   = pair[1]
     })

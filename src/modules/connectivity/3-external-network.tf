@@ -15,7 +15,7 @@ resource "stackit_routing_table" "wan" {
 
   organization_id = var.organization_id
   network_area_id = stackit_network_area.this[each.key].network_area_id
-  name            = "wan-${each.key}"
+  name            = each.key == "default" ? "wan" : "wan-${each.key}"
   system_routes   = true
 
   depends_on = [time_sleep.wait_for_network_area]
@@ -46,7 +46,7 @@ resource "stackit_network" "wan" {
   for_each = local.firewalls
 
   project_id       = stackit_resourcemanager_project.this[each.key].project_id
-  name             = "wan_network-${each.key}"
+  name             = each.key == "default" ? "wan_network" : "wan_network-${each.key}"
   ipv4_prefix      = each.value.wan_network_range
   ipv4_nameservers = local.network_area_nameservers[each.key]
   routing_table_id = stackit_routing_table.wan[each.key].routing_table_id
@@ -56,7 +56,7 @@ resource "stackit_network" "wan" {
 resource "stackit_network_interface" "wan" {
   for_each = local.firewalls
 
-  name       = "vtnet0_wan-${each.key}"
+  name       = each.key == "default" ? "vtnet0_wan" : "vtnet0_wan-${each.key}"
   project_id = stackit_resourcemanager_project.this[each.key].project_id
   network_id = stackit_network.wan[each.key].network_id
   ipv4       = local.firewall_wan_ips[each.key]
@@ -82,7 +82,7 @@ resource "stackit_public_ip" "wan-ip" {
 resource "stackit_network_interface" "wan_backup" {
   for_each = local.ha_firewalls
 
-  name       = "vtnet0_wan_backup-${each.key}"
+  name       = each.key == "default" ? "vtnet0_wan_backup" : "vtnet0_wan_backup-${each.key}"
   project_id = stackit_resourcemanager_project.this[each.key].project_id
   network_id = stackit_network.wan[each.key].network_id
   ipv4       = local.firewall_backup_wan_ips[each.key]

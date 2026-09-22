@@ -129,3 +129,80 @@ run "multi_area_plan" {
     error_message = "Expected production and development landing zones."
   }
 }
+
+run "multi_area_firewall_plan" {
+  command = plan
+
+  variables {
+    connectivity = {
+      network_areas = {
+        prod = {
+          name             = "hub-primary"
+          ranges           = ["10.0.0.0/16"]
+          transfer_network = "10.255.0.0/24"
+        }
+        nonprod = {
+          name             = "hub-secondary"
+          ranges           = ["10.1.0.0/16"]
+          transfer_network = "10.254.0.0/24"
+        }
+      }
+      dns_zones = {
+        primary = {
+          dns_name         = "primary.test.stackit.run"
+          network_area_key = "prod"
+        }
+        secondary = {
+          dns_name         = "secondary.test.stackit.run"
+          network_area_key = "nonprod"
+        }
+      }
+      firewalls = {
+        prod = {
+          zone              = "eu01-m"
+          flavor            = "c1.2"
+          name              = "prod-firewall"
+          lan_network_range = "10.0.0.0/28"
+          wan_network_range = "10.0.0.16/28"
+        }
+        nonprod = {
+          zone              = "eu01-1"
+          flavor            = "c1.2"
+          name              = "nonprod-firewall"
+          lan_network_range = "10.1.0.0/28"
+          wan_network_range = "10.1.0.16/28"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = output.connectivity_firewall_next_hop_ips_by_area == tomap({
+      prod    = "10.0.0.4"
+      nonprod = "10.1.0.4"
+    })
+    error_message = "Each network area must expose its firewall LAN IP as the landing-zone next hop."
+  }
+}
+
+run "regional_public_landing_zone_requires_region" {
+  command = plan
+
+  variables {
+    connectivity_regions = {
+      eu01 = {
+        network_areas = {}
+      }
+    }
+    landing_zones = {
+      public = {
+        project_name = "Public"
+        project_code = "public"
+        owner_email  = "example@digits.schwarz"
+        corporate    = false
+      }
+    }
+  }
+
+  expect_failures = [var.landing_zones]
+}

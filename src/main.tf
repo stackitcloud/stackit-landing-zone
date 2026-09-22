@@ -41,7 +41,7 @@ module "connectivity" {
   count  = var.connectivity != null && var.connectivity_regions == null ? 1 : 0
 
   owner_email         = var.owner_email
-  naming_pattern      = coalesce(var.connectivity.naming_pattern, "${var.company_code}-pltfm-connectivity")
+  naming_pattern      = coalesce(var.connectivity.naming_pattern, "${var.company_code}-pltfm-hub-prod")
   parent_container_id = module.governance.folder_container_ids["platform"]
   organization_id     = var.organization_id
   labels              = var.labels
@@ -95,6 +95,10 @@ module "connectivity_eu01" {
   firewalls           = try(var.connectivity_regions["eu01"].firewalls, null)
   vpn                 = try(var.connectivity_regions["eu01"].vpn, null)
   vpn_pre_shared_keys = var.vpn_pre_shared_keys
+
+  firewall_admin_endpoint = try(var.firewall_config.endpoint, null)
+  firewall_admin_username = var.firewall_admin_username
+  firewall_admin_password = var.firewall_admin_password
 }
 
 module "connectivity_eu02" {
@@ -113,6 +117,10 @@ module "connectivity_eu02" {
   firewalls           = try(var.connectivity_regions["eu02"].firewalls, null)
   vpn                 = try(var.connectivity_regions["eu02"].vpn, null)
   vpn_pre_shared_keys = var.vpn_pre_shared_keys
+
+  firewall_admin_endpoint = try(var.firewall_config.endpoint, null)
+  firewall_admin_username = var.firewall_admin_username
+  firewall_admin_password = var.firewall_admin_password
 }
 
 #####################
@@ -275,7 +283,7 @@ module "landing_zone" {
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
-  firewall_next_hop_ip   = var.connectivity != null && var.connectivity.firewall != null ? try(module.connectivity[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
+  firewall_next_hop_ip   = try(module.connectivity[0].firewall_next_hop_ip[each.value.network_area_key], null)
 }
 
 module "landing_zone_eu01" {
