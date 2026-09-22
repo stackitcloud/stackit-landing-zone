@@ -334,21 +334,21 @@ What exactly fails over, and what was measured, is in [High availability](archit
 
 ### Kubernetes: DNS automation for Gateway API resources
 
-Native `extensions.dns.gateway_api` support is now available in the STACKIT Terraform provider (since v0.109.0). Enable it in your `platform_kubernetes` configuration:
+Native `extensions.dns.gateway_api` support is available in the STACKIT Terraform provider since v0.109.0 and is enabled by default whenever the SKE DNS extension has at least one zone. Disable it explicitly if the cluster does not use Gateway API resources:
 
 ```hcl
 platform_kubernetes = {
   my-cluster = {
     dns = {
       enabled     = true
-      gateway_api = true
+      gateway_api = false
     }
     # ...
   }
 }
 ```
 
-With `gateway_api = true`, the SKE DNS extension configures ExternalDNS to handle Gateway API resources (`Gateway`, `HTTPRoute`) automatically. You no longer need to manage `stackit_dns_record_set` records or discover LoadBalancer endpoints manually via `kubernetes_resources`.
+With the default `gateway_api = true`, the SKE DNS extension configures ExternalDNS to handle Gateway API resources (`Gateway`, `HTTPRoute`) automatically. You no longer need to manage DNS records or discover LoadBalancer endpoints manually.
 
 > [!NOTE]
-> The Gateway API CRDs must be installed in the cluster before enabling this option. ExternalDNS will be configured at the next cluster reconcile.
+> The Gateway API CRDs must be installed in the cluster while this option is enabled. Set `gateway_api = false` until the CRDs are available; ExternalDNS will be configured at the next cluster reconcile after enabling it.

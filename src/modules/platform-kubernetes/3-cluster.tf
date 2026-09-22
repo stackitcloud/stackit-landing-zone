@@ -38,7 +38,7 @@ resource "stackit_ske_cluster" "this" {
     dns = {
       enabled     = var.dns.enabled && length(local.effective_dns_zones) > 0
       zones       = local.effective_dns_zones
-      gateway_api = var.dns.gateway_api
+      gateway_api = var.dns.enabled && length(local.effective_dns_zones) > 0 ? var.dns.gateway_api : null
     }
   }
 
