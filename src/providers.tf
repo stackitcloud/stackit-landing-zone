@@ -4,6 +4,22 @@ provider "stackit" {
   experiments           = ["iam", "routing-tables", "network"]
 }
 
+# Provider aliases are static because OpenTofu cannot select them dynamically.
+# Add a matching provider block and module instance when supporting another region.
+provider "stackit" {
+  alias                 = "eu01"
+  default_region        = "eu01"
+  enable_beta_resources = true
+  experiments           = ["iam", "routing-tables", "network"]
+}
+
+provider "stackit" {
+  alias                 = "eu02"
+  default_region        = "eu02"
+  enable_beta_resources = true
+  experiments           = ["iam", "routing-tables", "network"]
+}
+
 locals {
   platform_kubernetes_cluster_key = try(one(keys(module.platform_kubernetes)), null)
 

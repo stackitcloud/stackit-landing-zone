@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+  <title id="title">Standalone landing zone topology</title>
+  <desc id="desc">A STACKIT organization with management and sandbox projects and one public landing zone using an independent network with direct internet access. No shared network area is deployed.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #10213b; }
+      .heading { font: 700 20px Arial, sans-serif; fill: #10213b; }
+      .label { font: 700 16px Arial, sans-serif; fill: #10213b; }
+      .small { font: 400 13px Arial, sans-serif; fill: #53657b; }
+      .tag { font: 700 12px Arial, sans-serif; fill: #10213b; }
+      .icon { fill: none; stroke: #0b4b70; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .structure { fill: none; stroke: #51657c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .public-flow { fill: none; stroke: #ed8b24; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51657c"/></marker>
+    <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#ed8b24"/></marker>
+    <symbol id="folder" viewBox="0 0 32 32"><path class="icon" d="M3 9h10l3 3h13v14H3zM3 12h26"/></symbol>
+    <symbol id="management" viewBox="0 0 32 32"><path class="icon" d="M5 9h22v17H5zM9 6h14v3M10 15h12M10 20h8"/></symbol>
+    <symbol id="app" viewBox="0 0 32 32"><rect class="icon" x="5" y="5" width="22" height="22" rx="4"/><path class="icon" d="M10 13h12M10 19h7"/></symbol>
+    <symbol id="sandbox" viewBox="0 0 32 32"><path class="icon" d="M5 12h22l-3 14H8zM9 12V8h14v4M11 18h10"/></symbol>
+    <symbol id="network" viewBox="0 0 32 32"><path class="icon" d="M16 5v22M6 11l10 5l10-5M6 21l10-5l10 5M4 8h4v5H4zm20 0h4v5h-4zM14 24h4v4h-4z"/></symbol>
+    <symbol id="internet" viewBox="0 0 32 32"><circle class="icon" cx="16" cy="16" r="12"/><path class="icon" d="M4 16h24M16 4c4 4 6 8 6 12s-2 8-6 12M16 4c-4 4-6 8-6 12s2 8 6 12"/></symbol>
+  </defs>
+
+  <rect width="1600" height="930" fill="#f7fafc"/>
+  <text x="55" y="39" class="title">Standalone landing zone</text>
+
+  <rect x="55" y="62" width="1490" height="250" rx="25" fill="#f2fbfc" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#folder" x="82" y="82" width="30" height="30"/><text x="124" y="104" class="heading">Example Corp organization</text>
+  <rect x="82" y="128" width="1436" height="62" rx="14" fill="#edf2f7" stroke="#cad8e3"/>
+  <text x="105" y="153" class="label">Folders</text>
+  <rect x="265" y="141" width="220" height="36" rx="9" fill="#e7f7fa" stroke="#00a6b8"/><text x="375" y="164" text-anchor="middle" class="tag">platform</text>
+  <rect x="685" y="141" width="250" height="36" rx="9" fill="#fff7eb" stroke="#ed8b24"/><text x="810" y="164" text-anchor="middle" class="tag">landing_zones_public</text>
+  <rect x="1160" y="141" width="190" height="36" rx="9" fill="#f8f5ff" stroke="#9474c6"/><text x="1255" y="164" text-anchor="middle" class="tag">sandboxes</text>
+  <rect x="82" y="210" width="1436" height="76" rx="14" fill="#fff" stroke="#cad8e3"/>
+  <text x="105" y="235" class="label">Projects</text>
+  <rect x="285" y="232" width="180" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#management" x="296" y="239" width="25" height="25"/><text x="390" y="257" text-anchor="middle" class="tag">Management</text>
+  <rect x="700" y="232" width="220" height="40" rx="9" fill="#fff7eb" stroke="#ed8b24" stroke-width="2"/><use href="#app" x="712" y="239" width="25" height="25"/><text x="822" y="257" text-anchor="middle" class="tag">External API Gateway</text>
+  <rect x="1150" y="232" width="210" height="40" rx="9" fill="#f8f5ff" stroke="#9474c6" stroke-width="2"/><use href="#sandbox" x="1162" y="239" width="25" height="25"/><text x="1265" y="257" text-anchor="middle" class="tag">Sandbox Team Alpha</text>
+  <path d="M375 177V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M810 177V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1255 177V232" class="structure" marker-end="url(#arrow-gray)"/>
+
+  <rect x="55" y="345" width="430" height="505" rx="25" fill="#effafd" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#management" x="82" y="370" width="34" height="34"/><text x="128" y="396" class="heading">Platform Landing Zone</text>
+  <text x="128" y="420" class="small">Management foundation without Connectivity project</text>
+  <rect x="82" y="455" width="376" height="270" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#management" x="106" y="480" width="32" height="32"/><text x="150" y="503" class="label">Management</text>
+  <rect x="106" y="540" width="152" height="54" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><text x="182" y="563" text-anchor="middle" class="tag">State storage</text><text x="182" y="581" text-anchor="middle" class="small">OpenTofu state</text>
+  <rect x="282" y="540" width="152" height="54" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><text x="358" y="563" text-anchor="middle" class="tag">Secrets</text><text x="358" y="581" text-anchor="middle" class="small">platform access</text>
+  <rect x="106" y="620" width="328" height="54" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><text x="270" y="643" text-anchor="middle" class="tag">Automation service account</text><text x="270" y="661" text-anchor="middle" class="small">organization and project provisioning</text>
+  <rect x="105" y="758" width="330" height="56" rx="10" fill="#fff7eb" stroke="#ed8b24" stroke-width="2"/>
+  <text x="270" y="781" text-anchor="middle" class="tag">No Connectivity project</text><text x="270" y="800" text-anchor="middle" class="small">No Network Area or shared private routing</text>
+
+  <rect x="525" y="345" width="650" height="505" rx="25" fill="#fff7eb" stroke="#ed8b24" stroke-width="3"/>
+  <use href="#app" x="552" y="370" width="34" height="34"/><text x="598" y="396" class="heading">Public Application Landing Zone</text>
+  <text x="598" y="420" class="small">External API Gateway / prod / eu01</text>
+  <rect x="555" y="455" width="590" height="270" rx="18" fill="#fff" stroke="#f4c57f" stroke-width="2"/>
+  <use href="#app" x="580" y="480" width="32" height="32"/><text x="624" y="503" class="label">External API Gateway</text>
+  <rect x="580" y="540" width="240" height="70" rx="10" fill="#fffaf4" stroke="#f4c57f" stroke-width="2"/><use href="#network" x="595" y="559" width="28" height="28"/><text x="711" y="568" text-anchor="middle" class="tag">Independent network</text><text x="711" y="589" text-anchor="middle" class="small">not attached to an SNA</text>
+  <rect x="855" y="540" width="265" height="70" rx="10" fill="#fffaf4" stroke="#f4c57f" stroke-width="2"/><use href="#app" x="870" y="559" width="28" height="28"/><text x="998" y="568" text-anchor="middle" class="tag">Public workload</text><text x="998" y="589" text-anchor="middle" class="small">direct ingress and egress</text>
+  <rect x="580" y="642" width="540" height="48" rx="9" fill="#fffaf4" stroke="#f4c57f"/><text x="850" y="664" text-anchor="middle" class="tag">Project owner: eu01-fhnnk51@ske.sa.stackit.cloud</text><text x="850" y="682" text-anchor="middle" class="small">project code api</text>
+
+  <rect x="1215" y="345" width="330" height="245" rx="25" fill="#f8f5ff" stroke="#9474c6" stroke-width="3"/>
+  <use href="#sandbox" x="1242" y="370" width="34" height="34"/><text x="1288" y="396" class="heading">Sandbox Domain</text>
+  <text x="1288" y="420" class="small">Independent experimentation project</text>
+  <rect x="1245" y="455" width="270" height="92" rx="14" fill="#fff" stroke="#cdbce8" stroke-width="2"/>
+  <use href="#sandbox" x="1263" y="479" width="30" height="30"/><text x="1392" y="490" text-anchor="middle" class="label">Sandbox Team Alpha</text><text x="1392" y="515" text-anchor="middle" class="small">separate project boundary</text>
+
+  <rect x="1245" y="650" width="270" height="110" rx="55" fill="#edf2f7" stroke="#708397" stroke-width="2"/>
+  <use href="#internet" x="1270" y="687" width="36" height="36"/><text x="1405" y="699" text-anchor="middle" class="label">Internet</text><text x="1405" y="722" text-anchor="middle" class="small">direct public access</text>
+  <path d="M1120 575H1195V705H1245" class="public-flow" marker-end="url(#arrow-orange)"/>
+  <text x="1175" y="555" text-anchor="middle" class="small">direct internet path</text>
+
+  <g transform="translate(76 905)">
+    <line x1="0" y1="0" x2="38" y2="0" class="public-flow"/><text x="50" y="5" class="small">direct internet</text>
+    <rect x="205" y="-10" width="22" height="18" rx="4" fill="#effafd" stroke="#00a6b8"/><text x="240" y="5" class="small">platform foundation</text>
+    <rect x="395" y="-10" width="22" height="18" rx="4" fill="#fff7eb" stroke="#ed8b24"/><text x="430" y="5" class="small">public landing zone</text>
+  </g>
+</svg>

@@ -11,8 +11,8 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_grafana.observability"></a> [grafana.observability](#provider\_grafana.observability) | 4.46.0 |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
+| <a name="provider_grafana.observability"></a> [grafana.observability](#provider\_grafana.observability) | >= 4.45.2 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
 
 ## Modules
 

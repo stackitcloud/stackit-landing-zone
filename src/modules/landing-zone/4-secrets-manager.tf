@@ -3,6 +3,8 @@
 #####################
 
 resource "stackit_secretsmanager_instance" "this" {
+  count = var.secretsmanager_enabled ? 1 : 0
+
   project_id = stackit_resourcemanager_project.this.project_id
   name       = "${var.naming_pattern}-default"
   acls       = length(var.secretsmanager_acls) > 0 ? var.secretsmanager_acls : null

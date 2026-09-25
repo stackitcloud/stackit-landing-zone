@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+  <title id="title">Finance and research topology</title>
+  <desc id="desc">Finance and Research each have an independent Network Area, address plan, connectivity project and corporate landing zone within one STACKIT organization.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #10213b; }
+      .heading { font: 700 20px Arial, sans-serif; fill: #10213b; }
+      .label { font: 700 16px Arial, sans-serif; fill: #10213b; }
+      .small { font: 400 13px Arial, sans-serif; fill: #53657b; }
+      .tag { font: 700 12px Arial, sans-serif; fill: #10213b; }
+      .icon { fill: none; stroke: #0b4b70; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .structure { fill: none; stroke: #51657c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .private-flow { fill: none; stroke: #00a6b8; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .boundary { fill: none; stroke: #708397; stroke-width: 2; stroke-dasharray: 7 7; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51657c"/></marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#00a6b8"/></marker>
+    <symbol id="folder" viewBox="0 0 32 32"><path class="icon" d="M3 9h10l3 3h13v14H3zM3 12h26"/></symbol>
+    <symbol id="management" viewBox="0 0 32 32"><path class="icon" d="M5 9h22v17H5zM9 6h14v3M10 15h12M10 20h8"/></symbol>
+    <symbol id="network" viewBox="0 0 32 32"><path class="icon" d="M16 5v22M6 11l10 5l10-5M6 21l10-5l10 5M4 8h4v5H4zm20 0h4v5h-4zM14 24h4v4h-4z"/></symbol>
+    <symbol id="app" viewBox="0 0 32 32"><rect class="icon" x="5" y="5" width="22" height="22" rx="4"/><path class="icon" d="M10 13h12M10 19h7"/></symbol>
+    <symbol id="shield" viewBox="0 0 32 32"><path class="icon" d="M16 4l10 4v7c0 7-4 11-10 14C10 26 6 22 6 15V8zM11 16l3 3l7-8"/></symbol>
+  </defs>
+
+  <rect width="1600" height="930" fill="#f7fafc"/>
+  <text x="55" y="39" class="title">Finance and research domains</text>
+
+  <rect x="55" y="62" width="1490" height="250" rx="25" fill="#f2fbfc" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#folder" x="82" y="82" width="30" height="30"/><text x="124" y="104" class="heading">Example Corp organization</text>
+  <rect x="82" y="128" width="1436" height="62" rx="14" fill="#edf2f7" stroke="#cad8e3"/>
+  <text x="105" y="153" class="label">Folders</text>
+  <rect x="330" y="141" width="230" height="36" rx="9" fill="#e7f7fa" stroke="#00a6b8"/><text x="445" y="164" text-anchor="middle" class="tag">platform</text>
+  <rect x="920" y="141" width="280" height="36" rx="9" fill="#f0fbf3" stroke="#27a667"/><text x="1060" y="164" text-anchor="middle" class="tag">landing_zones_corporate</text>
+  <rect x="82" y="210" width="1436" height="76" rx="14" fill="#fff" stroke="#cad8e3"/>
+  <text x="105" y="235" class="label">Projects</text>
+  <rect x="190" y="232" width="165" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#management" x="199" y="239" width="25" height="25"/><text x="290" y="257" text-anchor="middle" class="tag">Management</text>
+  <rect x="380" y="232" width="190" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#network" x="389" y="239" width="25" height="25"/><text x="485" y="257" text-anchor="middle" class="tag">Finance Connectivity</text>
+  <rect x="595" y="232" width="195" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#network" x="604" y="239" width="25" height="25"/><text x="700" y="257" text-anchor="middle" class="tag">Research Connectivity</text>
+  <rect x="900" y="232" width="205" height="40" rx="9" fill="#f0fbf3" stroke="#27a667" stroke-width="2"/><use href="#app" x="910" y="239" width="25" height="25"/><text x="1010" y="257" text-anchor="middle" class="tag">Finance Workload</text>
+  <rect x="1130" y="232" width="215" height="40" rx="9" fill="#f4f5ff" stroke="#6978c9" stroke-width="2"/><use href="#app" x="1140" y="239" width="25" height="25"/><text x="1245" y="257" text-anchor="middle" class="tag">Research Workload</text>
+  <path d="M445 177V205H273V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M445 177V205H475V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M445 177V205H692V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1060 177V205H1003V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1060 177V205H1238V232" class="structure" marker-end="url(#arrow-gray)"/>
+
+  <rect x="55" y="345" width="330" height="505" rx="25" fill="#effafd" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#management" x="82" y="370" width="34" height="34"/><text x="128" y="396" class="heading">Platform Landing Zone</text>
+  <text x="128" y="420" class="small">Shared governance only</text>
+  <rect x="82" y="455" width="276" height="180" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#management" x="104" y="478" width="32" height="32"/><text x="148" y="501" class="label">Management</text>
+  <rect x="104" y="535" width="232" height="64" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><text x="220" y="559" text-anchor="middle" class="tag">Organization controls</text><text x="220" y="579" text-anchor="middle" class="small">common policy and automation</text>
+  <rect x="82" y="670" width="276" height="122" rx="14" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#shield" x="104" y="694" width="30" height="30"/><text x="220" y="704" text-anchor="middle" class="label">Independent owners</text><text x="220" y="731" text-anchor="middle" class="small">finance-platform@example.com</text><text x="220" y="753" text-anchor="middle" class="small">research-platform@example.com</text>
+
+  <rect x="425" y="345" width="530" height="505" rx="25" fill="#f0fbf3" stroke="#27a667" stroke-width="3"/>
+  <use href="#network" x="452" y="370" width="34" height="34"/><text x="498" y="396" class="heading">Finance Domain</text>
+  <text x="498" y="420" class="small">Dedicated connectivity and corporate landing zone</text>
+  <rect x="455" y="455" width="470" height="150" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#network" x="478" y="478" width="32" height="32"/><text x="522" y="501" class="label">Finance Connectivity</text>
+  <rect x="478" y="530" width="210" height="52" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="583" y="552" text-anchor="middle" class="tag">finance-sna</text><text x="583" y="571" text-anchor="middle" class="small">10.0.0.0/16</text>
+  <rect x="704" y="530" width="198" height="52" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="803" y="552" text-anchor="middle" class="tag">Transfer network</text><text x="803" y="571" text-anchor="middle" class="small">10.1.0.0/24</text>
+  <rect x="455" y="655" width="470" height="140" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#app" x="478" y="678" width="32" height="32"/><text x="522" y="701" class="label">Finance Workload</text>
+  <text x="478" y="735" class="small">Corporate / prod / prefix 24</text>
+  <rect x="690" y="700" width="212" height="54" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="796" y="724" text-anchor="middle" class="tag">Private project network</text><text x="796" y="743" text-anchor="middle" class="small">network_area_key finance</text>
+  <path d="M796 700V625H583V582" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <rect x="1015" y="345" width="530" height="505" rx="25" fill="#f4f5ff" stroke="#6978c9" stroke-width="3"/>
+  <use href="#network" x="1042" y="370" width="34" height="34"/><text x="1088" y="396" class="heading">Research Domain</text>
+  <text x="1088" y="420" class="small">Dedicated connectivity and corporate landing zone</text>
+  <rect x="1045" y="455" width="470" height="150" rx="18" fill="#fff" stroke="#b8c0eb" stroke-width="2"/>
+  <use href="#network" x="1068" y="478" width="32" height="32"/><text x="1112" y="501" class="label">Research Connectivity</text>
+  <rect x="1068" y="530" width="210" height="52" rx="9" fill="#f5f6ff" stroke="#cdd2ef"/><text x="1173" y="552" text-anchor="middle" class="tag">research-sna</text><text x="1173" y="571" text-anchor="middle" class="small">10.2.0.0/16</text>
+  <rect x="1294" y="530" width="198" height="52" rx="9" fill="#f5f6ff" stroke="#cdd2ef"/><text x="1393" y="552" text-anchor="middle" class="tag">Transfer network</text><text x="1393" y="571" text-anchor="middle" class="small">10.3.0.0/24</text>
+  <rect x="1045" y="655" width="470" height="140" rx="18" fill="#fff" stroke="#b8c0eb" stroke-width="2"/>
+  <use href="#app" x="1068" y="678" width="32" height="32"/><text x="1112" y="701" class="label">Research Workload</text>
+  <text x="1068" y="735" class="small">Corporate / prod / prefix 24</text>
+  <rect x="1280" y="700" width="212" height="54" rx="9" fill="#f5f6ff" stroke="#cdd2ef"/><text x="1386" y="724" text-anchor="middle" class="tag">Private project network</text><text x="1386" y="743" text-anchor="middle" class="small">network_area_key research</text>
+  <path d="M1386 700V625H1173V582" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <path d="M985 380V815" class="boundary"/>
+  <rect x="960" y="470" width="50" height="148" rx="25" fill="#f7fafc" stroke="#708397"/>
+  <text x="985" y="505" text-anchor="middle" class="tag">NO</text><text x="985" y="531" text-anchor="middle" class="tag">CROSS</text><text x="985" y="557" text-anchor="middle" class="tag">SNA</text><text x="985" y="583" text-anchor="middle" class="tag">ROUTE</text>
+  <g transform="translate(76 905)">
+    <line x1="0" y1="0" x2="38" y2="0" class="private-flow"/><text x="50" y="5" class="small">private traffic inside each domain</text>
+    <line x1="300" y1="0" x2="338" y2="0" class="boundary"/><text x="350" y="5" class="small">no private connection between domains</text>
+  </g>
+</svg>

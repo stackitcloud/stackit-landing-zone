@@ -18,15 +18,24 @@ This guide walks you through deploying the STACKIT Landing Zone from scratch.
 
 ## Deployment Flavours
 
-Three ready-to-use configurations are provided in `src/config/`:
+Eight complete, ready-to-use configurations are provided in `src/config/`:
 
 | Flavour                  | Config file                     | Description                                                                                                      |
 | ------------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Standalone**           | `standalone.tfvars`             | Governance, management, devops, and public landing zones only. No network area or firewall.                      |
 | **Hub-Spoke**            | `hub-and-spoke.tfvars`          | Adds a connectivity hub with a network area and DNS zones. Corporate landing zones connect via the network area. |
 | **Hub-Spoke + Firewall** | `hub-and-spoke-firewall.tfvars` | Full hub-spoke topology with an OPNsense firewall appliance on the WAN/LAN boundary.                             |
+| **Regulated and Shared** | `hub-and-spoke-multi-area.tfvars` | Separates regulated workloads from shared workloads with different security requirements. |
+| **Finance and Research** | `hub-and-spoke-finance-research.tfvars` | Isolates business units with distinct owners, address plans, and connectivity requirements. |
+| **Prod/Nonprod + Firewalls** | `hub-and-spoke-prod-nonprod-firewall.tfvars` | Dedicated SNAs and OPNsense appliances for production and non-production. |
+| **Tenant Isolation** | `hub-and-spoke-tenant-isolation.tfvars` | Separates three tenants that share one company-level STACKIT organization. |
+| **Multi-Region** | `hub-and-spoke-multi-region.tfvars` | Deploys independent connectivity hubs, landing zones, and Platform Kubernetes clusters in `eu01` and `eu02`. |
 
 Choose the flavour that matches your requirements and adjust the corresponding `.tfvars` file before deployment (step 7). At a minimum, update `owner_email`, `organization_id`, `company_name`, and `company_code`.
+
+The multi-SNA scenario files are complete configurations. Replace the placeholder values for `owner_email`, `company_name`, `company_code`, and `organization_id` before applying them. The area keys are examples only; choose stable keys that match your boundary. See [Multiple Network Areas](architecture.md#multiple-network-areas) for the decision guidance and constraints.
+
+The Prod/Nonprod + Firewalls scenario creates one appliance per SNA. Its OPNsense policies must currently be configured for each appliance after bootstrap; the single `firewall_config` block is not distributed automatically.
 
 The firewall flavour takes one extra step: the appliance boots unconfigured and its policy is pushed in a second apply, from the `firewall_config` block that ships commented out in the same `.tfvars` file. Until then it filters nothing and its web GUI is reachable from the internet — see [Configure OPNsense firewall](#configure-opnsense-firewall). It deploys a single appliance by default, which is the default route of every corporate landing zone and therefore a single point of failure; the commented `connectivity.firewall.ha` block turns it into an active/passive CARP pair — see [Make the firewall highly available](#make-the-firewall-highly-available).
 
@@ -106,7 +115,7 @@ Refer to the [STACKIT Terraform provider documentation](https://registry.terrafo
 
 ### 7. Configure variables
 
-Copy and edit the `.tfvars` file matching your chosen deployment flavour:
+Copy and edit the `.tfvars` file matching your deployment scenario:
 
 ```bash
 cp config/standalone.tfvars terraform.auto.tfvars
