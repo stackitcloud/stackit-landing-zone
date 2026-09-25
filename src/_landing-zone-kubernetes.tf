@@ -2,6 +2,15 @@
 ## LANDING ZONE ON KUBERNETES ##
 ################################
 
+# The Kubernetes side of a landing zone: every entry in landing_zone_namespace_services
+# gets a tenant slice of the shared platform cluster — its own namespace, a scoped service
+# account with a Role limited to that namespace, and optionally a Kyverno policy that
+# blocks direct Secret management so credentials have to come through the Secrets Manager.
+#
+# The sample workload behind sample_load is demo material, not part of the landing zone
+# contract: a pod and a Gateway API route that together prove the path from the internet
+# to a namespace works. Drop it once real workloads move in.
+
 locals {
   secrets_enforcement_default_exempt_principals = [
     "system:serviceaccount:external-secrets:external-secrets",
@@ -77,13 +86,6 @@ locals {
   landing_zone_namespace_services_kyverno = {
     for key, value in local.landing_zone_namespace_services : key => value
     if value.secrets_enforcement.enabled
-  }
-
-  sample_gateway_lb_endpoint_by_key = {
-    for key, data in data.kubernetes_resources.landing_zone_sample_gateway_service : key => {
-      ip       = try(one(data.objects).status.loadBalancer.ingress[0].ip, null)
-      hostname = try(one(data.objects).status.loadBalancer.ingress[0].hostname, null)
-    }
   }
 }
 
@@ -592,49 +594,3 @@ resource "kubernetes_manifest" "landing_zone_sample_http_route" {
   ]
 }
 
-data "kubernetes_resources" "landing_zone_sample_gateway_service" {
-  provider = kubernetes.platform
-
-  for_each = {
-    for key, value in local.landing_zone_namespace_services : key => value
-    if value.sample_load.enabled && value.dns_fqdn != null
-  }
-
-  api_version    = "v1"
-  kind           = "Service"
-  namespace      = "envoy-gateway-system"
-  label_selector = "gateway.envoyproxy.io/owning-gateway-name=${kubernetes_manifest.landing_zone_sample_gateway[each.key].manifest.metadata.name},gateway.envoyproxy.io/owning-gateway-namespace=${kubernetes_namespace_v1.landing_zone[each.key].metadata[0].name}"
-
-  depends_on = [
-    kubernetes_manifest.landing_zone_sample_gateway,
-  ]
-}
-
-resource "stackit_dns_record_set" "landing_zone_sample_gateway" {
-  for_each = {
-    for key, value in local.landing_zone_namespace_services : key => value
-    if value.sample_load.enabled && value.dns_fqdn != null
-  }
-
-  project_id = module.landing_zone[each.key].project_id
-  zone_id    = module.landing_zone[each.key].dns_zone_id
-  name       = each.value.dns_fqdn
-  type       = try(local.sample_gateway_lb_endpoint_by_key[each.key].ip, null) != null ? "A" : "CNAME"
-  ttl        = 60
-  records = [
-    coalesce(
-      try(local.sample_gateway_lb_endpoint_by_key[each.key].ip, null),
-      try(local.sample_gateway_lb_endpoint_by_key[each.key].hostname, null),
-    ),
-  ]
-
-  lifecycle {
-    precondition {
-      condition = (
-        try(local.sample_gateway_lb_endpoint_by_key[each.key].ip, null) != null ||
-        try(local.sample_gateway_lb_endpoint_by_key[each.key].hostname, null) != null
-      )
-      error_message = "Gateway load balancer endpoint is not available yet for DNS record creation."
-    }
-  }
-}
