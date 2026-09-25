@@ -11,8 +11,8 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | >= 0.14.1 |
 
 ## Modules
 
@@ -60,6 +60,7 @@ No modules.
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name of the STACKIT project to create. | `string` | `null` | no |
 | <a name="input_role_assignments"></a> [role\_assignments](#input\_role\_assignments) | List of role assignments for the project. Subject can be a user email or service account email. | <pre>list(object({<br/>    role    = string<br/>    subject = string<br/>  }))</pre> | `[]` | no |
 | <a name="input_secretsmanager_acls"></a> [secretsmanager\_acls](#input\_secretsmanager\_acls) | List of ACL rules for the Secrets Manager instance. Set to empty list for no ACLs or null to skip Secrets Manager creation. | `list(string)` | `[]` | no |
+| <a name="input_secretsmanager_enabled"></a> [secretsmanager\_enabled](#input\_secretsmanager\_enabled) | Whether to create a Secrets Manager instance in the landing zone project. | `bool` | `true` | no |
 
 ## Outputs
 

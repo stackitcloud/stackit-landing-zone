@@ -90,6 +90,12 @@ variable "secretsmanager_acls" {
   default     = []
 }
 
+variable "secretsmanager_enabled" {
+  type        = bool
+  description = "Whether to create a Secrets Manager instance in the landing zone project."
+  default     = true
+}
+
 variable "observability" {
   type = object({
     enabled   = optional(bool, false)

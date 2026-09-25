@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+  <title id="title">Multi-area hub-and-spoke topology</title>
+  <desc id="desc">Regulated and shared workloads use separate Network Areas and DNS zones in one region. The private connectivity domains are isolated.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #10213b; }
+      .heading { font: 700 20px Arial, sans-serif; fill: #10213b; }
+      .label { font: 700 16px Arial, sans-serif; fill: #10213b; }
+      .small { font: 400 13px Arial, sans-serif; fill: #53657b; }
+      .tag { font: 700 12px Arial, sans-serif; fill: #10213b; }
+      .icon { fill: none; stroke: #0b4b70; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .structure { fill: none; stroke: #51657c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .private-flow { fill: none; stroke: #00a6b8; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .boundary { fill: none; stroke: #708397; stroke-width: 2; stroke-dasharray: 7 7; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51657c"/></marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#00a6b8"/></marker>
+    <symbol id="folder" viewBox="0 0 32 32"><path class="icon" d="M3 9h10l3 3h13v14H3zM3 12h26"/></symbol>
+    <symbol id="management" viewBox="0 0 32 32"><path class="icon" d="M5 9h22v17H5zM9 6h14v3M10 15h12M10 20h8"/></symbol>
+    <symbol id="network" viewBox="0 0 32 32"><path class="icon" d="M16 5v22M6 11l10 5l10-5M6 21l10-5l10 5M4 8h4v5H4zm20 0h4v5h-4zM14 24h4v4h-4z"/></symbol>
+    <symbol id="app" viewBox="0 0 32 32"><rect class="icon" x="5" y="5" width="22" height="22" rx="4"/><path class="icon" d="M10 13h12M10 19h7"/></symbol>
+    <symbol id="dns" viewBox="0 0 32 32"><circle class="icon" cx="16" cy="16" r="11"/><path class="icon" d="M8 12h16M8 20h16M16 5c3 3 4 7 4 11s-1 8-4 11M16 5c-3 3-4 7-4 11s1 8 4 11"/></symbol>
+  </defs>
+
+  <rect width="1600" height="930" fill="#f7fafc"/>
+  <text x="55" y="39" class="title">Multi-area connectivity</text>
+
+  <rect x="55" y="62" width="1490" height="250" rx="25" fill="#f2fbfc" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#folder" x="82" y="82" width="30" height="30"/><text x="124" y="104" class="heading">Example Corp organization</text>
+  <rect x="82" y="128" width="1436" height="62" rx="14" fill="#edf2f7" stroke="#cad8e3"/>
+  <text x="105" y="153" class="label">Folders</text>
+  <rect x="350" y="141" width="230" height="36" rx="9" fill="#e7f7fa" stroke="#00a6b8"/><text x="465" y="164" text-anchor="middle" class="tag">platform</text>
+  <rect x="960" y="141" width="280" height="36" rx="9" fill="#f0fbf3" stroke="#27a667"/><text x="1100" y="164" text-anchor="middle" class="tag">landing_zones_corporate</text>
+  <rect x="82" y="210" width="1436" height="76" rx="14" fill="#fff" stroke="#cad8e3"/>
+  <text x="105" y="235" class="label">Projects</text>
+  <rect x="265" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#management" x="274" y="239" width="25" height="25"/><text x="365" y="257" text-anchor="middle" class="tag">Management</text>
+  <rect x="455" y="232" width="170" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><use href="#network" x="464" y="239" width="25" height="25"/><text x="555" y="257" text-anchor="middle" class="tag">Connectivity</text>
+  <rect x="860" y="232" width="220" height="40" rx="9" fill="#fff5f1" stroke="#d06b52" stroke-width="2"/><use href="#app" x="870" y="239" width="25" height="25"/><text x="980" y="257" text-anchor="middle" class="tag">Regulated Workload</text>
+  <rect x="1110" y="232" width="210" height="40" rx="9" fill="#f0fbf3" stroke="#27a667" stroke-width="2"/><use href="#app" x="1120" y="239" width="25" height="25"/><text x="1225" y="257" text-anchor="middle" class="tag">Shared Workload</text>
+  <path d="M465 177V205H350V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M465 177V205H540V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1100 177V205H970V232" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1100 177V205H1215V232" class="structure" marker-end="url(#arrow-gray)"/>
+
+  <rect x="55" y="345" width="380" height="505" rx="25" fill="#effafd" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#management" x="82" y="370" width="34" height="34"/><text x="128" y="396" class="heading">Platform Landing Zone</text>
+  <text x="128" y="420" class="small">Shared control plane in eu01</text>
+  <rect x="82" y="455" width="326" height="140" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#management" x="104" y="478" width="32" height="32"/><text x="148" y="501" class="label">Management</text>
+  <rect x="104" y="530" width="282" height="42" rx="9" fill="#eef8fa" stroke="#b8dfe5"/><text x="245" y="556" text-anchor="middle" class="tag">Governance and automation</text>
+  <rect x="82" y="625" width="326" height="180" rx="18" fill="#fff" stroke="#9ed6df" stroke-width="2"/>
+  <use href="#network" x="104" y="648" width="32" height="32"/><text x="148" y="671" class="label">Connectivity</text>
+  <rect x="104" y="700" width="128" height="70" rx="9" fill="#fff5f1" stroke="#e2a291"/><text x="168" y="725" text-anchor="middle" class="tag">regulated</text><text x="168" y="746" text-anchor="middle" class="small">area key</text>
+  <rect x="258" y="700" width="128" height="70" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="322" y="725" text-anchor="middle" class="tag">shared</text><text x="322" y="746" text-anchor="middle" class="small">area key</text>
+
+  <rect x="475" y="345" width="500" height="505" rx="25" fill="#fff5f1" stroke="#d06b52" stroke-width="3"/>
+  <use href="#network" x="502" y="370" width="34" height="34"/><text x="548" y="396" class="heading">Regulated Domain</text>
+  <text x="548" y="420" class="small">Dedicated private area and DNS</text>
+  <rect x="505" y="455" width="440" height="170" rx="18" fill="#fff" stroke="#e2a291" stroke-width="2"/>
+  <use href="#network" x="528" y="478" width="32" height="32"/><text x="572" y="501" class="label">regulated-sna</text>
+  <rect x="528" y="530" width="190" height="64" rx="9" fill="#fff8f5" stroke="#edc0b4"/><text x="623" y="553" text-anchor="middle" class="tag">Network Area</text><text x="623" y="574" text-anchor="middle" class="small">10.0.0.0/16</text>
+  <rect x="735" y="530" width="187" height="64" rx="9" fill="#fff8f5" stroke="#edc0b4"/><use href="#dns" x="748" y="548" width="26" height="26"/><text x="837" y="553" text-anchor="middle" class="tag">DNS zone</text><text x="837" y="574" text-anchor="middle" class="small">regulated.example</text>
+  <rect x="505" y="665" width="440" height="130" rx="18" fill="#fff" stroke="#e2a291" stroke-width="2"/>
+  <use href="#app" x="528" y="688" width="32" height="32"/><text x="572" y="711" class="label">Regulated Workload</text>
+  <text x="528" y="747" class="small">Corporate / live / prefix 24</text>
+  <rect x="735" y="700" width="187" height="56" rx="9" fill="#fff8f5" stroke="#edc0b4"/><text x="829" y="724" text-anchor="middle" class="tag">Private network</text><text x="829" y="743" text-anchor="middle" class="small">area key regulated</text>
+  <path d="M829 700V645H623V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <rect x="1045" y="345" width="500" height="505" rx="25" fill="#f0fbf3" stroke="#27a667" stroke-width="3"/>
+  <use href="#network" x="1072" y="370" width="34" height="34"/><text x="1118" y="396" class="heading">Shared Domain</text>
+  <text x="1118" y="420" class="small">Separate private area and DNS</text>
+  <rect x="1075" y="455" width="440" height="170" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#network" x="1098" y="478" width="32" height="32"/><text x="1142" y="501" class="label">shared-sna</text>
+  <rect x="1098" y="530" width="190" height="64" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="1193" y="553" text-anchor="middle" class="tag">Network Area</text><text x="1193" y="574" text-anchor="middle" class="small">10.1.0.0/16</text>
+  <rect x="1305" y="530" width="187" height="64" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><use href="#dns" x="1318" y="548" width="26" height="26"/><text x="1407" y="553" text-anchor="middle" class="tag">DNS zone</text><text x="1407" y="574" text-anchor="middle" class="small">shared.example</text>
+  <rect x="1075" y="665" width="440" height="130" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#app" x="1098" y="688" width="32" height="32"/><text x="1142" y="711" class="label">Shared Workload</text>
+  <text x="1098" y="747" class="small">Corporate / live / prefix 24</text>
+  <rect x="1305" y="700" width="187" height="56" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="1399" y="724" text-anchor="middle" class="tag">Private network</text><text x="1399" y="743" text-anchor="middle" class="small">area key shared</text>
+  <path d="M1399 700V645H1193V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <path d="M1010 380V815" class="boundary"/>
+  <text x="1010" y="875" text-anchor="middle" class="small">no implicit routing</text>
+  <g transform="translate(76 905)">
+    <line x1="0" y1="0" x2="38" y2="0" class="private-flow"/><text x="50" y="5" class="small">private traffic inside selected area</text>
+    <line x1="310" y1="0" x2="348" y2="0" class="boundary"/><text x="360" y="5" class="small">isolated Network Areas</text>
+  </g>
+</svg>

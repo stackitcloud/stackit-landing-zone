@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+  <title id="title">Multi-region hub-and-spoke topology</title>
+  <desc id="desc">Independent eu01 and eu02 regional hubs each contain a Network Area, platform Kubernetes cluster and workload landing zone. There is no implicit inter-region routing.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #10213b; }
+      .heading { font: 700 20px Arial, sans-serif; fill: #10213b; }
+      .label { font: 700 16px Arial, sans-serif; fill: #10213b; }
+      .small { font: 400 13px Arial, sans-serif; fill: #53657b; }
+      .tag { font: 700 12px Arial, sans-serif; fill: #10213b; }
+      .icon { fill: none; stroke: #0b4b70; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .structure { fill: none; stroke: #51657c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .private-flow { fill: none; stroke: #00a6b8; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .boundary { fill: none; stroke: #708397; stroke-width: 2; stroke-dasharray: 7 7; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51657c"/></marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#00a6b8"/></marker>
+    <symbol id="folder" viewBox="0 0 32 32"><path class="icon" d="M3 9h10l3 3h13v14H3zM3 12h26"/></symbol>
+    <symbol id="management" viewBox="0 0 32 32"><path class="icon" d="M5 9h22v17H5zM9 6h14v3M10 15h12M10 20h8"/></symbol>
+    <symbol id="network" viewBox="0 0 32 32"><path class="icon" d="M16 5v22M6 11l10 5l10-5M6 21l10-5l10 5M4 8h4v5H4zm20 0h4v5h-4zM14 24h4v4h-4z"/></symbol>
+    <symbol id="app" viewBox="0 0 32 32"><rect class="icon" x="5" y="5" width="22" height="22" rx="4"/><path class="icon" d="M10 13h12M10 19h7"/></symbol>
+    <symbol id="kubernetes" viewBox="0 0 32 32"><path class="icon" d="M16 4l9 5v10l-9 9l-9-9V9zM16 10v12M10 13l12 6M22 13l-12 6"/></symbol>
+    <symbol id="route" viewBox="0 0 32 32"><path class="icon" d="M6 7h14a5 5 0 010 10H12a5 5 0 000 10h14M6 7l4-4M6 7l4 4M26 27l-4-4M26 27l-4 4"/></symbol>
+  </defs>
+
+  <rect width="1600" height="930" fill="#f7fafc"/>
+  <text x="55" y="39" class="title">Multi-region hub-and-spoke</text>
+
+  <rect x="55" y="62" width="1490" height="260" rx="25" fill="#f2fbfc" stroke="#00a6b8" stroke-width="3"/>
+  <use href="#folder" x="82" y="82" width="30" height="30"/><text x="124" y="104" class="heading">Example Corp organization</text>
+  <rect x="82" y="128" width="1436" height="62" rx="14" fill="#edf2f7" stroke="#cad8e3"/>
+  <text x="105" y="153" class="label">Folders</text>
+  <rect x="350" y="141" width="230" height="36" rx="9" fill="#e7f7fa" stroke="#00a6b8"/><text x="465" y="164" text-anchor="middle" class="tag">platform</text>
+  <rect x="1050" y="141" width="280" height="36" rx="9" fill="#f0fbf3" stroke="#27a667"/><text x="1190" y="164" text-anchor="middle" class="tag">landing_zones_corporate</text>
+  <rect x="82" y="210" width="1436" height="86" rx="14" fill="#fff" stroke="#cad8e3"/>
+  <text x="105" y="235" class="label">Projects</text>
+  <rect x="145" y="242" width="150" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><text x="220" y="267" text-anchor="middle" class="tag">Management</text>
+  <rect x="310" y="242" width="180" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><text x="400" y="267" text-anchor="middle" class="tag">Connectivity eu01</text>
+  <rect x="505" y="242" width="180" height="40" rx="9" fill="#e7f7fa" stroke="#00a6b8" stroke-width="2"/><text x="595" y="267" text-anchor="middle" class="tag">Connectivity eu02</text>
+  <rect x="700" y="242" width="165" height="40" rx="9" fill="#f8f5ff" stroke="#9474c6" stroke-width="2"/><text x="783" y="267" text-anchor="middle" class="tag">Kubernetes eu01</text>
+  <rect x="880" y="242" width="165" height="40" rx="9" fill="#f8f5ff" stroke="#9474c6" stroke-width="2"/><text x="963" y="267" text-anchor="middle" class="tag">Kubernetes eu02</text>
+  <rect x="1080" y="242" width="180" height="40" rx="9" fill="#f0fbf3" stroke="#27a667" stroke-width="2"/><text x="1170" y="267" text-anchor="middle" class="tag">EU01 Workload</text>
+  <rect x="1275" y="242" width="180" height="40" rx="9" fill="#f4f5ff" stroke="#6978c9" stroke-width="2"/><text x="1365" y="267" text-anchor="middle" class="tag">EU02 Workload</text>
+  <path d="M465 177V205H220V242" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M465 177V205H400V242" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M465 177V205H595V242" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M465 177V205H783V242" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M465 177V205H963V242" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1190 177V205H1170V242" class="structure" marker-end="url(#arrow-gray)"/>
+  <path d="M1190 177V205H1365V242" class="structure" marker-end="url(#arrow-gray)"/>
+
+  <rect x="55" y="355" width="710" height="495" rx="25" fill="#f0fbf3" stroke="#27a667" stroke-width="3"/>
+  <use href="#network" x="82" y="380" width="34" height="34"/><text x="128" y="406" class="heading">Regional Foundation eu01</text>
+  <text x="128" y="430" class="small">Local provider alias, connectivity and workloads</text>
+  <rect x="85" y="465" width="650" height="155" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#network" x="108" y="488" width="32" height="32"/><text x="152" y="511" class="label">Connectivity eu01</text>
+  <rect x="108" y="540" width="290" height="54" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="253" y="562" text-anchor="middle" class="tag">eu01-primary-sna</text><text x="253" y="581" text-anchor="middle" class="small">10.0.0.0/16</text>
+  <rect x="422" y="540" width="290" height="54" rx="9" fill="#eef9f2" stroke="#b8dfc5"/><text x="567" y="562" text-anchor="middle" class="tag">Transfer network</text><text x="567" y="581" text-anchor="middle" class="small">10.1.0.0/24</text>
+  <rect x="85" y="660" width="300" height="140" rx="18" fill="#fff" stroke="#cdbce8" stroke-width="2"/>
+  <use href="#kubernetes" x="108" y="683" width="32" height="32"/><text x="152" y="706" class="label">Platform Kubernetes</text>
+  <text x="108" y="742" class="tag">platform-eu01</text><text x="108" y="765" class="small">SNA enabled / area key primary</text>
+  <rect x="415" y="660" width="320" height="140" rx="18" fill="#fff" stroke="#9bd2b1" stroke-width="2"/>
+  <use href="#app" x="438" y="683" width="32" height="32"/><text x="482" y="706" class="label">EU01 Workload</text>
+  <text x="438" y="742" class="tag">Corporate / prod / prefix 24</text><text x="438" y="765" class="small">region eu01 / area key primary</text>
+  <path d="M245 660V635H253V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+  <path d="M575 660V635H320V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <rect x="835" y="355" width="710" height="495" rx="25" fill="#f4f5ff" stroke="#6978c9" stroke-width="3"/>
+  <use href="#network" x="862" y="380" width="34" height="34"/><text x="908" y="406" class="heading">Regional Foundation eu02</text>
+  <text x="908" y="430" class="small">Independent local hub with explicit feature differences</text>
+  <rect x="865" y="465" width="650" height="155" rx="18" fill="#fff" stroke="#b8c0eb" stroke-width="2"/>
+  <use href="#network" x="888" y="488" width="32" height="32"/><text x="932" y="511" class="label">Connectivity eu02</text>
+  <rect x="888" y="540" width="290" height="54" rx="9" fill="#f5f6ff" stroke="#cdd2ef"/><text x="1033" y="562" text-anchor="middle" class="tag">eu02-primary-sna</text><text x="1033" y="581" text-anchor="middle" class="small">10.2.0.0/16</text>
+  <rect x="1202" y="540" width="290" height="54" rx="9" fill="#f5f6ff" stroke="#cdd2ef"/><text x="1347" y="562" text-anchor="middle" class="tag">Transfer network</text><text x="1347" y="581" text-anchor="middle" class="small">10.3.0.0/24</text>
+  <rect x="865" y="660" width="300" height="140" rx="18" fill="#fff" stroke="#cdbce8" stroke-width="2"/>
+  <use href="#kubernetes" x="888" y="683" width="32" height="32"/><text x="932" y="706" class="label">Platform Kubernetes</text>
+  <text x="888" y="740" class="tag">platform-eu02</text><text x="888" y="760" class="small">system + application pools / 2 nodes each</text><text x="888" y="781" class="small">observability disabled</text>
+  <rect x="1195" y="660" width="320" height="140" rx="18" fill="#fff" stroke="#b8c0eb" stroke-width="2"/>
+  <use href="#app" x="1218" y="683" width="32" height="32"/><text x="1262" y="706" class="label">EU02 Workload</text>
+  <text x="1218" y="740" class="tag">Corporate / prod / prefix 24</text><text x="1218" y="760" class="small">region eu02 / area key primary</text><text x="1218" y="781" class="small">Secrets Manager disabled</text>
+  <path d="M1025 660V635H1033V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+  <path d="M1355 660V635H1100V594" class="private-flow" marker-end="url(#arrow-teal)"/>
+
+  <path d="M800 380V825" class="boundary"/>
+  <use href="#route" x="784" y="852" width="32" height="32"/>
+  <text x="830" y="870" class="small">No implicit inter-region routing; VPN peers and routes required</text>
+  <g transform="translate(76 905)">
+    <line x1="0" y1="0" x2="38" y2="0" class="private-flow"/><text x="50" y="5" class="small">regional private traffic only</text>
+    <line x1="275" y1="0" x2="313" y2="0" class="boundary"/><text x="325" y="5" class="small">isolated regional hubs</text>
+  </g>
+</svg>

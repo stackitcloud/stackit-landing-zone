@@ -12,9 +12,9 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
-| <a name="provider_vault"></a> [vault](#provider\_vault) | 5.11.0 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | >= 0.14.1 |
+| <a name="provider_vault"></a> [vault](#provider\_vault) | >= 5.11.0 |
 
 ## Modules
 

@@ -2,7 +2,7 @@
 
 This repository is a production-ready OpenTofu/Terraform framework for deploying a STACKIT Landing Zone. It provisions the complete cloud foundation, covering governance hierarchy, identity and access management, shared networking, optional firewall, DNS, secrets management, observability, and repeatable per-workload project templates.
 
-Everything is composed from six modules under `src/modules/` and wired together in `src/main.tf`. A single `terraform apply` with one of the three reference configs in `src/config/` stands up the full platform.
+Everything is composed from six modules under `src/modules/` and wired together in `src/main.tf`. A single `terraform apply` with one of the complete reference configurations in `src/config/` stands up the full platform.
 
 ## Two-Layer Model
 
@@ -61,11 +61,11 @@ Source: `src/modules/management/`
 
 ### Connectivity
 
-Builds the network hub project (`<company_code>-pltfm-hub-prod`) that all corporate landing zones attach to. This is the most complex module.
+Builds one network hub project per configured connectivity domain. Each corporate landing zone attaches explicitly to one domain. This is the most complex module.
 
 #### Network Area
 
-A STACKIT Network Area defines a shared private IP address space at the organization level. All corporate landing zone networks are created inside this area and can reach each other over private IPs without any additional peering.
+A STACKIT Network Area (SNA) defines a shared private IP address space at the organization level. Corporate landing zone networks created in the same SNA can reach each other over private IPs without additional peering.
 
 Configuration drives the area's address plan:
 
@@ -78,6 +78,28 @@ network_area = {
   default_prefix_length = 25               # default if landing zone doesn't specify
 }
 ```
+
+#### Multiple Network Areas
+
+`connectivity.network_areas` creates multiple independent connectivity domains. It is a map keyed by stable, meaningful identifiers; keys may represent any business, security, tenant, connectivity, or regional boundary, such as `regulated`, `tenant_a`, `private_connectivity`, `eu01`, or `eu02`. They are not restricted to development and production environments.
+
+Each key creates its own SNA, connectivity project, WAN routing table, and DNS defaults. Corporate landing zones select their domain with `network_area_key`; DNS zones use `dns_zones.<zone>.network_area_key`. Platform Kubernetes uses `platform_kubernetes.<key>.network.network_area_key`. Connectivity projects are labeled with the SNA ID and the corresponding key, and the `*_by_area` outputs use the same keys.
+
+Use multiple SNAs only for a required private network boundary. Suitable reasons include regulatory separation, tenant isolation in a shared company-level STACKIT organization, and business units with independent ownership, address plans, or external connectivity requirements. See [the complete regulated/shared configuration](../src/config/hub-and-spoke-multi-area.tfvars), [the finance/research configuration](../src/config/hub-and-spoke-finance-research.tfvars), and [the tenant-isolation configuration](../src/config/hub-and-spoke-tenant-isolation.tfvars).
+
+#### Shared Services Across SNAs
+
+A STACKIT project can attach to exactly one SNA. A centrally operated private service, such as an internal Git platform, therefore cannot be directly attached to both a `prod` and a `nonprod` SNA. SNAs also have no shared private routing path.
+
+Choose multiple SNAs only when this constraint is intentional. Shared services must be public or SaaS services secured by IAM and network restrictions, be duplicated per SNA, or be connected through explicit external endpoints, such as site-to-site VPN over the internet. The latter adds operational and security responsibilities and must be designed and verified separately. A shared SNA with separate projects, IAM roles, and subnet allocations is usually the simpler choice when workloads need frequent private access to the same platform services.
+
+The legacy `connectivity.network_area` input remains supported for single-area deployments and maps to the `default` key. Existing scalar connectivity outputs continue to reference that legacy default area.
+
+#### Multi-Region Deployments
+
+The root module supports a single-stack topology in `eu01` and `eu02` through static STACKIT provider aliases. Each region receives its own connectivity hub, SNA, landing zones, and optional Platform Kubernetes cluster; select the region explicitly in the configuration. Provider aliases cannot be selected dynamically, so supporting another region requires a corresponding provider alias and regional module instances.
+
+Regional hubs remain isolated by default. Inter-region connectivity requires explicit external VPN endpoints and routes; it is not created by the multi-region scenario. See [the complete multi-region configuration](../src/config/hub-and-spoke-multi-region.tfvars).
 
 #### WAN Routing Table
 
@@ -182,35 +204,75 @@ Source: `src/modules/sandboxes/`
 
 ## Deployment Flavors
 
-Three reference configurations are provided in `src/config/`. Select the one that matches your network requirements.
+Complete reference configurations are provided in `src/config/`. The diagrams below intentionally focus on topology boundaries, traffic paths, and the projects a user receives rather than every provisioned resource. Select the configuration that matches your network and isolation requirements; [Getting Started](getting-started.md#deployment-flavours) describes how to deploy it.
 
 ### Standalone
 
-The simplest configuration. Provisions governance, management, and one or more landing zone projects. No shared network infrastructure — each landing zone uses an independent network suitable for internet-facing or isolated workloads.
+The simplest configuration. It provisions governance, management, a sandbox, and a public landing zone with an independent network. No shared Network Area or connectivity hub is created.
 
-![Standalone architecture](diagrams/standalone-architecture.svg)
+![Standalone topology](diagrams/standalone.svg)
 
-**Use when:** workloads do not require private connectivity to each other or to on-premises systems.
+Configuration: [`standalone.tfvars`](../src/config/standalone.tfvars)
 
 ### Hub-Spoke
 
-Adds a connectivity hub with a shared Network Area. All corporate landing zones are attached to this area, enabling private east-west traffic between projects and a shared IP address plan. DNS zones are managed centrally in the hub project.
+Adds a connectivity hub with a shared Network Area and central DNS. The corporate Data Platform joins the private area, while the public API landing zone retains an independent network.
 
-![Hub-Spoke architecture](diagrams/hub-and-spoke-architecture.svg)
+![Hub-and-spoke topology](diagrams/hub-and-spoke.svg)
 
-**Use when:** workloads need private connectivity to each other and a shared DNS namespace, but centralized traffic inspection is not required.
+Configuration: [`hub-and-spoke.tfvars`](../src/config/hub-and-spoke.tfvars)
 
 ### Hub-Spoke + Firewall
 
-Extends the hub-spoke topology with a firewall VM deployed in the connectivity project. All corporate landing zones route their default traffic through the firewall LAN interface, enabling centralized egress inspection and east-west traffic control.
+Extends the hub-spoke topology with an OPNsense firewall. Corporate traffic uses the appliance for centralized inspection and consistent egress, while the public landing zone remains direct.
 
-![Hub-Spoke + Firewall architecture](diagrams/hub-and-spoke-firewall-architecture.svg)
+![Hub-and-spoke topology with firewall](diagrams/hub-and-spoke-firewall.svg)
 
-**Use when:** compliance requirements mandate traffic inspection, or centralized egress control with a consistent public IP is needed.
+Configuration: [`hub-and-spoke-firewall.tfvars`](../src/config/hub-and-spoke-firewall.tfvars)
+
+### Finance + Research
+
+Creates independent private connectivity domains for two business units in the same organization. Each unit has its own owner, address plan, connectivity project, Network Area, and workload landing zone.
+
+![Finance and research topology](diagrams/hub-and-spoke-finance-research.svg)
+
+Configuration: [`hub-and-spoke-finance-research.tfvars`](../src/config/hub-and-spoke-finance-research.tfvars)
+
+### Multi-Area
+
+Separates regulated and shared workloads into distinct Network Areas and DNS zones. The two private domains have no implicit routing between them.
+
+![Multi-area topology](diagrams/hub-and-spoke-multi-area.svg)
+
+Configuration: [`hub-and-spoke-multi-area.tfvars`](../src/config/hub-and-spoke-multi-area.tfvars)
+
+### Multi-Region
+
+Creates independent regional hubs in `eu01` and `eu02`, each with its own Network Area, workload landing zone, and Platform Kubernetes cluster. Inter-region connectivity is deliberately not implicit.
+
+![Multi-region topology](diagrams/hub-and-spoke-multi-region.svg)
+
+Configuration: [`hub-and-spoke-multi-region.tfvars`](../src/config/hub-and-spoke-multi-region.tfvars)
+
+### Prod / Nonprod + Firewalls
+
+Separates production and non-production into independent Network Areas with dedicated OPNsense firewalls. Development and test share the non-production domain but remain separate landing zones.
+
+![Production and non-production topology with firewalls](diagrams/hub-and-spoke-prod-nonprod-firewall.svg)
+
+Configuration: [`hub-and-spoke-prod-nonprod-firewall.tfvars`](../src/config/hub-and-spoke-prod-nonprod-firewall.tfvars)
+
+### Tenant Isolation
+
+Creates three private tenant domains inside one organization. Every tenant receives a dedicated Network Area, address plan, workload landing zone, and owner without private routing to the other tenants.
+
+![Three-tenant isolation topology](diagrams/hub-and-spoke-tenant-isolation.svg)
+
+Configuration: [`hub-and-spoke-tenant-isolation.tfvars`](../src/config/hub-and-spoke-tenant-isolation.tfvars)
 
 ## Network Topology
 
-The three deployment flavors differ only in what the connectivity module deploys and how landing zone traffic is routed.
+The eight deployment flavors build on three base networking modes. These modes differ in what the connectivity module deploys and how landing zone traffic is routed.
 
 ### Standalone
 
