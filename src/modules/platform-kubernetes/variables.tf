@@ -58,8 +58,9 @@ variable "dns" {
     enabled      = optional(bool, true)
     create_zones = optional(bool, true)
     zones        = optional(list(string), [])
+    gateway_api  = optional(bool, true)
   })
-  description = "SKE DNS extension configuration. If create_zones is true, zones are created in the platform project before cluster creation."
+  description = "SKE DNS extension configuration. If create_zones is true, zones are created in the platform project before cluster creation. gateway_api enables Gateway API support for ExternalDNS."
   default     = {}
 }
 

@@ -131,6 +131,7 @@ module "platform_kubernetes" {
     enabled      = each.value.dns.enabled
     create_zones = each.value.dns.create_zones
     zones        = length(each.value.dns.zones) > 0 ? each.value.dns.zones : compact(distinct([for lz in values(module.landing_zone) : try(lz.dns_zone_dns_name, null)]))
+    gateway_api  = each.value.dns.gateway_api
   }
 }
 
