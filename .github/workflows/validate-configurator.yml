@@ -1,0 +1,82 @@
+name: Validate Configurator
+
+on:
+  pull_request:
+    paths:
+      - 'landing-zone-configurator/**'
+      - '.github/workflows/validate-configurator.yml'
+      - '.github/workflows/configurator-bootstrap.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'landing-zone-configurator/**'
+      - '.github/workflows/validate-configurator.yml'
+      - '.github/workflows/configurator-bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: configurator-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+          cache: npm
+          cache-dependency-path: landing-zone-configurator/app/package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@11.19.0
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint, typecheck, build and test
+        run: npm run check
+
+  infrastructure:
+    name: OpenTofu (${{ matrix.root }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        root: [seed, seed-protection, bootstrap, backend, platform]
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Check operator plan guard
+        run: node --test infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs
+      - name: Check formatting
+        run: tofu -chdir=infra fmt -check -recursive
+      - name: Initialize without backend
+        run: node infra/tofu.mjs ${{ matrix.root }} init -backend=false -lockfile=readonly -input=false
+      - name: Validate
+        run: node infra/tofu.mjs ${{ matrix.root }} validate -no-color
+      - name: Test plans with mock providers
+        run: node infra/tofu.mjs ${{ matrix.root }} test -no-color

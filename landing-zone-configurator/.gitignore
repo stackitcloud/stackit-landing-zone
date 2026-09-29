@@ -1,0 +1,20 @@
+# Application output and local configuration
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+
+# Commit provider lockfiles for executable OpenTofu roots
+!infra/bootstrap/.terraform.lock.hcl
+!infra/platform/.terraform.lock.hcl
+
+# Local operator state encryption material and plans
+.local/
+
+!infra/backend/.terraform.lock.hcl
+
+!infra/seed/.terraform.lock.hcl
+!infra/seed-protection/.terraform.lock.hcl

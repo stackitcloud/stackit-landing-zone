@@ -1,0 +1,16 @@
+# Template only: replace catalog IDs and verified egress CIDRs before a real plan.
+# Project, region and prefix come from the ignored operator env file.
+cf_platform_id = "00000000-0000-4000-8000-000000000001"
+cf_quota_id    = "00000000-0000-4000-8000-000000000002"
+
+# RFC 5737 documentation address; not a real CF egress address.
+service_access_cidrs = ["192.0.2.10/32"]
+
+database = {
+  flavor_id       = "REPLACE_FROM_CATALOG"
+  version         = "17"
+  storage_class   = "REPLACE_FROM_CATALOG"
+  storage_size_gb = 5
+  backup_schedule = "0 2 * * *"
+  retention_days  = 32
+}

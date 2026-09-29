@@ -1,0 +1,35 @@
+{
+  "name": "landing-zone-configurator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=24.21.0 <25",
+    "npm": ">=11.19.0 <12"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build:packages && npm run dev --workspace=@lzc/api",
+    "dev:web": "npm run dev --workspace=@lzc/web",
+    "build:packages": "tsc -b packages/contracts packages/domain",
+    "typecheck": "tsc -b && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
+    "build": "npm run typecheck && npm run build --workspace=@lzc/web",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "npm run build:packages && vitest run",
+    "check": "npm run lint && npm run build && npm test",
+    "start": "npm run start --workspace=@lzc/api",
+    "platform:check": "node --use-system-ca scripts/platform-check.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@types/node": "24.19.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.2"
+  }
+}

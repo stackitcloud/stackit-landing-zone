@@ -18,6 +18,8 @@ The STACKIT Landing Zone Accelerator provides a comprehensive Terraform-based fr
 
 - [Getting Started](docs/getting-started.md)
 - [Architecture/Modules](docs/architecture.md)
+- [Landing Zone Configurator](landing-zone-configurator/README.md)
+- [Configurator Architecture and Planning](landing-zone-configurator/docs/planning.md)
 
 ## 🤝 Contributing
 

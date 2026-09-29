@@ -1,0 +1,10 @@
+{
+  "repository": "stackitcloud/stackit-landing-zone",
+  "branch": "main",
+  "reviewer": "lweberru",
+  "environments": [
+    { "name": "lzc-dev-bootstrap-plan", "review": false },
+    { "name": "lzc-dev-bootstrap-apply", "review": true },
+    { "name": "lzc-dev-recovery", "review": true }
+  ]
+}

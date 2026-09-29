@@ -1,0 +1,8 @@
+{
+  "environment": "lzc-dev",
+  "region": "eu01",
+  "s3LockingVerified": false,
+  "reason": "User-approved interim operation: S3 remains the backend; only serialized GitHub Actions may apply remote states. Local remote applies remain disabled. Native S3 locking is not verified.",
+  "mode": "github-actions-single-writer",
+  "concurrencyGroup": "configurator-lzc-dev-mutation"
+}

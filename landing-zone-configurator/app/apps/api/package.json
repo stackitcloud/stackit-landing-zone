@@ -1,0 +1,14 @@
+{
+  "name": "@lzc/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@lzc/contracts": "0.1.0",
+    "fastify": "5.12.5"
+  }
+}
