@@ -598,3 +598,5 @@ GitHub wertet CODEOWNERS für Pull Requests aus dem jeweiligen Zielbranch aus: F
 Feature-Branch-Test freigegeben: Push-Trigger für Bootstrap-Plan auf `feature/landing-zone-configurator`, entsprechende zusätzliche Branch-Regel ausschließlich im Plan-Environment. Apply/Recovery bleiben main-only. Kein Merge nach main für den Test erforderlich.
 
 Bootstrap-Apply abgeschlossen: GitHub Run 36601941540 auf dem Feature-Branch, drei Ressourcen erstellt. Verschlüsselter Remote-State unabhängig geprüft; einmalige Commit-Freigabe entfernt. Nächster Schritt: separater Backend-Root zur Versionierung des Workload-State-Buckets. main bleibt unverändert.
+
+Backend-Apply abgeschlossen: Run 36602706599, Versionierung für den Workload-State-Bucket aktiviert und direkt über S3 verifiziert. Verschlüsselter Backend-State geprüft; einmalige Freigaben entfernt. Die [Plattform-Vorbereitung](platform-readiness.md) dokumentiert die ausgewählten Katalogwerte und offenen Netzwerkparameter.
