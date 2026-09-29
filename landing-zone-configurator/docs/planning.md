@@ -596,3 +596,5 @@ Die GitHub-Environment-Regeln und der Deployment-Workflow erlauben weiterhin aus
 GitHub wertet CODEOWNERS für Pull Requests aus dem jeweiligen Zielbranch aus: Für einen späteren PR nach main gilt zunächst die dortige bisherige Regel. CODEOWNERS setzt außerdem keine Branch-Protection-Regeln außer Kraft; eigene PRs können nicht selbst freigegeben werden.
 
 Feature-Branch-Test freigegeben: Push-Trigger für Bootstrap-Plan auf `feature/landing-zone-configurator`, entsprechende zusätzliche Branch-Regel ausschließlich im Plan-Environment. Apply/Recovery bleiben main-only. Kein Merge nach main für den Test erforderlich.
+
+Bootstrap-Apply abgeschlossen: GitHub Run 36601941540 auf dem Feature-Branch, drei Ressourcen erstellt. Verschlüsselter Remote-State unabhängig geprüft; einmalige Commit-Freigabe entfernt. Nächster Schritt: separater Backend-Root zur Versionierung des Workload-State-Buckets. main bleibt unverändert.

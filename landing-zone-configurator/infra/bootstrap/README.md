@@ -9,3 +9,9 @@ Erster echter Plan am 2026-09-29 für lzc-dev/eu01 erfolgreich: **3 anlegen, 0 �
 [Operator-Anleitung](../README.md). Mock-Tests weisen die Struktur nach; Aktivierung, S3-Kompatibilität und Berechtigungen zum Schreiben sind erst durch den anschließenden Integrationstest belegt.
 
 Aktuell: Remote-Backend initialisiert, echter Plan mit 3 Create erfolgreich; für diesen Root weiterhin kein Apply.
+
+## Erster CI-Apply erfolgreich
+
+Am 2026-09-29 wurde Bootstrap auf dem Feature-Branch über [Run 36601941540](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36601941540) angewendet: drei Ressourcen erstellt, keine Änderungen oder Löschungen. Der verschlüsselte State im Verwaltungs-Bucket enthält alle drei Ressourcen. Die einmalige Commit-Freigabe wurde anschließend entfernt. Die zuvor genannten Angaben „kein Apply“ beschreiben den früheren Planungsstand.
+
+Der nächste Infrastruktur-Schritt ist der separate Backend-Root zur Versionierung des neu erstellten Workload-State-Buckets. Dieser Root wurde noch nicht angewendet.

@@ -1,6 +1,6 @@
 # Bootstrap-CI
 
-Implementiert, noch nicht auf GitHub veröffentlicht/ausgeführt. Der Workflow `.github/workflows/configurator-bootstrap.yml` wird manuell auf main gestartet: zuerst Root `bootstrap`, anschließend `backend`. Plan und Apply sind getrennte Jobs; Apply verlangt die Environment-Freigabe und verwendet das verschlüsselte Plan-Artefakt desselben Runs. Re-runs werden abgewiesen: immer einen neuen Workflow-Lauf mit neuem Plan starten.
+Implementiert und auf dem Feature-Branch veröffentlicht; erster Bootstrap-Plan und Apply erfolgreich. Der Workflow `.github/workflows/configurator-bootstrap.yml` wird manuell auf main gestartet: zuerst Root `bootstrap`, anschließend `backend`. Plan und Apply sind getrennte Jobs; Apply verlangt die Environment-Freigabe und verwendet das verschlüsselte Plan-Artefakt desselben Runs. Re-runs werden abgewiesen: immer einen neuen Workflow-Lauf mit neuem Plan starten.
 
 ## Betriebsentscheidung: ausschließlich serialisierte CI-Applies
 
@@ -50,3 +50,11 @@ Pushes auf den exakten Branch `feature/landing-zone-configurator` starten bei Ä
 ## Einmaliger Bootstrap-Apply vom Feature-Branch
 
 Ein Feature-Push darf zusätzlich einen Apply-Job anfordern, wenn die Repository-Variable `LZC_BOOTSTRAP_APPLY_COMMIT` exakt seiner vollständigen Commit-SHA entspricht. Der CI-Einstieg prüft diesen Wert erneut, erlaubt dabei nur Root bootstrap und verlangt die korrekte Workflow-Identität. Das Apply-Environment erlaubt den exakten Feature-Branch, behält aber seine Reviewer-Freigabe. Die Variable wird nach dem Lauf entfernt; normale Feature-Pushes bleiben Plan-only. Wiederholungen benötigen einen neuen Run/Commit und einen neu geprüften Plan.
+
+## Ausgeführte Läufe
+
+- Erster Feature-Plan: [36599754659](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36599754659), erfolgreich, Apply übersprungen.
+- Erster ausdrücklich freigegebener Bootstrap-Apply: [36601941540](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36601941540), Commit `59edaca69201d14083d7a6afd24cdf6cc3d7d267`, Plan und Apply erfolgreich. Drei Ressourcen erstellt; verschlüsselter Remote-State unabhängig überprüft. Die Variable `LZC_BOOTSTRAP_APPLY_COMMIT` wurde nach Abschluss entfernt.
+- Begleitende Validierung: [36601941480](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36601941480), alle Jobs erfolgreich.
+
+Keine Übernahme nach main. Der separate Backend-Root und Plattformdienste wurden noch nicht angewendet.
