@@ -27,7 +27,7 @@ concurrency:
 
 env:
   LZC_ENVIRONMENT: lzc-dev
-  LZC_ROOT: ${{ inputs.root || 'bootstrap' }}
+  LZC_ROOT: ${{ inputs.root || vars.LZC_BOOTSTRAP_ROOT || 'bootstrap' }}
 
 jobs:
   plan:
@@ -99,6 +99,7 @@ jobs:
         run: node infra/ci/run.mjs apply
         env:
           LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_BOOTSTRAP_APPLY_COMMIT }}
+          LZC_APPROVED_APPLY_ROOT: ${{ vars.LZC_BOOTSTRAP_ROOT }}
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
           LZC_REGION: ${{ vars.LZC_REGION }}
           LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}

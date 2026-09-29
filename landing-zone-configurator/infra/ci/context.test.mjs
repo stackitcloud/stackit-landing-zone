@@ -42,16 +42,24 @@ test("single-writer apply requires approved workflow identity",()=>{
 test("feature branch push can plan bootstrap but cannot apply",()=>{
   const feature={...env,GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push"};
   assert.equal(deploymentInputs(feature).root,"bootstrap");
-  assert.throws(()=>deploymentInputs({...feature,LZC_ROOT:"backend"}));
+  assert.equal(deploymentInputs({...feature,LZC_ROOT:"backend"}).root,"backend");
   assert.throws(()=>deploymentInputs({...feature,GITHUB_REF:"refs/heads/feature/other"}));
   assert.throws(()=>assertApplyExecution({mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"},{...feature,GITHUB_ACTIONS:"true",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main"}));
 });
 
 test("feature apply needs exact explicitly approved commit and correct workflow",()=>{
   const safety={mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"};
-  const feature={...env,GITHUB_ACTIONS:"true",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push",LZC_APPROVED_APPLY_COMMIT:env.GITHUB_SHA,GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/feature/landing-zone-configurator"};
+  const feature={...env,GITHUB_ACTIONS:"true",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push",LZC_APPROVED_APPLY_COMMIT:env.GITHUB_SHA,LZC_APPROVED_APPLY_ROOT:"bootstrap",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/feature/landing-zone-configurator"};
   assert.doesNotThrow(()=>assertApplyExecution(safety,feature));
   for(const patch of [{LZC_APPROVED_APPLY_COMMIT:""},{LZC_APPROVED_APPLY_COMMIT:"b".repeat(40)},{GITHUB_WORKFLOW_REF:"wrong"},{LZC_ROOT:"backend"}]) {
     assert.throws(()=>assertApplyExecution(safety,{...feature,...patch}));
   }
+});
+
+test("backend apply requires matching root approval",()=>{
+ const safety={mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"};
+ const backend={...env,LZC_ROOT:"backend",GITHUB_ACTIONS:"true",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push",LZC_APPROVED_APPLY_COMMIT:env.GITHUB_SHA,LZC_APPROVED_APPLY_ROOT:"backend",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/feature/landing-zone-configurator"};
+ assert.doesNotThrow(()=>assertApplyExecution(safety,backend));
+ assert.throws(()=>assertApplyExecution(safety,{...backend,LZC_APPROVED_APPLY_ROOT:"bootstrap"}));
+ assert.throws(()=>assertApplyExecution(safety,{...backend,LZC_ROOT:"platform",LZC_APPROVED_APPLY_ROOT:"platform"}));
 });

@@ -58,3 +58,7 @@ Ein Feature-Push darf zusätzlich einen Apply-Job anfordern, wenn die Repository
 - Begleitende Validierung: [36601941480](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36601941480), alle Jobs erfolgreich.
 
 Keine Übernahme nach main. Der separate Backend-Root und Plattformdienste wurden noch nicht angewendet.
+
+## Backend-Root über den Feature-Branch
+
+Für einen gezielten Backend-Lauf setzt der Operator zusätzlich `LZC_BOOTSTRAP_ROOT=backend`. Die Freigabe ist an Commit **und** Root gebunden; nur bootstrap/backend sind erlaubt. Nach dem Lauf werden Root-Auswahl und Commit-Freigabe entfernt. Ohne diese Variablen starten Feature-Pushes weiterhin ausschließlich einen Bootstrap-Plan.

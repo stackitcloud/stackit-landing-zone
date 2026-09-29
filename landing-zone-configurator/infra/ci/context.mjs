@@ -12,7 +12,7 @@ export function deploymentInputs(env) {
   const ref = required("GITHUB_REF");
   const event = required("GITHUB_EVENT_NAME");
   const manualMain = ref === "refs/heads/main" && event === "workflow_dispatch";
-  const featurePlan = ref === "refs/heads/feature/landing-zone-configurator" && event === "push" && root === "bootstrap";
+  const featurePlan = ref === "refs/heads/feature/landing-zone-configurator" && event === "push";
   if (!manualMain && !featurePlan) throw new Error("Unsupported deployment trigger or branch");
   if (required("GITHUB_RUN_ATTEMPT") !== "1") throw new Error("Start a new workflow run instead of retrying a previous plan");
   const commit = required("GITHUB_SHA");
@@ -41,7 +41,7 @@ export function assertApplyExecution(safety, env) {
   }
   const main = env.GITHUB_REF === "refs/heads/main" && env.GITHUB_EVENT_NAME === "workflow_dispatch";
   const feature = env.GITHUB_REF === "refs/heads/feature/landing-zone-configurator" && env.GITHUB_EVENT_NAME === "push" &&
-    /^[a-f0-9]{40}$/.test(env.LZC_APPROVED_APPLY_COMMIT ?? "") && env.GITHUB_SHA === env.LZC_APPROVED_APPLY_COMMIT && env.LZC_ROOT === "bootstrap";
+    /^[a-f0-9]{40}$/.test(env.LZC_APPROVED_APPLY_COMMIT ?? "") && env.GITHUB_SHA === env.LZC_APPROVED_APPLY_COMMIT && ["bootstrap", "backend"].includes(env.LZC_ROOT) && env.LZC_ROOT === env.LZC_APPROVED_APPLY_ROOT;
   const workflow = `stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@${env.GITHUB_REF}`;
   if (env.GITHUB_ACTIONS !== "true" || (!main && !feature) || env.GITHUB_WORKFLOW_REF !== workflow) {
     throw new Error("Remote apply is restricted to the serialized GitHub Actions workflow");
