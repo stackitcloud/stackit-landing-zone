@@ -44,9 +44,12 @@ for(const target of spec.environments) {
   api(path,"PUT",{wait_timer:0,prevent_self_review:false,can_admins_bypass:false,
     reviewers:target.review?[{type:"User",id:reviewer.id}]:[],
     deployment_branch_policy:{protected_branches:false,custom_branch_policies:true}});
+  const branches=target.branches ?? [spec.branch];
   const policies=api(`${path}/deployment-branch-policies`).branch_policies;
-  if(policies.some(p=>p.name!==spec.branch||p.type!=="branch"))throw new Error("Unexpected existing deployment policy; inspect before uploading secrets");
-  if(!policies.some(p=>p.name===spec.branch&&p.type==="branch"))api(`${path}/deployment-branch-policies`,"POST",{name:spec.branch,type:"branch"});
+  if(policies.some(p=>!branches.includes(p.name)||p.type!=="branch"))throw new Error("Unexpected existing deployment policy; inspect before uploading secrets");
+  for(const branch of branches) {
+    if(!policies.some(p=>p.name===branch&&p.type==="branch"))api(`${path}/deployment-branch-policies`,"POST",{name:branch,type:"branch"});
+  }
   const checked=api(path);
   if(checked.deployment_branch_policy?.custom_branch_policies!==true)throw new Error("Environment branch protection missing");
   if(target.review&&!checked.protection_rules.some(r=>r.type==="required_reviewers"&&r.reviewers.some(x=>x.reviewer.id===reviewer.id)))throw new Error("Required reviewer missing");
@@ -54,5 +57,5 @@ for(const target of spec.environments) {
   for(const [name,value] of Object.entries(target.name.endsWith("recovery")?recoverySecrets:deploySecrets)) {
     gh(["secret","set",name,"--repo",spec.repository,"--env",target.name],value);
   }
-  console.log(`Configured ${target.name}: main-only, review=${target.review}; secret values not displayed.`);
+  console.log(`Configured ${target.name}: branches=${branches.join(",")}, review=${target.review}; secret values not displayed.`);
 }

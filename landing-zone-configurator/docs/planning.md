@@ -594,3 +594,5 @@ Die Entwicklung erfolgt auf `feature/landing-zone-configurator`; eine Übernahme
 Die GitHub-Environment-Regeln und der Deployment-Workflow erlauben weiterhin ausschließlich `main`. Feature-Branch-Entwicklung aktiviert daher keine Cloud-Deployments. Ein späterer Testbetrieb vom Feature-Branch braucht eine gezielte Anpassung dieser Regeln; der Branch wird dafür nicht automatisch nach main übernommen.
 
 GitHub wertet CODEOWNERS für Pull Requests aus dem jeweiligen Zielbranch aus: Für einen späteren PR nach main gilt zunächst die dortige bisherige Regel. CODEOWNERS setzt außerdem keine Branch-Protection-Regeln außer Kraft; eigene PRs können nicht selbst freigegeben werden.
+
+Feature-Branch-Test freigegeben: Push-Trigger für Bootstrap-Plan auf `feature/landing-zone-configurator`, entsprechende zusätzliche Branch-Regel ausschließlich im Plan-Environment. Apply/Recovery bleiben main-only. Kein Merge nach main für den Test erforderlich.

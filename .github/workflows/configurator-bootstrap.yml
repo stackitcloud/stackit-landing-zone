@@ -1,6 +1,11 @@
 name: Configurator Bootstrap
 
 on:
+  push:
+    branches: [feature/landing-zone-configurator]
+    paths:
+      - 'landing-zone-configurator/infra/**'
+      - '.github/workflows/configurator-bootstrap.yml'
   workflow_dispatch:
     inputs:
       root:
@@ -22,11 +27,11 @@ concurrency:
 
 env:
   LZC_ENVIRONMENT: lzc-dev
-  LZC_ROOT: ${{ inputs.root }}
+  LZC_ROOT: ${{ inputs.root || 'bootstrap' }}
 
 jobs:
   plan:
-    if: github.ref == 'refs/heads/main' && github.run_attempt == 1
+    if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: lzc-dev-bootstrap-plan
@@ -68,7 +73,7 @@ jobs:
 
   apply:
     needs: plan
-    if: inputs.apply && github.run_attempt == 1
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: lzc-dev-bootstrap-apply

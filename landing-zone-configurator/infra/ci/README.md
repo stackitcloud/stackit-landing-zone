@@ -42,3 +42,7 @@ Der Apply-Prüfmechanismus bindet Plan-Hash, Repository, Commit, Workflow-Lauf, 
 - Beide Workflow-Dateien mit actionlint 1.7.7 validiert.
 - Zwölf Node-Tests für Planbindung, Schlüsselhaltung und Apply-Sperre erfolgreich.
 - Kein GitHub-Workflow gestartet und kein Plattform-Apply durchgeführt.
+
+## Erster Test vom Feature-Branch
+
+Pushes auf den exakten Branch `feature/landing-zone-configurator` starten bei Änderungen an IaC oder Bootstrap-Workflow automatisch einen Bootstrap-Plan. Nur das Plan-Environment erlaubt zusätzlich diesen Branch. Apply und Recovery bleiben auf main beschränkt; Feature-Pushes können keinen Apply-Job starten. Der CI-Einstieg prüft Branch/Event ebenfalls und bindet beides an das Planmanifest. Die Validierungs-CI läuft nun ebenfalls auf diesem Feature-Branch.

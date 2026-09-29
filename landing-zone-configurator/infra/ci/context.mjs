@@ -9,8 +9,11 @@ export function deploymentInputs(env) {
   const root = required("LZC_ROOT");
   if (!["bootstrap", "backend"].includes(root)) throw new Error("Unsupported CI root");
   if (required("LZC_ENVIRONMENT") !== "lzc-dev") throw new Error("Unsupported environment");
-  if (required("GITHUB_REF") !== "refs/heads/main") throw new Error("Deployment requires main");
-  if (required("GITHUB_EVENT_NAME") !== "workflow_dispatch") throw new Error("Deployment requires manual dispatch");
+  const ref = required("GITHUB_REF");
+  const event = required("GITHUB_EVENT_NAME");
+  const manualMain = ref === "refs/heads/main" && event === "workflow_dispatch";
+  const featurePlan = ref === "refs/heads/feature/landing-zone-configurator" && event === "push" && root === "bootstrap";
+  if (!manualMain && !featurePlan) throw new Error("Unsupported deployment trigger or branch");
   if (required("GITHUB_RUN_ATTEMPT") !== "1") throw new Error("Start a new workflow run instead of retrying a previous plan");
   const commit = required("GITHUB_SHA");
   if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error("Invalid commit");
@@ -25,7 +28,7 @@ export function deploymentInputs(env) {
   const expiration = required("LZC_CREDENTIAL_EXPIRATION");
   if (!Number.isFinite(Date.parse(expiration))) throw new Error("Invalid expiration");
   return { root, environment:"lzc-dev", project, region, prefix, bucket, expiration,
-    commit, repository:required("GITHUB_REPOSITORY"), run:required("GITHUB_RUN_ID"), attempt:"1" };
+    commit, ref, event, repository:required("GITHUB_REPOSITORY"), run:required("GITHUB_RUN_ID"), attempt:"1" };
 }
 export function planContext(inputs, sourceDigest) {
   return digest(JSON.stringify({ inputs, sourceDigest }));
@@ -36,7 +39,7 @@ export function assertApplyExecution(safety, env) {
       safety.concurrencyGroup !== "configurator-lzc-dev-mutation") {
     throw new Error("Apply requires the approved single-writer configuration");
   }
-  if (env.GITHUB_ACTIONS !== "true" ||
+  if (env.GITHUB_ACTIONS !== "true" || env.GITHUB_REF !== "refs/heads/main" || env.GITHUB_EVENT_NAME !== "workflow_dispatch" ||
       env.GITHUB_WORKFLOW_REF !== "stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main") {
     throw new Error("Remote apply is restricted to the serialized GitHub Actions workflow");
   }

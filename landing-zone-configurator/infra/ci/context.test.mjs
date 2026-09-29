@@ -31,10 +31,18 @@ test("local invocation cannot apply even with a valid plan context",()=>{
 
 test("single-writer apply requires approved workflow identity",()=>{
   const safety={mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"};
-  const trusted={GITHUB_ACTIONS:"true",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main"};
+  const trusted={GITHUB_ACTIONS:"true",GITHUB_REF:"refs/heads/main",GITHUB_EVENT_NAME:"workflow_dispatch",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main"};
   assert.doesNotThrow(()=>assertApplyExecution(safety,trusted));
   for(const patch of [{GITHUB_ACTIONS:"false"},{GITHUB_WORKFLOW_REF:"other/workflow@refs/heads/main"}]) {
     assert.throws(()=>assertApplyExecution(safety,{...trusted,...patch}));
   }
   assert.throws(()=>assertApplyExecution({...safety,concurrencyGroup:"other"},trusted));
+});
+
+test("feature branch push can plan bootstrap but cannot apply",()=>{
+  const feature={...env,GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push"};
+  assert.equal(deploymentInputs(feature).root,"bootstrap");
+  assert.throws(()=>deploymentInputs({...feature,LZC_ROOT:"backend"}));
+  assert.throws(()=>deploymentInputs({...feature,GITHUB_REF:"refs/heads/feature/other"}));
+  assert.throws(()=>assertApplyExecution({mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"},{...feature,GITHUB_ACTIONS:"true",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main"}));
 });
