@@ -35,12 +35,23 @@ variable "cf_quota_id" {
   description = "Explicitly chosen quota ID for this CF foundation."
 }
 
-variable "service_access_cidrs" {
+variable "database_access_cidrs" {
   type        = set(string)
-  description = "Verified CF egress and operator CIDRs permitted to access PostgreSQL and Secrets Manager."
+  description = "Explicit source networks allowed to access PostgreSQL; not dedicated CF egress IPs."
   validation {
-    condition = length(var.service_access_cidrs) > 0 && alltrue([
-      for cidr in var.service_access_cidrs : can(cidrhost(cidr, 0)) && try(tonumber(split("/", cidr)[1]) > 0, false)
+    condition = length(var.database_access_cidrs) > 0 && alltrue([
+      for cidr in var.database_access_cidrs : can(cidrhost(cidr, 0)) && try(tonumber(split("/", cidr)[1]) > 0, false)
+    ])
+    error_message = "Supply explicit valid access CIDRs; unrestricted internet access is not accepted."
+  }
+}
+
+variable "secrets_access_cidrs" {
+  type        = set(string)
+  description = "Explicit source networks allowed to access Secrets Manager; validate connectivity separately."
+  validation {
+    condition = length(var.secrets_access_cidrs) > 0 && alltrue([
+      for cidr in var.secrets_access_cidrs : can(cidrhost(cidr, 0)) && try(tonumber(split("/", cidr)[1]) > 0, false)
     ])
     error_message = "Supply explicit valid access CIDRs; unrestricted internet access is not accepted."
   }

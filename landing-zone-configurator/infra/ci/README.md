@@ -62,3 +62,9 @@ Keine Übernahme nach main. Der separate Backend-Root und Plattformdienste wurde
 ## Backend-Root über den Feature-Branch
 
 Für einen gezielten Backend-Lauf setzt der Operator zusätzlich `LZC_BOOTSTRAP_ROOT=backend`. Die Freigabe ist an Commit **und** Root gebunden; nur bootstrap/backend sind erlaubt. Nach dem Lauf werden Root-Auswahl und Commit-Freigabe entfernt. Ohne diese Variablen starten Feature-Pushes weiterhin ausschließlich einen Bootstrap-Plan.
+
+## Separate Plattform-Pipeline
+
+`configurator-platform.yml` plant ausschließlich den Plattform-Root. Plan/Apply verwenden `lzc-dev-platform-plan` und `lzc-dev-platform-apply`, gemeinsam mit Bootstrap die Concurrency-Gruppe `configurator-lzc-dev-mutation`. Für den Feature-Branch schaltet ausschließlich eine passende `LZC_PLATFORM_APPLY_COMMIT` einen reviewerpflichtigen Apply frei; Root und Workflow werden im CI-Einstieg zusätzlich geprüft.
+
+`node infra/ci/configure-github.mjs --platform` richtet die in `github-platform-environments.json` beschriebenen Environments ein. Es überträgt Projekt-Service-Account, Management-S3-Zugang und Bootstrap-/Backend-/Plattform-State-Schlüssel nach ausdrücklicher Ziel-Freigabe. Keine Seed-Schlüssel gelangen in diese Deployment-Jobs. Plattform-State liegt mit eigener Verschlüsselung im bereits versionierten Workload-Bucket, nicht im Verwaltungs-Bucket.

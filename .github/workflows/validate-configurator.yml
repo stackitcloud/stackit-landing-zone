@@ -6,12 +6,14 @@ on:
       - 'landing-zone-configurator/**'
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
+      - '.github/workflows/configurator-platform.yml'
   push:
     branches: [main, feature/landing-zone-configurator]
     paths:
       - 'landing-zone-configurator/**'
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
+      - '.github/workflows/configurator-platform.yml'
   workflow_dispatch:
 
 permissions:

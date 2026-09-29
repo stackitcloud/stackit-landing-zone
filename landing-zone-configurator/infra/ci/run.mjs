@@ -33,9 +33,10 @@ function tofu(root,args,env) {
   try { return execFileSync(binary,[`-chdir=${resolve(infra,root)}`,...args],{env,encoding:"utf8",stdio:["ignore","pipe","pipe"],maxBuffer:16*1024*1024}); }
   catch { throw new Error(`OpenTofu ${root}/${args[0]} failed; raw output withheld to protect credentials`); }
 }
-function initialize(root) {
+function initialize(root, storage) {
   const env=environment(root);
-  const backend={bucket:inputs.bucket,key:`configurator/${inputs.prefix}/${root}/terraform.tfstate`,region:inputs.region,
+  if(storage) { env.AWS_ACCESS_KEY_ID=storage.credentials.access_key; env.AWS_SECRET_ACCESS_KEY=storage.credentials.secret_key; }
+  const backend={bucket:storage?.bucket ?? inputs.bucket,key:`configurator/${inputs.prefix}/${root}/terraform.tfstate`,region:inputs.region,
     endpoints:{s3:`https://object.storage.${inputs.region}.onstackit.cloud`},use_path_style:true,use_lockfile:true,
     skip_credentials_validation:true,skip_region_validation:true,skip_requesting_account_id:true,skip_metadata_api_check:true,skip_s3_checksum:true};
   const file=resolve(temporary,`${root}.backend.hcl`);
@@ -45,11 +46,12 @@ function initialize(root) {
 }
 function sourceDigest() {
   const pieces=[];
-  for(const root of ["bootstrap","backend"]) {
+  for(const root of ["bootstrap","backend","platform"]) {
     for(const file of readdirSync(resolve(infra,root)).filter(f=>f.endsWith(".tf")||f===".terraform.lock.hcl").sort()) {
       pieces.push(`${root}/${file}:${digest(readFileSync(resolve(infra,root,file)))}`);
     }
   }
+  if(inputs.root === "platform") pieces.push(digest(readFileSync(resolve(infra,"environments/lzc-dev.tfvars.json"))));
   return digest(pieces.join("\n"));
 }
 try {
@@ -58,7 +60,15 @@ try {
   const credentialJson=secret("LZC_SERVICE_ACCOUNT_KEY");
   try { JSON.parse(credentialJson); } catch { throw new Error("Invalid service-account JSON"); }
   writeFileSync(credentialsPath,credentialJson,{mode:0o600});
-  const env=initialize(inputs.root);
+  let storage;
+  if(inputs.root === "platform") {
+    const bootstrapEnv=initialize("bootstrap");
+    const outputs=JSON.parse(tofu("bootstrap",["output","-json"],bootstrapEnv));
+    const protection=JSON.parse(tofu("backend",["output","-json"],initialize("backend")));
+    if(outputs.backend?.value?.region !== inputs.region || protection.versioning_enabled?.value !== true || protection.state_bucket_name?.value !== outputs.backend.value.bucket) throw new Error("Versioned platform backend is not ready");
+    storage={bucket:outputs.backend.value.bucket,credentials:outputs.backend_credentials.value};
+  }
+  const env=initialize(inputs.root,storage);
   if(inputs.root==="backend") {
     const bootstrapEnv=initialize("bootstrap");
     const outputs=JSON.parse(tofu("bootstrap",["output","-json"],bootstrapEnv));
@@ -72,7 +82,8 @@ try {
   const manifest=resolve(artifact,"review.json");
   if(command==="plan") {
     writeFileSync(manifest,JSON.stringify({status:"planning"}));
-    tofu(inputs.root,["plan",`-out=${plan}`,"-input=false","-lock-timeout=60s","-no-color"],env);
+    const parameters=inputs.root === "platform" ? [`-var-file=${resolve(infra,"environments/lzc-dev.tfvars.json")}`] : [];
+    tofu(inputs.root,["plan",...parameters,`-out=${plan}`,"-input=false","-lock-timeout=60s","-no-color"],env);
     const envelope=JSON.parse(readFileSync(plan,"utf8"));
     if(!envelope.encrypted_data||!envelope.encryption_version)throw new Error("Refusing an unencrypted plan artifact");
     const details=JSON.parse(tofu(inputs.root,["show","-json",plan],env));

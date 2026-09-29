@@ -63,3 +63,12 @@ test("backend apply requires matching root approval",()=>{
  assert.throws(()=>assertApplyExecution(safety,{...backend,LZC_APPROVED_APPLY_ROOT:"bootstrap"}));
  assert.throws(()=>assertApplyExecution(safety,{...backend,LZC_ROOT:"platform",LZC_APPROVED_APPLY_ROOT:"platform"}));
 });
+
+test("platform apply is isolated from bootstrap workflow",()=>{
+  const safety={mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"};
+  const platform={...env,LZC_ROOT:"platform",GITHUB_ACTIONS:"true",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push",LZC_APPROVED_APPLY_COMMIT:env.GITHUB_SHA,LZC_APPROVED_APPLY_ROOT:"platform",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-platform.yml@refs/heads/feature/landing-zone-configurator"};
+  assert.equal(deploymentInputs(platform).root,"platform");
+  assert.doesNotThrow(()=>assertApplyExecution(safety,platform));
+  assert.throws(()=>assertApplyExecution(safety,{...platform,GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/feature/landing-zone-configurator"}));
+  assert.throws(()=>assertApplyExecution(safety,{...platform,LZC_APPROVED_APPLY_ROOT:"bootstrap"}));
+});

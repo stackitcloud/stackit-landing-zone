@@ -6,7 +6,7 @@ resource "stackit_postgresflex_instance" "configurator" {
   backup_schedule = var.database.backup_schedule
   retention_days  = var.database.retention_days
   network = {
-    acl = sort(tolist(var.service_access_cidrs))
+    acl = sort(tolist(var.database_access_cidrs))
   }
   storage = {
     class = var.database.storage_class

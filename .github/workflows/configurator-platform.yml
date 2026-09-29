@@ -1,0 +1,116 @@
+name: Configurator Platform
+
+on:
+  push:
+    branches: [feature/landing-zone-configurator]
+    paths:
+      - 'landing-zone-configurator/infra/platform/**'
+      - 'landing-zone-configurator/infra/environments/lzc-dev.tfvars.json'
+      - 'landing-zone-configurator/infra/ci/**'
+      - '.github/workflows/configurator-platform.yml'
+  workflow_dispatch:
+    inputs:
+      root:
+        description: 'Platform services'
+        type: choice
+        options: [platform]
+        default: platform
+      apply:
+        description: 'Apply the reviewed plan after environment approval'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: configurator-lzc-dev-mutation
+  cancel-in-progress: false
+
+env:
+  LZC_ENVIRONMENT: lzc-dev
+  LZC_ROOT: platform
+
+jobs:
+  plan:
+    if: vars.LZC_PLATFORM_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: lzc-dev-platform-plan
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Create encrypted review plan
+        run: node infra/ci/run.mjs plan
+        env:
+          LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+          LZC_REGION: ${{ vars.LZC_REGION }}
+          LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
+          LZC_MANAGEMENT_BUCKET: ${{ vars.LZC_MANAGEMENT_BUCKET }}
+          LZC_CREDENTIAL_EXPIRATION: ${{ vars.LZC_CREDENTIAL_EXPIRATION }}
+          LZC_MANAGEMENT_ACCESS_KEY: ${{ secrets.LZC_MANAGEMENT_ACCESS_KEY }}
+          LZC_MANAGEMENT_SECRET_KEY: ${{ secrets.LZC_MANAGEMENT_SECRET_KEY }}
+          LZC_SERVICE_ACCOUNT_KEY: ${{ secrets.LZC_SERVICE_ACCOUNT_KEY }}
+          LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
+          LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
+          LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}
+      - name: Upload encrypted plan and review metadata
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: platform-plan-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-plan/*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  apply:
+    needs: plan
+    if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_PLATFORM_APPLY_COMMIT))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: lzc-dev-platform-apply
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: platform-plan-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-plan
+      - name: Apply exactly the reviewed plan
+        run: node infra/ci/run.mjs apply
+        env:
+          LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_PLATFORM_APPLY_COMMIT }}
+          LZC_APPROVED_APPLY_ROOT: platform
+          LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+          LZC_REGION: ${{ vars.LZC_REGION }}
+          LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
+          LZC_MANAGEMENT_BUCKET: ${{ vars.LZC_MANAGEMENT_BUCKET }}
+          LZC_CREDENTIAL_EXPIRATION: ${{ vars.LZC_CREDENTIAL_EXPIRATION }}
+          LZC_MANAGEMENT_ACCESS_KEY: ${{ secrets.LZC_MANAGEMENT_ACCESS_KEY }}
+          LZC_MANAGEMENT_SECRET_KEY: ${{ secrets.LZC_MANAGEMENT_SECRET_KEY }}
+          LZC_SERVICE_ACCOUNT_KEY: ${{ secrets.LZC_SERVICE_ACCOUNT_KEY }}
+          LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
+          LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
+          LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}

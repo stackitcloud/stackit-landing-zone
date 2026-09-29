@@ -4,7 +4,8 @@ cf_platform_id = "00000000-0000-4000-8000-000000000001"
 cf_quota_id    = "00000000-0000-4000-8000-000000000002"
 
 # RFC 5737 documentation address; not a real CF egress address.
-service_access_cidrs = ["192.0.2.10/32"]
+database_access_cidrs = ["192.0.2.10/32"]
+secrets_access_cidrs = ["198.51.100.10/32"]
 
 database = {
   flavor_id       = "REPLACE_FROM_CATALOG"

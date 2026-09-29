@@ -1,7 +1,7 @@
 resource "stackit_secretsmanager_instance" "configurator" {
   project_id = var.project_id
   name       = "${var.name_prefix}-secrets"
-  acls       = var.service_access_cidrs
+  acls       = var.secrets_access_cidrs
   lifecycle {
     prevent_destroy = true
   }

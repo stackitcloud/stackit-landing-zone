@@ -8,7 +8,9 @@ const here=dirname(fileURLToPath(import.meta.url));
 const infra=resolve(here,"..");
 const local=resolve(infra,"../.local");
 const repoPath=resolve(infra,"../..");
-const spec=JSON.parse(readFileSync(resolve(here,"github-environments.json"),"utf8"));
+const platform = process.argv[2] === "--platform";
+if(process.argv.length > 2 && !platform) throw new Error("Only --platform is supported");
+const spec=JSON.parse(readFileSync(resolve(here,platform ? "github-platform-environments.json" : "github-environments.json"),"utf8"));
 if(spec.repository!=="stackitcloud/stackit-landing-zone")throw new Error("Unexpected secret destination");
 function gh(args,input) {
   try {return execFileSync("gh",args,{input,encoding:"utf8",stdio:["pipe","pipe","pipe"]});}
@@ -32,6 +34,7 @@ const deploySecrets={...sharedSecrets,
   LZC_STATE_KEY_BOOTSTRAP:readFileSync(resolve(local,"bootstrap/state.passphrase"),"utf8").trim(),
   LZC_STATE_KEY_BACKEND:readFileSync(resolve(local,"backend/state.passphrase"),"utf8").trim(),
 };
+if(platform) deploySecrets.LZC_STATE_KEY_PLATFORM=readFileSync(resolve(local,"platform/state.passphrase"),"utf8").trim();
 const recoverySecrets={...sharedSecrets,
   LZC_STATE_KEY_SEED:readFileSync(resolve(local,"seed/state.passphrase"),"utf8").trim(),
   LZC_STATE_KEY_SEED_PROTECTION:readFileSync(resolve(local,"seed-protection/state.passphrase"),"utf8").trim(),
@@ -59,3 +62,5 @@ for(const target of spec.environments) {
   }
   console.log(`Configured ${target.name}: branches=${branches.join(",")}, review=${target.review}; secret values not displayed.`);
 }
+
+if(platform) gh(["variable","set","LZC_PLATFORM_CI_ENABLED","--repo",spec.repository],"true");
