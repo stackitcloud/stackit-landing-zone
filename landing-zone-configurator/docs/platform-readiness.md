@@ -22,9 +22,23 @@ Die folgenden Werte wurden anhand der Projektkataloge ausgewählt, noch nicht pr
 
 ## Vor dem Plattform-Plan offen
 
-- [ ] Verbindliche Egress-CIDRs der öffentlichen CF-Foundation ermitteln und dokumentieren.
+- [x] Netzwerkannahme korrigiert: CF-Egress-IP-Adressen sind laut Betreiberwissen nicht dokumentiert und nicht stabil; keine CF-spezifische IP-Allowlist voraussetzen.
+- [ ] Dokumentierte STACKIT-Service-Netze für PostgreSQL als Zugangsmodell evaluieren und Zugriff aus CF testen.
+- [ ] Zugangsmodell des Secrets Managers separat klären; PostgreSQL-Netzfreigaben nicht ungeprüft übertragen.
 - [ ] Zugangsweg für Migrationen/Operator-Zugriffe festlegen; dynamische GitHub-Runner-IPs nicht pauschal freigeben.
 - [ ] Plattform-CI mit getrennten Environments und eigenem State-Key anbinden.
 - [ ] Konkreten Plattform-Plan prüfen und anschließend deployen.
 
 Aktuell sind noch keine CF-Organisation, PostgreSQL-Instanz, Secrets-Manager-Instanz oder Model-Serving-Tokens durch den Plattform-Root erstellt. Alle Arbeiten verbleiben auf `feature/landing-zone-configurator`.
+
+## Korrigiertes Netzwerkmodell
+
+Die Anwendung darf nicht von einzelnen, beobachteten CF-Ausgangs-IP-Adressen abhängen. Auch eine einmalige Messung per Test-App würde keine stabile Allowlist ergeben. Service-Bindings liefern Zugangsdaten und Verbindungsparameter; sie sind kein Nachweis, dass eine Netzwerk-ACL umgangen oder automatisch gepflegt wird.
+
+Für PostgreSQL Flex nennt die offizielle Dokumentation `193.148.160.0/19` und `45.129.40.0/21` ausdrücklich für den Zugriff aus STACKIT-Diensten. Diese dokumentierten Anbieter-Netze sind ein Kandidat für den Konnektivitätstest, keine exklusiven Netze unserer Anwendung oder unseres Mandanten. TLS mit Zertifikatsprüfung, getrennte App-/Migrationsidentitäten und Datenbankautorisierung bleiben erforderlich. Änderungen der unterstützten Netze müssen über IaC nachvollzogen werden; die Adressen sind keine zugesicherten CF-Egress-CIDRs.
+
+Für den Secrets Manager muss dessen unterstütztes Zugangsmodell unabhängig geprüft werden. Der bisherige gemeinsame Parameter `service_access_cidrs` für beide Dienste darf vor dem Plattform-Apply nicht einfach mit den PostgreSQL-Netzen gefüllt werden. Separate ACL-Eingaben sind bei unterschiedlichen Dienstanforderungen vorzusehen. Ein eigener Zugangsproxy ist erst dann zu planen, wenn das unterstützte direkte Zugangsmodell nicht ausreicht. Keine pauschale Öffnung auf `0.0.0.0/0` aus dieser Korrektur ableiten.
+
+Datenbankmigrationen sollen später als CF-Task mit separater Migrationsidentität laufen. GitHub Actions startet und überwacht die Task; dafür muss die Datenbank nicht für wechselnde GitHub-Runner-IP-Adressen geöffnet werden. Der technische Nachweis einschließlich Credentials-Bindung steht noch aus.
+
+Quellen: [PostgreSQL-Instanzen und ACLs](https://docs.stackit.cloud/products/databases/postgresql-flex/how-tos/create-and-manage-instances-for-postgresql-flex/), [Secrets-Manager-Konfiguration](https://docs.stackit.cloud/products/security/secrets-manager/getting-started/configure-the-secrets-manager/), [CF-Service-Bindings](https://docs.cloudfoundry.org/devguide/services/application-binding.html).

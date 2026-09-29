@@ -600,3 +600,5 @@ Feature-Branch-Test freigegeben: Push-Trigger für Bootstrap-Plan auf `feature/l
 Bootstrap-Apply abgeschlossen: GitHub Run 36601941540 auf dem Feature-Branch, drei Ressourcen erstellt. Verschlüsselter Remote-State unabhängig geprüft; einmalige Commit-Freigabe entfernt. Nächster Schritt: separater Backend-Root zur Versionierung des Workload-State-Buckets. main bleibt unverändert.
 
 Backend-Apply abgeschlossen: Run 36602706599, Versionierung für den Workload-State-Bucket aktiviert und direkt über S3 verifiziert. Verschlüsselter Backend-State geprüft; einmalige Freigaben entfernt. Die [Plattform-Vorbereitung](platform-readiness.md) dokumentiert die ausgewählten Katalogwerte und offenen Netzwerkparameter.
+
+Netzwerk-Korrektur: CF-Egress-Adressen sind nicht dokumentiert/stabil (Benutzerhinweis). Die bisherige Anforderung fester CF-CIDRs entfällt. Stattdessen dienstspezifische, unterstützte Zugangsmodelle prüfen: dokumentierte STACKIT-Netze für PostgreSQL mit Konnektivitätstest; Secrets Manager separat. Migrationen als CF-Task vorsehen. Service-Bindings nicht als Netzwerkfreigabe behandeln. Siehe [Plattform-Vorbereitung](platform-readiness.md).
