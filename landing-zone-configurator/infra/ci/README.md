@@ -68,3 +68,7 @@ Für einen gezielten Backend-Lauf setzt der Operator zusätzlich `LZC_BOOTSTRAP_
 `configurator-platform.yml` plant ausschließlich den Plattform-Root. Plan/Apply verwenden `lzc-dev-platform-plan` und `lzc-dev-platform-apply`, gemeinsam mit Bootstrap die Concurrency-Gruppe `configurator-lzc-dev-mutation`. Für den Feature-Branch schaltet ausschließlich eine passende `LZC_PLATFORM_APPLY_COMMIT` einen reviewerpflichtigen Apply frei; Root und Workflow werden im CI-Einstieg zusätzlich geprüft.
 
 `node infra/ci/configure-github.mjs --platform` richtet die in `github-platform-environments.json` beschriebenen Environments ein. Es überträgt Projekt-Service-Account, Management-S3-Zugang und Bootstrap-/Backend-/Plattform-State-Schlüssel nach ausdrücklicher Ziel-Freigabe. Keine Seed-Schlüssel gelangen in diese Deployment-Jobs. Plattform-State liegt mit eigener Verschlüsselung im bereits versionierten Workload-Bucket, nicht im Verwaltungs-Bucket.
+
+## Plattform-Bereitstellung freigegeben
+
+Der Benutzer hat am 2026-09-29 ausdrücklich die Secret-Hinterlegung in `lzc-dev-platform-plan` und `lzc-dev-platform-apply` freigegeben und die Fortsetzung der Plattform-Bereitstellung beauftragt. Der erste CI-Apply wird über eine einzelne Commit-SHA in `LZC_PLATFORM_APPLY_COMMIT` angefordert; die Environment-Freigabe erfolgt erst nach Prüfung des konkreten Plans und erfolgreicher Validierung.

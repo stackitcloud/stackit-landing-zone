@@ -49,6 +49,6 @@ Die versionierte Datei `infra/environments/lzc-dev.tfvars.json` enthält jetzt d
 
 Die eigene Pipeline `configurator-platform.yml` verwendet denselben Serialisierungsmechanismus wie Bootstrap, aber eigene GitHub-Environments und einen separaten Verschlüsselungsschlüssel. Sie liest Bootstrap-/Backend-Outputs geschützt im Arbeitsspeicher, prüft den angewendeten Versionierungsstatus und verwendet anschließend den Workload-State-Bucket. Plattformparameter, Commit, Root und Plan-Hash sind an die Apply-Prüfung gebunden.
 
-Secret-Hinterlegung in den neuen Environments `lzc-dev-platform-plan` und `lzc-dev-platform-apply` wartet auf die gesonderte Freigabe der konkreten Ziele. Bis dahin erfolgt kein Plattform-Apply.
+Die gesonderte Freigabe zur Secret-Hinterlegung in `lzc-dev-platform-plan` und `lzc-dev-platform-apply` liegt vor. Die Bereitstellung wird nun über einen frischen CI-Plan und einen daran gebundenen Apply ausgeführt.
 
 Lokaler technischer Nachweis: echter Plattform-Plan erfolgreich, **9 Create / 0 Update / 0 Delete** (CF-Organisation und Manager, PostgreSQL-Instanz/Datenbank/Migrationsnutzer, Secrets-Manager-Instanz/Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Token). Sechs Plattform-Mock-Tests, 16 Node-Tests und Workflow-Prüfung erfolgreich. Der lokale Provider-Download hing; die Prüfung wurde mit bereits installierten, gegen das Lockfile geprüften Provider-Binaries wiederholt. Kein Apply durchgeführt. Die neue Plattform-Pipeline bleibt bis zur Environment-/Secret-Einrichtung über `LZC_PLATFORM_CI_ENABLED` deaktiviert.
