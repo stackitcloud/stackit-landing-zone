@@ -39,8 +39,11 @@ export function assertApplyExecution(safety, env) {
       safety.concurrencyGroup !== "configurator-lzc-dev-mutation") {
     throw new Error("Apply requires the approved single-writer configuration");
   }
-  if (env.GITHUB_ACTIONS !== "true" || env.GITHUB_REF !== "refs/heads/main" || env.GITHUB_EVENT_NAME !== "workflow_dispatch" ||
-      env.GITHUB_WORKFLOW_REF !== "stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main") {
+  const main = env.GITHUB_REF === "refs/heads/main" && env.GITHUB_EVENT_NAME === "workflow_dispatch";
+  const feature = env.GITHUB_REF === "refs/heads/feature/landing-zone-configurator" && env.GITHUB_EVENT_NAME === "push" &&
+    /^[a-f0-9]{40}$/.test(env.LZC_APPROVED_APPLY_COMMIT ?? "") && env.GITHUB_SHA === env.LZC_APPROVED_APPLY_COMMIT && env.LZC_ROOT === "bootstrap";
+  const workflow = `stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@${env.GITHUB_REF}`;
+  if (env.GITHUB_ACTIONS !== "true" || (!main && !feature) || env.GITHUB_WORKFLOW_REF !== workflow) {
     throw new Error("Remote apply is restricted to the serialized GitHub Actions workflow");
   }
 }

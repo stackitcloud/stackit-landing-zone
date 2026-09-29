@@ -46,3 +46,12 @@ test("feature branch push can plan bootstrap but cannot apply",()=>{
   assert.throws(()=>deploymentInputs({...feature,GITHUB_REF:"refs/heads/feature/other"}));
   assert.throws(()=>assertApplyExecution({mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"},{...feature,GITHUB_ACTIONS:"true",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main"}));
 });
+
+test("feature apply needs exact explicitly approved commit and correct workflow",()=>{
+  const safety={mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"};
+  const feature={...env,GITHUB_ACTIONS:"true",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push",LZC_APPROVED_APPLY_COMMIT:env.GITHUB_SHA,GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/feature/landing-zone-configurator"};
+  assert.doesNotThrow(()=>assertApplyExecution(safety,feature));
+  for(const patch of [{LZC_APPROVED_APPLY_COMMIT:""},{LZC_APPROVED_APPLY_COMMIT:"b".repeat(40)},{GITHUB_WORKFLOW_REF:"wrong"},{LZC_ROOT:"backend"}]) {
+    assert.throws(()=>assertApplyExecution(safety,{...feature,...patch}));
+  }
+});

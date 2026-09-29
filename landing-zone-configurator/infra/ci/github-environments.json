@@ -13,7 +13,11 @@
     },
     {
       "name": "lzc-dev-bootstrap-apply",
-      "review": true
+      "review": true,
+      "branches": [
+        "main",
+        "feature/landing-zone-configurator"
+      ]
     },
     {
       "name": "lzc-dev-recovery",

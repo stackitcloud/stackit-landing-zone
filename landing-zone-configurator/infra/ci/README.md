@@ -46,3 +46,7 @@ Der Apply-Prüfmechanismus bindet Plan-Hash, Repository, Commit, Workflow-Lauf, 
 ## Erster Test vom Feature-Branch
 
 Pushes auf den exakten Branch `feature/landing-zone-configurator` starten bei Änderungen an IaC oder Bootstrap-Workflow automatisch einen Bootstrap-Plan. Nur das Plan-Environment erlaubt zusätzlich diesen Branch. Apply und Recovery bleiben auf main beschränkt; Feature-Pushes können keinen Apply-Job starten. Der CI-Einstieg prüft Branch/Event ebenfalls und bindet beides an das Planmanifest. Die Validierungs-CI läuft nun ebenfalls auf diesem Feature-Branch.
+
+## Einmaliger Bootstrap-Apply vom Feature-Branch
+
+Ein Feature-Push darf zusätzlich einen Apply-Job anfordern, wenn die Repository-Variable `LZC_BOOTSTRAP_APPLY_COMMIT` exakt seiner vollständigen Commit-SHA entspricht. Der CI-Einstieg prüft diesen Wert erneut, erlaubt dabei nur Root bootstrap und verlangt die korrekte Workflow-Identität. Das Apply-Environment erlaubt den exakten Feature-Branch, behält aber seine Reviewer-Freigabe. Die Variable wird nach dem Lauf entfernt; normale Feature-Pushes bleiben Plan-only. Wiederholungen benötigen einen neuen Run/Commit und einen neu geprüften Plan.

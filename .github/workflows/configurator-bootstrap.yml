@@ -73,7 +73,7 @@ jobs:
 
   apply:
     needs: plan
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1
+    if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_BOOTSTRAP_APPLY_COMMIT))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: lzc-dev-bootstrap-apply
@@ -98,6 +98,7 @@ jobs:
       - name: Apply exactly the reviewed plan
         run: node infra/ci/run.mjs apply
         env:
+          LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_BOOTSTRAP_APPLY_COMMIT }}
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
           LZC_REGION: ${{ vars.LZC_REGION }}
           LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
