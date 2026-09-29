@@ -10,7 +10,7 @@
 
 ## Aus Katalogen vorbereitete Entwicklungsparameter
 
-Die folgenden Werte wurden anhand der Projektkataloge ausgewählt, noch nicht provisioniert. Eine lokale `platform-selection.tfvars.json` enthält die IDs und Datenbankparameter; sie enthält bewusst noch keine Netzwerk-ACL und ist kein vollständiger ausführbarer Plattform-Plan.
+Die folgenden Werte wurden anhand der Projektkataloge ausgewählt. Verbindliche Deployment-Eingaben einschließlich getrennter Netzwerk-ACLs stehen in `infra/environments/lzc-dev.tfvars.json`.
 
 | Parameter | Auswahl | Grund |
 | --- | --- | --- |
@@ -20,16 +20,16 @@ Die folgenden Werte wurden anhand der Projektkataloge ausgewählt, noch nicht pr
 | Speicher | 20 GiB, premium-perf2-stackit | Im Katalog verfügbar, gültiger Größenbereich 5–4000 GiB |
 | Backups | Täglich 02:00, Retention 32 Tage | Entwicklungsdefault; Produktivziele separat festlegen |
 
-## Vor dem Plattform-Plan offen
+## Plattform und verbleibende Abnahmen
 
 - [x] Netzwerkannahme korrigiert: CF-Egress-IP-Adressen sind laut Betreiberwissen nicht dokumentiert und nicht stabil; keine CF-spezifische IP-Allowlist voraussetzen.
 - [ ] Dokumentierte STACKIT-Service-Netze für PostgreSQL als Zugangsmodell evaluieren und Zugriff aus CF testen.
 - [ ] Zugangsmodell des Secrets Managers separat klären; PostgreSQL-Netzfreigaben nicht ungeprüft übertragen.
-- [ ] Zugangsweg für Migrationen/Operator-Zugriffe festlegen; dynamische GitHub-Runner-IPs nicht pauschal freigeben.
-- [ ] Plattform-CI mit getrennten Environments und eigenem State-Key anbinden.
+- [x] Migrationen als CF-Tasks vorgesehen; technische Umsetzung und Operator-Zugriff noch offen.
+- [x] Plattform-CI mit getrennten Environments und eigenem State-Key anbinden.
 - [ ] Konkreten Plattform-Plan prüfen und anschließend deployen.
 
-Aktuell sind noch keine CF-Organisation, PostgreSQL-Instanz, Secrets-Manager-Instanz oder Model-Serving-Tokens durch den Plattform-Root erstellt. Alle Arbeiten verbleiben auf `feature/landing-zone-configurator`.
+Der erste Plattform-Apply wurde gestartet, aber wegen des Job-Zeitlimits abgebrochen. Es existiert ein Teilbestand; siehe den aktuellen Betriebsstand unten. Alle Arbeiten verbleiben auf `feature/landing-zone-configurator`.
 
 ## Korrigiertes Netzwerkmodell
 
@@ -51,4 +51,28 @@ Die eigene Pipeline `configurator-platform.yml` verwendet denselben Serialisieru
 
 Die gesonderte Freigabe zur Secret-Hinterlegung in `lzc-dev-platform-plan` und `lzc-dev-platform-apply` liegt vor. Die Bereitstellung wird nun über einen frischen CI-Plan und einen daran gebundenen Apply ausgeführt.
 
-Lokaler technischer Nachweis: echter Plattform-Plan erfolgreich, **9 Create / 0 Update / 0 Delete** (CF-Organisation und Manager, PostgreSQL-Instanz/Datenbank/Migrationsnutzer, Secrets-Manager-Instanz/Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Token). Sechs Plattform-Mock-Tests, 16 Node-Tests und Workflow-Prüfung erfolgreich. Der lokale Provider-Download hing; die Prüfung wurde mit bereits installierten, gegen das Lockfile geprüften Provider-Binaries wiederholt. Kein Apply durchgeführt. Die neue Plattform-Pipeline bleibt bis zur Environment-/Secret-Einrichtung über `LZC_PLATFORM_CI_ENABLED` deaktiviert.
+Lokaler technischer Nachweis: echter Plattform-Plan erfolgreich, **9 Create / 0 Update / 0 Delete** (CF-Organisation und Manager, PostgreSQL-Instanz/Datenbank/Migrationsnutzer, Secrets-Manager-Instanz/Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Token). Sechs Plattform-Mock-Tests, 16 Node-Tests und Workflow-Prüfung erfolgreich. Der lokale Provider-Download hing; die Prüfung wurde mit bereits installierten, gegen das Lockfile geprüften Provider-Binaries wiederholt. Dieser lokale Nachweis führte keinen Apply aus. Die Plattform-Pipeline ist nach der genehmigten Environment-/Secret-Einrichtung über `LZC_PLATFORM_CI_ENABLED` aktiviert.
+
+## Betriebsstand 2026-09-30: erster Plattform-Apply unvollständig
+
+- [x] Secrets mit ausdrücklicher Benutzerfreigabe in die beiden Plattform-Environments übertragen; Werte nicht protokolliert.
+- [x] CI-Plan und verschlüsseltes Artefakt geprüft: Commit `3322dd99a37a495fda8ba46fc4eb6284895d4316`, neun Create, keine Update/Delete; Hash und Run-Zuordnung geprüft.
+- [x] [Validierung 36632950763](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36632950763) erfolgreich.
+- [x] Genehmigten Apply gestartet: [Run 36632950493](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36632950493).
+- [ ] Plattform-Apply erfolgreich abschließen: Job nach 45 Minuten durch GitHub abgebrochen (`maximum execution time of 45m0s`).
+- [x] Einmalige Variable `LZC_PLATFORM_APPLY_COMMIT` entfernt und `LZC_PLATFORM_CI_ENABLED=false` gesetzt; keine automatischen Wiederholungen.
+
+Direkte API-Prüfung nach dem Abbruch: PostgreSQL `lzc-dev-db` wechselte von `PENDING` nach `PROGRESSING`; Secrets Manager `lzc-dev-secrets` meldete `Running`, die CF-Organisation `active`. Das belegt einen Teilbestand, nicht die Vollständigkeit aller neun Ressourcen oder die Nutzbarkeit der Anwendung. Die serverseitige Datenbankbereitstellung läuft unabhängig vom beendeten Runner weiter.
+
+Der erwartete Plattform-State im Workload-Bucket ist nicht vorhanden (`NoSuchKey`). Auch die Objektversionsliste enthält keinen Plattform-State, aber ein verbliebenes `.tflock`-Objekt. Dieses ist kein Ersatz für den State und wurde nicht entfernt. Es wurde kein weiterer Apply gestartet. Der ursprüngliche Plan darf nicht wiederverwendet werden: Er plant neue Ressourcen und kennt den inzwischen vorhandenen Teilbestand nicht.
+
+### Wiederaufnahme und Abnahme
+
+- [ ] PostgreSQL-Endzustand über die API prüfen; bei weiterhin festhängender Bereitstellung STACKIT-Service-Diagnose mit Instanz-ID aus dem lokalen Inventar veranlassen.
+- [ ] Vollständiges Inventar aller neun geplanten Ressourcen einschließlich technischer Benutzer und Model-Serving-Token erstellen; IDs und Zugangsdaten geschützt behandeln.
+- [ ] State-Recovery über einen dedizierten, serialisierten CI-Weg vorbereiten: vorhandene importierbare Ressourcen importieren, nicht wiederherstellbare Einmal-Credentials kontrolliert rotieren. Keine Doppelanlage oder ungeprüfte Löschung.
+- [ ] Verbliebenes Lock erst nach Prüfung auf beendete Runner und vor kontrollierter Recovery behandeln; native S3-Sperre bleibt als unzuverlässig dokumentiert.
+- [ ] CI-Prozesssteuerung verbessern: rechtzeitiger geordneter OpenTofu-Abbruch vor dem äußeren Job-Zeitlimit, geschützte Diagnose und verschlüsselte Recovery-Artefakte. Nur das Timeout zu erhöhen behebt den fehlenden State nicht.
+- [ ] Nach Recovery frischen Plan prüfen; erst dann Plattform-CI wieder aktivieren und neue konkrete Apply-Freigabe setzen.
+- [ ] Verschlüsselten Remote-State, vollständige Ressourcen und anschließenden No-op-Plan unabhängig verifizieren.
+- [ ] CF-Runtime (Space, Apps, Bindings, separate Laufzeitidentitäten) per IaC erstellen und PostgreSQL-/Secrets-Zugriff aus CF testen.
