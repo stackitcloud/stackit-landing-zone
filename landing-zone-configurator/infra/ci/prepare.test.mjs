@@ -21,7 +21,7 @@ test("runtime reads platform credentials privately and targets its own workload 
  assert.equal(run("workload",patch).status,0);
  for(const root of ["platform","runtime"]) assert.match(readFileSync(join(dir,`lzc-private/${root}.backend.hcl`),"utf8"),/lzc-dev-state-00000000/);
  assert.notEqual(run("runtime",patch).status,0);
- writeFileSync(join(dir,"lzc-private/platform-outputs.json"),JSON.stringify({cf_runtime:{value:{api_url:"https://example.invalid",org_id:"org",username:"cf-user",password:"cf-secret"}},service_ids:{value:{database_instance_id:"db",secrets_instance_id:"sm"}},model_serving_token:{value:"model-secret"}}));
+ writeFileSync(join(dir,"lzc-private/platform-outputs.json"),JSON.stringify({cf_runtime:{value:{api_url:"https://example.invalid",org_id:"org",username:"cf-user",password:"cf-secret"}},service_ids:{value:{database_instance_id:"db",secrets_instance_id:"sm"}},model_serving_token:{value:"model-secret"},plan_runner_cf:{value:{org_id:"runner-org",username:"runner-user",password:"runner-secret"}}}));
  const result=run("runtime",patch); assert.equal(result.status,0,result.stderr);
  const v=exported(env.GITHUB_ENV);
  assert.equal(v.CF_PASSWORD,"cf-secret"); assert.equal(v.TF_VAR_database_instance_id,"db");

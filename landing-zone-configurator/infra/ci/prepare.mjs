@@ -71,6 +71,11 @@ if (mode === "validation") {
     publish("CF_API_URL", cf.api_url);
     publish("CF_USER", cf.username, true);
     publish("CF_PASSWORD", cf.password, true);
+    const runner = platform.plan_runner_cf?.value;
+    if (!runner?.org_id || !runner.username || !runner.password) throw new Error("Runner platform outputs incomplete");
+    publish("TF_VAR_runner_cf_org_id", runner.org_id);
+    publish("TF_VAR_runner_cf_username", runner.username, true);
+    publish("TF_VAR_runner_cf_password", runner.password, true);
     publish("TF_VAR_cf_org_id", cf.org_id);
     publish("TF_VAR_cf_username", cf.username, true);
     publish("TF_VAR_database_instance_id", ids.database_instance_id);
