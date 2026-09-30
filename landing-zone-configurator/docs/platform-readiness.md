@@ -1,4 +1,6 @@
-# Plattform-Vorbereitung nach Bootstrap und Backend
+# Plattform-Betriebsstand nach Bootstrap und Backend
+
+**Aktuell (2026-09-30):** Plattform-Recovery und Apply erfolgreich. Neun Ressourcen sind im verschlüsselten Remote-State erfasst. PostgreSQL ist `READY`, CF aktiv, Secrets Manager `Running`. [Recovery-/Apply-Run 36675347654](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675347654). CF-Runtime und Zugriffstests sind weiterhin offen.
 
 ## Abgeschlossen
 
@@ -27,9 +29,9 @@ Die folgenden Werte wurden anhand der Projektkataloge ausgewählt. Verbindliche 
 - [ ] Zugangsmodell des Secrets Managers separat klären; PostgreSQL-Netzfreigaben nicht ungeprüft übertragen.
 - [x] Migrationen als CF-Tasks vorgesehen; technische Umsetzung und Operator-Zugriff noch offen.
 - [x] Plattform-CI mit getrennten Environments und eigenem State-Key anbinden.
-- [ ] Konkreten Plattform-Plan prüfen und anschließend deployen.
+- [x] Konkreten Plattform-Plan prüfen und anschließend deployen.
 
-Der erste Plattform-Apply wurde gestartet, aber wegen des Job-Zeitlimits abgebrochen. Es existiert ein Teilbestand; siehe den aktuellen Betriebsstand unten. Alle Arbeiten verbleiben auf `feature/landing-zone-configurator`.
+Der erste Plattform-Apply wurde wegen des Job-Zeitlimits abgebrochen. Der Teilbestand wurde inzwischen erfolgreich importiert und das Deployment vervollständigt; siehe die Recovery-Abnahme unten. Alle Arbeiten verbleiben auf `feature/landing-zone-configurator`.
 
 ## Korrigiertes Netzwerkmodell
 
@@ -53,7 +55,7 @@ Die gesonderte Freigabe zur Secret-Hinterlegung in `lzc-dev-platform-plan` und `
 
 Lokaler technischer Nachweis: echter Plattform-Plan erfolgreich, **9 Create / 0 Update / 0 Delete** (CF-Organisation und Manager, PostgreSQL-Instanz/Datenbank/Migrationsnutzer, Secrets-Manager-Instanz/Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Token). Sechs Plattform-Mock-Tests, 16 Node-Tests und Workflow-Prüfung erfolgreich. Der lokale Provider-Download hing; die Prüfung wurde mit bereits installierten, gegen das Lockfile geprüften Provider-Binaries wiederholt. Dieser lokale Nachweis führte keinen Apply aus. Die Plattform-Pipeline ist nach der genehmigten Environment-/Secret-Einrichtung über `LZC_PLATFORM_CI_ENABLED` aktiviert.
 
-## Betriebsstand 2026-09-30: erster Plattform-Apply unvollständig
+## Vorfall 2026-09-30: erster Plattform-Apply unvollständig
 
 - [x] Secrets mit ausdrücklicher Benutzerfreigabe in die beiden Plattform-Environments übertragen; Werte nicht protokolliert.
 - [x] CI-Plan und verschlüsseltes Artefakt geprüft: Commit `3322dd99a37a495fda8ba46fc4eb6284895d4316`, neun Create, keine Update/Delete; Hash und Run-Zuordnung geprüft.
@@ -66,13 +68,36 @@ Direkte API-Prüfung nach dem Abbruch: PostgreSQL `lzc-dev-db` wechselte von `PE
 
 Der erwartete Plattform-State im Workload-Bucket ist nicht vorhanden (`NoSuchKey`). Auch die Objektversionsliste enthält keinen Plattform-State, aber ein verbliebenes `.tflock`-Objekt. Dieses ist kein Ersatz für den State und wurde nicht entfernt. Es wurde kein weiterer Apply gestartet. Der ursprüngliche Plan darf nicht wiederverwendet werden: Er plant neue Ressourcen und kennt den inzwischen vorhandenen Teilbestand nicht.
 
-### Wiederaufnahme und Abnahme
+### Wiederaufnahme und Abnahme (abgeschlossen, Details unten)
 
-- [ ] PostgreSQL-Endzustand über die API prüfen; bei weiterhin festhängender Bereitstellung STACKIT-Service-Diagnose mit Instanz-ID aus dem lokalen Inventar veranlassen.
-- [ ] Vollständiges Inventar aller neun geplanten Ressourcen einschließlich technischer Benutzer und Model-Serving-Token erstellen; IDs und Zugangsdaten geschützt behandeln.
-- [ ] State-Recovery über einen dedizierten, serialisierten CI-Weg vorbereiten: vorhandene importierbare Ressourcen importieren, nicht wiederherstellbare Einmal-Credentials kontrolliert rotieren. Keine Doppelanlage oder ungeprüfte Löschung.
-- [ ] Verbliebenes Lock erst nach Prüfung auf beendete Runner und vor kontrollierter Recovery behandeln; native S3-Sperre bleibt als unzuverlässig dokumentiert.
-- [ ] CI-Prozesssteuerung verbessern: rechtzeitiger geordneter OpenTofu-Abbruch vor dem äußeren Job-Zeitlimit, geschützte Diagnose und verschlüsselte Recovery-Artefakte. Nur das Timeout zu erhöhen behebt den fehlenden State nicht.
-- [ ] Nach Recovery frischen Plan prüfen; erst dann Plattform-CI wieder aktivieren und neue konkrete Apply-Freigabe setzen.
+- [x] PostgreSQL-Endzustand über die API prüfen (`READY`); bei weiterhin festhängender Bereitstellung STACKIT-Service-Diagnose mit Instanz-ID aus dem lokalen Inventar veranlassen.
+- [x] Vollständiges Inventar aller neun geplanten Ressourcen einschließlich technischer Benutzer und Model-Serving-Token erstellen; IDs und Zugangsdaten geschützt behandeln.
+- [x] State-Recovery über einen dedizierten, serialisierten CI-Weg durchführen: vorhandene importierbare Ressourcen importieren, nicht wiederherstellbare Einmal-Credentials kontrolliert rotieren. Keine Doppelanlage oder ungeprüfte Löschung.
+- [x] Verbliebenes Lock erst nach Prüfung auf beendete Runner und vor kontrollierter Recovery behandeln; native S3-Sperre bleibt als unzuverlässig dokumentiert.
+- [x] CI-Prozesssteuerung verbessern: rechtzeitiger geordneter OpenTofu-Abbruch vor dem äußeren Job-Zeitlimit, geschützte Diagnose und verschlüsselte Recovery-Artefakte. Nur das Timeout zu erhöhen behebt den fehlenden State nicht.
+- [x] Nach Recovery frischen Plan prüfen; erst dann Plattform-CI wieder aktivieren und neue konkrete Apply-Freigabe setzen.
 - [ ] Verschlüsselten Remote-State, vollständige Ressourcen und anschließenden No-op-Plan unabhängig verifizieren.
 - [ ] CF-Runtime (Space, Apps, Bindings, separate Laufzeitidentitäten) per IaC erstellen und PostgreSQL-/Secrets-Zugriff aus CF testen.
+
+
+## Erfolgreiche Recovery und Plattform-Abnahme
+
+Commit `1843069ce6914c26d04a7461d0799fc1c58794d7`, [Run 36675347654](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675347654): Recovery, Plan und Apply erfolgreich. [Validierungs-Run 36675347681](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675347681) ebenfalls erfolgreich.
+
+Sechs vorhandene Ressourcen wurden importiert, ohne die Instanzen, CF-Organisation oder den Artefakt-Bucket neu anzulegen. Der verwaiste Model-Serving-Token wurde widerrufen. Der frisch geprüfte Plan erstellte Datenbank, Migrationsbenutzer und neuen Model-Serving-Token; CF-Manager und Secrets-Provisionierungsbenutzer wurden wegen der verlorenen Passwörter ersetzt. Das PostgreSQL-Update betraf berechnete Flavor-Metadaten, bei unveränderter Flavor-ID und unveränderten Infrastrukturparametern.
+
+Unabhängige Abnahme:
+
+- [x] Verschlüsseltes State-Objekt im Workload-Bucket vorhanden; neun verwaltete Ressourcen geprüft.
+- [x] Beide getrennten Netzwerk-ACLs entsprechen den geplanten Netzen.
+- [x] PostgreSQL `READY`, Datenbank `configurator` mit Owner `configurator_migration` vorhanden.
+- [x] CF-Organisation aktiv und Secrets Manager `Running`.
+- [x] Neue technische Benutzer und genau ein neuer aktiver Configurator-Model-Serving-Token in der API bestätigt; alte Identitäten ersetzt.
+- [x] Erforderliche Passwörter und Token im verschlüsselten State vorhanden, ohne Werte auszugeben.
+- [x] Geschützte Diagnose und State-Snapshot aus GitHub heruntergeladen; authentifizierte Entschlüsselung und JSON-Integrität geprüft.
+- [x] Beide Einmalvariablen `LZC_PLATFORM_RECOVERY_COMMIT` und `LZC_PLATFORM_APPLY_COMMIT` entfernt. Plattform-CI wieder für Plan-Läufe aktiv.
+- [ ] Abschließenden Plan ohne Änderungen bestätigen.
+
+Plattform-Jobs haben jetzt ein äußeres Zeitlimit von 100 Minuten. OpenTofu-Apply erhält maximal 70 Minuten und danach bis zu zehn Minuten zum geordneten Beenden; eine zusätzliche Gesamtlaufzeitgrenze des Skripts hält Puffer für Artefakte frei. 22 lokale Tests einschließlich Abbruchverhalten, verschlüsselter Diagnose und Recovery-Sperren sowie Workflow-Prüfung bestanden.
+
+Nächster Ausbau: CF-Space und App-/Task-Runtime per IaC, getrennte Laufzeitidentitäten/Bindings und echte TLS-/Authentifizierungstests aus CF. Die Infrastrukturabnahme belegt noch keinen erfolgreichen App-Zugriff auf Datenbank oder Secrets Manager.
