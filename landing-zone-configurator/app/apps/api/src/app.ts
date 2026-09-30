@@ -1,9 +1,17 @@
 import fastifyStatic from "@fastify/static";
 import type { HealthResponse } from "@lzc/contracts";
-import Fastify from "fastify";
+import Fastify, { LogController } from "fastify";
+import {
+  type AuthServices,
+  authenticatedSession,
+  registerAuth,
+} from "./auth/routes.js";
 
-export function buildApp(options: { webRoot?: string } = {}) {
+export function buildApp(
+  options: { webRoot?: string; auth?: AuthServices } = {},
+) {
   const app = Fastify({
+    logController: new LogController({ disableRequestLogging: true }),
     logger: {
       redact: {
         paths: ["req.headers.authorization", "req.headers.cookie"],
@@ -13,22 +21,42 @@ export function buildApp(options: { webRoot?: string } = {}) {
     bodyLimit: 1024 * 1024,
   });
 
+  app.addHook("onSend", async (request, reply) => {
+    reply.header("Referrer-Policy", "no-referrer");
+    reply.header("X-Content-Type-Options", "nosniff");
+    if (request.url.startsWith("/auth/") || request.url.startsWith("/api/"))
+      reply.header("Cache-Control", "no-store");
+  });
+  app.setErrorHandler((_error, _request, reply) => {
+    app.log.error({ event: "request_failed" }, "Request failed");
+    return reply.code(503).send({ error: "service_unavailable" });
+  });
+  app.get("/auth/status", async () => ({ github: !!options.auth }));
+  if (options.auth) registerAuth(app, options.auth);
   app.get(
     "/healthz",
     async (): Promise<HealthResponse> => ({
       status: "ok",
       service: "landing-zone-configurator",
-      authentication: "not-configured",
+      authentication: options.auth ? "github" : "not-configured",
     }),
   );
 
-  // Until real sessions exist, no identity can be supplied through client headers.
   app.register(
     async (protectedApi) => {
-      protectedApi.addHook("onRequest", async (_request, reply) => {
-        return reply.code(401).send({ error: "authentication_required" });
+      protectedApi.get("/session", async (request, reply) => {
+        const session = options.auth
+          ? await authenticatedSession(request, options.auth)
+          : null;
+        if (!session)
+          return reply.code(401).send({ error: "authentication_required" });
+        return {
+          user: { id: session.userId, login: session.login },
+          tenant: { id: session.tenantId },
+          csrfToken: session.csrfToken,
+          expiresAt: session.expiresAt.toISOString(),
+        };
       });
-      protectedApi.get("/session", async () => ({}));
     },
     { prefix: "/api/v1" },
   );

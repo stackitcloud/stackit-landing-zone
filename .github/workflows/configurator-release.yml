@@ -22,6 +22,16 @@ jobs:
     if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
+        env:
+          POSTGRES_PASSWORD: lzc-test-only
+          POSTGRES_DB: configurator_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d configurator_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: landing-zone-configurator/app
@@ -39,6 +49,10 @@ jobs:
           npm install --global npm@11.19.0
           npm ci
           npm run check
+      - name: Test database migrations and tenant isolation
+        run: npm run test:database
+        env:
+          LZC_TEST_DATABASE_URL: postgres://postgres:lzc-test-only@127.0.0.1:5432/configurator_test
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: '1.27.1'
@@ -55,7 +69,7 @@ jobs:
           mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/public ../.local/release/runtime
           cp package.json package-lock.json ../.local/release/
           cp apps/api/package.json ../.local/release/apps/api/
-          cp -R apps/api/dist ../.local/release/apps/api/
+          cp -R apps/api/dist apps/api/db ../.local/release/apps/api/
           cp packages/contracts/package.json ../.local/release/packages/contracts/
           cp -R packages/contracts/dist ../.local/release/packages/contracts/
           cp -R apps/web/dist/. ../.local/release/public/
@@ -143,6 +157,10 @@ jobs:
           done
       - name: Prepare private CF variables and mask runtime credentials
         run: node infra/ci/prepare-release.mjs application
+        env:
+          LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
+          LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
+          LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
       - name: CF login and target
         run: |
           cf version
@@ -150,6 +168,14 @@ jobs:
           cf auth
           cf target -o lzc-dev -s configurator
           test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
+      - name: Stage isolated database migration task
+        id: migration
+        run: cf push --task -f deploy/cloud-foundry/migration-manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/migration-vars.json" --redact-env
+      - name: Apply versioned database migrations
+        timeout-minutes: 5
+        run: cf run-task landing-zone-configurator-migrate --command './runtime/bin/node apps/api/dist/migrate.js' --name "migrate-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+      - name: Remove privileged migration application
+        run: cf delete landing-zone-configurator-migrate -f
       - name: CF push application
         id: push
         run: cf push -f deploy/cloud-foundry/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-vars.json" --redact-env
@@ -160,17 +186,25 @@ jobs:
         id: connectivity
         timeout-minutes: 5
         run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 512M --wait
-      - name: CF application and connection logs
+      # Router logs may contain OAuth callback codes. Do not export raw logs to CI.
+      - name: CF application status
         if: always() && steps.push.outcome == 'success'
-        run: cf logs landing-zone-configurator --recent
+        run: cf app landing-zone-configurator
       - name: Public route checks
         if: always() && steps.push.outcome == 'success'
         env:
           LZC_URL: https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
+          LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
         run: |
-          curl --fail --silent --show-error --retry 3 "$LZC_URL/healthz" | jq -e '.status == "ok" and .authentication == "not-configured"'
+          expected=not-configured
+          if [ "$LZC_AUTH_ENABLED" = true ]; then expected=github; fi
+          curl --fail --silent --show-error --retry 3 "$LZC_URL/healthz" | jq -e --arg expected "$expected" '.status == "ok" and .authentication == $expected'
+          curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e --arg expected "$expected" '.github == ($expected == "github")'
           curl --fail --silent --show-error "$LZC_URL/" | grep -q 'Landing Zone Configurator'
           test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/session")" = 401
+      - name: Clean up migration application after failure
+        if: failure() && (steps.migration.outcome == 'success' || steps.migration.outcome == 'failure')
+        run: cf delete landing-zone-configurator-migrate -f
       - name: Remove private deployment inputs
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/lzc-release"

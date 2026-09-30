@@ -4,6 +4,13 @@
 > Status: Plattform, CF-App-Grundgerüst und Service-Anbindung implementiert und abgenommen. Fachlicher MVP noch offen.
 > `[x]` = dokumentiert oder entschieden; `[ ]` = offen. Technische Empfehlungen sind noch keine beschlossenen Produktentscheidungen.
 
+## Aktueller Umsetzungsschritt: GitHub-Login
+
+Registrierung unter `lweberru` ist abgeschlossen. Sessions, PostgreSQL-RLS,
+Secrets-Anbindung, Login/Logout-UI und separater Migrations-Task sind implementiert
+und lokal geprüft. Live-Rollout und Benutzerabnahme stehen noch aus. Details und
+Abhakliste: [GitHub-Login und Mandantentrennung](github-login.md).
+
 ## 1. Zielbild und bestätigte Entscheidungen
 
 Eine zentral auf STACKIT Cloud Foundry gehostete Anwendung begleitet Benutzer vom Landing-Zone-Template bis zum überprüfbaren Deployment. Die Oberfläche arbeitet mit Organisationen, Netzwerkbereichen, Plattformdiensten und Workloads. Ein deterministischer Compiler übersetzt diese fachlichen Angaben in die Konfiguration des Accelerators. Terraform bleibt im Hintergrund; technische Details sind bei Bedarf einsehbar.

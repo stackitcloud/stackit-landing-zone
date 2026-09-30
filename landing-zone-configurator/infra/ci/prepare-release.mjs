@@ -31,6 +31,14 @@ if(mode==="backend") {
   if(cf?.api_url!=="https://api.system.01.cf.eu01.stackit.cloud" || cf?.org_id!=="a4514c42-d378-4e36-90eb-a3a1e3017e65" || space?.name!=="configurator" || !space.id || !cf.username || !cf.password || !values)throw new Error("Unexpected CF destination or incomplete runtime");
   const keys=["LZC_DATABASE_HOST","LZC_DATABASE_PORT","LZC_DATABASE_NAME","LZC_DATABASE_USER","LZC_DATABASE_PASSWORD","LZC_SECRETS_ADDRESS","LZC_SECRETS_INSTANCE_ID","LZC_SECRETS_USERNAME","LZC_SECRETS_PASSWORD","LZC_MODEL_SERVING_TOKEN"];
   const vars={};for(const key of keys){if(typeof values[key]!=="string"||!values[key])throw new Error(`Missing runtime input ${key}`);if(/_(PASSWORD|TOKEN|USERNAME|USER)$/.test(key))mask(values[key]);vars[key]=values[key];}
+  const migration=platform.database_migration?.value;
+  if(migration?.username!=="configurator_migration" || migration?.database!=="configurator" || migration?.host!==values.LZC_DATABASE_HOST || String(migration?.port)!==values.LZC_DATABASE_PORT || !migration?.password)throw new Error("Migration identity or destination invalid");
+  const migrationVars={LZC_DATABASE_HOST:migration.host,LZC_DATABASE_PORT:String(migration.port),LZC_DATABASE_NAME:migration.database,LZC_DATABASE_USER:migration.username,LZC_DATABASE_PASSWORD:migration.password};
+  mask(migration.password);
+  writeFileSync(resolve(dir,"migration-vars.json"),JSON.stringify(migrationVars),{mode:0o600});
+  const enabled=process.env.LZC_AUTH_ENABLED==="true";
+  Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:enabled?required("LZC_GITHUB_CLIENT_ID"):"",LZC_GITHUB_CLIENT_SECRET:enabled?required("LZC_GITHUB_CLIENT_SECRET"):""});
+  if(enabled)mask(vars.LZC_GITHUB_CLIENT_SECRET);
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);
 }

@@ -1,8 +1,54 @@
+import pg from "pg";
 import { buildApp } from "./app.js";
+import { GitHubClient } from "./auth/github-client.js";
+import type { AuthServices } from "./auth/routes.js";
+import { SecretsManagerTokenStore } from "./auth/secrets.js";
+import { PostgresAuthStore } from "./auth/store.js";
+import { databaseConfig } from "./storage/database.js";
 
-const app = buildApp(
-  process.env.LZC_WEB_ROOT ? { webRoot: process.env.LZC_WEB_ROOT } : {},
-);
+let pool: pg.Pool | undefined;
+let auth: AuthServices | undefined;
+if (process.env.LZC_AUTH_ENABLED === "true") {
+  const required = (key: string) => {
+    const value = process.env[key];
+    if (!value) throw new Error("Authentication configuration incomplete");
+    return value;
+  };
+  const origin = required("LZC_PUBLIC_ORIGIN");
+  const clientId = required("LZC_GITHUB_CLIENT_ID");
+  pool = new pg.Pool(databaseConfig());
+  pool.on("error", () => {
+    console.error(JSON.stringify({ event: "database_pool_error" }));
+  });
+  // Readiness is checked before opening the HTTP listener.
+  await pool.query("SELECT * FROM lzc_auth.resolve_session($1)", [
+    "startup-readiness-not-a-token",
+  ]);
+  auth = {
+    origin,
+    clientId,
+    store: new PostgresAuthStore(pool),
+    github: new GitHubClient({
+      clientId,
+      clientSecret: required("LZC_GITHUB_CLIENT_SECRET"),
+      callback: `${origin}/auth/github/callback`,
+    }),
+    tokens: new SecretsManagerTokenStore({
+      address: required("LZC_SECRETS_ADDRESS"),
+      instance: required("LZC_SECRETS_INSTANCE_ID"),
+      username: required("LZC_SECRETS_USERNAME"),
+      password: required("LZC_SECRETS_PASSWORD"),
+    }),
+  };
+}
+
+const app = buildApp({
+  ...(process.env.LZC_WEB_ROOT ? { webRoot: process.env.LZC_WEB_ROOT } : {}),
+  ...(auth ? { auth } : {}),
+});
+app.addHook("onClose", async () => {
+  await pool?.end();
+});
 const port = Number(process.env.PORT ?? "3000");
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be an integer between 1 and 65535");

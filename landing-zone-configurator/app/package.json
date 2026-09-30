@@ -24,7 +24,8 @@
     "check": "npm run lint && npm run build && npm test",
     "start": "npm run start --workspace=@lzc/api",
     "platform:check": "node --use-system-ca scripts/platform-check.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:database": "vitest run integration"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

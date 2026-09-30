@@ -853,3 +853,34 @@ pre {
   width: 8rem;
   height: auto;
 }
+
+.account {
+  gap: 12px;
+  position: relative;
+}
+.account .button {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+.account-error {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--nds-color-background-default, white);
+  padding: 12px;
+  width: 260px;
+  z-index: 10;
+}
+@media (max-width: 700px) {
+  .portal-header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 64px;
+    padding-block: 12px;
+  }
+  .header-user.account {
+    font-size: 1rem;
+    display: flex;
+    margin-left: auto;
+  }
+}

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type JsonValue =
   | null
   | boolean
@@ -38,6 +40,39 @@ export type ConfigurationDraft = {
   projects: ProjectDraft[];
   sandboxes: SandboxDraft[];
 };
+// Shape validation also accepts incomplete edits during an OAuth round trip.
+export const draftShape = z.object({
+  name: z.string().max(4096),
+  company: z.string().max(4096),
+  companyCode: z.string().max(4096),
+  organization: z.string().max(4096),
+  owner: z.string().max(4096),
+  region: z.string().max(4096),
+  projects: z
+    .array(
+      z.object({
+        id: z.string().max(4096),
+        sourceKey: z.string().max(4096).nullable(),
+        key: z.string().max(4096),
+        name: z.string().max(4096),
+        code: z.string().max(4096),
+        owner: z.string().max(4096),
+        environment: z.string().max(4096),
+        secretsManager: z.boolean(),
+      }),
+    )
+    .max(1000),
+  sandboxes: z
+    .array(
+      z.object({
+        id: z.string().max(4096),
+        sourceIndex: z.number().int().nonnegative().nullable(),
+        name: z.string().max(4096),
+        owner: z.string().max(4096),
+      }),
+    )
+    .max(1000),
+});
 export type DraftIssue = { field: string; message: string };
 export function objectValue(value: JsonValue | undefined): Values {
   return value !== null && typeof value === "object" && !Array.isArray(value)

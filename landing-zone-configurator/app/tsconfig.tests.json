@@ -9,6 +9,7 @@
     "tests/**/*.ts",
     "apps/api/src/**/*.ts",
     "e2e/**/*.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "integration/**/*.ts"
   ]
 }

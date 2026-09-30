@@ -1,6 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: false } }),
+  );
+});
+
 test("template catalogue, search and read-only network preview", async ({
   page,
 }, testInfo) => {
@@ -131,4 +137,55 @@ test("edit, validate and download an isolated standalone copy", async ({
     page.getByRole("heading", { name: "Meine Testumgebung" }),
   ).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("GitHub redirect preserves incomplete draft and logout sends CSRF", async ({
+  page,
+}) => {
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: true } }),
+  );
+  let loggedIn = false;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill(
+      loggedIn
+        ? {
+            json: {
+              user: { login: "alice" },
+              csrfToken: "test-csrf",
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            },
+          }
+        : { status: 401, json: { error: "authentication_required" } },
+    ),
+  );
+  await page.route("**/auth/github/start", (route) => {
+    loggedIn = true;
+    return route.fulfill({ status: 302, headers: { location: "/" } });
+  });
+  let csrf = "";
+  await page.route("**/auth/logout", (route) => {
+    csrf = route.request().headers()["x-lzc-csrf"] ?? "";
+    loggedIn = false;
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
+  await page.getByLabel("Name der Konfiguration").fill("Entwurf vor Anmeldung");
+  await page.getByRole("button", { name: "Mit GitHub anmelden" }).click();
+  await expect(page.getByText("@alice", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Entwurf vor Anmeldung",
+  );
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("lzc-oauth-draft")),
+  ).toBeNull();
+  await page.getByRole("button", { name: "Abmelden", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Mit GitHub anmelden" }),
+  ).toBeVisible();
+  expect(csrf).toBe("test-csrf");
 });

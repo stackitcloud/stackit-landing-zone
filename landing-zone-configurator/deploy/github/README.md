@@ -1,8 +1,8 @@
-# GitHub App registration draft
+# GitHub App
 
 `app-manifest.json` is the reviewable registration draft for lzc-dev. It does not
 register an app, create credentials, install an app or activate login by itself.
-Owner and final available app name must be chosen during registration.
+Registered on 2026-09-30 under `lweberru` as `lz-configurator-dev-7dbff805`; see [registration status](registration-plan.md).
 
 Use GitHub App user authorization with expiring user access tokens. Repository
 operations must use the signed-in user's token, never the operator's GitHub CLI
@@ -26,8 +26,7 @@ Callback URL:
 
 Backend inputs to provision after registration: `LZC_GITHUB_CLIENT_ID` and
 `LZC_GITHUB_CLIENT_SECRET`. The client secret must be supplied through protected
-runtime configuration, never committed or included in a frontend build. Registration
-and binding are not complete yet. Login stays disabled until session persistence,
+runtime configuration, never committed or included in a frontend build. Registration is complete; deployment binding is pending. Login stays disabled until session persistence,
 PKCE/state validation and safe token storage are implemented and verified.
 
 Sources:

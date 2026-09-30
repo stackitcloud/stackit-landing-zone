@@ -10,13 +10,28 @@ import { ConfigurationEditor } from "./components/ConfigurationEditor";
 import { Topology } from "./components/Topology";
 import { describe, standaloneTemplate, templates } from "./templates";
 import "./style.css";
+import { Account } from "./components/Account";
+import {
+  clearLoginDraft,
+  preserveLoginDraft,
+  readLoginDraft,
+} from "./login-draft";
 
 function App() {
-  const [view, setView] = useState<"templates" | "preview" | "editor">(
-    "templates",
+  const [view, setView] = useState<"templates" | "preview" | "editor">(() =>
+    readLoginDraft() ? "editor" : "templates",
   );
   const [selected, setSelected] = useState<Template>(templates[0] as Template);
-  const [draft, setDraft] = useState<ConfigurationDraft | null>(null);
+  const [draft, setDraft] = useState<ConfigurationDraft | null>(readLoginDraft);
+  const [loginError, setLoginError] = useState(() =>
+    new URLSearchParams(window.location.search).get("login") === "failed"
+      ? "Die GitHub-Anmeldung ist fehlgeschlagen. Bitte erneut versuchen."
+      : "",
+  );
+  const leavingForLogin = useRef(false);
+  useEffect(() => {
+    clearLoginDraft();
+  }, []);
   const [search, setSearch] = useState("");
   const heading = useRef<HTMLHeadingElement>(null);
   // Focus the page title after client-side navigation.
@@ -27,6 +42,7 @@ function App() {
   useEffect(() => {
     if (!draft) return;
     const warn = (event: BeforeUnloadEvent) => {
+      if (leavingForLogin.current) return;
       event.preventDefault();
       event.returnValue = "";
     };
@@ -69,12 +85,18 @@ function App() {
         <span className="header-divider" />
         <span className="product-name">Landing Zone Configurator</span>
         <span className="header-badge">Entwicklung</span>
-        <span className="header-user">
-          <span className="avatar" aria-hidden="true">
-            ◉
-          </span>{" "}
-          Gast
-        </span>
+        <Account
+          beforeLogin={() => {
+            if (!preserveLoginDraft(draft)) {
+              setLoginError(
+                "Dein Entwurf konnte nicht zwischengespeichert werden. Bitte lade ihn vor der Anmeldung herunter.",
+              );
+              return false;
+            }
+            leavingForLogin.current = true;
+            return true;
+          }}
+        />
       </header>
       <div className="portal-layout">
         <aside className="sidebar" aria-label="Anwendungsnavigation">
@@ -118,6 +140,11 @@ function App() {
           </a>
         </aside>
         <main id="content" className="content">
+          {loginError && (
+            <p role="alert" className="info-banner">
+              {loginError}
+            </p>
+          )}
           <nav aria-label="Brotkrumennavigation" className="breadcrumbs">
             <button type="button" onClick={() => setView("templates")}>
               Landing Zones

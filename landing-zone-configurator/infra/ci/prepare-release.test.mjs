@@ -14,7 +14,7 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   assert.equal(run("backend").status,0);
   const privateDir=join(dir,"lzc-release");
   const cf={api_url:"https://api.system.01.cf.eu01.stackit.cloud",org_id:"a4514c42-d378-4e36-90eb-a3a1e3017e65",username:"cf-user",password:"cf-secret"};
-  writeFileSync(join(privateDir,"platform-outputs.json"),JSON.stringify({cf_runtime:{value:cf}}));
+  writeFileSync(join(privateDir,"platform-outputs.json"),JSON.stringify({cf_runtime:{value:cf},database_migration:{value:{host:"test-LZC_DATABASE_HOST",port:"test-LZC_DATABASE_PORT",database:"configurator",username:"configurator_migration",password:"migration-only-secret"}}}));
   const keys=["LZC_DATABASE_HOST","LZC_DATABASE_PORT","LZC_DATABASE_NAME","LZC_DATABASE_USER","LZC_DATABASE_PASSWORD","LZC_SECRETS_ADDRESS","LZC_SECRETS_INSTANCE_ID","LZC_SECRETS_USERNAME","LZC_SECRETS_PASSWORD","LZC_MODEL_SERVING_TOKEN"];
   const runtime={space:{value:{id:"space-guid",name:"wrong-space"}},app_environment:{value:Object.fromEntries(keys.map(key=>[key,`test-${key}`]))}};
   runtime.app_environment.value.LZC_SERVICE_ACCOUNT_KEY="must-not-be-forwarded";
@@ -25,7 +25,26 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   writeFileSync(join(privateDir,"runtime-outputs.json"),JSON.stringify(runtime));
   const result=run("application");assert.equal(result.status,0,result.stderr);
   const vars=join(privateDir,"app-vars.json");assert.equal(statSync(vars).mode&0o777,0o600);
-  assert.deepEqual(Object.keys(JSON.parse(readFileSync(vars))),keys);
+  const app=JSON.parse(readFileSync(vars));
+  assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET"]);
+  assert.equal(app.LZC_AUTH_ENABLED,"false");
+  assert.equal(app.LZC_GITHUB_CLIENT_SECRET,"");
+  assert.ok(!readFileSync(vars,"utf8").includes("migration-only-secret"));
+  const migration=join(privateDir,"migration-vars.json");
+  assert.equal(statSync(migration).mode&0o777,0o600);
+  const migrationValues=JSON.parse(readFileSync(migration));
+  assert.equal(migrationValues.LZC_DATABASE_USER,"configurator_migration");
+  assert.equal(migrationValues.LZC_DATABASE_PASSWORD,"migration-only-secret");
+  assert.equal(Object.keys(migrationValues).length,5);
+  env.LZC_AUTH_ENABLED="true";
+  assert.notEqual(run("application").status,0);
+  env.LZC_GITHUB_CLIENT_ID="test-client";
+  env.LZC_GITHUB_CLIENT_SECRET="test-oauth-secret";
+  assert.equal(run("application").status,0);
+  const authenticated=JSON.parse(readFileSync(vars));
+  assert.equal(authenticated.LZC_AUTH_ENABLED,"true");
+  assert.equal(authenticated.LZC_GITHUB_CLIENT_SECRET,"test-oauth-secret");
+  assert.ok(!readFileSync(migration,"utf8").includes("test-oauth-secret"));
   assert.ok(!readFileSync(env.GITHUB_ENV,"utf8").includes("must-not-be-forwarded"));
  } finally {rmSync(dir,{recursive:true,force:true});}
 });

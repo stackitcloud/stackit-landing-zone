@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 
 function required(name: string): string {
@@ -77,6 +78,34 @@ export async function checkSecrets(): Promise<void> {
     if (read.status !== 200 && read.status !== 404)
       throw new Error(`read-http-${read.status}`);
     await read.arrayBuffer();
+    if (process.env.LZC_AUTH_ENABLED === "true") {
+      const key = `configurator/connectivity-probes/${randomUUID()}`;
+      const marker = randomUUID();
+      let cleanupSucceeded = false;
+      try {
+        const write = await request(`${instance}/data/${key}`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ options: { cas: 0 }, data: { marker } }),
+        });
+        await write.arrayBuffer();
+        if (!write.ok) throw new Error("probe-write-failed");
+        const verify = await request(`${instance}/data/${key}`, { headers });
+        if (!verify.ok || (await verify.json()).data?.data?.marker !== marker)
+          throw new Error("probe-read-failed");
+      } finally {
+        const cleanup = await request(`${instance}/metadata/${key}`, {
+          method: "DELETE",
+          headers,
+        });
+        cleanupSucceeded = cleanup.ok;
+        await cleanup.arrayBuffer();
+      }
+      if (!cleanupSucceeded) throw new Error("probe-delete-failed");
+      const deleted = await request(`${instance}/data/${key}`, { headers });
+      await deleted.arrayBuffer();
+      if (deleted.status !== 404) throw new Error("probe-delete-not-confirmed");
+    }
   } finally {
     const revoked = await request("auth/token/revoke-self", {
       method: "POST",

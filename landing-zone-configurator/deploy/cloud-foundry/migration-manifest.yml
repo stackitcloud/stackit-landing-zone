@@ -1,0 +1,18 @@
+---
+applications:
+  - name: landing-zone-configurator-migrate
+    instances: 0
+    no-route: true
+    memory: 128M
+    disk_quota: 512M
+    stack: cflinuxfs4
+    buildpacks: [binary_buildpack]
+    command: ./runtime/bin/node apps/api/dist/migrate.js
+    health-check-type: process
+    env:
+      NODE_ENV: production
+      LZC_DATABASE_HOST: ((LZC_DATABASE_HOST))
+      LZC_DATABASE_PORT: ((LZC_DATABASE_PORT))
+      LZC_DATABASE_NAME: ((LZC_DATABASE_NAME))
+      LZC_DATABASE_USER: ((LZC_DATABASE_USER))
+      LZC_DATABASE_PASSWORD: ((LZC_DATABASE_PASSWORD))
