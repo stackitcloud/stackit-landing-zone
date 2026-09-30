@@ -1,7 +1,7 @@
 # Landing Zone Configurator – Architektur und Planung
 
 > Stand: 2026-09-30 · Architektur-Ausgangsstand: `2161871`
-> Status: Plattform und CF-App-Grundgerüst implementiert; Service-Anbindung in Abnahme. Fachlicher MVP noch offen.
+> Status: Plattform, CF-App-Grundgerüst und Service-Anbindung implementiert und abgenommen. Fachlicher MVP noch offen.
 > `[x]` = dokumentiert oder entschieden; `[ ]` = offen. Technische Empfehlungen sind noch keine beschlossenen Produktentscheidungen.
 
 ## 1. Zielbild und bestätigte Entscheidungen
@@ -632,8 +632,8 @@ keine Erlaubnis, Kundenressourcen oder fremde Projekte zu ändern.
 - [x] Unabhängige Release-Pipeline mit direktem `cf push`, versioniertem Node-Runtime-Paket und Verbindungstest als CF-Task.
 - [x] Öffentliche HTTPS-Route, UI-/JS-Auslieferung und gesperrte API (401) geprüft.
 - [x] PostgreSQL: Login, SELECT und geprüfte TLS-Verbindung aus CF erfolgreich.
-- [ ] Secrets Manager: authentifizierten Lese-Endpunkt und Ablehnung ohne Token abschließend prüfen; Login und TLS funktionieren.
-- [ ] Abschließender komplett erfolgreicher Release-Run und Abnahme dokumentiert.
+- [x] Secrets Manager: Login, TLS, authentifizierter KV-Lese-Endpunkt und Ablehnung ohne Token aus CF geprüft.
+- [x] Abschließender [Release-Run 36683898762](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898762) vollständig erfolgreich; [Validierung 36683898795](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898795) ebenfalls grün.
 
 Nachweise und Netzkorrektur: [Plattform-Betriebsstand](platform-readiness.md).
 Das Grundgerüst ist noch kein nutzbarer Configurator und verarbeitet keine

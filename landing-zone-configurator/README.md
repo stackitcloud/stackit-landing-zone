@@ -2,7 +2,9 @@
 
 Zentral gehostete, mandantenfähige Anwendung zum Erstellen, Bearbeiten und Deployen von Konfigurationen des STACKIT Landing Zone Accelerators.
 
-Status: React-/Fastify-Entwicklungsbasis mit Tests. Verwaltungs-Backend, Bootstrap und neun Plattform-Ressourcen sind per IaC provisioniert und geprüft. Die Pipelines führen OpenTofu direkt mit sichtbaren CLI-Logs aus. CF-Space und Laufzeitidentitäten sind provisioniert, Web/API auf CF bereitgestellt. Die Verbindungstests werden aus CF ausgeführt; Details im [Betriebsstand](docs/platform-readiness.md). [IaC-Bedienung](infra/README.md), [CI-Betrieb](infra/ci/README.md).
+Status: React-/Fastify-Entwicklungsbasis mit Tests. Verwaltungs-Backend, Bootstrap und neun Plattform-Ressourcen sind per IaC provisioniert und geprüft. Die Pipelines führen OpenTofu direkt mit sichtbaren CLI-Logs aus. CF-Space und Laufzeitidentitäten sind provisioniert, Web/API auf CF bereitgestellt. PostgreSQL und Secrets Manager wurden aus CF mit TLS geprüft; Details im [Betriebsstand](docs/platform-readiness.md). [IaC-Bedienung](infra/README.md), [CI-Betrieb](infra/ci/README.md).
+
+Entwicklungsumgebung: [Configurator öffnen](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud). Noch ohne Benutzerlogin und fachlichen Editor.
 
 Start und Prüfungen: [Entwicklungsanleitung](app/README.md). Ergebnisse der lesenden Bestandsaufnahme: [Plattformprüfung](docs/platform-check.md).
 

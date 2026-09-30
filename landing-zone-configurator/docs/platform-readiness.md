@@ -155,3 +155,38 @@ Dies bleibt eine Freigabe eines geteilten STACKIT-Netzes, keine mandanteneigene
 oder zugesichert stabile CF-Ausgangsadresse. TLS, Benutzerrechte und spätere
 Mandantenautorisierung bleiben separate Schutzschichten. Bei Netzänderungen
 Katalog und CF-Test erneut prüfen; kein automatisches Öffnen weiterer Netze.
+
+
+## Abnahme CF-Hosting und Dienstverbindungen abgeschlossen
+
+[Release 36683898762](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898762)
+auf Commit `795a18a`: **vollständig erfolgreich**.
+[Validierung 36683898795](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898795)
+ist ebenfalls erfolgreich (App mit neun Tests und alle sechs IaC-Roots).
+
+- [x] [ACL-Apply 36683137454](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683137454): zwei In-place-Updates, keine Neuanlage/Löschung. Beide Dienst-ACLs unabhängig im verschlüsselten Remote-State geprüft.
+- [x] App `landing-zone-configurator` im Space `configurator` gestartet; deklaratives Manifest unter `deploy/cloud-foundry/`.
+- [x] PostgreSQL: DNS und TCP erreichbar, Laufzeitbenutzer authentifiziert, `SELECT 1` und `pg_stat_ssl` erfolgreich, Zertifikats-/Hostname-Prüfung aktiv.
+- [x] Secrets Manager: TLS und Userpass-Login erfolgreich; reservierter KV-Pfad verweigert anonymen Zugriff und akzeptiert den authentifizierten Aufruf; Sitzungstoken danach widerrufen.
+- [x] CF-Tasks `network-36683898762` und `connections-36683898762` sind `SUCCEEDED`.
+- [x] HTTPS-Startseite und JavaScript-Asset ausgeliefert; `/healthz` HTTP 200, `/api/v1/session` HTTP 401.
+- [x] Alle zehn Backend-Variablen mit verschlüsselten Runtime-Ausgaben verglichen; keine Projekt-/S3-/CF-Deployment-Credentials in der App.
+- [x] Erfolgreiche Runtime-/ACL-/Release-Logs auf bekannte Schlüssel, Passwörter und Token geprüft, ohne Treffer.
+- [x] Einmalige Runtime-/Plattform-Apply-Variablen entfernt; Feature-Branch beibehalten, kein Merge nach main.
+
+Der Secrets Manager unterstützt nicht die allgemeine Vault-System-API
+`sys/capabilities-self` (im Test HTTP 404). Der endgültige Test nutzt den
+[dokumentierten KV-Lese-Endpunkt](https://docs.stackit.cloud/products/security/secrets-manager/how-tos/cli-and-api/)
+mit anonymem Negativtest. Für den absichtlich nicht angelegten Operator-Probe-Key
+ist authentifiziertes HTTP 404 zulässig; HTTP 404 auch ohne Token würde den Test
+fehlschlagen lassen. Es werden weder Kunden-Secrets gelesen noch Probe-Secrets
+angelegt. **Ein Secret-Write/Read-Roundtrip, Mandantenautorisierung und Rotation
+sind damit noch nicht abgenommen.** Die Laufzeitidentität ist in IaC read-only.
+
+Erreichbar: [lzc-dev Configurator](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud).
+Dies ist das technische App-Grundgerüst. GitHub-Login, persistentes Mandantenschema,
+Template-Editor, persönliche Credentials, Kunden-Plan/Apply und Chat folgen in der
+[aktuellen MVP-Checkliste](planning.md#aktueller-meilenstein-cf-hosting-und-service-verbindungen).
+
+Die stehende Benutzerfreigabe für notwendige Configurator-Applies gilt bis MVP;
+Planprüfung, Environment-Schutz und die gemeinsame CI-Concurrency bleiben aktiv.

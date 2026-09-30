@@ -1,6 +1,6 @@
 # CI/CD für den Landing Zone Configurator
 
-Status: Validierung, Bootstrap-/Backend- und Plattform-Pipelines sind implementiert und erfolgreich ausgeführt. OpenTofu wird direkt in den Workflows aufgerufen, mit normalen Live-Logs. Runtime und App-Release sind implementiert und werden gegen CF abgenommen; Drift bleibt geplant. Erste Umgebung: **lzc-dev / eu01**. Aktuelle Bedienung: [CI-Betrieb](../infra/ci/README.md).
+Status: Validierung, Bootstrap-/Backend- und Plattform-Pipelines sind implementiert und erfolgreich ausgeführt. OpenTofu wird direkt in den Workflows aufgerufen, mit normalen Live-Logs. Runtime und App-Release einschließlich Verbindungstests aus CF sind erfolgreich abgenommen; Drift bleibt geplant. Erste Umgebung: **lzc-dev / eu01**. Aktuelle Bedienung: [CI-Betrieb](../infra/ci/README.md).
 
 ## Getrennte Lebenszyklen
 
@@ -65,7 +65,7 @@ Die Verfügbarkeit von Environment-Freigaberegeln hängt vom GitHub-Tarif und de
 - [x] Native S3-Sperren testen und als nicht zuverlässig dokumentieren; CI-only-Betrieb explizit festlegen.
 - [x] OpenTofu direkt in den Workflows aufrufen; Live-Logs, Standard-Timeout und geschützte State-Sicherung.
 - [ ] Unabhängige Schlüsselverwahrung, vollständiger Restore-Prozess und automatisierte Credential-Rotation.
-- [ ] CF-Runtime, Bindings und Konnektivitätstests aus CF.
+- [x] CF-Runtime, Backend-Umgebungsvariablen und Konnektivitätstests aus CF.
 - [ ] Release-Manifeste, Paketierung, Migrationen, Readiness und Worker-Drain.
 - [ ] Zwei App-Releases, unabhängigen Redeploy und Rollback ohne Infrastrukturänderung nachweisen.
 - [ ] Optionalen Drift-Workflow und Alarmierung aktivieren.
