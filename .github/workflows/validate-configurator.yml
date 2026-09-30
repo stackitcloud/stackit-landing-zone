@@ -73,7 +73,7 @@ jobs:
           tofu_version: '1.12.6'
           tofu_wrapper: false
       - name: Check operator plan guard
-        run: node --test infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs
+        run: node --test infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/process.test.mjs infra/ci/recovery.test.mjs
       - name: Check formatting
         run: tofu -chdir=infra fmt -check -recursive
       - name: Initialize without backend

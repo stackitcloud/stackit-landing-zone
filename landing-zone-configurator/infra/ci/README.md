@@ -72,3 +72,18 @@ Für einen gezielten Backend-Lauf setzt der Operator zusätzlich `LZC_BOOTSTRAP_
 ## Plattform-Bereitstellung freigegeben
 
 Der Benutzer hat am 2026-09-29 ausdrücklich die Secret-Hinterlegung in `lzc-dev-platform-plan` und `lzc-dev-platform-apply` freigegeben und die Fortsetzung der Plattform-Bereitstellung beauftragt. Der erste CI-Apply wird über eine einzelne Commit-SHA in `LZC_PLATFORM_APPLY_COMMIT` angefordert; die Environment-Freigabe erfolgt erst nach Prüfung des konkreten Plans und erfolgreicher Validierung.
+
+
+## Plattform-Recovery nach abgebrochener Erstbereitstellung
+
+Der freigegebene Lauf vom 2026-09-29 wurde nach 45 Minuten beendet, bevor ein Plattform-State gespeichert war. Die am 2026-09-30 geprüfte Datenbank ist `READY`. Das fest eingegrenzte Inventar in `recovery/lzc-dev-20260930.json` enthält sechs importierbare Ressourcen und genau einen verwaisten Model-Serving-Token. Ressourcen-IDs sind keine Zugangsdaten.
+
+Der optionale `recover`-Job in `configurator-platform.yml` benötigt `LZC_PLATFORM_RECOVERY_COMMIT` gleich dem aktuellen Feature-Commit, `LZC_PLATFORM_CI_ENABLED=true` und das geschützte Apply-Environment. Er prüft den abgeschlossenen Quell-Run, entfernt dessen konkretes verwaistes Lock, importiert die sechs Ressourcen und widerruft den eindeutig identifizierten Token, dessen Wert nicht wiederherstellbar ist. Der STACKIT-Provider 0.114.0 unterstützt keinen Model-Serving-Token-Import. Der anschließende Plan ersetzt explizit die beiden importierten technischen Benutzer, deren Passwörter ebenfalls verloren sind. Instanzen, Organisation und Bucket bleiben bestehen. Der eigentliche Apply erfordert weiterhin einen getrennten, konkret geprüften Plan und die normale Commit-Freigabe.
+
+Diese Recovery ist absichtlich ein einmaliger Vorgang. Bei einem Teilfehler zuerst Inventar und State neu prüfen; nicht denselben Import blind wiederholen. Nach Abschluss beide Einmalvariablen entfernen. Normale Plan-Läufe überspringen Recovery.
+
+### Zeitlimits und Diagnose
+
+Plattform-Jobs haben 100 Minuten statt 45 Minuten Laufzeit. Ein Plattform-Apply erhält maximal 70 Minuten; spätestens nach insgesamt 80 Minuten Skriptlaufzeit beginnt ein geordneter Abbruch. Der Prozess erhält genau ein `SIGINT` und bis zu zehn Minuten für Provider-Abbruch und State-Persistierung. Erst danach wird ein nicht reagierender Prozess beendet. Andere Roots behalten kürzere interne Grenzen. Ein Interrupt gilt auch bei Exit-Code 0 als fehlgeschlagener Versuch und darf nicht als erfolgreicher Apply gemeldet werden.
+
+Nach Apply/Recovery wird ein Remote-State-Snapshot versucht; ein lokaler `errored.tfstate` wird ebenfalls geschützt gesichert. Diagnose und Snapshots liegen ausschließlich als AES-256-GCM-Envelope in `.local/ci-recovery/*.enc.json` und werden auch bei fehlgeschlagenen Jobs für sieben Tage als GitHub-Artefakt hochgeladen. Schlüssel ist der jeweilige State-Schlüssel, daraus wird per scrypt mit zufälligem Salt ein Artefaktschlüssel abgeleitet. Der Envelope enthält `salt`, `nonce`, `tag` und `data` als Base64; Klartext darf nur lokal mit restriktiven Dateirechten entschlüsselt werden. Ein Snapshot kann zusätzlich OpenTofu-verschlüsselt sein. Abrupte Runner-Verluste können weiterhin Recovery erfordern; die Prozesssteuerung ersetzt keine erfolgreiche State-Persistierung.

@@ -1,0 +1,17 @@
+{
+  "project": "7dbff805-6788-4d5d-88c0-a5212ac5e90f",
+  "failedRun": "36632950493",
+  "lockId": "7fb299bb-d53b-d726-3322-243a1f8ada25",
+  "imports": {
+    "stackit_scf_organization.configurator": "7dbff805-6788-4d5d-88c0-a5212ac5e90f,eu01,a4514c42-d378-4e36-90eb-a3a1e3017e65",
+    "stackit_scf_organization_manager.configurator": "7dbff805-6788-4d5d-88c0-a5212ac5e90f,eu01,a4514c42-d378-4e36-90eb-a3a1e3017e65,f26a6306-8639-4807-82ab-4a2563985bb3",
+    "stackit_postgresflex_instance.configurator": "7dbff805-6788-4d5d-88c0-a5212ac5e90f,eu01,fd1451c7-6da1-4e4d-a2b2-416e640ce70c",
+    "stackit_secretsmanager_instance.configurator": "7dbff805-6788-4d5d-88c0-a5212ac5e90f,d1331c32-8371-4a53-91f1-0229865db45f",
+    "stackit_secretsmanager_user.provisioner": "7dbff805-6788-4d5d-88c0-a5212ac5e90f,d1331c32-8371-4a53-91f1-0229865db45f,0ce4930e-3dac-4161-a3fe-23385c46a04f",
+    "stackit_objectstorage_bucket.artifacts": "7dbff805-6788-4d5d-88c0-a5212ac5e90f,eu01,lzc-dev-artifacts-7dbff805"
+  },
+  "unrecoverableToken": {
+    "id": "b1ffd4b1-639c-4b58-b08f-f66a69a36117",
+    "name": "lzc-dev-chat"
+  }
+}

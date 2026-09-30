@@ -32,10 +32,57 @@ env:
   LZC_ROOT: platform
 
 jobs:
-  plan:
-    if: vars.LZC_PLATFORM_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+  recover:
+    if: vars.LZC_PLATFORM_CI_ENABLED == 'true' && github.run_attempt == 1 && github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_PLATFORM_RECOVERY_COMMIT
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 100
+    environment: lzc-dev-platform-apply
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Import inventoried resources and revoke orphan token
+        run: node infra/ci/run.mjs recover
+        env:
+          LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_PLATFORM_RECOVERY_COMMIT }}
+          LZC_APPROVED_APPLY_ROOT: platform
+          LZC_RECOVERY_COMMIT: ${{ vars.LZC_PLATFORM_RECOVERY_COMMIT }}
+          LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+          LZC_REGION: ${{ vars.LZC_REGION }}
+          LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
+          LZC_MANAGEMENT_BUCKET: ${{ vars.LZC_MANAGEMENT_BUCKET }}
+          LZC_CREDENTIAL_EXPIRATION: ${{ vars.LZC_CREDENTIAL_EXPIRATION }}
+          LZC_MANAGEMENT_ACCESS_KEY: ${{ secrets.LZC_MANAGEMENT_ACCESS_KEY }}
+          LZC_MANAGEMENT_SECRET_KEY: ${{ secrets.LZC_MANAGEMENT_SECRET_KEY }}
+          LZC_SERVICE_ACCOUNT_KEY: ${{ secrets.LZC_SERVICE_ACCOUNT_KEY }}
+          LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
+          LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
+          LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}
+      - name: Upload protected recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: platform-recovery-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-recovery/*.enc.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
+
+  plan:
+    needs: recover
+    if: always() && (needs.recover.result == 'success' || needs.recover.result == 'skipped') && vars.LZC_PLATFORM_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
     environment: lzc-dev-platform-plan
     defaults:
       run:
@@ -54,6 +101,7 @@ jobs:
       - name: Create encrypted review plan
         run: node infra/ci/run.mjs plan
         env:
+          LZC_RECOVERY_COMMIT: ${{ vars.LZC_PLATFORM_RECOVERY_COMMIT }}
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
           LZC_REGION: ${{ vars.LZC_REGION }}
           LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
@@ -76,9 +124,9 @@ jobs:
 
   apply:
     needs: plan
-    if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_PLATFORM_APPLY_COMMIT))
+    if: always() && needs.plan.result == 'success' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_PLATFORM_APPLY_COMMIT))
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 100
     environment: lzc-dev-platform-apply
     defaults:
       run:
@@ -114,3 +162,12 @@ jobs:
           LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
           LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
           LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}
+      - name: Upload protected recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: platform-apply-evidence-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-recovery/*.enc.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
