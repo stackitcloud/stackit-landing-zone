@@ -92,3 +92,21 @@ Code `527bd9582f95d3cf845cfaf242f9022e1495fad8` veröffentlicht:
 
 [Live-Anwendung](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud).
 Keine Kunden-Konfiguration angewendet und keine Änderung nach `main` übernommen.
+
+
+### Live-Nachbesserung: Plattformdienste und Voreinstellungen
+
+Code `10a6ec87f0d0fc9d32d4b9699bd8579fb651683c` veröffentlicht:
+
+- [Validate Configurator 36752620342](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36752620342): erfolgreich.
+- [Configurator Release 36752620332](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36752620332): erfolgreich.
+- 96 Anwendungstests, 22 Desktop-/Mobil-Browserfälle und 11 native OpenTofu-Variablentests erfolgreich.
+- Live-Build entspricht dem lokal geprüften Bundle; Gesundheitsprüfung `ok`, anonyme Sitzung `401`, keine Browserfehler.
+- Live geprüft: neue Standalone-Konfiguration ist Public; Region ist eine Auswahl; Plattformdienste und Kubernetes-Deaktivierung vorhanden. Desktop-/Mobilansicht ohne horizontales Überlaufen, mobile Plattformansicht visuell geprüft.
+- Verbindungstests zu PostgreSQL/Secrets Manager und Runner-Trennung erfolgreich.
+
+Manuell: App neu laden, einen **neuen** Standalone-Entwurf öffnen, Organisations-ID
+und eigene Verantwortlichen-E-Mail-Adressen setzen, unter Projekte Public prüfen
+und speichern/exportieren. In einem vorhandenen betroffenen Entwurf Public einmal
+ausdrücklich wählen. Unter Plattform Kubernetes konfigurieren/deaktivieren; unter
+Netzwerk regionale Kennungen und Bereichsverweise auswählen.

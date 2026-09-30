@@ -837,4 +837,4 @@ bleibt serverseitig gesperrt. [Abnahme](common-editor.md#live-abnahme).
 - [x] Neue Standalone-Entwürfe mit explizitem Public-Projekt; unveränderte Imports und bestehende Exporte beibehalten.
 - [x] 96 Anwendungstests, 22 Desktop-/Mobilprüfungen und 11 native OpenTofu-Variablentests erfolgreich.
 - [ ] Regionale Live-Kataloge für Produktpläne, Maschinentypen und Versionen anbinden.
-- [ ] Veröffentlichung und Live-Abnahme dieses Nachbesserungsstands.
+- [x] Veröffentlichung `10a6ec8` und Live-Abnahme dieses Nachbesserungsstands; Release 36752620332 erfolgreich.
