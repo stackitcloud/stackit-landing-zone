@@ -41,3 +41,17 @@ The initial single-instance `cf push` can interrupt service briefly. Immutable
 archive/checksum retention is seven days; explicit rollback/promotion and rolling
 releases are subsequent milestones. DB migrations, schema grants, RLS, personal
 credential storage and customer deployment execution are not part of this release.
+
+## Network verification
+
+The release includes a diagnostic CF task for DNS/TCP and an HTTPS request to the
+Configurator's own route. The matching CF router entry identifies the observed
+source network without contacting an external IP-diagnostic service. This is a
+point-in-time observation, not a promise of stable CF egress addresses.
+
+The first connection test exposed a missing STACKIT network in the service ACLs.
+The official eu01 catalog and our own router logs support adding
+`45.135.244.0/22` through platform IaC. Network policy changes require a reviewed
+platform plan and then a fresh CF connectivity test. The public UI/API checks run
+even if a service connection fails, so route health and service health remain
+separately visible. See [platform acceptance](../../docs/platform-readiness.md).
