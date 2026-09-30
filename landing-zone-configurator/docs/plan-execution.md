@@ -24,6 +24,16 @@ Plan samt unveränderlichem Artefakt, Freigabe und State-Sicherung notwendig.
 
 ## Ablauf und Grenzen
 
+**Private Kubernetes-APIs:** Der aktuelle CF-Runner hat keinen nachgewiesenen
+Zugriff auf Kunden-SNAs. Ein erfolgreicher STACKIT-Zugangstest belegt diesen
+Netzwerkpfad nicht. Auch Plan/Refresh mit Kubernetes-/Helm-Providern kann ihn
+benötigen. Die zweistufige Ausführung aus
+[#37](https://github.com/stackitcloud/stackit-landing-zone/issues/37) ist noch offen
+und wird separat umgesetzt. Anforderungen an Ausführungssperren bei Erweiterung
+des bisherigen Standalone-Vertrags stehen im
+[Grenzenregister](accelerator-limitations.md#private-kubernetes-api-ausführungsgrenze).
+
+
 - POST `/api/v1/plans` verlangt Session, exakten Origin, CSRF-Token und
   `confirmNewDeployment: true`. Nur eine eigene Vorbereitung mit eigenem
   gespeichertem Credential und Rolle admin/deployer wird akzeptiert.

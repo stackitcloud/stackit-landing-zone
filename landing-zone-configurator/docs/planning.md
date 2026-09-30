@@ -786,3 +786,15 @@ Die feste Public-/Sandbox-Zuordnung im veröffentlichten Projekte-Schritt ist no
 offen. Der unveröffentlichte Corporate-Einzelbereich-Prototyp wurde gesichert und
 nicht ausgeliefert. Die Korrektur erfolgt als gemeinsame Projekt-/Netzwerkstruktur
 mit mehreren Bereichen und Regionen, anschließend vollständiger Feature-Abdeckung.
+
+### Accelerator-Grenzen und Issue-Verfolgung, 2026-09-30
+
+[Grenzen- und Issue-Register](accelerator-limitations.md) ist Bestandteil des
+gemeinsamen Feature-Modells. #37 bleibt der separate Arbeitsstrang für private
+SNA-Kubernetes-APIs; #65 deckt Multi-Appliance-Firewall-Policies ab.
+Zusätzlich wurden #80 (regionale Namespace-Zuordnung), #81 (Object-Lock-Default),
+#82 (Ordnerbeschreibung) und #83 (fehlender Root-Vertrag für Moduloptionen) angelegt.
+
+Die Registrierung dieser Grenzen implementiert noch keine Laufzeitprüfung.
+Capability-Prüfungen im Backend und Hinweise im Editor sind vor Freigabe der
+betroffenen erweiterten Konfigurationen umzusetzen. Kein Kunden-Apply ausgeführt.

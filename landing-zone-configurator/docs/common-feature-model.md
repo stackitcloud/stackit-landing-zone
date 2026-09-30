@@ -190,6 +190,15 @@ Migration wird nicht als „alle Features fertig“ ausgegeben.
 
 ## Bereits festgestellte Kombinationsgrenzen
 
+Das [Grenzen- und Issue-Register](accelerator-limitations.md) ordnet die Befunde
+den Accelerator-Issues zu und trennt Modellierbarkeit von Ausführbarkeit.
+
+- Private/SNA-Kubernetes-APIs sind vom aktuellen CF-Runner nicht nachweislich
+  erreichbar ([#37](https://github.com/stackitcloud/stackit-landing-zone/issues/37)).
+  Kubernetes-/Helm-Phasen dürfen erst mit geeignetem Netzwerkpfad ausgeführt werden.
+  Serverseitige Capability-Prüfung ist Voraussetzung der Modellerweiterung;
+  die private Runner-Anbindung wird separat umgesetzt.
+
 - Corporate referenziert einen existierenden Bereich; mit regionaler Connectivity
   muss die Projektregion im regionalen Modell vorhanden sein (`variables.tf`).
 - Regionale Root-Instanzen unterstützen derzeit eu01/eu02. Beliebige weitere Regionen
