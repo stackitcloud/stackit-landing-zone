@@ -718,7 +718,8 @@ Login und bedeutet keine abgeschlossene Session-, RLS- oder Token-Store-Integrat
 - [ ] GitHub-Login, RLS/Mandantenmodell und Speicherung im ausgewählten Fork umsetzen.
 
 Wichtige Grenzen: Der Editor bearbeitet bisher nur Standalone; komplexe Templates
-sind lesbare Vorschauen. Entwürfe liegen nur im Tab-Arbeitsspeicher. Der Download
+sind lesbare Vorschauen. Im damaligen Stand lagen Entwürfe nur im Tab-Arbeitsspeicher;
+die unten dokumentierte Wiederaufnahme ergänzt nun Browserspeicherung. Der Download
 war zunächst ein `.lzc.json`-Entwurf. Der aktuelle Stand ergänzt native `.tfvars`
 und bearbeitbare JSON-Ablage im Fork (siehe [Forks und Navigation](forks-and-navigation.md)). Es findet kein Kunden-Deployment statt.
 
@@ -764,3 +765,12 @@ exakte Apply-Artefakte bleiben offene Voraussetzungen. [Abnahme](plan-execution.
 
 Details: [Arbeitsstand](forks-and-navigation.md#arbeitsstand-beim-wiederkommen),
 [Ordnerprüfung und Umsetzung](folder-editor-review.md).
+
+
+Abnahme Wiederaufnahme/Ordner: Code `21b5529`,
+[Release 36729582680](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36729582680)
+erfolgreich. Live-Prüfung und Grenzen siehe [Ordner-Abnahme](folder-editor-review.md#abnahme-auf-lzc-dev).
+Der Benutzer öffnet seine bestehende Konfiguration einmal, um den ersten lokalen
+Arbeitsstand zu speichern. Weitere Besuche im selben Browser stellen ihn wieder her.
+Nach Konfigurationsänderungen ist eine neue unveränderliche Deployment-Vorbereitung
+nötig. Persönlicher Initial-Plan kann jetzt getestet werden; Apply bleibt gesperrt.

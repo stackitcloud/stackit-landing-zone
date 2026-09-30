@@ -34,10 +34,10 @@ Ressource weitergereicht: kein wirksames Beschreibungsfeld in der UI anbieten.
 Der abweichende Governance-Moduldefault `sandbox` ist für den Root-Aufruf ohne
 Auswirkung: dieser übergibt ausdrücklich seine Map mit `sandboxes`.
 
-## Lücke im Configurator
+## Befund vor der Umsetzung
 
-`Topology.tsx` zeigt aktuell Organisation, Landing Zones, Sandboxes und optionale
-Netzwerk-Hubs. Ordner und Management-Projekt fehlen. `ConfigurationDraft` hat
+`Topology.tsx` zeigte ursprünglich Organisation, Landing Zones, Sandboxes und optionale
+Netzwerk-Hubs. Ordner und Management-Projekt fehlten. `ConfigurationDraft` hat
 keine editierbaren Ordnerfelder. `buildConfiguration` erhält unveränderte
 Vorlagenattribute, bietet aber keinen fachlichen Zugriff auf die Ordnerdefaults.
 Der Standalone-Editor setzt `corporate = false`; seine Landing-Zone-Projekte
@@ -94,3 +94,19 @@ versionierte Eingabedokument ist davon getrennt.
 Ordnerrollen werden beim Export aus der Vorlage erhalten. Kein Löschen, Verschieben,
 freier Ordnerbaum oder Bearbeiten von Ordnerrechten. Für Umbenennungen bestehender
 Cloud-Ressourcen bleibt die konkrete Planprüfung erforderlich.
+
+
+## Abnahme auf lzc-dev
+
+Code-Commit `21b5529`, ausschließlich `feature/landing-zone-configurator`.
+[Validierung 36729582801](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36729582801)
+und [Release 36729582680](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36729582680)
+erfolgreich. 65 Anwendungstests, elf PostgreSQL-Integrationstests und 16 Browserfälle
+auf Desktop/Mobil erfolgreich; HCL-/Infrastrukturprüfungen ebenfalls grün.
+
+Live anonym geprüft: vier Ordner, Umbenennung aktualisiert die Vorschau,
+Management-Projekt sichtbar, Ordner-URL und Browser-Zurück behalten den Entwurf,
+kein horizontaler Überlauf und keine Browserfehler. Die authentifizierte
+Wiederaufnahme und Git-Versionierung wurden mit API-Testdoubles geprüft; die
+persönliche Abnahme im echten Fork bleibt beim Benutzer. Keine Kundenressourcen
+angewendet und kein Merge nach main.
