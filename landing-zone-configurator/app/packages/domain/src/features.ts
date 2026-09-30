@@ -271,7 +271,7 @@ export type FeatureField = {
   type: string;
   optional: boolean;
   // Coverage is explicit: importing a value does not imply an editor exists.
-  commonEditor: "pending";
+  commonEditor: "form" | "protected-binding-pending" | "not-effective";
 };
 export function featureFieldCatalogue(): FeatureField[] {
   const fields: FeatureField[] = [];
@@ -283,7 +283,11 @@ export function featureFieldCatalogue(): FeatureField[] {
         sensitive: input.sensitive,
         type: typeof type === "string" ? type : type[0],
         optional,
-        commonEditor: "pending",
+        commonEditor: input.sensitive
+          ? "protected-binding-pending"
+          : path === "rm_folders[*].description"
+            ? "not-effective"
+            : "form",
       });
       if (typeof type === "string") return;
       if (type[0] === "object") {

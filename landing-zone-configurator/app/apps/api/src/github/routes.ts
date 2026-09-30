@@ -1,4 +1,4 @@
-import { configurationId, readSavedDraft, savedDraftSchema } from "@lzc/domain";
+import { configurationId, readConfigurationRecord } from "@lzc/domain";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
@@ -20,7 +20,7 @@ const saveInput = z
     target: repositoryTarget,
     head: z.string().regex(/^[a-f0-9]{40}$/),
     mode: z.enum(["create", "update"]),
-    document: savedDraftSchema,
+    document: z.unknown(),
   })
   .strict();
 export function registerRepositories(
@@ -81,9 +81,9 @@ export function registerRepositories(
     "/api/v1/github/configuration",
     handle(true, async (request, token) => {
       const input = saveInput.parse(request.body);
-      let document: ReturnType<typeof readSavedDraft>;
+      let document: ReturnType<typeof readConfigurationRecord>;
       try {
-        document = readSavedDraft(input.document);
+        document = readConfigurationRecord(input.document);
       } catch {
         throw new RepositoryError(400, "invalid_configuration_document");
       }

@@ -1,6 +1,14 @@
-import { type ConfigurationDraft, createDraft, objectValue } from "@lzc/domain";
+import {
+  createCommonConfiguration,
+  createDraft,
+  type EditorDraft,
+  isCommonDraft,
+  objectValue,
+  upgradeEditorDraft,
+} from "@lzc/domain";
 import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { CommonEditor } from "./components/CommonEditor";
 import { ConfigurationEditor } from "./components/ConfigurationEditor";
 import { Credentials } from "./components/Credentials";
 import {
@@ -36,7 +44,7 @@ function App() {
     setDeploymentSelection(null);
   }, [session?.user.id, session?.user.login]);
   const [draftEpoch, setDraftEpoch] = useState(0);
-  const [draft, setDraft] = useState<ConfigurationDraft | null>(restoredDraft);
+  const [draft, setDraft] = useState<EditorDraft | null>(restoredDraft);
   const [loginError, setLoginError] = useState(() =>
     new URLSearchParams(window.location.search).get("login") === "failed"
       ? "Die GitHub-Anmeldung ist fehlgeschlagen. Bitte erneut versuchen."
@@ -77,7 +85,7 @@ function App() {
       .toLocaleLowerCase("de")
       .includes(search.toLocaleLowerCase("de")),
   );
-  const start = () => {
+  const start = (legacy = false) => {
     if (
       draft &&
       !window.confirm(
@@ -85,7 +93,11 @@ function App() {
       )
     )
       return;
-    setDraft(createDraft(selected));
+    setDraft(
+      legacy
+        ? createDraft(selected)
+        : createCommonConfiguration(selected.id, crypto.randomUUID()),
+    );
     setDraftEpoch((value) => value + 1);
     setView("editor");
   };
@@ -320,11 +332,7 @@ function App() {
                           {count}{" "}
                           {count === 1 ? "Landing Zone" : "Landing Zones"}
                         </span>
-                        <span>
-                          {template.id === "standalone"
-                            ? "Editor verfügbar"
-                            : "Vorschau"}
-                        </span>
+                        <span>Editor verfügbar</span>
                       </div>
                       <button
                         type="button"
@@ -376,7 +384,7 @@ function App() {
                     <code>{selected.source}</code>
                   </dd>
                 </dl>
-                {selected.id === "standalone" ? (
+                {
                   <>
                     <p>
                       Erstelle eine eigene Kopie und passe Organisation,
@@ -385,19 +393,21 @@ function App() {
                     <button
                       type="button"
                       className="button primary"
-                      onClick={start}
+                      onClick={() => start()}
                     >
                       Konfiguration erstellen
                     </button>
+                    {selected.id === "standalone" && (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => start(true)}
+                      >
+                        Bisherigen Standalone-Editor nutzen
+                      </button>
+                    )}
                   </>
-                ) : (
-                  <div className="info-banner">
-                    <p>
-                      Der Editor für dieses Template folgt. Netzwerkbereiche und
-                      Zusatzmodule bleiben in der Vorlage erhalten.
-                    </p>
-                  </div>
-                )}
+                }
                 <details className="technical">
                   <summary>Quelldaten ansehen</summary>
                   <pre>{JSON.stringify(values, null, 2)}</pre>
@@ -453,16 +463,50 @@ function App() {
               </button>
             </section>
           )}
-          {view === "editor" && draft && (
-            <ConfigurationEditor
-              step={step}
-              onStepChange={(next) => setView("editor", next)}
-              onOpenStorage={() => setView("repositories")}
-              template={standaloneTemplate}
-              draft={draft}
-              onChange={setDraft}
-            />
-          )}
+          {view === "editor" &&
+            draft &&
+            (isCommonDraft(draft) ? (
+              <CommonEditor
+                draft={draft}
+                onChange={setDraft}
+                step={step}
+                onStepChange={(next) => setView("editor", next)}
+                onOpenStorage={() => setView("repositories")}
+              />
+            ) : (
+              <>
+                <div className="info-banner">
+                  <p>
+                    Du bearbeitest eine bestehende Standalone-Konfiguration. Im
+                    gemeinsamen Editor stehen weitere Netzwerk- und
+                    Plattformfunktionen zur Verfügung. Dessen Konfigurationen
+                    sind zunächst speicher- und exportierbar.
+                  </p>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "In den gemeinsamen Editor wechseln? Die bisherigen Einstellungen bleiben erhalten. Neue Deployment-Vorbereitungen für dieses Format folgen separat.",
+                        )
+                      )
+                        setDraft(upgradeEditorDraft(draft));
+                    }}
+                  >
+                    Zum gemeinsamen Editor wechseln
+                  </button>
+                </div>
+                <ConfigurationEditor
+                  step={step}
+                  onStepChange={(next) => setView("editor", next)}
+                  onOpenStorage={() => setView("repositories")}
+                  template={standaloneTemplate}
+                  draft={draft}
+                  onChange={setDraft}
+                />
+              </>
+            ))}
           <footer className="page-footer">
             <span>Landing Zone Configurator</span>
             <span>

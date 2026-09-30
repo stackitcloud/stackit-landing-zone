@@ -1,8 +1,11 @@
 import {
-  type ConfigurationDraft,
-  readSavedDraft,
-  savedDraft,
-  validateDraft,
+  type EditorDraft,
+  editorIssues,
+  readConfigurationRecord,
+  recordDraft,
+  recordName,
+  recordOrganization,
+  saveEditorDraft,
 } from "@lzc/domain";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -27,6 +30,8 @@ type Repository = {
 const installation =
   "https://github.com/apps/lz-configurator-dev-7dbff805/installations/new";
 const errors: Record<string, string> = {
+  configuration_document_too_large:
+    "Die Konfiguration ist für die Speicherung zu groß (maximal 1 MiB). Bitte aufteilen.",
   authentication_required: "Bitte melde dich mit GitHub an.",
   github_reauthentication_required:
     "Deine GitHub-Freigabe ist abgelaufen oder widerrufen. Bitte erneut anmelden.",
@@ -81,11 +86,11 @@ export function ForkWorkspace({
   path,
 }: {
   path: string;
-  onRestore: (draft: ConfigurationDraft | null, path: string | null) => void;
+  onRestore: (draft: EditorDraft | null, path: string | null) => void;
   session: Session | null;
-  draft: ConfigurationDraft | null;
+  draft: EditorDraft | null;
   draftEpoch: number;
-  onLoad: (draft: ConfigurationDraft) => void;
+  onLoad: (draft: EditorDraft) => void;
   onEdit: () => void;
   onPrepare: (selection: DeploymentSelection) => void;
 }) {
@@ -260,16 +265,15 @@ export function ForkWorkspace({
       const result = await api<{ document: unknown; head: string }>(
         `/api/v1/github/configuration/${id}?${query(repository.fork)}`,
       );
-      const document = readSavedDraft(result.document);
+      const document = readConfigurationRecord(result.document);
       setBinding({ id, head: result.head, mode: "update" });
       setRepository({ ...repository, head: result.head });
       setCommitUrl("");
-      onLoad(document.draft);
+      onLoad(recordDraft(document));
     });
   }
   async function save() {
-    if (!repository || !session || !draft || validateDraft(draft).length)
-      return;
+    if (!repository || !session || !draft || editorIssues(draft).length) return;
     await perform(async () => {
       const current = binding ?? {
         id: crypto.randomUUID(),
@@ -290,7 +294,7 @@ export function ForkWorkspace({
             target: target(repository.fork),
             head: current.head,
             mode: current.mode,
-            document: savedDraft(current.id, draft),
+            document: saveEditorDraft(current.id, draft),
           }),
         },
       );
@@ -424,13 +428,19 @@ export function ForkWorkspace({
                             );
                             if (loaded.head !== repository.head)
                               throw new Error(errors.repository_changed);
-                            const document = readSavedDraft(loaded.document);
+                            const document = readConfigurationRecord(
+                              loaded.document,
+                            );
+                            if (document.schemaVersion === 3)
+                              throw new Error(
+                                "Der neue Editor unterstützt zunächst Speichern und Exportieren. Die Ausführung dieser Konfiguration wird separat freigegeben.",
+                              );
                             onPrepare({
                               target: target(repository.fork),
                               configurationId: config.id,
                               head: loaded.head,
-                              name: document.draft.name,
-                              organizationId: document.draft.organization,
+                              name: recordName(document),
+                              organizationId: recordOrganization(document),
                             });
                           })
                         }
@@ -457,7 +467,7 @@ export function ForkWorkspace({
                   ? draft.name
                   : "Erstelle zuerst einen Entwurf oder öffne eine gespeicherte Konfiguration."}
               </p>
-              {draft && validateDraft(draft).length > 0 && (
+              {draft && editorIssues(draft).length > 0 && (
                 <p>Bitte vervollständige zuerst die Angaben im Editor.</p>
               )}
               <p className="muted">
@@ -480,7 +490,7 @@ export function ForkWorkspace({
                 <button
                   type="button"
                   className="button primary"
-                  disabled={busy || !draft || validateDraft(draft).length > 0}
+                  disabled={busy || !draft || editorIssues(draft).length > 0}
                   onClick={() => void save()}
                 >
                   Im Fork speichern

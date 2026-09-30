@@ -3,7 +3,9 @@ import {
   catalogue,
   configurationValues,
   createDraft,
+  exportCommonTfvars,
   folderDefaults,
+  migrateCommonConfiguration,
   savedDraft,
   serializeTfvars,
   type Template,
@@ -347,4 +349,33 @@ it("upgrades a legacy document and its matching tfvars atomically when folder na
   expect(JSON.parse(tree[0]?.content ?? "").schemaVersion).toBe(2);
   expect(tree[1]?.content).toContain('"name" = "Betriebsplattform"');
   expect(tree[1]?.content).toBe(serializeTfvars(configurationValues(upgraded)));
+});
+
+it("atomically saves a common document alongside its full tfvars export", async () => {
+  const f = fixture();
+  f.state.file = false;
+  const document = migrateCommonConfiguration(f.document);
+  await f.service.save(token, target, original, "create", document);
+  const tree = f.writes.find((write) => write.path.endsWith("/git/trees"))?.body
+    .tree as { content: string }[];
+  expect(JSON.parse(tree[0]?.content ?? "{}").schemaVersion).toBe(3);
+  expect(tree[1]?.content).toBe(exportCommonTfvars(document));
+});
+
+it("rejects common-format deployment preparation on the server before reading credentials", async () => {
+  const f = fixture();
+  const document = migrateCommonConfiguration(f.document);
+  const request: typeof fetch = async (input, init) => {
+    if (new URL(String(input)).pathname.endsWith(`/git/blobs/${blobSha}`))
+      return Response.json({
+        encoding: "base64",
+        content: Buffer.from(JSON.stringify(document)).toString("base64"),
+        size: 5000,
+      });
+    return f.request(input, init);
+  };
+  const service = new Repositories(request);
+  await expect(
+    service.prepareSnapshot(token, target, id, original),
+  ).rejects.toMatchObject({ code: "configuration_execution_not_supported" });
 });

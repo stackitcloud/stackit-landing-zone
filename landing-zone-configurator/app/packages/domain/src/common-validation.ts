@@ -49,6 +49,12 @@ export function assessCommonConfiguration(
     });
   };
   for (const input of acceleratorInputs) {
+    if (values[input.name] === null && input.default !== null)
+      add(
+        input.name,
+        "null-not-supported",
+        "Diese Einstellung benötigt einen Wert. Verwende die Voreinstellung oder eine leere Sammlung statt null.",
+      );
     if (
       input.required &&
       (values[input.name] == null || values[input.name] === "")

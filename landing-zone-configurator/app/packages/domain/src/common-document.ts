@@ -31,12 +31,12 @@ const featuresSchema = z
     firewall: valuesSchema,
   })
   .strict();
-const commonShape = z
+export const commonConfigurationSchema = z
   .object({
     schemaVersion: z.literal(3),
     kind: z.literal("landing-zone-configurator-configuration"),
     id: z.uuid(),
-    name: z.string().min(1).max(4096),
+    name: z.string().max(4096),
     origin: z
       .object({
         templateId: z.string(),
@@ -55,7 +55,7 @@ const commonShape = z
       .strict(),
   })
   .strict();
-export type CommonConfiguration = z.infer<typeof commonShape>;
+export type CommonConfiguration = z.infer<typeof commonConfigurationSchema>;
 export type NetworkArea = {
   id: string;
   region: string;
@@ -143,7 +143,7 @@ function identityIndex(values: Values): CommonConfiguration["identities"] {
     ),
   };
 }
-function fromValues(
+export function commonConfigurationFromValues(
   template: Template,
   id: string,
   name: string,
@@ -179,7 +179,7 @@ export function createCommonConfiguration(
   name = "Meine Landing Zone",
 ): CommonConfiguration {
   const template = templateById(templateId);
-  return fromValues(template, id, name, template.values);
+  return commonConfigurationFromValues(template, id, name, template.values);
 }
 export function migrateCommonConfiguration(
   input: unknown,
@@ -190,7 +190,7 @@ export function migrateCommonConfiguration(
   const legacy = readSavedDraft(input);
   // Compile with the original v1/v2 contract before migrating. This preserves
   // resource keys, optional omissions and exact serialized preparation hashes.
-  return fromValues(
+  return commonConfigurationFromValues(
     templateById(legacy.template.id),
     legacy.id,
     legacy.draft.name,
@@ -199,7 +199,7 @@ export function migrateCommonConfiguration(
 }
 export function readCommonConfiguration(input: unknown): CommonConfiguration {
   assertBoundedJson(input);
-  const parsed = commonShape.parse(input);
+  const parsed = commonConfigurationSchema.parse(input);
   const template = templateById(parsed.origin.templateId);
   if (
     parsed.origin.source !== template.source ||

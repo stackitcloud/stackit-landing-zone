@@ -1,4 +1,5 @@
 import {
+  areaLocations,
   folderDefaults,
   objectValue,
   textValue,
@@ -38,13 +39,7 @@ function Folder({ name, children }: { name: string; children: ReactNode }) {
 export function Topology({ values }: { values: Values }) {
   const projects = Object.entries(objectValue(values.landing_zones));
   const sandboxes = Array.isArray(values.sandboxes) ? values.sandboxes : [];
-  const regionalHubs = objectValue(values.connectivity_regions);
-  const hubs =
-    values.connectivity_regions != null
-      ? ["eu01", "eu02"].filter((region) => regionalHubs[region] != null)
-      : values.connectivity
-        ? [textValue(values.region)]
-        : [];
+  const hubs = areaLocations(values);
   // An explicitly supplied rm_folders map replaces the root default; it is not merged by OpenTofu.
   const folders =
     values.rm_folders == null
@@ -65,12 +60,12 @@ export function Topology({ values }: { values: Values }) {
               detail="Management"
             />,
           );
-          for (const region of hubs)
+          for (const hub of hubs)
             nodes.push(
               <Project
-                key={`hub-${region}`}
+                key={hub.path}
                 name="Netzwerk-Hub"
-                detail={`Konnektivität · ${region}`}
+                detail={`Konnektivität · ${hub.region} · ${hub.key}`}
               />,
             );
           if (values.devops != null)

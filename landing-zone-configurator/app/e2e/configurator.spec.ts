@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("template catalogue, search and read-only network preview", async ({
+test("template catalogue, search and network preview", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -56,7 +56,7 @@ test("template catalogue, search and read-only network preview", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Konfiguration erstellen" }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   await expect(page.locator(".topology")).toContainText("Netzwerk-Hub");
   expect(errors).toEqual([]);
   expect(
@@ -75,7 +75,9 @@ test("edit, validate and download an isolated standalone copy", async ({
   await page
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
-  await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
+  await page
+    .getByRole("button", { name: "Bisherigen Standalone-Editor nutzen" })
+    .click();
   await page.getByRole("button", { name: "4 Prüfen", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Angaben bitte prüfen");
   await page.getByRole("button", { name: /Organisations-ID: Bitte/ }).click();
@@ -198,7 +200,9 @@ test("GitHub redirect preserves incomplete draft and logout sends CSRF", async (
   await page
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
-  await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
+  await page
+    .getByRole("button", { name: "Bisherigen Standalone-Editor nutzen" })
+    .click();
   await page.getByLabel("Name der Konfiguration").fill("Entwurf vor Anmeldung");
   await page.getByRole("button", { name: "Mit GitHub anmelden" }).click();
   await expect(page.getByText("@alice", { exact: true })).toBeVisible();
@@ -223,7 +227,9 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
   await expect(page).toHaveURL(/\/templates\/standalone$/);
-  await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
+  await page
+    .getByRole("button", { name: "Bisherigen Standalone-Editor nutzen" })
+    .click();
   await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
   await page.getByLabel("Name der Konfiguration").fill("Entwurf mit History");
   await page.getByRole("button", { name: "Weiter zu Ordnern" }).click();

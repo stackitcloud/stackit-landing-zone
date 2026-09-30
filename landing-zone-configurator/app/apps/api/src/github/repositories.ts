@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
 import {
-  configurationValues,
-  readSavedDraft,
-  type SavedDraft,
+  type ConfigurationRecord,
+  editorIssues,
+  readConfigurationRecord,
+  recordDraft,
+  recordName,
+  recordValues,
   serializeTfvars,
 } from "@lzc/domain";
 import { z } from "zod";
@@ -254,7 +257,7 @@ export class Repositories {
     token: string,
     fork: Fork,
     sha: string,
-  ): Promise<SavedDraft> {
+  ): Promise<ConfigurationRecord> {
     const blob = z
       .object({
         encoding: z.literal("base64"),
@@ -268,7 +271,7 @@ export class Repositories {
         ),
       );
     try {
-      return readSavedDraft(
+      return readConfigurationRecord(
         JSON.parse(Buffer.from(blob.content, "base64").toString("utf8")),
       );
     } catch {
@@ -291,7 +294,7 @@ export class Repositories {
         const document = await this.document(token, fork, entry.sha);
         if (document.id !== id)
           throw new RepositoryError(422, "unsupported_configuration_document");
-        configurations.push({ id, name: document.draft.name });
+        configurations.push({ id, name: recordName(document) });
       } catch (error) {
         if (
           !(error instanceof RepositoryError) ||
@@ -338,7 +341,9 @@ export class Repositories {
     const document = await this.document(token, fork, entry.sha);
     if (document.id !== id)
       throw new RepositoryError(422, "unsupported_configuration_document");
-    const tfvars = serializeTfvars(configurationValues(document));
+    if (document.schemaVersion === 3)
+      throw new RepositoryError(409, "configuration_execution_not_supported");
+    const tfvars = serializeTfvars(recordValues(document));
     const expected = createHash("sha1")
       .update(`blob ${Buffer.byteLength(tfvars)}\0`)
       .update(tfvars)
@@ -359,9 +364,13 @@ export class Repositories {
     target: RepositoryTarget,
     expectedHead: string,
     mode: "create" | "update",
-    document: SavedDraft,
+    document: ConfigurationRecord,
   ) {
-    const valid = readSavedDraft(document);
+    const valid = readConfigurationRecord(document);
+    if (Buffer.byteLength(JSON.stringify(valid, null, 2)) > 1024 * 1024 - 1)
+      throw new RepositoryError(400, "configuration_document_too_large");
+    if (editorIssues(recordDraft(valid)).length)
+      throw new RepositoryError(400, "invalid_configuration_document");
     const fork = await this.verify(token, target);
     const state = await this.head(token, fork);
     if (state.head !== expectedHead)
@@ -371,7 +380,7 @@ export class Repositories {
     let previousExport: string | undefined;
     if (mode === "update" && previous) {
       const existing = await this.document(token, fork, previous.sha);
-      previousExport = serializeTfvars(configurationValues(existing));
+      previousExport = serializeTfvars(recordValues(existing));
       if (existing.id !== valid.id)
         throw new RepositoryError(409, "unsupported_configuration_document");
     }
@@ -409,7 +418,7 @@ export class Repositories {
             path: exportPath,
             mode: "100644",
             type: "blob",
-            content: serializeTfvars(configurationValues(valid)),
+            content: serializeTfvars(recordValues(valid)),
           },
         ],
       }),

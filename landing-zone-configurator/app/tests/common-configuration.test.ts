@@ -147,7 +147,7 @@ describe("shared accelerator feature contract", () => {
       expect(old.schemaVersion).toBe(version);
     });
   }
-  it("does not silently enable v3 on the existing product API", () => {
+  it("keeps the legacy document schema separate from the common storage format", () => {
     expect(savedDraftSchema.safeParse(create()).success).toBe(false);
   });
   it("removes unreferenced areas but retains their identity until removal", () => {

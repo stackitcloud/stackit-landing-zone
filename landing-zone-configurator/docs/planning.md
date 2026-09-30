@@ -812,3 +812,13 @@ betroffenen erweiterten Konfigurationen umzusetzen. Kein Kunden-Apply ausgeführ
 Die Produkt-API bleibt vorerst auf v1/v2 beschränkt. Keine Kunden-Ausführung und
 keine Änderungen an Accelerator-Modulen. Details im
 [Domain-README](../app/packages/domain/README.md).
+
+### Gemeinsamer Editor und Release
+
+- [x] Sieben Editor-Bereiche, deutsche Fachbezeichnungen, optionale Einstellungen.
+- [x] Projektarten und Corporate-Region-/Bereichsauswahl vereinheitlichen.
+- [x] v3-Speicherung, Wiederaufnahme, Legacy-Migration und serverseitige Ausführungssperre.
+- [x] Desktop-/Mobil-Browsertests für neue und bestehende Abläufe.
+- [ ] Veröffentlichung mit CF-/Datenbank-/Secrets-Manager-Verbindungstests.
+
+Details und Benutzer-Prüfliste: [gemeinsamer Editor](common-editor.md).

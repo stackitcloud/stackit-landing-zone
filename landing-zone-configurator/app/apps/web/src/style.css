@@ -945,3 +945,51 @@ pre {
     width: 0.875rem;
   }
 }
+
+/* Shared feature editor, using the existing portal tokens and controls. */
+.shared-steps {
+  flex-wrap: wrap;
+}
+.feature-section {
+  border: 1px solid var(--color-border, #d7dce1);
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 1rem 0;
+  min-width: 0;
+}
+.feature-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.structured-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.shared-field {
+  min-width: 0;
+  margin: 0.75rem 0;
+}
+.field-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+.collection-entry {
+  padding: 0.5rem;
+  border-left: 3px solid #e3e8ee;
+  margin: 0.75rem 0;
+  min-width: 0;
+}
+.common-editor {
+  min-width: 0;
+}
+.common-editor input,
+.common-editor select {
+  max-width: 100%;
+}
+.network-topology {
+  margin-top: 1rem;
+}

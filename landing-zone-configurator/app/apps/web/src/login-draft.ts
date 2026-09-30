@@ -1,8 +1,8 @@
-import { type ConfigurationDraft, draftShape } from "@lzc/domain";
+import { type EditorDraft, readEditorDraft } from "@lzc/domain";
 import { standaloneTemplate } from "./templates";
 
 const key = "lzc-oauth-draft";
-export function preserveLoginDraft(draft: ConfigurationDraft | null): boolean {
+export function preserveLoginDraft(draft: EditorDraft | null): boolean {
   try {
     if (draft)
       sessionStorage.setItem(
@@ -19,7 +19,7 @@ export function preserveLoginDraft(draft: ConfigurationDraft | null): boolean {
     return !draft;
   }
 }
-export function readLoginDraft(): ConfigurationDraft | null {
+export function readLoginDraft(): EditorDraft | null {
   try {
     const raw = sessionStorage.getItem(key);
     if (!raw || raw.length > 1024 * 1024) return null;
@@ -29,8 +29,7 @@ export function readLoginDraft(): ConfigurationDraft | null {
       !(saved.expires > Date.now())
     )
       return null;
-    const parsed = draftShape.safeParse(saved.draft);
-    return parsed.success ? parsed.data : null;
+    return readEditorDraft(saved.draft);
   } catch {
     return null;
   }

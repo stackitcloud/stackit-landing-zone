@@ -1,4 +1,4 @@
-import { type ConfigurationDraft, draftShape } from "@lzc/domain";
+import { type EditorDraft, readEditorDraft } from "@lzc/domain";
 import type { Session } from "./components/Account";
 import { standaloneTemplate } from "./templates";
 
@@ -13,7 +13,7 @@ export type Binding = { id: string; head: string; mode: "create" | "update" };
 export type Workspace = {
   fork: Fork | null;
   binding: Binding | null;
-  draft: ConfigurationDraft | null;
+  draft: EditorDraft | null;
   path: string;
 };
 export function workspaceKey(session: Session | null): string | null {
@@ -24,7 +24,7 @@ export function workspaceKey(session: Session | null): string | null {
 export function workspacePath(path: unknown): path is string {
   return (
     typeof path === "string" &&
-    /^\/(?:templates(?:\/[a-z0-9-]+)?|repositories|credentials|deployments|configurations\/edit\/(?:basics|folders|projects|review))$/.test(
+    /^\/(?:templates(?:\/[a-z0-9-]+)?|repositories|credentials|deployments|configurations\/edit\/(?:basics|folders|network|platform|projects|operations|review))$/.test(
       path,
     )
   );
@@ -40,7 +40,7 @@ export function readWorkspace(key: string | null): Workspace | null {
       !workspacePath(value.path)
     )
       return null;
-    const draft = value.draft === null ? null : draftShape.parse(value.draft);
+    const draft = value.draft === null ? null : readEditorDraft(value.draft);
     const f = value.fork;
     if (
       f !== null &&

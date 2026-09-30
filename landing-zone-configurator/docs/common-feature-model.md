@@ -229,14 +229,14 @@ den Accelerator-Issues zu und trennt Modellierbarkeit von Ausführbarkeit.
 - [x] Inventar-Aktualität in CI prüfen.
 - [x] Funktionsbereiche, Projektmodell und wesentliche Kombinationsgrenzen festlegen.
 - [x] Feld-/Unterfunktionsabdeckung als maschinenprüfbaren Feature-Katalog abbilden
-  (`featureFieldCatalogue`; neuer gemeinsamer Editor je Feld weiterhin als offen markiert).
+  (`featureFieldCatalogue`; Formularfelder, geschützte Bindings und wirkungslose Felder getrennt).
 
 ### B – Gemeinsames Modell und kompatibler Compiler
 
 - [x] Versioniertes Dokument unabhängig von Standalone implementieren (v3-Domain-Vertrag).
 - [x] Alle acht Templates verlustfrei importieren, Herkunft und stabile IDs erhalten.
 - [x] Legacy-Adapter für gespeicherte Dokumentversion 1/2, bytegleicher Export.
-- [ ] Migration lokaler Arbeitsstände und Umschaltung der Speicher-/Produkt-API.
+- [x] Migration lokaler Arbeitsstände und Umschaltung der Speicher-/Produkt-API.
 - [ ] Referenz-/Default-/Deaktivierungsregeln zentral validieren.
 - [x] Export mit echtem HCL-Parser semantisch rückvergleichen; unveränderte
   Legacy-Konfigurationen zusätzlich bytegleich prüfen.
@@ -244,11 +244,11 @@ den Accelerator-Issues zu und trennt Modellierbarkeit von Ausführbarkeit.
 
 ### C – Erster vollständiger Bedienablauf auf dem gemeinsamen Modell
 
-- [ ] Ordner, Regionen und mehrere Netzwerkbereiche bearbeiten.
-- [ ] Gemeinsame Projektliste mit Public/Corporate/Sandbox und sichtbaren Zielordnern.
-- [ ] Region-/Bereichsauswahl für Corporate; Plattformprojekte aus Modulen ableiten.
-- [ ] Organisations- und Netzwerkansicht aus denselben Daten erzeugen.
-- [ ] Fork-Speicherung, Wiederaufnahme, Navigation und bestehende Vorbereitungen prüfen.
+- [x] Ordner, Regionen und mehrere Netzwerkbereiche bearbeiten.
+- [x] Gemeinsame Projektliste mit Public/Corporate/Sandbox und sichtbaren Zielordnern.
+- [x] Region-/Bereichsauswahl für Corporate; Plattformprojekte aus Modulen ableiten.
+- [x] Organisations- und Netzwerkansicht aus denselben Daten erzeugen.
+- [x] Fork-Speicherung, Wiederaufnahme, Navigation und bestehende Vorbereitungen prüfen.
 
 ### D – Vollständige Feature-Abdeckung
 
@@ -296,3 +296,14 @@ Infrastrukturjobs mit HTTP 500 von GitHub; Wiederholung erfolgreich.
 
 Kein Release dieses internen Kerns, keine Kunden-Pläne oder Applies ausgeführt.
 Die veröffentlichte Oberfläche bleibt bis zum getesteten Editor-Inkrement unverändert.
+
+## Nachgezogenes Editor-Inkrement
+
+[Gemeinsamer Editor](common-editor.md): sieben Bereiche, fachlich beschriftete
+Formulare für alle nicht-sensiblen Root-Eingaben, gemeinsame Projektauswahl,
+Bereichszuordnung, v3-Fork-Speicherung und Browser-Wiederaufnahme. Bestehende
+v1/v2-Konfigurationen bleiben kompatibel; ein Wechsel zum neuen Editor ist explizit.
+
+Formularabdeckung bedeutet noch keine vollständige Deployment-Abnahme jedes
+Untermoduls. Geschützte Zusatz-Bindings und v3-Runner-Anbindung bleiben offen;
+der Backend-Guard verhindert entsprechende Deployment-Vorbereitungen.
