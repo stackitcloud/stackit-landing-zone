@@ -83,14 +83,21 @@ func catalogue(dir string) ([]byte, error) {
 func main() {
 	dir := flag.String("source", "../../../src/config", "trusted repository template directory")
 	out := flag.String("output", "../../app/packages/domain/src/catalogue.json", "catalogue output")
-	check := flag.Bool("check", false, "fail if committed catalogue differs; do not write")
+	check := flag.Bool("check", false, "fail if committed output differs; do not write")
+	variables := flag.String("variables-source", "", "trusted variable declarations; switches from template catalogue to variable inventory")
 	flag.Parse()
-	data, err := catalogue(*dir)
+	var data []byte
+	var err error
+	if *variables != "" {
+		data, err = variableInventory(*variables)
+	} else {
+		data, err = catalogue(*dir)
+	}
 	if err == nil && *check {
 		var existing []byte
 		existing, err = os.ReadFile(*out)
 		if err == nil && !bytes.Equal(existing, data) {
-			err = fmt.Errorf("template catalogue is stale; run go run .")
+			err = fmt.Errorf("generated catalogue/inventory is stale; regenerate from trusted source")
 		}
 	} else if err == nil {
 		err = os.MkdirAll(filepath.Dir(*out), 0755)

@@ -28,3 +28,18 @@ Unberührte Attribute bleiben bei der Erstellung eines Standalone-Entwurfs erhal
 Bei Änderungen an `src/config` den Katalog neu erzeugen und gemeinsam committen.
 Validierung und Release prüfen den Katalog gegen die Quellen; ein veralteter Stand
 wird nicht veröffentlicht. Die Accelerator-Dateien selbst werden nicht verändert.
+
+## Accelerator-Eingabeinventar
+
+Alle Root-Variablen einschließlich verschachtelter Typen, optionaler Defaults und
+Validierungsblöcke lassen sich aus dem vertrauenswürdigen Accelerator extrahieren:
+
+```sh
+go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json
+go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
+```
+
+Sensible Defaults werden ausgelassen. Der Typ `dynamic` bleibt ausdrücklich
+unaufgelöst und benötigt ein fachliches Schema aus der Modulverdrahtung.
+`nestedDefaults.children[""]` bezeichnet den Elementtyp einer Map/Liste. Das Inventar
+ersetzt keine fachlichen Abhängigkeiten und erzeugt kein Terraform-Variablen-UI.

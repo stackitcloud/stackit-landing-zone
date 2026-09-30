@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'landing-zone-configurator/**'
-      - 'src/config/**'
+      - 'src/**'
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
       - '.github/workflows/configurator-platform.yml'
@@ -14,7 +14,7 @@ on:
     branches: [main, feature/landing-zone-configurator]
     paths:
       - 'landing-zone-configurator/**'
-      - 'src/config/**'
+      - 'src/**'
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
       - '.github/workflows/configurator-platform.yml'
@@ -51,6 +51,7 @@ jobs:
         run: |
           go test ./...
           go run . -check
+          go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
 
   application:
     runs-on: ubuntu-latest

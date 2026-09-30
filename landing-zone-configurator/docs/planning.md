@@ -774,3 +774,15 @@ Der Benutzer öffnet seine bestehende Konfiguration einmal, um den ersten lokale
 Arbeitsstand zu speichern. Weitere Besuche im selben Browser stellen ihn wieder her.
 Nach Konfigurationsänderungen ist eine neue unveränderliche Deployment-Vorbereitung
 nötig. Persönlicher Initial-Plan kann jetzt getestet werden; Apply bleibt gesperrt.
+
+### Architekturkorrektur: gemeinsames Feature-Modell, 2026-09-30
+
+Benutzer fordert alle Accelerator-Funktionen unabhängig vom gewählten Beispiel.
+Templates sind Presets; der Standalone-Editor ist keine tragfähige Grenze des
+Datenmodells. [Gemeinsames Funktionsmodell und Umsetzungsplan](common-feature-model.md)
+und [generiertes Eingabeinventar](accelerator-inputs.json) sind die Grundlage.
+
+Die feste Public-/Sandbox-Zuordnung im veröffentlichten Projekte-Schritt ist noch
+offen. Der unveröffentlichte Corporate-Einzelbereich-Prototyp wurde gesichert und
+nicht ausgeliefert. Die Korrektur erfolgt als gemeinsame Projekt-/Netzwerkstruktur
+mit mehreren Bereichen und Regionen, anschließend vollständiger Feature-Abdeckung.
