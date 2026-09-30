@@ -55,8 +55,23 @@ explizit Public und bleiben unverändert.
 - [x] Neuer Editor, Typwechsel, Navigation und Bereichsreferenzen im Browser getestet.
 - [x] v3-Fork speichern, Export, Wiederaufnahme und gesperrte Vorbereitung getestet.
 - [x] Legacy-Editor, GitHub-Anmeldung, Fork-Konflikte, Credentials und Plan-Ablauf regressionsgeprüft.
-- [ ] Release auf lzc-dev und Live-Verbindungstests abgenommen.
+- [x] Release auf lzc-dev und Live-Verbindungstests abgenommen.
 
 Manuelle Prüfung nach Veröffentlichung: Hub-&-Spoke und Multi-Region öffnen,
 Projektart/Bereich wechseln, Entwurf im eigenen Fork speichern, erneut öffnen und
 Browser neu laden. Zusätzliche optionale Dienste unter Plattform/Betrieb prüfen.
+
+## Live-Abnahme
+
+Code `527bd9582f95d3cf845cfaf242f9022e1495fad8` veröffentlicht:
+
+- [Validate Configurator 36745965890](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36745965890): erfolgreich.
+- [Configurator Release 36745965953](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36745965953): erfolgreich.
+- 95 Anwendungstests und 20 Desktop-/Mobil-Browserprüfungen, einschließlich v3-Speicherung und Legacy-Kompatibilität.
+- Native HCL-/OpenTofu-Vertragstests und Infrastrukturprüfung erfolgreich.
+- CF-Netzwerk, PostgreSQL/Secrets-Manager-Verbindungen, isolierter Runner und öffentliche Routen erfolgreich geprüft.
+- Direkter Live-Browsercheck: Multi-Region-Vorlage öffnen, neuen Editor starten, Projektliste/Netzwerkansicht auf Desktop und Mobilgerät prüfen; keine Seitenfehler oder horizontales Überlaufen.
+- Öffentliche JavaScript-/CSS-Dateien per SHA-256 mit dem getesteten Build abgeglichen; `/healthz` liefert `ok`, Sitzung ohne Anmeldung `401`.
+
+[Live-Anwendung](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud).
+Keine Kunden-Konfiguration angewendet und keine Änderung nach `main` übernommen.

@@ -806,7 +806,7 @@ betroffenen erweiterten Konfigurationen umzusetzen. Kein Kunden-Apply ausgeführ
 - [x] Gemeinsame Projekt-/Bereichsprojektionen und erste Referenz-/Capability-Regeln.
 - [x] Native HCL-Roundtrips und direkte OpenTofu-Variablenvertragstests in CI ergänzen.
 - [x] Neu entdeckten Standalone-Defaultfehler als Accelerator-Issue #84 erfassen.
-- [ ] Gemeinsamen Editor, Arbeitsstand/Fork-Speicher und API auf den neuen Kern umstellen.
+- [x] Gemeinsamen Editor, Arbeitsstand/Fork-Speicher und API auf den neuen Kern umstellen.
 - [ ] Übrige Feature-Editoren, Credential-Bindings und serverseitige Ausführungsprüfung.
 
 Die Produkt-API bleibt vorerst auf v1/v2 beschränkt. Keine Kunden-Ausführung und
@@ -819,6 +819,10 @@ keine Änderungen an Accelerator-Modulen. Details im
 - [x] Projektarten und Corporate-Region-/Bereichsauswahl vereinheitlichen.
 - [x] v3-Speicherung, Wiederaufnahme, Legacy-Migration und serverseitige Ausführungssperre.
 - [x] Desktop-/Mobil-Browsertests für neue und bestehende Abläufe.
-- [ ] Veröffentlichung mit CF-/Datenbank-/Secrets-Manager-Verbindungstests.
+- [x] Veröffentlichung mit CF-/Datenbank-/Secrets-Manager-Verbindungstests.
 
 Details und Benutzer-Prüfliste: [gemeinsamer Editor](common-editor.md).
+
+Live-Abnahme: Code `527bd95`, Release `36745965953`, Validate `36745965890` erfolgreich.
+Neue v3-Konfigurationen sind bearbeitbar und speicherbar; ihre Deployment-Ausführung
+bleibt serverseitig gesperrt. [Abnahme](common-editor.md#live-abnahme).

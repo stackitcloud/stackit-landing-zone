@@ -4,9 +4,9 @@ Stand: 2026-09-30. Architekturentscheidung nach Benutzerfeedback zur Projekt-/Or
 **Die Templates sind Voreinstellungen desselben Accelerators. Sie definieren nicht den Funktionsumfang des Editors.**
 
 Diese Entscheidung ersetzt den Ausbau des Standalone-Editors um einen isolierten
-Corporate-/Einzelbereich-Sonderfall. Die laufende Version bleibt bis zur Umsetzung
-unverändert. Die beanstandete feste Projektzuordnung ist damit noch nicht behoben;
-das erste neue UI-Inkrement muss sie auf dem gemeinsamen Modell lösen.
+Corporate-/Einzelbereich-Sonderfall. Der gemeinsame Editor ist inzwischen auf lzc-dev veröffentlicht. Public-/Corporate-
+Zuordnung und Netzwerkbereiche werden auf diesem Modell bearbeitet; die v3-
+Deployment-Anbindung bleibt ein eigener, noch nicht freigegebener Schritt.
 
 ## Verbindliche Quelle und Vollständigkeit
 
@@ -307,3 +307,9 @@ v1/v2-Konfigurationen bleiben kompatibel; ein Wechsel zum neuen Editor ist expli
 Formularabdeckung bedeutet noch keine vollständige Deployment-Abnahme jedes
 Untermoduls. Geschützte Zusatz-Bindings und v3-Runner-Anbindung bleiben offen;
 der Backend-Guard verhindert entsprechende Deployment-Vorbereitungen.
+
+### Abnahme des Editor-Releases
+
+Code `527bd95` ist auf lzc-dev veröffentlicht. Release und vollständige Validierung
+erfolgreich; 95 Anwendungstests und 20 Browserprüfungen bestanden. Live-Assets und
+CF-Verbindungstests geprüft. [Belege und Prüfliste](common-editor.md#live-abnahme).
