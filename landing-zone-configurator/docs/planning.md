@@ -321,9 +321,17 @@ Plan-Gültigkeit begrenzen. Cloud-Änderungen außerhalb des Systems können wä
 
 ### Remote State und Sperren
 
-Empfehlung: vorab bereitgestellter State-Bucket im Kundenbereich, eigener State-Key pro Deployment und minimal berechtigte Backend-Credentials. Bootstrap-Assistent oder separates IaC erzeugt den Bucket **vor** dem ersten Accelerator-Lauf. Der später vom Accelerator erzeugte Management-Bucket kann zusätzlich existieren; eine Migration ist ein eigener, exklusiv gesperrter Vorgang.
+Entscheidung 2026-09-30: dem vorhandenen LZA-Bootstrap folgen. Der erste Plan einer
+expliziten Neuanlage verwendet lokalen leeren State und die bereits hinterlegten
+Bootstrap-Credentials. Beim separat freigegebenen ersten Apply erstellt das Management-
+Modul das spätere Kunden-Backend. Danach State exklusiv mit `tofu init -migrate-state`
+migrieren, überprüfen und auf den Management-Service-Account wechseln.
 
-Ein zentraler State-Service wäre eine Alternative, erhöht aber Verantwortung und Schadensradius des Betreibers. D07 vor Implementierung entscheiden. Plattform-IaC und Kunden-Deployments dürfen niemals denselben State teilen.
+Der Configurator muss den anfänglichen State dauerhaft und verschlüsselt sichern,
+auch bei Runner-Verlust und partiellem Apply. Diese Recovery ist Voraussetzung für
+Apply. Vorhandene Deployments dürfen nie als neue leere States geplant werden.
+Kein zusätzlicher dauerhafter zentraler Kunden-State-Bucket. Plattform-IaC und
+Kunden-Deployments teilen niemals einen State. [Details](plan-execution.md).
 
 - Backend-Locking mit gewählter Engine und STACKIT Object Storage praktisch testen, einschließlich konkurrierendem CLI-Zugriff. S3-Kompatibilität ist kein Locking-Nachweis.
 - Zusätzlich DB-Lease pro kanonischer State-ID; doppelte Deployment-Registrierung desselben States verhindern. Lease ersetzt Backend-Lock nicht.
@@ -535,7 +543,7 @@ Diese Basis ersetzt keinen der folgenden Architektur-Spikes. Details zum Start: 
 | D04 | Mehrere Forks | Mehrere Owner/Repos; Branches/Configs als zusätzliche Varianten | Spike | Produkt/Backend |
 | D05 | Persistenz | PostgreSQL Flex, Tenant-Isolation plus RLS | Vorschlag | Plattform |
 | D06 | Runner-Hosting | Separate CF-Runner, sonst explizit SKE/Compute | Kritischer Spike | Plattform/Security |
-| D07 | State-Eigentum | Kunden-State vor erstem Run; eigener Backend-Bootstrap | Offen | Architektur |
+| D07 | State-Eigentum | LZA-Bootstrap, anschließend Migration zum erzeugten Kunden-Backend | Entschieden; Recovery/Migration umzusetzen | Architektur |
 | D08 | Secret-Verwaltung | Secret Store mit Run-Delegation und Tenant-Policies | Kritischer Spike | Security |
 | D09 | Config-Format | Fach-JSON plus native landing-zone.tfvars | Standalone implementiert; versioniertes Deployment-Manifest offen | Architektur |
 | D10 | Engine | Gepinntes OpenTofu 1.12.6 zuerst; Terraform separat qualifizieren | Vorschlag | Maintainer |
@@ -728,3 +736,12 @@ Browserfälle (Desktop/Mobil). CF-Push, Service-Verbindungstests und öffentlich
 Smoke-Checks waren erfolgreich. Zusätzlich auf der Live-URL geprüft: acht
 Templates, Standalone-Editor, Health 200, Session ohne Login 401 und keine
 JavaScript-Laufzeitfehler. Keine Infrastrukturänderung und kein Merge nach main.
+
+### Kunden-Plan, 2026-09-30
+
+Benutzer bestätigt persönlichen Zugangstest und vollständige Deployment-Vorbereitung.
+Kunden-Plan darf getestet werden; **Kunden-Apply ausschließlich nach neuer ausdrücklicher
+Freigabe**, kein Destroy. Die Configurator-Infrastrukturfreigabe gilt dafür nicht.
+D07: bestehenden LZA-Bootstrap mit anschließendem Kunden-Backend übernehmen. Wertfreie Plan-Auswertung und lokaler echter
+OpenTofu-Vertragstest umgesetzt; produktiver Kunden-Runner noch offen.
+[Umsetzung und Abnahme](plan-execution.md).

@@ -108,7 +108,7 @@ fertiger Runner-Auftrag. Es werden keine Kundenressourcen angelegt. Offene Aufga
 - [x] Echtes PostgreSQL: RLS, Rollen, unveränderliche Vorbereitung und Löschinvalidierung.
 - [x] Browserablauf auf Desktop und Mobil abgenommen; mobile Darstellung visuell geprüft.
 - [x] Feature-Branch-Release inklusive Migration und CF-Verbindungstests.
-- [ ] Persönlicher Erfolgsfall mit einem auf der Zielorganisation berechtigten Profil.
+- [x] Persönlicher Erfolgsfall mit einem auf der Zielorganisation berechtigten Profil (Benutzer bestätigt, 2026-09-30).
 
 ### Release-Abnahme
 
@@ -119,5 +119,15 @@ Migration und CF-Verbindungstests zu PostgreSQL und Secrets Manager erfolgreich.
 Live geprüft: `/deployments`, Reload, mobile Breite, keine Browserfehler sowie 401
 für anonyme Vorbereitungsliste, Anlegen, Entfernen und Credential-Prüfung. Dabei keine
 persönlichen Credentials verwendet und keine Vorbereitung angelegt. Bekannte lokale
-Credential-Werte wurden in den Release-Logs nicht gefunden. Persönlicher Erfolgsfall
-mit Organisationsberechtigung bleibt Teil der obigen Benutzer-Prüfliste.
+Credential-Werte wurden in den Release-Logs nicht gefunden. Der Benutzer hat anschließend die vollständige Vorbereitung und den Zugangstest mit
+einer passenden Kombination aus Organisation und persönlichem Service Account bestätigt.
+Die zuvor beobachtete Ablehnung war auf eine nicht passende Kombination zurückzuführen.
+Die übrigen einzelnen Prüfpunkte gelten dadurch nicht automatisch als abgenommen.
+
+## Freigabegrenze für die nächste Phase
+
+Benutzerentscheidung vom 2026-09-30: Kunden-Plan darf getestet werden. Jeder
+Kunden-Apply benötigt eine neue ausdrückliche Freigabe des Benutzers. Die bestehende
+Freigabe für Configurator-Infrastruktur gilt nicht für Kundenressourcen. Kein Destroy;
+der Benutzer weist auf die derzeit fehlende Möglichkeit zum Folder-Destroy hin.
+Weiterarbeit und offene Voraussetzungen: [Plan-Ausführung](plan-execution.md).
