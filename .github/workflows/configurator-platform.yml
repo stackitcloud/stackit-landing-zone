@@ -6,7 +6,13 @@ on:
     paths:
       - 'landing-zone-configurator/infra/platform/**'
       - 'landing-zone-configurator/infra/environments/lzc-dev.tfvars.json'
-      - 'landing-zone-configurator/infra/ci/**'
+      - 'landing-zone-configurator/infra/ci/prepare.mjs'
+      - 'landing-zone-configurator/infra/ci/context.mjs'
+      - 'landing-zone-configurator/infra/ci/review.mjs'
+      - 'landing-zone-configurator/infra/ci/protect-state.mjs'
+      - 'landing-zone-configurator/infra/ci/artifact.mjs'
+      - 'landing-zone-configurator/infra/ci/backend-safety.json'
+      - 'landing-zone-configurator/infra/plan-guard.mjs'
       - '.github/workflows/configurator-platform.yml'
   workflow_dispatch:
     inputs:

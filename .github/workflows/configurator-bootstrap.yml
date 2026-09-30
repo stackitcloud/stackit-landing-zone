@@ -4,7 +4,15 @@ on:
   push:
     branches: [feature/landing-zone-configurator]
     paths:
-      - 'landing-zone-configurator/infra/**'
+      - 'landing-zone-configurator/infra/bootstrap/**'
+      - 'landing-zone-configurator/infra/backend/**'
+      - 'landing-zone-configurator/infra/ci/prepare.mjs'
+      - 'landing-zone-configurator/infra/ci/context.mjs'
+      - 'landing-zone-configurator/infra/ci/review.mjs'
+      - 'landing-zone-configurator/infra/ci/protect-state.mjs'
+      - 'landing-zone-configurator/infra/ci/artifact.mjs'
+      - 'landing-zone-configurator/infra/ci/backend-safety.json'
+      - 'landing-zone-configurator/infra/plan-guard.mjs'
       - '.github/workflows/configurator-bootstrap.yml'
   workflow_dispatch:
     inputs:
