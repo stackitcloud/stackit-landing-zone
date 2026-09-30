@@ -1,7 +1,8 @@
+import fastifyStatic from "@fastify/static";
 import type { HealthResponse } from "@lzc/contracts";
 import Fastify from "fastify";
 
-export function buildApp() {
+export function buildApp(options: { webRoot?: string } = {}) {
   const app = Fastify({
     logger: {
       redact: {
@@ -31,6 +32,14 @@ export function buildApp() {
     },
     { prefix: "/api/v1" },
   );
+
+  if (options.webRoot) {
+    app.register(fastifyStatic, {
+      root: options.webRoot,
+      index: ["index.html"],
+      dotfiles: "deny",
+    });
+  }
 
   return app;
 }

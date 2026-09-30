@@ -1,0 +1,159 @@
+name: Configurator Release
+
+on:
+  push:
+    branches: [feature/landing-zone-configurator]
+    paths:
+      - 'landing-zone-configurator/app/**'
+      - 'landing-zone-configurator/infra/ci/prepare-release.mjs'
+      - '.github/workflows/configurator-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: configurator-lzc-dev-mutation
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+          cache: npm
+          cache-dependency-path: landing-zone-configurator/app/package-lock.json
+      - name: Install and verify application
+        run: |
+          npm install --global npm@11.19.0
+          npm ci
+          npm run check
+      - name: Package production application and pinned Node runtime
+        run: |
+          mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/public ../.local/release/runtime
+          cp package.json package-lock.json ../.local/release/
+          cp apps/api/package.json ../.local/release/apps/api/
+          cp -R apps/api/dist ../.local/release/apps/api/
+          cp packages/contracts/package.json ../.local/release/packages/contracts/
+          cp -R packages/contracts/dist ../.local/release/packages/contracts/
+          cp -R apps/web/dist/. ../.local/release/public/
+          (cd ../.local/release && npm ci --omit=dev --ignore-scripts --workspace=@lzc/api --workspace=@lzc/contracts)
+          curl --fail --silent --show-error --location --retry 3 https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz -o "$RUNNER_TEMP/node.tar.xz"
+          echo "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  $RUNNER_TEMP/node.tar.xz" | sha256sum --check
+          tar -xJf "$RUNNER_TEMP/node.tar.xz" --strip-components=1 -C ../.local/release/runtime node-v24.21.0-linux-x64/bin/node node-v24.21.0-linux-x64/LICENSE
+          ../.local/release/runtime/bin/node --version
+          tar -czf ../.local/release.tar.gz -C ../.local/release .
+          (cd ../.local && sha256sum release.tar.gz > release.sha256)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: configurator-app-${{ github.run_id }}
+          path: |
+            landing-zone-configurator/.local/release.tar.gz
+            landing-zone-configurator/.local/release.sha256
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: lzc-dev-release
+      url: https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    env:
+      CF_STAGING_TIMEOUT: '15'
+      CF_STARTUP_TIMEOUT: '5'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Reject a superseded branch revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/${GITHUB_REF#refs/heads/}" --jq '.object.sha')
+          test "$head" = "$GITHUB_SHA"
+      - name: Install pinned CF CLI
+        run: |
+          curl --fail --silent --show-error --location --retry 3 https://github.com/cloudfoundry/cli/releases/download/v8.17.0/cf8-cli_8.17.0_linux_x86-64.tgz -o "$RUNNER_TEMP/cf.tgz"
+          echo "922b91e5651d141ff8756e631adc613c820610c84dcae6cb59f57e22ae073112  $RUNNER_TEMP/cf.tgz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/cf-bin"
+          tar -xzf "$RUNNER_TEMP/cf.tgz" -C "$RUNNER_TEMP/cf-bin" cf8
+          ln -s cf8 "$RUNNER_TEMP/cf-bin/cf"
+          echo "$RUNNER_TEMP/cf-bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: configurator-app-${{ github.run_id }}
+          path: landing-zone-configurator/.local
+      - name: Unpack application
+        run: |
+          (cd .local && sha256sum --check release.sha256)
+          mkdir -p .local/release
+          tar -xzf .local/release.tar.gz -C .local/release
+      - name: Prepare encrypted state read access
+        run: node infra/ci/prepare-release.mjs backend
+        env:
+          LZC_WORKLOAD_BUCKET: ${{ vars.LZC_WORKLOAD_BUCKET }}
+          LZC_WORKLOAD_ACCESS_KEY: ${{ secrets.LZC_WORKLOAD_ACCESS_KEY }}
+          LZC_WORKLOAD_SECRET_KEY: ${{ secrets.LZC_WORKLOAD_SECRET_KEY }}
+          LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}
+          LZC_STATE_KEY_RUNTIME: ${{ secrets.LZC_STATE_KEY_RUNTIME }}
+      - name: Read platform and runtime outputs (private files)
+        timeout-minutes: 5
+        run: |
+          umask 077
+          for root in platform runtime; do
+            export TF_DATA_DIR="$LZC_PRIVATE/$root-data"
+            export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/$root.encryption.json")"
+            tofu -chdir="infra/$root" init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/$root.backend.hcl"
+            tofu -chdir="infra/$root" output -json > "$LZC_PRIVATE/$root-outputs.json"
+          done
+      - name: Prepare private CF variables and mask runtime credentials
+        run: node infra/ci/prepare-release.mjs application
+      - name: CF login and target
+        run: |
+          cf version
+          cf api "$CF_API_URL"
+          cf auth
+          cf target -o lzc-dev -s configurator
+          test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
+      - name: CF push application
+        run: cf push -f app/cf/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-vars.json" --redact-env
+      - name: CF service connection tests
+        id: connectivity
+        timeout-minutes: 5
+        run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+      - name: CF application and connection logs
+        if: always() && steps.connectivity.outcome != '' && steps.connectivity.outcome != 'skipped'
+        run: cf logs landing-zone-configurator --recent
+      - name: Public route checks
+        env:
+          LZC_URL: https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
+        run: |
+          curl --fail --silent --show-error --retry 3 "$LZC_URL/healthz" | jq -e '.status == "ok" and .authentication == "not-configured"'
+          curl --fail --silent --show-error "$LZC_URL/" | grep -q 'Landing Zone Configurator'
+          test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/session")" = 401
+      - name: Remove private deployment inputs
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/lzc-release"

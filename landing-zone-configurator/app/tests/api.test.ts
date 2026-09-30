@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { healthResponseSchema } from "@lzc/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
@@ -30,4 +33,18 @@ describe("API foundation", () => {
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({ error: "authentication_required" });
   });
+});
+
+it("serves the compiled UI without bypassing API authentication", async () => {
+  const root = mkdtempSync(join(tmpdir(), "lzc-web-"));
+  writeFileSync(join(root, "index.html"), "<html>Configurator</html>");
+  const app = buildApp({ webRoot: root });
+  try {
+    expect((await app.inject("/")).body).toContain("Configurator");
+    expect((await app.inject("/api/v1/session")).statusCode).toBe(401);
+    expect((await app.inject("/api/v1/unknown")).statusCode).not.toBe(200);
+  } finally {
+    await app.close();
+    rmSync(root, { recursive: true, force: true });
+  }
 });

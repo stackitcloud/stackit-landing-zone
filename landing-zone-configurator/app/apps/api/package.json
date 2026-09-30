@@ -8,7 +8,9 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@fastify/static": "10.1.5",
     "@lzc/contracts": "0.1.0",
-    "fastify": "5.12.5"
+    "fastify": "5.12.5",
+    "pg": "8.23.0"
   }
 }

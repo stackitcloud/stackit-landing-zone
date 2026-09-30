@@ -8,10 +8,11 @@ const here=dirname(fileURLToPath(import.meta.url));
 const infra=resolve(here,"..");
 const local=resolve(infra,"../.local");
 const repoPath=resolve(infra,"../..");
+const release = process.argv[2] === "--release";
 const runtime = process.argv[2] === "--runtime";
 const platform = process.argv[2] === "--platform" || runtime;
-if(process.argv.length > 2 && !platform) throw new Error("Only --platform or --runtime is supported");
-const spec=JSON.parse(readFileSync(resolve(here,runtime ? "github-runtime-environments.json" : platform ? "github-platform-environments.json" : "github-environments.json"),"utf8"));
+if(process.argv.length > 3 || (process.argv.length > 2 && !platform && !release)) throw new Error("Only --platform, --runtime or --release is supported");
+const spec=JSON.parse(readFileSync(resolve(here,release ? "github-release-environments.json" : runtime ? "github-runtime-environments.json" : platform ? "github-platform-environments.json" : "github-environments.json"),"utf8"));
 if(spec.repository!=="stackitcloud/stackit-landing-zone")throw new Error("Unexpected secret destination");
 function gh(args,input) {
   try {return execFileSync("gh",args,{input,encoding:"utf8",stdio:["pipe","pipe","pipe"]});}
@@ -41,8 +42,20 @@ const recoverySecrets={...sharedSecrets,
   LZC_STATE_KEY_SEED:readFileSync(resolve(local,"seed/state.passphrase"),"utf8").trim(),
   LZC_STATE_KEY_SEED_PROTECTION:readFileSync(resolve(local,"seed-protection/state.passphrase"),"utf8").trim(),
 };
+let releaseSecrets, workloadBucket;
+if (release) {
+  const bootstrapEnv={...env,TF_DATA_DIR:resolve(local,"bootstrap/data"),TF_ENCRYPTION:JSON.stringify({key_provider:{pbkdf2:{state:{passphrase:deploySecrets.LZC_STATE_KEY_BOOTSTRAP}}}}),AWS_ACCESS_KEY_ID:sharedSecrets.LZC_MANAGEMENT_ACCESS_KEY,AWS_SECRET_ACCESS_KEY:sharedSecrets.LZC_MANAGEMENT_SECRET_KEY};
+  let bootstrap;
+  try { bootstrap=JSON.parse(execFileSync(process.env.LZC_TOFU_BIN??"tofu",[`-chdir=${resolve(infra,"bootstrap")}`,"output","-json"],{env:bootstrapEnv,encoding:"utf8",stdio:["ignore","pipe","pipe"]})); }
+  catch { throw new Error("Cannot read encrypted workload backend outputs"); }
+  workloadBucket=bootstrap.backend.value.bucket;
+  releaseSecrets={LZC_WORKLOAD_ACCESS_KEY:bootstrap.backend_credentials.value.access_key,LZC_WORKLOAD_SECRET_KEY:bootstrap.backend_credentials.value.secret_key,
+    LZC_STATE_KEY_PLATFORM:readFileSync(resolve(local,"platform/state.passphrase"),"utf8").trim(),
+    LZC_STATE_KEY_RUNTIME:readFileSync(resolve(local,"runtime/state.passphrase"),"utf8").trim()};
+}
 const variables={LZC_PROJECT_ID:config.PROJECT_ID,LZC_REGION:config.REGION,LZC_NAME_PREFIX:config.NAME_PREFIX,
   LZC_MANAGEMENT_BUCKET:outputs.backend.value.bucket,LZC_CREDENTIAL_EXPIRATION:config.STATE_CREDENTIAL_EXPIRATION};
+if(release) variables.LZC_WORKLOAD_BUCKET=workloadBucket;
 if(Object.values(variables).some(v=>!v))throw new Error("Missing environment configuration");
 for(const target of spec.environments) {
   const path=`repos/${spec.repository}/environments/${target.name}`;
@@ -59,10 +72,12 @@ for(const target of spec.environments) {
   if(checked.deployment_branch_policy?.custom_branch_policies!==true)throw new Error("Environment branch protection missing");
   if(target.review&&!checked.protection_rules.some(r=>r.type==="required_reviewers"&&r.reviewers.some(x=>x.reviewer.id===reviewer.id)))throw new Error("Required reviewer missing");
   for(const [name,value] of Object.entries(variables))gh(["variable","set",name,"--repo",spec.repository,"--env",target.name],value);
-  for(const [name,value] of Object.entries(target.name.endsWith("recovery")?recoverySecrets:deploySecrets)) {
+  for(const [name,value] of Object.entries(release?releaseSecrets:target.name.endsWith("recovery")?recoverySecrets:deploySecrets)) {
     gh(["secret","set",name,"--repo",spec.repository,"--env",target.name],value);
   }
   console.log(`Configured ${target.name}: branches=${branches.join(",")}, review=${target.review}; secret values not displayed.`);
 }
 
 if(platform) gh(["variable","set",runtime ? "LZC_RUNTIME_CI_ENABLED" : "LZC_PLATFORM_CI_ENABLED","--repo",spec.repository],"true");
+
+if(release) gh(["variable","set","LZC_RELEASE_CI_ENABLED","--repo",spec.repository],"true");

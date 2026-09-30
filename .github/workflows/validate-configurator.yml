@@ -7,6 +7,8 @@ on:
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
       - '.github/workflows/configurator-platform.yml'
+      - '.github/workflows/configurator-runtime.yml'
+      - '.github/workflows/configurator-release.yml'
   push:
     branches: [main, feature/landing-zone-configurator]
     paths:
@@ -14,6 +16,8 @@ on:
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
       - '.github/workflows/configurator-platform.yml'
+      - '.github/workflows/configurator-runtime.yml'
+      - '.github/workflows/configurator-release.yml'
   workflow_dispatch:
 
 permissions:
@@ -73,7 +77,7 @@ jobs:
           tofu_version: '1.12.6'
           tofu_wrapper: false
       - name: Check operator plan guard
-        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs
+        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/prepare-release.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs
       - name: Check formatting
         run: tofu -chdir=infra fmt -check -recursive
       - name: Prepare disposable validation encryption

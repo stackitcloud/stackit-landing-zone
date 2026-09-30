@@ -1,0 +1,28 @@
+---
+applications:
+  - name: landing-zone-configurator
+    instances: 1
+    memory: 256M
+    disk_quota: 512M
+    stack: cflinuxfs4
+    buildpacks: [binary_buildpack]
+    command: ./runtime/bin/node apps/api/dist/main.js
+    health-check-type: http
+    health-check-http-endpoint: /healthz
+    timeout: 120
+    routes:
+      - route: lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
+    env:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      LZC_WEB_ROOT: /home/vcap/app/public
+      LZC_DATABASE_HOST: ((LZC_DATABASE_HOST))
+      LZC_DATABASE_PORT: ((LZC_DATABASE_PORT))
+      LZC_DATABASE_NAME: ((LZC_DATABASE_NAME))
+      LZC_DATABASE_USER: ((LZC_DATABASE_USER))
+      LZC_DATABASE_PASSWORD: ((LZC_DATABASE_PASSWORD))
+      LZC_SECRETS_ADDRESS: ((LZC_SECRETS_ADDRESS))
+      LZC_SECRETS_INSTANCE_ID: ((LZC_SECRETS_INSTANCE_ID))
+      LZC_SECRETS_USERNAME: ((LZC_SECRETS_USERNAME))
+      LZC_SECRETS_PASSWORD: ((LZC_SECRETS_PASSWORD))
+      LZC_MODEL_SERVING_TOKEN: ((LZC_MODEL_SERVING_TOKEN))

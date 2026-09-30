@@ -1,6 +1,6 @@
 # CI/CD für den Landing Zone Configurator
 
-Status: Validierung, Bootstrap-/Backend- und Plattform-Pipelines sind implementiert und erfolgreich ausgeführt. OpenTofu wird direkt in den Workflows aufgerufen, mit normalen Live-Logs. App-Release, Runtime und Drift-Workflow sind noch geplant. Erste Umgebung: **lzc-dev / eu01**. Aktuelle Bedienung: [CI-Betrieb](../infra/ci/README.md).
+Status: Validierung, Bootstrap-/Backend- und Plattform-Pipelines sind implementiert und erfolgreich ausgeführt. OpenTofu wird direkt in den Workflows aufgerufen, mit normalen Live-Logs. Runtime und App-Release sind implementiert und werden gegen CF abgenommen; Drift bleibt geplant. Erste Umgebung: **lzc-dev / eu01**. Aktuelle Bedienung: [CI-Betrieb](../infra/ci/README.md).
 
 ## Getrennte Lebenszyklen
 
@@ -8,8 +8,9 @@ Status: Validierung, Bootstrap-/Backend- und Plattform-Pipelines sind implementi
 | --- | --- | --- |
 | `validate-configurator.yml` (vorhanden) | PR, main, Feature-Branch, manuell | App-Prüfungen, IaC-Validierung und Mock-Tests ohne Cloud-Zugang |
 | `configurator-bootstrap.yml` | Feature-Push: Plan; manuell auf main vorbereitet | State-Infrastruktur erstellen, Versionierung konfigurieren, später Credentials rotieren |
-| `configurator-platform.yml` | Infrastrukturänderungen auf Feature-Branch: Plan; manuell auf main vorbereitet | Plattform-IaC planen, geprüften Plan anwenden; Runtime folgt |
-| `configurator-release.yml` | App-/Release-Dateien auf main; manuell für Redeploy/Rollback | Einmal bauen, prüfen, unveränderliches Release nach CF deployen |
+| `configurator-platform.yml` | Infrastrukturänderungen auf Feature-Branch: Plan; manuell auf main vorbereitet | Plattform-IaC planen, geprüften Plan anwenden |
+| `configurator-runtime.yml` | Runtime-/CI-Änderungen auf Feature-Branch; manuell auf main vorbereitet | CF-Space, Organisationsmitgliedschaft, Space-Rolle und Laufzeitbenutzer |
+| `configurator-release.yml` | App-/Release-Dateien auf Feature-Branch; manuell auf main vorbereitet | Web/API bauen, prüfen, gepacktes Release nach CF deployen und Verbindungen aus CF testen |
 | `configurator-drift.yml` | Optional zeitgesteuert/manuell | Infrastruktur-Drift erkennen und melden; zunächst kein automatisches Apply |
 
 Ein normales App-Release startet weder Bootstrap noch Plattform-Apply. Relevante Pfade umfassen auch gemeinsame Deployment-Skripte, Lockfiles und die jeweilige Workflow-Datei. Änderungen ausschließlich am Accelerator lösen keinen Configurator-Release aus. Kunden-Landing-Zone-Deployments bleiben ein eigener, mandantenisolierter Runner-Ablauf und erhalten keine Betreiber-CI-Credentials.
@@ -35,7 +36,7 @@ Bootstrap und Backend-Versionierung laufen nacheinander. Nach Bootstrap-Apply wi
 
 ## Anwendung häufig und unabhängig ausliefern
 
-Der Release-Workflow prüft und baut Web/API/Worker einmal und erstellt ein über Commit und SHA-256 identifizierbares Release. Redeploy und spätere Promotion verwenden dasselbe geprüfte Paket; historische Artefakte sind entsprechend der Rollback-Frist dauerhaft aufzubewahren. Kein erneuter Build beim Rollback.
+Der implementierte Release-Workflow prüft und baut Web/API einmal; der Worker folgt. Er und erstellt ein über Commit und SHA-256 identifizierbares Release. Redeploy und spätere Promotion verwenden dasselbe geprüfte Paket; historische Artefakte sind entsprechend der Rollback-Frist dauerhaft aufzubewahren. Kein erneuter Build beim Rollback.
 
 Der Lifecycle-Owner wird eindeutig festgelegt: OpenTofu verwaltet Dienste, CF-Org/Spaces, Rollen und gemeinsame Service-Instanzen. Der deklarative Release-Prozess verwaltet App-Objekte, App-Routen, App-Bindings, Prozesskonfiguration und Code. Diese Ressourcen werden nicht zusätzlich vom Runtime-Root verwaltet. So bleiben auch App-Provisionierung und Bindings als Code reproduzierbar.
 
@@ -47,7 +48,7 @@ Entwicklung: nach erfolgreicher Validierung auf main automatisch deployen, sobal
 
 - Bootstrap: gesonderte Betreiberidentität mit den notwendigen Projekt-/Object-Storage-Rechten.
 - Plattform: scoped STACKIT-Zugang; App-Release erhält diesen Zugang nicht.
-- Release: CF-Deployment-Identität auf den Ziel-Space beschränkt; DB-Migrationszugang nur im Migrationsschritt.
+- Release-Zielbild: eigene CF-Deployment-Identität nur für den Ziel-Space. Der erste Entwicklungsstand nutzt noch den vorhandenen Org-Manager und liest dessen Zugang aus dem verschlüsselten Plattform-State; App-Zugänge sind davon getrennt. DB-Migrationen sind noch nicht implementiert.
 - Persönliche GitHub-/STACKIT-Zugänge der Kunden bleiben in der Anwendung und gelangen nicht in Betreiber-Workflows.
 - GitHub Environments trennen mindestens Bootstrap, Plattform und App je Umgebung. Environment-Regeln und Branch-Schutz werden als Repository-Konfiguration per IaC/API verwaltet; initiale GitHub-Administrationsberechtigung und Secret-Einspeisung bleiben eine notwendige Vertrauensbasis.
 - Secrets niemals aus PR-Code zugänglich machen; kein privilegiertes `pull_request_target` mit Checkout von Fork-Code. Actions auf Commit-SHAs pinnen, minimale Token-Rechte, keine Shell-Ausgabe von Credentials.
@@ -57,7 +58,7 @@ Die Verfügbarkeit von Environment-Freigaberegeln hängt vom GitHub-Tarif und de
 
 ## Umsetzungsreihenfolge und Abnahme
 
-- [x] Lebenszyklen und Credentials trennen; Validierung aller fünf IaC-Roots und der App.
+- [x] Lebenszyklen und Credentials trennen; Validierung aller sechs IaC-Roots und der App.
 - [x] Verwaltungs- und Workload-Backend einrichten, Versionierung und State-Verschlüsselung prüfen.
 - [x] GitHub-Environments und Freigaben einrichten; bestehende Deployment-Schlüssel geschützt übergeben.
 - [x] Bootstrap-/Backend- und Plattform-Pipelines ausführen; Plattform-Recovery und anschließenden No-op nachweisen.
@@ -77,3 +78,5 @@ Nächster Ausbau ist die CF-Runtime mit Zugriffstests zu Datenbank und Secrets M
 - [GitHub Deployment-Steuerung und Concurrency](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments)
 - [GitHub Environment-Verfügbarkeit und Einrichtung](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 - [Cloud Foundry Rolling Deployments](https://docs.cloudfoundry.org/devguide/deploy-apps/rolling-deploy.html)
+
+Details zum implementierten Release und seinen Grenzen: [CF-Release](../app/cf/README.md).
