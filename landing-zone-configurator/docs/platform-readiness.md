@@ -112,3 +112,46 @@ Abnahme der direkten CLI-Pipelines: Bootstrap-Run 36677111141 und Plattform-Run 
 
 
 Backend-Abnahme des Umbaus: [Run 36677367229](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677367229) hat Root `backend` mit getrennten Management-/Workload-Zugängen geplant: `No changes`, Apply übersprungen. Root, Commit, Run, Plan-Hash und verschlüsseltes Artefakt geprüft. Native Logs sichtbar und ohne bekannte Credential-Werte. [Validierung 36677367252](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677367252) erfolgreich. Temporäre Root-Auswahl entfernt; keine Apply-Freigaben gesetzt. Bootstrap, Backend und Plattform wurden damit lesend geprüft, ohne Cloud-Apply oder State-Migration durch den Umbau.
+
+
+## CF-Runtime und erster App-Release (2026-09-30)
+
+- [x] Separater Runtime-Root mit verschlüsseltem S3-State und Cloud-Foundry-Provider 1.17.0.
+- [x] Space `configurator`, explizite `organization_user`-Mitgliedschaft und `space_developer`-Rolle erstellt.
+- [x] Eigene PostgreSQL-Login-Rolle `configurator_app` und Secrets-Manager-Benutzer mit Read-only-Recht.
+- [x] [Runtime-Apply 36681789484](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36681789484) erfolgreich; fünf Ressourcen unabhängig im verschlüsselten Remote-State bestätigt.
+- [x] Web/API über getrennten Release-Workflow mit direkten `cf`-Befehlen bereitgestellt; Model-Serving-Token nur im Backend-Environment.
+- [x] [Release 36682016739](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36682016739): Build und CF-Push erfolgreich, Anwendung gestartet. Native CLI-Logs auf bekannte Credential-Werte geprüft: keine Treffer.
+- [ ] PostgreSQL-Verbindung: erster CF-Task scheitert nach 15 Sekunden; Netz-/TCP-Diagnose folgt.
+- [ ] Secrets Manager: erster CF-Task erhält HTTP 403 beim Login; laut [STACKIT-Diagnose](https://docs.stackit.cloud/products/security/secrets-manager/how-tos/handle-authentication-lockouts/) Hinweis auf Quell-IP-ACL.
+
+Der erste Runtime-Apply erstellte Space und Benutzer, scheiterte aber an der fehlenden
+CF-Organisationsmitgliedschaft. Der State blieb vollständig erhalten. Ein frischer
+Plan ergänzte ausschließlich die zwei noch fehlenden Rollen; kein Import oder
+Credential-Reset war erforderlich.
+
+Die CF-Foundation erlaubt öffentliche Ziele in ihrer globalen `public_networks`-
+Security-Group. Das ist noch kein Nachweis für den jeweiligen Dienstpfad. Die bisher
+verwendeten zwei STACKIT-Netze decken außerdem nicht den aktuellen öffentlichen
+Adresskatalog ab. Die offizielle API `GET /v2/networks/public-ip-ranges` liefert
+regionale Netze; Änderungen werden anhand des realen CF-Tests und eines neuen
+IaC-Plans beurteilt. Keine beobachtete Einzel-IP wird als stabiler CF-Egress zugesagt.
+Quelle für den aktuellen Katalog: [STACKIT IP-Ranges](https://docs.stackit.cloud/products/logging-and-monitoring/logme/how-tos/create-and-manage-logme-services/).
+
+
+### Nachgewiesener ACL-Fehler und Korrekturplan
+
+Der Diagnose-Task in [Release 36682707060](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36682707060)
+löst den PostgreSQL-Host korrekt auf, bekommt aber keine TCP-Verbindung. Ein
+HTTPS-Aufruf desselben CF-Tasks zur eigenen Configurator-Route liefert HTTP 200;
+der zugehörige CF-Router-Logeintrag zeigt eine Quelle aus `45.135.244.0/22`.
+Dieses eu01-Netz ist im aktuellen STACKIT-IP-Katalog enthalten und wird auch in
+der [STACKIT LogMe-FAQ](https://docs.stackit.cloud/products/logging-and-monitoring/logme/faq/)
+als STACKIT-Standardnetz aufgeführt. Es fehlte in beiden expliziten ACLs.
+
+Der neue IaC-Plan ergänzt deshalb genau `45.135.244.0/22` in den getrennten
+PostgreSQL- und Secrets-ACLs. Die beobachtete Einzel-IP wird nicht konfiguriert.
+Dies bleibt eine Freigabe eines geteilten STACKIT-Netzes, keine mandanteneigene
+oder zugesichert stabile CF-Ausgangsadresse. TLS, Benutzerrechte und spätere
+Mandantenautorisierung bleiben separate Schutzschichten. Bei Netzänderungen
+Katalog und CF-Test erneut prüfen; kein automatisches Öffnen weiterer Netze.
