@@ -1,6 +1,6 @@
 # GitHub-Login und Mandantentrennung
 
-Stand: 2026-09-30. Migration und App auf STACKIT bereitgestellt; GitHub-Login bleibt bis zur Credential-Freigabe deaktiviert.
+Stand: 2026-09-30. GitHub-Login auf STACKIT aktiviert; technischer Release geprüft, persönliche Anmeldung noch abzunehmen.
 
 ## Ablauf
 
@@ -67,9 +67,9 @@ können. Applikationslogs enthalten keine Request-URLs oder Cookie-/Tokenwerte.
 - [x] Plattform-Output via [CI-Apply 36693151989](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693151989) aktiviert (keine Ressourcenänderung).
 - [x] Secrets-Schreibrechte via [CI-Apply 36693644577](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693644577) aktiviert (ein Update, keine Ersetzung).
 - [x] [Validierung 36693906434](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693906434) für `cd9d79f` erfolgreich, einschließlich PostgreSQL und Browsern.
-- [ ] OAuth-Zugangsdaten im Release-Environment und CF-Backend bereitstellen.
+- [x] OAuth-Zugangsdaten nach ausdrücklicher Freigabe im Release-Environment und CF-Backend bereitgestellt.
 - [x] [Release 36693906545](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693906545): Migration erfolgreich; privilegierte Task-App entfernt; Web-App, PostgreSQL- und Secrets-Verbindungstests erfolgreich.
-- [ ] Secrets-Schreiben/Lesen/Löschen-Rundtrip nach Login-Aktivierung nachweisen. Der aktuelle Verbindungstest lief bei deaktiviertem Login nur lesend.
+- [x] [Login-Release 36695423593](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36695423593): GitHub-Login aktiviert, Secrets-Schreiben/Lesen/Löschen erfolgreich; Health 200 und anonyme Session 401. OAuth-Weiterleitung, Client-ID, Callback, PKCE S256, State und sicheres Cookie live geprüft.
 - [ ] Echten GitHub-Login und Logout mit Benutzer abnehmen.
 - [ ] Installation auf den benötigten Repositories und Fork-Voraussetzungen prüfen.
 - [ ] Fork-Auswahl und Speichern implementieren; derzeit keine Repository-Schreibzugriffe.
@@ -88,4 +88,4 @@ Der Benutzer hat am 2026-09-30 den Transfer von `LZC_GITHUB_CLIENT_ID` und
 `stackitcloud/stackit-landing-zone`, Environment `lzc-dev-release`, sowie die
 anschließende CF-Backend-Bindung ausdrücklich freigegeben. Beide Environment-Secrets
 sind hinterlegt; `LZC_AUTH_ENABLED=true` ist für den nächsten Release gesetzt.
-Live-Aktivierung und Secrets-Rundtrip sind bis zu dessen Abschluss noch offen.
+Live-Aktivierung und Secrets-Rundtrip wurden mit Release `36695423593` erfolgreich abgeschlossen.
