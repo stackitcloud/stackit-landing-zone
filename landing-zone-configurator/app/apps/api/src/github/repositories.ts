@@ -4,7 +4,7 @@ import { z } from "zod";
 export const upstreamId = 1168467997;
 export const workBranch = "lzc/configurations";
 const ownerPattern = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
-const namePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/;
+const namePattern = /^(?!\.{1,2}$)[A-Za-z0-9_.-]{1,100}$/;
 const shaSchema = z.string().regex(/^[a-f0-9]{40}$/);
 export const repositoryTarget = z
   .object({

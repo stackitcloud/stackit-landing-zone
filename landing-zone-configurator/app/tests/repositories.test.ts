@@ -69,7 +69,11 @@ function fixture() {
       state.head = createdCommit;
       return Response.json({});
     }
-    if (path === "/user/repos") return Response.json([metadata()]);
+    if (path === "/user/repos")
+      return Response.json([
+        { ...metadata(), id: 456, name: ".github", fork: false },
+        metadata(),
+      ]);
     if (path === "/repos/alice/accelerator") return Response.json(metadata());
     if (path.endsWith("/git/ref/heads/lzc/configurations"))
       return state.exists
@@ -223,6 +227,14 @@ it("never overwrites an existing ID while creating or traverses symlinks/truncat
   expect(f.writes).toHaveLength(0);
 });
 it("rejects incompatible templates and invalid configuration input before GitHub writes", async () => {
+  for (const name of [".", "..", "../repository", "repo?redirect=other"]) {
+    const invalid = fixture();
+    await expect(
+      invalid.service.verify(token, { ...target, name }),
+    ).rejects.toThrow();
+    expect(invalid.request).not.toHaveBeenCalled();
+  }
+
   const f = fixture();
   f.document.template.sha256 = "f".repeat(64);
   await expect(
