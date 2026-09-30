@@ -1,0 +1,1984 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "27d866f22fb5b40d87bc8b8c510ee716289785320d220cc886bf86ea4f3c05eb",
+  "variables": [
+    {
+      "name": "owner_email",
+      "line": 5,
+      "description": "Email address of the owner. Required for STACKIT resource manager.",
+      "type": "string",
+      "required": true,
+      "sensitive": false
+    },
+    {
+      "name": "company_name",
+      "line": 10,
+      "description": "Name of the company.",
+      "type": "string",
+      "required": true,
+      "sensitive": false
+    },
+    {
+      "name": "company_code",
+      "line": 15,
+      "description": "Company code used in resource naming conventions.",
+      "type": "string",
+      "required": true,
+      "sensitive": false
+    },
+    {
+      "name": "organization_id",
+      "line": 20,
+      "description": "Container ID of the root organization.",
+      "type": "string",
+      "required": true,
+      "sensitive": false
+    },
+    {
+      "name": "rm_folder_parent_id",
+      "line": 25,
+      "description": "ID of the parent folder under which the resource manager folders will be created. If not provided, the resource manager folders will be created under the organization.",
+      "type": "string",
+      "required": false,
+      "sensitive": false,
+      "default": null
+    },
+    {
+      "name": "region",
+      "line": 31,
+      "description": "STACKIT region for regional resources.",
+      "type": "string",
+      "required": false,
+      "sensitive": false,
+      "default": "eu01"
+    },
+    {
+      "name": "platform_kubernetes_kube_config_override",
+      "line": 37,
+      "description": "Optional raw kubeconfig used by kubernetes/helm platform providers when no platform_kubernetes module output is available.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "labels",
+      "line": 44,
+      "description": "Additional labels to apply to all resources.",
+      "type": [
+        "map",
+        "string"
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": {}
+    },
+    {
+      "name": "organization_owners",
+      "line": 50,
+      "description": "List of organization owners.",
+      "type": [
+        "list",
+        "string"
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": []
+    },
+    {
+      "name": "organization_auditors",
+      "line": 56,
+      "description": "List of organization auditors.",
+      "type": [
+        "list",
+        "string"
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": []
+    },
+    {
+      "name": "devops",
+      "line": 62,
+      "description": "DevOps module configuration. Set to null to skip deployment.",
+      "type": [
+        "object",
+        {
+          "allowed_network_ranges": [
+            "list",
+            "string"
+          ],
+          "git_flavor": "string"
+        },
+        [
+          "allowed_network_ranges",
+          "git_flavor"
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": null,
+      "nestedDefaults": {
+        "values": {
+          "allowed_network_ranges": [
+            "0.0.0.0/0"
+          ],
+          "git_flavor": null
+        }
+      }
+    },
+    {
+      "name": "platform_kubernetes",
+      "line": 71,
+      "description": "Map of central, region-scoped platform Kubernetes deployments. Empty map skips deployment.",
+      "type": [
+        "map",
+        [
+          "object",
+          {
+            "cluster": [
+              "object",
+              {
+                "kubernetes_version_min": "string",
+                "maintenance": [
+                  "object",
+                  {
+                    "enable_kubernetes_version_updates": "bool",
+                    "enable_machine_image_version_updates": "bool",
+                    "end": "string",
+                    "start": "string"
+                  },
+                  [
+                    "enable_kubernetes_version_updates",
+                    "enable_machine_image_version_updates",
+                    "end",
+                    "start"
+                  ]
+                ],
+                "name": "string",
+                "node_pools": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "allow_system_components": "bool",
+                      "availability_zones": [
+                        "list",
+                        "string"
+                      ],
+                      "labels": [
+                        "map",
+                        "string"
+                      ],
+                      "machine_type": "string",
+                      "maximum": "number",
+                      "minimum": "number",
+                      "name": "string",
+                      "os_name": "string",
+                      "volume_size": "number",
+                      "volume_type": "string"
+                    },
+                    [
+                      "allow_system_components",
+                      "labels",
+                      "os_name",
+                      "volume_size",
+                      "volume_type"
+                    ]
+                  ]
+                ]
+              },
+              [
+                "kubernetes_version_min",
+                "maintenance",
+                "node_pools"
+              ]
+            ],
+            "debug_bastion": [
+              "object",
+              {
+                "assign_public_ip": "bool",
+                "availability_zone": "string",
+                "boot_volume_size": "number",
+                "enabled": "bool",
+                "image_id": "string",
+                "install_kubectl": "bool",
+                "machine_type": "string",
+                "name": "string",
+                "ssh_allowed_cidrs": [
+                  "list",
+                  "string"
+                ],
+                "ssh_public_key": "string",
+                "ssh_public_key_path": "string"
+              },
+              [
+                "assign_public_ip",
+                "availability_zone",
+                "boot_volume_size",
+                "enabled",
+                "image_id",
+                "install_kubectl",
+                "machine_type",
+                "name",
+                "ssh_allowed_cidrs",
+                "ssh_public_key",
+                "ssh_public_key_path"
+              ]
+            ],
+            "dns": [
+              "object",
+              {
+                "create_zones": "bool",
+                "enabled": "bool",
+                "gateway_api": "bool",
+                "zones": [
+                  "list",
+                  "string"
+                ]
+              },
+              [
+                "create_zones",
+                "enabled",
+                "gateway_api",
+                "zones"
+              ]
+            ],
+            "encrypted_volumes": [
+              "object",
+              {
+                "enabled": "bool",
+                "kms_key_name": "string",
+                "kms_key_version": "string",
+                "kms_keyring_name": "string",
+                "storage_class_name": "string"
+              },
+              [
+                "enabled",
+                "kms_key_name",
+                "kms_key_version",
+                "kms_keyring_name",
+                "storage_class_name"
+              ]
+            ],
+            "network": [
+              "object",
+              {
+                "firewall_next_hop_ip": "string",
+                "network_area_key": "string",
+                "sna_enabled": "bool",
+                "sna_network_area_id": "string",
+                "sna_network_prefix_length": "number"
+              },
+              [
+                "firewall_next_hop_ip",
+                "network_area_key",
+                "sna_enabled",
+                "sna_network_area_id",
+                "sna_network_prefix_length"
+              ]
+            ],
+            "observability": [
+              "object",
+              {
+                "acl": [
+                  "list",
+                  "string"
+                ],
+                "enabled": "bool",
+                "name": "string",
+                "plan_name": "string"
+              },
+              [
+                "acl",
+                "enabled",
+                "name",
+                "plan_name"
+              ]
+            ],
+            "region": "string",
+            "role_assignments": [
+              "list",
+              [
+                "object",
+                {
+                  "role": "string",
+                  "subject": "string"
+                }
+              ]
+            ]
+          },
+          [
+            "debug_bastion",
+            "dns",
+            "encrypted_volumes",
+            "network",
+            "observability",
+            "role_assignments"
+          ]
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": {},
+      "nestedDefaults": {
+        "children": {
+          "": {
+            "values": {
+              "debug_bastion": {
+                "assign_public_ip": null,
+                "availability_zone": null,
+                "boot_volume_size": null,
+                "enabled": null,
+                "image_id": null,
+                "install_kubectl": null,
+                "machine_type": null,
+                "name": null,
+                "ssh_allowed_cidrs": null,
+                "ssh_public_key": null,
+                "ssh_public_key_path": null
+              },
+              "dns": {
+                "create_zones": null,
+                "enabled": null,
+                "gateway_api": null,
+                "zones": null
+              },
+              "encrypted_volumes": {
+                "enabled": null,
+                "kms_key_name": null,
+                "kms_key_version": null,
+                "kms_keyring_name": null,
+                "storage_class_name": null
+              },
+              "network": {
+                "firewall_next_hop_ip": null,
+                "network_area_key": null,
+                "sna_enabled": null,
+                "sna_network_area_id": null,
+                "sna_network_prefix_length": null
+              },
+              "observability": {
+                "acl": null,
+                "enabled": null,
+                "name": null,
+                "plan_name": null
+              },
+              "role_assignments": []
+            },
+            "children": {
+              "cluster": {
+                "values": {
+                  "kubernetes_version_min": null,
+                  "maintenance": {
+                    "enable_kubernetes_version_updates": null,
+                    "enable_machine_image_version_updates": null,
+                    "end": null,
+                    "start": null
+                  },
+                  "node_pools": [
+                    {
+                      "allow_system_components": true,
+                      "availability_zones": [
+                        "eu01-1"
+                      ],
+                      "labels": {
+                        "workload-role": "system"
+                      },
+                      "machine_type": "g3i.4",
+                      "maximum": 2,
+                      "minimum": 2,
+                      "name": "system",
+                      "os_name": "flatcar",
+                      "volume_size": 20,
+                      "volume_type": "storage_premium_perf1"
+                    },
+                    {
+                      "allow_system_components": false,
+                      "availability_zones": [
+                        "eu01-2"
+                      ],
+                      "labels": {
+                        "workload-role": "application"
+                      },
+                      "machine_type": "g3i.4",
+                      "maximum": 2,
+                      "minimum": 2,
+                      "name": "application",
+                      "os_name": "flatcar",
+                      "volume_size": 20,
+                      "volume_type": "storage_premium_perf1"
+                    }
+                  ]
+                },
+                "children": {
+                  "maintenance": {
+                    "values": {
+                      "enable_kubernetes_version_updates": true,
+                      "enable_machine_image_version_updates": true,
+                      "end": "02:00:00Z",
+                      "start": "01:00:00Z"
+                    }
+                  },
+                  "node_pools": {
+                    "children": {
+                      "": {
+                        "values": {
+                          "allow_system_components": false,
+                          "labels": {},
+                          "os_name": "flatcar",
+                          "volume_size": 20,
+                          "volume_type": "storage_premium_perf1"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "debug_bastion": {
+                "values": {
+                  "assign_public_ip": true,
+                  "availability_zone": null,
+                  "boot_volume_size": 20,
+                  "enabled": false,
+                  "image_id": "7b10e105-295b-4369-b6e0-567ec940a02b",
+                  "install_kubectl": true,
+                  "machine_type": "g2i.1",
+                  "name": null,
+                  "ssh_allowed_cidrs": [
+                    "0.0.0.0/0"
+                  ],
+                  "ssh_public_key": null,
+                  "ssh_public_key_path": "~/.ssh/id_rsa.pub"
+                }
+              },
+              "dns": {
+                "values": {
+                  "create_zones": true,
+                  "enabled": true,
+                  "gateway_api": true,
+                  "zones": []
+                }
+              },
+              "encrypted_volumes": {
+                "values": {
+                  "enabled": false,
+                  "kms_key_name": "ske-volume-key",
+                  "kms_key_version": "1",
+                  "kms_keyring_name": "ske-volume-keyring",
+                  "storage_class_name": "stackit-encrypted-premium"
+                }
+              },
+              "network": {
+                "values": {
+                  "firewall_next_hop_ip": null,
+                  "network_area_key": "default",
+                  "sna_enabled": false,
+                  "sna_network_area_id": null,
+                  "sna_network_prefix_length": 24
+                }
+              },
+              "observability": {
+                "values": {
+                  "acl": [],
+                  "enabled": true,
+                  "name": null,
+                  "plan_name": "Observability-Starter-EU01"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "observability",
+      "line": 173,
+      "description": "Observability instance configuration for the management module. Set to null to skip observability deployment.",
+      "type": [
+        "object",
+        {
+          "acl": [
+            "list",
+            "string"
+          ],
+          "logs_retention_days": "number",
+          "metrics_retention_days": "number",
+          "metrics_retention_days_1h_downsampling": "number",
+          "metrics_retention_days_5m_downsampling": "number",
+          "plan_name": "string",
+          "traces_retention_days": "number"
+        },
+        [
+          "acl",
+          "logs_retention_days",
+          "metrics_retention_days",
+          "metrics_retention_days_1h_downsampling",
+          "metrics_retention_days_5m_downsampling",
+          "plan_name",
+          "traces_retention_days"
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": null,
+      "nestedDefaults": {
+        "values": {
+          "acl": [],
+          "logs_retention_days": 30,
+          "metrics_retention_days": 90,
+          "metrics_retention_days_1h_downsampling": 90,
+          "metrics_retention_days_5m_downsampling": 90,
+          "plan_name": "Observability-Starter-EU01",
+          "traces_retention_days": 30
+        }
+      }
+    },
+    {
+      "name": "audit_logs",
+      "line": 187,
+      "description": "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link_scopes defaults to a single organization-wide link. retention_days applies to both the Logs instance and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock is off by default and turns on GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment.",
+      "type": [
+        "object",
+        {
+          "acl": [
+            "list",
+            "string"
+          ],
+          "link_scopes": [
+            "list",
+            [
+              "object",
+              {
+                "resource_id": "string",
+                "resource_type": "string"
+              }
+            ]
+          ],
+          "retention_days": "number",
+          "s3_object_lock": "bool"
+        },
+        [
+          "acl",
+          "link_scopes",
+          "retention_days",
+          "s3_object_lock"
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": null,
+      "nestedDefaults": {
+        "values": {
+          "acl": [
+            "0.0.0.0/0"
+          ],
+          "link_scopes": null,
+          "retention_days": 180,
+          "s3_object_lock": true
+        }
+      }
+    },
+    {
+      "name": "federated_identity_providers",
+      "line": 201,
+      "description": "List of federated identity providers to configure for the management service account.",
+      "type": [
+        "list",
+        [
+          "object",
+          {
+            "assertions": [
+              "list",
+              [
+                "object",
+                {
+                  "item": "string",
+                  "operator": "string",
+                  "value": "string"
+                }
+              ]
+            ],
+            "issuer": "string",
+            "name": "string"
+          }
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": []
+    },
+    {
+      "name": "rm_folders",
+      "line": 215,
+      "description": "Map of resource manager folders to create under the root organization.",
+      "type": [
+        "map",
+        [
+          "object",
+          {
+            "description": "string",
+            "name": "string",
+            "owner_emails": [
+              "list",
+              "string"
+            ],
+            "reader_emails": [
+              "list",
+              "string"
+            ]
+          },
+          [
+            "description"
+          ]
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": {
+        "landing_zones_corporate": {
+          "name": "Landing Zones - Corporate",
+          "owner_emails": [],
+          "reader_emails": []
+        },
+        "landing_zones_public": {
+          "name": "Landing Zones - Public",
+          "owner_emails": [],
+          "reader_emails": []
+        },
+        "platform": {
+          "name": "Platform",
+          "owner_emails": [],
+          "reader_emails": []
+        },
+        "sandboxes": {
+          "name": "Sandboxes",
+          "owner_emails": [],
+          "reader_emails": []
+        }
+      },
+      "nestedDefaults": {
+        "children": {
+          "": {
+            "values": {
+              "description": null
+            }
+          }
+        }
+      },
+      "validations": [
+        "validation {\n    condition     = alltrue([for folder in values(var.rm_folders) : length(folder.name) \u003e= 1 \u0026\u0026 length(folder.name) \u003c= 40])\n    error_message = \"Every rm_folders[*].name must be between 1 and 40 characters, as required by the STACKIT Resource Manager API.\"\n  }"
+      ]
+    },
+    {
+      "name": "connectivity",
+      "line": 256,
+      "description": "Connectivity configuration including DNS zones, network areas, firewalls, and VPN. Use network_areas with descriptive keys that reflect any business, security, tenant, or regional boundary; network_area and firewall remain supported for existing single-area configurations. Use firewalls for per-area appliance settings.",
+      "type": [
+        "object",
+        {
+          "dns_zones": [
+            "map",
+            [
+              "object",
+              {
+                "acl": "string",
+                "contact_email": "string",
+                "default_ttl": "number",
+                "description": "string",
+                "dns_name": "string",
+                "name": "string",
+                "network_area_key": "string",
+                "region": "string",
+                "type": "string"
+              },
+              [
+                "acl",
+                "contact_email",
+                "default_ttl",
+                "description",
+                "name",
+                "network_area_key",
+                "region",
+                "type"
+              ]
+            ]
+          ],
+          "firewall": [
+            "object",
+            {
+              "flavor": "string",
+              "ha": [
+                "object",
+                {
+                  "backup_lan_ip": "string",
+                  "backup_name": "string",
+                  "backup_wan_ip": "string",
+                  "backup_zone": "string",
+                  "lan_vip": "string",
+                  "vhid": "number"
+                },
+                [
+                  "backup_lan_ip",
+                  "backup_name",
+                  "backup_wan_ip",
+                  "lan_vip",
+                  "vhid"
+                ]
+              ],
+              "lan_ip": "string",
+              "lan_network_range": "string",
+              "name": "string",
+              "volume_performance_class": "string",
+              "volume_size": "number",
+              "wan_ip": "string",
+              "wan_network_range": "string",
+              "zone": "string"
+            },
+            [
+              "ha",
+              "lan_ip",
+              "volume_performance_class",
+              "volume_size",
+              "wan_ip"
+            ]
+          ],
+          "firewalls": [
+            "map",
+            [
+              "object",
+              {
+                "flavor": "string",
+                "ha": [
+                  "object",
+                  {
+                    "backup_lan_ip": "string",
+                    "backup_name": "string",
+                    "backup_wan_ip": "string",
+                    "backup_zone": "string",
+                    "lan_vip": "string",
+                    "vhid": "number"
+                  },
+                  [
+                    "backup_lan_ip",
+                    "backup_name",
+                    "backup_wan_ip",
+                    "lan_vip",
+                    "vhid"
+                  ]
+                ],
+                "lan_ip": "string",
+                "lan_network_range": "string",
+                "name": "string",
+                "volume_performance_class": "string",
+                "volume_size": "number",
+                "wan_ip": "string",
+                "wan_network_range": "string",
+                "zone": "string"
+              },
+              [
+                "ha",
+                "lan_ip",
+                "volume_performance_class",
+                "volume_size",
+                "wan_ip"
+              ]
+            ]
+          ],
+          "naming_pattern": "string",
+          "network_area": [
+            "object",
+            {
+              "default_nameservers": [
+                "list",
+                "string"
+              ],
+              "default_prefix_length": "number",
+              "max_prefix_length": "number",
+              "min_prefix_length": "number",
+              "ranges": [
+                "list",
+                "string"
+              ],
+              "transfer_network": "string"
+            },
+            [
+              "default_nameservers",
+              "default_prefix_length",
+              "max_prefix_length",
+              "min_prefix_length"
+            ]
+          ],
+          "network_areas": [
+            "map",
+            [
+              "object",
+              {
+                "default_nameservers": [
+                  "list",
+                  "string"
+                ],
+                "default_prefix_length": "number",
+                "max_prefix_length": "number",
+                "min_prefix_length": "number",
+                "name": "string",
+                "ranges": [
+                  "list",
+                  "string"
+                ],
+                "transfer_network": "string"
+              },
+              [
+                "default_nameservers",
+                "default_prefix_length",
+                "max_prefix_length",
+                "min_prefix_length",
+                "name"
+              ]
+            ]
+          ],
+          "vpn": [
+            "object",
+            {
+              "availability_zones": [
+                "object",
+                {
+                  "tunnel1": "string",
+                  "tunnel2": "string"
+                }
+              ],
+              "connections": [
+                "map",
+                [
+                  "object",
+                  {
+                    "display_name": "string",
+                    "enabled": "bool",
+                    "local_subnets": [
+                      "list",
+                      "string"
+                    ],
+                    "remote_subnets": [
+                      "list",
+                      "string"
+                    ],
+                    "static_routes": [
+                      "list",
+                      "string"
+                    ],
+                    "tunnel1": [
+                      "object",
+                      {
+                        "peering": [
+                          "object",
+                          {
+                            "local_address": "string",
+                            "remote_address": "string"
+                          }
+                        ],
+                        "phase1": [
+                          "object",
+                          {
+                            "dh_groups": [
+                              "list",
+                              "string"
+                            ],
+                            "encryption_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "integrity_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "rekey_time": "number"
+                          },
+                          [
+                            "dh_groups",
+                            "encryption_algorithms",
+                            "integrity_algorithms",
+                            "rekey_time"
+                          ]
+                        ],
+                        "phase2": [
+                          "object",
+                          {
+                            "dh_groups": [
+                              "list",
+                              "string"
+                            ],
+                            "dpd_action": "string",
+                            "encryption_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "integrity_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "rekey_time": "number",
+                            "start_action": "string"
+                          },
+                          [
+                            "dh_groups",
+                            "dpd_action",
+                            "encryption_algorithms",
+                            "integrity_algorithms",
+                            "rekey_time",
+                            "start_action"
+                          ]
+                        ],
+                        "remote_address": "string"
+                      },
+                      [
+                        "peering",
+                        "phase1",
+                        "phase2"
+                      ]
+                    ],
+                    "tunnel2": [
+                      "object",
+                      {
+                        "peering": [
+                          "object",
+                          {
+                            "local_address": "string",
+                            "remote_address": "string"
+                          }
+                        ],
+                        "phase1": [
+                          "object",
+                          {
+                            "dh_groups": [
+                              "list",
+                              "string"
+                            ],
+                            "encryption_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "integrity_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "rekey_time": "number"
+                          },
+                          [
+                            "dh_groups",
+                            "encryption_algorithms",
+                            "integrity_algorithms",
+                            "rekey_time"
+                          ]
+                        ],
+                        "phase2": [
+                          "object",
+                          {
+                            "dh_groups": [
+                              "list",
+                              "string"
+                            ],
+                            "dpd_action": "string",
+                            "encryption_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "integrity_algorithms": [
+                              "list",
+                              "string"
+                            ],
+                            "rekey_time": "number",
+                            "start_action": "string"
+                          },
+                          [
+                            "dh_groups",
+                            "dpd_action",
+                            "encryption_algorithms",
+                            "integrity_algorithms",
+                            "rekey_time",
+                            "start_action"
+                          ]
+                        ],
+                        "remote_address": "string"
+                      },
+                      [
+                        "peering",
+                        "phase1",
+                        "phase2"
+                      ]
+                    ]
+                  },
+                  [
+                    "display_name",
+                    "enabled",
+                    "local_subnets",
+                    "remote_subnets",
+                    "static_routes"
+                  ]
+                ]
+              ],
+              "display_name": "string",
+              "plan_id": "string",
+              "routing_type": "string"
+            },
+            [
+              "connections",
+              "display_name",
+              "plan_id",
+              "routing_type"
+            ]
+          ]
+        },
+        [
+          "dns_zones",
+          "firewall",
+          "firewalls",
+          "naming_pattern",
+          "network_area",
+          "network_areas",
+          "vpn"
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": null,
+      "nestedDefaults": {
+        "values": {
+          "dns_zones": {},
+          "firewall": null,
+          "firewalls": null,
+          "naming_pattern": null,
+          "network_area": null,
+          "network_areas": null,
+          "vpn": null
+        },
+        "children": {
+          "dns_zones": {
+            "children": {
+              "": {
+                "values": {
+                  "acl": null,
+                  "contact_email": null,
+                  "default_ttl": 3600,
+                  "description": null,
+                  "name": null,
+                  "network_area_key": "default",
+                  "region": null,
+                  "type": "primary"
+                }
+              }
+            }
+          },
+          "firewall": {
+            "values": {
+              "ha": null,
+              "lan_ip": null,
+              "volume_performance_class": "storage_premium_perf4",
+              "volume_size": 16,
+              "wan_ip": null
+            },
+            "children": {
+              "ha": {
+                "values": {
+                  "backup_lan_ip": null,
+                  "backup_name": null,
+                  "backup_wan_ip": null,
+                  "lan_vip": null,
+                  "vhid": 1
+                }
+              }
+            }
+          },
+          "firewalls": {
+            "children": {
+              "": {
+                "values": {
+                  "ha": null,
+                  "lan_ip": null,
+                  "volume_performance_class": "storage_premium_perf4",
+                  "volume_size": 16,
+                  "wan_ip": null
+                },
+                "children": {
+                  "ha": {
+                    "values": {
+                      "backup_lan_ip": null,
+                      "backup_name": null,
+                      "backup_wan_ip": null,
+                      "lan_vip": null,
+                      "vhid": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "network_area": {
+            "values": {
+              "default_nameservers": null,
+              "default_prefix_length": 28,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24
+            }
+          },
+          "network_areas": {
+            "children": {
+              "": {
+                "values": {
+                  "default_nameservers": null,
+                  "default_prefix_length": 28,
+                  "max_prefix_length": 28,
+                  "min_prefix_length": 24,
+                  "name": null
+                }
+              }
+            }
+          },
+          "vpn": {
+            "values": {
+              "connections": {},
+              "display_name": null,
+              "plan_id": "p100",
+              "routing_type": "ROUTE_BASED"
+            },
+            "children": {
+              "connections": {
+                "children": {
+                  "": {
+                    "values": {
+                      "display_name": null,
+                      "enabled": true,
+                      "local_subnets": null,
+                      "remote_subnets": null,
+                      "static_routes": null
+                    },
+                    "children": {
+                      "tunnel1": {
+                        "values": {
+                          "peering": null,
+                          "phase1": {
+                            "dh_groups": null,
+                            "encryption_algorithms": null,
+                            "integrity_algorithms": null,
+                            "rekey_time": null
+                          },
+                          "phase2": {
+                            "dh_groups": null,
+                            "dpd_action": null,
+                            "encryption_algorithms": null,
+                            "integrity_algorithms": null,
+                            "rekey_time": null,
+                            "start_action": null
+                          }
+                        },
+                        "children": {
+                          "phase1": {
+                            "values": {
+                              "dh_groups": [
+                                "ecp384"
+                              ],
+                              "encryption_algorithms": [
+                                "aes256"
+                              ],
+                              "integrity_algorithms": [
+                                "sha2_384"
+                              ],
+                              "rekey_time": null
+                            }
+                          },
+                          "phase2": {
+                            "values": {
+                              "dh_groups": [
+                                "ecp384"
+                              ],
+                              "dpd_action": null,
+                              "encryption_algorithms": [
+                                "aes256"
+                              ],
+                              "integrity_algorithms": [
+                                "sha2_384"
+                              ],
+                              "rekey_time": null,
+                              "start_action": null
+                            }
+                          }
+                        }
+                      },
+                      "tunnel2": {
+                        "values": {
+                          "peering": null,
+                          "phase1": {
+                            "dh_groups": null,
+                            "encryption_algorithms": null,
+                            "integrity_algorithms": null,
+                            "rekey_time": null
+                          },
+                          "phase2": {
+                            "dh_groups": null,
+                            "dpd_action": null,
+                            "encryption_algorithms": null,
+                            "integrity_algorithms": null,
+                            "rekey_time": null,
+                            "start_action": null
+                          }
+                        },
+                        "children": {
+                          "phase1": {
+                            "values": {
+                              "dh_groups": [
+                                "ecp384"
+                              ],
+                              "encryption_algorithms": [
+                                "aes256"
+                              ],
+                              "integrity_algorithms": [
+                                "sha2_384"
+                              ],
+                              "rekey_time": null
+                            }
+                          },
+                          "phase2": {
+                            "values": {
+                              "dh_groups": [
+                                "ecp384"
+                              ],
+                              "dpd_action": null,
+                              "encryption_algorithms": [
+                                "aes256"
+                              ],
+                              "integrity_algorithms": [
+                                "sha2_384"
+                              ],
+                              "rekey_time": null,
+                              "start_action": null
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "validations": [
+        "validation {\n    condition     = var.connectivity == null || var.connectivity.network_area == null || var.connectivity.network_areas == null\n    error_message = \"Set either connectivity.network_area or connectivity.network_areas, not both.\"\n  }",
+        "validation {\n    condition     = var.connectivity == null || var.connectivity.firewall == null || var.connectivity.firewalls == null\n    error_message = \"Set either connectivity.firewall or connectivity.firewalls, not both.\"\n  }",
+        "validation {\n    condition     = var.connectivity == null || var.connectivity.firewalls == null || var.connectivity.network_areas == null || (length(setsubtract(toset(keys(var.connectivity.firewalls)), toset(keys(var.connectivity.network_areas)))) == 0 \u0026\u0026 length(setsubtract(toset(keys(var.connectivity.network_areas)), toset(keys(var.connectivity.firewalls)))) == 0)\n    error_message = \"connectivity.firewalls keys must exactly match connectivity.network_areas keys.\"\n  }"
+      ]
+    },
+    {
+      "name": "connectivity_regions",
+      "line": 409,
+      "description": "Regional connectivity configuration for the statically supported eu01 and eu02 hubs. Set to null to use the single-region connectivity input.",
+      "type": [
+        "map",
+        "dynamic"
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": null,
+      "validations": [
+        "validation {\n    condition     = var.connectivity_regions == null || length(setsubtract(toset(keys(var.connectivity_regions)), toset([\"eu01\", \"eu02\"]))) == 0\n    error_message = \"connectivity_regions supports only eu01 and eu02. Add a static provider alias and module instance before using another region.\"\n  }"
+      ]
+    },
+    {
+      "name": "vpn_pre_shared_keys",
+      "line": 420,
+      "description": "Pre-shared keys per connectivity.vpn.connections key, one per tunnel. Kept out of the connectivity object so the topology stays committable; supply through TF_VAR_vpn_pre_shared_keys or a gitignored tfvars file. Minimum 20 characters.",
+      "type": [
+        "map",
+        [
+          "object",
+          {
+            "tunnel1": "string",
+            "tunnel2": "string"
+          }
+        ]
+      ],
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "firewall_config",
+      "line": 434,
+      "description": "Policy pushed to one OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched.",
+      "type": [
+        "object",
+        {
+          "aliases": [
+            "map",
+            [
+              "object",
+              {
+                "content": [
+                  "list",
+                  "string"
+                ],
+                "description": "string",
+                "enabled": "bool",
+                "stats": "bool",
+                "type": "string",
+                "update_freq": "number"
+              },
+              [
+                "content",
+                "description",
+                "enabled",
+                "stats",
+                "type",
+                "update_freq"
+              ]
+            ]
+          ],
+          "endpoint": "string",
+          "insecure": "bool",
+          "outbound_nat": [
+            "map",
+            [
+              "object",
+              {
+                "description": "string",
+                "destination_net": "string",
+                "disable_nat": "bool",
+                "enabled": "bool",
+                "interface": "string",
+                "ip_protocol": "string",
+                "log": "bool",
+                "protocol": "string",
+                "sequence": "number",
+                "source_net": "string",
+                "target_ip": "string"
+              },
+              [
+                "description",
+                "destination_net",
+                "disable_nat",
+                "enabled",
+                "interface",
+                "ip_protocol",
+                "log",
+                "protocol",
+                "sequence",
+                "source_net",
+                "target_ip"
+              ]
+            ]
+          ],
+          "port_forwards": [
+            "map",
+            [
+              "object",
+              {
+                "description": "string",
+                "destination_net": "string",
+                "destination_port": "string",
+                "enabled": "bool",
+                "interfaces": [
+                  "list",
+                  "string"
+                ],
+                "ip_protocol": "string",
+                "log": "bool",
+                "nat_reflection": "string",
+                "protocol": "string",
+                "sequence": "number",
+                "source_net": "string",
+                "target_ip": "string",
+                "target_port": "string"
+              },
+              [
+                "description",
+                "destination_net",
+                "enabled",
+                "interfaces",
+                "ip_protocol",
+                "log",
+                "nat_reflection",
+                "protocol",
+                "sequence",
+                "source_net",
+                "target_port"
+              ]
+            ]
+          ],
+          "routes": [
+            "map",
+            [
+              "object",
+              {
+                "description": "string",
+                "enabled": "bool",
+                "gateway": "string",
+                "network": "string"
+              },
+              [
+                "description",
+                "enabled"
+              ]
+            ]
+          ],
+          "rules": [
+            "map",
+            [
+              "object",
+              {
+                "action": "string",
+                "description": "string",
+                "destination_invert": "bool",
+                "destination_net": "string",
+                "destination_port": "string",
+                "direction": "string",
+                "enabled": "bool",
+                "interfaces": [
+                  "list",
+                  "string"
+                ],
+                "ip_protocol": "string",
+                "log": "bool",
+                "protocol": "string",
+                "quick": "bool",
+                "sequence": "number",
+                "source_invert": "bool",
+                "source_net": "string",
+                "source_port": "string"
+              },
+              [
+                "action",
+                "description",
+                "destination_invert",
+                "destination_net",
+                "destination_port",
+                "direction",
+                "enabled",
+                "interfaces",
+                "ip_protocol",
+                "log",
+                "protocol",
+                "quick",
+                "sequence",
+                "source_invert",
+                "source_net",
+                "source_port"
+              ]
+            ]
+          ]
+        },
+        [
+          "aliases",
+          "endpoint",
+          "insecure",
+          "outbound_nat",
+          "port_forwards",
+          "routes",
+          "rules"
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": null,
+      "nestedDefaults": {
+        "values": {
+          "aliases": {},
+          "endpoint": null,
+          "insecure": true,
+          "outbound_nat": {},
+          "port_forwards": {},
+          "routes": {},
+          "rules": {}
+        },
+        "children": {
+          "aliases": {
+            "children": {
+              "": {
+                "values": {
+                  "content": [],
+                  "description": null,
+                  "enabled": true,
+                  "stats": false,
+                  "type": "network",
+                  "update_freq": null
+                }
+              }
+            }
+          },
+          "outbound_nat": {
+            "children": {
+              "": {
+                "values": {
+                  "description": null,
+                  "destination_net": "any",
+                  "disable_nat": false,
+                  "enabled": true,
+                  "interface": "wan",
+                  "ip_protocol": "inet",
+                  "log": false,
+                  "protocol": "any",
+                  "sequence": 200,
+                  "source_net": "any",
+                  "target_ip": "wanip"
+                }
+              }
+            }
+          },
+          "port_forwards": {
+            "children": {
+              "": {
+                "values": {
+                  "description": null,
+                  "destination_net": "wanip",
+                  "enabled": true,
+                  "interfaces": [
+                    "wan"
+                  ],
+                  "ip_protocol": "inet",
+                  "log": true,
+                  "nat_reflection": "default",
+                  "protocol": "TCP",
+                  "sequence": 100,
+                  "source_net": "any",
+                  "target_port": null
+                }
+              }
+            }
+          },
+          "routes": {
+            "children": {
+              "": {
+                "values": {
+                  "description": null,
+                  "enabled": true
+                }
+              }
+            }
+          },
+          "rules": {
+            "children": {
+              "": {
+                "values": {
+                  "action": "pass",
+                  "description": null,
+                  "destination_invert": false,
+                  "destination_net": "any",
+                  "destination_port": null,
+                  "direction": "in",
+                  "enabled": true,
+                  "interfaces": [
+                    "lan"
+                  ],
+                  "ip_protocol": "inet",
+                  "log": false,
+                  "protocol": "any",
+                  "quick": true,
+                  "sequence": 100,
+                  "source_invert": false,
+                  "source_net": "any",
+                  "source_port": null
+                }
+              }
+            }
+          }
+        }
+      },
+      "validations": [
+        "validation {\n    condition     = var.firewall_config == null || try(var.connectivity.firewall, null) != null\n    error_message = \"firewall_config requires connectivity.firewall to be set, there is no appliance to push a policy to otherwise.\"\n  }",
+        "validation {\n    condition = var.firewall_config == null || alltrue([\n      for p in values(var.firewall_config.port_forwards) : p.source_net != \"any\" || !p.enabled\n    ])\n    error_message = \"port_forwards[*].source_net must be narrowed from \\\"any\\\", or the entry disabled. An unrestricted forward exposes the target to the whole internet.\"\n  }"
+      ]
+    },
+    {
+      "name": "firewall_admin_username",
+      "line": 522,
+      "description": "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root.",
+      "type": "string",
+      "required": false,
+      "sensitive": false,
+      "default": "root"
+    },
+    {
+      "name": "firewall_admin_password",
+      "line": 528,
+      "description": "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "firewall_bootstrap",
+      "line": 535,
+      "description": "Pass -var firewall_bootstrap=true on the two greenfield applies that create the OPNsense API key. It suppresses the Secrets Manager read, which would otherwise fail at plan time because the secret does not exist yet. Never set it on an established deployment: without the bootstrap cache file it plans the destruction of the policy and the stored key. The steady state needs no variable at all.",
+      "type": "bool",
+      "required": false,
+      "sensitive": false,
+      "default": false
+    },
+    {
+      "name": "firewall_api_secret_version",
+      "line": 541,
+      "description": "Write version of the OPNsense API key in the Secrets Manager. The key is only transmitted when this number changes, so bump it by one after a re-bootstrap has produced a fresh key, otherwise the Secrets Manager keeps serving the old one.",
+      "type": "number",
+      "required": false,
+      "sensitive": false,
+      "default": 1
+    },
+    {
+      "name": "firewall_api_credentials",
+      "line": 547,
+      "description": "OPNsense API key and secret. Bootstrap them once from the appliance login with src/modules/firewall-config/scripts/bootstrap-api-key.sh, then supply through TF_VAR_firewall_api_credentials or a gitignored tfvars file. Kept out of firewall_config so the policy stays committable.",
+      "type": [
+        "object",
+        {
+          "api_key": "string",
+          "api_secret": "string"
+        }
+      ],
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "sandboxes",
+      "line": 561,
+      "description": "List of sandboxes to create.",
+      "type": [
+        "list",
+        [
+          "object",
+          {
+            "owner_emails": [
+              "list",
+              "string"
+            ],
+            "project_name": "string",
+            "project_owner_email": "string"
+          },
+          [
+            "owner_emails"
+          ]
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": []
+    },
+    {
+      "name": "landing_zones",
+      "line": 575,
+      "description": "Map of landing zones to create. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions.",
+      "type": [
+        "map",
+        [
+          "object",
+          {
+            "corporate": "bool",
+            "custom_roles": [
+              "list",
+              [
+                "object",
+                {
+                  "description": "string",
+                  "name": "string",
+                  "permissions": [
+                    "list",
+                    "string"
+                  ]
+                }
+              ]
+            ],
+            "env": "string",
+            "network_area_key": "string",
+            "network_prefix_length": "number",
+            "observability": [
+              "object",
+              {
+                "acl": [
+                  "list",
+                  "string"
+                ],
+                "enabled": "bool",
+                "name": "string",
+                "plan_name": "string"
+              },
+              [
+                "acl",
+                "enabled",
+                "name",
+                "plan_name"
+              ]
+            ],
+            "owner_email": "string",
+            "project_code": "string",
+            "project_name": "string",
+            "region": "string",
+            "role_assignments": [
+              "list",
+              [
+                "object",
+                {
+                  "role": "string",
+                  "subject": "string"
+                }
+              ]
+            ],
+            "secretsmanager_enabled": "bool"
+          },
+          [
+            "corporate",
+            "custom_roles",
+            "env",
+            "network_area_key",
+            "network_prefix_length",
+            "observability",
+            "region",
+            "role_assignments",
+            "secretsmanager_enabled"
+          ]
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": {},
+      "nestedDefaults": {
+        "children": {
+          "": {
+            "values": {
+              "corporate": true,
+              "custom_roles": [],
+              "env": "dev",
+              "network_area_key": "default",
+              "network_prefix_length": null,
+              "observability": {
+                "acl": null,
+                "enabled": null,
+                "name": null,
+                "plan_name": null
+              },
+              "region": null,
+              "role_assignments": [],
+              "secretsmanager_enabled": true
+            },
+            "children": {
+              "observability": {
+                "values": {
+                  "acl": [],
+                  "enabled": false,
+                  "name": null,
+                  "plan_name": "Observability-Starter-EU01"
+                }
+              }
+            }
+          }
+        }
+      },
+      "validations": [
+        "validation {\n    condition = alltrue([\n      for landing_zone in values(var.landing_zones) : (\n        var.connectivity_regions == null || (\n          landing_zone.region != null \u0026\u0026 contains(keys(var.connectivity_regions), landing_zone.region)\n        )\n        ) \u0026\u0026 (\n        !landing_zone.corporate || (\n          var.connectivity_regions != null\n          ? contains(keys(try(var.connectivity_regions[landing_zone.region].network_areas, {})), landing_zone.network_area_key)\n          : var.connectivity != null \u0026\u0026 (\n            var.connectivity.network_areas != null\n            ? contains(keys(var.connectivity.network_areas), landing_zone.network_area_key)\n            : var.connectivity.network_area != null \u0026\u0026 landing_zone.network_area_key == \"default\"\n          )\n        )\n      )\n    ])\n    error_message = \"With connectivity_regions, every landing zone must set a supported region. Every corporate landing zone must also reference an existing network area.\"\n  }"
+      ]
+    },
+    {
+      "name": "landing_zone_namespace_services",
+      "line": 628,
+      "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
+      "type": [
+        "map",
+        [
+          "object",
+          {
+            "annotations": [
+              "map",
+              "string"
+            ],
+            "demo_enabled": "bool",
+            "demo_metrics_ingestion": [
+              "object",
+              {
+                "enabled": "bool",
+                "metrics_path": "string",
+                "scheme": "string",
+                "scrape_interval": "string",
+                "scrape_timeout": "string",
+                "target_urls": [
+                  "list",
+                  "string"
+                ]
+              },
+              [
+                "enabled",
+                "metrics_path",
+                "scheme",
+                "scrape_interval",
+                "scrape_timeout",
+                "target_urls"
+              ]
+            ],
+            "dns_subdomain": "string",
+            "kubernetes_access": [
+              "object",
+              {
+                "enabled": "bool",
+                "service_account_name": "string"
+              },
+              [
+                "enabled",
+                "service_account_name"
+              ]
+            ],
+            "labels": [
+              "map",
+              "string"
+            ],
+            "namespace": "string",
+            "sample_load": [
+              "object",
+              {
+                "enabled": "bool",
+                "image": "string"
+              },
+              [
+                "enabled",
+                "image"
+              ]
+            ],
+            "secrets_enforcement": [
+              "object",
+              {
+                "allow_opaque_secret_types": [
+                  "list",
+                  "string"
+                ],
+                "break_glass": [
+                  "object",
+                  {
+                    "enabled": "bool",
+                    "principals": [
+                      "list",
+                      "string"
+                    ],
+                    "ttl_hours": "number"
+                  },
+                  [
+                    "enabled",
+                    "principals",
+                    "ttl_hours"
+                  ]
+                ],
+                "enabled": "bool",
+                "mode": "string"
+              },
+              [
+                "allow_opaque_secret_types",
+                "break_glass",
+                "enabled",
+                "mode"
+              ]
+            ],
+            "secretsmanager": "bool"
+          },
+          [
+            "annotations",
+            "demo_enabled",
+            "demo_metrics_ingestion",
+            "dns_subdomain",
+            "kubernetes_access",
+            "labels",
+            "namespace",
+            "sample_load",
+            "secrets_enforcement",
+            "secretsmanager"
+          ]
+        ]
+      ],
+      "required": false,
+      "sensitive": false,
+      "default": {},
+      "nestedDefaults": {
+        "children": {
+          "": {
+            "values": {
+              "annotations": {},
+              "demo_enabled": false,
+              "demo_metrics_ingestion": {
+                "enabled": null,
+                "metrics_path": null,
+                "scheme": null,
+                "scrape_interval": null,
+                "scrape_timeout": null,
+                "target_urls": null
+              },
+              "dns_subdomain": null,
+              "kubernetes_access": {
+                "enabled": null,
+                "service_account_name": null
+              },
+              "labels": {},
+              "namespace": null,
+              "sample_load": {
+                "enabled": null,
+                "image": null
+              },
+              "secrets_enforcement": {
+                "allow_opaque_secret_types": null,
+                "break_glass": null,
+                "enabled": null,
+                "mode": null
+              },
+              "secretsmanager": true
+            },
+            "children": {
+              "demo_metrics_ingestion": {
+                "values": {
+                  "enabled": false,
+                  "metrics_path": "/",
+                  "scheme": "https",
+                  "scrape_interval": "70s",
+                  "scrape_timeout": "30s",
+                  "target_urls": []
+                }
+              },
+              "kubernetes_access": {
+                "values": {
+                  "enabled": true,
+                  "service_account_name": null
+                }
+              },
+              "sample_load": {
+                "values": {
+                  "enabled": false,
+                  "image": "busybox:1.36"
+                }
+              },
+              "secrets_enforcement": {
+                "values": {
+                  "allow_opaque_secret_types": [],
+                  "break_glass": {
+                    "enabled": null,
+                    "principals": null,
+                    "ttl_hours": null
+                  },
+                  "enabled": false,
+                  "mode": "audit"
+                },
+                "children": {
+                  "break_glass": {
+                    "values": {
+                      "enabled": true,
+                      "principals": [],
+                      "ttl_hours": 24
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "validations": [
+        "validation {\n    condition = alltrue([\n      for svc in values(var.landing_zone_namespace_services) :\n      svc.namespace == null ? true : (\n        length(svc.namespace) \u003c= 63 \u0026\u0026\n        can(regex(\"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$\", svc.namespace))\n      )\n    ])\n    error_message = \"If landing_zone_namespace_services.\u003ckey\u003e.namespace is set, it must be a valid Kubernetes DNS-1123 label (\u003c=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric).\"\n  }",
+        "validation {\n    condition = alltrue([\n      for svc in values(var.landing_zone_namespace_services) :\n      svc.dns_subdomain == null ? true : (\n        length(svc.dns_subdomain) \u003c= 63 \u0026\u0026\n        can(regex(\"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$\", svc.dns_subdomain))\n      )\n    ])\n    error_message = \"If landing_zone_namespace_services.\u003ckey\u003e.dns_subdomain is set, it must be a valid DNS label (\u003c=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric).\"\n  }",
+        "validation {\n    condition = alltrue([\n      for svc in values(var.landing_zone_namespace_services) :\n      svc.kubernetes_access.service_account_name == null ? true : (\n        length(svc.kubernetes_access.service_account_name) \u003c= 63 \u0026\u0026\n        can(regex(\"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$\", svc.kubernetes_access.service_account_name))\n      )\n    ])\n    error_message = \"If landing_zone_namespace_services.\u003ckey\u003e.kubernetes_access.service_account_name is set, it must be a valid Kubernetes DNS-1123 label (\u003c=63 chars, lowercase alphanumeric and '-', must start/end with alphanumeric).\"\n  }",
+        "validation {\n    condition = alltrue([\n      for svc in values(var.landing_zone_namespace_services) :\n      contains([\"audit\", \"soft\", \"strict\"], lower(svc.secrets_enforcement.mode))\n    ])\n    error_message = \"landing_zone_namespace_services.\u003ckey\u003e.secrets_enforcement.mode must be one of: audit, soft, strict.\"\n  }",
+        "validation {\n    condition = alltrue([\n      for svc in values(var.landing_zone_namespace_services) :\n      svc.secrets_enforcement.break_glass.ttl_hours \u003e 0\n    ])\n    error_message = \"landing_zone_namespace_services.\u003ckey\u003e.secrets_enforcement.break_glass.ttl_hours must be greater than 0.\"\n  }",
+        "validation {\n    condition = alltrue([\n      for key in keys(var.landing_zone_namespace_services) : contains(keys(var.landing_zones), key)\n    ])\n    error_message = \"Every key in landing_zone_namespace_services must also exist in landing_zones.\"\n  }",
+        "validation {\n    condition = (\n      length(var.landing_zone_namespace_services) ==\n      length(distinct([\n        for key, svc in var.landing_zone_namespace_services :\n        svc.namespace != null ? svc.namespace : trim(replace(lower(replace(\"${var.landing_zones[key].project_code}-${var.landing_zones[key].env}\", \"/[^a-zA-Z0-9-]/\", \"-\")), \"/-{2,}/\", \"-\"), \"-\")\n      ]))\n    )\n    error_message = \"Each enabled namespace service must resolve to a unique namespace name.\"\n  }",
+        "validation {\n    condition = alltrue([\n      for key, svc in var.landing_zone_namespace_services :\n      length(svc.namespace != null ? svc.namespace : trim(replace(lower(replace(\"${var.landing_zones[key].project_code}-${var.landing_zones[key].env}\", \"/[^a-zA-Z0-9-]/\", \"-\")), \"/-{2,}/\", \"-\"), \"-\")) \u003e 0\n    ])\n    error_message = \"Each enabled namespace service must resolve to a non-empty namespace name.\"\n  }"
+      ]
+    }
+  ]
+}

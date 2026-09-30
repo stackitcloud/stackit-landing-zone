@@ -19,6 +19,7 @@ Der Configurator verwendet weiterhin seine separat freigegebene Engine-Version.
 | [#81](https://github.com/stackitcloud/stackit-landing-zone/issues/81) | Audit-Object-Lock: tatsächlicher optionaler Default ist `true`, Beschreibung sagt aus. | Wirksamen Wert sichtbar machen; keine stille Änderung des Defaults beim Import/Export. |
 | [#82](https://github.com/stackitcloud/stackit-landing-zone/issues/82) | `rm_folders.description` wird akzeptiert, aber nicht zur Ressource durchgereicht. | Kein wirksames Beschreibungsfeld versprechen, solange die Anbindung fehlt. |
 | [#83](https://github.com/stackitcloud/stackit-landing-zone/issues/83) | Governance-Custom-Roles und Landing-Zone-Secrets-Manager-ACLs sind nur auf Modulebene vorhanden. | Erst nach geklärtem Root-Vertrag als konfigurierbare Features anbieten. Bestehende projektbezogene Custom Roles sind davon zu unterscheiden. |
+| [#84](https://github.com/stackitcloud/stackit-landing-zone/issues/84) | Standalone lässt beim Public-Beispiel `corporate = false` aus; tatsächlich greift `true` ohne Connectivity. | Verlustfreier Import zeigt die fehlende Bereichsreferenz. Legacy-Editor exportiert bereits explizit Public und bleibt unverändert. |
 
 #80–#83 wurden im Rahmen dieser Prüfung neu angelegt. #37 und #65 werden
 weiterverwendet; dafür gibt es keine zusätzlichen Duplikate.
@@ -64,3 +65,7 @@ Neue Grenzen zunächst gegen bestehende Issues und die aktuelle Accelerator-Vers
 prüfen. Neue Issues enthalten betroffene Eingaben, Quellbelege, erwartetes und
 tatsächliches Verhalten sowie überprüfbare Abnahmekriterien. Zugangsdaten und
 kundenbezogene Konfigurationen gehören nicht in Issues.
+
+Ergänzung: #84 wurde beim gemeinsamen Import-/Export-Vertragstest entdeckt und
+auch auf `main` bestätigt. Ein nativer Variablen-Vertragstest erwartet diesen
+Validierungsfehler ausdrücklich, bis die Vorlage korrigiert und freigegeben ist.

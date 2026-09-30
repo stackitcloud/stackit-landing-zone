@@ -228,15 +228,17 @@ den Accelerator-Issues zu und trennt Modellierbarkeit von Ausführbarkeit.
 - [x] Sensible Defaults aus dem Inventar ausschließen und testen.
 - [x] Inventar-Aktualität in CI prüfen.
 - [x] Funktionsbereiche, Projektmodell und wesentliche Kombinationsgrenzen festlegen.
-- [ ] Feld-/Unterfunktionsabdeckung als maschinenprüfbaren Feature-Katalog abbilden.
+- [x] Feld-/Unterfunktionsabdeckung als maschinenprüfbaren Feature-Katalog abbilden
+  (`featureFieldCatalogue`; neuer gemeinsamer Editor je Feld weiterhin als offen markiert).
 
 ### B – Gemeinsames Modell und kompatibler Compiler
 
-- [ ] Versioniertes Dokument unabhängig von Standalone implementieren.
-- [ ] Alle acht Templates verlustfrei importieren, Herkunft und stabile IDs erhalten.
-- [ ] Legacy-Adapter für Dokumentversion 1/2 und lokale Arbeitsstände.
+- [x] Versioniertes Dokument unabhängig von Standalone implementieren (v3-Domain-Vertrag).
+- [x] Alle acht Templates verlustfrei importieren, Herkunft und stabile IDs erhalten.
+- [x] Legacy-Adapter für gespeicherte Dokumentversion 1/2, bytegleicher Export.
+- [ ] Migration lokaler Arbeitsstände und Umschaltung der Speicher-/Produkt-API.
 - [ ] Referenz-/Default-/Deaktivierungsregeln zentral validieren.
-- [ ] Export mit echtem HCL-Parser semantisch rückvergleichen; unveränderte
+- [x] Export mit echtem HCL-Parser semantisch rückvergleichen; unveränderte
   Legacy-Konfigurationen zusätzlich bytegleich prüfen.
 - [ ] Pro Referenzkonfiguration native OpenTofu-Tests mit Mock-Providern, kein Apply.
 
@@ -263,3 +265,23 @@ Nur Feature-Branch. Der bisherige Stand bleibt live, bis das jeweilige Inkrement
 vollständig getestet ist. Kein Kunden-Apply ohne neue ausdrückliche Freigabe; kein
 Destroy. Ein komplexes Template darf nicht automatisch einen Kunden-Plan oder
 Ressourcenaufbau starten. Configurator-Infrastrukturfreigabe bleibt davon getrennt.
+
+## Implementierungsstand gemeinsamer Kern, 2026-09-30
+
+[Domain-Vertrag und Prüfungen](../app/packages/domain/README.md) sind implementiert.
+Typen und explizite Werte aller Root-Eingaben werden abgedeckt; sensible Eingaben
+sind ausschließlich als separate Deployment-Bindings vorgesehen. Referenzprüfungen
+für Projekte/Bereiche/DNS und die bekannten Ausführungsgrenzen sind als gemeinsame
+Funktionen vorhanden. Das ist noch keine vollständige fachliche Provider-Validierung.
+
+Alle acht Vorlagen werden mit dem nativen HCL-Parser rückverglichen. Zehn direkte
+OpenTofu-Tests prüfen den Root-Variablenvertrag inklusive Object-Lock-Defaults.
+Vollständige Modulpläne mit Mock-Providern bleiben offen. Standalone enthält den
+bestätigten Fehler [#84](https://github.com/stackitcloud/stackit-landing-zone/issues/84);
+der unveränderte Import weist die fehlende Public-Markierung aus. Die bestehende
+v1/v2-Erzeugung und bereits gespeicherte Entwürfe bleiben bytegleich.
+
+Der neue Kern ist noch nicht an den produktiven Editor, Fork-Speicher oder Runner
+angeschlossen. Damit werden weder neue Konfigurationsarten still für Deployments
+freigegeben noch bisherige Vorbereitungen migriert. Nächstes Inkrement ist der
+gemeinsame Netzwerk-/Projekteditor mit kontrollierter Speicher- und API-Migration.

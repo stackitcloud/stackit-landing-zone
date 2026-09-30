@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { SavedDraft } from "@lzc/domain";
+import { type SavedDraft, supportedAcceleratorRevision } from "@lzc/domain";
 import type pg from "pg";
 import type { Session } from "../auth/store.js";
 import type { CredentialCheck } from "../credentials/check.js";
@@ -15,7 +15,7 @@ import {
 import { withTenant } from "../storage/database.js";
 
 // Explicit reviewed code reference. Never take Accelerator code/version from a customer fork.
-export const acceleratorCommit = "a256f6896d11134fdc351786f1be5eba4e56b2e2";
+export const acceleratorCommit = supportedAcceleratorRevision;
 export type PreparationInput = {
   target: RepositoryTarget;
   configurationId: string;

@@ -33,6 +33,9 @@ export function canAccessTenant(
 }
 
 export { default as catalogue } from "./catalogue.json" with { type: "json" };
+export * from "./common-document.js";
+export * from "./common-validation.js";
 export * from "./configuration.js";
 export * from "./document.js";
+export * from "./features.js";
 export * from "./tfvars.js";

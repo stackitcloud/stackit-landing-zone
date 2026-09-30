@@ -63,6 +63,8 @@ jobs:
         run: |
           go test ./...
           go run . -check
+          go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
+          go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json -check
       - name: Verify browser flow before packaging
         run: |
           npx playwright install --with-deps chromium

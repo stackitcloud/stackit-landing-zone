@@ -7,6 +7,7 @@
       "!**/node_modules",
       "!**/package-lock.json",
       "!packages/domain/src/catalogue.json",
+      "!packages/domain/src/accelerator-inputs.json",
       "!apps/web/public/brand"
     ]
   },

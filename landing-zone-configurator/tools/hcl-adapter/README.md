@@ -9,6 +9,7 @@ und keine Secret-Auflösung. Fachregeln bleiben im TypeScript-Domain-Paket.
 Aus diesem Verzeichnis:
 
 ```sh
+# Einmal vor den Roundtrip-Tests: in ../../app npm ci und npm run build:packages
 go test ./...
 go run .          # Katalog aktualisieren
 go run . -check   # CI: veralteten Katalog erkennen, keine Dateien ändern
@@ -36,6 +37,7 @@ Validierungsblöcke lassen sich aus dem vertrauenswürdigen Accelerator extrahie
 
 ```sh
 go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json
+go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json
 go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
 ```
 
@@ -43,3 +45,7 @@ Sensible Defaults werden ausgelassen. Der Typ `dynamic` bleibt ausdrücklich
 unaufgelöst und benötigt ein fachliches Schema aus der Modulverdrahtung.
 `nestedDefaults.children[""]` bezeichnet den Elementtyp einer Map/Liste. Das Inventar
 ersetzt keine fachlichen Abhängigkeiten und erzeugt kein Terraform-Variablen-UI.
+
+Die zweite Inventardatei ist das Build-Artefakt im Domain-Paket. CI prüft beide
+Dateien gegen dieselbe Quelle. Gemeinsamer Compiler und Legacy-Migration sind in
+[Domain-README](../../app/packages/domain/README.md) beschrieben.

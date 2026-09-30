@@ -47,11 +47,18 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24.21.0'
+      - name: Build shared model for native HCL round-trip tests
+        working-directory: landing-zone-configurator/app
+        run: |
+          npm install --global npm@11.19.0
+          npm ci
+          npm run build:packages
       - name: Test HCL importer and exporter and verify catalogue freshness
         run: |
           go test ./...
           go run . -check
           go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
+          go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json -check
 
   application:
     runs-on: ubuntu-latest
@@ -86,6 +93,15 @@ jobs:
         run: npm ci
       - name: Lint, typecheck, build and test
         run: npm run check
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Check all template exports against native Accelerator variable contracts
+        run: |
+          node scripts/prepare-common-contract.ts
+          tofu -chdir=../.local/common-contract init -backend=false -input=false -no-color
+          tofu -chdir=../.local/common-contract test -no-color
       - name: Test database migrations and tenant isolation
         run: npm run test:database
         env:

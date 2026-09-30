@@ -798,3 +798,17 @@ Zusätzlich wurden #80 (regionale Namespace-Zuordnung), #81 (Object-Lock-Default
 Die Registrierung dieser Grenzen implementiert noch keine Laufzeitprüfung.
 Capability-Prüfungen im Backend und Hinweise im Editor sind vor Freigabe der
 betroffenen erweiterten Konfigurationen umzusetzen. Kein Kunden-Apply ausgeführt.
+
+### Gemeinsamer Konfigurationskern, 2026-09-30
+
+- [x] Templateunabhängiges v3-Dokument und Feldkatalog für alle 28 Root-Eingaben.
+- [x] Verlustfreier Import/Export aller acht Vorlagen; geprüfte Legacy-Migration.
+- [x] Gemeinsame Projekt-/Bereichsprojektionen und erste Referenz-/Capability-Regeln.
+- [x] Native HCL-Roundtrips und direkte OpenTofu-Variablenvertragstests in CI ergänzen.
+- [x] Neu entdeckten Standalone-Defaultfehler als Accelerator-Issue #84 erfassen.
+- [ ] Gemeinsamen Editor, Arbeitsstand/Fork-Speicher und API auf den neuen Kern umstellen.
+- [ ] Übrige Feature-Editoren, Credential-Bindings und serverseitige Ausführungsprüfung.
+
+Die Produkt-API bleibt vorerst auf v1/v2 beschränkt. Keine Kunden-Ausführung und
+keine Änderungen an Accelerator-Modulen. Details im
+[Domain-README](../app/packages/domain/README.md).
