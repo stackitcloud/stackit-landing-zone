@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build:
-    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
