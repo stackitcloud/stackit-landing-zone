@@ -33,7 +33,7 @@ jobs:
   plan:
     if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment: lzc-dev-bootstrap-plan
     defaults:
       run:
@@ -44,13 +44,14 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version-file: landing-zone-configurator/app/.node-version
+          node-version: '24.21.0'
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: '1.12.6'
           tofu_wrapper: false
-      - name: Create encrypted review plan
-        run: node infra/ci/run.mjs plan
+      - name: Prepare credentials and backend configuration
+        id: prepare
+        run: node infra/ci/prepare.mjs management
         env:
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
           LZC_REGION: ${{ vars.LZC_REGION }}
@@ -62,20 +63,50 @@ jobs:
           LZC_SERVICE_ACCOUNT_KEY: ${{ secrets.LZC_SERVICE_ACCOUNT_KEY }}
           LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
           LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
-      - name: Upload encrypted plan and review metadata
+      - name: Read bootstrap backend outputs (private file)
+        if: env.LZC_ROOT != 'bootstrap'
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/bootstrap-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/bootstrap.encryption.json")"
+          tofu -chdir=infra/bootstrap init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/bootstrap.backend.hcl"
+          tofu -chdir=infra/bootstrap output -json > "$LZC_PRIVATE/bootstrap-outputs.json"
+      - name: Prepare workload credentials
+        if: env.LZC_ROOT != 'bootstrap'
+        run: node infra/ci/prepare.mjs workload
+      - name: OpenTofu init
+        timeout-minutes: 3
+        run: tofu -chdir="infra/$LZC_ROOT" init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/$LZC_ROOT.backend.hcl"
+      - name: OpenTofu validate
+        run: tofu -chdir="infra/$LZC_ROOT" validate -no-color
+      - name: OpenTofu plan
+        run: >-
+          timeout --foreground --signal=INT --kill-after=2m 15m
+          tofu -chdir="infra/$LZC_ROOT" plan
+          -input=false -no-color -lock-timeout=60s
+          -out="$LZC_PLAN"
+      - name: Bind encrypted plan to commit and workflow run
+        run: node infra/ci/review.mjs seal
+      - name: Upload encrypted plan
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bootstrap-plan-${{ github.run_id }}
-          path: landing-zone-configurator/.local/ci-plan/*
+          path: |
+            landing-zone-configurator/.local/ci-plan/review.tfplan
+            landing-zone-configurator/.local/ci-plan/review.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
+      - name: Remove temporary credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/lzc-private"
 
   apply:
     needs: plan
     if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_BOOTSTRAP_APPLY_COMMIT))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     environment: lzc-dev-bootstrap-apply
     defaults:
       run:
@@ -86,20 +117,15 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version-file: landing-zone-configurator/app/.node-version
+          node-version: '24.21.0'
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: '1.12.6'
           tofu_wrapper: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: bootstrap-plan-${{ github.run_id }}
-          path: landing-zone-configurator/.local/ci-plan
-      - name: Apply exactly the reviewed plan
-        run: node infra/ci/run.mjs apply
+      - name: Prepare credentials and backend configuration
+        id: prepare
+        run: node infra/ci/prepare.mjs management
         env:
-          LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_BOOTSTRAP_APPLY_COMMIT }}
-          LZC_APPROVED_APPLY_ROOT: ${{ vars.LZC_BOOTSTRAP_ROOT }}
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
           LZC_REGION: ${{ vars.LZC_REGION }}
           LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
@@ -110,3 +136,58 @@ jobs:
           LZC_SERVICE_ACCOUNT_KEY: ${{ secrets.LZC_SERVICE_ACCOUNT_KEY }}
           LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
           LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
+      - name: Read bootstrap backend outputs (private file)
+        if: env.LZC_ROOT != 'bootstrap'
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/bootstrap-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/bootstrap.encryption.json")"
+          tofu -chdir=infra/bootstrap init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/bootstrap.backend.hcl"
+          tofu -chdir=infra/bootstrap output -json > "$LZC_PRIVATE/bootstrap-outputs.json"
+      - name: Prepare workload credentials
+        if: env.LZC_ROOT != 'bootstrap'
+        run: node infra/ci/prepare.mjs workload
+      - name: OpenTofu init
+        timeout-minutes: 3
+        run: tofu -chdir="infra/$LZC_ROOT" init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/$LZC_ROOT.backend.hcl"
+      - name: OpenTofu validate
+        run: tofu -chdir="infra/$LZC_ROOT" validate -no-color
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: bootstrap-plan-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-plan
+      - name: Verify reviewed plan and apply authorization
+        run: node infra/ci/review.mjs verify
+        env:
+          LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_BOOTSTRAP_APPLY_COMMIT }}
+          LZC_APPROVED_APPLY_ROOT: ${{ vars.LZC_BOOTSTRAP_ROOT || 'bootstrap' }}
+      - name: OpenTofu apply reviewed plan
+        id: apply
+        # One SIGINT allows OpenTofu to save state before the outer job deadline.
+        run: >-
+          timeout --foreground --signal=INT --kill-after=5m 20m
+          tofu -chdir="infra/$LZC_ROOT" apply
+          -input=false -no-color -lock-timeout=60s "$LZC_PLAN"
+      - name: Capture and encrypt recovery state
+        if: always() && steps.apply.outcome != '' && steps.apply.outcome != 'skipped'
+        run: |
+          umask 077
+          if ! timeout --foreground --signal=INT --kill-after=10s 60s \
+            tofu -chdir="infra/$LZC_ROOT" state pull > "$LZC_PRIVATE/state.snapshot"; then
+            echo "::warning::Remote state snapshot unavailable; checking for emergency state."
+            rm -f -- "$LZC_PRIVATE/state.snapshot"
+          fi
+          node infra/ci/protect-state.mjs
+      - name: Upload encrypted recovery state
+        if: always() && steps.apply.outcome != '' && steps.apply.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: bootstrap-state-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-recovery/*.enc.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Remove temporary credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/lzc-private"

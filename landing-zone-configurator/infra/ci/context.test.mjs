@@ -24,7 +24,7 @@ test("plan context binds inputs, root, commit, run and source files",()=>{
 });
 
 test("local invocation cannot apply even with a valid plan context",()=>{
-  const result=spawnSync(process.execPath,[fileURLToPath(new URL("./run.mjs",import.meta.url)),"apply"],{env:{...process.env,...env,GITHUB_ACTIONS:"false"},encoding:"utf8"});
+  const result=spawnSync(process.execPath,[fileURLToPath(new URL("./review.mjs",import.meta.url)),"verify"],{env:{...process.env,...env,GITHUB_ACTIONS:"false"},encoding:"utf8"});
   assert.notEqual(result.status,0);
   assert.match(result.stderr,/Remote apply is restricted to the serialized GitHub Actions workflow/);
 });

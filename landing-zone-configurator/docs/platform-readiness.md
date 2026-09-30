@@ -101,3 +101,8 @@ Unabhängige Abnahme:
 Plattform-Jobs haben jetzt ein äußeres Zeitlimit von 100 Minuten. OpenTofu-Apply erhält maximal 70 Minuten und danach bis zu zehn Minuten zum geordneten Beenden; eine zusätzliche Gesamtlaufzeitgrenze des Skripts hält Puffer für Artefakte frei. 22 lokale Tests einschließlich Abbruchverhalten, verschlüsselter Diagnose und Recovery-Sperren sowie Workflow-Prüfung bestanden.
 
 Nächster Ausbau: CF-Space und App-/Task-Runtime per IaC, getrennte Laufzeitidentitäten/Bindings und echte TLS-/Authentifizierungstests aus CF. Die Infrastrukturabnahme belegt noch keinen erfolgreichen App-Zugriff auf Datenbank oder Secrets Manager.
+
+
+## CI-Vereinfachung 2026-09-30
+
+Die Workflows führen OpenTofu jetzt direkt aus. Der bisherige Deployment-Runner, Prozessmanager und automatische Einmal-Recovery-Pfad sind entfernt. Normale Plan-/Apply-Logs erscheinen live; Credential-Outputs und State-Snapshots bleiben gezielt geschützt. GNU `timeout` übernimmt SIGINT und die anschließende Wartezeit; keine eigene Signalsteuerung. Die geltenden Zeitlimits und Befehle stehen in der [CI-Betriebsanleitung](../infra/ci/README.md). Das historische Recovery-Inventar liegt unter `docs/incidents`, ohne aktive Ausführung.

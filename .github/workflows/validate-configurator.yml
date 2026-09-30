@@ -73,12 +73,16 @@ jobs:
           tofu_version: '1.12.6'
           tofu_wrapper: false
       - name: Check operator plan guard
-        run: node --test infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/process.test.mjs infra/ci/recovery.test.mjs
+        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs
       - name: Check formatting
         run: tofu -chdir=infra fmt -check -recursive
+      - name: Prepare disposable validation encryption
+        run: node infra/ci/prepare.mjs validation
+        env:
+          LZC_ROOT: ${{ matrix.root }}
       - name: Initialize without backend
-        run: node infra/tofu.mjs ${{ matrix.root }} init -backend=false -lockfile=readonly -input=false
+        run: tofu -chdir=infra/${{ matrix.root }} init -backend=false -lockfile=readonly -input=false
       - name: Validate
-        run: node infra/tofu.mjs ${{ matrix.root }} validate -no-color
+        run: tofu -chdir=infra/${{ matrix.root }} validate -no-color
       - name: Test plans with mock providers
-        run: node infra/tofu.mjs ${{ matrix.root }} test -no-color
+        run: tofu -chdir=infra/${{ matrix.root }} test -no-color

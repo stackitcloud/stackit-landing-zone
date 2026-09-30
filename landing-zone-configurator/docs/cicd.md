@@ -1,39 +1,37 @@
 # CI/CD für den Landing Zone Configurator
 
-Status: Architektur und Umsetzungsliste; die vorhandene Validierungs-CI ist implementiert. Die hier beschriebenen Deployment-Workflows sind noch nicht implementiert oder ausgeführt. Erste Umgebung: **lzc-dev / eu01**.
+Status: Validierung, Bootstrap-/Backend- und Plattform-Pipelines sind implementiert und erfolgreich ausgeführt. OpenTofu wird direkt in den Workflows aufgerufen, mit normalen Live-Logs. App-Release, Runtime und Drift-Workflow sind noch geplant. Erste Umgebung: **lzc-dev / eu01**. Aktuelle Bedienung: [CI-Betrieb](../infra/ci/README.md).
 
 ## Getrennte Lebenszyklen
 
-| Workflow (geplanter Dateiname) | Auslöser | Verantwortung |
+| Workflow | Auslöser | Verantwortung |
 | --- | --- | --- |
-| `validate-configurator.yml` (vorhanden) | PR, main, manuell | App-Prüfungen, IaC-Validierung und Mock-Tests ohne Cloud-Zugang |
-| `configurator-bootstrap.yml` | Ausschließlich manuell, Umgebung und Phase auswählen | State-Infrastruktur erstellen, Versionierung konfigurieren, später Credentials rotieren |
-| `configurator-platform.yml` | Infrastrukturänderungen auf main: Plan; manuell | Plattform- und Runtime-IaC planen, geprüften Plan anwenden |
+| `validate-configurator.yml` (vorhanden) | PR, main, Feature-Branch, manuell | App-Prüfungen, IaC-Validierung und Mock-Tests ohne Cloud-Zugang |
+| `configurator-bootstrap.yml` | Feature-Push: Plan; manuell auf main vorbereitet | State-Infrastruktur erstellen, Versionierung konfigurieren, später Credentials rotieren |
+| `configurator-platform.yml` | Infrastrukturänderungen auf Feature-Branch: Plan; manuell auf main vorbereitet | Plattform-IaC planen, geprüften Plan anwenden; Runtime folgt |
 | `configurator-release.yml` | App-/Release-Dateien auf main; manuell für Redeploy/Rollback | Einmal bauen, prüfen, unveränderliches Release nach CF deployen |
 | `configurator-drift.yml` | Optional zeitgesteuert/manuell | Infrastruktur-Drift erkennen und melden; zunächst kein automatisches Apply |
 
 Ein normales App-Release startet weder Bootstrap noch Plattform-Apply. Relevante Pfade umfassen auch gemeinsame Deployment-Skripte, Lockfiles und die jeweilige Workflow-Datei. Änderungen ausschließlich am Accelerator lösen keinen Configurator-Release aus. Kunden-Landing-Zone-Deployments bleiben ein eigener, mandantenisolierter Runner-Ablauf und erhalten keine Betreiber-CI-Credentials.
 
-## State vor Automatisierung lösen
+## State und Credentials
 
-Der aktuelle Operator-Wrapper nutzt lokale Bootstrap-/Backend-States und lokal erzeugte Schlüssel. Flüchtige GitHub-Runner dürfen dieses Verhalten nicht unverändert übernehmen: Ein neuer Schlüssel oder verlorener State nach einem Lauf wäre kein belastbarer Betrieb.
+Ein unabhängiger Verwaltungs-Bucket wurde durch `seed` und `seed-protection` angelegt und versioniert. Bootstrap und Backend speichern dort ihre verschlüsselten States. Die Plattform verwendet den ebenfalls versionierten Workload-State-Bucket. Jeder Root hat einen eigenen dauerhaft verwahrten Schlüssel; ein fehlender Deployment-Schlüssel führt zum Abbruch. Geschützte Environment-Secrets liefern die vorhandenen Schlüssel und Credentials an CI, keine lokale Seed-Datei wird benötigt.
 
-Ziel ist ein **unabhängiges, dauerhaftes Verwaltungs-Backend** für Bootstrap und Backend-Root, getrennt vom Bucket, den diese verwalten. Es muss vor deren erstem CI-Apply existieren, verschlüsselte States, Sperren und Wiederherstellung unterstützen. Bevorzugt wird ein vorhandenes Organisations-Backend. Falls keines existiert, wird dessen Einrichtung als eigene IaC-Seed-Stufe mit gesicherter initialer State-Übergabe geplant. Entscheidung: separater Verwaltungs-Bucket im bestehenden STACKIT-Projekt, erstellt durch die lokalen IaC-Roots `seed` und `seed-protection`. Die dauerhafte Schlüsselübergabe an CI bleibt offen; der Configurator darf sein einziges Recovery-Backend nicht selbst voraussetzen.
+Native S3-Sperren haben den Integrationstest nicht bestanden. Die bestätigte Übergangslösung erlaubt ausschließlich gemeinsam serialisierte CI-Applies; direkte parallele Zugriffe durch andere Credential-Inhaber sind betrieblich ausgeschlossen. GitHub-Artefakte dienen nur für Review und Recovery, nicht als dauerhaftes State-Backend.
 
-Platform und Runtime erhalten getrennte State-Keys im Configurator-State-Bucket. Jeder Root und jede Umgebung bekommt einen dauerhaft verwahrten Verschlüsselungsschlüssel. CI lädt Schlüssel aus geschützten Environment-Secrets oder dem unabhängigen Secret-System; ein fehlender Schlüssel führt zum Abbruch. GitHub-Artefakte und Caches dienen nicht als dauerhaftes State-Backend. Bestehende States werden migriert, nicht durch erneutes Anlegen ersetzt.
-
-Der seltene Bootstrap-Workflow benötigt trotzdem einen regelmäßigen Betriebsprozess für die befristeten S3-Credentials: Ablaufüberwachung, Rotation vor Ablauf, Aktualisierung aller Consumer und Test mit dem neuen Zugang vor Widerruf des alten.
+Der seltene Bootstrap benötigt weiterhin Ablaufüberwachung und Rotation der befristeten S3-Credentials einschließlich Aktualisierung aller Consumer. Unabhängige Schlüsselverwahrung und vollständige Restore-Abnahme bleiben eigene Betriebsaufgaben.
 
 ## Infrastruktur-Pipeline
 
-1. Vertrauenswürdigen Commit von main auschecken; gepinnte Tools und Provider-Lockfiles verwenden.
+1. Vertrauenswürdigen Commit des freigegebenen Branches auschecken; gepinnte Tools und Provider-Lockfiles verwenden.
 2. Root und Umgebung aus fester Allowlist wählen; Remote-State und bestehende Schlüssel laden.
-3. Plan erstellen und verschlüsselt speichern. Manifest bindet Commit, Umgebung, Root, Eingabedigest, Lockfile-Digest, Plan-Hash und kurze Gültigkeit. Nur bereinigte Ressourcenaktionen als Review-Zusammenfassung veröffentlichen, keine vollständigen State-/Plan-JSONs.
+3. Plan erstellen und verschlüsselt speichern. Manifest bindet Commit, Umgebung, Root, Eingabedigest, Lockfile-Digest, Plan-Hash und kurze Gültigkeit. Normale OpenTofu-Plan-Ausgabe live anzeigen; keine vollständigen State-/Plan-JSONs oder Credential-Outputs veröffentlichen.
 4. Apply-Job nutzt ein geschütztes GitHub Environment und exakt das geprüfte Plan-Artefakt desselben vertrauenswürdigen Runs. Freigabe gilt für diesen Plan. Abgelaufene oder veraltete Plans werden neu erstellt und erneut geprüft.
-5. Backend-Locking verhindert parallele State-Schreiber. Übergreifende GitHub-Concurrency pro Umgebung serialisiert mutierende Plattform-/Runtime-/Release-Jobs; `cancel-in-progress: false` für laufende Mutationen. Keine Fairness oder FIFO-Reihenfolge voraussetzen, ältere Releases vor Deployment abweisen.
+5. Da natives S3-Locking nicht zuverlässig funktioniert, übernimmt übergreifende GitHub-Concurrency pro Umgebung serialisiert mutierende Plattform-/Runtime-/Release-Jobs; `cancel-in-progress: false` für laufende Mutationen. Keine Fairness oder FIFO-Reihenfolge voraussetzen, ältere Releases vor Deployment abweisen.
 6. Outputs nur gezielt und geschützt an Consumer übergeben, Recovery und Audit protokollieren.
 
-Bootstrap und Backend-Versionierung laufen nacheinander. Nach Bootstrap-Apply wird der Backend-Plan mit den jetzt vorhandenen Zugangsdaten erstellt. Plattform folgt erst nach nachgewiesener Versionierung und erfolgreichem Locking-/Restore-Test. Runtime benötigt anschließend die CF-Zugänge der Plattform. Kein Plan über noch unbekannte Provider-Credentials und kein routinemäßiges `-target`.
+Bootstrap und Backend-Versionierung laufen nacheinander. Nach Bootstrap-Apply wird der Backend-Plan mit den jetzt vorhandenen Zugangsdaten erstellt. Plattform folgt nach nachgewiesener Versionierung unter dem bestätigten CI-only-Betriebsmodell. Runtime benötigt anschließend die CF-Zugänge der Plattform. Kein Plan über noch unbekannte Provider-Credentials und kein routinemäßiges `-target`.
 
 ## Anwendung häufig und unabhängig ausliefern
 
@@ -59,20 +57,19 @@ Die Verfügbarkeit von Environment-Freigaberegeln hängt vom GitHub-Tarif und de
 
 ## Umsetzungsreihenfolge und Abnahme
 
-- [x] Workflows nach Lebenszyklus und Credentials getrennt planen.
-- [x] Validierungs-CI für App und die drei vorhandenen IaC-Roots angelegt.
-- [ ] Unabhängiges Verwaltungs-Backend auswählen/einrichten; Schlüsselhaltung und Recovery testen.
-- [x] CI-Schutz gegen lokale Cloud-States und automatische Erzeugung von Deployment-Schlüsseln; vier Tests in der Validierungs-CI.
-- [ ] CI-Modus des Wrappers: explizite Umgebung, Remote-State, bestehende Schlüssel, Plan-Bindung an Commit/Eingaben.
-- [ ] GitHub-Environments, Schutzregeln und getrennte Deployment-Identitäten als Code definieren.
-- [ ] Bootstrap-/Backend-Pipeline implementieren; Wiederholung ohne Änderungen und Credential-Rotation nachweisen.
-- [ ] S3-Versionierung, konkurrierendes Locking und Wiederherstellung praktisch testen.
-- [ ] Plattform-/Runtime-Pipeline implementieren und konkrete Foundation, Quota, DB-Größe und Netzfreigaben festlegen.
-- [ ] CF-Release-Manifeste, Paketierung, Migrationen, Readiness und Worker-Drain implementieren.
-- [ ] App-Release-Pipeline: zwei Releases, unabhängiger Redeploy und Rollback nachweisen, ohne Infrastrukturänderung.
+- [x] Lebenszyklen und Credentials trennen; Validierung aller fünf IaC-Roots und der App.
+- [x] Verwaltungs- und Workload-Backend einrichten, Versionierung und State-Verschlüsselung prüfen.
+- [x] GitHub-Environments und Freigaben einrichten; bestehende Deployment-Schlüssel geschützt übergeben.
+- [x] Bootstrap-/Backend- und Plattform-Pipelines ausführen; Plattform-Recovery und anschließenden No-op nachweisen.
+- [x] Native S3-Sperren testen und als nicht zuverlässig dokumentieren; CI-only-Betrieb explizit festlegen.
+- [x] OpenTofu direkt in den Workflows aufrufen; Live-Logs, Standard-Timeout und geschützte State-Sicherung.
+- [ ] Unabhängige Schlüsselverwahrung, vollständiger Restore-Prozess und automatisierte Credential-Rotation.
+- [ ] CF-Runtime, Bindings und Konnektivitätstests aus CF.
+- [ ] Release-Manifeste, Paketierung, Migrationen, Readiness und Worker-Drain.
+- [ ] Zwei App-Releases, unabhängigen Redeploy und Rollback ohne Infrastrukturänderung nachweisen.
 - [ ] Optionalen Drift-Workflow und Alarmierung aktivieren.
 
-Nächster Umsetzungsschritt ist das dauerhafte CI-State-/Secret-Fundament. Anschließend kann der erste Bootstrap-Apply direkt aus CI erfolgen; ein lokales Apply ist dafür keine Voraussetzung.
+Nächster Ausbau ist die CF-Runtime mit Zugriffstests zu Datenbank und Secrets Manager. Die bisherige einmalige Recovery wurde aus dem normalen Deployment-Pfad entfernt; Vorfall und Wiederherstellung stehen im [Plattform-Betriebsstand](platform-readiness.md).
 
 ## Quellen
 
@@ -80,25 +77,3 @@ Nächster Umsetzungsschritt ist das dauerhafte CI-State-/Secret-Fundament. Ansch
 - [GitHub Deployment-Steuerung und Concurrency](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments)
 - [GitHub Environment-Verfügbarkeit und Einrichtung](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 - [Cloud Foundry Rolling Deployments](https://docs.cloudfoundry.org/devguide/deploy-apps/rolling-deploy.html)
-
-### Aktueller technischer Fortschritt
-
-Der Wrapper erkennt GitHub Actions/CI und erlaubt dort derzeit ausschließlich lokale Validierungsbefehle einschließlich `init -backend=false`. Cloud-Operationen brechen ab, solange die Remote-State-Anbindung fehlt. Die extrahierte Schlüsselverwaltung unterstützt bestehende, im Speicher übergebene Deployment-Schlüssel ohne Dateipersistierung; der Wrapper entfernt die Schlüsselvariablen anderer Roots aus der Kindprozess-Umgebung. Diese Vorarbeit aktiviert noch keine Deployment-Pipeline.
-
-### Verwaltungs-Backend bereitgestellt
-
-Der separate STACKIT-Verwaltungs-Bucket wurde per IaC erstellt und versioniert. Bootstrap nutzt nun dessen S3-Backend; der Backend-Root ist ebenfalls darauf umgestellt. Seed-States bleiben verschlüsselt lokal und erhalten verschlüsselte Recovery-Kopien im Bucket. Vor Aktivierung der Cloud-Pipelines fehlen noch unabhängige Schlüsselverwahrung, CI-Zugangsinjektion ohne lokale Seed-Outputs und vollständige Lock-/Recovery-Abnahme. Keine GitHub-Secrets oder Deployment-Workflows wurden aktiviert.
-
-### CI-Implementierung und fehlgeschlagene Locking-Abnahme
-
-Plan-/Apply-Workflow für Bootstrap und Backend sowie deklarative GitHub-Environment-Einrichtung sind implementiert, lokal geprüft und noch nicht veröffentlicht. Details: [CI-Betrieb](../infra/ci/README.md). Secret-Upload wartet auf ausdrückliche Freigabe nach automatischer Sicherheitsprüfung.
-
-Der echte Parallelitätstest zeigt: Eine vorhandene `.tflock` blockiert einen zweiten OpenTofu-Plan nicht. Ein zusätzlicher S3-Test bestätigt, dass ein zweites PUT mit `If-None-Match: *` auf dasselbe existierende Objekt akzeptiert wird. Remote-Applies bleiben daher technisch gesperrt. GitHub-Concurrency allein schützt nur kooperierende Workflows desselben Repositories; lokale oder andere Clients sind davon nicht erfasst. Als Alternativen stehen ein PostgreSQL-Backend mit nativem Locking oder ein ausdrücklich begrenzter CI-only-Betrieb zur Entscheidung. Der Bucket kann weiter für verschlüsselte Backups verwendet werden.
-
-Quellen: [STACKIT Issue 1534](https://github.com/stackitcloud/terraform-provider-stackit/issues/1534), [OpenTofu S3-Lock-Implementierung](https://github.com/opentofu/opentofu/blob/v1.12.6/internal/backend/remote-state/s3/client.go).
-
-### Bestätigte Übergangslösung: ein schreibender CI-Lauf
-
-Der Benutzer hat den CI-only-Betrieb trotz fehlender nativer S3-Sperren bestätigt. Alle mutierenden Configurator-Workflows verwenden repositoryweit `configurator-lzc-dev-mutation` mit `cancel-in-progress: false`; lokale Remote-Applies bleiben gesperrt. Diese Entscheidung ersetzt die vorherige vollständige Apply-Sperre und die offene PostgreSQL-Alternative. Sie gilt für kooperierende CI-Läufe, nicht für direkte Zugriffe anderer Credential-Inhaber. Die ausdrückliche Freigabe der benannten Secrets und GitHub-Ziel-Environments wurde erteilt.
-
-GitHub-Einrichtung abgeschlossen: `lzc-dev-bootstrap-plan`, `lzc-dev-bootstrap-apply` und `lzc-dev-recovery` existieren mit main-Beschränkung. Apply/Recovery erfordern Freigabe; Admin-Bypass ist deaktiviert. Die freigegebenen Secrets sind hinterlegt und ihre Namen über die API verifiziert. Noch kein Workflow veröffentlicht oder gestartet.

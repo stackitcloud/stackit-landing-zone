@@ -2,7 +2,7 @@
 
 Zentral gehostete, mandantenfähige Anwendung zum Erstellen, Bearbeiten und Deployen von Konfigurationen des STACKIT Landing Zone Accelerators.
 
-Status: lokale Entwicklungsbasis mit React-Startseite, Fastify-API, Tests und getrennter CI. Bootstrap-, Backend- und Plattform-IaC sind implementiert und lokal geprüft; Der separate Verwaltungs-Bucket samt Zugang und Versionierung ist per IaC provisioniert; die übrigen Plattformdienste stehen noch aus.
+Status: React-/Fastify-Entwicklungsbasis mit Tests. Verwaltungs-Backend, Bootstrap und neun Plattform-Ressourcen sind per IaC provisioniert und geprüft. Die Pipelines führen OpenTofu direkt mit sichtbaren CLI-Logs aus. CF-Runtime und App-Deployment stehen noch aus. [IaC-Bedienung](infra/README.md), [CI-Betrieb](infra/ci/README.md).
 
 Start und Prüfungen: [Entwicklungsanleitung](app/README.md). Ergebnisse der lesenden Bestandsaufnahme: [Plattformprüfung](docs/platform-check.md).
 

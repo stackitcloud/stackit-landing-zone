@@ -1,125 +1,80 @@
 # Configurator-Infrastruktur
 
-Alle Dienste und deren Aktivierung werden über IaC verwaltet. Keine manuelle Erstellung im Portal. Operator-Eingaben und sichere Übergabe von Credentials sind Konfiguration, keine alternative Provisionierung.
+Alle Configurator-Dienste werden per OpenTofu verwaltet. Die Infrastruktur bleibt vom eigentlichen Landing Zone Accelerator getrennt. OpenTofu **1.12.6** und Provider-Versionen sind gepinnt; jeder ausführbare Root hat ein versioniertes Lockfile.
 
 ## Roots und Reihenfolge
 
-0. **seed/** und **seed-protection/**: separater Verwaltungs-Bucket im bestehenden Projekt, Zugang und Versionierung; verschlüsselter lokaler Seed-State mit verschlüsselter Remote-Sicherung.
-1. **bootstrap/**: aktiviert Object Storage über den ersten Bucket, erstellt State-Bucket, Credential-Gruppe und befristeten S3-Zugang. Verschlüsselter S3-State im Verwaltungs-Bucket.
-2. **backend/**: aktiviert Bucket-Versionierung über die STACKIT-S3-API mit den nun existierenden Credentials; eigener verschlüsselter S3-State im Verwaltungs-Bucket.
-3. **platform/**: S3-Backend im Bootstrap-Bucket, CF-Organisation und technischer Manager, PostgreSQL mit Datenbank/Migrationsnutzer, Secrets Manager mit Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Aktivierung/Token.
-4. **runtime/** (noch zu implementieren): CF-Spaces, Rollen, gemeinsame Service-Instanzen, eingeschränkter DB-App-Zugang/RLS, Secret-Policies und Artefaktzugriffe. Eigener State; nur benötigte Outputs aus der vorigen Schicht im Speicher übergeben.
+| Root | Aufgabe | State |
+| --- | --- | --- |
+| `seed` | Verwaltungs-Bucket und dessen S3-Zugang | lokal verschlüsselt, mit verschlüsselter Remote-Sicherung |
+| `seed-protection` | Versionierung des Verwaltungs-Buckets | lokal verschlüsselt, mit verschlüsselter Remote-Sicherung |
+| `bootstrap` | Workload-State-Bucket und dessen S3-Zugang | Verwaltungs-Bucket |
+| `backend` | Versionierung des Workload-State-Buckets | Verwaltungs-Bucket |
+| `platform` | CF-Organisation/Manager, PostgreSQL/Datenbank/Migrationsnutzer, Secrets Manager/Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Token | Workload-Bucket |
+| `runtime` (geplant) | CF-Spaces, Apps, Bindings, eingeschränkte Laufzeitidentitäten | separater State |
 
-Diese Trennung verhindert, dass der CF-Provider einen noch nicht erzeugten Runtime-Zugang benötigt. Kein allgemeiner `-target`-Workflow und kein manueller Portal-Bootstrap. Weitere Dienste, etwa Observability, folgen ebenfalls als IaC-Ressourcen.
+Bootstrap, Backend und Plattform sind in `lzc-dev/eu01` provisioniert. Die Plattform enthält neun verwaltete Ressourcen; der [Betriebsstand](../docs/platform-readiness.md) dokumentiert Abnahme und offene Runtime-Arbeiten.
 
-## Nachgewiesene Aktivierung im Provider
+Der STACKIT-Provider aktiviert Object Storage und Model Serving bei der ersten Ressourcenerstellung. Für Bucket-Versionierung spricht der AWS-Provider ausschließlich die STACKIT-S3-API an; es werden keine AWS-Ressourcen angelegt.
 
-Der gepinnte STACKIT-Provider `0.114.0` ruft beim Erstellen von `stackit_objectstorage_bucket` zuerst `EnableProject` auf. Für `stackit_modelserving_token` aktiviert er zunächst den regionalen Model-Serving-Service und erstellt anschließend den Token. Beide Aktivierungen sind damit Bestandteil des jeweiligen OpenTofu-Apply.
+## Deployment: direkte OpenTofu-Schritte in CI
 
-Quellen: [Bucket-Create](https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/objectstorage/bucket/resource.go), [Model-Serving-Create](https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/modelserving/token/resource.go).
+[Bootstrap-Workflow](../../.github/workflows/configurator-bootstrap.yml) und [Plattform-Workflow](../../.github/workflows/configurator-platform.yml) führen `tofu init`, `validate`, `plan` und `apply` direkt aus. Normale CLI-Ausgaben sind live sichtbar. Kleine Hilfsprogramme bereiten Credentials vor, prüfen das gespeicherte Plan-Artefakt und verschlüsseln Recovery-Snapshots; sie führen keine Deployments aus.
 
-Für Bucket-Versionierung fehlt in diesem Provider eine eigene Ressource. `aws_s3_bucket_versioning` aus `hashicorp/aws` spricht ausschließlich den STACKIT-S3-Endpunkt an; es werden keine Ressourcen bei AWS angelegt. Tatsächliche API-Kompatibilität und Locking bleiben bis zum ersten Apply/Integrationstest unbestätigt.
+[CI-Betriebsanleitung](ci/README.md): Environments, Planfreigabe, Timeouts, State-Sicherung und Feature-Branch-Tests. Remote-Applies ausschließlich über die gemeinsam serialisierte CI; keine parallelen lokalen Applies. S3-Locking hat den Integrationstest nicht bestanden und wird nicht als funktionierender Schutz behauptet.
 
-## Werkzeug und lokale Dateien
+## Lokal validieren, ohne Cloud-Zugriff
 
-OpenTofu **1.12.6**, Node.js **24.21.0**. Provider sind exakt gepinnt, alle drei `.terraform.lock.hcl` werden versioniert. Der Wrapper nutzt standardmäßig `tofu`; alternativ `LZC_TOFU_BIN=/absoluter/pfad/tofu` setzen.
-
-Aus dem Verzeichnis `landing-zone-configurator/`:
-
-```sh
-node infra/tofu.mjs bootstrap init -backend=false
-node infra/tofu.mjs bootstrap validate
-node infra/tofu.mjs bootstrap test
-node infra/tofu.mjs backend init -backend=false
-node infra/tofu.mjs backend validate
-node infra/tofu.mjs backend test
-node infra/tofu.mjs platform init -backend=false
-node infra/tofu.mjs platform validate
-node infra/tofu.mjs platform test
-```
-
-Tests nutzen gemockte Provider; sie legen keine Cloud-Ressourcen an. Bei abweichender globaler Node-Version kann der aus der [App-Anleitung](../app/README.md) bekannte `npm exec`-Präfix verwendet werden.
-
-Der Wrapper erzeugt root-spezifische Verschlüsselungs-Passphrases unter `../.local/<root>/state.passphrase`, Dateirechte 0600. State und gespeicherte Plans sind durch OpenTofu AES-GCM verschlüsselt; Passphrases werden nur über `TF_ENCRYPTION` übergeben. Nicht in tfvars, Git oder CF-Variablen übernehmen. **Vor dem ersten Apply die Schlüssel unabhängig und sicher sichern.** `.gitignore` ersetzt keine Sicherung und verhindert auch keine Betriebssystem-/Cloud-Drive-Synchronisation.
-
-Bootstrap und Backend verwenden nun den separaten Verwaltungs-Bucket. Nur die Seed-Stufen verbleiben lokal: Sie erstellen den Bucket und dessen Versionierung selbst. `check-management-backend.mjs` sichert ihre verschlüsselten States unter `recovery/` im Bucket und prüft den Download per Hash. Die Schlüssel bleiben separat lokal; ihre dauerhafte unabhängige Hinterlegung im betrieblichen Secret-System/GitHub Environment ist noch offen. Die Kopie im selben Bucket schützt nicht vor Verlust des gesamten Buckets. Seed-Änderungen erfolgen bis zur Betriebsübergabe durch einen einzigen Operator; danach die Sicherung erneuern.
-
-Der bisherige Bootstrap hatte nur einen Plan, keinen angewendeten State. Daher wurde kein existierender Ressourcen-State migriert. Bei künftigen Backend-Wechseln bestehende States ausdrücklich migrieren und niemals durch `init -reconfigure` verwerfen.
-
-## Operator-Eingaben und Plan
-
-Die erste Entwicklungsumgebung **lzc-dev in eu01** ist bestätigt und in der vorhandenen, ignorierten Root-Datei eingetragen. Der erste Backend-Zugang ist mit ungefähr 90 Tagen Laufzeit geplant. Beispiel für die relevanten Eingaben:
-
-```dotenv
-# PROJECT_ID und ORGANISATION_ID sind bereits vorhanden.
-REGION=eu01
-NAME_PREFIX=lzc-dev
-STATE_CREDENTIAL_EXPIRATION=2026-12-28T00:00:00Z
-```
-
-Dies ist die bestätigte Entwicklungsumgebung, keine Produktionskonfiguration. Ablaufdatum bewusst wählen und vor Ablauf rotieren. `ORGANISATION_ID` wird nicht zur Erstellung einer neuen Organisation verwendet; dieses Vorhaben arbeitet im bestehenden Projekt.
-
-Der Wrapper führt die Datei nicht als Shellcode aus und verwendet ausschließlich die zugehörige Service-Account-Datei. Für den Plattform-Root zusätzlich eine geprüfte lokale tfvars-Datei unter `.local/` bereitstellen; siehe [Parameterbeispiel](environments/development.tfvars.example). Keine Platzhalter in einen echten Apply übernehmen.
+Benötigt werden OpenTofu 1.12.6 und Node.js 24.21.0 für die reine Umgebungs-Vorbereitung. Aus `landing-zone-configurator/`, beispielhaft für `platform`:
 
 ```sh
-node infra/tofu.mjs bootstrap init
-node infra/tofu.mjs bootstrap plan
-# Nach Prüfung des angezeigten Plans und unabhängiger Schlüsselsicherung:
-node infra/tofu.mjs bootstrap apply
-
-node infra/tofu.mjs backend init
-node infra/tofu.mjs backend plan
-node infra/tofu.mjs backend apply
-
-node infra/tofu.mjs platform init
-node infra/tofu.mjs platform plan -var-file=../../.local/platform-inputs.tfvars
-# Nach Prüfung des konkreten Plans:
-node infra/tofu.mjs platform apply
+node infra/prepare-local.mjs platform --validation
+(
+  . .local/validation/platform/environment.sh
+  tofu -chdir=infra/platform init -backend=false -lockfile=readonly -input=false
+  tofu -chdir=infra/platform validate -no-color
+  tofu -chdir=infra/platform test -no-color
+)
+tofu -chdir=infra fmt -check -recursive
+node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/*.test.mjs
 ```
 
-`plan` speichert verschlüsselt unter `.local/<root>/review.tfplan`; `apply` führt ausschließlich diese Datei aus. Ein gespeicherter Plan wird von OpenTofu ohne weitere interaktive Bestätigung angewendet: Der explizite `apply`-Aufruf ist die Freigabe. Ein Manifest bindet den Plan an seinen Hash und die lokale `.env`-Konfiguration; fehlgeschlagene, verbrauchte oder mehr als 24 Stunden alte Plans werden abgewiesen. Nach Konfigurationsänderungen immer neu planen. `prevent_destroy` blockiert unbeabsichtigte Ersetzung/Löschung wichtiger Ressourcen, ersetzt aber kein Backup.
+Die Vorbereitung erzeugt nur eine private Umgebungsdatei und einen lokalen Testschlüssel. Sie führt keinen OpenTofu-Befehl aus. Die Testumgebung liegt separat unter `.local/validation/<root>` und verwendet keine produktiven Backend-Schlüssel. Für andere Roots `platform` durch den jeweiligen Namen ersetzen. Die Tests verwenden Mock-Provider. CI macht dieselben OpenTofu-Aufrufe direkt mit temporären Testschlüsseln.
 
-Der Wrapper liest für die Plattform die S3-Zugangsdaten aus den verschlüsselten Bootstrap-Outputs in den Arbeitsspeicher und setzt sie nur im Kindprozess. Backend-Konfiguration enthält keine Schlüssel. Die Plattforminitialisierung prüft zuvor die vom Backend-Root angewendete Versionierung. Der Wrapper verwaltet derzeit genau eine Umgebung pro Checkout; weitere Umgebungen benötigen getrennte State-/Schlüsselkontexte und dürfen nicht durch bloßes Umbenennen dieses Checkouts erzeugt werden. S3-Locking mit `use_lockfile` muss gegen STACKIT praktisch getestet werden, bevor mehrere Operatoren oder automatisierte Applies zugelassen werden.
+## Seltene lokale Seed-Operationen
 
-## Implementierungsstand
+Der Verwaltungs-Seed existiert bereits. Folgende Befehle sind der dokumentierte Bedienweg für bewusst geplante Seed-Änderungen, kein notwendiger Schritt vor einem App-Deployment. Nur ein Operator arbeitet am Seed. Vor Änderungen unabhängige Schlüsselsicherung prüfen.
 
-- [x] Bootstrap-/Backend-/Plattform-Ressourcen als Code, Provider-Lockfiles und Verschlüsselung.
-- [x] Alle drei Roots validiert; sieben Mock-Plan-Tests sowie drei Tests des Plan-Prüfmechanismus.
-- [x] Eigene CI-Jobs ohne Cloud-Credentials vorbereitet.
-- [x] Erster echter Bootstrap-Plan für lzc-dev/eu01: 3 Create, 0 Update, 0 Delete.
-- [ ] Erstes Apply und S3-Versionierungs-/Locking-/Restore-Test.
-- [ ] Runtime-Root, App-Bindings, eingeschränkte DB-Rollen und Secret-/Bucket-Policies.
-- [ ] Automatisierte Credential-Rotation samt Bindings und Restore-Runbook.
-
-Angewendet sind jetzt ausschließlich Verwaltungs-Bucket, Credentials-Gruppe, S3-Zugang und Versionierung. Bootstrap ist am Remote-Backend initialisiert und neu geplant; Plattformdienste sind noch nicht erstellt.
-
-## CI/CD-Zielbild
-
-Getrennte Bootstrap-, Plattform- und Release-Pipelines sind in [CI/CD](../docs/cicd.md) geplant. App-Objekte, Routen und App-Bindings gehören dabei dem deklarativen Release-Prozess. Vor Cloud-Applies in CI werden lokale Bootstrap-/Backend-States auf ein unabhängiges dauerhaftes Backend umgestellt und bestehende Verschlüsselungsschlüssel sicher eingebunden. Die Deployment-Pipelines sind noch nicht implementiert.
-
-## Verwaltungs-Seed ausführen und wiederherstellen
+Eingaben bleiben in den ignorierten Dateien `landing-zone-configurator.env` und `landing-zone-configurator-credentials.json` im Repository-Root. Die env-Datei verwendet `NAME=WERT`: `PROJECT_ID`, `REGION`, `NAME_PREFIX`, `STATE_CREDENTIAL_EXPIRATION`. Credentials und State-Schlüssel niemals in Git übernehmen.
 
 ```sh
-node infra/tofu.mjs seed init
-node infra/tofu.mjs seed plan
-node infra/tofu.mjs seed apply
-node infra/tofu.mjs seed-protection init
-node infra/tofu.mjs seed-protection plan
-node infra/tofu.mjs seed-protection apply
-node infra/check-management-backend.mjs
-# Nur bei einer erstmaligen Initialisierung ohne vorhandenen lokalen Ressourcen-State:
-node infra/tofu.mjs bootstrap init -reconfigure
-node infra/tofu.mjs bootstrap plan
+node infra/prepare-local.mjs seed
+(
+  . .local/seed/environment.sh
+  tofu -chdir=infra/seed init -lockfile=readonly -backend-config=../../.local/seed/backend.hcl
+  tofu -chdir=infra/seed plan -out=../../.local/seed/review.tfplan
+  # Erst nach Prüfung des konkreten Plans:
+  tofu -chdir=infra/seed apply ../../.local/seed/review.tfplan
+  umask 077
+  tofu -chdir=infra/seed output -json > .local/seed/outputs.json
+)
+node infra/prepare-local.mjs seed-protection
+(
+  . .local/seed-protection/environment.sh
+  tofu -chdir=infra/seed-protection init -lockfile=readonly -backend-config=../../.local/seed-protection/backend.hcl
+  tofu -chdir=infra/seed-protection plan -out=../../.local/seed-protection/review.tfplan
+  # Erst nach Prüfung des konkreten Plans:
+  tofu -chdir=infra/seed-protection apply ../../.local/seed-protection/review.tfplan
+)
+rm -f .local/seed/outputs.json .local/seed/environment.sh .local/seed-protection/environment.sh
 ```
 
-Der Integrationscheck benötigt zusätzlich die AWS CLI, spricht aber ausschließlich den STACKIT-Endpunkt an. Er legt kurzlebige Testobjekt-Versionen an und entfernt nur diese; verschlüsselte Recovery-States bleiben erhalten. Wiederherstellung: passende Seed-State-Version aus `recovery/` herunterladen, lokalen State-Pfad und zugehörigen unabhängig gesicherten Schlüssel wiederherstellen, Seed initialisieren und zunächst einen Plan prüfen. Bei abgelaufenen S3-Zugängen ist eine Wiederherstellung des Zugangs über den Projekt-Service-Account erforderlich. Dieser Recovery-Pfad und Schlüsselrotation müssen vor CI-Freigabe vollständig geübt werden.
+Die Shell-Dateien enthalten sensible Werte, sind mit Modus 0600 angelegt und von Git ausgeschlossen. Die Umgebungen gelten nur in den gezeigten Subshells. Bereits vorhandene Schlüssel werden wiederverwendet; bei verlorenem Schlüssel eines bestehenden Workspace wird kein neuer erzeugt. Die Vorbereitung erlaubt Cloud-Konfiguration lokal ausschließlich für die beiden Seed-Roots.
 
-## CI-Übergabe: aktueller Stand
+## Recovery und verbleibende Arbeiten
 
-[Bootstrap-CI](ci/README.md) ist lokal implementiert und mit einem echten Plan geprüft. Der konkurrierende S3-Locking-Test ist **fehlgeschlagen**; `use_lockfile=true` bietet am getesteten Endpunkt keinen nachgewiesenen Schutz. `ci/backend-safety.json` sperrt deshalb Bootstrap-/Backend-/Plattform-Applies im Wrapper und im CI-Einstieg. Die oben gezeigten Apply-Befehle sind bis zur Lösung nicht ausführbar. Seed und Seed-Protection bleiben lokale Einzeloperator-Stufen.
+Verschlüsselte Seed-Sicherungen liegen im Verwaltungs-Bucket unter `recovery/seed/terraform.tfstate` und `recovery/seed-protection/terraform.tfstate`; nach Seed-Änderungen erneuern. State-Schlüssel separat und unabhängig vom Bucket verwahren. Die Kopie im selben Bucket schützt nicht vor Verlust des gesamten Buckets.
 
-Reproduktion des isolierten Tests: `node infra/check-state-lock.mjs`. Er nutzt ausschließlich einen eindeutigen `checks/locking/`-Präfix, erstellt keine Cloud-Infrastruktur und entfernt seine Testobjekt-Versionen nach dem Lauf. Verschlüsselung und Versionierung ersetzen kein funktionierendes Locking.
+Bei einem fehlgeschlagenen Apply zuerst CI-Logs, verschlüsselte Recovery-Artefakte und tatsächlichen Ressourcenbestand prüfen. Keinen alten Plan blind wiederholen, keinen existierenden State überschreiben. Imports und Credential-Rotation müssen zum konkreten Vorfall passen und unter derselben Single-Writer-Regel erfolgen. Der frühere automatische Einmal-Recovery-Pfad wurde nach Abschluss entfernt.
 
-### Aktualisierte Betriebsfreigabe
-
-Der Benutzer hat anschließend ausschließlich serialisierte CI-Applies bestätigt. Die vollständige Remote-Apply-Sperre ist dafür im CI-Einstieg aufgehoben; im lokalen Wrapper bleibt sie bestehen. Gemeinsame Concurrency-Gruppe aller mutierenden Workflows: `configurator-lzc-dev-mutation`, laufende Jobs nicht abbrechen. Native S3-Locking-Unterstützung wird weiterhin nicht behauptet. Details und Grenzen: [CI-Betrieb](ci/README.md).
+Offen sind CF-Runtime/Bindings und Verbindungstests aus CF, eingeschränkte App-Rollen/RLS, automatisierte Credential-Rotation sowie ein vollständiger getesteter Betriebs-/Restore-Prozess. [Planung](../docs/planning.md).
