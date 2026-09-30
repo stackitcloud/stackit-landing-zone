@@ -1,6 +1,6 @@
 # GitHub-Login und Mandantentrennung
 
-Stand: 2026-09-30. Implementierung lokal geprüft; Live-Abnahme noch offen.
+Stand: 2026-09-30. Migration und App auf STACKIT bereitgestellt; GitHub-Login bleibt bis zur Credential-Freigabe deaktiviert.
 
 ## Ablauf
 
@@ -64,9 +64,12 @@ können. Applikationslogs enthalten keine Request-URLs oder Cookie-/Tokenwerte.
 - [x] Sechs Browserfälle auf Desktop/Mobilgeräten inklusive Login-Weiterleitung,
   Entwurfserhalt und Logout erfolgreich (GitHub dabei simuliert).
 - [x] CI erhält die PostgreSQL-Tests vor Validierung und Release.
-- [ ] Plattform-Output und Secrets-Schreibrechte via geprüften CI-Applies aktivieren.
+- [x] Plattform-Output via [CI-Apply 36693151989](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693151989) aktiviert (keine Ressourcenänderung).
+- [x] Secrets-Schreibrechte via [CI-Apply 36693644577](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693644577) aktiviert (ein Update, keine Ersetzung).
+- [x] [Validierung 36693906434](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693906434) für `cd9d79f` erfolgreich, einschließlich PostgreSQL und Browsern.
 - [ ] OAuth-Zugangsdaten im Release-Environment und CF-Backend bereitstellen.
-- [ ] Migration und Secrets-Rundtrip auf STACKIT erfolgreich nachweisen.
+- [x] [Release 36693906545](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693906545): Migration erfolgreich; privilegierte Task-App entfernt; Web-App, PostgreSQL- und Secrets-Verbindungstests erfolgreich.
+- [ ] Secrets-Schreiben/Lesen/Löschen-Rundtrip nach Login-Aktivierung nachweisen. Der aktuelle Verbindungstest lief bei deaktiviertem Login nur lesend.
 - [ ] Echten GitHub-Login und Logout mit Benutzer abnehmen.
 - [ ] Installation auf den benötigten Repositories und Fork-Voraussetzungen prüfen.
 - [ ] Fork-Auswahl und Speichern implementieren; derzeit keine Repository-Schreibzugriffe.
@@ -77,3 +80,12 @@ können. Applikationslogs enthalten keine Request-URLs oder Cookie-/Tokenwerte.
   dauerhaft abgearbeiteter Cleanup-Job. Vor breiter Freigabe nachholen.
 - [ ] Verteiltes Rate-Limit, Audit-Aufbewahrung und GitHub-Widerruf prüfen; das aktuelle
   Startlimit gilt nur je Instanz, Widerrufe werden spätestens bei API-Nutzung erkannt.
+
+## Noch erforderliche Credential-Freigabe
+
+Die automatische Sicherheitsprüfung hat den Transfer von `LZC_GITHUB_CLIENT_ID`
+und `LZC_GITHUB_CLIENT_SECRET` aus der lokalen Registrierung in
+`stackitcloud/stackit-landing-zone`, Environment `lzc-dev-release`, abgelehnt.
+Es wurden keine GitHub-App-Credentials übertragen. Die konkrete Benutzerfreigabe
+für dieses Ziel und die anschließenden CF-Backend-Variablen ist angefragt. Bis dahin
+bleibt `LZC_AUTH_ENABLED` deaktiviert; Migration und Bereitstellung sind unabhängig.

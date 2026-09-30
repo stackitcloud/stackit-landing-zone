@@ -8,7 +8,8 @@
 
 Registrierung unter `lweberru` ist abgeschlossen. Sessions, PostgreSQL-RLS,
 Secrets-Anbindung, Login/Logout-UI und separater Migrations-Task sind implementiert
-und lokal geprüft. Live-Rollout und Benutzerabnahme stehen noch aus. Details und
+und lokal sowie in CI geprüft. Migration und App-Release sind auf STACKIT erfolgreich;
+Login-Aktivierung wartet auf die konkrete Credential-Upload-Freigabe. Details und
 Abhakliste: [GitHub-Login und Mandantentrennung](github-login.md).
 
 ## 1. Zielbild und bestätigte Entscheidungen
