@@ -6,8 +6,8 @@ Stand: 2026-09-30. Veröffentlichung auf `lzc-dev` ausschließlich vom Feature-B
 
 1. Eine beliebige Vorlage öffnen und **Konfiguration erstellen** wählen.
 2. **Grundlagen → Ordner → Netzwerk → Plattform → Projekte → Betrieb → Prüfen**.
-3. Einstellungen nur bei Bedarf aufklappen. **Standard verwenden** entfernt die
-   eigene Einstellung. Der Export enthält weiterhin nur explizite Angaben;
+3. Einstellungen nur bei Bedarf aufklappen. **Accelerator-Standard verwenden** entfernt die
+   eigene Einstellung und nutzt den Engine-Standard, nicht den Vorlagenwert. Der Export enthält weiterhin nur explizite Angaben;
    angezeigte Standardwerte werden nicht beim bloßen Öffnen materialisiert.
 4. In **Projekte** Public, Corporate oder Sandbox hinzufügen. Public/Corporate
    können nach Bestätigung gewechselt werden. Der Zielordner wird angezeigt.
@@ -23,10 +23,27 @@ werden. Bereiche mit Projekt-, DNS-, Firewall-, VPN- oder Clusterreferenzen lass
 sich nicht versehentlich entfernen. Organisationsbaum und Netzwerkzuordnung
 verwenden dieselben Daten; ein Hub-Projekt wird je Netzwerkbereich gezeigt.
 
-Der unveränderte Standalone-Import zeigt den bekannten Public-Defaultfehler #84.
-Im Projekt die Art ausdrücklich auf **Public** setzen, sofern kein zentraler
-Netzwerkbereich gewünscht ist. Bestehende Standalone-Dokumente exportieren bereits
-explizit Public und bleiben unverändert.
+Neue Standalone-Entwürfe markieren das Beispielprojekt ausdrücklich als Public
+(Korrektur für #84). Der verlustfreie Import und bestehende Dokumente bleiben
+unverändert; in einem älteren betroffenen Entwurf die Projektart ausdrücklich auf
+**Public** setzen. Eigene Organisations-ID und Verantwortlichen-E-Mail-Adressen
+ersetzen weiterhin die Platzhalter der Vorlage.
+
+Unter **Plattform** stehen Git-Service, Plattform-Kubernetes, zentrales Observability
+und Audit-Protokollierung. Kubernetes wird mit einer leeren Clusterliste deaktiviert,
+Git-Service mit `null`. Das Entfernen konfigurierter Dienste verlangt eine Bestätigung;
+verbleibende Namespace-Abhängigkeiten werden bei der Konfigurationsprüfung gemeldet.
+Observability ist ein eigener Dienst. Die Audit-Protokollierung erstellt einen Telemetry
+Router mit Zielen STACKIT Logs und S3-Archiv. Der Management-Archiv-Bucket existiert
+auch bei deaktivierter Audit-Protokollierung.
+
+Auswahlfelder gibt es für Regionen, regionale Netzwerkkennungen, vorhandene
+Netzwerkbereiche, Namespace-Projektkennungen sowie die durch den Accelerator
+festgelegten Audit-Scope-, VPN-Routing-, Secret-Enforcement- und Firewall-Werte.
+Nicht mehr passende importierte Werte bleiben sichtbar und werden nicht automatisch
+ersetzt. Freie Bezeichnungen bleiben Textfelder. Regionale Produktangebote wie
+Maschinentypen, Pläne und Versionen benötigen künftig API-basierte Kataloge; dafür
+werden keine vermeintlich vollständigen statischen Listen vorgetäuscht.
 
 ## Kompatibilität und Grenzen
 

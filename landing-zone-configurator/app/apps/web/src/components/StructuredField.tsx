@@ -31,6 +31,11 @@ export function StructuredField({
   onChange,
   omit = [],
   title,
+  disableValue = null,
+  path = name,
+  referenceKeys = [],
+  networkAreaKeys = {},
+  regionContext = "eu01",
 }: {
   name: string;
   type: InputType;
@@ -41,6 +46,11 @@ export function StructuredField({
   onChange: (value: JsonValue | undefined) => void;
   omit?: string[];
   title?: string;
+  disableValue?: JsonValue;
+  path?: string;
+  referenceKeys?: string[];
+  networkAreaKeys?: Record<string, string[]>;
+  regionContext?: string;
 }) {
   const id = useId();
   const [newKey, setNewKey] = useState("");
@@ -60,6 +70,43 @@ export function StructuredField({
             ? "keine Einträge"
             : "Voreinstellung des Accelerators"
           : String(effective);
+  const choices = path.endsWith(".network_area_key")
+    ? (networkAreaKeys[regionContext] ?? [])
+    : path === "firewall_config.aliases[*].type"
+      ? [
+          "host",
+          "network",
+          "port",
+          "url",
+          "urltable",
+          "urljson",
+          "geoip",
+          "asn",
+          "networkgroup",
+          "mac",
+          "external",
+        ]
+      : path === "firewall_config.rules[*].action"
+        ? ["pass", "block", "reject"]
+        : path === "firewall_config.rules[*].direction"
+          ? ["in", "out"]
+          : path === "region" || path.endsWith(".region")
+            ? ["eu01", "eu02"]
+            : path.endsWith(".secrets_enforcement.mode")
+              ? ["audit", "soft", "strict"]
+              : name === "resource_type" && path.startsWith("audit_logs.")
+                ? ["organization", "folder", "project"]
+                : name === "routing_type" && path.includes(".vpn.")
+                  ? ["POLICY_BASED", "ROUTE_BASED"]
+                  : undefined;
+  const keyChoices =
+    path === "connectivity_regions"
+      ? ["eu01", "eu02"]
+      : path === "landing_zone_namespace_services"
+        ? referenceKeys
+        : undefined;
+  const disabled =
+    allowDisable && JSON.stringify(value) === JSON.stringify(disableValue);
   const controls = optional && (
     <div className="field-options">
       <button
@@ -68,14 +115,23 @@ export function StructuredField({
         disabled={value === undefined}
         onClick={() => onChange(undefined)}
       >
-        Standard verwenden
+        Accelerator-Standard verwenden
       </button>
       {!simple && allowDisable && (
         <button
           type="button"
           className="text-button"
-          disabled={value === null}
-          onClick={() => onChange(null)}
+          disabled={disabled}
+          onClick={() => {
+            if (
+              !missing &&
+              !window.confirm(
+                `${label} deaktivieren? Zugehörige Konfigurationen werden entfernt. Abhängige Dienste anschließend prüfen.`,
+              )
+            )
+              return;
+            onChange(structuredClone(disableValue));
+          }}
         >
           Deaktivieren
         </button>
@@ -121,6 +177,28 @@ export function StructuredField({
             <option value="true">Eingeschaltet</option>
             <option value="false">Ausgeschaltet</option>
           </select>
+        ) : choices ? (
+          <select
+            id={id}
+            value={String(value ?? "")}
+            onChange={(event) => onChange(event.target.value)}
+          >
+            <option value="" disabled>
+              Bitte auswählen
+            </option>
+            {typeof value === "string" &&
+              value !== "" &&
+              !choices.includes(value) && (
+                <option value={value} disabled>
+                  {value} (nicht unterstützt)
+                </option>
+              )}
+            {choices.map((choice) => (
+              <option key={choice} value={choice}>
+                {choice}
+              </option>
+            ))}
+          </select>
         ) : (
           <input
             id={id}
@@ -164,6 +242,7 @@ export function StructuredField({
             : ""}
       </summary>
       {hints[name] && <p className="field-hint">{hints[name]}</p>}
+      {disabled && <p className="field-hint">Deaktiviert</p>}
       {controls}
       {type[0] === "object" ? (
         <div className="structured-grid">
@@ -173,6 +252,14 @@ export function StructuredField({
               <StructuredField
                 key={key}
                 name={key}
+                path={`${path}.${key}`}
+                referenceKeys={referenceKeys}
+                networkAreaKeys={networkAreaKeys}
+                regionContext={
+                  typeof objectValue(value).region === "string"
+                    ? String(objectValue(value).region)
+                    : regionContext
+                }
                 type={fieldType}
                 value={objectValue(value)[key]}
                 effective={objectValue(effective)[key]}
@@ -187,6 +274,12 @@ export function StructuredField({
             <div className="collection-entry" key={key}>
               <StructuredField
                 name={key}
+                path={`${path}[*]`}
+                referenceKeys={referenceKeys}
+                networkAreaKeys={networkAreaKeys}
+                regionContext={
+                  path === "connectivity_regions" ? key : regionContext
+                }
                 title={key}
                 type={childType as InputType}
                 value={child}
@@ -212,17 +305,35 @@ export function StructuredField({
           ))}
           <div className="field">
             <label htmlFor={`${id}-key`}>Neue Kennung für {label}</label>
-            <input
-              id={`${id}-key`}
-              value={newKey}
-              onChange={(event) => setNewKey(event.target.value)}
-            />
+            {keyChoices ? (
+              <select
+                id={`${id}-key`}
+                value={newKey}
+                onChange={(event) => setNewKey(event.target.value)}
+              >
+                <option value="">Bitte auswählen</option>
+                {keyChoices
+                  .filter((key) => !Object.hasOwn(objectValue(value), key))
+                  .map((key) => (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  ))}
+              </select>
+            ) : (
+              <input
+                id={`${id}-key`}
+                value={newKey}
+                onChange={(event) => setNewKey(event.target.value)}
+              />
+            )}
           </div>
           <button
             type="button"
             className="button secondary"
             onClick={() => {
               if (
+                (keyChoices !== undefined && !keyChoices.includes(newKey)) ||
                 !/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$/.test(newKey) ||
                 ["constructor", "prototype", "__proto__"].includes(newKey)
               ) {
@@ -249,6 +360,14 @@ export function StructuredField({
             <div className="collection-entry" key={`${id}-${index}`}>
               <StructuredField
                 name={name}
+                path={`${path}[*]`}
+                referenceKeys={referenceKeys}
+                networkAreaKeys={networkAreaKeys}
+                regionContext={
+                  typeof objectValue(value).region === "string"
+                    ? String(objectValue(value).region)
+                    : regionContext
+                }
                 title={`${label} ${index + 1}`}
                 type={childType as InputType}
                 value={child}

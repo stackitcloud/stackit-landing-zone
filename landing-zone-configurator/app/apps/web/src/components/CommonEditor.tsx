@@ -56,7 +56,7 @@ const steps: { id: EditorStep; title: string; inputs: string[] }[] = [
   {
     id: "platform",
     title: "Plattform",
-    inputs: ["devops", "platform_kubernetes"],
+    inputs: ["devops", "platform_kubernetes", "observability", "audit_logs"],
   },
   {
     id: "projects",
@@ -67,8 +67,6 @@ const steps: { id: EditorStep; title: string; inputs: string[] }[] = [
     id: "operations",
     title: "Betrieb",
     inputs: [
-      "observability",
-      "audit_logs",
       "federated_identity_providers",
       "firewall_config",
       "firewall_admin_username",
@@ -161,7 +159,20 @@ export function CommonEditor({
         value={values[name]}
         effective={effectiveInput(values, name)}
         optional={!definition.required}
-        allowDisable={definition.default === null}
+        allowDisable={
+          definition.default === null || name === "platform_kubernetes"
+        }
+        disableValue={name === "platform_kubernetes" ? {} : null}
+        referenceKeys={Object.keys(objectValue(values.landing_zones))}
+        regionContext={textValue(values.region) || "eu01"}
+        networkAreaKeys={Object.fromEntries(
+          ["eu01", "eu02"].map((region) => [
+            region,
+            areas
+              .filter((area) => area.region === region)
+              .map((area) => area.key),
+          ]),
+        )}
         onChange={(value) => update(name, value)}
       />
     );
@@ -241,6 +252,24 @@ export function CommonEditor({
                 Mehrere Netzwerkbereiche verwalten
               </button>
             )}
+          {step === "platform" && (
+            <p>
+              Observability stellt zentrales Monitoring bereit. Die separate
+              Audit-Protokollierung nutzt einen Telemetry Router, der
+              Audit-Ereignisse an STACKIT Logs und das Object-Storage-Archiv
+              verteilt. Der Archiv-Bucket gehört auch bei deaktivierter
+              Audit-Protokollierung zur Management-Infrastruktur.
+            </p>
+          )}
+          {step === "basics" && draft.origin.templateId === "standalone" && (
+            <p className="info-banner">
+              Neue Standalone-Entwürfe markieren das Beispielprojekt
+              ausdrücklich als Public (Korrektur für Accelerator-Issue #84).
+              Organisations-ID und verantwortliche E-Mail-Adressen bitte durch
+              eigene Angaben ersetzen. „Accelerator-Standard verwenden“ entfernt
+              eine eigene Einstellung; es stellt nicht die Vorlage wieder her.
+            </p>
+          )}
           {step === "projects" && (
             <>
               <p>

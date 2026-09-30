@@ -826,3 +826,15 @@ Details und Benutzer-Prüfliste: [gemeinsamer Editor](common-editor.md).
 Live-Abnahme: Code `527bd95`, Release `36745965953`, Validate `36745965890` erfolgreich.
 Neue v3-Konfigurationen sind bearbeitbar und speicherbar; ihre Deployment-Ausführung
 bleibt serverseitig gesperrt. [Abnahme](common-editor.md#live-abnahme).
+
+
+### Editor-Nachbesserungen: Plattformdienste, Auswahlfelder und Standalone (#84)
+
+- [x] Plattform-Kubernetes ausdrücklich über leere Clusterliste deaktivierbar; bestehende Abhängigkeiten bleiben prüfbar.
+- [x] Zentrales Observability und Audit-Protokollierung im Plattform-Reiter; Telemetry Router von Observability unterschieden.
+- [x] Bekannte Enum-Werte und regionale/Projekt-/Netzwerkreferenzen als Auswahlfelder.
+- [x] Accelerator-Standard ausdrücklich von Vorlagenwerten unterschieden.
+- [x] Neue Standalone-Entwürfe mit explizitem Public-Projekt; unveränderte Imports und bestehende Exporte beibehalten.
+- [x] 96 Anwendungstests, 22 Desktop-/Mobilprüfungen und 11 native OpenTofu-Variablentests erfolgreich.
+- [ ] Regionale Live-Kataloge für Produktpläne, Maschinentypen und Versionen anbinden.
+- [ ] Veröffentlichung und Live-Abnahme dieses Nachbesserungsstands.

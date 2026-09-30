@@ -7,6 +7,7 @@ import {
   commonConfigurationSchema,
   commonNetworkAreas,
   compileCommonConfiguration,
+  createCommonConfiguration,
   readCommonConfiguration,
   removeCommonNetworkArea,
 } from "./common-document.js";
@@ -89,6 +90,22 @@ export function upgradeEditorDraft(
     draft.name || "Meine Landing Zone",
     buildConfiguration(template, draftShape.parse(draft)),
   );
+}
+// Editor presets may repair known example defects; the lossless importer stays unchanged.
+export function createEditorConfiguration(
+  templateId: string,
+  id: string,
+): CommonConfiguration {
+  const document = createCommonConfiguration(templateId, id);
+  if (templateId !== "standalone") return document;
+  const projects = structuredClone(
+    objectValue(document.features.projects.landing_zones),
+  );
+  for (const raw of Object.values(projects)) {
+    const project = objectValue(raw);
+    if (project.corporate === undefined) project.corporate = false;
+  }
+  return editCommonInput(document, "landing_zones", projects);
 }
 export function editorIssues(draft: EditorDraft): DraftIssue[] {
   if (!isCommonDraft(draft)) return validateDraft(draft);

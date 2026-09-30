@@ -200,3 +200,87 @@ test("shared configuration saves, reopens and restores in the account workspace"
     fullPage: true,
   });
 });
+
+test("Standalone starts Public and offers regional choices and explicit platform switches", async ({
+  page,
+}) => {
+  await page.goto("/templates/standalone");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await expect(page.getByLabel("Region", { exact: true })).toHaveJSProperty(
+    "tagName",
+    "SELECT",
+  );
+  await page.getByLabel("Region", { exact: true }).selectOption("eu02");
+  await page.getByRole("button", { name: "5 Projekte", exact: true }).click();
+  await expect(
+    page.getByLabel("Projektart", { exact: true }).first(),
+  ).toHaveValue("public");
+  await expect(
+    page.getByText(
+      "Corporate-Projekte benötigen einen vorhandenen Netzwerkbereich in ihrer Region.",
+      { exact: false },
+    ),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "4 Plattform", exact: true }).click();
+  await expect(
+    page.getByText("Observability stellt zentrales Monitoring bereit.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Konfigurieren: Plattform-Kubernetes",
+      exact: true,
+    })
+    .click();
+  const kubernetes = page.locator("details.feature-section").filter({
+    has: page.locator(":scope > summary", {
+      hasText: "Plattform-Kubernetes",
+    }),
+  });
+  await kubernetes.locator(":scope > summary").click();
+  await kubernetes
+    .getByLabel("Neue Kennung für Plattform-Kubernetes", { exact: true })
+    .fill("platform");
+  await kubernetes
+    .getByRole("button", {
+      name: "Eintrag zu Plattform-Kubernetes hinzufügen",
+      exact: true,
+    })
+    .click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await kubernetes
+    .getByRole("button", { name: "Deaktivieren", exact: true })
+    .click();
+  await expect(
+    kubernetes.getByText("Deaktiviert", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    kubernetes.getByRole("button", { name: "Deaktivieren", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Konfigurieren: Regionale Netzwerke",
+      exact: true,
+    })
+    .click();
+  await page
+    .locator("summary")
+    .filter({ hasText: "Regionale Netzwerke" })
+    .click();
+  const regions = page.getByLabel("Neue Kennung für Regionale Netzwerke", {
+    exact: true,
+  });
+  await expect(regions).toHaveJSProperty("tagName", "SELECT");
+  await regions.selectOption("eu02");
+  await page
+    .getByRole("button", {
+      name: "Eintrag zu Regionale Netzwerke hinzufügen",
+      exact: true,
+    })
+    .click();
+  await expect(regions.locator('option[value="eu02"]')).toHaveCount(0);
+});

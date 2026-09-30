@@ -1,6 +1,6 @@
 import {
-  createCommonConfiguration,
   createDraft,
+  createEditorConfiguration,
   type EditorDraft,
   isCommonDraft,
   objectValue,
@@ -96,7 +96,7 @@ function App() {
     setDraft(
       legacy
         ? createDraft(selected)
-        : createCommonConfiguration(selected.id, crypto.randomUUID()),
+        : createEditorConfiguration(selected.id, crypto.randomUUID()),
     );
     setDraftEpoch((value) => value + 1);
     setView("editor");

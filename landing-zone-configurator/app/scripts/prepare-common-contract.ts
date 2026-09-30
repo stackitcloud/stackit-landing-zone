@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   catalogue,
   createCommonConfiguration,
+  createEditorConfiguration,
   exportCommonTfvars,
 } from "../packages/domain/dist/index.js";
 
@@ -27,6 +28,12 @@ ${exportCommonTfvars(document)}
 ${template.id === "standalone" ? "  # Upstream #84: omitted corporate=false must remain observable.\n  expect_failures = [var.landing_zones]" : ""}
 }`;
 });
+runs.push(`run "standalone_editor_preset" {
+  command = plan
+  variables {
+${exportCommonTfvars(createEditorConfiguration("standalone", "11111111-2222-4333-8444-555555555555"))}
+  }
+}`);
 writeFileSync(
   new URL("outputs.tf", root),
   `output "audit_object_lock" {

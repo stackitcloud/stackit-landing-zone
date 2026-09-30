@@ -1,8 +1,11 @@
 import {
   addCommonProject,
+  assessCommonConfiguration,
   commonNetworkAreas,
   commonProjects,
+  compileCommonConfiguration,
   createCommonConfiguration,
+  createEditorConfiguration,
   editCommonInput,
   editorIssues,
   featureFieldCatalogue,
@@ -69,4 +72,26 @@ it("restores unfinished common browser drafts but rejects saving placeholder ide
   expect(editorIssues(document).length).toBeGreaterThan(0);
   expect(() => saveEditorDraft(id, document)).toThrow("Invalid");
   expect(migrateCommonConfiguration(document)).toEqual(document);
+});
+
+it("repairs only new Standalone editor presets without changing the source/import contract", () => {
+  const source = createCommonConfiguration("standalone", id);
+  const original = compileCommonConfiguration(source);
+  const draft = createEditorConfiguration("standalone", id);
+  expect(
+    commonProjects(draft).find((project) => project.key === "public-exmpl")
+      ?.kind,
+  ).toBe("public");
+  expect(
+    assessCommonConfiguration(draft).findings.filter(
+      (finding) =>
+        finding.scope === "configuration" && finding.severity === "error",
+    ),
+  ).toEqual([]);
+  expect(compileCommonConfiguration(source)).toEqual(original);
+  expect(
+    commonProjects(source).find((project) => project.key === "public-exmpl")
+      ?.kind,
+  ).toBe("corporate");
+  expect(readEditorDraft(source)).toEqual(source);
 });
