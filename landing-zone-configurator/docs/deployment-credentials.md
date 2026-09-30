@@ -80,9 +80,9 @@ Vault-Login-Tokens werden nach jeder Operation widerrufen, auch bei Fehlern.
 - [x] Echtes PostgreSQL: fremde Mandanten, fremde Eigentümer im selben Mandanten,
   fehlende Rolle, kein Secret in Metadaten und wiederholbare Fehlerbereinigung.
 - [x] Feature-Branch-Release inklusive Migration auf lzc-dev abnehmen.
-- [ ] Persönliches Profil über die live bereitgestellte UI abnehmen.
-- [ ] STACKIT-Authentifizierung und lesende Rechte-/Zielprüfung ergänzen.
-- [ ] Freigegebenen Accelerator-Commit und unveränderliche Konfiguration binden.
+- [x] Persönliches Profil über die live bereitgestellte UI abnehmen (Benutzerbestätigung).
+- [x] STACKIT-Authentifizierung und lesende Organisationsprüfung ergänzen; [Ablauf und Abnahme](deployment-preparation.md).
+- [x] Feste Accelerator-Referenz und unveränderliche Konfiguration in einer Vorbereitung binden; Cloud-/Plan-Qualifizierung bleibt offen.
 - [ ] Kundenbezogenen Remote State, Runner, Queue, Plan und expliziten Apply ergänzen.
 - [ ] Rotation, automatische Bereinigung, Audit-Ereignisse und Delegationen ausbauen.
 
@@ -122,3 +122,5 @@ erfolgreich. 39 Anwendungstests grün. Die vorhandene lokale STACKIT-Schlüsseld
 besteht die Formatprüfung einschließlich Erhalt des Token-Endpunkts; dabei kein
 Upload und keine Ausgabe von Schlüsselinhalten. Live-Seite und anonymer Zugriffsschutz
 nach Release geprüft; persönliche erneute Upload-Abnahme bleibt beim Benutzer.
+
+Aktueller Folgestand: [Zugangstest und Deployment-Vorbereitung](deployment-preparation.md). Die oben beschriebene ursprüngliche Ablage wird jetzt um interne Secret-Lesezugriffe ausschließlich für autorisierte Prüfungen erweitert; Rohschlüssel bleiben für den Browser unzugänglich.

@@ -68,6 +68,17 @@ export function registerCredentials(
         return reply.code(201).send({ stored: true });
       },
     );
+    routes.post("/api/v1/credentials/:id/check", async (request, reply) => {
+      const session = await authenticatedSession(request, auth);
+      if (!session)
+        return reply.code(401).send({ error: "authentication_required" });
+      const { id } = z.object({ id: z.uuid() }).strict().parse(request.params);
+      const { organizationId } = z
+        .object({ organizationId: z.uuid() })
+        .strict()
+        .parse(request.body);
+      return { check: await profiles.check(session, id, organizationId) };
+    });
     routes.delete("/api/v1/credentials/:id", async (request, reply) => {
       const session = await authenticatedSession(request, auth);
       if (!session)

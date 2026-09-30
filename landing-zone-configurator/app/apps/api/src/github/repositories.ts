@@ -322,6 +322,38 @@ export class Repositories {
       throw new RepositoryError(422, "unsupported_configuration_document");
     return { document, head: state.head };
   }
+  async prepareSnapshot(
+    token: string,
+    target: RepositoryTarget,
+    id: string,
+    expectedHead: string,
+  ) {
+    const fork = await this.verify(token, target);
+    const state = await this.head(token, fork);
+    if (!state.exists || state.head !== shaSchema.parse(expectedHead))
+      throw new RepositoryError(409, "repository_changed");
+    const tree = await this.tree(token, fork, state.head);
+    const entry = this.ensurePath(tree.entries, id, "read");
+    if (!entry) throw new RepositoryError(404, "configuration_not_found");
+    const document = await this.document(token, fork, entry.sha);
+    if (document.id !== id)
+      throw new RepositoryError(422, "unsupported_configuration_document");
+    const tfvars = serializeTfvars(configurationValues(document));
+    const expected = createHash("sha1")
+      .update(`blob ${Buffer.byteLength(tfvars)}\0`)
+      .update(tfvars)
+      .digest("hex");
+    const exported = tree.entries.find(
+      (item) => item.path === `src/config/custom/${id}/landing-zone.tfvars`,
+    );
+    if (
+      exported?.type !== "blob" ||
+      exported.mode !== "100644" ||
+      exported.sha !== expected
+    )
+      throw new RepositoryError(409, "generated_configuration_changed");
+    return { document, head: state.head, tfvars };
+  }
   async save(
     token: string,
     target: RepositoryTarget,

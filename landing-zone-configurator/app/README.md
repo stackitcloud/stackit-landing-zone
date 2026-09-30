@@ -43,7 +43,8 @@ Auch diese Befehle können bei abweichender lokaler Node-Version mit dem oben ge
 - Template-Katalog, Standalone-Editor mit Feldhilfen und grafischer Struktur.
 - Nativer `.tfvars`-Download und atomare JSON-/tfvars-Speicherung in ausgewählten Forks.
 - GitHub-Login, PostgreSQL-Sessions/RLS und persönliche Tokens im Secrets Manager.
-- Persönliche Deployment-Zugänge: Service-Account-Key-Datei speichern/löschen; Berechtigungsprüfung noch offen. [Details](../docs/deployment-credentials.md).
+- Persönliche Deployment-Zugänge: Service-Account-Key-Datei speichern/löschen; Anmeldung und Organisations-Lesezugriff prüfen. [Details](../docs/deployment-credentials.md).
+- Unveränderliche Deployment-Vorbereitungen aus Fork-Konfiguration, Ziel und persönlichem Zugang. [Details](../docs/deployment-preparation.md).
 - Browser-Zurück/Vorwärts und direkte Seiten-URLs.
 - Worker bleibt ein Platzhalter; Kunden-Plan/Apply und Chat sind noch offen.
 

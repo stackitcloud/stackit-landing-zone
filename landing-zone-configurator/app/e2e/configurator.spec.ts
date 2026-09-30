@@ -389,6 +389,13 @@ test("personal credentials upload clears the file and supports deletion and hist
     }),
   );
   let stored = false;
+  let lastCheck: {
+    status: string;
+    code: string;
+    organizationId: string;
+    organizationName: string;
+    checkedAt: string;
+  } | null = null;
   const profile = {
     id: "11111111-2222-4333-8444-555555555555",
     name: "Team Plattform",
@@ -405,13 +412,28 @@ test("personal credentials upload clears the file and supports deletion and hist
       });
       stored = true;
       await route.fulfill({ status: 201, json: { stored: true } });
-    } else await route.fulfill({ json: { profiles: stored ? [profile] : [] } });
+    } else
+      await route.fulfill({
+        json: { profiles: stored ? [{ ...profile, lastCheck }] : [] },
+      });
   });
   await page.route(`**/api/v1/credentials/${profile.id}`, (route) => {
     expect(route.request().method()).toBe("DELETE");
     expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
     stored = false;
     return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/api/v1/credentials/${profile.id}/check`, (route) => {
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+    const organizationId = route.request().postDataJSON().organizationId;
+    lastCheck = {
+      status: "passed",
+      code: "organization_readable",
+      organizationId,
+      organizationName: "Customer organization",
+      checkedAt: new Date().toISOString(),
+    };
+    return route.fulfill({ json: { check: lastCheck } });
   });
   await page.goto("/templates");
   await page
@@ -442,6 +464,20 @@ test("personal credentials upload clears the file and supports deletion and hist
   expect(await page.locator("body").innerText()).not.toContain(
     "BROWSER-TEST-KEY",
   );
+  await page
+    .getByLabel("Zielorganisation (UUID)")
+    .fill("11111111-2222-4333-8444-555555555555");
+  await page
+    .getByRole("button", { name: "Zugang prüfen", exact: true })
+    .click();
+  await expect(
+    page.getByText("Anmeldung erfolgreich · Organisation lesbar", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    "Schreibrechte für ein Deployment sind damit noch nicht bestätigt",
+  );
   await page.screenshot({
     path: testInfo.outputPath("credentials.png"),
     fullPage: true,
@@ -463,5 +499,148 @@ test("personal credentials upload clears the file and supports deletion and hist
   await expect(page.getByRole("status")).toContainText("entfernt");
   await expect(
     page.getByText(profile.serviceAccount, { exact: true }),
+  ).toHaveCount(0);
+});
+
+test("prepares an immutable saved configuration with a personal credential and survives reload", async ({
+  page,
+}, testInfo) => {
+  const template = catalogue.templates.find(
+    (item) => item.id === "standalone",
+  ) as Template;
+  const draft = createDraft(template);
+  draft.organization = "11111111-2222-4333-8444-555555555555";
+  draft.owner = "owner@stackit.cloud";
+  for (const project of draft.projects) project.owner = draft.owner;
+  for (const sandbox of draft.sandboxes) sandbox.owner = draft.owner;
+  const document = savedDraft("22222222-2222-4333-8444-555555555555", draft);
+  const profileId = "33333333-2222-4333-8444-555555555555";
+  const head = "a".repeat(40);
+  const fork = {
+    id: 123,
+    owner: "alice",
+    name: "accelerator",
+    fullName: "alice/accelerator",
+    defaultBranch: "main",
+  };
+  const check = {
+    status: "passed",
+    code: "organization_readable",
+    organizationId: draft.organization,
+    organizationName: "Customer organization",
+    checkedAt: new Date().toISOString(),
+  };
+  const record = {
+    id: "44444444-2222-4333-8444-555555555555",
+    name: draft.name,
+    credentialId: profileId,
+    createdAt: new Date().toISOString(),
+    manifest: {
+      source: { repository: fork, commit: head, configurationId: document.id },
+      organization: { id: draft.organization, name: "Customer organization" },
+      accelerator: { commit: "b".repeat(40) },
+      tfvarsSha256: "c".repeat(64),
+      check,
+    },
+  };
+  let stored = false;
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: true } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice", login: "alice" },
+        csrfToken: "a".repeat(43),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/api/v1/github/forks*", (route) =>
+    route.fulfill({ json: { forks: [fork], nextPage: null } }),
+  );
+  await page.route("**/api/v1/github/repository?*", (route) =>
+    route.fulfill({
+      json: {
+        fork,
+        head,
+        branch: "lzc/configurations",
+        branchExists: true,
+        configurations: [{ id: document.id, name: draft.name }],
+        unsupported: 0,
+        truncated: false,
+      },
+    }),
+  );
+  await page.route("**/api/v1/github/configuration/*", (route) =>
+    route.fulfill({ json: { document, head } }),
+  );
+  await page.route("**/api/v1/credentials", (route) =>
+    route.fulfill({
+      json: {
+        profiles: [{ id: profileId, name: "Team platform", state: "stored" }],
+      },
+    }),
+  );
+  await page.route("**/api/v1/preparations", (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+      expect(route.request().postDataJSON()).toEqual({
+        target: { id: 123, owner: "alice", name: "accelerator" },
+        configurationId: document.id,
+        head,
+        credentialId: profileId,
+      });
+      stored = true;
+      return route.fulfill({ status: 201, json: { id: record.id } });
+    }
+    return route.fulfill({ json: { preparations: stored ? [record] : [] } });
+  });
+  await page.route(`**/api/v1/preparations/${record.id}`, (route) => {
+    expect(route.request().method()).toBe("DELETE");
+    stored = false;
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", { name: "Forks aktualisieren", exact: true })
+    .click();
+  await page.getByRole("button", { name: fork.fullName, exact: true }).click();
+  await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
+  await expect(page).toHaveURL(/\/deployments$/);
+  await expect(
+    page.getByText(draft.organization, { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Persönlicher Zugang").selectOption(profileId);
+  await page
+    .getByRole("button", { name: "Zugang prüfen und Vorbereitung speichern" })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "Es wurde kein Plan oder Apply ausgeführt",
+  );
+  await page.reload();
+  await expect(
+    page.getByText("Vorbereitet · Plan/Apply noch nicht verfügbar", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByText("Versionsnachweise", { exact: true }).click();
+  await expect(page.getByText(head, { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("preparation.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => window.document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: /Vorbereitung entfernen/ }).click();
+  await expect(page.getByRole("status")).toContainText("Vorbereitung entfernt");
+  await expect(
+    page.getByText("Vorbereitet · Plan/Apply noch nicht verfügbar", {
+      exact: true,
+    }),
   ).toHaveCount(0);
 });

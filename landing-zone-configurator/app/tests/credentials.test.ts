@@ -118,6 +118,7 @@ it("protects credential routes with the session and CSRF, rejects identity injec
     tokens: { put: vi.fn(), get: vi.fn(), remove: vi.fn() },
   };
   const profiles = {
+    check: vi.fn(),
     list: vi.fn(async () => []),
     create: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
@@ -167,6 +168,37 @@ it("protects credential routes with the session and CSRF, rejects identity injec
     session,
     "My profile",
     key,
+  );
+  const organizationId = randomUUID();
+  profiles.check.mockResolvedValueOnce({
+    status: "passed",
+    organizationId,
+    organizationName: "Test",
+    code: "organization_readable",
+    checkedAt: new Date().toISOString(),
+  });
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: `/api/v1/credentials/${session.id}/check`,
+        headers: { ...headers, "x-lzc-csrf": "" },
+        payload: { organizationId },
+      })
+    ).statusCode,
+  ).toBe(403);
+  const check = await app.inject({
+    method: "POST",
+    url: `/api/v1/credentials/${session.id}/check`,
+    headers,
+    payload: { organizationId },
+  });
+  expect(check.statusCode).toBe(200);
+  expect(check.json().check.status).toBe("passed");
+  expect(profiles.check).toHaveBeenCalledExactlyOnceWith(
+    session,
+    session.id,
+    organizationId,
   );
   expect(auth.tokens.get).not.toHaveBeenCalled();
   const list = await app.inject({ url: "/api/v1/credentials", headers });
@@ -241,5 +273,42 @@ it("preserves the current STACKIT Accounts audience and token endpoint through u
         credentials: { ...current.credentials, tokenEndpoint },
       }),
     ).toThrow();
+  }
+});
+
+it("checks every secret identity field and exposes only a validated key with its Vault version internally", async () => {
+  const id = randomUUID();
+  const data = {
+    tenantId: session.tenantId,
+    userId: session.userId,
+    profileId: id,
+    kind: "stackit-service-account",
+    key,
+  };
+  for (const change of [
+    { tenantId: randomUUID() },
+    { userId: randomUUID() },
+    { profileId: randomUUID() },
+    { kind: "github" },
+    {},
+  ]) {
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({ auth: { client_token: "private" } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { metadata: { version: 2 }, data: { ...data, ...change } },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const store = new VaultCredentialSecrets(
+      new VaultConnection(settings, request),
+    );
+    if (Object.keys(change).length)
+      await expect(store.get(session, id)).rejects.toThrow();
+    else expect(await store.get(session, id)).toEqual({ key, version: 2 });
+    expect(request.mock.calls[2]?.[0]).toContain("revoke-self");
   }
 });

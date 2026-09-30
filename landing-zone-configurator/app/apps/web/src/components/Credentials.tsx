@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "./Account";
+import { type AccessCheck, CheckSummary, checkMessages } from "./CheckSummary";
 import { Field } from "./Field";
 
 type Profile = {
@@ -8,12 +9,15 @@ type Profile = {
   serviceAccount: string;
   keyId: string;
   state: "pending" | "stored";
+  lastCheck?: AccessCheck | null;
 };
 const messages: Record<string, string> = {
+  ...checkMessages,
   authentication_required: "Bitte melde dich erneut mit GitHub an.",
   invalid_service_account_key:
     "Die Datei muss einen gültigen STACKIT-Service-Account-Schlüssel mit privatem RSA-Schlüssel enthalten. Prüfe Format und Ablaufdatum.",
-  invalid_credential_request: "Bitte prüfe Profilname und Schlüsseldatei.",
+  invalid_credential_request:
+    "Bitte prüfe Profilname, Organisations-ID und Schlüsseldatei.",
   credential_role_required:
     "Zum Anlegen benötigst du die Rolle Administrator oder Deployer.",
   credential_limit_reached:
@@ -25,6 +29,9 @@ const messages: Record<string, string> = {
 };
 export function Credentials({ session }: { session: Session | null }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [organizations, setOrganizations] = useState<Record<string, string>>(
+    {},
+  );
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -190,9 +197,74 @@ export function Credentials({ session }: { session: Session | null }) {
               <p className="credential-account">{profile.serviceAccount}</p>
               <p>
                 {profile.state === "stored"
-                  ? "Sicher gespeichert · Berechtigungen noch nicht geprüft"
+                  ? profile.lastCheck
+                    ? "Sicher gespeichert · letzte Prüfung siehe unten"
+                    : "Sicher gespeichert · Berechtigungen noch nicht geprüft"
                   : "Speicherung unvollständig · bitte löschen und neu anlegen"}
               </p>
+              {profile.lastCheck && <CheckSummary check={profile.lastCheck} />}
+              {profile.state === "stored" && (
+                <>
+                  <Field
+                    id={`organization-${profile.id}`}
+                    label="Zielorganisation (UUID)"
+                    value={
+                      organizations[profile.id] ??
+                      profile.lastCheck?.organizationId ??
+                      ""
+                    }
+                    onChange={(value) =>
+                      setOrganizations((previous) => ({
+                        ...previous,
+                        [profile.id]: value,
+                      }))
+                    }
+                    hint="Die Organisations-ID findest du im STACKIT Portal oder in deiner Konfiguration. Diese Prüfung verändert keine Cloud-Ressourcen."
+                  />
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={
+                      busy ||
+                      !(
+                        organizations[profile.id] ??
+                        profile.lastCheck?.organizationId
+                      )
+                    }
+                    onClick={() =>
+                      void perform(async () => {
+                        const response = await checked(
+                          await fetch(
+                            `/api/v1/credentials/${profile.id}/check`,
+                            {
+                              method: "POST",
+                              credentials: "same-origin",
+                              headers: {
+                                "Content-Type": "application/json",
+                                "X-LZC-CSRF": session.csrfToken,
+                              },
+                              body: JSON.stringify({
+                                organizationId:
+                                  organizations[profile.id] ??
+                                  profile.lastCheck?.organizationId,
+                              }),
+                            },
+                          ),
+                        );
+                        const result = await response.json();
+                        setNotice(
+                          result.check.status === "passed"
+                            ? "Anmeldung und Organisationszugriff geprüft. Schreibrechte für ein Deployment sind damit noch nicht bestätigt."
+                            : "Prüfung abgeschlossen. Bitte beachte das Ergebnis am Profil.",
+                        );
+                        await refresh();
+                      })
+                    }
+                  >
+                    Zugang prüfen
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className="text-button danger"

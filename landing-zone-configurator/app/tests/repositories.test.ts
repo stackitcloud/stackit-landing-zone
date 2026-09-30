@@ -300,3 +300,32 @@ it("updates a matching export but refuses manual edits, orphan files and symlink
     expect(f.writes).toHaveLength(0);
   }
 });
+
+it("prepares only an unchanged work-branch snapshot with matching native tfvars", async () => {
+  const f = fixture();
+  const tfvars = serializeTfvars(configurationValues(f.document));
+  f.state.exportSha = createHash("sha1")
+    .update(`blob ${Buffer.byteLength(tfvars)}\0`)
+    .update(tfvars)
+    .digest("hex");
+  expect(await f.service.prepareSnapshot(token, target, id, original)).toEqual({
+    document: f.document,
+    head: original,
+    tfvars,
+  });
+  expect(f.writes).toHaveLength(0);
+  f.state.head = "f".repeat(40);
+  await expect(
+    f.service.prepareSnapshot(token, target, id, original),
+  ).rejects.toMatchObject({ code: "repository_changed" });
+  f.state.head = original;
+  f.state.exportSha = "f".repeat(40);
+  await expect(
+    f.service.prepareSnapshot(token, target, id, original),
+  ).rejects.toMatchObject({ code: "generated_configuration_changed" });
+  f.state.exportSha = "";
+  await expect(
+    f.service.prepareSnapshot(token, target, id, original),
+  ).rejects.toMatchObject({ code: "generated_configuration_changed" });
+  expect(f.writes).toHaveLength(0);
+});

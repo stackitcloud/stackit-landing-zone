@@ -1,5 +1,13 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import {
+  catalogue,
+  configurationValues,
+  createDraft,
+  savedDraft,
+  serializeTfvars,
+  type Template,
+} from "@lzc/domain";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
@@ -8,6 +16,7 @@ import {
 } from "../apps/api/src/auth/github-flow.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
+import { Preparations } from "../apps/api/src/deployments/preparations.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -248,6 +257,7 @@ describe("personal credential metadata with real PostgreSQL RLS", () => {
   };
   it("isolates owners even within the same tenant and never stores key material in PostgreSQL", async () => {
     const secrets = {
+      get: vi.fn(),
       put: vi.fn(async () => {}),
       remove: vi.fn(async () => {}),
     };
@@ -292,6 +302,7 @@ describe("personal credential metadata with real PostgreSQL RLS", () => {
   });
   it("retains recovery metadata after ambiguous writes/deletes and supports cleanup retries", async () => {
     const secrets = {
+      get: vi.fn(),
       put: vi.fn(async () => {
         throw new Error("ambiguous write");
       }),
@@ -313,7 +324,7 @@ describe("personal credential metadata with real PostgreSQL RLS", () => {
     expect(await profiles.list(alice)).toEqual([]);
   });
   it("denies create to viewers before touching the secret store", async () => {
-    const secrets = { put: vi.fn(), remove: vi.fn() };
+    const secrets = { get: vi.fn(), put: vi.fn(), remove: vi.fn() };
     const profiles = new PostgresCredentialProfiles(pool, secrets);
     await migration.query(
       "INSERT INTO lzc.memberships(tenant_id,user_id,role) VALUES($1,$2,'viewer')",
@@ -332,6 +343,121 @@ describe("personal credential metadata with real PostgreSQL RLS", () => {
       ),
     ).rejects.toMatchObject({ code: "42501" });
     expect(secrets.put).not.toHaveBeenCalled();
+    await migration.query(
+      "DELETE FROM lzc.memberships WHERE tenant_id=$1 AND user_id=$2",
+      [alice.tenantId, bob.userId],
+    );
+  });
+});
+
+describe("credential checks and immutable deployment preparations", () => {
+  it("persists check failures, denies foreign access before reading keys and invalidates preparations when credentials are deleted", async () => {
+    const key = {
+      credentials: {
+        kid: "deployment-key",
+        iss: "test@sa.stackit.cloud",
+        sub: randomUUID(),
+        aud: "https://accounts.stackit.cloud" as const,
+        privateKey: "MOCK-SECRET-NEVER-IN-POSTGRES",
+      },
+    };
+    const organizationId = randomUUID();
+    const check = {
+      status: "passed" as const,
+      code: "organization_readable" as const,
+      organizationId,
+      organizationName: "Test organization",
+      checkedAt: new Date().toISOString(),
+    };
+    const secrets = {
+      get: vi.fn(async () => ({ key, version: 1 })),
+      put: vi.fn(async () => {}),
+      remove: vi.fn(async () => {}),
+    };
+    const cloud = { check: vi.fn(async () => check) };
+    // The real client is independently tested for signing, endpoints and response handling.
+    const profiles = new PostgresCredentialProfiles(pool, secrets, cloud);
+    await profiles.create(alice, "Checked profile", key);
+    const [profile] = await profiles.list(alice);
+    if (!profile) throw new Error("Missing profile");
+    await expect(
+      profiles.check(bob, profile.id, organizationId),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(secrets.get).not.toHaveBeenCalled();
+    expect(await profiles.check(alice, profile.id, organizationId)).toEqual(
+      check,
+    );
+    expect((await profiles.list(alice))[0]?.lastCheck).toEqual(check);
+    secrets.get.mockRejectedValueOnce(new Error("Secret unavailable"));
+    expect(
+      await profiles.check(alice, profile.id, organizationId),
+    ).toMatchObject({ status: "failed", code: "secret_unavailable" });
+    expect((await profiles.list(alice))[0]?.lastCheck?.status).toBe("failed");
+    const template = catalogue.templates.find(
+      (item) => item.id === "standalone",
+    ) as Template;
+    const draft = createDraft(template);
+    draft.organization = organizationId;
+    draft.owner = "owner@stackit.cloud";
+    for (const project of draft.projects) project.owner = draft.owner;
+    for (const sandbox of draft.sandboxes) sandbox.owner = draft.owner;
+    const document = savedDraft(randomUUID(), draft);
+    const head = "a".repeat(40);
+    const repositories = {
+      prepareSnapshot: vi.fn(async () => ({
+        document,
+        head,
+        tfvars: serializeTfvars(configurationValues(document)),
+      })),
+    };
+    const preparations = new Preparations(pool, repositories, profiles);
+    const input = {
+      target: { id: 123, owner: "alice", name: "accelerator" },
+      head,
+      configurationId: document.id,
+      credentialId: profile.id,
+    };
+    await expect(
+      preparations.create(bob, "ghu_bob", input),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(repositories.prepareSnapshot).not.toHaveBeenCalled();
+    const result = await preparations.create(alice, "ghu_alice", input);
+    const [record] = await preparations.list(alice);
+    expect(record.id).toBe(result.id);
+    expect(record.manifest.source.commit).toBe(head);
+    expect(record.manifest.credential.secretVersion).toBe(1);
+    expect(JSON.stringify(record)).not.toContain(key.credentials.privateKey);
+    expect(JSON.stringify(record)).not.toContain("ghu_alice");
+    expect(await preparations.list(bob)).toEqual([]);
+    await expect(preparations.remove(bob, result.id)).rejects.toMatchObject({
+      status: 404,
+    });
+    await migration.query(
+      "INSERT INTO lzc.memberships(tenant_id,user_id,role) VALUES($1,$2,'admin')",
+      [alice.tenantId, bob.userId],
+    );
+    const otherAdmin = { ...bob, tenantId: alice.tenantId };
+    expect(await preparations.list(otherAdmin)).toEqual([]);
+    await expect(
+      withTenant(pool, otherAdmin, (c) =>
+        c.query(
+          "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,credential_id,name,manifest) VALUES($1,$2,$3,$4,'Attack','{}')",
+          [randomUUID(), alice.tenantId, bob.userId, profile.id],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      withTenant(pool, alice, (c) =>
+        c.query(
+          "UPDATE lzc.deployment_preparations SET manifest='{}' WHERE id=$1",
+          [result.id],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await profiles.remove(alice, profile.id);
+    expect((await preparations.list(alice))[0]?.credentialId).toBeNull();
+    await preparations.remove(alice, result.id);
+    expect(await preparations.list(alice)).toEqual([]);
     await migration.query(
       "DELETE FROM lzc.memberships WHERE tenant_id=$1 AND user_id=$2",
       [alice.tenantId, bob.userId],

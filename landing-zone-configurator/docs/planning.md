@@ -19,13 +19,13 @@ Fork-Auswahl, konfliktgeschützte Entwurfsablage im Arbeitsbranch und Wiederöff
 sind implementiert und auf lzc-dev bereitgestellt. Ansichten und Editor-Schritte besitzen
 eigene URLs mit live geprüfter Zurück/Vorwärts-Unterstützung. Der Benutzer bestätigt Fork-Erstellung, App-Zugriff und Speicherung. Ergänzt: Feldhilfen sowie native tfvars-Ausgabe neben dem bearbeitbaren JSON. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
 
-### Nächster Umsetzungsschritt: persönliche Deployment-Zugänge
+### Aktueller Umsetzungsschritt: Zugangstest und Deployment-Vorbereitung
 
-Profilverwaltung mit Schlüsseldatei-Upload, ausschließlich serverseitiger Secret-Ablage,
-Metadaten-RLS und Löschung ist implementiert. Status und Abnahme:
-[Persönliche Deployment-Zugänge](deployment-credentials.md). Es findet noch keine
-STACKIT-Rechteprüfung und kein Kunden-Plan/Apply statt; Betreiber-Credentials werden
-nicht als persönliche Zugänge übernommen.
+Persönliche Schlüsselablage ist durch den Benutzer bestätigt. Ergänzt sind der
+Token-/Organisationszugriffstest, dauerhafte Prüfergebnisse und unveränderliche
+Deployment-Vorbereitungen aus einer konkreten Fork-Revision. Prüfliste, Nachweise und
+Grenzen: [Zugang prüfen und Deployment vorbereiten](deployment-preparation.md).
+Plan/Apply, Kunden-Remote-State und Runner bleiben die folgenden Umsetzungsschritte.
 
 ## 1. Zielbild und bestätigte Entscheidungen
 
@@ -496,7 +496,9 @@ Diese Basis ersetzt keinen der folgenden Architektur-Spikes. Details zum Start: 
 
 - [ ] Staging-/Produktionsgrundlage per IaC, Backups und Observability.
 - [x] Persönliche Credential-Profile: Upload, Secrets-Manager-Ablage, eigene Metadaten und Löschung implementieren.
-- [ ] Credential-Rechteprüfung, Delegationen und kundenbezogener Remote State.
+- [x] STACKIT-Anmeldung und Organisations-Lesezugriff prüfen; Ergebnis pro Profil speichern.
+- [x] Gespeicherte Git-Konfiguration, Organisation, Code-Referenz und Secret-Version in einer Vorbereitung binden.
+- [ ] Weitergehende Deployment-Rechte, Delegationen und kundenbezogener Remote State.
 - [ ] Runner, Queue, Manifest, Plan-Redaktion, Freigabe und exakter Apply.
 - [ ] Standalone und einfaches Hub-Spoke in getrennten Testorganisationen ausführen.
 - [ ] Isolation, Quoten, Crash, Abbruch, Rechteentzug, Restore und partielle Fehler prüfen.

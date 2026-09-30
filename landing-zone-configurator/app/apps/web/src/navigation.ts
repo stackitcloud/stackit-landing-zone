@@ -5,7 +5,8 @@ export type View =
   | "preview"
   | "editor"
   | "repositories"
-  | "credentials";
+  | "credentials"
+  | "deployments";
 export type EditorStep = "basics" | "projects" | "review";
 function readRoute() {
   const path = window.location.pathname.replace(/\/$/, "") || "/";
@@ -19,11 +20,13 @@ function readRoute() {
     ? "preview"
     : /^\/configurations\/edit(?:\/(basics|projects|review))?$/.test(path)
       ? "editor"
-      : path === "/credentials"
-        ? "credentials"
-        : path === "/repositories"
-          ? "repositories"
-          : "templates";
+      : path === "/deployments"
+        ? "deployments"
+        : path === "/credentials"
+          ? "credentials"
+          : path === "/repositories"
+            ? "repositories"
+            : "templates";
   return { view, selected: template ?? standaloneTemplate, step };
 }
 export function useNavigation(restoreEditor: boolean) {
@@ -55,11 +58,13 @@ export function useNavigation(restoreEditor: boolean) {
         ? `/templates/${detail ?? "standalone"}`
         : view === "editor"
           ? `/configurations/edit/${detail ?? "basics"}`
-          : view === "credentials"
-            ? "/credentials"
-            : view === "repositories"
-              ? "/repositories"
-              : "/templates";
+          : view === "deployments"
+            ? "/deployments"
+            : view === "credentials"
+              ? "/credentials"
+              : view === "repositories"
+                ? "/repositories"
+                : "/templates";
     if (
       window.location.pathname !== path ||
       window.location.search ||

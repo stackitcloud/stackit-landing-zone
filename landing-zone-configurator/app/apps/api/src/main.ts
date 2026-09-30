@@ -6,6 +6,8 @@ import { SecretsManagerTokenStore } from "./auth/secrets.js";
 import { PostgresAuthStore } from "./auth/store.js";
 import { PostgresCredentialProfiles } from "./credentials/profiles.js";
 import { VaultCredentialSecrets } from "./credentials/secrets.js";
+import { Preparations } from "./deployments/preparations.js";
+import { Repositories } from "./github/repositories.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
 
@@ -52,7 +54,12 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
   };
 }
 
+const repositories = new Repositories();
 const app = buildApp({
+  repositories,
+  ...(pool && credentials
+    ? { preparations: new Preparations(pool, repositories, credentials) }
+    : {}),
   ...(process.env.LZC_WEB_ROOT ? { webRoot: process.env.LZC_WEB_ROOT } : {}),
   ...(auth ? { auth } : {}),
   ...(credentials ? { credentials } : {}),

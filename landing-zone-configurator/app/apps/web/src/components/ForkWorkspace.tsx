@@ -6,6 +6,7 @@ import {
 } from "@lzc/domain";
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "./Account";
+import type { DeploymentSelection } from "./Deployments";
 
 type Fork = {
   id: number;
@@ -75,12 +76,14 @@ export function ForkWorkspace({
   draftEpoch,
   onLoad,
   onEdit,
+  onPrepare,
 }: {
   session: Session | null;
   draft: ConfigurationDraft | null;
   draftEpoch: number;
   onLoad: (draft: ConfigurationDraft) => void;
   onEdit: () => void;
+  onPrepare: (selection: DeploymentSelection) => void;
 }) {
   const [forks, setForks] = useState<Fork[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(1);
@@ -318,6 +321,34 @@ export function ForkWorkspace({
                         onClick={() => void open(config.id)}
                       >
                         {config.name} öffnen
+                      </button>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        disabled={busy}
+                        onClick={() =>
+                          void perform(async () => {
+                            const loaded = await api<{
+                              document: unknown;
+                              head: string;
+                            }>(
+                              `/api/v1/github/configuration/${config.id}?${query(repository.fork)}`,
+                            );
+                            if (loaded.head !== repository.head)
+                              throw new Error(errors.repository_changed);
+                            const document = readSavedDraft(loaded.document);
+                            onPrepare({
+                              target: target(repository.fork),
+                              configurationId: config.id,
+                              head: loaded.head,
+                              name: document.draft.name,
+                              organizationId: document.draft.organization,
+                            });
+                          })
+                        }
+                      >
+                        Deployment vorbereiten
+                        <span className="sr-only">: {config.name}</span>
                       </button>
                     </li>
                   ))}

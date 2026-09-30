@@ -1,9 +1,13 @@
 import { z } from "zod";
 import type { Session } from "../auth/store.js";
 import type { VaultConnection } from "../storage/vault.js";
-import type { ServiceAccountKey } from "./key.js";
+import { parseServiceAccountKey, type ServiceAccountKey } from "./key.js";
 
 export interface CredentialSecrets {
+  get(
+    session: Session,
+    id: string,
+  ): Promise<{ key: ServiceAccountKey; version: number }>;
   put(session: Session, id: string, key: ServiceAccountKey): Promise<void>;
   remove(session: Session, id: string): Promise<void>;
 }
@@ -34,6 +38,31 @@ export class VaultCredentialSecrets implements CredentialSecrets {
       });
       if (!response.ok) throw new Error("Credential storage failed");
       await response.arrayBuffer();
+    });
+  }
+  async get(session: Session, id: string) {
+    const path = this.path(session, id);
+    return this.vault.authorized(async (headers) => {
+      const response = await this.vault.call(path, { headers });
+      if (!response.ok) throw new Error("Credential read failed");
+      const value = z
+        .object({
+          data: z.object({
+            metadata: z.object({ version: z.number().int().positive() }),
+            data: z.object({
+              tenantId: z.literal(session.tenantId),
+              userId: z.literal(session.userId),
+              profileId: z.literal(id),
+              kind: z.literal("stackit-service-account"),
+              key: z.unknown(),
+            }),
+          }),
+        })
+        .parse(await response.json());
+      return {
+        key: parseServiceAccountKey(value.data.data.key),
+        version: value.data.metadata.version,
+      };
     });
   }
   async remove(session: Session, id: string) {

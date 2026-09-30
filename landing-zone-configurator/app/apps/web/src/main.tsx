@@ -3,6 +3,10 @@ import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ConfigurationEditor } from "./components/ConfigurationEditor";
 import { Credentials } from "./components/Credentials";
+import {
+  type DeploymentSelection,
+  Deployments,
+} from "./components/Deployments";
 import { ForkWorkspace } from "./components/ForkWorkspace";
 import { Topology } from "./components/Topology";
 import { useNavigation } from "./navigation";
@@ -24,6 +28,12 @@ function App() {
     navigate: setView,
   } = useNavigation(!!restoredDraft);
   const [session, setSession] = useState<Session | null>(null);
+  const [deploymentSelection, setDeploymentSelection] =
+    useState<DeploymentSelection | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clear selection whenever the signed-in identity changes.
+  useEffect(() => {
+    setDeploymentSelection(null);
+  }, [session?.user.id, session?.user.login]);
   const [draftEpoch, setDraftEpoch] = useState(0);
   const [draft, setDraft] = useState<ConfigurationDraft | null>(restoredDraft);
   const [loginError, setLoginError] = useState(() =>
@@ -156,6 +166,16 @@ function App() {
             >
               Deployment-Zugänge
             </button>
+            <button
+              type="button"
+              className={
+                view === "deployments" ? "nav-item active" : "nav-item"
+              }
+              aria-current={view === "deployments" ? "page" : undefined}
+              onClick={() => setView("deployments")}
+            >
+              Deployments
+            </button>
           </nav>
           <div className="sidebar-note">
             <strong>Deine nächste Landing Zone</strong>
@@ -186,11 +206,13 @@ function App() {
                 ? "Templates"
                 : view === "preview"
                   ? describe(selected).title
-                  : view === "credentials"
-                    ? "Deployment-Zugänge"
-                    : view === "repositories"
-                      ? "GitHub-Forks"
-                      : "Entwurf erstellen"}
+                  : view === "deployments"
+                    ? "Deployments"
+                    : view === "credentials"
+                      ? "Deployment-Zugänge"
+                      : view === "repositories"
+                        ? "GitHub-Forks"
+                        : "Entwurf erstellen"}
             </span>
           </nav>
           <div className="page-heading">
@@ -200,28 +222,41 @@ function App() {
                   ? "Landing Zone Templates"
                   : view === "preview"
                     ? describe(selected).title
-                    : view === "credentials"
-                      ? "Deployment-Zugänge"
-                      : view === "repositories"
-                        ? "GitHub-Forks"
-                        : draft?.name || "Neue Konfiguration"}
+                    : view === "deployments"
+                      ? "Deployments"
+                      : view === "credentials"
+                        ? "Deployment-Zugänge"
+                        : view === "repositories"
+                          ? "GitHub-Forks"
+                          : draft?.name || "Neue Konfiguration"}
               </h1>
               <p>
                 {view === "templates"
                   ? "Wähle die passende Grundlage für deine Cloud-Umgebung."
                   : view === "preview"
                     ? describe(selected).description
-                    : view === "credentials"
-                      ? "Persönliche STACKIT-Service-Accounts für spätere Deployments verwalten."
-                      : view === "repositories"
-                        ? "Konfigurationen in deinem Repository speichern und wieder öffnen."
-                        : "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben."}
+                    : view === "deployments"
+                      ? "Gespeicherte Konfiguration, Ziel und Zugang nachvollziehbar verbinden."
+                      : view === "credentials"
+                        ? "Persönliche STACKIT-Service-Accounts für spätere Deployments verwalten."
+                        : view === "repositories"
+                          ? "Konfigurationen in deinem Repository speichern und wieder öffnen."
+                          : "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben."}
               </p>
             </div>
             <span className="badge">
               {view === "editor" ? "Lokaler Entwurf" : "STACKIT Accelerator"}
             </span>
           </div>
+          {view === "deployments" && (
+            <Deployments
+              key={session?.user.id ?? session?.user.login ?? "guest"}
+              session={session}
+              selection={deploymentSelection}
+              onChoose={() => setView("repositories")}
+              onCredentials={() => setView("credentials")}
+            />
+          )}
           {view === "credentials" && (
             <Credentials
               key={session?.user.id ?? session?.user.login ?? "guest"}
@@ -370,6 +405,10 @@ function App() {
               draft={draft}
               draftEpoch={draftEpoch}
               onEdit={() => setView("editor")}
+              onPrepare={(selection) => {
+                setDeploymentSelection(selection);
+                setView("deployments");
+              }}
               onLoad={(loaded) => {
                 setDraft(loaded);
                 setView("editor");
