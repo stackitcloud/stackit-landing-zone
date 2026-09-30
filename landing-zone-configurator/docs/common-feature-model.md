@@ -285,3 +285,14 @@ Der neue Kern ist noch nicht an den produktiven Editor, Fork-Speicher oder Runne
 angeschlossen. Damit werden weder neue Konfigurationsarten still für Deployments
 freigegeben noch bisherige Vorbereitungen migriert. Nächstes Inkrement ist der
 gemeinsame Netzwerk-/Projekteditor mit kontrollierter Speicher- und API-Migration.
+
+### Abnahme des gemeinsamen Kerns
+
+Code `e6106b9`, [Validate Configurator 36737858294](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36737858294),
+Versuch 2 erfolgreich: Anwendung (89 Unit-Tests), Datenbankintegration, Browsertests,
+HCL-Roundtrips, zehn native Variablenvertragstests und alle sechs Infrastruktur-Prüfungen.
+Der erste Versuch scheiterte ausschließlich beim OpenTofu-Download eines
+Infrastrukturjobs mit HTTP 500 von GitHub; Wiederholung erfolgreich.
+
+Kein Release dieses internen Kerns, keine Kunden-Pläne oder Applies ausgeführt.
+Die veröffentlichte Oberfläche bleibt bis zum getesteten Editor-Inkrement unverändert.
