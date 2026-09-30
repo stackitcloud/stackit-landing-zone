@@ -39,6 +39,8 @@ const errors: Record<string, string> = {
     "GitHub hat den Commit abgelehnt: mögliche parallele Änderung oder Branch-Regel. Dein Entwurf bleibt erhalten. Bitte den GitHub-Stand prüfen.",
   github_rate_limited:
     "GitHubs Zugriffslimit ist erreicht. Bitte später erneut versuchen.",
+  generated_configuration_changed:
+    "Die tfvars-Datei wurde außerhalb des Configurators geändert oder passt nicht mehr zum gespeicherten Entwurf. Prüfe den Stand in GitHub oder speichere deinen Entwurf als neue Kopie. Es wurde nichts überschrieben.",
   unsupported_configuration_document:
     "Diese Konfiguration oder Template-Version wird vom Editor noch nicht unterstützt.",
   unsafe_configuration_path:
@@ -212,7 +214,9 @@ export function ForkWorkspace({
         ],
       });
       setCommitUrl(result.commitUrl);
-      setNotice("Deine Konfiguration wurde im Fork gespeichert.");
+      setNotice(
+        "Deine Konfiguration wurde als JSON und tfvars gemeinsam im Fork gespeichert.",
+      );
     });
   }
   return (
@@ -220,7 +224,11 @@ export function ForkWorkspace({
       <h2>Deine Forks</h2>
       <p>
         Verbinde einen beschreibbaren Accelerator-Fork. Der Configurator
-        speichert deine Entwürfe im Branch <code>lzc/configurations</code>.
+        speichert deine Entwürfe im Branch <code>lzc/configurations</code>. Pro
+        Konfiguration entstehen zwei Dateien: <code>landing-zone.json</code> zum
+        erneuten Bearbeiten und <code>landing-zone.tfvars</code> für
+        OpenTofu/Terraform. Änderungen bitte im Configurator vornehmen; manuelle
+        tfvars-Änderungen werden nicht importiert.
       </p>
       <div className="actions">
         <a

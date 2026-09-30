@@ -13,11 +13,11 @@ Credential-Upload und CF-Backend-Bindung sind ausdrücklich freigegeben; GitHub-
 ist live aktiviert und technisch geprüft. Persönliche Login-Abnahme ist bestätigt. Details und
 Abhakliste: [GitHub-Login und Mandantentrennung](github-login.md).
 
-### Nächster Umsetzungsschritt: Fork-Speicherung und Navigation
+### Aktueller Stand: Fork-Speicherung, Navigation und tfvars-Export
 
 Fork-Auswahl, konfliktgeschützte Entwurfsablage im Arbeitsbranch und Wiederöffnen
 sind implementiert und auf lzc-dev bereitgestellt. Ansichten und Editor-Schritte besitzen
-eigene URLs mit live geprüfter Zurück/Vorwärts-Unterstützung. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
+eigene URLs mit live geprüfter Zurück/Vorwärts-Unterstützung. Der Benutzer bestätigt Fork-Erstellung, App-Zugriff und Speicherung. Ergänzt: Feldhilfen sowie native tfvars-Ausgabe neben dem bearbeitbaren JSON. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
 
 ## 1. Zielbild und bestätigte Entscheidungen
 
@@ -198,7 +198,7 @@ Vorschlag für UI-Konfigurationen im ausgewählten Fork:
 ```text
 src/config/custom/<config-id>/
   landing-zone.json          # kanonisches Fachmodell, ohne Secrets
-  generated.tfvars.json     # deterministisch erzeugte Terraform-Eingaben
+  landing-zone.tfvars       # deterministisch erzeugte Terraform-Eingaben
   manifest.json             # Schema-, Compiler-, Template-/Accelerator-Versionen
 ```
 
@@ -526,7 +526,7 @@ Diese Basis ersetzt keinen der folgenden Architektur-Spikes. Details zum Start: 
 | D06 | Runner-Hosting | Separate CF-Runner, sonst explizit SKE/Compute | Kritischer Spike | Plattform/Security |
 | D07 | State-Eigentum | Kunden-State vor erstem Run; eigener Backend-Bootstrap | Offen | Architektur |
 | D08 | Secret-Verwaltung | Secret Store mit Run-Delegation und Tenant-Policies | Kritischer Spike | Security |
-| D09 | Config-Format | Fach-JSON plus generierte tfvars.json | Vorschlag | Architektur |
+| D09 | Config-Format | Fach-JSON plus native landing-zone.tfvars | Standalone implementiert; versioniertes Deployment-Manifest offen | Architektur |
 | D10 | Engine | Gepinntes OpenTofu 1.12.6 zuerst; Terraform separat qualifizieren | Vorschlag | Maintainer |
 | D11 | STACKIT-IdP | Optional, Client-Registrierung nicht nachgewiesen | Offen | IAM |
 | D12 | Drift Correction | Freigabe zuerst, automatische Allowlist später | Vorschlag | Produkt/Betrieb |
@@ -700,8 +700,8 @@ Login und bedeutet keine abgeschlossene Session-, RLS- oder Token-Store-Integrat
 
 Wichtige Grenzen: Der Editor bearbeitet bisher nur Standalone; komplexe Templates
 sind lesbare Vorschauen. Entwürfe liegen nur im Tab-Arbeitsspeicher. Der Download
-ist ein `.lzc.json`-Entwurf, kein ausführbarer Terraform-Export und noch kein
-Roundtrip-Import. Es findet kein Kunden-Deployment statt.
+war zunächst ein `.lzc.json`-Entwurf. Der aktuelle Stand ergänzt native `.tfvars`
+und bearbeitbare JSON-Ablage im Fork (siehe [Forks und Navigation](forks-and-navigation.md)). Es findet kein Kunden-Deployment statt.
 
 Die bestehende Standalone-Vorlage enthält keine explizite Corporate-Zuordnung,
 obwohl `variables.tf` standardmäßig `true` verwendet. Die bearbeitete Kopie setzt

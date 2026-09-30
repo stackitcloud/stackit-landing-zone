@@ -85,6 +85,12 @@ test("edit, validate and download an isolated standalone copy", async ({
     fullPage: true,
   });
   await page.getByRole("button", { name: "Weiter zu Projekten" }).click();
+  await expect(
+    page.getByLabel("Eindeutige Kennung"),
+  ).toHaveAccessibleDescription(/Stabile ID/);
+  await expect(page.getByLabel("Projektkürzel")).toHaveAccessibleDescription(
+    /Ressourcen/,
+  );
   await page.getByLabel("Projektname").fill("Kundenportal");
   await page.getByLabel("Projektverantwortlich").fill("owner@stackit.cloud");
   await page.getByLabel("Sandbox-Verantwortlich").fill("sandbox@stackit.cloud");
@@ -105,20 +111,16 @@ test("edit, validate and download an isolated standalone copy", async ({
   await expect(page.locator(".topology")).toContainText("Kundenportal");
   await expect(page.locator(".topology")).toContainText("Worker");
   const downloaded = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Entwurf herunterladen" }).click();
+  await page.getByRole("button", { name: "tfvars herunterladen" }).click();
   const download = await downloaded;
   const path = await download.path();
   if (!path) throw new Error("No download file");
-  const document = JSON.parse(await readFile(path, "utf8"));
-  expect(document.kind).toBe("landing-zone-configurator-draft");
-  expect(document.template.sha256).toMatch(/^[a-f0-9]{64}$/);
-  expect(document.configuration.landing_zones["public-exmpl"]).toMatchObject({
-    project_name: "Kundenportal",
-    corporate: false,
-    secretsmanager_enabled: false,
-  });
-  expect(document.configuration.landing_zones.worker.corporate).toBe(false);
-  expect(document.configuration.labels).toEqual({ managed_by: "opentofu" });
+  expect(download.suggestedFilename()).toBe("landing-zone.tfvars");
+  const exported = await readFile(path, "utf8");
+  expect(exported).toContain('"project_name" = "Kundenportal"');
+  expect(exported).toContain('"secretsmanager_enabled" = false');
+  expect(exported).toContain('"worker" = {');
+  expect(exported).toContain('"managed_by" = "opentofu"');
   await page.screenshot({
     path: testInfo.outputPath("review.png"),
     fullPage: true,

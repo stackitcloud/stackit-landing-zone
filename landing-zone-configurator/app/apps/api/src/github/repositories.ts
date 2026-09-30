@@ -1,4 +1,10 @@
-import { readSavedDraft, type SavedDraft } from "@lzc/domain";
+import { createHash } from "node:crypto";
+import {
+  configurationValues,
+  readSavedDraft,
+  type SavedDraft,
+  serializeTfvars,
+} from "@lzc/domain";
 import { z } from "zod";
 
 export const upstreamId = 1168467997;
@@ -330,10 +336,31 @@ export class Repositories {
       throw new RepositoryError(409, "repository_changed");
     const tree = await this.tree(token, fork, state.head);
     const previous = this.ensurePath(tree.entries, valid.id, mode);
+    let previousExport: string | undefined;
     if (mode === "update" && previous) {
       const existing = await this.document(token, fork, previous.sha);
+      previousExport = serializeTfvars(configurationValues(existing));
       if (existing.id !== valid.id)
         throw new RepositoryError(409, "unsupported_configuration_document");
+    }
+    const exportPath = `src/config/custom/${valid.id}/landing-zone.tfvars`;
+    const exported = tree.entries.find((entry) => entry.path === exportPath);
+    if (exported) {
+      // Compare immutable Git blob identity with the previous deterministic export.
+      // Never overwrite hand-edited files, directories or symlinks.
+      const expectedSha =
+        previousExport === undefined
+          ? undefined
+          : createHash("sha1")
+              .update(`blob ${Buffer.byteLength(previousExport)}\0`)
+              .update(previousExport)
+              .digest("hex");
+      if (
+        exported.type !== "blob" ||
+        exported.mode !== "100644" ||
+        exported.sha !== expectedSha
+      )
+        throw new RepositoryError(409, "generated_configuration_changed");
     }
     const prefix = this.prefix(fork);
     const createdTree = z.object({ sha: shaSchema }).parse(
@@ -345,6 +372,12 @@ export class Repositories {
             mode: "100644",
             type: "blob",
             content: `${JSON.stringify(valid, null, 2)}\n`,
+          },
+          {
+            path: exportPath,
+            mode: "100644",
+            type: "blob",
+            content: serializeTfvars(configurationValues(valid)),
           },
         ],
       }),

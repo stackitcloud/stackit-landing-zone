@@ -1,6 +1,6 @@
 # Fork-Speicherung und Browser-Navigation
 
-Stand: 2026-09-30. Auf lzc-dev bereitgestellt; Browser-Navigation live geprüft. Persönlicher Fork-Commit noch abzunehmen.
+Stand: 2026-09-30. Auf lzc-dev bereitgestellt; Browser-Navigation live geprüft. Fork-Erstellung, App-Zugriff und persönliches Speichern durch den Benutzer bestätigt.
 
 ## Benutzerablauf
 
@@ -22,6 +22,7 @@ Aktuelles kanonisches Dateiformat:
 
 ```text
 src/config/custom/<uuid>/landing-zone.json
+src/config/custom/<uuid>/landing-zone.tfvars
 ```
 
 Enthalten sind Schema-Version, Konfigurations-ID, freigegebene Template-Identität
@@ -29,8 +30,13 @@ mit Quellhash und der fachliche Editor-Entwurf. `kind` ist
 `landing-zone-configurator-configuration`; dies unterscheidet die bearbeitbare
 Ablage vom bisherigen Downloadformat. Unbekannte Eingabefelder werden nicht
 übernommen. Keine Zugangsdaten, GitHub-Tokens, Terraform-Module oder HCL-Ausdrücke
-werden als zusätzliche Nutzdaten angenommen. Es wird noch kein `generated.tfvars.json`
-erzeugt: Compiler-/Deployment-Abnahme und mehrteilige Ausgabe sind ein späterer Schritt.
+werden als zusätzliche Nutzdaten angenommen. Der deterministische Export erzeugt zusätzlich
+`landing-zone.tfvars` in nativem HCL. Download und Backend verwenden denselben Serializer.
+Zeichenketten bleiben Daten, auch bei `${…}` und `%{…}`. Der Export übernimmt die
+validierte Standalone-Konfiguration einschließlich unveränderter Vorlagenattribute.
+Bisherige JSON-only-Konfigurationen erhalten beim nächsten Speichern die zweite Datei.
+Die JSON-Datei bleibt die Quelle für den Editor; manuelle tfvars-Änderungen werden nicht importiert.
+Die Ausgabe ist eine Variablendatei, keine abgeschlossene Cloud-/Plan-Abnahme.
 Der Configurator startet beim Speichern keinen Plan/Apply. Repository-eigene
 GitHub-Workflows unterliegen weiterhin den dort konfigurierten Commit-Triggern.
 
@@ -49,11 +55,16 @@ GitHub-Workflows unterliegen weiterhin den dort konfigurierten Commit-Triggern.
   abgeleitet. Symlinks, Submodule, unvollständige Git-Trees und inkompatible Dateien
   dürfen nicht überschrieben werden.
 - Erwarteter Branch-Commit wird vor dem Schreiben geprüft. Neuer Tree basiert auf
-  diesem Snapshot und enthält genau einen geänderten Pfad. Neuer Commit hat genau
+  diesem Snapshot und enthält genau die beiden Konfigurationspfade. Neuer Commit hat genau
   diesen Parent. Branch-Updates verwenden `force: false`; parallele Änderungen
   führen zum Konflikt. Keine automatische Wiederholung mit neuer Basis und kein
   stilles Überschreiben. Bei konkurrierender Erstanlage schlägt die Ref-Erstellung
   fehl; es bleiben allenfalls nicht referenzierte Git-Objekte zurück.
+- Vorhandene tfvars müssen als regulärer Git-Blob exakt dem Export des bisherigen
+  JSON-Dokuments entsprechen (Git-Blob-Hash inklusive UTF-8-Länge). Abweichungen,
+  Symlinks und verwaiste Exportdateien führen vor Schreibzugriffen zum Konflikt.
+  Fehlende Exporte werden ergänzt. Bei zukünftigen Änderungen am Serializer ist
+  eine explizite Exportmigration erforderlich; niemals den Vergleich umgehen.
 - Bei Netzwerkabbruch bleibt das Ergebnis zunächst unklar. Die UI behält die
   Konfigurations-ID und den Entwurf; Benutzer sollen den GitHub-Stand prüfen und
   gegebenenfalls neu öffnen. Ein Wiederholungsversuch überschreibt keinen neuen Head.
@@ -86,7 +97,7 @@ und Reload sind dadurch auch auf CF möglich.
 
 ## Abnahme und nächste Schritte
 
-- [x] 34 Anwendungstests: Herkunft/ID/Rechte, Session/CSRF, Pfadschutz, Commit-Inhalt,
+- [x] 35 Anwendungstests: Herkunft/ID/Rechte, Session/CSRF, Pfadschutz, Commit-Inhalt,
   veralteter Head, konkurrierendes Schreiben und Erstanlage.
 - [x] Zwölf Browserfälle auf Desktop/Mobilgeräten: Editor, Login, History, Deep Links,
   Fork-Auswahl, Konflikt, neue Kopie und Wiederöffnen nach Reload.
@@ -95,7 +106,9 @@ und Reload sind dadurch auch auf CF möglich.
 - [x] Live-Browser: Vorschau-URL, Editor-Schritte, Zurück/Vorwärts, Entwurfserhalt,
   Fork-URL und Reload geprüft; anonyme Lese-/Schreibzugriffe 401, fehlende Assets 404.
   Test ohne Benutzer-Session und ohne echte Repository-Schreibzugriffe.
-- [ ] Persönlichen Fork verbinden und echten GitHub-Commit über UI abnehmen.
+- [x] Persönlichen Fork verbinden und echten GitHub-Commit über UI abnehmen (Benutzerbestätigung).
+- [x] Feldhilfen einschließlich stabiler Kennung und Ressourcenpräfix ergänzen.
+- [x] HCL-Export: alle acht Vorlagen und Sonderzeichen mit echtem HCL-Parser semantisch rückvergleichen; atomare JSON-/tfvars-Ablage und Konfliktschutz testen.
 - [ ] PR-Workflow für geschützte Arbeitsbranches ergänzen; derzeit klare Fehlermeldung.
 - [ ] Automatische Fork-Erstellung bei passenden Installationsvoraussetzungen.
 - [ ] Versionierte Compiler-Ausgabe und Deployment-Unterstützung.
@@ -108,3 +121,28 @@ Quellen:
 - https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user
 - https://docs.github.com/en/rest/git/refs
 - https://docs.github.com/en/rest/git/trees
+
+## Bedeutung der Projektfelder und Verwendung des Exports
+
+- **Eindeutige Kennung:** Schlüssel in `landing_zones`, damit stabile Zuordnung für
+  OpenTofu-`for_each` und Referenzen. Beispiel `kundenportal-prod`. Änderungen nach
+  Deployment benötigen eine geplante State-/Adressmigration, sonst droht Neuerstellung.
+- **Projektkürzel:** Bestandteil des Ressourcenpräfixes, beispielsweise
+  `acme-lz-portal-prod` aus Unternehmenskürzel `acme`, Projektkürzel `portal` und
+  Umgebung `prod`. Es fließt gegebenenfalls auch in DNS-Namen ein. Änderungen können
+  Ressourcen umbenennen oder ersetzen.
+- **Projektname:** lesbarer Name im Konfigurator. Der aktuelle Root-Accelerator gibt
+  `project_name` nicht an das Landing-Zone-Modul weiter; der STACKIT-Projektname
+  entsteht daher aus dem Präfix. Sandbox-Namen gehen dagegen in Projektname und
+  Ressourcenidentität ein.
+
+Bei manueller Verwendung im passenden, initialisierten Accelerator-Checkout:
+
+```sh
+tofu -chdir=src plan -var-file=config/custom/<uuid>/landing-zone.tfvars
+```
+
+Zugangsdaten und Backend müssen dafür separat eingerichtet sein. Der Configurator
+wählt den freigegebenen Accelerator-Code für zukünftige verwaltete Deployments;
+der Export allein führt keinen Plan oder Apply aus. Vor einem ersten Cloud-Deployment
+bleiben Provider-/Variablenvalidierung und Plan-Abnahme erforderlich.

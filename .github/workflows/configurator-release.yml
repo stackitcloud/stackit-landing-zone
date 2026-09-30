@@ -59,7 +59,9 @@ jobs:
           cache-dependency-path: landing-zone-configurator/tools/hcl-adapter/go.sum
       - name: Verify source templates match the release catalogue
         working-directory: landing-zone-configurator/tools/hcl-adapter
-        run: go run . -check
+        run: |
+          go test ./...
+          go run . -check
       - name: Verify browser flow before packaging
         run: |
           npx playwright install --with-deps chromium

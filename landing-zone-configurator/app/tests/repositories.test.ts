@@ -1,4 +1,12 @@
-import { catalogue, createDraft, savedDraft, type Template } from "@lzc/domain";
+import { createHash } from "node:crypto";
+import {
+  catalogue,
+  configurationValues,
+  createDraft,
+  savedDraft,
+  serializeTfvars,
+  type Template,
+} from "@lzc/domain";
 import { expect, it, vi } from "vitest";
 import {
   Repositories,
@@ -36,6 +44,8 @@ function fixture() {
     symlink: false,
     head: original,
     truncated: false,
+    exportSha: "",
+    exportMode: "100644",
   };
   const metadata = () => ({
     id: state.repoId,
@@ -93,6 +103,16 @@ function fixture() {
       return Response.json({
         truncated: state.truncated,
         tree: [
+          ...(state.exportSha
+            ? [
+                {
+                  path: `src/config/custom/${id}/landing-zone.tfvars`,
+                  type: "blob",
+                  mode: state.exportMode,
+                  sha: state.exportSha,
+                },
+              ]
+            : []),
           {
             path: "src",
             mode: state.symlink ? "120000" : "040000",
@@ -160,7 +180,7 @@ it("reads valid documents from an immutable branch snapshot", async () => {
     f.document,
   );
 });
-it("changes only the fixed config path and advances the work branch without force", async () => {
+it("changes only the two fixed config paths and advances the work branch without force", async () => {
   const f = fixture();
   const result = await f.service.save(
     token,
@@ -178,9 +198,15 @@ it("changes only the fixed config path and advances the work branch without forc
         mode: "100644",
         type: "blob",
       },
+      {
+        path: `src/config/custom/${id}/landing-zone.tfvars`,
+        mode: "100644",
+        type: "blob",
+        content: serializeTfvars(configurationValues(f.document)),
+      },
     ],
   });
-  expect(f.writes[0]?.body.tree as unknown[]).toHaveLength(1);
+  expect(f.writes[0]?.body.tree as unknown[]).toHaveLength(2);
   expect(f.writes[1]?.body.parents).toEqual([original]);
   expect(f.writes[2]).toEqual({
     path: "/repos/alice/accelerator/git/refs/heads/lzc/configurations",
@@ -241,4 +267,36 @@ it("rejects incompatible templates and invalid configuration input before GitHub
     f.service.save(token, target, original, "update", f.document),
   ).rejects.toThrow();
   expect(f.request).not.toHaveBeenCalled();
+});
+
+it("updates a matching export but refuses manual edits, orphan files and symlinks before writes", async () => {
+  const matching = fixture();
+  const text = serializeTfvars(configurationValues(matching.document));
+  const sha = createHash("sha1")
+    .update(`blob ${Buffer.byteLength(text)}\0`)
+    .update(text)
+    .digest("hex");
+  matching.state.exportSha = sha;
+  const changed = structuredClone(matching.document);
+  changed.draft.company = "Changed company";
+  await matching.service.save(token, target, original, "update", changed);
+  expect(JSON.stringify(matching.writes[0])).toContain("Changed company");
+  for (const change of [
+    { exportSha: "f".repeat(40) },
+    { exportSha: sha, exportMode: "120000" },
+    { exportSha: sha, file: false },
+  ]) {
+    const f = fixture();
+    Object.assign(f.state, change);
+    await expect(
+      f.service.save(
+        token,
+        target,
+        original,
+        f.state.file ? "update" : "create",
+        f.document,
+      ),
+    ).rejects.toMatchObject({ code: "generated_configuration_changed" });
+    expect(f.writes).toHaveLength(0);
+  }
 });

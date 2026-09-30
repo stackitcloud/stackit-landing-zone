@@ -35,6 +35,7 @@ export function ProjectsStep({
             <Field
               id={`project.${p.id}.name`}
               label="Projektname"
+              hint="Lesbarer Name im Konfigurator, z. B. Kundenportal. Die Ressourcennamen entstehen aus den Kürzeln und der Umgebung."
               value={p.name}
               onChange={(name) =>
                 patch({
@@ -48,6 +49,7 @@ export function ProjectsStep({
             <Field
               id={`project.${p.id}.key`}
               label="Eindeutige Kennung"
+              hint="Stabile ID innerhalb dieser Konfiguration, z. B. kundenportal-prod. Sie ordnet die Landing Zone ihrem Deployment zu. Nach dem ersten Deployment nur mit geplanter Migration ändern."
               value={p.key}
               onChange={(key) =>
                 patch({
@@ -61,6 +63,7 @@ export function ProjectsStep({
             <Field
               id={`project.${p.id}.code`}
               label="Projektkürzel"
+              hint="Kurzer Baustein für Ressourcen- und gegebenenfalls DNS-Namen, z. B. portal. 1–16 Zeichen: Kleinbuchstaben, Ziffern und Bindestriche; beginnt mit einem Buchstaben."
               value={p.code}
               onChange={(code) =>
                 patch({
@@ -74,6 +77,7 @@ export function ProjectsStep({
             <Field
               id={`project.${p.id}.owner`}
               label="Projektverantwortlich"
+              hint="E-Mail-Adresse des in STACKIT registrierten Verantwortlichen für dieses Projekt."
               type="email"
               value={p.owner}
               onChange={(owner) =>
@@ -88,6 +92,7 @@ export function ProjectsStep({
             <Field
               id={`project.${p.id}.environment`}
               label="Umgebung"
+              hint="Kennzeichnet den Einsatzzweck und ergänzt den Ressourcennamen: dev, test, staging oder prod."
               value={p.environment}
               onChange={(environment) =>
                 patch({
@@ -104,6 +109,15 @@ export function ProjectsStep({
               <option value="prod">Produktion</option>
             </Field>
           </div>
+          <p className="field-hint">
+            Namenspräfix für Ressourcen:{" "}
+            <code>
+              {draft.companyCode || "firma"}-lz-{p.code || "projekt"}-
+              {p.environment || "dev"}
+            </code>
+            . Änderungen an Kürzel oder Umgebung können bestehende Ressourcen
+            umbenennen oder ersetzen.
+          </p>
           <label className="checkbox">
             <input
               type="checkbox"
@@ -123,6 +137,9 @@ export function ProjectsStep({
             />
             Secrets Manager vorsehen
           </label>
+          <p className="field-hint">
+            Plant eine eigene Secrets-Manager-Instanz für dieses Projekt ein.
+          </p>
           <button
             type="button"
             className="text-button danger"
@@ -168,6 +185,7 @@ export function ProjectsStep({
             <Field
               id={`sandbox.${s.id}.name`}
               label="Sandbox-Name"
+              hint="Name für das separate Projekt zum Experimentieren."
               value={s.name}
               onChange={(name) =>
                 patch({
@@ -181,6 +199,7 @@ export function ProjectsStep({
             <Field
               id={`sandbox.${s.id}.owner`}
               label="Sandbox-Verantwortlich"
+              hint="E-Mail-Adresse des in STACKIT registrierten Verantwortlichen für diese Sandbox."
               type="email"
               value={s.owner}
               onChange={(owner) =>

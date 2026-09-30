@@ -23,7 +23,10 @@ export function Field({
     id,
     value,
     "aria-invalid": !!error,
-    "aria-describedby": error ? `${id}-error` : hint ? `${id}-hint` : undefined,
+    "aria-describedby":
+      [hint && `${id}-hint`, error && `${id}-error`]
+        .filter(Boolean)
+        .join(" ") || undefined,
   };
   return (
     <div className="field">
@@ -42,13 +45,14 @@ export function Field({
           onChange={(e) => onChange(e.target.value)}
         />
       )}
+      {hint && (
+        <p className="field-hint" id={`${id}-hint`}>
+          {hint}
+        </p>
+      )}
       {error ? (
         <p className="field-error" id={`${id}-error`}>
           {error}
-        </p>
-      ) : hint ? (
-        <p className="field-hint" id={`${id}-hint`}>
-          {hint}
         </p>
       ) : null}
     </div>

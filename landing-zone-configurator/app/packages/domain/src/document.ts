@@ -77,3 +77,7 @@ export function readSavedDraft(input: unknown): SavedDraft {
   buildConfiguration(template, parsed.draft);
   return parsed;
 }
+
+export function configurationValues(document: SavedDraft) {
+  return buildConfiguration(template, readSavedDraft(document).draft);
+}

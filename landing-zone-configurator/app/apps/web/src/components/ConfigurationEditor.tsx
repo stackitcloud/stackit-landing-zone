@@ -1,6 +1,7 @@
 import {
   buildConfiguration,
   type ConfigurationDraft,
+  serializeTfvars,
   type Template,
   validateDraft,
 } from "@lzc/domain";
@@ -84,31 +85,13 @@ export function ConfigurationEditor({
       if (first) focusIssue(first.field);
       return;
     }
-    const source = template;
-    const file = new Blob(
-      [
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            kind: "landing-zone-configurator-draft",
-            name: draft.name,
-            template: {
-              id: source.id,
-              source: source.source,
-              sha256: source.sha256,
-            },
-            configuration: buildConfiguration(source, draft),
-          },
-          null,
-          2,
-        ),
-      ],
-      { type: "application/json" },
-    );
+    const file = new Blob([serializeTfvars(values)], {
+      type: "text/plain;charset=utf-8",
+    });
     const url = URL.createObjectURL(file);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "landing-zone.lzc.json";
+    link.download = "landing-zone.tfvars";
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice(
@@ -159,6 +142,7 @@ export function ConfigurationEditor({
                 <Field
                   id="name"
                   label="Name der Konfiguration"
+                  hint="Name zum Wiederfinden deines Entwurfs; wird nicht als Ressourcenname verwendet."
                   value={draft.name}
                   onChange={(name) => patch({ name })}
                   error={error("name")}
@@ -166,6 +150,7 @@ export function ConfigurationEditor({
                 <Field
                   id="company"
                   label="Organisation / Unternehmen"
+                  hint="Lesbarer Unternehmensname für die Konfiguration."
                   value={draft.company}
                   onChange={(company) => patch({ company })}
                   error={error("company")}
@@ -198,6 +183,7 @@ export function ConfigurationEditor({
                 <Field
                   id="region"
                   label="Region"
+                  hint="STACKIT Region, in der die Ressourcen angelegt werden sollen."
                   value={draft.region}
                   onChange={(region) => patch({ region })}
                   error={error("region")}
@@ -267,9 +253,12 @@ export function ConfigurationEditor({
                 <dd>Standalone</dd>
               </dl>
               <p>
-                Der Download enthält deinen Konfigurationsentwurf.
-                Berechtigungen, Dienstverfügbarkeit und die tatsächliche
-                Ressourcenplanung werden erst beim späteren Deployment geprüft.
+                Der Download enthält die OpenTofu-/Terraform-Variablen als
+                .tfvars. Beim Speichern im Fork entsteht zusätzlich ein
+                JSON-Dokument, mit dem du die Konfiguration hier wieder
+                bearbeiten kannst. Berechtigungen, Dienstverfügbarkeit und die
+                tatsächliche Ressourcenplanung werden erst beim späteren
+                Deployment geprüft.
               </p>
               <div className="actions">
                 <button
@@ -284,7 +273,7 @@ export function ConfigurationEditor({
                   className="button primary"
                   onClick={download}
                 >
-                  Entwurf herunterladen
+                  tfvars herunterladen
                 </button>
               </div>
               <button

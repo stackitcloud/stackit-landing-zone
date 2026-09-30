@@ -40,13 +40,15 @@ Auch diese Befehle können bei abweichender lokaler Node-Version mit dem oben ge
 
 ## Aktueller Funktionsumfang
 
-- React-Startseite mit überprüftem API-Health-Vertrag.
-- Öffentlicher `/healthz`-Endpunkt; er bestätigt nur Prozessgesundheit, keine vollständige Betriebsbereitschaft.
-- `/api/v1/session` antwortet bis zur echten Session-Integration immer mit HTTP 401.
-- Fachliche Tenant-/Rollen-Policy mit Negativtests. Mitgliedschaften müssen später aus authentisiertem serverseitigem Speicher kommen.
-- Worker ist ein kompilierbarer Platzhalter und beendet sich beim Start ausdrücklich mit Fehler, bis dauerhafte Queue und Runner integriert sind.
+- Template-Katalog, Standalone-Editor mit Feldhilfen und grafischer Struktur.
+- Nativer `.tfvars`-Download und atomare JSON-/tfvars-Speicherung in ausgewählten Forks.
+- GitHub-Login, PostgreSQL-Sessions/RLS und persönliche Tokens im Secrets Manager.
+- Browser-Zurück/Vorwärts und direkte Seiten-URLs.
+- Worker bleibt ein Platzhalter; Kunden-Plan/Apply und Chat sind noch offen.
 
-PostgreSQL und Secrets Manager sind provisioniert; CF-Tasks prüfen deren Anbindung. Noch keine GitHub-Anmeldung, Anwendungsschemata/RLS, Templates, persönliche Credential-Speicherung oder Kunden-Deployments. Die getestete Policy allein ist kein Nachweis vollständiger Mehrmandantenfähigkeit.
+Details und Grenzen: [Forks und Navigation](../docs/forks-and-navigation.md),
+[GitHub-Login](../docs/github-login.md). HCL-Export-Roundtrip prüfen mit Node 24 im PATH:
+`cd ../tools/hcl-adapter && go test ./... && go run . -check`.
 
 ## Lesende Plattformprüfung
 
