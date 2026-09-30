@@ -5,14 +5,15 @@ soll dem offiziellen STACKIT Portal entsprechen. Referenz ist die bereits vom
 Benutzer geöffnete Projektstartseite. Kein frei interpretiertes STACKIT-ähnliches
 Theme als Ersatz für diesen Abgleich.
 
-## Abnahme vor der UI-Implementierung
+## Design-Abnahme
 
 - [ ] Geöffnete Projektstartseite im Benutzerbrowser ansehen und Referenz erfassen.
 - [ ] Portal-Shell: Header, Projekt-/Organisationsauswahl, Navigation, Breadcrumbs und Inhaltsbreite bestimmen.
 - [ ] Tatsächliche Farben, Typografie, Schriftgewichte, Abstände, Radien, Rahmen und Schatten dokumentieren.
 - [ ] Formulare, Buttons, Karten, Tabellen, Dialoge sowie Fokus-/Fehler-/Disabled-Zustände vergleichen.
-- [ ] Verfügbare offizielle Design-Tokens, Fonts, Icons und Komponenten prüfen; kompatible Originalbausteine bevorzugen.
-- [ ] Gemeinsame UI-Komponenten und Tokens im Configurator implementieren.
+- [x] Offizielle Design-Tokens, Fonts und Komponentenquellen über Nebula prüfen.
+- [ ] Offizielle Icons und vollständige Komponentenparität integrieren.
+- [x] Gemeinsame Formular-/Strukturkomponenten und ausgewählte semantische Tokens im Configurator implementieren.
 - [ ] Login, Template-Auswahl, fachlichen Editor und Fork-Auswahl gegen die Referenz visuell abnehmen.
 - [ ] Tastaturbedienung, Fokus, Kontrast und schmale Ansichten prüfen.
 
@@ -43,9 +44,11 @@ enthält folgende Referenzwerte (Dateiname gilt für diesen Snapshot):
 Die HTML-Antwort enthält zunächst nur `html lang="en"`, keine ausgewählte Marke
 oder Theme-Klasse. Die Tokens dürfen daher nicht über alle Selektoren hinweg
 zusammengeführt werden. Die Extraktion ist kein vollständiger CSS-Parser und
-berechnet weder Kaskade noch responsive Styles. Schriftdateien und Portal-Code
-wurden nicht als App-Abhängigkeit übernommen. Vor Übernahme der Schriften ist der
-vorgesehene interne Bezug bzw. ihre Wiederverwendung zu klären.
+berechnet weder Kaskade noch gerenderte Styles. Für die Anwendung wird ausdrücklich
+`digits/light` gewählt. Ein begrenzter semantischer Token-Snapshot erhält die
+Viewport-Regeln; Schriftdateien und Logo werden lokal ausgeliefert.
+[Asset-Herkunft und Prüfsummen](brand-assets.md). Portal-JavaScript wird nicht
+in die Anwendung übernommen.
 
 `curl` liefert die SPA-Quelldateien, aber keine gerenderte, angemeldete
 Projektstartseite. Shell-Geometrie, konkrete Komponenten und Interaktionszustände
@@ -64,4 +67,39 @@ bleiben deshalb offene Abnahmepunkte. Der frühere Browser-Verbindungsfehler
 
 Die Auth-Helfer sind noch nicht an HTTP-Routen angebunden. Insbesondere ersetzt
 ein erfolgreicher State-Vergleich keine atomare Einmalverwendung in PostgreSQL.
-Die bestehende Anwendung bleibt bis zur vollständigen Integration geschlossen.
+Die geschützte API bleibt bis zur vollständigen Integration geschlossen.
+Der öffentliche Template-Editor arbeitet ausschließlich mit Repository-Vorlagen
+und flüchtigen Entwürfen im aktuellen Browser-Tab.
+
+## Nebula als bestätigte Referenz
+
+Der Benutzer hat am 2026-09-30 [styleguide.stackit.schwarz](https://styleguide.stackit.schwarz/)
+als Referenz angegeben. Die Seiten sind ohne Login abrufbar (Unterseiten mit
+abschließendem `/`). Relevante Vorgaben:
+
+- [Tokens](https://styleguide.stackit.schwarz/foundations/design-tokens/about-tokens/):
+  semantische Namen verwenden, Marken/Modi getrennt halten.
+- [Typografie](https://styleguide.stackit.schwarz/foundations/typography/):
+  16-px-Basiseinheit, abgestufte Textstile; lokale Originalschriften.
+- [Formulare](https://styleguide.stackit.schwarz/patterns/forms/design/):
+  ein-/zweispaltiger Wizard, Inline-Fehler und anklickbare Fehlerzusammenfassung.
+  Download bleibt klickbar und führt bei ungültigen Angaben zum betroffenen Feld.
+- [Buttons](https://styleguide.stackit.schwarz/components/buttons/design/):
+  eine hervorgehobene Hauptaktion pro Aktionsgruppe.
+- [Header](https://styleguide.stackit.schwarz/components/header/design/) und
+  [Navigation](https://styleguide.stackit.schwarz/patterns/side-navigation/design/):
+  Logo, Kontext und klar markierter aktiver Navigationspunkt.
+
+Nebula verweist auf eine Angular-Komponentenbibliothek. Diese ist keine direkt
+nutzbare React-Abhängigkeit. Der bestätigte React-Stack bleibt für diesen Schritt
+bestehen; native semantische Komponenten verwenden den ausgewählten Token-Snapshot.
+Vollständige Komponenten- und Verhaltensparität ist damit nicht automatisch erreicht.
+Der Configurator zeigt nur seine tatsächlich verfügbaren Funktionen; eine
+Projekt-/Regionsauswahl für authentifizierte Benutzer folgt mit dem Login.
+
+Lokale Abnahme: Browserprüfungen auf 1440 und 390 px, inklusive Suche,
+Fehlerfokus, Entwurfsdownload und erfolgreichem Laden beider Originalschriften und
+des Logos. Screenshots liegen unter `.local/browser-tests`. Die integrierte
+Browser-Verbindung ist weiterhin defekt; deshalb wurden isolierte lokale
+Browser-Kontexte verwendet. Ein direkter visueller Vergleich mit der angemeldeten
+Portal-Projektstartseite und die vollständige Tastatur-/Kontrastprüfung stehen aus.

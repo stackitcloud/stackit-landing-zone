@@ -11,7 +11,8 @@
   "dependencies": {
     "@lzc/contracts": "0.1.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "@lzc/domain": "0.1.0"
   },
   "devDependencies": {
     "@types/react": "19.3.0",

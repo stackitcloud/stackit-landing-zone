@@ -1,0 +1,542 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "id": "hub-and-spoke-finance-research",
+      "source": "src/config/hub-and-spoke-finance-research.tfvars",
+      "sha256": "b57cdf13a38ad9f262e8c02d7985dd6730eeb91ddf77cd5a583440e6c12eda21",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "connectivity": {
+          "naming_pattern": "exc-connectivity",
+          "network_areas": {
+            "finance": {
+              "default_prefix_length": 26,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "finance-sna",
+              "ranges": [
+                "10.0.0.0/16"
+              ],
+              "transfer_network": "10.1.0.0/24"
+            },
+            "research": {
+              "default_prefix_length": 26,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "research-sna",
+              "ranges": [
+                "10.2.0.0/16"
+              ],
+              "transfer_network": "10.3.0.0/24"
+            }
+          }
+        },
+        "landing_zones": {
+          "finance": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "finance",
+            "network_prefix_length": 24,
+            "owner_email": "finance-platform@example.com",
+            "project_code": "finance",
+            "project_name": "Finance Workload"
+          },
+          "research": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "research",
+            "network_prefix_length": 24,
+            "owner_email": "research-platform@example.com",
+            "project_code": "research",
+            "project_name": "Research Workload"
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "platform@example.com",
+        "region": "eu01"
+      }
+    },
+    {
+      "id": "hub-and-spoke-firewall",
+      "source": "src/config/hub-and-spoke-firewall.tfvars",
+      "sha256": "79352e9384ddf09a38c6742a3be08c4030d57b047daafd62c883361cb3bf91f5",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "connectivity": {
+          "dns_zones": {
+            "example-corp": {
+              "dns_name": "example-corp.stackit.run"
+            }
+          },
+          "firewall": {
+            "flavor": "c1.2",
+            "lan_network_range": "10.0.2.0/28",
+            "name": "opnsense-26.1",
+            "wan_network_range": "10.0.2.16/28",
+            "zone": "eu01-m"
+          },
+          "network_area": {
+            "default_prefix_length": 25,
+            "max_prefix_length": 28,
+            "min_prefix_length": 24,
+            "ranges": [
+              "10.0.0.0/16"
+            ],
+            "transfer_network": "10.255.0.0/24"
+          }
+        },
+        "labels": {
+          "managed_by": "opentofu"
+        },
+        "landing_zones": {
+          "corp-exmpl": {
+            "corporate": true,
+            "env": "prod",
+            "network_prefix_length": 24,
+            "owner_email": "owner@example.com",
+            "project_code": "data",
+            "project_name": "Data Platform"
+          },
+          "public-exmpl": {
+            "corporate": false,
+            "env": "prod",
+            "owner_email": "owner@example.com",
+            "project_code": "api",
+            "project_name": "External API Gateway"
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "owner@example.com",
+        "region": "eu01",
+        "sandboxes": [
+          {
+            "project_name": "Sandbox Team Alpha",
+            "project_owner_email": "owner@example.com"
+          }
+        ]
+      }
+    },
+    {
+      "id": "hub-and-spoke-multi-area",
+      "source": "src/config/hub-and-spoke-multi-area.tfvars",
+      "sha256": "b97932ffc01c71afc3f69fa5e946a29d961e830eacb2687b6c8d2955d8762961",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "connectivity": {
+          "dns_zones": {
+            "regulated": {
+              "dns_name": "regulated.example.stackit.run",
+              "network_area_key": "regulated"
+            },
+            "shared": {
+              "dns_name": "shared.example.stackit.run",
+              "network_area_key": "shared"
+            }
+          },
+          "naming_pattern": "example-connectivity",
+          "network_areas": {
+            "regulated": {
+              "default_prefix_length": 25,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "regulated-sna",
+              "ranges": [
+                "10.0.0.0/16"
+              ],
+              "transfer_network": "10.255.0.0/24"
+            },
+            "shared": {
+              "default_prefix_length": 25,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "shared-sna",
+              "ranges": [
+                "10.1.0.0/16"
+              ],
+              "transfer_network": "10.254.0.0/24"
+            }
+          }
+        },
+        "landing_zones": {
+          "regulated_workload": {
+            "corporate": true,
+            "env": "live",
+            "network_area_key": "regulated",
+            "network_prefix_length": 24,
+            "owner_email": "platform@example.com",
+            "project_code": "regulated",
+            "project_name": "Regulated Workload"
+          },
+          "shared_workload": {
+            "corporate": true,
+            "env": "live",
+            "network_area_key": "shared",
+            "network_prefix_length": 24,
+            "owner_email": "platform@example.com",
+            "project_code": "shared",
+            "project_name": "Shared Workload"
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "platform@example.com",
+        "region": "eu01"
+      }
+    },
+    {
+      "id": "hub-and-spoke-multi-region",
+      "source": "src/config/hub-and-spoke-multi-region.tfvars",
+      "sha256": "0dac368609d548a38d79f6ac8acb8a989ec82278022568fbf6ab569164a7942f",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "connectivity_regions": {
+          "eu01": {
+            "naming_pattern": "exc-connectivity-eu01",
+            "network_areas": {
+              "primary": {
+                "default_prefix_length": 25,
+                "max_prefix_length": 28,
+                "min_prefix_length": 24,
+                "name": "eu01-primary-sna",
+                "ranges": [
+                  "10.0.0.0/16"
+                ],
+                "transfer_network": "10.1.0.0/24"
+              }
+            }
+          },
+          "eu02": {
+            "naming_pattern": "exc-connectivity-eu02",
+            "network_areas": {
+              "primary": {
+                "default_prefix_length": 25,
+                "max_prefix_length": 28,
+                "min_prefix_length": 24,
+                "name": "eu02-primary-sna",
+                "ranges": [
+                  "10.2.0.0/16"
+                ],
+                "transfer_network": "10.3.0.0/24"
+              }
+            }
+          }
+        },
+        "landing_zones": {
+          "eu01_workload": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "primary",
+            "network_prefix_length": 24,
+            "owner_email": "platform@example.com",
+            "project_code": "eu01app",
+            "project_name": "EU01 Workload",
+            "region": "eu01"
+          },
+          "eu02_workload": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "primary",
+            "network_prefix_length": 24,
+            "owner_email": "platform@example.com",
+            "project_code": "eu02app",
+            "project_name": "EU02 Workload",
+            "region": "eu02",
+            "secretsmanager_enabled": false
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "platform@example.com",
+        "platform_kubernetes": {
+          "eu01": {
+            "cluster": {
+              "name": "platform-eu01"
+            },
+            "network": {
+              "network_area_key": "primary",
+              "sna_enabled": true
+            },
+            "region": "eu01"
+          },
+          "eu02": {
+            "cluster": {
+              "name": "platform-eu02",
+              "node_pools": [
+                {
+                  "availability_zones": [
+                    "eu02-1"
+                  ],
+                  "machine_type": "g3i.4",
+                  "maximum": 2,
+                  "minimum": 2,
+                  "name": "system"
+                },
+                {
+                  "availability_zones": [
+                    "eu02-2"
+                  ],
+                  "machine_type": "g3i.4",
+                  "maximum": 2,
+                  "minimum": 2,
+                  "name": "application"
+                }
+              ]
+            },
+            "network": {
+              "network_area_key": "primary",
+              "sna_enabled": true
+            },
+            "observability": {
+              "enabled": false
+            },
+            "region": "eu02"
+          }
+        }
+      }
+    },
+    {
+      "id": "hub-and-spoke-prod-nonprod-firewall",
+      "source": "src/config/hub-and-spoke-prod-nonprod-firewall.tfvars",
+      "sha256": "3b7aafc40a82a146c66c171fee3fa17bc8a6d28de549c7608a95167344411b2e",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "connectivity": {
+          "firewalls": {
+            "nonprod": {
+              "flavor": "c1.2",
+              "lan_network_range": "10.2.2.0/28",
+              "name": "opnsense-nonprod",
+              "wan_network_range": "10.2.2.16/28",
+              "zone": "eu01-m"
+            },
+            "prod": {
+              "flavor": "c1.2",
+              "lan_network_range": "10.0.2.0/28",
+              "name": "opnsense-prod",
+              "wan_network_range": "10.0.2.16/28",
+              "zone": "eu01-m"
+            }
+          },
+          "naming_pattern": "exc-connectivity",
+          "network_areas": {
+            "nonprod": {
+              "default_prefix_length": 26,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "nonprod-sna",
+              "ranges": [
+                "10.2.0.0/16"
+              ],
+              "transfer_network": "10.3.0.0/24"
+            },
+            "prod": {
+              "default_prefix_length": 26,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "prod-sna",
+              "ranges": [
+                "10.0.0.0/16"
+              ],
+              "transfer_network": "10.1.0.0/24"
+            }
+          }
+        },
+        "landing_zones": {
+          "development": {
+            "corporate": true,
+            "env": "dev",
+            "network_area_key": "nonprod",
+            "network_prefix_length": 24,
+            "owner_email": "platform@example.com",
+            "project_code": "dev",
+            "project_name": "Development Workload"
+          },
+          "production": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "prod",
+            "network_prefix_length": 24,
+            "owner_email": "platform@example.com",
+            "project_code": "prod",
+            "project_name": "Production Workload"
+          },
+          "test": {
+            "corporate": true,
+            "env": "test",
+            "network_area_key": "nonprod",
+            "network_prefix_length": 24,
+            "owner_email": "platform@example.com",
+            "project_code": "test",
+            "project_name": "Test Workload"
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "platform@example.com",
+        "region": "eu01"
+      }
+    },
+    {
+      "id": "hub-and-spoke-tenant-isolation",
+      "source": "src/config/hub-and-spoke-tenant-isolation.tfvars",
+      "sha256": "20c89a9d3c0a5bb1b90d08a561f938ce762e987cdfb535787a4ac61ed512b049",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "connectivity": {
+          "naming_pattern": "exc-connectivity",
+          "network_areas": {
+            "tenant_a": {
+              "default_prefix_length": 26,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "tenant-a-sna",
+              "ranges": [
+                "10.0.0.0/16"
+              ],
+              "transfer_network": "10.1.0.0/24"
+            },
+            "tenant_b": {
+              "default_prefix_length": 26,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "tenant-b-sna",
+              "ranges": [
+                "10.2.0.0/16"
+              ],
+              "transfer_network": "10.3.0.0/24"
+            },
+            "tenant_c": {
+              "default_prefix_length": 26,
+              "max_prefix_length": 28,
+              "min_prefix_length": 24,
+              "name": "tenant-c-sna",
+              "ranges": [
+                "10.4.0.0/16"
+              ],
+              "transfer_network": "10.5.0.0/24"
+            }
+          }
+        },
+        "landing_zones": {
+          "tenant_a": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "tenant_a",
+            "network_prefix_length": 24,
+            "owner_email": "tenant-a@example.com",
+            "project_code": "tenanta",
+            "project_name": "Tenant A Workload"
+          },
+          "tenant_b": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "tenant_b",
+            "network_prefix_length": 24,
+            "owner_email": "tenant-b@example.com",
+            "project_code": "tenantb",
+            "project_name": "Tenant B Workload"
+          },
+          "tenant_c": {
+            "corporate": true,
+            "env": "prod",
+            "network_area_key": "tenant_c",
+            "network_prefix_length": 24,
+            "owner_email": "tenant-c@example.com",
+            "project_code": "tenantc",
+            "project_name": "Tenant C Workload"
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "platform@example.com",
+        "region": "eu01"
+      }
+    },
+    {
+      "id": "hub-and-spoke",
+      "source": "src/config/hub-and-spoke.tfvars",
+      "sha256": "b0010438e85f71c6bc70f8fc14f7ecb4b49cbabe5fea7634e8dcf21fa12047cc",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "connectivity": {
+          "dns_zones": {
+            "example-corp": {
+              "dns_name": "example-corp.stackit.run"
+            }
+          },
+          "network_area": {
+            "default_prefix_length": 25,
+            "max_prefix_length": 28,
+            "min_prefix_length": 24,
+            "ranges": [
+              "10.0.0.0/16"
+            ],
+            "transfer_network": "10.255.0.0/24"
+          }
+        },
+        "labels": {
+          "managed_by": "opentofu"
+        },
+        "landing_zones": {
+          "corp-exmpl": {
+            "corporate": true,
+            "env": "prod",
+            "network_prefix_length": 24,
+            "owner_email": "owner@example.com",
+            "project_code": "data",
+            "project_name": "Data Platform"
+          },
+          "public-exmpl": {
+            "corporate": false,
+            "env": "prod",
+            "owner_email": "owner@example.com",
+            "project_code": "api",
+            "project_name": "External API Gateway"
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "owner@example.com",
+        "region": "eu01",
+        "sandboxes": [
+          {
+            "project_name": "Sandbox Team Alpha",
+            "project_owner_email": "owner@example.com"
+          }
+        ]
+      }
+    },
+    {
+      "id": "standalone",
+      "source": "src/config/standalone.tfvars",
+      "sha256": "3fe6a764de8f1bb8eb83dbc07034d44d43373e277efdfccc6432c601319e0f03",
+      "values": {
+        "company_code": "exc",
+        "company_name": "Example Corp",
+        "labels": {
+          "managed_by": "opentofu"
+        },
+        "landing_zones": {
+          "public-exmpl": {
+            "env": "prod",
+            "owner_email": "owner@example.com",
+            "project_code": "api",
+            "project_name": "External API Gateway"
+          }
+        },
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "owner_email": "owner@example.com",
+        "region": "eu01",
+        "sandboxes": [
+          {
+            "project_name": "Sandbox Team Alpha",
+            "project_owner_email": "owner@example.com"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,7 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
   "files": {
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/package-lock.json"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/package-lock.json",
+      "!apps/web/src/generated/templates.json",
+      "!apps/web/public/brand"
+    ]
   },
   "formatter": {
     "indentStyle": "space",

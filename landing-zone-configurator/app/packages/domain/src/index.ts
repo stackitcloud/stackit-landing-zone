@@ -31,3 +31,5 @@ export function canAccessTenant(
     permissions[membership.data.role].includes(permission)
   );
 }
+
+export * from "./configuration.js";

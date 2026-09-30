@@ -39,6 +39,17 @@ jobs:
           npm install --global npm@11.19.0
           npm ci
           npm run check
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.1'
+          cache-dependency-path: landing-zone-configurator/tools/hcl-adapter/go.sum
+      - name: Verify source templates match the release catalogue
+        working-directory: landing-zone-configurator/tools/hcl-adapter
+        run: go run . -check
+      - name: Verify browser flow before packaging
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
       - name: Package production application and pinned Node runtime
         run: |
           mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/public ../.local/release/runtime

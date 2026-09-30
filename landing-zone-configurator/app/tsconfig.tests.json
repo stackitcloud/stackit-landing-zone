@@ -5,5 +5,10 @@
     "declaration": false,
     "noEmit": true
   },
-  "include": ["tests/**/*.ts", "apps/api/src/**/*.ts"]
+  "include": [
+    "tests/**/*.ts",
+    "apps/api/src/**/*.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts"
+  ]
 }

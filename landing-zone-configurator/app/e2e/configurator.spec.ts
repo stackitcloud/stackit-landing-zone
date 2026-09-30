@@ -1,0 +1,134 @@
+import { readFile } from "node:fs/promises";
+import { expect, test } from "@playwright/test";
+
+test("template catalogue, search and read-only network preview", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Landing Zone Templates" }),
+  ).toBeVisible();
+  await expect(page.locator(".template-card")).toHaveCount(8);
+  await page.evaluate(() => document.fonts.ready);
+  expect(
+    await page.evaluate(() => document.fonts.check('400 16px "DIN 2014"')),
+  ).toBe(true);
+  expect(
+    await page.evaluate(() => document.fonts.check('500 28px "Univia Pro"')),
+  ).toBe(true);
+  expect(
+    await page
+      .getByAltText("STACKIT", { exact: true })
+      .evaluate((img: HTMLImageElement) => img.naturalWidth > 0),
+  ).toBe(true);
+  await expect(
+    page.getByRole("button", { name: "Mein Entwurf" }),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: testInfo.outputPath("templates.png"),
+    fullPage: true,
+  });
+  await page.getByRole("searchbox").fill("Firewall");
+  await expect(page.locator(".template-card")).toHaveCount(2);
+  await page
+    .getByRole("button", {
+      name: "Template ansehen : Hub & Spoke mit Firewall",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Hub & Spoke mit Firewall" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Konfiguration erstellen" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".topology")).toContainText("Netzwerk-Hub");
+  expect(errors).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("edit, validate and download an isolated standalone copy", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
+  await page.getByRole("button", { name: "3 Prüfen", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Angaben bitte prüfen");
+  await page.getByRole("button", { name: /Organisations-ID: Bitte/ }).click();
+  await expect(page.getByLabel("STACKIT Organisations-ID")).toBeFocused();
+  await page
+    .getByLabel("STACKIT Organisations-ID")
+    .fill("11111111-2222-3333-4444-555555555555");
+  await page.getByLabel("Name der Konfiguration").fill("Meine Testumgebung");
+  await page.getByLabel("Organisation / Unternehmen").fill("Team Configurator");
+  await page.getByLabel("Technisch verantwortlich").fill("owner@stackit.cloud");
+  await page.screenshot({
+    path: testInfo.outputPath("editor.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Weiter zu Projekten" }).click();
+  await page.getByLabel("Projektname").fill("Kundenportal");
+  await page.getByLabel("Projektverantwortlich").fill("owner@stackit.cloud");
+  await page.getByLabel("Sandbox-Verantwortlich").fill("sandbox@stackit.cloud");
+  await page.getByLabel("Secrets Manager vorsehen").uncheck();
+  await page.getByRole("button", { name: "+ Landing Zone hinzufügen" }).click();
+  const extra = page.getByRole("group", {
+    name: "Neue Landing Zone",
+    exact: true,
+  });
+  await extra.getByLabel("Projektname").fill("Worker");
+  const worker = page.getByRole("group", { name: "Worker", exact: true });
+  await worker.getByLabel("Eindeutige Kennung").fill("worker");
+  await worker.getByLabel("Projektkürzel").fill("worker");
+  await page.getByRole("button", { name: "Entwurf prüfen" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "formal gültig" }),
+  ).toBeVisible();
+  await expect(page.locator(".topology")).toContainText("Kundenportal");
+  await expect(page.locator(".topology")).toContainText("Worker");
+  const downloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Entwurf herunterladen" }).click();
+  const download = await downloaded;
+  const path = await download.path();
+  if (!path) throw new Error("No download file");
+  const document = JSON.parse(await readFile(path, "utf8"));
+  expect(document.kind).toBe("landing-zone-configurator-draft");
+  expect(document.template.sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(document.configuration.landing_zones["public-exmpl"]).toMatchObject({
+    project_name: "Kundenportal",
+    corporate: false,
+    secretsmanager_enabled: false,
+  });
+  expect(document.configuration.landing_zones.worker.corporate).toBe(false);
+  expect(document.configuration.labels).toEqual({ managed_by: "opentofu" });
+  await page.screenshot({
+    path: testInfo.outputPath("review.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: /^Templates/ }).click();
+  await page
+    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
+    .click();
+  await expect(page.locator(".topology")).toContainText("External API Gateway");
+  await page.getByRole("button", { name: "Mein Entwurf" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Meine Testumgebung" }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});

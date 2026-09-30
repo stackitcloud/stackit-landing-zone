@@ -667,3 +667,28 @@ nicht visuell bestätigt.
 Der [GitHub-App-Entwurf](../deploy/github/README.md) und die getesteten
 PKCE-/State-/Session-Token-Helfer sind vorbereitet. Dies aktiviert noch keinen
 Login und bedeutet keine abgeschlossene Session-, RLS- oder Token-Store-Integration.
+
+
+## Template-Auswahl und erster Editor (2026-09-30)
+
+- [x] Acht echte Repository-Templates über einen gepinnten Go/HCL-Adapter importieren.
+- [x] Template-Katalog mit SHA-256, Suche und grafischer Organisationsstruktur.
+- [x] Standalone-Kopie: Grundlagen, Landing Zones, Sandboxes, Umgebungen und Secrets-Manager-Auswahl bearbeiten.
+- [x] Platzhalter, fehlende Angaben und doppelte Projektkennungen prüfen; unberührte Attribute erhalten.
+- [x] Versionierten lokalen Entwurf herunterladen; GitHub-Speicherung klar als Folgeschritt kennzeichnen.
+- [x] Originale Nebula-Tokens, STACKIT-Logo, DIN 2014 und Univia Pro mit Herkunft dokumentieren.
+- [x] App-Tests, HCL-Tests und Browserablauf für Desktop/Mobil lokal erfolgreich.
+- [x] Katalog-Aktualität und Browserablauf in Validierungs-/Release-Pipeline aufnehmen.
+- [ ] Feature-Branch-Release auf CF und Verbindungstests abnehmen.
+- [ ] Portal-Parität visuell bestätigen und verbleibende Komponenten-/Icon-Abweichungen schließen.
+- [ ] GitHub-Login, RLS/Mandantenmodell und Speicherung im ausgewählten Fork umsetzen.
+
+Wichtige Grenzen: Der Editor bearbeitet bisher nur Standalone; komplexe Templates
+sind lesbare Vorschauen. Entwürfe liegen nur im Tab-Arbeitsspeicher. Der Download
+ist ein `.lzc.json`-Entwurf, kein ausführbarer Terraform-Export und noch kein
+Roundtrip-Import. Es findet kein Kunden-Deployment statt.
+
+Die bestehende Standalone-Vorlage enthält keine explizite Corporate-Zuordnung,
+obwohl `variables.tf` standardmäßig `true` verwendet. Die bearbeitete Kopie setzt
+`corporate: false`, passend zu ihrem fehlenden Netzwerk-Hub; der Accelerator selbst
+bleibt unverändert. Ein späterer Export benötigt zusätzlich Schema-/Plan-Abnahme.

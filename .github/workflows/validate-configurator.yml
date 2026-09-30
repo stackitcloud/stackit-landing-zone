@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'landing-zone-configurator/**'
+      - 'src/config/**'
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
       - '.github/workflows/configurator-platform.yml'
@@ -13,6 +14,7 @@ on:
     branches: [main, feature/landing-zone-configurator]
     paths:
       - 'landing-zone-configurator/**'
+      - 'src/config/**'
       - '.github/workflows/validate-configurator.yml'
       - '.github/workflows/configurator-bootstrap.yml'
       - '.github/workflows/configurator-platform.yml'
@@ -28,6 +30,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  template-catalogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/tools/hcl-adapter
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.1'
+          cache-dependency-path: landing-zone-configurator/tools/hcl-adapter/go.sum
+      - name: Test HCL importer and verify catalogue freshness
+        run: |
+          go test ./...
+          go run . -check
+
   application:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -51,6 +72,19 @@ jobs:
         run: npm ci
       - name: Lint, typecheck, build and test
         run: npm run check
+      - name: Install isolated browser for UI acceptance
+        run: npx playwright install --with-deps chromium
+      - name: Test template-to-draft flow on desktop and mobile
+        run: npm run test:e2e
+      - name: Upload UI evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: configurator-ui-evidence
+          path: landing-zone-configurator/.local/browser-tests
+          include-hidden-files: true
+          retention-days: 7
+
 
   infrastructure:
     name: OpenTofu (${{ matrix.root }})

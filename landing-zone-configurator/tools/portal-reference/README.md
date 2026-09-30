@@ -35,3 +35,16 @@ keine gerenderte Projektansicht. Fonts werden nicht heruntergeladen; vollständi
 Portal-Bundles werden nicht in die App übernommen oder eingecheckt.
 
 Erfasste Werte und offene visuelle Abnahme: [Designreferenz](../../docs/design-reference.md).
+
+## Semantische Tokens für die App
+
+Nach dem Abruf erzeugt `python3 landing-zone-configurator/tools/portal-reference/export-tokens.py`
+den bewusst begrenzten Token-Snapshot `app/apps/web/src/nebula-tokens.css`.
+Er verwendet ausschließlich `brand--digits` / `theme--light` und erhält die
+Viewport-Regeln der ausgewählten Größen. Änderungen vor Übernahme prüfen;
+anschließend `npm run format` im App-Verzeichnis ausführen.
+
+Die Token-Datei ist keine vollständige Nebula-Bibliothek. Die offizielle Referenz
+ist [Nebula](https://styleguide.stackit.schwarz/), insbesondere die
+[Token-Architektur](https://styleguide.stackit.schwarz/foundations/design-tokens/about-tokens/)
+und die [Formularregeln](https://styleguide.stackit.schwarz/patterns/forms/design/).

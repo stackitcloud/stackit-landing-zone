@@ -20,13 +20,15 @@
     "build": "npm run typecheck && npm run build --workspace=@lzc/web",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "test": "npm run build:packages && vitest run",
+    "test": "npm run build:packages && vitest run tests",
     "check": "npm run lint && npm run build && npm test",
     "start": "npm run start --workspace=@lzc/api",
-    "platform:check": "node --use-system-ca scripts/platform-check.mjs"
+    "platform:check": "node --use-system-ca scripts/platform-check.mjs",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
+    "@playwright/test": "1.63.0",
     "@types/node": "24.19.0",
     "@types/pg": "8.23.1",
     "tsx": "4.23.15",

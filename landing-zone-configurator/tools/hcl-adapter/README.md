@@ -1,3 +1,30 @@
 # HCL-Importadapter
 
-Empfehlung: kleiner Go-Adapter mit HashiCorp HCL v2 für bestehende `.tfvars`. Versionierte JSON-Schnittstelle, z. B. stdin/stdout; kein eigener Netzwerkdienst zum Start. Keine freie Codeausführung oder Secret-Auflösung. Fachregeln verbleiben im Domain-Paket.
+Kleiner Go-Adapter mit [HashiCorp HCL v2](https://pkg.go.dev/github.com/hashicorp/hcl/v2/hclparse).
+Er liest die eingecheckten `.tfvars` aus `src/config`, wertet ausschließlich
+Ausdrücke ohne Variablen-/Funktionskontext aus und erzeugt den versionierten
+JSON-Katalog für die Web-App. Kein Terraform/OpenTofu-Aufruf, kein Netzwerkdienst
+und keine Secret-Auflösung. Fachregeln bleiben im TypeScript-Domain-Paket.
+
+Aus diesem Verzeichnis:
+
+```sh
+go test ./...
+go run .          # Katalog aktualisieren
+go run . -check   # CI: veralteten Katalog erkennen, keine Dateien ändern
+```
+
+`go.mod`/`go.sum` pinnen die Abhängigkeiten. CI verwendet Go 1.27.1.
+Der Katalog enthält `schemaVersion: 1` und pro Template ID, Repository-Pfad,
+SHA-256 der unveränderten Quelldatei sowie alle aktiven Attributwerte.
+Kommentare sind keine Konfiguration und werden nicht importiert. Nicht unterstützte
+Referenzen, Funktionen, HCL-Blöcke und Syntaxfehler brechen die Generierung ab.
+
+Der derzeitige Adapter verarbeitet nur vertrauenswürdige Repository-Vorlagen
+beim Entwickeln/Build. Er ist keine API zum Ausführen beliebiger Benutzerdateien.
+Es werden keine Defaultwerte aus `variables.tf` automatisch materialisiert.
+Unberührte Attribute bleiben bei der Erstellung eines Standalone-Entwurfs erhalten.
+
+Bei Änderungen an `src/config` den Katalog neu erzeugen und gemeinsam committen.
+Validierung und Release prüfen den Katalog gegen die Quellen; ein veralteter Stand
+wird nicht veröffentlicht. Die Accelerator-Dateien selbst werden nicht verändert.
