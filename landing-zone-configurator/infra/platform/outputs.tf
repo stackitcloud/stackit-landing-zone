@@ -23,3 +23,15 @@ output "model_serving_token" {
   sensitive   = true
   value       = stackit_modelserving_token.configurator.token
 }
+
+output "database_migration" {
+  description = "Database-owner credentials for a short-lived, route-free migration task only."
+  sensitive   = true
+  value = {
+    host     = stackit_postgresflex_instance.configurator.connection_info.write.host
+    port     = tostring(stackit_postgresflex_instance.configurator.connection_info.write.port)
+    database = stackit_postgresflex_database.configurator.name
+    username = stackit_postgresflex_user.migration.username
+    password = stackit_postgresflex_user.migration.password
+  }
+}
