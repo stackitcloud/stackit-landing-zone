@@ -109,3 +109,6 @@ Die Workflows führen OpenTofu jetzt direkt aus. Der bisherige Deployment-Runner
 
 
 Abnahme der direkten CLI-Pipelines: Bootstrap-Run 36677111141 und Plattform-Run 36677111032 erfolgreich, jeweils `No changes`, Apply übersprungen. Die normalen Init-/Plan-Details sind live sichtbar. Logs gegen bekannte Deployment-Credentials und State-Schlüssel geprüft, keine Treffer. Validierung 36677111055 erfolgreich, einschließlich des GNU-Timeout-Tests in allen fünf Linux-Matrix-Jobs. Keine Infrastrukturänderung durch den Umbau.
+
+
+Backend-Abnahme des Umbaus: [Run 36677367229](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677367229) hat Root `backend` mit getrennten Management-/Workload-Zugängen geplant: `No changes`, Apply übersprungen. Root, Commit, Run, Plan-Hash und verschlüsseltes Artefakt geprüft. Native Logs sichtbar und ohne bekannte Credential-Werte. [Validierung 36677367252](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677367252) erfolgreich. Temporäre Root-Auswahl entfernt; keine Apply-Freigaben gesetzt. Bootstrap, Backend und Plattform wurden damit lesend geprüft, ohne Cloud-Apply oder State-Migration durch den Umbau.

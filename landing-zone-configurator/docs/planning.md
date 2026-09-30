@@ -614,3 +614,6 @@ No-op-Abnahme abgeschlossen: Plattform-Run 36675895279 zeigt für alle neun Ress
 
 
 CI-Entscheidung 2026-09-30: Auf Benutzerwunsch den eigenen JavaScript-Deployment-Runner durch direkte, sichtbare OpenTofu-Schritte in GitHub Actions ersetzen. Kleine Hilfsprogramme bereiten ausschließlich Credentials vor, prüfen Planintegrität und schützen State-Snapshots. Normale CLI-Logs werden wieder live ausgegeben; JSON-Credential-/State-Ausgaben bleiben privat. Abgeschlossene Recovery vom regulären Ablauf trennen. Auch lokale Validierung und Seed-Bedienung verwenden direkte `tofu`-Befehle. [Aktuelle Betriebsanleitung](../infra/ci/README.md).
+
+
+CI-Vereinfachung abgenommen: echte direkte OpenTofu-Pläne für Bootstrap (36677111141), Plattform (36677111032) und Backend (36677367229) jeweils ohne Änderungen; Apply jeweils übersprungen. Native Logs sichtbar und gegen bekannte Credentials geprüft. Validierung einschließlich Linux-Timeout-Test erfolgreich. Temporäre Backend-Auswahl entfernt; Feature-Branch bleibt getrennt von main.
