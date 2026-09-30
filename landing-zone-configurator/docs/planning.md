@@ -679,7 +679,7 @@ Login und bedeutet keine abgeschlossene Session-, RLS- oder Token-Store-Integrat
 - [x] Originale Nebula-Tokens, STACKIT-Logo, DIN 2014 und Univia Pro mit Herkunft dokumentieren.
 - [x] App-Tests, HCL-Tests und Browserablauf für Desktop/Mobil lokal erfolgreich.
 - [x] Katalog-Aktualität und Browserablauf in Validierungs-/Release-Pipeline aufnehmen.
-- [ ] Feature-Branch-Release auf CF und Verbindungstests abnehmen.
+- [x] Feature-Branch-Release auf CF und Verbindungstests abnehmen.
 - [ ] Portal-Parität visuell bestätigen und verbleibende Komponenten-/Icon-Abweichungen schließen.
 - [ ] GitHub-Login, RLS/Mandantenmodell und Speicherung im ausgewählten Fork umsetzen.
 
@@ -692,3 +692,13 @@ Die bestehende Standalone-Vorlage enthält keine explizite Corporate-Zuordnung,
 obwohl `variables.tf` standardmäßig `true` verwendet. Die bearbeitete Kopie setzt
 `corporate: false`, passend zu ihrem fehlenden Netzwerk-Hub; der Accelerator selbst
 bleibt unverändert. Ein späterer Export benötigt zusätzlich Schema-/Plan-Abnahme.
+
+
+Abnahme dieses Stands: Commit `76db252` auf `feature/landing-zone-configurator`.
+[Validierung 36689446249](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36689446249)
+und [Release 36689446170](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36689446170)
+sind erfolgreich. Die Pipeline prüft 16 App-Tests, den HCL-Adapter und vier
+Browserfälle (Desktop/Mobil). CF-Push, Service-Verbindungstests und öffentliche
+Smoke-Checks waren erfolgreich. Zusätzlich auf der Live-URL geprüft: acht
+Templates, Standalone-Editor, Health 200, Session ohne Login 401 und keine
+JavaScript-Laufzeitfehler. Keine Infrastrukturänderung und kein Merge nach main.
