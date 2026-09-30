@@ -4,10 +4,14 @@ import { GitHubClient } from "./auth/github-client.js";
 import type { AuthServices } from "./auth/routes.js";
 import { SecretsManagerTokenStore } from "./auth/secrets.js";
 import { PostgresAuthStore } from "./auth/store.js";
+import { PostgresCredentialProfiles } from "./credentials/profiles.js";
+import { VaultCredentialSecrets } from "./credentials/secrets.js";
 import { databaseConfig } from "./storage/database.js";
+import { VaultConnection } from "./storage/vault.js";
 
 let pool: pg.Pool | undefined;
 let auth: AuthServices | undefined;
+let credentials: PostgresCredentialProfiles | undefined;
 if (process.env.LZC_AUTH_ENABLED === "true") {
   const required = (key: string) => {
     const value = process.env[key];
@@ -24,6 +28,17 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
   await pool.query("SELECT * FROM lzc_auth.resolve_session($1)", [
     "startup-readiness-not-a-token",
   ]);
+  const secretConfig = {
+    address: required("LZC_SECRETS_ADDRESS"),
+    instance: required("LZC_SECRETS_INSTANCE_ID"),
+    username: required("LZC_SECRETS_USERNAME"),
+    password: required("LZC_SECRETS_PASSWORD"),
+  };
+  credentials = new PostgresCredentialProfiles(
+    pool,
+    new VaultCredentialSecrets(new VaultConnection(secretConfig)),
+  );
+  await pool.query("SELECT id FROM lzc.credential_profiles LIMIT 0");
   auth = {
     origin,
     clientId,
@@ -33,18 +48,14 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       clientSecret: required("LZC_GITHUB_CLIENT_SECRET"),
       callback: `${origin}/auth/github/callback`,
     }),
-    tokens: new SecretsManagerTokenStore({
-      address: required("LZC_SECRETS_ADDRESS"),
-      instance: required("LZC_SECRETS_INSTANCE_ID"),
-      username: required("LZC_SECRETS_USERNAME"),
-      password: required("LZC_SECRETS_PASSWORD"),
-    }),
+    tokens: new SecretsManagerTokenStore(secretConfig),
   };
 }
 
 const app = buildApp({
   ...(process.env.LZC_WEB_ROOT ? { webRoot: process.env.LZC_WEB_ROOT } : {}),
   ...(auth ? { auth } : {}),
+  ...(credentials ? { credentials } : {}),
 });
 app.addHook("onClose", async () => {
   await pool?.end();

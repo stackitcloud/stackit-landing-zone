@@ -19,6 +19,14 @@ Fork-Auswahl, konfliktgeschützte Entwurfsablage im Arbeitsbranch und Wiederöff
 sind implementiert und auf lzc-dev bereitgestellt. Ansichten und Editor-Schritte besitzen
 eigene URLs mit live geprüfter Zurück/Vorwärts-Unterstützung. Der Benutzer bestätigt Fork-Erstellung, App-Zugriff und Speicherung. Ergänzt: Feldhilfen sowie native tfvars-Ausgabe neben dem bearbeitbaren JSON. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
 
+### Nächster Umsetzungsschritt: persönliche Deployment-Zugänge
+
+Profilverwaltung mit Schlüsseldatei-Upload, ausschließlich serverseitiger Secret-Ablage,
+Metadaten-RLS und Löschung ist implementiert. Status und Abnahme:
+[Persönliche Deployment-Zugänge](deployment-credentials.md). Es findet noch keine
+STACKIT-Rechteprüfung und kein Kunden-Plan/Apply statt; Betreiber-Credentials werden
+nicht als persönliche Zugänge übernommen.
+
 ## 1. Zielbild und bestätigte Entscheidungen
 
 Eine zentral auf STACKIT Cloud Foundry gehostete Anwendung begleitet Benutzer vom Landing-Zone-Template bis zum überprüfbaren Deployment. Die Oberfläche arbeitet mit Organisationen, Netzwerkbereichen, Plattformdiensten und Workloads. Ein deterministischer Compiler übersetzt diese fachlichen Angaben in die Konfiguration des Accelerators. Terraform bleibt im Hintergrund; technische Details sind bei Bedarf einsehbar.
@@ -487,7 +495,8 @@ Diese Basis ersetzt keinen der folgenden Architektur-Spikes. Details zum Start: 
 ### P2 – Sichere Deployments und Betriebsgrundlage
 
 - [ ] Staging-/Produktionsgrundlage per IaC, Backups und Observability.
-- [ ] Persönliche Credential-Profile, Delegationen und kundenbezogener Remote State.
+- [x] Persönliche Credential-Profile: Upload, Secrets-Manager-Ablage, eigene Metadaten und Löschung implementieren.
+- [ ] Credential-Rechteprüfung, Delegationen und kundenbezogener Remote State.
 - [ ] Runner, Queue, Manifest, Plan-Redaktion, Freigabe und exakter Apply.
 - [ ] Standalone und einfaches Hub-Spoke in getrennten Testorganisationen ausführen.
 - [ ] Isolation, Quoten, Crash, Abbruch, Rechteentzug, Restore und partielle Fehler prüfen.

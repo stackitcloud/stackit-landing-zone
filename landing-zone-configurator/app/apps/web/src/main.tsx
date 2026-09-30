@@ -2,6 +2,7 @@ import { type ConfigurationDraft, createDraft, objectValue } from "@lzc/domain";
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ConfigurationEditor } from "./components/ConfigurationEditor";
+import { Credentials } from "./components/Credentials";
 import { ForkWorkspace } from "./components/ForkWorkspace";
 import { Topology } from "./components/Topology";
 import { useNavigation } from "./navigation";
@@ -145,6 +146,16 @@ function App() {
             >
               GitHub-Forks
             </button>
+            <button
+              type="button"
+              className={
+                view === "credentials" ? "nav-item active" : "nav-item"
+              }
+              aria-current={view === "credentials" ? "page" : undefined}
+              onClick={() => setView("credentials")}
+            >
+              Deployment-Zugänge
+            </button>
           </nav>
           <div className="sidebar-note">
             <strong>Deine nächste Landing Zone</strong>
@@ -175,9 +186,11 @@ function App() {
                 ? "Templates"
                 : view === "preview"
                   ? describe(selected).title
-                  : view === "repositories"
-                    ? "GitHub-Forks"
-                    : "Entwurf erstellen"}
+                  : view === "credentials"
+                    ? "Deployment-Zugänge"
+                    : view === "repositories"
+                      ? "GitHub-Forks"
+                      : "Entwurf erstellen"}
             </span>
           </nav>
           <div className="page-heading">
@@ -187,24 +200,34 @@ function App() {
                   ? "Landing Zone Templates"
                   : view === "preview"
                     ? describe(selected).title
-                    : view === "repositories"
-                      ? "GitHub-Forks"
-                      : draft?.name || "Neue Konfiguration"}
+                    : view === "credentials"
+                      ? "Deployment-Zugänge"
+                      : view === "repositories"
+                        ? "GitHub-Forks"
+                        : draft?.name || "Neue Konfiguration"}
               </h1>
               <p>
                 {view === "templates"
                   ? "Wähle die passende Grundlage für deine Cloud-Umgebung."
                   : view === "preview"
                     ? describe(selected).description
-                    : view === "repositories"
-                      ? "Konfigurationen in deinem Repository speichern und wieder öffnen."
-                      : "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben."}
+                    : view === "credentials"
+                      ? "Persönliche STACKIT-Service-Accounts für spätere Deployments verwalten."
+                      : view === "repositories"
+                        ? "Konfigurationen in deinem Repository speichern und wieder öffnen."
+                        : "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben."}
               </p>
             </div>
             <span className="badge">
               {view === "editor" ? "Lokaler Entwurf" : "STACKIT Accelerator"}
             </span>
           </div>
+          {view === "credentials" && (
+            <Credentials
+              key={session?.user.id ?? session?.user.login ?? "guest"}
+              session={session}
+            />
+          )}
           {view === "templates" && (
             <>
               <div className="info-banner">

@@ -1,12 +1,13 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createGitHubLogin,
   newSessionToken,
 } from "../apps/api/src/auth/github-flow.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
+import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -232,5 +233,108 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     expect(await store.resolveSession(aliceToken)).toBeNull();
     await store.deleteSession(aliceToken);
     expect(await store.resolveSession(aliceToken)).toBeNull();
+  });
+});
+
+describe("personal credential metadata with real PostgreSQL RLS", () => {
+  const key = {
+    credentials: {
+      kid: "test-key-id",
+      iss: "test@sa.stackit.cloud",
+      sub: "11111111-2222-4333-8444-555555555555",
+      aud: "https://service-account.api.stackit.cloud" as const,
+      privateKey: "INTEGRATION-SECRET-ONLY-IN-VAULT-MOCK",
+    },
+  };
+  it("isolates owners even within the same tenant and never stores key material in PostgreSQL", async () => {
+    const secrets = {
+      put: vi.fn(async () => {}),
+      remove: vi.fn(async () => {}),
+    };
+    const profiles = new PostgresCredentialProfiles(pool, secrets);
+    await profiles.create(alice, "Alice deployment", key);
+    const [profile] = await profiles.list(alice);
+    expect(profile?.state).toBe("stored");
+    if (!profile) throw new Error("Missing profile");
+    expect(await profiles.list(bob)).toEqual([]);
+    await migration.query(
+      "INSERT INTO lzc.memberships(tenant_id,user_id,role) VALUES($1,$2,'admin')",
+      [alice.tenantId, bob.userId],
+    );
+    const otherAdmin = { ...bob, tenantId: alice.tenantId };
+    expect(await profiles.list(otherAdmin)).toEqual([]);
+    await expect(profiles.remove(otherAdmin, profile.id)).rejects.toMatchObject(
+      { status: 404 },
+    );
+    expect(secrets.remove).not.toHaveBeenCalled();
+    expect(
+      (await pool.query("SELECT * FROM lzc.credential_profiles")).rows,
+    ).toEqual([]);
+    const rows = await withTenant(pool, alice, (c) =>
+      c.query("SELECT * FROM lzc.credential_profiles"),
+    );
+    expect(JSON.stringify(rows.rows)).not.toContain(key.credentials.privateKey);
+    await expect(
+      withTenant(pool, alice, (c) =>
+        c.query(
+          "UPDATE lzc.credential_profiles SET owner_user_id=$1 WHERE id=$2",
+          [bob.userId, profile.id],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await profiles.remove(alice, profile.id);
+    expect(secrets.remove).toHaveBeenCalledExactlyOnceWith(alice, profile.id);
+    expect(await profiles.list(alice)).toEqual([]);
+    await migration.query(
+      "DELETE FROM lzc.memberships WHERE tenant_id=$1 AND user_id=$2",
+      [alice.tenantId, bob.userId],
+    );
+  });
+  it("retains recovery metadata after ambiguous writes/deletes and supports cleanup retries", async () => {
+    const secrets = {
+      put: vi.fn(async () => {
+        throw new Error("ambiguous write");
+      }),
+      remove: vi.fn(async () => {}),
+    };
+    const profiles = new PostgresCredentialProfiles(pool, secrets);
+    await expect(profiles.create(alice, "Incomplete", key)).rejects.toThrow(
+      "ambiguous write",
+    );
+    const [pending] = await profiles.list(alice);
+    expect(pending?.state).toBe("pending");
+    if (!pending) throw new Error("Missing pending profile");
+    secrets.remove.mockRejectedValueOnce(new Error("ambiguous delete"));
+    await expect(profiles.remove(alice, pending.id)).rejects.toThrow(
+      "ambiguous delete",
+    );
+    expect(await profiles.list(alice)).toHaveLength(1);
+    await profiles.remove(alice, pending.id);
+    expect(await profiles.list(alice)).toEqual([]);
+  });
+  it("denies create to viewers before touching the secret store", async () => {
+    const secrets = { put: vi.fn(), remove: vi.fn() };
+    const profiles = new PostgresCredentialProfiles(pool, secrets);
+    await migration.query(
+      "INSERT INTO lzc.memberships(tenant_id,user_id,role) VALUES($1,$2,'viewer')",
+      [alice.tenantId, bob.userId],
+    );
+    const viewer = { ...bob, tenantId: alice.tenantId };
+    await expect(
+      profiles.create(viewer, "Forbidden", key),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      withTenant(pool, viewer, (c) =>
+        c.query(
+          "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id) VALUES($1,$2,$3,'Forbidden','mail','key')",
+          [randomUUID(), alice.tenantId, bob.userId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    expect(secrets.put).not.toHaveBeenCalled();
+    await migration.query(
+      "DELETE FROM lzc.memberships WHERE tenant_id=$1 AND user_id=$2",
+      [alice.tenantId, bob.userId],
+    );
   });
 });

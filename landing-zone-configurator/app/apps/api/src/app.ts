@@ -7,6 +7,8 @@ import {
   authenticatedSession,
   registerAuth,
 } from "./auth/routes.js";
+import type { CredentialProfiles } from "./credentials/profiles.js";
+import { registerCredentials } from "./credentials/routes.js";
 import type { Repositories } from "./github/repositories.js";
 import { registerRepositories } from "./github/routes.js";
 
@@ -15,6 +17,7 @@ export function buildApp(
     webRoot?: string;
     auth?: AuthServices;
     repositories?: Repositories;
+    credentials?: CredentialProfiles;
   } = {},
 ) {
   const app = Fastify({
@@ -41,6 +44,8 @@ export function buildApp(
   app.get("/auth/status", async () => ({ github: !!options.auth }));
   if (options.auth) {
     registerAuth(app, options.auth);
+    if (options.credentials)
+      registerCredentials(app, options.auth, options.credentials);
     registerRepositories(app, options.auth, options.repositories);
   }
   app.get(
@@ -76,6 +81,7 @@ export function buildApp(
     for (const path of [
       "/templates",
       "/repositories",
+      "/credentials",
       "/configurations/edit",
       "/configurations/edit/basics",
       "/configurations/edit/projects",

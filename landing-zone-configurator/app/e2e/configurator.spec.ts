@@ -372,3 +372,96 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
     "Meine neue Kopie",
   );
 });
+
+test("personal credentials upload clears the file and supports deletion and history", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: true } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice", login: "alice" },
+        csrfToken: "a".repeat(43),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  let stored = false;
+  const profile = {
+    id: "11111111-2222-4333-8444-555555555555",
+    name: "Team Plattform",
+    serviceAccount: "platform-team@sa.stackit.cloud",
+    keyId: "key-id",
+    state: "stored",
+  };
+  await page.route("**/api/v1/credentials", async (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+      expect(route.request().postDataJSON()).toEqual({
+        name: "Team Plattform",
+        serviceAccountKey: { credentials: { privateKey: "BROWSER-TEST-KEY" } },
+      });
+      stored = true;
+      await route.fulfill({ status: 201, json: { stored: true } });
+    } else await route.fulfill({ json: { profiles: stored ? [profile] : [] } });
+  });
+  await page.route(`**/api/v1/credentials/${profile.id}`, (route) => {
+    expect(route.request().method()).toBe("DELETE");
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+    stored = false;
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/templates");
+  await page
+    .getByRole("button", { name: "Deployment-Zugänge", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/credentials$/);
+  await page.getByLabel("Profilname").fill("Team Plattform");
+  await page.getByLabel("Service-Account-Schlüssel (JSON)").setInputFiles({
+    name: "test-key.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({ credentials: { privateKey: "BROWSER-TEST-KEY" } }),
+    ),
+  });
+  await page.getByRole("button", { name: "Zugang sicher speichern" }).click();
+  await expect(page.getByRole("status")).toContainText("noch nicht geprüft");
+  await expect(page.getByLabel("Service-Account-Schlüssel (JSON)")).toHaveValue(
+    "",
+  );
+  await expect(
+    page.getByText(profile.serviceAccount, { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      JSON.stringify({ ...localStorage, ...sessionStorage }),
+    ),
+  ).not.toContain("BROWSER-TEST-KEY");
+  expect(await page.locator("body").innerText()).not.toContain(
+    "BROWSER-TEST-KEY",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("credentials.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/templates$/);
+  await page.goForward();
+  await page.reload();
+  await expect(
+    page.getByText(profile.serviceAccount, { exact: true }),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Zugang löschen" }).click();
+  await expect(page.getByRole("status")).toContainText("entfernt");
+  await expect(
+    page.getByText(profile.serviceAccount, { exact: true }),
+  ).toHaveCount(0);
+});

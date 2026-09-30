@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { standaloneTemplate, templates } from "./templates";
-export type View = "templates" | "preview" | "editor" | "repositories";
+export type View =
+  | "templates"
+  | "preview"
+  | "editor"
+  | "repositories"
+  | "credentials";
 export type EditorStep = "basics" | "projects" | "review";
 function readRoute() {
   const path = window.location.pathname.replace(/\/$/, "") || "/";
@@ -14,9 +19,11 @@ function readRoute() {
     ? "preview"
     : /^\/configurations\/edit(?:\/(basics|projects|review))?$/.test(path)
       ? "editor"
-      : path === "/repositories"
-        ? "repositories"
-        : "templates";
+      : path === "/credentials"
+        ? "credentials"
+        : path === "/repositories"
+          ? "repositories"
+          : "templates";
   return { view, selected: template ?? standaloneTemplate, step };
 }
 export function useNavigation(restoreEditor: boolean) {
@@ -48,9 +55,11 @@ export function useNavigation(restoreEditor: boolean) {
         ? `/templates/${detail ?? "standalone"}`
         : view === "editor"
           ? `/configurations/edit/${detail ?? "basics"}`
-          : view === "repositories"
-            ? "/repositories"
-            : "/templates";
+          : view === "credentials"
+            ? "/credentials"
+            : view === "repositories"
+              ? "/repositories"
+              : "/templates";
     if (
       window.location.pathname !== path ||
       window.location.search ||

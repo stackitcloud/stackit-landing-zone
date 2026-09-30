@@ -770,6 +770,7 @@ pre {
   }
   .sidebar nav {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
   .workspace,
@@ -797,6 +798,14 @@ pre {
   }
 }
 @media (max-width: 520px) {
+  .sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .nav-item {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .template-grid,
   .form-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -900,4 +909,8 @@ pre {
 }
 .fork-workspace .button {
   white-space: normal;
+}
+
+.credential-account {
+  overflow-wrap: anywhere;
 }

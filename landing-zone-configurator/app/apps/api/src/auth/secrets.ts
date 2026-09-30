@@ -1,3 +1,4 @@
+import { VaultConnection } from "../storage/vault.js";
 import type { Session } from "./store.js";
 
 export interface UserTokenStore {
@@ -6,20 +7,12 @@ export interface UserTokenStore {
   remove(session: Session): Promise<void>;
 }
 export class SecretsManagerTokenStore implements UserTokenStore {
+  private readonly vault: VaultConnection;
   constructor(
-    private readonly config: {
-      address: string;
-      instance: string;
-      username: string;
-      password: string;
-    },
-    private readonly request: typeof fetch = fetch,
+    config: ConstructorParameters<typeof VaultConnection>[0],
+    request: typeof fetch = fetch,
   ) {
-    if (
-      config.address !== "https://prod.sm.eu01.stackit.cloud" ||
-      !/^[a-f0-9-]{36}$/.test(config.instance)
-    )
-      throw new Error("Unexpected Secrets destination");
+    this.vault = new VaultConnection(config, request);
   }
   private path(session: Session, metadata = false): string {
     for (const id of [session.tenantId, session.userId, session.id])
@@ -29,54 +22,13 @@ export class SecretsManagerTokenStore implements UserTokenStore {
         )
       )
         throw new Error("Invalid secret identity");
-    return `${this.config.instance}/${metadata ? "metadata" : "data"}/configurator/tenants/${session.tenantId}/users/${session.userId}/github/${session.id}`;
-  }
-  private async call(path: string, init: RequestInit) {
-    return this.request(`${this.config.address}/v1/${path}`, {
-      ...init,
-      redirect: "error",
-      signal: AbortSignal.timeout(15000),
-    });
-  }
-  private async authorized<T>(
-    operation: (headers: Record<string, string>) => Promise<T>,
-  ): Promise<T> {
-    const login = await this.call(
-      `auth/userpass/login/${encodeURIComponent(this.config.username)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: this.config.password }),
-      },
-    );
-    if (!login.ok) throw new Error("Secret authorization failed");
-    const value = (await login.json()) as { auth?: { client_token?: unknown } };
-    if (typeof value.auth?.client_token !== "string")
-      throw new Error("Secret authorization invalid");
-    const headers = {
-      "X-Vault-Token": value.auth.client_token,
-      "Content-Type": "application/json",
-    };
-    const outcome = await operation(headers).then(
-      (result) => ({ ok: true as const, result }),
-      (error: unknown) => ({ ok: false as const, error }),
-    );
-    const cleanup = await this.call("auth/token/revoke-self", {
-      method: "POST",
-      headers,
-    }).then(
-      (response) => response.ok,
-      () => false,
-    );
-    if (!outcome.ok) throw outcome.error;
-    if (!cleanup) throw new Error("Secret session cleanup failed");
-    return outcome.result;
+    return `${this.vault.config.instance}/${metadata ? "metadata" : "data"}/configurator/tenants/${session.tenantId}/users/${session.userId}/github/${session.id}`;
   }
 
   async put(session: Session, token: string) {
     const path = this.path(session);
-    await this.authorized(async (headers) => {
-      const response = await this.call(path, {
+    await this.vault.authorized(async (headers) => {
+      const response = await this.vault.call(path, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -97,8 +49,8 @@ export class SecretsManagerTokenStore implements UserTokenStore {
   }
   async get(session: Session): Promise<string> {
     const path = this.path(session);
-    return this.authorized(async (headers) => {
-      const response = await this.call(path, { headers });
+    return this.vault.authorized(async (headers) => {
+      const response = await this.vault.call(path, { headers });
       if (!response.ok) throw new Error("Secret read failed");
       const value = (await response.json()) as {
         data?: { data?: Record<string, unknown> };
@@ -121,8 +73,11 @@ export class SecretsManagerTokenStore implements UserTokenStore {
   }
   async remove(session: Session) {
     const path = this.path(session, true);
-    await this.authorized(async (headers) => {
-      const response = await this.call(path, { method: "DELETE", headers });
+    await this.vault.authorized(async (headers) => {
+      const response = await this.vault.call(path, {
+        method: "DELETE",
+        headers,
+      });
       if (!response.ok && response.status !== 404)
         throw new Error("Secret deletion failed");
       await response.arrayBuffer();
