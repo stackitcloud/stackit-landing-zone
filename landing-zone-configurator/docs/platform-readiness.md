@@ -76,7 +76,7 @@ Der erwartete Plattform-State im Workload-Bucket ist nicht vorhanden (`NoSuchKey
 - [x] Verbliebenes Lock erst nach Prüfung auf beendete Runner und vor kontrollierter Recovery behandeln; native S3-Sperre bleibt als unzuverlässig dokumentiert.
 - [x] CI-Prozesssteuerung verbessern: rechtzeitiger geordneter OpenTofu-Abbruch vor dem äußeren Job-Zeitlimit, geschützte Diagnose und verschlüsselte Recovery-Artefakte. Nur das Timeout zu erhöhen behebt den fehlenden State nicht.
 - [x] Nach Recovery frischen Plan prüfen; erst dann Plattform-CI wieder aktivieren und neue konkrete Apply-Freigabe setzen.
-- [ ] Verschlüsselten Remote-State, vollständige Ressourcen und anschließenden No-op-Plan unabhängig verifizieren.
+- [x] Verschlüsselten Remote-State, vollständige Ressourcen und anschließenden No-op-Plan unabhängig verifizieren.
 - [ ] CF-Runtime (Space, Apps, Bindings, separate Laufzeitidentitäten) per IaC erstellen und PostgreSQL-/Secrets-Zugriff aus CF testen.
 
 
@@ -96,7 +96,7 @@ Unabhängige Abnahme:
 - [x] Erforderliche Passwörter und Token im verschlüsselten State vorhanden, ohne Werte auszugeben.
 - [x] Geschützte Diagnose und State-Snapshot aus GitHub heruntergeladen; authentifizierte Entschlüsselung und JSON-Integrität geprüft.
 - [x] Beide Einmalvariablen `LZC_PLATFORM_RECOVERY_COMMIT` und `LZC_PLATFORM_APPLY_COMMIT` entfernt. Plattform-CI wieder für Plan-Läufe aktiv.
-- [ ] Abschließenden Plan ohne Änderungen bestätigen.
+- [x] Abschließenden Plan ohne Änderungen bestätigen: [Run 36675895279](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675895279), alle neun Ressourcen `no-op`; Recovery/Apply übersprungen. Commit, Run und Plan-Hash unabhängig geprüft. [Begleitende Validierung](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675895374) erfolgreich.
 
 Plattform-Jobs haben jetzt ein äußeres Zeitlimit von 100 Minuten. OpenTofu-Apply erhält maximal 70 Minuten und danach bis zu zehn Minuten zum geordneten Beenden; eine zusätzliche Gesamtlaufzeitgrenze des Skripts hält Puffer für Artefakte frei. 22 lokale Tests einschließlich Abbruchverhalten, verschlüsselter Diagnose und Recovery-Sperren sowie Workflow-Prüfung bestanden.
 

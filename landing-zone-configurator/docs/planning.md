@@ -608,3 +608,6 @@ Plattform-Versuch 2026-09-30: Plan mit neun Creates und Validierung erfolgreich;
 
 
 Plattform-Recovery abgeschlossen (2026-09-30): Run 36675347654 importierte den Teilbestand und vervollständigte die Plattform. Neun Ressourcen im verschlüsselten Remote-State unabhängig geprüft; PostgreSQL READY, CF aktiv, Secrets Manager Running. Verlorene technische Credentials kontrolliert ersetzt. Job-Timeout auf 100 Minuten erhöht, geordneten OpenTofu-Abbruch und verschlüsselte Diagnose-/State-Artefakte ergänzt. Einmalfreigaben entfernt. Nächster Ausbauschritt nach No-op-Abnahme: CF-Runtime/Bindings und Zugriffstests aus CF. [Aktuelle Abnahme](platform-readiness.md#erfolgreiche-recovery-und-plattform-abnahme).
+
+
+No-op-Abnahme abgeschlossen: Plattform-Run 36675895279 zeigt für alle neun Ressourcen `no-op`; Recovery/Apply korrekt übersprungen. Validierung 36675895374 erfolgreich. Die Plattform ist damit konsistent unter IaC-Verwaltung.
