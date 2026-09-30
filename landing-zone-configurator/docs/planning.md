@@ -658,8 +658,11 @@ Konnektivitätstest als erledigt markiert.
 Neue bestätigte Anforderung: Das Look & Feel soll identisch zum offiziellen
 STACKIT Portal werden. Referenz ist die vom Benutzer geöffnete Projektstartseite.
 [Design-Abgleich und Fortschritt](design-reference.md) dokumentieren die Abnahme.
-Die Portalansicht konnte wegen eines Browser-Verbindungsfehlers noch nicht gelesen
-werden; keine konkreten Designwerte sind bereits bestätigt.
+Die öffentlichen Portal-Assets wurden anschließend erfolgreich ohne Anmeldung per
+`curl` erfasst. Originale NDS-Tokens und Schriftdefinitionen sind mit ihren
+Marken-/Theme-Selektoren dokumentiert; [Abrufwerkzeug](../tools/portal-reference/README.md).
+Die gerenderte Projektansicht und ihre aktive Marken-/Theme-Auswahl sind noch
+nicht visuell bestätigt.
 
 Der [GitHub-App-Entwurf](../deploy/github/README.md) und die getesteten
 PKCE-/State-/Session-Token-Helfer sind vorbereitet. Dies aktiviert noch keinen
