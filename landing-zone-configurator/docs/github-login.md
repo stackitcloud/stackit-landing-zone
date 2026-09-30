@@ -70,9 +70,9 @@ können. Applikationslogs enthalten keine Request-URLs oder Cookie-/Tokenwerte.
 - [x] OAuth-Zugangsdaten nach ausdrücklicher Freigabe im Release-Environment und CF-Backend bereitgestellt.
 - [x] [Release 36693906545](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36693906545): Migration erfolgreich; privilegierte Task-App entfernt; Web-App, PostgreSQL- und Secrets-Verbindungstests erfolgreich.
 - [x] [Login-Release 36695423593](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36695423593): GitHub-Login aktiviert, Secrets-Schreiben/Lesen/Löschen erfolgreich; Health 200 und anonyme Session 401. OAuth-Weiterleitung, Client-ID, Callback, PKCE S256, State und sicheres Cookie live geprüft.
-- [ ] Echten GitHub-Login und Logout mit Benutzer abnehmen.
+- [x] Echten GitHub-Login und Logout vom Benutzer bestätigt.
 - [ ] Installation auf den benötigten Repositories und Fork-Voraussetzungen prüfen.
-- [ ] Fork-Auswahl und Speichern implementieren; derzeit keine Repository-Schreibzugriffe.
+- [x] Fork-Auswahl, Speichern und Wiederöffnen implementiert und simuliert getestet; Live-Abnahme siehe [Forks und Navigation](forks-and-navigation.md).
 - [ ] Organisationen, Einladungen und Mandantenwechsel implementieren. Aktuell erhält
   jeder Benutzer einen eigenen isolierten Arbeitsbereich.
 - [ ] Abgelaufene Sessiondatensätze und verwaiste Secrets regelmäßig bereinigen.

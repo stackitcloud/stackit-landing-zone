@@ -66,14 +66,16 @@ jobs:
           npm run test:e2e
       - name: Package production application and pinned Node runtime
         run: |
-          mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/public ../.local/release/runtime
+          mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/packages/domain ../.local/release/public ../.local/release/runtime
           cp package.json package-lock.json ../.local/release/
           cp apps/api/package.json ../.local/release/apps/api/
           cp -R apps/api/dist apps/api/db ../.local/release/apps/api/
           cp packages/contracts/package.json ../.local/release/packages/contracts/
           cp -R packages/contracts/dist ../.local/release/packages/contracts/
+          cp packages/domain/package.json ../.local/release/packages/domain/
+          cp -R packages/domain/dist ../.local/release/packages/domain/
           cp -R apps/web/dist/. ../.local/release/public/
-          (cd ../.local/release && npm ci --omit=dev --ignore-scripts --workspace=@lzc/api --workspace=@lzc/contracts)
+          (cd ../.local/release && npm ci --omit=dev --ignore-scripts --workspace=@lzc/api --workspace=@lzc/contracts --workspace=@lzc/domain)
           curl --fail --silent --show-error --location --retry 3 https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz -o "$RUNNER_TEMP/node.tar.xz"
           echo "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  $RUNNER_TEMP/node.tar.xz" | sha256sum --check
           tar -xJf "$RUNNER_TEMP/node.tar.xz" --strip-components=1 -C ../.local/release/runtime node-v24.21.0-linux-x64/bin/node node-v24.21.0-linux-x64/LICENSE

@@ -1,14 +1,21 @@
 import fastifyStatic from "@fastify/static";
 import type { HealthResponse } from "@lzc/contracts";
+import { catalogue } from "@lzc/domain";
 import Fastify, { LogController } from "fastify";
 import {
   type AuthServices,
   authenticatedSession,
   registerAuth,
 } from "./auth/routes.js";
+import type { Repositories } from "./github/repositories.js";
+import { registerRepositories } from "./github/routes.js";
 
 export function buildApp(
-  options: { webRoot?: string; auth?: AuthServices } = {},
+  options: {
+    webRoot?: string;
+    auth?: AuthServices;
+    repositories?: Repositories;
+  } = {},
 ) {
   const app = Fastify({
     logController: new LogController({ disableRequestLogging: true }),
@@ -32,7 +39,10 @@ export function buildApp(
     return reply.code(503).send({ error: "service_unavailable" });
   });
   app.get("/auth/status", async () => ({ github: !!options.auth }));
-  if (options.auth) registerAuth(app, options.auth);
+  if (options.auth) {
+    registerAuth(app, options.auth);
+    registerRepositories(app, options.auth, options.repositories);
+  }
   app.get(
     "/healthz",
     async (): Promise<HealthResponse> => ({
@@ -62,6 +72,20 @@ export function buildApp(
   );
 
   if (options.webRoot) {
+    // Explicit SPA routes only: API/auth errors and missing assets must remain errors.
+    for (const path of [
+      "/templates",
+      "/repositories",
+      "/configurations/edit",
+      "/configurations/edit/basics",
+      "/configurations/edit/projects",
+      "/configurations/edit/review",
+      ...catalogue.templates.map((template) => `/templates/${template.id}`),
+    ]) {
+      app.get(path, async (_request, reply) =>
+        reply.header("Cache-Control", "no-store").sendFile("index.html"),
+      );
+    }
     app.register(fastifyStatic, {
       root: options.webRoot,
       index: ["index.html"],

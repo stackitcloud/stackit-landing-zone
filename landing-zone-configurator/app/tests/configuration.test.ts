@@ -1,14 +1,12 @@
 import {
   buildConfiguration,
+  catalogue,
   createDraft,
   objectValue,
   type Template,
   validateDraft,
 } from "@lzc/domain";
 import { describe, expect, it } from "vitest";
-import catalogue from "../apps/web/src/generated/templates.json" with {
-  type: "json",
-};
 
 const template = catalogue.templates.find(
   (t) => t.id === "standalone",

@@ -4,6 +4,7 @@ import { buildApp } from "../apps/api/src/app.js";
 import type { PendingGitHubLogin } from "../apps/api/src/auth/github-flow.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import { type Session, tokenHash } from "../apps/api/src/auth/store.js";
+import { Repositories } from "../apps/api/src/github/repositories.js";
 
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
@@ -201,4 +202,69 @@ describe("GitHub browser flow", () => {
         .statusCode,
     ).toBe(401);
   });
+});
+
+it("protects repository access with the session and mutations with Origin/CSRF", async () => {
+  const f = fixture();
+  expect((await f.app.inject("/api/v1/github/forks")).statusCode).toBe(401);
+  expect(f.services.tokens.get).not.toHaveBeenCalled();
+  const login = await f.login();
+  const cookie = login.cookies.find(
+    (value) => value.name === "__Host-lzc-session",
+  );
+  const headers = { cookie: `${cookie?.name}=${cookie?.value}` };
+  const session = (
+    await f.app.inject({ url: "/api/v1/session", headers })
+  ).json();
+  const list = vi
+    .spyOn(Repositories.prototype, "list")
+    .mockResolvedValue({ forks: [], nextPage: null });
+  try {
+    const response = await f.app.inject({
+      url: "/api/v1/github/forks?page=1",
+      headers,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(list).toHaveBeenCalledWith("ghu_private-must-not-reach-browser", 1);
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/v1/github/configuration",
+          headers,
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/v1/github/configuration",
+          headers: {
+            ...headers,
+            origin: "https://attacker.example",
+            "x-lzc-csrf": session.csrfToken,
+          },
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/v1/github/configuration",
+          headers: {
+            ...headers,
+            origin: f.services.origin,
+            "x-lzc-csrf": session.csrfToken,
+          },
+          payload: { target: { owner: "../other", name: "repo", id: 1 } },
+        })
+      ).statusCode,
+    ).toBe(400);
+  } finally {
+    list.mockRestore();
+  }
 });

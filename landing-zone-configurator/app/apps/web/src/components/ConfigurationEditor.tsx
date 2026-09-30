@@ -5,11 +5,11 @@ import {
   validateDraft,
 } from "@lzc/domain";
 import { useState } from "react";
+import type { EditorStep as Step } from "../navigation";
 import { Field } from "./Field";
 import { ProjectsStep } from "./ProjectsStep";
 import { Topology } from "./Topology";
 
-type Step = "basics" | "projects" | "review";
 const steps: { id: Step; title: string }[] = [
   { id: "basics", title: "Grundlagen" },
   { id: "projects", title: "Projekte" },
@@ -42,14 +42,19 @@ function issueLabel(field: string, draft: ConfigurationDraft): string {
 
 export function ConfigurationEditor({
   template,
+  step,
+  onStepChange: setStep,
   draft,
   onChange,
+  onOpenStorage,
 }: {
   template: Template;
+  step: Step;
+  onStepChange: (step: Step) => void;
   draft: ConfigurationDraft;
   onChange: (draft: ConfigurationDraft) => void;
+  onOpenStorage: () => void;
 }) {
-  const [step, setStep] = useState<Step>("basics");
   const [showErrors, setShowErrors] = useState(false);
   const [notice, setNotice] = useState("");
   const issues = validateDraft(draft);
@@ -116,9 +121,11 @@ export function ConfigurationEditor({
       <div className="draft-banner">
         <span>
           Der Entwurf bleibt bis zum Neuladen in diesem Tab. Du kannst ihn nach
-          der Prüfung herunterladen.
+          der Prüfung herunterladen oder in deinem Fork speichern.
         </span>
-        <span>GitHub-Speicherung folgt</span>
+        <button type="button" className="text-button" onClick={onOpenStorage}>
+          Zu deinen Forks →
+        </button>
       </div>
       <nav aria-label="Konfigurationsschritte" className="steps">
         {steps.map((item, index) => (
@@ -280,10 +287,13 @@ export function ConfigurationEditor({
                   Entwurf herunterladen
                 </button>
               </div>
-              <p className="muted">
-                Speichern im GitHub-Fork und Deployment werden mit der Anmeldung
-                ergänzt.
-              </p>
+              <button
+                type="button"
+                className="button primary"
+                onClick={onOpenStorage}
+              >
+                Im Fork speichern →
+              </button>
               <p role="status">{notice}</p>
               <details className="technical">
                 <summary>Konfigurationsdaten ansehen</summary>

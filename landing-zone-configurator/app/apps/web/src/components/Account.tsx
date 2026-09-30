@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 
-type Session = {
-  user: { login: string };
+export type Session = {
+  user: { id?: string; login: string };
   csrfToken: string;
   expiresAt: string;
 };
-export function Account({ beforeLogin }: { beforeLogin: () => boolean }) {
+export function Account({
+  beforeLogin,
+  onSessionChange,
+}: {
+  beforeLogin: () => boolean;
+  onSessionChange: (session: Session | null) => void;
+}) {
   const [enabled, setEnabled] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  useEffect(() => {
+    onSessionChange(session);
+  }, [session, onSessionChange]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {

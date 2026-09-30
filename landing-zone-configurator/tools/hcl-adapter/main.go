@@ -82,7 +82,7 @@ func catalogue(dir string) ([]byte, error) {
 
 func main() {
 	dir := flag.String("source", "../../../src/config", "trusted repository template directory")
-	out := flag.String("output", "../../app/apps/web/src/generated/templates.json", "catalogue output")
+	out := flag.String("output", "../../app/packages/domain/src/catalogue.json", "catalogue output")
 	check := flag.Bool("check", false, "fail if committed catalogue differs; do not write")
 	flag.Parse()
 	data, err := catalogue(*dir)

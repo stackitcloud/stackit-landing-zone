@@ -10,8 +10,14 @@ Registrierung unter `lweberru` ist abgeschlossen. Sessions, PostgreSQL-RLS,
 Secrets-Anbindung, Login/Logout-UI und separater Migrations-Task sind implementiert
 und lokal sowie in CI geprüft. Migration und App-Release sind auf STACKIT erfolgreich;
 Credential-Upload und CF-Backend-Bindung sind ausdrücklich freigegeben; GitHub-Login
-ist live aktiviert und technisch geprüft. Persönliche Login-Abnahme steht noch aus. Details und
+ist live aktiviert und technisch geprüft. Persönliche Login-Abnahme ist bestätigt. Details und
 Abhakliste: [GitHub-Login und Mandantentrennung](github-login.md).
+
+### Nächster Umsetzungsschritt: Fork-Speicherung und Navigation
+
+Fork-Auswahl, konfliktgeschützte Entwurfsablage im Arbeitsbranch und Wiederöffnen
+sind implementiert. Ansichten und Editor-Schritte besitzen eigene URLs mit
+Zurück/Vorwärts-Unterstützung. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
 
 ## 1. Zielbild und bestätigte Entscheidungen
 

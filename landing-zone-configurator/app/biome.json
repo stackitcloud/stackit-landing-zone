@@ -6,7 +6,7 @@
       "!**/dist",
       "!**/node_modules",
       "!**/package-lock.json",
-      "!apps/web/src/generated/templates.json",
+      "!packages/domain/src/catalogue.json",
       "!apps/web/public/brand"
     ]
   },

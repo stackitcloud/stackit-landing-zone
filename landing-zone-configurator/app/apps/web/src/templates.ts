@@ -1,5 +1,5 @@
 import type { Template } from "@lzc/domain";
-import catalogue from "./generated/templates.json";
+import { catalogue } from "@lzc/domain";
 
 const descriptions: Record<
   string,

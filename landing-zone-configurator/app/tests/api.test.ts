@@ -42,6 +42,19 @@ it("serves the compiled UI without bypassing API authentication", async () => {
   try {
     expect((await app.inject("/")).body).toContain("Configurator");
     expect((await app.inject("/api/v1/session")).statusCode).toBe(401);
+    for (const path of [
+      "/templates",
+      "/templates/standalone",
+      "/repositories",
+      "/configurations/edit/review",
+    ]) {
+      const response = await app.inject(path);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain("Configurator");
+    }
+    expect((await app.inject("/auth/unknown")).statusCode).toBe(404);
+    expect((await app.inject("/assets/missing.js")).statusCode).toBe(404);
+    expect((await app.inject("/templates/unknown")).statusCode).toBe(404);
     expect((await app.inject("/api/v1/unknown")).statusCode).not.toBe(200);
   } finally {
     await app.close();

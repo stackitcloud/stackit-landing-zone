@@ -40,7 +40,7 @@ getrennter, prüfbarer Deployment-Schritt; keine Secrets im Manifest oder Fronte
 - [x] Manifest korrigiert: `hook_attributes.url` ist auch bei `active: false` erforderlich.
 - [ ] Installation auf ausgewählten Benutzer-Repositories bestätigen.
 - [x] Geschützte Backend-Bindung und OAuth-Weiterleitung live geprüft (Release 36695423593).
-- [ ] Persönliche Anmeldung und Abmeldung mit Benutzer abnehmen.
+- [x] Persönliche Anmeldung und Abmeldung vom Benutzer bestätigt.
 
 Installation: https://github.com/apps/lz-configurator-dev-7dbff805/installations/new
 

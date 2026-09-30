@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { catalogue, createDraft, savedDraft, type Template } from "@lzc/domain";
 import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
@@ -188,4 +189,184 @@ test("GitHub redirect preserves incomplete draft and logout sends CSRF", async (
     page.getByRole("button", { name: "Mit GitHub anmelden" }),
   ).toBeVisible();
   expect(csrf).toBe("test-csrf");
+});
+
+test("URLs and browser back/forward preserve an in-progress draft", async ({
+  page,
+}) => {
+  await page.goto("/templates");
+  await page
+    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/templates\/standalone$/);
+  await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await page.getByLabel("Name der Konfiguration").fill("Entwurf mit History");
+  await page.getByRole("button", { name: "Weiter zu Projekten" }).click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Entwurf mit History",
+  );
+  await page.goForward();
+  await expect(
+    page.getByRole("heading", { name: "Projekte & Sandboxes", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "GitHub-Forks", exact: true }).click();
+  await expect(page).toHaveURL(/\/repositories$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await page.goBack();
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Entwurf mit History",
+  );
+});
+
+test("template deep links survive reload; empty editor deep link offers recovery", async ({
+  page,
+}) => {
+  await page.goto("/templates/hub-and-spoke-firewall");
+  await expect(
+    page.getByRole("heading", {
+      name: "Hub & Spoke mit Firewall",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", {
+      name: "Hub & Spoke mit Firewall",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.goto("/configurations/edit/review");
+  await expect(
+    page.getByRole("heading", { name: "Kein Entwurf in diesem Tab" }),
+  ).toBeVisible();
+});
+
+test("select a fork, reopen a config and resolve a save conflict as a new copy", async ({
+  page,
+}, testInfo) => {
+  page.on("dialog", (dialog) => void dialog.accept());
+  const template = catalogue.templates.find(
+    (t) => t.id === "standalone",
+  ) as Template;
+  const draft = createDraft(template);
+  draft.name = "Gespeicherte Landing Zone";
+  draft.organization = "11111111-2222-4333-8444-555555555555";
+  draft.owner = "owner@stackit.cloud";
+  for (const item of [...draft.projects, ...draft.sandboxes])
+    item.owner = draft.owner;
+  let document = savedDraft("11111111-2222-4333-8444-555555555555", draft);
+  let head = "a".repeat(40);
+  const fork = {
+    owner: "alice",
+    name: "accelerator",
+    id: 123,
+    fullName: "alice/accelerator",
+    defaultBranch: "main",
+  };
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: true } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/api/v1/github/forks?*", (route) =>
+    route.fulfill({ json: { forks: [fork], nextPage: null } }),
+  );
+  await page.route("**/api/v1/github/repository?*", (route) =>
+    route.fulfill({
+      json: {
+        fork,
+        head,
+        branch: "lzc/configurations",
+        branchExists: true,
+        configurations: [{ id: document.id, name: document.draft.name }],
+        unsupported: 0,
+        truncated: false,
+      },
+    }),
+  );
+  await page.route("**/api/v1/github/configuration/*", (route) =>
+    route.fulfill({ json: { document, head } }),
+  );
+  let attempts = 0;
+  await page.route("**/api/v1/github/configuration", async (route) => {
+    const body = route.request().postDataJSON();
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+    attempts++;
+    if (attempts === 1) {
+      expect(body.mode).toBe("update");
+      head = "b".repeat(40);
+      await route.fulfill({
+        status: 409,
+        json: { error: "repository_changed" },
+      });
+    } else {
+      expect(body.mode).toBe("create");
+      expect(body.head).toBe(head);
+      expect(body.document.id).not.toBe(document.id);
+      document = body.document;
+      head = "c".repeat(40);
+      await route.fulfill({
+        json: {
+          id: document.id,
+          head,
+          commitUrl: `https://github.com/alice/accelerator/commit/${head}`,
+        },
+      });
+    }
+  });
+  await page.goto("/repositories");
+  await page.getByRole("button", { name: "Forks aktualisieren" }).click();
+  await page
+    .getByRole("button", { name: "alice/accelerator", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Gespeicherte Landing Zone öffnen" })
+    .click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await page.getByLabel("Name der Konfiguration").fill("Meine neue Kopie");
+  await page.getByRole("button", { name: "GitHub-Forks", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Im Fork speichern", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("inzwischen verändert");
+  await page.getByRole("button", { name: "Entwurf bearbeiten" }).click();
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Meine neue Kopie",
+  );
+  await page.getByRole("button", { name: "GitHub-Forks", exact: true }).click();
+  await page.getByRole("button", { name: "Neue Kopie vorbereiten" }).click();
+  await page
+    .getByRole("button", { name: "Im Fork speichern", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("im Fork gespeichert");
+  await page.screenshot({
+    path: testInfo.outputPath("fork-saved.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => window.document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.reload();
+  await page.getByRole("button", { name: "Forks aktualisieren" }).click();
+  await page
+    .getByRole("button", { name: "alice/accelerator", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Meine neue Kopie öffnen" }).click();
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Meine neue Kopie",
+  );
 });

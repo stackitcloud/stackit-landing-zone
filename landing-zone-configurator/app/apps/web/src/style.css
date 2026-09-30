@@ -884,3 +884,20 @@ pre {
     margin-left: auto;
   }
 }
+
+.fork-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.fork-workspace {
+  overflow-wrap: anywhere;
+}
+.fork-workspace .actions {
+  flex-wrap: wrap;
+}
+.fork-workspace .button {
+  white-space: normal;
+}

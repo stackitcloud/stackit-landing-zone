@@ -1,16 +1,13 @@
-import {
-  type ConfigurationDraft,
-  createDraft,
-  objectValue,
-  type Template,
-} from "@lzc/domain";
+import { type ConfigurationDraft, createDraft, objectValue } from "@lzc/domain";
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ConfigurationEditor } from "./components/ConfigurationEditor";
+import { ForkWorkspace } from "./components/ForkWorkspace";
 import { Topology } from "./components/Topology";
+import { useNavigation } from "./navigation";
 import { describe, standaloneTemplate, templates } from "./templates";
 import "./style.css";
-import { Account } from "./components/Account";
+import { Account, type Session } from "./components/Account";
 import {
   clearLoginDraft,
   preserveLoginDraft,
@@ -18,11 +15,16 @@ import {
 } from "./login-draft";
 
 function App() {
-  const [view, setView] = useState<"templates" | "preview" | "editor">(() =>
-    readLoginDraft() ? "editor" : "templates",
-  );
-  const [selected, setSelected] = useState<Template>(templates[0] as Template);
-  const [draft, setDraft] = useState<ConfigurationDraft | null>(readLoginDraft);
+  const [restoredDraft] = useState(readLoginDraft);
+  const {
+    view,
+    selected,
+    step,
+    navigate: setView,
+  } = useNavigation(!!restoredDraft);
+  const [session, setSession] = useState<Session | null>(null);
+  const [draftEpoch, setDraftEpoch] = useState(0);
+  const [draft, setDraft] = useState<ConfigurationDraft | null>(restoredDraft);
   const [loginError, setLoginError] = useState(() =>
     new URLSearchParams(window.location.search).get("login") === "failed"
       ? "Die GitHub-Anmeldung ist fehlgeschlagen. Bitte erneut versuchen."
@@ -65,6 +67,7 @@ function App() {
     )
       return;
     setDraft(createDraft(selected));
+    setDraftEpoch((value) => value + 1);
     setView("editor");
   };
 
@@ -86,6 +89,7 @@ function App() {
         <span className="product-name">Landing Zone Configurator</span>
         <span className="header-badge">Entwicklung</span>
         <Account
+          onSessionChange={setSession}
           beforeLogin={() => {
             if (!preserveLoginDraft(draft)) {
               setLoginError(
@@ -108,8 +112,14 @@ function App() {
           <nav aria-label="Hauptnavigation">
             <button
               type="button"
-              className={view !== "editor" ? "nav-item active" : "nav-item"}
-              aria-current={view !== "editor" ? "page" : undefined}
+              className={
+                view === "templates" || view === "preview"
+                  ? "nav-item active"
+                  : "nav-item"
+              }
+              aria-current={
+                view === "templates" || view === "preview" ? "page" : undefined
+              }
               onClick={() => setView("templates")}
             >
               <span aria-hidden="true">▦</span> Templates{" "}
@@ -124,6 +134,16 @@ function App() {
             >
               <span aria-hidden="true">□</span> Mein Entwurf{" "}
               {draft && <span className="draft-dot" />}
+            </button>
+            <button
+              type="button"
+              className={
+                view === "repositories" ? "nav-item active" : "nav-item"
+              }
+              aria-current={view === "repositories" ? "page" : undefined}
+              onClick={() => setView("repositories")}
+            >
+              GitHub-Forks
             </button>
           </nav>
           <div className="sidebar-note">
@@ -155,7 +175,9 @@ function App() {
                 ? "Templates"
                 : view === "preview"
                   ? describe(selected).title
-                  : "Entwurf erstellen"}
+                  : view === "repositories"
+                    ? "GitHub-Forks"
+                    : "Entwurf erstellen"}
             </span>
           </nav>
           <div className="page-heading">
@@ -165,14 +187,18 @@ function App() {
                   ? "Landing Zone Templates"
                   : view === "preview"
                     ? describe(selected).title
-                    : draft?.name || "Neue Konfiguration"}
+                    : view === "repositories"
+                      ? "GitHub-Forks"
+                      : draft?.name || "Neue Konfiguration"}
               </h1>
               <p>
                 {view === "templates"
                   ? "Wähle die passende Grundlage für deine Cloud-Umgebung."
                   : view === "preview"
                     ? describe(selected).description
-                    : "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben."}
+                    : view === "repositories"
+                      ? "Konfigurationen in deinem Repository speichern und wieder öffnen."
+                      : "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben."}
               </p>
             </div>
             <span className="badge">
@@ -238,8 +264,7 @@ function App() {
                         type="button"
                         className="button secondary card-button"
                         onClick={() => {
-                          setSelected(template);
-                          setView("preview");
+                          setView("preview", template.id);
                         }}
                       >
                         Template ansehen <span aria-hidden="true">→</span>
@@ -315,8 +340,40 @@ function App() {
               <Topology values={values} />
             </div>
           )}
+          <div hidden={view !== "repositories"}>
+            <ForkWorkspace
+              key={session?.user.id ?? session?.user.login ?? "guest"}
+              session={session}
+              draft={draft}
+              draftEpoch={draftEpoch}
+              onEdit={() => setView("editor")}
+              onLoad={(loaded) => {
+                setDraft(loaded);
+                setView("editor");
+              }}
+            />
+          </div>
+          {view === "editor" && !draft && (
+            <section className="panel">
+              <h2>Kein Entwurf in diesem Tab</h2>
+              <p>
+                Öffne eine gespeicherte Konfiguration aus deinem Fork oder
+                beginne mit einem Template.
+              </p>
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => setView("repositories")}
+              >
+                Gespeicherte Konfiguration öffnen
+              </button>
+            </section>
+          )}
           {view === "editor" && draft && (
             <ConfigurationEditor
+              step={step}
+              onStepChange={(next) => setView("editor", next)}
+              onOpenStorage={() => setView("repositories")}
               template={standaloneTemplate}
               draft={draft}
               onChange={setDraft}
