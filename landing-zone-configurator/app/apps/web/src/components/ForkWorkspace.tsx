@@ -5,16 +5,16 @@ import {
   validateDraft,
 } from "@lzc/domain";
 import { useEffect, useRef, useState } from "react";
+import {
+  type Binding,
+  type Fork,
+  readWorkspace,
+  workspaceKey,
+  writeWorkspace,
+} from "../workspace";
 import type { Session } from "./Account";
 import type { DeploymentSelection } from "./Deployments";
 
-type Fork = {
-  id: number;
-  owner: string;
-  name: string;
-  fullName: string;
-  defaultBranch: string;
-};
 type Repository = {
   fork: Fork;
   head: string;
@@ -77,7 +77,11 @@ export function ForkWorkspace({
   onLoad,
   onEdit,
   onPrepare,
+  onRestore,
+  path,
 }: {
+  path: string;
+  onRestore: (draft: ConfigurationDraft | null, path: string | null) => void;
   session: Session | null;
   draft: ConfigurationDraft | null;
   draftEpoch: number;
@@ -89,11 +93,7 @@ export function ForkWorkspace({
   const [nextPage, setNextPage] = useState<number | null>(1);
   const [searched, setSearched] = useState(false);
   const [repository, setRepository] = useState<Repository | null>(null);
-  const [binding, setBinding] = useState<{
-    id: string;
-    head: string;
-    mode: "create" | "update";
-  } | null>(null);
+  const [binding, setBinding] = useState<Binding | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -106,6 +106,93 @@ export function ForkWorkspace({
     setNotice("");
     setCommitUrl("");
   }, [draftEpoch]);
+  const key = workspaceKey(session);
+  const [ready, setReady] = useState(false);
+  const [storageError, setStorageError] = useState(false);
+  const latest = useRef({ draft, draftEpoch, onRestore });
+  latest.current = { draft, draftEpoch, onRestore };
+  // This component is keyed by account and tenant. Revalidate access before restoring.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initialize once for this account; latest guards edits made during loading.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    const initialDraft = latest.current.draft;
+    const initialEpoch = latest.current.draftEpoch;
+    const initialPath = window.location.pathname;
+    const saved = readWorkspace(key);
+    busyRef.current = true;
+    setBusy(true);
+    void (async () => {
+      try {
+        const listing = await api<{ forks: Fork[]; nextPage: number | null }>(
+          "/api/v1/github/forks?page=1",
+          { signal: controller.signal },
+        );
+        if (cancelled) return;
+        setForks(listing.forks);
+        setNextPage(listing.nextPage);
+        setSearched(true);
+        if (saved?.fork) {
+          const repo = await api<Repository>(
+            `/api/v1/github/repository?${query(saved.fork)}`,
+            { signal: controller.signal },
+          );
+          if (cancelled) return;
+          setRepository(repo);
+          setForks((items) => [
+            ...new Map([...items, repo.fork].map((f) => [f.id, f])).values(),
+          ]);
+        }
+        if (
+          saved &&
+          !initialDraft &&
+          latest.current.draft === initialDraft &&
+          latest.current.draftEpoch === initialEpoch
+        ) {
+          // Keep the original base revision: a newer remote commit must still cause a conflict on save.
+          setBinding(saved.binding);
+          latest.current.onRestore(
+            saved.draft,
+            initialPath === "/" && window.location.pathname === initialPath
+              ? saved.path
+              : null,
+          );
+          setNotice(
+            "Dein letzter Arbeitsstand wurde in diesem Browser wiederhergestellt. Änderungen bitte weiterhin im Fork speichern.",
+          );
+        }
+        if (!cancelled) setReady(true);
+      } catch (failure) {
+        if (!cancelled)
+          setError(
+            failure instanceof Error
+              ? failure.message
+              : "Der letzte Arbeitsbereich konnte nicht geladen werden.",
+          );
+      } finally {
+        if (!cancelled) {
+          busyRef.current = false;
+          setBusy(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, []);
+  useEffect(() => {
+    if (!ready || !session) return;
+    setStorageError(
+      !writeWorkspace(key, {
+        fork: repository?.fork ?? null,
+        binding,
+        draft,
+        path,
+      }),
+    );
+  }, [ready, session, key, repository, binding, draft, path]);
   async function perform(action: () => Promise<void>) {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -155,6 +242,7 @@ export function ForkWorkspace({
         `/api/v1/github/repository?${query(fork)}`,
       );
       setRepository(result);
+      setReady(true);
       setBinding(null);
       setCommitUrl("");
     });
@@ -424,6 +512,18 @@ export function ForkWorkspace({
             </>
           )}
         </>
+      )}
+      {storageError && (
+        <p role="alert">
+          Der Browser kann deinen Arbeitsstand nicht sichern. Bitte speichere
+          Änderungen im Fork oder lade sie herunter.
+        </p>
+      )}
+      {session && (
+        <p className="muted">
+          Arbeitsstand automatisch in diesem Browser merken · getrennt nach
+          angemeldetem Konto. Dies ersetzt das Speichern im Fork nicht.
+        </p>
       )}
       {busy && <p role="status">GitHub-Anfrage läuft …</p>}
       {error && (

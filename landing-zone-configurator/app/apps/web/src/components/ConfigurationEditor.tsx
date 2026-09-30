@@ -1,6 +1,10 @@
 import {
   buildConfiguration,
   type ConfigurationDraft,
+  type FolderKey,
+  folderDefaults,
+  folderKeys,
+  folderNames,
   serializeTfvars,
   type Template,
   validateDraft,
@@ -13,6 +17,7 @@ import { Topology } from "./Topology";
 
 const steps: { id: Step; title: string }[] = [
   { id: "basics", title: "Grundlagen" },
+  { id: "folders", title: "Ordner" },
   { id: "projects", title: "Projekte" },
   { id: "review", title: "Prüfen" },
 ];
@@ -31,6 +36,7 @@ function issueLabel(field: string, draft: ConfigurationDraft): string {
     environment: "Umgebung",
   };
   const [kind, id, property] = field.split(".");
+  if (kind === "folder") return `Ordner · ${folderDefaults[id as FolderKey]}`;
   if (property) {
     const item =
       kind === "project"
@@ -70,7 +76,9 @@ export function ConfigurationEditor({
     setStep(
       field.startsWith("project") || field.startsWith("sandbox")
         ? "projects"
-        : "basics",
+        : field.startsWith("folder.")
+          ? "folders"
+          : "basics",
     );
     requestAnimationFrame(() => document.getElementById(field)?.focus());
   };
@@ -103,8 +111,9 @@ export function ConfigurationEditor({
     <>
       <div className="draft-banner">
         <span>
-          Der Entwurf bleibt bis zum Neuladen in diesem Tab. Du kannst ihn nach
-          der Prüfung herunterladen oder in deinem Fork speichern.
+          Nach Anmeldung wird dein Arbeitsstand in diesem Browser automatisch
+          gemerkt. Speichere Änderungen zusätzlich im Fork oder lade sie
+          herunter.
         </span>
         <button type="button" className="text-button" onClick={onOpenStorage}>
           Zu deinen Forks →
@@ -198,6 +207,71 @@ export function ConfigurationEditor({
                   className="button primary"
                   onClick={() => {
                     setShowErrors(true);
+                    setStep("folders");
+                  }}
+                >
+                  Weiter zu Ordnern →
+                </button>
+              </div>
+            </section>
+          )}
+          {step === "folders" && (
+            <section className="panel">
+              <h2>Ordner</h2>
+              <p className="section-description">
+                Diese vier Ordner strukturieren deine Organisation. Du kannst
+                ihre Anzeigenamen ändern; die Zuordnung der Projekte bleibt
+                erhalten. Auch leere Ordner werden angelegt.
+              </p>
+              <div className="form-grid">
+                {folderKeys.map((key) => (
+                  <Field
+                    key={key}
+                    id={`folder.${key}`}
+                    label={folderDefaults[key]}
+                    value={(draft.folders ?? folderNames(template.values))[key]}
+                    onChange={(name) =>
+                      patch({
+                        folders: {
+                          ...folderNames(template.values),
+                          ...draft.folders,
+                          [key]: name,
+                        },
+                      })
+                    }
+                    error={error(`folder.${key}`)}
+                    hint={
+                      {
+                        platform:
+                          "Management und aktivierte Plattformdienste. Anzeigename: 1–40 Zeichen.",
+                        landing_zones_corporate:
+                          "Landing Zones mit zentraler Netzwerkanbindung. In Standalone bleibt dieser Ordner leer.",
+                        landing_zones_public:
+                          "Eigenständige Landing-Zone-Projekte aus dem nächsten Schritt. Public bedeutet hier keine automatische Freigabe ins Internet.",
+                        sandboxes: "Sandbox-Projekte zum Experimentieren.",
+                      }[key]
+                    }
+                  />
+                ))}
+              </div>
+              <p className="muted">
+                Für alle Ordner gilt die unter Grundlagen angegebene technisch
+                verantwortliche Person. Anzeigenamen ändern weder interne
+                Kennungen noch Projektkürzel.
+              </p>
+              <div className="actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setStep("basics")}
+                >
+                  Zurück
+                </button>
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => {
+                    setShowErrors(true);
                     setStep("projects");
                   }}
                 >
@@ -211,7 +285,7 @@ export function ConfigurationEditor({
               draft={draft}
               patch={patch}
               error={error}
-              onBack={() => setStep("basics")}
+              onBack={() => setStep("folders")}
               onReview={review}
             />
           )}
@@ -245,6 +319,8 @@ export function ConfigurationEditor({
                 <dd>{draft.company}</dd>
                 <dt>Region</dt>
                 <dd>{draft.region}</dd>
+                <dt>Ordner</dt>
+                <dd>{folderKeys.length}</dd>
                 <dt>Landing Zones</dt>
                 <dd>{draft.projects.length}</dd>
                 <dt>Sandboxes</dt>

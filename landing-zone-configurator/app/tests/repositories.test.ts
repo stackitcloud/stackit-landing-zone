@@ -3,6 +3,7 @@ import {
   catalogue,
   configurationValues,
   createDraft,
+  folderDefaults,
   savedDraft,
   serializeTfvars,
   type Template,
@@ -328,4 +329,22 @@ it("prepares only an unchanged work-branch snapshot with matching native tfvars"
     f.service.prepareSnapshot(token, target, id, original),
   ).rejects.toMatchObject({ code: "generated_configuration_changed" });
   expect(f.writes).toHaveLength(0);
+});
+
+it("upgrades a legacy document and its matching tfvars atomically when folder names change", async () => {
+  const f = fixture();
+  const oldExport = serializeTfvars(configurationValues(f.document));
+  f.state.exportSha = createHash("sha1")
+    .update(`blob ${Buffer.byteLength(oldExport)}\0`)
+    .update(oldExport)
+    .digest("hex");
+  const upgraded = savedDraft(id, {
+    ...f.document.draft,
+    folders: { ...folderDefaults, platform: "Betriebsplattform" },
+  });
+  await f.service.save(token, target, original, "update", upgraded);
+  const tree = f.writes[0]?.body.tree as { path: string; content: string }[];
+  expect(JSON.parse(tree[0]?.content ?? "").schemaVersion).toBe(2);
+  expect(tree[1]?.content).toContain('"name" = "Betriebsplattform"');
+  expect(tree[1]?.content).toBe(serializeTfvars(configurationValues(upgraded)));
 });

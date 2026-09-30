@@ -93,10 +93,25 @@ Kunden-State-Bucket; Infrastruktur- und Kunden-States werden nicht vermischt.
 - [x] Lokaler echter OpenTofu-Vertragstest ohne Cloud-Zugang und ohne Apply.
 - [x] Separate CF-Organisation samt Manager per Plattform-IaC erstellt.
 - [x] Runner-Space/Rollen per Runtime-IaC erfolgreich angewendet.
-- [ ] Linux-Paket, Provider-Mirror und CF-Engine-Test erfolgreich.
-- [ ] Live-App: separaten Runner ohne Service-Bindings prüfen, ungültiges Ticket
+- [x] Linux-Paket, Provider-Mirror und CF-Engine-Test erfolgreich.
+- [x] Live-App: separaten Runner ohne Service-Bindings prüfen, ungültiges Ticket
   darf keinen Kundenauftrag ausführen; Probe-App entfernen.
 - [ ] Erster persönlicher Kunden-Plan durch den Benutzer.
+
+## Live-Abnahme vom 2026-09-30
+
+[Release 36727211809](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36727211809)
+für `b5686ef` erfolgreich: CF-Engine init/validate, Datenbankmigrationen,
+PostgreSQL-/Secrets-Manager-Verbindungen, separate Probe-App und öffentliche
+Route. Runner-Verwaltungsidentität hat keinen Zugriff auf die Configurator-App;
+Probe-App ohne Routen oder Service-Bindings. Zufälliges, nicht registriertes Ticket
+führte zu einem fehlgeschlagenen Task. Dies ist eine Infrastruktur-/Isolationsprobe,
+noch kein erfolgreicher persönlicher Kunden-Plan.
+
+Gemessen vom Dispatch bis zur Task-Erstellung: **3.907 ms**; bis zum beobachteten
+Task-Ende: **12.244 ms**. Ein Einzelwert, keine Latenzgarantie. Die Probe nutzt die
+vorab gestagte Vorlage, keinen `cf push` pro Auftrag. Reguläre Jobausführung hat
+zusätzlich Eingabe-/Zugriffsprüfung und OpenTofu-Laufzeit. Kein Kunden-Apply.
 
 ## Quellen
 

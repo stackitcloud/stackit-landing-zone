@@ -1,5 +1,5 @@
 import { type ConfigurationDraft, createDraft, objectValue } from "@lzc/domain";
-import { StrictMode, useEffect, useRef, useState } from "react";
+import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ConfigurationEditor } from "./components/ConfigurationEditor";
 import { Credentials } from "./components/Credentials";
@@ -11,6 +11,7 @@ import { ForkWorkspace } from "./components/ForkWorkspace";
 import { Topology } from "./components/Topology";
 import { useNavigation } from "./navigation";
 import { describe, standaloneTemplate, templates } from "./templates";
+import { workspaceKey } from "./workspace";
 import "./style.css";
 import { Account, type Session } from "./components/Account";
 import {
@@ -41,6 +42,13 @@ function App() {
       ? "Die GitHub-Anmeldung ist fehlgeschlagen. Bitte erneut versuchen."
       : "",
   );
+  const activeAccount = useRef<string | null>(null);
+  const changeSession = useCallback((next: Session | null) => {
+    const key = workspaceKey(next);
+    if (activeAccount.current && activeAccount.current !== key) setDraft(null);
+    activeAccount.current = key;
+    setSession(next);
+  }, []);
   const leavingForLogin = useRef(false);
   useEffect(() => {
     clearLoginDraft();
@@ -100,7 +108,7 @@ function App() {
         <span className="product-name">Landing Zone Configurator</span>
         <span className="header-badge">Entwicklung</span>
         <Account
-          onSessionChange={setSession}
+          onSessionChange={changeSession}
           beforeLogin={() => {
             if (!preserveLoginDraft(draft)) {
               setLoginError(
@@ -250,7 +258,7 @@ function App() {
           </div>
           {view === "deployments" && (
             <Deployments
-              key={session?.user.id ?? session?.user.login ?? "guest"}
+              key={workspaceKey(session) ?? session?.user.login ?? "guest"}
               session={session}
               selection={deploymentSelection}
               onChoose={() => setView("repositories")}
@@ -259,7 +267,7 @@ function App() {
           )}
           {view === "credentials" && (
             <Credentials
-              key={session?.user.id ?? session?.user.login ?? "guest"}
+              key={workspaceKey(session) ?? session?.user.login ?? "guest"}
               session={session}
             />
           )}
@@ -400,8 +408,22 @@ function App() {
           )}
           <div hidden={view !== "repositories"}>
             <ForkWorkspace
-              key={session?.user.id ?? session?.user.login ?? "guest"}
+              key={workspaceKey(session) ?? session?.user.login ?? "guest"}
               session={session}
+              path={
+                view === "preview"
+                  ? `/templates/${selected.id}`
+                  : view === "editor"
+                    ? `/configurations/edit/${step}`
+                    : `/${view}`
+              }
+              onRestore={(loaded, path) => {
+                setDraft(loaded);
+                if (path) {
+                  window.history.replaceState(null, "", path);
+                  window.dispatchEvent(new PopStateEvent("popstate"));
+                }
+              }}
               draft={draft}
               draftEpoch={draftEpoch}
               onEdit={() => setView("editor")}

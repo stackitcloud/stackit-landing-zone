@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export type Session = {
   user: { id?: string; login: string };
+  tenant?: { id: string };
   csrfToken: string;
   expiresAt: string;
 };

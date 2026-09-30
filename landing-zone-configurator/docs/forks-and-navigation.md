@@ -159,3 +159,34 @@ Screenshot visuell geprüft. Kein Benutzer-Login oder echter Fork-Schreibzugriff
 für diesen Live-Test. Die neue Ausgabe beider Dateien ist zusätzlich mit der
 GitHub-API-Testdouble geprüft; persönliche Abnahme des vorherigen JSON-Speicherns
 ist bestätigt. Bestehende Konfiguration erneut speichern, um tfvars hinzuzufügen.
+
+## Arbeitsstand beim Wiederkommen
+
+Nach Anmeldung werden Forks automatisch geladen. Im selben Browser merkt sich die
+App pro Benutzer-ID und Mandant den ausgewählten Fork, die Konfigurationsbindung,
+den Editor-Entwurf und die letzte Seite einschließlich Editor-Schritt. Ein Aufruf
+von `/` setzt dort fort; explizite Links behalten ihre Zielseite. Der Zugriff auf
+einen gespeicherten Fork wird vor dem Wiederherstellen erneut serverseitig geprüft.
+
+Die lokale Kopie erhält auch noch unvollständige oder ungespeicherte Eingaben. Sie
+behält den ursprünglichen Git-Commit als Schreibbasis: ein inzwischen geänderter
+Branch führt weiterhin zum Konflikt, niemals zum automatischen Überschreiben.
+Bei einem Zugriffs-/Netzwerkfehler bleibt die lokale Wiederherstellungskopie
+unangetastet. Ein Wechsel auf einen anderen Fork ist eine bewusste neue Auswahl.
+Logout/Identitätswechsel entfernt den sichtbaren Entwurf; andere angemeldete
+Konten bekommen diese lokale Auswahl nicht zugeordnet.
+
+Ablage: `localStorage`, Schema 1, mit Template-Hash und Größen-/Formprüfung. Keine
+GitHub-/STACKIT-Schlüssel, CSRF-Werte oder Sessions. Konfigurationsinhalte wie
+Organisations-ID und Verantwortlichenadressen liegen dabei lokal im Browserprofil;
+das ist keine verschlüsselte Ablage oder Trennung gegenüber Personen mit Zugriff
+auf dieses Browserprofil. Browserverlauf/-daten löschen entfernt auch diesen
+Arbeitsstand. Auf einem anderen Gerät bleibt der explizit gespeicherte Fork die
+Quelle; geräteübergreifende Arbeitsstände sind noch nicht implementiert.
+Bei deaktiviertem/vollen Browserspeicher wird im Fork-Bereich ein Fehler angezeigt.
+**Im Fork speichern** bleibt ausdrücklich erforderlich für die Git-Ablage.
+
+
+Ordneranpassungen verwenden Dokumentversion 2 mit vier stabilen Schlüsseln in
+`draft.folders`. Version 1 bleibt ohne Ordnerüberschreibung kompatibel und exportiert
+unverändert. [Ordner-Schritt und Vorschau](folder-editor-review.md).

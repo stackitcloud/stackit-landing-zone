@@ -14,7 +14,7 @@ const template = catalogue.templates.find(
 export const configurationId = z.uuid();
 export const savedDraftSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     kind: z.literal("landing-zone-configurator-configuration"),
     id: configurationId,
     template: z
@@ -30,7 +30,7 @@ export const savedDraftSchema = z
 export type SavedDraft = z.infer<typeof savedDraftSchema>;
 export function savedDraft(id: string, draft: ConfigurationDraft): SavedDraft {
   return readSavedDraft({
-    schemaVersion: 1,
+    schemaVersion: draft.folders ? 2 : 1,
     kind: "landing-zone-configurator-configuration",
     id,
     template: {
@@ -43,6 +43,8 @@ export function savedDraft(id: string, draft: ConfigurationDraft): SavedDraft {
 }
 export function readSavedDraft(input: unknown): SavedDraft {
   const parsed = savedDraftSchema.parse(input);
+  if ((parsed.schemaVersion === 2) !== (parsed.draft.folders !== undefined))
+    throw new Error("Folder configuration requires document version 2");
   if (
     parsed.template.sha256 !== template.sha256 ||
     parsed.template.source !== template.source

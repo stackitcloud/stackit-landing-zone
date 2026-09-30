@@ -3,6 +3,9 @@ import { catalogue, createDraft, savedDraft, type Template } from "@lzc/domain";
 import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/github/forks?*", (route) =>
+    route.fulfill({ json: { forks: [], nextPage: null } }),
+  );
   await page.route("**/api/v1/plans", (route) =>
     route.fulfill({ status: 404, json: { error: "not_found" } }),
   );
@@ -73,7 +76,7 @@ test("edit, validate and download an isolated standalone copy", async ({
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
   await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
-  await page.getByRole("button", { name: "3 Prüfen", exact: true }).click();
+  await page.getByRole("button", { name: "4 Prüfen", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Angaben bitte prüfen");
   await page.getByRole("button", { name: /Organisations-ID: Bitte/ }).click();
   await expect(page.getByLabel("STACKIT Organisations-ID")).toBeFocused();
@@ -85,6 +88,20 @@ test("edit, validate and download an isolated standalone copy", async ({
   await page.getByLabel("Technisch verantwortlich").fill("owner@stackit.cloud");
   await page.screenshot({
     path: testInfo.outputPath("editor.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Weiter zu Ordnern" }).click();
+  await page
+    .getByRole("textbox", { name: "Platform", exact: true })
+    .fill("Meine Plattform");
+  await page
+    .getByRole("textbox", { name: "Landing Zones - Public", exact: true })
+    .fill("Meine Anwendungen");
+  await expect(page.locator(".topology")).toContainText("Meine Plattform");
+  await expect(page.locator(".topology")).toContainText("Meine Anwendungen");
+  await expect(page.locator(".topology")).toContainText("Management");
+  await page.screenshot({
+    path: testInfo.outputPath("folders.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Weiter zu Projekten" }).click();
@@ -123,6 +140,8 @@ test("edit, validate and download an isolated standalone copy", async ({
   expect(exported).toContain('"project_name" = "Kundenportal"');
   expect(exported).toContain('"secretsmanager_enabled" = false');
   expect(exported).toContain('"worker" = {');
+  expect(exported).toContain('"name" = "Meine Plattform"');
+  expect(exported).toContain('"name" = "Meine Anwendungen"');
   expect(exported).toContain('"managed_by" = "opentofu"');
   await page.screenshot({
     path: testInfo.outputPath("review.png"),
@@ -207,13 +226,18 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
   await page.getByRole("button", { name: "Konfiguration erstellen" }).click();
   await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
   await page.getByLabel("Name der Konfiguration").fill("Entwurf mit History");
+  await page.getByRole("button", { name: "Weiter zu Ordnern" }).click();
   await page.getByRole("button", { name: "Weiter zu Projekten" }).click();
   await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/configurations\/edit\/folders$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
     "Entwurf mit History",
   );
+  await page.goForward();
+  await expect(page).toHaveURL(/\/configurations\/edit\/folders$/);
   await page.goForward();
   await expect(
     page.getByRole("heading", { name: "Projekte & Sandboxes", exact: true }),
@@ -222,6 +246,7 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
   await expect(page).toHaveURL(/\/repositories$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await page.goBack();
   await page.goBack();
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
     "Entwurf mit History",
@@ -311,6 +336,7 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
     attempts++;
     if (attempts === 1) {
       expect(body.mode).toBe("update");
+      expect(body.head).toBe("a".repeat(40));
       head = "b".repeat(40);
       await route.fulfill({
         status: 409,
@@ -320,6 +346,8 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
       expect(body.mode).toBe("create");
       expect(body.head).toBe(head);
       expect(body.document.id).not.toBe(document.id);
+      expect(body.document.schemaVersion).toBe(2);
+      expect(body.document.draft.folders.platform).toBe("Plattform aus Fork");
       document = body.document;
       head = "c".repeat(40);
       await route.fulfill({
@@ -341,6 +369,18 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
     .click();
   await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
   await page.getByLabel("Name der Konfiguration").fill("Meine neue Kopie");
+  await page.getByRole("button", { name: "2 Ordner", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Platform", exact: true })
+    .fill("Plattform aus Fork");
+  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
+  // Fresh entry restores unsaved edits, the selected fork and the original base revision.
+  head = "b".repeat(40);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Meine neue Kopie",
+  );
   await page.getByRole("button", { name: "GitHub-Forks", exact: true }).click();
   await page
     .getByRole("button", { name: "Im Fork speichern", exact: true })
@@ -365,15 +405,59 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
       () => window.document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.reload();
-  await page.getByRole("button", { name: "Forks aktualisieren" }).click();
-  await page
-    .getByRole("button", { name: "alice/accelerator", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Meine neue Kopie öffnen" }).click();
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/repositories$/);
+  await expect(
+    page.getByRole("button", { name: "alice/accelerator", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Entwurf bearbeiten" }).click();
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
     "Meine neue Kopie",
   );
+
+  // Explicit links win over the remembered page, while the draft stays available.
+  await page.goto("/templates");
+  await expect(page.getByText("@alice", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Mein Entwurf" }),
+  ).toBeEnabled();
+  await expect(page).toHaveURL(/\/templates$/);
+  const remembered = await page.evaluate(() =>
+    localStorage.getItem("lzc-workspace-v1:personal:alice-id"),
+  );
+  expect(remembered).not.toContain("csrf-test");
+
+  // Revoked access must not expose a restored draft or erase its local recovery copy.
+  await page.route("**/api/v1/github/repository?*", (route) =>
+    route.fulfill({ status: 403, json: { error: "repository_access_denied" } }),
+  );
+  await page.goto("/repositories");
+  await expect(page.getByRole("alert")).toContainText("keinen Zugriff");
+  await expect(
+    page.getByRole("button", { name: "Mein Entwurf" }),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem("lzc-workspace-v1:personal:alice-id"),
+    ),
+  ).toBe(remembered);
+
+  // A different account in this browser must not restore Alice's configuration.
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "bob-id", login: "bob" },
+        csrfToken: "bob-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.goto("/");
+  await expect(page.getByText("@bob", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Mein Entwurf" }),
+  ).toBeDisabled();
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("personal credentials upload clears the file and supports deletion and history", async ({

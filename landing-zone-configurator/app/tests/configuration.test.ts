@@ -2,7 +2,11 @@ import {
   buildConfiguration,
   catalogue,
   createDraft,
+  folderDefaults,
   objectValue,
+  readSavedDraft,
+  savedDraft,
+  serializeTfvars,
   type Template,
   validateDraft,
 } from "@lzc/domain";
@@ -90,4 +94,52 @@ describe("standalone configuration", () => {
       "not supported",
     );
   });
+});
+
+it("keeps legacy export bytes stable and versions folder edits without changing stable keys or roles", () => {
+  const draft = validDraft();
+  const id = "11111111-2222-4333-8444-555555555555";
+  const legacy = savedDraft(id, draft);
+  const before = serializeTfvars(buildConfiguration(template, draft));
+  expect(legacy.schemaVersion).toBe(1);
+  expect(readSavedDraft(legacy).draft.folders).toBeUndefined();
+  expect(
+    serializeTfvars(buildConfiguration(template, readSavedDraft(legacy).draft)),
+  ).toBe(before);
+  expect(before).not.toContain("rm_folders =");
+  draft.folders = {
+    ...folderDefaults,
+    platform: "Plattform",
+    landing_zones_public: "Anwendungen",
+  };
+  const source = structuredClone(template);
+  source.values.rm_folders = {
+    platform: {
+      name: "Bisher",
+      owner_emails: ["admin@stackit.cloud"],
+      reader_emails: ["audit@stackit.cloud"],
+    },
+  };
+  const edited = savedDraft(id, draft);
+  expect(edited.schemaVersion).toBe(2);
+  expect(readSavedDraft(edited).draft.folders).toEqual(draft.folders);
+  const folders = objectValue(buildConfiguration(source, draft).rm_folders);
+  expect(Object.keys(folders).sort()).toEqual(
+    Object.keys(folderDefaults).sort(),
+  );
+  expect(folders.platform).toEqual({
+    name: "Plattform",
+    owner_emails: ["admin@stackit.cloud"],
+    reader_emails: ["audit@stackit.cloud"],
+  });
+  expect(() => readSavedDraft({ ...edited, schemaVersion: 1 })).toThrow(
+    "version 2",
+  );
+  expect(() => readSavedDraft({ ...legacy, schemaVersion: 2 })).toThrow(
+    "version 2",
+  );
+  draft.folders.platform = " ";
+  expect(validateDraft(draft).map((i) => i.field)).toContain("folder.platform");
+  draft.folders.platform = "a".repeat(41);
+  expect(() => savedDraft(id, draft)).toThrow("Invalid configuration");
 });

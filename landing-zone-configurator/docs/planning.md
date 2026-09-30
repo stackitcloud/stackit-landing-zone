@@ -753,3 +753,14 @@ umgesetzt; Erstbereitstellung nur nach Bestätigung eines leeren States. Direkte
 init/validate/plan/show-Befehle, feste Engine/Provider, bereinigte Aktionszahlen und
 Abbruch. Kein Apply-/Destroy-Endpunkt. Dauerhafte Bootstrap-State-Sicherung und
 exakte Apply-Artefakte bleiben offene Voraussetzungen. [Abnahme](plan-execution.md).
+
+### Wiederaufnahme und Ordnerprüfung, 2026-09-30
+
+- [x] Automatische Fork-Liste und kontogebundene Wiederaufnahme im selben Browser
+  einschließlich lokalem Entwurf, letzter Seite und ursprünglicher Git-Schreibbasis.
+- [ ] Geräteübergreifende persönliche Arbeitsbereiche in PostgreSQL.
+- [x] Ordnerhierarchie des Accelerators prüfen und Empfehlung dokumentieren.
+- [x] Ordner-Editor und Strukturvorschau nach ausdrücklicher fachlicher Bestätigung umsetzen.
+
+Details: [Arbeitsstand](forks-and-navigation.md#arbeitsstand-beim-wiederkommen),
+[Ordnerprüfung und Umsetzung](folder-editor-review.md).

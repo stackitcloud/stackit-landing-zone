@@ -30,6 +30,32 @@ export type SandboxDraft = {
   name: string;
   owner: string;
 };
+export const folderDefaults = {
+  platform: "Platform",
+  landing_zones_corporate: "Landing Zones - Corporate",
+  landing_zones_public: "Landing Zones - Public",
+  sandboxes: "Sandboxes",
+} as const;
+export type FolderKey = keyof typeof folderDefaults;
+export type FolderNames = Record<FolderKey, string>;
+export const folderKeys = Object.keys(folderDefaults) as FolderKey[];
+export function folderNames(values: Values): FolderNames {
+  const folders = objectValue(values.rm_folders);
+  return Object.fromEntries(
+    folderKeys.map((key) => [
+      key,
+      textValue(objectValue(folders[key]).name) || folderDefaults[key],
+    ]),
+  ) as FolderNames;
+}
+const folderShape = z
+  .object({
+    platform: z.string().max(4096),
+    landing_zones_corporate: z.string().max(4096),
+    landing_zones_public: z.string().max(4096),
+    sandboxes: z.string().max(4096),
+  })
+  .strict();
 export type ConfigurationDraft = {
   name: string;
   company: string;
@@ -37,6 +63,7 @@ export type ConfigurationDraft = {
   organization: string;
   owner: string;
   region: string;
+  folders?: FolderNames | undefined;
   projects: ProjectDraft[];
   sandboxes: SandboxDraft[];
 };
@@ -48,6 +75,7 @@ export const draftShape = z.object({
   organization: z.string().max(4096),
   owner: z.string().max(4096),
   region: z.string().max(4096),
+  folders: folderShape.optional(),
   projects: z
     .array(
       z.object({
@@ -160,6 +188,15 @@ export function validateDraft(draft: ConfigurationDraft): DraftIssue[] {
   email("owner", draft.owner);
   if (!["eu01", "eu02"].includes(draft.region))
     add("region", "Bitte eine unterstützte Region auswählen.");
+  if (draft.folders)
+    for (const key of folderKeys) {
+      const name = draft.folders[key];
+      if (!name.trim() || Array.from(name).length > 40)
+        add(
+          `folder.${key}`,
+          "Bitte einen Ordnernamen mit 1–40 Zeichen eintragen.",
+        );
+    }
   const keys = new Set<string>();
   for (const p of draft.projects) {
     const prefix = `project.${p.id}`;
@@ -202,6 +239,25 @@ export function buildConfiguration(
     organization_id: draft.organization,
     owner_email: draft.owner,
     region: draft.region,
+    // Omit the override for legacy drafts: their exact tfvars bytes and preparation hashes stay stable.
+    ...(draft.folders
+      ? {
+          rm_folders: {
+            ...objectValue(source.rm_folders),
+            ...Object.fromEntries(
+              folderKeys.map((key) => [
+                key,
+                {
+                  owner_emails: [],
+                  reader_emails: [],
+                  ...objectValue(objectValue(source.rm_folders)[key]),
+                  name: draft.folders?.[key] ?? folderDefaults[key],
+                },
+              ]),
+            ),
+          },
+        }
+      : {}),
     landing_zones: Object.fromEntries(
       draft.projects.map((p) => [
         p.key,

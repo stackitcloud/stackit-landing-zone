@@ -7,18 +7,22 @@ export type View =
   | "repositories"
   | "credentials"
   | "deployments";
-export type EditorStep = "basics" | "projects" | "review";
+export type EditorStep = "basics" | "folders" | "projects" | "review";
 function readRoute() {
   const path = window.location.pathname.replace(/\/$/, "") || "/";
   const template = templates.find((item) => path === `/templates/${item.id}`);
-  const step: EditorStep = path.endsWith("/projects")
-    ? "projects"
-    : path.endsWith("/review")
-      ? "review"
-      : "basics";
+  const step: EditorStep = path.endsWith("/folders")
+    ? "folders"
+    : path.endsWith("/projects")
+      ? "projects"
+      : path.endsWith("/review")
+        ? "review"
+        : "basics";
   const view: View = template
     ? "preview"
-    : /^\/configurations\/edit(?:\/(basics|projects|review))?$/.test(path)
+    : /^\/configurations\/edit(?:\/(basics|folders|projects|review))?$/.test(
+          path,
+        )
       ? "editor"
       : path === "/deployments"
         ? "deployments"

@@ -914,3 +914,34 @@ pre {
 .credential-account {
   overflow-wrap: anywhere;
 }
+
+.tree-folder {
+  margin-bottom: 1rem;
+}
+.tree-folder > .tree-children {
+  margin-top: -0.75rem;
+}
+.folder-node {
+  background: var(--surface-subtle);
+}
+.empty-folder {
+  margin: 0;
+  font-size: var(--nds-viewport-font-size-label-small);
+}
+@media (max-width: 600px) {
+  .steps {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .step {
+    flex: 1 1 calc(50% - 0.5rem);
+  }
+  .tree-children {
+    margin-left: 0.625rem;
+    padding-left: 0.875rem;
+  }
+  .tree-node::before {
+    left: -0.9375rem;
+    width: 0.875rem;
+  }
+}
