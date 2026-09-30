@@ -100,6 +100,8 @@ export async function checkSecrets(): Promise<void> {
 
 export function safeFailure(error: unknown): string {
   // Raw network/driver errors may contain credentials or service responses.
+  if (error instanceof Error && error.message === "timeout expired")
+    return "connection-timeout";
   if (
     error instanceof Error &&
     /^(missing-configuration|tls-required|unexpected-service-address|invalid-instance|missing-session-token|unexpected-runtime-policy|session-revoke-failed|(?:login|capabilities|metadata)-http-\d{3})$/.test(

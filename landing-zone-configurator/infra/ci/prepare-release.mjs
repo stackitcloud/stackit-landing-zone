@@ -30,7 +30,7 @@ if(mode==="backend") {
   const cf=platform.cf_runtime?.value, space=runtime.space?.value, values=runtime.app_environment?.value;
   if(cf?.api_url!=="https://api.system.01.cf.eu01.stackit.cloud" || cf?.org_id!=="a4514c42-d378-4e36-90eb-a3a1e3017e65" || space?.name!=="configurator" || !space.id || !cf.username || !cf.password || !values)throw new Error("Unexpected CF destination or incomplete runtime");
   const keys=["LZC_DATABASE_HOST","LZC_DATABASE_PORT","LZC_DATABASE_NAME","LZC_DATABASE_USER","LZC_DATABASE_PASSWORD","LZC_SECRETS_ADDRESS","LZC_SECRETS_INSTANCE_ID","LZC_SECRETS_USERNAME","LZC_SECRETS_PASSWORD","LZC_MODEL_SERVING_TOKEN"];
-  const vars={};for(const key of keys){if(typeof values[key]!=="string"||!values[key])throw new Error(`Missing runtime input ${key}`);mask(values[key]);vars[key]=values[key];}
+  const vars={};for(const key of keys){if(typeof values[key]!=="string"||!values[key])throw new Error(`Missing runtime input ${key}`);if(/_(PASSWORD|TOKEN|USERNAME|USER)$/.test(key))mask(values[key]);vars[key]=values[key];}
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);
 }
