@@ -146,3 +146,16 @@ Zugangsdaten und Backend müssen dafür separat eingerichtet sein. Der Configura
 wählt den freigegebenen Accelerator-Code für zukünftige verwaltete Deployments;
 der Export allein führt keinen Plan oder Apply aus. Vor einem ersten Cloud-Deployment
 bleiben Provider-/Variablenvalidierung und Plan-Abnahme erforderlich.
+
+### Abnahme Feldhilfen und tfvars-Export
+
+Commit `c2f15e2`, nur Feature-Branch. [Validierung 36703394675](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36703394675)
+und [Release 36703394711](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36703394711)
+erfolgreich. 35 Anwendungstests, zwölf Browserfälle, PostgreSQL-Integration und
+HCL-Roundtrip-Prüfung grün. CF-Verbindungstests zu PostgreSQL und Secrets Manager
+erfolgreich. Mobile Live-Prüfung bestätigt zugängliche Feldhilfen, nativen
+`landing-zone.tfvars`-Download, keine Browserfehler und keinen horizontalen Überlauf;
+Screenshot visuell geprüft. Kein Benutzer-Login oder echter Fork-Schreibzugriff
+für diesen Live-Test. Die neue Ausgabe beider Dateien ist zusätzlich mit der
+GitHub-API-Testdouble geprüft; persönliche Abnahme des vorherigen JSON-Speicherns
+ist bestätigt. Bestehende Konfiguration erneut speichern, um tfvars hinzuzufügen.
