@@ -1,6 +1,6 @@
 # Fork-Speicherung und Browser-Navigation
 
-Stand: 2026-09-30. Implementiert und lokal geprüft; Live-Release noch offen.
+Stand: 2026-09-30. Auf lzc-dev bereitgestellt; Browser-Navigation live geprüft. Persönlicher Fork-Commit noch abzunehmen.
 
 ## Benutzerablauf
 
@@ -91,7 +91,10 @@ und Reload sind dadurch auch auf CF möglich.
 - [x] Zwölf Browserfälle auf Desktop/Mobilgeräten: Editor, Login, History, Deep Links,
   Fork-Auswahl, Konflikt, neue Kopie und Wiederöffnen nach Reload.
 - [x] HCL-Importer geprüft; gemeinsamer Katalog bytegleich zum bisherigen Stand.
-- [ ] CI-Release und öffentliche Deep Links auf CF abnehmen.
+- [x] [Validierung 36700860848](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36700860848) und [Release 36700861231](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36700861231) erfolgreich (`c77345a`).
+- [x] Live-Browser: Vorschau-URL, Editor-Schritte, Zurück/Vorwärts, Entwurfserhalt,
+  Fork-URL und Reload geprüft; anonyme Lese-/Schreibzugriffe 401, fehlende Assets 404.
+  Test ohne Benutzer-Session und ohne echte Repository-Schreibzugriffe.
 - [ ] Persönlichen Fork verbinden und echten GitHub-Commit über UI abnehmen.
 - [ ] PR-Workflow für geschützte Arbeitsbranches ergänzen; derzeit klare Fehlermeldung.
 - [ ] Automatische Fork-Erstellung bei passenden Installationsvoraussetzungen.

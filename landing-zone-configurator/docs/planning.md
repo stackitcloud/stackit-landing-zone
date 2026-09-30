@@ -16,8 +16,8 @@ Abhakliste: [GitHub-Login und Mandantentrennung](github-login.md).
 ### Nächster Umsetzungsschritt: Fork-Speicherung und Navigation
 
 Fork-Auswahl, konfliktgeschützte Entwurfsablage im Arbeitsbranch und Wiederöffnen
-sind implementiert. Ansichten und Editor-Schritte besitzen eigene URLs mit
-Zurück/Vorwärts-Unterstützung. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
+sind implementiert und auf lzc-dev bereitgestellt. Ansichten und Editor-Schritte besitzen
+eigene URLs mit live geprüfter Zurück/Vorwärts-Unterstützung. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
 
 ## 1. Zielbild und bestätigte Entscheidungen
 
