@@ -107,5 +107,17 @@ fertiger Runner-Auftrag. Es werden keine Kundenressourcen angelegt. Offene Aufga
 - [x] Veralteter Git-Head sowie fehlende/manuell geänderte tfvars werden abgewiesen.
 - [x] Echtes PostgreSQL: RLS, Rollen, unveränderliche Vorbereitung und Löschinvalidierung.
 - [x] Browserablauf auf Desktop und Mobil abgenommen; mobile Darstellung visuell geprüft.
-- [ ] Feature-Branch-Release inklusive Migration und CF-Verbindungstests.
+- [x] Feature-Branch-Release inklusive Migration und CF-Verbindungstests.
 - [ ] Persönlicher Erfolgsfall mit einem auf der Zielorganisation berechtigten Profil.
+
+### Release-Abnahme
+
+Code-Commit `366cc3c`, [Validierung 36716027326](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36716027326)
+und [Release 36716027274](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36716027274)
+erfolgreich. 47 Anwendungstests, zehn PostgreSQL-Tests und 16 Browserfälle grün.
+Migration und CF-Verbindungstests zu PostgreSQL und Secrets Manager erfolgreich.
+Live geprüft: `/deployments`, Reload, mobile Breite, keine Browserfehler sowie 401
+für anonyme Vorbereitungsliste, Anlegen, Entfernen und Credential-Prüfung. Dabei keine
+persönlichen Credentials verwendet und keine Vorbereitung angelegt. Bekannte lokale
+Credential-Werte wurden in den Release-Logs nicht gefunden. Persönlicher Erfolgsfall
+mit Organisationsberechtigung bleibt Teil der obigen Benutzer-Prüfliste.
