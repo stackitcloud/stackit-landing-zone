@@ -36,8 +36,8 @@ resource "stackit_postgresflex_user" "application" {
 resource "stackit_secretsmanager_user" "application" {
   project_id    = var.project_id
   instance_id   = var.secrets_instance_id
-  description   = "Configurator runtime read-only access"
-  write_enabled = false
+  description   = "Configurator session token storage"
+  write_enabled = true
   rotate_when_changed = {
     generation = var.credential_generation
   }

@@ -20,8 +20,8 @@ run "isolated_runtime_identities" {
     error_message = "Runtime must not receive database administration roles."
   }
   assert {
-    condition     = stackit_secretsmanager_user.application.write_enabled == false
-    error_message = "Connectivity stage requires read-only Secrets access."
+    condition     = stackit_secretsmanager_user.application.write_enabled == true
+    error_message = "Runtime needs write access to store and delete user session tokens."
   }
   assert {
     condition     = cloudfoundry_space.configurator.allow_ssh == false && cloudfoundry_space_role.deployer.type == "space_developer" && cloudfoundry_org_role.deployer_member.type == "organization_user"
