@@ -78,3 +78,6 @@ Verschlüsselte Seed-Sicherungen liegen im Verwaltungs-Bucket unter `recovery/se
 Bei einem fehlgeschlagenen Apply zuerst CI-Logs, verschlüsselte Recovery-Artefakte und tatsächlichen Ressourcenbestand prüfen. Keinen alten Plan blind wiederholen, keinen existierenden State überschreiben. Imports und Credential-Rotation müssen zum konkreten Vorfall passen und unter derselben Single-Writer-Regel erfolgen. Der frühere automatische Einmal-Recovery-Pfad wurde nach Abschluss entfernt.
 
 Offen sind CF-Runtime/Bindings und Verbindungstests aus CF, eingeschränkte App-Rollen/RLS, automatisierte Credential-Rotation sowie ein vollständiger getesteter Betriebs-/Restore-Prozess. [Planung](../docs/planning.md).
+
+
+Direkte CLI-Pipelines geprüft (2026-09-30): [Bootstrap 36677111141](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111141) und [Plattform 36677111032](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111032) zeigen jeweils `No changes`, mit sichtbaren nativen Init-/Plan-Logs und übersprungenem Apply. [Validierung 36677111055](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111055) bestätigt auch den GNU-Timeout-Test auf Linux. Aktuelle weitere Abnahmen stehen im [Plattform-Betriebsstand](../docs/platform-readiness.md).

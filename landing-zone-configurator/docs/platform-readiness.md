@@ -106,3 +106,6 @@ Nächster Ausbau: CF-Space und App-/Task-Runtime per IaC, getrennte Laufzeitiden
 ## CI-Vereinfachung 2026-09-30
 
 Die Workflows führen OpenTofu jetzt direkt aus. Der bisherige Deployment-Runner, Prozessmanager und automatische Einmal-Recovery-Pfad sind entfernt. Normale Plan-/Apply-Logs erscheinen live; Credential-Outputs und State-Snapshots bleiben gezielt geschützt. GNU `timeout` übernimmt SIGINT und die anschließende Wartezeit; keine eigene Signalsteuerung. Die geltenden Zeitlimits und Befehle stehen in der [CI-Betriebsanleitung](../infra/ci/README.md). Das historische Recovery-Inventar liegt unter `docs/incidents`, ohne aktive Ausführung.
+
+
+Abnahme der direkten CLI-Pipelines: Bootstrap-Run 36677111141 und Plattform-Run 36677111032 erfolgreich, jeweils `No changes`, Apply übersprungen. Die normalen Init-/Plan-Details sind live sichtbar. Logs gegen bekannte Deployment-Credentials und State-Schlüssel geprüft, keine Treffer. Validierung 36677111055 erfolgreich, einschließlich des GNU-Timeout-Tests in allen fünf Linux-Matrix-Jobs. Keine Infrastrukturänderung durch den Umbau.
