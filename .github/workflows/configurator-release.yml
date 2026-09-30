@@ -217,7 +217,13 @@ jobs:
         run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 512M --wait
       - name: Verify separate runner app, bindings and rejected job ticket
         timeout-minutes: 5
-        run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-plan-runner.js' --name "runner-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+        run: |
+          cf run-task landing-zone-configurator --command "./runtime/bin/node apps/api/dist/check-plan-runner.js $GITHUB_RUN_ID" --name "runner-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+          for attempt in 1 2 3; do
+            if cf logs landing-zone-configurator --recent | node infra/ci/runner-evidence.mjs "$GITHUB_RUN_ID"; then exit 0; fi
+            sleep 5
+          done
+          exit 1
       # Router logs may contain OAuth callback codes. Do not export raw logs to CI.
       - name: CF application status
         if: always() && steps.push.outcome == 'success'

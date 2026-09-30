@@ -146,7 +146,9 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       disk_in_mb: 4096,
     });
   }
-  async probe(origin: string) {
+  async probe(origin: string, forbiddenAppId: string) {
+    guid(forbiddenAppId);
+    const started = Date.now();
     const id = randomUUID();
     let appId: string | null = null;
     try {
@@ -159,8 +161,19 @@ export class CloudFoundryPlanRunner implements PlanRunner {
           appId = value;
         },
       );
+      const dispatchMilliseconds = Date.now() - started;
       if (!appId) throw new Error("Probe app missing");
       const call = await this.authorized();
+      try {
+        await call(`apps/${forbiddenAppId}`);
+        throw new Error("Runner identity can access the Configurator app");
+      } catch (error) {
+        if (
+          !(error instanceof RunnerRequestError) ||
+          ![403, 404].includes(error.status)
+        )
+          throw error;
+      }
       const environment = await call(`apps/${appId}/environment_variables`);
       const variables = z
         .record(z.string(), z.unknown())
@@ -184,7 +197,11 @@ export class CloudFoundryPlanRunner implements PlanRunner {
         const tasks = z
           .object({ resources: z.array(z.object({ state: z.string() })) })
           .parse(await call(`apps/${appId}/tasks`));
-        if (tasks.resources[0]?.state === "FAILED") return;
+        if (tasks.resources[0]?.state === "FAILED")
+          return {
+            dispatchMilliseconds,
+            completionMilliseconds: Date.now() - started,
+          };
         if (tasks.resources[0]?.state === "SUCCEEDED")
           throw new Error("Invalid ticket was accepted");
         await new Promise((resolve) => setTimeout(resolve, 2000));

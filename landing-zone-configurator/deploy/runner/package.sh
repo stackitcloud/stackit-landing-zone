@@ -14,7 +14,7 @@ cp "$(command -v tofu)" "$runner_dir/tools/tofu"
 cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
 # Only this immutable upstream commit, never user-fork Terraform code.
 git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git a256f6896d11134fdc351786f1be5eba4e56b2e2
-git archive a256f6896d11134fdc351786f1be5eba4e56b2e2 src | tar -x --strip-components=1 -C "$runner_dir/accelerator"
+git -C "$(git rev-parse --show-toplevel)" archive a256f6896d11134fdc351786f1be5eba4e56b2e2 src | tar -x --strip-components=1 -C "$runner_dir/accelerator"
 cp ../deploy/runner/accelerator.lock.hcl "$runner_dir/accelerator/.terraform.lock.hcl"
 echo "a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888  $runner_dir/accelerator/.terraform.lock.hcl" | sha256sum --check
 tofu -chdir="$runner_dir/accelerator" init -backend=false -input=false -lockfile=readonly -no-color

@@ -49,7 +49,7 @@ if(mode==="backend") {
   Object.assign(vars,{LZC_PLANS_ENABLED:"false",LZC_RUNNER_CF_USERNAME:"",LZC_RUNNER_CF_PASSWORD:"",LZC_RUNNER_SPACE_ID:"",LZC_RUNNER_TEMPLATE_ID:""});
   const runner=platform.plan_runner_cf?.value, runnerSpace=runtime.runner_space?.value;
   if(runner || runnerSpace){
-    if(runner?.api_url!==cf.api_url || runner?.org_id===cf.org_id || runnerSpace?.org_id!==runner?.org_id || runnerSpace?.name!=="plans" || !runnerSpace.id || !runner.username || !runner.password)throw new Error("Runner destination invalid");
+    if(runner?.api_url!==cf.api_url || runner?.org_id===cf.org_id || runner?.username===cf.username || runnerSpace?.org_id!==runner?.org_id || runnerSpace?.name!=="plans" || !runnerSpace.id || !runner.username || !runner.password)throw new Error("Runner destination invalid");
     vars.LZC_RUNNER_CF_USERNAME=runner.username;vars.LZC_RUNNER_CF_PASSWORD=runner.password;vars.LZC_RUNNER_SPACE_ID=runnerSpace.id;
     mask(runner.username);mask(runner.password);
     publish("LZC_RUNNER_CF_USERNAME",runner.username,true);publish("LZC_RUNNER_CF_PASSWORD",runner.password,true);publish("LZC_RUNNER_SPACE_ID",runnerSpace.id);publish("LZC_RUNNER_ORG_ID",runner.org_id);
