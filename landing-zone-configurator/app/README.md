@@ -36,7 +36,7 @@ npm run dev:web
 
 Auch diese Befehle können bei abweichender lokaler Node-Version mit dem oben gezeigten `npm exec`-Präfix ausgeführt werden. Der Vite-Entwicklungsserver leitet `/healthz` und `/api` an die lokale API weiter. Gemeinsame Pakete vor UI-Start bauen (`npm run build:packages`, bereits Teil von `npm run dev`). Nach Änderungen an gemeinsamen Paketen erneut bauen; automatischer Workspace-Watch folgt später.
 
-`npm run build` erzeugt API-/Paket-Artefakte und `apps/web/dist`. `npm start` startet nur die gebaute API. Die Auslieferung der statischen UI auf CF gehört zum nächsten Deployment-Schritt; `vite preview` ist kein Produktionsserver. Bei CF später `HOST=0.0.0.0` und den von CF bereitgestellten `PORT` nutzen.
+`npm run build` erzeugt API-/Paket-Artefakte und `apps/web/dist`. `npm start` startet die gebaute API. Mit `LZC_WEB_ROOT` liefert sie auch das gebaute UI aus. Das [CF-Manifest](../deploy/cloud-foundry/manifest.yml) setzt den Pfad, `HOST=0.0.0.0` und verwendet den von CF bereitgestellten `PORT`. `vite preview` ist kein Produktionsserver.
 
 ## Aktueller Funktionsumfang
 
@@ -46,7 +46,7 @@ Auch diese Befehle können bei abweichender lokaler Node-Version mit dem oben ge
 - Fachliche Tenant-/Rollen-Policy mit Negativtests. Mitgliedschaften müssen später aus authentisiertem serverseitigem Speicher kommen.
 - Worker ist ein kompilierbarer Platzhalter und beendet sich beim Start ausdrücklich mit Fehler, bis dauerhafte Queue und Runner integriert sind.
 
-Noch keine GitHub-Anmeldung, Datenbank, RLS, Templates, Credential-Speicherung oder Deployments. Die getestete Policy allein ist kein Nachweis vollständiger Mehrmandantenfähigkeit.
+PostgreSQL und Secrets Manager sind provisioniert; CF-Tasks prüfen deren Anbindung. Noch keine GitHub-Anmeldung, Anwendungsschemata/RLS, Templates, persönliche Credential-Speicherung oder Kunden-Deployments. Die getestete Policy allein ist kein Nachweis vollständiger Mehrmandantenfähigkeit.
 
 ## Lesende Plattformprüfung
 

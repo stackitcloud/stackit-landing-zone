@@ -4,7 +4,9 @@ Die ausführbaren Deployments stehen direkt in den Workflows:
 
 - [Configurator Bootstrap](../../../.github/workflows/configurator-bootstrap.yml): `bootstrap` oder `backend`.
 - [Configurator Platform](../../../.github/workflows/configurator-platform.yml): `platform`.
-- [Validierung](../../../.github/workflows/validate-configurator.yml): Formatierung, Validierung und Mock-Tests aller fünf Roots ohne Cloud-Credentials.
+- [Configurator Runtime](../../../.github/workflows/configurator-runtime.yml): `runtime`.
+- [Configurator Release](../../../.github/workflows/configurator-release.yml): gebautes Web/API-Paket mit direkten `cf`-Befehlen ausliefern.
+- [Validierung](../../../.github/workflows/validate-configurator.yml): Formatierung, Validierung und Mock-Tests aller sechs Roots ohne Cloud-Credentials.
 
 Jeder Deployment-Job zeigt die einzelnen Schritte: Credential-Vorbereitung, gegebenenfalls Lesen der vorherigen Backend-Outputs, `tofu init`, `tofu validate`, `tofu plan` beziehungsweise `tofu apply`. Es gibt keinen eigenen JavaScript-Deployment-Runner. Einmalige Recovery-Operationen gehören nicht in diesen normalen Ablauf.
 
@@ -37,6 +39,7 @@ Quellen: [OpenTofu sensitive outputs](https://opentofu.org/docs/language/values/
 | Datei | Begrenzte Aufgabe |
 | --- | --- |
 | `prepare.mjs` | Private Credential-/Backend-Dateien und Umgebungsvariablen vorbereiten; vorhandene Workload-Outputs/Versionierung prüfen. Keine Prozessausführung. |
+| `prepare-release.mjs` | Private Backend-Konfiguration und erlaubte App-Variablen für CF vorbereiten. Keine Prozessausführung. |
 | `review.mjs` | Verschlüsselten Plan mit Manifest versehen beziehungsweise vor Apply prüfen. Keine Prozessausführung. |
 | `protect-state.mjs`, `artifact.mjs` | Bereits erfasste State-Dateien für Recovery verschlüsseln. Keine Prozessausführung. |
 | `context.mjs` | Eingaben, Workflow-Identität und Planbindung prüfen. |
@@ -50,15 +53,17 @@ Bootstrap und Backend verwenden den Verwaltungs-Bucket. Der Plattform-Job initia
 | --- | --- |
 | `lzc-dev-bootstrap-plan` / `lzc-dev-bootstrap-apply` | Bootstrap-/Backend-Plan und freizugebender Apply |
 | `lzc-dev-platform-plan` / `lzc-dev-platform-apply` | Plattform-Plan und freizugebender Apply |
+| `lzc-dev-runtime-plan` / `lzc-dev-runtime-apply` | Space, Rollen und Laufzeitbenutzer |
+| `lzc-dev-release` | CF-Release; Workload-S3-Zugang und Plattform-/Runtime-State-Schlüssel, kein Projekt-Service-Account |
 | `lzc-dev-recovery` | Separat geschützte Seed-Recovery-Secrets, kein automatischer Recovery-Job |
 
-Die Konfiguration steht in `github-environments.json` und `github-platform-environments.json`. Änderungen an Secret-Zielen oder Schlüsselübertragungen benötigen die entsprechende Benutzerautorisierung. Das Operator-Werkzeug lautet `node infra/ci/configure-github.mjs` beziehungsweise mit `--platform` für die Plattform-Environments.
+Die Konfiguration steht in `github-environments.json`, `github-platform-environments.json`, `github-runtime-environments.json` und `github-release-environments.json`. Änderungen an Secret-Zielen oder Schlüsselübertragungen benötigen die entsprechende Benutzerautorisierung. Das Operator-Werkzeug lautet `node infra/ci/configure-github.mjs` beziehungsweise mit `--platform`, `--runtime` oder `--release` für die jeweiligen Environments.
 
 ## Serialisierung und Feature-Branch
 
 Alle mutierenden Configurator-Workflows verwenden `concurrency.group: configurator-lzc-dev-mutation` und `cancel-in-progress: false`, einschließlich Plan und Freigabewartezeit. Native S3-Sperren haben den Integrationstest nicht bestanden; `backend-safety.json` hält diesen Befund fest. Lokale Remote-Applies und schreibende Parallelzugriffe außerhalb dieser CI-Gruppe bleiben im vereinbarten Betrieb ausgeschlossen. Direkte CLI-Aufrufe durch Credential-Inhaber lassen sich nicht durch einen lokalen Wrapper oder GitHub-Concurrency verhindern.
 
-Feature-Pushes auf `feature/landing-zone-configurator` erzeugen normalerweise nur Pläne. `LZC_PLATFORM_CI_ENABLED=true` aktiviert die Plattform-Pipeline. Ein Feature-Apply braucht zusätzlich eine passende vollständige Commit-SHA in `LZC_PLATFORM_APPLY_COMMIT` beziehungsweise `LZC_BOOTSTRAP_APPLY_COMMIT` und die Environment-Freigabe. Für einen Backend-Lauf wird `LZC_BOOTSTRAP_ROOT=backend` gesetzt. Diese Einmalvariablen nach dem Lauf entfernen. Der manuelle Hauptbranch-Pfad ist für die spätere Übernahme vorbereitet; derzeit wird nichts nach main gemergt.
+Feature-Pushes auf `feature/landing-zone-configurator` erzeugen normalerweise nur Pläne. `LZC_PLATFORM_CI_ENABLED=true` aktiviert die Plattform-Pipeline. Ein Feature-Apply braucht zusätzlich eine passende vollständige Commit-SHA in `LZC_PLATFORM_APPLY_COMMIT` beziehungsweise `LZC_BOOTSTRAP_APPLY_COMMIT` oder `LZC_RUNTIME_APPLY_COMMIT` und die Environment-Freigabe. Für einen Backend-Lauf wird `LZC_BOOTSTRAP_ROOT=backend` gesetzt. Diese Einmalvariablen nach dem Lauf entfernen. Der manuelle Hauptbranch-Pfad ist für die spätere Übernahme vorbereitet; derzeit wird nichts nach main gemergt.
 
 Die vorhandene Plan-Service-Account-Rolle ist nicht rein lesend. Deshalb dürfen diese Workflows ausschließlich vertrauenswürdigen Code ausführen; sie sind nicht für externe Pull Requests vorgesehen.
 
@@ -79,3 +84,19 @@ Nach einem gestarteten Apply versucht ein `always()`-Schritt ausdrücklich `tofu
 ## Betriebsnachweise
 
 Die bestehende Infrastruktur wurde durch diesen Umbau weder ersetzt noch migriert. Die erfolgreiche [Recovery und Plattform-Bereitstellung 36675347654](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675347654) und der [No-op-Plan 36675895279](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675895279) sind dokumentiert. Das abgeschlossene Recovery-Inventar liegt ausschließlich unter [docs/incidents](../../docs/incidents/2026-09-30-recovery-inventory.json); es ist kein ausführbarer Bestandteil der Pipeline. Aktuelle Abnahmen: [Plattform-Betriebsstand](../../docs/platform-readiness.md).
+
+## Runtime und Release
+
+Der Runtime-Root liest vorhandene Plattform-Ausgaben und verwaltet den CF-Space,
+die ausdrücklich benötigte `organization_user`-Mitgliedschaft vor `space_developer`,
+sowie separate PostgreSQL-/Secrets-Laufzeitbenutzer. Sein verschlüsselter State
+liegt im Workload-Bucket. Der erste Teil-Apply wurde regulär gespeichert; ein
+frischer Plan ergänzte die fehlenden CF-Rollen ohne Duplikate oder Recovery-Import.
+
+`LZC_RUNTIME_CI_ENABLED` und `LZC_RELEASE_CI_ENABLED` aktivieren die entsprechenden
+Workflows. Die Benutzerfreigabe vom 2026-09-30 umfasst notwendige Configurator-
+Deployment-Applies bis MVP; Scope-/Planprüfung und Environment-Freigaben bleiben.
+Der Release-Workflow baut ohne Cloud-Secrets, lädt ein Paket desselben Runs und
+prüft dessen SHA-256. Erst der geschützte Deploy-Job liest Zugangsdaten. Die normalen
+`cf push`-/Task-Logs bleiben sichtbar; Umgebungswerte sind maskiert. Der API-Zugang
+bleibt bis zur Login-Implementierung gesperrt. [Release-Details](../../deploy/cloud-foundry/README.md).

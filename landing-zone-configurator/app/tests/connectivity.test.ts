@@ -14,29 +14,39 @@ describe("connection diagnostics", () => {
       "28P01",
     );
   });
-  it("checks the instance policy and revokes the temporary session", async () => {
-    const id = "00000000-0000-4000-8000-000000000001";
-    vi.stubEnv("LZC_SECRETS_ADDRESS", "https://prod.sm.eu01.stackit.cloud");
-    vi.stubEnv("LZC_SECRETS_INSTANCE_ID", id);
-    vi.stubEnv("LZC_SECRETS_USERNAME", "runtime");
-    vi.stubEnv("LZC_SECRETS_PASSWORD", "fake-test-password");
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(
-        Response.json({ auth: { client_token: "fake-token" } }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({
-          [`${id}/data/configurator/connectivity-probe`]: ["read"],
-        }),
-      )
-      .mockResolvedValueOnce(new Response(null, { status: 404 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
-    vi.stubGlobal("fetch", fetch);
-    await expect(checkSecrets()).resolves.toBeUndefined();
-    expect(fetch).toHaveBeenLastCalledWith(
-      "https://prod.sm.eu01.stackit.cloud/v1/auth/token/revoke-self",
-      expect.objectContaining({ method: "POST", redirect: "error" }),
-    );
-  });
+  it.each([403, 404])(
+    "rejects anonymous access (%s) and revokes the temporary session",
+    async (anonymousStatus) => {
+      const id = "00000000-0000-4000-8000-000000000001";
+      vi.stubEnv("LZC_SECRETS_ADDRESS", "https://prod.sm.eu01.stackit.cloud");
+      vi.stubEnv("LZC_SECRETS_INSTANCE_ID", id);
+      vi.stubEnv("LZC_SECRETS_USERNAME", "runtime");
+      vi.stubEnv("LZC_SECRETS_PASSWORD", "fake-test-password");
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({ auth: { client_token: "fake-token" } }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: anonymousStatus }));
+      if (anonymousStatus === 403)
+        fetch.mockResolvedValueOnce(new Response(null, { status: 404 }));
+      fetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+      vi.stubGlobal("fetch", fetch);
+      if (anonymousStatus === 403)
+        await expect(checkSecrets()).resolves.toBeUndefined();
+      else
+        await expect(checkSecrets()).rejects.toThrow(
+          "anonymous-access-not-denied",
+        );
+      expect(fetch).toHaveBeenLastCalledWith(
+        "https://prod.sm.eu01.stackit.cloud/v1/auth/token/revoke-self",
+        expect.objectContaining({ method: "POST", redirect: "error" }),
+      );
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        `https://prod.sm.eu01.stackit.cloud/v1/${id}/data/configurator/connectivity-probe`,
+        expect.not.objectContaining({ headers: expect.anything() }),
+      );
+    },
+  );
 });

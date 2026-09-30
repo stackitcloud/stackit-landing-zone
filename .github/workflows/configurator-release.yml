@@ -5,6 +5,7 @@ on:
     branches: [feature/landing-zone-configurator]
     paths:
       - 'landing-zone-configurator/app/**'
+      - 'landing-zone-configurator/deploy/cloud-foundry/**'
       - 'landing-zone-configurator/infra/ci/prepare-release.mjs'
       - '.github/workflows/configurator-release.yml'
   workflow_dispatch:
@@ -140,7 +141,7 @@ jobs:
           test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
       - name: CF push application
         id: push
-        run: cf push -f app/cf/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-vars.json" --redact-env
+        run: cf push -f deploy/cloud-foundry/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-vars.json" --redact-env
       - name: CF network diagnostics
         timeout-minutes: 3
         run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-network.js' --name "network-$GITHUB_RUN_ID" -m 128M -k 512M --wait

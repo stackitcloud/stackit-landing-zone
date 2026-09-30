@@ -79,4 +79,4 @@ Nächster Ausbau ist die CF-Runtime mit Zugriffstests zu Datenbank und Secrets M
 - [GitHub Environment-Verfügbarkeit und Einrichtung](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 - [Cloud Foundry Rolling Deployments](https://docs.cloudfoundry.org/devguide/deploy-apps/rolling-deploy.html)
 
-Details zum implementierten Release und seinen Grenzen: [CF-Release](../app/cf/README.md).
+Details zum implementierten Release und seinen Grenzen: [CF-Release](../deploy/cloud-foundry/README.md).

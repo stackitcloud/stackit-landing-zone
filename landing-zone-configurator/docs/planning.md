@@ -1,7 +1,7 @@
 # Landing Zone Configurator – Architektur und Planung
 
-> Stand: 2026-09-29 · Repo-Ausgangsstand: `2161871`
-> Status: Architektur- und Umsetzungsplanung, noch keine Implementierung.
+> Stand: 2026-09-30 · Architektur-Ausgangsstand: `2161871`
+> Status: Plattform und CF-App-Grundgerüst implementiert; Service-Anbindung in Abnahme. Fachlicher MVP noch offen.
 > `[x]` = dokumentiert oder entschieden; `[ ]` = offen. Technische Empfehlungen sind noch keine beschlossenen Produktentscheidungen.
 
 ## 1. Zielbild und bestätigte Entscheidungen
@@ -14,7 +14,7 @@ Eine zentral auf STACKIT Cloud Foundry gehostete Anwendung begleitet Benutzer vo
 - [x] Sämtliche Configurator-Dienste inklusive Aktivierung werden via IaC erstellt; keine manuelle Portal-Provisionierung.
 - [x] Erste Entwicklungsumgebung: lzc-dev in eu01.
 - [x] App, IaC und Dokumentation unter `landing-zone-configurator/` getrennt vom Accelerator organisieren.
-- [x] Betreiberprojekt und Service-Account-Datei sind lokal bereitgestellt; `NAME=WERT`-Format geprüft; Projekt-Lesezugriff geprüft; Schreibrechte noch zu prüfen.
+- [x] Betreiberprojekt und Service-Account-Datei sind lokal bereitgestellt; `NAME=WERT`-Format geprüft; Projektzugriff sowie Bereitstellung von Plattform und Runtime durch CI-Applies nachgewiesen.
 
 - [x] Von Beginn an mehrere unabhängige Kundenorganisationen unterstützen. Mandantentrennung ist Voraussetzung der ersten Freigabe, kein späterer Ausbau.
 - [x] Zunächst ausschließlich Konfigurationen verändern und mit freigegebenem Accelerator-Code ausführen. Eigene Terraform-Modifikationen aus Forks folgen später.
@@ -617,3 +617,37 @@ CI-Entscheidung 2026-09-30: Auf Benutzerwunsch den eigenen JavaScript-Deployment
 
 
 CI-Vereinfachung abgenommen: echte direkte OpenTofu-Pläne für Bootstrap (36677111141), Plattform (36677111032) und Backend (36677367229) jeweils ohne Änderungen; Apply jeweils übersprungen. Native Logs sichtbar und gegen bekannte Credentials geprüft. Validierung einschließlich Linux-Timeout-Test erfolgreich. Temporäre Backend-Auswahl entfernt; Feature-Branch bleibt getrennt von main.
+
+
+## Aktueller Meilenstein: CF-Hosting und Service-Verbindungen
+
+Owner: `@lweberru`. Alle Änderungen bleiben auf `feature/landing-zone-configurator`.
+Die Benutzerfreigabe vom 2026-09-30 umfasst notwendige Configurator-Deployment-
+Applies bis zum MVP. Konkrete Pläne werden weiterhin geprüft; die Freigabe ist
+keine Erlaubnis, Kundenressourcen oder fremde Projekte zu ändern.
+
+- [x] Separate Runtime-IaC für CF-Space und Rollen.
+- [x] Separate PostgreSQL-/Secrets-Laufzeitidentitäten; kein Migrations- oder Provisionierungszugang in der App.
+- [x] Deklaratives CF-Manifest unter `deploy/cloud-foundry/`; OpenTofu und Release haben getrennte Zuständigkeiten.
+- [x] Unabhängige Release-Pipeline mit direktem `cf push`, versioniertem Node-Runtime-Paket und Verbindungstest als CF-Task.
+- [x] Öffentliche HTTPS-Route, UI-/JS-Auslieferung und gesperrte API (401) geprüft.
+- [x] PostgreSQL: Login, SELECT und geprüfte TLS-Verbindung aus CF erfolgreich.
+- [ ] Secrets Manager: authentifizierten Lese-Endpunkt und Ablehnung ohne Token abschließend prüfen; Login und TLS funktionieren.
+- [ ] Abschließender komplett erfolgreicher Release-Run und Abnahme dokumentiert.
+
+Nachweise und Netzkorrektur: [Plattform-Betriebsstand](platform-readiness.md).
+Das Grundgerüst ist noch kein nutzbarer Configurator und verarbeitet keine
+Kundenkonfigurationen oder persönlichen Cloud-Zugangsdaten.
+
+Nächster fachlicher Meilenstein:
+
+- [ ] GitHub-App/OAuth-Integration festlegen, Callback-URL registrieren und Benutzerlogin umsetzen.
+- [ ] Mandanten, Mitgliedschaften und Sessions mit Datenbankschema/Migrationen/RLS absichern.
+- [ ] Ein vorhandenes Accelerator-Template als ersten vertikalen Ablauf importieren, fachlich bearbeiten und im persönlichen Fork speichern.
+- [ ] Persönliche Deployment-Credentials: mandantenbezogene Zugriffsregeln, Secrets-Schreibidentität und Write/Read/Rotation-Test ergänzen.
+- [ ] Danach Plan/Apply-Runner, Freigaben, grafische Konfiguration und begrenzten Chat integrieren.
+
+Vor Produktion zusätzlich: eigener CF-Deployer mit nur Space-Rechten, schmalere
+Credential-Veröffentlichung für Releases, Rotation, Restore-Abnahme, Rolling
+Deployment und definierter Rollback. Diese Punkte werden nicht durch den ersten
+Konnektivitätstest als erledigt markiert.

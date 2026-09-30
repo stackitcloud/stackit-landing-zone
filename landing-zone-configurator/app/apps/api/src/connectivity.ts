@@ -62,32 +62,21 @@ export async function checkSecrets(): Promise<void> {
   };
   let revokeSucceeded = false;
   try {
-    // Verify the instance-specific read policy, without reading any tenant secrets.
+    // Reserved operator probe path; never read tenant paths or list tenant keys.
+    // STACKIT supports KV v2, not the general Vault system/capabilities API.
     const path = `${instance}/data/configurator/connectivity-probe`;
-    const capabilities = await request("sys/capabilities-self", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ paths: [path] }),
-    });
-    if (!capabilities.ok)
-      throw new Error(`capabilities-http-${capabilities.status}`);
-    const data = (await capabilities.json()) as Record<string, unknown>;
-    const permissions = data[path];
-    if (
-      !Array.isArray(permissions) ||
-      !permissions.includes("read") ||
-      permissions.includes("create") ||
-      permissions.includes("update")
-    ) {
-      throw new Error("unexpected-runtime-policy");
+    const anonymous = await request(path, {});
+    await anonymous.arrayBuffer();
+    if (anonymous.status !== 401 && anonymous.status !== 403) {
+      throw new Error("anonymous-access-not-denied");
     }
-    const listing = await request(`${instance}/metadata/?list=true`, {
-      headers,
-    });
-    // An empty, authorized KV store returns 404. A denied request returns 403.
-    if (listing.status !== 200 && listing.status !== 404)
-      throw new Error(`metadata-http-${listing.status}`);
-    await listing.arrayBuffer(); // Discard secret names; never log responses.
+    const read = await request(path, { headers });
+    // 404 is expected for the absent probe key, but only after the same endpoint
+    // has rejected anonymous access. An unsupported route returning 404 to both
+    // callers must not count as success. This is not a secret write/read roundtrip.
+    if (read.status !== 200 && read.status !== 404)
+      throw new Error(`read-http-${read.status}`);
+    await read.arrayBuffer();
   } finally {
     const revoked = await request("auth/token/revoke-self", {
       method: "POST",
@@ -104,7 +93,7 @@ export function safeFailure(error: unknown): string {
     return "connection-timeout";
   if (
     error instanceof Error &&
-    /^(missing-configuration|tls-required|unexpected-service-address|invalid-instance|missing-session-token|unexpected-runtime-policy|session-revoke-failed|(?:login|capabilities|metadata)-http-\d{3})$/.test(
+    /^(missing-configuration|tls-required|unexpected-service-address|invalid-instance|missing-session-token|anonymous-access-not-denied|session-revoke-failed|(?:login|read)-http-\d{3})$/.test(
       error.message,
     )
   )

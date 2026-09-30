@@ -11,15 +11,15 @@ Alle Configurator-Dienste werden per OpenTofu verwaltet. Die Infrastruktur bleib
 | `bootstrap` | Workload-State-Bucket und dessen S3-Zugang | Verwaltungs-Bucket |
 | `backend` | Versionierung des Workload-State-Buckets | Verwaltungs-Bucket |
 | `platform` | CF-Organisation/Manager, PostgreSQL/Datenbank/Migrationsnutzer, Secrets Manager/Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Token | Workload-Bucket |
-| `runtime` (geplant) | CF-Spaces, Apps, Bindings, eingeschränkte Laufzeitidentitäten | separater State |
+| `runtime` | CF-Space, Organisations-/Space-Rollen, PostgreSQL-/Secrets-Laufzeitbenutzer | Workload-Bucket, eigener Schlüssel |
 
-Bootstrap, Backend und Plattform sind in `lzc-dev/eu01` provisioniert. Die Plattform enthält neun verwaltete Ressourcen; der [Betriebsstand](../docs/platform-readiness.md) dokumentiert Abnahme und offene Runtime-Arbeiten.
+Bootstrap, Backend, Plattform und Runtime sind in `lzc-dev/eu01` provisioniert. Die Plattform enthält neun verwaltete Ressourcen; der [Betriebsstand](../docs/platform-readiness.md) dokumentiert Abnahme und offene Konnektivitätsarbeiten.
 
 Der STACKIT-Provider aktiviert Object Storage und Model Serving bei der ersten Ressourcenerstellung. Für Bucket-Versionierung spricht der AWS-Provider ausschließlich die STACKIT-S3-API an; es werden keine AWS-Ressourcen angelegt.
 
 ## Deployment: direkte OpenTofu-Schritte in CI
 
-[Bootstrap-Workflow](../../.github/workflows/configurator-bootstrap.yml) und [Plattform-Workflow](../../.github/workflows/configurator-platform.yml) führen `tofu init`, `validate`, `plan` und `apply` direkt aus. Normale CLI-Ausgaben sind live sichtbar. Kleine Hilfsprogramme bereiten Credentials vor, prüfen das gespeicherte Plan-Artefakt und verschlüsseln Recovery-Snapshots; sie führen keine Deployments aus.
+[Bootstrap-Workflow](../../.github/workflows/configurator-bootstrap.yml), [Plattform-Workflow](../../.github/workflows/configurator-platform.yml) und [Runtime-Workflow](../../.github/workflows/configurator-runtime.yml) führen `tofu init`, `validate`, `plan` und `apply` direkt aus. Normale CLI-Ausgaben sind live sichtbar. Kleine Hilfsprogramme bereiten Credentials vor, prüfen das gespeicherte Plan-Artefakt und verschlüsseln Recovery-Snapshots; sie führen keine Deployments aus.
 
 [CI-Betriebsanleitung](ci/README.md): Environments, Planfreigabe, Timeouts, State-Sicherung und Feature-Branch-Tests. Remote-Applies ausschließlich über die gemeinsam serialisierte CI; keine parallelen lokalen Applies. S3-Locking hat den Integrationstest nicht bestanden und wird nicht als funktionierender Schutz behauptet.
 
@@ -77,7 +77,7 @@ Verschlüsselte Seed-Sicherungen liegen im Verwaltungs-Bucket unter `recovery/se
 
 Bei einem fehlgeschlagenen Apply zuerst CI-Logs, verschlüsselte Recovery-Artefakte und tatsächlichen Ressourcenbestand prüfen. Keinen alten Plan blind wiederholen, keinen existierenden State überschreiben. Imports und Credential-Rotation müssen zum konkreten Vorfall passen und unter derselben Single-Writer-Regel erfolgen. Der frühere automatische Einmal-Recovery-Pfad wurde nach Abschluss entfernt.
 
-Offen sind CF-Runtime/Bindings und Verbindungstests aus CF, eingeschränkte App-Rollen/RLS, automatisierte Credential-Rotation sowie ein vollständiger getesteter Betriebs-/Restore-Prozess. [Planung](../docs/planning.md).
+Die App und ihre CF-Umgebungsvariablen werden im separaten [Release-Workflow](../../.github/workflows/configurator-release.yml) durch das deklarative [CF-Manifest](../deploy/cloud-foundry/manifest.yml) verwaltet. Offen sind erfolgreiche Verbindungstests aus CF, eingeschränkte App-Rollen/RLS, automatisierte Credential-Rotation sowie ein vollständiger getesteter Betriebs-/Restore-Prozess. [Planung](../docs/planning.md).
 
 
 Direkte CLI-Pipelines geprüft (2026-09-30): [Bootstrap 36677111141](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111141) und [Plattform 36677111032](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111032) zeigen jeweils `No changes`, mit sichtbaren nativen Init-/Plan-Logs und übersprungenem Apply. [Validierung 36677111055](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111055) bestätigt auch den GNU-Timeout-Test auf Linux. Aktuelle weitere Abnahmen stehen im [Plattform-Betriebsstand](../docs/platform-readiness.md).
