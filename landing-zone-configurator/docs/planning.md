@@ -651,3 +651,16 @@ Vor Produktion zusätzlich: eigener CF-Deployer mit nur Space-Rechten, schmalere
 Credential-Veröffentlichung für Releases, Rotation, Restore-Abnahme, Rolling
 Deployment und definierter Rollback. Diese Punkte werden nicht durch den ersten
 Konnektivitätstest als erledigt markiert.
+
+
+## Portal-Design und Beginn des Login-Meilensteins (2026-09-30)
+
+Neue bestätigte Anforderung: Das Look & Feel soll identisch zum offiziellen
+STACKIT Portal werden. Referenz ist die vom Benutzer geöffnete Projektstartseite.
+[Design-Abgleich und Fortschritt](design-reference.md) dokumentieren die Abnahme.
+Die Portalansicht konnte wegen eines Browser-Verbindungsfehlers noch nicht gelesen
+werden; keine konkreten Designwerte sind bereits bestätigt.
+
+Der [GitHub-App-Entwurf](../deploy/github/README.md) und die getesteten
+PKCE-/State-/Session-Token-Helfer sind vorbereitet. Dies aktiviert noch keinen
+Login und bedeutet keine abgeschlossene Session-, RLS- oder Token-Store-Integration.

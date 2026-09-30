@@ -1,0 +1,16 @@
+{
+  "name": "Landing Zone Configurator Dev",
+  "url": "https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud",
+  "description": "User-authorized configuration management for the STACKIT Landing Zone Accelerator.",
+  "public": true,
+  "callback_urls": [
+    "https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud/auth/github/callback"
+  ],
+  "hook_attributes": { "active": false },
+  "default_permissions": {
+    "metadata": "read",
+    "contents": "write",
+    "administration": "write"
+  },
+  "default_events": []
+}
