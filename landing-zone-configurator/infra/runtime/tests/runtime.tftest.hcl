@@ -24,7 +24,7 @@ run "isolated_runtime_identities" {
     error_message = "Connectivity stage requires read-only Secrets access."
   }
   assert {
-    condition     = cloudfoundry_space.configurator.allow_ssh == false && cloudfoundry_space_role.deployer.type == "space_developer"
+    condition     = cloudfoundry_space.configurator.allow_ssh == false && cloudfoundry_space_role.deployer.type == "space_developer" && cloudfoundry_org_role.deployer_member.type == "organization_user"
     error_message = "Space deployment permissions must be explicit."
   }
 }

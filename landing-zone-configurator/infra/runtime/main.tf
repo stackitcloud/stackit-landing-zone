@@ -12,10 +12,17 @@ resource "cloudfoundry_space" "configurator" {
     prevent_destroy = true
   }
 }
-resource "cloudfoundry_space_role" "deployer" {
-  space    = cloudfoundry_space.configurator.id
+# CF requires organization membership even for an existing org manager.
+resource "cloudfoundry_org_role" "deployer_member" {
+  org      = var.cf_org_id
   username = var.cf_username
-  type     = "space_developer"
+  type     = "organization_user"
+}
+resource "cloudfoundry_space_role" "deployer" {
+  depends_on = [cloudfoundry_org_role.deployer_member]
+  space      = cloudfoundry_space.configurator.id
+  username   = var.cf_username
+  type       = "space_developer"
 }
 resource "stackit_postgresflex_user" "application" {
   project_id  = var.project_id
