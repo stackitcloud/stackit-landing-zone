@@ -14,9 +14,17 @@ const keySchema = z.object({
     sub: z.uuid(),
     // Stored audience is data, never used as a user-controlled request destination.
     aud: z.enum([
+      "https://accounts.stackit.cloud",
       "https://service-account.api.stackit.cloud",
       "https://stackit-service-account-prod.apps.01.cf.eu01.stackit.cloud",
     ]),
+    tokenEndpoint: z
+      .enum([
+        "https://accounts.stackit.cloud/oauth/v2/token",
+        "https://service-account.api.stackit.cloud/token",
+        "https://stackit-service-account-prod.apps.01.cf.eu01.stackit.cloud/token",
+      ])
+      .optional(),
     privateKey: z.string().min(100).max(16384),
   }),
 });

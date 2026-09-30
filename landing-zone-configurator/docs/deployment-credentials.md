@@ -100,3 +100,18 @@ Mobile Profilverwaltung visuell anhand des Test-Screenshots geprüft.
 Live bestätigt: `/credentials`, Reload, mobile Breite, keine Browserfehler und
 401 für anonymes GET/POST/DELETE. Kein echter Schlüssel für die Live-Abnahme hochgeladen;
 der persönliche Upload durch den Benutzer bleibt ein separater Abnahmepunkt.
+
+## Korrektur: aktuelles STACKIT-Accounts-Schlüsselformat
+
+Die ursprüngliche Audience-Allowlist berücksichtigte nur die älteren Service-Account-
+Hosts und wies gültige Dateien mit `credentials.aud = https://accounts.stackit.cloud`
+zurück. Die Validierung akzeptiert nun auch diese Audience und bewahrt das optionale
+`credentials.tokenEndpoint`, insbesondere `https://accounts.stackit.cloud/oauth/v2/token`.
+Nur ausdrücklich bekannte HTTPS-Endpunkte sind zulässig; keine beliebigen Upload-URLs.
+Regressionstest: aktuelles Format wird akzeptiert und vollständig an den Secret-Store
+übergeben; manipulierte Token-Endpunkte werden abgewiesen. Bestehende ältere Dateien
+ohne `tokenEndpoint` bleiben unterstützt. Ein abgewiesener Upload hat keinen Profil-
+oder Secret-Schreibvorgang ausgelöst.
+
+Quellen: [STACKIT Token-Abruf](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/get-access-token/),
+[SDK-Unterstützung für tokenEndpoint](https://github.com/stackitcloud/stackit-sdk-go/releases/).

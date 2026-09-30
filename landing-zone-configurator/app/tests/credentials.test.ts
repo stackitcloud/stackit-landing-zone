@@ -206,3 +206,40 @@ it("protects credential routes with the session and CSRF, rejects identity injec
   ).toBe(204);
   expect(profiles.remove).toHaveBeenCalledExactlyOnceWith(session, id);
 });
+
+it("preserves the current STACKIT Accounts audience and token endpoint through upload", async () => {
+  const current = {
+    ...key,
+    credentials: {
+      ...key.credentials,
+      aud: "https://accounts.stackit.cloud",
+      tokenEndpoint: "https://accounts.stackit.cloud/oauth/v2/token",
+    },
+  };
+  const parsed = parseServiceAccountKey(current);
+  expect(parsed).toEqual(current);
+  const request = vi.fn<typeof fetch>(async (url) =>
+    String(url).includes("auth/userpass")
+      ? Response.json({ auth: { client_token: "test-token" } })
+      : new Response(null, { status: 204 }),
+  );
+  const secrets = new VaultCredentialSecrets(
+    new VaultConnection(settings, request),
+  );
+  await secrets.put(session, randomUUID(), parsed);
+  const saved = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
+  expect(saved.data.key.credentials).toEqual(current.credentials);
+  for (const tokenEndpoint of [
+    "https://attacker.example/token",
+    "http://accounts.stackit.cloud/oauth/v2/token",
+    "https://accounts.stackit.cloud.attacker.example/oauth/v2/token",
+    "https://accounts.stackit.cloud/oauth/v2/token?redirect=other",
+  ]) {
+    expect(() =>
+      parseServiceAccountKey({
+        ...current,
+        credentials: { ...current.credentials, tokenEndpoint },
+      }),
+    ).toThrow();
+  }
+});
