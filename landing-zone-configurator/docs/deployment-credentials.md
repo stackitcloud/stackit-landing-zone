@@ -79,7 +79,7 @@ Vault-Login-Tokens werden nach jeder Operation widerrufen, auch bei Fehlern.
 - [x] Session-/CSRF-/Identitätsinjektions- und Secret-Pfad-Negativtests.
 - [x] Echtes PostgreSQL: fremde Mandanten, fremde Eigentümer im selben Mandanten,
   fehlende Rolle, kein Secret in Metadaten und wiederholbare Fehlerbereinigung.
-- [ ] Feature-Branch-Release inklusive Migration auf lzc-dev abnehmen.
+- [x] Feature-Branch-Release inklusive Migration auf lzc-dev abnehmen.
 - [ ] Persönliches Profil über die live bereitgestellte UI abnehmen.
 - [ ] STACKIT-Authentifizierung und lesende Rechte-/Zielprüfung ergänzen.
 - [ ] Freigegebenen Accelerator-Commit und unveränderliche Konfiguration binden.
@@ -88,3 +88,15 @@ Vault-Login-Tokens werden nach jeder Operation widerrufen, auch bei Fehlern.
 
 Die Betreiber-Schlüsseldatei aus dem Repository-Root wird nicht als Benutzerprofil
 importiert. Lokale Tests nutzen nur generierte oder künstliche Testschlüssel.
+
+## Technische Release-Abnahme
+
+Code-Commit `629fab6` auf `feature/landing-zone-configurator`.
+[Validierung 36706267168](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36706267168)
+und [Release 36706267163](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36706267163)
+erfolgreich. 38 Anwendungstests, neun echte PostgreSQL-Tests und 14 Browserfälle
+bestanden. Migration und CF-Verbindungstests zu PostgreSQL und Secrets Manager grün.
+Mobile Profilverwaltung visuell anhand des Test-Screenshots geprüft.
+Live bestätigt: `/credentials`, Reload, mobile Breite, keine Browserfehler und
+401 für anonymes GET/POST/DELETE. Kein echter Schlüssel für die Live-Abnahme hochgeladen;
+der persönliche Upload durch den Benutzer bleibt ein separater Abnahmepunkt.
