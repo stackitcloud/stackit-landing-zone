@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { writeProtectedArtifact } from "./artifact.mjs";
 const root = process.env.LZC_ROOT;
-if (!["bootstrap", "backend", "platform"].includes(root)) throw new Error("Invalid state root");
+if (!["bootstrap", "backend", "platform", "runtime"].includes(root)) throw new Error("Invalid state root");
 const privateDir = process.env.LZC_PRIVATE;
 const key = JSON.parse(readFileSync(resolve(privateDir, `${root}.encryption.json`))).key_provider.pbkdf2.state.passphrase;
 const destination = resolve(".local/ci-recovery");

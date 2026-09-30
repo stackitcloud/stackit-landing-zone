@@ -5,7 +5,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { deploymentInputs } from "./context.mjs";
 
 const [mode] = process.argv.slice(2);
-if (!["management", "workload", "validation"].includes(mode)) throw new Error("Usage: prepare.mjs management|workload|validation");
+if (!["management", "workload", "runtime", "validation"].includes(mode)) throw new Error("Usage: prepare.mjs management|workload|runtime|validation");
 process.umask(0o077);
 const privateDir = resolve(process.env.RUNNER_TEMP, "lzc-private");
 mkdirSync(privateDir, { recursive: true, mode: 0o700 });
@@ -36,7 +36,7 @@ function backend(root, bucket, inputs) {
 }
 if (mode === "validation") {
   const root = required("LZC_ROOT");
-  if (!["seed", "seed-protection", "bootstrap", "backend", "platform"].includes(root)) throw new Error("Invalid validation root");
+  if (!["seed", "seed-protection", "bootstrap", "backend", "platform", "runtime"].includes(root)) throw new Error("Invalid validation root");
   publish("TF_ENCRYPTION", encryption(root, randomBytes(48).toString("base64url")), true);
   publish("TF_DATA_DIR", resolve(privateDir, `${root}-data`));
 } else {
@@ -48,7 +48,7 @@ if (mode === "validation") {
     const key = required("LZC_SERVICE_ACCOUNT_KEY");
     try { JSON.parse(key); } catch { throw new Error("Invalid service account JSON"); }
     writeFileSync(resolve(privateDir, "service-account.json"), key, { mode: 0o600 });
-    const roots = inputs.root === "platform" ? ["bootstrap", "backend", "platform"] : ["bootstrap", "backend"];
+    const roots = inputs.root === "runtime" ? ["bootstrap", "backend", "platform", "runtime"] : inputs.root === "platform" ? ["bootstrap", "backend", "platform"] : ["bootstrap", "backend"];
     for (const root of roots) {
       const config = encryption(root, required(`LZC_STATE_KEY_${root.toUpperCase()}`));
       if (root === inputs.root) publish("TF_ENCRYPTION", config, true);
@@ -64,15 +64,28 @@ if (mode === "validation") {
     publish("TF_DATA_DIR", resolve(privateDir, `${inputs.root}-data`));
     publish("LZC_PLAN", resolve(".local/ci-plan/review.tfplan"));
     mkdirSync(resolve(".local/ci-plan"), { recursive: true, mode: 0o700 });
+  } else if (mode === "runtime") {
+    const platform = readJson(resolve(privateDir,"platform-outputs.json"));
+    const cf = platform.cf_runtime?.value, ids = platform.service_ids?.value;
+    if(inputs.root !== "runtime" || !cf?.org_id || !cf?.api_url || !cf?.username || !cf?.password || !platform.model_serving_token?.value || !ids?.database_instance_id || !ids?.secrets_instance_id) throw new Error("Platform outputs incomplete");
+    publish("CF_API_URL", cf.api_url);
+    publish("CF_USER", cf.username, true);
+    publish("CF_PASSWORD", cf.password, true);
+    publish("TF_VAR_cf_org_id", cf.org_id);
+    publish("TF_VAR_cf_username", cf.username, true);
+    publish("TF_VAR_database_instance_id", ids.database_instance_id);
+    publish("TF_VAR_secrets_instance_id", ids.secrets_instance_id);
+    publish("TF_VAR_model_serving_token", platform.model_serving_token.value, true);
   } else {
-    if (!["backend", "platform"].includes(inputs.root)) throw new Error("Workload inputs not required for this root");
+    if (!["backend", "platform", "runtime"].includes(inputs.root)) throw new Error("Workload inputs not required for this root");
     const outputs = readJson(resolve(privateDir, "bootstrap-outputs.json"));
     const storage = outputs.backend?.value, credentials = outputs.backend_credentials?.value;
     if (storage?.bucket !== `${inputs.prefix}-state-${inputs.project.slice(0,8)}` || storage?.region !== inputs.region || !credentials?.access_key || !credentials?.secret_key) throw new Error("Invalid workload backend outputs");
-    if (inputs.root === "platform") {
+    if (["platform", "runtime"].includes(inputs.root)) {
       const protection = readJson(resolve(privateDir, "backend-outputs.json"));
       if (protection.versioning_enabled?.value !== true || protection.state_bucket_name?.value !== storage.bucket) throw new Error("Versioned workload backend is not ready");
-      backend("platform", storage.bucket, inputs);
+      backend(inputs.root, storage.bucket, inputs);
+      if(inputs.root === "runtime") backend("platform", storage.bucket, inputs);
       publish("AWS_ACCESS_KEY_ID", credentials.access_key, true);
       publish("AWS_SECRET_ACCESS_KEY", credentials.secret_key, true);
     } else {

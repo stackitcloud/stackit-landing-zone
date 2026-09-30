@@ -54,7 +54,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        root: [seed, seed-protection, bootstrap, backend, platform]
+        root: [seed, seed-protection, bootstrap, backend, platform, runtime]
     defaults:
       run:
         working-directory: landing-zone-configurator

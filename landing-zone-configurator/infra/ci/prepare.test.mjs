@@ -14,3 +14,16 @@ test("prepare writes private files, keeps credentials out of backend HCL",()=>fi
 test("platform switches to workload backend only after matching versioning proof",()=>fixture((dir,env,run)=>{assert.equal(run("management").status,0);outputs(dir,false);writeFileSync(env.GITHUB_ENV,"");const failed=run("workload");assert.notEqual(failed.status,0);assert.equal(readFileSync(env.GITHUB_ENV,"utf8"),"");outputs(dir);const r=run("workload");assert.equal(r.status,0,r.stderr);assert.equal(exported(env.GITHUB_ENV).AWS_SECRET_ACCESS_KEY,"workload-secret");assert.match(readFileSync(join(dir,"lzc-private/platform.backend.hcl"),"utf8"),/lzc-dev-state-00000000/);}));
 test("backend provider gets workload credentials without replacing management S3 credentials",()=>fixture((dir,env,run)=>{assert.equal(run("management",{LZC_ROOT:"backend"}).status,0);outputs(dir);const r=run("workload",{LZC_ROOT:"backend"});assert.equal(r.status,0,r.stderr);const v=exported(env.GITHUB_ENV);assert.equal(v.AWS_SECRET_ACCESS_KEY,"management-secret");assert.equal(v.TF_VAR_storage_secret_key,"workload-secret");}));
 test("validation does not need deployment credentials or touch existing local state keys",()=>fixture((_dir,env,run)=>{const patch=Object.fromEntries(Object.keys(base).map(k=>[k,""]));const r=run("validation",{...patch,LZC_ROOT:"seed"});assert.equal(r.status,0,r.stderr);const v=exported(env.GITHUB_ENV);assert.ok(JSON.parse(v.TF_ENCRYPTION).key_provider.pbkdf2.state.passphrase.length>=32);assert.equal(v.AWS_ACCESS_KEY_ID,undefined);}));
+
+test("runtime reads platform credentials privately and targets its own workload state",()=>fixture((dir,env,run)=>{
+ const patch={LZC_ROOT:"runtime",LZC_STATE_KEY_RUNTIME:"r".repeat(40)};
+ assert.equal(run("management",patch).status,0); outputs(dir);
+ assert.equal(run("workload",patch).status,0);
+ for(const root of ["platform","runtime"]) assert.match(readFileSync(join(dir,`lzc-private/${root}.backend.hcl`),"utf8"),/lzc-dev-state-00000000/);
+ assert.notEqual(run("runtime",patch).status,0);
+ writeFileSync(join(dir,"lzc-private/platform-outputs.json"),JSON.stringify({cf_runtime:{value:{api_url:"https://example.invalid",org_id:"org",username:"cf-user",password:"cf-secret"}},service_ids:{value:{database_instance_id:"db",secrets_instance_id:"sm"}},model_serving_token:{value:"model-secret"}}));
+ const result=run("runtime",patch); assert.equal(result.status,0,result.stderr);
+ const v=exported(env.GITHUB_ENV);
+ assert.equal(v.CF_PASSWORD,"cf-secret"); assert.equal(v.TF_VAR_database_instance_id,"db");
+ assert.equal(JSON.parse(v.TF_ENCRYPTION).key_provider.pbkdf2.state.passphrase,patch.LZC_STATE_KEY_RUNTIME);
+}));

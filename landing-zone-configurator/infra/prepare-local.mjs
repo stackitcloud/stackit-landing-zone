@@ -6,7 +6,7 @@ import { parseEnv } from "node:util";
 import { stateKey } from "./state-key.mjs";
 const infra = dirname(fileURLToPath(import.meta.url)), base = resolve(infra,".."), repository = resolve(base,"..");
 const [root, flag, ...extra] = process.argv.slice(2), validation = flag === "--validation";
-if (!["seed","seed-protection","bootstrap","backend","platform"].includes(root) || (flag && !validation) || extra.length) throw new Error("Usage: prepare-local.mjs ROOT [--validation]");
+if (!["seed","seed-protection","bootstrap","backend","platform","runtime"].includes(root) || (flag && !validation) || extra.length) throw new Error("Usage: prepare-local.mjs ROOT [--validation]");
 if (!validation && !["seed","seed-protection"].includes(root)) throw new Error("Remote deployment preparation belongs to the serialized GitHub workflow; use --validation locally");
 if (process.env.CI || process.env.GITHUB_ACTIONS) throw new Error("Use infra/ci/prepare.mjs in CI");
 process.umask(0o077);

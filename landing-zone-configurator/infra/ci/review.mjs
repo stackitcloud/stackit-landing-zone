@@ -10,7 +10,7 @@ if (!["seal", "verify"].includes(command)) throw new Error("Usage: review.mjs se
 const inputs = deploymentInputs(process.env);
 if (command === "verify") assertApplyExecution(JSON.parse(readFileSync(resolve(infra,"ci/backend-safety.json"))), process.env);
 const pieces = [];
-for (const root of ["bootstrap", "backend", "platform"]) {
+for (const root of ["bootstrap", "backend", "platform", "runtime"]) {
   for (const file of readdirSync(resolve(infra,root)).filter(f => f.endsWith(".tf") || f === ".terraform.lock.hcl").sort()) {
     pieces.push(`${root}/${file}:${digest(readFileSync(resolve(infra,root,file)))}`);
   }

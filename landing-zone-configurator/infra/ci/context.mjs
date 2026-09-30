@@ -7,7 +7,7 @@ export function deploymentInputs(env) {
   };
   if (required("GITHUB_REPOSITORY") !== "stackitcloud/stackit-landing-zone") throw new Error("Unexpected repository");
   const root = required("LZC_ROOT");
-  if (!["bootstrap", "backend", "platform"].includes(root)) throw new Error("Unsupported CI root");
+  if (!["bootstrap", "backend", "platform", "runtime"].includes(root)) throw new Error("Unsupported CI root");
   if (required("LZC_ENVIRONMENT") !== "lzc-dev") throw new Error("Unsupported environment");
   const ref = required("GITHUB_REF");
   const event = required("GITHUB_EVENT_NAME");
@@ -41,8 +41,8 @@ export function assertApplyExecution(safety, env) {
   }
   const main = env.GITHUB_REF === "refs/heads/main" && env.GITHUB_EVENT_NAME === "workflow_dispatch";
   const feature = env.GITHUB_REF === "refs/heads/feature/landing-zone-configurator" && env.GITHUB_EVENT_NAME === "push" &&
-    /^[a-f0-9]{40}$/.test(env.LZC_APPROVED_APPLY_COMMIT ?? "") && env.GITHUB_SHA === env.LZC_APPROVED_APPLY_COMMIT && ["bootstrap", "backend", "platform"].includes(env.LZC_ROOT) && env.LZC_ROOT === env.LZC_APPROVED_APPLY_ROOT;
-  const workflowName = env.LZC_ROOT === "platform" ? "configurator-platform.yml" : "configurator-bootstrap.yml";
+    /^[a-f0-9]{40}$/.test(env.LZC_APPROVED_APPLY_COMMIT ?? "") && env.GITHUB_SHA === env.LZC_APPROVED_APPLY_COMMIT && ["bootstrap", "backend", "platform", "runtime"].includes(env.LZC_ROOT) && env.LZC_ROOT === env.LZC_APPROVED_APPLY_ROOT;
+  const workflowName = env.LZC_ROOT === "runtime" ? "configurator-runtime.yml" : env.LZC_ROOT === "platform" ? "configurator-platform.yml" : "configurator-bootstrap.yml";
   const workflow = `stackitcloud/stackit-landing-zone/.github/workflows/${workflowName}@${env.GITHUB_REF}`;
   if (env.GITHUB_ACTIONS !== "true" || (!main && !feature) || env.GITHUB_WORKFLOW_REF !== workflow) {
     throw new Error("Remote apply is restricted to the serialized GitHub Actions workflow");

@@ -1,0 +1,235 @@
+name: Configurator Runtime
+
+on:
+  push:
+    branches: [feature/landing-zone-configurator]
+    paths:
+      - 'landing-zone-configurator/infra/runtime/**'
+      - 'landing-zone-configurator/infra/environments/lzc-dev.tfvars.json'
+      - 'landing-zone-configurator/infra/ci/**'
+      - '.github/workflows/configurator-runtime.yml'
+  workflow_dispatch:
+    inputs:
+      root:
+        description: 'CF space and application identities'
+        type: choice
+        options: [runtime]
+        default: runtime
+      apply:
+        description: 'Apply the reviewed plan after environment approval'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: configurator-lzc-dev-mutation
+  cancel-in-progress: false
+
+env:
+  LZC_ENVIRONMENT: lzc-dev
+  LZC_ROOT: runtime
+
+jobs:
+  plan:
+    if: vars.LZC_RUNTIME_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: lzc-dev-runtime-plan
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Prepare credentials and backend configuration
+        id: prepare
+        run: node infra/ci/prepare.mjs management
+        env:
+          LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+          LZC_REGION: ${{ vars.LZC_REGION }}
+          LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
+          LZC_MANAGEMENT_BUCKET: ${{ vars.LZC_MANAGEMENT_BUCKET }}
+          LZC_CREDENTIAL_EXPIRATION: ${{ vars.LZC_CREDENTIAL_EXPIRATION }}
+          LZC_MANAGEMENT_ACCESS_KEY: ${{ secrets.LZC_MANAGEMENT_ACCESS_KEY }}
+          LZC_MANAGEMENT_SECRET_KEY: ${{ secrets.LZC_MANAGEMENT_SECRET_KEY }}
+          LZC_SERVICE_ACCOUNT_KEY: ${{ secrets.LZC_SERVICE_ACCOUNT_KEY }}
+          LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
+          LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
+          LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}
+          LZC_STATE_KEY_RUNTIME: ${{ secrets.LZC_STATE_KEY_RUNTIME }}
+      - name: Read bootstrap backend outputs (private file)
+        if: env.LZC_ROOT != 'bootstrap'
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/bootstrap-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/bootstrap.encryption.json")"
+          tofu -chdir=infra/bootstrap init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/bootstrap.backend.hcl"
+          tofu -chdir=infra/bootstrap output -json > "$LZC_PRIVATE/bootstrap-outputs.json"
+      - name: Read bucket versioning outputs (private file)
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/backend-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/backend.encryption.json")"
+          tofu -chdir=infra/backend init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/backend.backend.hcl"
+          tofu -chdir=infra/backend output -json > "$LZC_PRIVATE/backend-outputs.json"
+      - name: Prepare workload credentials
+        if: env.LZC_ROOT != 'bootstrap'
+        run: node infra/ci/prepare.mjs workload
+      - name: Read platform outputs (private file)
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/platform-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/platform.encryption.json")"
+          tofu -chdir=infra/platform init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/platform.backend.hcl"
+          tofu -chdir=infra/platform output -json > "$LZC_PRIVATE/platform-outputs.json"
+      - name: Prepare CF runtime inputs
+        run: node infra/ci/prepare.mjs runtime
+      - name: OpenTofu init
+        timeout-minutes: 3
+        run: tofu -chdir="infra/$LZC_ROOT" init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/$LZC_ROOT.backend.hcl"
+      - name: OpenTofu validate
+        run: tofu -chdir="infra/$LZC_ROOT" validate -no-color
+      - name: OpenTofu plan
+        run: >-
+          timeout --foreground --signal=INT --kill-after=2m 15m
+          tofu -chdir="infra/$LZC_ROOT" plan
+          -input=false -no-color -lock-timeout=60s
+          -out="$LZC_PLAN"
+      - name: Bind encrypted plan to commit and workflow run
+        run: node infra/ci/review.mjs seal
+      - name: Upload encrypted plan
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: runtime-plan-${{ github.run_id }}
+          path: |
+            landing-zone-configurator/.local/ci-plan/review.tfplan
+            landing-zone-configurator/.local/ci-plan/review.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+      - name: Remove temporary credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/lzc-private"
+
+  apply:
+    needs: plan
+    if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_RUNTIME_APPLY_COMMIT))
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    environment: lzc-dev-runtime-apply
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Prepare credentials and backend configuration
+        id: prepare
+        run: node infra/ci/prepare.mjs management
+        env:
+          LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+          LZC_REGION: ${{ vars.LZC_REGION }}
+          LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
+          LZC_MANAGEMENT_BUCKET: ${{ vars.LZC_MANAGEMENT_BUCKET }}
+          LZC_CREDENTIAL_EXPIRATION: ${{ vars.LZC_CREDENTIAL_EXPIRATION }}
+          LZC_MANAGEMENT_ACCESS_KEY: ${{ secrets.LZC_MANAGEMENT_ACCESS_KEY }}
+          LZC_MANAGEMENT_SECRET_KEY: ${{ secrets.LZC_MANAGEMENT_SECRET_KEY }}
+          LZC_SERVICE_ACCOUNT_KEY: ${{ secrets.LZC_SERVICE_ACCOUNT_KEY }}
+          LZC_STATE_KEY_BOOTSTRAP: ${{ secrets.LZC_STATE_KEY_BOOTSTRAP }}
+          LZC_STATE_KEY_BACKEND: ${{ secrets.LZC_STATE_KEY_BACKEND }}
+          LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}
+          LZC_STATE_KEY_RUNTIME: ${{ secrets.LZC_STATE_KEY_RUNTIME }}
+      - name: Read bootstrap backend outputs (private file)
+        if: env.LZC_ROOT != 'bootstrap'
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/bootstrap-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/bootstrap.encryption.json")"
+          tofu -chdir=infra/bootstrap init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/bootstrap.backend.hcl"
+          tofu -chdir=infra/bootstrap output -json > "$LZC_PRIVATE/bootstrap-outputs.json"
+      - name: Read bucket versioning outputs (private file)
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/backend-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/backend.encryption.json")"
+          tofu -chdir=infra/backend init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/backend.backend.hcl"
+          tofu -chdir=infra/backend output -json > "$LZC_PRIVATE/backend-outputs.json"
+      - name: Prepare workload credentials
+        if: env.LZC_ROOT != 'bootstrap'
+        run: node infra/ci/prepare.mjs workload
+      - name: Read platform outputs (private file)
+        timeout-minutes: 3
+        run: |
+          umask 077
+          export TF_DATA_DIR="$LZC_PRIVATE/platform-data"
+          export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/platform.encryption.json")"
+          tofu -chdir=infra/platform init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/platform.backend.hcl"
+          tofu -chdir=infra/platform output -json > "$LZC_PRIVATE/platform-outputs.json"
+      - name: Prepare CF runtime inputs
+        run: node infra/ci/prepare.mjs runtime
+      - name: OpenTofu init
+        timeout-minutes: 3
+        run: tofu -chdir="infra/$LZC_ROOT" init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/$LZC_ROOT.backend.hcl"
+      - name: OpenTofu validate
+        run: tofu -chdir="infra/$LZC_ROOT" validate -no-color
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: runtime-plan-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-plan
+      - name: Verify reviewed plan and apply authorization
+        run: node infra/ci/review.mjs verify
+        env:
+          LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_RUNTIME_APPLY_COMMIT }}
+          LZC_APPROVED_APPLY_ROOT: runtime
+      - name: OpenTofu apply reviewed plan
+        id: apply
+        # One SIGINT allows OpenTofu to save state before the outer job deadline.
+        run: >-
+          timeout --foreground --signal=INT --kill-after=10m 70m
+          tofu -chdir="infra/$LZC_ROOT" apply
+          -input=false -no-color -lock-timeout=60s "$LZC_PLAN"
+      - name: Capture and encrypt recovery state
+        if: always() && steps.apply.outcome != '' && steps.apply.outcome != 'skipped'
+        run: |
+          umask 077
+          if ! timeout --foreground --signal=INT --kill-after=10s 60s \
+            tofu -chdir="infra/$LZC_ROOT" state pull > "$LZC_PRIVATE/state.snapshot"; then
+            echo "::warning::Remote state snapshot unavailable; checking for emergency state."
+            rm -f -- "$LZC_PRIVATE/state.snapshot"
+          fi
+          node infra/ci/protect-state.mjs
+      - name: Upload encrypted recovery state
+        if: always() && steps.apply.outcome != '' && steps.apply.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: runtime-state-${{ github.run_id }}
+          path: landing-zone-configurator/.local/ci-recovery/*.enc.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Remove temporary credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/lzc-private"

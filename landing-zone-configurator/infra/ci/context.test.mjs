@@ -72,3 +72,12 @@ test("platform apply is isolated from bootstrap workflow",()=>{
   assert.throws(()=>assertApplyExecution(safety,{...platform,GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/feature/landing-zone-configurator"}));
   assert.throws(()=>assertApplyExecution(safety,{...platform,LZC_APPROVED_APPLY_ROOT:"bootstrap"}));
 });
+
+test("runtime apply requires its own workflow and root approval",()=>{
+ const safety={mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-dev-mutation"};
+ const runtime={...env,LZC_ROOT:"runtime",GITHUB_ACTIONS:"true",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",GITHUB_EVENT_NAME:"push",LZC_APPROVED_APPLY_COMMIT:env.GITHUB_SHA,LZC_APPROVED_APPLY_ROOT:"runtime",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-runtime.yml@refs/heads/feature/landing-zone-configurator"};
+ assert.equal(deploymentInputs(runtime).root,"runtime");
+ assert.doesNotThrow(()=>assertApplyExecution(safety,runtime));
+ assert.throws(()=>assertApplyExecution(safety,{...runtime,LZC_APPROVED_APPLY_ROOT:"platform"}));
+ assert.throws(()=>assertApplyExecution(safety,{...runtime,GITHUB_WORKFLOW_REF:runtime.GITHUB_WORKFLOW_REF.replace("runtime.yml","platform.yml")}));
+});

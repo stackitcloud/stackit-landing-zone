@@ -18,3 +18,5 @@ coverage/
 
 !infra/seed/.terraform.lock.hcl
 !infra/seed-protection/.terraform.lock.hcl
+
+!infra/runtime/.terraform.lock.hcl
