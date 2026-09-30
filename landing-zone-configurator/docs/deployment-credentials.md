@@ -115,3 +115,10 @@ oder Secret-Schreibvorgang ausgelöst.
 
 Quellen: [STACKIT Token-Abruf](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/get-access-token/),
 [SDK-Unterstützung für tokenEndpoint](https://github.com/stackitcloud/stackit-sdk-go/releases/).
+
+Fix-Abnahme: Commit `6c95098`, [Validierung 36711832436](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36711832436)
+und [Release 36711832452](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36711832452)
+erfolgreich. 39 Anwendungstests grün. Die vorhandene lokale STACKIT-Schlüsseldatei
+besteht die Formatprüfung einschließlich Erhalt des Token-Endpunkts; dabei kein
+Upload und keine Ausgabe von Schlüsselinhalten. Live-Seite und anonymer Zugriffsschutz
+nach Release geprüft; persönliche erneute Upload-Abnahme bleibt beim Benutzer.
