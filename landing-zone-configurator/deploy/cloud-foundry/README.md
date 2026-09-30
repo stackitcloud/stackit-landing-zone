@@ -17,21 +17,26 @@ release workflow. `tofu output -json` writes private files; `prepare-release.mjs
 only extracts explicitly allowed backend variables and masks them. `cf push`
 uses a private variables file and `--redact-env`; neither credentials nor decrypted
 states are included in the application artifact. The app receives only its own
-PostgreSQL/Secrets credentials and the operator Model Serving token.
+PostgreSQL/Secrets credentials, the operator Model Serving token and the GitHub
+App OAuth client credentials. The user explicitly approved the latter transfer to
+`lzc-dev-release` and CF backend variables on 2026-09-30. `LZC_AUTH_ENABLED=true`
+activates login; the client secret never enters the frontend build.
 
 For this development milestone the CF deployment identity is still the existing
 org manager with explicit space developer membership, and release reads platform
 state. A dedicated space-only deployer and narrower state/credential publication
 are required before production. CF environment variables are visible to authorized
-space developers; restrict and audit those roles. The public app remains a foundation
-page: protected API routes refuse requests until real authentication exists.
+space developers; restrict and audit those roles. Unauthenticated
+requests to protected API routes remain denied. GitHub login uses server-side
+opaque sessions; see [login architecture and acceptance](../../docs/github-login.md).
 
 After push, a CF task performs PostgreSQL authentication, a query with verified TLS,
 and Secrets Manager authentication plus a GET on the reserved operator probe path
 `configurator/connectivity-probe`. Anonymous access must be denied; authenticated
 access may return 404 for the absent key. No tenant secrets are read or written.
-This does not test a secret write/read roundtrip or prove all runtime permissions.
-The read-only identity is separately defined and tested in IaC. Diagnostic logs only show
+When login is enabled, the task additionally writes, reads and permanently deletes
+a random probe key, then checks that it is absent. The runtime identity has explicitly
+approved write access to the dedicated Configurator Secrets Manager instance. Diagnostic logs only show
 service names, result and sanitized failure categories. The task revokes its Vault
 token. A health check alone does not prove service connectivity.
 
@@ -42,8 +47,15 @@ can replace older pending runs. Never run local applies or pushes concurrently.
 
 The initial single-instance `cf push` can interrupt service briefly. Immutable
 archive/checksum retention is seven days; explicit rollback/promotion and rolling
-releases are subsequent milestones. DB migrations, schema grants, RLS, personal
-credential storage and customer deployment execution are not part of this release.
+releases are subsequent milestones. Versioned SQL migrations run before the web
+release in `landing-zone-configurator-migrate`, a separate task-only app with no
+route. Only this short-lived app receives the database-owner credentials; it is
+deleted after migration and on failure. Migration checksums and an advisory lock
+protect repeat execution. The web app uses its restricted runtime role and RLS.
+Customer deployment execution is not part of this release.
+
+Raw CF logs are not exported to CI, since router URLs may contain OAuth codes.
+Task status, sanitized diagnostics and public health checks provide release evidence.
 
 ## Network verification
 

@@ -81,11 +81,11 @@ können. Applikationslogs enthalten keine Request-URLs oder Cookie-/Tokenwerte.
 - [ ] Verteiltes Rate-Limit, Audit-Aufbewahrung und GitHub-Widerruf prüfen; das aktuelle
   Startlimit gilt nur je Instanz, Widerrufe werden spätestens bei API-Nutzung erkannt.
 
-## Noch erforderliche Credential-Freigabe
+## Credential-Freigabe
 
-Die automatische Sicherheitsprüfung hat den Transfer von `LZC_GITHUB_CLIENT_ID`
-und `LZC_GITHUB_CLIENT_SECRET` aus der lokalen Registrierung in
-`stackitcloud/stackit-landing-zone`, Environment `lzc-dev-release`, abgelehnt.
-Es wurden keine GitHub-App-Credentials übertragen. Die konkrete Benutzerfreigabe
-für dieses Ziel und die anschließenden CF-Backend-Variablen ist angefragt. Bis dahin
-bleibt `LZC_AUTH_ENABLED` deaktiviert; Migration und Bereitstellung sind unabhängig.
+Der Benutzer hat am 2026-09-30 den Transfer von `LZC_GITHUB_CLIENT_ID` und
+`LZC_GITHUB_CLIENT_SECRET` für `lweberru/lz-configurator-dev-7dbff805` in
+`stackitcloud/stackit-landing-zone`, Environment `lzc-dev-release`, sowie die
+anschließende CF-Backend-Bindung ausdrücklich freigegeben. Beide Environment-Secrets
+sind hinterlegt; `LZC_AUTH_ENABLED=true` ist für den nächsten Release gesetzt.
+Live-Aktivierung und Secrets-Rundtrip sind bis zu dessen Abschluss noch offen.
