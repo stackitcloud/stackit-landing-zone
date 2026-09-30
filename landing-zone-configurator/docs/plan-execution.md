@@ -1,117 +1,106 @@
-# Kunden-Plan: Umsetzung und Abnahme
+# Erstbereitstellungspläne
 
-Stand: 2026-09-30. Der Benutzer hat Zugangstest und gespeicherte Vorbereitung mit
-passender Organisation und persönlichem Service Account erfolgreich getestet.
+Stand: 2026-09-30. Umsetzung auf `feature/landing-zone-configurator`.
 
-## Verbindliche Ausführungsgrenze
+## Was der Benutzer testen kann (nach erfolgreichem Release)
 
-**Plan darf getestet werden. Kunden-Apply benötigt eine ausdrückliche, gesonderte
-Benutzerfreigabe. Kein Destroy.** Die Freigabe für den Aufbau des Configurators ist
-keine Kunden-Apply-Freigabe. Auch ein erfolgreicher oder unveränderter Plan erteilt
-keine solche Freigabe. Der Benutzer nennt fehlenden Folder-Destroy als Grund.
+1. **Deployments** öffnen und im Abschnitt **Erstbereitstellung planen** eine
+   gespeicherte Vorbereitung auswählen.
+2. Nur für eine neue Landing Zone bestätigen, dass noch keine Ressourcen und kein
+   bestehender State zu dieser Konfiguration existieren. Bestehende/teilweise
+   erzeugte Landing Zones sind in diesem Ablauf nicht unterstützt.
+3. **Erstbereitstellung planen** starten. Erwartete Stationen: Runner vorbereiten,
+   initialisieren, validieren, planen und abgeschlossen/fehlgeschlagen.
+4. Seite neu laden: Auftrag und Ergebnis bleiben erhalten. Anlegen, Ändern,
+   Ersetzen, Löschen, Datenlesen und geänderte Ausgaben werden getrennt gezählt.
+5. Optional einen weiteren Plan abbrechen. Abbruch entzieht sofort den Broker-
+   Zugriff; das Stoppen des CF-Tasks durch Cleanup erfolgt zeitversetzt.
 
-Aktuell existieren weiterhin weder Kunden-Plan-Endpunkt noch produktiver Worker.
-Die neue Auswertung ist eine getestete Grundlage, keine ausführbare UI-Funktion.
-`applyAllowed: false` im Ergebnis beschreibt diese Grenze; es ersetzt keine
-Autorisierung. Solange Plan-only gilt, darf der Dispatcher keinen Apply-Auftrag
-annehmen, und es wird kein Apply-/Destroy-Ausführungspfad bereitgestellt.
+**Kein Kunden-Apply oder Destroy.** Der Benutzer verlangt ausdrücklich eine neue
+Freigabe vor jedem Kunden-Apply. Die Freigabe für Configurator-Infrastruktur gilt
+nicht dafür. Die jetzigen Pläne sind Prüfungen und können nicht angewendet werden;
+ihre Binärartefakte werden entfernt. Vor einem zukünftigen Apply ist ein neuer
+Plan samt unveränderlichem Artefakt, Freigabe und State-Sicherung notwendig.
 
-## State-Lebenszyklus entsprechend dem LZA
+## Ablauf und Grenzen
 
-Benutzerentscheidung: den bestehenden Ablauf aus
-[Getting Started](https://github.com/stackitcloud/stackit-landing-zone/blob/main/docs/getting-started.md)
-übernehmen. Kein zusätzlicher dauerhafter zentraler Kunden-State-Bucket.
+- POST `/api/v1/plans` verlangt Session, exakten Origin, CSRF-Token und
+  `confirmNewDeployment: true`. Nur eine eigene Vorbereitung mit eigenem
+  gespeichertem Credential und Rolle admin/deployer wird akzeptiert.
+- GitHub-Fork-Zugriff, festgehaltener Head und generierter tfvars-Export werden
+  mit dem GitHub-Benutzertoken erneut geprüft. Geänderter Fork-Head erfordert eine
+  neue Vorbereitung; es wird keine andere Version still übernommen.
+- SQL 004/005 persistiert Aufträge mit Forced RLS, Vorbereitung, Status, Engine-
+  und Provider-Lock-Version sowie CF-Droplet-Referenz. Ein aktiver Auftrag pro
+  Benutzer/Mandant, höchstens 20 Starts in 24 Stunden; Liste zeigt letzte 100.
+- Der Dispatcher verwaltet ausschließlich die separate Organisation
+  `lzc-dev-runners`, Space `plans`, SSH deaktiviert. Für jeden Auftrag erstellt er
+  eine App ohne Route/Service-Bindings und kopiert das geprüfte Runner-Droplet.
+  CF-Manager-Credentials verbleiben im vertrauenswürdigen API-Backend/Release.
+- Der Runner erhält drei App-Variablen: Auftrags-ID, feste Broker-URL, zufälliges
+  256-Bit-Ticket. In PostgreSQL liegt nur dessen Hash. Gültigkeit maximal 25 Minuten.
+  Eine eng begrenzte SECURITY-DEFINER-Funktion löst das Ticket auf genau einen
+  aktiven Auftrag auf; danach gelten Eigentümer-/Tenant-RLS und Rollenprüfung.
+- Eingaben werden einmal ausgegeben, nach erneuter Rollen-, Profil-, Versions-
+  und Organisationsprüfung. Andere Profile oder Mandanten sind nicht auswählbar.
+  Die Terraform-Unterprozesse erhalten eine explizite Umgebung ohne Broker-Ticket.
+- Fester Accelerator-Commit `a256f6896d11134fdc351786f1be5eba4e56b2e2`, OpenTofu
+  1.12.6, Provider-Lock SHA-256
+  `a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888`.
+  CI baut nur Upstream-Code dieses Commits und einen Linux-Provider-Mirror.
+- Direkte Befehle in `deploy/runner/run-plan.sh`: init mit readonly Lock, validate,
+  plan mit detailed exit code und show. Kein frei wählbarer Befehl, kein Apply-Pfad.
+- Ergebnisprojektion enthält nur Zahlen, Status und feste Fehlercodes; keine
+  Adressen, Attributwerte, Output-Namen, Rohdiagnosen oder Geheimnisse. Auch nicht
+  als sensitive markierte Werte werden nicht exportiert. Detailansicht einzelner
+  Ressourcen und sichere Provider-Fehlerdiagnosen sind noch offen.
+- Task: 1 GiB RAM, 4 GiB Disk, 18 Minuten Engine-Frist, private Dateien begrenzt.
+  SQL-Frist: 25 Minuten. Maintenance alle 30 Sekunden, Cleanup nach mindestens
+  30 Sekunden terminalem Status. Auch nach API-Neustart werden Aufträge abgeräumt.
+  Bei CF-/Netzfehlern kann Cleanup länger dauern; Ticket-Ablauf bleibt unabhängig.
+- Kein automatischer Dispatch-Wiederholungsversuch. Ein Prozessverlust vor Start
+  führt zu Abbruch/Ablauf statt stiller Neuausführung. Es gibt noch keinen allgemeinen
+  Queue-Scheduler, keine dauerhafte Runner-Heartbeat-Überwachung und keine Plan-
+  Artefaktaufbewahrung. CF-Quoten begrenzen die Gesamtkapazität zusätzlich.
+- Vorbereitungen mit Plan-Nachweisen werden nicht gelöscht. Archivierung und
+  Aufbewahrungsfristen der Metadaten sind ein nachfolgender Schritt.
 
-1. **Neuanlage / Bootstrap-Plan:** Den bereits gespeicherten persönlichen Bootstrap-
-   Service-Account verwenden. Temporäres Projekt und Account müssen nicht erneut
-   angelegt werden. Plan gegen explizit leeren lokalen State im isolierten Runner;
-   UI bezeichnet ihn als Erstbereitstellungsplan. Kein Apply, keine Cloud-Ressourcen.
-2. **Erster Apply (separate Freigabe):** Der Accelerator erzeugt unter anderem das
-   Management-Projekt, den tfstate-Bucket und die zugehörigen Credentials. Der noch
-   lokale State muss während und nach dem Lauf dauerhaft gesichert werden. Ein
-   flüchtiges CF-Dateisystem reicht nicht; Recovery muss auch nach Teilfehlern und
-   hartem Prozessverlust funktionieren. Vor Umsetzung des ersten Apply ist dafür
-   ein getesteter, verschlüsselter Checkpoint-/Persistenzmechanismus erforderlich.
-3. **Backend-Migration:** Bucket aus `management_bucket_name_tfstate`, Backend-
-   Credentials aus dem Management Secrets Manager. Unter exklusiver Deployment-
-   Sperre `tofu init -migrate-state` ausführen. Quelle sichern, Ziel anhand Lineage,
-   Serial und Inhalt prüfen. Erst danach das Kunden-S3-Backend als aktiv markieren.
-4. **Management-Identität übernehmen:** Den vom Accelerator erzeugten Management-
-   Service-Account sicher übernehmen; danach einen normalen Plan zur Verifikation
-   ausführen. Bootstrap-Zugang nicht vor erfolgreicher Verifikation widerrufen.
-5. **Folgeläufe:** Ausschließlich das registrierte Kunden-Backend nutzen. Bei
-   fehlendem/nicht lesbarem State abbrechen; niemals still auf leeren State wechseln.
+## State-Lebenszyklus gemäß LZA
 
-Neuanlage ist kein Import bereits vorhandener Ressourcen. Für bestehende oder
-teilweise erzeugte Landing Zones ist ein vorhandener State-/Recovery-Pfad zwingend.
-Der Status gehört zur stabilen Deployment-Identität, nicht zu jeder neuen
-Vorbereitung. Neue Git-Versionen dürfen keinen neuen leeren State auslösen.
+Entscheidung des Benutzers: bestehenden
+[LZA-Bootstrap](https://github.com/stackitcloud/stackit-landing-zone/blob/main/docs/getting-started.md)
+übernehmen. Der gespeicherte Zugang ist der Bootstrap-Service-Account; Projekt und
+Account werden nicht erneut angelegt. Der erste Plan benutzt ausdrücklich leeren
+lokalen State. Ein Plan legt weder Management-Projekt noch Bucket an.
 
-Die Anleitung erzeugt den Ziel-Bucket durch IaC, verlangt Migration und Credential-
-Wechsel aber als anschließende Schritte. Diese orchestriert künftig der Configurator.
-Bootstrap-Projekt löschen, State migrieren oder Kundenressourcen anwenden ist durch
-die derzeitige Plan-Freigabe nicht autorisiert.
+Beim später separat freigegebenen ersten Apply erzeugt das Management-Modul den
+Kunden-State-Bucket samt Credentials. Anschließend `tofu init -migrate-state`,
+Migration prüfen, auf Management-Service-Account wechseln und erneut planen.
+Der anfänglich lokale State muss bereits während des Apply dauerhaft und verschlüsselt
+abgesichert sein, auch bei partiellem Fehler und hartem Runner-Verlust. Flüchtiger
+CF-Speicher reicht dafür nicht. Diese Recovery ist noch nicht implementiert und
+bleibt eine zwingende Apply-Voraussetzung. Kein zusätzlicher dauerhafter zentraler
+Kunden-State-Bucket; Infrastruktur- und Kunden-States werden nicht vermischt.
 
-## Technischer Stand
+## Abnahme
 
-- [x] Wertfreie Auswertung von `tofu show -json` implementiert.
-- [x] Create, Update, Delete, beide Replacement-Reihenfolgen, Read und No-op zählen.
-- [x] Drift separat zählen; Output-only-Änderungen berücksichtigen.
-- [x] Check-Status und gemeldete/unbekannte Vollständigkeit unterscheiden.
-- [x] Nicht unterstützte Aktionen/Formatversionen, Fehler und widersprüchliche
-  Exitcodes abweisen. Keine Fehlerdetails aus dem Rohplan zurückgeben.
-- [x] Unmarkierte Geheimwerte ebenso wie sensitive Werte aus der Zusammenfassung
-  ausschließen: keine Attribute, Adressen, Output-Namen oder Diagnosetexte exportieren.
-- [x] Echter lokaler OpenTofu-1.12.6-Plan mit eingebautem `terraform_data`-Provider:
-  init, validate, plan (Exit 2), show und Auswertung. Kein Cloud-Zugriff, kein Apply.
-- [x] Separaten Provider-Lock für den festen Accelerator-Commit erzeugt, inklusive
-  Linux-amd64-Checksummen; lokales readonly-init und validate erfolgreich.
-- [ ] Accelerator-Paket im isolierten Linux-Runner qualifizieren.
-- [x] D07: LZA-eigenes Kunden-Backend nach initialem Bootstrap übernehmen.
-- [ ] Erstbereitstellung und vorhandenen State serverseitig unterscheiden.
-- [ ] Dauerhafte Bootstrap-State-Sicherung und Migration vor erstem Apply nachweisen.
-- [ ] Dauerhafte Queue und Lease pro serverseitiger State-Identität implementieren.
-- [ ] CF-Runner-Isolation nachweisen: keine DB-, Vault-, Model- oder Betreiber-Secrets
-  im Runner; nur kurzlebiger, auf einen Auftrag begrenzter Secret-/Artefaktzugriff.
-- [ ] Vollständigen Auftrag an Vorbereitung, Eigentümer, Tenant, Code- und Config-Hash,
-  Engine, Provider-Lock, State-Identität und Credential-Version binden.
-- [ ] Vor Start Profilbestand, Rollen, Secret-Version und Ziel erneut prüfen.
-- [ ] Feste Schritte init/validate/plan/show mit Frist, Abbruch, Größenbegrenzung und
-  privaten Artefakten. Keine frei eingebbaren CLI-Argumente oder Benutzer-Terraform.
-- [ ] Autorisierte API und UI für Start, Status, Fehlerkategorien und Zusammenfassung.
-- [ ] Erster echter Kunden-Plan mit dem bestätigten persönlichen Zugang.
-- [ ] Fremdzugriff, gelöschtes Credential, veraltete Version, paralleler Auftrag,
-  Prozessabbruch und fehlendes Backend als Integrationsfälle prüfen.
-
-Die Auswertung alleine belegt weder isolierte Ausführung noch Mandantenschutz.
-Insbesondere dürfen rohe stdout/stderr-Ausgaben und `show -json` nicht automatisch
-ins CI-Log, in den Browser oder in den Chat weitergereicht werden. Für Betreiber
-bleiben die direkten `tofu`-Schritte nachvollziehbar; Kunden erhalten Fortschritt
-und explizit freigegebene Diagnosekategorien.
-
-## Reproduzierbarer lokaler Vertragstest
-
-Im Verzeichnis `landing-zone-configurator/app` mit der festgelegten Node-Version:
-
-```sh
-LZC_TEST_TOFU_BIN=/absoluter/pfad/zu/tofu npm run test:plan
-```
-
-Das Skript prüft Engine 1.12.6, erstellt ein temporäres Arbeitsverzeichnis, ruft
-OpenTofu direkt auf und entfernt sämtliche Test-Artefakte beim Beenden. Es ist ein
-lokaler Vertragstest, kein produktiver Runner und kein Kunden-Deployment.
+- [x] API: Session/CSRF, striktes Eingabeschema, Erstbereitstellungsbestätigung,
+  persönliches GitHub-Token und kein Apply-Endpunkt getestet.
+- [x] PostgreSQL: fremde Aufträge, konkurrierender Start, Ticket-Replay, Status-
+  Reihenfolge, Ablauf und gezieltes Cleanup getestet.
+- [x] CF-Client: eigene App, feste Befehle, nur drei Job-Variablen und keine Route.
+- [x] Desktop/Mobil: Plan-Start, laufender Status, Ergebnis nach Reload, kein Apply.
+- [x] Lokaler echter OpenTofu-Vertragstest ohne Cloud-Zugang und ohne Apply.
+- [x] Separate CF-Organisation samt Manager per Plattform-IaC erstellt.
+- [x] Runner-Space/Rollen per Runtime-IaC erfolgreich angewendet.
+- [ ] Linux-Paket, Provider-Mirror und CF-Engine-Test erfolgreich.
+- [ ] Live-App: separaten Runner ohne Service-Bindings prüfen, ungültiges Ticket
+  darf keinen Kundenauftrag ausführen; Probe-App entfernen.
+- [ ] Erster persönlicher Kunden-Plan durch den Benutzer.
 
 ## Quellen
 
-[OpenTofu JSON-Format](https://opentofu.org/docs/internals/json-format/):
-Major-Version prüfen, Änderungsaktionen und Checks auswerten; unbekannte ergänzende
-Felder nicht exportieren. [Plan-Befehl](https://opentofu.org/docs/cli/commands/plan/):
-Exitcodes mit `-detailed-exitcode` unterscheiden. Ein gespeicherter Plan ist ein
-vertrauliches Artefakt und wird nicht als öffentliche Zusammenfassung behandelt.
-
-## Prüfstand dieses Umsetzungsschritts
-
-61 Anwendungstests, Typecheck, Lint und Build erfolgreich. Der reproduzierbare
-Engine-Vertragstest läuft mit direkten `tofu`-Befehlen erfolgreich. Keine persönlichen
-Kundenzugänge verwendet, kein Kunden-Plan gestartet und kein Cloud-Apply ausgeführt.
-Provider-Lock und Code-Referenz: [Runner-Paket](../deploy/runner/README.md).
+[OpenTofu JSON-Format](https://opentofu.org/docs/internals/json-format/),
+[Plan-Exitcodes](https://opentofu.org/docs/cli/commands/plan/),
+[CF V3 Droplet-Kopie](https://v3-apidocs.cloudfoundry.org/version/3.199.0/index.html#copy-a-droplet),
+[CF V3 Tasks](https://v3-apidocs.cloudfoundry.org/version/3.199.0/index.html#create-a-task).

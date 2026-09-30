@@ -170,6 +170,12 @@ export class Preparations {
   }
   async remove(session: Session, id: string) {
     return withTenant(this.pool, session, async (c) => {
+      const plans = await c.query(
+        "SELECT id FROM lzc.plan_runs WHERE preparation_id=$1 LIMIT 1",
+        [id],
+      );
+      if (plans.rowCount)
+        throw new CredentialError(409, "preparation_has_plans");
       const result = await c.query(
         "DELETE FROM lzc.deployment_preparations WHERE id=$1",
         [id],

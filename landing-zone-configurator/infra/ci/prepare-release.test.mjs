@@ -26,7 +26,7 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const result=run("application");assert.equal(result.status,0,result.stderr);
   const vars=join(privateDir,"app-vars.json");assert.equal(statSync(vars).mode&0o777,0o600);
   const app=JSON.parse(readFileSync(vars));
-  assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET"]);
+  assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID"]);
   assert.equal(app.LZC_AUTH_ENABLED,"false");
   assert.equal(app.LZC_GITHUB_CLIENT_SECRET,"");
   assert.ok(!readFileSync(vars,"utf8").includes("migration-only-secret"));
@@ -46,5 +46,25 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   assert.equal(authenticated.LZC_GITHUB_CLIENT_SECRET,"test-oauth-secret");
   assert.ok(!readFileSync(migration,"utf8").includes("test-oauth-secret"));
   assert.ok(!readFileSync(env.GITHUB_ENV,"utf8").includes("must-not-be-forwarded"));
+  assert.equal(authenticated.LZC_PLANS_ENABLED,"false");
+  assert.notEqual(run("runner").status,0);
+  const platform=JSON.parse(readFileSync(join(privateDir,"platform-outputs.json")));
+  platform.plan_runner_cf={value:{api_url:cf.api_url,org_id:cf.org_id,username:"runner-user",password:"runner-only-secret"}};
+  runtime.runner_space={value:{id:"11111111-1111-4111-8111-111111111111",name:"plans",org_id:cf.org_id}};
+  writeFileSync(join(privateDir,"platform-outputs.json"),JSON.stringify(platform));
+  writeFileSync(join(privateDir,"runtime-outputs.json"),JSON.stringify(runtime));
+  assert.notEqual(run("application").status,0,"must reject shared app/runner organisation");
+  platform.plan_runner_cf.value.org_id="22222222-2222-4222-8222-222222222222";
+  runtime.runner_space.value.org_id=platform.plan_runner_cf.value.org_id;
+  writeFileSync(join(privateDir,"platform-outputs.json"),JSON.stringify(platform));
+  writeFileSync(join(privateDir,"runtime-outputs.json"),JSON.stringify(runtime));
+  assert.equal(run("application").status,0);
+  env.LZC_RUNNER_TEMPLATE_ID="33333333-3333-4333-8333-333333333333";
+  assert.equal(run("runner").status,0);
+  const enabled=JSON.parse(readFileSync(vars));
+  assert.equal(enabled.LZC_PLANS_ENABLED,"true");
+  assert.equal(enabled.LZC_RUNNER_CF_PASSWORD,"runner-only-secret");
+  assert.ok(!readFileSync(migration,"utf8").includes("runner-only-secret"));
+
  } finally {rmSync(dir,{recursive:true,force:true});}
 });

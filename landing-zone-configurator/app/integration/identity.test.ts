@@ -464,3 +464,157 @@ describe("credential checks and immutable deployment preparations", () => {
     );
   });
 });
+
+it("isolates queued plans, consumes input once, rejects replay and expires abandoned runners", async () => {
+  const { Plans } = await import("../apps/api/src/plans/service.js");
+  const { tokenHash } = await import("../apps/api/src/auth/store.js");
+  const template = catalogue.templates.find(
+    (t) => t.id === "standalone",
+  ) as Template;
+  const draft = createDraft(template);
+  draft.organization = randomUUID();
+  draft.owner = "owner@stackit.cloud";
+  for (const p of draft.projects) p.owner = draft.owner;
+  for (const s of draft.sandboxes) s.owner = draft.owner;
+  const document = savedDraft(randomUUID(), draft),
+    profileId = randomUUID(),
+    preparationId = randomUUID();
+  const tfvars = serializeTfvars(configurationValues(document));
+  const check = {
+    status: "passed" as const,
+    code: "organization_readable" as const,
+    organizationId: draft.organization,
+    organizationName: "Test org",
+    checkedAt: new Date().toISOString(),
+  };
+  const profiles = {
+    verifyForPreparation: vi.fn(async () => ({
+      check,
+      version: 1,
+      keyId: "test-kid",
+    })),
+  };
+  const key = {
+    credentials: {
+      kid: "test-kid",
+      iss: "test@sa.stackit.cloud",
+      privateKey: "secret-not-in-db",
+    },
+  };
+  const secrets = {
+    get: vi.fn(async () => ({ key, version: 1 })),
+    put: vi.fn(),
+    remove: vi.fn(),
+  };
+  const { preparationManifest } = await import(
+    "../apps/api/src/deployments/preparations.js"
+  );
+  const manifest = preparationManifest(
+    {
+      target: { id: 123, owner: "alice", name: "lza" },
+      head: "a".repeat(40),
+      configurationId: document.id,
+      credentialId: profileId,
+    },
+    { document, head: "a".repeat(40), tfvars },
+    { check, version: 1, keyId: "test-kid" },
+  );
+  await migration.query(
+    "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id,state) VALUES($1,$2,$3,'Runner test','test@sa.stackit.cloud','test-kid','stored')",
+    [profileId, alice.tenantId, alice.userId],
+  );
+  await migration.query(
+    "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,credential_id,name,manifest) VALUES($1,$2,$3,$4,'Runner test',$5)",
+    [
+      preparationId,
+      alice.tenantId,
+      alice.userId,
+      profileId,
+      JSON.stringify(manifest),
+    ],
+  );
+  let ticket = "";
+  const runner = {
+    start: vi.fn(
+      async (
+        _id: string,
+        t: string,
+        _origin: string,
+        record: (id: string, source: string) => Promise<void>,
+      ) => {
+        ticket = t;
+        await record(randomUUID(), randomUUID());
+      },
+    ),
+    remove: vi.fn(async () => {}),
+  };
+  const repositories = {
+    prepareSnapshot: vi.fn(async () => ({
+      document,
+      head: "a".repeat(40),
+      tfvars,
+    })),
+  };
+  // Secret mock tests ownership/version; production key parsing is tested separately.
+  const plans = new Plans(
+    pool,
+    profiles,
+    secrets as unknown as ConstructorParameters<typeof Plans>[2],
+    repositories,
+    runner,
+    "https://configurator.example",
+  );
+  await expect(
+    plans.start(bob, "ghu_bob", preparationId),
+  ).rejects.toMatchObject({ status: 404 });
+  expect(repositories.prepareSnapshot).not.toHaveBeenCalled();
+  const run = await plans.start(alice, "ghu_alice", preparationId);
+  expect(await plans.list(bob)).toEqual([]);
+  await expect(plans.cancel(bob, run.id)).rejects.toMatchObject({
+    status: 404,
+  });
+  await expect(
+    plans.start(alice, "ghu_alice", preparationId),
+  ).rejects.toMatchObject({ code: "plan_already_running" });
+  const records = await plans.list(alice);
+  expect(JSON.stringify(records)).not.toContain(ticket);
+  expect(JSON.stringify(records)).not.toContain("secret-not-in-db");
+  await expect(plans.input("x".repeat(43))).rejects.toMatchObject({
+    status: 401,
+  });
+  const input = await plans.input(ticket);
+  expect(input.id).toBe(run.id);
+  expect(input.key).toEqual(key);
+  await expect(plans.input(ticket)).rejects.toMatchObject({ status: 401 });
+  await expect(plans.stage(ticket, "planning")).rejects.toMatchObject({
+    code: "invalid_runner_transition",
+  });
+  await plans.stage(ticket, "validating");
+  await plans.stage(ticket, "planning");
+  await expect(plans.result(ticket, { status: "applying" })).rejects.toThrow();
+  await plans.result(ticket, { status: "failed", errorCode: "plan_failed" });
+  await expect(
+    plans.result(ticket, { status: "failed", errorCode: "plan_failed" }),
+  ).rejects.toMatchObject({ status: 401 });
+  await migration.query(
+    "UPDATE lzc.plan_runs SET finished_at=now()-interval '1 minute' WHERE id=$1",
+    [run.id],
+  );
+  await plans.maintain();
+  expect(runner.remove).toHaveBeenCalledWith(run.id, expect.any(String));
+  // Expiry prevents another input delivery and releases the user's single active slot.
+  const second = await plans.start(alice, "ghu_alice", preparationId);
+  await migration.query(
+    "UPDATE lzc.plan_runs SET expires_at=now()-interval '1 second' WHERE id=$1",
+    [second.id],
+  );
+  await plans.maintain();
+  expect((await plans.list(alice))[0]?.errorCode).toBe("timed_out");
+  expect(
+    (
+      await pool.query("SELECT * FROM lzc_auth.resolve_plan_ticket($1)", [
+        tokenHash(ticket),
+      ])
+    ).rows,
+  ).toEqual([]);
+}, 30000);

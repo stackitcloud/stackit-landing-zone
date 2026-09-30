@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "./Account";
 import { type AccessCheck, CheckSummary, checkMessages } from "./CheckSummary";
+import { PlanRuns } from "./PlanRuns";
 export type DeploymentSelection = {
   target: { id: number; owner: string; name: string };
   configurationId: string;
@@ -26,6 +27,8 @@ type Preparation = {
   };
 };
 const errors: Record<string, string> = {
+  preparation_has_plans:
+    "Diese Vorbereitung besitzt Plan-Nachweise und bleibt für deren Nachvollziehbarkeit erhalten.",
   ...checkMessages,
   authentication_required: "Bitte melde dich mit GitHub an.",
   github_reauthentication_required: "Bitte melde dich erneut mit GitHub an.",
@@ -124,8 +127,9 @@ export function Deployments({
       <div className="info-banner">
         <p>
           Dieser Schritt erstellt noch keinen OpenTofu-Plan und verändert keine
-          Cloud-Ressourcen. Die Ausführung von Plan und Apply folgt in einem
-          nächsten Schritt.
+          Cloud-Ressourcen. Für gespeicherte Vorbereitungen kannst du
+          anschließend einen Erstbereitstellungsplan starten. Apply bleibt
+          gesperrt.
         </p>
       </div>
       {!session ? (
@@ -228,7 +232,7 @@ export function Deployments({
               </p>
               <p>
                 {preparation.credentialId
-                  ? "Vorbereitet · Plan/Apply noch nicht verfügbar"
+                  ? "Vorbereitet · Apply gesperrt"
                   : "Zugang gelöscht · Vorbereitung kann nicht verwendet werden"}
               </p>
               <CheckSummary check={preparation.manifest.check} />
@@ -275,6 +279,7 @@ export function Deployments({
               </button>
             </article>
           ))}
+          <PlanRuns session={session} preparations={preparations} />
           {busy && <p role="status">Prüfung läuft …</p>}
           {!busy && notice && (
             <p role="status" className="success-banner">

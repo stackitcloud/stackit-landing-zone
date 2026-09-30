@@ -3,6 +3,9 @@ import { catalogue, createDraft, savedDraft, type Template } from "@lzc/domain";
 import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/plans", (route) =>
+    route.fulfill({ status: 404, json: { error: "not_found" } }),
+  );
   await page.route("**/auth/status", (route) =>
     route.fulfill({ json: { github: false } }),
   );
@@ -544,6 +547,63 @@ test("prepares an immutable saved configuration with a personal credential and s
     },
   };
   let stored = false;
+  let planStatus = "";
+  await page.route("**/api/v1/plans", (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().postDataJSON()).toEqual({
+        preparationId: record.id,
+        confirmNewDeployment: true,
+      });
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+      planStatus = "planning";
+      return route.fulfill({ status: 202, json: { id: "plan-one" } });
+    }
+    return route.fulfill({
+      json: {
+        runs: planStatus
+          ? [
+              {
+                id: "plan-one",
+                preparationId: record.id,
+                status: planStatus,
+                errorCode: null,
+                createdAt: new Date().toISOString(),
+                summary:
+                  planStatus === "succeeded"
+                    ? {
+                        schemaVersion: 1,
+                        execution: "plan-only",
+                        applyAllowed: false,
+                        result: "changes",
+                        resources: {
+                          unchanged: 0,
+                          create: 12,
+                          update: 0,
+                          delete: 0,
+                          replace: 0,
+                          read: 1,
+                        },
+                        drift: {
+                          unchanged: 0,
+                          create: 0,
+                          update: 0,
+                          delete: 0,
+                          replace: 0,
+                          read: 0,
+                        },
+                        changedOutputs: 3,
+                        checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
+                        destructive: false,
+                        completeness: "not-reported",
+                      }
+                    : null,
+              },
+            ]
+          : [],
+      },
+    });
+  });
+
   await page.route("**/auth/status", (route) =>
     route.fulfill({ json: { github: true } }),
   );
@@ -598,8 +658,10 @@ test("prepares an immutable saved configuration with a personal credential and s
   });
   await page.route(`**/api/v1/preparations/${record.id}`, (route) => {
     expect(route.request().method()).toBe("DELETE");
-    stored = false;
-    return route.fulfill({ status: 204 });
+    return route.fulfill({
+      status: 409,
+      json: { error: "preparation_has_plans" },
+    });
   });
   await page.goto("/repositories");
   await page
@@ -620,10 +682,36 @@ test("prepares an immutable saved configuration with a personal credential and s
   );
   await page.reload();
   await expect(
-    page.getByText("Vorbereitet · Plan/Apply noch nicht verfügbar", {
+    page.getByText("Vorbereitet · Apply gesperrt", {
       exact: true,
     }),
   ).toBeVisible();
+
+  await page
+    .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+    .selectOption(record.id);
+  const startPlan = page.getByRole("button", {
+    name: "Erstbereitstellung planen",
+    exact: true,
+  });
+  await expect(startPlan).toBeDisabled();
+  await page
+    .getByRole("checkbox", {
+      name: /Ich bestätige: Dies ist eine neue Landing Zone/,
+    })
+    .check();
+  await startPlan.click();
+  await expect(page.getByText(/Plan wird berechnet/)).toBeVisible();
+  await expect(startPlan).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /Apply|Anwenden/ }),
+  ).toHaveCount(0);
+  planStatus = "succeeded";
+  await page.reload();
+  await expect(
+    page.getByText("Änderungen geplant – nichts angewendet."),
+  ).toBeVisible();
+  await expect(page.getByText("12", { exact: true })).toBeVisible();
   await page.getByText("Versionsnachweise", { exact: true }).click();
   await expect(page.getByText(head, { exact: true })).toBeVisible();
   await page.screenshot({
@@ -637,10 +725,10 @@ test("prepares an immutable saved configuration with a personal credential and s
   ).toBe(true);
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: /Vorbereitung entfernen/ }).click();
-  await expect(page.getByRole("status")).toContainText("Vorbereitung entfernt");
+  await expect(page.getByRole("alert")).toContainText("besitzt Plan-Nachweise");
   await expect(
-    page.getByText("Vorbereitet · Plan/Apply noch nicht verfügbar", {
+    page.getByText("Vorbereitet · Apply gesperrt", {
       exact: true,
     }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
 });

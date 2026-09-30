@@ -7,5 +7,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@lzc/contracts": "0.1.0"
+  }
 }

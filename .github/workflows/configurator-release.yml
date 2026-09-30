@@ -6,6 +6,7 @@ on:
     paths:
       - 'landing-zone-configurator/app/**'
       - 'landing-zone-configurator/deploy/cloud-foundry/**'
+      - 'landing-zone-configurator/deploy/runner/**'
       - 'landing-zone-configurator/infra/ci/prepare-release.mjs'
       - '.github/workflows/configurator-release.yml'
   workflow_dispatch:
@@ -21,7 +22,7 @@ jobs:
   build:
     if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
@@ -84,12 +85,22 @@ jobs:
           ../.local/release/runtime/bin/node --version
           tar -czf ../.local/release.tar.gz -C ../.local/release .
           (cd ../.local && sha256sum release.tar.gz > release.sha256)
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Test real OpenTofu contract and package isolated runner
+        run: |
+          LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
+          bash ../deploy/runner/package.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: configurator-app-${{ github.run_id }}
           path: |
             landing-zone-configurator/.local/release.tar.gz
             landing-zone-configurator/.local/release.sha256
+            landing-zone-configurator/.local/runner.tar.gz
+            landing-zone-configurator/.local/runner.sha256
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
@@ -141,6 +152,9 @@ jobs:
           (cd .local && sha256sum --check release.sha256)
           mkdir -p .local/release
           tar -xzf .local/release.tar.gz -C .local/release
+          (cd .local && sha256sum --check runner.sha256)
+          mkdir -p .local/runner
+          tar -xzf .local/runner.tar.gz -C .local/runner
       - name: Prepare encrypted state read access
         run: node infra/ci/prepare-release.mjs backend
         env:
@@ -165,6 +179,17 @@ jobs:
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
+      - name: Stage isolated runner template in its own organisation
+        run: |
+          cf api "$CF_API_URL"
+          CF_USERNAME="$LZC_RUNNER_CF_USERNAME" CF_PASSWORD="$LZC_RUNNER_CF_PASSWORD" cf auth
+          cf target -o lzc-dev-runners -s plans
+          test "$(cf org lzc-dev-runners --guid)" = "$LZC_RUNNER_ORG_ID"
+          test "$(cf space plans --guid)" = "$LZC_RUNNER_SPACE_ID"
+          cf push --task -f deploy/runner/manifest.yml -p .local/runner --redact-env
+          export LZC_RUNNER_TEMPLATE_ID="$(cf app lzc-plan-template --guid)"
+          node infra/ci/prepare-release.mjs runner
+          cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=accelerator init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=accelerator validate -no-color' --name "engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
       - name: CF login and target
         run: |
           cf version
@@ -190,6 +215,9 @@ jobs:
         id: connectivity
         timeout-minutes: 5
         run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+      - name: Verify separate runner app, bindings and rejected job ticket
+        timeout-minutes: 5
+        run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-plan-runner.js' --name "runner-$GITHUB_RUN_ID" -m 128M -k 512M --wait
       # Router logs may contain OAuth callback codes. Do not export raw logs to CI.
       - name: CF application status
         if: always() && steps.push.outcome == 'success'

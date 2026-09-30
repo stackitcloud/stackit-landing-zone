@@ -3,7 +3,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 const mode=process.argv[2];
-if(!["backend","application"].includes(mode)) throw new Error("Expected backend or application");
+if(!["backend","application","runner"].includes(mode)) throw new Error("Expected backend or application");
 const required=name=>{if(!process.env[name])throw new Error(`Missing ${name}`);return process.env[name];};
 if(required("GITHUB_REPOSITORY")!=="stackitcloud/stackit-landing-zone" || !["refs/heads/main","refs/heads/feature/landing-zone-configurator"].includes(required("GITHUB_REF")))throw new Error("Unexpected release source");
 process.umask(0o077);
@@ -24,6 +24,13 @@ if(mode==="backend") {
   publish("AWS_ACCESS_KEY_ID",required("LZC_WORKLOAD_ACCESS_KEY"),true);
   publish("AWS_SECRET_ACCESS_KEY",required("LZC_WORKLOAD_SECRET_KEY"),true);
   publish("CF_HOME",resolve(dir,"cf"));
+} else if (mode === "runner") {
+  const file=resolve(dir,"app-vars.json");
+  const vars=JSON.parse(readFileSync(file,"utf8"));
+  const id=required("LZC_RUNNER_TEMPLATE_ID");
+  if(!/^[a-f0-9-]{36}$/.test(id) || !vars.LZC_RUNNER_CF_PASSWORD || !vars.LZC_RUNNER_SPACE_ID)throw new Error("Runner not staged");
+  vars.LZC_RUNNER_TEMPLATE_ID=id;vars.LZC_PLANS_ENABLED="true";
+  writeFileSync(file,JSON.stringify(vars),{mode:0o600});
 } else {
   const platform=JSON.parse(readFileSync(resolve(dir,"platform-outputs.json"),"utf8"));
   const runtime=JSON.parse(readFileSync(resolve(dir,"runtime-outputs.json"),"utf8"));
@@ -39,6 +46,14 @@ if(mode==="backend") {
   const enabled=process.env.LZC_AUTH_ENABLED==="true";
   Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:enabled?required("LZC_GITHUB_CLIENT_ID"):"",LZC_GITHUB_CLIENT_SECRET:enabled?required("LZC_GITHUB_CLIENT_SECRET"):""});
   if(enabled)mask(vars.LZC_GITHUB_CLIENT_SECRET);
+  Object.assign(vars,{LZC_PLANS_ENABLED:"false",LZC_RUNNER_CF_USERNAME:"",LZC_RUNNER_CF_PASSWORD:"",LZC_RUNNER_SPACE_ID:"",LZC_RUNNER_TEMPLATE_ID:""});
+  const runner=platform.plan_runner_cf?.value, runnerSpace=runtime.runner_space?.value;
+  if(runner || runnerSpace){
+    if(runner?.api_url!==cf.api_url || runner?.org_id===cf.org_id || runnerSpace?.org_id!==runner?.org_id || runnerSpace?.name!=="plans" || !runnerSpace.id || !runner.username || !runner.password)throw new Error("Runner destination invalid");
+    vars.LZC_RUNNER_CF_USERNAME=runner.username;vars.LZC_RUNNER_CF_PASSWORD=runner.password;vars.LZC_RUNNER_SPACE_ID=runnerSpace.id;
+    mask(runner.username);mask(runner.password);
+    publish("LZC_RUNNER_CF_USERNAME",runner.username,true);publish("LZC_RUNNER_CF_PASSWORD",runner.password,true);publish("LZC_RUNNER_SPACE_ID",runnerSpace.id);publish("LZC_RUNNER_ORG_ID",runner.org_id);
+  }
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);
 }

@@ -8,9 +8,13 @@ import { PostgresCredentialProfiles } from "./credentials/profiles.js";
 import { VaultCredentialSecrets } from "./credentials/secrets.js";
 import { Preparations } from "./deployments/preparations.js";
 import { Repositories } from "./github/repositories.js";
+import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
+import { Plans } from "./plans/service.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
 
+const repositories = new Repositories();
+let plans: Plans | undefined;
 let pool: pg.Pool | undefined;
 let auth: AuthServices | undefined;
 let credentials: PostgresCredentialProfiles | undefined;
@@ -36,10 +40,25 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     username: required("LZC_SECRETS_USERNAME"),
     password: required("LZC_SECRETS_PASSWORD"),
   };
-  credentials = new PostgresCredentialProfiles(
-    pool,
-    new VaultCredentialSecrets(new VaultConnection(secretConfig)),
+  const credentialSecrets = new VaultCredentialSecrets(
+    new VaultConnection(secretConfig),
   );
+  credentials = new PostgresCredentialProfiles(pool, credentialSecrets);
+  if (process.env.LZC_PLANS_ENABLED === "true") {
+    plans = new Plans(
+      pool,
+      credentials,
+      credentialSecrets,
+      repositories,
+      new CloudFoundryPlanRunner({
+        username: required("LZC_RUNNER_CF_USERNAME"),
+        password: required("LZC_RUNNER_CF_PASSWORD"),
+        spaceId: required("LZC_RUNNER_SPACE_ID"),
+        templateId: required("LZC_RUNNER_TEMPLATE_ID"),
+      }),
+      origin,
+    );
+  }
   await pool.query("SELECT id FROM lzc.credential_profiles LIMIT 0");
   auth = {
     origin,
@@ -54,9 +73,9 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
   };
 }
 
-const repositories = new Repositories();
 const app = buildApp({
   repositories,
+  ...(plans ? { plans } : {}),
   ...(pool && credentials
     ? { preparations: new Preparations(pool, repositories, credentials) }
     : {}),
@@ -64,7 +83,24 @@ const app = buildApp({
   ...(auth ? { auth } : {}),
   ...(credentials ? { credentials } : {}),
 });
+let maintaining = false;
+const maintenance = plans
+  ? setInterval(() => {
+      if (maintaining) return;
+      maintaining = true;
+      void plans
+        ?.maintain()
+        .catch(() =>
+          app.log.warn({ event: "plan_cleanup_failed" }, "Plan cleanup failed"),
+        )
+        .finally(() => {
+          maintaining = false;
+        });
+    }, 30000)
+  : undefined;
+maintenance?.unref();
 app.addHook("onClose", async () => {
+  clearInterval(maintenance);
   await pool?.end();
 });
 const port = Number(process.env.PORT ?? "3000");

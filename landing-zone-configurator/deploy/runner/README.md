@@ -11,10 +11,12 @@ wird nicht verändert. Provider-Updates verlangen eine neue gemeinsame Qualifizi
 
 Im späteren Build wird die Datei als `src/.terraform.lock.hcl` in das isolierte
 Accelerator-Paket kopiert. Anschließend ausschließlich `tofu init -lockfile=readonly`.
-Linux-Checksummen sind erfasst; ein Linux-Runner-Lauf und dessen Isolation sind noch
-nicht abgenommen. Lokales readonly-init und validate erfolgreich. Der opnsense-
+Linux-Checksummen sind erfasst. Die Release-Pipeline prüft init/validate und die
+CF-Isolation vor der Abnahme; aktueller Status steht im Abnahmedokument. Der opnsense-
 Provider wurde vom Registry-Download ohne GPG-Signatur angeboten; Checksummen sind
 gepinnt, dies ist kein Signaturnachweis dieses Providers.
 
-Noch kein produktiver Runner, kein Docker-Image und kein CF-Deployment. Geplanter
-Ablauf und Freigabegrenzen: [Plan-Ausführung](../../docs/plan-execution.md).
+`package.sh` baut ein separates Binary-Buildpack-Paket mit Node, OpenTofu und
+Provider-Mirror; `manifest.yml` staged ein task-only CF-Template ohne Bindings.
+Der Dispatcher kopiert dessen Droplet in eine neue App pro Auftrag. Direkte
+OpenTofu-Schritte stehen in `run-plan.sh`. Ablauf und Freigabegrenzen: [Plan-Ausführung](../../docs/plan-execution.md).

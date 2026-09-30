@@ -13,6 +13,8 @@ import type { Preparations } from "./deployments/preparations.js";
 import { registerPreparations } from "./deployments/routes.js";
 import type { Repositories } from "./github/repositories.js";
 import { registerRepositories } from "./github/routes.js";
+import { registerPlans } from "./plans/routes.js";
+import type { Plans } from "./plans/service.js";
 
 export function buildApp(
   options: {
@@ -20,6 +22,10 @@ export function buildApp(
     auth?: AuthServices;
     repositories?: Repositories;
     credentials?: CredentialProfiles;
+    plans?: Pick<
+      Plans,
+      "list" | "start" | "cancel" | "input" | "stage" | "result"
+    >;
     preparations?: Pick<Preparations, "list" | "create" | "remove">;
   } = {},
 ) {
@@ -47,6 +53,7 @@ export function buildApp(
   app.get("/auth/status", async () => ({ github: !!options.auth }));
   if (options.auth) {
     registerAuth(app, options.auth);
+    if (options.plans) registerPlans(app, options.auth, options.plans);
     if (options.preparations)
       registerPreparations(app, options.auth, options.preparations);
     if (options.credentials)

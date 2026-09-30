@@ -4,7 +4,16 @@ mock_provider "cloudfoundry" {
     defaults = { id = "00000000-0000-4000-8000-000000000005" }
   }
 }
+mock_provider "cloudfoundry" {
+  alias = "runners"
+  mock_resource "cloudfoundry_space" {
+    defaults = { id = "00000000-0000-4000-8000-000000000007" }
+  }
+}
 variables {
+  runner_cf_org_id     = "00000000-0000-4000-8000-000000000006"
+  runner_cf_username   = "runner@example.invalid"
+  runner_cf_password   = "runner-test-only"
   project_id           = "00000000-0000-4000-8000-000000000001"
   region               = "eu01"
   cf_org_id            = "00000000-0000-4000-8000-000000000002"
@@ -15,6 +24,10 @@ variables {
 }
 run "isolated_runtime_identities" {
   command = plan
+  assert {
+    condition     = cloudfoundry_space.plan_runners.org != cloudfoundry_space.configurator.org && cloudfoundry_space.plan_runners.allow_ssh == false
+    error_message = "Plan runners must use a separate organisation without SSH."
+  }
   assert {
     condition     = stackit_postgresflex_user.application.roles == toset(["login"])
     error_message = "Runtime must not receive database administration roles."

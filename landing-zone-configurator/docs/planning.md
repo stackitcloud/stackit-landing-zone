@@ -745,3 +745,11 @@ Freigabe**, kein Destroy. Die Configurator-Infrastrukturfreigabe gilt dafür nic
 D07: bestehenden LZA-Bootstrap mit anschließendem Kunden-Backend übernehmen. Wertfreie Plan-Auswertung und lokaler echter
 OpenTofu-Vertragstest umgesetzt; produktiver Kunden-Runner noch offen.
 [Umsetzung und Abnahme](plan-execution.md).
+
+### Plan-only-Ausführung
+
+Persistierte persönliche Plan-Aufträge und isolierte CF-Tasks in eigener Organisation
+umgesetzt; Erstbereitstellung nur nach Bestätigung eines leeren States. Direkte
+init/validate/plan/show-Befehle, feste Engine/Provider, bereinigte Aktionszahlen und
+Abbruch. Kein Apply-/Destroy-Endpunkt. Dauerhafte Bootstrap-State-Sicherung und
+exakte Apply-Artefakte bleiben offene Voraussetzungen. [Abnahme](plan-execution.md).

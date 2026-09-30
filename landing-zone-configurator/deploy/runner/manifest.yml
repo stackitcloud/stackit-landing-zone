@@ -1,0 +1,10 @@
+---
+applications:
+  - name: lzc-plan-template
+    instances: 0
+    memory: 1024M
+    disk_quota: 4096M
+    stack: cflinuxfs4
+    buildpacks: [binary_buildpack]
+    no-route: true
+    command: ./runtime/bin/node apps/worker/dist/main.js

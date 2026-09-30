@@ -9,7 +9,7 @@ platform-maintained (`cflinuxfs4`).
 
 `manifest.yml` owns the application, route, process size, health check and backend
 environment bindings. OpenTofu owns the CF org/space/roles and backing services;
-it does not also manage the application. The worker is not deployed yet.
+it does not also manage the application. The plan runner is staged separately in `lzc-dev-runners/plans`, without application service bindings.
 
 The protected `lzc-dev-release` Environment contains workload S3 credentials and
 platform/runtime state keys. No project service-account key is supplied to the
@@ -52,7 +52,7 @@ release in `landing-zone-configurator-migrate`, a separate task-only app with no
 route. Only this short-lived app receives the database-owner credentials; it is
 deleted after migration and on failure. Migration checksums and an advisory lock
 protect repeat execution. The web app uses its restricted runtime role and RLS.
-Customer deployment execution is not part of this release.
+Initial customer plan previews use ephemeral runner tasks. Apply/destroy are not implemented. See [plan execution](../../docs/plan-execution.md).
 
 Raw CF logs are not exported to CI, since router URLs may contain OAuth codes.
 Task status, sanitized diagnostics and public health checks provide release evidence.
@@ -70,3 +70,10 @@ The official eu01 catalog and our own router logs support adding
 platform plan and then a fresh CF connectivity test. The public UI/API checks run
 even if a service connection fails, so route health and service health remain
 separately visible. See [platform acceptance](../../docs/platform-readiness.md).
+
+The API dispatcher additionally receives the manager credentials for the dedicated
+runner organisation, not the Configurator organisation. This isolates CF control
+from the database/secret/model bindings of the web app. These credentials never
+enter the runner package or job app. Release verifies the runner organisation and
+space IDs, stages the provider mirror, tests the engine and probes a disposable
+runner app with an unregistered ticket.

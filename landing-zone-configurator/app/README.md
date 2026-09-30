@@ -46,7 +46,7 @@ Auch diese Befehle können bei abweichender lokaler Node-Version mit dem oben ge
 - Persönliche Deployment-Zugänge: Service-Account-Key-Datei speichern/löschen; Anmeldung und Organisations-Lesezugriff prüfen. [Details](../docs/deployment-credentials.md).
 - Unveränderliche Deployment-Vorbereitungen aus Fork-Konfiguration, Ziel und persönlichem Zugang. [Details](../docs/deployment-preparation.md).
 - Browser-Zurück/Vorwärts und direkte Seiten-URLs.
-- Worker bleibt ein Platzhalter; Kunden-Plan/Apply und Chat sind noch offen.
+- Erstbereitstellungspläne: RLS-Aufträge, isolierte CF-Tasks und wertfreie Ergebnisanzeige; siehe [Ablauf und Abnahme](../docs/plan-execution.md). Kunden-Apply und Chat bleiben offen.
 
 Details und Grenzen: [Forks und Navigation](../docs/forks-and-navigation.md),
 [GitHub-Login](../docs/github-login.md). HCL-Export-Roundtrip prüfen mit Node 24 im PATH:
