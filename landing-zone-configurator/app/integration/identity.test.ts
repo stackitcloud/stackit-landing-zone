@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   catalogue,
@@ -618,3 +619,74 @@ it("isolates queued plans, consumes input once, rejects replay and expires aband
     ).rows,
   ).toEqual([]);
 }, 30000);
+
+describe("independent external identities", () => {
+  it("backfills existing identities without replacing user IDs", async () => {
+    // Replay the additive migration transactionally against the pre-migration shape.
+    await migration.query("BEGIN");
+    try {
+      await migration.query("DROP TABLE lzc_auth.external_identities");
+      await migration.query(
+        "DELETE FROM lzc_auth.users WHERE github_id IS NULL",
+      );
+      const sql = await readFile(
+        `${directory}/006_external_identities.sql`,
+        "utf8",
+      );
+      await migration.query(sql);
+      const rows = await migration.query(
+        "SELECT user_id FROM lzc_auth.external_identities WHERE provider='github' AND subject='101'",
+      );
+      expect(rows.rows).toEqual([{ user_id: alice.userId }]);
+    } finally {
+      await migration.query("ROLLBACK");
+    }
+  });
+
+  it("keeps user and tenant stable across a GitHub rename", async () => {
+    const session = await store.createSession({
+      githubId: 101,
+      login: "alice-renamed",
+      id: randomUUID(),
+      hash: newSessionToken().hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 3600000),
+    });
+    expect(session.userId).toBe(alice.userId);
+    expect(session.tenantId).toBe(alice.tenantId);
+    const result = await migration.query(
+      "SELECT user_id FROM lzc_auth.external_identities WHERE provider='github' AND subject='101'",
+    );
+    expect(result.rows).toEqual([{ user_id: alice.userId }]);
+  });
+  it("denies runtime identity reads and reassignment", async () => {
+    await expect(
+      pool.query("SELECT * FROM lzc_auth.external_identities"),
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      pool.query("UPDATE lzc_auth.external_identities SET user_id=$1", [
+        bob.userId,
+      ]),
+    ).rejects.toThrow(/permission denied/);
+  });
+  it("allows GitHub-independent users and scopes subjects to their issuer", async () => {
+    const user = await migration.query(
+      "INSERT INTO lzc_auth.users DEFAULT VALUES RETURNING id",
+    );
+    for (const issuer of [
+      "https://issuer-a.example",
+      "https://issuer-b.example",
+    ]) {
+      await migration.query(
+        "INSERT INTO lzc_auth.external_identities(provider,issuer,subject,user_id) VALUES('oidc',$1,'same-subject',$2)",
+        [issuer, user.rows[0].id],
+      );
+    }
+    await expect(
+      migration.query(
+        "INSERT INTO lzc_auth.external_identities(provider,issuer,subject,user_id) VALUES('oidc','https://issuer-a.example','same-subject',$1)",
+        [bob.userId],
+      ),
+    ).rejects.toThrow(/duplicate key/);
+  });
+});

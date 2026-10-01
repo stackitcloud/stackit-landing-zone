@@ -180,3 +180,42 @@ Service-Account samt Schlüssel und Object-Storage-Buckets/Credentials. Dieser U
 muss beim Veröffentlichen des Basis-Templates und im Plan sichtbar sein. Die
 Anwendungsinstanz verwendet für ihren ersten Lauf das vorhandene Bootstrap-Backend,
 nicht ihren erst später erzeugten eigenen Bucket.
+
+## Umsetzungsschritt: unabhängige Benutzeridentität (2026-10-01)
+
+Die additive Migration `006_external_identities.sql` trennt externe Anmeldeidentitäten
+von der internen Benutzer-UUID. Bestehende GitHub-Zuordnungen werden übernommen;
+Benutzer-, Tenant-, Konfigurations- und Secret-Adressen bleiben unverändert.
+GitHub-Anmeldung löst Benutzer jetzt über Provider, Issuer und unveränderliche
+GitHub-ID auf. Die bisherigen GitHub-Spalten bleiben für bestehende Session-
+und Repository-Schnittstellen vorübergehend erhalten und sind nun optional.
+Es existiert noch kein OIDC-Login und keine öffentliche Account-Linking-API.
+Identitätsverknüpfungen haben keine direkten Runtime-Tabellenrechte.
+
+STACKIT IDP bleibt der bevorzugte Hauptlogin. Das Ticket zur Registrierung eines
+eigenen OIDC-Clients wurde vom Benutzer gestellt; die Antwort steht aus.
+Die öffentliche [Federationsanleitung](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/how-tos/generic-oidc-1_0-federation-guide/)
+beschreibt STACKIT als Relying Party und bestätigt diesen Registrierungsweg nicht.
+Alternativ wird ein freigegebener Unternehmens-OIDC-Anbieter angebunden; ein
+Identity Broker ist erst bei entsprechendem Bedarf vorgesehen. GitHub bleibt
+bis zur Umstellung der Übergangslogin und später eine persönliche Verbindung.
+Kein Zusammenführen von Konten allein anhand gleicher E-Mail-Adressen.
+
+### Nächste Implementierungsschritte
+
+- [x] Externe Identitäten separat speichern und bestehende UUIDs erhalten.
+- [x] PostgreSQL-Tests: Bestandsmigration, GitHub-Umbenennung, Runtime-Zugriffsverbot,
+      issuergebundene Subjects und Benutzer ohne GitHub.
+- [ ] Verifizierte OIDC-Anmeldung nach Client-Registrierung; Anbieter serverseitig
+      freigeben, Identität anhand von Issuer und Subject prüfen.
+- [ ] Sichere Verknüpfung bestehender Benutzer mit erneutem Nachweis beider Konten.
+- [ ] Organisationstenants von bisherigen persönlichen Arbeitsbereichen unterscheiden;
+      zunächst genau eine verifizierte STACKIT-Organisation je Organisationstenant.
+- [ ] Mitgliedschaften mit Platform Engineer / Application Owner und separater
+      Mitgliederverwaltungsfähigkeit, Widerruf und Audit implementieren.
+- [ ] Tenant-Wechsel mit unabhängiger persönlicher GitHub-Token-Bindung implementieren.
+- [ ] Bestehende API-Rechte auf neue Rollen umstellen, bevor Application Owner Zugang erhalten.
+- [ ] Oberfläche „Organisation & Mitglieder“ und Application-Katalog bereitstellen.
+
+Dieser Schritt aktiviert keine neuen Rollen, erteilt keine STACKIT-Rechte und
+ändert weder die Kunden-Apply-Freigabe noch die bestehenden Tenant-Grenzen.
