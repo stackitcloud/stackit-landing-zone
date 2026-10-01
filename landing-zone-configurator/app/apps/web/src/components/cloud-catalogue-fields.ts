@@ -12,6 +12,10 @@ export type CloudCatalogue = {
   machineTypes: Part;
   availabilityZones: Part;
   volumeTypes: Part;
+  observabilityPlans?: Part;
+  bastionMachineTypes?: Part;
+  bastionImages?: Part;
+  bastionAvailabilityZones?: Part;
 };
 
 export function catalogueField(
@@ -25,8 +29,25 @@ export function catalogueField(
       | "machineTypes"
       | "availabilityZones"
       | "volumeTypes"
+      | "observabilityPlans"
+      | "bastionMachineTypes"
+      | "bastionImages"
+      | "bastionAvailabilityZones"
     >
   | null {
+  if (
+    path === "observability.plan_name" ||
+    path.endsWith(".observability.plan_name")
+  )
+    return "observabilityPlans";
+  if (
+    path.startsWith("platform_kubernetes") &&
+    path.includes(".debug_bastion.")
+  ) {
+    if (path.endsWith(".machine_type")) return "bastionMachineTypes";
+    if (path.endsWith(".image_id")) return "bastionImages";
+    if (path.endsWith(".availability_zone")) return "bastionAvailabilityZones";
+  }
   if (path.endsWith(".git_flavor")) return "gitFlavors";
   if (path.includes(".vpn.") && path.endsWith(".plan_id")) return "vpnPlans";
   if (path.startsWith("platform_kubernetes") && path.includes(".cluster.")) {

@@ -28,6 +28,10 @@ export function registerOrganisations(
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_organisation_request" });
       const code = (error as { code?: string }).code;
+      if (code === "23505")
+        return reply.code(409).send({ error: "organisation_already_exists" });
+      if (code === "55000")
+        return reply.code(409).send({ error: "organisation_not_empty_draft" });
       if (code === "40001")
         return reply.code(409).send({ error: "stale_tenant_context" });
       if (code === "42501")
@@ -82,6 +86,22 @@ export function registerOrganisations(
       await service.switch(session, input.tenantId);
       return { switched: true };
     });
+    routes.delete(
+      "/api/v1/organisation/workspaces/:tenantId",
+      async (request, reply) => {
+        const session = await authenticatedSession(request, auth);
+        if (!session)
+          return reply.code(401).send({ error: "authentication_required" });
+        const { tenantId } = z
+          .object({ tenantId: z.uuid() })
+          .strict()
+          .parse(request.params);
+        if (request.headers["x-lzc-tenant"] !== tenantId)
+          return reply.code(409).send({ error: "stale_tenant_context" });
+        await service.archive(session, tenantId);
+        return { archived: true };
+      },
+    );
     routes.put(
       "/api/v1/organisation/members",
       { bodyLimit: 4096 },

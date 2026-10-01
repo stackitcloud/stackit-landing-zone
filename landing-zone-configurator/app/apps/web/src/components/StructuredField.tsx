@@ -6,7 +6,7 @@ import {
 } from "@lzc/domain";
 import { useId, useState } from "react";
 import { useCatalogueOptions } from "./CloudCatalogues";
-import { hints, labelFor } from "./feature-labels";
+import { fieldDescription, fieldLabel } from "./feature-labels";
 
 export function emptyValue(type: InputType): JsonValue {
   if (type === "string") return "";
@@ -56,7 +56,7 @@ export function StructuredField({
   const id = useId();
   const [newKey, setNewKey] = useState("");
   const [error, setError] = useState("");
-  const label = title ?? labelFor(name);
+  const label = title ?? fieldLabel(path, name);
   const simple = typeof type === "string";
   const missing = value === undefined || value === null;
   const standard =
@@ -157,7 +157,9 @@ export function StructuredField({
             werden nicht automatisch ersetzt.
           </p>
         )}
-        {hints[name] && <p className="field-hint">{hints[name]}</p>}
+        {fieldDescription(path, name) && (
+          <p className="field-hint">{fieldDescription(path, name)}</p>
+        )}
         <button
           type="button"
           className="button secondary"
@@ -232,7 +234,9 @@ export function StructuredField({
             }
           />
         )}
-        {hints[name] && <p className="field-hint">{hints[name]}</p>}
+        {fieldDescription(path, name) && (
+          <p className="field-hint">{fieldDescription(path, name)}</p>
+        )}
         {controls}
       </div>
     );
@@ -256,7 +260,9 @@ export function StructuredField({
             ? ` · ${Object.keys(objectValue(value)).length}`
             : ""}
       </summary>
-      {hints[name] && <p className="field-hint">{hints[name]}</p>}
+      {fieldDescription(path, name) && (
+        <p className="field-hint">{fieldDescription(path, name)}</p>
+      )}
       {disabled && <p className="field-hint">Deaktiviert</p>}
       {controls}
       {type[0] === "object" ? (

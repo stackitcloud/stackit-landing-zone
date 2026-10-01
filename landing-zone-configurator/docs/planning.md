@@ -929,3 +929,16 @@ Live-Abfrage mit einem persönlichen Benutzerzugang steht noch aus.
 - [x] Commit `59b0a04` auf lzc-dev veröffentlicht: [Release 36836376110](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36836376110) erfolgreich, einschließlich Migrationen, CF-Deployment und Runner-Prüfungen.
 - [x] Live-Gesundheit, neue Organisationsseite und Netzwerk-Deep-Link geprüft; ausgeliefertes Bundle `index-DxHvyiWG.js`. Anonymer Zugriff auf die Organisations-API wird mit 401 abgewiesen.
 - [ ] Benutzerabnahme: persönliche Produktkatalog-Abfrage und Organisations-Mitgliederverwaltung mit zwei Benutzerkonten.
+
+### Rückmeldungen zu Komponenten, Katalogen und Arbeitsbereichen
+
+- [x] Diagnose-Bastion gegen Accelerator geprüft: VM im Cluster-Projekt/SNA-Netz; unabhängige Komponente als [#87](https://github.com/stackitcloud/stackit-landing-zone/issues/87) erfasst.
+- [x] Zentrale und clusterbezogene Observability getrennt erklärt; Referenz statt Neuanlage als [#88](https://github.com/stackitcloud/stackit-landing-zone/issues/88) erfasst. Zulässige Projekt-/Regionsbeziehungen vor Umsetzung prüfen.
+- [x] Löschen leerer unverifizierter Organisationsentwürfe als auditierbare Archivierung ergänzt; keine Cloud-Ressourcen werden gelöscht.
+- [x] Benutzerkennung mit UUID-Beispiel, Kopierfunktion und verständlicher Validierung erklärt; Leerzeichen beim Einfügen entfernt.
+- [x] Versehentliche doppelte Anlage gleichnamiger zugänglicher Arbeitsbereiche für dieselbe Organisations-ID serverseitig abgefangen.
+- [ ] Unabhängigen Bastion-Root-Vertrag und sichere Observability-Referenzen im Accelerator implementieren; keine Änderung bestehender Ressourcenadressen ohne Migrationskonzept.
+
+- [x] Observability-Plan-Auswahl für eu01 sowie Bastion-Maschinentypen, öffentliche Images und IaaS-Zonen ergänzt; eu02-Observability bleibt mangels verifizierter API-Quelle manuell.
+- [x] PIM-v2-Angebotskatalog geprüft und gegenüber technischen Produktkatalogen abgegrenzt; kein automatischer SKU-zu-Provider-ID-Adapter eingeführt.
+- [x] Lokale Prüfung dieser Erweiterung: 117 Anwendungstests, 18 PostgreSQL-Tests, 30 Desktop-/Mobil-Browserfälle sowie Lint/TypeScript/Build erfolgreich.

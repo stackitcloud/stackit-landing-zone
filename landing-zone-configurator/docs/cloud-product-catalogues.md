@@ -10,7 +10,7 @@ Der Editor lädt Produktoptionen ausdrücklich auf Benutzerwunsch. Ein eigener g
 - [x] Eingeblendete Dropdowns erhalten bestehende/importierte Werte; fehlende Werte werden als nicht im geladenen Katalog markiert, niemals still ersetzt.
 - [x] Getrennte Fehlerbehandlung je Produkt. Fehlende API-Berechtigungen oder nicht verfügbare Kataloge lassen manuelle Eingaben zu; das ist keine erfolgreiche Cloud-Validierung.
 - [x] Keine Persistierung des Katalogs, keine Browser-Tokens, kein gemeinsamer Cache über Benutzer/Tenants. Wechsel des Benutzers oder Tenants leert den Kontext.
-- [ ] Weitere Kataloge für Observability, Datenbanken und IaaS nach produktspezifischer Prüfung.
+- [ ] Weitere Kataloge für Datenbanken und zusätzliche Produkte nach produktspezifischer Prüfung.
 - [ ] VPN-Verfügbarkeitszonen über eine für VPN dokumentierte Quelle. SKE-Zonen werden ausdrücklich **nicht** als VPN-Zonen angeboten.
 - [ ] Automatische erneute Cloud-Validierung vor dem Plan, berücksichtigt Zielprojekt, Region, Berechtigungen und Quoten.
 - [ ] Mehrere gleichzeitig geladene Regionskataloge; derzeit ist ein Regionskontext aktiv. Andere Regionen bleiben manuell editierbar.
@@ -28,7 +28,7 @@ Prüfstand 2026-10-01, offizieller STACKIT Go SDK, Commit `7746310c7fe0a5e3f5c5e
 
 Quellen: [Git API](https://github.com/stackitcloud/stackit-sdk-go/blob/7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9/services/git/v1betaapi/api_default.go), [Git Availability](https://github.com/stackitcloud/stackit-sdk-go/blob/7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9/services/git/v1betaapi/model_flavor_availability.go), [VPN API](https://github.com/stackitcloud/stackit-sdk-go/blob/7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9/services/vpn/v1api/api_default.go), [VPN Plan](https://github.com/stackitcloud/stackit-sdk-go/blob/7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9/services/vpn/v1api/model_plan.go), [SKE API](https://github.com/stackitcloud/stackit-sdk-go/blob/7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9/services/ske/v2api/api_default.go), [SKE Provider Options](https://github.com/stackitcloud/stackit-sdk-go/blob/7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9/services/ske/v2api/model_provider_options.go).
 
-Die globalen/regionsbezogenen APIs liefern keinen Nachweis, dass alle Werte in einem bestimmten künftigen Projekt bestellbar sind. Das Git-Referenzprojekt ist ausdrücklich nicht das künftig anzulegende Zielprojekt. Die API-Version des Katalogs ist unabhängig von der gepinnten Terraform-Provider-Version; ein Eintrag im Katalog bestätigt nicht automatisch dessen Unterstützung durch den Accelerator.
+Die globalen/regionsbezogenen APIs liefern keinen Nachweis, dass alle Werte in einem bestimmten künftigen Projekt bestellbar sind. Das Referenzprojekt für Git, Observability und IaaS ist ausdrücklich nicht das künftig anzulegende Zielprojekt. Die API-Version des Katalogs ist unabhängig von der gepinnten Terraform-Provider-Version; ein Eintrag im Katalog bestätigt nicht automatisch dessen Unterstützung durch den Accelerator.
 
 ## Sicherheits- und Fehlerverhalten
 
@@ -37,3 +37,33 @@ Die globalen/regionsbezogenen APIs liefern keinen Nachweis, dass alle Werte in e
 Alle Cloud-Ziele sind fest definiert; Redirects sind verboten, Antworten sind auf 2 MB begrenzt und Requests haben 15 Sekunden Timeout. Fehlermeldungen enthalten keine Providerantworten, privaten Schlüssel oder Tokens. Unbekannte/fehlerhafte Antwortschemata markieren nur den betroffenen Katalog als nicht verfügbar. Ein vorhandener, aber leerer Katalog unterscheidet sich von einem fehlgeschlagenen Abruf.
 
 Der erste Abschnitt gilt im persönlichen Arbeitsbereich. Organisationstenants bleiben bis zur Einführung freigegebener Plattformzugänge im Entwurfsmodus; sie übernehmen keine Credentials aus persönlichen Arbeitsbereichen.
+
+## Erweiterung: Observability und Diagnose-Bastion
+
+- [x] `observability.plan_name` und die Observability-Blöcke von Plattform-Clustern, Landing Zones und Sandboxes verwenden `plans[].name` als Terraform-Eingabe, nicht die abweichende Plan-UUID.
+- [x] IaaS-Maschinentypen, öffentliche verfügbare Images und IaaS-Verfügbarkeitszonen für `platform_kubernetes[*].debug_bastion`. Die Kataloge sind von SKE-Node-Pools getrennt.
+- [x] Bestehende Werte und manuelle Eingabe bei Ausfall bleiben erhalten; neue API-Antwortfelder sind optional für kompatible ältere Antworten.
+- [ ] Observability-Plankatalog für eu02 verifizieren. Die öffentlich dokumentierte regionale Basis ist `argus.api.eu01.stackit.cloud`; für eu02 wird bewusst kein eu01-Katalog angeboten. Auch die globale Basis ist dokumentiert, jedoch ohne Parameter/Zusicherung einer regionsspezifischen Planliste.
+
+| Katalog | Quelle | Antwort |
+|---|---|---|
+| Observability | `GET https://argus.api.eu01.stackit.cloud/v1/projects/{projectId}/plans` | `plans[].name`; Zuordnung über Planname wie im Accelerator |
+| Bastion-Maschinentypen | `GET https://iaas.api.stackit.cloud/v2/projects/{projectId}/regions/{region}/machine-types` | `items[].name` |
+| Bastion-Images | `GET https://iaas.api.stackit.cloud/v2/projects/{projectId}/regions/{region}/images?all=true` | `items[].id`, `name`, `status`, `scope`; Auswahl nur `AVAILABLE` und `public` |
+| Bastion-Zonen | `GET https://iaas.api.stackit.cloud/v2/regions/{region}/availability-zones` | `items[]` |
+
+Quellen: [Observability OpenAPI](https://docs.api.eu01.stackit.cloud/oas/argus/version/v1), [IaaS v2 API](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/iaas/v2api/api_default.go), [Image-Modell](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/iaas/v2api/model_image.go), [Maschinentypen](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/iaas/v2api/model_machine_type_list_response.go), [Zonen](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/iaas/v2api/model_availability_zone_list_response.go).
+
+Die geprüften IaaS-v2-Listenmethoden bieten keine Cursor-/Page-Parameter und die Antwortmodelle keine Fortsetzungsmarker. `all=true` fordert die vollständige Image-Sicht an. Antwortgrößen über dem vorhandenen Limit oder mehr als 2.000 Einträge werden nicht still abgeschnitten: der betroffene Katalog wird als nicht verfügbar behandelt. Private, organisations- oder projektgeteilte Images des Referenzprojekts werden nicht als auswählbare Images vorgeschlagen, da ihre Nutzbarkeit im neu angelegten Zielprojekt nicht bewiesen ist. Vorhandene Image-IDs bleiben im Entwurf erhalten. Die OS-Eignung, benötigte Werkzeuge und Image-/Flavor-Kompatibilität sind weiterhin vor dem Deployment zu prüfen.
+
+## PIM: zentrale Produktinformationen, keine alleinige Auswahlvalidierung
+
+Die öffentliche [STACKIT PIM API v2](https://docs.api.eu01.stackit.cloud/documentation/pim/version/v2) ist tatsächlich ein zentraler Katalog für Kategorien, Produkte und SKUs. Die [OpenAPI-Spezifikation](https://docs.api.eu01.stackit.cloud/oas/pim/version/v2) dokumentiert unter anderem:
+
+- `GET https://pim.api.stackit.cloud/v2/products`
+- `GET https://pim.api.stackit.cloud/v2/products/{productId}/skus`
+- `GET https://pim.api.stackit.cloud/v2/skus`
+- SKU-Attribute wie Region, technische Merkmale, Produktreife und Deprecation sowie Artikelnummern für Abrechnung.
+- Öffentlich verfügbare Listen mit Cursor-Paginierung (`pageSize` maximal 100). Ein späterer PIM-Adapter muss sämtliche Folgeseiten berücksichtigen.
+
+PIM eignet sich als ergänzende Quelle für einheitliche Produktbezeichnungen, technische Erklärungen und SKU-Zuordnung. Seine öffentlichen SKU-Listen bestätigen keine Bestellbarkeit oder Berechtigung in einem konkreten Projekt, keine Quoten, keine aktuellen Kubernetes-Versionen und keine verfügbaren VM-Images. Daher bleiben die jeweiligen Produkt-APIs die Quelle der technischen Auswahlwerte. PIM-Daten sollen später diese Werte anreichern, nicht alle Abrechnungs-SKUs ungeprüft zu Editoroptionen machen. Es wurde noch kein PIM-Adapter implementiert. Die in der API-Übersicht als auslaufend markierte v1 wird nicht neu angebunden.

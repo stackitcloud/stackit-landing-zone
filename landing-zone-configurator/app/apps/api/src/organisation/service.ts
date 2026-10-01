@@ -28,6 +28,7 @@ export interface OrganisationService {
     organizationId: string,
   ): Promise<string>;
   switch(session: Session, tenantId: string): Promise<void>;
+  archive(session: Session, tenantId: string): Promise<void>;
   editMember(
     session: Session,
     userId: string,
@@ -58,6 +59,12 @@ export class PostgresOrganisations implements OrganisationService {
   }
   async switch(session: Session, tenantId: string) {
     await this.pool.query("SELECT lzc_auth.switch_organisation($1,$2)", [
+      session.id,
+      tenantId,
+    ]);
+  }
+  async archive(session: Session, tenantId: string) {
+    await this.pool.query("SELECT lzc_auth.archive_organisation($1,$2)", [
       session.id,
       tenantId,
     ]);

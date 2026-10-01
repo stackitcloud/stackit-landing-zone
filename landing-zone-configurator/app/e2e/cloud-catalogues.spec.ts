@@ -53,6 +53,32 @@ test("product choices preserve imported values and restore manual fields when ca
         machineTypes: missing,
         volumeTypes: missing,
         availabilityZones: missing,
+        observabilityPlans: {
+          status: "available",
+          options: [
+            {
+              value: "Observability-Starter-EU01",
+              label: "Observability-Starter-EU01",
+            },
+          ],
+        },
+        bastionMachineTypes: {
+          status: "available",
+          options: [{ value: "g2i.1", label: "g2i.1" }],
+        },
+        bastionImages: {
+          status: "available",
+          options: [
+            {
+              value: "44444444-4444-4444-8444-444444444444",
+              label: "Ubuntu 24.04",
+            },
+          ],
+        },
+        bastionAvailabilityZones: {
+          status: "available",
+          options: [{ value: "eu01-1", label: "eu01-1" }],
+        },
       },
     }),
   );
@@ -115,4 +141,94 @@ test("product choices preserve imported values and restore manual fields when ca
       "STACKIT Git: nicht verfügbar; manuelle Eingabe bleibt möglich",
     ),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Komponente hinzufügen", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Hinzufügen: Plattform-Kubernetes",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Konfigurieren: Plattform-Kubernetes",
+      exact: true,
+    })
+    .click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Plattform-Kubernetes/ })
+    .click();
+  await page
+    .getByLabel("Neue Kennung für Plattform-Kubernetes", { exact: true })
+    .fill("test");
+  await page
+    .getByRole("button", {
+      name: "Eintrag zu Plattform-Kubernetes hinzufügen",
+      exact: true,
+    })
+    .click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^test$/ })
+    .click();
+  await page.getByLabel("Region", { exact: true }).selectOption("eu01");
+  await page
+    .getByRole("button", {
+      name: "Konfigurieren: Diagnose-Bastion für das private Cluster-Netz",
+      exact: true,
+    })
+    .click();
+  const bastion = page.locator("details").filter({
+    has: page.locator(":scope > summary", { hasText: /^Diagnose-Bastion/ }),
+  });
+  await bastion.locator(":scope > summary").click();
+  for (const label of [
+    "Maschinentyp",
+    "Systemabbild-ID",
+    "Verfügbarkeitszone",
+  ]) {
+    await bastion
+      .getByRole("button", {
+        name: `Eigene Einstellung: ${label}`,
+        exact: true,
+      })
+      .click();
+    await expect(bastion.getByLabel(label, { exact: true })).toHaveJSProperty(
+      "tagName",
+      "SELECT",
+    );
+  }
+  await bastion
+    .getByLabel("Maschinentyp", { exact: true })
+    .selectOption("g2i.1");
+  await bastion
+    .getByLabel("Systemabbild-ID", { exact: true })
+    .selectOption("44444444-4444-4444-8444-444444444444");
+  await bastion
+    .getByLabel("Verfügbarkeitszone", { exact: true })
+    .selectOption("eu01-1");
+  await page
+    .getByRole("button", {
+      name: "Konfigurieren: Cluster-Monitoring · STACKIT Observability",
+      exact: true,
+    })
+    .click();
+  const monitoring = page.locator("details").filter({
+    has: page.locator(":scope > summary", { hasText: /^Cluster-Monitoring/ }),
+  });
+  await monitoring.locator(":scope > summary").click();
+  await monitoring
+    .getByRole("button", {
+      name: "Eigene Einstellung: Dienst-Leistungsklasse",
+      exact: true,
+    })
+    .click();
+  await expect(
+    monitoring.getByLabel("Dienst-Leistungsklasse", { exact: true }),
+  ).toHaveJSProperty("tagName", "SELECT");
+  await monitoring
+    .getByLabel("Dienst-Leistungsklasse", { exact: true })
+    .selectOption("Observability-Starter-EU01");
 });

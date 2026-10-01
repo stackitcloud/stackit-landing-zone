@@ -857,4 +857,83 @@ describe("organisation draft workspaces", () => {
       await organisations.switch(bob, bob.tenantId);
     }
   });
+  it("archives only the creator's empty unverified draft and preserves its audit", async () => {
+    const organizationId = randomUUID();
+    const id = await organisations.create(
+      alice,
+      "Accidental duplicate",
+      organizationId,
+    );
+    await expect(
+      organisations.create(alice, " accidental duplicate ", organizationId),
+    ).rejects.toMatchObject({ code: "23505" });
+    const unrelated = await organisations.create(
+      bob,
+      "Accidental duplicate",
+      organizationId,
+    );
+    await organisations.archive(bob, unrelated);
+    await expect(organisations.archive(bob, id)).rejects.toMatchObject({
+      code: "42501",
+    });
+    await expect(
+      organisations.archive(alice, alice.tenantId),
+    ).rejects.toMatchObject({ code: "42501" });
+    await organisations.switch(alice, id);
+    await organisations.editMember(
+      { ...alice, tenantId: id },
+      bob.userId,
+      ["application-owner"],
+      false,
+    );
+    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
+      code: "55000",
+    });
+    await organisations.editMember(
+      { ...alice, tenantId: id },
+      bob.userId,
+      [],
+      false,
+      true,
+    );
+    await migration.query(
+      "UPDATE lzc.tenants SET organization_verified=true WHERE id=$1",
+      [id],
+    );
+    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
+      code: "55000",
+    });
+    await migration.query(
+      "UPDATE lzc.tenants SET organization_verified=false WHERE id=$1",
+      [id],
+    );
+    await migration.query(
+      "INSERT INTO lzc.configurations(tenant_id,created_by,name,document) VALUES($1,$2,'keep','{}')",
+      [id, alice.userId],
+    );
+    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
+      code: "55000",
+    });
+    await migration.query("DELETE FROM lzc.configurations WHERE tenant_id=$1", [
+      id,
+    ]);
+    await organisations.archive(alice, id);
+    const overview = await organisations.overview(alice);
+    expect(overview.activeTenantId).toBe(alice.tenantId);
+    expect(overview.tenants.some((t) => t.id === id)).toBe(false);
+    await expect(organisations.switch(alice, id)).rejects.toMatchObject({
+      code: "42501",
+    });
+    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
+      code: "42501",
+    });
+    expect(
+      (
+        await migration.query(
+          "SELECT 1 FROM lzc_auth.membership_audit WHERE tenant_id=$1 AND action='organisation_archived'",
+          [id],
+        )
+      ).rowCount,
+    ).toBe(1);
+  });
 });

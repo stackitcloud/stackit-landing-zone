@@ -61,6 +61,10 @@ it("loads fixed product endpoints and excludes unavailable Git/SKE choices witho
     { value: "1.35.1", label: "1.35.1" },
   ]);
   expect(result.availabilityZones.options[0]?.value).toBe("eu02-1");
+  expect(result.observabilityPlans?.status).toBe("unavailable");
+  expect(
+    request.mock.calls.some((call) => String(call[0]).includes("argus.api")),
+  ).toBe(false);
   expect(request.mock.calls.map((call) => call[0])).toContain(
     `https://git.api.stackit.cloud/v1beta/projects/${input.projectId}/flavors`,
   );
@@ -177,4 +181,91 @@ it("requires authentication and CSRF and rejects malformed input before provider
   } finally {
     await app.close();
   }
+});
+
+it("loads distinct IaaS bastion options and Observability plan names without suggesting private or inactive images", async () => {
+  const imageId = "44444444-4444-4444-8444-444444444444";
+  const request = vi.fn<typeof fetch>(async (url) => {
+    const target = String(url);
+    if (target.endsWith("/token"))
+      return Response.json({ access_token: "token", token_type: "Bearer" });
+    if (target.includes("argus.api"))
+      return Response.json({
+        plans: [
+          { planId: "not-the-tf-input", name: "Observability-Starter-EU01" },
+        ],
+      });
+    if (target.endsWith("/machine-types"))
+      return Response.json({ items: [{ name: "g2i.1" }] });
+    if (target.endsWith("/availability-zones"))
+      return Response.json({ items: ["eu01-1", "eu01-2"] });
+    if (target.endsWith("/images?all=true"))
+      return Response.json({
+        items: [
+          {
+            id: imageId,
+            name: "Ubuntu 24.04",
+            status: "AVAILABLE",
+            scope: "public",
+          },
+          {
+            id: randomUUID(),
+            name: "Private",
+            status: "AVAILABLE",
+            scope: "local",
+          },
+          {
+            id: randomUUID(),
+            name: "Unavailable",
+            status: "DEACTIVATED",
+            scope: "public",
+          },
+        ],
+      });
+    return new Response(null, { status: 403 });
+  });
+  const result = await new StackitCatalogueClient(request).load(
+    { ...input, region: "eu01" },
+    key,
+  );
+  expect(result.observabilityPlans?.options).toEqual([
+    {
+      value: "Observability-Starter-EU01",
+      label: "Observability-Starter-EU01",
+    },
+  ]);
+  expect(result.bastionMachineTypes?.options[0]?.value).toBe("g2i.1");
+  expect(result.bastionImages?.options).toEqual([
+    { value: imageId, label: `Ubuntu 24.04 (${imageId})` },
+  ]);
+  expect(result.bastionAvailabilityZones?.options.map((v) => v.value)).toEqual([
+    "eu01-1",
+    "eu01-2",
+  ]);
+  expect(result.machineTypes.status).toBe("unavailable");
+  expect(request.mock.calls.map((call) => call[0])).toContain(
+    `https://iaas.api.stackit.cloud/v2/projects/${input.projectId}/regions/eu01/machine-types`,
+  );
+});
+
+it("maps all Observability scopes and bastion fields without confusing VM and Kubernetes catalogues", () => {
+  for (const path of [
+    "observability.plan_name",
+    "platform_kubernetes[*].observability.plan_name",
+    "landing_zones[*].observability.plan_name",
+    "sandbox_projects[*].observability.plan_name",
+  ])
+    expect(catalogueField(path)).toBe("observabilityPlans");
+  expect(
+    catalogueField("platform_kubernetes[*].debug_bastion.machine_type"),
+  ).toBe("bastionMachineTypes");
+  expect(catalogueField("platform_kubernetes[*].debug_bastion.image_id")).toBe(
+    "bastionImages",
+  );
+  expect(
+    catalogueField("platform_kubernetes[*].debug_bastion.availability_zone"),
+  ).toBe("bastionAvailabilityZones");
+  expect(
+    catalogueField("platform_kubernetes[*].cluster.node_pools[*].machine_type"),
+  ).toBe("machineTypes");
 });

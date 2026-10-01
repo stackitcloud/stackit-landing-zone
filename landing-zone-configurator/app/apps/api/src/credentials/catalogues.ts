@@ -30,6 +30,10 @@ export type CloudCatalogue = {
   machineTypes: CataloguePart;
   availabilityZones: CataloguePart;
   volumeTypes: CataloguePart;
+  observabilityPlans?: CataloguePart;
+  bastionMachineTypes?: CataloguePart;
+  bastionImages?: CataloguePart;
+  bastionAvailabilityZones?: CataloguePart;
 };
 const text = z.string().min(1).max(256);
 const names = z.array(z.object({ name: text })).max(2000);
@@ -49,6 +53,23 @@ const ske = z.object({
   availabilityZones: names,
   volumeTypes: names,
 });
+const observability = z.object({
+  plans: z.array(z.object({ name: text.optional() })).max(2000),
+});
+const iaasMachines = z.object({ items: names });
+const iaasImages = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.uuid().optional(),
+        name: text,
+        status: text.optional(),
+        scope: text.optional(),
+      }),
+    )
+    .max(2000),
+});
+const iaasZones = z.object({ items: z.array(text).max(2000) });
 const unavailable = (): CataloguePart => ({
   status: "unavailable",
   options: [],
@@ -121,7 +142,15 @@ export class StackitCatalogueClient {
         ),
       );
     const headers = { Authorization: `Bearer ${token.access_token}` };
-    const [gitResult, vpnResult, skeResult] = await Promise.allSettled([
+    const [
+      gitResult,
+      vpnResult,
+      skeResult,
+      observabilityResult,
+      machinesResult,
+      imagesResult,
+      zonesResult,
+    ] = await Promise.allSettled([
       this.json(
         `https://git.api.stackit.cloud/v1beta/projects/${projectId}/flavors`,
         { headers },
@@ -133,6 +162,24 @@ export class StackitCatalogueClient {
         `https://ske.api.stackit.cloud/v2/regions/${region}/provider-options?versionState=SUPPORTED`,
         { headers },
       ).then((v) => ske.parse(v)),
+      region === "eu01"
+        ? this.json(
+            `https://argus.api.eu01.stackit.cloud/v1/projects/${projectId}/plans`,
+            { headers },
+          ).then((v) => observability.parse(v))
+        : Promise.reject(new Error("catalogue_region_not_documented")),
+      this.json(
+        `https://iaas.api.stackit.cloud/v2/projects/${projectId}/regions/${region}/machine-types`,
+        { headers },
+      ).then((v) => iaasMachines.parse(v)),
+      this.json(
+        `https://iaas.api.stackit.cloud/v2/projects/${projectId}/regions/${region}/images?all=true`,
+        { headers },
+      ).then((v) => iaasImages.parse(v)),
+      this.json(
+        `https://iaas.api.stackit.cloud/v2/regions/${region}/availability-zones`,
+        { headers },
+      ).then((v) => iaasZones.parse(v)),
     ]);
     const result: CloudCatalogue = {
       region,
@@ -144,6 +191,10 @@ export class StackitCatalogueClient {
       machineTypes: unavailable(),
       availabilityZones: unavailable(),
       volumeTypes: unavailable(),
+      observabilityPlans: unavailable(),
+      bastionMachineTypes: unavailable(),
+      bastionImages: unavailable(),
+      bastionAvailabilityZones: unavailable(),
     };
     if (gitResult.status === "fulfilled")
       result.gitFlavors = available(
@@ -171,6 +222,28 @@ export class StackitCatalogueClient {
       result.availabilityZones = available(named(data.availabilityZones));
       result.volumeTypes = available(named(data.volumeTypes));
     }
+    if (observabilityResult.status === "fulfilled")
+      result.observabilityPlans = available(
+        observabilityResult.value.plans.flatMap((v) =>
+          v.name ? [{ value: v.name, label: v.name }] : [],
+        ),
+      );
+    if (machinesResult.status === "fulfilled")
+      result.bastionMachineTypes = available(named(machinesResult.value.items));
+    // Only available public images can be reused in newly created target projects.
+    // A reference project's private image does not imply access in the future platform project.
+    if (imagesResult.status === "fulfilled")
+      result.bastionImages = available(
+        imagesResult.value.items.flatMap((v) =>
+          v.id && v.status === "AVAILABLE" && v.scope === "public"
+            ? [{ value: v.id, label: `${v.name} (${v.id})` }]
+            : [],
+        ),
+      );
+    if (zonesResult.status === "fulfilled")
+      result.bastionAvailabilityZones = available(
+        zonesResult.value.items.map((value) => ({ value, label: value })),
+      );
     return result;
   }
 }

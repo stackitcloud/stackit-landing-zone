@@ -40,6 +40,7 @@ function setup() {
     })),
     create: vi.fn(async () => randomUUID()),
     switch: vi.fn(async () => {}),
+    archive: vi.fn(async () => {}),
     editMember: vi.fn(async () => {}),
   };
   const app = buildApp({ auth, organisations: service });
@@ -181,4 +182,44 @@ it("rejects stale workspace headers before membership mutations", async () => {
   expect(response.statusCode).toBe(409);
   expect(response.json()).toEqual({ error: "stale_tenant_context" });
   expect(service.editMember).not.toHaveBeenCalled();
+});
+
+it("protects draft deletion with authentication, CSRF and explicit target context", async () => {
+  const { app, service, headers } = setup();
+  const id = randomUUID();
+  const url = `/api/v1/organisation/workspaces/${id}`;
+  expect((await app.inject({ method: "DELETE", url })).statusCode).toBe(401);
+  expect(
+    (
+      await app.inject({
+        method: "DELETE",
+        url,
+        headers: { ...headers, origin: "https://evil.example" },
+      })
+    ).statusCode,
+  ).toBe(403);
+  expect(
+    (await app.inject({ method: "DELETE", url, headers })).statusCode,
+  ).toBe(409);
+  expect(service.archive).not.toHaveBeenCalled();
+  expect(
+    (
+      await app.inject({
+        method: "DELETE",
+        url,
+        headers: { ...headers, "x-lzc-tenant": id },
+      })
+    ).statusCode,
+  ).toBe(200);
+  expect(service.archive).toHaveBeenCalledWith(session, id);
+  service.archive.mockRejectedValueOnce(
+    Object.assign(new Error("private detail"), { code: "55000" }),
+  );
+  const response = await app.inject({
+    method: "DELETE",
+    url,
+    headers: { ...headers, "x-lzc-tenant": id },
+  });
+  expect(response.statusCode).toBe(409);
+  expect(response.json()).toEqual({ error: "organisation_not_empty_draft" });
 });

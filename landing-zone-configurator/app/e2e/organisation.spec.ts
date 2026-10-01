@@ -42,6 +42,7 @@ for (const manager of [true, false]) {
               kind: "organisation",
               organizationId: organisationId,
               organizationVerified: false,
+              canArchive: manager,
               roles,
               manageMembers: manager,
             },
@@ -85,18 +86,66 @@ for (const manager of [true, false]) {
       });
       await page
         .getByLabel("Persönliche Benutzerkennung", { exact: true })
-        .fill("44444444-4444-4444-8444-444444444444");
+        .fill("github-name");
+      await page
+        .getByRole("button", { name: "Mitgliedschaft speichern" })
+        .click();
+      await expect(page.getByRole("alert")).toContainText(
+        "interne Benutzerkennung als UUID",
+      );
+      expect(body).toBeUndefined();
+      await page
+        .getByLabel("Persönliche Benutzerkennung", { exact: true })
+        .fill("  44444444-4444-4444-8444-444444444444  ");
       await page
         .getByRole("button", { name: "Mitgliedschaft speichern" })
         .click();
       await expect(page.getByRole("status")).toHaveText(
         "Änderung gespeichert.",
       );
+      await expect(
+        page.getByRole("button", {
+          name: "Arbeitsbereich löschen",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: "Benutzerkennung kopieren",
+          exact: true,
+        }),
+      ).toBeVisible();
       expect(body).toEqual({
         userId: "44444444-4444-4444-8444-444444444444",
         roles: ["application-owner"],
         manageMembers: false,
       });
+      let deletionCalled = false;
+      await page.route(
+        `**/api/v1/organisation/workspaces/${tenantId}`,
+        async (route) => {
+          deletionCalled = true;
+          expect(route.request().method()).toBe("DELETE");
+          expect(route.request().headers()["x-lzc-tenant"]).toBe(tenantId);
+          await route.fulfill({
+            status: 409,
+            json: { error: "organisation_not_empty_draft" },
+          });
+        },
+      );
+      page.once("dialog", (dialog) => dialog.dismiss());
+      await page
+        .getByRole("button", { name: "Arbeitsbereich löschen", exact: true })
+        .click();
+      expect(deletionCalled).toBe(false);
+      page.once("dialog", (dialog) => dialog.accept());
+      await page
+        .getByRole("button", { name: "Arbeitsbereich löschen", exact: true })
+        .click();
+      await expect(page.getByRole("alert")).toContainText(
+        "Nur leere, unbestätigte Arbeitsbereiche",
+      );
+      expect(deletionCalled).toBe(true);
     } else
       await expect(
         page.getByRole("button", { name: "Mitgliedschaft speichern" }),

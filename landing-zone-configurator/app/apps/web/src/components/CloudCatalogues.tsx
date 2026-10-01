@@ -31,7 +31,7 @@ export function useCatalogueOptions(path: string, region: string) {
   if (!field || !data || (field !== "gitFlavors" && data.region !== region))
     return undefined;
   const part = data[field];
-  return part.status === "available" ? part.options : undefined;
+  return part?.status === "available" ? part.options : undefined;
 }
 export function CloudCataloguePanel({ session }: { session: Session | null }) {
   const { data, setData } = useContext(CatalogueContext);
@@ -110,9 +110,9 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
       <summary>STACKIT-Produktoptionen laden</summary>
       <p className="field-hint">
         Lädt aktuelle Auswahlwerte mit deinem gespeicherten Zugang. Das
-        Referenzprojekt wird nur für die Git-Leistungsklassen verwendet;
-        Optionen sind keine Zusage für Quoten oder Verfügbarkeit in später neu
-        angelegten Projekten. Es werden keine Cloud-Ressourcen verändert.
+        Referenzprojekt wird für Git, Observability und IaaS verwendet; Optionen
+        sind keine Zusage für Quoten oder Verfügbarkeit in später neu angelegten
+        Projekten. Es werden keine Cloud-Ressourcen verändert.
       </p>
       <div className="structured-grid">
         <label>
@@ -189,12 +189,19 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
                 ["gitFlavors", "STACKIT Git"],
                 ["vpnPlans", "STACKIT VPN"],
                 ["kubernetesVersions", "STACKIT Kubernetes Engine"],
+                ["observabilityPlans", "STACKIT Observability"],
+                ["bastionMachineTypes", "Debug-Bastion: Maschinentypen"],
+                ["bastionImages", "Debug-Bastion: öffentliche Images"],
+                [
+                  "bastionAvailabilityZones",
+                  "Debug-Bastion: Verfügbarkeitszonen",
+                ],
               ] as const
             ).map(([key, label]) => (
               <li key={key}>
                 {label}:{" "}
-                {data[key].status === "available"
-                  ? `${data[key].options.length} Auswahlwerte`
+                {data[key]?.status === "available"
+                  ? `${data[key]?.options.length} Auswahlwerte`
                   : "nicht verfügbar; manuelle Eingabe bleibt möglich"}
               </li>
             ))}

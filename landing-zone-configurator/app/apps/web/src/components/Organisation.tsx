@@ -14,6 +14,7 @@ type Tenant = {
   kind: "personal" | "organisation";
   organizationId: string | null;
   organizationVerified: boolean;
+  canArchive?: boolean;
   roles: Role[];
   manageMembers: boolean;
 };
@@ -26,6 +27,10 @@ type Overview = {
 const uuid =
   "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const messages: Record<string, string> = {
+  organisation_already_exists:
+    "Ein zugänglicher Arbeitsbereich mit diesem Namen und dieser Organisations-ID existiert bereits. Bitte wähle ihn in der Liste aus.",
+  organisation_not_empty_draft:
+    "Nur leere, unbestätigte Arbeitsbereiche ohne weitere Mitglieder können gelöscht werden. Entferne zunächst weitere Mitglieder. Konfigurationen, Zugänge oder Deployment-Daten verhindern das Löschen.",
   stale_tenant_context:
     "Der aktive Arbeitsbereich wurde in einem anderen Tab geändert. Bitte lade die Seite neu, bevor du Mitglieder bearbeitest.",
   membership_constraints:
@@ -91,6 +96,7 @@ export function Organisation({
     method: string,
     body?: unknown,
     switchWorkspace = false,
+    targetTenantId?: string,
   ) {
     if (!session || busy) return;
     setBusy(true);
@@ -102,6 +108,7 @@ export function Organisation({
         headers: {
           "content-type": "application/json",
           "x-lzc-csrf": session.csrfToken,
+          ...(targetTenantId ? { "x-lzc-tenant": targetTenantId } : {}),
           ...(path.startsWith("/members") && data
             ? { "x-lzc-tenant": data.activeTenantId }
             : {}),
@@ -171,6 +178,23 @@ export function Organisation({
         <code style={{ overflowWrap: "anywhere" }}>
           {data?.userId ?? session.user.id}
         </code>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={!(data?.userId ?? session.user.id)}
+          onClick={() => {
+            void navigator.clipboard
+              .writeText(data?.userId ?? session.user.id ?? "")
+              .then(() => setNotice("Benutzerkennung kopiert."))
+              .catch(() =>
+                setError(
+                  "Kopieren ist nicht möglich. Bitte markiere und kopiere die Benutzerkennung.",
+                ),
+              );
+          }}
+        >
+          Benutzerkennung kopieren
+        </button>
         <p>
           Die Anmeldung erfolgt derzeit über GitHub. STACKIT-Anmeldung und
           Verifizierung der Organisationszugehörigkeit folgen separat.
@@ -220,6 +244,30 @@ export function Organisation({
                 }}
               >
                 Zu {tenant.name} wechseln
+              </button>
+            )}
+            {tenant.canArchive && (
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    (tenant.id !== data.activeTenantId || beforeSwitch()) &&
+                    window.confirm(
+                      `Arbeitsbereich „${tenant.name}“ löschen? Das ist nur für leere, unbestätigte Entwürfe ohne weitere Mitglieder möglich. STACKIT-Ressourcen werden nicht verändert.`,
+                    )
+                  )
+                    void mutate(
+                      `/workspaces/${tenant.id}`,
+                      "DELETE",
+                      undefined,
+                      tenant.id === data.activeTenantId,
+                      tenant.id,
+                    );
+                }}
+              >
+                Arbeitsbereich löschen
               </button>
             )}
           </article>
@@ -333,6 +381,12 @@ export function Organisation({
             <form
               onSubmit={(event) => {
                 event.preventDefault();
+                if (!new RegExp(`^${uuid}$`).test(userId.trim())) {
+                  setError(
+                    "Bitte gib die interne Benutzerkennung als UUID ein. Du findest sie im Configurator der anderen Person unter Organisation & Mitglieder → Deine Benutzerkennung. GitHub-Name und E-Mail-Adresse funktionieren hier nicht.",
+                  );
+                  return;
+                }
                 const roles: Role[] = [];
                 if (engineer) roles.push("platform-engineer");
                 if (owner) roles.push("application-owner");
@@ -349,10 +403,17 @@ export function Organisation({
                 <input
                   id="member-id"
                   required
-                  pattern={uuid}
+                  aria-describedby="member-id-help"
+                  placeholder="123e4567-e89b-42d3-a456-426614174000"
                   value={userId}
                   onChange={(event) => setUserId(event.target.value)}
                 />
+                <p id="member-id-help">
+                  Interne Configurator-Benutzerkennung (UUID), kein GitHub-Name
+                  und keine E-Mail-Adresse. Die andere Person meldet sich zuerst
+                  an und kopiert unter „Organisation & Mitglieder“ ihre
+                  „Benutzerkennung“.
+                </p>
               </div>
               <label>
                 <input

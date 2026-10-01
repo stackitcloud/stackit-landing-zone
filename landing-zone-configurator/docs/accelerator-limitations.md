@@ -91,3 +91,10 @@ inzwischen gepinnten Provider 0.114.0 noch besteht, muss reproduziert werden.
 Das Issue umfasst Gateway-/Tunnel-BGP-Einstellungen, Routingvalidierung,
 SNA-Routenpropagation und die spätere Configurator-Anbindung. Eine allgemeine
 Verwaltung zusätzlicher SNA-Routing-Tabellen ist davon zu unterscheiden.
+
+## Bastion und Observability: Komponentenbeziehungen
+
+- [#87](https://github.com/stackitcloud/stackit-landing-zone/issues/87): `debug-bastion` ist zwar ein eigenes Modul, wird vom Root aber ausschließlich über Plattform-Kubernetes mit dessen Projekt und SNA-Netz aufgerufen. Eine unabhängige Bastion-Komponente benötigt einen eigenen Root-Vertrag und eine explizite Bestandsmigration.
+- [#88](https://github.com/stackitcloud/stackit-landing-zone/issues/88): Das Kubernetes-Modul erzeugt derzeit bei aktiviertem Monitoring eine eigene Observability-Instanz. Die zentrale Instanz im Management-Projekt wird nicht referenziert. Die gewünschte Auswahl einer bestehenden/zentral definierten Instanz benötigt Referenzfelder, Outputs und die Prüfung der zulässigen Projekt-/Regionsbeziehungen. Keine stille Umstellung bestehender Ressourcen.
+
+Die [SKE-Dokumentation](https://docs.stackit.cloud/products/runtime/kubernetes-engine/how-tos/monitor-your-clusters/) beschreibt die Auswahl einer vorhandenen Observability-Instanz. Das beweist noch nicht, dass jede Instanz eines anderen Projekts verwendbar ist. SKE-Systemmonitoring, Anwendungsmetriken und Telemetry Router bleiben separate Aufgaben. Das UI kennzeichnet die tatsächlichen Deployment-Orte und die aktuellen Grenzen.

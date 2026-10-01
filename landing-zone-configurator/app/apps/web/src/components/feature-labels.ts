@@ -236,3 +236,24 @@ export const hints: Record<string, string> = {
     "Bezieht sich auf das Dateisystem des späteren Runners, nicht auf deinen Computer. Alternativ den öffentlichen Schlüssel hinterlegen.",
 };
 export const labelFor = (name: string) => labels[name] ?? name;
+
+export function fieldLabel(path: string, name: string): string {
+  if (name === "observability" && path.startsWith("platform_kubernetes"))
+    return "Cluster-Monitoring · STACKIT Observability";
+  if (path === "observability") return "Zentrale STACKIT Observability";
+  if (name === "debug_bastion")
+    return "Diagnose-Bastion für das private Cluster-Netz";
+  return labelFor(name);
+}
+export function fieldDescription(
+  path: string,
+  name: string,
+): string | undefined {
+  if (name === "observability" && path.startsWith("platform_kubernetes"))
+    return "Der Accelerator erstellt derzeit eine zusätzliche STACKIT Observability-Instanz im Cluster-Projekt und verbindet sie mit dem SKE-Monitoring. Dies ist kein Dienst im Kubernetes-Cluster. Die Wiederverwendung einer bestehenden oder zentral definierten Instanz wird in Issue #88 ergänzt. Anwendungsmetriken benötigen eine eigene Anbindung.";
+  if (path === "observability")
+    return "Erstellt STACKIT Observability im zentralen Management-Projekt. Diese Instanz wird derzeit nicht automatisch für das Cluster-Monitoring wiederverwendet (Issue #88). Der STACKIT Telemetry Router gehört separat zur Audit-Protokollierung.";
+  if (name === "debug_bastion")
+    return "Eine eigenständige virtuelle Maschine im SNA-Netz des Plattform-Clusters, kein Kubernetes-Pod. Im aktuellen Accelerator wird sie nur mit diesem Cluster-Projekt erstellt und benötigt dessen SNA-Anbindung. Ein unabhängig konfigurierbarer Bastion-Host wird in Issue #87 verfolgt. Sie stellt noch keinen Netzwerkzugang für den Configurator-Runner her.";
+  return hints[name];
+}
