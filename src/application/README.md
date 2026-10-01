@@ -32,6 +32,9 @@ tofu -chdir=src/application validate
 tofu -chdir=src/application test
 ```
 
+The Configurator release CI also runs these checks through `npm run test:plan` in an
+isolated temporary copy with an empty credential environment and disabled backend.
+
 Tests use mock providers and plan commands only. Mock UUIDs are fixture data.
 Known provider deprecation warnings originate from existing Observability outputs
 in the shared module. The root/provider lock file should be retained when this

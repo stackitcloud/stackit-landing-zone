@@ -1,5 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { type SavedDraft, supportedAcceleratorRevision } from "@lzc/domain";
+import {
+  type ConfigurationRecord,
+  initialPlanIssues,
+  recordName,
+  recordOrganization,
+  supportedAcceleratorRevision,
+} from "@lzc/domain";
 import type pg from "pg";
 import type { Session } from "../auth/store.js";
 import type { CredentialCheck } from "../credentials/check.js";
@@ -35,7 +41,7 @@ export type PreparationManifest = {
     repository: "stackitcloud/stackit-landing-zone";
     commit: string;
   };
-  configuration: SavedDraft;
+  configuration: ConfigurationRecord;
   tfvarsSha256: string;
   exportVersion: 1;
   credential: { id: string; secretVersion: number; keyId: string };
@@ -45,14 +51,16 @@ export type PreparationManifest = {
 };
 export function preparationManifest(
   input: PreparationInput,
-  snapshot: { document: SavedDraft; head: string; tfvars: string },
+  snapshot: { document: ConfigurationRecord; head: string; tfvars: string },
   checked: { check: CredentialCheck; version: number; keyId: string },
 ): PreparationManifest {
+  if (initialPlanIssues(snapshot.document).length)
+    throw new CredentialError(409, "configuration_execution_not_supported");
   if (
     snapshot.head !== input.head ||
     snapshot.document.id !== input.configurationId ||
     checked.check.status !== "passed" ||
-    checked.check.organizationId !== snapshot.document.draft.organization ||
+    checked.check.organizationId !== recordOrganization(snapshot.document) ||
     !checked.check.organizationName ||
     checked.version < 1
   )
@@ -132,7 +140,7 @@ export class Preparations {
     const checked = await this.profiles.verifyForPreparation(
       session,
       input.credentialId,
-      snapshot.document.draft.organization,
+      recordOrganization(snapshot.document),
     );
     if (checked.check.status !== "passed")
       throw new CredentialError(422, checked.check.code);
@@ -161,7 +169,7 @@ export class Preparations {
           session.tenantId,
           session.userId,
           input.credentialId,
-          snapshot.document.draft.name,
+          recordName(snapshot.document),
           JSON.stringify(manifest),
         ],
       );

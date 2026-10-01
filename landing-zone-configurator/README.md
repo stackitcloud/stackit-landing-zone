@@ -2,11 +2,19 @@
 
 Zentral gehostete, mandantenfähige Anwendung zum Erstellen, Bearbeiten und Deployen von Konfigurationen des STACKIT Landing Zone Accelerators.
 
-Status: React-/Fastify-Entwicklungsbasis mit Tests. Verwaltungs-Backend, Bootstrap und neun Plattform-Ressourcen sind per IaC provisioniert und geprüft. Die Pipelines führen OpenTofu direkt mit sichtbaren CLI-Logs aus. CF-Space und Laufzeitidentitäten sind provisioniert, Web/API auf CF bereitgestellt. PostgreSQL und Secrets Manager wurden aus CF mit TLS geprüft; Details im [Betriebsstand](docs/platform-readiness.md). [IaC-Bedienung](infra/README.md), [CI-Betrieb](infra/ci/README.md).
+Status: Entwicklungsumgebung mit GitHub-Login, gemeinsamem Konfigurationseditor,
+Fork-Speicherung, persönlichen Zugängen und isolierten Erstbereitstellungsplänen.
+Organisationsarbeitsbereiche haben Rollen und Einladungen, aber noch keine verifizierte
+STACKIT-Bindung oder freigegebene Ausführung. Kunden-Apply, Application-Self-Service
+und Model-Serving-Chat fehlen noch zum MVP.
 
-Entwicklungsumgebung: [Configurator öffnen](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud). Noch ohne Benutzerlogin und fachlichen Editor.
+**Aktuelle Arbeitspakete und Abnahme: [MVP-Arbeitsliste](docs/mvp-readiness.md).**
+[Priorisierte Accelerator-Issues](docs/backlog-priorities.md).
 
-Start und Prüfungen: [Entwicklungsanleitung](app/README.md). Ergebnisse der lesenden Bestandsaufnahme: [Plattformprüfung](docs/platform-check.md).
+Entwicklungsumgebung: [Configurator öffnen](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud).
+Start und Prüfungen: [Entwicklungsanleitung](app/README.md).
+[Betriebsstand](docs/platform-readiness.md), [IaC-Bedienung](infra/README.md),
+[CI-Betrieb](infra/ci/README.md).
 
 ## Dokumentation
 
@@ -27,23 +35,22 @@ landing-zone-configurator/
       contracts/           # API- und Job-Verträge ohne Secrets
   tools/
     hcl-adapter/           # Begrenzter Importadapter für bestehende tfvars
-  runner/                  # Isolierte OpenTofu-Ausführung
   infra/
     bootstrap/             # State-/Betriebsgrundlage vor Plattformaufbau
     backend/               # S3-Versionierung nach dem State-Bootstrap
     platform/              # Eigener OpenTofu-Root für Configurator-Dienste
     runtime/               # CF-Space, Rollen und Laufzeitidentitäten
-    modules/               # Nur Configurator-Infrastrukturmodule
     environments/          # Secretfreie Umgebungsparameter
   deploy/
     cloud-foundry/         # App-Manifeste und Release-Konfiguration
+    runner/                # Isolierte OpenTofu-Ausführung und Paketierung
   docs/
     decisions/             # Architekturentscheidungen
 ```
 
 Die Accelerator-Quellen bleiben unter `../src/`. Der Configurator bekommt eigene Abhängigkeiten, Build-Konfigurationen, Tests, Toolversionen und IaC-States. Keine App-Dateien in `../src/` und keine Vermischung der Plattform-IaC mit Kunden-Landing-Zones. Laufende Deployments verwenden eine freigegebene Accelerator-Revision; der benachbarte Ordner ist keine unversionierte Produktionsabhängigkeit.
 
-Der App-Workspace verwendet npm mit gepinnten Abhängigkeiten und Lockfile. `validate-configurator.yml` prüft Configurator-Änderungen getrennt. Sobald der HCL-/Template-Import implementiert ist, zusätzlich durch Accelerator-Vertragsänderungen ausgelöste Kompatibilitätstests ergänzen.
+Der App-Workspace verwendet npm mit gepinnten Abhängigkeiten und Lockfile. `validate-configurator.yml` prüft Configurator-Änderungen getrennt. Der HCL-Adapter prüft Template- und Root-Eingabekataloge gegen die Accelerator-Quellen; Änderungen am Ausführungsvertrag benötigen zusätzlich passende Runner-Tests.
 
 ## Lokale Plattform-Zugangsdaten
 

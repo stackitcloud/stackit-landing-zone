@@ -2,18 +2,34 @@ import { useEffect, useState } from "react";
 import type { Session } from "./Account";
 
 const key = "lzc.pending-invitation";
-function readPending() {
+function readPending(): { token: string | null; persisted: boolean } {
   const hash = new URLSearchParams(window.location.hash.slice(1));
-  const token = hash.get("invite");
-  if (token && /^[A-Za-z0-9_-]{43}$/.test(token)) {
-    sessionStorage.setItem(key, token);
+  const candidate = hash.get("invite");
+  const token =
+    candidate && /^[A-Za-z0-9_-]{43}$/.test(candidate) ? candidate : null;
+  let stored: string | null = null;
+  let persisted = true;
+  try {
+    if (token) sessionStorage.setItem(key, token);
+    stored = sessionStorage.getItem(key);
+  } catch {
+    persisted = false;
+  }
+  if (token) {
     window.history.replaceState(
-      null,
+      window.history.state,
       "",
       window.location.pathname + window.location.search,
     );
   }
-  return sessionStorage.getItem(key);
+  return { token: token ?? stored, persisted };
+}
+function clearPending() {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // Acceptance and dismissal must also work when browser storage is blocked.
+  }
 }
 const names = (roles: string[]) =>
   roles
@@ -62,10 +78,20 @@ type Preview = {
   manageMembers: boolean;
 };
 export function InvitationAcceptance({ session }: { session: Session | null }) {
-  const [token, setToken] = useState(readPending);
+  const [pending, setPending] = useState(readPending);
+  const { token, persisted } = pending;
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const changed = () => {
+      setPreview(null);
+      setError("");
+      setPending(readPending());
+    };
+    window.addEventListener("hashchange", changed);
+    return () => window.removeEventListener("hashchange", changed);
+  }, []);
   useEffect(() => {
     if (!token || !session) return;
     let active = true;
@@ -93,6 +119,12 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
           die Einladung prüfen und bestätigen.
         </p>
       )}
+      {!session && !persisted && (
+        <p role="status">
+          Dein Browser erlaubt kein Zwischenspeichern dieser Einladung. Öffne
+          den Einladungslink nach der Anmeldung bitte erneut.
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {session && preview && (
         <>
@@ -116,7 +148,7 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
               setError("");
               void call(session, "/accept", "POST", { token })
                 .then(() => {
-                  sessionStorage.removeItem(key);
+                  clearPending();
                   window.location.assign("/organisation");
                 })
                 .catch((e) => {
@@ -134,8 +166,8 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
         className="button secondary"
         disabled={busy}
         onClick={() => {
-          sessionStorage.removeItem(key);
-          setToken(null);
+          clearPending();
+          setPending({ token: null, persisted });
         }}
       >
         Einladung schließen

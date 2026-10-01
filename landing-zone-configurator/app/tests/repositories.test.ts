@@ -3,6 +3,7 @@ import {
   catalogue,
   configurationValues,
   createDraft,
+  editCommonInput,
   exportCommonTfvars,
   folderDefaults,
   migrateCommonConfiguration,
@@ -362,9 +363,13 @@ it("atomically saves a common document alongside its full tfvars export", async 
   expect(tree[1]?.content).toBe(exportCommonTfvars(document));
 });
 
-it("rejects common-format deployment preparation on the server before reading credentials", async () => {
+it("rejects unsupported common-format components before reading credentials", async () => {
   const f = fixture();
-  const document = migrateCommonConfiguration(f.document);
+  const document = editCommonInput(
+    migrateCommonConfiguration(f.document),
+    "devops",
+    { git_flavor: "git-10" },
+  );
   const request: typeof fetch = async (input, init) => {
     if (new URL(String(input)).pathname.endsWith(`/git/blobs/${blobSha}`))
       return Response.json({
@@ -378,4 +383,32 @@ it("rejects common-format deployment preparation on the server before reading cr
   await expect(
     service.prepareSnapshot(token, target, id, original),
   ).rejects.toMatchObject({ code: "configuration_execution_not_supported" });
+});
+
+it("prepares an unchanged standalone common-format configuration with its exact export", async () => {
+  const f = fixture();
+  const document = migrateCommonConfiguration(f.document);
+  const tfvars = exportCommonTfvars(document);
+  f.state.exportSha = createHash("sha1")
+    .update(`blob ${Buffer.byteLength(tfvars)}\0`)
+    .update(tfvars)
+    .digest("hex");
+  const request: typeof fetch = async (input, init) => {
+    if (new URL(String(input)).pathname.endsWith(`/git/blobs/${blobSha}`))
+      return Response.json({
+        encoding: "base64",
+        content: Buffer.from(JSON.stringify(document)).toString("base64"),
+        size: 5000,
+      });
+    return f.request(input, init);
+  };
+  expect(
+    await new Repositories(request).prepareSnapshot(
+      token,
+      target,
+      id,
+      original,
+    ),
+  ).toEqual({ document, head: original, tfvars });
+  expect(f.writes).toHaveLength(0);
 });

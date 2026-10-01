@@ -1,6 +1,6 @@
 # Erstbereitstellungspläne
 
-Stand: 2026-09-30. Umsetzung auf `feature/landing-zone-configurator`.
+Stand: 2026-10-01. Umsetzung auf `feature/landing-zone-configurator`.
 
 ## Was der Benutzer testen kann (nach erfolgreichem Release)
 
@@ -21,6 +21,21 @@ Freigabe vor jedem Kunden-Apply. Die Freigabe für Configurator-Infrastruktur gi
 nicht dafür. Die jetzigen Pläne sind Prüfungen und können nicht angewendet werden;
 ihre Binärartefakte werden entfernt. Vor einem zukünftigen Apply ist ein neuer
 Plan samt unveränderlichem Artefakt, Freigabe und State-Sicherung notwendig.
+
+## Gemeinsamer Editor und Ausführungsumfang
+
+Schema v3 wird für eine konservative Standalone-Teilmenge unterstützt: eu01,
+explizit Public-Projekte, Sandbox-Projekte, Grundeinstellungen und die bisherige
+Secrets-Manager-Option. Netzwerk, Kubernetes, Firewall und zusätzliche Plattform-
+oder Projektdienste bleiben für diesen Runner gesperrt. Die Prüfung erfolgt anhand
+der effektiven Konfiguration, nicht anhand des Template-Namens. UI, Vorbereitung
+und Broker verwenden `initialPlanIssues`; vor Übergabe der Zugangsdaten an den
+Runner wird erneut geprüft. JSON und tfvars bleiben an dieselbe Git-Revision und
+den unveränderten Export-Hash gebunden. Legacy-Dokumente bleiben unterstützt.
+
+Die Organisationstenant-Sperren gelten weiter. Es bleibt ein Erstbereitstellungsplan
+mit leerem State, kein Plan für bereits bestehende Ressourcen und kein Apply.
+Erweiterte Ausführung: [#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89).
 
 ## Ablauf und Grenzen
 

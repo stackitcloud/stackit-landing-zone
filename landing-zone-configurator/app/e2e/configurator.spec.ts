@@ -1,5 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { catalogue, createDraft, savedDraft, type Template } from "@lzc/domain";
+import {
+  catalogue,
+  createDraft,
+  savedDraft,
+  type Template,
+  upgradeEditorDraft,
+} from "@lzc/domain";
 import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
@@ -595,230 +601,244 @@ test("personal credentials upload clears the file and supports deletion and hist
   ).toHaveCount(0);
 });
 
-test("prepares an immutable saved configuration with a personal credential and survives reload", async ({
-  page,
-}, testInfo) => {
-  const template = catalogue.templates.find(
-    (item) => item.id === "standalone",
-  ) as Template;
-  const draft = createDraft(template);
-  draft.organization = "11111111-2222-4333-8444-555555555555";
-  draft.owner = "owner@stackit.cloud";
-  for (const project of draft.projects) project.owner = draft.owner;
-  for (const sandbox of draft.sandboxes) sandbox.owner = draft.owner;
-  const document = savedDraft("22222222-2222-4333-8444-555555555555", draft);
-  const profileId = "33333333-2222-4333-8444-555555555555";
-  const head = "a".repeat(40);
-  const fork = {
-    id: 123,
-    owner: "alice",
-    name: "accelerator",
-    fullName: "alice/accelerator",
-    defaultBranch: "main",
-  };
-  const check = {
-    status: "passed",
-    code: "organization_readable",
-    organizationId: draft.organization,
-    organizationName: "Customer organization",
-    checkedAt: new Date().toISOString(),
-  };
-  const record = {
-    id: "44444444-2222-4333-8444-555555555555",
-    name: draft.name,
-    credentialId: profileId,
-    createdAt: new Date().toISOString(),
-    manifest: {
-      source: { repository: fork, commit: head, configurationId: document.id },
-      organization: { id: draft.organization, name: "Customer organization" },
-      accelerator: { commit: "b".repeat(40) },
-      tfvarsSha256: "c".repeat(64),
-      check,
-    },
-  };
-  let stored = false;
-  let planStatus = "";
-  await page.route("**/api/v1/plans", (route) => {
-    if (route.request().method() === "POST") {
-      expect(route.request().postDataJSON()).toEqual({
-        preparationId: record.id,
-        confirmNewDeployment: true,
+for (const format of ["legacy", "common"] as const) {
+  test(`prepares an immutable ${format} configuration with a personal credential and survives reload`, async ({
+    page,
+  }, testInfo) => {
+    const template = catalogue.templates.find(
+      (item) => item.id === "standalone",
+    ) as Template;
+    const draft = createDraft(template);
+    draft.organization = "11111111-2222-4333-8444-555555555555";
+    draft.owner = "owner@stackit.cloud";
+    for (const project of draft.projects) project.owner = draft.owner;
+    for (const sandbox of draft.sandboxes) sandbox.owner = draft.owner;
+    const documentId = "22222222-2222-4333-8444-555555555555";
+    const document =
+      format === "common"
+        ? { ...upgradeEditorDraft(draft), id: documentId }
+        : savedDraft(documentId, draft);
+    const profileId = "33333333-2222-4333-8444-555555555555";
+    const head = "a".repeat(40);
+    const fork = {
+      id: 123,
+      owner: "alice",
+      name: "accelerator",
+      fullName: "alice/accelerator",
+      defaultBranch: "main",
+    };
+    const check = {
+      status: "passed",
+      code: "organization_readable",
+      organizationId: draft.organization,
+      organizationName: "Customer organization",
+      checkedAt: new Date().toISOString(),
+    };
+    const record = {
+      id: "44444444-2222-4333-8444-555555555555",
+      name: draft.name,
+      credentialId: profileId,
+      createdAt: new Date().toISOString(),
+      manifest: {
+        source: {
+          repository: fork,
+          commit: head,
+          configurationId: document.id,
+        },
+        organization: { id: draft.organization, name: "Customer organization" },
+        accelerator: { commit: "b".repeat(40) },
+        tfvarsSha256: "c".repeat(64),
+        check,
+      },
+    };
+    let stored = false;
+    let planStatus = "";
+    await page.route("**/api/v1/plans", (route) => {
+      if (route.request().method() === "POST") {
+        expect(route.request().postDataJSON()).toEqual({
+          preparationId: record.id,
+          confirmNewDeployment: true,
+        });
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+        planStatus = "planning";
+        return route.fulfill({ status: 202, json: { id: "plan-one" } });
+      }
+      return route.fulfill({
+        json: {
+          runs: planStatus
+            ? [
+                {
+                  id: "plan-one",
+                  preparationId: record.id,
+                  status: planStatus,
+                  errorCode: null,
+                  createdAt: new Date().toISOString(),
+                  summary:
+                    planStatus === "succeeded"
+                      ? {
+                          schemaVersion: 1,
+                          execution: "plan-only",
+                          applyAllowed: false,
+                          result: "changes",
+                          resources: {
+                            unchanged: 0,
+                            create: 12,
+                            update: 0,
+                            delete: 0,
+                            replace: 0,
+                            read: 1,
+                          },
+                          drift: {
+                            unchanged: 0,
+                            create: 0,
+                            update: 0,
+                            delete: 0,
+                            replace: 0,
+                            read: 0,
+                          },
+                          changedOutputs: 3,
+                          checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
+                          destructive: false,
+                          completeness: "not-reported",
+                        }
+                      : null,
+                },
+              ]
+            : [],
+        },
       });
-      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
-      planStatus = "planning";
-      return route.fulfill({ status: 202, json: { id: "plan-one" } });
-    }
-    return route.fulfill({
-      json: {
-        runs: planStatus
-          ? [
-              {
-                id: "plan-one",
-                preparationId: record.id,
-                status: planStatus,
-                errorCode: null,
-                createdAt: new Date().toISOString(),
-                summary:
-                  planStatus === "succeeded"
-                    ? {
-                        schemaVersion: 1,
-                        execution: "plan-only",
-                        applyAllowed: false,
-                        result: "changes",
-                        resources: {
-                          unchanged: 0,
-                          create: 12,
-                          update: 0,
-                          delete: 0,
-                          replace: 0,
-                          read: 1,
-                        },
-                        drift: {
-                          unchanged: 0,
-                          create: 0,
-                          update: 0,
-                          delete: 0,
-                          replace: 0,
-                          read: 0,
-                        },
-                        changedOutputs: 3,
-                        checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
-                        destructive: false,
-                        completeness: "not-reported",
-                      }
-                    : null,
-              },
-            ]
-          : [],
-      },
     });
-  });
 
-  await page.route("**/auth/status", (route) =>
-    route.fulfill({ json: { github: true } }),
-  );
-  await page.route("**/api/v1/session", (route) =>
-    route.fulfill({
-      json: {
-        user: { id: "alice", login: "alice" },
-        csrfToken: "a".repeat(43),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-      },
-    }),
-  );
-  await page.route("**/api/v1/github/forks*", (route) =>
-    route.fulfill({ json: { forks: [fork], nextPage: null } }),
-  );
-  await page.route("**/api/v1/github/repository?*", (route) =>
-    route.fulfill({
-      json: {
-        fork,
-        head,
-        branch: "lzc/configurations",
-        branchExists: true,
-        configurations: [{ id: document.id, name: draft.name }],
-        unsupported: 0,
-        truncated: false,
-      },
-    }),
-  );
-  await page.route("**/api/v1/github/configuration/*", (route) =>
-    route.fulfill({ json: { document, head } }),
-  );
-  await page.route("**/api/v1/credentials", (route) =>
-    route.fulfill({
-      json: {
-        profiles: [{ id: profileId, name: "Team platform", state: "stored" }],
-      },
-    }),
-  );
-  await page.route("**/api/v1/preparations", (route) => {
-    if (route.request().method() === "POST") {
-      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
-      expect(route.request().postDataJSON()).toEqual({
-        target: { id: 123, owner: "alice", name: "accelerator" },
-        configurationId: document.id,
-        head,
-        credentialId: profileId,
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({ json: { github: true } }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: "alice", login: "alice" },
+          csrfToken: "a".repeat(43),
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    await page.route("**/api/v1/github/forks*", (route) =>
+      route.fulfill({ json: { forks: [fork], nextPage: null } }),
+    );
+    await page.route("**/api/v1/github/repository?*", (route) =>
+      route.fulfill({
+        json: {
+          fork,
+          head,
+          branch: "lzc/configurations",
+          branchExists: true,
+          configurations: [{ id: document.id, name: draft.name }],
+          unsupported: 0,
+          truncated: false,
+        },
+      }),
+    );
+    await page.route("**/api/v1/github/configuration/*", (route) =>
+      route.fulfill({ json: { document, head } }),
+    );
+    await page.route("**/api/v1/credentials", (route) =>
+      route.fulfill({
+        json: {
+          profiles: [{ id: profileId, name: "Team platform", state: "stored" }],
+        },
+      }),
+    );
+    await page.route("**/api/v1/preparations", (route) => {
+      if (route.request().method() === "POST") {
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+        expect(route.request().postDataJSON()).toEqual({
+          target: { id: 123, owner: "alice", name: "accelerator" },
+          configurationId: document.id,
+          head,
+          credentialId: profileId,
+        });
+        stored = true;
+        return route.fulfill({ status: 201, json: { id: record.id } });
+      }
+      return route.fulfill({ json: { preparations: stored ? [record] : [] } });
+    });
+    await page.route(`**/api/v1/preparations/${record.id}`, (route) => {
+      expect(route.request().method()).toBe("DELETE");
+      return route.fulfill({
+        status: 409,
+        json: { error: "preparation_has_plans" },
       });
-      stored = true;
-      return route.fulfill({ status: 201, json: { id: record.id } });
-    }
-    return route.fulfill({ json: { preparations: stored ? [record] : [] } });
-  });
-  await page.route(`**/api/v1/preparations/${record.id}`, (route) => {
-    expect(route.request().method()).toBe("DELETE");
-    return route.fulfill({
-      status: 409,
-      json: { error: "preparation_has_plans" },
     });
-  });
-  await page.goto("/repositories");
-  await page
-    .getByRole("button", { name: "Forks aktualisieren", exact: true })
-    .click();
-  await page.getByRole("button", { name: fork.fullName, exact: true }).click();
-  await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
-  await expect(page).toHaveURL(/\/deployments$/);
-  await expect(
-    page.getByText(draft.organization, { exact: true }),
-  ).toBeVisible();
-  await page.getByLabel("Persönlicher Zugang").selectOption(profileId);
-  await page
-    .getByRole("button", { name: "Zugang prüfen und Vorbereitung speichern" })
-    .click();
-  await expect(page.getByRole("status")).toContainText(
-    "Es wurde kein Plan oder Apply ausgeführt",
-  );
-  await page.reload();
-  await expect(
-    page.getByText("Vorbereitet · Apply gesperrt", {
-      exact: true,
-    }),
-  ).toBeVisible();
+    await page.goto("/repositories");
+    await page
+      .getByRole("button", { name: "Forks aktualisieren", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: fork.fullName, exact: true })
+      .click();
+    await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
+    await expect(page).toHaveURL(/\/deployments$/);
+    await expect(
+      page.getByText(draft.organization, { exact: true }),
+    ).toBeVisible();
+    await page.getByLabel("Persönlicher Zugang").selectOption(profileId);
+    await page
+      .getByRole("button", { name: "Zugang prüfen und Vorbereitung speichern" })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Es wurde kein Plan oder Apply ausgeführt",
+    );
+    await page.reload();
+    await expect(
+      page.getByText("Vorbereitet · Apply gesperrt", {
+        exact: true,
+      }),
+    ).toBeVisible();
 
-  await page
-    .getByLabel("Gespeicherte Vorbereitung", { exact: true })
-    .selectOption(record.id);
-  const startPlan = page.getByRole("button", {
-    name: "Erstbereitstellung planen",
-    exact: true,
-  });
-  await expect(startPlan).toBeDisabled();
-  await page
-    .getByRole("checkbox", {
-      name: /Ich bestätige: Dies ist eine neue Landing Zone/,
-    })
-    .check();
-  await startPlan.click();
-  await expect(page.getByText(/Plan wird berechnet/)).toBeVisible();
-  await expect(startPlan).toBeDisabled();
-  await expect(
-    page.getByRole("button", { name: /Apply|Anwenden/ }),
-  ).toHaveCount(0);
-  planStatus = "succeeded";
-  await page.reload();
-  await expect(
-    page.getByText("Änderungen geplant – nichts angewendet."),
-  ).toBeVisible();
-  await expect(page.getByText("12", { exact: true })).toBeVisible();
-  await page.getByText("Versionsnachweise", { exact: true }).click();
-  await expect(page.getByText(head, { exact: true })).toBeVisible();
-  await page.screenshot({
-    path: testInfo.outputPath("preparation.png"),
-    fullPage: true,
-  });
-  expect(
-    await page.evaluate(
-      () => window.document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: /Vorbereitung entfernen/ }).click();
-  await expect(page.getByRole("alert")).toContainText("besitzt Plan-Nachweise");
-  await expect(
-    page.getByText("Vorbereitet · Apply gesperrt", {
+    await page
+      .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+      .selectOption(record.id);
+    const startPlan = page.getByRole("button", {
+      name: "Erstbereitstellung planen",
       exact: true,
-    }),
-  ).toHaveCount(1);
-});
+    });
+    await expect(startPlan).toBeDisabled();
+    await page
+      .getByRole("checkbox", {
+        name: /Ich bestätige: Dies ist eine neue Landing Zone/,
+      })
+      .check();
+    await startPlan.click();
+    await expect(page.getByText(/Plan wird berechnet/)).toBeVisible();
+    await expect(startPlan).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: /Apply|Anwenden/ }),
+    ).toHaveCount(0);
+    planStatus = "succeeded";
+    await page.reload();
+    await expect(
+      page.getByText("Änderungen geplant – nichts angewendet."),
+    ).toBeVisible();
+    await expect(page.getByText("12", { exact: true })).toBeVisible();
+    await page.getByText("Versionsnachweise", { exact: true }).click();
+    await expect(page.getByText(head, { exact: true })).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("preparation.png"),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => window.document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: /Vorbereitung entfernen/ }).click();
+    await expect(page.getByRole("alert")).toContainText(
+      "besitzt Plan-Nachweise",
+    );
+    await expect(
+      page.getByText("Vorbereitet · Apply gesperrt", {
+        exact: true,
+      }),
+    ).toHaveCount(1);
+  });
+}

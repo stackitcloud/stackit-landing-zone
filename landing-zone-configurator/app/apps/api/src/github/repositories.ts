@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   type ConfigurationRecord,
   editorIssues,
+  initialPlanIssues,
   readConfigurationRecord,
   recordDraft,
   recordName,
@@ -341,7 +342,7 @@ export class Repositories {
     const document = await this.document(token, fork, entry.sha);
     if (document.id !== id)
       throw new RepositoryError(422, "unsupported_configuration_document");
-    if (document.schemaVersion === 3)
+    if (initialPlanIssues(document).length)
       throw new RepositoryError(409, "configuration_execution_not_supported");
     const tfvars = serializeTfvars(recordValues(document));
     const expected = createHash("sha1")

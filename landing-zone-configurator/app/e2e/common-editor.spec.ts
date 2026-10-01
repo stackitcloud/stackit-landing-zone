@@ -228,7 +228,9 @@ test("shared configuration saves, reopens and restores in the account workspace"
   );
   await page.getByRole("button", { name: "Zu deinen Forks" }).click();
   await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
-  await expect(page.getByRole("alert")).toContainText("separat freigegeben");
+  await expect(page.getByRole("alert")).toContainText(
+    "Erstbereitstellungsplan noch nicht verfügbar",
+  );
   await page.screenshot({
     path: testInfo.outputPath("common-fork.png"),
     fullPage: true,

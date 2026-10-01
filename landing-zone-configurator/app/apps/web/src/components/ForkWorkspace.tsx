@@ -1,6 +1,7 @@
 import {
   type EditorDraft,
   editorIssues,
+  initialPlanIssues,
   readConfigurationRecord,
   recordDraft,
   recordName,
@@ -17,6 +18,7 @@ import {
 } from "../workspace";
 import type { Session } from "./Account";
 import type { DeploymentSelection } from "./Deployments";
+import { labelFor } from "./feature-labels";
 
 type Repository = {
   fork: Fork;
@@ -431,9 +433,10 @@ export function ForkWorkspace({
                             const document = readConfigurationRecord(
                               loaded.document,
                             );
-                            if (document.schemaVersion === 3)
+                            const blockers = initialPlanIssues(document);
+                            if (blockers.length)
                               throw new Error(
-                                "Der neue Editor unterstützt zunächst Speichern und Exportieren. Die Ausführung dieser Konfiguration wird separat freigegeben.",
+                                `Erstbereitstellungsplan noch nicht verfügbar: ${[...new Set(blockers.map((issue) => `${labelFor(issue.field.split(".")[0] ?? issue.field)}: ${issue.message}`))].join(" ")}`,
                               );
                             onPrepare({
                               target: target(repository.fork),

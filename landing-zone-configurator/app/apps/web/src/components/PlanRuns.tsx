@@ -21,6 +21,8 @@ const labels: Record<string, string> = {
   cancelled: "Plan abgebrochen",
 };
 const failures: Record<string, string> = {
+  configuration_execution_not_supported:
+    "Diese Konfiguration enthält Komponenten, die der Erstbereitstellungsplan noch nicht unterstützt. Wähle eine unterstützte Standalone-Konfiguration.",
   runner_unavailable: "Der Runner konnte nicht gestartet werden.",
   credential_changed:
     "Der Zugang wurde geändert. Erstelle eine neue Vorbereitung.",

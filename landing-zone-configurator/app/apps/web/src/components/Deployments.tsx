@@ -27,6 +27,8 @@ type Preparation = {
   };
 };
 const errors: Record<string, string> = {
+  configuration_execution_not_supported:
+    "Diese Konfiguration enthält Komponenten, die der Erstbereitstellungsplan noch nicht unterstützt. Prüfe die Ausführungshinweise bei der Konfigurationsauswahl.",
   preparation_has_plans:
     "Diese Vorbereitung besitzt Plan-Nachweise und bleibt für deren Nachvollziehbarkeit erhalten.",
   ...checkMessages,

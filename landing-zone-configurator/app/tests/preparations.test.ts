@@ -3,6 +3,8 @@ import {
   catalogue,
   configurationValues,
   createDraft,
+  exportCommonTfvars,
+  migrateCommonConfiguration,
   savedDraft,
   serializeTfvars,
   type Template,
@@ -49,6 +51,15 @@ it("binds a preparation to the saved configuration, code revision, secret versio
     },
   };
   const manifest = preparationManifest(input, snapshot, checked);
+  const common = migrateCommonConfiguration(document);
+  const commonManifest = preparationManifest(
+    input,
+    { ...snapshot, document: common, tfvars: exportCommonTfvars(common) },
+    checked,
+  );
+  expect(commonManifest.configuration.schemaVersion).toBe(3);
+  expect(commonManifest.organization.id).toBe(draft.organization);
+  expect(commonManifest.tfvarsSha256).toBe(manifest.tfvarsSha256);
   expect(manifest.accelerator.commit).toBe(acceleratorCommit);
   expect(manifest.source.commit).toBe(input.head);
   expect(manifest.configuration).toEqual(document);

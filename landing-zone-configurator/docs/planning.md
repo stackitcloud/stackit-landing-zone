@@ -1,31 +1,23 @@
 # Landing Zone Configurator – Architektur und Planung
 
-> Stand: 2026-09-30 · Architektur-Ausgangsstand: `2161871`
-> Status: Plattform, CF-App-Grundgerüst und Service-Anbindung implementiert und abgenommen. Fachlicher MVP noch offen.
-> `[x]` = dokumentiert oder entschieden; `[ ]` = offen. Technische Empfehlungen sind noch keine beschlossenen Produktentscheidungen.
+> Stand: 2026-10-01 · Architektur-Ausgangsstand: `2161871`
+> Status: Editor, GitHub, persönliche Zugänge, Plan-Grundlage und Organisationsentwürfe vorhanden; fachlicher MVP noch offen.
+> Aktuelle Umsetzung und Abnahme: **[MVP-Arbeitsliste](mvp-readiness.md)**. Reihenfolge der Accelerator-Issues: **[Backlog-Priorisierung](backlog-priorities.md)**.
+> Die folgenden Architekturabschnitte und datierten Fortschrittsnotizen sind das Entscheidungsprotokoll; ältere Statusangaben beschreiben den damaligen Stand.
+> `[x]` = je nach Abschnitt entschieden oder mit angegebenem Nachweis umgesetzt; eine Entscheidung allein ist keine Live-Abnahme.
 
-## Aktueller Umsetzungsschritt: GitHub-Login
+## Aktueller Umsetzungsschritt
 
-Registrierung unter `lweberru` ist abgeschlossen. Sessions, PostgreSQL-RLS,
-Secrets-Anbindung, Login/Logout-UI und separater Migrations-Task sind implementiert
-und lokal sowie in CI geprüft. Migration und App-Release sind auf STACKIT erfolgreich;
-Credential-Upload und CF-Backend-Bindung sind ausdrücklich freigegeben; GitHub-Login
-ist live aktiviert und technisch geprüft. Persönliche Login-Abnahme ist bestätigt. Details und
-Abhakliste: [GitHub-Login und Mandantentrennung](github-login.md).
+Die MVP-Bestandsaufnahme trennt Editorabdeckung von Ausführungsfreigabe. Zunächst
+wird die geprüfte Standalone-Teilmenge des gemeinsamen Editors an den vorhandenen
+Erstbereitstellungsplan angebunden. Anschließend folgen dauerhafter Bootstrap-State
+und freigegebener Apply. Parallel werden verifizierte Organisationstenants,
+veröffentlichte Application Templates und der Model-Serving-Assistent aufgebaut.
+Die Arbeitspakete #89–#95 enthalten konkrete Abnahmekriterien.
 
-### Aktueller Stand: Fork-Speicherung, Navigation und tfvars-Export
-
-Fork-Auswahl, konfliktgeschützte Entwurfsablage im Arbeitsbranch und Wiederöffnen
-sind implementiert und auf lzc-dev bereitgestellt. Ansichten und Editor-Schritte besitzen
-eigene URLs mit live geprüfter Zurück/Vorwärts-Unterstützung. Der Benutzer bestätigt Fork-Erstellung, App-Zugriff und Speicherung. Ergänzt: Feldhilfen sowie native tfvars-Ausgabe neben dem bearbeitbaren JSON. Abnahme und Grenzen: [Forks und Navigation](forks-and-navigation.md).
-
-### Aktueller Umsetzungsschritt: Zugangstest und Deployment-Vorbereitung
-
-Persönliche Schlüsselablage ist durch den Benutzer bestätigt. Ergänzt sind der
-Token-/Organisationszugriffstest, dauerhafte Prüfergebnisse und unveränderliche
-Deployment-Vorbereitungen aus einer konkreten Fork-Revision. Prüfliste, Nachweise und
-Grenzen: [Zugang prüfen und Deployment vorbereiten](deployment-preparation.md).
-Plan/Apply, Kunden-Remote-State und Runner bleiben die folgenden Umsetzungsschritte.
+Kunden-Apply benötigt weiterhin eine ausdrückliche Freigabe; Organisationen sind
+bis zum Berechtigungsnachweis unverifizierte Entwürfe. Der Featurebranch wird in
+diesem Schritt nicht nach main gemergt.
 
 ## 1. Zielbild und bestätigte Entscheidungen
 

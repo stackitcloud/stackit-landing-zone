@@ -1,6 +1,12 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { planResultSchema, planStageSchema } from "@lzc/contracts";
-import { configurationValues, serializeTfvars } from "@lzc/domain";
+import {
+  initialPlanIssues,
+  readConfigurationRecord,
+  recordOrganization,
+  recordValues,
+  serializeTfvars,
+} from "@lzc/domain";
 import type pg from "pg";
 import { z } from "zod";
 import { type Session, tokenHash } from "../auth/store.js";
@@ -67,7 +73,12 @@ export class Plans {
         manifest.credential.id !== row.credential_id
       )
         throw invalid("input_invalid");
-      return manifest;
+      const configuration = readConfigurationRecord(manifest.configuration);
+      if (recordOrganization(configuration) !== manifest.organization.id)
+        throw invalid("input_invalid");
+      if (initialPlanIssues(configuration).length)
+        throw invalid("configuration_execution_not_supported");
+      return { ...manifest, configuration };
     });
   }
   private async verify(session: Session, manifest: PreparationManifest) {
@@ -181,7 +192,7 @@ export class Plans {
       secret.key.credentials.kid !== manifest.credential.keyId
     )
       throw invalid("credential_changed");
-    const tfvars = serializeTfvars(configurationValues(manifest.configuration));
+    const tfvars = serializeTfvars(recordValues(manifest.configuration));
     if (
       createHash("sha256").update(tfvars).digest("hex") !==
       manifest.tfvarsSha256
