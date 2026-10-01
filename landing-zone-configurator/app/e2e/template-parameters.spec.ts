@@ -24,10 +24,21 @@ test("platform engineer controls stage inputs and can test an order without prov
     .click();
   await template
     .getByLabel("Erlaubte Werte: Umgebung / Stage", { exact: true })
+    .fill("qa\nstaging");
+  await template
+    .getByLabel("Erlaubte Werte: Umgebung / Stage", { exact: true })
+    .blur();
+  await expect(template.getByLabel("Vorauswahl anbieten")).not.toBeChecked();
+  await expect(
+    template.getByLabel("Erlaubte Werte: Umgebung / Stage", { exact: true }),
+  ).toHaveValue("qa\nstaging");
+  await template
+    .getByLabel("Erlaubte Werte: Umgebung / Stage", { exact: true })
     .fill("dev\nprod");
   await template
     .getByLabel("Erlaubte Werte: Umgebung / Stage", { exact: true })
     .blur();
+  await template.getByLabel("Vorauswahl anbieten").check();
   await template
     .getByLabel("Vorauswahl: Umgebung / Stage", { exact: true })
     .selectOption("prod");

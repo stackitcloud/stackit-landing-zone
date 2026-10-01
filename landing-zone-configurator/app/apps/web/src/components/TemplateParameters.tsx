@@ -349,18 +349,17 @@ export function TemplateParameters({
                   <ListInput
                     label={`Erlaubte Werte: ${field.label}`}
                     value={rule.choices ?? []}
-                    onChange={(choices) =>
-                      setPolicy(field.path, {
-                        ...rule,
-                        choices,
-                        ...(rule.default !== undefined &&
-                        !(Array.isArray(rule.default)
-                          ? rule.default.every((item) => choices.includes(item))
-                          : choices.includes(String(rule.default)))
-                          ? { default: undefined }
-                          : {}),
-                      })
-                    }
+                    onChange={(choices) => {
+                      const next = { ...rule, choices };
+                      if (
+                        next.default !== undefined &&
+                        !(Array.isArray(next.default)
+                          ? next.default.every((item) => choices.includes(item))
+                          : choices.includes(String(next.default)))
+                      )
+                        delete next.default;
+                      setPolicy(field.path, next);
+                    }}
                   />
                 )}
                 <label>
