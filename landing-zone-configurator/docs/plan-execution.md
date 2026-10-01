@@ -193,3 +193,10 @@ bleibt bis zur gesonderten Runner-Qualifikation gesperrt; Speichern und Bearbeit
 der Konfiguration bleiben möglich.
 
 Quelle: [STACKIT Provider 0.114.0 – Service Account Federated Identity Provider](https://registry.terraform.io/providers/stackitcloud/stackit/0.114.0/docs/resources/service_account_federated_identity_provider).
+
+### Release-Nachweis
+
+- Quellstand `64e33cb`, [Release 36856248765](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36856248765) und [Validierung 36856248770](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36856248770) erfolgreich.
+- Lokal: 140 Unit-Tests, Desktop-/Mobil-Browserprüfung einschließlich Überlaufprüfung, drei Governance-Mockpläne sowie die vorhandenen OpenTofu-Plan-/Application-Vertragstests erfolgreich.
+- Live: SPA und Assets HTTP 200 (`index-CnPzJNzo.js`, `index-DoULK2fp.css`), `/healthz` HTTP 200, anonyme Session HTTP 401. Release-Verbindungstests erfolgreich.
+- Kein Kunden-Apply, keine Abnahme eines echten Kunden-Plans und kein Merge nach main.

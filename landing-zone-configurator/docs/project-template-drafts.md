@@ -91,4 +91,4 @@ Die bisherige Sperre für Kunden-Apply bleibt bestehen.
 - [x] Git-Speicherung erhält Metadaten; tfvars und Deployment-Vorbereitung enthalten keine daraus erzeugten Projekte.
 - [x] Gemischte Template-/Instanzdokumente werden abgewiesen.
 - [x] Native OpenTofu-Variablenprüfung bestätigt leere Anwendungs-, Sandbox- und Namespace-Sammlungen im Plattformexport.
-- [ ] Abschließende Browserprüfung, Release und Live-Smoke-Test dokumentieren.
+- [x] Browserprüfung einschließlich Bestandskopie/Speicherung erfolgreich; CI-Validierung und [Release 36855011827](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36855011827) für `0e62c5e` erfolgreich. Live-SPA liefert HTTP 200 mit dem erwarteten Bundle `index-bjLShEoG.js`.
