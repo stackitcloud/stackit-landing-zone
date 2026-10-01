@@ -20,6 +20,7 @@ import {
   Deployments,
 } from "./components/Deployments";
 import { ForkWorkspace } from "./components/ForkWorkspace";
+import { InvitationAcceptance } from "./components/Invitations";
 import { Organisation } from "./components/Organisation";
 import { Topology } from "./components/Topology";
 import { useNavigation } from "./navigation";
@@ -240,6 +241,7 @@ function App() {
           </a>
         </aside>
         <main id="content" className="content">
+          <InvitationAcceptance session={session} />
           {loginError && (
             <p role="alert" className="info-banner">
               {loginError}

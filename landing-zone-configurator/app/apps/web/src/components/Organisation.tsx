@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "./Account";
+import { Invitations } from "./Invitations";
 
 type Role = "platform-engineer" | "application-owner";
 type Member = {
@@ -168,38 +169,7 @@ export function Organisation({
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      <section className="panel">
-        <h2>Deine Benutzerkennung</h2>
-        <p>
-          Teile diese Kennung mit der Mitgliederverwaltung, um zu einem
-          Arbeitsbereich eingeladen zu werden. Der Benutzer muss bereits im
-          Configurator registriert sein.
-        </p>
-        <code style={{ overflowWrap: "anywhere" }}>
-          {data?.userId ?? session.user.id}
-        </code>
-        <button
-          type="button"
-          className="button secondary"
-          disabled={!(data?.userId ?? session.user.id)}
-          onClick={() => {
-            void navigator.clipboard
-              .writeText(data?.userId ?? session.user.id ?? "")
-              .then(() => setNotice("Benutzerkennung kopiert."))
-              .catch(() =>
-                setError(
-                  "Kopieren ist nicht möglich. Bitte markiere und kopiere die Benutzerkennung.",
-                ),
-              );
-          }}
-        >
-          Benutzerkennung kopieren
-        </button>
-        <p>
-          Die Anmeldung erfolgt derzeit über GitHub. STACKIT-Anmeldung und
-          Verifizierung der Organisationszugehörigkeit folgen separat.
-        </p>
-      </section>
+
       <section className="panel">
         <h2>Arbeitsbereiche</h2>
         {!data && !error && (
@@ -331,7 +301,7 @@ export function Organisation({
                 {member.login ? `@${member.login}` : "Benutzer"}
                 {member.userId === data.userId ? " · Du" : ""}
               </h3>
-              <p style={{ overflowWrap: "anywhere" }}>{member.userId}</p>
+
               <p>
                 {member.roles
                   .map((role) =>
@@ -353,7 +323,7 @@ export function Organisation({
                       setEngineer(member.roles.includes("platform-engineer"));
                       setOwner(member.roles.includes("application-owner"));
                       setManager(member.manageMembers);
-                      document.getElementById("member-id")?.focus();
+                      document.getElementById("member-roles")?.focus();
                     }}
                   >
                     Rollen bearbeiten
@@ -377,13 +347,14 @@ export function Organisation({
               )}
             </article>
           ))}
-          {active.manageMembers && (
+          {active.manageMembers && <Invitations session={session} />}
+          {active.manageMembers && userId && (
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!new RegExp(`^${uuid}$`).test(userId.trim())) {
                   setError(
-                    "Bitte gib die interne Benutzerkennung als UUID ein. Du findest sie im Configurator der anderen Person unter Organisation & Mitglieder → Deine Benutzerkennung. GitHub-Name und E-Mail-Adresse funktionieren hier nicht.",
+                    "Bitte wähle ein bestehendes Mitglied über Rollen bearbeiten aus.",
                   );
                   return;
                 }
@@ -397,24 +368,11 @@ export function Organisation({
                 });
               }}
             >
-              <h3>Mitglied hinzufügen oder Rollen ändern</h3>
-              <div className="field">
-                <label htmlFor="member-id">Persönliche Benutzerkennung</label>
-                <input
-                  id="member-id"
-                  required
-                  aria-describedby="member-id-help"
-                  placeholder="123e4567-e89b-42d3-a456-426614174000"
-                  value={userId}
-                  onChange={(event) => setUserId(event.target.value)}
-                />
-                <p id="member-id-help">
-                  Interne Configurator-Benutzerkennung (UUID), kein GitHub-Name
-                  und keine E-Mail-Adresse. Die andere Person meldet sich zuerst
-                  an und kopiert unter „Organisation & Mitglieder“ ihre
-                  „Benutzerkennung“.
-                </p>
-              </div>
+              <h3 id="member-roles" tabIndex={-1}>
+                Rollen bearbeiten:{" "}
+                {data?.members.find((m) => m.userId === userId)?.login ??
+                  "Mitglied"}
+              </h3>
               <label>
                 <input
                   type="checkbox"

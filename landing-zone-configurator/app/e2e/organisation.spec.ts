@@ -77,49 +77,53 @@ for (const manager of [true, false]) {
       page.getByRole("button", { name: "Deployments", exact: true }),
     ).toHaveCount(0);
     if (manager) {
-      let body: unknown;
-      await page.route("**/api/v1/organisation/members", async (route) => {
-        body = route.request().postDataJSON();
-        expect(route.request().headers()["x-lzc-csrf"]).toBe("test-csrf");
-        expect(route.request().headers()["x-lzc-tenant"]).toBe(tenantId);
-        await route.fulfill({ status: 204 });
+      await expect(
+        page.getByLabel("Persönliche Benutzerkennung", { exact: true }),
+      ).toHaveCount(0);
+      let revoked = false;
+      await page.route("**/api/v1/invitations**", async (route) => {
+        const method = route.request().method();
+        if (method === "DELETE") {
+          revoked = true;
+          return route.fulfill({ status: 204 });
+        }
+        if (method === "POST") {
+          expect(route.request().postDataJSON()).toEqual({
+            roles: ["application-owner"],
+            manageMembers: false,
+          });
+          return route.fulfill({
+            status: 201,
+            json: {
+              id: userId,
+              url: `https://configurator.example/organisation#invite=${"x".repeat(43)}`,
+              expiresAt: new Date(Date.now() + 86400000).toISOString(),
+            },
+          });
+        }
+        return route.fulfill({
+          json: {
+            invitations: revoked
+              ? []
+              : [
+                  {
+                    id: userId,
+                    roles: ["application-owner"],
+                    manageMembers: false,
+                    expiresAt: new Date(Date.now() + 86400000).toISOString(),
+                  },
+                ],
+          },
+        });
       });
       await page
-        .getByLabel("Persönliche Benutzerkennung", { exact: true })
-        .fill("github-name");
-      await page
-        .getByRole("button", { name: "Mitgliedschaft speichern" })
+        .getByRole("button", { name: "Einladungslink erstellen" })
         .click();
-      await expect(page.getByRole("alert")).toContainText(
-        "interne Benutzerkennung als UUID",
-      );
-      expect(body).toBeUndefined();
-      await page
-        .getByLabel("Persönliche Benutzerkennung", { exact: true })
-        .fill("  44444444-4444-4444-8444-444444444444  ");
-      await page
-        .getByRole("button", { name: "Mitgliedschaft speichern" })
-        .click();
-      await expect(page.getByRole("status")).toHaveText(
-        "Änderung gespeichert.",
-      );
       await expect(
-        page.getByRole("button", {
-          name: "Arbeitsbereich löschen",
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", {
-          name: "Benutzerkennung kopieren",
-          exact: true,
-        }),
-      ).toBeVisible();
-      expect(body).toEqual({
-        userId: "44444444-4444-4444-8444-444444444444",
-        roles: ["application-owner"],
-        manageMembers: false,
-      });
+        page.getByLabel("Einladungslink – jetzt kopieren"),
+      ).toHaveValue(/#invite=/);
+      await page.getByRole("button", { name: "Einladung widerrufen" }).click();
+      await expect(page.getByText("Keine offenen Einladungen.")).toBeVisible();
       let deletionCalled = false;
       await page.route(
         `**/api/v1/organisation/workspaces/${tenantId}`,

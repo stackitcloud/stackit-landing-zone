@@ -9,6 +9,7 @@ import { PostgresCredentialProfiles } from "./credentials/profiles.js";
 import { VaultCredentialSecrets } from "./credentials/secrets.js";
 import { Preparations } from "./deployments/preparations.js";
 import { Repositories } from "./github/repositories.js";
+import { Invitations } from "./organisation/invitations.js";
 import { PostgresOrganisations } from "./organisation/service.js";
 import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
 import { Plans } from "./plans/service.js";
@@ -79,7 +80,12 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
 
 const app = buildApp({
   repositories,
-  ...(pool ? { organisations: new PostgresOrganisations(pool) } : {}),
+  ...(pool
+    ? {
+        organisations: new PostgresOrganisations(pool),
+        invitations: new Invitations(pool),
+      }
+    : {}),
   ...(catalogues ? { catalogues } : {}),
   ...(plans ? { plans } : {}),
   ...(pool && credentials

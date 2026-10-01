@@ -16,6 +16,10 @@ import type { Preparations } from "./deployments/preparations.js";
 import { registerPreparations } from "./deployments/routes.js";
 import type { Repositories } from "./github/repositories.js";
 import { registerRepositories } from "./github/routes.js";
+import {
+  type Invitations,
+  registerInvitations,
+} from "./organisation/invitations.js";
 import { registerOrganisations } from "./organisation/routes.js";
 import type { OrganisationService } from "./organisation/service.js";
 import { registerPlans } from "./plans/routes.js";
@@ -25,6 +29,7 @@ export function buildApp(
   options: {
     webRoot?: string;
     organisations?: OrganisationService;
+    invitations?: Pick<Invitations, "list" | "create" | "revoke" | "use">;
     catalogues?: Pick<PostgresCloudCatalogues, "load">;
     auth?: AuthServices;
     repositories?: Repositories;
@@ -75,6 +80,8 @@ export function buildApp(
   app.get("/auth/status", async () => ({ github: !!options.auth }));
   if (options.auth) {
     registerAuth(app, options.auth);
+    if (options.invitations)
+      registerInvitations(app, options.auth, options.invitations);
     if (options.organisations)
       registerOrganisations(app, options.auth, options.organisations);
     if (options.catalogues)

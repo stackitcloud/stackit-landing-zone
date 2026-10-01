@@ -951,3 +951,19 @@ Live-Health und Organisationsseite liefern HTTP 200, Bundle `index-DqgRf507.js`.
 Keine realen Arbeitsbereiche während der Entwicklung/Veröffentlichung gelöscht;
 keine Kunden-Apply-Ausführung. Produkt-APIs mit kontrollierten Antworten getestet,
 persönliche Live-Abnahme der neu ergänzten Kataloge bleibt offen.
+
+### Einladungsbasierte Mitgliederverwaltung
+
+- [x] UUID-Eingabe durch Rollenwahl und einmaligen Einladungslink ersetzt.
+- [x] Sieben Tage Gültigkeit, offene Einladungen auflisten und widerrufen; keine E-Mail-Zustellung.
+- [x] Token nur gehasht speichern; Beitritt nach Anmeldung und ausdrücklicher Bestätigung.
+- [x] GitHub-Erstanmeldung legt den internen Benutzer an; Einladungsabsicht bleibt im selben Browser-Tab erhalten.
+- [x] Keine Rolleneskalation vorhandener Mitglieder über Einladungen; alte API fügt keine unbekannten Mitglieder mehr hinzu.
+- [x] Audit sowie Schutz vor paralleler Mehrfachannahme, Widerruf, Ablauf und archivierten Tenants.
+- [ ] Spätere optionale Zustellung per E-Mail / Auswahl verifizierter STACKIT-Organisationsmitglieder.
+
+Lokale Abnahme: Lint/TypeScript/Build, 118 Anwendungstests, 21 echte PostgreSQL-
+Tests und 32 Desktop-/Mobil-Browserfälle erfolgreich. Browserprüfung deckt das
+Erstellen/Widerrufen und die Einladungsfortsetzung nach dem Login ab; DB-Prüfung
+deckt insbesondere konkurrierende Annahme, Hashspeicherung, Ablauf, Widerruf,
+archivierte Tenants und entzogene Verwaltungsrechte ab.

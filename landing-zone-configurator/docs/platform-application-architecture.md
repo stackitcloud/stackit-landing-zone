@@ -249,3 +249,30 @@ aktiviert noch keinen Application-Katalog und keine Kunden-Apply-Funktion.
 - [ ] STACKIT-Organisationsbindung und handelnde Benutzeridentität verifizieren.
 - [ ] Erst danach tenantgebundene Credentials und organisationsweite Ausführung freigeben.
 - [ ] Einladungen, STACKIT-Mitgliederabgleich und unveränderliche Application Templates.
+
+## Mitgliedseinladungen ersetzen manuelle Benutzerkennungen
+
+Neue Mitgliedschaften entstehen durch ausdrückliche Annahme eines Einladungslinks.
+Der Verwalter wählt Rollen und gegebenenfalls Mitgliederverwaltung. Der Link ist
+sieben Tage gültig, einmal verwendbar und bis zur Annahme widerrufbar. Er wird nur
+bei Erstellung vollständig angezeigt; PostgreSQL speichert ausschließlich seinen
+SHA-256-Hash. Der zufällige Token besitzt 256 Bit Entropie. Es wird keine E-Mail
+verschickt. Der Link ist eine übertragbare Berechtigung und muss gezielt an die
+gewünschte Person weitergegeben werden; er ist nicht an eine E-Mail-Adresse gebunden.
+
+Die Person meldet sich über den verfügbaren Login an; beim ersten GitHub-Login
+entsteht automatisch ihr interner Benutzer. Sie sieht Arbeitsbereich und Rollen
+und bestätigt den Beitritt. Der Token wird im URL-Fragment transportiert, sofort
+von der sichtbaren URL entfernt und nur im aktuellen Tab über den Login hinweg
+in Session Storage gehalten. Vorschau und Annahme erfordern Anmeldung, Annahme
+zusätzlich Origin-/CSRF-Prüfung. Tokens erscheinen nicht in URL-Pfaden, Querystrings,
+Audit-Ereignissen oder der Einladungsliste. Nach Annahme/Schließen wird der lokale
+Token entfernt. Ein unterbrochener Ablauf lässt sich mit dem Link erneut öffnen.
+
+Der Server serialisiert Annahme, Widerruf und Mitgliedsverwaltung am Tenant.
+Abgelaufene/verwendete/widerrufene Einladungen, archivierte Arbeitsbereiche und
+Einladende ohne aktuelle Verwaltungsberechtigung werden abgewiesen. Bestehende
+Mitglieder erhalten über eine Einladung keine zusätzlichen Rollen. Der alte
+Mitglieds-Endpunkt darf nur noch existierende Mitgliedschaften bearbeiten.
+Die UI benötigt keine internen Benutzerkennungen mehr. Einladungen verwalten und
+annehmen erteilt keine STACKIT-IAM-Rechte und aktiviert kein Kunden-Apply.

@@ -18,6 +18,7 @@ import {
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { Preparations } from "../apps/api/src/deployments/preparations.js";
+import { Invitations } from "../apps/api/src/organisation/invitations.js";
 import { PostgresOrganisations } from "../apps/api/src/organisation/service.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
@@ -47,6 +48,17 @@ const pool = new pg.Pool({
   max: 1,
 });
 const store = new PostgresAuthStore(pool);
+const invitations = new Invitations(pool);
+async function inviteMember(
+  s: Session,
+  target: Session,
+  roles: string[],
+  manage: boolean,
+) {
+  const invite = await invitations.create(s, roles, manage);
+  await invitations.use(target, invite.token, true);
+  await new PostgresOrganisations(pool).switch(target, target.tenantId);
+}
 const directory = fileURLToPath(new URL("../apps/api/db/", import.meta.url));
 let alice: Session, bob: Session, aliceToken: string, aliceDocument: string;
 
@@ -757,9 +769,9 @@ describe("organisation draft workspaces", () => {
         false,
       ),
     ).rejects.toMatchObject({ code: "23514" });
-    await organisations.editMember(
+    await inviteMember(
       { ...alice, tenantId: id },
-      bob.userId,
+      bob,
       ["application-owner"],
       false,
     );
@@ -803,7 +815,8 @@ describe("organisation draft workspaces", () => {
     );
     expect(audit.rows.map((r) => r.action)).toEqual([
       "organisation_created",
-      "member_updated",
+      "invitation_created",
+      "invitation_accepted",
       "member_removed",
     ]);
     await organisations.switch(alice, alice.tenantId);
@@ -815,9 +828,9 @@ describe("organisation draft workspaces", () => {
       randomUUID(),
     );
     await organisations.switch(alice, id);
-    await organisations.editMember(
+    await inviteMember(
       { ...alice, tenantId: id },
-      bob.userId,
+      bob,
       ["platform-engineer"],
       true,
     );
@@ -880,9 +893,9 @@ describe("organisation draft workspaces", () => {
       organisations.archive(alice, alice.tenantId),
     ).rejects.toMatchObject({ code: "42501" });
     await organisations.switch(alice, id);
-    await organisations.editMember(
+    await inviteMember(
       { ...alice, tenantId: id },
-      bob.userId,
+      bob,
       ["application-owner"],
       false,
     );
@@ -935,5 +948,157 @@ describe("organisation draft workspaces", () => {
         )
       ).rowCount,
     ).toBe(1);
+  });
+});
+
+describe("single-use membership invitations", () => {
+  const organisations = new PostgresOrganisations(pool);
+  let alice: Session, bob: Session;
+  beforeAll(async () => {
+    const create = (githubId: number) =>
+      store.createSession({
+        githubId,
+        login: `invite-${githubId}`,
+        id: randomUUID(),
+        hash: newSessionToken().hash,
+        csrfToken: randomBytes(32).toString("base64url"),
+        expiresAt: new Date(Date.now() + 3600000),
+      });
+    alice = await create(1001);
+    bob = await create(1002);
+  });
+
+  it("requires consent, hashes the token and accepts it exactly once", async () => {
+    const tenantId = await organisations.create(
+      alice,
+      "Invited team",
+      randomUUID(),
+    );
+    await organisations.switch(alice, tenantId);
+    const manager = { ...alice, tenantId };
+    await expect(
+      organisations.editMember(
+        manager,
+        bob.userId,
+        ["application-owner"],
+        false,
+      ),
+    ).rejects.toMatchObject({ code: "23503" });
+    const invite = await invitations.create(
+      manager,
+      ["application-owner"],
+      false,
+    );
+    const row = (
+      await migration.query(
+        "SELECT token_hash FROM lzc_auth.invitations WHERE id=$1",
+        [invite.id],
+      )
+    ).rows[0];
+    expect(row.token_hash).not.toBe(invite.token);
+    expect(JSON.stringify(await invitations.list(manager))).not.toContain(
+      invite.token,
+    );
+    expect(await invitations.use(bob, invite.token, false)).toMatchObject({
+      tenantId,
+      roles: ["application-owner"],
+    });
+    const otherPool = new pg.Pool({
+      ...migrationConfig,
+      user: "configurator_app",
+      password: "runtime-test-only",
+      max: 2,
+    });
+    try {
+      const service = new Invitations(otherPool);
+      const outcomes = await Promise.allSettled([
+        service.use(bob, invite.token, true),
+        service.use(bob, invite.token, true),
+      ]);
+      expect(outcomes.filter((v) => v.status === "fulfilled")).toHaveLength(1);
+      expect(outcomes.filter((v) => v.status === "rejected")).toHaveLength(1);
+    } finally {
+      await otherPool.end();
+    }
+    const escalation = await invitations.create(
+      manager,
+      ["platform-engineer"],
+      true,
+    );
+    await expect(
+      invitations.use(bob, escalation.token, true),
+    ).rejects.toMatchObject({ code: "23505" });
+    await expect(
+      pool.query("SELECT * FROM lzc_auth.invitations"),
+    ).rejects.toMatchObject({ code: "42501" });
+    await organisations.switch(alice, alice.tenantId);
+    await organisations.switch(bob, bob.tenantId);
+  });
+  it("rejects expired, revoked, archived and unauthorized invitations", async () => {
+    const tenantId = await organisations.create(
+      alice,
+      "Revoked invitations",
+      randomUUID(),
+    );
+    await organisations.switch(alice, tenantId);
+    const manager = { ...alice, tenantId };
+    const revoked = await invitations.create(
+      manager,
+      ["application-owner"],
+      false,
+    );
+    await expect(
+      invitations.revoke({ ...bob, tenantId }, revoked.id),
+    ).rejects.toBeDefined();
+    await invitations.revoke(manager, revoked.id);
+    await expect(
+      invitations.use(bob, revoked.token, true),
+    ).rejects.toMatchObject({ code: "22023" });
+    const expired = await invitations.create(
+      manager,
+      ["application-owner"],
+      false,
+    );
+    await migration.query(
+      "UPDATE lzc_auth.invitations SET expires_at=now()-interval '1 second' WHERE id=$1",
+      [expired.id],
+    );
+    await expect(
+      invitations.use(bob, expired.token, true),
+    ).rejects.toMatchObject({ code: "22023" });
+    const archived = await invitations.create(
+      manager,
+      ["application-owner"],
+      false,
+    );
+    await organisations.archive(manager, tenantId);
+    await expect(
+      invitations.use(bob, archived.token, true),
+    ).rejects.toMatchObject({ code: "22023" });
+    await expect(
+      invitations.use(bob, "x".repeat(43), false),
+    ).rejects.toMatchObject({ code: "22023" });
+  });
+  it("invalidates invitations when the issuer loses membership management", async () => {
+    const tenantId = await organisations.create(
+      alice,
+      "Issuer revocation",
+      randomUUID(),
+    );
+    await organisations.switch(alice, tenantId);
+    const manager = { ...alice, tenantId };
+    const invite = await invitations.create(
+      manager,
+      ["application-owner"],
+      false,
+    );
+    await migration.query(
+      "UPDATE lzc.memberships SET manage_members=false WHERE tenant_id=$1 AND user_id=$2",
+      [tenantId, alice.userId],
+    );
+    await expect(
+      invitations.use(bob, invite.token, true),
+    ).rejects.toMatchObject({ code: "22023" });
+    await organisations.switch(alice, alice.tenantId);
   });
 });
