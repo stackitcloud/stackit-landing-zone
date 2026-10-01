@@ -917,3 +917,15 @@ BGP bleibt bis dahin im Configurator gesperrt. Keine Änderung am Live-Deploymen
 Organisationstenants bleiben bis zur verifizierten STACKIT-Anbindung Verwaltungsentwürfe;
 Kunden-Apply bleibt unverändert freigabepflichtig. Details in der
 [Platform-/Application-Architektur](platform-application-architecture.md).
+
+Prüfstand für Commit `59b0a04`: Lint/TypeScript/Build, 114 Anwendungstests,
+17 PostgreSQL-Integrationstests und alle 30 Desktop-/Mobil-Browserfälle erfolgreich.
+Die Organisationsansicht wurde zusätzlich auf mobilen Überlauf geprüft und visuell
+kontrolliert. Validate-Workflow
+[36836376140](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36836376140)
+ist erfolgreich. Die Katalogtests verwenden kontrollierte API-Antworten; eine
+Live-Abfrage mit einem persönlichen Benutzerzugang steht noch aus.
+
+- [x] Commit `59b0a04` auf lzc-dev veröffentlicht: [Release 36836376110](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36836376110) erfolgreich, einschließlich Migrationen, CF-Deployment und Runner-Prüfungen.
+- [x] Live-Gesundheit, neue Organisationsseite und Netzwerk-Deep-Link geprüft; ausgeliefertes Bundle `index-DxHvyiWG.js`. Anonymer Zugriff auf die Organisations-API wird mit 401 abgewiesen.
+- [ ] Benutzerabnahme: persönliche Produktkatalog-Abfrage und Organisations-Mitgliederverwaltung mit zwei Benutzerkonten.
