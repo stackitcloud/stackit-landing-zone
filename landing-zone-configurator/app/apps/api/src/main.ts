@@ -4,10 +4,12 @@ import { GitHubClient } from "./auth/github-client.js";
 import type { AuthServices } from "./auth/routes.js";
 import { SecretsManagerTokenStore } from "./auth/secrets.js";
 import { PostgresAuthStore } from "./auth/store.js";
+import { PostgresCloudCatalogues } from "./credentials/catalogues.js";
 import { PostgresCredentialProfiles } from "./credentials/profiles.js";
 import { VaultCredentialSecrets } from "./credentials/secrets.js";
 import { Preparations } from "./deployments/preparations.js";
 import { Repositories } from "./github/repositories.js";
+import { PostgresOrganisations } from "./organisation/service.js";
 import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
 import { Plans } from "./plans/service.js";
 import { databaseConfig } from "./storage/database.js";
@@ -15,6 +17,7 @@ import { VaultConnection } from "./storage/vault.js";
 
 const repositories = new Repositories();
 let plans: Plans | undefined;
+let catalogues: PostgresCloudCatalogues | undefined;
 let pool: pg.Pool | undefined;
 let auth: AuthServices | undefined;
 let credentials: PostgresCredentialProfiles | undefined;
@@ -44,6 +47,7 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     new VaultConnection(secretConfig),
   );
   credentials = new PostgresCredentialProfiles(pool, credentialSecrets);
+  catalogues = new PostgresCloudCatalogues(pool, credentialSecrets);
   if (process.env.LZC_PLANS_ENABLED === "true") {
     plans = new Plans(
       pool,
@@ -75,6 +79,8 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
 
 const app = buildApp({
   repositories,
+  ...(pool ? { organisations: new PostgresOrganisations(pool) } : {}),
+  ...(catalogues ? { catalogues } : {}),
   ...(plans ? { plans } : {}),
   ...(pool && credentials
     ? { preparations: new Preparations(pool, repositories, credentials) }

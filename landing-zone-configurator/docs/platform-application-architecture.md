@@ -219,3 +219,33 @@ Kein Zusammenführen von Konten allein anhand gleicher E-Mail-Adressen.
 
 Dieser Schritt aktiviert keine neuen Rollen, erteilt keine STACKIT-Rechte und
 ändert weder die Kunden-Apply-Freigabe noch die bestehenden Tenant-Grenzen.
+
+## Organisation & Mitglieder: erster Verwaltungsstand
+
+Organisationstenants können jetzt getrennt vom persönlichen Arbeitsbereich angelegt
+werden. Ihre STACKIT-Organisations-ID ist ausdrücklich **unverifiziert**. Ein Benutzer
+kann mehrere Arbeitsbereiche besitzen bzw. ihnen angehören; die Oberfläche bietet
+einen expliziten Wechsel mit vollständigem Neuladen. Die persönliche GitHub-Token-
+Bindung bleibt beim Wechsel auf den ursprünglichen Benutzer-/Session-Pfad gebunden.
+
+Die Mitgliederverwaltung verwendet zunächst die interne UUID eines bereits
+registrierten Benutzers. Es gibt keinen globalen Benutzerkatalog und keine automatische
+Kontozusammenführung über E-Mail. Platform Engineer und Application Owner sind
+kombinierbar. Mitgliederverwaltung ist eine gesonderte Fähigkeit für Platform Engineers.
+Änderungen werden auditiert; der letzte Verwalter darf auch bei konkurrierenden
+Änderungen nicht verloren gehen. Bestehende persönliche Mitgliedschaften werden
+nicht auf die neuen Rollen hochgestuft.
+
+**Ausführungsgrenze dieses Stands:** Organisationstenants sind Verwaltungsentwürfe.
+Credentials, Produktkatalog-Abfragen und die alten Plan-/Deployment-Endpunkte sind
+dort serverseitig gesperrt. Application Owner erhalten auch keinen Zugriff auf die
+bisherigen Plattform-/Git-Endpunkte. Der persönliche Arbeitsbereich bleibt für die
+bisherige Konfiguration und autorisierte Plan-Nutzung verfügbar. Die neue Ansicht
+aktiviert noch keinen Application-Katalog und keine Kunden-Apply-Funktion.
+
+- [x] Entwurfs-Organisationstenants und expliziter Tenant-Wechsel.
+- [x] Rollenmitgliedschaften und separate Mitgliederverwaltung mit Audit.
+- [x] Oberfläche „Organisation & Mitglieder“ und serverseitige Abgrenzung der alten APIs.
+- [ ] STACKIT-Organisationsbindung und handelnde Benutzeridentität verifizieren.
+- [ ] Erst danach tenantgebundene Credentials und organisationsweite Ausführung freigeben.
+- [ ] Einladungen, STACKIT-Mitgliederabgleich und unveränderliche Application Templates.

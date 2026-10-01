@@ -8,6 +8,10 @@ export type Session = {
   id: string;
   userId: string;
   tenantId: string;
+  tokenTenantId?: string;
+  tenantKind?: "personal" | "organisation";
+  productRoles?: string[];
+  manageMembers?: boolean;
   githubId: string;
   login: string;
   csrfToken: string;
@@ -106,6 +110,10 @@ export class PostgresAuthStore implements AuthStore {
   async resolveSession(token: string): Promise<Session | null> {
     if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
     const result = await this.pool.query<{
+      token_tenant_id: string;
+      tenant_kind: "personal" | "organisation";
+      product_roles: string[];
+      manage_members: boolean;
       session_id: string;
       user_id: string;
       tenant_id: string;
@@ -120,6 +128,10 @@ export class PostgresAuthStore implements AuthStore {
           id: row.session_id,
           userId: row.user_id,
           tenantId: row.tenant_id,
+          tokenTenantId: row.token_tenant_id,
+          tenantKind: row.tenant_kind,
+          productRoles: row.product_roles,
+          manageMembers: row.manage_members,
           githubId: row.github_id,
           login: row.github_login,
           csrfToken: row.csrf_token,

@@ -18,6 +18,7 @@ import {
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { Preparations } from "../apps/api/src/deployments/preparations.js";
+import { PostgresOrganisations } from "../apps/api/src/organisation/service.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -688,5 +689,172 @@ describe("independent external identities", () => {
         [bob.userId],
       ),
     ).rejects.toThrow(/duplicate key/);
+  });
+});
+
+describe("organisation draft workspaces", () => {
+  let alice: Session, bob: Session, aliceToken: string;
+  beforeAll(async () => {
+    async function create(githubId: number) {
+      const token = newSessionToken();
+      const session = await store.createSession({
+        githubId,
+        login: `org-user-${githubId}`,
+        id: randomUUID(),
+        hash: token.hash,
+        csrfToken: randomBytes(32).toString("base64url"),
+        expiresAt: new Date(Date.now() + 3600000),
+      });
+      return { session, token: token.token };
+    }
+    const first = await create(901);
+    alice = first.session;
+    aliceToken = first.token;
+    bob = (await create(902)).session;
+  });
+  const organisations = new PostgresOrganisations(pool);
+  it("creates draft membership, preserves personal token binding and revokes membership", async () => {
+    expect(
+      (await organisations.overview(alice)).tenants.find(
+        (t) => t.id === alice.tenantId,
+      )?.roles,
+    ).toEqual([]);
+    const id = await organisations.create(alice, "Platform team", randomUUID());
+    const overview = await organisations.overview(alice);
+    expect(overview.activeTenantId).toBe(alice.tenantId);
+    expect(overview.tenants.find((t) => t.id === id)).toMatchObject({
+      kind: "organisation",
+      organizationVerified: false,
+      roles: ["platform-engineer"],
+      manageMembers: true,
+    });
+    await expect(organisations.switch(bob, id)).rejects.toMatchObject({
+      code: "42501",
+    });
+    await organisations.switch(alice, id);
+    await expect(
+      organisations.editMember(alice, bob.userId, ["application-owner"], false),
+    ).rejects.toMatchObject({ code: "40001" });
+    await expect(
+      organisations.editMember(
+        { ...alice, tenantId: id },
+        alice.userId,
+        ["platform-engineer", "application-owner"],
+        true,
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    expect(await store.resolveSession(aliceToken)).toMatchObject({
+      tenantId: id,
+      tokenTenantId: alice.tenantId,
+      tenantKind: "organisation",
+      productRoles: ["platform-engineer"],
+    });
+    await expect(
+      organisations.editMember(
+        { ...alice, tenantId: id },
+        alice.userId,
+        ["application-owner"],
+        false,
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+    await organisations.editMember(
+      { ...alice, tenantId: id },
+      bob.userId,
+      ["application-owner"],
+      false,
+    );
+    await organisations.switch(bob, id);
+    expect((await organisations.overview(bob)).members).toEqual([]);
+    await expect(
+      organisations.editMember(
+        { ...bob, tenantId: id },
+        bob.userId,
+        ["platform-engineer"],
+        true,
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      withTenant(pool, { userId: bob.userId, tenantId: id }, (client) =>
+        client.query(
+          "INSERT INTO lzc.configurations(tenant_id,created_by,name,document) VALUES($1,$2,'forbidden','{}')",
+          [id, bob.userId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await organisations.editMember(
+      { ...alice, tenantId: id },
+      bob.userId,
+      [],
+      false,
+      true,
+    );
+    expect((await organisations.overview(bob)).activeTenantId).toBe(
+      bob.tenantId,
+    );
+    await expect(organisations.switch(bob, id)).rejects.toMatchObject({
+      code: "42501",
+    });
+    await expect(
+      pool.query("SELECT * FROM lzc_auth.membership_audit"),
+    ).rejects.toMatchObject({ code: "42501" });
+    const audit = await migration.query(
+      "SELECT action FROM lzc_auth.membership_audit WHERE tenant_id=$1 ORDER BY created_at",
+      [id],
+    );
+    expect(audit.rows.map((r) => r.action)).toEqual([
+      "organisation_created",
+      "member_updated",
+      "member_removed",
+    ]);
+    await organisations.switch(alice, alice.tenantId);
+  });
+  it("serializes competing last-manager changes", async () => {
+    const id = await organisations.create(
+      alice,
+      "Concurrent managers",
+      randomUUID(),
+    );
+    await organisations.switch(alice, id);
+    await organisations.editMember(
+      { ...alice, tenantId: id },
+      bob.userId,
+      ["platform-engineer"],
+      true,
+    );
+    await organisations.switch(bob, id);
+    const concurrent = new pg.Pool({
+      ...migrationConfig,
+      user: "configurator_app",
+      password: "runtime-test-only",
+      max: 2,
+    });
+    try {
+      const service = new PostgresOrganisations(concurrent);
+      const results = await Promise.allSettled([
+        service.editMember(
+          { ...alice, tenantId: id },
+          alice.userId,
+          ["platform-engineer"],
+          false,
+        ),
+        service.editMember(
+          { ...bob, tenantId: id },
+          bob.userId,
+          ["platform-engineer"],
+          false,
+        ),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter((r) => r.status === "rejected")).toHaveLength(1);
+      const remaining = await migration.query(
+        "SELECT user_id FROM lzc.memberships WHERE tenant_id=$1 AND manage_members",
+        [id],
+      );
+      expect(remaining.rowCount).toBe(1);
+    } finally {
+      await concurrent.end();
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+    }
   });
 });

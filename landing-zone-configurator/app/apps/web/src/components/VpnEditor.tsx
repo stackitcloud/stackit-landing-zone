@@ -68,6 +68,7 @@ export function VpnEditor({
         }
         optional={name !== "availability_zones"}
         path={`connectivity.vpn.${name}`}
+        regionContext={region}
         onChange={(child) => set(name, child)}
         title={
           name === "availability_zones"

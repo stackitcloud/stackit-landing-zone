@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 
 export type Session = {
   user: { id?: string; login: string };
-  tenant?: { id: string };
+  tenant?: {
+    id: string;
+    name?: string;
+    kind?: "personal" | "organisation";
+    roles?: ("platform-engineer" | "application-owner")[];
+    manageMembers?: boolean;
+  };
   csrfToken: string;
   expiresAt: string;
 };

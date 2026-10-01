@@ -901,3 +901,19 @@ Templateumfangs. Bestehende States werden nicht umgestellt.
 - [ ] Accelerator-Unterstützung und Tests umsetzen; anschließend Configurator-Schema, Assistent und Engine-Freigabe aktualisieren.
 
 BGP bleibt bis dahin im Configurator gesperrt. Keine Änderung am Live-Deployment.
+
+### Benutzerverwaltung und API-gestützte Produktoptionen
+
+- [x] Interne Benutzeridentität von externer GitHub-Identität getrennt (Migration 006).
+- [x] Entwurfs-Organisationstenants, Rollenmitgliedschaften und Verwaltung implementiert (Migration 007).
+- [x] Persönliche GitHub-Token beim Tenant-Wechsel getrennt halten; bestehende Benutzer nicht automatisch hochstufen.
+- [x] Aktuelle Produktoptionen über persönlichen STACKIT-Zugang abfragen: Git-Leistungsklassen, VPN-Pläne, SKE-Versionen, Node-Flavors, Zonen und Volume-Typen.
+- [x] Bestandswerte bei fehlenden Katalogeinträgen erhalten; Ausfall einzelner Produkt-APIs sichtbar machen.
+- [ ] Live-Abnahme der neuen Verwaltung und Produktkataloge mit Benutzerkonten und ausgewähltem persönlichem STACKIT-Zugang.
+- [ ] STACKIT-IDP-Ticket klären und Organisationsbindung verifizieren.
+- [ ] Serverseitige Produktverfügbarkeit unmittelbar vor Plan/Deployment erneut prüfen; Kataloge allein garantieren weder Quote noch Kapazität.
+- [ ] Weitere dynamische Felder nach Produkt-API-Verfügbarkeit ergänzen.
+
+Organisationstenants bleiben bis zur verifizierten STACKIT-Anbindung Verwaltungsentwürfe;
+Kunden-Apply bleibt unverändert freigabepflichtig. Details in der
+[Platform-/Application-Architektur](platform-application-architecture.md).

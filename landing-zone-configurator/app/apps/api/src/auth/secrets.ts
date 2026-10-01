@@ -15,14 +15,18 @@ export class SecretsManagerTokenStore implements UserTokenStore {
     this.vault = new VaultConnection(config, request);
   }
   private path(session: Session, metadata = false): string {
-    for (const id of [session.tenantId, session.userId, session.id])
+    for (const id of [
+      session.tokenTenantId ?? session.tenantId,
+      session.userId,
+      session.id,
+    ])
       if (
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
           id,
         )
       )
         throw new Error("Invalid secret identity");
-    return `${this.vault.config.instance}/${metadata ? "metadata" : "data"}/configurator/tenants/${session.tenantId}/users/${session.userId}/github/${session.id}`;
+    return `${this.vault.config.instance}/${metadata ? "metadata" : "data"}/configurator/tenants/${session.tokenTenantId ?? session.tenantId}/users/${session.userId}/github/${session.id}`;
   }
 
   async put(session: Session, token: string) {
@@ -35,7 +39,7 @@ export class SecretsManagerTokenStore implements UserTokenStore {
           options: { cas: 0 },
           data: {
             token,
-            tenantId: session.tenantId,
+            tenantId: session.tokenTenantId ?? session.tenantId,
             userId: session.userId,
             sessionId: session.id,
             githubId: session.githubId,
@@ -58,7 +62,7 @@ export class SecretsManagerTokenStore implements UserTokenStore {
       const data = value.data?.data;
       if (
         !data ||
-        data.tenantId !== session.tenantId ||
+        data.tenantId !== (session.tokenTenantId ?? session.tenantId) ||
         data.userId !== session.userId ||
         data.sessionId !== session.id ||
         data.githubId !== session.githubId ||

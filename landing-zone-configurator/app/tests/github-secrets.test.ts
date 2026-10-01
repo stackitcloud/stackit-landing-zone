@@ -132,3 +132,37 @@ it("fails closed when a successful write leaves its secret session unrevoked", a
     "Secret session cleanup failed",
   );
 });
+
+it("keeps GitHub token lookup bound to the original tenant after workspace switching", async () => {
+  const switched = {
+    ...session,
+    tokenTenantId: session.tenantId,
+    tenantId: "55555555-5555-5555-5555-555555555555",
+  };
+  const request = vi.fn<typeof fetch>();
+  request.mockResolvedValueOnce(
+    Response.json({ auth: { client_token: "vault-token" } }),
+  );
+  request.mockResolvedValueOnce(
+    Response.json({
+      data: {
+        data: {
+          token: "ghu_personal",
+          tenantId: session.tenantId,
+          userId: session.userId,
+          sessionId: session.id,
+          githubId: session.githubId,
+          expiresAt: session.expiresAt.toISOString(),
+        },
+      },
+    }),
+  );
+  request.mockResolvedValueOnce(new Response(null, { status: 204 }));
+  await expect(
+    new SecretsManagerTokenStore(settings, request).get(switched),
+  ).resolves.toBe("ghu_personal");
+  expect(request.mock.calls[1]?.[0]).toContain(
+    `/tenants/${session.tenantId}/users/${session.userId}/github/${session.id}`,
+  );
+  expect(request.mock.calls[1]?.[0]).not.toContain(switched.tenantId);
+});

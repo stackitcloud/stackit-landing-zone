@@ -5,6 +5,7 @@ import {
   regionalConnectivityType,
 } from "@lzc/domain";
 import { useId, useState } from "react";
+import { useCatalogueOptions } from "./CloudCatalogues";
 import { hints, labelFor } from "./feature-labels";
 
 export function emptyValue(type: InputType): JsonValue {
@@ -70,35 +71,38 @@ export function StructuredField({
             ? "keine Einträge"
             : "Voreinstellung des Accelerators"
           : String(effective);
-  const choices = path.endsWith(".network_area_key")
-    ? (networkAreaKeys[regionContext] ?? [])
-    : path === "firewall_config.aliases[*].type"
-      ? [
-          "host",
-          "network",
-          "port",
-          "url",
-          "urltable",
-          "urljson",
-          "geoip",
-          "asn",
-          "networkgroup",
-          "mac",
-          "external",
-        ]
-      : path === "firewall_config.rules[*].action"
-        ? ["pass", "block", "reject"]
-        : path === "firewall_config.rules[*].direction"
-          ? ["in", "out"]
-          : path === "region" || path.endsWith(".region")
-            ? ["eu01", "eu02"]
-            : path.endsWith(".secrets_enforcement.mode")
-              ? ["audit", "soft", "strict"]
-              : name === "resource_type" && path.startsWith("audit_logs.")
-                ? ["organization", "folder", "project"]
-                : name === "routing_type" && path.includes(".vpn.")
-                  ? ["POLICY_BASED", "ROUTE_BASED"]
-                  : undefined;
+  const cloudOptions = useCatalogueOptions(path, regionContext);
+  const choices = cloudOptions
+    ? cloudOptions.map((option) => option.value)
+    : path.endsWith(".network_area_key")
+      ? (networkAreaKeys[regionContext] ?? [])
+      : path === "firewall_config.aliases[*].type"
+        ? [
+            "host",
+            "network",
+            "port",
+            "url",
+            "urltable",
+            "urljson",
+            "geoip",
+            "asn",
+            "networkgroup",
+            "mac",
+            "external",
+          ]
+        : path === "firewall_config.rules[*].action"
+          ? ["pass", "block", "reject"]
+          : path === "firewall_config.rules[*].direction"
+            ? ["in", "out"]
+            : path === "region" || path.endsWith(".region")
+              ? ["eu01", "eu02"]
+              : path.endsWith(".secrets_enforcement.mode")
+                ? ["audit", "soft", "strict"]
+                : name === "resource_type" && path.startsWith("audit_logs.")
+                  ? ["organization", "folder", "project"]
+                  : name === "routing_type" && path.includes(".vpn.")
+                    ? ["POLICY_BASED", "ROUTE_BASED"]
+                    : undefined;
   const keyChoices =
     path === "connectivity_regions"
       ? ["eu01", "eu02"]
@@ -147,6 +151,12 @@ export function StructuredField({
             ? "Deaktiviert"
             : `Standard: ${standard}`}
         </p>
+        {cloudOptions && (
+          <p className="field-hint">
+            Aus dem geladenen STACKIT-Produktkatalog. Fehlende Bestandswerte
+            werden nicht automatisch ersetzt.
+          </p>
+        )}
         {hints[name] && <p className="field-hint">{hints[name]}</p>}
         <button
           type="button"
@@ -190,12 +200,17 @@ export function StructuredField({
               value !== "" &&
               !choices.includes(value) && (
                 <option value={value} disabled>
-                  {value} (nicht unterstützt)
+                  {value} (
+                  {cloudOptions
+                    ? "nicht im geladenen Katalog"
+                    : "nicht unterstützt"}
+                  )
                 </option>
               )}
             {choices.map((choice) => (
               <option key={choice} value={choice}>
-                {choice}
+                {cloudOptions?.find((option) => option.value === choice)
+                  ?.label ?? choice}
               </option>
             ))}
           </select>

@@ -6,7 +6,8 @@ export type View =
   | "editor"
   | "repositories"
   | "credentials"
-  | "deployments";
+  | "deployments"
+  | "organisation";
 export type EditorStep =
   | "basics"
   | "folders"
@@ -37,13 +38,15 @@ function readRoute() {
           path,
         )
       ? "editor"
-      : path === "/deployments"
-        ? "deployments"
-        : path === "/credentials"
-          ? "credentials"
-          : path === "/repositories"
-            ? "repositories"
-            : "templates";
+      : path === "/organisation"
+        ? "organisation"
+        : path === "/deployments"
+          ? "deployments"
+          : path === "/credentials"
+            ? "credentials"
+            : path === "/repositories"
+              ? "repositories"
+              : "templates";
   return { view, selected: template ?? standaloneTemplate, step };
 }
 export function useNavigation(restoreEditor: boolean) {
@@ -75,13 +78,15 @@ export function useNavigation(restoreEditor: boolean) {
         ? `/templates/${detail ?? "standalone"}`
         : view === "editor"
           ? `/configurations/edit/${detail ?? "basics"}`
-          : view === "deployments"
-            ? "/deployments"
-            : view === "credentials"
-              ? "/credentials"
-              : view === "repositories"
-                ? "/repositories"
-                : "/templates";
+          : view === "organisation"
+            ? "/organisation"
+            : view === "deployments"
+              ? "/deployments"
+              : view === "credentials"
+                ? "/credentials"
+                : view === "repositories"
+                  ? "/repositories"
+                  : "/templates";
     if (
       window.location.pathname !== path ||
       window.location.search ||
