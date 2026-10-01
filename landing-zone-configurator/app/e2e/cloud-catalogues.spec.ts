@@ -60,8 +60,27 @@ test("product choices preserve imported values and restore manual fields when ca
               value: "Observability-Starter-EU01",
               label: "Observability-Starter-EU01",
             },
+            {
+              value: "Observability-Medium-EU01",
+              label: "Observability Medium",
+            },
           ],
         },
+        projectRoles: {
+          status: "available",
+          options: [{ value: "viewer", label: "viewer" }],
+        },
+        projectPermissions: {
+          status: "available",
+          options: [{ value: "project.read", label: "project.read" }],
+        },
+        projectRoleTemplates: [
+          {
+            name: "viewer",
+            description: "Read only",
+            permissions: ["project.read"],
+          },
+        ],
         bastionMachineTypes: {
           status: "available",
           options: [{ value: "g2i.1", label: "g2i.1" }],
@@ -231,4 +250,76 @@ test("product choices preserve imported values and restore manual fields when ca
   await monitoring
     .getByLabel("Dienst-Leistungsklasse", { exact: true })
     .selectOption("Observability-Starter-EU01");
+  await page
+    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .click();
+  const template = page.locator("section.project-card").first();
+  await template
+    .getByText("Observability-Leistungsklasse · Fest vorgegeben", {
+      exact: true,
+    })
+    .click();
+  await template
+    .getByLabel("Wertquelle: Observability-Leistungsklasse", { exact: true })
+    .selectOption("input");
+  const allowed = template.getByRole("group", {
+    name: "Erlaubte Werte: Observability-Leistungsklasse",
+    exact: true,
+  });
+  await expect(
+    allowed.getByLabel("Observability Medium", { exact: true }),
+  ).toBeChecked();
+  await allowed.getByLabel("Observability Medium", { exact: true }).uncheck();
+  await expect(
+    allowed.getByLabel("Observability Medium", { exact: true }),
+  ).not.toBeChecked();
+  await template
+    .getByText("Weitere Template-Einstellungen", { exact: true })
+    .click();
+  await template
+    .getByText("Projektdienste und Rechte", { exact: true })
+    .click();
+  const configureRoles = template.getByRole("button", {
+    name: "Konfigurieren: Eigene Projektrollen",
+    exact: true,
+  });
+  if (await configureRoles.count()) await configureRoles.click();
+  const roles = template.locator("details").filter({
+    has: page.locator(":scope > summary", {
+      hasText: /^Eigene Projektrollen ·/,
+    }),
+  });
+  await roles.locator(":scope > summary").click();
+  await roles
+    .getByLabel("STACKIT-Rollenvorlage", { exact: true })
+    .selectOption("viewer");
+  await roles.getByText("Eigene Projektrollen 1", { exact: true }).click();
+  await expect(roles.getByLabel("Name", { exact: true })).toHaveValue(
+    "application-viewer",
+  );
+  await roles.getByText("Berechtigungen · 1", { exact: true }).click();
+  await expect(
+    roles.getByLabel("Berechtigungen 1", { exact: true }),
+  ).toHaveJSProperty("tagName", "SELECT");
+  await expect(
+    roles.getByLabel("Berechtigungen 1", { exact: true }),
+  ).toHaveValue("project.read");
+  await template
+    .getByText("Projektrollen der verantwortlichen Person · Fest vorgegeben", {
+      exact: true,
+    })
+    .click();
+  await template
+    .getByLabel("Wertquelle: Projektrollen der verantwortlichen Person", {
+      exact: true,
+    })
+    .selectOption("context");
+  await template.getByLabel("application-viewer", { exact: true }).check();
+  await template.getByText("Bestellung testen", { exact: true }).click();
+  await expect(template.locator(".parameter-preview")).toContainText(
+    "Projektverantwortliche Person wird bei der Instanziierung zugeordnet",
+  );
+  await expect(template.locator(".parameter-preview")).toContainText(
+    "verifizierten STACKIT-Identität",
+  );
 });

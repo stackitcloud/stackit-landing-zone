@@ -1,6 +1,60 @@
 import { expect, it } from "vitest";
 import { compileApplicationPlan } from "../packages/domain/src/application-plan.js";
 
+it("compiles role variables from verified STACKIT identity and preserves custom role definitions", () => {
+  const old = fixture();
+  const input = {
+    ...old,
+    template: {
+      ...old.template,
+      schema_version: 2,
+      env: "dev",
+      custom_roles: [
+        {
+          name: "application-reader",
+          description: "Read only",
+          permissions: ["project.read"],
+        },
+      ],
+      parameter_policy: {
+        schema_version: 1,
+        fields: {
+          role_assignments: {
+            source: "context",
+            variable: "verified-project-owner",
+            roles: ["application-reader"],
+          },
+        },
+      },
+    },
+  };
+  const plan = compileApplicationPlan(input);
+  expect(plan.variables.application).toMatchObject({
+    custom_roles: input.template.custom_roles,
+    role_assignments: [
+      {
+        role: "application-reader",
+        subject: old.context.verified_stackit_email,
+      },
+    ],
+  });
+  expect(plan.parameterResolution?.contextBindings[0]?.status).toBe("resolved");
+  expect(() =>
+    compileApplicationPlan({
+      ...input,
+      request: {
+        ...old.request,
+        parameters: {
+          role_assignments: [
+            { role: "owner", subject: "attacker@stackit.cloud" },
+          ],
+        },
+      },
+    }),
+  ).toThrow();
+  expect(plan.executionEnabled).toBe(false);
+});
+
 const id = "11111111-2222-4333-8444-555555555555";
 const other = "22222222-2222-4333-8444-555555555555";
 const revision = "a".repeat(40);

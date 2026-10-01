@@ -33,6 +33,12 @@ export const templateParameterFields = [
     type: "string-list",
     sources: ["fixed", "input", "binding"],
   },
+  {
+    path: "role_assignments",
+    label: "Projektrollen der verantwortlichen Person",
+    type: "role-assignments",
+    sources: ["fixed", "context"],
+  },
 ] as const;
 export type TemplateParameterPath =
   (typeof templateParameterFields)[number]["path"];
@@ -47,12 +53,17 @@ const sourceSchema = z.discriminatedUnion("source", [
     source: z.literal("input"),
     required: z.boolean(),
     default: valueSchema.optional(),
-    choices: z.array(z.string().min(1).max(512)).min(1).max(100).optional(),
+    choices: z.array(z.string().min(1).max(512)).max(100).optional(),
     description: z.string().max(512).optional(),
   }),
   z.strictObject({
     source: z.literal("binding"),
     binding: z.literal("own-project-network"),
+  }),
+  z.strictObject({
+    source: z.literal("context"),
+    variable: z.literal("verified-project-owner"),
+    roles: z.array(z.string().trim().min(1).max(256)).max(100),
   }),
 ]);
 export const templateParameterPolicySchema = z.strictObject({
@@ -74,7 +85,17 @@ const defaults: Record<TemplateParameterPath, JsonValue> = {
   "observability.enabled": false,
   "observability.plan_name": "Observability-Starter-EU01",
   "observability.acl": [],
+  role_assignments: [],
 };
+export const projectRoleAssignmentSchema = z.strictObject({
+  role: z.string().min(1).max(256),
+  subject: z.string().min(1).max(512),
+});
+export const projectCustomRoleSchema = z.strictObject({
+  name: z.string().min(1).max(256),
+  description: z.string().max(2000),
+  permissions: z.array(z.string().min(1).max(256)).max(2000),
+});
 function get(settings: Values, path: TemplateParameterPath): JsonValue {
   const [root, child] = path.split(".");
   const value = child
@@ -105,6 +126,10 @@ function validValue(
   source?: TemplateParameterSource,
 ) {
   const field = fieldFor(path);
+  if (field.type === "role-assignments") {
+    z.array(projectRoleAssignmentSchema).max(100).parse(value);
+    return;
+  }
   if (field.type === "boolean" && typeof value !== "boolean")
     throw new Error(`${field.label}: Ein boolescher Wert ist erforderlich.`);
   if (
@@ -164,6 +189,16 @@ export function validateTemplateParameterPolicy(
     );
   for (const [path, source] of Object.entries(policy.fields)) {
     const field = fieldFor(path);
+    if (!(field.sources as readonly string[]).includes(source.source))
+      throw new Error(
+        `${field.label}: Diese Wertquelle ist nicht freigegeben.`,
+      );
+    if (source.source === "context") {
+      if (new Set(source.roles).size !== source.roles.length)
+        throw new Error("Projektrollen: Doppelte Rollen sind nicht zulässig.");
+      validValue(field.path, get(template.settings, field.path));
+      continue;
+    }
     if (source.source === "binding") {
       if (path !== "observability.acl" || template.kind !== "corporate")
         throw new Error(
@@ -200,7 +235,13 @@ export function validateTemplateParameterPolicy(
       (path === "env" ||
         path === "observability.plan_name" ||
         path === "observability.acl") &&
-      !source.choices
+      (!source.choices ||
+        (!source.choices.length &&
+          !(
+            path === "observability.acl" &&
+            source.required &&
+            source.default === undefined
+          )))
     )
       throw new Error(
         `${field.label}: Bestelleingaben benötigen eine freigegebene Auswahl.`,
@@ -214,6 +255,7 @@ export function validateTemplateParameterPolicy(
 export function resolveTemplateParameters(
   template: ParameterizedTemplate,
   inputs: Record<string, JsonValue> = {},
+  context?: { verifiedStackitEmail: string },
 ) {
   assertBoundedJson({ template, inputs });
   validateTemplateParameterPolicy(template);
@@ -228,7 +270,10 @@ export function resolveTemplateParameters(
   const settings = structuredClone(template.settings);
   const provenance: Record<
     string,
-    { source: "fixed" | "input" | "default" | "binding"; description: string }
+    {
+      source: "fixed" | "input" | "default" | "binding" | "context";
+      description: string;
+    }
   > = {};
   const bindings: {
     path: TemplateParameterPath;
@@ -237,10 +282,57 @@ export function resolveTemplateParameters(
     description: string;
   }[] = [];
   const qualificationBlockers: string[] = [];
+  const contextBindings: {
+    path: TemplateParameterPath;
+    variable: "verified-project-owner";
+    roles: string[];
+    status: "resolved" | "unresolved";
+  }[] = [];
   for (const field of templateParameterFields) {
     if (template.kind === "sandbox") break;
     const source = fields[field.path];
     let value = get(settings, field.path);
+    if (source?.source === "context") {
+      const email = context
+        ? z.email().parse(context.verifiedStackitEmail)
+        : undefined;
+      contextBindings.push({
+        path: field.path,
+        variable: source.variable,
+        roles: source.roles,
+        status: email ? "resolved" : "unresolved",
+      });
+      provenance[field.path] = {
+        source: "context",
+        description:
+          "Projektverantwortliche Person aus der verifizierten STACKIT-Identität; keine frei überschreibbare Benutzereingabe.",
+      };
+      if (!source.roles.length)
+        qualificationBlockers.push(
+          "Projektrollen: Mindestens eine Rolle für die Kontextbindung auswählen.",
+        );
+      if (!email) {
+        qualificationBlockers.push(
+          "Die STACKIT-Identität der projektverantwortlichen Person wird erst bei der Instanziierung verifiziert.",
+        );
+        continue;
+      }
+      const existing = z.array(projectRoleAssignmentSchema).parse(value);
+      value = [
+        ...existing,
+        ...source.roles
+          .filter(
+            (role) =>
+              !existing.some(
+                (assignment) =>
+                  assignment.role === role && assignment.subject === email,
+              ),
+          )
+          .map((role) => ({ role, subject: email })),
+      ];
+      put(settings, field.path, value);
+      continue;
+    }
     if (source?.source === "binding") continue;
     if (source?.source === "input") {
       if (Object.hasOwn(inputs, field.path)) {
@@ -308,6 +400,7 @@ export function resolveTemplateParameters(
     settings,
     provenance,
     bindings,
+    contextBindings,
     qualificationBlockers,
     executionEnabled: false as const,
     cloudAccess: false as const,

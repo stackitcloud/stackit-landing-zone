@@ -9,9 +9,13 @@ Ergänzt [Projekt-Template-Entwürfe](project-template-drafts.md) und die
 `ProjectTemplateDraft.parameterPolicy` (Version 1) definiert die Wertquelle je
 freigegebenem Feld. Die fünf ersten Felder sind Stage, Secrets-Manager-Aktivierung,
 Observability-Aktivierung, Observability-Leistungsklasse und Observability-ACL.
-Alle anderen Einstellungen bleiben fest; Sandbox-Parameter sind noch nicht qualifiziert.
+Zusätzlich können Projektrollen über `source: context` und die typisierte Variable
+`verified-project-owner` bei der Instanziierung zugeordnet werden. Alle anderen
+Einstellungen bleiben fest; Sandbox-Parameter sind noch nicht qualifiziert.
 String-Eingaben benötigen eine explizite Auswahlliste, ACL-Eingaben eine Auswahl
-zulässiger CIDRs; eine leere ACL-Bestellung ist gesperrt. Feste ältere Einstellungen
+zulässiger CIDRs; eine leere ACL-Bestellung ist gesperrt. Eine noch leere, erforderliche
+ACL-Auswahlliste ohne Vorauswahl darf als Entwurf bearbeitet werden; die Vorschau
+und Auflösung bleiben bis zur gültigen Bestelleingabe gesperrt. Feste ältere Einstellungen
 werden nicht automatisch umgedeutet. Defaults, Pflichtfelder, Herkunft und
 unzulässige Overrides werden durch denselben Domain-Resolver geprüft, den der
 Application-Compiler verwendet. Dies gilt auch beim Speichern der Template-Policy.
@@ -32,7 +36,41 @@ kompatibel. Ausführung bleibt ausdrücklich deaktiviert.
 Die Projektnetz-Bindung wird symbolisch gespeichert und ist sowohl in der
 Vorschau als auch nativ im Application-Root gesperrt. Ihre produktive Egress-
 Auflösung wird in [#96](https://github.com/stackitcloud/stackit-landing-zone/issues/96)
-verfolgt. Das produktive Landing-Zone-Modul und der Runner-Pin bleiben unverändert.
+verfolgt. Der Runner-Pin bleibt unverändert; diese Ergänzungen geben keine
+produktive Ausführung frei.
+
+## Kataloge und verifizierte Instanziierungsvariablen
+
+Die geladenen STACKIT-Produktkataloge gelten auch für die erlaubten Bestellwerte.
+Bei der Freigabe der Observability-Leistungsklasse werden die aktuellen Optionen
+angeboten und können über Checkboxen eingeschränkt werden. Nicht mehr im Katalog
+enthaltene Bestandswerte bleiben erkennbar erhalten. Ohne verfügbaren Katalog bleibt
+die manuelle Eingabe möglich; sie ist kein Nachweis der Cloud-Verfügbarkeit.
+Dieselbe Katalogzuordnung wird im strukturierten Editor für Git, VPN, SKE,
+Observability, Bastion und die neuen IAM-Felder verwendet. Nicht alle diese
+Plattformfelder sind bereits als Projekt-Bestellparameter qualifiziert.
+
+Für Projektrollen definiert die Policy `source: context`,
+`variable: verified-project-owner` und eine Rollenliste. Es werden keine persönlichen
+E-Mail-Adressen oder frei interpretierbaren Platzhalter im Template gespeichert.
+Die lokale Vorschau zeigt die unaufgelöste Identität und einen Blocker. Der Compiler
+bindet ausschließlich `context.verified_stackit_email`, niemals GitHub-Login oder
+eine vom Besteller übergebene Benutzerkennung. Bestehende feste Zuweisungen bleiben
+erhalten. Doppelte Zuweisungen derselben Rolle an dieselbe Identität werden vermieden.
+Die zusätzlichen Rollenzuweisungen und festen `custom_roles` werden im Application-
+Vertrag Version 2 bis zum nativen Root weitergegeben; Version 1 bleibt unverändert.
+Das ist weiterhin ein nicht zur produktiven Ausführung freigegebener Prototyp.
+
+STACKIT-Rollenvorlagen übernehmen Name, Beschreibung und Permissions als bearbeitbare
+eigene Rolle mit einem `application-`-Namenspräfix. Keine projektgebundene Rollen-ID
+des Referenzprojekts wird übertragen. Eine angezeigte Rolle ist keine Zusicherung,
+dass dieselbe Definition im späteren Zielprojekt existiert; sie muss dort als eigene
+Rolle definiert oder als verfügbare Zielrolle vor Veröffentlichung qualifiziert werden.
+
+Public-Projektvorlagen erzeugen aktuell kein eigenes Netz. Deshalb ist die entsprechende
+Observability-Bindung dort deaktiviert und begründet. Corporate-Vorlagen können sie
+als symbolischen Entwurf auswählen; ohne nachgewiesene öffentliche Egress-Adresse
+bleibt die Ausführung weiterhin gesperrt.
 
 ## Ausgangsproblem und überprüfte Accelerator-Grenzen
 

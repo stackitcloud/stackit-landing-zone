@@ -32,7 +32,15 @@ function displayValue(value: JsonValue | undefined): string {
   if (typeof value === "boolean")
     return value ? "Eingeschaltet" : "Ausgeschaltet";
   if (Array.isArray(value))
-    return value.length ? value.join(", ") : "Keine Einträge";
+    return value.length
+      ? value
+          .map((item) =>
+            typeof item === "object" && item !== null
+              ? `${objectValue(item).role}: ${objectValue(item).subject}`
+              : String(item),
+          )
+          .join(", ")
+      : "Keine Einträge";
   return value == null ? "Standard" : String(value);
 }
 const defaults: Record<string, JsonValue> = {
@@ -174,6 +182,54 @@ function ValueInput({
   );
 }
 
+function AllowedValues({
+  path,
+  region,
+  label,
+  value,
+  onChange,
+}: {
+  path: string;
+  region: string;
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const options = useCatalogueOptions(path, region);
+  if (!options)
+    return <ListInput label={label} value={value} onChange={onChange} />;
+  const available = new Set(options.map((option) => option.value));
+  return (
+    <fieldset>
+      <legend>{label}</legend>
+      {[
+        ...options,
+        ...value
+          .filter((choice) => !available.has(choice))
+          .map((choice) => ({
+            value: choice,
+            label: `${choice} (nicht im geladenen Katalog)`,
+          })),
+      ].map((option) => (
+        <label key={option.value} className="parameter-choice">
+          <input
+            type="checkbox"
+            checked={value.includes(option.value)}
+            onChange={(event) =>
+              onChange(
+                event.target.checked
+                  ? [...value, option.value]
+                  : value.filter((choice) => choice !== option.value),
+              )
+            }
+          />
+          {option.label}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
 export function TemplateParameters({
   template,
   onChange,
@@ -187,6 +243,10 @@ export function TemplateParameters({
   const [inputs, setInputs] = useState<Record<string, JsonValue>>({});
   const catalogue = useCatalogueOptions(
     "landing_zones[*].observability.plan_name",
+    template.region,
+  );
+  const projectRoles = useCatalogueOptions(
+    "role_assignments[*].role",
     template.region,
   );
   const fields = templateParameterFields;
@@ -232,6 +292,108 @@ export function TemplateParameters({
       )}
       {fields.map((field) => {
         const rule = policy.fields[field.path] ?? { source: "fixed" as const };
+        if (field.path === "role_assignments") {
+          const assigned = rule.source === "context" ? rule.roles : [];
+          const customRoles = Array.isArray(template.settings.custom_roles)
+            ? template.settings.custom_roles
+                .map((role) => String(objectValue(role).name ?? ""))
+                .filter(Boolean)
+            : [];
+          const roleOptions = [
+            ...new Set([
+              ...(projectRoles?.map((role) => role.value) ?? []),
+              ...customRoles,
+              ...assigned,
+            ]),
+          ];
+          return (
+            <details key={field.path} className="parameter-card">
+              <summary>
+                {field.label} ·{" "}
+                {rule.source === "context"
+                  ? "Aus verifiziertem Kontext"
+                  : "Fest vorgegeben"}
+              </summary>
+              <div className="field">
+                <label htmlFor={`${template.id}-roles-source`}>
+                  Wertquelle: {field.label}
+                </label>
+                <select
+                  id={`${template.id}-roles-source`}
+                  value={rule.source}
+                  onChange={(event) =>
+                    setPolicy(
+                      field.path,
+                      event.target.value === "context"
+                        ? {
+                            source: "context",
+                            variable: "verified-project-owner",
+                            roles: [],
+                          }
+                        : { source: "fixed" },
+                    )
+                  }
+                >
+                  <option value="fixed">Fest vorgegeben</option>
+                  <option value="context">Aus verifiziertem Kontext</option>
+                </select>
+              </div>
+              {rule.source === "context" && (
+                <>
+                  <div className="field">
+                    <label htmlFor={`${template.id}-roles-variable`}>
+                      Instanziierungsvariable
+                    </label>
+                    <select
+                      id={`${template.id}-roles-variable`}
+                      value={rule.variable}
+                      disabled
+                    >
+                      <option value="verified-project-owner">
+                        Projektverantwortliche Person (verifizierte
+                        STACKIT-Identität)
+                      </option>
+                    </select>
+                  </div>
+                  <fieldset>
+                    <legend>
+                      Rollen für die projektverantwortliche Person
+                    </legend>
+                    {roleOptions.map((role) => (
+                      <label key={role} className="parameter-choice">
+                        <input
+                          type="checkbox"
+                          checked={assigned.includes(role)}
+                          onChange={(event) =>
+                            setPolicy(field.path, {
+                              ...rule,
+                              roles: event.target.checked
+                                ? [...assigned, role]
+                                : assigned.filter((value) => value !== role),
+                            })
+                          }
+                        />
+                        {role}
+                      </label>
+                    ))}
+                  </fieldset>
+                  {!roleOptions.length && (
+                    <p className="field-hint">
+                      Kein Rollenkatalog geladen und keine eigene Projektrolle
+                      definiert.
+                    </p>
+                  )}
+                  <p className="field-hint">
+                    Die Identität wird bei der Instanziierung geprüft. Ein
+                    GitHub-Login ist keine STACKIT-Identität. Rollen aus dem
+                    Referenzprojekt benötigen im Zielprojekt eine entsprechende
+                    Rollendefinition.
+                  </p>
+                </>
+              )}
+            </details>
+          );
+        }
         const current = (read(template.settings, field.path) ??
           defaults[field.path]) as string | boolean | string[];
         return (
@@ -282,7 +444,11 @@ export function TemplateParameters({
                     setPolicy(field.path, {
                       source: "input",
                       required: true,
-                      default: current,
+                      ...(field.type === "string-list" &&
+                      Array.isArray(current) &&
+                      !current.length
+                        ? {}
+                        : { default: current }),
                       ...(field.type === "string-list"
                         ? { choices: Array.isArray(current) ? current : [] }
                         : field.type === "string"
@@ -297,7 +463,17 @@ export function TemplateParameters({
                                         String(current),
                                       ]),
                                     ]
-                                  : [String(current)],
+                                  : field.path === "observability.plan_name" &&
+                                      catalogue?.length
+                                    ? [
+                                        ...new Set([
+                                          ...catalogue.map(
+                                            (option) => option.value,
+                                          ),
+                                          String(current),
+                                        ]),
+                                      ]
+                                    : [String(current)],
                             }
                           : {}),
                     });
@@ -305,16 +481,7 @@ export function TemplateParameters({
               >
                 <option value="fixed">Fest vorgegeben</option>
                 {(field.sources as readonly string[]).includes("input") && (
-                  <option
-                    value="input"
-                    disabled={
-                      field.type === "string-list" &&
-                      Array.isArray(current) &&
-                      !current.length
-                    }
-                  >
-                    Bei Bestellung auswählbar
-                  </option>
+                  <option value="input">Bei Bestellung auswählbar</option>
                 )}
                 {(field.sources as readonly string[]).includes("binding") && (
                   <option
@@ -325,6 +492,14 @@ export function TemplateParameters({
                   </option>
                 )}
               </select>
+              {field.path === "observability.acl" &&
+                template.kind === "public" && (
+                  <p className="field-hint">
+                    Public-Vorlagen erzeugen kein eigenes Projektnetz. Diese
+                    Bindung benötigt ein Corporate-Netz und einen nachgewiesenen
+                    öffentlichen Egress.
+                  </p>
+                )}
             </div>
             {rule.source === "fixed" && (
               <ValueInput
@@ -346,7 +521,9 @@ export function TemplateParameters({
             {rule.source === "input" && (
               <>
                 {field.type !== "boolean" && (
-                  <ListInput
+                  <AllowedValues
+                    path={field.path}
+                    region={template.region}
                     label={`Erlaubte Werte: ${field.label}`}
                     value={rule.choices ?? []}
                     onChange={(choices) => {
@@ -366,6 +543,9 @@ export function TemplateParameters({
                   <input
                     type="checkbox"
                     checked={rule.required}
+                    disabled={
+                      field.type === "string-list" && !rule.choices?.length
+                    }
                     onChange={(e) =>
                       setPolicy(field.path, {
                         ...rule,
@@ -379,13 +559,28 @@ export function TemplateParameters({
                   <input
                     type="checkbox"
                     checked={rule.default !== undefined}
+                    disabled={
+                      field.type === "string-list" && !rule.choices?.length
+                    }
                     onChange={(e) => {
                       const next = { ...rule };
                       if (e.target.checked)
                         next.default =
                           field.type === "string"
                             ? (rule.choices?.[0] ?? current)
-                            : current;
+                            : field.type === "string-list"
+                              ? rule.choices?.filter(
+                                  (choice) =>
+                                    Array.isArray(current) &&
+                                    current.includes(choice),
+                                ).length
+                                ? rule.choices.filter(
+                                    (choice) =>
+                                      Array.isArray(current) &&
+                                      current.includes(choice),
+                                  )
+                                : (rule.choices?.slice(0, 1) ?? [])
+                              : current;
                       else delete next.default;
                       setPolicy(field.path, next);
                     }}
@@ -442,8 +637,8 @@ export function TemplateParameters({
             {field.path === "observability.acl" && (
               <p className="field-hint">
                 Eine leere feste ACL begrenzt den Zugriff nicht. Für eine
-                Bestellauswahl zuerst die erlaubten CIDRs als feste Werte
-                hinterlegen. Keine automatische Freigabe bei einer fehlenden
+                Bestellauswahl gültige CIDRs in die erlaubten Werte aufnehmen.
+                Keine automatische Freigabe bei einer fehlenden
                 Netzwerkreferenz.
               </p>
             )}
@@ -494,11 +689,19 @@ export function TemplateParameters({
                 <div key={field.path}>
                   <dt>{field.label}</dt>
                   <dd>
-                    {preview.result.bindings.some((b) => b.path === field.path)
-                      ? "Wird aus der Ressourcenverknüpfung ermittelt"
-                      : displayValue(
-                          read(preview.result.settings, field.path),
-                        )}{" "}
+                    {preview.result.contextBindings.some(
+                      (binding) =>
+                        binding.path === field.path &&
+                        binding.status === "unresolved",
+                    )
+                      ? "Projektverantwortliche Person wird bei der Instanziierung zugeordnet"
+                      : preview.result.bindings.some(
+                            (b) => b.path === field.path,
+                          )
+                        ? "Wird aus der Ressourcenverknüpfung ermittelt"
+                        : displayValue(
+                            read(preview.result.settings, field.path),
+                          )}{" "}
                     · {preview.result.provenance[field.path]?.description}
                   </dd>
                 </div>

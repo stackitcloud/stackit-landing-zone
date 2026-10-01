@@ -1,5 +1,53 @@
 import { expect, test } from "@playwright/test";
 
+test("an empty ACL draft can become an order input without granting unrestricted access", async ({
+  page,
+}) => {
+  await page.goto("/templates/standalone");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .click();
+  const template = page.locator("section.project-card").first();
+  await template
+    .getByText("Observability-Zugriffsquellen · Fest vorgegeben", {
+      exact: true,
+    })
+    .click();
+  const source = template.getByLabel(
+    "Wertquelle: Observability-Zugriffsquellen",
+    { exact: true },
+  );
+  await expect(source.locator('option[value="binding"]')).toBeDisabled();
+  await expect(template).toContainText(
+    "Public-Vorlagen erzeugen kein eigenes Projektnetz",
+  );
+  await source.selectOption("input");
+  await expect(source).toHaveValue("input");
+  await template.getByText("Bestellung testen", { exact: true }).click();
+  await expect(template.locator(".parameter-preview")).toContainText(
+    "Pflichtangabe fehlt: Observability-Zugriffsquellen",
+  );
+  const choices = template.getByLabel(
+    "Erlaubte Werte: Observability-Zugriffsquellen",
+    { exact: true },
+  );
+  await choices.fill("203.0.113.0/24");
+  await choices.blur();
+  await template
+    .getByRole("group", {
+      name: "Bestellung: Observability-Zugriffsquellen",
+      exact: true,
+    })
+    .getByLabel("203.0.113.0/24", { exact: true })
+    .check();
+  await expect(template.locator(".parameter-preview")).toContainText(
+    "Explizite Bestelleingabe",
+  );
+});
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/auth/status", (r) =>
     r.fulfill({ json: { github: false } }),

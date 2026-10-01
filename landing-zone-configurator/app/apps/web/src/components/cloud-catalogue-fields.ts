@@ -16,6 +16,13 @@ export type CloudCatalogue = {
   bastionMachineTypes?: Part;
   bastionImages?: Part;
   bastionAvailabilityZones?: Part;
+  projectRoles?: Part;
+  projectPermissions?: Part;
+  projectRoleTemplates?: {
+    name: string;
+    description: string;
+    permissions: string[];
+  }[];
 };
 
 export function catalogueField(
@@ -33,8 +40,13 @@ export function catalogueField(
       | "bastionMachineTypes"
       | "bastionImages"
       | "bastionAvailabilityZones"
+      | "projectRoles"
+      | "projectPermissions"
     >
   | null {
+  if (path.endsWith("custom_roles[*].permissions[*]"))
+    return "projectPermissions";
+  if (path.endsWith("role_assignments[*].role")) return "projectRoles";
   if (
     path === "observability.plan_name" ||
     path.endsWith(".observability.plan_name")

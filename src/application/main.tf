@@ -41,8 +41,8 @@ module "application" {
   naming_pattern         = local.naming_pattern
   project_name           = var.application.name
   owner_email            = var.application.owner_email
-  custom_roles           = []
-  role_assignments       = []
+  custom_roles           = var.application.custom_roles
+  role_assignments       = var.application.role_assignments
   corporate              = try(local.target.corporate, false)
   network_area_id        = try(local.target.network_area_id, null)
   firewall_next_hop_ip   = try(local.target.firewall_next_hop_ip, null)
@@ -50,7 +50,8 @@ module "application" {
   secretsmanager_enabled = var.application.secretsmanager_enabled
   observability          = var.application.observability
   labels                 = local.application_labels
-  depends_on             = [terraform_data.contract]
+
+  depends_on = [terraform_data.contract]
 }
 
 output "application_resources" {

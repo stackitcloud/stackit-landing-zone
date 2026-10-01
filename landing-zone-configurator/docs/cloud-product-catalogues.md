@@ -56,6 +56,29 @@ Quellen: [Observability OpenAPI](https://docs.api.eu01.stackit.cloud/oas/argus/v
 
 Die geprüften IaaS-v2-Listenmethoden bieten keine Cursor-/Page-Parameter und die Antwortmodelle keine Fortsetzungsmarker. `all=true` fordert die vollständige Image-Sicht an. Antwortgrößen über dem vorhandenen Limit oder mehr als 2.000 Einträge werden nicht still abgeschnitten: der betroffene Katalog wird als nicht verfügbar behandelt. Private, organisations- oder projektgeteilte Images des Referenzprojekts werden nicht als auswählbare Images vorgeschlagen, da ihre Nutzbarkeit im neu angelegten Zielprojekt nicht bewiesen ist. Vorhandene Image-IDs bleiben im Entwurf erhalten. Die OS-Eignung, benötigte Werkzeuge und Image-/Flavor-Kompatibilität sind weiterhin vor dem Deployment zu prüfen.
 
+## Projektrollen und Permissions
+
+Der lesende Katalogabruf verwendet zusätzlich die Membership API v2:
+
+| Katalog | Endpunkt | Normalisierte Felder |
+| --- | --- | --- |
+| Projektrollen | `GET https://authorization.api.stackit.cloud/v2/project/{projectId}/roles` | `roles[].name`, `description`, `permissions[].name` |
+| Projekt-Permissions | `GET https://authorization.api.stackit.cloud/v2/permissions?resourceType=project` | `permissions[].name` |
+
+Quelle: offizieller SDK-Stand `7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9`,
+`services/authorization/v2api`. Die Antwort der Rollenliste muss zur angefragten
+Projekt-ID und zum Ressourcentyp `project` gehören. Beide Kataloge bleiben bei
+fehlenden Berechtigungen unabhängig von den anderen Produktkatalogen nicht verfügbar.
+Die API-Antworten sind wie bisher zeit- und größenbegrenzt und enthalten im Browser
+keine Tokens. IAM-Optionen sind projektbezogen, nicht regionsbezogen.
+
+Der Editor bietet Permissions als Dropdowns und kopiert Rollenvorlagen als lokale
+Definitionen. Referenzprojekt-Rollen-IDs werden nicht weitergegeben und fremde
+Projektmitglieder werden nicht abgefragt. Die Anwendung prüft noch keine persönliche
+STACKIT-Identität über diesen Katalog: spätere Rollenvariablen benötigen den getrennten
+verifizierten Instanziierungskontext. Die konkrete Bestellbarkeit und Rollenauflösung
+im neuen Zielprojekt bleibt ein Gate vor produktiver Veröffentlichung.
+
 ## PIM: zentrale Produktinformationen, keine alleinige Auswahlvalidierung
 
 Die öffentliche [STACKIT PIM API v2](https://docs.api.eu01.stackit.cloud/documentation/pim/version/v2) ist tatsächlich ein zentraler Katalog für Kategorien, Produkte und SKUs. Die [OpenAPI-Spezifikation](https://docs.api.eu01.stackit.cloud/oas/pim/version/v2) dokumentiert unter anderem:

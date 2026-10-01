@@ -28,10 +28,18 @@ export function CloudCatalogueProvider({ children }: { children: ReactNode }) {
 export function useCatalogueOptions(path: string, region: string) {
   const { data } = useContext(CatalogueContext);
   const field = catalogueField(path);
-  if (!field || !data || (field !== "gitFlavors" && data.region !== region))
+  if (
+    !field ||
+    !data ||
+    (!["gitFlavors", "projectRoles", "projectPermissions"].includes(field) &&
+      data.region !== region)
+  )
     return undefined;
   const part = data[field];
   return part?.status === "available" ? part.options : undefined;
+}
+export function useCatalogueRoleTemplates() {
+  return useContext(CatalogueContext).data?.projectRoleTemplates ?? [];
 }
 export function CloudCataloguePanel({ session }: { session: Session | null }) {
   const { data, setData } = useContext(CatalogueContext);
@@ -190,6 +198,8 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
                 ["vpnPlans", "STACKIT VPN"],
                 ["kubernetesVersions", "STACKIT Kubernetes Engine"],
                 ["observabilityPlans", "STACKIT Observability"],
+                ["projectRoles", "STACKIT-Projektrollen"],
+                ["projectPermissions", "STACKIT-Projektberechtigungen"],
                 ["bastionMachineTypes", "Debug-Bastion: Maschinentypen"],
                 ["bastionImages", "Debug-Bastion: öffentliche Images"],
                 [

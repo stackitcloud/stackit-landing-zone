@@ -1,3 +1,36 @@
+run "compiled_project_roles" {
+  command = plan
+
+  variables {
+    application = {
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+      custom_roles = [{
+        name        = "application-reader"
+        description = "Read only"
+        permissions = ["project.read"]
+      }]
+      role_assignments = [{
+        role    = "application-reader"
+        subject = "owner@example.com"
+      }]
+    }
+  }
+
+  assert {
+    condition     = module.application.project_role_counts.custom_roles == 1 && module.application.project_role_counts.role_assignments == 1
+    error_message = "Compiled role definitions and verified-context assignments must reach the project resources."
+  }
+}
+
 mock_provider "stackit" {
   mock_resource "stackit_resourcemanager_project" {
     defaults = {

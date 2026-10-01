@@ -34,6 +34,13 @@ export type CloudCatalogue = {
   bastionMachineTypes?: CataloguePart;
   bastionImages?: CataloguePart;
   bastionAvailabilityZones?: CataloguePart;
+  projectRoles?: CataloguePart;
+  projectPermissions?: CataloguePart;
+  projectRoleTemplates?: {
+    name: string;
+    description: string;
+    permissions: string[];
+  }[];
 };
 const text = z.string().min(1).max(256);
 const names = z.array(z.object({ name: text })).max(2000);
@@ -70,6 +77,24 @@ const iaasImages = z.object({
     .max(2000),
 });
 const iaasZones = z.object({ items: z.array(text).max(2000) });
+const projectPermissions = z.object({
+  permissions: z
+    .array(z.object({ name: text, description: text.optional() }))
+    .max(2000),
+});
+const projectRoles = z.object({
+  resourceId: z.uuid(),
+  resourceType: z.literal("project"),
+  roles: z
+    .array(
+      z.object({
+        name: text,
+        description: z.string().max(2000),
+        permissions: z.array(z.object({ name: text })).max(2000),
+      }),
+    )
+    .max(2000),
+});
 const unavailable = (): CataloguePart => ({
   status: "unavailable",
   options: [],
@@ -150,6 +175,8 @@ export class StackitCatalogueClient {
       machinesResult,
       imagesResult,
       zonesResult,
+      rolesResult,
+      permissionsResult,
     ] = await Promise.allSettled([
       this.json(
         `https://git.api.stackit.cloud/v1beta/projects/${projectId}/flavors`,
@@ -180,6 +207,14 @@ export class StackitCatalogueClient {
         `https://iaas.api.stackit.cloud/v2/regions/${region}/availability-zones`,
         { headers },
       ).then((v) => iaasZones.parse(v)),
+      this.json(
+        `https://authorization.api.stackit.cloud/v2/project/${projectId}/roles`,
+        { headers },
+      ).then((value) => projectRoles.parse(value)),
+      this.json(
+        "https://authorization.api.stackit.cloud/v2/permissions?resourceType=project",
+        { headers },
+      ).then((value) => projectPermissions.parse(value)),
     ]);
     const result: CloudCatalogue = {
       region,
@@ -195,6 +230,8 @@ export class StackitCatalogueClient {
       bastionMachineTypes: unavailable(),
       bastionImages: unavailable(),
       bastionAvailabilityZones: unavailable(),
+      projectRoles: unavailable(),
+      projectPermissions: unavailable(),
     };
     if (gitResult.status === "fulfilled")
       result.gitFlavors = available(
@@ -243,6 +280,21 @@ export class StackitCatalogueClient {
     if (zonesResult.status === "fulfilled")
       result.bastionAvailabilityZones = available(
         zonesResult.value.items.map((value) => ({ value, label: value })),
+      );
+    if (
+      rolesResult.status === "fulfilled" &&
+      rolesResult.value.resourceId === projectId
+    ) {
+      result.projectRoles = available(named(rolesResult.value.roles));
+      result.projectRoleTemplates = rolesResult.value.roles.map((role) => ({
+        name: role.name,
+        description: role.description,
+        permissions: role.permissions.map((permission) => permission.name),
+      }));
+    }
+    if (permissionsResult.status === "fulfilled")
+      result.projectPermissions = available(
+        named(permissionsResult.value.permissions),
       );
     return result;
   }

@@ -13,6 +13,14 @@ output "project_name" {
   value       = stackit_resourcemanager_project.this.name
 }
 
+output "project_role_counts" {
+  description = "Counts of custom roles and explicit role assignments managed by this project module."
+  value = {
+    custom_roles     = length(stackit_authorization_project_custom_role.this)
+    role_assignments = length(stackit_authorization_project_role_assignment.this)
+  }
+}
+
 output "dns_zone_dns_name" {
   description = "The DNS name of the landing zone's child DNS zone."
   value       = try(stackit_dns_zone.this[0].dns_name, null)

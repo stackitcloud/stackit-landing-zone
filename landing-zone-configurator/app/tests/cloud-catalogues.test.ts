@@ -8,6 +8,47 @@ import { StackitCatalogueClient } from "../apps/api/src/credentials/catalogues.j
 import { parseServiceAccountKey } from "../apps/api/src/credentials/key.js";
 import { catalogueField } from "../apps/web/src/components/cloud-catalogue-fields.js";
 
+it("loads project-scoped IAM role templates and permissions without transferring resource IDs", async () => {
+  const request = vi.fn<typeof fetch>(async (url) => {
+    const target = String(url);
+    if (target.endsWith("/token"))
+      return Response.json({
+        access_token: "private-token",
+        token_type: "Bearer",
+      });
+    if (target.endsWith(`/project/${input.projectId}/roles`))
+      return Response.json({
+        resourceId: input.projectId,
+        resourceType: "project",
+        roles: [
+          {
+            id: "reference-only",
+            name: "viewer",
+            description: "Read only",
+            permissions: [{ name: "project.read" }],
+          },
+        ],
+      });
+    if (target.endsWith("/permissions?resourceType=project"))
+      return Response.json({
+        permissions: [{ name: "project.read", description: "Read project" }],
+      });
+    return new Response(null, { status: 403 });
+  });
+  const result = await new StackitCatalogueClient(request).load(input, key);
+  expect(result.projectRoles?.options).toEqual([
+    { value: "viewer", label: "viewer" },
+  ]);
+  expect(result.projectPermissions?.options).toEqual([
+    { value: "project.read", label: "project.read" },
+  ]);
+  expect(result.projectRoleTemplates).toEqual([
+    { name: "viewer", description: "Read only", permissions: ["project.read"] },
+  ]);
+  expect(JSON.stringify(result)).not.toContain("reference-only");
+  expect(JSON.stringify(result)).not.toContain("private-token");
+});
+
 const key = parseServiceAccountKey({
   credentials: {
     kid: randomUUID(),

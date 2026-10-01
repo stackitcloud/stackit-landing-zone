@@ -5,7 +5,10 @@ import {
   regionalConnectivityType,
 } from "@lzc/domain";
 import { useId, useState } from "react";
-import { useCatalogueOptions } from "./CloudCatalogues";
+import {
+  useCatalogueOptions,
+  useCatalogueRoleTemplates,
+} from "./CloudCatalogues";
 import { fieldDescription, fieldLabel } from "./feature-labels";
 
 export function emptyValue(type: InputType): JsonValue {
@@ -37,6 +40,7 @@ export function StructuredField({
   referenceKeys = [],
   networkAreaKeys = {},
   regionContext = "eu01",
+  roleNames = [],
 }: {
   name: string;
   type: InputType;
@@ -52,6 +56,7 @@ export function StructuredField({
   referenceKeys?: string[];
   networkAreaKeys?: Record<string, string[]>;
   regionContext?: string;
+  roleNames?: string[];
 }) {
   const id = useId();
   const [newKey, setNewKey] = useState("");
@@ -72,37 +77,58 @@ export function StructuredField({
             : "Voreinstellung des Accelerators"
           : String(effective);
   const cloudOptions = useCatalogueOptions(path, regionContext);
+  const roleTemplates = useCatalogueRoleTemplates();
+  const customRoles = objectValue(value).custom_roles;
+  const projectRoleNames = [
+    ...new Set([
+      ...roleNames,
+      ...(Array.isArray(customRoles)
+        ? customRoles
+            .map((role) => String(objectValue(role).name ?? ""))
+            .filter(Boolean)
+        : []),
+    ]),
+  ];
   const choices = cloudOptions
-    ? cloudOptions.map((option) => option.value)
-    : path.endsWith(".network_area_key")
-      ? (networkAreaKeys[regionContext] ?? [])
-      : path === "firewall_config.aliases[*].type"
-        ? [
-            "host",
-            "network",
-            "port",
-            "url",
-            "urltable",
-            "urljson",
-            "geoip",
-            "asn",
-            "networkgroup",
-            "mac",
-            "external",
-          ]
-        : path === "firewall_config.rules[*].action"
-          ? ["pass", "block", "reject"]
-          : path === "firewall_config.rules[*].direction"
-            ? ["in", "out"]
-            : path === "region" || path.endsWith(".region")
-              ? ["eu01", "eu02"]
-              : path.endsWith(".secrets_enforcement.mode")
-                ? ["audit", "soft", "strict"]
-                : name === "resource_type" && path.startsWith("audit_logs.")
-                  ? ["organization", "folder", "project"]
-                  : name === "routing_type" && path.includes(".vpn.")
-                    ? ["POLICY_BASED", "ROUTE_BASED"]
-                    : undefined;
+    ? [
+        ...new Set([
+          ...cloudOptions.map((option) => option.value),
+          ...(path.endsWith("role_assignments[*].role")
+            ? projectRoleNames
+            : []),
+        ]),
+      ]
+    : path.endsWith("role_assignments[*].role") && projectRoleNames.length
+      ? projectRoleNames
+      : path.endsWith(".network_area_key")
+        ? (networkAreaKeys[regionContext] ?? [])
+        : path === "firewall_config.aliases[*].type"
+          ? [
+              "host",
+              "network",
+              "port",
+              "url",
+              "urltable",
+              "urljson",
+              "geoip",
+              "asn",
+              "networkgroup",
+              "mac",
+              "external",
+            ]
+          : path === "firewall_config.rules[*].action"
+            ? ["pass", "block", "reject"]
+            : path === "firewall_config.rules[*].direction"
+              ? ["in", "out"]
+              : path === "region" || path.endsWith(".region")
+                ? ["eu01", "eu02"]
+                : path.endsWith(".secrets_enforcement.mode")
+                  ? ["audit", "soft", "strict"]
+                  : name === "resource_type" && path.startsWith("audit_logs.")
+                    ? ["organization", "folder", "project"]
+                    : name === "routing_type" && path.includes(".vpn.")
+                      ? ["POLICY_BASED", "ROUTE_BASED"]
+                      : undefined;
   const keyChoices =
     path === "connectivity_regions"
       ? ["eu01", "eu02"]
@@ -265,6 +291,45 @@ export function StructuredField({
       )}
       {disabled && <p className="field-hint">Deaktiviert</p>}
       {controls}
+      {name === "custom_roles" && roleTemplates.length > 0 && (
+        <div className="field">
+          <label htmlFor={`${id}-role-template`}>STACKIT-Rollenvorlage</label>
+          <select
+            id={`${id}-role-template`}
+            value=""
+            onChange={(event) => {
+              const selected = roleTemplates.find(
+                (role) => role.name === event.target.value,
+              );
+              if (selected)
+                onChange([
+                  ...(Array.isArray(value) ? value : []),
+                  {
+                    ...selected,
+                    name: `application-${selected.name}`,
+                  },
+                ]);
+            }}
+          >
+            <option value="">Bitte auswählen</option>
+            {roleTemplates.map((role) => (
+              <option
+                key={role.name}
+                value={role.name}
+                disabled={
+                  Array.isArray(value) &&
+                  value.some(
+                    (existing) =>
+                      objectValue(existing).name === `application-${role.name}`,
+                  )
+                }
+              >
+                {role.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {type[0] === "object" ? (
         <div className="structured-grid">
           {Object.entries(type[1])
@@ -275,6 +340,7 @@ export function StructuredField({
                 name={key}
                 path={`${path}.${key}`}
                 referenceKeys={referenceKeys}
+                roleNames={projectRoleNames}
                 networkAreaKeys={networkAreaKeys}
                 regionContext={
                   typeof objectValue(value).region === "string"
@@ -297,6 +363,7 @@ export function StructuredField({
                 name={key}
                 path={`${path}[*]`}
                 referenceKeys={referenceKeys}
+                roleNames={projectRoleNames}
                 networkAreaKeys={networkAreaKeys}
                 regionContext={
                   path === "connectivity_regions" ? key : regionContext
@@ -383,6 +450,7 @@ export function StructuredField({
                 name={name}
                 path={`${path}[*]`}
                 referenceKeys={referenceKeys}
+                roleNames={projectRoleNames}
                 networkAreaKeys={networkAreaKeys}
                 regionContext={
                   typeof objectValue(value).region === "string"

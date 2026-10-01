@@ -26,7 +26,6 @@ variable "platform_contract" {
   }
 }
 variable "application" {
-  description = "Server-compiled application instance. Owner and services must not come from arbitrary form fields."
   type = object({
     tenant_id              = string
     instance_id            = string
@@ -38,6 +37,15 @@ variable "application" {
     owner_email            = string
     target_key             = string
     secretsmanager_enabled = bool
+    custom_roles = optional(list(object({
+      name        = string
+      description = string
+      permissions = list(string)
+    })), [])
+    role_assignments = optional(list(object({
+      role    = string
+      subject = string
+    })), [])
     observability = object({
       enabled       = bool
       plan_name     = string
@@ -45,6 +53,8 @@ variable "application" {
       access_source = optional(string, "explicit-cidrs")
     })
   })
+  description = "Server-compiled application instance. Owner and services must not come from arbitrary form fields."
+
   validation {
     condition     = var.application.env == null ? true : can(regex("^[a-z][a-z0-9-]{0,15}$", var.application.env))
     error_message = "Application env must contain 1-16 lowercase letters, digits or hyphens and start with a letter. Omit it to preserve legacy resource names."

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { assertBoundedJson } from "./features.js";
 import {
+  projectCustomRoleSchema,
+  projectRoleAssignmentSchema,
   resolveTemplateParameters,
   templateParameterPolicySchema,
 } from "./template-parameters.js";
@@ -54,6 +56,11 @@ export const applicationTemplateSchema = z.discriminatedUnion(
       schema_version: z.literal(2),
       env: z.string().regex(/^[a-z][a-z0-9-]{0,15}$/),
       parameter_policy: templateParameterPolicySchema,
+      custom_roles: z.array(projectCustomRoleSchema).max(100).default([]),
+      role_assignments: z
+        .array(projectRoleAssignmentSchema)
+        .max(100)
+        .default([]),
     }),
   ],
 );
@@ -110,18 +117,26 @@ export function compileApplicationPlan(input: {
       ? resolveTemplateParameters(
           {
             kind: target.corporate ? "corporate" : "public",
-            settings: { env: template.env, ...template.services },
+            settings: {
+              env: template.env,
+              ...template.services,
+              custom_roles: template.custom_roles,
+              role_assignments: template.role_assignments,
+            },
             parameterPolicy: template.parameter_policy,
           },
           "parameters" in request
             ? z.record(z.string(), z.json()).parse(request.parameters)
             : {},
+          { verifiedStackitEmail: context.verified_stackit_email },
         )
       : null;
   const resolvedServices = resolution
     ? legacyApplicationTemplateSchema.shape.services
         .extend({
           env: z.string().regex(/^[a-z][a-z0-9-]{0,15}$/),
+          custom_roles: z.array(projectCustomRoleSchema).max(100),
+          role_assignments: z.array(projectRoleAssignmentSchema).max(100),
           observability:
             legacyApplicationTemplateSchema.shape.services.shape.observability.extend(
               {

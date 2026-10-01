@@ -16,6 +16,27 @@ import {
   validateTemplateParameterPolicy,
 } from "../packages/domain/src/template-parameters.js";
 
+it("retains an unfinished ACL choice draft without allowing it to resolve", () => {
+  const input = template();
+  input.parameterPolicy = {
+    schema_version: 1,
+    fields: {
+      ...input.parameterPolicy?.fields,
+      "observability.acl": { source: "input", required: true, choices: [] },
+    },
+  };
+  expect(() => validateTemplateParameterPolicy(input)).not.toThrow();
+  expect(() => resolveTemplateParameters(input)).toThrow("Pflichtangabe fehlt");
+  expect(() =>
+    resolveTemplateParameters(input, { "observability.acl": [] }),
+  ).toThrow();
+  expect(() =>
+    resolveTemplateParameters(input, {
+      "observability.acl": ["203.0.113.0/24"],
+    }),
+  ).toThrow();
+});
+
 function template(): ParameterizedTemplate {
   return {
     kind: "corporate",
@@ -41,6 +62,44 @@ function template(): ParameterizedTemplate {
     },
   };
 }
+it("resolves project-role variables only from verified context and keeps previews unresolved", () => {
+  const input = template();
+  input.parameterPolicy = {
+    schema_version: 1,
+    fields: {
+      ...input.parameterPolicy?.fields,
+      role_assignments: {
+        source: "context",
+        variable: "verified-project-owner",
+        roles: ["viewer"],
+      },
+    },
+  };
+  const preview = resolveTemplateParameters(input);
+  expect(preview.contextBindings[0]?.status).toBe("unresolved");
+  expect(preview.qualificationBlockers.length).toBeGreaterThan(0);
+  const resolved = resolveTemplateParameters(
+    input,
+    {},
+    { verifiedStackitEmail: "owner@stackit.cloud" },
+  );
+  expect(resolved.settings.role_assignments).toEqual([
+    { role: "viewer", subject: "owner@stackit.cloud" },
+  ]);
+  expect(resolved.provenance.role_assignments?.source).toBe("context");
+  expect(resolved.contextBindings[0]?.status).toBe("resolved");
+  expect(() =>
+    resolveTemplateParameters(input, { role_assignments: [] }),
+  ).toThrow();
+  expect(() =>
+    resolveTemplateParameters(
+      input,
+      {},
+      { verifiedStackitEmail: "github-login" },
+    ),
+  ).toThrow();
+  expect(input.settings.role_assignments).toBeUndefined();
+});
 it("resolves typed defaults and explicit stage with provenance without touching the template", () => {
   const input = template(),
     before = structuredClone(input);
