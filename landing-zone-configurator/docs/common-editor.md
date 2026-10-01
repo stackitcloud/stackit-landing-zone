@@ -143,3 +143,23 @@ Der [VPN-Assistent](vpn-configuration-scope.md) bildet den Accelerator-Vertrag a
 und prüft grundlegende Pflichtangaben. Geschützte Schlüssel, Live-Kataloge und
 Deployment-Ausführung fehlen weiterhin. Die neue [Self-Service-Architektur](platform-application-architecture.md)
 ist geplant; Rollen und Berechtigungen wurden dadurch noch nicht geändert.
+
+
+## Live-Abnahme 2026-10-01: Regionen, SNAs und VPN
+
+Code `78d8f7c6debeba29330fa2699d617da17c3ba3be` auf lzc-dev veröffentlicht.
+
+- [Release 36830339767](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36830339767): erfolgreich, einschließlich PostgreSQL-/Secrets-Manager-Verbindungstests und Runner-Prüfung.
+- [Validate 36830339847](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36830339847): erfolgreich.
+- Release umfasst 97 Anwendungstests und 24 Desktop-/Mobil-Browserfälle.
+- Live-Bundle `/assets/index-BjLAVHUk.js` entspricht dem geprüften Editor-Release.
+- Direkter Gast-Browsercheck: bestehende Vorlagen/Projektansicht, Komponenten hinzufügen, Region eu01 hinzufügen, STACKIT VPN öffnen, Verbindung mit zwei Tunnelfeldern konfigurieren.
+- Gesundheit `ok`, anonyme Sitzung `401`, keine Browserfehler und kein horizontales Überlaufen auf Mobilgerät. Keine Kundenressourcen angelegt.
+
+Manuelle Abnahme: vorhandene Konfiguration öffnen und unverändert speichern; neue
+Connectivity-Region/SNA konfigurieren; optionales VPN hinzufügen und dessen Umfang,
+Pflichtangaben und Tunnel-Einstellungen prüfen. VPN-Ausführung bleibt gesperrt.
+
+Der anschließend entstandene separate Application-Root und sein Compiler sind
+ein lokaler bzw. im Feature-Branch prüfbarer Prototyp, kein Bestandteil der
+aktivierten Self-Service-Oberfläche.

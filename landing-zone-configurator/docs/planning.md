@@ -876,3 +876,19 @@ heutige Berechtigungen und die ausdrückliche Freigabepflicht für Kunden-Apply 
 
 VPN-PSKs, dynamische Produktkataloge, tatsächliche VPN-Ausführung und die neue
 Self-Service-Rollenarchitektur bleiben gesonderte Arbeitspakete. Kein Kunden-Apply.
+
+
+### Veröffentlichung und Einstieg in Self-Service (2026-10-01)
+
+- [x] Editor-Release `78d8f7c` auf lzc-dev veröffentlicht; Release 36830339767 und Validate 36830339847 erfolgreich.
+- [x] Regionsansicht, Komponenten und VPN mit zwei Tunneln direkt live geprüft; Gesundheits-/Sitzungsprüfungen erfolgreich.
+- [x] Prototyp `src/application` für eine neue Anwendungsinstanz, getrennt vom kombinierten Root.
+- [x] Reiner Template-/Plattformvertrag-Compiler mit Owner aus Serverkontext und isoliertem State-Key.
+- [x] Vier Compiler-Tests (101 Anwendungstests insgesamt) und vier native Mock-Plan-Tests erfolgreich; `tofu validate` erfolgreich mit bestehenden Observability-Deprecation-Warnungen.
+- [ ] Separate Plattform-Veröffentlichung, unveränderliche Template-Persistenz und Identitäts-/Rollenverwaltung.
+- [ ] Server-API, Instanz-Idempotenz, eingeschränkte Credentials, Queue/Runner und tatsächlicher autorisierter Kunden-Plan.
+
+Der Prototyp aktiviert keine neue Berechtigung und keinen Apply. Der Application-
+Root erzeugt neben optionalen Diensten die bereits im Modul enthaltenen
+Automations- und Object-Storage-Ressourcen; dies ist Teil des zu veröffentlichenden
+Templateumfangs. Bestehende States werden nicht umgestellt.

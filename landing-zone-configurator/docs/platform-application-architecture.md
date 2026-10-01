@@ -158,3 +158,25 @@ Empfehlungen für die nächste gemeinsame Entscheidung:
 - [ ] API-/RLS-/Job-Negativtests gegen tenantfremde Zugriffe und Rolleneskalation.
 - [ ] Idempotenz, Quoten, Fehlerwiederaufnahme und Template-Updates testen.
 - [ ] Kunden-Apply erst nach konkreter Freigabe; bestätigte spätere Self-Service-Apply-Policy sicher implementieren.
+
+## Erster technischer Prototyp (2026-10-01, noch nicht an API/Runner angebunden)
+
+- `src/application` ist ein separater Root für genau eine neue Anwendungsinstanz,
+  mit Verweis auf freigegebene Plattformressourcen und eigenem S3-Backend-Key.
+- `app/packages/domain/src/application-plan.ts` enthält einen reinen Compiler für
+  veröffentlichte Templates, verifizierten Serverkontext und streng begrenzte
+  Bestelleingaben. Tenant-, Organisations-, Revisions- und Zielbindung werden geprüft.
+- Der Compiler übernimmt den Owner aus dem Serverkontext und Dienste aus dem
+  Template. Er ersetzt weder serverseitige Mitgliedschaftsprüfung noch tatsächliche
+  STACKIT-Identitätsprüfung, Veröffentlichung/Persistierung oder Job-Autorisierung.
+- Vier native Mock-Plan-Tests prüfen Public/Corporate sowie Tenant-/Revisionsgrenzen;
+  vier Compiler-Tests prüfen isolierte State-Schlüssel, Bindungen und Eingabe-Injektion.
+- Ausführung bleibt ausdrücklich deaktiviert; `direct` ist nur gespeicherte
+  zukünftige Policy. Kein API-Endpunkt, keine Rollenumschaltung und kein Kunden-Plan
+  wurden damit bereits freigeschaltet.
+
+Das geteilte Modul erzeugt außer den auswählbaren Diensten auch einen Automations-
+Service-Account samt Schlüssel und Object-Storage-Buckets/Credentials. Dieser Umfang
+muss beim Veröffentlichen des Basis-Templates und im Plan sichtbar sein. Die
+Anwendungsinstanz verwendet für ihren ersten Lauf das vorhandene Bootstrap-Backend,
+nicht ihren erst später erzeugten eigenen Bucket.
