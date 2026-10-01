@@ -57,7 +57,7 @@ Die konkrete Permission-Matrix für Projektanlage, Rollenzuweisung, Netzwerkzuor
 
 ## Projekt-Templates und Instanzen
 
-Konkretisierung: [Template-Eingaben, feste Vorgaben und Ressourcenverknüpfungen](template-parameters-and-bindings.md). Der aktuelle Entwurfseditor bildet diese Parametrisierung noch nicht ab.
+Konkretisierung: [Template-Eingaben, feste Vorgaben und Ressourcenverknüpfungen](template-parameters-and-bindings.md). Der Entwurfseditor unterstützt fünf freigegebene Parameterfelder und eine lokale Bestellvorschau. Veröffentlichung und produktive Application-Instanziierung bleiben offen.
 
 
 **Entschieden:** Veröffentlichte Template-Versionen bleiben unveränderlich. Bestehende Instanzen erhalten neue Versionen nur durch ein ausdrücklich angefordertes Upgrade mit eigenem Plan.

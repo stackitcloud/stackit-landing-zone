@@ -139,3 +139,15 @@ nicht durch eine erfolgreiche Login- oder Credential-Prüfung aufgehoben.
 
 Kein Kunden-Apply, keine Kundenressourcenanlage und kein Merge wurden durch dieses
 Release ausgeführt. Der Kunden-Plan ist noch nicht persönlich abgenommen.
+
+## Template-Parameter und Verknüpfungen (2026-10-01)
+
+- [x] Optionaler versionierter Parametervertrag ohne Umdeutung bestehender Entwürfe.
+- [x] Stage, Secrets Manager, Observability-Aktivierung, Leistungsklasse und explizite ACL-Auswahl mit festen Vorgaben oder begrenzten Bestelleingaben.
+- [x] Gemeinsamer Resolver für Editorvorschau und Application-Vertragsprototyp; Default-/Override-/Typ-/Tenantprüfungen.
+- [x] Stage-Naming im separaten Application-Root, bestehendes Naming ohne Stage unverändert.
+- [x] Symbolische Projektnetzbindung mit ausdrücklicher Ausführungssperre und [Issue #96](https://github.com/stackitcloud/stackit-landing-zone/issues/96) für Egress-Qualifikation.
+- [ ] Weitere Parameterfelder und Sandbox-Vertrag qualifizieren.
+- [ ] Unveränderliche Veröffentlichung, Application-Owner-Bestellung und produktive Ausführung weiterhin #92/#93.
+
+[Vertrag, Grenzen und Prüfungen](template-parameters-and-bindings.md).

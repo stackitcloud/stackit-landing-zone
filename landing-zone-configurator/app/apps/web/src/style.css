@@ -1028,3 +1028,35 @@ pre {
 .federation-editor details {
   margin-block: 12px;
 }
+
+.template-parameters {
+  margin-block: 24px;
+  min-width: 0;
+}
+.parameter-card,
+.parameter-preview {
+  border-top: 1px solid var(--border);
+  padding-block: 16px;
+}
+.parameter-card > summary,
+.parameter-preview > summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.parameter-card > label {
+  display: block;
+  margin-block: 12px;
+}
+.template-parameters textarea {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.parameter-preview dd {
+  margin: 4px 0 12px;
+  overflow-wrap: anywhere;
+}

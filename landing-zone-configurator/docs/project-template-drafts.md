@@ -31,13 +31,13 @@ sind davon getrennte Plattformpolicy; Beispieladressen müssen vor Speicherung
 bereinigt werden. Namespace-Service-Einstellungen werden als Template-Metadaten
 erhalten. Das ist keine Freigabe ihrer späteren Clusteranbindung/Ausführung.
 
-## Noch fehlende Template-Semantik
+## Template-Eingaben und Verknüpfungen
 
 Die bisherigen festen Einstellungen sind noch kein vollständiger Template-Vertrag.
 Stage soll normalerweise eine begrenzte Bestelleingabe sein; Dienstbeziehungen
 wie „Observability nur aus eigenem Projektnetz“ brauchen typisierte Bindungen.
 [Wertquellen, Instanziierung und Umsetzungsplan](template-parameters-and-bindings.md).
-Diese Erweiterung ist noch nicht implementiert.
+Parameter-Policy, fünf freigegebene Felder und lokale Bestellvorschau sind implementiert. Veröffentlichung, weitere Feldbindungen und echte Bestellungen bleiben offen.
 
 ## Speicherung und Export
 

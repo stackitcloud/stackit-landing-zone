@@ -1,10 +1,40 @@
 # Projekt-Templates: Eingaben, feste Vorgaben und Ressourcenverknüpfungen
 
-Stand: 2026-10-01. Fachliche Anforderung und Architekturvorschlag; **noch nicht implementiert**.
+Stand: 2026-10-01. Parametervertrag, Template-Editor und lokale Bestellvorschau implementiert; Application-Veröffentlichung und produktive Instanziierung bleiben offen.
 Ergänzt [Projekt-Template-Entwürfe](project-template-drafts.md) und die
 [Plattform-/Application-Architektur](platform-application-architecture.md).
 
-## Problem und überprüfter Iststand
+## Implementierter Umfang
+
+`ProjectTemplateDraft.parameterPolicy` (Version 1) definiert die Wertquelle je
+freigegebenem Feld. Die fünf ersten Felder sind Stage, Secrets-Manager-Aktivierung,
+Observability-Aktivierung, Observability-Leistungsklasse und Observability-ACL.
+Alle anderen Einstellungen bleiben fest; Sandbox-Parameter sind noch nicht qualifiziert.
+String-Eingaben benötigen eine explizite Auswahlliste, ACL-Eingaben eine Auswahl
+zulässiger CIDRs; eine leere ACL-Bestellung ist gesperrt. Feste ältere Einstellungen
+werden nicht automatisch umgedeutet. Defaults, Pflichtfelder, Herkunft und
+unzulässige Overrides werden durch denselben Domain-Resolver geprüft, den der
+Application-Compiler verwendet. Dies gilt auch beim Speichern der Template-Policy.
+
+Neue Vorlagen erlauben Stage-Auswahl; neue Preset-Entwürfe behalten die Stage des
+Beispiels als Vorauswahl, neu hinzugefügte Vorlagen verwenden `dev`. Die
+explizite Übernahme einer bestehenden Konfiguration als Plattformkopie behält
+hingegen feste Vorgaben. Das JSON im Fork speichert die Policy; der Plattform-
+tfvars-Export enthält weiterhin keine Template-Instanzen.
+
+Unter **Bestellung testen** erzeugt der Editor aus der Policy ein lokales Formular
+mit wirksamen Werten und Herkunft. Das ist keine öffentliche Application-Owner-
+Bestellung und führt keine Cloudzugriffe aus. Der veröffentlichte Application-
+Vertragsprototyp Version 2 akzeptiert diese Policy und prüft Bestelleingaben,
+Tenant-/Plattformbindung und konkrete Dienstwerte erneut. Version 1 bleibt
+kompatibel. Ausführung bleibt ausdrücklich deaktiviert.
+
+Die Projektnetz-Bindung wird symbolisch gespeichert und ist sowohl in der
+Vorschau als auch nativ im Application-Root gesperrt. Ihre produktive Egress-
+Auflösung wird in [#96](https://github.com/stackitcloud/stackit-landing-zone/issues/96)
+verfolgt. Das produktive Landing-Zone-Modul und der Runner-Pin bleiben unverändert.
+
+## Ausgangsproblem und überprüfte Accelerator-Grenzen
 
 Die jetzigen `ProjectTemplateDraft.settings` bewahren hauptsächlich konkrete
 Accelerator-Einstellungen. Sie unterscheiden weder feste Policy von überschreibbaren
@@ -127,11 +157,12 @@ Bestelleingaben oder Bindungen. Keine automatische Freigabe bisher gesperrter We
 ## Umsetzungsreihenfolge / Abnahme
 
 - [x] Lücke und konkrete Accelerator-Grenzen im Code geprüft.
-- [ ] Versionierten Parameter-/Binding-Vertrag und Feldregister implementieren (#92).
-- [ ] Stage als erste vollständige Bestelleingabe mit Default, Auswahl und festen Werten;
+- [x] Versionierten Parameter-/Binding-Vertrag mit fünf freigegebenen Feldern implementieren (#92); weitere Felder bleiben fest.
+- [x] Stage als erste vollständige Bestelleingabe mit Default, Auswahl und festen Werten;
       unverändertes Lesen alter Entwürfe, explizite Konvertierung.
-- [ ] Template-Editor und Bestellformular aus demselben Vertrag erzeugen (#92/#93).
-- [ ] Compiler prüft Policy auch bei manipulierten API-/Chat-Anfragen; Tests für
+- [x] Template-Editor und lokale Bestellvorschau aus demselben Vertrag erzeugen.
+- [ ] Veröffentlichten Tenant-Katalog und echte Application-Owner-Bestellung anbinden (#92/#93).
+- [x] Compiler prüft Policy unabhängig vom Formular bei manipulierten Eingaben; Tests für
       unbekannte Felder, unzulässige Defaults, Tenantwechsel und Versionsbindung.
 - [ ] Accelerator-Modul um typisierte Projekt-Netz-/Observability-Bindung erweitern;
       erst Provider-/ACL-/Egress-Semantik nachweisen, dann native Graph-/Plan-Tests.
@@ -144,3 +175,10 @@ Bestelleingaben oder Bindungen. Keine automatische Freigabe bisher gesperrter We
 
 Diese Arbeiten sind Voraussetzung eines nutzbaren Application-Self-Service,
 kein nachträglicher Komfortausbau eines bereits vollständigen MVP.
+
+## Validierung und Bereitstellung
+
+- Lokale Domain-/App-Tests und native Application-Mockpläne prüfen die neue Policy
+  sowie Stage-Naming, Legacy-Erhalt und die harte Netzwerkbindungs-Sperre.
+- Browserprüfung und Release-Nachweis werden nach erfolgreicher Bereitstellung ergänzt.
+- Kein Kunden-Apply und keine automatische Änderung vorhandener Projekte.

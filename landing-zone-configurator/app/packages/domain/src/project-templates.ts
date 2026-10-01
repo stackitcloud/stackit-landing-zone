@@ -11,6 +11,11 @@ import {
   type Values,
 } from "./configuration.js";
 import { effectiveInput, validatePublicInputs } from "./features.js";
+import {
+  type TemplateParameterPolicy,
+  templateParameterPolicySchema,
+  validateTemplateParameterPolicy,
+} from "./template-parameters.js";
 
 export const projectTemplateDraftSchema = z
   .object({
@@ -21,6 +26,7 @@ export const projectTemplateDraftSchema = z
     region: z.enum(["eu01", "eu02"]),
     settings: z.record(z.string(), z.json()),
     namespaceServices: z.record(z.string(), z.json()).optional(),
+    parameterPolicy: templateParameterPolicySchema.optional(),
   })
   .strict();
 export type ProjectTemplateDraft = z.infer<typeof projectTemplateDraftSchema>;
@@ -38,6 +44,7 @@ const instanceFields = [
 export function validateProjectTemplateDraft(
   draft: ProjectTemplateDraft,
 ): void {
+  validateTemplateParameterPolicy(draft);
   if (instanceFields.some((field) => Object.hasOwn(draft.settings, field)))
     throw new Error(
       "Projektvorlagen dürfen keine Projektinstanz oder persönliche Eigentümerkennung enthalten.",
@@ -176,6 +183,21 @@ export function addProjectTemplate(
       | "eu02",
     settings:
       kind === "sandbox" ? {} : { env: "dev", secretsmanager_enabled: true },
+    ...(kind === "sandbox"
+      ? {}
+      : {
+          parameterPolicy: {
+            schema_version: 1 as const,
+            fields: {
+              env: {
+                source: "input" as const,
+                required: true,
+                default: "dev",
+                choices: ["dev", "test", "prod"],
+              },
+            },
+          },
+        }),
   });
   return readCommonConfiguration(next);
 }
@@ -187,6 +209,7 @@ export function updateProjectTemplate(
     region?: "eu01" | "eu02";
     settings?: Values;
     namespaceServices?: Values | null;
+    parameterPolicy?: TemplateParameterPolicy | null;
   },
 ): CommonConfiguration {
   const next = readCommonConfiguration(document);
@@ -196,6 +219,9 @@ export function updateProjectTemplate(
   if (patch.region !== undefined) template.region = patch.region;
   if (patch.settings !== undefined)
     template.settings = structuredClone(patch.settings);
+  if (patch.parameterPolicy === null) delete template.parameterPolicy;
+  else if (patch.parameterPolicy !== undefined)
+    template.parameterPolicy = structuredClone(patch.parameterPolicy);
   if (patch.namespaceServices === null) delete template.namespaceServices;
   else if (patch.namespaceServices !== undefined)
     template.namespaceServices = structuredClone(patch.namespaceServices);

@@ -15,6 +15,7 @@ import {
 } from "@lzc/domain";
 import { useState } from "react";
 import { StructuredField } from "./StructuredField";
+import { TemplateParameters } from "./TemplateParameters";
 
 export function ProjectTemplates({
   draft,
@@ -177,53 +178,12 @@ export function ProjectTemplates({
                 </div>
               )}
             </div>
-            {template.kind !== "sandbox" && (
-              <fieldset className="project-services">
-                <legend>Automatische Projektdienste</legend>
-                <div className="field">
-                  <label htmlFor={`${prefix}-secretsmanager`}>
-                    STACKIT Secrets Manager bereitstellen
-                  </label>
-                  <select
-                    id={`${prefix}-secretsmanager`}
-                    value={String(settings.secretsmanager_enabled ?? true)}
-                    onChange={(event) =>
-                      patchSettings({
-                        secretsmanager_enabled: event.target.value === "true",
-                      })
-                    }
-                  >
-                    <option value="true">Eingeschaltet</option>
-                    <option value="false">Ausgeschaltet</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor={`${prefix}-observability`}>
-                    STACKIT Observability bereitstellen
-                  </label>
-                  <select
-                    id={`${prefix}-observability`}
-                    value={String(
-                      objectValue(settings.observability).enabled ?? false,
-                    )}
-                    onChange={(event) =>
-                      patchSettings({
-                        observability: {
-                          ...objectValue(settings.observability),
-                          enabled: event.target.value === "true",
-                        },
-                      })
-                    }
-                  >
-                    <option value="true">Eingeschaltet</option>
-                    <option value="false">Ausgeschaltet</option>
-                  </select>
-                  <p className="field-hint">
-                    Eine eigene Instanz pro späterem Anwendungsprojekt.
-                  </p>
-                </div>
-              </fieldset>
-            )}
+            <TemplateParameters
+              template={template}
+              onChange={(patch) =>
+                perform(() => updateProjectTemplate(draft, template.id, patch))
+              }
+            />
             <details>
               <summary>Weitere Template-Einstellungen</summary>
               <StructuredField
@@ -240,6 +200,9 @@ export function ProjectTemplates({
                   "region",
                   "network_area_key",
                   "secretsmanager_enabled",
+                  ...(template.kind !== "sandbox"
+                    ? ["env", "observability"]
+                    : []),
                 ]}
                 regionContext={template.region}
                 onChange={(value) =>
@@ -250,6 +213,23 @@ export function ProjectTemplates({
                   )
                 }
               />
+              {template.kind !== "sandbox" && (
+                <StructuredField
+                  name="observability-name"
+                  title="Fester Name der Observability-Instanz (optional)"
+                  type="string"
+                  optional
+                  value={objectValue(settings.observability).name}
+                  onChange={(value) =>
+                    patchSettings({
+                      observability: {
+                        ...objectValue(settings.observability),
+                        name: value ?? null,
+                      },
+                    })
+                  }
+                />
+              )}
               {template.namespaceServices !== undefined && (
                 <>
                   <p className="info-banner">

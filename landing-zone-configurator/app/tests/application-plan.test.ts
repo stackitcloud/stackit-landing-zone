@@ -115,3 +115,98 @@ it("does not authorize execution even when future template policy allows direct 
   expect(compileApplicationPlan(input).applyPolicy).toBe("direct");
   expect(compileApplicationPlan(input).executionEnabled).toBe(false);
 });
+
+it("schema 2 compiles authorized stage input and leaves legacy output unchanged", () => {
+  const old = fixture();
+  expect(compileApplicationPlan(old).variables.application).not.toHaveProperty(
+    "env",
+  );
+  const input = {
+    ...old,
+    template: {
+      ...old.template,
+      schema_version: 2,
+      env: "dev",
+      parameter_policy: {
+        schema_version: 1,
+        fields: {
+          env: {
+            source: "input",
+            required: true,
+            default: "dev",
+            choices: ["dev", "prod"],
+          },
+        },
+      },
+    },
+    request: { ...old.request, parameters: { env: "prod" } },
+  };
+  const plan = compileApplicationPlan(input);
+  expect(plan.variables.application).toMatchObject({
+    env: "prod",
+    name: "Team Application",
+    owner_email: old.context.verified_stackit_email,
+  });
+  expect(plan.parameterResolution?.provenance.env?.source).toBe("input");
+  expect(plan.executionEnabled).toBe(false);
+  for (const parameters of [
+    { env: "qa" },
+    { secretsmanager_enabled: false },
+    { owner_email: "intruder@stackit.cloud" },
+  ])
+    expect(() =>
+      compileApplicationPlan({
+        ...input,
+        request: { ...old.request, parameters },
+      }),
+    ).toThrow();
+  expect(() =>
+    compileApplicationPlan({
+      ...input,
+      context: { ...input.context, tenant_id: other },
+    }),
+  ).toThrow();
+});
+it("schema 2 retains binding blockers instead of authorizing a guessed ACL", () => {
+  const old = fixture();
+  const input = {
+    ...old,
+    platform: {
+      ...old.platform,
+      targets: {
+        public: {
+          ...old.platform.targets.public,
+          corporate: true,
+          network_area_id: id,
+        },
+      },
+    },
+    template: {
+      ...old.template,
+      schema_version: 2,
+      env: "dev",
+      services: {
+        ...old.template.services,
+        observability: {
+          ...old.template.services.observability,
+          enabled: true,
+        },
+      },
+      parameter_policy: {
+        schema_version: 1,
+        fields: {
+          "observability.acl": {
+            source: "binding",
+            binding: "own-project-network",
+          },
+        },
+      },
+    },
+  };
+  const plan = compileApplicationPlan(input);
+  expect(plan.variables.application).toMatchObject({
+    observability: { access_source: "project-network", acl: [] },
+  });
+  expect(plan.parameterResolution?.qualificationBlockers).toHaveLength(1);
+  expect(plan.executionEnabled).toBe(false);
+});

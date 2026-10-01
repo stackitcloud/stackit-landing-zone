@@ -8,7 +8,7 @@
 
 ## Aktueller Umsetzungsschritt
 
-**Nächster notwendiger Template-Schritt:** [Typisierte Bestelleingaben und Ressourcenverknüpfungen](template-parameters-and-bindings.md), einschließlich Stage-Auswahl und Observability-Zugriff aus dem eigenen Projektnetz. Feste Einstellungen allein erfüllen den Self-Service-Vertrag nicht.
+**Aktueller Template-Schritt:** [Typisierte Bestelleingaben und Ressourcenverknüpfungen](template-parameters-and-bindings.md), einschließlich Stage-Auswahl und Observability-Zugriff aus dem eigenen Projektnetz. Der Parametervertrag mit fünf freigegebenen Feldern, Editor und lokaler Bestellvorschau ist implementiert. Die produktive Projektnetz-/Egress-Bindung bleibt in #96 offen; Veröffentlichung und Application-Owner-Bestellungen folgen gesondert.
 
 
 **Korrektur des Rollenablaufs:** Neue Plattformkonfigurationen enthalten

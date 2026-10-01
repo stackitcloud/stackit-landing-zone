@@ -46,22 +46,28 @@ test("platform editor defines project templates without concrete application pro
     page.getByRole("button", { name: "Projekt hinzufügen", exact: true }),
   ).toHaveCount(0);
   await corporate
-    .getByLabel("STACKIT Secrets Manager bereitstellen", { exact: true })
+    .getByText("STACKIT Secrets Manager · Fest vorgegeben", { exact: true })
+    .click();
+  await corporate
+    .getByLabel("Fester Wert: STACKIT Secrets Manager", { exact: true })
     .selectOption("false");
   await corporate
-    .getByLabel("STACKIT Observability bereitstellen", { exact: true })
+    .getByText("STACKIT Observability · Fest vorgegeben", { exact: true })
+    .click();
+  await corporate
+    .getByLabel("Fester Wert: STACKIT Observability", { exact: true })
     .selectOption("true");
   await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
   await page
     .getByRole("button", { name: "5 Projekt-Templates", exact: true })
     .click();
   await expect(
-    corporate.getByLabel("STACKIT Secrets Manager bereitstellen", {
+    corporate.getByLabel("Fester Wert: STACKIT Secrets Manager", {
       exact: true,
     }),
   ).toHaveValue("false");
   await expect(
-    corporate.getByLabel("STACKIT Observability bereitstellen", {
+    corporate.getByLabel("Fester Wert: STACKIT Observability", {
       exact: true,
     }),
   ).toHaveValue("true");
@@ -276,6 +282,16 @@ test("shared configuration saves, reopens and restores in the account workspace"
   ).toBeVisible();
   await expect(page.getByLabel("Projektname", { exact: true })).toHaveCount(0);
   await page.getByLabel("Name des Templates").first().fill("Team-Anwendungen");
+  const firstTemplate = page.locator("section.project-card").first();
+  await firstTemplate
+    .getByText("Umgebung / Stage · Fest vorgegeben", { exact: true })
+    .click();
+  await firstTemplate
+    .getByLabel("Wertquelle: Umgebung / Stage")
+    .selectOption("input");
+  await firstTemplate
+    .getByLabel("Vorauswahl: Umgebung / Stage")
+    .selectOption("prod");
   await page.getByRole("button", { name: "7 Prüfen", exact: true }).click();
   await page
     .getByRole("button", { name: "Im Fork speichern →", exact: true })
@@ -286,6 +302,11 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await expect
     .poll(() => savedPlatform?.projectTemplates?.[0]?.name)
     .toBe("Team-Anwendungen");
+  await expect
+    .poll(
+      () => savedPlatform?.projectTemplates?.[0]?.parameterPolicy?.fields.env,
+    )
+    .toMatchObject({ source: "input", default: "prod" });
   await page.reload();
   await page
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
@@ -296,6 +317,14 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await expect(page.getByLabel("Name des Templates").first()).toHaveValue(
     "Team-Anwendungen",
   );
+  await page
+    .locator("section.project-card")
+    .first()
+    .getByText("Umgebung / Stage · Bei Bestellung auswählbar", { exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Vorauswahl: Umgebung / Stage").first(),
+  ).toHaveValue("prod");
 });
 
 test("Standalone starts Public and offers regional choices and explicit platform switches", async ({

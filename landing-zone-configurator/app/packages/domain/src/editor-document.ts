@@ -103,18 +103,35 @@ export function createEditorConfiguration(
   id: string,
 ): CommonConfiguration {
   const document = createCommonConfiguration(templateId, crypto.randomUUID());
-  if (templateId !== "standalone") return createPlatformDraftCopy(document, id);
-  const projects = structuredClone(
-    objectValue(document.features.projects.landing_zones),
-  );
-  for (const raw of Object.values(projects)) {
-    const project = objectValue(raw);
-    if (project.corporate === undefined) project.corporate = false;
+  let source = document;
+  if (templateId === "standalone") {
+    const projects = structuredClone(
+      objectValue(document.features.projects.landing_zones),
+    );
+    for (const raw of Object.values(projects)) {
+      const project = objectValue(raw);
+      if (project.corporate === undefined) project.corporate = false;
+    }
+    source = editCommonInput(document, "landing_zones", projects);
   }
-  return createPlatformDraftCopy(
-    editCommonInput(document, "landing_zones", projects),
-    id,
-  );
+  const result = createPlatformDraftCopy(source, id);
+  for (const template of result.projectTemplates ?? []) {
+    if (template.kind === "sandbox") continue;
+    const stage =
+      typeof template.settings.env === "string" ? template.settings.env : "dev";
+    template.parameterPolicy = {
+      schema_version: 1,
+      fields: {
+        env: {
+          source: "input",
+          required: true,
+          choices: [...new Set(["dev", "test", "prod", stage])],
+          default: stage,
+        },
+      },
+    };
+  }
+  return readCommonConfiguration(result);
 }
 export function editorIssues(draft: EditorDraft): DraftIssue[] {
   if (!isCommonDraft(draft)) return validateDraft(draft);

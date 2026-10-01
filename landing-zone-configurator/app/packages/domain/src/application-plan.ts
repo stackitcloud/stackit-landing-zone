@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { assertBoundedJson } from "./features.js";
+import {
+  resolveTemplateParameters,
+  templateParameterPolicySchema,
+} from "./template-parameters.js";
 
 const uuid = z.uuid();
 const key = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
@@ -23,7 +27,7 @@ export const platformContractSchema = z.strictObject({
   organization_id: uuid,
   targets: z.record(key, targetSchema),
 });
-export const applicationTemplateSchema = z.strictObject({
+const legacyApplicationTemplateSchema = z.strictObject({
   schema_version: z.literal(1),
   tenant_id: uuid,
   id: key,
@@ -42,6 +46,17 @@ export const applicationTemplateSchema = z.strictObject({
     }),
   }),
 });
+export const applicationTemplateSchema = z.discriminatedUnion(
+  "schema_version",
+  [
+    legacyApplicationTemplateSchema,
+    legacyApplicationTemplateSchema.extend({
+      schema_version: z.literal(2),
+      env: z.string().regex(/^[a-z][a-z0-9-]{0,15}$/),
+      parameter_policy: templateParameterPolicySchema,
+    }),
+  ],
+);
 // Loaded from server-side membership, identity verification and an idempotent instance allocation.
 const contextSchema = z.strictObject({
   tenant_id: uuid,
@@ -52,7 +67,7 @@ const contextSchema = z.strictObject({
   stackit_organization_id: uuid,
   allowed_accelerator_revision: z.string().regex(/^[0-9a-f]{40}$/),
 });
-const requestSchema = z.strictObject({
+const legacyRequestSchema = z.strictObject({
   name: z.string().trim().min(1).max(40),
   target_key: key,
 });
@@ -68,7 +83,13 @@ export function compileApplicationPlan(input: {
   const platform = platformContractSchema.parse(input.platform);
   const template = applicationTemplateSchema.parse(input.template);
   const context = contextSchema.parse(input.context);
-  const request = requestSchema.parse(input.request);
+  const request = (
+    template.schema_version === 2
+      ? legacyRequestSchema.extend({
+          parameters: z.record(z.string(), z.json()).default({}),
+        })
+      : legacyRequestSchema
+  ).parse(input.request);
   if (
     platform.tenant_id !== context.tenant_id ||
     template.tenant_id !== context.tenant_id ||
@@ -82,7 +103,38 @@ export function compileApplicationPlan(input: {
     !Object.hasOwn(platform.targets, request.target_key)
   )
     throw new Error("Application target is not allowed");
+  const target = platform.targets[request.target_key];
+  if (!target) throw new Error("Application target is not allowed");
+  const resolution =
+    template.schema_version === 2
+      ? resolveTemplateParameters(
+          {
+            kind: target.corporate ? "corporate" : "public",
+            settings: { env: template.env, ...template.services },
+            parameterPolicy: template.parameter_policy,
+          },
+          "parameters" in request
+            ? z.record(z.string(), z.json()).parse(request.parameters)
+            : {},
+        )
+      : null;
+  const resolvedServices = resolution
+    ? legacyApplicationTemplateSchema.shape.services
+        .extend({
+          env: z.string().regex(/^[a-z][a-z0-9-]{0,15}$/),
+          observability:
+            legacyApplicationTemplateSchema.shape.services.shape.observability.extend(
+              {
+                access_source: z
+                  .enum(["explicit-cidrs", "project-network"])
+                  .optional(),
+              },
+            ),
+        })
+        .parse(resolution.settings)
+    : template.services;
   return {
+    ...(resolution ? { parameterResolution: resolution } : {}),
     entrypoint: "src/application" as const,
     acceleratorRevision: template.accelerator_revision,
     stateKey: `applications/${context.tenant_id}/${context.instance_id}/terraform.tfstate`,
@@ -104,7 +156,7 @@ export function compileApplicationPlan(input: {
         name: request.name,
         owner_email: context.verified_stackit_email,
         target_key: request.target_key,
-        ...template.services,
+        ...resolvedServices,
       },
     },
   };

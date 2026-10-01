@@ -55,6 +55,10 @@ run "public_project" {
     error_message = "Public project must use the compiled instance settings."
   }
   assert {
+    condition     = local.naming_pattern == "app-${var.application.instance_id}" && !contains(keys(local.application_labels), "env")
+    error_message = "Legacy inputs without env must retain their resource prefix and labels."
+  }
+  assert {
     condition     = module.application.connected_network_area_id == null && module.application.observability_instance_id == null
     error_message = "Public project must not create a network area or enabled Observability instance."
   }
@@ -115,4 +119,162 @@ run "stale_contract_rejected" {
     }, { platform_revision = "22222222-2222-4333-8444-555555555555" })
   }
   expect_failures = [terraform_data.contract]
+}
+
+run "new_stage_resource_names" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { env = "prod" })
+  }
+  assert {
+    condition     = local.naming_pattern == "app-${var.application.instance_id}-prod" && local.application_labels.env == "prod" && module.application.project_name == "Application fixture"
+    error_message = "Stage must affect the resource prefix and label, while keeping the requested display name."
+  }
+}
+
+run "invalid_stage_rejected" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { env = "Prod/../../invalid" })
+  }
+  expect_failures = [var.application]
+}
+
+run "literal_observability_acl_preserved" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { observability = { enabled = true, plan_name = "Observability-Starter-EU01", acl = ["203.0.113.8/32"], access_source = "explicit-cidrs" } })
+  }
+  assert {
+    condition     = length(var.application.observability.acl) == 1 && var.application.observability.acl[0] == "203.0.113.8/32" && var.application.observability.access_source == "explicit-cidrs"
+    error_message = "Explicit ACL input must remain literal and must not be replaced by network values."
+  }
+}
+
+run "symbolic_project_network_corporate_blocked" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { target_key = "corporate", observability = { enabled = true, plan_name = "Observability-Starter-EU01", acl = [], access_source = "project-network" } })
+  }
+  expect_failures = [terraform_data.contract]
+}
+
+run "symbolic_project_network_public_blocked" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { observability = { enabled = true, plan_name = "Observability-Starter-EU01", acl = [], access_source = "project-network" } })
+  }
+  expect_failures = [terraform_data.contract]
+}
+
+run "invalid_observability_source_rejected" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { observability = { enabled = true, plan_name = "Observability-Starter-EU01", acl = [], access_source = "unknown" } })
+  }
+  expect_failures = [var.application]
+}
+
+run "mixed_binding_and_literal_acl_rejected" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { observability = { enabled = true, plan_name = "Observability-Starter-EU01", acl = ["203.0.113.8/32"], access_source = "project-network" } })
+  }
+  expect_failures = [var.application]
+}
+
+run "disabled_source_binding_rejected" {
+  command = plan
+  variables {
+    application = merge({
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }, { observability = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [], access_source = "project-network" } })
+  }
+  expect_failures = [var.application]
 }
