@@ -1,4 +1,5 @@
 export const labels: Record<string, string> = {
+  projectTemplates: "Projekt-Templates",
   owner_email: "Technisch verantwortlich",
   company_name: "Organisation / Unternehmen",
   company_code: "Unternehmenskürzel",

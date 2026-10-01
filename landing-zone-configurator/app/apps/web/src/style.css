@@ -993,3 +993,21 @@ pre {
 .network-topology {
   margin-top: 1rem;
 }
+
+.template-preview {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.template-node {
+  border-style: dashed;
+  margin-top: 0.5rem;
+}
+
+.legacy-copy-banner {
+  flex-direction: column;
+}
+.legacy-copy-banner .button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

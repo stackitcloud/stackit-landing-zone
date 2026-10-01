@@ -33,12 +33,20 @@ runs.push(`run "standalone_editor_preset" {
   variables {
 ${exportCommonTfvars(createEditorConfiguration("standalone", "11111111-2222-4333-8444-555555555555"))}
   }
+  assert {
+    condition = length(output.application_projects) == 0 && length(output.sandbox_projects) == 0 && length(output.namespace_services) == 0
+    error_message = "Platform editor drafts must not export application project instances."
+  }
 }`);
 writeFileSync(
   new URL("outputs.tf", root),
   `output "audit_object_lock" {
   value = try(var.audit_logs.s3_object_lock, null)
 }
+output "application_projects" { value = var.landing_zones }
+output "sandbox_projects" { value = var.sandboxes }
+output "namespace_services" { value = var.landing_zone_namespace_services }
+
 `,
 );
 for (const explicit of [false, true]) {

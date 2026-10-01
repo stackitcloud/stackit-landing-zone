@@ -6,7 +6,22 @@ import {
   type Template,
   upgradeEditorDraft,
 } from "@lzc/domain";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+
+async function restoreLegacy(page: Page) {
+  const template = catalogue.templates.find(
+    (item) => item.id === "standalone",
+  ) as Template;
+  await page.evaluate(
+    ({ draft, sha256 }) =>
+      sessionStorage.setItem(
+        "lzc-oauth-draft",
+        JSON.stringify({ draft, sha256, expires: Date.now() + 600000 }),
+      ),
+    { draft: createDraft(template), sha256: template.sha256 },
+  );
+  await page.goto("/configurations/edit/basics");
+}
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/v1/github/forks?*", (route) =>
@@ -27,7 +42,7 @@ test("template catalogue, search and network preview", async ({
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Landing Zone Templates" }),
+    page.getByRole("heading", { name: "Plattform-Vorlagen" }),
   ).toBeVisible();
   await expect(page.locator(".template-card")).toHaveCount(8);
   await page.evaluate(() => document.fonts.ready);
@@ -81,9 +96,7 @@ test("edit, validate and download an isolated standalone copy", async ({
   await page
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Bisherigen Standalone-Editor nutzen" })
-    .click();
+  await restoreLegacy(page);
   await page.getByRole("button", { name: "4 Prüfen", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Angaben bitte prüfen");
   await page.getByRole("button", { name: /Organisations-ID: Bitte/ }).click();
@@ -164,7 +177,9 @@ test("edit, validate and download an isolated standalone copy", async ({
   await page
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
-  await expect(page.locator(".topology")).toContainText("External API Gateway");
+  await expect(page.locator(".topology")).toContainText(
+    "Public · public-exmpl",
+  );
   await page.getByRole("button", { name: "Mein Entwurf" }).click();
   await expect(
     page.getByRole("heading", { name: "Meine Testumgebung" }),
@@ -207,7 +222,7 @@ test("GitHub redirect preserves incomplete draft and logout sends CSRF", async (
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Bisherigen Standalone-Editor nutzen" })
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
   await page.getByLabel("Name der Konfiguration").fill("Entwurf vor Anmeldung");
   await page.getByRole("button", { name: "Mit GitHub anmelden" }).click();
@@ -234,12 +249,14 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
     .click();
   await expect(page).toHaveURL(/\/templates\/standalone$/);
   await page
-    .getByRole("button", { name: "Bisherigen Standalone-Editor nutzen" })
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
   await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
   await page.getByLabel("Name der Konfiguration").fill("Entwurf mit History");
-  await page.getByRole("button", { name: "Weiter zu Ordnern" }).click();
-  await page.getByRole("button", { name: "Weiter zu Projekten" }).click();
+  await page.getByRole("button", { name: "2 Ordner", exact: true }).click();
+  await page
+    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/configurations\/edit\/folders$/);
@@ -252,7 +269,7 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
   await expect(page).toHaveURL(/\/configurations\/edit\/folders$/);
   await page.goForward();
   await expect(
-    page.getByRole("heading", { name: "Projekte & Sandboxes", exact: true }),
+    page.getByRole("heading", { name: "Projekt-Templates", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "GitHub-Forks", exact: true }).click();
   await expect(page).toHaveURL(/\/repositories$/);

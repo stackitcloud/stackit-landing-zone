@@ -3,6 +3,7 @@ import {
   catalogue,
   configurationValues,
   createDraft,
+  createPlatformDraftCopy,
   exportCommonTfvars,
   migrateCommonConfiguration,
   savedDraft,
@@ -60,6 +61,19 @@ it("binds a preparation to the saved configuration, code revision, secret versio
   expect(commonManifest.configuration.schemaVersion).toBe(3);
   expect(commonManifest.organization.id).toBe(draft.organization);
   expect(commonManifest.tfvarsSha256).toBe(manifest.tfvarsSha256);
+  const platform = createPlatformDraftCopy(common, randomUUID());
+  const platformExport = exportCommonTfvars(platform);
+  const platformManifest = preparationManifest(
+    { ...input, configurationId: platform.id },
+    { document: platform, head: input.head, tfvars: platformExport },
+    checked,
+  );
+  expect(platformManifest.configuration).toEqual(platform);
+  expect(platformManifest.tfvarsSha256).not.toBe(manifest.tfvarsSha256);
+  expect(platformExport).toContain("landing_zones = {}\n");
+  expect(platformExport).toContain("sandboxes = []\n");
+  expect(platformExport).not.toContain("project_name");
+
   expect(manifest.accelerator.commit).toBe(acceleratorCommit);
   expect(manifest.source.commit).toBe(input.head);
   expect(manifest.configuration).toEqual(document);

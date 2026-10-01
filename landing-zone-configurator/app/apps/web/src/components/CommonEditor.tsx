@@ -24,6 +24,7 @@ import type { EditorStep } from "../navigation";
 import { ComponentPicker } from "./ComponentPicker";
 import { labelFor } from "./feature-labels";
 import { NetworkEditor } from "./NetworkEditor";
+import { ProjectTemplates } from "./ProjectTemplates";
 import { StructuredField } from "./StructuredField";
 import { Topology } from "./Topology";
 
@@ -84,12 +85,14 @@ export function CommonEditor({
   step,
   onStepChange,
   onOpenStorage,
+  onCreatePlatformCopy,
 }: {
   draft: CommonConfiguration;
   onChange: (draft: CommonConfiguration) => void;
   step: EditorStep;
   onStepChange: (step: EditorStep) => void;
   onOpenStorage: () => void;
+  onCreatePlatformCopy?: () => void;
 }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -97,6 +100,13 @@ export function CommonEditor({
     "public",
   );
   const [newKey, setNewKey] = useState("");
+  const platformDraft = draft.projectTemplates !== undefined;
+  const stepTitle = (id: EditorStep, title: string) =>
+    id === "projects"
+      ? platformDraft
+        ? "Projekt-Templates"
+        : "Projekte (Bestand)"
+      : title;
   const values = compileCommonConfiguration(draft);
   const projects = commonProjects(draft);
   const areas = commonNetworkAreas(draft);
@@ -183,9 +193,9 @@ export function CommonEditor({
     <>
       <div className="draft-banner">
         <span>
-          Gemeinsamer Editor · alle Vorlagen verwenden dasselbe Funktionsmodell.
-          Dieser Stand unterstützt Speichern und Exportieren; die
-          Deployment-Anbindung folgt separat.
+          {platformDraft
+            ? "Plattformentwurf · zentrale Dienste und Projekt-Templates. Anwendungsprojekte entstehen später durch Bestellungen von Application Ownern."
+            : "Bestehende Gesamtkonfiguration · konkrete Anwendungsprojekte bleiben für die Bestandsverwaltung erhalten."}
         </span>
         <button type="button" className="text-button" onClick={onOpenStorage}>
           Zu deinen Forks →
@@ -201,13 +211,13 @@ export function CommonEditor({
             onClick={() => onStepChange(item.id)}
           >
             <span>{index + 1}</span>
-            {item.title}
+            {stepTitle(item.id, item.title)}
           </button>
         ))}
       </nav>
       <div className="editor-layout">
         <section className="panel common-editor">
-          <h2>{active?.title}</h2>
+          <h2>{active && stepTitle(active.id, active.title)}</h2>
           {error && (
             <p role="alert" className="validation-box">
               {error}
@@ -238,17 +248,38 @@ export function CommonEditor({
               Audit-Protokollierung zur Management-Infrastruktur.
             </p>
           )}
-          {step === "basics" && draft.origin.templateId === "standalone" && (
-            <p className="info-banner">
-              Neue Standalone-Entwürfe markieren das Beispielprojekt
-              ausdrücklich als Public (Korrektur für Accelerator-Issue #84).
-              Organisations-ID und verantwortliche E-Mail-Adressen bitte durch
-              eigene Angaben ersetzen. „Accelerator-Standard verwenden“ entfernt
-              eine eigene Einstellung; es stellt nicht die Vorlage wieder her.
-            </p>
+          {step === "basics" &&
+            !platformDraft &&
+            draft.origin.templateId === "standalone" && (
+              <p className="info-banner">
+                Neue Standalone-Entwürfe markieren das Beispielprojekt
+                ausdrücklich als Public (Korrektur für Accelerator-Issue #84).
+                Organisations-ID und verantwortliche E-Mail-Adressen bitte durch
+                eigene Angaben ersetzen. „Accelerator-Standard verwenden“
+                entfernt eine eigene Einstellung; es stellt nicht die Vorlage
+                wieder her.
+              </p>
+            )}
+          {step === "projects" && platformDraft && (
+            <ProjectTemplates draft={draft} onChange={onChange} />
           )}
-          {step === "projects" && (
+          {step === "projects" && !platformDraft && (
             <>
+              <p className="info-banner">
+                Bestehende Konfiguration: Diese Einträge sind konkrete Projekte,
+                keine Projekt-Templates. Sie bleiben unverändert, damit
+                gespeicherte Konfigurationen und ihre Ressourcenadressen
+                erhalten bleiben.
+                {onCreatePlatformCopy && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={onCreatePlatformCopy}
+                  >
+                    Als neue Plattformkonfiguration übernehmen
+                  </button>
+                )}
+              </p>
               <p>
                 Public-Projekte sind unabhängig vom zentralen Netzwerk.
                 Corporate-Projekte gehören zu einem vorhandenen Bereich ihrer
@@ -596,7 +627,8 @@ export function CommonEditor({
           )}
           {step === "network" ? (
             <NetworkEditor values={values} onChange={update} />
-          ) : step === "platform" || step === "projects" ? (
+          ) : step === "projects" && platformDraft ? null : step ===
+              "platform" || step === "projects" ? (
             <ComponentPicker
               key={`${draft.id}-${step}`}
               names={active?.inputs ?? []}
@@ -727,7 +759,7 @@ export function CommonEditor({
           </div>
         </section>
         <div>
-          <Topology values={values} />
+          <Topology values={values} projectTemplates={draft.projectTemplates} />
           {areas.length > 0 && (
             <figure className="topology network-topology">
               <figcaption>Netzwerkzuordnung</figcaption>

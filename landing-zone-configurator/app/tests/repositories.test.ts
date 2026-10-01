@@ -1,8 +1,9 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   catalogue,
   configurationValues,
   createDraft,
+  createPlatformDraftCopy,
   editCommonInput,
   exportCommonTfvars,
   folderDefaults,
@@ -411,4 +412,64 @@ it("prepares an unchanged standalone common-format configuration with its exact 
     ),
   ).toEqual({ document, head: original, tfvars });
   expect(f.writes).toHaveLength(0);
+});
+
+it("persists project-template metadata atomically while preparing only platform resources", async () => {
+  const f = fixture();
+  const source = migrateCommonConfiguration({
+    ...f.document,
+    id: randomUUID(),
+  });
+  let stored = createPlatformDraftCopy(source, id);
+  const templates = structuredClone(stored.projectTemplates);
+  const request: typeof fetch = async (input, init) => {
+    if (new URL(String(input)).pathname.endsWith(`/git/blobs/${blobSha}`))
+      return Response.json({
+        encoding: "base64",
+        content: Buffer.from(JSON.stringify(stored)).toString("base64"),
+        size: 5000,
+      });
+    return f.request(input, init);
+  };
+  const service = new Repositories(request);
+  f.state.file = false;
+  await service.save(token, target, original, "create", stored);
+  const tree = f.writes.find((write) => write.path.endsWith("/git/trees"))?.body
+    .tree as { content: string }[];
+  stored = JSON.parse(tree[0]?.content ?? "{}");
+  expect(stored.projectTemplates).toEqual(templates);
+  expect(stored.projectTemplates?.length).toBeGreaterThan(0);
+  const exported = tree[1]?.content ?? "";
+  expect(exported).toContain("landing_zones = {}\n");
+  expect(exported).toContain("sandboxes = []\n");
+  expect(exported).toContain("landing_zone_namespace_services = {}\n");
+  expect(exported).not.toContain("projectTemplates");
+  expect(exported).not.toContain("project_name");
+  f.state.file = true;
+  f.state.exportSha = createHash("sha1")
+    .update(`blob ${Buffer.byteLength(exported)}\0`)
+    .update(exported)
+    .digest("hex");
+  const snapshot = await service.prepareSnapshot(
+    token,
+    target,
+    id,
+    createdCommit,
+  );
+  expect(snapshot.document).toEqual(stored);
+  expect(snapshot.tfvars).toBe(exported);
+  const writesBefore = f.writes.length;
+  stored.features.projects.landing_zones = structuredClone(
+    source.features.projects.landing_zones ?? {},
+  );
+  stored.identities.landingZones = structuredClone(
+    source.identities.landingZones,
+  );
+  await expect(
+    service.save(token, target, createdCommit, "update", stored),
+  ).rejects.toThrow("Projektinstanzen");
+  await expect(
+    service.prepareSnapshot(token, target, id, createdCommit),
+  ).rejects.toMatchObject({ code: "unsupported_configuration_document" });
+  expect(f.writes).toHaveLength(writesBefore);
 });

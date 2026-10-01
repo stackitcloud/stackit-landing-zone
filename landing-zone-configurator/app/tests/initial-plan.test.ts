@@ -82,15 +82,6 @@ it("accepts a new Standalone editor draft after filling identities and rejects i
   let document = createEditorConfiguration("standalone", randomUUID());
   document = editCommonInput(document, "organization_id", randomUUID());
   document = editCommonInput(document, "owner_email", "owner@stackit.cloud");
-  const projects = structuredClone(
-    objectValue(document.features.projects.landing_zones),
-  );
-  for (const raw of Object.values(projects))
-    objectValue(raw).owner_email = "owner@stackit.cloud";
-  document = editCommonInput(document, "landing_zones", projects);
-  document = editCommonInput(document, "sandboxes", [
-    { project_name: "Sandbox", project_owner_email: "owner@stackit.cloud" },
-  ]);
   expect(initialPlanIssues(document)).toEqual([]);
   // Unknown attributes are rejected by the input contract before execution.
   expect(() =>

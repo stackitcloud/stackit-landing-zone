@@ -22,6 +22,13 @@ nicht dafür. Die jetzigen Pläne sind Prüfungen und können nicht angewendet w
 ihre Binärartefakte werden entfernt. Vor einem zukünftigen Apply ist ein neuer
 Plan samt unveränderlichem Artefakt, Freigabe und State-Sicherung notwendig.
 
+## Plattformentwürfe mit Projekt-Templates
+
+Neue Editor-Konfigurationen enthalten Projekt-Template-Entwürfe statt konkreter
+Anwendungsprojekte. Ihr tfvars-Export und damit ihr Erstbereitstellungsplan enthalten
+**nur die Plattform**, keine Instanzen dieser Vorlagen. Alte Gesamtkonfigurationen
+behalten ihre bisherigen Projekte. [Details und Bestandsschutz](project-template-drafts.md).
+
 ## Gemeinsamer Editor und Ausführungsumfang
 
 Schema v3 wird für eine konservative Standalone-Teilmenge unterstützt: eu01,

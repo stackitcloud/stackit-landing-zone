@@ -17,6 +17,10 @@ import {
   supportedAcceleratorRevision,
   validatePublicInputs,
 } from "./features.js";
+import {
+  projectTemplateDraftSchema,
+  validateProjectTemplateDraft,
+} from "./project-templates.js";
 import { serializeTfvars } from "./tfvars.js";
 
 const valuesSchema = z.record(z.string(), z.json());
@@ -46,6 +50,7 @@ export const commonConfigurationSchema = z
       })
       .strict(),
     features: featuresSchema,
+    projectTemplates: z.array(projectTemplateDraftSchema).max(100).optional(),
     identities: z
       .object({
         landingZones: z.record(z.string(), z.string().min(1).max(512)),
@@ -209,6 +214,22 @@ export function readCommonConfiguration(input: unknown): CommonConfiguration {
   const values = flatten(parsed);
   if (validatePublicInputs(values).length)
     throw new Error("Invalid Accelerator input contract");
+  if (parsed.projectTemplates !== undefined) {
+    if (
+      Object.keys(objectValue(values.landing_zones)).length ||
+      (Array.isArray(values.sandboxes) && values.sandboxes.length) ||
+      Object.keys(objectValue(values.landing_zone_namespace_services)).length
+    )
+      throw new Error(
+        "Plattform-Entwürfe dürfen nur Projektvorlagen und keine Application-Projektinstanzen enthalten.",
+      );
+    const ids = parsed.projectTemplates.map((template) => template.id);
+    const keys = parsed.projectTemplates.map((template) => template.key);
+    if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length)
+      throw new Error("Doppelte Projektvorlagenkennung.");
+    for (const template of parsed.projectTemplates)
+      validateProjectTemplateDraft(template);
+  }
   const expected = identityIndex(values);
   for (const group of ["landingZones", "networkAreas"] as const) {
     const keys = Object.keys(parsed.identities[group]);
@@ -365,6 +386,13 @@ export function removeCommonNetworkArea(
   );
   if (
     commonProjects(document).some((project) => project.areaId === id) ||
+    document.projectTemplates?.some(
+      (template) =>
+        template.kind === "corporate" &&
+        template.region === area.region &&
+        (textValue(template.settings.network_area_key) || "default") ===
+          area.key,
+    ) ||
     clusterReference ||
     dnsReference ||
     Object.hasOwn(objectValue(base.firewalls), area.key) ||

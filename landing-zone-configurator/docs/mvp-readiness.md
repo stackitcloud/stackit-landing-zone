@@ -62,6 +62,14 @@ und dürfen erst so heißen, wenn der Accelerator sie tatsächlich bereitstellt.
 Für restriktive Application-Owner-Rechte ist [#69](https://github.com/stackitcloud/stackit-landing-zone/issues/69)
 zu klären: Produktrolle und STACKIT-Projekt-Owner sind nicht dasselbe.
 
+## Korrektur: Projekt-Templates statt Projektinstanzen
+
+Neue Plattformentwürfe definieren [Projekt-Templates](project-template-drafts.md).
+Der Plattformexport enthält keine konkreten Anwendungsprojekte. Die bisherige
+Projektbearbeitung bleibt nur für Altbestände erhalten; eine ausdrückliche Kopie
+überführt sie in den neuen Ablauf. Das ist der Entwurfsteil von #92, noch keine
+tenantgebundene Veröffentlichung oder Application-Owner-Bestellung.
+
 ## Begonnenes Umsetzungspaket
 
 - [x] Ist-Zustand anhand produktiver Aufrufer und Tests geprüft; offene Fähigkeiten als #89–#95 erfasst.
@@ -119,7 +127,9 @@ nicht durch eine erfolgreiche Login- oder Credential-Prüfung aufgehoben.
    erstellen, Organisation und Verantwortliche setzen, im eigenen Fork speichern.
 2. „Deployment vorbereiten“ wählen, passenden Zugang prüfen und Vorbereitung
    speichern. Danach **nur bei noch nicht existierender Landing Zone ohne State**
-   einen Erstbereitstellungsplan starten; Ergebnis nach Reload prüfen.
+   einen Erstbereitstellungsplan starten; Ergebnis nach Reload prüfen. Bei neuen
+   Plattformentwürfen plant dieser ausschließlich die Plattform, keine Projekte
+   aus den enthaltenen Template-Entwürfen.
 3. Eine Konfiguration mit nicht freigegebener Connectivity-/Kubernetes-Komponente
    auswählen: Speichern/Export bleiben möglich, die Vorbereitung nennt Sperrgründe.
 4. Optional einen neuen Einladungslink bei bereits geöffneter App öffnen: Die

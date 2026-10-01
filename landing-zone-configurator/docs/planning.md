@@ -8,6 +8,13 @@
 
 ## Aktueller Umsetzungsschritt
 
+**Korrektur des Rollenablaufs:** Neue Plattformkonfigurationen enthalten
+[Projekt-Template-Entwürfe](project-template-drafts.md) statt konkreter
+Anwendungsprojekte. Der Platform Engineer definiert sie; Instanzen entstehen
+später durch den Application Owner aus veröffentlichten Versionen. Alte
+Gesamtkonfigurationen bleiben unverändert, Übernahme nur als ausdrückliche Kopie.
+
+
 Die MVP-Bestandsaufnahme trennt Editorabdeckung von Ausführungsfreigabe. Zunächst
 wird die geprüfte Standalone-Teilmenge des gemeinsamen Editors an den vorhandenen
 Erstbereitstellungsplan angebunden. Anschließend folgen dauerhafter Bootstrap-State

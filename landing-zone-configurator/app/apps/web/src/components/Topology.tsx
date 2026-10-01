@@ -2,6 +2,7 @@ import {
   areaLocations,
   folderDefaults,
   objectValue,
+  type ProjectTemplateDraft,
   textValue,
   type Values,
 } from "@lzc/domain";
@@ -36,7 +37,13 @@ function Folder({ name, children }: { name: string; children: ReactNode }) {
     </div>
   );
 }
-export function Topology({ values }: { values: Values }) {
+export function Topology({
+  values,
+  projectTemplates,
+}: {
+  values: Values;
+  projectTemplates?: ProjectTemplateDraft[] | undefined;
+}) {
   const projects = Object.entries(objectValue(values.landing_zones));
   const sandboxes = Array.isArray(values.sandboxes) ? values.sandboxes : [];
   const hubs = areaLocations(values);
@@ -134,7 +141,11 @@ export function Topology({ values }: { values: Values }) {
   const parent = textValue(values.rm_folder_parent_id);
   return (
     <figure className="topology">
-      <figcaption>Struktur deiner Landing Zone</figcaption>
+      <figcaption>
+        {projectTemplates
+          ? "Struktur deiner Plattform"
+          : "Struktur deiner Landing Zone"}
+      </figcaption>
       <p className="muted topology-note">
         Geplante Organisationsstruktur · keine Abfrage bestehender Ressourcen
       </p>
@@ -157,6 +168,41 @@ export function Topology({ values }: { values: Values }) {
         </div>
       ) : (
         tree
+      )}
+      {projectTemplates && (
+        <section
+          className="template-preview"
+          aria-label="Projekt-Template-Entwürfe"
+        >
+          <h3>Projekt-Template-Entwürfe</h3>
+          <p className="muted">
+            Vorlagen für spätere Bestellungen durch Application Owner. Diese
+            Einträge sind keine Projekte im Plattform-Deployment.
+          </p>
+          {projectTemplates.length ? (
+            projectTemplates.map((template) => (
+              <div className="tree-node template-node" key={template.id}>
+                <span className="node-symbol" aria-hidden="true">
+                  ◇
+                </span>
+                <div>
+                  <small>
+                    Template ·{" "}
+                    {template.kind === "public"
+                      ? "Public"
+                      : template.kind === "corporate"
+                        ? "Corporate"
+                        : "Sandbox"}{" "}
+                    · {template.region}
+                  </small>
+                  <strong>{template.name || "Unbenanntes Template"}</strong>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="muted">Noch keine Projekt-Templates definiert.</p>
+          )}
+        </section>
       )}
     </figure>
   );

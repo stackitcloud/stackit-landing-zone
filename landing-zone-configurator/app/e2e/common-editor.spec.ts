@@ -18,7 +18,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("common editor exposes all presets and preserves network assignments while changing project types", async ({
+test("platform editor defines project templates without concrete application projects", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -27,67 +27,68 @@ test("common editor exposes all presets and preserves network assignments while 
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page.getByLabel("Name der Konfiguration").fill("Gemeinsamer Entwurf");
-  await page.getByRole("button", { name: "5 Projekte", exact: true }).click();
+  await page
+    .getByLabel("Name der Konfiguration")
+    .fill("Plattform mit Templates");
+  await page
+    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .click();
   const corporate = page
     .locator("section.project-card")
-    .filter({
-      has: page
-        .getByLabel("Projektart", { exact: true })
-        .locator('option[value="corporate"]'),
-    })
+    .filter({ hasText: /Entwurf · Corporate/ })
     .first();
-  await expect(corporate.getByLabel("Projektart", { exact: true })).toHaveValue(
-    "corporate",
+  await expect(corporate).toBeVisible();
+  await expect(page.getByLabel("Projektname", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Verantwortlich", { exact: true })).toHaveCount(
+    0,
   );
+  await expect(
+    page.getByRole("button", { name: "Projekt hinzufügen", exact: true }),
+  ).toHaveCount(0);
   await corporate
-    .getByLabel("Secrets Manager bereitstellen", { exact: true })
+    .getByLabel("STACKIT Secrets Manager bereitstellen", { exact: true })
     .selectOption("false");
   await corporate
-    .getByLabel("Observability bereitstellen", { exact: true })
+    .getByLabel("STACKIT Observability bereitstellen", { exact: true })
     .selectOption("true");
   await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
-  await page.getByRole("button", { name: "5 Projekte", exact: true }).click();
+  await page
+    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .click();
   await expect(
-    corporate.getByLabel("Secrets Manager bereitstellen", { exact: true }),
+    corporate.getByLabel("STACKIT Secrets Manager bereitstellen", {
+      exact: true,
+    }),
   ).toHaveValue("false");
   await expect(
-    corporate.getByLabel("Observability bereitstellen", { exact: true }),
+    corporate.getByLabel("STACKIT Observability bereitstellen", {
+      exact: true,
+    }),
   ).toHaveValue("true");
-
   await expect(
-    corporate.getByLabel("Netzwerkbereich", { exact: true }),
+    corporate.getByLabel("STACKIT Network Area (SNA)", { exact: true }),
   ).not.toHaveValue("");
-  page.once("dialog", (dialog) => dialog.accept());
-  await corporate
-    .getByLabel("Projektart", { exact: true })
-    .selectOption("public");
-  await expect(corporate).toContainText("Zielordner: Landing Zones - Public");
-  page.once("dialog", (dialog) => dialog.accept());
-  await corporate
-    .getByLabel("Projektart", { exact: true })
-    .selectOption("corporate");
-  await expect(
-    corporate.getByLabel("Netzwerkbereich", { exact: true }),
-  ).not.toHaveValue("");
-  await page.getByLabel("Art des neuen Projekts").selectOption("sandbox");
+  await page.getByLabel("Art des Projekt-Templates").selectOption("sandbox");
+  await page.getByLabel("Template-Kennung", { exact: true }).fill("experiment");
   const before = await page.locator("section.project-card").count();
   await page
-    .getByRole("button", { name: "Projekt hinzufügen", exact: true })
+    .getByRole("button", { name: "Template hinzufügen", exact: true })
     .click();
   await expect(page.locator("section.project-card")).toHaveCount(before + 1);
+  await expect(
+    page.getByRole("region", {
+      name: "Projekt-Template-Entwürfe",
+      exact: true,
+    }),
+  ).toContainText("Neue Sandbox-Vorlage");
+  await expect(
+    page.locator(".topology").first().locator(".tree-children").first(),
+  ).not.toContainText("External API Gateway");
   await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
-  await expect(page).toHaveURL(/\/network$/);
-  await page
-    .getByRole("button", { name: "Mehrere Netzwerkbereiche verwalten" })
-    .click();
   await page.goBack();
   await expect(page).toHaveURL(/\/projects$/);
-  await expect(
-    corporate.getByLabel("Netzwerkbereich", { exact: true }),
-  ).not.toHaveValue("");
   await page.screenshot({
-    path: testInfo.outputPath("common-projects.png"),
+    path: testInfo.outputPath("project-templates.png"),
     fullPage: true,
   });
   expect(
@@ -113,6 +114,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
   const originalValues = recordValues(document);
   let head = "a".repeat(40);
   let saves = 0;
+  let savedPlatform: CommonConfiguration | null = null;
   const fork = {
     id: 123,
     owner: "alice",
@@ -155,6 +157,25 @@ test("shared configuration saves, reopens and restores in the account workspace"
     expect(route.request().headers()["x-lzc-csrf"]).toBe(session.csrfToken);
     const body = route.request().postDataJSON();
     expect(body.head).toBe(head);
+    if (body.document.projectTemplates !== undefined) {
+      expect(body.mode).toBe("create");
+      savedPlatform = readConfigurationRecord(
+        body.document,
+      ) as CommonConfiguration;
+      expect(savedPlatform.id).not.toBe(document.id);
+      expect(savedPlatform.projectTemplates?.length).toBeGreaterThan(0);
+      expect(recordValues(savedPlatform).landing_zones).toEqual({});
+      expect(recordValues(savedPlatform).sandboxes).toEqual([]);
+      expect(recordValues(document)).toEqual(originalValues);
+      return route.fulfill({
+        json: {
+          id: savedPlatform.id,
+          head: "c".repeat(40),
+          commitUrl:
+            "https://github.com/alice/accelerator/commit/platform-copy",
+        },
+      });
+    }
     document = readConfigurationRecord(body.document) as CommonConfiguration;
     expect(document.schemaVersion).toBe(3);
     expect(recordValues(document)).toEqual(originalValues);
@@ -183,7 +204,9 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await page
     .getByLabel("Name der Konfiguration")
     .fill("Gemeinsamer Fork-Entwurf");
-  await page.getByRole("button", { name: "5 Projekte", exact: true }).click();
+  await page
+    .getByRole("button", { name: "5 Projekte (Bestand)", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Komponente hinzufügen", exact: true })
     .click();
@@ -235,6 +258,44 @@ test("shared configuration saves, reopens and restores in the account workspace"
     path: testInfo.outputPath("common-fork.png"),
     fullPage: true,
   });
+  await page
+    .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "5 Projekte (Bestand)", exact: true })
+    .click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", {
+      name: "Als neue Plattformkonfiguration übernehmen",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Projekt-Templates", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Projektname", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Name des Templates").first().fill("Team-Anwendungen");
+  await page.getByRole("button", { name: "7 Prüfen", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Im Fork speichern →", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Im Fork speichern", exact: true })
+    .click();
+  await expect
+    .poll(() => savedPlatform?.projectTemplates?.[0]?.name)
+    .toBe("Team-Anwendungen");
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .click();
+  await expect(page.getByLabel("Name des Templates").first()).toHaveValue(
+    "Team-Anwendungen",
+  );
 });
 
 test("Standalone starts Public and offers regional choices and explicit platform switches", async ({
@@ -249,10 +310,12 @@ test("Standalone starts Public and offers regional choices and explicit platform
     "SELECT",
   );
   await page.getByLabel("Region", { exact: true }).selectOption("eu02");
-  await page.getByRole("button", { name: "5 Projekte", exact: true }).click();
-  await expect(
-    page.getByLabel("Projektart", { exact: true }).first(),
-  ).toHaveValue("public");
+  await page
+    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .click();
+  await expect(page.locator("section.project-card").first()).toContainText(
+    "Entwurf · Public",
+  );
   await expect(
     page.getByText(
       "Corporate-Projekte benötigen einen vorhandenen Netzwerkbereich in ihrer Region.",

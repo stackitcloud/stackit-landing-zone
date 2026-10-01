@@ -32,6 +32,11 @@ import {
 } from "./document.js";
 import { assertBoundedJson, inputGroup } from "./features.js";
 
+import {
+  createPlatformDraftCopy,
+  projectTemplateIssues,
+} from "./project-templates.js";
+
 export type EditorDraft = ConfigurationDraft | CommonConfiguration;
 export type ConfigurationRecord = SavedDraft | CommonConfiguration;
 export const configurationRecordSchema = z.union([
@@ -96,8 +101,8 @@ export function createEditorConfiguration(
   templateId: string,
   id: string,
 ): CommonConfiguration {
-  const document = createCommonConfiguration(templateId, id);
-  if (templateId !== "standalone") return document;
+  const document = createCommonConfiguration(templateId, crypto.randomUUID());
+  if (templateId !== "standalone") return createPlatformDraftCopy(document, id);
   const projects = structuredClone(
     objectValue(document.features.projects.landing_zones),
   );
@@ -105,7 +110,10 @@ export function createEditorConfiguration(
     const project = objectValue(raw);
     if (project.corporate === undefined) project.corporate = false;
   }
-  return editCommonInput(document, "landing_zones", projects);
+  return createPlatformDraftCopy(
+    editCommonInput(document, "landing_zones", projects),
+    id,
+  );
 }
 export function editorIssues(draft: EditorDraft): DraftIssue[] {
   if (!isCommonDraft(draft)) return validateDraft(draft);
@@ -119,6 +127,7 @@ export function editorIssues(draft: EditorDraft): DraftIssue[] {
       (item) => item.scope === "configuration" && item.severity === "error",
     )
     .map((item) => ({ field: item.path, message: item.message }));
+  issues.push(...projectTemplateIssues(draft));
   const email = (field: string, raw: unknown) => {
     if (
       typeof raw !== "string" ||

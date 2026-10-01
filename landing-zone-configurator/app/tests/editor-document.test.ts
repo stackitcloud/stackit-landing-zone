@@ -11,6 +11,7 @@ import {
   featureFieldCatalogue,
   migrateCommonConfiguration,
   objectValue,
+  projectTemplates,
   readEditorDraft,
   removeCommonProject,
   saveEditorDraft,
@@ -79,7 +80,7 @@ it("repairs only new Standalone editor presets without changing the source/impor
   const original = compileCommonConfiguration(source);
   const draft = createEditorConfiguration("standalone", id);
   expect(
-    commonProjects(draft).find((project) => project.key === "public-exmpl")
+    projectTemplates(draft).find((project) => project.key === "public-exmpl")
       ?.kind,
   ).toBe("public");
   expect(
@@ -88,6 +89,7 @@ it("repairs only new Standalone editor presets without changing the source/impor
         finding.scope === "configuration" && finding.severity === "error",
     ),
   ).toEqual([]);
+  expect(commonProjects(draft)).toEqual([]);
   expect(compileCommonConfiguration(source)).toEqual(original);
   expect(
     commonProjects(source).find((project) => project.key === "public-exmpl")

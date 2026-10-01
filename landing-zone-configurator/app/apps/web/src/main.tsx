@@ -1,12 +1,20 @@
 import {
-  createDraft,
+  compileCommonConfiguration,
   createEditorConfiguration,
+  createPlatformDraftCopy,
   type EditorDraft,
   isCommonDraft,
   objectValue,
   upgradeEditorDraft,
 } from "@lzc/domain";
-import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  StrictMode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import {
   CloudCataloguePanel,
@@ -90,12 +98,20 @@ function App() {
   }, [draft]);
 
   const values = selected.values;
+  const preview = useMemo(
+    () =>
+      createEditorConfiguration(
+        selected.id,
+        "11111111-2222-4333-8444-555555555555",
+      ),
+    [selected.id],
+  );
   const matching = templates.filter((t) =>
     `${describe(t).title} ${describe(t).description}`
       .toLocaleLowerCase("de")
       .includes(search.toLocaleLowerCase("de")),
   );
-  const start = (legacy = false) => {
+  const start = () => {
     if (
       draft &&
       !window.confirm(
@@ -103,13 +119,34 @@ function App() {
       )
     )
       return;
-    setDraft(
-      legacy
-        ? createDraft(selected)
-        : createEditorConfiguration(selected.id, crypto.randomUUID()),
-    );
+    setDraft(createEditorConfiguration(selected.id, crypto.randomUUID()));
     setDraftEpoch((value) => value + 1);
     setView("editor");
+  };
+
+  const copyPlatform = () => {
+    if (
+      !draft ||
+      !window.confirm(
+        "Eine neue Plattformkonfiguration mit Projekt-Templates anlegen? Der gespeicherte Altbestand bleibt unverändert. Dies migriert keine Cloud-Ressourcen und keinen State.",
+      )
+    )
+      return;
+    try {
+      setDraft(
+        createPlatformDraftCopy(
+          isCommonDraft(draft) ? draft : upgradeEditorDraft(draft),
+          crypto.randomUUID(),
+        ),
+      );
+      setDraftEpoch((value) => value + 1);
+      setView("editor", "projects");
+      setLoginError("");
+    } catch {
+      setLoginError(
+        "Diese Gesamtkonfiguration kann noch nicht verlustfrei als Plattformkopie übernommen werden. Der bisherige Entwurf bleibt erhalten; prüfe insbesondere die Zuordnung der Namespace-Dienste.",
+      );
+    }
   };
 
   return (
@@ -274,7 +311,7 @@ function App() {
                 {view === "organisation"
                   ? "Organisation & Mitglieder"
                   : view === "templates"
-                    ? "Landing Zone Templates"
+                    ? "Plattform-Vorlagen"
                     : view === "preview"
                       ? describe(selected).title
                       : view === "deployments"
@@ -383,9 +420,10 @@ function App() {
                   <div className="info-banner">
                     <span aria-hidden="true">ⓘ</span>
                     <p>
-                      Starte mit <strong>Standalone</strong> im Editor. Alle
-                      weiteren Templates kannst du bereits als Strukturvorschau
-                      erkunden.
+                      Als Platform Engineer konfigurierst du zentrale Dienste
+                      und Projekt-Templates. Konkrete Anwendungsprojekte
+                      entstehen später durch Bestellungen eines Application
+                      Owners.
                     </p>
                   </div>
                   <div className="toolbar">
@@ -409,9 +447,12 @@ function App() {
                   <div className="template-grid">
                     {matching.map((template) => {
                       const meta = describe(template);
-                      const count = Object.keys(
-                        objectValue(template.values.landing_zones),
-                      ).length;
+                      const count =
+                        Object.keys(objectValue(template.values.landing_zones))
+                          .length +
+                        (Array.isArray(template.values.sandboxes)
+                          ? template.values.sandboxes.length
+                          : 0);
                       return (
                         <article className="template-card" key={template.id}>
                           <div className="card-top">
@@ -425,7 +466,9 @@ function App() {
                           <div className="card-meta">
                             <span>
                               {count}{" "}
-                              {count === 1 ? "Landing Zone" : "Landing Zones"}
+                              {count === 1
+                                ? "Projekt-Template"
+                                : "Projekt-Templates"}
                             </span>
                             <span>Editor verfügbar</span>
                           </div>
@@ -464,16 +507,9 @@ function App() {
                     <h2>Über diese Vorlage</h2>
                     <p>{describe(selected).description}</p>
                     <dl className="summary-list">
-                      <dt>Landing Zones</dt>
-                      <dd>
-                        {Object.keys(objectValue(values.landing_zones)).length}
-                      </dd>
-                      <dt>Sandboxes</dt>
-                      <dd>
-                        {Array.isArray(values.sandboxes)
-                          ? values.sandboxes.length
-                          : 0}
-                      </dd>
+                      <dt>Projekt-Template-Entwürfe</dt>
+                      <dd>{preview.projectTemplates?.length ?? 0}</dd>
+
                       <dt>Herkunft</dt>
                       <dd>
                         <code>{selected.source}</code>
@@ -482,8 +518,12 @@ function App() {
                     {
                       <>
                         <p>
-                          Erstelle eine eigene Kopie und passe Organisation,
-                          Projekte und Verantwortliche an.
+                          Erstelle eine Plattformkonfiguration mit zentralen
+                          Diensten und Projekt-Template-Entwürfen. Die
+                          Beispielprojekte der Accelerator-Vorlage werden zu
+                          Vorlagen, nicht direkt zu Anwendungsprojekten.
+                          Veröffentlichung und Bestellung folgen im
+                          Application-Self-Service.
                         </p>
                         <button
                           type="button"
@@ -492,23 +532,19 @@ function App() {
                         >
                           Konfiguration erstellen
                         </button>
-                        {selected.id === "standalone" && (
-                          <button
-                            type="button"
-                            className="button secondary"
-                            onClick={() => start(true)}
-                          >
-                            Bisherigen Standalone-Editor nutzen
-                          </button>
-                        )}
                       </>
                     }
                     <details className="technical">
-                      <summary>Quelldaten ansehen</summary>
+                      <summary>
+                        Originale Accelerator-Quelldaten ansehen
+                      </summary>
                       <pre>{JSON.stringify(values, null, 2)}</pre>
                     </details>
                   </section>
-                  <Topology values={values} />
+                  <Topology
+                    values={compileCommonConfiguration(preview)}
+                    projectTemplates={preview.projectTemplates}
+                  />
                 </div>
               )}
               <div hidden={view !== "repositories"}>
@@ -564,33 +600,26 @@ function App() {
                   <CommonEditor
                     draft={draft}
                     onChange={setDraft}
+                    onCreatePlatformCopy={copyPlatform}
                     step={step}
                     onStepChange={(next) => setView("editor", next)}
                     onOpenStorage={() => setView("repositories")}
                   />
                 ) : (
                   <>
-                    <div className="info-banner">
+                    <div className="info-banner legacy-copy-banner">
                       <p>
-                        Du bearbeitest eine bestehende Standalone-Konfiguration.
-                        Im gemeinsamen Editor stehen weitere Netzwerk- und
-                        Plattformfunktionen zur Verfügung. Dessen
-                        Konfigurationen sind zunächst speicher- und
-                        exportierbar.
+                        Du bearbeitest eine bestehende Gesamtkonfiguration mit
+                        konkreten Projekten. Sie bleibt zur Bestandsverwaltung
+                        erhalten. Neue Plattformkonfigurationen enthalten
+                        stattdessen Projekt-Templates.
                       </p>
                       <button
                         type="button"
                         className="button secondary"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "In den gemeinsamen Editor wechseln? Die bisherigen Einstellungen bleiben erhalten. Neue Deployment-Vorbereitungen für dieses Format folgen separat.",
-                            )
-                          )
-                            setDraft(upgradeEditorDraft(draft));
-                        }}
+                        onClick={copyPlatform}
                       >
-                        Zum gemeinsamen Editor wechseln
+                        Als neue Plattformkonfiguration übernehmen
                       </button>
                     </div>
                     <ConfigurationEditor

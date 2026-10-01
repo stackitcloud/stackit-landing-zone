@@ -8,7 +8,7 @@ const descriptions: Record<
   standalone: {
     title: "Standalone",
     description:
-      "Eigenständige Projekte und Sandboxes ohne zentralen Netzwerk-Hub. Ein übersichtlicher Einstieg für deine erste Landing Zone.",
+      "Plattform-Grundlage ohne zentralen Netzwerk-Hub mit Vorlagen für eigenständige Projekte und Sandboxes.",
     category: "Einstieg",
   },
   "hub-and-spoke": {
@@ -31,7 +31,8 @@ const descriptions: Record<
   },
   "hub-and-spoke-multi-region": {
     title: "Mehrere Regionen",
-    description: "Regionale Netzwerk-Hubs und Landing Zones in eu01 und eu02.",
+    description:
+      "Regionale Netzwerk-Hubs und Projekt-Templates für eu01 und eu02.",
     category: "Regionen",
   },
   "hub-and-spoke-finance-research": {
@@ -49,7 +50,7 @@ const descriptions: Record<
   "hub-and-spoke-tenant-isolation": {
     title: "Mandantentrennung",
     description:
-      "Getrennte Netzwerkbereiche und Projekte für mehrere Mandanten.",
+      "Getrennte Netzwerkbereiche und Projekt-Templates für verschiedene Bereiche innerhalb einer Organisation.",
     category: "Organisation",
   },
 };
