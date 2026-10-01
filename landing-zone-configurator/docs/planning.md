@@ -967,3 +967,11 @@ Tests und 32 Desktop-/Mobil-Browserfälle erfolgreich. Browserprüfung deckt das
 Erstellen/Widerrufen und die Einladungsfortsetzung nach dem Login ab; DB-Prüfung
 deckt insbesondere konkurrierende Annahme, Hashspeicherung, Ablauf, Widerruf,
 archivierte Tenants und entzogene Verwaltungsrechte ab.
+
+Einladungsablauf auf lzc-dev veröffentlicht mit Commit `dde3379`:
+[Release 36846494967](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36846494967)
+und [Validierung 36846494917](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36846494917)
+erfolgreich. Migration 009 und Abschlussprüfungen erfolgreich. Live-Health und
+Organisationsseite HTTP 200, Bundle `index-DFtM2hCS.js`; anonyme Einladungsabfrage
+HTTP 401. Keine realen Einladungen durch Entwicklung/Deployment erzeugt oder
+versendet. Benutzerabnahme mit zweitem Konto bleibt offen.
