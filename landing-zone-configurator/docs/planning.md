@@ -942,3 +942,12 @@ Live-Abfrage mit einem persönlichen Benutzerzugang steht noch aus.
 - [x] Observability-Plan-Auswahl für eu01 sowie Bastion-Maschinentypen, öffentliche Images und IaaS-Zonen ergänzt; eu02-Observability bleibt mangels verifizierter API-Quelle manuell.
 - [x] PIM-v2-Angebotskatalog geprüft und gegenüber technischen Produktkatalogen abgegrenzt; kein automatischer SKU-zu-Provider-ID-Adapter eingeführt.
 - [x] Lokale Prüfung dieser Erweiterung: 117 Anwendungstests, 18 PostgreSQL-Tests, 30 Desktop-/Mobil-Browserfälle sowie Lint/TypeScript/Build erfolgreich.
+
+Veröffentlicht auf lzc-dev mit Commit `3532645`:
+[Release 36840987284](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36840987284)
+und [Validierung 36840987238](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36840987238)
+erfolgreich. Migration 008, Cloud-Foundry-Deployment und Abschlussprüfungen erfolgreich;
+Live-Health und Organisationsseite liefern HTTP 200, Bundle `index-DqgRf507.js`.
+Keine realen Arbeitsbereiche während der Entwicklung/Veröffentlichung gelöscht;
+keine Kunden-Apply-Ausführung. Produkt-APIs mit kontrollierten Antworten getestet,
+persönliche Live-Abnahme der neu ergänzten Kataloge bleibt offen.
