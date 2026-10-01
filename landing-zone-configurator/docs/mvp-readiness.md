@@ -71,7 +71,7 @@ zu klären: Produktrolle und STACKIT-Projekt-Owner sind nicht dasselbe.
 - [x] Einladungslinks bei bereits geöffneter App und blockiertem Browser-Speicher robuster verarbeitet.
 - [x] Lokal: 123 Unit-, 22 PostgreSQL- und 38 Desktop-/Mobil-Browserprüfungen bestanden; echter OpenTofu-Plan-Summary-Test sowie 4 native Application-Vertragstests mit OpenTofu 1.12.6 erfolgreich.
 - [x] Native Application-Vertragstests in den bestehenden Release-CI-Schritt `npm run test:plan` integriert (temporäre Kopie, ohne Cloud-Credentials und Backend).
-- [ ] Release-Nachweis dieses Pakets und anschließenden Live-Smoke-Test ergänzen.
+- [x] Commit `9aa3322`: [Validate Configurator](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36849188417) und [Release](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36849188406) erfolgreich. CF-/Datenbank-/Secrets-/Runner-Prüfungen erfolgreich; öffentlicher Smoke-Test: Health und SPA-Routen 200, geschützte APIs anonym 401, neues Bundle `/assets/index-tcjYrzmJ.js` bestätigt.
 - [ ] Persönlichen Kunden-Plan mit einer neuen Standalone-Konfiguration abnehmen.
 - [ ] Apply-/Recovery-Paket #90 implementieren und ausdrücklich freigegebene Kunden-Abnahme durchführen.
 
@@ -112,3 +112,18 @@ Keine automatische Kundenlöschung. [#22](https://github.com/stackitcloud/stacki
 bleibt eine externe Lifecycle-Grenze. Bekannte private Kubernetes-/regionale
 Namespace-Grenzen (#37/#80) werden durch passende Ausführungssperren berücksichtigt,
 nicht durch eine erfolgreiche Login- oder Credential-Prüfung aufgehoben.
+
+## Persönliche Prüfung des veröffentlichten Pakets
+
+1. Im persönlichen Arbeitsbereich eine **neue** Standalone-Konfiguration in eu01
+   erstellen, Organisation und Verantwortliche setzen, im eigenen Fork speichern.
+2. „Deployment vorbereiten“ wählen, passenden Zugang prüfen und Vorbereitung
+   speichern. Danach **nur bei noch nicht existierender Landing Zone ohne State**
+   einen Erstbereitstellungsplan starten; Ergebnis nach Reload prüfen.
+3. Eine Konfiguration mit nicht freigegebener Connectivity-/Kubernetes-Komponente
+   auswählen: Speichern/Export bleiben möglich, die Vorbereitung nennt Sperrgründe.
+4. Optional einen neuen Einladungslink bei bereits geöffneter App öffnen: Die
+   aktuelle Einladung erscheint. Vor einem Beitritt bleibt die Bestätigung nötig.
+
+Kein Kunden-Apply, keine Kundenressourcenanlage und kein Merge wurden durch dieses
+Release ausgeführt. Der Kunden-Plan ist noch nicht persönlich abgenommen.

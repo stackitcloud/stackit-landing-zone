@@ -144,3 +144,13 @@ zusätzlich Eingabe-/Zugriffsprüfung und OpenTofu-Laufzeit. Kein Kunden-Apply.
 [Plan-Exitcodes](https://opentofu.org/docs/cli/commands/plan/),
 [CF V3 Droplet-Kopie](https://v3-apidocs.cloudfoundry.org/version/3.199.0/index.html#copy-a-droplet),
 [CF V3 Tasks](https://v3-apidocs.cloudfoundry.org/version/3.199.0/index.html#create-a-task).
+
+## Release des v3-Standalone-Planpfads (2026-10-01)
+
+Commit `9aa3322`, [Release 36849188406](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36849188406)
+und [Validierung 36849188417](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36849188417)
+erfolgreich. Lokal 123 Unit-, 22 PostgreSQL- und 38 Browserprüfungen; echter
+OpenTofu-Plan-Summary-Test und vier native Application-Root-Verträge mit 1.12.6.
+Die Datenbankprüfung umfasst Legacy/v3 und die erneute Sperrprüfung im Broker.
+Die Live-App liefert das neue Bundle, Health 200 und anonym geschützte APIs 401.
+Dies ist keine persönliche Kunden-Plan-Abnahme und kein Kunden-Apply.

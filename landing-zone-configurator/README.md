@@ -29,7 +29,7 @@ landing-zone-configurator/
     apps/
       web/                 # Browser-Oberfläche
       api/                 # Backend/BFF
-      worker/              # Queue, Scheduler und Dispatcher
+      worker/              # Isolierter Plan-Worker und Ergebnisprojektion
     packages/
       domain/              # Fachmodell, Schema, Validierung, Compiler
       contracts/           # API- und Job-Verträge ohne Secrets
