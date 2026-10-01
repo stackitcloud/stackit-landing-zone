@@ -5,7 +5,7 @@ Stand: 2026-10-01. Der Assistent beschreibt den vom Accelerator unterstützten V
 ## Bedienung
 
 1. Gateway: Anzeigename, Leistungsplan und Verfügbarkeitszonen der beiden Tunnel.
-2. Routing: Route-based mit statischen Routen oder Policy-based mit lokalen/entfernten Netzen. BGP ist im aktuellen Modul nicht unterstützt.
+2. Routing: Route-based mit statischen Routen oder Policy-based mit lokalen/entfernten Netzen. BGP ist im aktuellen Modul nicht unterstützt; [#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) verfolgt die Erweiterung.
 3. Verbindungen: stabile Verbindungskennung, Gegenstellenadressen für zwei Tunnel, optional erweiterte Peering-/IPsec-Einstellungen.
 4. Zusammenfassung: erzeugte STACKIT-Ressourcen und verbleibende Arbeiten an der Gegenstelle.
 

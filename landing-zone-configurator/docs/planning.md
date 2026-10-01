@@ -892,3 +892,12 @@ Der Prototyp aktiviert keine neue Berechtigung und keinen Apply. Der Application
 Root erzeugt neben optionalen Diensten die bereits im Modul enthaltenen
 Automations- und Object-Storage-Ressourcen; dies ist Teil des zu veröffentlichenden
 Templateumfangs. Bestehende States werden nicht umgestellt.
+
+
+### VPN-BGP-Erweiterung erfasst
+
+- [x] Offene und geschlossene VPN-/BGP-Issues abgeglichen; kein dediziertes offenes BGP-Issue vorhanden.
+- [x] [#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) für BGP-Unterstützung angelegt, einschließlich Prüfung des historischen Provider-Blockers mit der aktuellen gepinnten Version.
+- [ ] Accelerator-Unterstützung und Tests umsetzen; anschließend Configurator-Schema, Assistent und Engine-Freigabe aktualisieren.
+
+BGP bleibt bis dahin im Configurator gesperrt. Keine Änderung am Live-Deployment.

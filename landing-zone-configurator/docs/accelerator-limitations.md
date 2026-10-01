@@ -79,3 +79,15 @@ Moduls repliziert. Eine selektive oder unterschiedliche Konfiguration je SNA feh
 Gegen `main` unter `2bb7c755692674ad619ffc46a0a17a781f019106` geprüft; #64 betrifft
 einen anderen Sachverhalt (Inter-Region-Verbindungen). Der VPN-Assistent erklärt
 die tatsächliche Reichweite und bietet keinen unwirksamen SNA-Selektor an.
+
+
+## BGP für STACKIT VPN
+
+[#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) erfasst die
+fehlende Unterstützung von `BGP_ROUTE_BASED` im Accelerator. #23 ist geschlossen
+und behandelt die allgemeine VPN-Implementierung; #64/#85 sind andere Grenzen.
+Der Code nennt ein historisches Provider-Problem bis 0.104.0. Ob es unter dem
+inzwischen gepinnten Provider 0.114.0 noch besteht, muss reproduziert werden.
+Das Issue umfasst Gateway-/Tunnel-BGP-Einstellungen, Routingvalidierung,
+SNA-Routenpropagation und die spätere Configurator-Anbindung. Eine allgemeine
+Verwaltung zusätzlicher SNA-Routing-Tabellen ist davon zu unterscheiden.
