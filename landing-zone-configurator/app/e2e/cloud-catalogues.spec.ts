@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("product choices preserve imported values and restore manual fields when catalogue access fails", async ({
   page,
-}) => {
+}, testInfo) => {
   const session = {
     user: { id: "catalogue-user", login: "alice" },
     tenant: { id: "personal-one" },
@@ -68,7 +68,13 @@ test("product choices preserve imported values and restore manual fields when ca
         },
         projectRoles: {
           status: "available",
-          options: [{ value: "viewer", label: "viewer" }],
+          options: [
+            { value: "viewer", label: "viewer" },
+            ...Array.from({ length: 150 }, (_, index) => ({
+              value: `service-${index}.reader`,
+              label: `service-${index}.reader`,
+            })),
+          ],
         },
         projectPermissions: {
           status: "available",
@@ -315,11 +321,81 @@ test("product choices preserve imported values and restore manual fields when ca
     })
     .selectOption("context");
   await template.getByLabel("application-viewer", { exact: true }).check();
+  const roleList = await template.locator(".role-list").evaluate((element) => ({
+    height: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    width: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(roleList.height).toBeLessThanOrEqual(320);
+  expect(roleList.scrollHeight).toBeGreaterThan(roleList.height);
+  expect(roleList.scrollWidth).toBeLessThanOrEqual(roleList.width);
+  await template
+    .locator(".role-options")
+    .screenshot({ path: testInfo.outputPath("role-picker.png") });
+  await template
+    .getByLabel("Projektrollen durchsuchen", { exact: true })
+    .fill("application");
+  await expect(template.locator(".role-list input")).toHaveCount(1);
+  await template
+    .getByLabel("Projektrollen durchsuchen", { exact: true })
+    .fill("");
+  await template.getByLabel("Nur ausgewählte Rollen", { exact: true }).check();
+  await expect(template.locator(".role-list input")).toHaveCount(1);
+  await expect(
+    template.getByLabel("application-viewer", { exact: true }),
+  ).toBeChecked();
   await template.getByText("Bestellung testen", { exact: true }).click();
   await expect(template.locator(".parameter-preview")).toContainText(
     "Projektverantwortliche Person wird bei der Instanziierung zugeordnet",
   );
   await expect(template.locator(".parameter-preview")).toContainText(
     "verifizierten STACKIT-Identität",
+  );
+  await page.getByLabel("Katalogregion", { exact: true }).selectOption("eu02");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Abmelden", exact: true }),
+  ).toBeVisible();
+  await page
+    .locator("summary")
+    .filter({ hasText: "STACKIT-Produktoptionen laden" })
+    .click();
+  await expect(page.getByLabel("Katalogzugang", { exact: true })).toHaveValue(
+    "11111111-1111-4111-8111-111111111111",
+  );
+  await expect(page.getByLabel("Referenzprojekt-ID")).toHaveValue(
+    "22222222-2222-4222-8222-222222222222",
+  );
+  await expect(page.getByLabel("Katalogregion", { exact: true })).toHaveValue(
+    "eu02",
+  );
+  const saved = await page.evaluate(() =>
+    JSON.parse(
+      localStorage.getItem(
+        "lzc-workspace-v1:personal-one:catalogue-user:catalogue",
+      ) ?? "null",
+    ),
+  );
+  expect(Object.keys(saved).sort()).toEqual([
+    "profileId",
+    "projectId",
+    "region",
+  ]);
+  session.tenant.id = "personal-two";
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Abmelden", exact: true }),
+  ).toBeVisible();
+  await page
+    .locator("summary")
+    .filter({ hasText: "STACKIT-Produktoptionen laden" })
+    .click();
+  await expect(page.getByLabel("Katalogzugang", { exact: true })).toHaveValue(
+    "",
+  );
+  await expect(page.getByLabel("Referenzprojekt-ID")).toHaveValue("");
+  await expect(page.getByLabel("Katalogregion", { exact: true })).toHaveValue(
+    "eu01",
   );
 });

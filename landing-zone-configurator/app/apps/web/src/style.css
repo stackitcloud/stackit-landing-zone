@@ -1060,3 +1060,47 @@ pre {
   margin: 4px 0 12px;
   overflow-wrap: anywhere;
 }
+
+.role-options {
+  min-width: 0;
+  margin-block: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.role-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+}
+.role-filters .field {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.role-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  align-content: start;
+  gap: 8px 16px;
+  max-height: 320px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.role-options .parameter-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.role-options .parameter-choice input {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+}

@@ -241,6 +241,8 @@ export function TemplateParameters({
   }) => void;
 }) {
   const [inputs, setInputs] = useState<Record<string, JsonValue>>({});
+  const [roleSearch, setRoleSearch] = useState("");
+  const [selectedRolesOnly, setSelectedRolesOnly] = useState(false);
   const catalogue = useCatalogueOptions(
     "landing_zones[*].observability.plan_name",
     template.region,
@@ -305,7 +307,12 @@ export function TemplateParameters({
               ...customRoles,
               ...assigned,
             ]),
-          ];
+          ].sort((leftRole, rightRole) => leftRole.localeCompare(rightRole));
+          const visibleRoles = roleOptions.filter(
+            (role) =>
+              role.toLowerCase().includes(roleSearch.trim().toLowerCase()) &&
+              (!selectedRolesOnly || assigned.includes(role)),
+          );
           return (
             <details key={field.path} className="parameter-card">
               <summary>
@@ -355,27 +362,66 @@ export function TemplateParameters({
                       </option>
                     </select>
                   </div>
-                  <fieldset>
+                  <fieldset className="role-options">
                     <legend>
                       Rollen für die projektverantwortliche Person
                     </legend>
-                    {roleOptions.map((role) => (
-                      <label key={role} className="parameter-choice">
+                    <div className="role-filters">
+                      <div className="field">
+                        <label htmlFor={`${template.id}-role-search`}>
+                          Projektrollen durchsuchen
+                        </label>
                         <input
-                          type="checkbox"
-                          checked={assigned.includes(role)}
+                          id={`${template.id}-role-search`}
+                          type="search"
+                          value={roleSearch}
                           onChange={(event) =>
-                            setPolicy(field.path, {
-                              ...rule,
-                              roles: event.target.checked
-                                ? [...assigned, role]
-                                : assigned.filter((value) => value !== role),
-                            })
+                            setRoleSearch(event.target.value)
                           }
                         />
-                        {role}
+                      </div>
+                      <label className="parameter-choice">
+                        <input
+                          type="checkbox"
+                          checked={selectedRolesOnly}
+                          onChange={(event) =>
+                            setSelectedRolesOnly(event.target.checked)
+                          }
+                        />
+                        Nur ausgewählte Rollen
                       </label>
-                    ))}
+                    </div>
+                    <p className="field-hint" role="status">
+                      {assigned.length} ausgewählt · {visibleRoles.length} von{" "}
+                      {roleOptions.length} Rollen
+                    </p>
+                    <div className="role-list">
+                      {visibleRoles.map((role) => (
+                        <label key={role} className="parameter-choice">
+                          <input
+                            type="checkbox"
+                            checked={assigned.includes(role)}
+                            disabled={
+                              !assigned.includes(role) && assigned.length >= 100
+                            }
+                            onChange={(event) =>
+                              setPolicy(field.path, {
+                                ...rule,
+                                roles: event.target.checked
+                                  ? [...assigned, role]
+                                  : assigned.filter((value) => value !== role),
+                              })
+                            }
+                          />
+                          <span>{role}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {!visibleRoles.length && roleOptions.length > 0 && (
+                      <p className="field-hint">
+                        Keine Rollen für diesen Filter.
+                      </p>
+                    )}
                   </fieldset>
                   {!roleOptions.length && (
                     <p className="field-hint">

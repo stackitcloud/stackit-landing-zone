@@ -38,6 +38,15 @@ Alle Cloud-Ziele sind fest definiert; Redirects sind verboten, Antworten sind au
 
 Der erste Abschnitt gilt im persönlichen Arbeitsbereich. Organisationstenants bleiben bis zur Einführung freigegebener Plattformzugänge im Entwurfsmodus; sie übernehmen keine Credentials aus persönlichen Arbeitsbereichen.
 
+Katalogzugang, Referenzprojekt-ID und Region werden in diesem Browser pro Benutzer
+und Arbeitsbereich gespeichert und beim erneuten Öffnen wiederhergestellt.
+Gespeichert werden ausschließlich diese drei Auswahlwerte, keine Schlüssel,
+Tokens oder Katalogantworten. Das Profil wird erneut gegen die zugänglichen,
+gespeicherten Credential-Profile geprüft; ein gelöschtes Profil wird nicht mehr
+vorausgewählt. Kataloge werden weiterhin nur nach expliziter Aktualisierung
+abgerufen. Die Einstellung wird nicht zwischen Geräten synchronisiert; blockierter
+Browser-Speicher erzeugt einen sichtbaren Hinweis.
+
 ## Erweiterung: Observability und Diagnose-Bastion
 
 - [x] `observability.plan_name` und die Observability-Blöcke von Plattform-Clustern, Landing Zones und Sandboxes verwenden `plans[].name` als Terraform-Eingabe, nicht die abweichende Plan-UUID.

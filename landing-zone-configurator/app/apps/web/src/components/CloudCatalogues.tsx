@@ -6,8 +6,38 @@ import {
   useRef,
   useState,
 } from "react";
+import { workspaceKey } from "../workspace";
 import type { Session } from "./Account";
 import { type CloudCatalogue, catalogueField } from "./cloud-catalogue-fields";
+
+type CatalogueSelection = {
+  profileId: string;
+  projectId: string;
+  region: string;
+};
+
+function readSelection(key: string | null): CatalogueSelection | null {
+  try {
+    const raw = key && localStorage.getItem(`${key}:catalogue`);
+    if (!raw || raw.length > 1024) return null;
+    const value = JSON.parse(raw);
+    if (
+      typeof value.profileId !== "string" ||
+      value.profileId.length > 36 ||
+      typeof value.projectId !== "string" ||
+      value.projectId.length > 64 ||
+      !["eu01", "eu02"].includes(value.region)
+    )
+      return null;
+    return {
+      profileId: value.profileId,
+      projectId: value.projectId,
+      region: value.region,
+    };
+  } catch {
+    return null;
+  }
+}
 
 type CatalogueState = {
   data: CloudCatalogue | null;
@@ -51,13 +81,30 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
   const activeRequest = useRef<AbortController | null>(null);
   useEffect(() => () => activeRequest.current?.abort(), []);
   const [error, setError] = useState("");
+  const [storageWarning, setStorageWarning] = useState("");
+  function remember(selection: CatalogueSelection) {
+    const key = workspaceKey(session);
+    if (!key) return;
+    try {
+      localStorage.setItem(`${key}:catalogue`, JSON.stringify(selection));
+      setStorageWarning("");
+    } catch {
+      setStorageWarning(
+        "Die Katalogauswahl konnte in diesem Browser nicht gespeichert werden.",
+      );
+    }
+  }
   useEffect(() => {
     activeRequest.current?.abort();
     setBusy(false);
     setData(null);
     setProfiles([]);
     setProfileId("");
-    setProjectId("");
+    const saved = readSelection(workspaceKey(session));
+    setProjectId(saved?.projectId ?? "");
+    setRegion(saved?.region ?? "eu01");
+    setError("");
+    setStorageWarning("");
     if (!session) return;
     const controller = new AbortController();
     void fetch("/api/v1/credentials", { signal: controller.signal })
@@ -66,8 +113,14 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
         const body = (await response.json()) as {
           profiles: { id: string; name: string; state: string }[];
         };
-        setProfiles(
-          body.profiles.filter((profile) => profile.state === "stored"),
+        const stored = body.profiles.filter(
+          (profile) => profile.state === "stored",
+        );
+        setProfiles(stored);
+        setProfileId(
+          stored.some((profile) => profile.id === saved?.profileId)
+            ? (saved?.profileId ?? "")
+            : "",
         );
       })
       .catch(() => {
@@ -131,6 +184,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
             value={profileId}
             onChange={(event) => {
               setProfileId(event.target.value);
+              remember({ profileId: event.target.value, projectId, region });
               setData(null);
             }}
           >
@@ -150,6 +204,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
             placeholder="UUID eines vorhandenen STACKIT-Projekts"
             onChange={(event) => {
               setProjectId(event.target.value);
+              remember({ profileId, projectId: event.target.value, region });
               setData(null);
             }}
           />
@@ -162,6 +217,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
             value={region}
             onChange={(event) => {
               setRegion(event.target.value);
+              remember({ profileId, projectId, region: event.target.value });
               setData(null);
             }}
           >
@@ -185,6 +241,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
         {busy ? "Wird geladen …" : "Produktoptionen aktualisieren"}
       </button>
       {error && <p role="alert">{error}</p>}
+      {storageWarning && <p role="status">{storageWarning}</p>}
       {data && (
         <>
           <p role="status">
