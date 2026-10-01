@@ -31,6 +31,14 @@ sind davon getrennte Plattformpolicy; Beispieladressen müssen vor Speicherung
 bereinigt werden. Namespace-Service-Einstellungen werden als Template-Metadaten
 erhalten. Das ist keine Freigabe ihrer späteren Clusteranbindung/Ausführung.
 
+## Noch fehlende Template-Semantik
+
+Die bisherigen festen Einstellungen sind noch kein vollständiger Template-Vertrag.
+Stage soll normalerweise eine begrenzte Bestelleingabe sein; Dienstbeziehungen
+wie „Observability nur aus eigenem Projektnetz“ brauchen typisierte Bindungen.
+[Wertquellen, Instanziierung und Umsetzungsplan](template-parameters-and-bindings.md).
+Diese Erweiterung ist noch nicht implementiert.
+
 ## Speicherung und Export
 
 Das bisherige Dokumentformat v3 besitzt nun optional `projectTemplates`.

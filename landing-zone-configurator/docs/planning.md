@@ -8,6 +8,9 @@
 
 ## Aktueller Umsetzungsschritt
 
+**Nächster notwendiger Template-Schritt:** [Typisierte Bestelleingaben und Ressourcenverknüpfungen](template-parameters-and-bindings.md), einschließlich Stage-Auswahl und Observability-Zugriff aus dem eigenen Projektnetz. Feste Einstellungen allein erfüllen den Self-Service-Vertrag nicht.
+
+
 **Korrektur des Rollenablaufs:** Neue Plattformkonfigurationen enthalten
 [Projekt-Template-Entwürfe](project-template-drafts.md) statt konkreter
 Anwendungsprojekte. Der Platform Engineer definiert sie; Instanzen entstehen
