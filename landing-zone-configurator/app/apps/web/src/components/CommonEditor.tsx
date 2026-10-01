@@ -21,7 +21,9 @@ import {
 } from "@lzc/domain";
 import { useState } from "react";
 import type { EditorStep } from "../navigation";
+import { ComponentPicker } from "./ComponentPicker";
 import { labelFor } from "./feature-labels";
+import { NetworkEditor } from "./NetworkEditor";
 import { StructuredField } from "./StructuredField";
 import { Topology } from "./Topology";
 
@@ -227,31 +229,6 @@ export function CommonEditor({
               übernommen.
             </p>
           )}
-          {step === "network" && (
-            <p>
-              Verwende entweder ein gemeinsames Netzwerkmodell oder regionale
-              Netzwerke. Innerhalb einer Region kannst du mehrere Bereiche für
-              Corporate-Projekte anlegen. Referenzierte Bereiche lassen sich
-              erst nach Umzuordnung ihrer Projekte und Dienste entfernen.
-            </p>
-          )}
-          {step === "network" &&
-            objectValue(values.connectivity).network_area != null && (
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => {
-                  const network = { ...objectValue(values.connectivity) };
-                  network.network_areas = {
-                    default: network.network_area as JsonValue,
-                  };
-                  delete network.network_area;
-                  update("connectivity", network);
-                }}
-              >
-                Mehrere Netzwerkbereiche verwalten
-              </button>
-            )}
           {step === "platform" && (
             <p>
               Observability stellt zentrales Monitoring bereit. Die separate
@@ -460,6 +437,67 @@ export function CommonEditor({
                         </>
                       )}
                     </div>
+                    {project.key && (
+                      <fieldset className="project-services">
+                        <legend>
+                          Automatisch bereitgestellte Projektdienste
+                        </legend>
+                        <div className="field">
+                          <label htmlFor={`${prefix}-secretsmanager`}>
+                            Secrets Manager bereitstellen
+                          </label>
+                          <select
+                            id={`${prefix}-secretsmanager`}
+                            value={String(
+                              settings.secretsmanager_enabled ?? true,
+                            )}
+                            onChange={(event) =>
+                              updateProject(project.id, {
+                                secretsmanager_enabled:
+                                  event.target.value === "true",
+                              })
+                            }
+                          >
+                            <option value="true">Eingeschaltet</option>
+                            <option value="false">Ausgeschaltet</option>
+                          </select>
+                          <p className="field-hint">
+                            Eigene Secrets-Manager-Instanz in diesem Projekt.
+                            Accelerator-Standard: eingeschaltet.
+                          </p>
+                        </div>
+                        <div className="field">
+                          <label htmlFor={`${prefix}-observability`}>
+                            Observability bereitstellen
+                          </label>
+                          <select
+                            id={`${prefix}-observability`}
+                            value={String(
+                              objectValue(settings.observability).enabled ??
+                                false,
+                            )}
+                            onChange={(event) =>
+                              updateProject(project.id, {
+                                observability: {
+                                  ...objectValue(settings.observability),
+                                  enabled: event.target.value === "true",
+                                },
+                              })
+                            }
+                          >
+                            <option value="true">Eingeschaltet</option>
+                            <option value="false">Ausgeschaltet</option>
+                          </select>
+                          <p className="field-hint">
+                            Eigene Observability-Instanz in diesem Projekt,
+                            zusätzlich zum zentralen Plattformdienst.
+                            Accelerator-Standard: ausgeschaltet. Plan und
+                            Zugriffsnetze stehen unter den weiteren
+                            Projektdiensten.
+                          </p>
+                        </div>
+                      </fieldset>
+                    )}
                     <StructuredField
                       name="project-details"
                       title="Weitere Projektdienste und Rechte"
@@ -480,6 +518,7 @@ export function CommonEditor({
                         "corporate",
                         "region",
                         "network_area_key",
+                        "secretsmanager_enabled",
                       ]}
                       onChange={(next) => {
                         if (project.key)
@@ -555,7 +594,18 @@ export function CommonEditor({
               </div>
             </>
           )}
-          {active?.inputs.map(root)}
+          {step === "network" ? (
+            <NetworkEditor values={values} onChange={update} />
+          ) : step === "platform" || step === "projects" ? (
+            <ComponentPicker
+              key={`${draft.id}-${step}`}
+              names={active?.inputs ?? []}
+              values={values}
+              render={root}
+            />
+          ) : (
+            active?.inputs.map(root)
+          )}
           {step === "operations" && (
             <div className="info-banner">
               <strong>Geschützte Deployment-Zugänge</strong>

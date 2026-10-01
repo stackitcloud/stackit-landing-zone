@@ -11,18 +11,18 @@ export const labels: Record<string, string> = {
   organization_auditors: "Organisationsauditoren",
   devops: "Git-Service",
   platform_kubernetes: "Plattform-Kubernetes",
-  observability: "Monitoring und Protokolle",
+  observability: "STACKIT Observability",
   audit_logs: "Audit-Protokollierung",
   federated_identity_providers: "Föderierte Identitäten",
-  connectivity: "Gemeinsames Netzwerk",
-  connectivity_regions: "Regionale Netzwerke",
+  connectivity: "Connectivity in der Standardregion",
+  connectivity_regions: "Connectivity je Region",
   firewall_config: "Firewall-Regeln",
   firewall_admin_username: "Firewall-Administrator",
   firewall_bootstrap: "Firewall-Zugang initialisieren",
   firewall_api_secret_version: "Version des Firewall-Zugangs",
   landing_zones: "Landing-Zone-Projekte",
   sandboxes: "Sandboxes",
-  landing_zone_namespace_services: "Namespace-Dienste",
+  landing_zone_namespace_services: "Kubernetes-Namespace-Dienste",
   acl: "Zugelassene Netze",
   action: "Aktion",
   aliases: "Adress- und Dienstgruppen",
@@ -120,13 +120,13 @@ export const labels: Record<string, string> = {
   minimum: "Minimale Anzahl",
   mode: "Modus",
   name: "Name",
-  namespace: "Namespace-Name",
+  namespace: "Kubernetes-Namespace-Name",
   naming_pattern: "Namenspräfix",
   nat_reflection: "Interne Weiterleitung über externe Adresse",
   network: "Cluster-Netzwerkanbindung",
-  network_area: "Einzelner Netzwerkbereich",
+  network_area: "STACKIT Network Area (SNA, Einzelkonfiguration)",
   network_area_key: "Netzwerkbereich",
-  network_areas: "Netzwerkbereiche",
+  network_areas: "STACKIT Network Areas (SNAs)",
   network_prefix_length: "Präfixlänge des Projektnetzes",
   node_pools: "Knotengruppen",
   operator: "Vergleichsoperation",
@@ -199,7 +199,7 @@ export const labels: Record<string, string> = {
   volume_performance_class: "Speicher-Leistungsklasse",
   volume_size: "Laufwerksgröße (GB)",
   volume_type: "Speichertyp",
-  vpn: "VPN-Gateway",
+  vpn: "STACKIT VPN",
   wan_ip: "Externe IP",
   wan_network_range: "Externes Netz (CIDR)",
   zone: "Verfügbarkeitszone",
@@ -212,10 +212,14 @@ export const hints: Record<string, string> = {
     "Präfix für Ressourcennamen. Bereits verwendete Kürzel nur bewusst ändern.",
   project_code:
     "Wird im Ressourcennamen verwendet. Die stabile Kennung ordnet dagegen die Konfiguration zu.",
+  connectivity:
+    "Connectivity bündelt SNAs, DNS, Firewalls und VPN in der unter Grundlagen gewählten Region. Alternativ Connectivity je Region verwenden; nicht beide Varianten gleichzeitig.",
+  network_area:
+    "Eine STACKIT Network Area (SNA) mit regionalen Adressbereichen. Ältere Einzelkonfiguration mit der Kennung default; über die Umstellung können mehrere SNAs verwaltet werden.",
   network_areas:
-    "Bereiche trennen beispielsweise Produktion, Entwicklung oder Mandanten. Corporate-Projekte referenzieren ihre Kennung.",
+    "SNAs trennen beispielsweise Produktion, Entwicklung oder Mandanten. Corporate-Projekte referenzieren ihre Kennung.",
   connectivity_regions:
-    "Als Regionskennung sind eu01 und eu02 unterstützt. Alle Projekte brauchen dann eine ausdrückliche Region.",
+    "Pro Region (eu01/eu02) können null bis mehrere SNAs konfiguriert werden. Landing-Zone-Projekte benötigen in dieser Variante eine ausdrückliche Region. Der Accelerator erstellt getrennte SNAs je Region; gleiche Kennungen verbinden Regionen nicht automatisch.",
   firewalls:
     "Die Kennungen müssen zu den Netzwerkbereichen passen. Richtlinien für mehrere Appliances sind noch eingeschränkt.",
   sna_enabled:
@@ -225,7 +229,7 @@ export const hints: Record<string, string> = {
   firewall_config:
     "Die aktuelle Policy-Anbindung unterstützt nur die einzelne nichtregionale Firewall. Issue #65 verfolgt mehrere Appliances.",
   landing_zone_namespace_services:
-    "Verwende die Kennung des zugehörigen Landing-Zone-Projekts. Regionale Clusterzuordnung ist noch eingeschränkt (#80).",
+    "Erstellt Kubernetes-Namespaces und zugehörige Dienste auf dem Plattform-Cluster für ausgewählte Landing-Zone-Projekte. Die Kennung wählt das Projekt. Regionale Clusterzuordnung ist noch eingeschränkt (#80).",
   rm_folders:
     "Die Rollen platform, landing_zones_public, landing_zones_corporate und sandboxes bestimmen die Projektzuordnung. Anzeigenamen sind frei wählbar.",
   ssh_public_key_path:

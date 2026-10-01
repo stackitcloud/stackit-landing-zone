@@ -838,3 +838,41 @@ bleibt serverseitig gesperrt. [Abnahme](common-editor.md#live-abnahme).
 - [x] 96 Anwendungstests, 22 Desktop-/Mobilprüfungen und 11 native OpenTofu-Variablentests erfolgreich.
 - [ ] Regionale Live-Kataloge für Produktpläne, Maschinentypen und Versionen anbinden.
 - [x] Veröffentlichung `10a6ec8` und Live-Abnahme dieses Nachbesserungsstands; Release 36752620332 erfolgreich.
+
+### Verbindliche Bedienprinzipien und Komponentenansicht
+
+Entscheidung: [Designprinzipien und VPN-Umsetzungsplan](editor-design-principles.md).
+Produkt-/Modulnamen, aktive Komponenten mit Hinzufügen-Katalog, progressive
+Detailanzeige und dokumentationsnahe Produktabläufe sind verbindliche Leitlinien.
+Die vollständige Feature-Abdeckung darf nicht zu einem dauerhaft aufgeklappten
+Variablenformular führen. Umsetzung und Abnahme werden im verlinkten Plan verfolgt.
+
+### Platform Landing Zone und Application Self-Service (Architekturdiskussion)
+
+Zielbild und offene Entscheidungen: [Platform-/Application-Architektur](platform-application-architecture.md).
+
+- [x] Plattformressourcen, veröffentlichte Application Templates und Instanzen fachlich getrennt.
+- [x] Zwei mandantenbezogene Personas vorgesehen; Configurator-Rechte, STACKIT-IAM und Git-Zugriff getrennt behandelt.
+- [x] Separate Accelerator-Roots, getrennte States und versionierter Plattformvertrag als Ziel eingeplant.
+- [x] Benutzer bestätigt unveränderliche veröffentlichte Versionen, ausdrückliche Upgrades und je Template vom Platform Engineer wählbare direkte oder genehmigungspflichtige Bereitstellung.
+- [ ] STACKIT-Login/OIDC-Client und delegierten Bootstrap-Zugriff technisch verifizieren.
+- [ ] Application-Owner-Git-Ablage, Team-Zuordnung und Templateumfang entscheiden.
+- [ ] Accelerator-Verträge und Bestandsmigration entwerfen; keine automatische State-Aufteilung.
+- [ ] Serverseitige Autorisierung und Templateinstanziierung vor Einführung der Rollenansichten implementieren.
+
+Die laufende Regions-/SNA- und VPN-Oberfläche wird unabhängig davon weitergebaut.
+Sie gehört perspektivisch zur Platform-Engineer-Sicht. Bis zur Umsetzung bleiben
+heutige Berechtigungen und die ausdrückliche Freigabepflicht für Kunden-Apply bestehen.
+
+### Regions-/SNA-Ansicht und VPN-Konfiguration: lokaler Prüfstand 2026-10-01
+
+- [x] Connectivity nach Regionen mit SNAs und optionalen Diensten dargestellt; bisherige Engine-Eingabeformen bleiben erhalten.
+- [x] Neue Regionen für regionale Konfigurationen hinzufügbar; Bestandsumstellung auf regionale Module nicht automatisiert.
+- [x] VPN-Assistent für Gateway, Routing, Verbindungen/Tunnel und Zusammenfassung.
+- [x] Grundlegende VPN-Pflichtangaben auch im gemeinsamen Validierungsmodell geprüft; keine Aussage über vollständige Provider-/Produktvalidierung.
+- [x] Grenze der VPN-Replikation auf alle SNAs gegen main geprüft und als Issue #85 erfasst.
+- [x] Lint/TypeScript/Build, 97 Anwendungstests und 24 Desktop-/Mobil-Browserfälle erfolgreich; mobile VPN-Ansicht visuell geprüft.
+- [ ] Veröffentlichung und Live-Abnahme; dieser Stand ist noch nicht deployed.
+
+VPN-PSKs, dynamische Produktkataloge, tatsächliche VPN-Ausführung und die neue
+Self-Service-Rollenarchitektur bleiben gesonderte Arbeitspakete. Kein Kunden-Apply.

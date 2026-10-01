@@ -95,3 +95,27 @@ it("repairs only new Standalone editor presets without changing the source/impor
   ).toBe("corporate");
   expect(readEditorDraft(source)).toEqual(source);
 });
+
+it("checks VPN prerequisites without treating an editor draft as deployable", () => {
+  let document = createCommonConfiguration("standalone", id);
+  document = editCommonInput(document, "connectivity_regions", {
+    eu01: {
+      vpn: {
+        availability_zones: { tunnel1: "", tunnel2: "" },
+        connections: {
+          office: {
+            tunnel1: { remote_address: "" },
+            tunnel2: { remote_address: "" },
+          },
+        },
+      },
+    },
+  });
+  const codes = assessCommonConfiguration(document).findings.map(
+    (finding) => finding.code,
+  );
+  expect(codes).toContain("vpn-needs-sna");
+  expect(codes).toContain("vpn-availability-zone");
+  expect(codes).toContain("vpn-peer-address");
+  expect(codes).toContain("vpn-routing-input");
+});

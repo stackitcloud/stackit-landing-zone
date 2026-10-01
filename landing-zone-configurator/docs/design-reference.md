@@ -103,3 +103,9 @@ des Logos. Screenshots liegen unter `.local/browser-tests`. Die integrierte
 Browser-Verbindung ist weiterhin defekt; deshalb wurden isolierte lokale
 Browser-Kontexte verwendet. Ein direkter visueller Vergleich mit der angemeldeten
 Portal-Projektstartseite und die vollständige Tastatur-/Kontrastprüfung stehen aus.
+
+## Fachliches Bedienkonzept
+
+Die [verbindlichen Editor-Designprinzipien](editor-design-principles.md) ergänzen
+die visuellen Portalreferenzen: offizielle Produktnamen, Komponentenübersicht,
+schrittweise Detailanzeige und dokumentationsnahe Abläufe, zunächst für STACKIT VPN.

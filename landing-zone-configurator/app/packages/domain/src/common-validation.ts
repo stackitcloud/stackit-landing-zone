@@ -118,6 +118,56 @@ export function assessCommonConfiguration(
           "Appliances und Netzwerkbereiche müssen dieselben Kennungen verwenden.",
         );
     }
+    if (network.vpn != null) {
+      const vpn = objectValue(network.vpn);
+      const routing = textValue(vpn.routing_type) || "ROUTE_BASED";
+      if (!keys.length)
+        add(
+          `${path}.vpn`,
+          "vpn-needs-sna",
+          "STACKIT VPN benötigt mindestens eine SNA in dieser Connectivity-Konfiguration.",
+        );
+      if (!["ROUTE_BASED", "POLICY_BASED"].includes(routing))
+        add(
+          `${path}.vpn.routing_type`,
+          "vpn-routing",
+          "Der Accelerator unterstützt nur Route-based oder Policy-based VPN.",
+        );
+      for (const tunnel of ["tunnel1", "tunnel2"])
+        if (!textValue(objectValue(vpn.availability_zones)[tunnel]).trim())
+          add(
+            `${path}.vpn.availability_zones.${tunnel}`,
+            "vpn-availability-zone",
+            "Für beide VPN-Tunnel muss eine Verfügbarkeitszone angegeben werden.",
+          );
+      for (const [connectionKey, raw] of Object.entries(
+        objectValue(vpn.connections),
+      )) {
+        const connection = objectValue(raw);
+        for (const tunnel of ["tunnel1", "tunnel2"])
+          if (!textValue(objectValue(connection[tunnel]).remote_address).trim())
+            add(
+              `${path}.vpn.connections.${connectionKey}.${tunnel}.remote_address`,
+              "vpn-peer-address",
+              "Für beide VPN-Tunnel muss die Gegenstellenadresse angegeben werden.",
+            );
+        for (const field of routing === "POLICY_BASED"
+          ? ["local_subnets", "remote_subnets"]
+          : ["static_routes"]) {
+          const entries = connection[field];
+          if (
+            !Array.isArray(entries) ||
+            !entries.length ||
+            entries.some((entry) => !textValue(entry).trim())
+          )
+            add(
+              `${path}.vpn.connections.${connectionKey}.${field}`,
+              "vpn-routing-input",
+              "Die VPN-Verbindung benötigt die zum Routingverfahren passenden Netze bzw. statischen Routen.",
+            );
+        }
+      }
+    }
     for (const [key, raw] of Object.entries(objectValue(network.dns_zones))) {
       if (
         !keys.includes(

@@ -110,3 +110,36 @@ und eigene Verantwortlichen-E-Mail-Adressen setzen, unter Projekte Public prüfe
 und speichern/exportieren. In einem vorhandenen betroffenen Entwurf Public einmal
 ausdrücklich wählen. Unter Plattform Kubernetes konfigurieren/deaktivieren; unter
 Netzwerk regionale Kennungen und Bereichsverweise auswählen.
+
+
+## Nächster Bedienstand: Komponenten statt vollständiger Feldliste
+
+Die [verbindlichen Designprinzipien](editor-design-principles.md) steuern die weitere
+Entwicklung. Die erste Umsetzung betrifft Plattform- und Kubernetes-Namespace-Dienste:
+Inaktive Komponenten sind über **Komponente hinzufügen** zugänglich, aktive
+Komponenten bleiben sichtbar. Das Öffnen und Schließen des Katalogs verändert den
+Export nicht. Eine leere Clusterliste ist inaktiv; ein nicht-null gesetzter
+Observability-Konfigurationsblock aktiviert dagegen den Dienst auch mit Defaults.
+
+Public-/Corporate-Projektkarten enthalten direkte Schalter für Secrets Manager und
+Observability. Sandboxes besitzen diese Root-Optionen nicht. Netzwerkbezeichnungen
+benennen Connectivity und SNA ausdrücklich; ein Hinweis erläutert automatisch
+erzeugte Routing-Tabellen. Ein vereinheitlichter Regions-/SNA-Editor und der geführte
+VPN-Ablauf sind noch offen und im Designplan separat aufgeführt.
+
+Dieser Abschnitt beschreibt den Arbeitsstand; die oben protokollierten Live-Abnahmen
+beziehen sich auf ihre ausdrücklich genannten Commits.
+
+
+## Regions-/SNA-Ansicht und VPN-Assistent (Arbeitsstand 2026-10-01)
+
+Netzwerk zeigt Connectivity als Regionskarten mit SNAs und optionalen DNS-,
+Firewall- und VPN-Komponenten. Bestehendes `connectivity` bleibt im bisherigen
+Engine-Format; neue leere Konfigurationen können explizite Regionen hinzufügen.
+Für bestehende Standardregion-Konfigurationen gibt es keine automatische Migration
+auf regionale Module. Beim Öffnen bleibt der Export unverändert.
+
+Der [VPN-Assistent](vpn-configuration-scope.md) bildet den Accelerator-Vertrag ab
+und prüft grundlegende Pflichtangaben. Geschützte Schlüssel, Live-Kataloge und
+Deployment-Ausführung fehlen weiterhin. Die neue [Self-Service-Architektur](platform-application-architecture.md)
+ist geplant; Rollen und Berechtigungen wurden dadurch noch nicht geändert.

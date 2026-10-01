@@ -40,6 +40,21 @@ test("common editor exposes all presets and preserves network assignments while 
   await expect(corporate.getByLabel("Projektart", { exact: true })).toHaveValue(
     "corporate",
   );
+  await corporate
+    .getByLabel("Secrets Manager bereitstellen", { exact: true })
+    .selectOption("false");
+  await corporate
+    .getByLabel("Observability bereitstellen", { exact: true })
+    .selectOption("true");
+  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
+  await page.getByRole("button", { name: "5 Projekte", exact: true }).click();
+  await expect(
+    corporate.getByLabel("Secrets Manager bereitstellen", { exact: true }),
+  ).toHaveValue("false");
+  await expect(
+    corporate.getByLabel("Observability bereitstellen", { exact: true }),
+  ).toHaveValue("true");
+
   await expect(
     corporate.getByLabel("Netzwerkbereich", { exact: true }),
   ).not.toHaveValue("");
@@ -94,6 +109,8 @@ test("shared configuration saves, reopens and restores in the account workspace"
   for (const project of Object.values(projects))
     objectValue(project).owner_email = "owner@stackit.cloud";
   document = editCommonInput(document, "landing_zones", projects);
+  document = editCommonInput(document, "landing_zone_namespace_services", {});
+  const originalValues = recordValues(document);
   let head = "a".repeat(40);
   let saves = 0;
   const fork = {
@@ -140,6 +157,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
     expect(body.head).toBe(head);
     document = readConfigurationRecord(body.document) as CommonConfiguration;
     expect(document.schemaVersion).toBe(3);
+    expect(recordValues(document)).toEqual(originalValues);
     expect(recordValues(document).connectivity_regions).toEqual(
       catalogue.templates.find(
         (template) => template.id === "hub-and-spoke-multi-region",
@@ -165,6 +183,22 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await page
     .getByLabel("Name der Konfiguration")
     .fill("Gemeinsamer Fork-Entwurf");
+  await page.getByRole("button", { name: "5 Projekte", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Komponente hinzufügen", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Hinzufügen: Kubernetes-Namespace-Dienste",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Konfiguration schließen: Kubernetes-Namespace-Dienste",
+      exact: true,
+    })
+    .click();
   await page.getByRole("button", { name: "7 Prüfen", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "tfvars herunterladen", exact: true }),
@@ -229,6 +263,21 @@ test("Standalone starts Public and offers regional choices and explicit platform
       exact: false,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Konfigurieren: Plattform-Kubernetes",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Komponente hinzufügen", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Hinzufügen: Plattform-Kubernetes",
+      exact: true,
+    })
+    .click();
   await page
     .getByRole("button", {
       name: "Konfigurieren: Plattform-Kubernetes",
@@ -261,26 +310,84 @@ test("Standalone starts Public and offers regional choices and explicit platform
     kubernetes.getByRole("button", { name: "Deaktivieren", exact: true }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: "Konfigurieren: Regionale Netzwerke",
-      exact: true,
-    })
-    .click();
-  await page
-    .locator("summary")
-    .filter({ hasText: "Regionale Netzwerke" })
-    .click();
-  const regions = page.getByLabel("Neue Kennung für Regionale Netzwerke", {
+  const regions = page.getByLabel("Weitere Connectivity-Region", {
     exact: true,
   });
   await expect(regions).toHaveJSProperty("tagName", "SELECT");
   await regions.selectOption("eu02");
   await page
-    .getByRole("button", {
-      name: "Eintrag zu Regionale Netzwerke hinzufügen",
-      exact: true,
-    })
+    .getByRole("button", { name: "Region hinzufügen", exact: true })
     .click();
+  await expect(
+    page.getByRole("region", { name: "Connectivity eu02", exact: true }),
+  ).toBeVisible();
   await expect(regions.locator('option[value="eu02"]')).toHaveCount(0);
+});
+
+test("regional Connectivity offers a guided VPN draft with both tunnels and missing-input feedback", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/templates/standalone");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
+  await page
+    .getByLabel("Weitere Connectivity-Region", { exact: true })
+    .selectOption("eu01");
+  await page
+    .getByRole("button", { name: "Region hinzufügen", exact: true })
+    .click();
+  const region = page.getByRole("region", {
+    name: "Connectivity eu01",
+    exact: true,
+  });
+  await region
+    .getByRole("button", { name: "Komponente hinzufügen in eu01", exact: true })
+    .click();
+  await region
+    .getByRole("button", { name: "Hinzufügen: STACKIT VPN", exact: true })
+    .click();
+  await region
+    .getByRole("button", { name: "STACKIT VPN hinzufügen", exact: true })
+    .click();
+  await expect(
+    region.getByText("Der Accelerator erstellt je SNA dieser Region", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await region
+    .getByRole("button", { name: "3. Verbindungen und Tunnel", exact: true })
+    .click();
+  await region.getByLabel("Kennung der neuen VPN-Verbindung").fill("office");
+  await region
+    .getByRole("button", { name: "VPN-Verbindung hinzufügen", exact: true })
+    .click();
+  const peers = region.getByLabel("Öffentliche IP-Adresse der Gegenstelle", {
+    exact: true,
+  });
+  await expect(peers).toHaveCount(2);
+  await peers.nth(0).fill("198.51.100.1");
+  await peers.nth(1).fill("198.51.100.2");
+  await region
+    .getByRole("button", { name: "4. Zusammenfassung", exact: true })
+    .click();
+  await expect(
+    region.getByText("Verfügbarkeitszone", { exact: false }).first(),
+  ).toBeVisible();
+  await region
+    .getByRole("button", { name: "3. Verbindungen und Tunnel", exact: true })
+    .click();
+  await expect(peers.nth(0)).toHaveValue("198.51.100.1");
+  await expect(peers.nth(1)).toHaveValue("198.51.100.2");
+  await expect(region.locator('input[type="password"]')).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("regional-vpn-editor.png"),
+    fullPage: true,
+  });
 });

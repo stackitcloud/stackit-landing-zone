@@ -69,3 +69,13 @@ kundenbezogene Konfigurationen gehören nicht in Issues.
 Ergänzung: #84 wurde beim gemeinsamen Import-/Export-Vertragstest entdeckt und
 auch auf `main` bestätigt. Ein nativer Variablen-Vertragstest erwartet diesen
 Validierungsfehler ausdrücklich, bis die Vorlage korrigiert und freigegeben ist.
+
+
+## VPN-Zuordnung bei mehreren SNAs
+
+[#85](https://github.com/stackitcloud/stackit-landing-zone/issues/85): VPN-Gateways
+und alle konfigurierten Verbindungen werden auf sämtliche SNAs eines Connectivity-
+Moduls repliziert. Eine selektive oder unterschiedliche Konfiguration je SNA fehlt.
+Gegen `main` unter `2bb7c755692674ad619ffc46a0a17a781f019106` geprüft; #64 betrifft
+einen anderen Sachverhalt (Inter-Region-Verbindungen). Der VPN-Assistent erklärt
+die tatsächliche Reichweite und bietet keinen unwirksamen SNA-Selektor an.
