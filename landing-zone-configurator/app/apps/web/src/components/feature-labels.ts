@@ -14,7 +14,7 @@ export const labels: Record<string, string> = {
   platform_kubernetes: "Plattform-Kubernetes",
   observability: "STACKIT Observability",
   audit_logs: "Audit-Protokollierung",
-  federated_identity_providers: "Föderierte Identitäten",
+  federated_identity_providers: "Service-Account-Föderation für CI/CD",
   connectivity: "Connectivity in der Standardregion",
   connectivity_regions: "Connectivity je Region",
   firewall_config: "Firewall-Regeln",
@@ -250,6 +250,14 @@ export function fieldDescription(
   path: string,
   name: string,
 ): string | undefined {
+  if (name === "organization_owners")
+    return "Vergibt die STACKIT-IAM-Rolle owner auf Organisationsebene an diese Personen. Das sind weitreichende Cloud-Berechtigungen, keine Platform-Engineer-Rollen im Configurator.";
+  if (name === "organization_auditors")
+    return "Vergibt die STACKIT-IAM-Rolle organization.auditor auf Organisationsebene. Dies ist keine Configurator-Mitgliedschaft.";
+  if (name === "owner_emails" && path.startsWith("rm_folders"))
+    return "Vergibt die STACKIT-IAM-Rolle owner auf diesem Ordner. Diese Cloud-Berechtigungen sind unabhängig von Rollen im Configurator.";
+  if (name === "reader_emails" && path.startsWith("rm_folders"))
+    return "Vergibt die STACKIT-IAM-Rolle auditor auf diesem Ordner. Es werden keine Configurator-Mitgliedschaften angelegt.";
   if (name === "observability" && path.startsWith("platform_kubernetes"))
     return "Der Accelerator erstellt derzeit eine zusätzliche STACKIT Observability-Instanz im Cluster-Projekt und verbindet sie mit dem SKE-Monitoring. Dies ist kein Dienst im Kubernetes-Cluster. Die Wiederverwendung einer bestehenden oder zentral definierten Instanz wird in Issue #88 ergänzt. Anwendungsmetriken benötigen eine eigene Anbindung.";
   if (path === "observability")

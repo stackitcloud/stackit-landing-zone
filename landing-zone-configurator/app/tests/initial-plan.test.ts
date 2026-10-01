@@ -8,7 +8,9 @@ import {
   initialPlanIssues,
   migrateCommonConfiguration,
   objectValue,
+  recordValues,
   savedDraft,
+  serializeTfvars,
   type Template,
 } from "@lzc/domain";
 import { expect, it } from "vitest";
@@ -105,4 +107,82 @@ it("accepts a new Standalone editor draft after filling identities and rejects i
   expect(
     initialPlanIssues(modified).some((i) => i.field.endsWith("description")),
   ).toBe(true);
+});
+
+it("plans reviewed governance subjects and parent folders without rewriting saved exports", () => {
+  let document = fixture();
+  document = editCommonInput(document, "organization_owners", [
+    "admin@stackit.cloud",
+  ]);
+  document = editCommonInput(document, "organization_auditors", [
+    "audit@stackit.cloud",
+  ]);
+  document = editCommonInput(document, "rm_folder_parent_id", randomUUID());
+  for (const description of [undefined, null, ""]) {
+    const folders = {
+      platform: {
+        name: "Platform",
+        owner_emails: ["folder-owner@stackit.cloud"],
+        reader_emails: ["folder-reader@stackit.cloud"],
+        ...(description === undefined ? {} : { description }),
+      },
+      landing_zones_public: {
+        name: "Public",
+        owner_emails: [],
+        reader_emails: [],
+      },
+      sandboxes: { name: "Sandbox", owner_emails: [], reader_emails: [] },
+    };
+    const updated = editCommonInput(document, "rm_folders", folders);
+    const before = serializeTfvars(recordValues(updated));
+    expect(initialPlanIssues(updated)).toEqual([]);
+    expect(serializeTfvars(recordValues(updated))).toBe(before);
+    expect(recordValues(updated).rm_folders).toEqual(folders);
+  }
+  expect(
+    initialPlanIssues(
+      editCommonInput(document, "rm_folder_parent_id", "not-a-uuid"),
+    ),
+  ).toContainEqual(
+    expect.objectContaining({
+      field: "rm_folder_parent_id",
+      message: expect.stringContaining("UUID"),
+    }),
+  );
+});
+it("explains ignored populated descriptions and keeps federation/network execution gated", () => {
+  const document = fixture();
+  const updated = editCommonInput(document, "rm_folders", {
+    platform: {
+      name: "Platform",
+      owner_emails: [],
+      reader_emails: [],
+      description: "Important text",
+    },
+  });
+  expect(initialPlanIssues(updated)).toContainEqual(
+    expect.objectContaining({
+      field: "rm_folders.platform.description",
+      message: expect.stringContaining("#82"),
+    }),
+  );
+  const federation = editCommonInput(document, "federated_identity_providers", [
+    {
+      name: "github",
+      issuer: "https://token.actions.githubusercontent.com",
+      assertions: [
+        {
+          item: "sub",
+          operator: "equals",
+          value: "repo:example/app:ref:refs/heads/main",
+        },
+      ],
+    },
+  ]);
+  expect(initialPlanIssues(federation)).toContainEqual(
+    expect.objectContaining({
+      field: "federated_identity_providers",
+      message: expect.stringContaining("federated_identity_providers"),
+    }),
+  );
 });

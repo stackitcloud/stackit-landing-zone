@@ -32,8 +32,12 @@ behalten ihre bisherigen Projekte. [Details und Bestandsschutz](project-template
 ## Gemeinsamer Editor und Ausführungsumfang
 
 Schema v3 wird für eine konservative Standalone-Teilmenge unterstützt: eu01,
-explizit Public-Projekte, Sandbox-Projekte, Grundeinstellungen und die bisherige
-Secrets-Manager-Option. Netzwerk, Kubernetes, Firewall und zusätzliche Plattform-
+Organisations-Owner/Auditor, Ordner samt Namen und Owner-/Leseberechtigungen,
+optional ein übergeordneter Ordner (UUID), explizit Public-Projekte in bestehenden
+Gesamtkonfigurationen, Sandbox-Projekte, Grundeinstellungen und die bisherige
+Secrets-Manager-Option. Leere oder nicht gesetzte Ordnerbeschreibungen sind zulässig;
+gefüllte Beschreibungen werden bis zur Behebung von #82 gezielt abgewiesen, weil der
+Accelerator sie nicht übernimmt. Netzwerk, Kubernetes, Firewall und zusätzliche Plattform-
 oder Projektdienste bleiben für diesen Runner gesperrt. Die Prüfung erfolgt anhand
 der effektiven Konfiguration, nicht anhand des Template-Namens. UI, Vorbereitung
 und Broker verwenden `initialPlanIssues`; vor Übergabe der Zugangsdaten an den
@@ -161,3 +165,31 @@ OpenTofu-Plan-Summary-Test und vier native Application-Root-Verträge mit 1.12.6
 Die Datenbankprüfung umfasst Legacy/v3 und die erneute Sperrprüfung im Broker.
 Die Live-App liefert das neue Bundle, Health 200 und anonym geschützte APIs 401.
 Dies ist keine persönliche Kunden-Plan-Abnahme und kein Kunden-Apply.
+
+## Governance-Qualifikation und Service-Account-Föderation (2026-10-01)
+
+Die Freigabe der Governance-Eingaben wird zusätzlich mit dem tatsächlich
+verwendeten Governance-Modul geprüft: `npm run test:plan` ruft den separaten
+`test-governance-contract.sh` auf. Quellhashes binden die Prüfung an den
+Accelerator-Pin. OpenTofu 1.12.6 plant mit Mock-Providern in bereinigter Umgebung,
+ohne Cloud-Credentials und ohne Apply. Geprüft werden Organisationsrollen
+`owner`/`organization.auditor`, Ordnerrollen `owner`/`auditor`, das Auslassen
+doppelter Ordnerzuweisungen für Organisations-Owner sowie beide Elternvarianten.
+Diese lokale Qualifikation ersetzt keinen Plan gegen die konkrete Kundenorganisation.
+
+**Service-Account-Föderation für CI/CD** ist eine optionale Editor-Komponente.
+Sie regelt, welche OIDC-Tokens externer Pipelines den Management-Service-Account
+nutzen dürfen; sie ist keine Benutzeranmeldung am Configurator.
+`issuer` ist der vertrauenswürdige Aussteller, `aud` die Token-Zielgruppe und
+`sub` beispielsweise das konkrete GitHub-Repository mit Branch. Bedingungen
+verwenden den vom gepinnten Provider unterstützten Vergleich `equals`; `aud`
+ist erforderlich. Die GitHub-Vorlage begrenzt `sub` auf einen angegebenen Branch
+und gilt nicht unverändert für Jobs mit GitHub Environments.
+
+Die Komponente richtet keinen Workflow oder Token-Austausch ein und entfernt
+keine bestehenden Schlüssel. Für den aktuellen Configurator-Runner und einen
+kleinen Erstbereitstellungsplan ist sie nicht erforderlich. Ihre Ausführung
+bleibt bis zur gesonderten Runner-Qualifikation gesperrt; Speichern und Bearbeiten
+der Konfiguration bleiben möglich.
+
+Quelle: [STACKIT Provider 0.114.0 – Service Account Federated Identity Provider](https://registry.terraform.io/providers/stackitcloud/stackit/0.114.0/docs/resources/service_account_federated_identity_provider).

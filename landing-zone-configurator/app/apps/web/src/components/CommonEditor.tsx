@@ -22,6 +22,7 @@ import {
 import { useState } from "react";
 import type { EditorStep } from "../navigation";
 import { ComponentPicker } from "./ComponentPicker";
+import { FederatedIdentityEditor } from "./FederatedIdentityEditor";
 import { labelFor } from "./feature-labels";
 import { NetworkEditor } from "./NetworkEditor";
 import { ProjectTemplates } from "./ProjectTemplates";
@@ -162,6 +163,13 @@ export function CommonEditor({
     </div>
   );
   const root = (name: string) => {
+    if (name === "federated_identity_providers")
+      return (
+        <FederatedIdentityEditor
+          value={values[name]}
+          onChange={(value) => update(name, value)}
+        />
+      );
     const definition = inputDefinition(name);
     return (
       <StructuredField
@@ -635,6 +643,18 @@ export function CommonEditor({
               values={values}
               render={root}
             />
+          ) : step === "operations" ? (
+            <>
+              <ComponentPicker
+                key={`${draft.id}-federation`}
+                names={["federated_identity_providers"]}
+                values={values}
+                render={root}
+              />
+              {active?.inputs
+                .filter((name) => name !== "federated_identity_providers")
+                .map(root)}
+            </>
           ) : (
             active?.inputs.map(root)
           )}

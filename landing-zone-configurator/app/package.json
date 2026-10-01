@@ -26,7 +26,7 @@
     "platform:check": "node --use-system-ca scripts/platform-check.mjs",
     "test:e2e": "playwright test",
     "test:database": "vitest run integration",
-    "test:plan": "npm run typecheck && bash scripts/test-plan-summary.sh && bash scripts/test-application-contract.sh"
+    "test:plan": "npm run typecheck && bash scripts/test-plan-summary.sh && bash scripts/test-application-contract.sh && bash scripts/test-governance-contract.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

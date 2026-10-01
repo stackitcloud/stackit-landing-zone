@@ -1,0 +1,13 @@
+{
+  "acceleratorRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+  "files": {
+    "src/main.tf": "0f4dd23238db63d48cf1cc14291c749b2ba454d634827283bbdc3c7bffe89b0f",
+    "src/variables.tf": "27d866f22fb5b40d87bc8b8c510ee716289785320d220cc886bf86ea4f3c05eb",
+    "src/modules/governance/1-rm-folders.tf": "f1ff318487c780914620a3b516f55b2f17f13af4dd38364937d9567c93cd865b",
+    "src/modules/governance/2-custom-roles.tf": "5cf14fc37fb6ad76d0914d38177c0b9bf7600606f2110827f85fded466a1c3d0",
+    "src/modules/governance/3-organization-roles.tf": "209a6456b0d627516c36c8cfcfe0cf8444840c8b62ac01d352cef8f0ba4391da",
+    "src/modules/governance/outputs.tf": "f16f31960dd81166cc1372ef9f2e6cb9f58044d7772785d8a31193e83b1f5b85",
+    "src/modules/governance/terraform.tf": "6407250ce406a1fe3085c8ca64e392f6116c2b13de96a468de031569e5a56220",
+    "src/modules/governance/variables.tf": "9dd60d5196c884c6957e21cf6e8c6d00e6b8e48a0d8c48abc0abbc428018b736"
+  }
+}

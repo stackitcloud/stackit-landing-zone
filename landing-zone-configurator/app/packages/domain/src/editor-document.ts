@@ -31,6 +31,7 @@ import {
   savedDraftSchema,
 } from "./document.js";
 import { assertBoundedJson, inputGroup } from "./features.js";
+import { federationIssues } from "./federation-validation.js";
 
 import {
   createPlatformDraftCopy,
@@ -127,7 +128,7 @@ export function editorIssues(draft: EditorDraft): DraftIssue[] {
       (item) => item.scope === "configuration" && item.severity === "error",
     )
     .map((item) => ({ field: item.path, message: item.message }));
-  issues.push(...projectTemplateIssues(draft));
+  issues.push(...projectTemplateIssues(draft), ...federationIssues(values));
   const email = (field: string, raw: unknown) => {
     if (
       typeof raw !== "string" ||

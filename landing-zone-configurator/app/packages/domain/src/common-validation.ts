@@ -240,7 +240,7 @@ export function assessCommonConfiguration(
         "folder-name-length",
         "Ordnernamen müssen 1–40 Zeichen lang sein.",
       );
-    if (folder.description != null)
+    if (folder.description != null && folder.description !== "")
       add(
         `rm_folders.${key}.description`,
         "ignored-folder-description",

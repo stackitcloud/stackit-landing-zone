@@ -15,6 +15,11 @@ später durch den Application Owner aus veröffentlichten Versionen. Alte
 Gesamtkonfigurationen bleiben unverändert, Übernahme nur als ausdrückliche Kopie.
 
 
+Governance-Pläne umfassen auch Organisationsrollen und Ordnerberechtigungen;
+leere Ordnerbeschreibungen blockieren nicht mehr. Die optionale
+Service-Account-Föderation erhält einen eigenen erklärten CI/CD-Editor.
+[Umfang und Qualifikation](plan-execution.md).
+
 Die MVP-Bestandsaufnahme trennt Editorabdeckung von Ausführungsfreigabe. Zunächst
 wird die geprüfte Standalone-Teilmenge des gemeinsamen Editors an den vorhandenen
 Erstbereitstellungsplan angebunden. Anschließend folgen dauerhafter Bootstrap-State

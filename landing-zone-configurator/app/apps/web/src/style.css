@@ -1011,3 +1011,20 @@ pre {
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+
+.federation-editor,
+.federation-rule {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.federation-rule {
+  padding-block: 16px;
+  border-block: 1px solid var(--border);
+}
+.federation-condition {
+  padding-block: 12px;
+}
+.federation-editor details {
+  margin-block: 12px;
+}

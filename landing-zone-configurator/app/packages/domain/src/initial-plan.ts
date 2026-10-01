@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { DraftIssue, JsonValue } from "./configuration.js";
 import { objectValue } from "./configuration.js";
 import {
@@ -22,11 +23,13 @@ export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
     "region",
     "labels",
     "rm_folders",
+    "organization_owners",
+    "organization_auditors",
+    "rm_folder_parent_id",
     "landing_zones",
     "sandboxes",
   ]);
   const disabledNull = new Set([
-    "rm_folder_parent_id",
     "devops",
     "observability",
     "audit_logs",
@@ -40,11 +43,7 @@ export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
     "platform_kubernetes",
     "landing_zone_namespace_services",
   ]);
-  const disabledLists = new Set([
-    "organization_owners",
-    "organization_auditors",
-    "federated_identity_providers",
-  ]);
+  const disabledLists = new Set(["federated_identity_providers"]);
   for (const [key, value] of Object.entries(values)) {
     if (roots.has(key)) continue;
     if (disabledNull.has(key) && value === null) continue;
@@ -60,9 +59,17 @@ export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
       continue;
     blocked(
       key,
-      "Dieser Baustein ist für Erstbereitstellungspläne noch nicht freigegeben. Unterstützt werden derzeit einfache Public- und Sandbox-Projekte ohne zusätzliche Plattform-, Netzwerk- oder Kubernetes-Komponenten.",
+      `„${key}“ ist noch nicht für Erstbereitstellungspläne freigegeben. Deaktiviere diese Komponente für einen reinen Plattform-/Governance-Plan oder warte auf die zugehörige Runner-Unterstützung. Die Konfiguration kann unverändert gespeichert bleiben.`,
     );
   }
+  if (
+    values.rm_folder_parent_id != null &&
+    !z.uuid().safeParse(values.rm_folder_parent_id).success
+  )
+    blocked(
+      "rm_folder_parent_id",
+      "Bitte die UUID des übergeordneten STACKIT-Ordners angeben oder Standard verwenden, um unter der Organisation anzulegen.",
+    );
   if ((values.region ?? "eu01") !== "eu01")
     blocked(
       "region",
@@ -116,7 +123,14 @@ export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
       "name",
       "owner_emails",
       "reader_emails",
+      "description",
     ]);
+    const description = objectValue(folder).description;
+    if (description != null && description !== "")
+      blocked(
+        `rm_folders.${key}.description`,
+        `Die Beschreibung für Ordner „${key}“ wird vom aktuellen Accelerator nicht übernommen (Issue #82). Leere die Beschreibung bzw. verwende Standard; Name und Berechtigungen können geplant werden.`,
+      );
   }
   if (Array.isArray(values.sandboxes))
     values.sandboxes.forEach((sandbox, index) => {

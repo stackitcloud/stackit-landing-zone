@@ -28,7 +28,7 @@ Nachweis der STACKIT-Organisation und des Projektverantwortlichen ist es nicht.
 | Login / GitHub | Persönliche GitHub-Verbindung, interne Benutzeridentität, Forks, atomare JSON+tfvars-Ablage | GitHub bleibt Connector; STACKIT-OIDC-Ticket offen |
 | Editor | Gemeinsames Schema v3, Module, Regionen/SNAs, VPN-Assistent, Graph, Produktkataloge | Fehlende Kataloganbindungen nach Bedarf; Editorumfang ist keine Ausführungsfreigabe |
 | Zugänge | Persönliche Secret-Ablage, Organisationszugriffstest, unveränderliche Vorbereitung | Organisationsgebundene Credential-Nutzung und verifizierte menschliche Identität |
-| Plan | Isolierter CF-Task aus vorab gestagtem Droplet, gepinnter Code, Status und aggregiertes Ergebnis | Neuer Editor zunächst nur konservative Standalone-Teilmenge; echter persönlicher Kunden-Plan noch nicht abgenommen |
+| Plan | Isolierter CF-Task aus vorab gestagtem Droplet, gepinnter Code, Status und aggregiertes Ergebnis | Neuer Editor: Governance inklusive Organisations-/Ordnerrechten und konservative Standalone-Teilmenge; echter persönlicher Kunden-Plan noch nicht abgenommen |
 | Apply / State | Bootstrap-Lebenszyklus beschrieben | Dauerhafter Initial-State, gespeicherter freizugebender Plan, Apply, Migration, Folgeplan und Recovery |
 | Organisationen | Rollen, Einladungen, Mitgliederverwaltung, Arbeitsbereichswechsel, Archivierung leerer Entwürfe | Organisationen sind **unverifiziert**; Ausführung dort ist absichtlich gesperrt |
 | Application-Self-Service | Architektur und isolierter Compiler/Root als Prototyp | Veröffentlichung, Katalog, Plattformvertrag, Instanzen, Ausführung und Upgrades |
@@ -74,6 +74,8 @@ tenantgebundene Veröffentlichung oder Application-Owner-Bestellung.
 
 - [x] Ist-Zustand anhand produktiver Aufrufer und Tests geprüft; offene Fähigkeiten als #89–#95 erfasst.
 - [x] Alle 17 vorhandenen Accelerator-Issues nach Wichtigkeit und Aufwand eingeordnet; bestehende Labels erhalten.
+- [x] Governance-Freigabe für Organisationsrollen und Ordner ergänzt, gegen das gepinnte Modul mit nativen OpenTofu-Mockplänen geprüft. Null/leere Beschreibungen blockieren nicht; befüllte Beschreibungen bleiben bis #82 gesperrt.
+- [x] Optionalen Service-Account-Föderationseditor für CI/CD mit erklärten Claims und exakter GitHub-Vorlage ergänzt; Ausführung weiterhin separat gesperrt.
 - [x] Standalone-v3-Planpfad implementiert: gemeinsamer Datensatz für Vorbereitung/Broker, strukturelle Freigabe statt Template-Namen.
 - [x] Frontend verwendet dieselben Ausführungskriterien und zeigt Sperrgründe.
 - [x] Einladungslinks bei bereits geöffneter App und blockiertem Browser-Speicher robuster verarbeitet.
