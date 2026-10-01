@@ -344,7 +344,7 @@ function App() {
           </div>
           {view === "organisation" && (
             <Organisation
-              key={workspaceKey(session) ?? "guest"}
+              key={`organisation:${workspaceKey(session) ?? "guest"}`}
               session={session}
               beforeSwitch={() => {
                 if (
@@ -376,7 +376,9 @@ function App() {
             </section>
           )}
           {platformAccess && (
-            <CloudCatalogueProvider key={workspaceKey(session) ?? "guest"}>
+            <CloudCatalogueProvider
+              key={`catalogues:${workspaceKey(session) ?? "guest"}`}
+            >
               {!organisationWorkspace && view === "editor" && (
                 <CloudCataloguePanel session={session} />
               )}

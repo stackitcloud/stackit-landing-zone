@@ -51,7 +51,7 @@ for (const manager of [true, false]) {
         },
       }),
     );
-    await page.goto("/");
+    await page.goto(manager ? "/organisation" : "/");
     await expect(
       page.getByText("@pilot", { exact: true }).first(),
     ).toBeVisible();
@@ -71,12 +71,51 @@ for (const manager of [true, false]) {
       page.getByRole("heading", { name: "Mitglieder in Pilot" }),
     ).toBeVisible();
     await expect(
+      page.getByRole("heading", {
+        name: "Anmeldung erforderlich",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await expect(
       page.getByText(/Zuordnung noch nicht verifiziert/),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Deployments", exact: true }),
     ).toHaveCount(0);
     if (manager) {
+      await page
+        .getByRole("button", { name: "GitHub-Forks", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "GitHub-Forks", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Arbeitsbereiche", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", {
+          name: "Anmeldung erforderlich",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Templates 8", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "Arbeitsbereiche", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", {
+          name: "Anmeldung erforderlich",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Organisation & Mitglieder", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "Mitglieder in Pilot" }),
+      ).toBeVisible();
       await expect(
         page.getByLabel("Persönliche Benutzerkennung", { exact: true }),
       ).toHaveCount(0);
