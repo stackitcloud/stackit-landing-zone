@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   type ApplicationInstance,
   applicationInstanceSchema,
 } from "@lzc/contracts";
 import {
+  applicationAcceleratorRevisionSchema,
   applicationOrderSchema,
   applicationPublicationSchema,
   assertBoundedJson,
@@ -13,7 +14,6 @@ import {
   platformContractSchema,
   publishedProjectTemplateSchema,
   resolveApplicationOrder,
-  supportedAcceleratorRevision,
   validateApplicationPublication,
 } from "@lzc/domain";
 import type pg from "pg";
@@ -313,7 +313,7 @@ export class Applications {
         [
           template.id,
           JSON.stringify(template),
-          supportedAcceleratorRevision,
+          binding.acceleratorRevision,
           binding.platformRevision ?? null,
           binding.targetKey ?? null,
           binding.deploymentPolicy,
@@ -334,7 +334,7 @@ export class Applications {
           template.id,
           (latest.rows[0]?.version ?? 0) + 1,
           session.userId,
-          supportedAcceleratorRevision,
+          binding.acceleratorRevision,
           JSON.stringify(template),
           binding.platformRevision ?? null,
           binding.targetKey ?? null,
@@ -460,131 +460,221 @@ export class Applications {
 
   preparePlanInput(session: Session, instanceId: string) {
     const id = z.uuid().parse(instanceId);
+    return this.work(session, "order", (client) =>
+      this.planInput(client, session, id),
+    );
+  }
+
+  prepareJob(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    const request = z
+      .strictObject({ idempotencyKey: z.uuid(), confirmPlan: z.literal(true) })
+      .parse(input);
     return this.work(session, "order", async (client) => {
-      const instances = await client.query<InstanceRow>(
-        "SELECT * FROM lzc.application_instances WHERE id=$1 AND requested_by=$2",
-        [id, session.userId],
+      await client.query(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+        [
+          `application-job:${session.tenantId}:${session.userId}:${request.idempotencyKey}`,
+        ],
       );
-      const row = instances.rows[0];
-      if (!row)
-        throw new ApplicationError(404, "application_instance_not_found");
-      const versions = await client.query<VersionRow>(
-        "SELECT * FROM lzc.application_template_versions WHERE id=$1",
-        [row.version_id],
-      );
-      const published = versions.rows[0];
-      if (!published?.platform_revision || !published.target_key)
-        throw new ApplicationError(
-          409,
-          "application_platform_contract_required",
-        );
-      if (row.deployment_policy !== published.deployment_policy)
-        throw new ApplicationError(409, "application_policy_mismatch");
-      const identity = (
-        await client.query<{
-          email: string;
-          organization_id: string;
-          role: "platform-engineer" | "application-owner";
-        }>(
-          "SELECT i.email,t.organization_id,CASE WHEN 'platform-engineer'=ANY(m.product_roles) THEN 'platform-engineer' ELSE 'application-owner' END AS role FROM lzc.stackit_identities i JOIN lzc.memberships m ON m.user_id=i.user_id AND m.tenant_id=$2 JOIN lzc.tenants t ON t.id=m.tenant_id AND t.organization_id IS NOT NULL AND t.archived_at IS NULL WHERE i.user_id=$1 AND i.issuer='https://accounts.stackit.cloud' AND i.revoked_at IS NULL AND i.valid_until>now()",
-          [session.userId, session.tenantId],
+      const prepared = await this.planInput(client, session, id);
+      if (
+        prepared.plan.acceleratorRevision !==
+        "4d15d7870afa323badd93559d8b37c5a8d138dcf"
+      )
+        throw new ApplicationError(409, "application_runner_revision_required");
+      const bindingHash = createHash("sha256")
+        .update(JSON.stringify(prepared.plan))
+        .digest("hex");
+      type JobRow = {
+        id: string;
+        instance_id: string;
+        binding_sha256: string;
+        expires_at: Date;
+        revoked_at: Date | null;
+      };
+      const existing = (
+        await client.query<JobRow>(
+          "SELECT j.*,g.revoked_at FROM lzc.application_jobs j JOIN lzc.application_job_grants g ON g.job_id=j.id WHERE j.tenant_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3",
+          [session.tenantId, session.userId, request.idempotencyKey],
         )
       ).rows[0];
-      if (!identity)
-        throw new ApplicationError(
-          403,
-          "verified_application_identity_required",
-        );
-      if (row.resolved_settings.owner_email !== identity.email)
-        throw new ApplicationError(409, "application_owner_identity_changed");
-      const contracts = await client.query<ContractRow>(
-        "SELECT * FROM lzc.application_platform_contracts WHERE revision=$1",
-        [published.platform_revision],
-      );
-      const approved = contracts.rows[0];
-      if (!approved)
-        throw new ApplicationError(
-          409,
-          "application_platform_contract_required",
-        );
-      const template = version(published).template;
-      const resolved = resolveApplicationOrder(
-        version(published),
-        {
-          versionId: published.id,
-          idempotencyKey: row.idempotency_key,
-          name: row.name,
-          parameters: row.parameters,
-        },
-        { verifiedStackitEmail: identity.email },
-      );
-      if (resolved.resolution.qualificationBlockers.length)
-        throw new ApplicationError(409, "application_parameters_not_qualified");
-      const settings = resolved.resolution.settings;
-      const observability = objectValue(settings.observability);
       if (
-        template.kind !== "public" ||
-        settings.network_enabled !== true ||
-        observability.enabled === true ||
-        Object.keys(template.namespaceServices ?? {}).length
+        existing &&
+        (existing.instance_id !== id || existing.binding_sha256 !== bindingHash)
       )
-        throw new ApplicationError(409, "application_plan_scope_not_supported");
-      const plan = compileApplicationPlan({
-        platform: contract(approved).document,
-        template: {
-          schema_version: 2,
-          tenant_id: session.tenantId,
-          id: `template-${template.id}`,
-          version: published.version,
-          status: "published",
-          accelerator_revision: published.accelerator_revision,
-          platform_revision: published.platform_revision,
-          target_keys: [published.target_key],
-          apply_policy: published.deployment_policy,
-          env: settings.env ?? "dev",
-          network_enabled: settings.network_enabled,
-          network_prefix_length: settings.network_prefix_length ?? null,
-          parameter_policy: template.parameterPolicy ?? {
-            schema_version: 1,
-            fields: {},
-          },
-          custom_roles: settings.custom_roles ?? [],
-          role_assignments: settings.role_assignments ?? [],
-          services: {
-            secretsmanager_enabled: settings.secretsmanager_enabled === true,
-            observability: {
-              enabled: false,
-              plan_name:
-                observability.plan_name ??
-                `Observability-Starter-${template.region.toUpperCase()}`,
-              acl: observability.acl ?? [],
-            },
-          },
-        },
-        context: {
-          tenant_id: session.tenantId,
-          user_id: session.userId,
-          instance_id: row.id,
-          role: identity.role,
-          verified_stackit_email: identity.email,
-          stackit_organization_id: identity.organization_id,
-          allowed_accelerator_revision: supportedAcceleratorRevision,
-        },
-        request: {
-          name: row.name,
-          target_key: published.target_key,
-          parameters: row.parameters,
-        },
-      });
+        throw new ApplicationError(409, "idempotency_conflict");
+      if (
+        existing &&
+        (existing.revoked_at || existing.expires_at.getTime() <= Date.now())
+      )
+        throw new ApplicationError(409, "application_job_grant_unavailable");
+      const job =
+        existing ??
+        (
+          await client.query<JobRow>(
+            "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at) SELECT $1,$2,$3,$4,$5,$6,'plan',$7::jsonb,$8,least($9::timestamptz,i.valid_until,now()+interval '25 minutes') FROM lzc.stackit_identities i WHERE i.user_id=$4 AND i.issuer='https://accounts.stackit.cloud' AND i.revoked_at IS NULL AND i.valid_until>now() RETURNING *",
+            [
+              randomUUID(),
+              session.tenantId,
+              id,
+              session.userId,
+              session.id,
+              request.idempotencyKey,
+              JSON.stringify(prepared.plan),
+              bindingHash,
+              session.expiresAt,
+            ],
+          )
+        ).rows[0];
+      if (!job)
+        throw new ApplicationError(403, "application_job_identity_unavailable");
       return {
-        kind: "application-plan-input" as const,
+        id: job.id,
+        instanceId: id,
+        status: "prepared" as const,
+        expiresAt: job.expires_at.toISOString(),
+        executionEnabled: false as const,
         cloudPlanExecuted: false as const,
-        requiresExplicitApplyApproval: true as const,
-        plan,
-        blockers: [
-          "Der freigegebene Runner unterstützt ausschließlich den initialen Plattform-Plan. Application-Ausführung und eigener State-Backend-Zugang sind noch nicht freigegeben.",
-        ],
       };
     });
+  }
+
+  revokeJobGrant(session: Session, jobId: string, input: unknown) {
+    const id = z.uuid().parse(jobId);
+    z.strictObject({ confirmCredentialGrantRevocation: z.literal(true) }).parse(
+      input,
+    );
+    return this.work(session, "order", async (client) => {
+      const grant = (
+        await client.query<{ job_id: string; revoked_at: Date }>(
+          "UPDATE lzc.application_job_grants SET revoked_at=coalesce(revoked_at,now()) WHERE job_id=$1 RETURNING job_id,revoked_at",
+          [id],
+        )
+      ).rows[0];
+      if (!grant)
+        throw new ApplicationError(404, "application_job_grant_not_found");
+      return { jobId: grant.job_id, revokedAt: grant.revoked_at.toISOString() };
+    });
+  }
+
+  private async planInput(client: pg.PoolClient, session: Session, id: string) {
+    const instances = await client.query<InstanceRow>(
+      "SELECT * FROM lzc.application_instances WHERE id=$1 AND requested_by=$2",
+      [id, session.userId],
+    );
+    const row = instances.rows[0];
+    if (!row) throw new ApplicationError(404, "application_instance_not_found");
+    const versions = await client.query<VersionRow>(
+      "SELECT * FROM lzc.application_template_versions WHERE id=$1",
+      [row.version_id],
+    );
+    const published = versions.rows[0];
+    if (!published?.platform_revision || !published.target_key)
+      throw new ApplicationError(409, "application_platform_contract_required");
+    if (row.deployment_policy !== published.deployment_policy)
+      throw new ApplicationError(409, "application_policy_mismatch");
+    const identity = (
+      await client.query<{
+        email: string;
+        organization_id: string;
+        role: "platform-engineer" | "application-owner";
+      }>(
+        "SELECT i.email,t.organization_id,CASE WHEN 'platform-engineer'=ANY(m.product_roles) THEN 'platform-engineer' ELSE 'application-owner' END AS role FROM lzc.stackit_identities i JOIN lzc.memberships m ON m.user_id=i.user_id AND m.tenant_id=$2 JOIN lzc.tenants t ON t.id=m.tenant_id AND t.organization_id IS NOT NULL AND t.archived_at IS NULL WHERE i.user_id=$1 AND i.issuer='https://accounts.stackit.cloud' AND i.revoked_at IS NULL AND i.valid_until>now()",
+        [session.userId, session.tenantId],
+      )
+    ).rows[0];
+    if (!identity)
+      throw new ApplicationError(403, "verified_application_identity_required");
+    if (row.resolved_settings.owner_email !== identity.email)
+      throw new ApplicationError(409, "application_owner_identity_changed");
+    const contracts = await client.query<ContractRow>(
+      "SELECT * FROM lzc.application_platform_contracts WHERE revision=$1",
+      [published.platform_revision],
+    );
+    const approved = contracts.rows[0];
+    if (!approved)
+      throw new ApplicationError(409, "application_platform_contract_required");
+    const template = version(published).template;
+    const resolved = resolveApplicationOrder(
+      version(published),
+      {
+        versionId: published.id,
+        idempotencyKey: row.idempotency_key,
+        name: row.name,
+        parameters: row.parameters,
+      },
+      { verifiedStackitEmail: identity.email },
+    );
+    if (resolved.resolution.qualificationBlockers.length)
+      throw new ApplicationError(409, "application_parameters_not_qualified");
+    const settings = resolved.resolution.settings;
+    const observability = objectValue(settings.observability);
+    if (
+      template.kind !== "public" ||
+      settings.network_enabled !== true ||
+      observability.enabled === true ||
+      Object.keys(template.namespaceServices ?? {}).length
+    )
+      throw new ApplicationError(409, "application_plan_scope_not_supported");
+    const plan = compileApplicationPlan({
+      platform: contract(approved).document,
+      template: {
+        schema_version: 2,
+        tenant_id: session.tenantId,
+        id: `template-${template.id}`,
+        version: published.version,
+        status: "published",
+        accelerator_revision: published.accelerator_revision,
+        platform_revision: published.platform_revision,
+        target_keys: [published.target_key],
+        apply_policy: published.deployment_policy,
+        env: settings.env ?? "dev",
+        network_enabled: settings.network_enabled,
+        network_prefix_length: settings.network_prefix_length ?? null,
+        parameter_policy: template.parameterPolicy ?? {
+          schema_version: 1,
+          fields: {},
+        },
+        custom_roles: settings.custom_roles ?? [],
+        role_assignments: settings.role_assignments ?? [],
+        services: {
+          secretsmanager_enabled: settings.secretsmanager_enabled === true,
+          observability: {
+            enabled: false,
+            plan_name:
+              observability.plan_name ??
+              `Observability-Starter-${template.region.toUpperCase()}`,
+            acl: observability.acl ?? [],
+          },
+        },
+      },
+      context: {
+        tenant_id: session.tenantId,
+        user_id: session.userId,
+        instance_id: row.id,
+        role: identity.role,
+        verified_stackit_email: identity.email,
+        stackit_organization_id: identity.organization_id,
+        allowed_accelerator_revision:
+          applicationAcceleratorRevisionSchema.parse(
+            published.accelerator_revision,
+          ),
+      },
+      request: {
+        name: row.name,
+        target_key: published.target_key,
+        parameters: row.parameters,
+      },
+    });
+    return {
+      kind: "application-plan-input" as const,
+      cloudPlanExecuted: false as const,
+      requiresExplicitApplyApproval: true as const,
+      plan,
+      blockers: [
+        "Der freigegebene Runner unterstützt ausschließlich den initialen Plattform-Plan. Application-Ausführung und eigener State-Backend-Zugang sind noch nicht freigegeben.",
+      ],
+    };
   }
 }

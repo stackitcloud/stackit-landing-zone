@@ -699,3 +699,37 @@ Die API gibt weiterhin keine Application-Ausfuehrung frei. Migrationen 021 bis
 Runner-Bindungen bleiben unveraendert. Keine Kunden-Credentials verwendet,
 kein Kunden-Plan/Apply, Push, Release oder Merge. Native Provider-Warnungen
 wegen veralteter Observability-Ausgabeattribute sind nicht Teil dieser Aenderung.
+
+## Application-Job-/Grant-Vorbereitung (2026-10-05, #93)
+
+Migration 026, Service und HTTP-Endpunkte fuer explizite idempotente Plan-
+Vorbereitung und Grant-Widerruf sind lokal implementiert. Expliziter Wechsel
+zum qualifizierten Application-Quellstand erzeugt eine neue Template-Version;
+Altversionen werden weder umgeschrieben noch zur Job-Ausfuehrung freigegeben.
+SQL leitet immutable Grant-Bindungen aus echten Sessions, Instanzen und
+PE-freigegebenen Vertraegen ab. Die App-Rolle erhaelt keinen Session-Tabellen-
+Leserechtsausbau und darf keine Grant-Bindungen direkt schreiben.
+
+Die vorhandene echte PostgreSQL-Vertrags-Fixture prueft jetzt zusaetzlich:
+neue/alte Quellversion und Publish-Replay, ungueltige Commits, ungepruefte
+Organisation, fehlende Bestaetigung oder Credential-Overrides, atomare Job-/Grant-
+Erzeugung, Ablaufgrenze, Retry, Fremdbesteller/Tenant-RLS, immutable Belege,
+Widerruf durch Besteller und Freigeber, nicht ruecksetzbaren Widerruf sowie
+echte Fastify-Session-/Origin-/CSRF-/Tenant- und Body-Grenzen. Die HTTP-Antwort
+enthaelt explizit keine Credentials und keine Ausfuehrungsfreigabe.
+
+```text
+canonical: PASS - exit_code: 0; 346 passed, 33 gated skipped; lint/types/build
+identity/application: PASS - exit_code: 0; 29 bestehende, erweiterte echte PG-Faelle
+platform-broker: PASS - exit_code: 0; 31 echte isolierte PG-Faelle unter Migration 026
+browser: NOT_RERUN - kein UI-Schritt; vorher 152 Desktop-/Mobilfaelle
+diagnostics: PASS - 0 Fehler in den vier geaenderten TypeScript-Dateien
+overall: NEEDS_SIGNOFF - prepared ist kein Dispatch/Cloud-Plan/Credential-Release
+```
+
+Logs: `/tmp/lzc-mvp-application-jobs-{check,pg,broker,types}.txt`.
+Testdatenbanken wurden separat erzeugt und wieder entfernt. Migrationen 021
+bis 026 sind nicht in der laufenden Kunden-API aktiviert; kein Neustart oder
+Runner-Paketwechsel, kein Kunden-Plan/Apply. Die native Ausfuehrung bleibt
+OpenTofu; `terraform fmt` wurde vorher nur fuer die Repository-Formatregel
+verwendet, nicht als separater Runtime-Kompatibilitaetsnachweis.

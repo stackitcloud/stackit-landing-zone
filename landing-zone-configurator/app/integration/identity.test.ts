@@ -1230,6 +1230,154 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         requiresExplicitApplyApproval: true,
         plan: { applyPolicy: "direct", executionEnabled: false },
       });
+      const jobRequest = { idempotencyKey: randomUUID(), confirmPlan: true };
+      await expect(
+        applications.prepareJob(owner, order.id, jobRequest),
+      ).rejects.toMatchObject({ code: "application_runner_revision_required" });
+      const applicationRevision = "4d15d7870afa323badd93559d8b37c5a8d138dcf";
+      const runnerVersion = await applications.publish(engineer, {
+        template,
+        ...binding,
+        acceleratorRevision: applicationRevision,
+      });
+      expect(runnerVersion.version).toBe(directVersion.version + 1);
+      expect(
+        (
+          await applications.publish(engineer, {
+            template,
+            ...binding,
+            acceleratorRevision: applicationRevision,
+          })
+        ).id,
+      ).toBe(runnerVersion.id);
+      expect(
+        (await applications.listTemplates(engineer)).find(
+          (item) => item.id === first.id,
+        )?.acceleratorRevision,
+      ).toBe("a256f6896d11134fdc351786f1be5eba4e56b2e2");
+      expect(() =>
+        applications.publish(engineer, {
+          template,
+          ...binding,
+          acceleratorRevision: "0".repeat(40),
+        }),
+      ).toThrow();
+      const jobOrder = await applications.order(owner, {
+        versionId: runnerVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Application job",
+        parameters: {},
+      });
+      await expect(
+        applications.prepareJob(owner, jobOrder.id, jobRequest),
+      ).rejects.toMatchObject({ code: "42501" });
+      await identities.save(engineer, {
+        ...proof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: {
+          id: organizationId,
+          name: "Approved platform",
+          permissions: ["organization.read", "organization.write"],
+          ownerPermissions: ["organization.read", "organization.write"],
+        },
+      });
+      await identities.bindOrganization(engineer, {
+        confirmOrganizationBinding: true,
+      });
+      expect(() =>
+        applications.prepareJob(owner, jobOrder.id, {
+          ...jobRequest,
+          confirmPlan: false,
+        }),
+      ).toThrow();
+      expect(() =>
+        applications.prepareJob(owner, jobOrder.id, {
+          ...jobRequest,
+          credentialProfileId: profileId,
+        }),
+      ).toThrow();
+      const job = await applications.prepareJob(owner, jobOrder.id, jobRequest);
+      expect(job).toMatchObject({
+        instanceId: jobOrder.id,
+        status: "prepared",
+        executionEnabled: false,
+        cloudPlanExecuted: false,
+      });
+      expect(
+        await applications.prepareJob(owner, jobOrder.id, jobRequest),
+      ).toEqual(job);
+      await expect(
+        applications.prepareJob(engineer, jobOrder.id, jobRequest),
+      ).rejects.toMatchObject({ status: 404 });
+      const grant = (
+        await withTenant(pool, owner, (client) =>
+          client.query(
+            "SELECT * FROM lzc.application_job_grants WHERE job_id=$1",
+            [job.id],
+          ),
+        )
+      ).rows[0];
+      expect(grant).toMatchObject({
+        owner_user_id: owner.userId,
+        instance_id: jobOrder.id,
+        version_id: runnerVersion.id,
+        platform_revision: approved.document.revision,
+        credential_profile_id: profileId,
+        credential_version: 1,
+        credential_key_id: "test-key",
+        accelerator_revision: applicationRevision,
+        state_key: jobOrder.stateKey,
+        operation: "plan",
+        revoked_at: null,
+      });
+      expect(new Date(job.expiresAt).getTime()).toBeLessThanOrEqual(
+        Date.now() + 300000,
+      );
+      expect(
+        (
+          await withTenant(pool, bob, (client) =>
+            client.query("SELECT * FROM lzc.application_job_grants"),
+          )
+        ).rows,
+      ).toEqual([]);
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_job_grants SELECT * FROM lzc.application_job_grants WHERE job_id=$1",
+            [job.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_job_grants SET credential_version=2 WHERE job_id=$1",
+          [job.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await expect(
+        migration.query("DELETE FROM lzc.application_jobs WHERE id=$1", [
+          job.id,
+        ]),
+      ).rejects.toMatchObject({ code: "55000" });
+      const revoked = await applications.revokeJobGrant(owner, job.id, {
+        confirmCredentialGrantRevocation: true,
+      });
+      expect(
+        await applications.revokeJobGrant(engineer, job.id, {
+          confirmCredentialGrantRevocation: true,
+        }),
+      ).toEqual(revoked);
+      await expect(
+        applications.prepareJob(owner, jobOrder.id, jobRequest),
+      ).rejects.toMatchObject({ code: "application_job_grant_unavailable" });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "UPDATE lzc.application_job_grants SET revoked_at=NULL WHERE job_id=$1",
+            [job.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
       await identities.revoke(owner);
       await expect(
         applications.preparePlanInput(owner, order.id),
@@ -1298,6 +1446,137 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             stateKey: engineerOrder.stateKey,
           },
         });
+        const httpOrder = await applications.order(engineer, {
+          versionId: runnerVersion.id,
+          idempotencyKey: randomUUID(),
+          name: "HTTP prepared job",
+          parameters: {},
+        });
+        const jobUrl = `/api/v1/applications/instances/${httpOrder.id}/jobs`;
+        const httpJobRequest = {
+          idempotencyKey: randomUUID(),
+          confirmPlan: true,
+        };
+        for (const boundary of [
+          { headers: {}, status: 401 },
+          { headers: { ...headers, "x-lzc-csrf": "wrong" }, status: 403 },
+          {
+            headers: { ...headers, origin: "https://foreign.example" },
+            status: 403,
+          },
+          {
+            headers: { ...headers, "x-lzc-tenant": randomUUID() },
+            status: 403,
+          },
+        ]) {
+          expect(
+            (
+              await api.inject({
+                method: "POST",
+                url: jobUrl,
+                headers: boundary.headers,
+                payload: httpJobRequest,
+              })
+            ).statusCode,
+          ).toBe(boundary.status);
+        }
+        for (const payload of [
+          {},
+          { ...httpJobRequest, confirmPlan: false },
+          { ...httpJobRequest, operation: "apply" },
+          { ...httpJobRequest, credentialProfileId: profileId },
+        ]) {
+          expect(
+            (
+              await api.inject({
+                method: "POST",
+                url: jobUrl,
+                headers,
+                payload,
+              })
+            ).statusCode,
+          ).toBe(400);
+        }
+        const createdJob = await api.inject({
+          method: "POST",
+          url: jobUrl,
+          headers,
+          payload: httpJobRequest,
+        });
+        expect(createdJob.statusCode).toBe(200);
+        expect(createdJob.json()).toMatchObject({
+          instanceId: httpOrder.id,
+          status: "prepared",
+          executionEnabled: false,
+          cloudPlanExecuted: false,
+        });
+        expect(Object.keys(createdJob.json()).sort()).toEqual([
+          "cloudPlanExecuted",
+          "executionEnabled",
+          "expiresAt",
+          "id",
+          "instanceId",
+          "status",
+        ]);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: jobUrl,
+              headers,
+              payload: httpJobRequest,
+            })
+          ).json(),
+        ).toEqual(createdJob.json());
+        const revokeUrl = `/api/v1/applications/jobs/${createdJob.json().id}/credential-grant/revoke`;
+        const revokeRequest = { confirmCredentialGrantRevocation: true };
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: revokeUrl,
+              headers: { ...headers, "x-lzc-csrf": "wrong" },
+              payload: revokeRequest,
+            })
+          ).statusCode,
+        ).toBe(403);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: revokeUrl,
+              headers,
+              payload: {},
+            })
+          ).statusCode,
+        ).toBe(400);
+        const revokedJob = await api.inject({
+          method: "POST",
+          url: revokeUrl,
+          headers,
+          payload: revokeRequest,
+        });
+        expect(revokedJob.statusCode).toBe(200);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: revokeUrl,
+              headers,
+              payload: revokeRequest,
+            })
+          ).json(),
+        ).toEqual(revokedJob.json());
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: jobUrl,
+              headers,
+              payload: httpJobRequest,
+            })
+          ).statusCode,
+        ).toBe(409);
         expect(
           (
             await api.inject({

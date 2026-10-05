@@ -6,9 +6,17 @@ import {
 } from "./project-templates.js";
 import { resolveTemplateParameters } from "./template-parameters.js";
 
+export const applicationAcceleratorRevisionSchema = z.enum([
+  "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+  "4d15d7870afa323badd93559d8b37c5a8d138dcf",
+]);
+
 export const applicationPublicationSchema = z
   .strictObject({
     template: projectTemplateDraftSchema,
+    acceleratorRevision: applicationAcceleratorRevisionSchema.default(
+      "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+    ),
     deploymentPolicy: z
       .enum(["approval-required", "direct"])
       .default("approval-required"),

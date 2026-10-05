@@ -21,7 +21,8 @@ export function registerApplications(
     | "listPlatformContracts"
     | "approvePlatformContract"
     | "preparePlanInput"
-  >,
+  > &
+    Partial<Pick<Applications, "prepareJob" | "revokeJobGrant">>,
 ) {
   const sessions = new WeakMap<FastifyRequest, Session>();
   app.register(async (routes) => {
@@ -113,6 +114,34 @@ export function registerApplications(
         const { id } = z.object({ id: z.uuid() }).parse(request.params);
         z.strictObject({}).parse(request.body);
         return applications.preparePlanInput(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/instances/:id/jobs",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.prepareJob)
+          return reply
+            .code(503)
+            .send({ error: "application_jobs_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.prepareJob(session, id, request.body);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/credential-grant/revoke",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.revokeJobGrant)
+          return reply
+            .code(503)
+            .send({ error: "application_jobs_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.revokeJobGrant(session, id, request.body);
       },
     );
   });

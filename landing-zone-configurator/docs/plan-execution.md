@@ -415,3 +415,45 @@ neue Template-Veroeffentlichung; gespeicherte Versionen/Plans werden nicht
 umgebunden. Kein aktives Paket wurde ausgetauscht und keine Kundenoperation
 gestartet. Die Worker-Tests verwenden eine kontrollierte Engine, waehrend
 Paket-Init/Validate und die nativen Mock-Vertragstests echtes OpenTofu verwenden.
+
+## Vorbereitete Application-Jobs und Grant-Belege (2026-10-05)
+
+Der Begriff Quell-Pin bezeichnet eine feste Git-Commit-ID des Accelerator-
+Terraform-Codes, keine Zugangsdaten oder persoenliche PIN. Neue Publikationen
+koennen `acceleratorRevision` ausdruecklich auf den qualifizierten Application-
+Commit `4d15d7870afa323badd93559d8b37c5a8d138dcf` setzen. Dies erzeugt eine neue
+immutable Template-Version; der bisherige Default und alle Altversionen bleiben
+unveraendert. Andere Commits werden abgewiesen. Die API-Pin-Auswahl ist noch
+nicht als zusaetzlicher UI-Publikationsschritt angebunden.
+
+Migration 026 speichert Jobs mit Status `prepared` und SQL-abgeleitete Grant-
+Belege. `POST /api/v1/applications/instances/{id}/jobs` verlangt genau
+`{"idempotencyKey":"<uuid>","confirmPlan":true}`. Session, aktueller Tenant,
+Origin und CSRF werden geprueft; Rolle, verifizierte Bestelleridentitaet,
+Eigentum, Version/Policy und Compiler-Eingaben werden erneut aus den gespeicherten
+Datensaetzen gelesen. Nur der qualifizierte Application-Quellstand wird angenommen.
+Ein transaktionaler Lock serialisiert den Idempotenzschluessel. Wiederholung
+liefert denselben gueltigen Auftrag; abgelaufener oder widerrufener Grant wird
+nicht durch Retry erneuert. Ein frischer Auftrag braucht einen neuen Schluessel
+und eine erneute ausdrueckliche Bestaetigung.
+
+Der SQL-Trigger prueft die echte Session, die verifizierte Organisation,
+aktuelle PE-Mitgliedschaft des Vertragsfreigebers und aktuelle Bestelleridentitaet.
+Er leitet Organisation, Profil-/Secret-Version/Key-ID, Besteller, Instanz,
+Template-/Vertragsversion, Quellstand, Compiler-Hash, Operation und State-Key
+ab. Der Ablauf ist durch echte Session, Human-Token und maximal 25 Minuten
+begrenzt. Die App-Rolle darf keine Grants direkt einfuegen oder Bindungen
+veraendern; Tenant-/Owner-RLS und unveraenderliche Belege bleiben erzwungen.
+
+`POST /api/v1/applications/jobs/{id}/credential-grant/revoke` verlangt genau
+`{"confirmCredentialGrantRevocation":true}` mit denselben HTTP-Grenzen.
+Besteller oder vertragsfreigebender aktueller PE duerfen innerhalb des Tenants
+widerrufen. Wiederholung liefert denselben Zeitbeleg; Widerruf kann nicht
+zurueckgesetzt werden.
+
+Die Job-Antwort enthaelt nur ID, Instanz, Status und Ablauf sowie
+`executionEnabled:false` und `cloudPlanExecuted:false`. Keine Credentials,
+kein Ticket und kein Runner-Start. Ein Grant-Beleg ist noch keine einmalige
+Credential-Uebergabe, State-Datei oder Cloud-Operation. Die einmalige Ausgabe
+unter erneuter Autoritaets-/Profilpruefung und der echte instanzgebundene
+S3-State-/Lock-Zugang muessen vor Dispatch weiter integriert werden.
