@@ -19,6 +19,8 @@ import { promisify } from "node:util";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   acceleratorCommit,
+  applicationAcceleratorCommit,
+  applicationProviderLockHash,
   brokerOrigin,
   localBrokerOrigin,
   providerLockHash,
@@ -77,6 +79,29 @@ async function fixture(
   directories.push(root);
   await mkdir(join(root, "tools"));
   await mkdir(join(root, "accelerator"));
+  await mkdir(join(root, "application-src/application"), { recursive: true });
+  await mkdir(join(root, "application-src/modules/landing-zone"), {
+    recursive: true,
+  });
+  await writeFile(
+    join(root, "application-src/modules/landing-zone/main.tf"),
+    "",
+  );
+  await writeFile(join(root, "accelerator/root-marker"), "platform");
+  await writeFile(
+    join(root, "application-src/application/root-marker"),
+    "application",
+  );
+  await copyFile(
+    join(runner, "application.lock.hcl"),
+    join(root, "application-src/application/.terraform.lock.hcl"),
+  );
+  await copyFile(
+    fileURLToPath(
+      new URL("../../../src/application/backend.tf", import.meta.url),
+    ),
+    join(root, "application-src/application/backend.tf"),
+  );
   await copyFile(
     join(runner, "accelerator.lock.hcl"),
     join(root, "accelerator/.terraform.lock.hcl"),
@@ -105,6 +130,8 @@ const http = Boolean(env.TF_HTTP_ADDRESS);
 const s3 = env.LZC_BACKEND_KIND === "s3";
 const backend = s3 ? JSON.parse(fs.readFileSync("backend.tf.json", "utf8")) : null;
 fs.appendFileSync(${JSON.stringify(callsPath)}, JSON.stringify({args, work: process.cwd(), http, s3, backend,
+  rootMarker: fs.readFileSync("root-marker", "utf8"),
+  modulePresent: fs.existsSync("../modules/landing-zone/main.tf"),
   cliConfig: fs.readFileSync(env.TF_CLI_CONFIG_FILE, "utf8"),
   cliConfigMode: fs.statSync(env.TF_CLI_CONFIG_FILE).mode & 0o777,
   temp: env.TMPDIR,
@@ -236,6 +263,8 @@ LZC_FAKE_TOFU
       httpVariables: string[];
       backendMode: number;
       sourceBackendPresent: boolean;
+      rootMarker: string;
+      modulePresent: boolean;
     }[]
   > =>
     readFile(callsPath, "utf8").then(
@@ -248,6 +277,132 @@ LZC_FAKE_TOFU
     );
   return { root, input, execute, calls, reports, report, output, errors };
 }
+
+const applicationBinding = {
+  tenantId: "11111111-1111-4111-8111-111111111111",
+  instanceId: "22222222-2222-4222-8222-222222222222",
+};
+function applicationInput(
+  test: Awaited<ReturnType<typeof fixture>>,
+  mode = "application-plan",
+) {
+  test.input.mode = mode;
+  test.input.acceleratorCommit = applicationAcceleratorCommit;
+  test.input.lockHash = applicationProviderLockHash;
+  test.input.application = applicationBinding;
+  const backend = structuredClone(s3Backend);
+  backend.descriptor.key = `applications/${applicationBinding.tenantId}/${applicationBinding.instanceId}/terraform.tfstate`;
+  test.input.backend = backend;
+}
+
+it("plans the pinned application root with sibling modules and only its instance S3 state", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  expect(await test.execute()).toBe("succeeded");
+  const calls = await test.calls();
+  expect(calls.map((call) => call.args[0])).toEqual([
+    "init",
+    "validate",
+    "plan",
+    "show",
+  ]);
+  for (const call of calls) {
+    expect(call.rootMarker).toBe("application");
+    expect(call.modulePresent).toBe(true);
+    expect(call.http).toBe(false);
+    expect(call.backend).toMatchObject({
+      terraform: {
+        backend: {
+          s3: {
+            key: (test.input.backend as typeof s3Backend).descriptor.key,
+            use_lockfile: true,
+          },
+        },
+      },
+    });
+    await expect(stat(join(call.work, ".."))).rejects.toThrow("ENOENT");
+  }
+  expect(
+    test.reports.filter((report) => report.path === "artifact"),
+  ).toHaveLength(1);
+});
+
+it("applies only a saved application plan without bootstrap migration or replan", async () => {
+  const test = await fixture("platform-apply");
+  applicationInput(test, "application-apply");
+  expect(await test.execute()).toBe("succeeded");
+  expect((await test.calls()).map((call) => call.args[0])).toEqual([
+    "init",
+    "validate",
+    "apply",
+  ]);
+  expect(test.reports.some((report) => report.path === "migration")).toBe(
+    false,
+  );
+});
+
+it("retains only private application recovery state when the broker cannot store it", async () => {
+  const test = await fixture("platform-apply", "recovery-upload-failure");
+  applicationInput(test, "application-apply");
+  expect(await test.execute()).toBe("failed");
+  const work = (await test.calls())[0]?.work;
+  expect(work).toBeDefined();
+  expect(await readdir(work as string)).toEqual(["errored.tfstate"]);
+  expect(await readdir(join(work as string, ".."))).toEqual(["application"]);
+  expect(
+    (await stat(join(work as string, "errored.tfstate"))).mode & 0o777,
+  ).toBe(0o600);
+  directories.push(join(work as string, ".."));
+});
+
+it.each(["application-plan", "application-apply"])(
+  "rejects missing or changed application saved artifacts for %s",
+  async (mode) => {
+    const test = await fixture("platform-apply");
+    applicationInput(test, mode);
+    if (mode === "application-apply") delete test.input.plan;
+    expect(await test.execute()).toBe("failed");
+    expect(await test.calls()).toEqual([]);
+  },
+);
+
+it.each([
+  "platform-key",
+  "foreign-instance",
+  "foreign-tenant",
+  "bootstrap",
+  "pin",
+  "lock",
+  "missing-binding",
+  "extra-binding",
+  "arbitrary-root",
+  "missing-package",
+])("rejects application %s before any engine command", async (invalid) => {
+  const test = await fixture();
+  applicationInput(test);
+  const backend = test.input.backend as typeof s3Backend;
+  if (invalid === "platform-key")
+    backend.descriptor.key = "landing-zone/terraform.tfstate";
+  if (invalid === "foreign-instance")
+    backend.descriptor.key = `applications/${applicationBinding.tenantId}/${applicationBinding.tenantId}/terraform.tfstate`;
+  if (invalid === "foreign-tenant")
+    backend.descriptor.key = `applications/${applicationBinding.instanceId}/${applicationBinding.instanceId}/terraform.tfstate`;
+  if (invalid === "bootstrap") test.input.backend = { kind: "bootstrap" };
+  if (invalid === "pin") test.input.acceleratorCommit = acceleratorCommit;
+  if (invalid === "lock") test.input.lockHash = providerLockHash;
+  if (invalid === "missing-binding") delete test.input.application;
+  if (invalid === "extra-binding")
+    test.input.application = {
+      ...applicationBinding,
+      role: "platform-engineer",
+    };
+  if (invalid === "arbitrary-root") test.input.mode = "../application";
+  if (invalid === "missing-package")
+    await rm(join(test.root, "application-src"), { recursive: true });
+  expect(await test.execute()).toBe("failed");
+  expect(await test.calls()).toEqual([]);
+  expect(test.reports.some((report) => report.path === "artifact")).toBe(false);
+});
 
 it("allows the fixed local broker only explicitly and keeps work in the private job directory", async () => {
   const test = await fixture("platform-plan", "success", localBrokerOrigin);

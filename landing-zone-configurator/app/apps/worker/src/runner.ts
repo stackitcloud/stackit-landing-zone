@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import {
+  applicationRunnerBindingSchema,
   planResultSchema,
   type S3RunnerBackend,
   s3BackendConfiguration,
@@ -27,14 +28,19 @@ export const brokerOrigin =
   "https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud";
 export const localBrokerOrigin = "http://127.0.0.1:3000";
 export const acceleratorCommit = "a256f6896d11134fdc351786f1be5eba4e56b2e2";
+export const applicationAcceleratorCommit =
+  "4d15d7870afa323badd93559d8b37c5a8d138dcf";
+export const applicationProviderLockHash =
+  "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5";
 export const providerLockHash =
   "a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888";
 const artifactLimit = 16 * 1024 * 1024;
 const backendSourceHash =
   "35d9b754956962f5d163c6900b726e89715e941703d5652c4d87813889b63054";
+const applicationBackendSourceHash =
+  "180a355bc7d4e61186860d7c78cd8e044585bffbbbff4cdc86b63b49d55d507c";
 const digest = (value: string | Buffer) =>
   createHash("sha256").update(value).digest("hex");
-type Mode = "initial-plan-only" | "platform-plan" | "platform-apply";
 type Report = (path: string, body: unknown) => Promise<unknown>;
 export interface WorkerOptions {
   root: string;
@@ -100,6 +106,7 @@ export async function runWorker(
   options: WorkerOptions,
 ): Promise<"succeeded" | "failed"> {
   let work: string | undefined;
+  let workContainer: string | undefined;
   let pluginTemp: string | undefined;
   let errorCode = "input_invalid";
   let recoveryState = false;
@@ -143,14 +150,27 @@ export async function runWorker(
       throw new Error("Runner configuration invalid");
     const input = object(await report("input", {}));
     const mode = input.mode === undefined ? "initial-plan-only" : input.mode;
+    const applicationJob =
+      mode === "application-plan" || mode === "application-apply";
+    const applying = mode === "platform-apply" || mode === "application-apply";
+    const expectedCommit = applicationJob
+      ? applicationAcceleratorCommit
+      : acceleratorCommit;
+    const expectedLockHash = applicationJob
+      ? applicationProviderLockHash
+      : providerLockHash;
     if (
       input.id !== options.id ||
       typeof mode !== "string" ||
-      !["initial-plan-only", "platform-plan", "platform-apply"].includes(
-        mode,
-      ) ||
-      input.acceleratorCommit !== acceleratorCommit ||
-      input.lockHash !== providerLockHash ||
+      ![
+        "initial-plan-only",
+        "platform-plan",
+        "platform-apply",
+        "application-plan",
+        "application-apply",
+      ].includes(mode) ||
+      input.acceleratorCommit !== expectedCommit ||
+      input.lockHash !== expectedLockHash ||
       typeof input.tfvars !== "string" ||
       Buffer.byteLength(input.tfvars) > 1024 * 1024 ||
       digest(input.tfvars) !== input.tfvarsSha256
@@ -162,15 +182,28 @@ export async function runWorker(
       (input.backend !== undefined || input.plan !== undefined)
     )
       throw new Error("Unexpected capability");
-    if (mode === "platform-plan" && input.plan !== undefined)
+    if (!applying && input.plan !== undefined)
       throw new Error("Unexpected artifact");
+    const applicationBinding = applicationJob
+      ? applicationRunnerBindingSchema.parse(input.application)
+      : undefined;
+    if (!applicationJob && input.application !== undefined)
+      throw new Error("Unexpected application binding");
     const httpEnv: NodeJS.ProcessEnv = {};
     let s3Backend: S3RunnerBackend | undefined;
     if (mode !== "initial-plan-only") {
       errorCode = "state_failed";
       const backend = object(input.backend);
+      if (applicationJob && backend.kind !== "s3")
+        throw new Error("Application requires instance S3 state");
       if (backend.kind === "s3") {
         s3Backend = validatedS3Backend(backend);
+        if (
+          applicationBinding &&
+          s3Backend.descriptor.key !==
+            `applications/${applicationBinding.tenantId}/${applicationBinding.instanceId}/terraform.tfstate`
+        )
+          throw new Error("Application state binding mismatch");
       } else {
         if (
           (backend.kind !== undefined && backend.kind !== "bootstrap") ||
@@ -206,11 +239,17 @@ export async function runWorker(
       }
     }
     errorCode = "artifact_invalid";
-    const savedPlan =
-      mode === "platform-apply" ? artifact(input.plan) : undefined;
+    const savedPlan = applying ? artifact(input.plan) : undefined;
     errorCode = "input_invalid";
     const root = resolve(options.root);
-    const packagedFiles = await readdir(resolve(root, "accelerator"), {
+    const packageSource = resolve(
+      root,
+      applicationJob ? "application-src" : "accelerator",
+    );
+    const source = applicationJob
+      ? resolve(packageSource, "application")
+      : packageSource;
+    const packagedFiles = await readdir(packageSource, {
       recursive: true,
     });
     if (
@@ -218,14 +257,14 @@ export async function runWorker(
         (path) =>
           /(^|\/)(\.terraform|\.terraform\.tfstate\.lock\.info|.*\.tfstate(?:\..*)?|.*\.tfplan|plan\.bin|saved-plan\.bin|credential\.json|.*\.log)(\/|$)/.test(
             path,
-          ) || /^(landing-zone|terraform\.auto)\.tfvars(?:\.json)?$/.test(path),
+          ) ||
+          /(^|\/)(landing-zone|terraform\.auto)\.tfvars(?:\.json)?$/.test(path),
       )
     )
       throw new Error("Unsafe accelerator package");
     if (
-      digest(
-        await readFile(resolve(root, "accelerator/.terraform.lock.hcl")),
-      ) !== providerLockHash
+      digest(await readFile(resolve(source, ".terraform.lock.hcl"))) !==
+      expectedLockHash
     )
       throw new Error("Provider lock mismatch");
     const engine = await promisify(execFile)(
@@ -240,18 +279,21 @@ export async function runWorker(
     if (object(JSON.parse(engine.stdout)).terraform_version !== "1.12.6")
       throw new Error("Engine mismatch");
     if (
-      digest(await readFile(resolve(root, "accelerator/backend.tf"))) !==
-      backendSourceHash
+      digest(await readFile(resolve(source, "backend.tf"))) !==
+      (applicationJob ? applicationBackendSourceHash : backendSourceHash)
     )
       throw new Error("Backend source mismatch");
-    work = await mkdtemp(
+    workContainer = await mkdtemp(
       resolve(
         options.local ? (options.workRoot ?? tmpdir()) : tmpdir(),
         "lzc-runner-",
       ),
     );
+    work = applicationJob
+      ? resolve(workContainer, "application")
+      : workContainer;
     if (options.local) pluginTemp = await mkdtemp("/tmp/lzc-sock-");
-    await cp(resolve(root, "accelerator"), work, { recursive: true });
+    await cp(packageSource, workContainer, { recursive: true });
     async function configureS3(backend: S3RunnerBackend) {
       await rm(resolve(work as string, "backend.tf"), { force: true });
       await writeFile(
@@ -382,7 +424,15 @@ export async function runWorker(
       await new Promise<void>((done, fail) => {
         const child = spawn(
           "/bin/bash",
-          [resolve(root, "run-plan.sh"), phase, mode as Mode],
+          [
+            resolve(root, "run-plan.sh"),
+            phase,
+            applying
+              ? "platform-apply"
+              : mode === "initial-plan-only"
+                ? mode
+                : "platform-plan",
+          ],
           {
             cwd: work as string,
             env,
@@ -425,7 +475,7 @@ export async function runWorker(
     await command("initializing");
     errorCode = "validate_failed";
     await command("validating");
-    if (mode === "platform-apply") {
+    if (applying) {
       errorCode = "apply_failed";
       await command("applying");
       if (
@@ -470,7 +520,7 @@ export async function runWorker(
         exitCode,
         "opentofu-1.12.6",
       );
-      if (mode === "platform-plan") {
+      if (mode !== "initial-plan-only") {
         errorCode = "artifact_invalid";
         const bytes = await boundedFile(
           resolve(work, "plan.bin"),
@@ -555,7 +605,14 @@ export async function runWorker(
         for (const entry of await readdir(work))
           if (entry !== "errored.tfstate")
             await rm(resolve(work, entry), { recursive: true, force: true });
-      } else await rm(work, { recursive: true, force: true });
+        if (workContainer && workContainer !== work)
+          for (const entry of await readdir(workContainer))
+            if (resolve(workContainer, entry) !== work)
+              await rm(resolve(workContainer, entry), {
+                recursive: true,
+                force: true,
+              });
+      } else await rm(workContainer ?? work, { recursive: true, force: true });
     }
   }
 }

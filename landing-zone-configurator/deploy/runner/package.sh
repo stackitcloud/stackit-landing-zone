@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Run in CI from landing-zone-configurator/app after the ordinary application build.
 set -euo pipefail
+if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
+	test "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true"
+fi
 runner_dir=../.local/runner
 provider_platform=linux_amd64
 if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true" ]]; then
@@ -43,6 +46,17 @@ rm -rf "$runner_dir/accelerator/.terraform"
 test ! -e "$runner_dir/accelerator/terraform.tfstate"
 test ! -e "$runner_dir/accelerator/terraform.auto.tfvars"
 test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' \) -print -quit)"
+if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
+	mkdir -p "$runner_dir/application-src"
+	git -C "$(git rev-parse --show-toplevel)" archive 4d15d7870afa323badd93559d8b37c5a8d138dcf src/application src/modules/landing-zone | tar -x --strip-components=1 -C "$runner_dir/application-src"
+	cp ../deploy/runner/application.lock.hcl "$runner_dir/application-src/application/.terraform.lock.hcl"
+	node --input-type=module -e 'import {readFileSync} from "node:fs"; import {createHash} from "node:crypto"; if (createHash("sha256").update(readFileSync(process.argv[1])).digest("hex") !== "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5") process.exit(1)' "$runner_dir/application-src/application/.terraform.lock.hcl"
+	tofu -chdir="$runner_dir/application-src/application" init -backend=false -input=false -lockfile=readonly -no-color
+	tofu -chdir="$runner_dir/application-src/application" validate -no-color
+	tofu -chdir="$runner_dir/application-src/application" providers mirror -platform="$provider_platform" "$(cd "$runner_dir/providers" && pwd)"
+	rm -rf "$runner_dir/application-src/application/.terraform"
+	test -z "$(find "$runner_dir/application-src" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' -o -name 'terraform.auto.tfvars' -o -name 'terraform.auto.tfvars.json' \) -print -quit)"
+fi
 if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true" ]]; then
 	tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .
 	shasum -a 256 "$runner_dir.tar.gz" > "$runner_dir.sha256"

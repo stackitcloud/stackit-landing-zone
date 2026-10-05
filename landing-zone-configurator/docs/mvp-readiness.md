@@ -67,17 +67,17 @@ Gesamt-MVP und kein Beleg fuer eine Live-Abnahme.
 | [#90](https://github.com/stackitcloud/stackit-landing-zone/issues/90) | Verschluesselter gespeicherter Plan, explizite Freigabe, unveraenderliche Bindungen, serialisierte Ausfuehrung, temporaerer Bootstrap-State, kundeneigener S3-Zielbackend, geschuetzte Recovery-Nachweise und CLI-Ausgaben | Nachgewiesene Live-Abnahme von Apply, Migration, Folgeplan und hartem Runner-Verlust; operatorseitige Wiederherstellung und Abgleich unterbrochener Laeufe |
 | [#91](https://github.com/stackitcloud/stackit-landing-zone/issues/91) | Primaerer STACKIT-Device-Login, verifizierte menschliche Identitaet, optionaler benutzergebundener GitHub-Connector, Rollen-/Eigentums-/Tenant-Pruefungen; lokal gepruefte menschliche IAM-Owner-Bindung mit separater Bestaetigung und unveraenderlichen Auditbelegen; persistente einmalige Plattform-Job-Grants mit Ablauf/Widerruf vor technischer Credential-Nutzung | Aktivierung und echte Zwei-Organisations-Abnahme; Least-Privilege-Providerqualifizierung, Application-Job-Grant-Anbindung, Live-Widerruf/abgelaufene Jobs und Produktions-Client-Freigabe |
 | [#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) | Gespeicherte Template-Entwuerfe, unveraenderliche tenantgebundene Versionen, Compiler-/Plattformvertrag, strikte Eingabepolicies, forklose AO-Sicht/Bestellung; explizite idempotente Stilllegung mit serverseitiger Sichtbarkeits-/Bestellsperre; versionierte direkte/Freigabe-Policy mit unveraenderlichem Instanz-Snapshot | Aktivierung der neuen Migrationen und vollstaendige Kundenveroeffentlichungsabnahme unter autoritativ verifizierter Tenantbindung (#91); kein automatischer Application-Apply |
-| [#93](https://github.com/stackitcloud/stackit-landing-zone/issues/93) | Versionierter nicht geheimer Plattformvertrag, SA-gebundene PE-Freigabe, persistente idempotente Bestellungen, verifizierte Owner-Bindung und erneuter Plan-Input-Check | Application-Root im freigegebenen Runner, eigener realer State/Lock/Job-Grant, Cloud-Plan, Quoten und ausdruecklicher Upgrade-Pfad |
+| [#93](https://github.com/stackitcloud/stackit-landing-zone/issues/93) | Versionierter nicht geheimer Plattformvertrag, SA-gebundene PE-Freigabe, persistente idempotente Bestellungen, verifizierte Owner-Bindung und erneuter Plan-Input-Check; lokal qualifizierter eigener Application-Quell-Pin/Provider-Lock, Opt-in-Paket und Worker-Root-/Instanz-State-Isolation | Freigegebener Application-Dispatch, eigener realer State/Lock/Job-Grant, Cloud-Plan, Quoten und ausdruecklicher Upgrade-Pfad |
 | [#94](https://github.com/stackitcloud/stackit-landing-zone/issues/94) | Betreiber-Binding fuer Model Serving | Begrenzter Backend-/UI-Assistent, Wissensstand, validierter Vorschlag mit bestaetigtem Diff sowie Sicherheits- und echter Model-Serving-Nachweis |
 | [#95](https://github.com/stackitcloud/stackit-landing-zone/issues/95) | Lokale Lint-/Typ-/Build-Gates, Unit-/Browser-/native Nachweise und dokumentierte Laufzeitgrenzen | Finale Revision/CI, Zwei-Org- und Betriebsabnahme, Restore/Rotation, PR/Branchschutz/Deployment-Entscheidung und ausdruecklicher Merge-Entscheid |
 
-Aktuelle lokale Gates: `npm run check` mit **331 bestandenen Unit-Tests** und
+Aktuelle lokale Gates: `npm run check` mit **346 bestandenen Unit-Tests** und
 33 bewusst uebersprungenen umgebungsabhaengigen Tests; die isolierte
 PostgreSQL-Plan-/Apply-/State-/Grant-Suite separat mit **31 bestandenen Tests**;
 Identitaets-/Katalog-/Policy-/Bindungssuite mit **29 bestandenen PostgreSQL-Tests**;
 vollstaendige
-Playwright-Suite zuletzt mit **152 bestandenen Desktop-/Mobilfaellen** vor dem
-rein backendseitigen Grant-Schritt. Die Web-Oberflaeche
+Playwright-Suite zuletzt mit **152 bestandenen Desktop-/Mobilfaellen** vor den
+backend-/runnerseitigen Schritten. Die Web-Oberflaeche
 verwendet Deutsch oder Englisch nach Browserpraeferenz mit gespeicherter
 expliziter Sprachwahl im Header. Auch gespeicherte dynamische Meldungen wechseln
 die Sprache; Benutzerwerte mit literalem Interpolationstext bleiben unveraendert.

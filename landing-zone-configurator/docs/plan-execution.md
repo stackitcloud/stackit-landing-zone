@@ -379,3 +379,39 @@ Application-Root-/Instanz-Dispatch mit eigenem State und Grant sowie echte
 Zwei-Organisations-/Widerrufsabnahme bleiben #91/#93. AO erhalten durch diesen
 Schritt keinen Zugriff auf Plattform-Credentials. 31 echte isolierte PostgreSQL-
 Broker-/Grantfaelle und der kanonische Gesamtcheck bestehen.
+
+## Lokaler Application-Runner-Root (2026-10-05)
+
+Der Feature-Zwischenstand ist lokal als `4ad9367` gesichert. Der separate
+Application-Quell-Pin ist `4d15d7870afa323badd93559d8b37c5a8d138dcf`;
+Backend, Provider und Versionsanforderungen liegen in getrennten Dateien.
+Der bisherige Plattform-Pin `a256f6896d11134fdc351786f1be5eba4e56b2e2`
+und bereits gebundene Runner-Pakete bleiben unveraendert.
+
+Mit `LZC_LOCAL_RUNNER_PACKAGE=true` und `LZC_PACKAGE_APPLICATION_ROOT=true`
+packt das Build-Skript zusaetzlich ausschliesslich `src/application` und
+`src/modules/landing-zone` aus dem festen Git-Pin als `application-src`.
+Ein neuer, noch nicht existierender `LZC_RUNNER_PACKAGE_DIR` ist zu verwenden.
+Der eigene Provider-Lock pinnt STACKIT 0.114.0 und time 0.14.1, mit geprueften
+Checksummen fuer Darwin ARM64 und Linux AMD64. Seine SHA-256 ist
+`d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5`.
+Die Application-Paketierung ist fuer den produktiven Build bewusst gesperrt.
+
+Die neuen Worker-Modi `application-plan` und `application-apply` verlangen
+den festen Application-Pin/Lock und eine strikte Bindung aus `tenantId` und
+`instanceId`. Der S3-Key muss exakt
+`applications/<tenantId>/<instanceId>/terraform.tfstate` sein; Lockfile ist
+verpflichtend. Bootstrap-/Plattform-State und freie Root-Pfade werden abgewiesen.
+Das Arbeitsverzeichnis behaelt den relativen Modulpfad, liegt aber getrennt
+vom Plattform-Root. Apply verwendet nur den gespeicherten Plan, ohne Replan
+oder Bootstrap-Migration. Bei fehlgeschlagener Recovery-Uebertragung bleiben
+nur der private Application-Recovery-State und seine Verzeichnisse erhalten.
+
+Dies ist noch kein Application-Broker-Dispatch oder Cloud-IAM-Scope:
+`executionEnabled: false` bleibt bestehen. Instanz-Jobs, eigene echte Locks,
+PE-autorisierte Credential-Grants, Ablauf/Widerruf, Quoten und explizite Upgrades
+muessen noch angebunden werden. Der neue Quell-Pin braucht eine ausdrueckliche
+neue Template-Veroeffentlichung; gespeicherte Versionen/Plans werden nicht
+umgebunden. Kein aktives Paket wurde ausgetauscht und keine Kundenoperation
+gestartet. Die Worker-Tests verwenden eine kontrollierte Engine, waehrend
+Paket-Init/Validate und die nativen Mock-Vertragstests echtes OpenTofu verwenden.

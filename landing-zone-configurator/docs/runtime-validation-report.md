@@ -659,3 +659,43 @@ gebundenes natives Paket unveraendert. Kein Kunden-Plan/Apply, Commit, Release
 oder Merge. Grants begrenzen Credential-Nutzung, nicht IAM-Rechte oder
 Schluesselgueltigkeit im Cloud-Provider. Bereits laufende Worker, Schluessel-
 rotation und Recovery werden nicht durch einen Grant-Widerruf erledigt.
+
+## Application-Root und Feature-Checkpoint (2026-10-05)
+
+Der Git-Index wurde nach ausdruecklicher Freigabe repariert, ohne Arbeitsdateien
+oder vorhandene Referenzen zu veraendern. Vollstaendige private externe Sicherung,
+Originalindex und Git-Objekte bleiben erhalten. Der Feature-Zwischenstand
+`4ad9367` und der Application-Quell-Pin
+`4d15d7870afa323badd93559d8b37c5a8d138dcf` wurden lokal committed und jeweils
+als vollstaendige, gepruefte Git-Bundles ausserhalb des Sync-Verzeichnisses
+gesichert. Gitleaks fand keine Secrets im gestagten Commit-Inhalt.
+
+Das Application-Root hat eine ersetzbare Backend-Datei, feste Provider und einen
+eigenen Provider-Lock. Der Worker nutzt fuer Application-Jobs ausschliesslich
+dieses Root und den exakt gebundenen S3-Instanz-Key. 15 neue kontrollierte
+Worker-Faelle pruefen Root/relative Module, gespeicherten Apply ohne Replan,
+minimale private Recovery, Artifact-Grenzen sowie falsche Pins, Locks,
+Instanz-/Tenant-Keys, Bootstrap, ungueltige Bindungen/Pfade und fehlende Pakete.
+
+```text
+canonical: PASS - exit_code: 0; 346 passed, 33 gated skipped; lint/types/build
+worker: PASS - exit_code: 0; 80 passed, 1 gated skipped; kontrollierte Engine
+native: PASS - echtes OpenTofu 1.12.6; 14 Application + 3 Netzwerk-Mockfaelle
+package: PASS - backendfreies Init/Validate, readonly Lock, signierter Provider-Mirror
+browser/database: NOT_RERUN - keine UI-/SQL-Aenderung; vorher 152 Browser, 31/29 PG
+overall: NEEDS_SIGNOFF - kein Application-Dispatch/Job-Grant oder Live-Cloud-Nachweis
+```
+
+Neues, nicht aktiviertes Paket:
+`runner-local-20261005-application-root.tar.gz`, SHA-256
+`848c402a75ba8906abd958158044ba07cda2dfbb6f7fe14353048a157c9cb0d1`.
+Der Application-Lock wurde fuer Darwin ARM64 und Linux AMD64 qualifiziert;
+das tatsaechliche lokale Paket verwendet Darwin ARM64. Linux-Runtime-Abnahme
+ist dadurch nicht nachgewiesen. Logs liegen unter
+`/tmp/lzc-mvp-application-{root,pin,worker,check,package}.txt`.
+
+Die API gibt weiterhin keine Application-Ausfuehrung frei. Migrationen 021 bis
+025 wurden nicht in der Kunden-API aktiviert; aktive API und bestehende
+Runner-Bindungen bleiben unveraendert. Keine Kunden-Credentials verwendet,
+kein Kunden-Plan/Apply, Push, Release oder Merge. Native Provider-Warnungen
+wegen veralteter Observability-Ausgabeattribute sind nicht Teil dieser Aenderung.

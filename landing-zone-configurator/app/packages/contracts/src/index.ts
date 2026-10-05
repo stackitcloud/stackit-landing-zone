@@ -9,6 +9,11 @@ export const healthResponseSchema = z.object({
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
+export const applicationRunnerBindingSchema = z.strictObject({
+  tenantId: z.uuid(),
+  instanceId: z.uuid(),
+});
+
 export const applicationInstanceSchema = z.strictObject({
   id: z.uuid(),
   versionId: z.uuid(),
