@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   type ApplicationInstance,
   applicationInstanceSchema,
+  s3BackendDescriptorSchema,
 } from "@lzc/contracts";
 import {
   applicationAcceleratorRevisionSchema,
@@ -555,6 +556,43 @@ export class Applications {
       if (!grant)
         throw new ApplicationError(404, "application_job_grant_not_found");
       return { jobId: grant.job_id, revokedAt: grant.revoked_at.toISOString() };
+    });
+  }
+
+  approveJobBackend(session: Session, jobId: string, input: unknown) {
+    const id = z.uuid().parse(jobId);
+    const request = z
+      .strictObject({
+        stateBackendId: z.uuid(),
+        confirmBackendApproval: z.literal(true),
+      })
+      .parse(input);
+    return this.work(session, "publish", async (client) => {
+      const approved = (
+        await client.query<{
+          job_id: string;
+          backend_id: string;
+          descriptor: unknown;
+          expires_at: Date;
+        }>("SELECT * FROM lzc_auth.approve_application_job_backend($1,$2,$3)", [
+          session.id,
+          id,
+          request.stateBackendId,
+        ])
+      ).rows[0];
+      if (!approved)
+        throw new ApplicationError(
+          403,
+          "application_backend_approval_unavailable",
+        );
+      const descriptor = s3BackendDescriptorSchema.parse(approved.descriptor);
+      return {
+        jobId: approved.job_id,
+        backendId: approved.backend_id,
+        stateKey: descriptor.key,
+        expiresAt: approved.expires_at.toISOString(),
+        executionEnabled: false as const,
+      };
     });
   }
 

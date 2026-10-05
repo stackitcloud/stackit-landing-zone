@@ -457,3 +457,27 @@ kein Ticket und kein Runner-Start. Ein Grant-Beleg ist noch keine einmalige
 Credential-Uebergabe, State-Datei oder Cloud-Operation. Die einmalige Ausgabe
 unter erneuter Autoritaets-/Profilpruefung und der echte instanzgebundene
 S3-State-/Lock-Zugang muessen vor Dispatch weiter integriert werden.
+
+## Explizite Application-Backend-Freigabe (2026-10-05)
+
+Migration 027 ergaenzt einen unveraenderlichen Backend-Beleg fuer einen gueltigen
+vorbereiteten Application-Job. `POST /api/v1/applications/jobs/{id}/backend-approval`
+verlangt genau `{"stateBackendId":"<uuid>","confirmBackendApproval":true}` mit
+Session-/Origin-/CSRF-/Tenant-Pruefung. Nur der aktuelle PE, der den Plattform-
+Vertrag freigegeben hat, darf bestaetigen. SQL prueft erneut Job- und Grant-Ablauf,
+Widerruf, Besteller-Session, Mitgliedschaften, Organisation und beide aktuellen
+menschlichen Identitaeten. Der Backend-Datensatz muss zum selben Tenant gehoeren.
+
+Der S3-Descriptor wird aus dem registrierten Backend abgeleitet, sein Key ist
+zwingend `applications/<tenantId>/<instanceId>/terraform.tfstate`, Lockfile bleibt
+verpflichtend. Freigabe-Session und Backend-Bindung sind immutable. Die Laufzeit
+ist das Minimum aus Grant, echter PE-Session und PE-Identitaet. Parallele gleiche
+Freigaben sind idempotent; Backend-Wechsel liefert 409. Abgelaufene oder nicht
+mehr aktive Freigabesessions werden auch mit einer neuen Session nicht erneuert.
+
+Die Antwort enthaelt nur Job-/Backend-ID, State-Key, Ablauf und
+`executionEnabled:false`. AO kann den nicht geheimen Beleg lesen, aber weiterhin
+keine Backend-Credentials. Die SQL-Funktion liest weder Credentials noch echten
+S3-State. Die API validiert den gespeicherten Descriptor mit dem vorhandenen
+S3-Vertrag. Ein Freigabebeleg ersetzt keine einmalige Credential-Ausgabe, echte
+S3-Zugriffs-/Lock-Pruefung, Runner-Ticket oder Cloud-Plan/Apply.

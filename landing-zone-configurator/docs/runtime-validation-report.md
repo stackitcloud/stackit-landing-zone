@@ -733,3 +733,35 @@ bis 026 sind nicht in der laufenden Kunden-API aktiviert; kein Neustart oder
 Runner-Paketwechsel, kein Kunden-Plan/Apply. Die native Ausfuehrung bleibt
 OpenTofu; `terraform fmt` wurde vorher nur fuer die Repository-Formatregel
 verwendet, nicht als separater Runtime-Kompatibilitaetsnachweis.
+
+## Application-Backend-Freigabe (2026-10-05, #93)
+
+Migration 027 und der explizite HTTP-/Service-Pfad binden ein registriertes
+Tenant-S3-Backend unveraenderlich an den Instanz-State-Key eines vorbereiteten
+Jobs. Freigeben darf nur der aktuelle vertragsfreigebende PE. Grant, Besteller-
+Session, aktuelle Rollen, Organisation und menschliche Identitaeten werden erneut
+geprueft. Die Freigabe ist zusaetzlich an ihre reale PE-Session gebunden; Ablauf
+wird nicht durch Retry oder neue Session verlaengert. Backend-Credentials werden
+weder gelesen noch entschluesselt; bestehende AO-Credential-RLS bleibt bestehen.
+
+Die erweiterte bestehende PostgreSQL-Vertrags-Fixture prueft AO-/Fremdtenant-
+Ablehnung, stale Session, strikte Overrides, genaue Descriptor-/State-Bindung,
+immutable Belege, fehlende direkte Schreibrechte, kurze Job-/PE-Session-Laufzeit,
+neue Session ohne Refresh, Widerruf sowie echte HTTP-Session-/Origin-/CSRF-/Tenant-
+Grenzen. Zwei parallele HTTP-Freigaben liefern denselben nicht geheimen Beleg;
+Backend-Wechsel ist 409, widerrufene Freigabe 403. Ausschliesslich synthetische
+Ciphertexts und Descriptoren, kein echter S3-/Cloud-Zugriff.
+
+```text
+canonical: PASS - exit_code: 0; 346 passed, 33 gated skipped; lint/types/build
+identity/application: PASS - exit_code: 0; 29 bestehende, erweiterte echte PG-Faelle
+platform-broker: PASS - exit_code: 0; 31 echte isolierte PG-Faelle unter Migration 027
+browser: NOT_RERUN - keine UI-Aenderung; vorher 152 Desktop-/Mobilfaelle
+overall: NEEDS_SIGNOFF - Freigabebeleg ist kein Credential-Release/Dispatch/S3-Test
+```
+
+Logs: `/tmp/lzc-mvp-application-backends-{check,pg,broker,format}.txt`.
+Ein optionaler Test-Response brauchte eine TypeScript-Null-Absicherung; danach
+derselbe kanonische Gate erfolgreich. Testdatenbanken separat erzeugt und entfernt.
+Migrationen 021 bis 027 nicht in der Kunden-API aktiviert; kein API-Neustart,
+Paketwechsel, Kunden-Plan/Apply, Push, Release oder Merge. #93 bleibt offen.

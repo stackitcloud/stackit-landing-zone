@@ -22,7 +22,9 @@ export function registerApplications(
     | "approvePlatformContract"
     | "preparePlanInput"
   > &
-    Partial<Pick<Applications, "prepareJob" | "revokeJobGrant">>,
+    Partial<
+      Pick<Applications, "prepareJob" | "revokeJobGrant" | "approveJobBackend">
+    >,
 ) {
   const sessions = new WeakMap<FastifyRequest, Session>();
   app.register(async (routes) => {
@@ -31,6 +33,10 @@ export function registerApplications(
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_application_request" });
+      if (error instanceof Error && "code" in error && error.code === "40001")
+        return reply
+          .code(409)
+          .send({ error: "application_backend_binding_conflict" });
       if (
         error instanceof Error &&
         "code" in error &&
@@ -142,6 +148,20 @@ export function registerApplications(
             .send({ error: "application_jobs_unavailable" });
         const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
         return applications.revokeJobGrant(session, id, request.body);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/backend-approval",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.approveJobBackend)
+          return reply
+            .code(503)
+            .send({ error: "application_jobs_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.approveJobBackend(session, id, request.body);
       },
     );
   });

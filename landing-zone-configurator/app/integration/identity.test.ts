@@ -1359,6 +1359,178 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           job.id,
         ]),
       ).rejects.toMatchObject({ code: "55000" });
+      const backendDescriptor = {
+        bucket: "management-tfstate",
+        endpoint: "https://object.storage.eu01.onstackit.cloud",
+        region: "eu01",
+        key: "landing-zone/terraform.tfstate",
+        useLockfile: true,
+      };
+      const backendId = randomUUID();
+      const alternativeBackendId = randomUUID();
+      const foreignBackendId = randomUUID();
+      for (const [id, tenant] of [
+        [backendId, tenantId],
+        [alternativeBackendId, tenantId],
+        [foreignBackendId, bob.tenantId],
+      ]) {
+        await migration.query(
+          "INSERT INTO lzc.state_backends(id,tenant_id,descriptor,identity_sha256,credentials_ciphertext) VALUES($1,$2,$3,$4,$5)",
+          [
+            id,
+            tenant,
+            JSON.stringify(backendDescriptor),
+            randomBytes(32).toString("hex"),
+            Buffer.from("synthetic-ciphertext-not-used"),
+          ],
+        );
+      }
+      const backendRequest = {
+        stateBackendId: backendId,
+        confirmBackendApproval: true,
+      };
+      await expect(
+        applications.approveJobBackend(owner, job.id, backendRequest),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.approveJobBackend(engineer, job.id, {
+          ...backendRequest,
+          stateBackendId: foreignBackendId,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.approveJobBackend(
+          { ...engineer, id: randomUUID() },
+          job.id,
+          backendRequest,
+        ),
+      ).rejects.toMatchObject({ code: "P0002" });
+      expect(() =>
+        applications.approveJobBackend(engineer, job.id, {
+          ...backendRequest,
+          descriptor: backendDescriptor,
+        }),
+      ).toThrow();
+      const backendApproval = await applications.approveJobBackend(
+        engineer,
+        job.id,
+        backendRequest,
+      );
+      expect(backendApproval).toEqual({
+        jobId: job.id,
+        backendId,
+        stateKey: jobOrder.stateKey,
+        expiresAt: job.expiresAt,
+        executionEnabled: false,
+      });
+      expect(
+        await applications.approveJobBackend(engineer, job.id, backendRequest),
+      ).toEqual(backendApproval);
+      await expect(
+        applications.approveJobBackend(engineer, job.id, {
+          ...backendRequest,
+          stateBackendId: alternativeBackendId,
+        }),
+      ).rejects.toMatchObject({ code: "40001" });
+      expect(
+        (
+          await withTenant(pool, owner, (client) =>
+            client.query("SELECT * FROM lzc.state_backends"),
+          )
+        ).rows,
+      ).toEqual([]);
+      const bindingRow = (
+        await withTenant(pool, owner, (client) =>
+          client.query(
+            "SELECT * FROM lzc.application_job_backends WHERE job_id=$1",
+            [job.id],
+          ),
+        )
+      ).rows[0];
+      expect(bindingRow.descriptor).toEqual({
+        ...backendDescriptor,
+        key: jobOrder.stateKey,
+      });
+      expect(bindingRow).not.toHaveProperty("credentials_ciphertext");
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_job_backends SELECT * FROM lzc.application_job_backends WHERE job_id=$1",
+            [job.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_job_backends SET backend_id=$2 WHERE job_id=$1",
+          [job.id, alternativeBackendId],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      const shortJob = await applications.prepareJob(
+        { ...owner, expiresAt: new Date(Date.now() + 200) },
+        jobOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      await vi.waitFor(() =>
+        expect(Date.now()).toBeGreaterThan(
+          new Date(shortJob.expiresAt).getTime(),
+        ),
+      );
+      await expect(
+        applications.approveJobBackend(engineer, shortJob.id, backendRequest),
+      ).rejects.toMatchObject({ code: "42501" });
+      const approvalScopedJob = await applications.prepareJob(
+        owner,
+        jobOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      const actualPeExpiry = (
+        await migration.query(
+          "SELECT expires_at FROM lzc_auth.sessions WHERE id=$1",
+          [engineer.id],
+        )
+      ).rows[0]?.expires_at;
+      try {
+        await migration.query(
+          "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+          [engineer.id, new Date(Date.now() + 250)],
+        );
+        const scopedApproval = await applications.approveJobBackend(
+          engineer,
+          approvalScopedJob.id,
+          backendRequest,
+        );
+        expect(new Date(scopedApproval.expiresAt).getTime()).toBeLessThan(
+          new Date(approvalScopedJob.expiresAt).getTime(),
+        );
+        await vi.waitFor(() =>
+          expect(Date.now()).toBeGreaterThan(
+            new Date(scopedApproval.expiresAt).getTime(),
+          ),
+        );
+        const freshToken = newSessionToken();
+        const freshPeSession = await store.createSession({
+          githubId: 101,
+          login: "alice",
+          id: randomUUID(),
+          hash: freshToken.hash,
+          csrfToken: randomBytes(32).toString("base64url"),
+          expiresAt: new Date(Date.now() + 3600000),
+        });
+        await organisations.switch(freshPeSession, tenantId);
+        await expect(
+          applications.approveJobBackend(
+            { ...freshPeSession, tenantId },
+            approvalScopedJob.id,
+            backendRequest,
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+      } finally {
+        await migration.query(
+          "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+          [engineer.id, actualPeExpiry],
+        );
+      }
       const revoked = await applications.revokeJobGrant(owner, job.id, {
         confirmCredentialGrantRevocation: true,
       });
@@ -1367,6 +1539,9 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           confirmCredentialGrantRevocation: true,
         }),
       ).toEqual(revoked);
+      await expect(
+        applications.approveJobBackend(engineer, job.id, backendRequest),
+      ).rejects.toMatchObject({ code: "42501" });
       await expect(
         applications.prepareJob(owner, jobOrder.id, jobRequest),
       ).rejects.toMatchObject({ code: "application_job_grant_unavailable" });
@@ -1529,6 +1704,90 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           ).json(),
         ).toEqual(createdJob.json());
         const revokeUrl = `/api/v1/applications/jobs/${createdJob.json().id}/credential-grant/revoke`;
+        const approvalUrl = `/api/v1/applications/jobs/${createdJob.json().id}/backend-approval`;
+        for (const [requestHeaders, expectedStatus] of [
+          [{ ...headers, cookie: "" }, 401],
+          [{ ...headers, "x-lzc-csrf": "wrong" }, 403],
+          [{ ...headers, origin: "https://foreign.example" }, 403],
+          [{ ...headers, "x-lzc-tenant": bob.tenantId }, 403],
+        ] as const) {
+          expect(
+            (
+              await api.inject({
+                method: "POST",
+                url: approvalUrl,
+                headers: requestHeaders,
+                payload: backendRequest,
+              })
+            ).statusCode,
+          ).toBe(expectedStatus);
+        }
+        for (const payload of [
+          { ...backendRequest, confirmBackendApproval: false },
+          { ...backendRequest, descriptor: backendDescriptor },
+          { ...backendRequest, stateBackendId: "invalid" },
+        ]) {
+          expect(
+            (
+              await api.inject({
+                method: "POST",
+                url: approvalUrl,
+                headers,
+                payload,
+              })
+            ).statusCode,
+          ).toBe(400);
+        }
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: approvalUrl,
+              headers,
+              payload: { ...backendRequest, stateBackendId: foreignBackendId },
+            })
+          ).statusCode,
+        ).toBe(403);
+        const backendReplies = await Promise.all(
+          [0, 1].map(() =>
+            api.inject({
+              method: "POST",
+              url: approvalUrl,
+              headers,
+              payload: backendRequest,
+            }),
+          ),
+        );
+        expect(backendReplies.map((reply) => reply.statusCode)).toEqual([
+          200, 200,
+        ]);
+        expect(backendReplies[0]?.json()).toEqual(backendReplies[1]?.json());
+        expect(backendReplies[0]?.json()).toMatchObject({
+          jobId: createdJob.json().id,
+          backendId,
+          stateKey: httpOrder.stateKey,
+          executionEnabled: false,
+        });
+        expect(Object.keys(backendReplies[0]?.json() ?? {}).sort()).toEqual([
+          "backendId",
+          "executionEnabled",
+          "expiresAt",
+          "jobId",
+          "stateKey",
+        ]);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: approvalUrl,
+              headers,
+              payload: {
+                ...backendRequest,
+                stateBackendId: alternativeBackendId,
+              },
+            })
+          ).statusCode,
+        ).toBe(409);
         const revokeRequest = { confirmCredentialGrantRevocation: true };
         expect(
           (
@@ -1557,6 +1816,16 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           payload: revokeRequest,
         });
         expect(revokedJob.statusCode).toBe(200);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: approvalUrl,
+              headers,
+              payload: backendRequest,
+            })
+          ).statusCode,
+        ).toBe(403);
         expect(
           (
             await api.inject({
