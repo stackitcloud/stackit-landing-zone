@@ -882,3 +882,58 @@ Alle Datenbanktests isoliert; keine Kunden-Credentials/-Daten/-Backends gelesen.
 Migrationen 021 bis 030 nicht in der laufenden Kunden-API aktiviert. Aktive API,
 aktives Paket und gespeicherte Kundenplans unveraendert; kein Cloud-Plan/Apply,
 State-Migration, Push, Release oder Merge. #93 bleibt offen.
+
+## Application-Tickets, vollstaendiger Input und Dispatch-Kern (2026-10-05, #93)
+
+Migration 031 persistiert nur den Hash eines kryptografischen Einmal-Tickets,
+exakte echte PE-Freigabesession, Paket-UUID, festen c4b43c3-Pin und readonly
+Application-Provider-Lock. Pro Job gibt es nur ein Ticket. Andere Session,
+Paket-Abweichung, Ablauf und Replay geben keine Credentials frei. Der interne
+Resolver verwendet die echte gespeicherte Session-ID, nicht eine Job-ID als
+synthetischen PE. Direkte Tabellenlese-/Schreibrechte fuer App-User fehlen.
+
+Der neue interne `runnerInput` verbraucht zuerst Ticket und Grant, prueft
+STACKIT-Credentials, liest die immutable Job-Variablen und den explizit genehmigten
+Backend-Descriptor, verwendet den vorhandenen HCL-Serializer und S3-Broker und
+revalidiert nach S3-Credential-Freigabe nochmals Autoritaet, Ablauf und Dispatch.
+Bucket/Endpoint/Region bleiben fest; nur der genehmigte Instanz-Key mit Lockfile
+wird verwendet. Der Input ist ausschliesslich `application-plan`; kein Apply,
+Bootstrap oder Plattform-State. Backend-Abweichung/Rechteentzug liefern keinen
+Input zurueck und setzen verbrauchte Tickets/Grants nicht zurueck.
+
+Migration 032 reserviert den internen Dispatch atomar pro Instanz und bindet
+Ticket/Paket im vorhandenen `PlanRunner.start`-Callback vor Startfreigabe. Ein
+zweiter Start desselben Jobs startet keinen Prozess; ein anderer Job derselben
+aktiven Instanz ist gesperrt. Fehler vor Paketbindung werden `failed`; Fehler
+nach Bindung werden konservativ `reconciliation_required`, weil ein Prozessstart
+nicht sicher ausgeschlossen ist. Diese Instanzen und Tickets bleiben gesperrt;
+kein automatischer Ablauf-Cleanup/Retry oder Neuversuch mit anderem Job.
+
+Die bestehenden echten PostgreSQL-Faelle wurden um Hash-only-Persistenz,
+Ticket-/Session-/Paket-Bindung, Replay, konkurrierenden Verbrauch, Ablauf,
+vollstaendigen Input, falsches Backend, Rechteentzug nach S3-Zugriff und
+Fake-Runner-Dispatch/Races/Startfehler erweitert. Ein Testblock musste am
+eindeutigen Testnamen verankert werden statt an mehrfach vorhandenem Owner-
+Widerruf. Die S3-Fixture braucht Literaltypen fuer Endpoint/Region/Lock-Flag;
+Editor-Diagnosen allein hatten den Fehler nicht gezeigt, der kanonische Gate schon.
+
+```text
+canonical: PASS - 349 unit passed, 33 gated skipped; lint/types/build
+identity/application: PASS - 29 expanded isolated real PostgreSQL cases
+platform-broker: PASS - 31 isolated real PostgreSQL cases under migrations 031/032
+dispatch: PASS - fake runner only; exactly one start, prestart binding, reconciliation
+diagnostics: PASS - no errors in touched API/test files; canonical test types passed
+browser/native/cloud: NOT_RERUN - no UI/worker/package changes; no real Application start
+overall: NEEDS_SIGNOFF - report/artifact/operator integration and active dispatch absent
+```
+
+Logs: `/tmp/lzc-application-ticket-{pg,input-pg,types,format}.txt` und
+`/tmp/lzc-application-dispatch-{pg,broker,check,format}.txt`.
+Produktionsverdrahtung hat keinen Application-Runner; `dispatchJob` ist dort
+`application_dispatch_disabled`. Kein HTTP-Start-/Ticket-/Credential-Endpunkt.
+Vor Aktivierung fehlen Application-Report-/Artefakt-/Result-Anbindung sowie
+Operator-Reconciliation und die separat freizugebende native/Cloud-Abnahme.
+Migrationen 021 bis 032 nicht in Kunden-API aktiviert. Aktive API, Runner-Paket,
+Kundenplans und CLI-Unabhaengigkeit unveraendert; keine Kunden-Credentials/-Daten
+gelesen, kein Cloud-Plan/Apply, Push, Release, Merge oder State-Migration.
+#93 bleibt offen; Quoten, Upgrade-Plans und reale State-/Lock-/Recovery-Abnahme fehlen.

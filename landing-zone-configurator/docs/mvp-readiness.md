@@ -75,8 +75,14 @@ Zu #93 ist die interne einmalige Credential-Freigabe lokal qualifiziert:
 nur die echte PE-Freigabesession, atomarer Verbrauch vor technischer Pruefung,
 feste Source-/Profil-/Schluesselversion und erneute Live-Autorisierung nach dem
 Secret-Zugriff. Rotation, Replay, Source-Abweichung, Parallelzugriff und
-Rechteentzug werden abgefangen. Kein oeffentlicher Claim-/Credential-Endpunkt,
-kein Runner-Ticket/Dispatch und keine Ausfuehrungsfreigabe.
+Rechteentzug werden abgefangen. Interne gehashte Runner-Tickets binden jetzt
+Paket, Quelle, Provider-Lock und die echte Freigabesession. Der vollstaendige
+Plan-Input verwendet nur immutable Job-Variablen und den freigegebenen Instanz-
+S3-Key. Der interne Dispatch-Kern ist mit Fake-Runner lokal geprueft: eine aktive
+Reservierung pro Instanz, keine Doppelstarts oder automatischen Wiederholungen;
+ungewisse Startfehler sperren Instanz und Ticket zur Reconciliation. Kein
+oeffentlicher Claim-/Credential-/Start-Endpunkt und keine aktive Ausfuehrung.
+Report-/Artefakt-Endpunkte und Operator-Reconciliation fehlen vor Aktivierung.
 
 Verbindliche Architekturgrenze: Der Accelerator bleibt ohne Configurator nutzbar.
 Der CLI-Pfad fuer neue getrennte Platform-/Application-Phasen hat jetzt einen

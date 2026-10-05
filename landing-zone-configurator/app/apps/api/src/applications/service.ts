@@ -1,8 +1,9 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   type ApplicationInstance,
   applicationInstanceSchema,
   s3BackendDescriptorSchema,
+  s3RunnerBackendSchema,
 } from "@lzc/contracts";
 import {
   applicationAcceleratorRevisionSchema,
@@ -15,13 +16,17 @@ import {
   platformContractSchema,
   publishedProjectTemplateSchema,
   resolveApplicationOrder,
+  serializeTfvars,
   validateApplicationPublication,
 } from "@lzc/domain";
 import type pg from "pg";
 import { z } from "zod";
 import type { Session } from "../auth/store.js";
+import { tokenHash } from "../auth/store.js";
 import type { PostgresCredentialProfiles } from "../credentials/profiles.js";
 import type { CredentialSecrets } from "../credentials/secrets.js";
+import type { Backends } from "../deployments/backends.js";
+import type { PlanRunner } from "../plans/cloud-foundry.js";
 import { withTenant } from "../storage/database.js";
 
 export class ApplicationError extends Error {
@@ -32,6 +37,14 @@ export class ApplicationError extends Error {
     super(code);
   }
 }
+
+const applicationRunnerPackageSchema = z.strictObject({
+  runnerPackageId: z.uuid(),
+  acceleratorRevision: z.literal("c4b43c36af198985980b17626c48d357795e3fbd"),
+  providerLockSha256: z.literal(
+    "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+  ),
+});
 
 type VersionRow = {
   id: string;
@@ -119,6 +132,8 @@ export class Applications {
       "list" | "verifyForPreparation"
     >,
     private readonly secrets?: Pick<CredentialSecrets, "get">,
+    private readonly backends?: Pick<Backends, "runner">,
+    private readonly dispatch?: { runner: PlanRunner; origin: string },
   ) {}
 
   private work<T>(
@@ -634,6 +649,250 @@ export class Applications {
         expiresAt: claimed.expires_at.toISOString(),
       };
     });
+  }
+
+  private async persistRunnerTicket(
+    session: Session,
+    jobId: string,
+    input: unknown,
+    ticket: string,
+  ) {
+    z.uuid().parse(jobId);
+    const binding = applicationRunnerPackageSchema.parse(input);
+    const expiresAt = await this.work(session, "publish", async (client) => {
+      const row = (
+        await client.query<{ expires_at: Date }>(
+          "SELECT lzc_auth.issue_application_runner_ticket($1,$2,$3,$4,$5,$6) AS expires_at",
+          [
+            session.id,
+            jobId,
+            tokenHash(ticket),
+            binding.runnerPackageId,
+            binding.acceleratorRevision,
+            binding.providerLockSha256,
+          ],
+        )
+      ).rows[0];
+      if (!row)
+        throw new ApplicationError(
+          403,
+          "application_runner_ticket_unavailable",
+        );
+      return row.expires_at.toISOString();
+    });
+    return { ticket, jobId, expiresAt };
+  }
+
+  issueRunnerTicket(session: Session, jobId: string, input: unknown) {
+    return this.persistRunnerTicket(
+      session,
+      jobId,
+      input,
+      randomBytes(32).toString("base64url"),
+    );
+  }
+
+  async dispatchJob(session: Session, jobId: string, input: unknown) {
+    z.uuid().parse(jobId);
+    z.strictObject({ confirmPlan: z.literal(true) }).parse(input);
+    if (!this.dispatch || !this.backends || !this.secrets || !this.profiles)
+      throw new ApplicationError(503, "application_dispatch_disabled");
+    const created = await this.work(session, "publish", async (client) => {
+      const row = (
+        await client.query<{ created: boolean }>(
+          "SELECT lzc_auth.reserve_application_dispatch($1,$2) AS created",
+          [session.id, jobId],
+        )
+      ).rows[0];
+      return row?.created === true;
+    });
+    if (!created) return { jobId, dispatched: false };
+    const ticket = randomBytes(32).toString("base64url");
+    let recorded = false;
+    try {
+      await this.dispatch.runner.start(
+        jobId,
+        ticket,
+        this.dispatch.origin,
+        async (appId, runnerPackageId) => {
+          z.uuid().parse(appId);
+          await this.persistRunnerTicket(
+            session,
+            jobId,
+            {
+              runnerPackageId,
+              acceleratorRevision: "c4b43c36af198985980b17626c48d357795e3fbd",
+              providerLockSha256:
+                "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+            },
+            ticket,
+          );
+          await this.work(session, "publish", async (client) => {
+            await client.query(
+              "SELECT lzc_auth.bind_application_dispatch($1,$2,$3,$4)",
+              [session.id, jobId, appId, runnerPackageId],
+            );
+          });
+          recorded = true;
+        },
+      );
+      if (!recorded)
+        throw new ApplicationError(503, "application_dispatch_binding_missing");
+      return { jobId, dispatched: true };
+    } catch {
+      await this.work(session, "publish", async (client) => {
+        await client.query("SELECT lzc_auth.fail_application_dispatch($1,$2)", [
+          session.id,
+          jobId,
+        ]);
+      });
+      throw new ApplicationError(503, "application_dispatch_failed");
+    }
+  }
+
+  private async consumeRunnerTicket(
+    ticket: string,
+    binding: z.infer<typeof applicationRunnerPackageSchema>,
+  ) {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(ticket))
+      throw new ApplicationError(401, "invalid_application_runner_ticket");
+    const hash = tokenHash(ticket);
+    const row = (
+      await this.pool.query<{
+        job_id: string;
+        session_id: string;
+        user_id: string;
+        tenant_id: string;
+        expires_at: Date;
+      }>(
+        "SELECT * FROM lzc_auth.resolve_application_runner_ticket($1,$2,$3,$4)",
+        [
+          hash,
+          binding.runnerPackageId,
+          binding.acceleratorRevision,
+          binding.providerLockSha256,
+        ],
+      )
+    ).rows[0];
+    if (!row)
+      throw new ApplicationError(401, "invalid_application_runner_ticket");
+    const session: Session = {
+      id: row.session_id,
+      userId: row.user_id,
+      tenantId: row.tenant_id,
+      expiresAt: row.expires_at,
+      githubId: "",
+      login: "",
+      csrfToken: "",
+    };
+    await this.work(session, "publish", async (client) => {
+      await client.query(
+        "SELECT lzc_auth.consume_application_runner_ticket($1,$2,$3,$4,$5,$6)",
+        [
+          session.id,
+          row.job_id,
+          hash,
+          binding.runnerPackageId,
+          binding.acceleratorRevision,
+          binding.providerLockSha256,
+        ],
+      );
+    });
+    return { session, jobId: row.job_id };
+  }
+
+  async releaseRunnerCredential(ticket: string, input: unknown) {
+    const binding = applicationRunnerPackageSchema.parse(input);
+    const { session, jobId } = await this.consumeRunnerTicket(ticket, binding);
+    const credential = await this.releaseJobCredential(
+      session,
+      jobId,
+      binding.acceleratorRevision,
+    );
+    await this.work(session, "publish", async (client) => {
+      await client.query(
+        "SELECT lzc_auth.assert_application_runner_ticket_current($1,$2)",
+        [session.id, jobId],
+      );
+    });
+    return credential;
+  }
+
+  async runnerInput(ticket: string, input: unknown) {
+    const binding = applicationRunnerPackageSchema.parse(input);
+    if (!this.backends)
+      throw new ApplicationError(503, "application_backend_broker_unavailable");
+    const { session, jobId } = await this.consumeRunnerTicket(ticket, binding);
+    const credential = await this.releaseJobCredential(
+      session,
+      jobId,
+      binding.acceleratorRevision,
+    );
+    const schema = z.object({
+      tenantId: z.literal(session.tenantId),
+      instanceId: z.uuid(),
+      backendId: z.uuid(),
+      descriptor: s3BackendDescriptorSchema,
+      variables: z.strictObject({
+        platform_contract: platformContractSchema,
+        application: z.record(z.string(), z.json()),
+      }),
+    });
+    const current = () =>
+      this.work(session, "publish", async (client) => {
+        const row = (
+          await client.query<{ context: unknown }>(
+            "SELECT lzc_auth.application_runner_input_context($1,$2) AS context",
+            [session.id, jobId],
+          )
+        ).rows[0];
+        return schema.parse(row?.context);
+      });
+    const context = await current();
+    if (
+      context.variables.application.tenant_id !== context.tenantId ||
+      context.variables.application.instance_id !== context.instanceId ||
+      context.variables.application.configurator_execution !== true ||
+      context.descriptor.key !==
+        `applications/${context.tenantId}/${context.instanceId}/terraform.tfstate`
+    )
+      throw new ApplicationError(409, "application_runner_inputs_invalid");
+    const backend = s3RunnerBackendSchema.parse(
+      await this.work(session, "publish", (client) =>
+        this.backends!.runner(client, session, context.backendId),
+      ),
+    );
+    const descriptor = s3BackendDescriptorSchema.parse({
+      ...backend.descriptor,
+      key: context.descriptor.key,
+      useLockfile: true,
+    });
+    if (JSON.stringify(descriptor) !== JSON.stringify(context.descriptor))
+      throw new ApplicationError(409, "application_backend_changed");
+    const tfvars = serializeTfvars(objectValue(context.variables));
+    if (Buffer.byteLength(tfvars) > 1024 * 1024)
+      throw new ApplicationError(409, "application_runner_inputs_invalid");
+    await current();
+    await this.work(session, "publish", async (client) => {
+      await client.query(
+        "SELECT lzc_auth.assert_application_runner_ticket_current($1,$2)",
+        [session.id, jobId],
+      );
+    });
+    return {
+      id: jobId,
+      mode: "application-plan" as const,
+      acceleratorCommit: binding.acceleratorRevision,
+      lockHash: binding.providerLockSha256,
+      tfvars,
+      tfvarsSha256: createHash("sha256").update(tfvars).digest("hex"),
+      key: credential.key,
+      backend: { ...backend, descriptor },
+      application: {
+        tenantId: context.tenantId,
+        instanceId: context.instanceId,
+      },
+    };
   }
 
   async releaseJobCredential(

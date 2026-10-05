@@ -24,9 +24,11 @@ import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
+import type { Backends } from "../apps/api/src/deployments/backends.js";
 import { Preparations } from "../apps/api/src/deployments/preparations.js";
 import { Invitations } from "../apps/api/src/organisation/invitations.js";
 import { PostgresOrganisations } from "../apps/api/src/organisation/service.js";
+import type { PlanRunner } from "../apps/api/src/plans/cloud-foundry.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -1007,7 +1009,13 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       },
     };
     const applicationSecrets = { get: vi.fn(async () => applicationSecret) };
-    const applications = new Applications(pool, technical, applicationSecrets);
+    const applicationBackends = { runner: vi.fn<Backends["runner"]>() };
+    const applications = new Applications(
+      pool,
+      technical,
+      applicationSecrets,
+      applicationBackends,
+    );
     const tenantId = await organisations.create(
       alice,
       "Approved platform",
@@ -1428,7 +1436,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         region: "eu01",
         key: "landing-zone/terraform.tfstate",
         useLockfile: true,
-      };
+      } as const;
       const backendId = randomUUID();
       const alternativeBackendId = randomUUID();
       const foreignBackendId = randomUUID();
@@ -1835,6 +1843,206 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       ).toHaveLength(1);
       expect(technical.verifyForPreparation).toHaveBeenCalledTimes(1);
       expect(applicationSecrets.get).toHaveBeenCalledTimes(1);
+      const ticketPackage = {
+        runnerPackageId: randomUUID(),
+        acceleratorRevision: cliRevision,
+        providerLockSha256:
+          "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+      };
+      const ticketJob = await releaseJob();
+      await expect(
+        applications.issueRunnerTicket(owner, ticketJob.id, ticketPackage),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.issueRunnerTicket(
+          { ...substitutePe, tenantId },
+          ticketJob.id,
+          ticketPackage,
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      const issued = await applications.issueRunnerTicket(
+        engineer,
+        ticketJob.id,
+        ticketPackage,
+      );
+      expect(issued.ticket).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      const persistedTicket = (
+        await migration.query(
+          "SELECT * FROM lzc.application_runner_tickets WHERE job_id=$1",
+          [ticketJob.id],
+        )
+      ).rows[0];
+      expect(persistedTicket.approval_session_id).toBe(engineer.id);
+      expect(persistedTicket.runner_package_id).toBe(
+        ticketPackage.runnerPackageId,
+      );
+      expect(persistedTicket.consumed_at).toBeNull();
+      expect(JSON.stringify(persistedTicket)).not.toContain(issued.ticket);
+      await expect(
+        applications.issueRunnerTicket(engineer, ticketJob.id, ticketPackage),
+      ).rejects.toMatchObject({ code: "40001" });
+      technical.verifyForPreparation.mockClear();
+      applicationSecrets.get.mockClear();
+      await expect(
+        applications.releaseRunnerCredential(issued.ticket, {
+          ...ticketPackage,
+          runnerPackageId: randomUUID(),
+        }),
+      ).rejects.toMatchObject({ status: 401 });
+      await expect(
+        applications.releaseRunnerCredential(
+          randomBytes(32).toString("base64url"),
+          ticketPackage,
+        ),
+      ).rejects.toMatchObject({ status: 401 });
+      expect(technical.verifyForPreparation).not.toHaveBeenCalled();
+      expect(applicationSecrets.get).not.toHaveBeenCalled();
+      const ticketReleases = await Promise.allSettled([
+        applications.releaseRunnerCredential(issued.ticket, ticketPackage),
+        applications.releaseRunnerCredential(issued.ticket, ticketPackage),
+      ]);
+      expect(
+        ticketReleases.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        ticketReleases.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      expect(applicationSecrets.get).toHaveBeenCalledTimes(1);
+      expect(applicationSecrets.get).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: engineer.id,
+          userId: engineer.userId,
+          tenantId,
+        }),
+        profileId,
+      );
+      await expect(
+        applications.releaseRunnerCredential(issued.ticket, ticketPackage),
+      ).rejects.toMatchObject({ status: 401 });
+      await expect(
+        withTenant(pool, engineer, (client) =>
+          client.query("SELECT * FROM lzc.application_runner_tickets"),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_runner_tickets SET consumed_at=NULL WHERE job_id=$1",
+          [ticketJob.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      const expiredTicketJob = await releaseJob();
+      const expiredIssued = await applications.issueRunnerTicket(
+        engineer,
+        expiredTicketJob.id,
+        ticketPackage,
+      );
+      applicationSecrets.get.mockClear();
+      await migration.query(
+        "UPDATE lzc_auth.sessions SET expires_at=now()-interval '1 second' WHERE id=$1",
+        [engineer.id],
+      );
+      try {
+        await expect(
+          applications.releaseRunnerCredential(
+            expiredIssued.ticket,
+            ticketPackage,
+          ),
+        ).rejects.toMatchObject({ status: 401 });
+        expect(applicationSecrets.get).not.toHaveBeenCalled();
+      } finally {
+        await migration.query(
+          "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+          [engineer.id, actualPeExpiry],
+        );
+      }
+      const inputJob = await releaseJob();
+      const inputTicket = await applications.issueRunnerTicket(
+        engineer,
+        inputJob.id,
+        ticketPackage,
+      );
+      applicationBackends.runner.mockResolvedValue({
+        kind: "s3",
+        descriptor: backendDescriptor,
+        credentials: {
+          accessKeyId: "application-test-only",
+          secretAccessKey: "application-test-only",
+        },
+      });
+      const runnerInput = await applications.runnerInput(
+        inputTicket.ticket,
+        ticketPackage,
+      );
+      expect(runnerInput).toMatchObject({
+        id: inputJob.id,
+        mode: "application-plan",
+        acceleratorCommit: cliRevision,
+        application: { tenantId, instanceId: cliOrder.id },
+        backend: {
+          kind: "s3",
+          descriptor: { key: cliOrder.stateKey, useLockfile: true },
+        },
+      });
+      expect(runnerInput.tfvars).toContain('"configurator_execution" = true');
+      expect(applicationBackends.runner).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          id: engineer.id,
+          userId: engineer.userId,
+          tenantId,
+        }),
+        backendId,
+      );
+      await expect(
+        applications.runnerInput(inputTicket.ticket, ticketPackage),
+      ).rejects.toMatchObject({ status: 401 });
+      const backendChangedJob = await releaseJob();
+      const backendChangedTicket = await applications.issueRunnerTicket(
+        engineer,
+        backendChangedJob.id,
+        ticketPackage,
+      );
+      applicationBackends.runner.mockResolvedValueOnce({
+        kind: "s3",
+        descriptor: { ...backendDescriptor, bucket: "unexpected-bucket" },
+        credentials: {
+          accessKeyId: "application-test-only",
+          secretAccessKey: "application-test-only",
+        },
+      });
+      await expect(
+        applications.runnerInput(backendChangedTicket.ticket, ticketPackage),
+      ).rejects.toMatchObject({ code: "application_backend_changed" });
+      const backendRevokedJob = await releaseJob();
+      const backendRevokedTicket = await applications.issueRunnerTicket(
+        engineer,
+        backendRevokedJob.id,
+        ticketPackage,
+      );
+      applicationBackends.runner.mockImplementationOnce(async () => {
+        await migration.query(
+          "UPDATE lzc.memberships SET product_roles=ARRAY['application-owner'],manage_members=false WHERE tenant_id=$1 AND user_id=$2",
+          [tenantId, engineer.userId],
+        );
+        return {
+          kind: "s3",
+          descriptor: backendDescriptor,
+          credentials: {
+            accessKeyId: "application-test-only",
+            secretAccessKey: "application-test-only",
+          },
+        };
+      });
+      try {
+        await expect(
+          applications.runnerInput(backendRevokedTicket.ticket, ticketPackage),
+        ).rejects.toMatchObject({ code: "42501" });
+      } finally {
+        await migration.query(
+          "UPDATE lzc.memberships SET product_roles=ARRAY['platform-engineer'],manage_members=true WHERE tenant_id=$1 AND user_id=$2",
+          [tenantId, engineer.userId],
+        );
+      }
       await expect(
         withTenant(pool, owner, (client) =>
           client.query(
@@ -1860,6 +2068,162 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           ),
         ),
       ).rejects.toMatchObject({ code: "55000" });
+      const dispatchRunner = {
+        start: vi.fn<PlanRunner["start"]>(),
+        remove: vi.fn<PlanRunner["remove"]>(),
+      };
+      const dispatchApplications = new Applications(
+        pool,
+        technical,
+        applicationSecrets,
+        applicationBackends,
+        { runner: dispatchRunner, origin: "http://127.0.0.1:3000" },
+      );
+      const startFailureJob = await releaseJob();
+      await expect(
+        applications.dispatchJob(engineer, startFailureJob.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({ code: "application_dispatch_disabled" });
+      dispatchRunner.start.mockRejectedValueOnce(
+        new Error("before-start-test-only"),
+      );
+      await expect(
+        dispatchApplications.dispatchJob(engineer, startFailureJob.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({ code: "application_dispatch_failed" });
+      expect(
+        (
+          await migration.query(
+            "SELECT status FROM lzc.application_dispatches WHERE job_id=$1",
+            [startFailureJob.id],
+          )
+        ).rows[0].status,
+      ).toBe("failed");
+      expect(
+        await dispatchApplications.dispatchJob(engineer, startFailureJob.id, {
+          confirmPlan: true,
+        }),
+      ).toEqual({ jobId: startFailureJob.id, dispatched: false });
+      expect(dispatchRunner.start).toHaveBeenCalledTimes(1);
+      const dispatchJob = await releaseJob();
+      let dispatchedTicket = "";
+      dispatchRunner.start.mockImplementation(
+        async (id, ticket, origin, record) => {
+          expect(origin).toBe("http://127.0.0.1:3000");
+          await record(id, ticketPackage.runnerPackageId);
+          const boundRun = (
+            await migration.query(
+              "SELECT status,runner_app_id,runner_package_id FROM lzc.application_dispatches WHERE job_id=$1",
+              [id],
+            )
+          ).rows[0];
+          expect(boundRun).toEqual({
+            status: "starting",
+            runner_app_id: id,
+            runner_package_id: ticketPackage.runnerPackageId,
+          });
+          dispatchedTicket = ticket;
+        },
+      );
+      const starts = await Promise.all([
+        dispatchApplications.dispatchJob(engineer, dispatchJob.id, {
+          confirmPlan: true,
+        }),
+        dispatchApplications.dispatchJob(engineer, dispatchJob.id, {
+          confirmPlan: true,
+        }),
+      ]);
+      expect(starts.filter((receipt) => receipt.dispatched)).toHaveLength(1);
+      expect(starts.filter((receipt) => !receipt.dispatched)).toHaveLength(1);
+      expect(dispatchRunner.start).toHaveBeenCalledTimes(2);
+      expect(
+        await dispatchApplications.runnerInput(dispatchedTicket, ticketPackage),
+      ).toMatchObject({
+        id: dispatchJob.id,
+        mode: "application-plan",
+        application: { tenantId, instanceId: cliOrder.id },
+      });
+      const duplicateInstanceJob = await releaseJob();
+      await expect(
+        dispatchApplications.dispatchJob(engineer, duplicateInstanceJob.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({ code: "40001" });
+      expect(dispatchRunner.start).toHaveBeenCalledTimes(2);
+      await expect(
+        withTenant(pool, engineer, (client) =>
+          client.query(
+            "UPDATE lzc.application_dispatches SET status='failed' WHERE job_id=$1",
+            [dispatchJob.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "DELETE FROM lzc.application_dispatches WHERE job_id=$1",
+          [dispatchJob.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      const uncertainOrder = await applications.order(owner, {
+        versionId: cliVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Uncertain dispatch",
+        parameters: {},
+      });
+      const uncertainJob = await applications.prepareJob(
+        owner,
+        uncertainOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      await applications.approveJobBackend(
+        engineer,
+        uncertainJob.id,
+        backendRequest,
+      );
+      let uncertainTicket = "";
+      dispatchRunner.start.mockImplementationOnce(
+        async (id, ticket, _origin, record) => {
+          await record(id, ticketPackage.runnerPackageId);
+          uncertainTicket = ticket;
+          throw new Error("after-binding-test-only");
+        },
+      );
+      await expect(
+        dispatchApplications.dispatchJob(engineer, uncertainJob.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({ code: "application_dispatch_failed" });
+      expect(
+        (
+          await migration.query(
+            "SELECT status FROM lzc.application_dispatches WHERE job_id=$1",
+            [uncertainJob.id],
+          )
+        ).rows[0].status,
+      ).toBe("reconciliation_required");
+      applicationSecrets.get.mockClear();
+      await expect(
+        dispatchApplications.runnerInput(uncertainTicket, ticketPackage),
+      ).rejects.toMatchObject({ status: 401 });
+      expect(applicationSecrets.get).not.toHaveBeenCalled();
+      const uncertainRetry = await applications.prepareJob(
+        owner,
+        uncertainOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      await applications.approveJobBackend(
+        engineer,
+        uncertainRetry.id,
+        backendRequest,
+      );
+      await expect(
+        dispatchApplications.dispatchJob(engineer, uncertainRetry.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({ code: "40001" });
+      expect(dispatchRunner.start).toHaveBeenCalledTimes(3);
       await identities.revoke(owner);
       await expect(
         applications.preparePlanInput(owner, order.id),
