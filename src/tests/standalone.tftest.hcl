@@ -1,3 +1,73 @@
+run "cli_platform_only_handoff" {
+  command = plan
+
+  variables {
+    landing_zones = {}
+    sandboxes     = []
+  }
+
+  assert {
+    condition     = length(module.landing_zone) == 0 && local.resource_labels.landing_zone_accelerator == "true" && !contains(keys(local.resource_labels), "landing_zone_configurator")
+    error_message = "CLI platform-only execution must not create application instances or claim Configurator provenance."
+  }
+
+  assert {
+    condition     = output.platform_contract.schema_version == 1 && output.platform_contract.tenant_id == var.organization_id && output.platform_contract.targets["public-eu01"].corporate == false && output.platform_contract.targets["public-eu01"].network_area_id == null
+    error_message = "The CLI handoff must export organization-scoped non-secret public target references."
+  }
+}
+
+run "regional_platform_handoff" {
+  command = plan
+
+  variables {
+    landing_zones = {}
+    sandboxes     = []
+    connectivity_regions = {
+      eu01 = {
+        network_areas = {
+          default = {
+            ranges           = ["10.10.0.0/16"]
+            transfer_network = "10.10.0.0/24"
+          }
+        }
+      }
+      eu02 = {
+        network_areas = {
+          default = {
+            ranges           = ["10.20.0.0/16"]
+            transfer_network = "10.20.0.0/24"
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = output.platform_contract.targets["corporate-eu01-${substr(sha256("default"), 0, 16)}"].region == "eu01" && output.platform_contract.targets["corporate-eu02-${substr(sha256("default"), 0, 16)}"].region == "eu02"
+    error_message = "Regional corporate handoff targets must retain their distinct SNA regions."
+  }
+}
+
+run "platform_configurator_labels" {
+  command = plan
+
+  variables {
+    landing_zones = {}
+    sandboxes     = []
+    labels = {
+      customer                  = "retained"
+      landing_zone_accelerator  = "false"
+      landing_zone_configurator = "true"
+    }
+  }
+
+  assert {
+    condition     = local.resource_labels.landing_zone_accelerator == "true" && local.resource_labels.landing_zone_configurator == "true" && local.resource_labels.customer == "retained"
+    error_message = "Configurator provenance must supplement mandatory Accelerator provenance without losing customer labels."
+  }
+}
+
 mock_provider "stackit" {
   mock_resource "stackit_resourcemanager_project" {
     defaults = {
@@ -62,10 +132,26 @@ mock_provider "stackit" {
 
 mock_provider "stackit" {
   alias = "eu01"
+
+  mock_resource "stackit_network_area" {
+    defaults = { network_area_id = "22222222-2222-4222-8222-222222222222" }
+  }
+
+  mock_resource "stackit_routing_table" {
+    defaults = { routing_table_id = "99999999-9999-4999-8999-999999999999" }
+  }
 }
 
 mock_provider "stackit" {
   alias = "eu02"
+
+  mock_resource "stackit_network_area" {
+    defaults = { network_area_id = "33333333-3333-4333-8333-333333333333" }
+  }
+
+  mock_resource "stackit_routing_table" {
+    defaults = { routing_table_id = "88888888-8888-4888-8888-888888888888" }
+  }
 }
 
 variables {

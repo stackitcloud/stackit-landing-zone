@@ -4,6 +4,7 @@ import {
   buildConfiguration,
   type ConfigurationDraft,
   draftShape,
+  objectValue,
   type Template,
   validateDraft,
 } from "./configuration.js";
@@ -81,5 +82,13 @@ export function readSavedDraft(input: unknown): SavedDraft {
 }
 
 export function configurationValues(document: SavedDraft) {
-  return buildConfiguration(template, readSavedDraft(document).draft);
+  const values = buildConfiguration(template, readSavedDraft(document).draft);
+  return {
+    ...values,
+    labels: {
+      ...objectValue(values.labels),
+      landing_zone_accelerator: "true",
+      landing_zone_configurator: "true",
+    },
+  };
 }

@@ -134,6 +134,13 @@ const id = "11111111-2222-4333-8444-555555555555";
 const other = "22222222-2222-4333-8444-555555555555";
 const revision = "a".repeat(40);
 
+it("marks compiled applications as Configurator executions", () => {
+  expect(
+    compileApplicationPlan(fixture()).variables.application
+      .configurator_execution,
+  ).toBe(true);
+});
+
 it("compiles a fixed local project network without SNA and rejects order overrides", () => {
   const old = fixture();
   const input = {

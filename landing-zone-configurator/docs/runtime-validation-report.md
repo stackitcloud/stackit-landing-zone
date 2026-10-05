@@ -795,3 +795,45 @@ Logs: `/tmp/lzc-mvp-application-claims-{check,pg,broker,format}.txt`.
 Kein Testzugriff auf Kundendatenbank, Credentials oder echten S3-State.
 Migrationen 021 bis 028 nicht in der Kunden-API aktiviert; aktive API und Paket
 unveraendert. Kein Kunden-Plan/Apply, Push, Release oder Merge. #93 bleibt offen.
+
+## Eigenstaendiger Accelerator-CLI-Pfad und Herkunft (2026-10-05, #93)
+
+Verbindliche Grenze: Configurator bleibt optional. Der Application-Root benoetigt
+keine Configurator-API, Datenbank, Session oder Template Engine. Neue Plattform-
+Installationen koennen ohne Application-Instanzen beginnen und `platform_contract`
+als nicht geheimes JSON exportieren. Referenzen enthalten Folder, Regionen, SNA,
+Next-Hop und Nameserver; kein voller State oder Secret. Der CLI-Namensraum ist
+standardmaessig die Organisation, optional eine stabile UUID. Die UUID-Revision
+wird deterministisch aus Namespace und Referenzen abgeleitet, nicht von einem
+Configurator ausgestellt. Der bisherige Root bleibt fuer kombinierte Bestands-
+Installationen erhalten; deren Umstellung ist kein automatischer State-Move.
+
+Application-JSON und S3-Backend-Beispiel, manuelle Identitaets-/Template-Werte,
+stabiler Instanz-Key, separate Credentials/Locks und expliziter Saved-Plan-Apply
+sind dokumentiert. Der native Mocktest liest das eingecheckte manuelle JSON
+direkt. `landing_zone_accelerator=true` ist im Root verpflichtend; die Compiler
+ergaenzen fuer Configurator-Inputs `landing_zone_configurator=true`. Kundenlabels
+bleiben erhalten. Die Application verwendet standardmaessig CLI-Herkunft;
+Configurator-Herkunft ist eine zusaetzliche explizite Eingabe. Labels sind keine
+IAM-Grenze oder manipulationssicheren Belege. Accelerator-CI testet beide Roots.
+
+```text
+canonical: PASS - exit_code: 0; 348 unit passed, 33 gated skipped; lint/types/build
+platform-native: PASS - 8 mock cases, including public/corporate/eu01+eu02 handoff
+application-native: PASS - 16 mock cases, including manual JSON and both origins
+network-native: PASS - 3 existing shared-module mock cases
+identity/application: PASS - 29 existing expanded isolated PostgreSQL cases
+platform-broker: PASS - 31 isolated PostgreSQL cases
+format: PASS - terraform fmt -check -recursive src
+browser: NOT_RERUN - no UI changes; previous 152 desktop/mobile cases
+overall: NEEDS_SIGNOFF - no real CLI Apply/S3/IAM or new source/package promotion
+```
+
+Die Mehrregionen-Fixture benoetigte UUID-Defaults fuer vorhandene regionale Mock-
+Provider; generierte Zufallsstrings sind keine gueltigen SNA-/Routing-Table-IDs.
+Logs: `/tmp/lza-cli-platform-native.txt`, `/tmp/lzc-cli-provenance-{native,unit,check,pg,broker}.txt`.
+Alle Tests isoliert ohne Kunden-Credentials, Kundendatenbank oder Kundenbackend.
+Neue Compiler-Inputs aendern Hashes: keine Umbindung/Neusignierung alter Plans.
+API, aktive Runner-Pakete und bereits publizierte Quellversionen bleiben unveraendert.
+Spaetere Aktivierung verlangt frische Plans und bewusste neue Source-Qualifizierung.
+Kein Cloud-Plan/Apply, State-Migration, Push, Release oder Merge; #93 bleibt offen.

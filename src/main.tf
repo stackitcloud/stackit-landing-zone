@@ -8,7 +8,7 @@ module "governance" {
   owner_email           = var.owner_email
   organization_id       = var.organization_id
   rm_folder_parent_id   = var.rm_folder_parent_id
-  labels                = var.labels
+  labels                = local.resource_labels
   organization_owners   = var.organization_owners
   organization_auditors = var.organization_auditors
 
@@ -26,7 +26,7 @@ module "management" {
   naming_pattern               = "${var.company_code}-pltfm-mgmt-prod"
   parent_container_id          = module.governance.folder_container_ids["platform"]
   organization_id              = var.organization_id
-  labels                       = var.labels
+  labels                       = local.resource_labels
   observability                = var.observability
   audit_logs                   = var.audit_logs
   federated_identity_providers = var.federated_identity_providers
@@ -44,7 +44,7 @@ module "connectivity" {
   naming_pattern      = coalesce(var.connectivity.naming_pattern, "${var.company_code}-pltfm-hub-prod")
   parent_container_id = module.governance.folder_container_ids["platform"]
   organization_id     = var.organization_id
-  labels              = var.labels
+  labels              = local.resource_labels
   region              = var.region
   dns_zones           = var.connectivity.dns_zones
   network_areas = var.connectivity.network_areas != null ? {
@@ -88,7 +88,7 @@ module "connectivity_eu01" {
   naming_pattern      = coalesce(try(var.connectivity_regions["eu01"].naming_pattern, null), "${var.company_code}-pltfm-connectivity-eu01")
   parent_container_id = module.governance.folder_container_ids["platform"]
   organization_id     = var.organization_id
-  labels              = var.labels
+  labels              = local.resource_labels
   region              = "eu01"
   dns_zones           = try(var.connectivity_regions["eu01"].dns_zones, {})
   network_areas       = try(var.connectivity_regions["eu01"].network_areas, {})
@@ -110,7 +110,7 @@ module "connectivity_eu02" {
   naming_pattern      = coalesce(try(var.connectivity_regions["eu02"].naming_pattern, null), "${var.company_code}-pltfm-connectivity-eu02")
   parent_container_id = module.governance.folder_container_ids["platform"]
   organization_id     = var.organization_id
-  labels              = var.labels
+  labels              = local.resource_labels
   region              = "eu02"
   dns_zones           = try(var.connectivity_regions["eu02"].dns_zones, {})
   network_areas       = try(var.connectivity_regions["eu02"].network_areas, {})
@@ -159,7 +159,7 @@ module "devops" {
   naming_pattern         = "${var.company_code}-pltfm-devops-prod"
   company_name           = var.company_name
   parent_container_id    = module.governance.folder_container_ids["platform"]
-  labels                 = var.labels
+  labels                 = local.resource_labels
   git_flavor             = var.devops.git_flavor
   allowed_network_ranges = var.devops.allowed_network_ranges
 }
@@ -176,7 +176,7 @@ module "platform_kubernetes" {
   organization_id     = var.organization_id
   naming_pattern      = "${var.company_code}-pltfm-k8s-${each.value.region}"
   parent_container_id = module.governance.folder_container_ids["platform"]
-  labels              = var.labels
+  labels              = local.resource_labels
   region              = each.value.region
   role_assignments    = each.value.role_assignments
   cluster             = each.value.cluster
@@ -208,7 +208,7 @@ module "platform_kubernetes_eu01" {
   organization_id     = var.organization_id
   naming_pattern      = "${var.company_code}-pltfm-k8s-eu01"
   parent_container_id = module.governance.folder_container_ids["platform"]
-  labels              = var.labels
+  labels              = local.resource_labels
   region              = each.value.region
   role_assignments    = each.value.role_assignments
   cluster             = each.value.cluster
@@ -233,7 +233,7 @@ module "platform_kubernetes_eu02" {
   organization_id     = var.organization_id
   naming_pattern      = "${var.company_code}-pltfm-k8s-eu02"
   parent_container_id = module.governance.folder_container_ids["platform"]
-  labels              = var.labels
+  labels              = local.resource_labels
   region              = each.value.region
   role_assignments    = each.value.role_assignments
   cluster             = each.value.cluster
@@ -277,7 +277,7 @@ module "landing_zone" {
   network_area_id        = each.value.corporate ? try(module.connectivity[0].network_area_id[each.value.network_area_key], null) : null
   corporate              = each.value.corporate
   owner_email            = each.value.owner_email
-  labels                 = var.labels
+  labels                 = local.resource_labels
   role_assignments       = each.value.role_assignments
   network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
@@ -300,7 +300,7 @@ module "landing_zone_eu01" {
   network_area_id        = each.value.corporate ? try(module.connectivity_eu01[0].network_area_id[each.value.network_area_key], null) : null
   corporate              = each.value.corporate
   owner_email            = each.value.owner_email
-  labels                 = var.labels
+  labels                 = local.resource_labels
   role_assignments       = each.value.role_assignments
   network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
@@ -323,7 +323,7 @@ module "landing_zone_eu02" {
   network_area_id        = each.value.corporate ? try(module.connectivity_eu02[0].network_area_id[each.value.network_area_key], null) : null
   corporate              = each.value.corporate
   owner_email            = each.value.owner_email
-  labels                 = var.labels
+  labels                 = local.resource_labels
   role_assignments       = each.value.role_assignments
   network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length

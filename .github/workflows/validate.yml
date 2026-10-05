@@ -133,3 +133,8 @@ jobs:
 
       - name: Run configuration tests
         run: tofu -chdir=src test -no-color
+
+      - name: Run independent Application configuration tests
+        run: |
+          tofu -chdir=src/application init -backend=false -input=false -no-color
+          tofu -chdir=src/application test -no-color

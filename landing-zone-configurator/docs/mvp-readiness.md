@@ -75,7 +75,19 @@ Zu #93 ist auch die interne einmalige SQL-Claim-Stufe lokal qualifiziert:
 nur die echte PE-Freigabesession, atomarer Verbrauch und kein oeffentlicher
 Claim-Endpunkt. Dies ist noch keine Credential-Uebergabe oder Ausfuehrungsfreigabe.
 
-Aktuelle lokale Gates: `npm run check` mit **346 bestandenen Unit-Tests** und
+Verbindliche Architekturgrenze: Der Accelerator bleibt ohne Configurator nutzbar.
+Der CLI-Pfad fuer neue getrennte Platform-/Application-Phasen hat jetzt einen
+nicht geheimen `platform_contract`-Export, manuell ausgefuellte JSON-/Backend-
+Beispiele und eine eigene Accelerator-CI-Pruefung. Ressourcen mit Label-Support
+erhalten `landing_zone_accelerator=true`; Configurator-generierte Inputs ergaenzen
+`landing_zone_configurator=true`. CLI braucht keine Configurator-Session, Grants
+oder Template Engine. Lokal bestanden 8 native Plattform-/Regionalfaelle und
+16 Application-/3 Netzwerkfaelle. Noch offen: echte Zwei-Phasen-CLI-/S3-/IAM-
+Abnahme, bestehende kombinierte State-Migration und explizite Qualifizierung/
+Promotion der neuen Application-Quellversion fuer den Configurator. Kein
+automatischer Wechsel vorhandener Publikationen oder gebundener Runner.
+
+Aktuelle lokale Gates: `npm run check` mit **348 bestandenen Unit-Tests** und
 33 bewusst uebersprungenen umgebungsabhaengigen Tests; die isolierte
 PostgreSQL-Plan-/Apply-/State-/Grant-Suite separat mit **31 bestandenen Tests**;
 Identitaets-/Katalog-/Policy-/Bindungssuite mit **29 bestandenen PostgreSQL-Tests**;

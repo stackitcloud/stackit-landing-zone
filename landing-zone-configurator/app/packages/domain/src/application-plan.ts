@@ -169,6 +169,7 @@ export function compileApplicationPlan(input: {
         targets: { [request.target_key]: platform.targets[request.target_key] },
       },
       application: {
+        configurator_execution: true,
         tenant_id: context.tenant_id,
         instance_id: context.instance_id,
         platform_revision: platform.revision,

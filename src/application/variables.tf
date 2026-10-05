@@ -1,32 +1,6 @@
-variable "platform_contract" {
-  description = "Verified published platform references, supplied by the trusted runner. No remote-state access."
-  type = object({
-    schema_version  = number
-    tenant_id       = string
-    revision        = string
-    organization_id = string
-    targets = map(object({
-      folder_id            = string
-      region               = string
-      corporate            = bool
-      network_area_id      = optional(string, null)
-      firewall_next_hop_ip = optional(string, null)
-      ipv4_nameservers     = optional(list(string), null)
-    }))
-  })
-  validation {
-    condition     = var.platform_contract.schema_version == 1
-    error_message = "Unsupported platform contract version."
-  }
-  validation {
-    condition = alltrue([for target in values(var.platform_contract.targets) :
-      contains(["eu01", "eu02"], target.region) && (!target.corporate || target.network_area_id != null)
-    ])
-    error_message = "Targets need a supported region and corporate targets need an SNA reference."
-  }
-}
 variable "application" {
   type = object({
+    configurator_execution = optional(bool, false)
     tenant_id              = string
     instance_id            = string
     platform_revision      = string
@@ -55,7 +29,7 @@ variable "application" {
       access_source = optional(string, "explicit-cidrs")
     })
   })
-  description = "Server-compiled application instance. Owner and services must not come from arbitrary form fields."
+  description = "Resolved application instance supplied manually or by the Configurator. Identity and deployment authorization are enforced by the caller's IAM permissions."
 
   validation {
     condition     = var.application.env == null ? true : can(regex("^[a-z][a-z0-9-]{0,15}$", var.application.env))
@@ -71,6 +45,36 @@ variable "application" {
   }
   validation {
     condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.application.instance_id))
-    error_message = "Instance ID must be a server-issued UUID."
+    error_message = "Instance ID must be a stable UUID allocated once for this application, manually or by the Configurator."
+  }
+}
+
+variable "platform_contract" {
+  type = object({
+    schema_version  = number
+    tenant_id       = string
+    revision        = string
+    organization_id = string
+    targets = map(object({
+      folder_id            = string
+      region               = string
+      corporate            = bool
+      network_area_id      = optional(string, null)
+      firewall_next_hop_ip = optional(string, null)
+      ipv4_nameservers     = optional(list(string), null)
+    }))
+  })
+  description = "Reviewed non-secret platform references supplied as a CLI artifact or by the Configurator. No remote-state access."
+
+  validation {
+    condition     = var.platform_contract.schema_version == 1
+    error_message = "Unsupported platform contract version."
+  }
+
+  validation {
+    condition = alltrue([for target in values(var.platform_contract.targets) :
+      contains(["eu01", "eu02"], target.region) && (!target.corporate || target.network_area_id != null)
+    ])
+    error_message = "Targets need a supported region and corporate targets need an SNA reference."
   }
 }

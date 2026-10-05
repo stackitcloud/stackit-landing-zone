@@ -84,6 +84,10 @@ variables {
 run "public_project" {
   command = plan
   assert {
+    condition     = local.application_labels.landing_zone_accelerator == "true" && local.application_labels.managed_by == "landing-zone-accelerator" && !contains(keys(local.application_labels), "landing_zone_configurator")
+    error_message = "Direct CLI execution must retain Accelerator provenance without claiming Configurator execution."
+  }
+  assert {
     condition     = module.application.landing_zone_type == "public" && module.application.project_name == "Application fixture"
     error_message = "Public project must use the compiled instance settings."
   }
@@ -98,6 +102,45 @@ run "public_project" {
   assert {
     condition     = module.application.project_network == null
     error_message = "Legacy public applications must not gain a network implicitly."
+  }
+}
+
+run "configurator_provenance" {
+  command = plan
+
+  variables {
+    application = {
+      configurator_execution = true
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }
+  }
+
+  assert {
+    condition     = local.application_labels.landing_zone_accelerator == "true" && local.application_labels.landing_zone_configurator == "true" && local.application_labels.lzc_instance == var.application.instance_id
+    error_message = "Configurator execution must add its provenance without removing the Accelerator label."
+  }
+}
+
+run "manual_application_example" {
+  command = plan
+
+  variables {
+    platform_contract = jsondecode(file("examples/application.tfvars.json.example")).platform_contract
+    application       = jsondecode(file("examples/application.tfvars.json.example")).application
+  }
+
+  assert {
+    condition     = module.application.project_name == "Example application" && !contains(keys(local.application_labels), "landing_zone_configurator")
+    error_message = "The manually resolved example must work without Configurator execution."
   }
 }
 

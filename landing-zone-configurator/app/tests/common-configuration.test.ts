@@ -37,6 +37,17 @@ const digest = (text: string) =>
   createHash("sha256").update(text).digest("hex");
 
 describe("shared accelerator feature contract", () => {
+  it("adds both provenance labels while retaining customer labels", () => {
+    const document = setCommonInput(create(), "labels", {
+      customer: "retained",
+      landing_zone_accelerator: "false",
+    });
+    expect(values(document).labels).toEqual({
+      customer: "retained",
+      landing_zone_accelerator: "true",
+      landing_zone_configurator: "true",
+    });
+  });
   it("assigns all 28 inputs exactly once, including every protected input", () => {
     const assigned = Object.values(featureGroups).flatMap((group) => [
       ...group.inputs,
@@ -74,13 +85,19 @@ describe("shared accelerator feature contract", () => {
     );
   });
   for (const template of catalogue.templates) {
-    it(`imports and exports ${template.id} without flattening or default insertion`, () => {
+    it(`imports and exports ${template.id} with only provenance additions`, () => {
       const before = JSON.stringify(template);
       const document = create(template.id);
-      expect(values(document)).toEqual(template.values);
-      expect(exportCommonTfvars(document)).toBe(
-        serializeTfvars(template.values),
-      );
+      const expected = {
+        ...template.values,
+        labels: {
+          ...objectValue(template.values.labels),
+          landing_zone_accelerator: "true",
+          landing_zone_configurator: "true",
+        },
+      };
+      expect(values(document)).toEqual(expected);
+      expect(exportCommonTfvars(document)).toBe(serializeTfvars(expected));
       expect(
         readCommonConfiguration(JSON.parse(JSON.stringify(document))),
       ).toEqual(document);

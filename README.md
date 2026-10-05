@@ -14,6 +14,13 @@
 
 The STACKIT Landing Zone Accelerator provides a comprehensive Terraform-based framework for deploying secure, scalable, and well-architected cloud environments on STACKIT. Built with enterprise best practices, it enables teams to quickly establish governance, networking, and security foundations.
 
+The Accelerator remains independently usable with Terraform/OpenTofu. The
+Configurator is optional tooling, not a required API, template engine or state
+service. For separate Platform and Application phases, see the
+[independent CLI workflow](src/application/README.md#independent-two-phase-cli-workflow).
+The platform exports reviewed non-secret references; Application inputs can be
+filled manually and use a separate backend/state.
+
 ## 📚 Documentation
 
 - [Getting Started](docs/getting-started.md)

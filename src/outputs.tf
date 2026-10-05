@@ -1,3 +1,14 @@
+output "platform_contract" {
+  description = "Non-secret Application handoff. The organization ID is the default CLI namespace; revision changes when exported references change."
+  value = {
+    schema_version  = 1
+    tenant_id       = coalesce(var.platform_contract_namespace, var.organization_id)
+    revision        = uuidv5(coalesce(var.platform_contract_namespace, var.organization_id), jsonencode({ organization_id = var.organization_id, targets = local.platform_contract_targets }))
+    organization_id = var.organization_id
+    targets         = local.platform_contract_targets
+  }
+}
+
 #############
 ## OUTPUTS ##
 #############

@@ -11,6 +11,7 @@ trap 'rm -rf "$work_dir"' EXIT
 mkdir -p "$work_dir/src/application" "$work_dir/src/modules"
 cp "$repo_dir/src/application/"*.tf "$work_dir/src/application/"
 cp -R "$repo_dir/src/application/tests" "$work_dir/src/application/"
+cp -R "$repo_dir/src/application/examples" "$work_dir/src/application/"
 cp -R "$repo_dir/src/modules/." "$work_dir/src/modules/"
 # No service-account, backend, TF_VAR, user CLI configuration or inherited CLI args.
 # The checked-in fixtures mock every provider and run plan only.

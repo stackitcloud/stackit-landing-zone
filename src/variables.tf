@@ -41,6 +41,17 @@ variable "platform_kubernetes_kube_config_override" {
   sensitive   = true
 }
 
+variable "platform_contract_namespace" {
+  type        = string
+  description = "Optional stable UUID namespace for Application handoff; defaults to the organization ID for independent CLI use. This is metadata, not an authorization boundary."
+  default     = null
+
+  validation {
+    condition     = var.platform_contract_namespace == null ? true : can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.platform_contract_namespace))
+    error_message = "The platform contract namespace must be a UUID."
+  }
+}
+
 variable "labels" {
   type        = map(string)
   description = "Additional labels to apply to all resources."

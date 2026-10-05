@@ -254,7 +254,15 @@ export function readCommonConfiguration(input: unknown): CommonConfiguration {
   return parsed;
 }
 export function compileCommonConfiguration(input: CommonConfiguration): Values {
-  return flatten(readCommonConfiguration(input));
+  const values = flatten(readCommonConfiguration(input));
+  return {
+    ...values,
+    labels: {
+      ...objectValue(values.labels),
+      landing_zone_accelerator: "true",
+      landing_zone_configurator: "true",
+    },
+  };
 }
 export function exportCommonTfvars(input: CommonConfiguration): string {
   return serializeTfvars(compileCommonConfiguration(input));

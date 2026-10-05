@@ -1,15 +1,21 @@
 # Separate entry point for one new Application Landing Zone.
-# Only reviewed, server-compiled inputs belong here; this root is not an IAM boundary.
+# Reviewed CLI inputs and Configurator-compiled inputs use the same root.
 locals {
   target = try(var.platform_contract.targets[var.application.target_key], null)
   # An omitted stage preserves existing resource names exactly. New instances may
   # include a validated stage; this is not an update/rename contract for deployed instances.
   naming_pattern = var.application.env == null ? "app-${var.application.instance_id}" : "app-${var.application.instance_id}-${var.application.env}"
   application_labels = merge({
-    managed_by   = "landing-zone-configurator"
-    lzc_instance = var.application.instance_id
-    lzc_template = var.application.template_id
-  }, var.application.env == null ? {} : { env = var.application.env })
+    landing_zone_accelerator = "true"
+    managed_by               = "landing-zone-accelerator"
+    application_instance     = var.application.instance_id
+    application_template     = var.application.template_id
+    }, var.application.configurator_execution ? {
+    landing_zone_configurator = "true"
+    managed_by                = "landing-zone-configurator"
+    lzc_instance              = var.application.instance_id
+    lzc_template              = var.application.template_id
+  } : {}, var.application.env == null ? {} : { env = var.application.env })
 }
 
 resource "terraform_data" "contract" {
