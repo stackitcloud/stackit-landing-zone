@@ -29,6 +29,7 @@ import { Preparations } from "../apps/api/src/deployments/preparations.js";
 import { Invitations } from "../apps/api/src/organisation/invitations.js";
 import { PostgresOrganisations } from "../apps/api/src/organisation/service.js";
 import type { PlanRunner } from "../apps/api/src/plans/cloud-foundry.js";
+import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -2072,12 +2073,16 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         start: vi.fn<PlanRunner["start"]>(),
         remove: vi.fn<PlanRunner["remove"]>(),
       };
+      const applicationCrypto = new ArtifactCrypto(
+        randomBytes(32).toString("base64"),
+      );
       const dispatchApplications = new Applications(
         pool,
         technical,
         applicationSecrets,
         applicationBackends,
         { runner: dispatchRunner, origin: "http://127.0.0.1:3000" },
+        applicationCrypto,
       );
       const startFailureJob = await releaseJob();
       await expect(
@@ -2166,6 +2171,161 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           [dispatchJob.id],
         ),
       ).rejects.toMatchObject({ code: "55000" });
+      const noChanges = {
+        unchanged: 0,
+        create: 0,
+        update: 0,
+        delete: 0,
+        replace: 0,
+        read: 0,
+      };
+      const applicationSummary = {
+        schemaVersion: 1,
+        execution: "plan-only",
+        applyAllowed: false,
+        result: "no-changes",
+        resources: noChanges,
+        drift: noChanges,
+        changedOutputs: 0,
+        checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
+        destructive: false,
+        completeness: "complete",
+      };
+      await expect(
+        dispatchApplications.runnerStage(dispatchedTicket, ticketPackage, {
+          stage: "planning",
+        }),
+      ).rejects.toMatchObject({ code: "55000" });
+      await dispatchApplications.runnerStage(dispatchedTicket, ticketPackage, {
+        stage: "initializing",
+      });
+      await dispatchApplications.runnerStage(dispatchedTicket, ticketPackage, {
+        stage: "validating",
+      });
+      await dispatchApplications.runnerStage(dispatchedTicket, ticketPackage, {
+        stage: "planning",
+      });
+      await expect(
+        dispatchApplications.dispatchJob(engineer, duplicateInstanceJob.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "application_instance_running",
+      });
+      expect(dispatchRunner.start).toHaveBeenCalledTimes(2);
+      await expect(
+        dispatchApplications.runnerResult(dispatchedTicket, ticketPackage, {
+          status: "succeeded",
+          summary: applicationSummary,
+          artifactSha256: "0".repeat(64),
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      const planBytes = Buffer.from("APPLICATION-PLAN-MOCK-PRIVATE-BYTES");
+      const planUpload = {
+        data: planBytes.toString("base64"),
+        summary: applicationSummary,
+      };
+      const artifactReceipt = await dispatchApplications.runnerArtifact(
+        dispatchedTicket,
+        ticketPackage,
+        planUpload,
+      );
+      expect(
+        await dispatchApplications.runnerArtifact(
+          dispatchedTicket,
+          ticketPackage,
+          planUpload,
+        ),
+      ).toEqual(artifactReceipt);
+      await expect(
+        dispatchApplications.runnerArtifact(dispatchedTicket, ticketPackage, {
+          ...planUpload,
+          data: Buffer.from("different-plan").toString("base64"),
+        }),
+      ).rejects.toMatchObject({ code: "40001" });
+      const sealedArtifact = (
+        await migration.query(
+          "SELECT * FROM lzc.application_runner_records WHERE job_id=$1 AND kind='artifact'",
+          [dispatchJob.id],
+        )
+      ).rows[0];
+      expect(sealedArtifact.ciphertext.includes(planBytes)).toBe(false);
+      expect(
+        applicationCrypto.decrypt(
+          sealedArtifact.ciphertext,
+          tenantId,
+          owner.userId,
+          `application-artifact:${dispatchJob.id}`,
+        ),
+      ).toEqual(planBytes);
+      expect(() =>
+        applicationCrypto.decrypt(
+          sealedArtifact.ciphertext,
+          tenantId,
+          engineer.userId,
+          `application-artifact:${dispatchJob.id}`,
+        ),
+      ).toThrow();
+      expect(sealedArtifact).toMatchObject({
+        owner_user_id: owner.userId,
+        state_key: cliOrder.stateKey,
+        runner_package_id: ticketPackage.runnerPackageId,
+        sha256: artifactReceipt.sha256,
+      });
+      await dispatchApplications.runnerOutput(dispatchedTicket, ticketPackage, {
+        text: "application plan output",
+        truncated: false,
+      });
+      const sealedOutput = (
+        await migration.query(
+          "SELECT ciphertext FROM lzc.application_runner_records WHERE job_id=$1 AND kind='output'",
+          [dispatchJob.id],
+        )
+      ).rows[0];
+      expect(
+        applicationCrypto
+          .decrypt(
+            sealedOutput.ciphertext,
+            tenantId,
+            owner.userId,
+            `application-output:${dispatchJob.id}`,
+          )
+          .toString(),
+      ).toBe("application plan output");
+      await expect(
+        dispatchApplications.runnerResult(dispatchedTicket, ticketPackage, {
+          status: "succeeded",
+          summary: { ...applicationSummary, changedOutputs: 1 },
+          artifactSha256: artifactReceipt.sha256,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await dispatchApplications.runnerResult(dispatchedTicket, ticketPackage, {
+        status: "succeeded",
+        summary: applicationSummary,
+        artifactSha256: artifactReceipt.sha256,
+      });
+      expect(
+        (
+          await migration.query(
+            "SELECT status,summary FROM lzc.application_dispatches WHERE job_id=$1",
+            [dispatchJob.id],
+          )
+        ).rows[0],
+      ).toEqual({ status: "succeeded", summary: applicationSummary });
+      await expect(
+        dispatchApplications.runnerResult(dispatchedTicket, ticketPackage, {
+          status: "succeeded",
+          summary: applicationSummary,
+          artifactSha256: artifactReceipt.sha256,
+        }),
+      ).rejects.toMatchObject({ status: 401 });
+      await expect(
+        migration.query(
+          "DELETE FROM lzc.application_runner_records WHERE job_id=$1",
+          [dispatchJob.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
       const uncertainOrder = await applications.order(owner, {
         versionId: cliVersion.id,
         idempotencyKey: randomUUID(),
@@ -2187,6 +2347,16 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         async (id, ticket, _origin, record) => {
           await record(id, ticketPackage.runnerPackageId);
           uncertainTicket = ticket;
+          await dispatchApplications.runnerInput(ticket, ticketPackage);
+          await dispatchApplications.runnerStage(ticket, ticketPackage, {
+            stage: "initializing",
+          });
+          await dispatchApplications.runnerStage(ticket, ticketPackage, {
+            stage: "validating",
+          });
+          await dispatchApplications.runnerStage(ticket, ticketPackage, {
+            stage: "planning",
+          });
           throw new Error("after-binding-test-only");
         },
       );
@@ -2208,6 +2378,11 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         dispatchApplications.runnerInput(uncertainTicket, ticketPackage),
       ).rejects.toMatchObject({ status: 401 });
       expect(applicationSecrets.get).not.toHaveBeenCalled();
+      await expect(
+        dispatchApplications.runnerStage(uncertainTicket, ticketPackage, {
+          stage: "planning",
+        }),
+      ).rejects.toMatchObject({ status: 401 });
       const uncertainRetry = await applications.prepareJob(
         owner,
         uncertainOrder.id,

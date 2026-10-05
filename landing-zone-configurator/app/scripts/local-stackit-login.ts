@@ -227,6 +227,36 @@ async function start() {
       new PlatformExecution(crypto, backends),
     );
   }
+  let applicationRunner: LocalPlanRunner | undefined;
+  if (process.env.LZC_APPLICATION_EXECUTION_ENABLED === "true") {
+    stage = "application-runner";
+    const packageRoot = process.env.LZC_APPLICATION_RUNNER_PACKAGE_DIR;
+    if (
+      (!localExecution && process.env.LZC_RUNNER_KIND !== "local") ||
+      !packageRoot
+    )
+      throw new Error(
+        "Application execution requires an explicitly selected local runner package",
+      );
+    applicationRunner = await LocalPlanRunner.open(
+      packageRoot,
+      join(
+        homedir(),
+        ".local/share/landing-zone-configurator/application-runner-jobs",
+      ),
+      "application",
+    );
+  }
+  const applications = new Applications(
+    pool,
+    new PostgresCredentialProfiles(pool, secrets),
+    secrets,
+    backends,
+    applicationRunner
+      ? { runner: applicationRunner, origin: "http://127.0.0.1:3000" }
+      : undefined,
+    crypto,
+  );
   stage = "api";
   const app = buildApp({
     backends,
@@ -253,10 +283,20 @@ async function start() {
       { prepareSnapshot: unavailable },
       new PostgresCredentialProfiles(pool, secrets),
     ),
-    applications: new Applications(
-      pool,
-      new PostgresCredentialProfiles(pool, secrets),
-    ),
+    applications,
+    ...(applicationRunner
+      ? {
+          applicationRunner: {
+            applications,
+            binding: {
+              runnerPackageId: applicationRunner.packageId,
+              acceleratorRevision: "c4b43c36af198985980b17626c48d357795e3fbd",
+              providerLockSha256:
+                "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+            },
+          },
+        }
+      : {}),
     credentials: new PostgresCredentialProfiles(pool, secrets),
     catalogues: new PostgresCloudCatalogues(pool, secrets),
     ...(plans ? { plans } : {}),

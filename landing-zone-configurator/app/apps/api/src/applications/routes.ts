@@ -6,7 +6,98 @@ import {
   validMutation,
 } from "../auth/routes.js";
 import type { Session } from "../auth/store.js";
-import { ApplicationError, type Applications } from "./service.js";
+import {
+  ApplicationError,
+  type Applications,
+  applicationRunnerPackageSchema,
+} from "./service.js";
+
+export type ApplicationRunnerServices = Pick<
+  Applications,
+  | "runnerInput"
+  | "runnerStage"
+  | "runnerArtifact"
+  | "runnerOutput"
+  | "runnerResult"
+>;
+
+export function registerApplicationRunner(
+  app: FastifyInstance,
+  applications: ApplicationRunnerServices,
+  input: unknown,
+) {
+  const binding = applicationRunnerPackageSchema.parse(input);
+  const ticket = (authorization: string | undefined) => {
+    if (!authorization || !/^Bearer [A-Za-z0-9_-]{43}$/.test(authorization))
+      throw new ApplicationError(401, "invalid_application_runner_ticket");
+    return authorization.slice(7);
+  };
+  app.register(async (routes) => {
+    routes.setErrorHandler((error, _request, reply) => {
+      if ((error as { statusCode?: number }).statusCode === 413)
+        return reply.code(413).send({ error: "request_too_large" });
+      if (error instanceof ApplicationError)
+        return reply.code(error.status).send({ error: error.code });
+      if (error instanceof z.ZodError)
+        return reply
+          .code(400)
+          .send({ error: "invalid_application_runner_request" });
+      if (error instanceof Error && "code" in error) {
+        if (error.code === "40001" || error.code === "55000")
+          return reply
+            .code(409)
+            .send({ error: "application_runner_report_conflict" });
+        if (error.code === "42501" || error.code === "P0002")
+          return reply
+            .code(403)
+            .send({ error: "application_runner_access_denied" });
+      }
+      app.log.warn(
+        { event: "application_runner_request_failed" },
+        "Application runner request failed",
+      );
+      return reply
+        .code(503)
+        .send({ error: "application_runner_request_failed" });
+    });
+    routes.post(
+      "/api/application-runner/input",
+      { bodyLimit: 1024 },
+      async (request) => {
+        const key = ticket(request.headers.authorization);
+        z.strictObject({}).parse(request.body);
+        return applications.runnerInput(key, binding);
+      },
+    );
+    for (const { path, method, limit } of [
+      { path: "stage", method: "runnerStage", limit: 1024 },
+      {
+        path: "artifact",
+        method: "runnerArtifact",
+        limit: 22 * 1024 * 1024 + 65536,
+      },
+      {
+        path: "output",
+        method: "runnerOutput",
+        limit: 12 * 1024 * 1024 + 1024,
+      },
+      { path: "result", method: "runnerResult", limit: 65536 },
+    ] as const) {
+      routes.post(
+        `/api/application-runner/${path}`,
+        { bodyLimit: limit },
+        async (request, reply) => {
+          const receipt = await applications[method](
+            ticket(request.headers.authorization),
+            binding,
+            request.body,
+          );
+          return method === "runnerArtifact" ? receipt : reply.code(204).send();
+        },
+      );
+    }
+  });
+}
 
 export function registerApplications(
   app: FastifyInstance,
@@ -23,7 +114,10 @@ export function registerApplications(
     | "preparePlanInput"
   > &
     Partial<
-      Pick<Applications, "prepareJob" | "revokeJobGrant" | "approveJobBackend">
+      Pick<
+        Applications,
+        "prepareJob" | "revokeJobGrant" | "approveJobBackend" | "dispatchJob"
+      >
     >,
 ) {
   const sessions = new WeakMap<FastifyRequest, Session>();
@@ -33,10 +127,13 @@ export function registerApplications(
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_application_request" });
-      if (error instanceof Error && "code" in error && error.code === "40001")
-        return reply
-          .code(409)
-          .send({ error: "application_backend_binding_conflict" });
+      if (error instanceof Error && "code" in error && error.code === "40001") {
+        const code =
+          error.message === "application_instance_running"
+            ? "application_instance_running"
+            : "application_backend_binding_conflict";
+        return reply.code(409).send({ error: code });
+      }
       if (
         error instanceof Error &&
         "code" in error &&
@@ -162,6 +259,25 @@ export function registerApplications(
             .send({ error: "application_jobs_unavailable" });
         const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
         return applications.approveJobBackend(session, id, request.body);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/dispatch",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.dispatchJob)
+          return reply
+            .code(503)
+            .send({ error: "application_dispatch_disabled" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        const input = z
+          .strictObject({ confirmPlan: z.literal(true) })
+          .parse(request.body);
+        return reply
+          .code(202)
+          .send(await applications.dispatchJob(session, id, input));
       },
     );
   });

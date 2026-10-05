@@ -31,13 +31,19 @@ afterEach(async () => {
     await rm(directory, { recursive: true, force: true });
 });
 
-async function fixture(version = "1.12.6", live = false) {
+async function fixture(
+  version = "1.12.6",
+  live = false,
+  broker: "platform" | "application" = "platform",
+) {
   const directory = await mkdtemp(join(tmpdir(), "lzc-local-runner-test-"));
   directories.push(directory);
   const root = join(directory, "package");
   const jobs = join(directory, "jobs");
   for (const path of [
     "accelerator",
+    "application-src/application",
+    "application-src/modules/landing-zone",
     "apps/worker/dist",
     "packages/contracts/dist",
     "providers",
@@ -62,41 +68,58 @@ async function fixture(version = "1.12.6", live = false) {
   );
   await writeFile(
     join(root, "apps/worker/dist/main.js"),
-    `const fs = require("node:fs"); fs.writeFileSync("result.json", JSON.stringify({keys:Object.keys(process.env).sort(), origin:process.env.LZC_BROKER_ORIGIN, local:process.env.LZC_LOCAL_RUNNER, root:process.env.LZC_RUNNER_PACKAGE_ROOT, ticketValid:/^[A-Za-z0-9_-]{43}$/.test(process.env.LZC_RUN_TICKET)})); ${live ? "setInterval(() => {}, 1000);" : ""}`,
+    `const fs = require("node:fs"); fs.writeFileSync("result.json", JSON.stringify({keys:Object.keys(process.env).sort(), origin:process.env.LZC_BROKER_ORIGIN, local:process.env.LZC_LOCAL_RUNNER, root:process.env.LZC_RUNNER_PACKAGE_ROOT, broker:process.env.LZC_RUNNER_BROKER, ticketValid:/^[A-Za-z0-9_-]{43}$/.test(process.env.LZC_RUN_TICKET)})); ${live ? "setInterval(() => {}, 1000);" : ""}`,
   );
-  const runner = await LocalPlanRunner.open(root, jobs);
+  const runner = await LocalPlanRunner.open(root, jobs, broker);
   return { root: await realpath(root), jobs: await realpath(jobs), runner };
 }
 
-it("records a stable package identity before launching a private minimal-env worker", async () => {
-  vi.stubEnv("AWS_SECRET_ACCESS_KEY", "must-not-inherit");
-  vi.stubEnv("LZC_RUNNER_CF_PASSWORD", "must-not-inherit");
-  const { root, jobs, runner } = await fixture();
-  const recorded = vi.fn(async (appId: string, identity: string) => {
-    expect(appId).toBe(id);
-    expect(identity).toMatch(/^[a-f0-9-]{36}$/);
+it.each(["platform", "application"] as const)(
+  "records a stable $0 package identity before launching a private minimal-env worker",
+  async (broker) => {
+    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "must-not-inherit");
+    vi.stubEnv("LZC_RUNNER_CF_PASSWORD", "must-not-inherit");
+    const { root, jobs, runner } = await fixture("1.12.6", false, broker);
+    const recorded = vi.fn(async (appId: string, identity: string) => {
+      expect(appId).toBe(id);
+      expect(identity).toMatch(/^[a-f0-9-]{36}$/);
+      await expect(readFile(join(jobs, id, "result.json"))).rejects.toThrow();
+    });
+    await runner.start(id, ticket, origin, recorded);
+    await vi.waitFor(
+      async () => {
+        const result = JSON.parse(
+          await readFile(join(jobs, id, "result.json"), "utf8"),
+        );
+        expect(result).toMatchObject({
+          origin,
+          local: "true",
+          root,
+          ticketValid: true,
+          broker,
+        });
+        expect(result.keys).not.toContain("AWS_SECRET_ACCESS_KEY");
+        expect(result.keys).not.toContain("LZC_RUNNER_CF_PASSWORD");
+      },
+      { timeout: 4000 },
+    );
+    expect(recorded).toHaveBeenCalledOnce();
+    await runner.remove(id, id);
     await expect(readFile(join(jobs, id, "result.json"))).rejects.toThrow();
-  });
-  await runner.start(id, ticket, origin, recorded);
-  await vi.waitFor(
-    async () => {
-      const result = JSON.parse(
-        await readFile(join(jobs, id, "result.json"), "utf8"),
-      );
-      expect(result).toMatchObject({
-        origin,
-        local: "true",
-        root,
-        ticketValid: true,
-      });
-      expect(result.keys).not.toContain("AWS_SECRET_ACCESS_KEY");
-      expect(result.keys).not.toContain("LZC_RUNNER_CF_PASSWORD");
-    },
-    { timeout: 4000 },
+  },
+);
+
+it("includes application sources and sibling modules in the immutable package identity", async () => {
+  const { root, runner } = await fixture("1.12.6", false, "application");
+  await writeFile(
+    join(root, "application-src/modules/landing-zone/main.tf"),
+    "changed",
   );
-  expect(recorded).toHaveBeenCalledOnce();
-  await runner.remove(id, id);
-  await expect(readFile(join(jobs, id, "result.json"))).rejects.toThrow();
+  const recorded = vi.fn(async () => {});
+  await expect(runner.start(id, ticket, origin, recorded)).rejects.toThrow(
+    "Local runner package changed",
+  );
+  expect(recorded).not.toHaveBeenCalled();
 });
 
 it("reads only owned live logs and redacts nested credentials without exposing other jobs", async () => {

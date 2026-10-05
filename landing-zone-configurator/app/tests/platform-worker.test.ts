@@ -25,6 +25,7 @@ import {
   localBrokerOrigin,
   providerLockHash,
   runWorker,
+  type WorkerOptions,
 } from "../apps/worker/src/runner.js";
 
 const runner = fileURLToPath(new URL("../../deploy/runner/", import.meta.url));
@@ -239,13 +240,14 @@ LZC_FAKE_TOFU
   );
   const output = vi.spyOn(console, "log").mockImplementation(() => {});
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const options: Pick<WorkerOptions, "broker" | "report"> = { report };
   const execute = (timeoutMilliseconds?: number) =>
     runWorker({
       root,
       id: "run-id",
       ticket,
       brokerOrigin,
-      report,
+      ...options,
       ...(timeoutMilliseconds === undefined ? {} : { timeoutMilliseconds }),
     });
   const calls = async (): Promise<
@@ -275,7 +277,17 @@ LZC_FAKE_TOFU
           .map((line) => JSON.parse(line)),
       () => [],
     );
-  return { root, input, execute, calls, reports, report, output, errors };
+  return {
+    root,
+    input,
+    execute,
+    calls,
+    reports,
+    report,
+    output,
+    errors,
+    options,
+  };
 }
 
 const applicationBinding = {
@@ -286,6 +298,7 @@ function applicationInput(
   test: Awaited<ReturnType<typeof fixture>>,
   mode = "application-plan",
 ) {
+  test.options.broker = "application";
   test.input.mode = mode;
   test.input.acceleratorCommit = applicationAcceleratorCommit;
   test.input.lockHash = applicationProviderLockHash;
@@ -294,6 +307,50 @@ function applicationInput(
   backend.descriptor.key = `applications/${applicationBinding.tenantId}/${applicationBinding.instanceId}/terraform.tfstate`;
   test.input.backend = backend;
 }
+
+it.each([
+  { mode: "application-plan", broker: "platform" },
+  { mode: "platform-plan", broker: "application" },
+] as const)(
+  "rejects $mode on the $broker broker before engine access",
+  async ({ mode, broker }) => {
+    const test = await fixture();
+    if (mode === "application-plan") applicationInput(test);
+    test.options.broker = broker;
+    expect(await test.execute()).toBe("failed");
+    expect(await test.calls()).toEqual([]);
+  },
+);
+
+it("sends application input and reports only to the application broker namespace", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  delete test.options.report;
+  const urls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init: RequestInit) => {
+      urls.push(url);
+      const response = await test.report(
+        url.split("/").at(-1) ?? "",
+        JSON.parse(String(init.body)),
+      );
+      return response === null
+        ? new Response(null, { status: 204 })
+        : Response.json(response);
+    }),
+  );
+  expect(await test.execute()).toBe("succeeded");
+  expect(urls.map((url) => url.split("/").at(-1))).toEqual(
+    test.reports.map(({ path }) => path),
+  );
+  expect(urls.length).toBeGreaterThan(3);
+  expect(
+    urls.every((url) =>
+      url.startsWith(`${brokerOrigin}/api/application-runner/`),
+    ),
+  ).toBe(true);
+});
 
 it("plans the pinned application root with sibling modules and only its instance S3 state", async () => {
   const test = await fixture();

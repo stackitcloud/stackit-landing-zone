@@ -47,6 +47,7 @@ export interface WorkerOptions {
   id: string | undefined;
   ticket: string | undefined;
   brokerOrigin: string | undefined;
+  broker?: "platform" | "application";
   local?: boolean;
   workRoot?: string;
   report?: Report;
@@ -112,6 +113,8 @@ export async function runWorker(
   let recoveryState = false;
   let publishOutput = async () => {};
   const expectedOrigin = options.local ? localBrokerOrigin : brokerOrigin;
+  const broker = options.broker ?? "platform";
+  const brokerPath = broker === "application" ? "application-runner" : "runner";
   const deadline = Date.now() + (options.timeoutMilliseconds ?? 18 * 60 * 1000);
   const report: Report =
     options.report ??
@@ -122,20 +125,23 @@ export async function runWorker(
         !/^[A-Za-z0-9_-]{43}$/.test(options.ticket)
       )
         throw new Error("Runner configuration invalid");
-      const response = await fetch(`${expectedOrigin}/api/runner/${path}`, {
-        method: "POST",
-        redirect: "error",
-        signal: AbortSignal.timeout(
-          path === "recovery" || path === "output"
-            ? 60000
-            : Math.max(1, Math.min(60000, deadline - Date.now())),
-        ),
-        headers: {
-          Authorization: `Bearer ${options.ticket}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${expectedOrigin}/api/${brokerPath}/${path}`,
+        {
+          method: "POST",
+          redirect: "error",
+          signal: AbortSignal.timeout(
+            path === "recovery" || path === "output"
+              ? 60000
+              : Math.max(1, Math.min(60000, deadline - Date.now())),
+          ),
+          headers: {
+            Authorization: `Bearer ${options.ticket}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      });
+      );
       if (!response.ok) throw new Error("Runner broker request failed");
       return response.status === 204 ? null : await response.json();
     });
@@ -143,6 +149,7 @@ export async function runWorker(
     process.umask(0o077);
     if (
       options.brokerOrigin !== expectedOrigin ||
+      !["platform", "application"].includes(broker) ||
       !options.ticket ||
       !/^[A-Za-z0-9_-]{43}$/.test(options.ticket) ||
       !options.id
@@ -161,6 +168,7 @@ export async function runWorker(
       : providerLockHash;
     if (
       input.id !== options.id ||
+      applicationJob !== (broker === "application") ||
       typeof mode !== "string" ||
       ![
         "initial-plan-only",

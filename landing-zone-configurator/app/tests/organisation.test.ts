@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import { ApplicationError } from "../apps/api/src/applications/service.js";
@@ -19,7 +19,166 @@ const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
-function setup() {
+
+function runnerSetup() {
+  const instanceId = randomUUID();
+  const binding = {
+    runnerPackageId: randomUUID(),
+    acceleratorRevision: "c4b43c36af198985980b17626c48d357795e3fbd",
+    providerLockSha256:
+      "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+  } as const;
+  const applications = {
+    runnerInput: vi.fn(async () => ({
+      id: "test-application-job",
+      mode: "application-plan" as const,
+      acceleratorCommit: binding.acceleratorRevision,
+      lockHash: binding.providerLockSha256,
+      tfvars: "",
+      tfvarsSha256: createHash("sha256").update("").digest("hex"),
+      key: {
+        credentials: {
+          kid: randomUUID(),
+          iss: "test@sa.stackit.cloud",
+          sub: randomUUID(),
+          aud: "https://accounts.stackit.cloud" as const,
+          privateKey: "test-only-key-never-executed",
+        },
+      },
+      backend: {
+        kind: "s3" as const,
+        descriptor: {
+          bucket: "management-tfstate",
+          endpoint: "https://object.storage.eu01.onstackit.cloud" as const,
+          region: "eu01" as const,
+          key: `applications/${session.tenantId}/${instanceId}/terraform.tfstate`,
+          useLockfile: true as const,
+        },
+        credentials: {
+          accessKeyId: "test-only-access",
+          secretAccessKey: "test-only-secret",
+        },
+      },
+      application: { tenantId: session.tenantId, instanceId },
+    })),
+    runnerStage: vi.fn(async () => {}),
+    runnerArtifact: vi.fn(async () => ({ sha256: "a".repeat(64) })),
+    runnerOutput: vi.fn(async () => {}),
+    runnerResult: vi.fn(async () => {}),
+  };
+  const app = buildApp({ applicationRunner: { applications, binding } });
+  apps.push(app);
+  return { app, binding, applications };
+}
+
+it("keeps application machine routes closed without an explicit trusted package binding", async () => {
+  const app = buildApp();
+  apps.push(app);
+  const reply = await app.inject({
+    method: "POST",
+    url: "/api/application-runner/input",
+    payload: {},
+  });
+  expect(reply.statusCode).toBe(404);
+});
+
+it.each([
+  undefined,
+  "Bearer short",
+  `Basic ${"t".repeat(43)}`,
+  `Bearer ${"t".repeat(43)} extra`,
+])(
+  "rejects malformed application runner authorization: %s",
+  async (authorization) => {
+    const { app, applications } = runnerSetup();
+    const reply = await app.inject({
+      method: "POST",
+      url: "/api/application-runner/input",
+      headers: authorization ? { authorization } : {},
+      payload: {},
+    });
+    expect(reply.statusCode).toBe(401);
+    expect(applications.runnerInput).not.toHaveBeenCalled();
+  },
+);
+
+it("uses server-side application package binding and never accepts browser-selected capabilities", async () => {
+  const { app, binding, applications } = runnerSetup();
+  const authorization = `Bearer ${"t".repeat(43)}`;
+  const invalid = await app.inject({
+    method: "POST",
+    url: "/api/application-runner/input",
+    headers: { authorization },
+    payload: { runnerPackageId: randomUUID() },
+  });
+  expect(invalid.statusCode).toBe(400);
+  expect(applications.runnerInput).not.toHaveBeenCalled();
+  const reply = await app.inject({
+    method: "POST",
+    url: "/api/application-runner/input",
+    headers: { authorization },
+    payload: {},
+  });
+  expect(reply.statusCode).toBe(200);
+  expect(applications.runnerInput).toHaveBeenCalledWith(
+    "t".repeat(43),
+    binding,
+  );
+  expect(reply.headers["cache-control"]).toBe("no-store");
+  const platform = await app.inject({
+    method: "POST",
+    url: "/api/runner/input",
+    headers: { authorization },
+    payload: {},
+  });
+  expect(platform.statusCode).toBe(404);
+});
+
+it.each([
+  {
+    path: "stage",
+    method: "runnerStage",
+    payload: { stage: "planning" },
+    code: 204,
+  },
+  {
+    path: "artifact",
+    method: "runnerArtifact",
+    payload: { data: "test" },
+    code: 200,
+  },
+  {
+    path: "output",
+    method: "runnerOutput",
+    payload: { text: "test", truncated: false },
+    code: 204,
+  },
+  {
+    path: "result",
+    method: "runnerResult",
+    payload: { status: "failed", errorCode: "input_invalid" },
+    code: 204,
+  },
+] as const)(
+  "routes application $path only with its trusted ticket and package",
+  async ({ path, method, payload, code }) => {
+    const { app, binding, applications } = runnerSetup();
+    const reply = await app.inject({
+      method: "POST",
+      url: `/api/application-runner/${path}`,
+      headers: { authorization: `Bearer ${"t".repeat(43)}` },
+      payload,
+    });
+    expect(reply.statusCode).toBe(code);
+    expect(applications[method]).toHaveBeenCalledWith(
+      "t".repeat(43),
+      binding,
+      payload,
+    );
+  },
+);
+
+function setup(dispatchEnabled = false) {
   const auth: AuthServices = {
     origin: "https://configurator.example",
     clientId: "test",
@@ -63,6 +222,16 @@ function setup() {
     publish: vi.fn(async () => {
       throw new ApplicationError(403, "application_access_denied");
     }),
+    ...(dispatchEnabled
+      ? {
+          dispatchJob: vi.fn(
+            async (_session: Session, jobId: string, _input: unknown) => ({
+              jobId,
+              dispatched: true,
+            }),
+          ),
+        }
+      : {}),
     order: vi.fn(async () => {
       throw new ApplicationError(409, "idempotency_conflict");
     }),
@@ -77,6 +246,58 @@ function setup() {
   };
   return { app, service, headers, applications, auth };
 }
+
+it("requires current tenant, origin, CSRF and explicit plan confirmation before application dispatch", async () => {
+  const { app, headers, applications } = setup(true);
+  const jobId = randomUUID();
+  const url = `/api/v1/applications/jobs/${jobId}/dispatch`;
+  const payload = { confirmPlan: true };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  for (const invalid of [
+    {},
+    { confirmPlan: false },
+    { confirmPlan: true, runnerPackageId: randomUUID() },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.dispatchJob).not.toHaveBeenCalled();
+  const reply = await app.inject({ method: "POST", url, headers, payload });
+  expect(reply.statusCode).toBe(202);
+  expect(reply.json()).toEqual({ jobId, dispatched: true });
+  expect(applications.dispatchJob).toHaveBeenCalledExactlyOnceWith(
+    session,
+    jobId,
+    payload,
+  );
+  applications.dispatchJob?.mockRejectedValueOnce(
+    Object.assign(new Error("application_instance_running"), { code: "40001" }),
+  );
+  const conflict = await app.inject({ method: "POST", url, headers, payload });
+  expect(conflict.statusCode).toBe(409);
+  expect(conflict.json()).toEqual({ error: "application_instance_running" });
+});
+
+it("keeps application dispatch disabled when the service has no runner capability", async () => {
+  const { app, headers } = setup();
+  const reply = await app.inject({
+    method: "POST",
+    url: `/api/v1/applications/jobs/${randomUUID()}/dispatch`,
+    headers,
+    payload: { confirmPlan: true },
+  });
+  expect(reply.statusCode).toBe(503);
+  expect(reply.json()).toEqual({ error: "application_dispatch_disabled" });
+});
 
 it("protects template retirement with current tenant, origin, CSRF and a valid version ID", async () => {
   const { app, headers, applications } = setup();

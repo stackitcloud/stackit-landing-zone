@@ -109,6 +109,8 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       credentials,
       credentialSecrets,
       backends,
+      undefined,
+      artifactCrypto,
     );
   }
   auth = {

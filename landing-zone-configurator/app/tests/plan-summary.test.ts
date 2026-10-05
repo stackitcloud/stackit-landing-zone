@@ -1,3 +1,36 @@
+it.each([
+  { actions: ["delete"] },
+  { actions: ["delete", "create"] },
+  { actions: ["create", "delete"] },
+])(
+  "rejects organization-folder destruction or replacement: $actions",
+  ({ actions }) => {
+    expect(() =>
+      summarizePlan(
+        plan({
+          resource_changes: [
+            { ...resource(actions), type: "stackit_resourcemanager_folder" },
+          ],
+        }),
+        2,
+      ),
+    ).toThrow();
+  },
+);
+
+it("allows an unchanged organization folder without weakening the destruction gate", () => {
+  expect(
+    summarizePlan(
+      plan({
+        resource_changes: [
+          { ...resource(["no-op"]), type: "stackit_resourcemanager_folder" },
+        ],
+      }),
+      0,
+    ).result,
+  ).toBe("no-changes");
+});
+
 import { expect, it } from "vitest";
 import { summarizePlan } from "../apps/worker/src/plans/summary.js";
 

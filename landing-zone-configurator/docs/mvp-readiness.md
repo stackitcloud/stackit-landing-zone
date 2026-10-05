@@ -26,7 +26,7 @@ und des Projektverantwortlichen ist verpflichtend; ein erfolgreicher Login allei
 ersetzt weder den technischen Organisationszugriff noch einen Cloud-Plan.
 
 ## Lokaler Self-Service-Fortschritt (2026-10-02)
-Die nachfolgenden Detailnachweise beschreiben diesen historischen Stand. Der aktuelle Issue-Abgleich hat Vorrang; Application-Cloud-Ausfuehrung bleibt weiterhin nicht implementiert.
+Die nachfolgenden Detailnachweise beschreiben diesen historischen Stand. Der aktuelle Issue-Abgleich hat Vorrang; Application-Cloud-Ausfuehrung bleibt weiterhin nicht aktiviert oder live abgenommen.
 
 - Unveränderliche, tenantgebundene Plattformvertragsversionen mit ausdrücklicher
    PE-Freigabe, gültiger menschlicher STACKIT-Identität und aktuellem SA-Zugangstest.
@@ -80,9 +80,28 @@ Paket, Quelle, Provider-Lock und die echte Freigabesession. Der vollstaendige
 Plan-Input verwendet nur immutable Job-Variablen und den freigegebenen Instanz-
 S3-Key. Der interne Dispatch-Kern ist mit Fake-Runner lokal geprueft: eine aktive
 Reservierung pro Instanz, keine Doppelstarts oder automatischen Wiederholungen;
-ungewisse Startfehler sperren Instanz und Ticket zur Reconciliation. Kein
-oeffentlicher Claim-/Credential-/Start-Endpunkt und keine aktive Ausfuehrung.
-Report-/Artefakt-Endpunkte und Operator-Reconciliation fehlen vor Aktivierung.
+ungewisse Startfehler sperren Instanz und Ticket zur Reconciliation. Es gibt
+weiterhin keinen oeffentlichen Claim- oder isolierten Credential-Endpunkt.
+Migration 033 speichert Planartefakte und CLI-Ausgaben verschluesselt und
+unveraenderlich unter der tatsaechlichen Bestellerbindung; erfolgreiche Ergebnisse
+erfordern exakt den gespeicherten Plan-Hash, die Summary und die Paketbindung.
+Die Stage-Folge ist strikt; Upload-Konflikte, terminale Replays und Doppelstarts
+auch waehrend `planning` werden abgefangen. Unknown-Start nach begonnener Arbeit
+bleibt zur Reconciliation gesperrt und darf nicht automatisch erneut starten.
+
+Die neuen `/api/application-runner/*`-Endpunkte haben eine serverseitige feste
+Paketbindung und bleiben ohne explizite Konfiguration geschlossen. Der Worker
+trennt sie vom Plattform-Broker und verweigert domainfremde Eingaben vor Engine-
+Zugriff. Der lokale Application-Paket-Fingerprint umfasst auch dessen Root und
+Geschwistermodule; Plattform-Paketidentitaeten werden nicht umgebunden.
+Der session-/tenant-/origin-/CSRF-geschuetzte Dispatch-Endpunkt verlangt eine
+ausdrueckliche Plan-Bestaetigung. Lokaler Startup erfordert zusaetzlich
+`LZC_APPLICATION_EXECUTION_ENABLED=true` und einen expliziten separaten
+`LZC_APPLICATION_RUNNER_PACKAGE_DIR`; kein Default-Paket wird still ausgewaehlt.
+Diese Verkabelung ist nur lokal mit HTTP-, Prozess- und PostgreSQL-Fixtures
+qualifiziert, nicht im aktiven Paket ausgerollt. Operator-Reconciliation,
+Quoten, gespeicherter Application-Apply samt Recovery und Upgrade-Pfad bleiben
+vor der vollstaendigen #93-Abnahme offen. Kein Kunden-Cloud-Lauf wurde gestartet.
 
 Verbindliche Architekturgrenze: Der Accelerator bleibt ohne Configurator nutzbar.
 Der CLI-Pfad fuer neue getrennte Platform-/Application-Phasen hat jetzt einen
@@ -97,7 +116,7 @@ Application-Quellversion. `c4b43c3` ist jetzt lokal als eigene unveraenderliche
 Publikation und neues inaktives natives Application-Paket qualifiziert. Kein
 automatischer Wechsel vorhandener Publikationen oder gebundener Runner.
 
-Aktuelle lokale Gates: `npm run check` mit **349 bestandenen Unit-Tests** und
+Aktuelle lokale Gates: `npm run check` mit **370 bestandenen Unit-Tests** und
 33 bewusst uebersprungenen umgebungsabhaengigen Tests; die isolierte
 PostgreSQL-Plan-/Apply-/State-/Grant-Suite separat mit **31 bestandenen Tests**;
 Identitaets-/Katalog-/Policy-/Bindungssuite mit **29 bestandenen PostgreSQL-Tests**;
@@ -232,7 +251,27 @@ Plattformreferenzen und komplexere Netzwerk-/Kubernetes-Fähigkeiten. Wichtigkei
 geht vor bloßer Einfachheit; #59 ist klein, aber weniger dringlich.
 
 Keine automatische Kundenlöschung. [#22](https://github.com/stackitcloud/stackit-landing-zone/issues/22)
-bleibt eine externe Lifecycle-Grenze. Bekannte private Kubernetes-/regionale
+bleibt eine externe Lifecycle-Grenze: laut dem verlinkten
+[Provider-Issue #1075](https://github.com/stackitcloud/terraform-provider-stackit/issues/1075)
+werden Projekte bei Destroy zunaechst zur Loeschung vorgemerkt und koennen bis
+zu sieben Tage als Folder-Kinder bestehen bleiben. Folder-Delete kann dann mit
+409 scheitern; eine Loeschvormerkung ist kein Nachweis vollstaendiger Bereinigung.
+Der verlinkte Issue dokumentiert keinen bestaetigten Fix. Kein automatischer
+Folder-Destroy, kein State-Remove als Ersatz fuer Cloud-Loeschung und keine
+automatische Wiederholung eines fehlgeschlagenen Destroy.
+
+Fuer die gemeinsam freigegebene #93-Cloud-Abnahme gilt: bestehende Landing-Zone-
+Organisation und bestehende Folder verwenden, neue getrennte Application-
+Testinstanz mit eigenem State-Key. Zuerst prueft der Benutzer die Konfiguration,
+danach erstellen wir gemeinsam den Cloud-Plan; Apply erfolgt erst nach seiner
+ausdruecklichen Freigabe des konkreten gespeicherten Plans. Bestehende Folder
+werden dabei weder geloescht noch ersetzt. Die neue lokale Plan-Auswertung
+sperrt Folder-Delete/Replace; sie ist noch nicht im aktiven Runner-Paket ausgerollt.
+Testprojekt-Loeschung ist ein gesonderter, ausdruecklicher Lifecycle-Schritt;
+eine Vormerkung darf weder als vollstaendige Bereinigung noch als freier Test-
+Namensraum fuer eine sofortige Neuerstellung behandelt werden.
+
+Bekannte private Kubernetes-/regionale
 Namespace-Grenzen (#37/#80) werden durch passende Ausführungssperren berücksichtigt,
 nicht durch eine erfolgreiche Login- oder Credential-Prüfung aufgehoben.
 

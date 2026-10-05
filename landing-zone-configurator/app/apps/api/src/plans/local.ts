@@ -22,7 +22,10 @@ import type { PlanRunner } from "./cloud-foundry.js";
 const origin = "http://127.0.0.1:3000";
 const marker = "running.json";
 
-async function fingerprint(root: string) {
+async function fingerprint(
+  root: string,
+  broker: "platform" | "application" = "platform",
+) {
   const hash = createHash("sha256");
   async function add(relative: string) {
     const path = join(root, relative);
@@ -51,6 +54,10 @@ async function fingerprint(root: string) {
     "package-lock.json",
   ])
     await add(relative);
+  if (broker === "application") {
+    hash.update("application\0");
+    await add("application-src");
+  }
   const digest = hash.digest("hex");
   return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
@@ -79,9 +86,15 @@ export class LocalPlanRunner implements PlanRunner {
     private readonly root: string,
     private readonly jobs: string,
     private readonly identity: string,
+    private readonly broker: "platform" | "application",
   ) {}
 
-  static async open(root: string, jobs: string) {
+  static async open(
+    root: string,
+    jobs: string,
+    broker: "platform" | "application" = "platform",
+  ) {
+    z.enum(["platform", "application"]).parse(broker);
     const packageRoot = await realpath(root);
     const info = await lstat(packageRoot);
     if ((info.mode & 0o022) !== 0)
@@ -97,10 +110,19 @@ export class LocalPlanRunner implements PlanRunner {
     );
     if (JSON.parse(engine.stdout).terraform_version !== "1.12.6")
       throw new Error("Local runner requires OpenTofu 1.12.6");
-    const identity = await fingerprint(packageRoot);
+    const identity = await fingerprint(packageRoot, broker);
     await mkdir(jobs, { recursive: true, mode: 0o700 });
     await chmod(jobs, 0o700);
-    return new LocalPlanRunner(packageRoot, await realpath(jobs), identity);
+    return new LocalPlanRunner(
+      packageRoot,
+      await realpath(jobs),
+      identity,
+      broker,
+    );
+  }
+
+  get packageId() {
+    return this.identity;
   }
 
   supportsArtifact(identity: string) {
@@ -203,13 +225,25 @@ export class LocalPlanRunner implements PlanRunner {
     if (this.inspecting >= 2) throw new Error("Plan output busy");
     this.inspecting++;
     let work: string | undefined;
+    let workContainer: string | undefined;
     let sockets: string | undefined;
     try {
-      if ((await fingerprint(this.root)) !== this.identity)
+      if ((await fingerprint(this.root, this.broker)) !== this.identity)
         throw new Error("Local runner package changed");
-      work = await mkdtemp(join(this.jobs, "inspect-"));
+      workContainer = await mkdtemp(join(this.jobs, "inspect-"));
+      work =
+        this.broker === "application"
+          ? join(workContainer, "application")
+          : workContainer;
       sockets = await mkdtemp("/tmp/lzc-view-");
-      await cp(join(this.root, "accelerator"), work, { recursive: true });
+      await cp(
+        join(
+          this.root,
+          this.broker === "application" ? "application-src" : "accelerator",
+        ),
+        workContainer,
+        { recursive: true },
+      );
       await writeFile(join(work, "saved-plan.bin"), bytes, { mode: 0o600 });
       await writeFile(
         join(work, "runner.tfrc"),
@@ -243,7 +277,8 @@ export class LocalPlanRunner implements PlanRunner {
       throw new Error("Plan output unavailable");
     } finally {
       this.inspecting--;
-      if (work) await rm(work, { recursive: true, force: true });
+      if (workContainer)
+        await rm(workContainer, { recursive: true, force: true });
       if (sockets) await rm(sockets, { recursive: true, force: true });
     }
   }
@@ -257,7 +292,7 @@ export class LocalPlanRunner implements PlanRunner {
     z.uuid().parse(id);
     if (broker !== origin || !/^[A-Za-z0-9_-]{43}$/.test(ticket))
       throw new Error("Invalid local runner dispatch");
-    if ((await fingerprint(this.root)) !== this.identity)
+    if ((await fingerprint(this.root, this.broker)) !== this.identity)
       throw new Error("Local runner package changed");
     const directory = join(this.jobs, id);
     await mkdir(directory, { mode: 0o700 });
@@ -278,6 +313,7 @@ export class LocalPlanRunner implements PlanRunner {
             LZC_BROKER_ORIGIN: origin,
             LZC_LOCAL_RUNNER: "true",
             LZC_RUNNER_PACKAGE_ROOT: this.root,
+            LZC_RUNNER_BROKER: this.broker,
           },
         },
       );
@@ -312,16 +348,19 @@ export class LocalPlanRunner implements PlanRunner {
     const id = randomUUID();
     const started = Date.now();
     const ticket = randomBytes(32).toString("base64url");
-    const rejected = await fetch(`${origin}/api/runner/input`, {
-      method: "POST",
-      redirect: "error",
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        Authorization: `Bearer ${ticket}`,
-        "Content-Type": "application/json",
+    const rejected = await fetch(
+      `${origin}/api/${this.broker === "application" ? "application-runner" : "runner"}/input`,
+      {
+        method: "POST",
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
+        headers: {
+          Authorization: `Bearer ${ticket}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
       },
-      body: "{}",
-    });
+    );
     await rejected.arrayBuffer();
     if (rejected.status !== 401)
       throw new Error("Local broker did not reject the probe ticket");

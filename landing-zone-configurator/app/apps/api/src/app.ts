@@ -2,7 +2,11 @@ import fastifyStatic from "@fastify/static";
 import type { HealthResponse } from "@lzc/contracts";
 import { catalogue } from "@lzc/domain";
 import Fastify, { LogController } from "fastify";
-import { registerApplications } from "./applications/routes.js";
+import {
+  type ApplicationRunnerServices,
+  registerApplicationRunner,
+  registerApplications,
+} from "./applications/routes.js";
 import type { Applications } from "./applications/service.js";
 import { platformAccessError } from "./auth/platform-access.js";
 import {
@@ -52,7 +56,13 @@ export function buildApp(
       | "listPlatformContracts"
       | "approvePlatformContract"
       | "preparePlanInput"
-    >;
+    > &
+      Partial<
+        Pick<
+          Applications,
+          "prepareJob" | "revokeJobGrant" | "approveJobBackend" | "dispatchJob"
+        >
+      >;
     organisations?: OrganisationService;
     invitations?: Pick<Invitations, "list" | "create" | "revoke" | "use">;
     catalogues?: Pick<PostgresCloudCatalogues, "load">;
@@ -61,6 +71,10 @@ export function buildApp(
     repositories?: Repositories;
     credentials?: CredentialProfiles;
     plans?: PlanRoutesServices;
+    applicationRunner?: {
+      applications: ApplicationRunnerServices;
+      binding: unknown;
+    };
     backends?: Pick<
       Backends,
       "list" | "register" | "configuration" | "configurationForSource"
@@ -109,6 +123,12 @@ export function buildApp(
     stackit: !!options.stackit,
     primary: options.auth?.primaryStackit ? "stackit" : "github",
   }));
+  if (options.applicationRunner)
+    registerApplicationRunner(
+      app,
+      options.applicationRunner.applications,
+      options.applicationRunner.binding,
+    );
   if (options.auth) {
     registerAuth(app, options.auth);
     if (options.configurations)

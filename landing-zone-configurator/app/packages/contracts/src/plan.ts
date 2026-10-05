@@ -106,6 +106,15 @@ export function summarizePlan(
   // A state JSON is not a plan. Unknown major formats and partial failures fail closed.
   object(plan.configuration);
   object(plan.planned_values);
+  for (const value of array(plan.resource_changes ?? [])) {
+    const change = object(value);
+    if (
+      change.mode === "managed" &&
+      change.type === "stackit_resourcemanager_folder" &&
+      ["delete", "replace"].includes(action(object(change.change).actions))
+    )
+      throw new InvalidPlan();
+  }
   const resources = counts(plan.resource_changes);
   const drift = counts(plan.resource_drift);
   let changedOutputs = 0;

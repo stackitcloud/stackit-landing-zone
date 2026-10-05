@@ -2,6 +2,8 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   type ApplicationInstance,
   applicationInstanceSchema,
+  planResultSchema,
+  runnerArtifactSchema,
   s3BackendDescriptorSchema,
   s3RunnerBackendSchema,
 } from "@lzc/contracts";
@@ -27,6 +29,7 @@ import type { PostgresCredentialProfiles } from "../credentials/profiles.js";
 import type { CredentialSecrets } from "../credentials/secrets.js";
 import type { Backends } from "../deployments/backends.js";
 import type { PlanRunner } from "../plans/cloud-foundry.js";
+import { type ArtifactCrypto, canonicalBase64 } from "../plans/crypto.js";
 import { withTenant } from "../storage/database.js";
 
 export class ApplicationError extends Error {
@@ -38,7 +41,7 @@ export class ApplicationError extends Error {
   }
 }
 
-const applicationRunnerPackageSchema = z.strictObject({
+export const applicationRunnerPackageSchema = z.strictObject({
   runnerPackageId: z.uuid(),
   acceleratorRevision: z.literal("c4b43c36af198985980b17626c48d357795e3fbd"),
   providerLockSha256: z.literal(
@@ -134,6 +137,7 @@ export class Applications {
     private readonly secrets?: Pick<CredentialSecrets, "get">,
     private readonly backends?: Pick<Backends, "runner">,
     private readonly dispatch?: { runner: PlanRunner; origin: string },
+    private readonly artifactCrypto?: ArtifactCrypto,
   ) {}
 
   private work<T>(
@@ -893,6 +897,169 @@ export class Applications {
         instanceId: context.instanceId,
       },
     };
+  }
+
+  private async reportWork<T>(
+    ticket: string,
+    input: unknown,
+    task: (
+      client: pg.PoolClient,
+      session: Session,
+      jobId: string,
+    ) => Promise<T>,
+  ) {
+    const binding = applicationRunnerPackageSchema.parse(input);
+    if (!/^[A-Za-z0-9_-]{43}$/.test(ticket))
+      throw new ApplicationError(401, "invalid_application_runner_ticket");
+    const row = (
+      await this.pool.query<{
+        job_id: string;
+        session_id: string;
+        user_id: string;
+        tenant_id: string;
+        expires_at: Date;
+      }>(
+        "SELECT * FROM lzc_auth.resolve_application_runner_report($1,$2,$3,$4)",
+        [
+          tokenHash(ticket),
+          binding.runnerPackageId,
+          binding.acceleratorRevision,
+          binding.providerLockSha256,
+        ],
+      )
+    ).rows[0];
+    if (!row)
+      throw new ApplicationError(401, "invalid_application_runner_ticket");
+    const session: Session = {
+      id: row.session_id,
+      userId: row.user_id,
+      tenantId: row.tenant_id,
+      expiresAt: row.expires_at,
+      githubId: "",
+      login: "",
+      csrfToken: "",
+    };
+    return this.work(session, "publish", (client) =>
+      task(client, session, row.job_id),
+    );
+  }
+
+  runnerStage(ticket: string, binding: unknown, input: unknown) {
+    const { stage } = z
+      .strictObject({
+        stage: z.enum(["initializing", "validating", "planning"]),
+      })
+      .parse(input);
+    return this.reportWork(ticket, binding, async (client, session, jobId) => {
+      await client.query("SELECT lzc_auth.application_report_stage($1,$2,$3)", [
+        session.id,
+        jobId,
+        stage,
+      ]);
+    });
+  }
+
+  async runnerArtifact(ticket: string, binding: unknown, input: unknown) {
+    const request = runnerArtifactSchema.parse(input);
+    const crypto = this.artifactCrypto;
+    if (!crypto)
+      throw new ApplicationError(
+        503,
+        "application_artifact_storage_unavailable",
+      );
+    const bytes = canonicalBase64(request.data, 16 * 1024 * 1024);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    return this.reportWork(ticket, binding, async (client, session, jobId) => {
+      const grant = (
+        await client.query<{ owner_user_id: string }>(
+          "SELECT owner_user_id FROM lzc.application_job_grants WHERE job_id=$1",
+          [jobId],
+        )
+      ).rows[0];
+      if (!grant)
+        throw new ApplicationError(403, "application_artifact_unavailable");
+      const ciphertext = crypto.encrypt(
+        bytes,
+        session.tenantId,
+        grant.owner_user_id,
+        `application-artifact:${jobId}`,
+      );
+      await client.query(
+        "SELECT lzc_auth.application_report_record($1,$2,'artifact',$3,$4,$5,false)",
+        [
+          session.id,
+          jobId,
+          ciphertext,
+          sha256,
+          JSON.stringify(request.summary),
+        ],
+      );
+      return { sha256 };
+    });
+  }
+
+  async runnerOutput(ticket: string, binding: unknown, input: unknown) {
+    const output = z
+      .strictObject({
+        text: z.string().max(2 * 1024 * 1024),
+        truncated: z.boolean(),
+      })
+      .parse(input);
+    const crypto = this.artifactCrypto;
+    if (!crypto)
+      throw new ApplicationError(
+        503,
+        "application_artifact_storage_unavailable",
+      );
+    const bytes = Buffer.from(output.text);
+    if (!bytes.length || bytes.length > 2 * 1024 * 1024)
+      throw new ApplicationError(400, "application_output_invalid");
+    return this.reportWork(ticket, binding, async (client, session, jobId) => {
+      const grant = (
+        await client.query<{ owner_user_id: string }>(
+          "SELECT owner_user_id FROM lzc.application_job_grants WHERE job_id=$1",
+          [jobId],
+        )
+      ).rows[0];
+      if (!grant)
+        throw new ApplicationError(403, "application_output_unavailable");
+      await client.query(
+        "SELECT lzc_auth.application_report_record($1,$2,'output',$3,$4,NULL,$5)",
+        [
+          session.id,
+          jobId,
+          crypto.encrypt(
+            bytes,
+            session.tenantId,
+            grant.owner_user_id,
+            `application-output:${jobId}`,
+          ),
+          createHash("sha256").update(bytes).digest("hex"),
+          output.truncated,
+        ],
+      );
+    });
+  }
+
+  runnerResult(ticket: string, binding: unknown, input: unknown) {
+    const result = planResultSchema.parse(input);
+    return this.reportWork(ticket, binding, async (client, session, jobId) => {
+      await client.query(
+        "SELECT lzc_auth.application_report_result($1,$2,$3,$4,$5,$6)",
+        [
+          session.id,
+          jobId,
+          result.status,
+          result.status === "succeeded"
+            ? (result.artifactSha256 ?? null)
+            : null,
+          result.status === "succeeded"
+            ? JSON.stringify(result.summary ?? null)
+            : null,
+          result.status === "failed" ? result.errorCode : null,
+        ],
+      );
+    });
   }
 
   async releaseJobCredential(
