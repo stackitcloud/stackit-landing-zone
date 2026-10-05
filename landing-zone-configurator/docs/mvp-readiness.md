@@ -65,8 +65,8 @@ Gesamt-MVP und kein Beleg fuer eine Live-Abnahme.
 |---|---|---|
 | [#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89) | Gemeinsamer Datensatz, begrenzte Standalone-/Governance-Freigabe, unveraenderliche Vorbereitung, Broker-Pruefung; persoenliche Kunden-Plans erfolgreich, zuletzt `6fb07c43-bd5d-47e7-bf30-3a14eb10b605`; leerer Erstplanpfad auch bei deaktivierter Plattformausfuehrung gegen Checkpoint, Teilstate, Aliase und unzugeordneten Altstate gesperrt | Weitere Komponenten einzeln mit nativen Contracts und gegebenenfalls privater Erreichbarkeit qualifizieren; Editorumfang ist keine Ausfuehrungsfreigabe |
 | [#90](https://github.com/stackitcloud/stackit-landing-zone/issues/90) | Verschluesselter gespeicherter Plan, explizite Freigabe, unveraenderliche Bindungen, serialisierte Ausfuehrung, temporaerer Bootstrap-State, kundeneigener S3-Zielbackend, geschuetzte Recovery-Nachweise und CLI-Ausgaben | Nachgewiesene Live-Abnahme von Apply, Migration, Folgeplan und hartem Runner-Verlust; operatorseitige Wiederherstellung und Abgleich unterbrochener Laeufe |
-| [#91](https://github.com/stackitcloud/stackit-landing-zone/issues/91) | Primaerer STACKIT-Device-Login, verifizierte menschliche Identitaet, optionaler benutzergebundener GitHub-Connector, Rollen-/Eigentums-/Tenant-Pruefungen; lokal gepruefte menschliche IAM-Owner-Bindung mit separater Bestaetigung und unveraenderlichen Auditbelegen; persistente einmalige Plattform-Job-Grants mit Ablauf/Widerruf vor technischer Credential-Nutzung | Aktivierung und echte Zwei-Organisations-Abnahme; Least-Privilege-Providerqualifizierung, Application-Job-Grant-Anbindung, Live-Widerruf/abgelaufene Jobs und Produktions-Client-Freigabe |
-| [#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) | Gespeicherte Template-Entwuerfe, unveraenderliche tenantgebundene Versionen, Compiler-/Plattformvertrag, strikte Eingabepolicies, forklose AO-Sicht/Bestellung; explizite idempotente Stilllegung mit serverseitiger Sichtbarkeits-/Bestellsperre; versionierte direkte/Freigabe-Policy mit unveraenderlichem Instanz-Snapshot | Aktivierung der neuen Migrationen und vollstaendige Kundenveroeffentlichungsabnahme unter autoritativ verifizierter Tenantbindung (#91); kein automatischer Application-Apply |
+| [#91](https://github.com/stackitcloud/stackit-landing-zone/issues/91) | Primaerer STACKIT-Device-Login, verifizierte menschliche Identitaet, optionaler benutzergebundener GitHub-Connector, Rollen-/Eigentums-/Tenant-Pruefungen; lokal gepruefte menschliche IAM-Owner-Bindung mit separater Bestaetigung und unveraenderlichen Auditbelegen; persistente einmalige Plattform-Job-Grants mit Ablauf/Widerruf vor technischer Credential-Nutzung | Echte Zwei-Organisations-Abnahme; Least-Privilege-Providerqualifizierung, Application-Job-Grant-Anbindung, Live-Widerruf/abgelaufene Jobs und Produktions-Client-Freigabe |
+| [#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) | Gespeicherte Template-Entwuerfe, unveraenderliche tenantgebundene Versionen, Compiler-/Plattformvertrag, strikte Eingabepolicies, forklose AO-Sicht/Bestellung; explizite idempotente Stilllegung mit serverseitiger Sichtbarkeits-/Bestellsperre; versionierte direkte/Freigabe-Policy mit unveraenderlichem Instanz-Snapshot | Vollstaendige Kundenveroeffentlichungsabnahme unter autoritativ verifizierter Tenantbindung (#91); kein automatischer Application-Apply |
 | [#93](https://github.com/stackitcloud/stackit-landing-zone/issues/93) | Versionierter nicht geheimer Plattformvertrag, SA-gebundene PE-Freigabe, persistente idempotente Bestellungen, verifizierte Owner-Bindung und erneuter Plan-Input-Check; lokal qualifizierter eigener Application-Quell-Pin/Provider-Lock, Opt-in-Paket und Worker-Root-/Instanz-State-Isolation; explizite neue Quellversion, idempotente vorbereitete Jobs mit SQL-abgeleiteten unveraenderlichen Grant-Snapshots und Widerruf; explizite sessiongebundene PE-S3-Backend-Freigabe mit festem Instanz-Key ohne AO-Credential-Zugriff | Freigegebener Application-Dispatch mit einmaliger technischer Credential-Freigabe, eigener realer State/Lock, Cloud-Plan, Quoten und ausdruecklicher Upgrade-Pfad |
 | [#94](https://github.com/stackitcloud/stackit-landing-zone/issues/94) | Betreiber-Binding fuer Model Serving | Begrenzter Backend-/UI-Assistent, Wissensstand, validierter Vorschlag mit bestaetigtem Diff sowie Sicherheits- und echter Model-Serving-Nachweis |
 | [#95](https://github.com/stackitcloud/stackit-landing-zone/issues/95) | Lokale Lint-/Typ-/Build-Gates, Unit-/Browser-/native Nachweise und dokumentierte Laufzeitgrenzen | Finale Revision/CI, Zwei-Org- und Betriebsabnahme, Restore/Rotation, PR/Branchschutz/Deployment-Entscheidung und ausdruecklicher Merge-Entscheid |
@@ -132,23 +132,35 @@ Bereitstellung. HTTP-Fixtures sind kein Live-Kunden- oder Live-S3-Nachweis.
 
 Der Feature-Zwischenstand und die Application-Inkremente sind nach ausdruecklicher
 Freigabe lokal committed und als externe Git-Bundles gesichert. Kein automatischer
-Push, Release oder Merge. Die laufende API und das
-native Paket `runner-local-20261004-opentofu-completeness` bleiben unveraendert.
+Push, Release oder Merge. Die lokale API wurde am 2026-10-05 nach gesonderter
+Freigabe aktualisiert; das native Paket
+`runner-local-20261004-opentofu-completeness` bleibt unveraendert.
 
 Der vom Benutzer gezeigte Bootstrap-Plan enthaelt am Management-Projekt nur
-`managed_by=opentofu`, nicht die vereinbarten Herkunftslabels. Der seit
-2026-10-04 laufende API-Prozess verwendet noch den Stand vor der Compiler-
-Korrektur. Der bisherige gepinnte Terraform-Root reicht `var.labels` an das
+`managed_by=opentofu`, nicht die vereinbarten Herkunftslabels. Ursache war der seit
+2026-10-04 laufende API-Prozess mit dem Stand vor der Compiler-Korrektur.
+Der bisherige gepinnte Terraform-Root reicht `var.labels` an das
 Management-Modul durch; ein Quell-Pin-Wechsel allein ist hier nicht die Loesung.
 Neue Vorbereitungen muessen jetzt exakt den aktuellen kanonischen Export ihres
 gespeicherten Dokuments binden. Fehlende oder manipulierte Pflichtlabels werden
 abgewiesen; Kundenlabels bleiben erhalten. Der native Management-Projekt-Test
 prueft die tatsaechlich geplanten Labels, nicht nur Root-Locals.
 Der alte Plan und seine Vorbereitung werden nicht umgeschrieben oder angewendet.
-Nach freigegebener API-Aktivierung sind eine neue Vorbereitung und ein neuer Plan
-derselben Konfiguration erforderlich. Das lokale Startskript fuehrt ausstehende
-Migrationen aus; dieser breitere Aktivierungsschritt braucht eine gesonderte
-Freigabe und Sicherung, bevor die Kundendatenbank angefasst wird. Kein Cloud-Apply.
+Nach der freigegebenen API-Aktivierung sind eine neue Vorbereitung und ein neuer
+Plan derselben Konfiguration erforderlich. Eine private PostgreSQL-Sicherung
+ausserhalb des Repositorys wurde vollstaendig in einem isolierten Testcontainer
+wiederhergestellt. Die echte transaktionale Migrationsfunktion bestand dort bis
+033; Anzahl und Digest der bisherigen Spalten in acht Bestands-Tabellen blieben
+gleich. Nach erneutem Nachweis von null aktiven Laeufen wurde ausschliesslich der
+alte API-Prozess beendet und mit demselben Plattformpaket neu gestartet.
+Die laufende Datenbank enthaelt jetzt Migrationen 001 bis 033; derselbe private
+Vorher-/Nachher-Vergleich bestaetigt unveraenderte Konfiguration, Credential-Profil,
+Vorbereitung, sieben Plans und Plattform-State. Die geprueften Backend- und
+Application-Tabellen waren und bleiben leer. API und bestehende UI antworten mit
+HTTP 200; Application-Ausfuehrung bleibt ausdruecklich deaktiviert und ihr
+Runner-Endpunkt liefert HTTP 404. Nur der eigene Restore-Testcontainer wurde
+entfernt, die private Sicherung bleibt erhalten. Kein neuer Cloud-Plan oder Apply,
+keine Umlegung alter Plan-/Paket-/Quellbindungen und keine Cloud-Bereinigung.
 
 Alle sieben GitHub-Beschreibungen und Audit-Kommentare wurden aktualisiert und
 anschliessend zurueckgelesen. Kein Gesamt-Issue ist bereits vollstaendig abgenommen;
@@ -157,10 +169,10 @@ die urspruenglichen offenen MVP-Anforderungen bleiben erhalten. Der erste neue
 Umsetzungsschritt ist die Erstplan-State-Sperre in #89: gleiche Source-Sperre und
 Legacy-Pruefung wie die Plattformausfuehrung, erneute Pruefung vor Runner-Input,
 verstaendlicher Sperrhinweis in Deutsch und Englisch. Dieser Fix ist lokal
-validiert, aber noch nicht in der laufenden API aktiviert. Anschliessend wurden
+validiert und mit der gesondert freigegebenen API-Aktivierung aktiviert. Anschliessend wurden
 Stilllegung und Deployment-Policy aus #92 lokal umgesetzt und validiert.
-Migrationen 021/022 sind noch nicht in der laufenden Kunden-API aktiviert;
-die Oberflaeche blendet nicht unterstuetzte Publisher-Steuerungen aus.
+Migrationen 021/022 sind nun ebenfalls in der laufenden Kunden-API aktiviert;
+die echte Kundenveroeffentlichungs- und Zwei-Organisations-Abnahme bleibt offen.
 
 ### Historische Bestandsaufnahme vom 2026-10-02
 
