@@ -104,7 +104,7 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     await pool.query(
       "SELECT id FROM lzc.application_template_versions LIMIT 0",
     );
-    applications = new Applications(pool, credentials);
+    applications = new Applications(pool, credentials, credentialSecrets);
   }
   auth = {
     origin,

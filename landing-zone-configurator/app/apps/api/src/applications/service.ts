@@ -21,6 +21,7 @@ import type pg from "pg";
 import { z } from "zod";
 import type { Session } from "../auth/store.js";
 import type { PostgresCredentialProfiles } from "../credentials/profiles.js";
+import type { CredentialSecrets } from "../credentials/secrets.js";
 import { withTenant } from "../storage/database.js";
 
 export class ApplicationError extends Error {
@@ -117,6 +118,7 @@ export class Applications {
       PostgresCredentialProfiles,
       "list" | "verifyForPreparation"
     >,
+    private readonly secrets?: Pick<CredentialSecrets, "get">,
   ) {}
 
   private work<T>(
@@ -480,8 +482,10 @@ export class Applications {
       );
       const prepared = await this.planInput(client, session, id);
       if (
-        prepared.plan.acceleratorRevision !==
-        "4d15d7870afa323badd93559d8b37c5a8d138dcf"
+        ![
+          "4d15d7870afa323badd93559d8b37c5a8d138dcf",
+          "c4b43c36af198985980b17626c48d357795e3fbd",
+        ].includes(prepared.plan.acceleratorRevision)
       )
         throw new ApplicationError(409, "application_runner_revision_required");
       const bindingHash = createHash("sha256")
@@ -630,6 +634,75 @@ export class Applications {
         expiresAt: claimed.expires_at.toISOString(),
       };
     });
+  }
+
+  async releaseJobCredential(
+    session: Session,
+    jobId: string,
+    acceleratorRevision: string,
+  ) {
+    z.uuid().parse(jobId);
+    z.enum([
+      "4d15d7870afa323badd93559d8b37c5a8d138dcf",
+      "c4b43c36af198985980b17626c48d357795e3fbd",
+    ]).parse(acceleratorRevision);
+    if (!this.profiles || !this.secrets)
+      throw new ApplicationError(
+        503,
+        "application_credential_broker_unavailable",
+      );
+    await this.claimJobGrant(session, jobId);
+    const contextSchema = z.strictObject({
+      jobId: z.literal(jobId),
+      acceleratorRevision: z.literal(acceleratorRevision),
+      organizationId: z.uuid(),
+      credentialProfileId: z.uuid(),
+      credentialVersion: z.number().int().positive(),
+      credentialKeyId: z.string().min(1),
+      expiresAt: z.iso.datetime({ offset: true }),
+    });
+    const current = () =>
+      this.work(session, "publish", async (client) => {
+        const row = (
+          await client.query<{ context: unknown }>(
+            "SELECT lzc_auth.application_job_credential_context($1,$2) AS context",
+            [session.id, jobId],
+          )
+        ).rows[0];
+        return contextSchema.parse(row?.context);
+      });
+    const context = await current();
+    const verified = await this.profiles.verifyForPreparation(
+      session,
+      context.credentialProfileId,
+      context.organizationId,
+    );
+    if (
+      verified.check.status !== "passed" ||
+      verified.check.organizationId !== context.organizationId ||
+      verified.version !== context.credentialVersion ||
+      verified.keyId !== context.credentialKeyId
+    )
+      throw new ApplicationError(409, "application_credential_changed");
+    const secret = await this.secrets.get(session, context.credentialProfileId);
+    if (
+      secret.version !== context.credentialVersion ||
+      secret.key.credentials.kid !== context.credentialKeyId
+    )
+      throw new ApplicationError(409, "application_credential_changed");
+    const profile = (await this.profiles.list(session)).find(
+      (item) => item.id === context.credentialProfileId,
+    );
+    if (
+      profile?.state !== "stored" ||
+      profile.keyId !== context.credentialKeyId ||
+      profile.serviceAccount !== secret.key.credentials.iss
+    )
+      throw new ApplicationError(409, "application_credential_changed");
+    const finalContext = await current();
+    if (Date.parse(finalContext.expiresAt) <= Date.now())
+      throw new ApplicationError(403, "application_credential_grant_expired");
+    return { ...finalContext, key: secret.key };
   }
 
   private async planInput(client: pg.PoolClient, session: Session, id: string) {

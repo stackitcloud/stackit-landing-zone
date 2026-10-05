@@ -9,6 +9,7 @@ import { resolveTemplateParameters } from "./template-parameters.js";
 export const applicationAcceleratorRevisionSchema = z.enum([
   "a256f6896d11134fdc351786f1be5eba4e56b2e2",
   "4d15d7870afa323badd93559d8b37c5a8d138dcf",
+  "c4b43c36af198985980b17626c48d357795e3fbd",
 ]);
 
 export const applicationPublicationSchema = z

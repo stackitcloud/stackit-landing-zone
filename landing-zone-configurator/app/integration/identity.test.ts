@@ -994,7 +994,20 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         keyId: "test-key",
       })),
     };
-    const applications = new Applications(pool, technical);
+    const applicationSecret = {
+      version: 1,
+      key: {
+        credentials: {
+          kid: "test-key",
+          iss: "automation@sa.stackit.cloud",
+          sub: randomUUID(),
+          aud: "https://service-account.api.stackit.cloud" as const,
+          privateKey: "APPLICATION-VAULT-MOCK-ONLY",
+        },
+      },
+    };
+    const applicationSecrets = { get: vi.fn(async () => applicationSecret) };
+    const applications = new Applications(pool, technical, applicationSecrets);
     const tenantId = await organisations.create(
       alice,
       "Approved platform",
@@ -1306,6 +1319,56 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       expect(
         await applications.prepareJob(owner, jobOrder.id, jobRequest),
       ).toEqual(job);
+      const cliRevision = "c4b43c36af198985980b17626c48d357795e3fbd";
+      const cliVersion = await applications.publish(engineer, {
+        template,
+        ...binding,
+        acceleratorRevision: cliRevision,
+      });
+      expect(cliVersion.version).toBe(runnerVersion.version + 1);
+      expect(
+        (
+          await applications.publish(engineer, {
+            template,
+            ...binding,
+            acceleratorRevision: cliRevision,
+          })
+        ).id,
+      ).toBe(cliVersion.id);
+      const cliOrder = await applications.order(owner, {
+        versionId: cliVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "CLI compatible source",
+        parameters: {},
+      });
+      const cliJobRequest = { idempotencyKey: randomUUID(), confirmPlan: true };
+      const cliJob = await applications.prepareJob(
+        owner,
+        cliOrder.id,
+        cliJobRequest,
+      );
+      expect(
+        await applications.prepareJob(owner, cliOrder.id, cliJobRequest),
+      ).toEqual(cliJob);
+      const sourceGrants = (
+        await withTenant(pool, owner, (client) =>
+          client.query(
+            "SELECT job_id,accelerator_revision FROM lzc.application_job_grants WHERE job_id=ANY($1::uuid[])",
+            [[job.id, cliJob.id]],
+          ),
+        )
+      ).rows;
+      expect(sourceGrants).toEqual(
+        expect.arrayContaining([
+          { job_id: job.id, accelerator_revision: applicationRevision },
+          { job_id: cliJob.id, accelerator_revision: cliRevision },
+        ]),
+      );
+      expect(
+        (await applications.listTemplates(engineer)).find(
+          (item) => item.id === runnerVersion.id,
+        )?.acceleratorRevision,
+      ).toBe(applicationRevision);
       await expect(
         applications.prepareJob(engineer, jobOrder.id, jobRequest),
       ).rejects.toMatchObject({ status: 404 });
@@ -1645,6 +1708,133 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       expect(Boolean(racedGrant.revoked_at)).not.toBe(
         Boolean(racedGrant.claimed_at),
       );
+      const releaseJob = async () => {
+        const prepared = await applications.prepareJob(owner, cliOrder.id, {
+          idempotencyKey: randomUUID(),
+          confirmPlan: true,
+        });
+        await applications.approveJobBackend(
+          engineer,
+          prepared.id,
+          backendRequest,
+        );
+        return prepared;
+      };
+      const releasedJob = await releaseJob();
+      technical.verifyForPreparation.mockClear();
+      applicationSecrets.get.mockImplementationOnce(async () => {
+        expect(
+          (
+            await migration.query(
+              "SELECT job_id FROM lzc.application_job_claims WHERE job_id=$1",
+              [releasedJob.id],
+            )
+          ).rows,
+        ).toHaveLength(1);
+        return applicationSecret;
+      });
+      await expect(
+        applications.releaseJobCredential(owner, releasedJob.id, cliRevision),
+      ).rejects.toMatchObject({ code: "42501" });
+      expect(technical.verifyForPreparation).not.toHaveBeenCalled();
+      expect(applicationSecrets.get).not.toHaveBeenCalled();
+      expect(
+        await applications.releaseJobCredential(
+          engineer,
+          releasedJob.id,
+          cliRevision,
+        ),
+      ).toMatchObject({
+        jobId: releasedJob.id,
+        acceleratorRevision: cliRevision,
+        credentialProfileId: profileId,
+        key: applicationSecret.key,
+      });
+      expect(technical.verifyForPreparation).toHaveBeenCalledWith(
+        engineer,
+        profileId,
+        organizationId,
+      );
+      expect(applicationSecrets.get).toHaveBeenCalledWith(engineer, profileId);
+      expect(applicationSecrets.get).toHaveBeenCalledTimes(1);
+      await expect(
+        applications.releaseJobCredential(
+          engineer,
+          releasedJob.id,
+          cliRevision,
+        ),
+      ).rejects.toMatchObject({ code: "40001" });
+      expect(applicationSecrets.get).toHaveBeenCalledTimes(1);
+      const rotatedJob = await releaseJob();
+      applicationSecrets.get.mockResolvedValueOnce({
+        ...applicationSecret,
+        version: 2,
+      });
+      await expect(
+        applications.releaseJobCredential(engineer, rotatedJob.id, cliRevision),
+      ).rejects.toMatchObject({ code: "application_credential_changed" });
+      const interruptedJob = await releaseJob();
+      applicationSecrets.get.mockImplementationOnce(async () => {
+        await migration.query(
+          "UPDATE lzc.memberships SET product_roles=ARRAY['application-owner'],manage_members=false WHERE tenant_id=$1 AND user_id=$2",
+          [tenantId, engineer.userId],
+        );
+        return applicationSecret;
+      });
+      try {
+        await expect(
+          applications.releaseJobCredential(
+            engineer,
+            interruptedJob.id,
+            cliRevision,
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+      } finally {
+        await migration.query(
+          "UPDATE lzc.memberships SET product_roles=ARRAY['platform-engineer'],manage_members=true WHERE tenant_id=$1 AND user_id=$2",
+          [tenantId, engineer.userId],
+        );
+      }
+      await expect(
+        applications.releaseJobCredential(
+          engineer,
+          interruptedJob.id,
+          cliRevision,
+        ),
+      ).rejects.toMatchObject({ code: "40001" });
+      const mismatchJob = await releaseJob();
+      technical.verifyForPreparation.mockClear();
+      applicationSecrets.get.mockClear();
+      await expect(
+        applications.releaseJobCredential(
+          engineer,
+          mismatchJob.id,
+          applicationRevision,
+        ),
+      ).rejects.toMatchObject({ name: "ZodError" });
+      expect(technical.verifyForPreparation).not.toHaveBeenCalled();
+      expect(applicationSecrets.get).not.toHaveBeenCalled();
+      const concurrentReleaseJob = await releaseJob();
+      const releases = await Promise.allSettled([
+        applications.releaseJobCredential(
+          engineer,
+          concurrentReleaseJob.id,
+          cliRevision,
+        ),
+        applications.releaseJobCredential(
+          engineer,
+          concurrentReleaseJob.id,
+          cliRevision,
+        ),
+      ]);
+      expect(
+        releases.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        releases.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      expect(technical.verifyForPreparation).toHaveBeenCalledTimes(1);
+      expect(applicationSecrets.get).toHaveBeenCalledTimes(1);
       await expect(
         withTenant(pool, owner, (client) =>
           client.query(

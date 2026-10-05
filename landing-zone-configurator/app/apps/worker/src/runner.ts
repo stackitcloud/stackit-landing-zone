@@ -29,7 +29,7 @@ export const brokerOrigin =
 export const localBrokerOrigin = "http://127.0.0.1:3000";
 export const acceleratorCommit = "a256f6896d11134fdc351786f1be5eba4e56b2e2";
 export const applicationAcceleratorCommit =
-  "4d15d7870afa323badd93559d8b37c5a8d138dcf";
+  "c4b43c36af198985980b17626c48d357795e3fbd";
 export const applicationProviderLockHash =
   "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5";
 export const providerLockHash =

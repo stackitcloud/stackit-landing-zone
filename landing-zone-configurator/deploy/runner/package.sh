@@ -48,7 +48,7 @@ test ! -e "$runner_dir/accelerator/terraform.auto.tfvars"
 test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' \) -print -quit)"
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	mkdir -p "$runner_dir/application-src"
-	git -C "$(git rev-parse --show-toplevel)" archive 4d15d7870afa323badd93559d8b37c5a8d138dcf src/application src/modules/landing-zone | tar -x --strip-components=1 -C "$runner_dir/application-src"
+	git -C "$(git rev-parse --show-toplevel)" archive c4b43c36af198985980b17626c48d357795e3fbd src/application src/modules/landing-zone | tar -x --strip-components=1 -C "$runner_dir/application-src"
 	cp ../deploy/runner/application.lock.hcl "$runner_dir/application-src/application/.terraform.lock.hcl"
 	node --input-type=module -e 'import {readFileSync} from "node:fs"; import {createHash} from "node:crypto"; if (createHash("sha256").update(readFileSync(process.argv[1])).digest("hex") !== "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5") process.exit(1)' "$runner_dir/application-src/application/.terraform.lock.hcl"
 	tofu -chdir="$runner_dir/application-src/application" init -backend=false -input=false -lockfile=readonly -no-color

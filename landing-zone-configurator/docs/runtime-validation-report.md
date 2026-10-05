@@ -837,3 +837,48 @@ Neue Compiler-Inputs aendern Hashes: keine Umbindung/Neusignierung alter Plans.
 API, aktive Runner-Pakete und bereits publizierte Quellversionen bleiben unveraendert.
 Spaetere Aktivierung verlangt frische Plans und bewusste neue Source-Qualifizierung.
 Kein Cloud-Plan/Apply, State-Migration, Push, Release oder Merge; #93 bleibt offen.
+
+## Application-Quellqualifizierung und interne Credential-Freigabe (2026-10-05, #93)
+
+Migration 029 erlaubt neben dem unveraenderten alten Application-Pin explizit
+`c4b43c36af198985980b17626c48d357795e3fbd`. Publikation erzeugt eine eigene Version;
+alte Versionen, Jobs und Grant-Snapshots werden nicht umgeschrieben. Der neue
+Worker und das lokale Opt-in-Paket akzeptieren nur ihren exakt festen Pin.
+Altjobs werden nicht auf das neue Paket umgebunden. Das neue inaktive Paket
+`runner-local-20261005-application-cli.tar.gz` hat SHA-256
+`bd87f44d1bafa0a3c9d974c735aa1edfd70add08d8ad9f1e503500bbe8af8aa7`.
+Native Init/Validate und signierter Provider-Mirror mit readonly Application-Lock
+bestanden auf darwin_arm64/OpenTofu 1.12.6; kein Cloud-Plan oder Linux-Nachweis.
+
+Migration 030 liefert nur einen nicht geheimen Credential-Kontext nach Claim
+durch die originale echte PE-Freigabesession. Sie revalidiert die konkrete
+Organisation, Owner-/PE-Session, aktuelle Rollen/Identitaeten und Ablaufzeit.
+Die interne Methode `releaseJobCredential` verbraucht den Grant vor
+`verifyForPreparation` und Vault-Zugriff, bindet Source, Profil, Secret-Version,
+Key-ID und Service Account und wiederholt die Live-Autorisierung unmittelbar vor
+der Rueckgabe. Es gibt keinen Browser-/HTTP-Credential-Endpunkt, kein Runner-
+Ticket und keinen Dispatch. Fehler verbrauchen den Claim; kein automatischer
+Retry oder Zuruecksetzen. Die echte PostgreSQL-Fixture mit Vault-/Cloud-Mocks
+prueft Erfolg, AO-Ablehnung vor technischen Zugriffen, Claim-vor-Secret, Replay,
+Rotation, Source-Abweichung, parallele Freigabe mit genau einem Erfolg sowie
+PE-/Management-Rechteentzug waehrend des Secret-Zugriffs und anschliessenden Replay.
+Management-Rechte duerfen laut Schema nur zusammen mit PE bestehen; die Fixture
+entzieht deshalb beides und stellt ihre eigenen Ausgangswerte wieder her.
+
+```text
+canonical: PASS - 349 unit passed, 33 gated skipped; lint/types/build
+application-worker: PASS - 81 fake-engine cases, 1 native-gated skipped
+identity/application: PASS - 29 expanded isolated real PostgreSQL cases
+platform-broker: PASS - 31 isolated real PostgreSQL cases under migrations 029/030
+package: PASS - native init/validate/readonly lock/signed mirror, inactive package
+diagnostics: PASS - no errors in touched API/worker/test TypeScript files
+browser: NOT_RERUN - no UI change; prior 152 mocked desktop/mobile cases
+overall: NEEDS_SIGNOFF - no ticket/dispatch/cloud/state/quota/upgrade acceptance
+```
+
+Logs: `/tmp/lzc-application-source-{pg,worker,package,format}.txt` und
+`/tmp/lzc-application-credential-{pg,broker,check,format}.txt`.
+Alle Datenbanktests isoliert; keine Kunden-Credentials/-Daten/-Backends gelesen.
+Migrationen 021 bis 030 nicht in der laufenden Kunden-API aktiviert. Aktive API,
+aktives Paket und gespeicherte Kundenplans unveraendert; kein Cloud-Plan/Apply,
+State-Migration, Push, Release oder Merge. #93 bleibt offen.

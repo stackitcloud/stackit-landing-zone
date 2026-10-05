@@ -327,6 +327,14 @@ it("plans the pinned application root with sibling modules and only its instance
   ).toHaveLength(1);
 });
 
+it("does not silently rebind an older application job to the new source package", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  test.input.acceleratorCommit = "4d15d7870afa323badd93559d8b37c5a8d138dcf";
+  expect(await test.execute()).toBe("failed");
+  expect(await test.calls()).toEqual([]);
+});
+
 it("applies only a saved application plan without bootstrap migration or replan", async () => {
   const test = await fixture("platform-apply");
   applicationInput(test, "application-apply");

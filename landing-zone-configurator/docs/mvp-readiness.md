@@ -71,9 +71,12 @@ Gesamt-MVP und kein Beleg fuer eine Live-Abnahme.
 | [#94](https://github.com/stackitcloud/stackit-landing-zone/issues/94) | Betreiber-Binding fuer Model Serving | Begrenzter Backend-/UI-Assistent, Wissensstand, validierter Vorschlag mit bestaetigtem Diff sowie Sicherheits- und echter Model-Serving-Nachweis |
 | [#95](https://github.com/stackitcloud/stackit-landing-zone/issues/95) | Lokale Lint-/Typ-/Build-Gates, Unit-/Browser-/native Nachweise und dokumentierte Laufzeitgrenzen | Finale Revision/CI, Zwei-Org- und Betriebsabnahme, Restore/Rotation, PR/Branchschutz/Deployment-Entscheidung und ausdruecklicher Merge-Entscheid |
 
-Zu #93 ist auch die interne einmalige SQL-Claim-Stufe lokal qualifiziert:
-nur die echte PE-Freigabesession, atomarer Verbrauch und kein oeffentlicher
-Claim-Endpunkt. Dies ist noch keine Credential-Uebergabe oder Ausfuehrungsfreigabe.
+Zu #93 ist die interne einmalige Credential-Freigabe lokal qualifiziert:
+nur die echte PE-Freigabesession, atomarer Verbrauch vor technischer Pruefung,
+feste Source-/Profil-/Schluesselversion und erneute Live-Autorisierung nach dem
+Secret-Zugriff. Rotation, Replay, Source-Abweichung, Parallelzugriff und
+Rechteentzug werden abgefangen. Kein oeffentlicher Claim-/Credential-Endpunkt,
+kein Runner-Ticket/Dispatch und keine Ausfuehrungsfreigabe.
 
 Verbindliche Architekturgrenze: Der Accelerator bleibt ohne Configurator nutzbar.
 Der CLI-Pfad fuer neue getrennte Platform-/Application-Phasen hat jetzt einen
@@ -83,11 +86,12 @@ erhalten `landing_zone_accelerator=true`; Configurator-generierte Inputs ergaenz
 `landing_zone_configurator=true`. CLI braucht keine Configurator-Session, Grants
 oder Template Engine. Lokal bestanden 8 native Plattform-/Regionalfaelle und
 16 Application-/3 Netzwerkfaelle. Noch offen: echte Zwei-Phasen-CLI-/S3-/IAM-
-Abnahme, bestehende kombinierte State-Migration und explizite Qualifizierung/
-Promotion der neuen Application-Quellversion fuer den Configurator. Kein
+Abnahme, bestehende kombinierte State-Migration und aktive Promotion der neuen
+Application-Quellversion. `c4b43c3` ist jetzt lokal als eigene unveraenderliche
+Publikation und neues inaktives natives Application-Paket qualifiziert. Kein
 automatischer Wechsel vorhandener Publikationen oder gebundener Runner.
 
-Aktuelle lokale Gates: `npm run check` mit **348 bestandenen Unit-Tests** und
+Aktuelle lokale Gates: `npm run check` mit **349 bestandenen Unit-Tests** und
 33 bewusst uebersprungenen umgebungsabhaengigen Tests; die isolierte
 PostgreSQL-Plan-/Apply-/State-/Grant-Suite separat mit **31 bestandenen Tests**;
 Identitaets-/Katalog-/Policy-/Bindungssuite mit **29 bestandenen PostgreSQL-Tests**;
