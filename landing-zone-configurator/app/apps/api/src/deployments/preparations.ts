@@ -87,6 +87,7 @@ export function preparationManifest(
     snapshot.head !==
       ("target" in input ? input.head : String(input.revision)) ||
     snapshot.document.id !== input.configurationId ||
+    snapshot.tfvars !== serializeTfvars(recordValues(snapshot.document)) ||
     checked.check.status !== "passed" ||
     checked.check.organizationId !== recordOrganization(snapshot.document) ||
     !checked.check.organizationName ||

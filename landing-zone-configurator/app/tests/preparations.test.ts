@@ -6,6 +6,7 @@ import {
   createPlatformDraftCopy,
   exportCommonTfvars,
   migrateCommonConfiguration,
+  recordValues,
   savedDraft,
   serializeTfvars,
   type Template,
@@ -73,6 +74,39 @@ it("binds a preparation to the saved configuration, code revision, secret versio
   expect(platformExport).toContain("landing_zones = {}\n");
   expect(platformExport).toContain("sandboxes = []\n");
   expect(platformExport).not.toContain("project_name");
+
+  for (const configuration of [document, common, platform]) {
+    const values = recordValues(configuration);
+    expect(values.labels).toMatchObject({
+      landing_zone_accelerator: "true",
+      landing_zone_configurator: "true",
+    });
+    const boundInput = { ...input, configurationId: configuration.id };
+    const validSnapshot = {
+      document: configuration,
+      head: input.head,
+      tfvars: serializeTfvars(values),
+    };
+    expect(
+      preparationManifest(boundInput, validSnapshot, checked).configuration,
+    ).toEqual(configuration);
+    for (const labels of [
+      { managed_by: "opentofu" },
+      { landing_zone_accelerator: "true" },
+      { landing_zone_accelerator: "true", landing_zone_configurator: "false" },
+    ]) {
+      expect(() =>
+        preparationManifest(
+          boundInput,
+          {
+            ...validSnapshot,
+            tfvars: serializeTfvars({ ...values, labels }),
+          },
+          checked,
+        ),
+      ).toThrow("preparation_not_verified");
+    }
+  }
 
   expect(manifest.accelerator.commit).toBe(acceleratorCommit);
   expect("repository" in manifest.source && manifest.source.commit).toBe(

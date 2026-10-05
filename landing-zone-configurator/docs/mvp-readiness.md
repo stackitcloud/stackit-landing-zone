@@ -109,7 +109,7 @@ nicht geheimen `platform_contract`-Export, manuell ausgefuellte JSON-/Backend-
 Beispiele und eine eigene Accelerator-CI-Pruefung. Ressourcen mit Label-Support
 erhalten `landing_zone_accelerator=true`; Configurator-generierte Inputs ergaenzen
 `landing_zone_configurator=true`. CLI braucht keine Configurator-Session, Grants
-oder Template Engine. Lokal bestanden 8 native Plattform-/Regionalfaelle und
+oder Template Engine. Lokal bestanden 9 native Plattform-/Regional-/Management-Label-Faelle und
 16 Application-/3 Netzwerkfaelle. Noch offen: echte Zwei-Phasen-CLI-/S3-/IAM-
 Abnahme, bestehende kombinierte State-Migration und aktive Promotion der neuen
 Application-Quellversion. `c4b43c3` ist jetzt lokal als eigene unveraenderliche
@@ -134,6 +134,21 @@ Der Feature-Zwischenstand und die Application-Inkremente sind nach ausdruecklich
 Freigabe lokal committed und als externe Git-Bundles gesichert. Kein automatischer
 Push, Release oder Merge. Die laufende API und das
 native Paket `runner-local-20261004-opentofu-completeness` bleiben unveraendert.
+
+Der vom Benutzer gezeigte Bootstrap-Plan enthaelt am Management-Projekt nur
+`managed_by=opentofu`, nicht die vereinbarten Herkunftslabels. Der seit
+2026-10-04 laufende API-Prozess verwendet noch den Stand vor der Compiler-
+Korrektur. Der bisherige gepinnte Terraform-Root reicht `var.labels` an das
+Management-Modul durch; ein Quell-Pin-Wechsel allein ist hier nicht die Loesung.
+Neue Vorbereitungen muessen jetzt exakt den aktuellen kanonischen Export ihres
+gespeicherten Dokuments binden. Fehlende oder manipulierte Pflichtlabels werden
+abgewiesen; Kundenlabels bleiben erhalten. Der native Management-Projekt-Test
+prueft die tatsaechlich geplanten Labels, nicht nur Root-Locals.
+Der alte Plan und seine Vorbereitung werden nicht umgeschrieben oder angewendet.
+Nach freigegebener API-Aktivierung sind eine neue Vorbereitung und ein neuer Plan
+derselben Konfiguration erforderlich. Das lokale Startskript fuehrt ausstehende
+Migrationen aus; dieser breitere Aktivierungsschritt braucht eine gesonderte
+Freigabe und Sicherung, bevor die Kundendatenbank angefasst wird. Kein Cloud-Apply.
 
 Alle sieben GitHub-Beschreibungen und Audit-Kommentare wurden aktualisiert und
 anschliessend zurueckgelesen. Kein Gesamt-Issue ist bereits vollstaendig abgenommen;

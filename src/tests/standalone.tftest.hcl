@@ -68,6 +68,33 @@ run "platform_configurator_labels" {
   }
 }
 
+run "management_configurator_project_labels" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    labels = {
+      customer                  = "retained"
+      landing_zone_accelerator  = "true"
+      landing_zone_configurator = "true"
+    }
+  }
+
+  assert {
+    condition     = stackit_resourcemanager_project.this.labels.landing_zone_accelerator == "true" && stackit_resourcemanager_project.this.labels.landing_zone_configurator == "true" && stackit_resourcemanager_project.this.labels.customer == "retained"
+    error_message = "The planned management project must preserve customer labels and both Configurator provenance labels."
+  }
+}
+
+mock_provider "vault" {}
+
+mock_provider "time" {}
+
 mock_provider "stackit" {
   mock_resource "stackit_resourcemanager_project" {
     defaults = {
