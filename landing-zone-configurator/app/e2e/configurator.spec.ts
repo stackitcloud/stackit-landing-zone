@@ -1694,9 +1694,28 @@ test.describe("explicit saved-plan approval", () => {
         },
       },
     };
+    const previousPreparation = {
+      ...preparation,
+      id: "66666666-2222-4333-8444-555555555555",
+      manifest: {
+        ...preparation.manifest,
+        source: { ...preparation.manifest.source, revision: 6 },
+      },
+    };
+    const repeatedPreparation = {
+      ...preparation,
+      id: "55555555-2222-4333-8444-555555555555",
+    };
     await page.route("**/api/v1/preparations", (route) =>
       route.fulfill({
-        json: { preparations: [preparation, otherPreparation] },
+        json: {
+          preparations: [
+            preparation,
+            previousPreparation,
+            repeatedPreparation,
+            otherPreparation,
+          ],
+        },
       }),
     );
     await page.route("**/api/v1/plans", (route) =>
@@ -1741,6 +1760,30 @@ test.describe("explicit saved-plan approval", () => {
     await expect(
       page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
     ).toHaveValue(configurationId);
+    await tabs.getByRole("button", { name: "Plan", exact: true }).click();
+    await page.getByText("Neuen Plan erstellen", { exact: true }).click();
+    const preparationSelection = page.getByLabel("Gespeicherte Vorbereitung", {
+      exact: true,
+    });
+    await expect(preparationSelection.locator("option")).toHaveText([
+      "Bitte auswählen",
+      "Revision 7 - 44444444 - Datenbank-Plattform",
+      "Revision 6 - 66666666 - Datenbank-Plattform",
+      "Revision 7 - 55555555 - Datenbank-Plattform",
+    ]);
+    await preparationSelection.selectOption(previousPreparation.id);
+    await expect(preparationSelection).toHaveValue(previousPreparation.id);
+    await preparationSelection.selectOption(repeatedPreparation.id);
+    await expect(preparationSelection).toHaveValue(repeatedPreparation.id);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("preparation-revisions.png"),
+      fullPage: true,
+    });
     await tabs.getByRole("button", { name: "Apply", exact: true }).click();
     await expect(
       page.getByRole("checkbox", {

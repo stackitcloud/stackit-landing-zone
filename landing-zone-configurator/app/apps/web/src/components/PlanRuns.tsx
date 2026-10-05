@@ -112,7 +112,11 @@ type Preparation = {
   credentialId: string | null;
   manifest: {
     organization: { id: string; name: string };
-    source?: { configurationId?: string };
+    source?: {
+      configurationId?: string;
+      revision?: number;
+      commit?: string;
+    };
   };
 };
 
@@ -1036,7 +1040,11 @@ export function PlanRuns({
                   .filter((preparation) => preparation.credentialId)
                   .map((preparation) => (
                     <option key={preparation.id} value={preparation.id}>
-                      {preparation.name}
+                      {t("Revision")}{" "}
+                      {preparation.manifest.source?.revision ??
+                        preparation.manifest.source?.commit?.slice(0, 8) ??
+                        "?"}{" "}
+                      - {preparation.id.slice(0, 8)} - {preparation.name}
                     </option>
                   ))}
               </select>
