@@ -1543,6 +1543,123 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         applications.approveJobBackend(engineer, job.id, backendRequest),
       ).rejects.toMatchObject({ code: "42501" });
       await expect(
+        applications.claimJobGrant(engineer, job.id),
+      ).rejects.toMatchObject({ code: "42501" });
+      const claimRequest = { idempotencyKey: randomUUID(), confirmPlan: true };
+      const claimOrderJob = await applications.prepareJob(
+        owner,
+        jobOrder.id,
+        claimRequest,
+      );
+      await expect(
+        applications.claimJobGrant(owner, claimOrderJob.id),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.claimJobGrant(engineer, claimOrderJob.id),
+      ).rejects.toMatchObject({ code: "42501" });
+      await applications.approveJobBackend(
+        engineer,
+        claimOrderJob.id,
+        backendRequest,
+      );
+      const claims = await Promise.allSettled([
+        applications.claimJobGrant(engineer, claimOrderJob.id),
+        applications.claimJobGrant(engineer, claimOrderJob.id),
+      ]);
+      expect(
+        claims.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        claims.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      expect(
+        claims.find((result) => result.status === "rejected"),
+      ).toMatchObject({ reason: { code: "40001" } });
+      expect(
+        (
+          await withTenant(pool, owner, (client) =>
+            client.query(
+              "SELECT * FROM lzc.application_job_claims WHERE job_id=$1",
+              [claimOrderJob.id],
+            ),
+          )
+        ).rows,
+      ).toHaveLength(1);
+      await expect(
+        applications.claimJobGrant(engineer, claimOrderJob.id),
+      ).rejects.toMatchObject({ code: "40001" });
+      await expect(
+        applications.revokeJobGrant(owner, claimOrderJob.id, {
+          confirmCredentialGrantRevocation: true,
+        }),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_credential_grant_consumed",
+      });
+      await expect(
+        applications.prepareJob(owner, jobOrder.id, claimRequest),
+      ).rejects.toMatchObject({ status: 409 });
+      await expect(
+        applications.claimJobGrant(engineer, approvalScopedJob.id),
+      ).rejects.toMatchObject({ code: "42501" });
+      const raceJob = await applications.prepareJob(owner, jobOrder.id, {
+        idempotencyKey: randomUUID(),
+        confirmPlan: true,
+      });
+      await applications.approveJobBackend(
+        engineer,
+        raceJob.id,
+        backendRequest,
+      );
+      const substituteToken = newSessionToken();
+      const substitutePe = await store.createSession({
+        githubId: 101,
+        login: "alice",
+        id: randomUUID(),
+        hash: substituteToken.hash,
+        csrfToken: randomBytes(32).toString("base64url"),
+        expiresAt: new Date(Date.now() + 3600000),
+      });
+      await organisations.switch(substitutePe, tenantId);
+      await expect(
+        applications.claimJobGrant({ ...substitutePe, tenantId }, raceJob.id),
+      ).rejects.toMatchObject({ code: "42501" });
+      const claimRevokeRace = await Promise.allSettled([
+        applications.claimJobGrant(engineer, raceJob.id),
+        applications.revokeJobGrant(owner, raceJob.id, {
+          confirmCredentialGrantRevocation: true,
+        }),
+      ]);
+      expect(
+        claimRevokeRace.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        claimRevokeRace.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      const racedGrant = (
+        await migration.query(
+          "SELECT g.revoked_at,c.claimed_at FROM lzc.application_job_grants g LEFT JOIN lzc.application_job_claims c ON c.job_id=g.job_id WHERE g.job_id=$1",
+          [raceJob.id],
+        )
+      ).rows[0];
+      expect(Boolean(racedGrant.revoked_at)).not.toBe(
+        Boolean(racedGrant.claimed_at),
+      );
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_job_claims SELECT * FROM lzc.application_job_claims WHERE job_id=$1",
+            [claimOrderJob.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "DELETE FROM lzc.application_job_claims WHERE job_id=$1",
+          [claimOrderJob.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await expect(
         applications.prepareJob(owner, jobOrder.id, jobRequest),
       ).rejects.toMatchObject({ code: "application_job_grant_unavailable" });
       await expect(
@@ -1705,6 +1822,16 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         ).toEqual(createdJob.json());
         const revokeUrl = `/api/v1/applications/jobs/${createdJob.json().id}/credential-grant/revoke`;
         const approvalUrl = `/api/v1/applications/jobs/${createdJob.json().id}/backend-approval`;
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: `/api/v1/applications/jobs/${createdJob.json().id}/credential-grant/claim`,
+              headers,
+              payload: {},
+            })
+          ).statusCode,
+        ).toBe(404);
         for (const [requestHeaders, expectedStatus] of [
           [{ ...headers, cookie: "" }, 401],
           [{ ...headers, "x-lzc-csrf": "wrong" }, 403],

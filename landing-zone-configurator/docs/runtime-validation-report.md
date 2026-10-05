@@ -765,3 +765,33 @@ Ein optionaler Test-Response brauchte eine TypeScript-Null-Absicherung; danach
 derselbe kanonische Gate erfolgreich. Testdatenbanken separat erzeugt und entfernt.
 Migrationen 021 bis 027 nicht in der Kunden-API aktiviert; kein API-Neustart,
 Paketwechsel, Kunden-Plan/Apply, Push, Release oder Merge. #93 bleibt offen.
+
+## Einmaliger interner Application-Claim (2026-10-05, #93)
+
+Migration 028 und die interne Service-Methode verbrauchen einen gueltigen Grant
+einmalig unter der echten PE-Backend-Freigabesession. Es gibt keinen oeffentlichen
+Claim-Endpunkt und keine Secret-Ausgabe. AO oder eine andere reale PE-Session
+duerfen den Claim nicht ausfuehren. Immutable Claim-Belege behalten dieselbe
+begrenzte Freigabe-Laufzeit. Bereits verbrauchte Jobs werden nicht per Replay als
+`prepared` erneut angeboten; Widerruf nach Verbrauch ist explizit 409.
+
+Die vorhandene echte SQL-Fixture prueft zusaetzlich fehlende Backend-Freigabe,
+andere echte PE-Session, abgelaufene oder widerrufene Freigabe, zwei konkurrierende
+Claims mit genau einem Erfolg, Verbrauchs-Replay, denied INSERT/DELETE sowie
+konkurrierenden Claim/Widerruf mit genau einem Erfolg. Der gespeicherte Zustand
+ist niemals gleichzeitig widerrufen und verbraucht. Der nicht vorhandene
+Browser-Claim-Pfad wird auch ueber echtes Fastify mit 404 geprueft.
+
+```text
+canonical: PASS - exit_code: 0; 346 passed, 33 gated skipped; lint/types/build
+identity/application: PASS - exit_code: 0; 29 bestehende, erweiterte echte PG-Faelle
+platform-broker: PASS - exit_code: 0; 31 echte isolierte PG-Faelle unter Migration 028
+diagnostics: PASS - keine Fehler in den beiden geaenderten TypeScript-Dateien
+browser: NOT_RERUN - keine UI-Aenderung; vorher 152 Desktop-/Mobilfaelle
+overall: NEEDS_SIGNOFF - interner Claim ist keine Credential-Uebergabe/Dispatch
+```
+
+Logs: `/tmp/lzc-mvp-application-claims-{check,pg,broker,format}.txt`.
+Kein Testzugriff auf Kundendatenbank, Credentials oder echten S3-State.
+Migrationen 021 bis 028 nicht in der Kunden-API aktiviert; aktive API und Paket
+unveraendert. Kein Kunden-Plan/Apply, Push, Release oder Merge. #93 bleibt offen.

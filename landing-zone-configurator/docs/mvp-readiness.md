@@ -71,6 +71,10 @@ Gesamt-MVP und kein Beleg fuer eine Live-Abnahme.
 | [#94](https://github.com/stackitcloud/stackit-landing-zone/issues/94) | Betreiber-Binding fuer Model Serving | Begrenzter Backend-/UI-Assistent, Wissensstand, validierter Vorschlag mit bestaetigtem Diff sowie Sicherheits- und echter Model-Serving-Nachweis |
 | [#95](https://github.com/stackitcloud/stackit-landing-zone/issues/95) | Lokale Lint-/Typ-/Build-Gates, Unit-/Browser-/native Nachweise und dokumentierte Laufzeitgrenzen | Finale Revision/CI, Zwei-Org- und Betriebsabnahme, Restore/Rotation, PR/Branchschutz/Deployment-Entscheidung und ausdruecklicher Merge-Entscheid |
 
+Zu #93 ist auch die interne einmalige SQL-Claim-Stufe lokal qualifiziert:
+nur die echte PE-Freigabesession, atomarer Verbrauch und kein oeffentlicher
+Claim-Endpunkt. Dies ist noch keine Credential-Uebergabe oder Ausfuehrungsfreigabe.
+
 Aktuelle lokale Gates: `npm run check` mit **346 bestandenen Unit-Tests** und
 33 bewusst uebersprungenen umgebungsabhaengigen Tests; die isolierte
 PostgreSQL-Plan-/Apply-/State-/Grant-Suite separat mit **31 bestandenen Tests**;

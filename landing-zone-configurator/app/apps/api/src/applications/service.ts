@@ -493,10 +493,11 @@ export class Applications {
         binding_sha256: string;
         expires_at: Date;
         revoked_at: Date | null;
+        claimed_at: Date | null;
       };
       const existing = (
         await client.query<JobRow>(
-          "SELECT j.*,g.revoked_at FROM lzc.application_jobs j JOIN lzc.application_job_grants g ON g.job_id=j.id WHERE j.tenant_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3",
+          "SELECT j.*,g.revoked_at,c.claimed_at FROM lzc.application_jobs j JOIN lzc.application_job_grants g ON g.job_id=j.id LEFT JOIN lzc.application_job_claims c ON c.job_id=j.id WHERE j.tenant_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3",
           [session.tenantId, session.userId, request.idempotencyKey],
         )
       ).rows[0];
@@ -507,7 +508,9 @@ export class Applications {
         throw new ApplicationError(409, "idempotency_conflict");
       if (
         existing &&
-        (existing.revoked_at || existing.expires_at.getTime() <= Date.now())
+        (existing.revoked_at ||
+          existing.claimed_at ||
+          existing.expires_at.getTime() <= Date.now())
       )
         throw new ApplicationError(409, "application_job_grant_unavailable");
       const job =
@@ -556,6 +559,13 @@ export class Applications {
       if (!grant)
         throw new ApplicationError(404, "application_job_grant_not_found");
       return { jobId: grant.job_id, revokedAt: grant.revoked_at.toISOString() };
+    }).catch((error: unknown) => {
+      if (error instanceof Error && "code" in error && error.code === "40001")
+        throw new ApplicationError(
+          409,
+          "application_credential_grant_consumed",
+        );
+      throw error;
     });
   }
 
@@ -592,6 +602,32 @@ export class Applications {
         stateKey: descriptor.key,
         expiresAt: approved.expires_at.toISOString(),
         executionEnabled: false as const,
+      };
+    });
+  }
+
+  claimJobGrant(session: Session, jobId: string) {
+    const id = z.uuid().parse(jobId);
+    return this.work(session, "publish", async (client) => {
+      const claimed = (
+        await client.query<{
+          job_id: string;
+          claimed_at: Date;
+          expires_at: Date;
+        }>("SELECT * FROM lzc_auth.claim_application_job_grant($1,$2)", [
+          session.id,
+          id,
+        ])
+      ).rows[0];
+      if (!claimed)
+        throw new ApplicationError(
+          403,
+          "application_credential_grant_unavailable",
+        );
+      return {
+        jobId: claimed.job_id,
+        claimedAt: claimed.claimed_at.toISOString(),
+        expiresAt: claimed.expires_at.toISOString(),
       };
     });
   }

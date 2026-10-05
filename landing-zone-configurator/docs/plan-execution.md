@@ -481,3 +481,25 @@ keine Backend-Credentials. Die SQL-Funktion liest weder Credentials noch echten
 S3-State. Die API validiert den gespeicherten Descriptor mit dem vorhandenen
 S3-Vertrag. Ein Freigabebeleg ersetzt keine einmalige Credential-Ausgabe, echte
 S3-Zugriffs-/Lock-Pruefung, Runner-Ticket oder Cloud-Plan/Apply.
+
+## Interner einmaliger Application-Claim (2026-10-05)
+
+Migration 028 stellt die atomare Verbrauchsstufe bereit. Die interne
+`claimJobGrant`-Methode benoetigt die tatsaechliche weiterhin gueltige
+PE-Backend-Freigabesession, nicht eine rekonstruierte PE-Identitaet aus dem
+AO-Aufruf. SQL prueft alle Backend-/Grant-Autoritaetsgrenzen erneut und sperrt
+die Grant-Zeile, bevor der immutable Claim-Beleg erzeugt wird. Zwei konkurrierende
+Claims ergeben einen Erfolg und einen Konflikt. Eine andere echte Session
+desselben PE darf den Claim nicht uebernehmen.
+
+Claim und Widerruf serialisieren dieselbe Zeile; nur eines kann erfolgreich sein.
+Nach Verbrauch wird kein Widerruf mit behaupteter Credential-Rueckholung bestaetigt,
+sondern 409 zurueckgegeben. Retry der urspruenglichen Job-Vorbereitung liefert
+keinen falschen `prepared`-Beleg. Die App-Rolle darf Claims weder direkt schreiben
+noch zuruecksetzen oder loeschen.
+
+Kein Browser-/Runner-Endpunkt fuer diese Methode ist registriert. Sie gibt nur
+Job-ID, Claimzeit und Ablauf zurueck; keine Credentials, Ticket oder Runner-Start.
+Die anschliessende technische Profil-/Version-/Key-Pruefung, sichere Secret-
+Ausgabe, abschliessende Autoritaetspruefung und ticketgebundene Dispatch-Integration
+sind weiterhin erforderlich. Der interne Claim allein aktiviert keine Ausfuehrung.
