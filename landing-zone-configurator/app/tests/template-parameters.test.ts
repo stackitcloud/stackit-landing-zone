@@ -284,6 +284,52 @@ it("retains own-network binding symbolically and always reports its unqualified 
     resolveTemplateParameters(input, { "observability.enabled": false }),
   ).toThrow();
 });
+it("allows a local public network binding only as an unresolved, non-executable draft", () => {
+  const input: ParameterizedTemplate = {
+    ...template(),
+    kind: "public",
+    settings: { ...template().settings, network_enabled: true },
+    parameterPolicy: {
+      schema_version: 1,
+      fields: {
+        "observability.acl": {
+          source: "binding",
+          binding: "own-project-network",
+        },
+      },
+    },
+  };
+  expect(() => validateTemplateParameterPolicy(input)).not.toThrow();
+  const result = resolveTemplateParameters(input);
+  expect(result.settings.observability).toMatchObject({
+    access_source: "project-network",
+    acl: [],
+  });
+  expect(result.bindings[0]?.status).toBe("unresolved");
+  expect(result.qualificationBlockers).toHaveLength(1);
+  expect(result.executionEnabled).toBe(false);
+  expect(result.cloudAccess).toBe(false);
+  for (const settings of [
+    { ...input.settings, network_enabled: false },
+    template().settings,
+  ])
+    expect(() =>
+      resolveTemplateParameters({
+        ...input,
+        settings,
+      }),
+    ).toThrow("Projektnetz");
+  expect(() =>
+    resolveTemplateParameters({
+      ...input,
+      settings: {
+        ...input.settings,
+        observability: { enabled: false, acl: [] },
+      },
+    }),
+  ).toThrow("eingeschaltetes STACKIT Observability");
+});
+
 it("migration preserves fixed stages while newly added templates opt into stage input", () => {
   const source = createCommonConfiguration("standalone", crypto.randomUUID()),
     before = structuredClone(source);

@@ -1,5 +1,80 @@
 import { expect, it } from "vitest";
+import {
+  resolveApplicationOrder,
+  validateApplicationPublication,
+} from "../packages/domain/src/application-catalogue.js";
 import { compileApplicationPlan } from "../packages/domain/src/application-plan.js";
+
+it("orders an immutable published project snapshot using only authorized inputs", () => {
+  const template = validateApplicationPublication({
+    template: {
+      id: "11111111-2222-4333-8444-555555555555",
+      key: "vm-network",
+      name: "Public project with local network",
+      kind: "public",
+      region: "eu01",
+      settings: { env: "dev", network_enabled: true },
+      parameterPolicy: {
+        schema_version: 1,
+        fields: {
+          env: {
+            source: "input",
+            required: true,
+            default: "dev",
+            choices: ["dev", "prod"],
+          },
+        },
+      },
+    },
+  });
+  const published = {
+    id: template.id,
+    tenantId: template.id,
+    templateId: template.id,
+    version: 1,
+    publishedBy: template.id,
+    publishedAt: "2026-10-02T00:00:00.000Z",
+    acceleratorRevision: "a".repeat(40),
+    template: structuredClone(template),
+  };
+  const request = {
+    versionId: published.id,
+    idempotencyKey: published.id,
+    name: "Application",
+    parameters: { env: "prod" },
+  };
+  template.settings.network_enabled = false;
+  const result = resolveApplicationOrder(published, request);
+  expect(() =>
+    resolveApplicationOrder(
+      { ...published, retiredAt: new Date().toISOString() },
+      request,
+    ),
+  ).toThrow("stillgelegt");
+  expect(result.resolution.settings).toMatchObject({
+    env: "prod",
+    network_enabled: true,
+  });
+  expect(result.resolution.executionEnabled).toBe(false);
+  expect(() =>
+    resolveApplicationOrder(published, {
+      ...request,
+      owner_email: "foreign@example.com",
+    }),
+  ).toThrow();
+  expect(() =>
+    resolveApplicationOrder(published, {
+      ...request,
+      parameters: { network_enabled: false },
+    }),
+  ).toThrow();
+  expect(() =>
+    resolveApplicationOrder(published, {
+      ...request,
+      versionId: "22222222-2222-4333-8444-555555555555",
+    }),
+  ).toThrow();
+});
 
 it("compiles role variables from verified STACKIT identity and preserves custom role definitions", () => {
   const old = fixture();
@@ -58,6 +133,45 @@ it("compiles role variables from verified STACKIT identity and preserves custom 
 const id = "11111111-2222-4333-8444-555555555555";
 const other = "22222222-2222-4333-8444-555555555555";
 const revision = "a".repeat(40);
+
+it("compiles a fixed local project network without SNA and rejects order overrides", () => {
+  const old = fixture();
+  const input = {
+    ...old,
+    template: {
+      ...old.template,
+      schema_version: 2,
+      env: "dev",
+      network_enabled: true,
+      network_prefix_length: 24,
+      parameter_policy: { schema_version: 1, fields: {} },
+    },
+  };
+  const plan = compileApplicationPlan(input);
+  expect(plan.variables.application).toMatchObject({
+    network_enabled: true,
+    network_prefix_length: 24,
+  });
+  expect(plan.variables.platform_contract.targets.public).toMatchObject({
+    corporate: false,
+    network_area_id: null,
+  });
+  expect(plan.executionEnabled).toBe(false);
+  expect(compileApplicationPlan(old).variables.application).not.toHaveProperty(
+    "network_enabled",
+  );
+  for (const parameters of [
+    { network_enabled: false },
+    { network_prefix_length: 16 },
+  ])
+    expect(() =>
+      compileApplicationPlan({
+        ...input,
+        request: { ...old.request, parameters },
+      }),
+    ).toThrow();
+});
+
 function fixture() {
   return {
     context: {
@@ -221,46 +335,50 @@ it("schema 2 compiles authorized stage input and leaves legacy output unchanged"
     }),
   ).toThrow();
 });
-it("schema 2 retains binding blockers instead of authorizing a guessed ACL", () => {
-  const old = fixture();
-  const input = {
-    ...old,
-    platform: {
-      ...old.platform,
-      targets: {
-        public: {
-          ...old.platform.targets.public,
-          corporate: true,
-          network_area_id: id,
-        },
-      },
-    },
-    template: {
-      ...old.template,
-      schema_version: 2,
-      env: "dev",
-      services: {
-        ...old.template.services,
-        observability: {
-          ...old.template.services.observability,
-          enabled: true,
-        },
-      },
-      parameter_policy: {
-        schema_version: 1,
-        fields: {
-          "observability.acl": {
-            source: "binding",
-            binding: "own-project-network",
+it.each([true, false])(
+  "schema 2 retains binding blockers for corporate=%s instead of authorizing a guessed ACL",
+  (corporate) => {
+    const old = fixture();
+    const input = {
+      ...old,
+      platform: {
+        ...old.platform,
+        targets: {
+          public: {
+            ...old.platform.targets.public,
+            corporate,
+            network_area_id: corporate ? id : null,
           },
         },
       },
-    },
-  };
-  const plan = compileApplicationPlan(input);
-  expect(plan.variables.application).toMatchObject({
-    observability: { access_source: "project-network", acl: [] },
-  });
-  expect(plan.parameterResolution?.qualificationBlockers).toHaveLength(1);
-  expect(plan.executionEnabled).toBe(false);
-});
+      template: {
+        ...old.template,
+        schema_version: 2,
+        env: "dev",
+        network_enabled: !corporate,
+        services: {
+          ...old.template.services,
+          observability: {
+            ...old.template.services.observability,
+            enabled: true,
+          },
+        },
+        parameter_policy: {
+          schema_version: 1,
+          fields: {
+            "observability.acl": {
+              source: "binding",
+              binding: "own-project-network",
+            },
+          },
+        },
+      },
+    };
+    const plan = compileApplicationPlan(input);
+    expect(plan.variables.application).toMatchObject({
+      observability: { access_source: "project-network", acl: [] },
+    });
+    expect(plan.parameterResolution?.qualificationBlockers).toHaveLength(1);
+    expect(plan.executionEnabled).toBe(false);
+  },
+);

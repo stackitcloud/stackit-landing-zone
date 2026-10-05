@@ -157,3 +157,31 @@ run "standalone_plan" {
     error_message = "test-public must be a public landing zone."
   }
 }
+
+run "standalone_local_project_network" {
+  command = plan
+
+  variables {
+    landing_zones = {
+      "test-public" = {
+        project_name          = "Test Public VM Network"
+        project_code          = "tpub"
+        owner_email           = "example@digits.schwarz"
+        env                   = "test"
+        corporate             = false
+        network_enabled       = true
+        network_prefix_length = 24
+      }
+    }
+  }
+
+  assert {
+    condition     = module.landing_zone["test-public"].project_network != null && !module.landing_zone["test-public"].project_network.routed && module.landing_zone["test-public"].project_network.ipv4_prefix_length == 24
+    error_message = "Standalone public projects must support a local VM network."
+  }
+
+  assert {
+    condition     = output.connectivity_network_area_id == null && module.landing_zone["test-public"].connected_network_area_id == null
+    error_message = "A local project network must not require connectivity or an SNA."
+  }
+}

@@ -87,7 +87,11 @@ function counts(value: unknown): ActionCounts {
 }
 
 /** Call only with the JSON of a saved plan and the exit code from that exact plan command. */
-export function summarizePlan(raw: unknown, exitCode: number): PlanSummary {
+export function summarizePlan(
+  raw: unknown,
+  exitCode: number,
+  fullPlanEngine?: "opentofu-1.12.6",
+): PlanSummary {
   if (exitCode !== 0 && exitCode !== 2) throw new InvalidPlan();
   const plan = object(raw);
   if (
@@ -131,6 +135,11 @@ export function summarizePlan(raw: unknown, exitCode: number): PlanSummary {
     resources.read +
     changedOutputs;
   if (exitCode === 0 && pending > 0) throw new InvalidPlan();
+  const fullOpenTofuPlan =
+    fullPlanEngine === "opentofu-1.12.6" &&
+    plan.terraform_version === "1.12.6" &&
+    plan.format_version === "1.2" &&
+    plan.deferred_changes === undefined;
   return {
     schemaVersion: 1,
     execution: "plan-only",
@@ -143,7 +152,9 @@ export function summarizePlan(raw: unknown, exitCode: number): PlanSummary {
     destructive: resources.delete > 0 || resources.replace > 0,
     completeness:
       plan.complete === undefined
-        ? "not-reported"
+        ? fullOpenTofuPlan
+          ? "complete"
+          : "not-reported"
         : plan.complete
           ? "complete"
           : "incomplete",

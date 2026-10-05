@@ -8,6 +8,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/healthz": "http://127.0.0.1:3000",
+      "/auth": "http://127.0.0.1:3000",
       "/api": "http://127.0.0.1:3000",
     },
   },

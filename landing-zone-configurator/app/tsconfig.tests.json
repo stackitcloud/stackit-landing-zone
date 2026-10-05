@@ -3,6 +3,9 @@
   "compilerOptions": {
     "composite": false,
     "declaration": false,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "noEmit": true
   },
   "include": [

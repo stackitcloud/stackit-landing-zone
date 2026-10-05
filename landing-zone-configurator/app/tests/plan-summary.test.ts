@@ -91,6 +91,36 @@ it("distinguishes output-only changes, drift and incomplete plans", () => {
   expect(summary.completeness).toBe("incomplete");
   expect(summarizePlan(plan(), 0).result).toBe("no-changes");
 });
+it("confirms completeness only for the verified pinned OpenTofu full-plan command", () => {
+  const raw = plan({ terraform_version: "1.12.6" });
+  expect(summarizePlan(raw, 0).completeness).toBe("not-reported");
+  expect(summarizePlan(raw, 0, "opentofu-1.12.6").completeness).toBe(
+    "complete",
+  );
+  expect(
+    summarizePlan({ ...raw, complete: false }, 0, "opentofu-1.12.6")
+      .completeness,
+  ).toBe("incomplete");
+});
+
+it.each([
+  { terraform_version: undefined },
+  { terraform_version: "1.12.7" },
+  { format_version: "1.3" },
+  { deferred_changes: [] },
+])(
+  "does not infer OpenTofu completeness from unsupported evidence: %j",
+  (extra) => {
+    expect(
+      summarizePlan(
+        plan({ terraform_version: "1.12.6", ...extra }),
+        0,
+        "opentofu-1.12.6",
+      ).completeness,
+    ).toBe("not-reported");
+  },
+);
+
 it.each([
   [plan(), 1],
   [plan(), -1],

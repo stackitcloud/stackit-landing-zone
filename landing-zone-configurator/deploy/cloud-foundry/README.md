@@ -22,6 +22,19 @@ App OAuth client credentials. The user explicitly approved the latter transfer t
 `lzc-dev-release` and CF backend variables on 2026-09-30. `LZC_AUTH_ENABLED=true`
 activates login; the client secret never enters the frontend build.
 
+STACKIT becomes the primary login when the protected Environment sets both
+`LZC_STACKIT_DEVICE_ENABLED=true` and `LZC_STACKIT_CLI_CLIENT_APPROVED=true`,
+in addition to `LZC_AUTH_ENABLED=true`. The latter STACKIT flag records explicit
+approval to reuse the public CLI client; technical Device Flow support is not
+that approval. Both STACKIT flags are currently provisioned as `false`.
+Release preparation rejects unapproved activation before CF deployment. It passes
+the flags through the private variables file and manifest, and public route
+checks verify the selected primary provider. GitHub credentials are optional in
+STACKIT mode but must be configured as a complete pair if repository access is
+enabled. Versioned migrations 011 and 012 run before the new application starts.
+Bind existing GitHub users through a valid session before switching their login;
+there is no automatic account merge by email.
+
 For this development milestone the CF deployment identity is still the existing
 org manager with explicit space developer membership, and release reads platform
 state. A dedicated space-only deployer and narrower state/credential publication

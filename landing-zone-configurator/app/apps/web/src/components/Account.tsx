@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { t } from "../i18n";
 
 export type Session = {
   user: { id?: string; login: string };
@@ -11,15 +12,26 @@ export type Session = {
   };
   csrfToken: string;
   expiresAt: string;
+  stackitVerified?: boolean;
 };
 export function Account({
   beforeLogin,
   onSessionChange,
+  onLogin,
 }: {
   beforeLogin: () => boolean;
   onSessionChange: (session: Session | null) => void;
+  onLogin?: () => void;
 }) {
   const [enabled, setEnabled] = useState(false);
+  const [primary, setPrimary] = useState<"github" | "stackit">("github");
+  const [authorization, setAuthorization] = useState<{
+    verificationUri: string;
+    userCode: string;
+    expiresAt: string;
+    retryAfterMs: number;
+  } | null>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
   const [session, setSession] = useState<Session | null>(null);
   useEffect(() => {
     onSessionChange(session);
@@ -33,7 +45,14 @@ export function Account({
         const status = await fetch("/auth/status", {
           signal: controller.signal,
         });
-        if (!status.ok || !(await status.json()).github) return;
+        if (!status.ok) throw new Error("Authentication status unavailable");
+        if (!status.headers.get("content-type")?.includes("application/json")) {
+          setError("Anmeldung ist hier nicht eingerichtet.");
+          return;
+        }
+        const providers = await status.json();
+        if (!providers.github && !providers.stackit) return;
+        setPrimary(providers.primary === "stackit" ? "stackit" : "github");
         setEnabled(true);
         const response = await fetch("/api/v1/session", {
           signal: controller.signal,
@@ -48,6 +67,94 @@ export function Account({
     })();
     return () => controller.abort();
   }, []);
+  useEffect(() => {
+    if (!authorization) return;
+    dialog.current?.showModal();
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      if (!authorization || controller.signal.aborted) return;
+      if (Date.parse(authorization.expiresAt) <= Date.now()) {
+        setAuthorization(null);
+        setError("Die Anmeldung ist abgelaufen. Bitte erneut anmelden.");
+        return;
+      }
+      try {
+        const response = await fetch("/auth/stackit/poll", {
+          method: "POST",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error();
+        const result = await response.json();
+        if (result.status === "waiting") {
+          timer = setTimeout(
+            () => void poll(),
+            Math.max(1000, result.retryAfterMs ?? 5000),
+          );
+        } else if (result.status === "verified") {
+          const current = await fetch("/api/v1/session", {
+            signal: controller.signal,
+          });
+          if (!current.ok) throw new Error();
+          setSession(await current.json());
+          setAuthorization(null);
+          onLogin?.();
+        } else {
+          setAuthorization(null);
+          setError(
+            "STACKIT-Anmeldung nicht abgeschlossen. Bitte erneut versuchen.",
+          );
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setAuthorization(null);
+          setError("STACKIT-Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
+        }
+      }
+    }
+    timer = setTimeout(() => void poll(), authorization.retryAfterMs);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+      dialog.current?.close();
+    };
+  }, [authorization, onLogin]);
+  async function start() {
+    if (!beforeLogin()) return;
+    if (primary === "github") {
+      window.location.assign("/auth/github/start");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/auth/stackit/start", {
+        method: "POST",
+        ...(session ? { headers: { "x-lzc-csrf": session.csrfToken } } : {}),
+      });
+      if (!response.ok) throw new Error();
+      const result = await response.json();
+      const url = new URL(result.verificationUri);
+      if (url.origin !== "https://accounts.stackit.cloud") throw new Error();
+      setAuthorization(result);
+    } catch {
+      setError("STACKIT-Anmeldung derzeit nicht erreichbar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function cancel() {
+    setBusy(true);
+    try {
+      const response = await fetch("/auth/stackit/cancel", { method: "POST" });
+      if (!response.ok) throw new Error();
+      setAuthorization(null);
+    } catch {
+      setError("Anmeldung konnte noch nicht abgebrochen werden.");
+    } finally {
+      setBusy(false);
+    }
+  }
   useEffect(() => {
     if (!session) return;
     const timer = setTimeout(
@@ -75,7 +182,13 @@ export function Account({
   }
   return (
     <div className="header-user account">
-      <span>{session ? `@${session.user.login}` : "Gast"}</span>
+      <span>
+        {session
+          ? primary === "github"
+            ? `@${session.user.login}`
+            : session.user.login
+          : t("Gast")}
+      </span>
       {enabled &&
         (session ? (
           <button
@@ -84,22 +197,68 @@ export function Account({
             disabled={busy}
             onClick={() => void logout()}
           >
-            Abmelden
+            {t("Abmelden")}
           </button>
         ) : (
           <button
             type="button"
             className="button secondary"
-            onClick={() => {
-              if (beforeLogin()) window.location.assign("/auth/github/start");
-            }}
+            disabled={busy || !!authorization}
+            onClick={() => void start()}
           >
-            Mit GitHub anmelden
+            {primary === "stackit"
+              ? t("Mit STACKIT anmelden")
+              : t("Mit GitHub anmelden")}
           </button>
         ))}
+      {session &&
+        primary === "stackit" &&
+        session.stackitVerified === false && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy || !!authorization}
+            onClick={() => void start()}
+          >
+            {t("Mit STACKIT anmelden")}
+          </button>
+        )}
+      {authorization && (
+        <dialog
+          ref={dialog}
+          className="stackit-login"
+          onCancel={(event) => {
+            event.preventDefault();
+            void cancel();
+          }}
+        >
+          <h2>{t("STACKIT-Anmeldung")}</h2>
+          <output aria-label={t("Anmeldecode")}>
+            {authorization.userCode}
+          </output>
+          <a
+            className="button"
+            href={authorization.verificationUri}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("Bei STACKIT bestätigen")}
+          </a>
+          <p role="status">{t("Bestätigung ausstehend")}</p>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => void cancel()}
+          >
+            {t("Abbrechen")}
+          </button>
+          {error && <p role="alert">{t(error)}</p>}
+        </dialog>
+      )}
       {error && (
         <span role="alert" className="account-error">
-          {error}
+          {t(error)}
         </span>
       )}
     </div>

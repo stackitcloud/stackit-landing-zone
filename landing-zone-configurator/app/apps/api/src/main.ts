@@ -1,27 +1,49 @@
 import pg from "pg";
 import { buildApp } from "./app.js";
+import { Applications } from "./applications/service.js";
 import { GitHubClient } from "./auth/github-client.js";
 import type { AuthServices } from "./auth/routes.js";
 import { SecretsManagerTokenStore } from "./auth/secrets.js";
+import { StackitIdentities } from "./auth/stackit-identities.js";
+import type { StackitServices } from "./auth/stackit-routes.js";
 import { PostgresAuthStore } from "./auth/store.js";
+import { Configurations } from "./configurations/service.js";
 import { PostgresCloudCatalogues } from "./credentials/catalogues.js";
 import { PostgresCredentialProfiles } from "./credentials/profiles.js";
 import { VaultCredentialSecrets } from "./credentials/secrets.js";
+import { Backends } from "./deployments/backends.js";
 import { Preparations } from "./deployments/preparations.js";
 import { Repositories } from "./github/repositories.js";
 import { Invitations } from "./organisation/invitations.js";
 import { PostgresOrganisations } from "./organisation/service.js";
 import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
+import { ArtifactCrypto } from "./plans/crypto.js";
+import { PlatformExecution } from "./plans/execution.js";
 import { Plans } from "./plans/service.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
 
 const repositories = new Repositories();
 let plans: Plans | undefined;
+let backends: Backends | undefined;
 let catalogues: PostgresCloudCatalogues | undefined;
 let pool: pg.Pool | undefined;
 let auth: AuthServices | undefined;
 let credentials: PostgresCredentialProfiles | undefined;
+let applications: Applications | undefined;
+let stackit: StackitServices | undefined;
+const executionEnabled = process.env.LZC_EXECUTION_ENABLED === "true";
+const artifactCrypto = executionEnabled
+  ? new ArtifactCrypto(process.env.LZC_DEPLOYMENT_ARTIFACT_KEY ?? "")
+  : undefined;
+if (
+  executionEnabled &&
+  (process.env.LZC_AUTH_ENABLED !== "true" ||
+    process.env.LZC_PLANS_ENABLED !== "true")
+)
+  throw new Error(
+    "Execution requires authentication and plan runner configuration",
+  );
 if (process.env.LZC_AUTH_ENABLED === "true") {
   const required = (key: string) => {
     const value = process.env[key];
@@ -29,7 +51,14 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     return value;
   };
   const origin = required("LZC_PUBLIC_ORIGIN");
-  const clientId = required("LZC_GITHUB_CLIENT_ID");
+  const primaryStackit = process.env.LZC_STACKIT_DEVICE_ENABLED === "true";
+  const clientId = process.env.LZC_GITHUB_CLIENT_ID ?? "";
+  const clientSecret = process.env.LZC_GITHUB_CLIENT_SECRET ?? "";
+  if (
+    (!primaryStackit && (!clientId || !clientSecret)) ||
+    !!clientId !== !!clientSecret
+  )
+    throw new Error("GitHub configuration incomplete");
   pool = new pg.Pool(databaseConfig());
   pool.on("error", () => {
     console.error(JSON.stringify({ event: "database_pool_error" }));
@@ -49,6 +78,7 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
   );
   credentials = new PostgresCredentialProfiles(pool, credentialSecrets);
   catalogues = new PostgresCloudCatalogues(pool, credentialSecrets);
+  backends = artifactCrypto ? new Backends(pool, artifactCrypto) : undefined;
   if (process.env.LZC_PLANS_ENABLED === "true") {
     plans = new Plans(
       pool,
@@ -62,20 +92,47 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
         templateId: required("LZC_RUNNER_TEMPLATE_ID"),
       }),
       origin,
+      artifactCrypto
+        ? new PlatformExecution(artifactCrypto, backends)
+        : undefined,
+      (session) => new SecretsManagerTokenStore(secretConfig).get(session),
     );
   }
   await pool.query("SELECT id FROM lzc.credential_profiles LIMIT 0");
+  await pool.query("SELECT id FROM lzc.configurations LIMIT 0");
+  if (process.env.LZC_APPLICATIONS_ENABLED === "true") {
+    await pool.query(
+      "SELECT id FROM lzc.application_template_versions LIMIT 0",
+    );
+    applications = new Applications(pool, credentials);
+  }
   auth = {
     origin,
     clientId,
+    primaryStackit,
+    githubEnabled: !!clientId,
     store: new PostgresAuthStore(pool),
     github: new GitHubClient({
       clientId,
-      clientSecret: required("LZC_GITHUB_CLIENT_SECRET"),
+      clientSecret,
       callback: `${origin}/auth/github/callback`,
     }),
     tokens: new SecretsManagerTokenStore(secretConfig),
   };
+  if (process.env.LZC_STACKIT_DEVICE_ENABLED === "true") {
+    if (process.env.LZC_STACKIT_CLI_CLIENT_APPROVED !== "true")
+      throw new Error(
+        "STACKIT CLI client use must be explicitly approved before enabling Device integration",
+      );
+    await pool.query("SELECT user_id FROM lzc.stackit_identities LIMIT 0");
+    await pool.query(
+      "SELECT user_id FROM lzc.stackit_organization_access LIMIT 0",
+    );
+    stackit = {
+      identities: new StackitIdentities(pool),
+      organisations: new PostgresOrganisations(pool),
+    };
+  }
 }
 
 const app = buildApp({
@@ -83,16 +140,20 @@ const app = buildApp({
   ...(pool
     ? {
         organisations: new PostgresOrganisations(pool),
+        configurations: new Configurations(pool),
         invitations: new Invitations(pool),
       }
     : {}),
   ...(catalogues ? { catalogues } : {}),
+  ...(applications ? { applications } : {}),
   ...(plans ? { plans } : {}),
+  ...(backends ? { backends } : {}),
   ...(pool && credentials
     ? { preparations: new Preparations(pool, repositories, credentials) }
     : {}),
   ...(process.env.LZC_WEB_ROOT ? { webRoot: process.env.LZC_WEB_ROOT } : {}),
   ...(auth ? { auth } : {}),
+  ...(stackit ? { stackit } : {}),
   ...(credentials ? { credentials } : {}),
 });
 let maintaining = false;

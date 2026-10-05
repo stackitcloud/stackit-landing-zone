@@ -10,15 +10,19 @@ const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
-function fixture() {
+function fixture(primaryStackit = false) {
   const pending = new Map<string, PendingGitHubLogin>();
   const sessions = new Map<string, Session>();
   const services: AuthServices = {
     origin: "https://configurator.example",
+    primaryStackit,
     clientId: "client-id",
     store: {
-      beginLogin: async (value) => {
-        pending.set(value.stateHash, value);
+      beginLogin: async (value, session) => {
+        pending.set(value.stateHash, {
+          ...value,
+          ...(session ? { linkedSessionId: session.id } : {}),
+        });
       },
       consumeLogin: async (state, binding) => {
         const value = pending.get(tokenHash(state));
@@ -85,6 +89,148 @@ function fixture() {
 }
 
 describe("GitHub browser flow", () => {
+  it("requires HTTPS except for explicitly enabled canonical loopback origins", () => {
+    const { services } = fixture();
+    expect(() =>
+      buildApp({ auth: { ...services, origin: "http://127.0.0.1:4181" } }),
+    ).toThrow("Canonical HTTPS origin required");
+    for (const origin of [
+      "http://configurator.example",
+      "http://127.0.0.1.evil.test:4181",
+      "http://127.0.0.1:4181/path",
+    ]) {
+      expect(() =>
+        buildApp({ auth: { ...services, origin, allowLoopbackHttp: true } }),
+      ).toThrow("Canonical HTTPS origin required");
+    }
+    for (const origin of ["http://127.0.0.1:4181", "http://localhost:4181"]) {
+      apps.push(
+        buildApp({ auth: { ...services, origin, allowLoopbackHttp: true } }),
+      );
+    }
+  });
+
+  it("uses one resolved session for both platform guard and catalogue handler during tenant changes", async () => {
+    const { services } = fixture();
+    const session: Session = {
+      id: randomUUID(),
+      userId: randomUUID(),
+      tenantId: randomUUID(),
+      githubId: "101",
+      login: "alice",
+      csrfToken: "c".repeat(43),
+      expiresAt: new Date(Date.now() + 300000),
+      tenantKind: "personal",
+    };
+    const resolve = vi
+      .spyOn(services.store, "resolveSession")
+      .mockResolvedValueOnce(session)
+      .mockResolvedValue({
+        ...session,
+        tenantId: randomUUID(),
+        tenantKind: "organisation",
+        productRoles: ["application-owner"],
+      });
+    const load = vi.fn().mockResolvedValue({ region: "eu01" });
+    const app = buildApp({ auth: services, catalogues: { load } });
+    apps.push(app);
+    const result = await app.inject({
+      method: "POST",
+      url: "/api/v1/cloud-catalogues",
+      headers: {
+        cookie: `__Host-lzc-session=${"s".repeat(43)}`,
+        origin: services.origin,
+        "x-lzc-csrf": session.csrfToken,
+      },
+      payload: {
+        profileId: randomUUID(),
+        projectId: randomUUID(),
+        region: "eu01",
+      },
+    });
+    expect(result.statusCode).toBe(200);
+    expect(resolve).toHaveBeenCalledOnce();
+    expect(load.mock.calls[0]![0]).toBe(session);
+  });
+
+  it("links GitHub only from an existing primary session without replacing the user or tenant", async () => {
+    const { app, services, sessions } = fixture(true);
+    const token = "s".repeat(43);
+    const session: Session = {
+      id: randomUUID(),
+      userId: randomUUID(),
+      tenantId: randomUUID(),
+      githubId: "",
+      login: "stackit@example.test",
+      csrfToken: "c".repeat(43),
+      expiresAt: new Date(Date.now() + 300000),
+    };
+    sessions.set(tokenHash(token), session);
+    const create = vi.spyOn(services.store, "createSession");
+    services.store.linkGitHub = vi.fn(async (current, githubId) => ({
+      ...current,
+      githubId: String(githubId),
+    }));
+    expect((await app.inject("/auth/github/start")).statusCode).toBe(409);
+    expect(
+      (await app.inject({ method: "POST", url: "/auth/github/connect" }))
+        .statusCode,
+    ).toBe(401);
+    const headers = {
+      cookie: `__Host-lzc-session=${token}`,
+      origin: services.origin,
+      "x-lzc-csrf": session.csrfToken,
+    };
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/auth/github/connect",
+          headers: { ...headers, origin: "https://attacker.example" },
+        })
+      ).statusCode,
+    ).toBe(403);
+    const denied = await app.inject({
+      method: "POST",
+      url: "/auth/github/connect",
+      headers,
+    });
+    const deniedState = new URL(
+      denied.json().authorizationUrl,
+    ).searchParams.get("state");
+    const binding = denied.cookies[0]!;
+    const deniedCallback = await app.inject({
+      url: `/auth/github/callback?state=${deniedState}&code=one-use-code`,
+      headers: { cookie: `${binding.name}=${binding.value}` },
+    });
+    expect(deniedCallback.headers.location).toBe("/?github=failed");
+    expect(services.github.authorize).not.toHaveBeenCalled();
+    const start = await app.inject({
+      method: "POST",
+      url: "/auth/github/connect",
+      headers,
+    });
+    const state = new URL(start.json().authorizationUrl).searchParams.get(
+      "state",
+    );
+    const cookie = start.cookies[0]!;
+    const result = await app.inject({
+      url: `/auth/github/callback?state=${state}&code=one-use-code`,
+      headers: { cookie: `${headers.cookie}; ${cookie.name}=${cookie.value}` },
+    });
+    expect(result.headers.location).toBe("/repositories");
+    expect(services.store.linkGitHub).toHaveBeenCalledWith(
+      session,
+      101,
+      "alice",
+    );
+    expect(create).not.toHaveBeenCalled();
+    expect(
+      result.cookies.some((value) => value.name === "__Host-lzc-session"),
+    ).toBe(false);
+    expect(result.body + JSON.stringify(result.headers)).not.toContain("ghu_");
+  });
+
   it("keeps tokens server-side, sets secure cookie and exposes only session metadata", async () => {
     const { app, services, login } = fixture();
     const response = await login();

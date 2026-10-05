@@ -29,6 +29,12 @@ variable "network_area_id" {
   default     = null
 }
 
+variable "network_enabled" {
+  type        = bool
+  description = "Create a local project network without SNA when corporate is false. Corporate networks are always created."
+  default     = false
+}
+
 variable "corporate" {
   type        = bool
   description = "Whether this landing zone uses corporate networking (network area + routing). Set to false for public internet."

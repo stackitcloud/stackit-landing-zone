@@ -45,8 +45,10 @@ module "application" {
   role_assignments       = var.application.role_assignments
   corporate              = try(local.target.corporate, false)
   network_area_id        = try(local.target.network_area_id, null)
-  firewall_next_hop_ip   = try(local.target.firewall_next_hop_ip, null)
-  ipv4_nameservers       = try(local.target.ipv4_nameservers, null)
+  network_enabled        = var.application.network_enabled
+  network_prefix_length  = var.application.network_prefix_length
+  firewall_next_hop_ip   = try(local.target.corporate, false) ? try(local.target.firewall_next_hop_ip, null) : null
+  ipv4_nameservers       = try(local.target.corporate, false) ? try(local.target.ipv4_nameservers, null) : null
   secretsmanager_enabled = var.application.secretsmanager_enabled
   observability          = var.application.observability
   labels                 = local.application_labels
@@ -62,6 +64,7 @@ output "application_resources" {
     naming_pattern             = local.naming_pattern
     project_id                 = module.application.project_id
     project_container_id       = module.application.project_container_id
+    project_network            = module.application.project_network
     secretsmanager_instance_id = module.application.secretsmanager_instance_id
     observability_instance_id  = module.application.observability_instance_id
   }

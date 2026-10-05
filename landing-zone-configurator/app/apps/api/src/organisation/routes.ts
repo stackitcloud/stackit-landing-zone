@@ -54,7 +54,10 @@ export function registerOrganisations(
       const session = await authenticatedSession(request, auth);
       if (!session)
         return reply.code(401).send({ error: "authentication_required" });
-      return service.overview(session);
+      return {
+        ...(await service.overview(session)),
+        ...(auth.primaryStackit ? { organizationBindingEnabled: true } : {}),
+      };
     });
     routes.post(
       "/api/v1/organisation",

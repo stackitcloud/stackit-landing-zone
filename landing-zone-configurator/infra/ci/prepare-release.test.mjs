@@ -10,6 +10,7 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
  const dir=mkdtempSync(join(tmpdir(),"lzc-release-test-"));
  const env={...process.env,GITHUB_REPOSITORY:"stackitcloud/stackit-landing-zone",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",RUNNER_TEMP:dir,GITHUB_ENV:join(dir,"environment"),LZC_WORKLOAD_BUCKET:"lzc-dev-state-7dbff805",LZC_STATE_KEY_PLATFORM:"p".repeat(40),LZC_STATE_KEY_RUNTIME:"r".repeat(40),LZC_WORKLOAD_ACCESS_KEY:"test-access",LZC_WORKLOAD_SECRET_KEY:"test-secret"};
  const run=mode=>spawnSync(process.execPath,[script,mode],{env,encoding:"utf8"});
+ Object.assign(env,{LZC_AUTH_ENABLED:"false",LZC_STACKIT_DEVICE_ENABLED:"false",LZC_STACKIT_CLI_CLIENT_APPROVED:"false",LZC_GITHUB_CLIENT_ID:"",LZC_GITHUB_CLIENT_SECRET:""});
  try {
   assert.equal(run("backend").status,0);
   const privateDir=join(dir,"lzc-release");
@@ -26,8 +27,10 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const result=run("application");assert.equal(result.status,0,result.stderr);
   const vars=join(privateDir,"app-vars.json");assert.equal(statSync(vars).mode&0o777,0o600);
   const app=JSON.parse(readFileSync(vars));
-  assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID"]);
+    assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID"]);
   assert.equal(app.LZC_AUTH_ENABLED,"false");
+    assert.equal(app.LZC_STACKIT_DEVICE_ENABLED,"false");
+    assert.equal(app.LZC_STACKIT_CLI_CLIENT_APPROVED,"false");
   assert.equal(app.LZC_GITHUB_CLIENT_SECRET,"");
   assert.ok(!readFileSync(vars,"utf8").includes("migration-only-secret"));
   const migration=join(privateDir,"migration-vars.json");
@@ -44,6 +47,25 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const authenticated=JSON.parse(readFileSync(vars));
   assert.equal(authenticated.LZC_AUTH_ENABLED,"true");
   assert.equal(authenticated.LZC_GITHUB_CLIENT_SECRET,"test-oauth-secret");
+    env.LZC_STACKIT_DEVICE_ENABLED="true";
+    assert.notEqual(run("application").status,0,"must reject unapproved CLI client use");
+    env.LZC_STACKIT_CLI_CLIENT_APPROVED="true";
+    env.LZC_GITHUB_CLIENT_ID="";
+    env.LZC_GITHUB_CLIENT_SECRET="";
+    assert.equal(run("application").status,0,"STACKIT login must not require GitHub");
+    const stackit=JSON.parse(readFileSync(vars));
+    assert.equal(stackit.LZC_STACKIT_DEVICE_ENABLED,"true");
+    assert.equal(stackit.LZC_STACKIT_CLI_CLIENT_APPROVED,"true");
+    assert.equal(stackit.LZC_GITHUB_CLIENT_SECRET,"");
+    env.LZC_GITHUB_CLIENT_ID="test-client";
+    assert.notEqual(run("application").status,0,"must reject incomplete optional GitHub credentials");
+    env.LZC_GITHUB_CLIENT_SECRET="test-oauth-secret";
+    env.LZC_AUTH_ENABLED="false";
+    assert.notEqual(run("application").status,0,"must reject STACKIT login without authentication");
+    env.LZC_AUTH_ENABLED="true";
+    env.LZC_STACKIT_DEVICE_ENABLED="false";
+    env.LZC_STACKIT_CLI_CLIENT_APPROVED="false";
+    assert.equal(run("application").status,0);
   assert.ok(!readFileSync(migration,"utf8").includes("test-oauth-secret"));
   assert.ok(!readFileSync(env.GITHUB_ENV,"utf8").includes("must-not-be-forwarded"));
   assert.equal(authenticated.LZC_PLANS_ENABLED,"false");

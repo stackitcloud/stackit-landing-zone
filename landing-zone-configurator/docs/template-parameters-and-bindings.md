@@ -1,6 +1,6 @@
 # Projekt-Templates: Eingaben, feste Vorgaben und Ressourcenverknüpfungen
 
-Stand: 2026-10-01. Parametervertrag, Template-Editor und lokale Bestellvorschau implementiert; Application-Veröffentlichung und produktive Instanziierung bleiben offen.
+Stand: 2026-10-02. Parametervertrag, Template-Editor, tenantgebundener Testkatalog und persistente Bestellaufträge implementiert. Verifizierte Plattform-/Identitätsbindung, Application-Cloud-Plan und produktive Instanziierung bleiben offen. Dieser Stand ist lokal, noch nicht veröffentlicht.
 Ergänzt [Projekt-Template-Entwürfe](project-template-drafts.md) und die
 [Plattform-/Application-Architektur](platform-application-architecture.md).
 
@@ -39,6 +39,93 @@ Auflösung wird in [#96](https://github.com/stackitcloud/stackit-landing-zone/is
 verfolgt. Der Runner-Pin bleibt unverändert; diese Ergänzungen geben keine
 produktive Ausführung frei.
 
+## Tenantgebundener Testkatalog und Bestellungen
+
+Die Seite `/applications` trennt veröffentlichte Versionen von bearbeitbaren
+Projekt-Template-Entwürfen. Der Server speichert den vollständigen validierten
+Snapshot samt Policy, Tenant, Template-ID, fortlaufender Version, Veröffentlichendem,
+Zeitpunkt und festem Accelerator-Pin. Gleicher Snapshot mit gleichem Pin liefert
+dieselbe letzte Version; Änderungen erzeugen eine neue. Frühere Versionen werden
+weder verändert noch automatisch auf Bestellungen übertragen. Sandbox-Veröffentlichungen
+und leere Bestell-Auswahllisten bleiben gesperrt.
+
+Platform Engineers veröffentlichen aus dem aktuellen Entwurf. Application Owner
+sehen nur Versionen ihres aktiven Tenants und benötigen keinen persönlichen Fork.
+Der persönliche Arbeitsbereich erlaubt seinem bisherigen Admin die Vorbereitung
+dieses Testkatalogs. Unverifizierte Organisationsarbeitsbereiche dürfen damit Daten
+vorbereiten, erhalten aber keine STACKIT-Ausführungsrechte. Eine Katalogversion ist
+noch keine für reale Kunden verifiziert freigegebene Ressourcenvorlage.
+
+Die Bestellung enthält nur Versions-ID, Projektname, erlaubte Parameter und einen
+UUID-Idempotenzschlüssel. Tenant und Antragsteller stammen aus der serverseitig
+aufgelösten Session; Owner-E-Mail, Plattform-ID und feste Einstellungen sind nicht
+überschreibbar. Derselbe Schlüssel desselben Antragstellers im selben Tenant mit
+identischen Eingaben liefert dieselbe Instanz. Abweichende Eingaben ergeben HTTP 409.
+Der Browser behält den Schlüssel für Wiederholung und Netzwerk-Retry des laufenden
+Bestellformulars. Ein neu geöffnetes oder geändertes Formular ist ein neuer Auftrag;
+es besteht keine automatische Zusammenführung nach Projektnamen.
+
+Jede Bestellung erhält eine eigene serverseitige Instanz-ID und reserviert
+`applications/<tenant-id>/<instance-id>/terraform.tfstate` als State-Key. Die Bestellung
+erzeugt **noch keine State-Datei und kein STACKIT-Projekt**. Feste Einstellungen,
+aufgelöste Eingaben und Qualifizierungsblocker werden dauerhaft gespeichert.
+Application Owner sehen nur eigene Aufträge, Platform Engineers die Aufträge ihres
+Tenants. PostgreSQL erzwingt RLS, aktuelle Produktrollen und unveränderliche Versionen;
+ein Wechsel des aktiven Tenants während der Anfrage wird abgewiesen. Ein Arbeitsbereich
+mit veröffentlichten Versionen oder Bestellungen kann nicht als leerer Entwurf
+archiviert werden.
+
+Der Planstatus ist stets `blocked` und `executionEnabled=false`. Die Oberfläche
+weist fehlende verifizierte STACKIT-Benutzeridentität, fehlenden freigegebenen
+Plattformvertrag und den noch nicht freigegebenen Application-Runner aus. Ein
+GitHub-Login oder ein Service-Account-Key wird nicht als menschlicher STACKIT-Nachweis
+umgedeutet. Es gibt keine erfundenen Ressourcenanzahlen und keine Apply-Aktion.
+Unaufgelöste Projektrollen und Egress-Bindungen bleiben zusätzliche Blocker.
+Der vorhandene Application-Compiler wird dadurch nicht als Ausführungsbroker ausgegeben.
+
+Migration `010_application_catalogue.sql` und `LZC_APPLICATIONS_ENABLED=true` sind
+für den Backend-Betrieb erforderlich; das Flag ist standardmäßig aus. Die neue
+Migration wurde ausschließlich in der wegwerfbaren lokalen PostgreSQL-Testdatenbank
+angewendet, nicht auf der CF-Datenbank. Bestehender Runner-Pin, Plattformvertrag und
+Deployment-Pipeline werden nicht automatisch erweitert.
+
+Nachweise: Domain-/API-Tests, echte PostgreSQL-Session/RLS samt HTTP-Durchstich,
+parallele Idempotenzprüfung, Rollenentzug und Desktop-/Mobil-Browserfälle.
+Die Browserfälle verwenden simulierte API-Antworten; sie ersetzen keine Live-Abnahme
+mit verifizierten STACKIT-Identitäten und keinen echten Cloud-Plan.
+
+## Lokales Projektnetz als Template-Vorgabe
+
+Ein Projektnetz ist Teil der Landing Zone, nicht erst der späteren VM-Anwendung.
+Public-Projekt-Templates können deshalb mit `settings.network_enabled: true`
+ein lokales, nicht SNA-geroutetes Netz anlegen. `network_prefix_length` legt
+optional die Präfixlänge fest; ohne Vorgabe wird sie vom Dienst bestimmt.
+Die Präfixlänge beschreibt die Netzgröße: `/24` umfasst 256 IPv4-Adressen,
+`/25` 128 und `/26` 64. Größere Präfixzahlen bedeuten kleinere Netze; nicht alle
+Adressen sind für VMs verfügbar.
+Die Oberfläche bietet diese Einstellungen direkt im Projekt-Template an.
+Netzanlage und Größe bleiben zunächst feste Vorgaben, keine Bestelleingaben.
+
+Bestehende Public-Templates ohne Netzoption bleiben unverändert. Corporate-
+Templates behalten ihr automatisch erzeugtes geroutetes Netz und ihre SNA-
+Zuordnung. Sandbox-Netze sind von dieser Erweiterung nicht erfasst. Eine Vorlage
+für ein VM-Netz erstellt damit das Projekt und sein Netz, nicht bereits die VM.
+
+Die Einstellungen werden mit dem Template-Dokument im Fork gespeichert und
+erzeugen beim Plattform-Export keine Projekte oder Netze. Der Application-Vertrag
+Version 2 übernimmt sie als feste Vorgaben in den nativen Application-Root;
+Version 1 bleibt unverändert. Das Modul gibt eine nicht geheime Netzreferenz aus.
+Modul-, Application- und Standalone-Mockpläne prüfen lokale Netzanlage ohne SNA
+sowie den Erhalt bisheriger Konfigurationen. Produktive Instanziierung und ein
+realer Cloud-Apply sind weiterhin nicht freigegeben.
+
+Das lokale Netz ist keine automatische Observability-ACL-Quelle. Die
+[Instanz-ACL](https://docs.stackit.cloud/products/logging-and-monitoring/observability/how-tos/control-instance-access/)
+filtert die am Internet-Endpunkt sichtbaren Quelladressen gemeinsam für Grafana,
+Metrics, Logs und Traces. Eine leere ACL stellt uneingeschränkten Netzwerkzugriff
+wieder her. Private Netz-CIDRs dürfen daher nicht ohne nachgewiesene Egress-
+Semantik als Quelladressen übernommen werden.
+
 ## Kataloge und verifizierte Instanziierungsvariablen
 
 Die geladenen STACKIT-Produktkataloge gelten auch für die erlaubten Bestellwerte.
@@ -61,16 +148,26 @@ Die zusätzlichen Rollenzuweisungen und festen `custom_roles` werden im Applicat
 Vertrag Version 2 bis zum nativen Root weitergegeben; Version 1 bleibt unverändert.
 Das ist weiterhin ein nicht zur produktiven Ausführung freigegebener Prototyp.
 
+Bei fest ausgeschaltetem Observability blendet der Template-Editor Leistungsklasse,
+Zugriffsquellen, Instanzname und die entsprechenden Vorschauwerte aus. Gespeicherte
+Werte und Policies bleiben erhalten und erscheinen beim Wiedereinschalten wieder.
+Ist die Aktivierung erst bei der Bestellung wählbar, bleiben die benötigten
+Template-Vorgaben konfigurierbar. Strukturierte Template-Dienste mit explizit
+ausgeschaltetem `enabled`- oder benanntem `*_enabled`-Schalter blenden ihre
+zugehörigen Details ebenfalls aus, ohne diese zu löschen.
+
 STACKIT-Rollenvorlagen übernehmen Name, Beschreibung und Permissions als bearbeitbare
 eigene Rolle mit einem `application-`-Namenspräfix. Keine projektgebundene Rollen-ID
 des Referenzprojekts wird übertragen. Eine angezeigte Rolle ist keine Zusicherung,
 dass dieselbe Definition im späteren Zielprojekt existiert; sie muss dort als eigene
 Rolle definiert oder als verfügbare Zielrolle vor Veröffentlichung qualifiziert werden.
 
-Public-Projektvorlagen erzeugen aktuell kein eigenes Netz. Deshalb ist die entsprechende
-Observability-Bindung dort deaktiviert und begründet. Corporate-Vorlagen können sie
-als symbolischen Entwurf auswählen; ohne nachgewiesene öffentliche Egress-Adresse
-bleibt die Ausführung weiterhin gesperrt.
+Public-Projektvorlagen mit aktiviertem lokalem Netz können die Observability-
+Bindung ebenso wie Corporate-Vorlagen als symbolischen Entwurf auswählen.
+Ohne Projektnetz ist die Auswahl gesperrt; zur Auflösung muss Observability
+aktiviert sein. Ein symbolischer Snapshot darf im Testkatalog gespeichert werden;
+produktive Freigabe und Ausführung bleiben für beide Netzarten ohne nachgewiesene
+öffentliche Egress-Adresse gesperrt.
 
 ## Ausgangsproblem und überprüfte Accelerator-Grenzen
 
@@ -84,9 +181,9 @@ weiterentwickelt werden. Die Oberfläche darf keine vollständige Parametrisieru
   In `src/main.tf` fließt der Wert in Naming und DNS ein.
 - `src/modules/landing-zone/8-observability.tf` übergibt `var.observability.acl`
   unverändert. Eine Bindung an ein erzeugtes Netzwerk fehlt.
-- `src/modules/landing-zone/3-network.tf` erzeugt ein geroutetes Netzwerk nur bei
-  `corporate=true`. Ein Public-Projekt hat damit nicht automatisch ein referenzierbares,
-  durch dieses Modul verwaltetes Netzwerk. Sandbox gesondert qualifizieren.
+- `src/modules/landing-zone/3-network.tf` erzeugt weiterhin ein geroutetes Netzwerk
+  bei `corporate=true`, zusätzlich jetzt ein lokales Netz für Public-Projekte bei
+  `network_enabled=true`. Beide sind Modulressourcen; Sandbox gesondert qualifizieren.
 - Die spätere ACL muss die am Dienst wirksame Quelladresse berücksichtigen:
   Ein Projekt-CIDR ist bei NAT oder anderen Zugriffswegen möglicherweise nicht
   die tatsächlich sichtbare Quelladresse. Die Produkt-/Netzwerksemantik ist vor
@@ -150,9 +247,10 @@ per API auf ein noch nicht existierendes Netz und keine CIDR-Platzhalter in tfva
 
 Fehlt das Netz oder passt sein Adresstyp/Zugriffsweg nicht, ist die Kombination
 nicht veröffentlichbar bzw. nicht instanziierbar. **Kein stiller Rückfall auf
-leere ACL oder `0.0.0.0/0`.** Bedeutung leerer ACLs produktweise qualifizieren.
-Eine Public-Vorlage benötigt zuerst eine unterstützte Netzwerk-/Egress-Strategie,
-bevor sie „eigenes Projektnetz“ anbieten kann.
+leere ACL oder `0.0.0.0/0`.** Bei Observability bedeutet eine leere ACL Vollzugriff
+auf Netzwerkebene. Auch eine Public-Vorlage mit lokalem Netz benötigt eine
+qualifizierte Egress-Strategie, bevor sie „eigenes Projektnetz“ als ausführbare
+ACL-Quelle anbieten kann. Als symbolischer Entwurf ist die Bindung auswählbar.
 
 ## Allgemeine Verknüpfungen und State-Eigentum
 

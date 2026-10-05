@@ -1,8 +1,112 @@
-# GitHub-Login und Mandantentrennung
+# STACKIT-Login, optionale GitHub-Verbindung und Mandantentrennung
 
-Stand: 2026-09-30. GitHub-Login auf STACKIT aktiviert; technischer Release geprüft, persönliche Anmeldung noch abzunehmen.
+Stand: 2026-10-05. STACKIT als primärer Login lokal implementiert und getestet.
+Die ausdrueckliche Dev-Client-Freigabe ersetzt keine Produktionsregistrierung.
+Die neue Organisationsbindung ist lokal geprueft, aber noch nicht in der
+laufenden Kundendatenbank aktiviert. GitHub bleibt als Legacy-Modus erhalten.
 
-## Ablauf
+## Primärer STACKIT-Login
+
+Platform Engineer und Application Owner melden sich mit ihrer persönlichen
+STACKIT-Identität an und wählen bei mehreren Mitgliedschaften ihren aktiven Tenant.
+Der Application Owner benötigt weder GitHub noch einen Service Account.
+Der Platform Engineer hinterlegt den technischen STACKIT-Service-Account-Zugang;
+Produktkataloge verwenden danach denselben Zugang automatisch, ohne weitere
+Profil- oder Projektwahl im Editor. Persönliche Login-Tokens werden nicht für
+technische STACKIT-Automatisierungen gespeichert oder wiederverwendet.
+
+`POST /auth/stackit/start` beginnt einen browsergebundenen Device Flow.
+Der Browser erhält nur den öffentlichen Bestätigungscode und den festen
+STACKIT-Bestätigungslink. `/auth/stackit/poll` verifiziert die Identität serverseitig
+und erzeugt die normale opaque Session. Ein vorhandenes ID-Token wird vollständig
+geprüft; fehlt es, wird ausschließlich Userinfo mit dem im selben Device Grant
+erhaltenen Access Token verwendet. Ein bestätigtes persönliches Konto ist Pflicht.
+Issuer und Subject bestimmen den stabilen Benutzer, niemals allein die E-Mail-Adresse.
+
+Device-Cookies sind `Secure`, `HttpOnly`, `SameSite=Strict`; Sessions verwenden
+`SameSite=Lax`. Pre-Auth-POSTs verlangen die exakte Origin, authentifizierte
+Änderungen zusätzlich CSRF. Sessions gelten höchstens acht Stunden und enden
+spätestens 30 Sekunden vor dem Provider-Token. Kein Refresh-Token wird behalten.
+Offene Device-Flows liegen nur im Speicher einer Instanz: Neustart verwirft sie;
+mehrere Instanzen benötigen vor Aktivierung eine gemeinsame Ablage oder Sticky Routing.
+
+## Autoritativer Organisationsnachweis
+
+Login oder Resource-Manager-Lesezugriff sind kein Adminnachweis. Im aktiven
+Organisationsarbeitsbereich startet ein Platform Engineer mit Mitgliederverwaltung
+die Pruefung ausdruecklich. Dabei wird sein bisheriger aktueller
+Organisationsnachweis entfernt; menschliche Identitaet und historische Audits
+bleiben erhalten. Ein fehlgeschlagener neuer Nachweis darf keine alte
+Owner-Freigabe wiederverwenden.
+
+Der neue Device Grant verifiziert dieselbe menschliche Identitaet und die exakte
+Organisation. Derselbe kurzlebige menschliche Bearer Token fragt am festen
+IAM-Origin `https://authorization.api.stackit.cloud` folgende APIs ab:
+
+- `GET /v2/users/{verifiedEmail}/permissions?resourceType=organization&resource={organizationId}`
+- `GET /v2/organization/{organizationId}/roles`
+
+Antworten werden auf Organisation, Ressourcentyp, Umfang und Struktur geprueft.
+Das konservative Minimum umfasst alle Rechte genau einer nicht leeren
+offiziellen `owner`-Rolle. Die effektiven Benutzerrechte muessen diesen Satz
+vollstaendig enthalten. Leserechte, fehlende/mehrdeutige Owner-Rollen und
+gesperrte Rollenabfragen erteilen keine Bindungsautoritaet. Grundlage ist der
+offizielle STACKIT-Go-SDK-Vertrag, Revision
+`7746310c7fe0a5e3f5c5e6e9b1be69d48c6184d9`, `services/authorization/v2api`.
+
+Erst eine separate Bestaetigung sendet
+`POST /api/v1/stackit/identity/bind-organization` mit ausschliesslich
+`{"confirmOrganizationBinding":true}`. Origin, CSRF, Tenant, echte aktuelle
+DB-Session, PE-Rolle, Mitgliederverwaltung und nicht abgelaufene/widerrufene
+Identitaets-/Owner-Nachweise werden erneut geprueft. SQL-seitig erzeugte
+unveraenderliche Autorisierungsbelege binden Organisation, Benutzer,
+Issuer/Subject, Rechte und Gueltigkeit. Die atomare Bindung referenziert diesen
+Beleg im Audit; Wiederholungen liefern denselben Bindungsbeleg.
+
+Migrationen `023_organization_authorizations.sql` und
+`024_organization_binding.sql` sind erforderlich. Alte APIs ohne Capability
+zeigen die Steuerung nicht an. `organization_verified` bezeichnet die
+historisch bestaetigte Zuordnung, nicht unbegrenzte aktuelle Owner-Rechte.
+Die Bindung startet weder Cloud-Plan noch Apply und ersetzt keinen technischen
+Job-Grant. Echte Zwei-Organisations-Abnahme, Produktions-Client-Registrierung
+und Least-Privilege-Providerqualifizierung bleiben fuer #91 erforderlich.
+
+## GitHub nur für Repository-Funktionen
+
+Im STACKIT-Modus ist GitHub erst unter GitHub-Forks über **GitHub verbinden** nötig.
+Der Start erfolgt authentifiziert per `POST /auth/github/connect` mit Origin/CSRF.
+Der OAuth-Callback ist an dieselbe bestehende Session gebunden und verbindet die
+geprüfte GitHub-ID mit diesem Benutzer, ohne Benutzer oder Tenant zu wechseln.
+Bereits anderweitig zugeordnete Identitäten werden abgelehnt; Konten werden nicht
+anhand gleicher E-Mail-Adressen zusammengeführt. Die Verbindung ist für Login und
+Application-Owner-Bestellungen nicht erforderlich.
+
+Der bestehende forkbasierte Plattform-Plan bleibt eine Repository-Funktion und
+benötigt deshalb weiterhin diese optionale Verbindung. Ein echter isolierter
+Application-Plan ist durch diese Login-Änderung noch nicht angeschlossen.
+
+## Aktivierung und Bestandskonten
+
+Vor Aktivierung müssen Migrationen `011_stackit_identity.sql` und
+`012_stackit_login.sql` angewendet sein. Mit `LZC_AUTH_ENABLED=true` und
+`LZC_STACKIT_DEVICE_ENABLED=true` wird STACKIT primär; GitHub-Client-ID und
+Client-Secret sind dann optional, müssen aber gemeinsam gesetzt werden.
+`LZC_STACKIT_CLI_CLIENT_APPROVED=true` ist eine ausdrückliche Freigabe für die
+Wiederverwendung des CLI-Clients, kein technischer Schalter zum Umgehen der
+Registrierungsfrage. Der Benutzer hat die Nutzung für Configurator-Dev am
+2026-10-02 ausdrücklich freigegeben; das Ticket für einen eigenen OIDC-Client
+bleibt offen. Diese Dev-Freigabe ist keine Produktionsfreigabe.
+
+Bestandsnutzer können ihre STACKIT-Identität mit einer noch gültigen alten Session
+explizit binden; Benutzer-ID, Tenant und gespeicherte GitHub-Zuordnung bleiben
+erhalten. Eine ungebundene, bereits abgemeldete GitHub-Identität wird bei einem
+STACKIT-Login nicht automatisch zusammengeführt. Der Rollout benötigt deshalb
+eine kontrollierte Bindung der Bestandskonten vor dem Wechsel.
+
+Lokale Prüfergebnisse und noch offene Live-Grenzen stehen im
+[Prüfbericht](runtime-validation-report.md).
+
+## Legacy-Ablauf: GitHub als Login
 
 1. `/auth/github/start` speichert einen fünf Minuten gültigen Login-Vorgang in
    PostgreSQL: State-Hash, Browserbindungs-Hash und PKCE-Verifier. Das Browsercookie
@@ -50,7 +154,7 @@ Migrationen sind transaktional, über Advisory Lock serialisiert und mit SHA-256
 gegen Änderungen bereits angewendeter Dateien abgesichert. Keine automatischen
 Down-Migrationen; alte Releases müssen mit dem neuen Schema kompatibel bleiben.
 
-`LZC_AUTH_ENABLED=true` aktiviert Login erst zusammen mit `LZC_GITHUB_CLIENT_ID`
+Im Legacy-Modus aktiviert `LZC_AUTH_ENABLED=true` Login erst zusammen mit `LZC_GITHUB_CLIENT_ID`
 und `LZC_GITHUB_CLIENT_SECRET` aus dem geschützten Release-Environment. Die API
 prüft beim Start die Sessionfunktion. Der Release-Verbindungstest prüft zusätzlich
 Secrets schreiben, lesen und dauerhaft löschen an einem zufälligen Probe-Pfad.

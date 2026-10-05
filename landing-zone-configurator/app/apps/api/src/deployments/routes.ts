@@ -5,6 +5,7 @@ import {
   authenticatedSession,
   validMutation,
 } from "../auth/routes.js";
+import { ConfigurationError } from "../configurations/service.js";
 import { CredentialError } from "../credentials/profiles.js";
 import { RepositoryError, repositoryTarget } from "../github/repositories.js";
 import type { Preparations } from "./preparations.js";
@@ -28,7 +29,11 @@ export function registerPreparations(
           .send({ error: "invalid_request_origin_or_csrf" });
     });
     routes.setErrorHandler((error, _request, reply) => {
-      if (error instanceof CredentialError || error instanceof RepositoryError)
+      if (
+        error instanceof CredentialError ||
+        error instanceof RepositoryError ||
+        error instanceof ConfigurationError
+      )
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_preparation_request" });
@@ -46,15 +51,28 @@ export function registerPreparations(
       if (!session)
         return reply.code(401).send({ error: "authentication_required" });
       const input = z
-        .object({
-          target: repositoryTarget,
-          configurationId: z.uuid(),
-          head: z.string().regex(/^[a-f0-9]{40}$/),
-          credentialId: z.uuid(),
-        })
-        .strict()
+        .union([
+          z
+            .object({
+              target: repositoryTarget,
+              configurationId: z.uuid(),
+              head: z.string().regex(/^[a-f0-9]{40}$/),
+              credentialId: z.uuid(),
+              backendId: z.uuid().optional(),
+            })
+            .strict(),
+          z
+            .object({
+              source: z.literal("database"),
+              configurationId: z.uuid(),
+              revision: z.number().int().positive(),
+              credentialId: z.uuid(),
+              backendId: z.uuid().optional(),
+            })
+            .strict(),
+        ])
         .parse(request.body);
-      const token = await auth.tokens.get(session);
+      const token = "target" in input ? await auth.tokens.get(session) : null;
       const result = await preparations.create(session, token, input);
       return reply.code(201).send(result);
     });

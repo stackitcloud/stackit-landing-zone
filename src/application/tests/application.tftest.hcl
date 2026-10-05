@@ -95,7 +95,43 @@ run "public_project" {
     condition     = module.application.connected_network_area_id == null && module.application.observability_instance_id == null
     error_message = "Public project must not create a network area or enabled Observability instance."
   }
+  assert {
+    condition     = module.application.project_network == null
+    error_message = "Legacy public applications must not gain a network implicitly."
+  }
 }
+
+run "public_local_network" {
+  command = plan
+
+  variables {
+    application = {
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "vm-network"
+      template_version       = 1
+      name                   = "VM network fixture"
+      owner_email            = "owner@example.com"
+      target_key             = "public"
+      network_enabled        = true
+      network_prefix_length  = 24
+      secretsmanager_enabled = false
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+    }
+  }
+
+  assert {
+    condition     = module.application.project_network != null && module.application.project_network.name == "app-${var.application.instance_id}-local" && !module.application.project_network.routed && module.application.project_network.ipv4_prefix_length == 24
+    error_message = "The compiled public template must create a local network with the requested prefix."
+  }
+
+  assert {
+    condition     = module.application.connected_network_area_id == null && module.application.landing_zone_type == "public"
+    error_message = "Local project networking must not require or attach an SNA."
+  }
+}
+
 run "corporate_project" {
   command = plan
   variables {

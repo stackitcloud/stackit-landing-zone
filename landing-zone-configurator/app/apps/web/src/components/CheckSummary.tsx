@@ -1,3 +1,4 @@
+import { currentLanguage, t } from "../i18n";
 export type AccessCheck = {
   status: "passed" | "failed";
   code: string;
@@ -30,14 +31,18 @@ export function CheckSummary({ check }: { check: AccessCheck }) {
         check.status === "passed" ? "success-banner" : "validation-box"
       }
     >
-      <p>{checkMessages[check.code] ?? "Prüfung nicht erfolgreich."}</p>
+      <p>{t(checkMessages[check.code]) ?? t("Prüfung nicht erfolgreich.")}</p>
       <p className="credential-account">
-        Ziel: {check.organizationName || check.organizationId}
+        {t("Ziel:")} {check.organizationName || check.organizationId}
       </p>
       <p className="field-hint">
-        Geprüft am {new Date(check.checkedAt).toLocaleString("de-DE")}. Dies
-        bestätigt keine Schreibrechte für Plan/Apply. Rechte können sich nach
-        der Prüfung ändern.
+        {t("Geprüft am")}{" "}
+        {new Date(check.checkedAt).toLocaleString(
+          currentLanguage() === "de" ? "de-DE" : "en-GB",
+        )}
+        {t(
+          ". Dies bestätigt keine Schreibrechte für Plan/Apply. Rechte können sich nach der Prüfung ändern.",
+        )}
       </p>
     </div>
   );

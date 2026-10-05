@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { t } from "../i18n";
 import type { Session } from "./Account";
 import { type AccessCheck, CheckSummary, checkMessages } from "./CheckSummary";
 import { Field } from "./Field";
@@ -13,13 +14,13 @@ type Profile = {
 };
 const messages: Record<string, string> = {
   ...checkMessages,
-  authentication_required: "Bitte melde dich erneut mit GitHub an.",
+  authentication_required: "Bitte melde dich erneut an.",
   invalid_service_account_key:
     "Die Datei muss einen gültigen STACKIT-Service-Account-Schlüssel mit privatem RSA-Schlüssel enthalten. Prüfe Format und Ablaufdatum.",
   invalid_credential_request:
     "Bitte prüfe Profilname, Organisations-ID und Schlüsseldatei.",
   credential_role_required:
-    "Zum Anlegen benötigst du die Rolle Administrator oder Deployer.",
+    "Im Organisationstenant benötigst du die Rolle Platform Engineer; im persönlichen Arbeitsbereich Administrator oder Deployer.",
   credential_limit_reached:
     "Du kannst höchstens 20 persönliche Profile speichern. Entferne zuerst nicht mehr benötigte Profile.",
   credential_not_found:
@@ -27,7 +28,13 @@ const messages: Record<string, string> = {
   invalid_request_origin_or_csrf:
     "Deine Sitzung ist nicht mehr aktuell. Bitte lade die Seite neu.",
 };
-export function Credentials({ session }: { session: Session | null }) {
+export function Credentials({
+  session,
+  onChanged,
+}: {
+  session: Session | null;
+  onChanged?: () => void;
+}) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [organizations, setOrganizations] = useState<Record<string, string>>(
     {},
@@ -76,6 +83,7 @@ export function Credentials({ session }: { session: Session | null }) {
     setNotice("");
     try {
       await action();
+      onChanged?.();
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Aktion fehlgeschlagen.",
@@ -125,21 +133,22 @@ export function Credentials({ session }: { session: Session | null }) {
   }
   return (
     <section className="panel">
-      <h2>Persönliche Deployment-Zugänge</h2>
+      <h2>{t("Deployment-Zugänge")}</h2>
       <p>
-        Hinterlege den STACKIT-Service-Account für deine späteren Deployments.
-        Nur du kannst diese Profile in deinem Arbeitsbereich verwalten.
+        {t(
+          "Hinterlege den STACKIT-Service-Account für deine späteren Deployments. Nur du kannst diese Profile in deinem Arbeitsbereich verwalten.",
+        )}
       </p>
       {!session ? (
         <div className="info-banner">
-          <p>Melde dich oben mit GitHub an, um eigene Zugänge zu verwalten.</p>
+          <p>{t("Melde dich an, um eigene Zugänge zu verwalten.")}</p>
         </div>
       ) : (
         <>
           <p>
-            Die Schlüsseldatei wird im Secrets Manager abgelegt. Sie wird weder
-            im Git-Repository gespeichert noch wieder angezeigt. GitHub-Login
-            und STACKIT-Deployment verwenden getrennte Zugänge.
+            {t(
+              "Die Schlüsseldatei wird serverseitig geschützt abgelegt. Sie wird weder im Git-Repository gespeichert noch wieder angezeigt. Deine Anmeldung und technische STACKIT-Zugriffe verwenden getrennte Identitäten.",
+            )}
           </p>
           <form
             onSubmit={(event) => {
@@ -156,7 +165,7 @@ export function Credentials({ session }: { session: Session | null }) {
             />
             <div className="field">
               <label htmlFor="credential-file">
-                Service-Account-Schlüssel (JSON)
+                {t("Service-Account-Schlüssel (JSON)")}
               </label>
               <input
                 id="credential-file"
@@ -168,9 +177,9 @@ export function Credentials({ session }: { session: Session | null }) {
                 aria-describedby="credential-file-hint"
               />
               <p id="credential-file-hint" className="field-hint">
-                Verwende die heruntergeladene STACKIT-Schlüsseldatei mit
-                enthaltenem privatem RSA-Schlüssel. Bestehende Projekte und
-                Berechtigungen werden dadurch nicht verändert.
+                {t(
+                  "Verwende die heruntergeladene STACKIT-Schlüsseldatei mit enthaltenem privatem RSA-Schlüssel. Bestehende Projekte und Berechtigungen werden dadurch nicht verändert.",
+                )}
               </p>
             </div>
             <button
@@ -178,19 +187,21 @@ export function Credentials({ session }: { session: Session | null }) {
               className="button primary"
               disabled={busy || !name.trim()}
             >
-              Zugang sicher speichern
+              {t("Zugang sicher speichern")}
             </button>
           </form>
-          <h3>Deine gespeicherten Zugänge</h3>
+          <h3>{t("Deine gespeicherten Zugänge")}</h3>
           <button
             type="button"
             className="button secondary"
             disabled={busy}
             onClick={() => void perform(() => refresh())}
           >
-            Zugänge aktualisieren
+            {t("Zugänge aktualisieren")}
           </button>
-          {!profiles.length && <p>Noch keine persönlichen Zugänge geladen.</p>}
+          {!profiles.length && (
+            <p>{t("Noch keine persönlichen Zugänge geladen.")}</p>
+          )}
           {profiles.map((profile) => (
             <article className="project-form" key={profile.id}>
               <h3>{profile.name}</h3>
@@ -198,9 +209,13 @@ export function Credentials({ session }: { session: Session | null }) {
               <p>
                 {profile.state === "stored"
                   ? profile.lastCheck
-                    ? "Sicher gespeichert · letzte Prüfung siehe unten"
-                    : "Sicher gespeichert · Berechtigungen noch nicht geprüft"
-                  : "Speicherung unvollständig · bitte löschen und neu anlegen"}
+                    ? t("Sicher gespeichert · letzte Prüfung siehe unten")
+                    : t(
+                        "Sicher gespeichert · Berechtigungen noch nicht geprüft",
+                      )
+                  : t(
+                      "Speicherung unvollständig · bitte löschen und neu anlegen",
+                    )}
               </p>
               {profile.lastCheck && <CheckSummary check={profile.lastCheck} />}
               {profile.state === "stored" && (
@@ -261,7 +276,7 @@ export function Credentials({ session }: { session: Session | null }) {
                       })
                     }
                   >
-                    Zugang prüfen
+                    {t("Zugang prüfen")}
                   </button>
                 </>
               )}
@@ -272,7 +287,10 @@ export function Credentials({ session }: { session: Session | null }) {
                 onClick={() => {
                   if (
                     !window.confirm(
-                      `Zugang „${profile.name}“ aus dem Configurator löschen? Der Schlüssel wird in STACKIT selbst nicht widerrufen.`,
+                      t(
+                        "Zugang „{{value0}}“ aus dem Configurator löschen? Der Schlüssel wird in STACKIT selbst nicht widerrufen.",
+                        { value0: profile.name },
+                      ),
                     )
                   )
                     return;
@@ -291,14 +309,15 @@ export function Credentials({ session }: { session: Session | null }) {
                   });
                 }}
               >
-                Zugang löschen<span className="sr-only">: {profile.name}</span>
+                {t("Zugang löschen")}
+                <span className="sr-only">: {profile.name}</span>
               </button>
             </article>
           ))}
           <p className="field-error" role="alert">
-            {error}
+            {t(error)}
           </p>
-          <p role="status">{notice}</p>
+          <p role="status">{t(notice)}</p>
         </>
       )}
     </section>

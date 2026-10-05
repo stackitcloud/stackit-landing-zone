@@ -31,7 +31,10 @@ test("platform editor defines project templates without concrete application pro
     .getByLabel("Name der Konfiguration")
     .fill("Plattform mit Templates");
   await page
-    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .getByRole("button", {
+      name: "5 Application Landing Zone Templates",
+      exact: true,
+    })
     .click();
   const corporate = page
     .locator("section.project-card")
@@ -59,7 +62,10 @@ test("platform editor defines project templates without concrete application pro
     .selectOption("true");
   await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
   await page
-    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .getByRole("button", {
+      name: "5 Application Landing Zone Templates",
+      exact: true,
+    })
     .click();
   await expect(
     corporate.getByLabel("Fester Wert: STACKIT Secrets Manager", {
@@ -74,7 +80,9 @@ test("platform editor defines project templates without concrete application pro
   await expect(
     corporate.getByLabel("STACKIT Network Area (SNA)", { exact: true }),
   ).not.toHaveValue("");
-  await page.getByLabel("Art des Projekt-Templates").selectOption("sandbox");
+  await page
+    .getByLabel("Art des Application Landing Zone Templates")
+    .selectOption("sandbox");
   await page.getByLabel("Template-Kennung", { exact: true }).fill("experiment");
   const before = await page.locator("section.project-card").count();
   await page
@@ -83,7 +91,7 @@ test("platform editor defines project templates without concrete application pro
   await expect(page.locator("section.project-card")).toHaveCount(before + 1);
   await expect(
     page.getByRole("region", {
-      name: "Projekt-Template-Entwürfe",
+      name: "Application Landing Zone Template-Entwürfe",
       exact: true,
     }),
   ).toContainText("Neue Sandbox-Vorlage");
@@ -140,6 +148,10 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({ json: session }),
   );
+  await page.route("**/api/v1/configurations", (route) => {
+    expect(route.request().method()).toBe("GET");
+    return route.fulfill({ json: { configurations: [] } });
+  });
   await page.route("**/api/v1/github/forks?*", (route) =>
     route.fulfill({ json: { forks: [fork], nextPage: null } }),
   );
@@ -238,7 +250,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .click();
   expect((await download).suggestedFilename()).toBe("landing-zone.tfvars");
   await page
-    .getByRole("button", { name: "Im Fork speichern →", exact: true })
+    .getByRole("button", { name: "Konfiguration speichern →", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Im Fork speichern", exact: true })
@@ -249,13 +261,15 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
     .click();
   await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
-  await page.goto("/");
+  await page.goto("/configurations/edit/network");
   await expect(page).toHaveURL(/\/configurations\/edit\/network$/);
   await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
     "Gemeinsamer Fork-Entwurf",
   );
-  await page.getByRole("button", { name: "Zu deinen Forks" }).click();
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
   await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Erstbereitstellungsplan noch nicht verfügbar",
@@ -278,7 +292,10 @@ test("shared configuration saves, reopens and restores in the account workspace"
     })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Projekt-Templates", exact: true }),
+    page.getByRole("heading", {
+      name: "Application Landing Zone Templates",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.getByLabel("Projektname", { exact: true })).toHaveCount(0);
   await page.getByLabel("Name des Templates").first().fill("Team-Anwendungen");
@@ -294,7 +311,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .selectOption("prod");
   await page.getByRole("button", { name: "7 Prüfen", exact: true }).click();
   await page
-    .getByRole("button", { name: "Im Fork speichern →", exact: true })
+    .getByRole("button", { name: "Konfiguration speichern →", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Im Fork speichern", exact: true })
@@ -312,7 +329,10 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .getByRole("button", {
+      name: "5 Application Landing Zone Templates",
+      exact: true,
+    })
     .click();
   await expect(page.getByLabel("Name des Templates").first()).toHaveValue(
     "Team-Anwendungen",
@@ -340,7 +360,10 @@ test("Standalone starts Public and offers regional choices and explicit platform
   );
   await page.getByLabel("Region", { exact: true }).selectOption("eu02");
   await page
-    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .getByRole("button", {
+      name: "5 Application Landing Zone Templates",
+      exact: true,
+    })
     .click();
   await expect(page.locator("section.project-card").first()).toContainText(
     "Entwurf · Public",

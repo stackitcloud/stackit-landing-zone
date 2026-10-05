@@ -1,4 +1,5 @@
 import type { ConfigurationDraft } from "@lzc/domain";
+import { t } from "../i18n";
 import { Field } from "./Field";
 
 export function ProjectsStep({
@@ -16,21 +17,22 @@ export function ProjectsStep({
 }) {
   return (
     <section className="panel">
-      <h2>Projekte & Sandboxes</h2>
+      <h2>{t("Projekte & Sandboxes")}</h2>
       <p className="section-description">
-        Landing Zones bilden deine Workloads ab. Sandboxes bieten Platz zum
-        Experimentieren.
+        {t(
+          "Landing Zones bilden deine Workloads ab. Sandboxes bieten Platz zum Experimentieren.",
+        )}
       </p>
       <div className="info-banner">
         <p>
-          Standalone-Projekte werden ohne Anbindung an einen zentralen
-          Netzwerk-Hub erstellt. Dafür setzen wir die Netzwerkzuordnung der
-          Vorlage ausdrücklich auf eigenständig.
+          {t(
+            "Standalone-Projekte werden ohne Anbindung an einen zentralen Netzwerk-Hub erstellt. Dafür setzen wir die Netzwerkzuordnung der Vorlage ausdrücklich auf eigenständig.",
+          )}
         </p>
       </div>
       {draft.projects.map((p) => (
         <fieldset className="project-form" key={p.id}>
-          <legend>{p.name || "Neue Landing Zone"}</legend>
+          <legend>{p.name || t("Neue Landing Zone")}</legend>
           <div className="form-grid">
             <Field
               id={`project.${p.id}.name`}
@@ -103,20 +105,21 @@ export function ProjectsStep({
               }
               error={error(`project.${p.id}.environment`)}
             >
-              <option value="dev">Entwicklung</option>
-              <option value="test">Test</option>
-              <option value="staging">Staging</option>
-              <option value="prod">Produktion</option>
+              <option value="dev">{t("Entwicklung")}</option>
+              <option value="test">{t("Test")}</option>
+              <option value="staging">{t("Staging")}</option>
+              <option value="prod">{t("Produktion")}</option>
             </Field>
           </div>
           <p className="field-hint">
-            Namenspräfix für Ressourcen:{" "}
+            {t("Namenspräfix für Ressourcen:")}{" "}
             <code>
               {draft.companyCode || "firma"}-lz-{p.code || "projekt"}-
               {p.environment || "dev"}
             </code>
-            . Änderungen an Kürzel oder Umgebung können bestehende Ressourcen
-            umbenennen oder ersetzen.
+            {t(
+              ". Änderungen an Kürzel oder Umgebung können bestehende Ressourcen umbenennen oder ersetzen.",
+            )}
           </p>
           <label className="checkbox">
             <input
@@ -135,10 +138,12 @@ export function ProjectsStep({
                 })
               }
             />
-            Secrets Manager vorsehen
+            {t("Secrets Manager vorsehen")}
           </label>
           <p className="field-hint">
-            Plant eine eigene Secrets-Manager-Instanz für dieses Projekt ein.
+            {t(
+              "Plant eine eigene Secrets-Manager-Instanz für dieses Projekt ein.",
+            )}
           </p>
           <button
             type="button"
@@ -149,7 +154,7 @@ export function ProjectsStep({
               })
             }
           >
-            Landing Zone entfernen
+            {t("Landing Zone entfernen")}
             <span className="sr-only">: {p.name}</span>
           </button>
         </fieldset>
@@ -175,12 +180,12 @@ export function ProjectsStep({
           })
         }
       >
-        + Landing Zone hinzufügen
+        {t("+ Landing Zone hinzufügen")}
       </button>
-      <h3 className="subheading">Sandboxes</h3>
+      <h3 className="subheading">{t("Sandboxes")}</h3>
       {draft.sandboxes.map((s) => (
         <fieldset className="project-form" key={s.id}>
-          <legend>{s.name || "Neue Sandbox"}</legend>
+          <legend>{s.name || t("Neue Sandbox")}</legend>
           <div className="form-grid">
             <Field
               id={`sandbox.${s.id}.name`}
@@ -221,7 +226,7 @@ export function ProjectsStep({
               })
             }
           >
-            Sandbox entfernen
+            {t("Sandbox entfernen")}
             <span className="sr-only">: {s.name}</span>
           </button>
         </fieldset>
@@ -243,15 +248,15 @@ export function ProjectsStep({
           })
         }
       >
-        + Sandbox hinzufügen
+        {t("+ Sandbox hinzufügen")}
       </button>
       {error("projects") && <p className="field-error">{error("projects")}</p>}
       <div className="actions">
         <button type="button" className="button secondary" onClick={onBack}>
-          Zurück
+          {t("Zurück")}
         </button>
         <button type="button" className="button primary" onClick={onReview}>
-          Entwurf prüfen →
+          {t("Entwurf prüfen →")}
         </button>
       </div>
     </section>

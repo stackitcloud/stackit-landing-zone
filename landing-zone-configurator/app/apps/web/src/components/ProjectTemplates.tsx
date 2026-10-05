@@ -14,8 +14,12 @@ import {
   type Values,
 } from "@lzc/domain";
 import { useState } from "react";
+import { t } from "../i18n";
 import { StructuredField } from "./StructuredField";
-import { TemplateParameters } from "./TemplateParameters";
+import {
+  TemplateParameters,
+  templateObservabilityConfigurable,
+} from "./TemplateParameters";
 
 export function ProjectTemplates({
   draft,
@@ -39,27 +43,26 @@ export function ProjectTemplates({
       setError(
         failure instanceof Error
           ? failure.message
-          : "Das Projekt-Template konnte nicht geändert werden.",
+          : "Das Application Landing Zone Template konnte nicht geändert werden.",
       );
     }
   };
   return (
     <>
       <p>
-        Als Platform Engineer definierst du hier Vorlagen für spätere
-        Anwendungsprojekte. Application Owner geben bei der Bestellung
-        Projektname und Projektkürzel an; die verantwortliche Person muss aus
-        ihrer verifizierten STACKIT-Identität kommen.
+        {t(
+          "Als Platform Engineer definierst du hier Vorlagen für spätere Anwendungsprojekte. Application Owner wählen ein veröffentlichtes Application Landing Zone Template und geben bei der Bestellung den Projektnamen an; die verantwortliche Person muss aus ihrer verifizierten STACKIT-Identität kommen.",
+        )}
       </p>
       <p className="info-banner">
-        <strong>Template-Entwürfe</strong> werden mit der Plattformkonfiguration
-        im Fork gespeichert. Sie erzeugen beim Plattform-Export keine
-        Anwendungsprojekte. Veröffentlichung, Freigaben und Bestellung durch
-        Application Owner folgen separat.
+        <strong>{t("Application Landing Zone Template-Entwürfe")}</strong>{" "}
+        {t(
+          "werden mit der Plattformkonfiguration im Fork gespeichert. Sie erzeugen beim Plattform-Export keine Anwendungsprojekte. Veröffentlichte Versionen und Bestellungen werden getrennt gespeichert. Die Cloud-Ausführung bleibt bis zur Verifizierung von Identität und Plattformvertrag gesperrt.",
+        )}
       </p>
       {error && (
         <p role="alert" className="validation-box">
-          {error}
+          {t(error)}
         </p>
       )}
       {projectTemplates(draft).map((template) => {
@@ -85,25 +88,29 @@ export function ProjectTemplates({
           <section
             className="project-card"
             key={template.id}
-            aria-label={template.name || "Projekt-Template"}
+            aria-label={template.name || t("Application Landing Zone Template")}
           >
-            <h3>{template.name || "Projekt-Template"}</h3>
+            <h3>{template.name || t("Application Landing Zone Template")}</h3>
             <p className="muted">
-              Entwurf ·{" "}
+              {t("Entwurf ·")}{" "}
               {template.kind === "corporate"
-                ? "Corporate"
+                ? t("Corporate")
                 : template.kind === "public"
-                  ? "Public"
-                  : "Sandbox"}{" "}
-              · Zielordner: {folders[folder]}
+                  ? t("Public")
+                  : t("Sandbox")}{" "}
+              {t("· Zielordner:")} {folders[folder]}
             </p>
             <p className="field-hint">
-              Template-Kennung: {template.key}. Dies ist keine Projektkennung;
-              jedes spätere Projekt erhält eine eigene Identität.
+              {t("Template-Kennung:")} {template.key}
+              {t(
+                ". Dies ist keine Projektkennung; jedes spätere Projekt erhält eine eigene Identität.",
+              )}
             </p>
             <div className="form-grid">
               <div className="field">
-                <label htmlFor={`${prefix}-name`}>Name des Templates</label>
+                <label htmlFor={`${prefix}-name`}>
+                  {t("Name des Templates")}
+                </label>
                 <input
                   id={`${prefix}-name`}
                   value={template.name}
@@ -117,7 +124,7 @@ export function ProjectTemplates({
                 />
               </div>
               <div className="field">
-                <label htmlFor={`${prefix}-region`}>Region</label>
+                <label htmlFor={`${prefix}-region`}>{t("Region")}</label>
                 <select
                   id={`${prefix}-region`}
                   value={template.region}
@@ -133,13 +140,13 @@ export function ProjectTemplates({
                   <option value="eu02">eu02</option>
                 </select>
                 <p className="field-hint">
-                  Für spätere Instanzen fest vorgegeben.
+                  {t("Für spätere Instanzen fest vorgegeben.")}
                 </p>
               </div>
               {template.kind === "corporate" && (
                 <div className="field">
                   <label htmlFor={`${prefix}-sna`}>
-                    STACKIT Network Area (SNA)
+                    {t("STACKIT Network Area (SNA)")}
                   </label>
                   <select
                     id={`${prefix}-sna`}
@@ -159,7 +166,7 @@ export function ProjectTemplates({
                           textValue(settings.network_area_key) || "default"
                         }
                       >
-                        Bitte eine vorhandene SNA auswählen
+                        {t("Bitte eine vorhandene SNA auswählen")}
                       </option>
                     )}
                     {areas
@@ -172,8 +179,61 @@ export function ProjectTemplates({
                       ))}
                   </select>
                   <p className="field-hint">
-                    Die SNA wird im Bereich Netzwerk definiert und hier
-                    referenziert.
+                    {t(
+                      "Die SNA wird im Bereich Netzwerk definiert und hier referenziert.",
+                    )}
+                  </p>
+                </div>
+              )}
+              {template.kind === "public" && (
+                <div className="field">
+                  <label className="check" htmlFor={`${prefix}-network`}>
+                    <input
+                      id={`${prefix}-network`}
+                      type="checkbox"
+                      checked={settings.network_enabled === true}
+                      onChange={(event) =>
+                        patchSettings({ network_enabled: event.target.checked })
+                      }
+                    />
+                    {t("Lokales Projektnetz anlegen")}
+                  </label>
+                </div>
+              )}
+              {(template.kind === "corporate" ||
+                (template.kind === "public" &&
+                  settings.network_enabled === true)) && (
+                <div className="field">
+                  <label htmlFor={`${prefix}-network-prefix`}>
+                    {t("Netzgröße (IPv4-Präfixlänge)")}
+                  </label>
+                  <input
+                    id={`${prefix}-network-prefix`}
+                    aria-describedby={`${prefix}-network-prefix-hint`}
+                    type="number"
+                    step="1"
+                    placeholder={t("Automatisch")}
+                    value={
+                      typeof settings.network_prefix_length === "number"
+                        ? settings.network_prefix_length
+                        : ""
+                    }
+                    onChange={(event) =>
+                      patchSettings({
+                        network_prefix_length:
+                          event.target.value === ""
+                            ? null
+                            : Number(event.target.value),
+                      })
+                    }
+                  />
+                  <p
+                    id={`${prefix}-network-prefix-hint`}
+                    className="field-hint"
+                  >
+                    {t(
+                      "Bestimmt die Größe des IPv4-Adressbereichs: /24 umfasst 256 Adressen, /25 umfasst 128, /26 umfasst 64. Je höher die Zahl, desto kleiner das Netz. Nicht alle Adressen stehen für VMs zur Verfügung. Leer lassen: STACKIT legt die Größe fest.",
+                    )}
                   </p>
                 </div>
               )}
@@ -185,10 +245,11 @@ export function ProjectTemplates({
               }
             />
             <details>
-              <summary>Weitere Template-Einstellungen</summary>
+              <summary>{t("Weitere Template-Einstellungen")}</summary>
               <StructuredField
                 name="project-template-settings"
-                title="Projektdienste und Rechte"
+                hideInactiveDetails
+                title={t("Projektdienste und Rechte")}
                 type={collection[1] as InputType}
                 value={settings}
                 omit={[
@@ -201,7 +262,12 @@ export function ProjectTemplates({
                   "network_area_key",
                   "secretsmanager_enabled",
                   ...(template.kind !== "sandbox"
-                    ? ["env", "observability"]
+                    ? [
+                        "env",
+                        "observability",
+                        "network_enabled",
+                        "network_prefix_length",
+                      ]
                     : []),
                 ]}
                 regionContext={template.region}
@@ -213,34 +279,37 @@ export function ProjectTemplates({
                   )
                 }
               />
-              {template.kind !== "sandbox" && (
-                <StructuredField
-                  name="observability-name"
-                  title="Fester Name der Observability-Instanz (optional)"
-                  type="string"
-                  optional
-                  value={objectValue(settings.observability).name}
-                  onChange={(value) =>
-                    patchSettings({
-                      observability: {
-                        ...objectValue(settings.observability),
-                        name: value ?? null,
-                      },
-                    })
-                  }
-                />
-              )}
+              {template.kind !== "sandbox" &&
+                templateObservabilityConfigurable(template) && (
+                  <StructuredField
+                    name="observability-name"
+                    title={t(
+                      "Fester Name der Observability-Instanz (optional)",
+                    )}
+                    type="string"
+                    optional
+                    value={objectValue(settings.observability).name}
+                    onChange={(value) =>
+                      patchSettings({
+                        observability: {
+                          ...objectValue(settings.observability),
+                          name: value ?? null,
+                        },
+                      })
+                    }
+                  />
+                )}
               {template.namespaceServices !== undefined && (
                 <>
                   <p className="info-banner">
-                    Diese Vorlage enthält Kubernetes-Namespace-Dienste aus der
-                    Accelerator-Vorlage. Sie bleiben als Entwurf erhalten; ihre
-                    spätere Zuordnung zu einem Plattform-Cluster und die
-                    Ausführung sind noch nicht freigegeben.
+                    {t(
+                      "Diese Vorlage enthält Kubernetes-Namespace-Dienste aus der Accelerator-Vorlage. Sie bleiben als Entwurf erhalten; ihre spätere Zuordnung zu einem Plattform-Cluster und die Ausführung sind noch nicht freigegeben.",
+                    )}
                   </p>
                   <StructuredField
                     name="namespaceServices"
-                    title="Kubernetes-Namespace-Dienste"
+                    hideInactiveDetails
+                    title={t("Kubernetes-Namespace-Dienste")}
                     type={
                       (
                         inputDefinition("landing_zone_namespace_services")
@@ -266,42 +335,47 @@ export function ProjectTemplates({
               onClick={() => {
                 if (
                   window.confirm(
-                    "Diesen Template-Entwurf entfernen? Es werden keine Cloud-Projekte gelöscht.",
+                    t(
+                      "Diesen Template-Entwurf entfernen? Es werden keine Cloud-Projekte gelöscht.",
+                    ),
                   )
                 )
                   perform(() => removeProjectTemplate(draft, template.id));
               }}
             >
-              Template entfernen
+              {t("Template entfernen")}
             </button>
           </section>
         );
       })}
       <section className="project-card">
-        <h3>Projekt-Template hinzufügen</h3>
+        <h3>{t("Application Landing Zone Template hinzufügen")}</h3>
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="new-template-kind">Art des Projekt-Templates</label>
+            <label htmlFor="new-template-kind">
+              {t("Art des Application Landing Zone Templates")}
+            </label>
             <select
               id="new-template-kind"
               value={kind}
               onChange={(event) => setKind(event.target.value as typeof kind)}
             >
-              <option value="public">Public</option>
-              <option value="corporate">Corporate</option>
-              <option value="sandbox">Sandbox</option>
+              <option value="public">{t("Public")}</option>
+              <option value="corporate">{t("Corporate")}</option>
+              <option value="sandbox">{t("Sandbox")}</option>
             </select>
           </div>
           <div className="field">
-            <label htmlFor="new-template-key">Template-Kennung</label>
+            <label htmlFor="new-template-key">{t("Template-Kennung")}</label>
             <input
               id="new-template-key"
               value={key}
               onChange={(event) => setKey(event.target.value)}
             />
             <p className="field-hint">
-              Kleinbuchstaben, Ziffern und Bindestriche; innerhalb dieser
-              Konfiguration eindeutig.
+              {t(
+                "Kleinbuchstaben, Ziffern und Bindestriche; innerhalb dieser Konfiguration eindeutig.",
+              )}
             </p>
           </div>
         </div>
@@ -310,7 +384,7 @@ export function ProjectTemplates({
           className="button secondary"
           onClick={() => perform(() => addProjectTemplate(draft, kind, key))}
         >
-          Template hinzufügen
+          {t("Template hinzufügen")}
         </button>
       </section>
     </>

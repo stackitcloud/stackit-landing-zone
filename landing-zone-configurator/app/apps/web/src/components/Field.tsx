@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { t } from "../i18n";
 
 export function Field({
   id,
@@ -31,7 +32,7 @@ export function Field({
   return (
     <div className="field">
       <label htmlFor={id}>
-        {label} <span aria-hidden="true">*</span>
+        {t(label)} <span aria-hidden="true">*</span>
       </label>
       {children ? (
         <select {...shared} onChange={(e) => onChange(e.target.value)}>
@@ -47,12 +48,12 @@ export function Field({
       )}
       {hint && (
         <p className="field-hint" id={`${id}-hint`}>
-          {hint}
+          {t(hint)}
         </p>
       )}
       {error ? (
         <p className="field-error" id={`${id}-error`}>
-          {error}
+          {t(error)}
         </p>
       ) : null}
     </div>

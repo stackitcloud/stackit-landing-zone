@@ -9,12 +9,10 @@ export function platformAccessError(
   path: string,
 ): string | null {
   if (session.tenantKind !== "organisation") return null;
-  if (/^\/api\/v1\/(preparations|plans)(\/|$)/.test(path))
-    return "organisation_execution_not_enabled";
-  if (/^\/api\/v1\/(credentials|cloud-catalogues)(\/|$)/.test(path))
-    return "organisation_credentials_not_enabled";
   if (
-    /^\/api\/v1\/(github|credentials|cloud-catalogues)(\/|$)/.test(path) &&
+    /^\/api\/v1\/(github|configurations|credentials|cloud-catalogues|preparations|plans)(\/|$)/.test(
+      path,
+    ) &&
     !session.productRoles?.includes("platform-engineer")
   )
     return "platform_engineer_required";

@@ -50,7 +50,10 @@ export const commonConfigurationSchema = z
       })
       .strict(),
     features: featuresSchema,
-    projectTemplates: z.array(projectTemplateDraftSchema).max(100).optional(),
+    projectTemplates: z
+      .array(z.lazy(() => projectTemplateDraftSchema))
+      .max(100)
+      .optional(),
     identities: z
       .object({
         landingZones: z.record(z.string(), z.string().min(1).max(512)),

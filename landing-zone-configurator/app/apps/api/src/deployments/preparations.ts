@@ -1,13 +1,18 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { S3BackendDescriptor } from "@lzc/contracts";
 import {
   type ConfigurationRecord,
   initialPlanIssues,
   recordName,
   recordOrganization,
+  recordValues,
+  saveEditorDraft,
+  serializeTfvars,
   supportedAcceleratorRevision,
 } from "@lzc/domain";
 import type pg from "pg";
 import type { Session } from "../auth/store.js";
+import { Configurations } from "../configurations/service.js";
 import type { CredentialCheck } from "../credentials/check.js";
 import {
   CredentialError,
@@ -19,24 +24,41 @@ import {
   workBranch,
 } from "../github/repositories.js";
 import { withTenant } from "../storage/database.js";
+import { bindStateSource, stateForSource } from "./backends.js";
 
 // Explicit reviewed code reference. Never take Accelerator code/version from a customer fork.
 export const acceleratorCommit = supportedAcceleratorRevision;
-export type PreparationInput = {
-  target: RepositoryTarget;
-  configurationId: string;
-  head: string;
-  credentialId: string;
-};
+export type PreparationInput =
+  | {
+      target: RepositoryTarget;
+      configurationId: string;
+      head: string;
+      credentialId: string;
+      backendId?: string | undefined;
+    }
+  | {
+      source: "database";
+      configurationId: string;
+      revision: number;
+      credentialId: string;
+      backendId?: string | undefined;
+    };
 export type PreparationManifest = {
   schemaVersion: 1;
   kind: "landing-zone-configurator-preparation";
-  source: {
-    repository: RepositoryTarget;
-    branch: string;
-    commit: string;
-    configurationId: string;
-  };
+  source:
+    | {
+        repository: RepositoryTarget;
+        branch: string;
+        commit: string;
+        configurationId: string;
+      }
+    | {
+        kind: "database";
+        configurationId: string;
+        revision: number;
+        documentSha256: string;
+      };
   accelerator: {
     repository: "stackitcloud/stackit-landing-zone";
     commit: string;
@@ -48,6 +70,11 @@ export type PreparationManifest = {
   organization: { id: string; name: string };
   check: CredentialCheck;
   limitations: readonly string[];
+  backend?: {
+    id: string;
+    descriptor: S3BackendDescriptor;
+    stateIdentity: string;
+  };
 };
 export function preparationManifest(
   input: PreparationInput,
@@ -57,7 +84,8 @@ export function preparationManifest(
   if (initialPlanIssues(snapshot.document).length)
     throw new CredentialError(409, "configuration_execution_not_supported");
   if (
-    snapshot.head !== input.head ||
+    snapshot.head !==
+      ("target" in input ? input.head : String(input.revision)) ||
     snapshot.document.id !== input.configurationId ||
     checked.check.status !== "passed" ||
     checked.check.organizationId !== recordOrganization(snapshot.document) ||
@@ -68,12 +96,22 @@ export function preparationManifest(
   return {
     schemaVersion: 1,
     kind: "landing-zone-configurator-preparation",
-    source: {
-      repository: input.target,
-      branch: workBranch,
-      commit: snapshot.head,
-      configurationId: input.configurationId,
-    },
+    source:
+      "target" in input
+        ? {
+            repository: input.target,
+            branch: workBranch,
+            commit: snapshot.head,
+            configurationId: input.configurationId,
+          }
+        : {
+            kind: "database",
+            configurationId: input.configurationId,
+            revision: input.revision,
+            documentSha256: createHash("sha256")
+              .update(JSON.stringify(snapshot.document))
+              .digest("hex"),
+          },
     accelerator: {
       repository: "stackitcloud/stackit-landing-zone",
       commit: acceleratorCommit,
@@ -121,22 +159,52 @@ export class Preparations {
         ).rows,
     );
   }
-  async create(session: Session, token: string, input: PreparationInput) {
+  async create(
+    session: Session,
+    token: string | null,
+    input: PreparationInput,
+  ) {
     // Check role/ownership before GitHub or Secret access.
     await withTenant(this.pool, session, async (c) => {
       const result = await c.query(
-        "SELECT p.id FROM lzc.credential_profiles p JOIN lzc.memberships m ON m.tenant_id=p.tenant_id AND m.user_id=p.owner_user_id WHERE p.id=$1 AND p.state='stored' AND m.role IN ('admin','deployer')",
+        "SELECT p.id FROM lzc.credential_profiles p WHERE p.id=$1 AND p.state='stored' AND lzc.deployment_role()",
         [input.credentialId],
       );
       if (!result.rows.length)
         throw new CredentialError(404, "credential_not_found");
     });
-    const snapshot = await this.repositories.prepareSnapshot(
-      token,
-      input.target,
-      input.configurationId,
-      input.head,
-    );
+    let snapshot: {
+      document: ConfigurationRecord;
+      head: string;
+      tfvars: string;
+    };
+    if ("target" in input) {
+      if (!token) throw new CredentialError(401, "github_connection_required");
+      snapshot = await this.repositories.prepareSnapshot(
+        token,
+        input.target,
+        input.configurationId,
+        input.head,
+      );
+    } else {
+      const stored = await new Configurations(this.pool).get(
+        session,
+        input.configurationId,
+      );
+      if (stored.revision !== input.revision)
+        throw new CredentialError(409, "configuration_changed");
+      let document: ConfigurationRecord;
+      try {
+        document = saveEditorDraft(stored.id, stored.draft);
+      } catch {
+        throw new CredentialError(409, "configuration_incomplete");
+      }
+      snapshot = {
+        document,
+        head: String(stored.revision),
+        tfvars: serializeTfvars(recordValues(document)),
+      };
+    }
     const checked = await this.profiles.verifyForPreparation(
       session,
       input.credentialId,
@@ -162,6 +230,58 @@ export class Preparations {
       );
       if (profile.rows[0]?.keyId !== checked.keyId)
         throw new CredentialError(409, "credential_changed");
+      if (!("target" in input)) {
+        const current = await c.query(
+          "SELECT revision FROM lzc.configurations WHERE id=$1 FOR SHARE",
+          [input.configurationId],
+        );
+        if (current.rows[0]?.revision !== input.revision)
+          throw new CredentialError(409, "configuration_changed");
+      }
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+        `state-source:${session.tenantId}:${input.configurationId}`,
+      ]);
+      const bound = await stateForSource(c, input.configurationId);
+      if (input.backendId && bound && input.backendId !== bound.backend_id)
+        throw new CredentialError(409, "backend_binding_changed");
+      const backendId = input.backendId ?? bound?.backend_id;
+      if (backendId) {
+        await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+          `state-backend:${session.tenantId}:${backendId}`,
+        ]);
+        const backend = (
+          await c.query(
+            "SELECT id,descriptor FROM lzc.state_backends WHERE id=$1",
+            [backendId],
+          )
+        ).rows[0];
+        if (!backend) throw new CredentialError(404, "backend_not_found");
+        const existing = (
+          await c.query<{ state_key: string }>(
+            "SELECT state_key FROM lzc.platform_states WHERE backend_id=$1",
+            [backendId],
+          )
+        ).rows[0];
+        if (bound && existing && bound.state_key !== existing.state_key)
+          throw new CredentialError(409, "backend_binding_changed");
+        const stateIdentity =
+          existing?.state_key ??
+          bound?.state_key ??
+          createHash("sha256")
+            .update(JSON.stringify([session.tenantId, input.configurationId]))
+            .digest("hex");
+        if (existing)
+          await bindStateSource(
+            c,
+            session,
+            input.configurationId,
+            stateIdentity,
+          );
+        manifest.backend = {
+          ...backend,
+          stateIdentity,
+        };
+      }
       await c.query(
         "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,credential_id,name,manifest) VALUES($1,$2,$3,$4,$5,$6::jsonb)",
         [

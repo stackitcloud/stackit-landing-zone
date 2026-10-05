@@ -9,6 +9,8 @@ import {
   saveEditorDraft,
 } from "@lzc/domain";
 import { useEffect, useRef, useState } from "react";
+import { type FormattedMessage, formatMessage, t } from "../i18n";
+import { preserveLoginDraft } from "../login-draft";
 import {
   type Binding,
   type Fork,
@@ -34,7 +36,9 @@ const installation =
 const errors: Record<string, string> = {
   configuration_document_too_large:
     "Die Konfiguration ist für die Speicherung zu groß (maximal 1 MiB). Bitte aufteilen.",
-  authentication_required: "Bitte melde dich mit GitHub an.",
+  authentication_required: "Bitte melde dich an.",
+  github_connection_required:
+    "Bitte verbinde GitHub für diese Repository-Funktion.",
   github_reauthentication_required:
     "Deine GitHub-Freigabe ist abgelaufen oder widerrufen. Bitte erneut anmelden.",
   repository_access_denied:
@@ -49,6 +53,12 @@ const errors: Record<string, string> = {
     "GitHubs Zugriffslimit ist erreicht. Bitte später erneut versuchen.",
   generated_configuration_changed:
     "Die tfvars-Datei wurde außerhalb des Configurators geändert oder passt nicht mehr zum gespeicherten Entwurf. Prüfe den Stand in GitHub oder speichere deinen Entwurf als neue Kopie. Es wurde nichts überschrieben.",
+  backend_configuration_changed:
+    "Die Backend-Datei stimmt nicht mit dem verifizierten State-Backend überein. Bitte den GitHub-Stand und die Backend-Bindung prüfen. Es wurde nichts überschrieben.",
+  backend_configuration_missing:
+    "Für die vorhandene Backend-Datei fehlt die verifizierte Bindung. Bitte das bisherige State-Backend wieder zuordnen und gegebenenfalls den Recovery-Export sichern.",
+  backend_request_failed:
+    "Das State-Backend konnte nicht geprüft werden. Bitte später erneut speichern. Dein Entwurf bleibt erhalten.",
   unsupported_configuration_document:
     "Diese Konfiguration oder Template-Version wird vom Editor noch nicht unterstützt.",
   unsafe_configuration_path:
@@ -81,6 +91,7 @@ export function ForkWorkspace({
   session,
   draft,
   draftEpoch,
+  sourceConfigurationId,
   onLoad,
   onEdit,
   onPrepare,
@@ -92,6 +103,7 @@ export function ForkWorkspace({
   session: Session | null;
   draft: EditorDraft | null;
   draftEpoch: number;
+  sourceConfigurationId?: string | null;
   onLoad: (draft: EditorDraft) => void;
   onEdit: () => void;
   onPrepare: (selection: DeploymentSelection) => void;
@@ -102,7 +114,9 @@ export function ForkWorkspace({
   const [repository, setRepository] = useState<Repository | null>(null);
   const [binding, setBinding] = useState<Binding | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [githubRequired, setGithubRequired] = useState(false);
+  const [githubAvailable, setGithubAvailable] = useState(true);
+  const [error, setError] = useState<string | FormattedMessage>("");
   const [notice, setNotice] = useState("");
   const [commitUrl, setCommitUrl] = useState("");
   const busyRef = useRef(false);
@@ -132,6 +146,23 @@ export function ForkWorkspace({
     setBusy(true);
     void (async () => {
       try {
+        const providers = await api<{ primary?: string; github?: boolean }>(
+          "/auth/status",
+          { signal: controller.signal },
+        );
+        if (cancelled) return;
+        setGithubAvailable(providers.github !== false);
+        if (providers.primary === "stackit") {
+          const connection = await api<{ connected: boolean }>(
+            "/auth/github/status",
+            { signal: controller.signal },
+          );
+          if (cancelled) return;
+          if (!connection.connected) {
+            setGithubRequired(true);
+            return;
+          }
+        }
         const listing = await api<{ forks: Fork[]; nextPage: number | null }>(
           "/api/v1/github/forks?page=1",
           { signal: controller.signal },
@@ -240,7 +271,9 @@ export function ForkWorkspace({
     if (
       binding?.mode === "update" &&
       !window.confirm(
-        "In einen anderen Fork wechseln? Der aktuelle Entwurf wird dort nur als neue Kopie gespeichert.",
+        t(
+          "In einen anderen Fork wechseln? Der aktuelle Entwurf wird dort nur als neue Kopie gespeichert.",
+        ),
       )
     )
       return;
@@ -259,7 +292,9 @@ export function ForkWorkspace({
     if (
       draft &&
       !window.confirm(
-        "Den aktuellen lokalen Entwurf durch die gespeicherte Konfiguration ersetzen?",
+        t(
+          "Den aktuellen lokalen Entwurf durch die gespeicherte Konfiguration ersetzen?",
+        ),
       )
     )
       return;
@@ -278,7 +313,7 @@ export function ForkWorkspace({
     if (!repository || !session || !draft || editorIssues(draft).length) return;
     await perform(async () => {
       const current = binding ?? {
-        id: crypto.randomUUID(),
+        id: sourceConfigurationId ?? crypto.randomUUID(),
         head: repository.head,
         mode: "create" as const,
       };
@@ -297,6 +332,7 @@ export function ForkWorkspace({
             head: current.head,
             mode: current.mode,
             document: saveEditorDraft(current.id, draft),
+            ...(sourceConfigurationId ? { sourceConfigurationId } : {}),
           }),
         },
       );
@@ -316,16 +352,60 @@ export function ForkWorkspace({
       );
     });
   }
+  if (githubRequired)
+    return (
+      <section className="panel">
+        <h2>{t("GitHub-Forks")}</h2>
+        {githubAvailable ? (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() =>
+              void perform(async () => {
+                if (!preserveLoginDraft(draft))
+                  throw new Error(
+                    "Der Entwurf konnte nicht für die Weiterleitung gesichert werden.",
+                  );
+                const result = await api<{ authorizationUrl: string }>(
+                  "/auth/github/connect",
+                  {
+                    method: "POST",
+                    headers: { "x-lzc-csrf": session?.csrfToken ?? "" },
+                  },
+                );
+                const url = new URL(result.authorizationUrl);
+                if (
+                  url.origin !== "https://github.com" ||
+                  url.pathname !== "/login/oauth/authorize"
+                )
+                  throw new Error("Ungültige GitHub-Weiterleitung.");
+                window.location.assign(url.href);
+              })
+            }
+          >
+            {t("GitHub verbinden")}
+          </button>
+        ) : (
+          <p>{t("GitHub ist derzeit nicht verfügbar.")}</p>
+        )}
+        {error && <p role="alert">{t(error)}</p>}
+      </section>
+    );
   return (
-    <section className="panel fork-workspace" aria-label="GitHub-Forks">
-      <h2>Deine Forks</h2>
+    <section className="panel fork-workspace" aria-label={t("GitHub-Forks")}>
+      <h2>{t("Deine Forks")}</h2>
       <p>
-        Verbinde einen beschreibbaren Accelerator-Fork. Der Configurator
-        speichert deine Entwürfe im Branch <code>lzc/configurations</code>. Pro
-        Konfiguration entstehen zwei Dateien: <code>landing-zone.json</code> zum
-        erneuten Bearbeiten und <code>landing-zone.tfvars</code> für
-        OpenTofu/Terraform. Änderungen bitte im Configurator vornehmen; manuelle
-        tfvars-Änderungen werden nicht importiert.
+        {t(
+          "Verbinde einen beschreibbaren Accelerator-Fork. Der Configurator speichert deine Entwürfe im Branch",
+        )}
+        <code>lzc/configurations</code>. Pro Konfiguration entstehen zwei
+        Dateien: <code>landing-zone.json</code>{" "}
+        {t("zum erneuten Bearbeiten und")}
+        <code>landing-zone.tfvars</code>{" "}
+        {t(
+          "für OpenTofu/Terraform. Änderungen bitte im Configurator vornehmen; manuelle tfvars-Änderungen werden nicht importiert.",
+        )}
       </p>
       <div className="actions">
         <a
@@ -334,7 +414,7 @@ export function ForkWorkspace({
           target="_blank"
           rel="noreferrer"
         >
-          Fork bei GitHub erstellen ↗
+          {t("Fork bei GitHub erstellen ↗")}
         </a>
         <a
           className="button secondary"
@@ -342,16 +422,16 @@ export function ForkWorkspace({
           target="_blank"
           rel="noreferrer"
         >
-          App-Zugriff auf Fork einrichten ↗
+          {t("App-Zugriff auf Fork einrichten ↗")}
         </a>
       </div>
       <p className="muted">
-        Installiere die GitHub-App auf dem gewünschten Fork mit „Only select
-        repositories“. Danach hier die Forks aktualisieren. Die Fork-Erstellung
-        bestätigst du direkt bei GitHub.
+        {t(
+          "Installiere die GitHub-App auf dem gewünschten Fork mit „Only select repositories“. Danach hier die Forks aktualisieren. Die Fork-Erstellung bestätigst du direkt bei GitHub.",
+        )}
       </p>
       {!session ? (
-        <p>Bitte oben mit GitHub anmelden, um deine Forks zu verbinden.</p>
+        <p>{t("Bitte oben anmelden, um deine Forks zu verbinden.")}</p>
       ) : (
         <>
           <div className="actions">
@@ -361,7 +441,7 @@ export function ForkWorkspace({
               disabled={busy}
               onClick={() => void findForks(true)}
             >
-              Forks aktualisieren
+              {t("Forks aktualisieren")}
             </button>
             {searched && nextPage && (
               <button
@@ -370,13 +450,15 @@ export function ForkWorkspace({
                 disabled={busy}
                 onClick={() => void findForks(false)}
               >
-                Weitere Repositories prüfen
+                {t("Weitere Repositories prüfen")}
               </button>
             )}
           </div>
           {searched && !forks.length && (
             <p>
-              Noch kein passender Fork gefunden. Prüfe die App-Installation
+              {t(
+                "Noch kein passender Fork gefunden. Prüfe die App-Installation",
+              )}{" "}
               {nextPage ? " oder lade weitere Repositories" : ""}.
             </p>
           )}
@@ -399,11 +481,12 @@ export function ForkWorkspace({
             <>
               <h3>{repository.fork.fullName}</h3>
               <p>
-                Speicherziel: <code>{repository.branch}</code>
+                {t("Speicherziel:")}
+                <code>{repository.branch}</code>
                 {!repository.branchExists &&
                   " · wird beim ersten Speichern angelegt"}
               </p>
-              <h3>Gespeicherte Konfigurationen</h3>
+              <h3>{t("Gespeicherte Konfigurationen")}</h3>
               {repository.configurations.length ? (
                 <ul className="fork-list">
                   {repository.configurations.map((config) => (
@@ -414,7 +497,7 @@ export function ForkWorkspace({
                         disabled={busy}
                         onClick={() => void open(config.id)}
                       >
-                        {config.name} öffnen
+                        {config.name} {t("öffnen")}
                       </button>
                       <button
                         type="button"
@@ -434,10 +517,26 @@ export function ForkWorkspace({
                               loaded.document,
                             );
                             const blockers = initialPlanIssues(document);
-                            if (blockers.length)
-                              throw new Error(
-                                `Erstbereitstellungsplan noch nicht verfügbar: ${[...new Set(blockers.map((issue) => `${labelFor(issue.field.split(".")[0] ?? issue.field)}: ${issue.message}`))].join(" ")}`,
+                            if (blockers.length) {
+                              setError(
+                                formatMessage(
+                                  "Erstbereitstellungsplan noch nicht verfügbar: {{value0}}",
+                                  {
+                                    get value0() {
+                                      return [
+                                        ...new Set(
+                                          blockers.map(
+                                            (issue) =>
+                                              `${labelFor(issue.field.split(".")[0] ?? issue.field)}: ${t(issue.message)}`,
+                                          ),
+                                        ),
+                                      ].join(" ");
+                                    },
+                                  },
+                                ),
                               );
+                              return;
+                            }
                             onPrepare({
                               target: target(repository.fork),
                               configurationId: config.id,
@@ -448,36 +547,42 @@ export function ForkWorkspace({
                           })
                         }
                       >
-                        Deployment vorbereiten
+                        {t("Deployment vorbereiten")}
                         <span className="sr-only">: {config.name}</span>
                       </button>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p>Noch keine kompatiblen Konfigurationen vorhanden.</p>
+                <p>{t("Noch keine kompatiblen Konfigurationen vorhanden.")}</p>
               )}
               {(repository.unsupported > 0 || repository.truncated) && (
                 <p>
-                  Einige Dateien können nicht angezeigt werden. Aktuell werden
-                  maximal 30 Konfigurationen dieser Template-Version
-                  unterstützt.
+                  {t(
+                    "Einige Dateien können nicht angezeigt werden. Aktuell werden maximal 30 Konfigurationen dieser Template-Version unterstützt.",
+                  )}
                 </p>
               )}
-              <h3>Aktuellen Entwurf speichern</h3>
+              <h3>{t("Aktuellen Entwurf speichern")}</h3>
               <p>
                 {draft
                   ? draft.name
-                  : "Erstelle zuerst einen Entwurf oder öffne eine gespeicherte Konfiguration."}
+                  : t(
+                      "Erstelle zuerst einen Entwurf oder öffne eine gespeicherte Konfiguration.",
+                    )}
               </p>
               {draft && editorIssues(draft).length > 0 && (
-                <p>Bitte vervollständige zuerst die Angaben im Editor.</p>
+                <p>
+                  {t("Bitte vervollständige zuerst die Angaben im Editor.")}
+                </p>
               )}
               <p className="muted">
                 {binding?.mode === "update"
-                  ? "Speichert eine neue Revision der geöffneten Konfiguration."
-                  : "Legt eine neue Konfiguration an."}{" "}
-                Der Configurator startet dabei kein Deployment.
+                  ? t(
+                      "Speichert eine neue Revision der geöffneten Konfiguration.",
+                    )
+                  : t("Legt eine neue Konfiguration an.")}{" "}
+                {t("Der Configurator startet dabei kein Deployment.")}
               </p>
               <div className="actions">
                 {draft && (
@@ -487,7 +592,7 @@ export function ForkWorkspace({
                     disabled={busy}
                     onClick={onEdit}
                   >
-                    Entwurf bearbeiten
+                    {t("Entwurf bearbeiten")}
                   </button>
                 )}
                 <button
@@ -496,7 +601,7 @@ export function ForkWorkspace({
                   disabled={busy || !draft || editorIssues(draft).length > 0}
                   onClick={() => void save()}
                 >
-                  Im Fork speichern
+                  {t("Im Fork speichern")}
                 </button>
                 <button
                   type="button"
@@ -506,7 +611,9 @@ export function ForkWorkspace({
                     void perform(async () => {
                       if (
                         !window.confirm(
-                          "Den Branch-Stand aktualisieren und deinen Entwurf als neue Kopie vorbereiten? Bestehende Konfigurationen werden nicht überschrieben.",
+                          t(
+                            "Den Branch-Stand aktualisieren und deinen Entwurf als neue Kopie vorbereiten? Bestehende Konfigurationen werden nicht überschrieben.",
+                          ),
                         )
                       )
                         return;
@@ -519,7 +626,7 @@ export function ForkWorkspace({
                     })
                   }
                 >
-                  Neue Kopie vorbereiten
+                  {t("Neue Kopie vorbereiten")}
                 </button>
               </div>
             </>
@@ -528,28 +635,30 @@ export function ForkWorkspace({
       )}
       {storageError && (
         <p role="alert">
-          Der Browser kann deinen Arbeitsstand nicht sichern. Bitte speichere
-          Änderungen im Fork oder lade sie herunter.
+          {t(
+            "Der Browser kann deinen Arbeitsstand nicht sichern. Bitte speichere Änderungen im Fork oder lade sie herunter.",
+          )}
         </p>
       )}
       {session && (
         <p className="muted">
-          Arbeitsstand automatisch in diesem Browser merken · getrennt nach
-          angemeldetem Konto. Dies ersetzt das Speichern im Fork nicht.
+          {t(
+            "Arbeitsstand automatisch in diesem Browser merken · getrennt nach angemeldetem Konto. Dies ersetzt das Speichern im Fork nicht.",
+          )}
         </p>
       )}
-      {busy && <p role="status">GitHub-Anfrage läuft …</p>}
+      {busy && <p role="status">{t("GitHub-Anfrage läuft …")}</p>}
       {error && (
         <p role="alert" className="validation-box">
-          {error}
+          {t(error)}
         </p>
       )}
       {notice && (
         <p role="status" className="success-banner">
-          {notice}{" "}
+          {t(notice)}{" "}
           {commitUrl && (
             <a href={commitUrl} target="_blank" rel="noreferrer">
-              Commit auf GitHub ansehen ↗
+              {t("Commit auf GitHub ansehen ↗")}
             </a>
           )}
         </p>

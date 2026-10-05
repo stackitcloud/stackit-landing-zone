@@ -64,10 +64,10 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
         `credential-profile:${session.userId}`,
       ]);
       const role = await c.query(
-        "SELECT role FROM lzc.memberships WHERE tenant_id=$1 AND user_id=$2",
+        "SELECT (t.kind='personal' AND m.role IN ('admin','deployer')) OR (t.kind='organisation' AND 'platform-engineer'=ANY(m.product_roles)) AS allowed FROM lzc.memberships m JOIN lzc.tenants t ON t.id=m.tenant_id WHERE m.tenant_id=$1 AND m.user_id=$2",
         [session.tenantId, session.userId],
       );
-      if (!["admin", "deployer"].includes(role.rows[0]?.role))
+      if (role.rows[0]?.allowed !== true)
         throw new CredentialError(403, "credential_role_required");
       const count = await c.query(
         "SELECT count(*)::int AS count FROM lzc.credential_profiles",
@@ -111,10 +111,10 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
   ) {
     return withTenant(this.pool, session, async (c) => {
       const role = await c.query(
-        "SELECT role FROM lzc.memberships WHERE tenant_id=$1 AND user_id=$2",
+        "SELECT (t.kind='personal' AND m.role IN ('admin','deployer')) OR (t.kind='organisation' AND 'platform-engineer'=ANY(m.product_roles)) AS allowed FROM lzc.memberships m JOIN lzc.tenants t ON t.id=m.tenant_id WHERE m.tenant_id=$1 AND m.user_id=$2",
         [session.tenantId, session.userId],
       );
-      if (!["admin", "deployer"].includes(role.rows[0]?.role))
+      if (role.rows[0]?.allowed !== true)
         throw new CredentialError(403, "credential_role_required");
       const row = await c.query<Profile>(
         `SELECT ${columns} FROM lzc.credential_profiles WHERE id=$1 FOR UPDATE`,

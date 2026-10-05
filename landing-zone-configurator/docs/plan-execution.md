@@ -1,6 +1,6 @@
 # Erstbereitstellungspläne
 
-Stand: 2026-10-01. Umsetzung auf `feature/landing-zone-configurator`.
+Stand: 2026-10-02. Umsetzung auf `feature/landing-zone-configurator`.
 
 ## Was der Benutzer testen kann (nach erfolgreichem Release)
 
@@ -16,11 +16,12 @@ Stand: 2026-10-01. Umsetzung auf `feature/landing-zone-configurator`.
 5. Optional einen weiteren Plan abbrechen. Abbruch entzieht sofort den Broker-
    Zugriff; das Stoppen des CF-Tasks durch Cleanup erfolgt zeitversetzt.
 
-**Kein Kunden-Apply oder Destroy.** Der Benutzer verlangt ausdrücklich eine neue
-Freigabe vor jedem Kunden-Apply. Die Freigabe für Configurator-Infrastruktur gilt
-nicht dafür. Die jetzigen Pläne sind Prüfungen und können nicht angewendet werden;
-ihre Binärartefakte werden entfernt. Vor einem zukünftigen Apply ist ein neuer
-Plan samt unveränderlichem Artefakt, Freigabe und State-Sicherung notwendig.
+**Keine Kunden-Ausführung in dieser Abnahme.** Der Benutzer verlangt ausdrücklich
+eine neue Freigabe vor jedem Kunden-Apply; Infrastrukturfreigaben gelten nicht dafür.
+Der ältere Erstbereitstellungsplan bleibt plan-only. Der neue Plattformpfad besitzt
+einen gated Apply-Endpunkt: nur bei aktivierter Execution, passendem unveränderlichem
+Planartefakt/Hash, bestätigter Zielorganisation und erneut geprüften Zugriffs-,
+Quell- und State-Bindungen. Ein Export ist keine Apply-Freigabe. Kein Destroy-Pfad.
 
 ## Plattformentwürfe mit Projekt-Templates
 
@@ -28,6 +29,70 @@ Neue Editor-Konfigurationen enthalten Projekt-Template-Entwürfe statt konkreter
 Anwendungsprojekte. Ihr tfvars-Export und damit ihr Erstbereitstellungsplan enthalten
 **nur die Plattform**, keine Instanzen dieser Vorlagen. Alte Gesamtkonfigurationen
 behalten ihre bisherigen Projekte. [Details und Bestandsschutz](project-template-drafts.md).
+
+## Application-Plan-Input und Plattformvertrag
+
+Der lokal aktivierte Application-Katalog hat einen eigenen Freigabe- und Bestellpfad.
+Er startet **noch keinen CF-Task** und legt keinen State an. `Plan-Input prüfen`
+ist eine erneute serverseitige Qualifikation und zeigt Terraform-Variablen,
+Entrypoint und Ausführungssperre, kein berechnetes Ressourcenergebnis.
+
+Ein Platform Engineer kann im Application-Katalog einen JSON-Vertrag aus bereits
+angewendeten, geprüften Plattform-Outputs laden. Das Dokument ist kein Terraform-State
+und enthält keine Credentials. Minimaler Importvertrag:
+
+```json
+{
+  "schema_version": 1,
+  "organization_id": "00000000-0000-4000-8000-000000000001",
+  "targets": {
+    "public": {
+      "folder_id": "00000000-0000-4000-8000-000000000002",
+      "region": "eu01",
+      "corporate": false,
+      "network_area_id": null,
+      "firewall_next_hop_ip": null,
+      "ipv4_nameservers": null
+    }
+  }
+}
+```
+
+Die UUIDs sind Platzhalter und müssen aus der tatsächlich angewendeten Plattform
+kommen. Die Freigabe ist eine bewusste PE-Prüfung der Outputs, **keine automatische
+Bestätigung, dass ein angegebener Ordner existiert oder zur Organisation gehört**.
+Diese Ressourcenprüfung bleibt vor einer zukünftigen Job-/Credential-Freigabe nötig.
+
+- GET/POST `/api/v1/applications/platform-contracts`: aktuelle Tenant-Mitgliedschaft;
+  POST zusätzlich PE-Rolle, gültige menschliche STACKIT-Identität, Origin/CSRF,
+  `confirmApproval: true` und gespeicherten SA-Zugang. Optional `credentialProfileId`;
+  bei genau einem gespeicherten Profil automatische Auswahl. Organisationszugriff
+  wird technisch geprüft, ohne eine zweite menschliche OAuth-Anmeldung zu verlangen.
+- Tenant und Revision werden serverseitig bestimmt. Migration 014 persistiert
+  unveränderliche Vertragsversionen mit Forced RLS und technischem Prüf-/Versionsnachweis.
+  Ein Zugangstest oder Vertrag ist keine Apply-Freigabe.
+- POST `/api/v1/applications/templates` kann `platformRevision` und `targetKey`
+  gemeinsam binden. Region und Projektart müssen zum Vertragsziel passen;
+  tenantfremde Vertrags-IDs werden nicht sichtbar. Änderung erzeugt eine neue Version.
+- POST `/api/v1/applications/instances/:id/plan-input` akzeptiert nur `{}`.
+  Der Besitzer wird aus Session und Bestellung ermittelt; fremde Bestellungen und
+  Client-Identitäts-/Backend-Overrides werden abgewiesen. Identitätsablauf, Widerruf,
+  Rollenentzug und geänderte Besteller-E-Mail werden erneut geprüft.
+- Der Compiler verwendet exakt die Vertrags- und Template-Version der Bestellung,
+  feste Parameterregeln und den eigenen Instanz-State-Key. Die MVP-Teilmenge ist
+  Public mit lokalem Netz, ohne Observability-Ausführung oder Namespace-Dienste.
+  Die Antwort meldet ausdrücklich `cloudPlanExecuted: false` und
+  `executionEnabled: false`; keine Schlüssel werden an den Browser geliefert.
+  Die unveraenderliche Versions-/Bestellpolicy wird als `applyPolicy` uebernommen
+  (`approval-required` oder `direct`); `requiresExplicitApplyApproval: true`
+  bleibt fuer beide gesetzt. Eine direkte Policy ist keine Ausfuehrungsfreigabe.
+
+Für den tatsächlichen eigenen Cloud-Plan fehlen noch ein unveränderlich freigegebenes
+Application-Runner-Artefakt, getrenntes State-Backend mit Locking und eng begrenzte
+serverseitige Nutzung des PE-Zugangs durch genau den autorisierten Job. Der bisherige
+Runner-Pin enthält kein Application-Root. Er wird nicht auf ungeprüften Arbeitsbaumcode
+umgestellt. Application-Apply bleibt deaktiviert; der freigabegebundene
+Plattform-Apply-Pfad ist davon getrennt.
 
 ## Gemeinsamer Editor und Ausführungsumfang
 
@@ -44,8 +109,10 @@ und Broker verwenden `initialPlanIssues`; vor Übergabe der Zugangsdaten an den
 Runner wird erneut geprüft. JSON und tfvars bleiben an dieselbe Git-Revision und
 den unveränderten Export-Hash gebunden. Legacy-Dokumente bleiben unterstützt.
 
-Die Organisationstenant-Sperren gelten weiter. Es bleibt ein Erstbereitstellungsplan
-mit leerem State, kein Plan für bereits bestehende Ressourcen und kein Apply.
+Die Organisationstenant-Sperren gelten weiter. Der ältere Erstbereitstellungsplan
+verwendet leeren State. Im neuen Plattformpfad wird bestehender State ausschließlich
+über die geprüfte Backend-Bindung verwendet; fehlende oder widersprüchliche Bindungen
+dürfen keinen stillen Neustart mit leerem State auslösen.
 Erweiterte Ausführung: [#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89).
 
 ## Ablauf und Grenzen
@@ -84,20 +151,55 @@ des bisherigen Standalone-Vertrags stehen im
   1.12.6, Provider-Lock SHA-256
   `a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888`.
   CI baut nur Upstream-Code dieses Commits und einen Linux-Provider-Mirror.
+- OpenTofu 1.12.6 exportiert im Saved-Plan-JSON 1.2 kein Terraform-Feld `complete`.
+  Der Worker darf Vollständigkeit für dieses genaue Format nur nach Prüfung der
+  gepinnten Engine und seinem festen vollständigen Plan-Befehl ohne Targeting
+  bestätigen. Der Summary-Parser verlangt diesen expliziten Engine-Kontext;
+  fehlender Kontext, unbekannte Versionen/Formate oder Deferred-Metadaten bleiben
+  `not-reported`, ein gemeldeter Teilplan bleibt `incomplete`. Fehlerstatus,
+  offene/fehlgeschlagene Checks und alle Artefakt-/State-/Freigabebindungen
+  sperren Apply weiterhin. Vorher gespeicherte Summaries werden nicht umgeschrieben.
 - Direkte Befehle in `deploy/runner/run-plan.sh`: init mit readonly Lock, validate,
-  plan mit detailed exit code und show. Kein frei wählbarer Befehl, kein Apply-Pfad.
+  plan mit detailed exit code und show. Kein frei wählbarer Befehl. Der neue
+  Plattformpfad darf Apply nur mit dem freigegebenen gespeicherten Plan ausführen.
 - Ergebnisprojektion enthält nur Zahlen, Status und feste Fehlercodes; keine
   Adressen, Attributwerte, Output-Namen, Rohdiagnosen oder Geheimnisse. Auch nicht
-  als sensitive markierte Werte werden nicht exportiert. Detailansicht einzelner
-  Ressourcen und sichere Provider-Fehlerdiagnosen sind noch offen.
+  als sensitive markierte Werte werden nicht in diese Summary exportiert.
+  Separat zeigt der native lokale Runner dem berechtigten Plan-Eigentümer unter
+  **OpenTofu-Ausgabe** die normale CLI-Textdarstellung: Live-Logs aus dem privaten
+  aktiven Job oder `tofu show -no-color` des exakt hash-/paketgebundenen,
+  verschlüsselt gespeicherten Planartefakts. Sitzung, Deployment-Rolle und
+  Eigentümer-/Tenant-RLS werden vor jedem Zugriff geprüft; Antworten sind
+  `no-store`. Ressourcenadressen und normale Attributwerte sind dort sichtbar,
+  sensitive Werte bleiben durch OpenTofu maskiert. Bekannte Credential-Felder
+  werden aus Live-Logs zusätzlich entfernt. Plan-Binary und `show -json` bleiben
+  serverseitig. Es laufen kein neuer Cloud-Plan, kein Apply und kein Backend-Init;
+  die Inspektion verwendet nur backendfreies Init und Show ohne geerbte Secrets.
+  Die Apply-Ablauffrist bleibt unabhängig von der read-only Anzeige, solange das
+  verschlüsselte Artefakt vorhanden ist. CF-Live-Ausgabetransport bleibt offen.
+- Vor dem terminalen Ergebnis sichert der Worker den redigierten CLI-Mitschnitt
+  von Init/Validate/Plan/Apply/Migration über `POST /api/runner/output`. Das
+  auftragsspezifische Ticket muss gültig und die Eingabe bereits beansprucht sein;
+  der Text darf nur einmal vor Abschluss geschrieben werden. Migration 020 legt
+  dafür private Output-Spalten unter der bestehenden Eigentümer-/Tenant-RLS an.
+  Der Broker verschlüsselt maximal 2 MiB mit AEAD und auftragsspezifischer AAD.
+  Erfolgs- und Fehlerausgaben bleiben nach Cleanup und Reload lesbar, ohne laufenden
+  Runner. Kürzungen sind gekennzeichnet. Ein harter Prozessabbruch oder gescheiterter
+  Upload kann weiterhin historische Ausgabe verlieren; die best-effort Sicherung
+  löst weder einen Apply-Retry aus noch ersetzt sie den dauerhaften State-Recovery-
+  Empfangsnachweis. Apply-Nachweise zeigen den exakten Plan, SHA-256,
+  Zielorganisation, das State-Backend des Auftrags und die Abschlusszeit.
+  Ein inkompatibles natives Runner-Paket sperrt Apply bereits vor Dispatch;
+  ein neuer Plan mit erneuter Prüfung und Freigabe ist erforderlich.
 - Task: 1 GiB RAM, 4 GiB Disk, 18 Minuten Engine-Frist, private Dateien begrenzt.
   SQL-Frist: 25 Minuten. Maintenance alle 30 Sekunden, Cleanup nach mindestens
   30 Sekunden terminalem Status. Auch nach API-Neustart werden Aufträge abgeräumt.
   Bei CF-/Netzfehlern kann Cleanup länger dauern; Ticket-Ablauf bleibt unabhängig.
 - Kein automatischer Dispatch-Wiederholungsversuch. Ein Prozessverlust vor Start
   führt zu Abbruch/Ablauf statt stiller Neuausführung. Es gibt noch keinen allgemeinen
-  Queue-Scheduler, keine dauerhafte Runner-Heartbeat-Überwachung und keine Plan-
-  Artefaktaufbewahrung. CF-Quoten begrenzen die Gesamtkapazität zusätzlich.
+  Queue-Scheduler und keine dauerhafte Runner-Heartbeat-Überwachung. Der neue
+  Plattformpfad speichert Planartefakte verschlüsselt und bindet sie an Quelle,
+  Engine und State-Version. CF-Quoten begrenzen die Gesamtkapazität zusätzlich.
 - Vorbereitungen mit Plan-Nachweisen werden nicht gelöscht. Archivierung und
   Aufbewahrungsfristen der Metadaten sind ein nachfolgender Schritt.
 
@@ -106,17 +208,53 @@ des bisherigen Standalone-Vertrags stehen im
 Entscheidung des Benutzers: bestehenden
 [LZA-Bootstrap](https://github.com/stackitcloud/stackit-landing-zone/blob/main/docs/getting-started.md)
 übernehmen. Der gespeicherte Zugang ist der Bootstrap-Service-Account; Projekt und
-Account werden nicht erneut angelegt. Der erste Plan benutzt ausdrücklich leeren
-lokalen State. Ein Plan legt weder Management-Projekt noch Bucket an.
+Account werden nicht erneut angelegt. Ein Plan legt weder Management-Projekt noch
+Bucket an. Im neuen Plattformpfad dient das dauerhafte, verschlüsselte HTTP-Backend
+nur dem Bootstrap, nicht als permanenter Ersatz für den Kunden-S3-State.
 
-Beim später separat freigegebenen ersten Apply erzeugt das Management-Modul den
-Kunden-State-Bucket samt Credentials. Anschließend `tofu init -migrate-state`,
-Migration prüfen, auf Management-Service-Account wechseln und erneut planen.
-Der anfänglich lokale State muss bereits während des Apply dauerhaft und verschlüsselt
-abgesichert sein, auch bei partiellem Fehler und hartem Runner-Verlust. Flüchtiger
-CF-Speicher reicht dafür nicht. Diese Recovery ist noch nicht implementiert und
-bleibt eine zwingende Apply-Voraussetzung. Kein zusätzlicher dauerhafter zentraler
-Kunden-State-Bucket; Infrastruktur- und Kunden-States werden nicht vermischt.
+Beim separat freigegebenen ersten Apply erzeugt das Management-Modul den
+Kunden-State-Bucket samt Credentials. Danach migriert der Runner mit
+`tofu init -migrate-state`; die API bestätigt die Migration erst nach Abgleich von
+State-Hash und Remote-Version/ETag sowie gebundener State-Version. Erst danach
+wird der HTTP-Primärstate entfernt. Anschließend wird der verifizierte
+Management-Service-Account verwendet. Das S3-Backend nutzt `use_lockfile = true`.
+Application-Instanzen erhalten jeweils eigene Keys
+`applications/<tenant-id>/<instance-id>/terraform.tfstate`; Plattform-,
+Application- und Configurator-Infrastruktur-States bleiben getrennt.
+
+Legacy-State-Zuordnungen sind mit `legacy_state_migration_required` gesperrt und
+benötigen eine explizite Zuordnung/Migration, keinen neuen leeren State. Bei
+`state_failed` oder unbestätigter Migration ist vor Wiederaufnahme der Recovery-
+Export des vorhandenen States erforderlich. Der Runner übermittelt einen geprüften,
+verschlüsselten Recovery-Nachweis und entfernt lokale Fehlerstates erst nach
+passender dauerhafter Empfangsbestätigung. Das garantiert keine automatische
+vollständige Wiederherstellung nach jedem harten Runner-Verlust; Abgleich und
+operative Recovery bleiben erforderlich. Ein echter Cloud-S3-Lock-Test wurde
+nicht durchgeführt. Kein Kunden-Apply wurde in dieser Umsetzung ausgeführt.
+
+## Portabler GitHub-Export
+
+Der Export schreibt atomar `landing-zone.json`, `landing-zone.tfvars` und eine
+kurze CLI-Anleitung unter `src/config/custom/<configuration-id>/`. Bei einer
+serverseitig verifizierten S3-Bindung kommt `backend.tf.json` hinzu: vollständige
+Standard-Terraform-Backend-Konfiguration ohne AWS-/SA-Schlüssel oder State-Datei.
+Nur `backend_not_found` erlaubt einen neuen Bootstrap-Export ohne Backend;
+Service- und Berechtigungsfehler brechen das Speichern ab. Eine vorhandene
+Backend-Datei muss exakt dem deterministischen Git-Blob-Hash des geprüften
+Deskriptors entsprechen. Andernfalls gilt `backend_configuration_changed`;
+fehlt die Bindung, gilt `backend_configuration_missing` statt Metadatenverlust.
+
+Beim ersten DB-zu-GitHub-Export bleibt die Konfigurations-ID erhalten. Eine
+bereits geöffnete Git-Konfiguration behält ihre eigene ID. Bei abweichender
+Quell-ID exportiert der Server den gebundenen Deskriptor ohne Alias- oder
+State-Mutation; eine neue Vorbereitung muss den registrierten Backend-ID
+ausdrücklich auswählen. Für unabhängigen CLI-Betrieb: geprüften Accelerator-Code
+verwenden, ursprünglichen Backend-Block in `src/backend.tf` deaktivieren,
+exportierte Backend-Datei nach `src/backend.tf.json` kopieren und genau einen
+aktiven Backend-Block behalten. AWS-Zugang aus dem Management Secrets Manager
+gemäß LZA in die Umgebung laden, dann `tofu init` und
+`tofu plan -var-file=config/custom/<configuration-id>/landing-zone.tfvars`.
+Ohne S3-Bindung zuerst LZA-Bootstrap und verifizierte State-Migration abschließen.
 
 ## Abnahme
 
@@ -200,3 +338,44 @@ Quelle: [STACKIT Provider 0.114.0 – Service Account Federated Identity Provide
 - Lokal: 140 Unit-Tests, Desktop-/Mobil-Browserprüfung einschließlich Überlaufprüfung, drei Governance-Mockpläne sowie die vorhandenen OpenTofu-Plan-/Application-Vertragstests erfolgreich.
 - Live: SPA und Assets HTTP 200 (`index-CnPzJNzo.js`, `index-DoULK2fp.css`), `/healthz` HTTP 200, anonyme Session HTTP 401. Release-Verbindungstests erfolgreich.
 - Kein Kunden-Apply, keine Abnahme eines echten Kunden-Plans und kein Merge nach main.
+
+## Begrenzte Plattform-Credential-Grants
+
+Lokal implementiert am 2026-10-05, noch nicht in der laufenden Kunden-API
+aktiviert: Migration `025_plan_credential_grants.sql` legt bei ausdruecklichem
+Plan-Start beziehungsweise bestehender ausdruecklicher Apply-Freigabe einen
+Grant in derselben Transaktion an. Es gibt keine allgemeine Credential-
+Delegation und keine automatische Nachruestung fuer alte wartende Jobs.
+
+Der unveraenderliche Beleg bindet Job, Tenant, Benutzer, Vorbereitung,
+Organisation, Credential-Profil, Secret-Version, Key-ID, Manifest-Hash und
+Operation (`plan` oder `apply`). Seine Gueltigkeit endet spaetestens mit
+Job-Ticket oder ausstellender Sitzung. Er enthaelt keine Schluessel oder Tokens.
+SQL prueft die Bindung an den echten Job und dessen Vorbereitungsdaten;
+RLS begrenzt Zugriff auf den eigenen aktuell autorisierten Deployment-Benutzer.
+
+Der Runner beansprucht den Grant einmalig, bevor die technische Credential-
+Pruefung oder der Secret-Abruf stattfinden. Fehlende, abgelaufene, widerrufene
+oder abweichende Grants sperren diese Nutzung. Vor Rueckgabe von Schluessel,
+Backend und gegebenenfalls gespeichertem Plan werden Grant, Ablauf und
+initialisierender Job erneut geprueft. Ein fehlgeschlagener Claim wird nicht
+zurueckgesetzt; ein neuer Auftrag verlangt eine neue ausdrueckliche Freigabe.
+Parallele Input-Anfragen koennen nur einmal Credentials erhalten.
+
+`POST /api/v1/plans/{id}/credential-grant/revoke` verlangt Origin, CSRF, den
+aktuellen `x-lzc-tenant` und ausschliesslich
+`{"confirmCredentialGrantRevocation":true}`. Wiederholter Widerruf liefert
+denselben Beleg. Normales Plan-Abbrechen widerruft einen noch ungenutzten
+Grant ebenfalls. Bereits beanspruchte Grants liefern
+`credential_grant_already_consumed`; bereits uebertragene Credentials koennen
+nicht aus einem Runner zurueckgeholt werden. Laufender Worker, Cloud-IAM-
+Schluesselrotation und Recovery muessen bei einem solchen Vorfall gesondert
+behandelt werden. Ticketgebundene Ergebnis-/Recovery-Endpunkte bleiben
+unveraendert und sind nicht erneut Credential-Ausgabe.
+
+Diese Grenze beschraenkt den Credential-Abruf, nicht die Cloud-IAM-Rechte des
+Schluessels oder eine bereits laufende Operation. Least-Privilege-Qualifikation,
+Application-Root-/Instanz-Dispatch mit eigenem State und Grant sowie echte
+Zwei-Organisations-/Widerrufsabnahme bleiben #91/#93. AO erhalten durch diesen
+Schritt keinen Zugriff auf Plattform-Credentials. 31 echte isolierte PostgreSQL-
+Broker-/Grantfaelle und der kanonische Gesamtcheck bestehen.

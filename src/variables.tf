@@ -586,6 +586,7 @@ variable "landing_zones" {
       role    = string
       subject = string
     })), [])
+    network_enabled        = optional(bool, false)
     network_prefix_length  = optional(number, null)
     secretsmanager_enabled = optional(bool, true)
     custom_roles = optional(list(object({
@@ -600,7 +601,7 @@ variable "landing_zones" {
       name      = optional(string, null)
     }), {})
   }))
-  description = "Map of landing zones to create. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions."
+  description = "Map of landing zones to create. Public landing zones can create a local network with network_enabled. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions."
   default     = {}
 
   validation {

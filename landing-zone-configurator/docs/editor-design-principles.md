@@ -18,6 +18,35 @@ Diese Prinzipien ergänzen [Designreferenz](design-reference.md) und
   Anleitung bezeichnet Portal-Integration noch als nicht verfügbar; das ist kein
   Nachweis über den vom Benutzer beobachteten aktuellen Portalablauf.
 
+## Arbeitsbereich und Konfigurationskontext
+
+Bestätigter Hauptablauf: **Login > Arbeitsbereich öffnen > Konfiguration öffnen
+oder erstellen > Bearbeiten > Plan > Apply**.
+
+- Beim ersten Einstieg verfügbare Arbeitsbereiche einschließlich des persönlichen
+  anbieten; Erstellen und Öffnen sind eigene Aktionen.
+- Beim erneuten Einstieg den letzten noch zugänglichen Arbeitsbereich wieder
+  öffnen. Explizite Deep Links und gesicherte Login-Entwürfe nicht überschreiben.
+- Arbeitsbereichswechsel im Header auch auf Mobilgeräten erreichbar halten.
+- **Konfigurationen** ist die Plattformübersicht; **Neue Konfiguration** öffnet
+  die Vorlagen. Templates und „Mein Entwurf“ sind keine primären Sidebarziele.
+- Geöffnete Konfigurationen haben **Konfiguration · Bereitstellung · Verlauf**
+  als gemeinsamen Kontext mit Namen und gespeicherter Revision.
+- **Speichern und zur Bereitstellung** verwendet exakt die neue Serverrevision.
+  Ungespeicherte Änderungen sperren den direkten Bereitstellungstab; Wechsel
+  in andere Arbeitsbereiche dürfen sie nicht still verwerfen.
+- Verlauf bleibt ausschließlich lesbar und konfigurationsbezogen. Sichtbare
+  Ausführungen und Statusangaben unterliegen weiterhin den bestehenden Rollen,
+  Benutzer- und Tenant-Grenzen.
+- Navigation und Wiederaufnahme starten keine Vorbereitung, keinen Plan und
+  keinen Apply. Bestehende Planbindungen und Ablaufzeiten bleiben unverändert.
+- Application Owner behalten den getrennten Application-Landing-Zone-Ablauf.
+
+Lokal am 2026-10-04 umgesetzt: Gesamtcheck mit 305 Unit-Tests und vollständige
+Browser-Suite mit 134 Desktop-/Mobilfällen bestanden. Arbeitsbereichsauswahl und
+Konfigurations-/Bereitstellungskontext visuell geprüft. Browser-APIs simuliert;
+kein Kunden-Apply und keine Live-S3-Abnahme durch diese Umsetzung.
+
 ## Weniger sichtbare Komplexität
 
 - Die Übersicht zeigt aktive Komponenten kompakt; Einstellungen erst beim Bearbeiten.

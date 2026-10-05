@@ -179,6 +179,8 @@ jobs:
         run: node infra/ci/prepare-release.mjs application
         env:
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
+          LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
+          LZC_STACKIT_CLI_CLIENT_APPROVED: ${{ vars.LZC_STACKIT_CLI_CLIENT_APPROVED }}
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
       - name: Stage isolated runner template in its own organisation
@@ -235,13 +237,21 @@ jobs:
         env:
           LZC_URL: https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
+          LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
         run: |
           expected=not-configured
           if [ "$LZC_AUTH_ENABLED" = true ]; then expected=github; fi
+          if [ "$LZC_AUTH_ENABLED" = true ] && [ "$LZC_STACKIT_DEVICE_ENABLED" = true ]; then expected=stackit; fi
           curl --fail --silent --show-error --retry 3 "$LZC_URL/healthz" | jq -e --arg expected "$expected" '.status == "ok" and .authentication == $expected'
-          curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e --arg expected "$expected" '.github == ($expected == "github")'
+          curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e --arg expected "$expected" 'if $expected == "stackit" then .primary == "stackit" and .stackit == true else .github == ($expected == "github") end'
           curl --fail --silent --show-error "$LZC_URL/" | grep -q 'Landing Zone Configurator'
           test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/session")" = 401
+          curl --fail --silent --show-error "$LZC_URL/applications" | grep -q 'Landing Zone Configurator'
+          if [ "$LZC_AUTH_ENABLED" = true ]; then
+            for resource in templates instances; do
+              test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/applications/$resource")" = 401
+            done
+          fi
       - name: Clean up migration application after failure
         if: failure() && (steps.migration.outcome == 'success' || steps.migration.outcome == 'failure')
         run: cf delete landing-zone-configurator-migrate -f

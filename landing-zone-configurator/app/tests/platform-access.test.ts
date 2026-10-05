@@ -30,14 +30,33 @@ describe("organisation platform API boundaries", () => {
       "platform_engineer_required",
     );
     expect(platformAccessError(session, "/api/v1/credentials")).toBe(
-      "organisation_credentials_not_enabled",
+      "platform_engineer_required",
     );
+    for (const path of [
+      "/api/v1/credentials",
+      "/api/v1/cloud-catalogues/automatic",
+    ])
+      expect(
+        platformAccessError(
+          { ...session, productRoles: ["platform-engineer"] },
+          path,
+        ),
+      ).toBeNull();
+    expect(
+      platformAccessError(session, "/api/v1/cloud-catalogues/automatic"),
+    ).toBe("platform_engineer_required");
     expect(
       platformAccessError(
         { ...session, productRoles: ["platform-engineer"] },
         "/api/v1/plans",
       ),
-    ).toBe("organisation_execution_not_enabled");
+    ).toBeNull();
+    expect(platformAccessError(session, "/api/v1/plans")).toBe(
+      "platform_engineer_required",
+    );
+    expect(platformAccessError(session, "/api/v1/preparations")).toBe(
+      "platform_engineer_required",
+    );
     expect(
       platformAccessError(
         { ...session, tenantKind: "personal" },

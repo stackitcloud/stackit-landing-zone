@@ -9,6 +9,7 @@ import {
   editCommonInput,
   editorIssues,
   featureFieldCatalogue,
+  type InputType,
   migrateCommonConfiguration,
   objectValue,
   projectTemplates,
@@ -16,8 +17,98 @@ import {
   removeCommonProject,
   saveEditorDraft,
 } from "@lzc/domain";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { labels } from "../apps/web/src/components/feature-labels.js";
+import { StructuredField } from "../apps/web/src/components/StructuredField.js";
+
+it("offers documented STACKIT DNS and VPN enums without dropping imported values", () => {
+  for (const [path, choices] of [
+    ["connectivity.dns_zones[*].type", ["primary", "secondary"]],
+    ["connectivity_regions[*].dns_zones[*].type", ["primary", "secondary"]],
+    [
+      "connectivity.vpn.connections.example.tunnel1.phase1.encryption_algorithms[*]",
+      ["aes256", "aes128gcm16", "aes256gcm16"],
+    ],
+    [
+      "connectivity.vpn.connections.example.tunnel2.phase2.integrity_algorithms[*]",
+      ["sha1", "sha2_256", "sha2_384", "sha2_512"],
+    ],
+    [
+      "connectivity.vpn.connections.example.tunnel1.phase1.dh_groups[*]",
+      ["modp1024", "modp2048", "ecp256", "ecp384", "modp2048s256"],
+    ],
+  ] as const) {
+    const markup = renderToStaticMarkup(
+      createElement(StructuredField, {
+        name: "enum",
+        path,
+        type: "string",
+        value: "imported-value",
+        onChange: () => {},
+      }),
+    );
+    expect(markup).toContain("<select");
+    for (const choice of choices) expect(markup).toContain(`value="${choice}"`);
+    expect(markup).toContain('value="imported-value" disabled="" selected=""');
+  }
+});
+
+it("hides inactive structured template details recursively without changing values", () => {
+  const service: InputType = [
+    "object",
+    { enabled: "bool", plan_name: "string" },
+  ];
+  const type: InputType = [
+    "object",
+    {
+      service,
+      services: ["list", service],
+      catalogue: ["map", service],
+      demo_enabled: "bool",
+      demo_description: "string",
+    },
+  ];
+  const value = {
+    service: { enabled: false, plan_name: "retained-object-plan" },
+    services: [{ enabled: false, plan_name: "retained-list-plan" }],
+    catalogue: {
+      example: { enabled: false, plan_name: "retained-map-plan" },
+    },
+    demo_enabled: false,
+    demo_description: "retained-demo-detail",
+  };
+  const before = structuredClone(value);
+  const render = (hideInactiveDetails: boolean) =>
+    renderToStaticMarkup(
+      createElement(StructuredField, {
+        name: "template-services",
+        type,
+        value,
+        hideInactiveDetails,
+        onChange: () => {},
+      }),
+    );
+  const hidden = render(true);
+  const visible = render(false);
+  for (const retained of [
+    "retained-object-plan",
+    "retained-list-plan",
+    "retained-map-plan",
+    "retained-demo-detail",
+  ]) {
+    expect(hidden).not.toContain(retained);
+    expect(visible).toContain(retained);
+  }
+  value.service.enabled = true;
+  expect(render(true)).toContain("retained-object-plan");
+  value.service.enabled = false;
+  value.demo_enabled = true;
+  expect(render(true)).toContain("retained-demo-detail");
+  value.demo_enabled = false;
+  expect(value).toEqual(before);
+});
 
 const id = "11111111-2222-4333-8444-555555555555";
 it("provides human labels for every editable feature field", () => {

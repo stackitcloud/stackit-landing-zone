@@ -1,5 +1,6 @@
 import type { Template } from "@lzc/domain";
 import { catalogue } from "@lzc/domain";
+import { t } from "./i18n";
 
 const descriptions: Record<
   string,
@@ -62,13 +63,16 @@ export const templates: Template[] = [...catalogue.templates].sort((a, b) =>
       : a.id.localeCompare(b.id),
 );
 export function describe(template: Template) {
-  return (
-    descriptions[template.id] ?? {
-      title: template.id,
-      description: "Vorlage aus dem Accelerator-Repository.",
-      category: "Vorlage",
-    }
-  );
+  const metadata = descriptions[template.id] ?? {
+    title: template.id,
+    description: "Vorlage aus dem Accelerator-Repository.",
+    category: "Vorlage",
+  };
+  return {
+    title: t(metadata.title),
+    description: t(metadata.description),
+    category: t(metadata.category),
+  };
 }
 
 const standalone = templates.find((t) => t.id === "standalone");

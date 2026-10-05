@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { currentLanguage, t } from "../i18n";
 import type { Session } from "./Account";
 
 const key = "lzc.pending-invitation";
@@ -110,34 +111,39 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
   }, [token, session]);
   if (!token) return null;
   return (
-    <section className="panel" aria-label="Einladung annehmen">
-      <h2>Einladung zu einem Arbeitsbereich</h2>
+    <section className="panel" aria-label={t("Einladung annehmen")}>
+      <h2>{t("Einladung zu einem Arbeitsbereich")}</h2>
       {!session && (
         <p>
-          Melde dich über die Schaltfläche oben an. Auch bei deiner ersten
-          Anmeldung wird dein Benutzer automatisch angelegt. Danach kannst du
-          die Einladung prüfen und bestätigen.
+          {t(
+            "Melde dich über die Schaltfläche oben an. Auch bei deiner ersten Anmeldung wird dein Benutzer automatisch angelegt. Danach kannst du die Einladung prüfen und bestätigen.",
+          )}
         </p>
       )}
       {!session && !persisted && (
         <p role="status">
-          Dein Browser erlaubt kein Zwischenspeichern dieser Einladung. Öffne
-          den Einladungslink nach der Anmeldung bitte erneut.
+          {t(
+            "Dein Browser erlaubt kein Zwischenspeichern dieser Einladung. Öffne den Einladungslink nach der Anmeldung bitte erneut.",
+          )}
         </p>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{t(error)}</p>}
       {session && preview && (
         <>
           <h3>{preview.name}</h3>
-          <p>STACKIT-Organisations-ID: {preview.organizationId}</p>
           <p>
-            Rollen: {names(preview.roles)}
+            {t("STACKIT-Organisations-ID:")} {preview.organizationId}
+          </p>
+          <p>
+            {t("Rollen:")} {names(preview.roles)}
             {preview.manageMembers ? " · Mitglieder verwalten" : ""}
           </p>
           <p>
-            Du trittst als @{session.user.login} bei. Dies vergibt
-            Configurator-Rollen; STACKIT-IAM-Berechtigungen werden nicht
-            verändert.
+            {t("Du trittst als @")}
+            {session.user.login}{" "}
+            {t(
+              "bei. Dies vergibt Configurator-Rollen; STACKIT-IAM-Berechtigungen werden nicht verändert.",
+            )}
           </p>
           <button
             type="button"
@@ -157,7 +163,7 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
                 });
             }}
           >
-            Beitreten und Arbeitsbereich öffnen
+            {t("Beitreten und Arbeitsbereich öffnen")}
           </button>
         </>
       )}
@@ -170,7 +176,7 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
           setPending({ token: null, persisted });
         }}
       >
-        Einladung schließen
+        {t("Einladung schließen")}
       </button>
     </section>
   );
@@ -207,13 +213,13 @@ export function Invitations({ session }: { session: Session }) {
   }, [session]);
   return (
     <section className="panel">
-      <h3>Mitglied einladen</h3>
+      <h3>{t("Mitglied einladen")}</h3>
       <p>
-        Erstelle einen einmaligen Link, gültig für sieben Tage. Die Person
-        meldet sich an und bestätigt den Beitritt. Teile den Link nur mit der
-        gewünschten Person: Wer ihn besitzt, kann die gewählten Rollen erhalten.
+        {t(
+          "Erstelle einen einmaligen Link, gültig für sieben Tage. Die Person meldet sich an und bestätigt den Beitritt. Teile den Link nur mit der gewünschten Person: Wer ihn besitzt, kann die gewählten Rollen erhalten.",
+        )}
       </p>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{t(error)}</p>}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -242,7 +248,7 @@ export function Invitations({ session }: { session: Session }) {
             checked={owner}
             onChange={(e) => setOwner(e.target.checked)}
           />{" "}
-          Application Owner
+          {t("Application Owner")}
         </label>
         <label>
           <input
@@ -253,7 +259,7 @@ export function Invitations({ session }: { session: Session }) {
               if (!e.target.checked) setManage(false);
             }}
           />{" "}
-          Platform Engineer
+          {t("Platform Engineer")}
         </label>
         <label>
           <input
@@ -262,25 +268,26 @@ export function Invitations({ session }: { session: Session }) {
             disabled={!engineer}
             onChange={(e) => setManage(e.target.checked)}
           />{" "}
-          Mitglieder verwalten
+          {t("Mitglieder verwalten")}
         </label>
         <button
           type="submit"
           className="button primary"
           disabled={busy || (!owner && !engineer)}
         >
-          Einladungslink erstellen
+          {t("Einladungslink erstellen")}
         </button>
       </form>
       {link && (
         <div className="field">
           <label htmlFor="invitation-link">
-            Einladungslink – jetzt kopieren
+            {t("Einladungslink – jetzt kopieren")}
           </label>
           <input id="invitation-link" readOnly value={link} />
           <p>
-            Der vollständige Link wird nur jetzt angezeigt. Es wird keine E-Mail
-            verschickt.
+            {t(
+              "Der vollständige Link wird nur jetzt angezeigt. Es wird keine E-Mail verschickt.",
+            )}
           </p>
           <button
             type="button"
@@ -294,20 +301,25 @@ export function Invitations({ session }: { session: Session }) {
                 )
             }
           >
-            Link kopieren
+            {t("Link kopieren")}
           </button>
-          {copied && <p role="status">Link kopiert.</p>}
+          {copied && <p role="status">{t("Link kopiert.")}</p>}
         </div>
       )}
-      <h3>Offene Einladungen</h3>
-      {items.length === 0 && <p>Keine offenen Einladungen.</p>}
+      <h3>{t("Offene Einladungen")}</h3>
+      {items.length === 0 && <p>{t("Keine offenen Einladungen.")}</p>}
       {items.map((i) => (
         <article key={i.id} className="panel">
           <p>
             {names(i.roles)}
             {i.manageMembers ? " · Mitglieder verwalten" : ""}
           </p>
-          <p>Gültig bis {new Date(i.expiresAt).toLocaleString("de-DE")}</p>
+          <p>
+            {t("Gültig bis")}{" "}
+            {new Date(i.expiresAt).toLocaleString(
+              currentLanguage() === "de" ? "de-DE" : "en-GB",
+            )}
+          </p>
           <button
             type="button"
             className="button secondary"
@@ -324,7 +336,7 @@ export function Invitations({ session }: { session: Session }) {
                 .finally(() => setBusy(false));
             }}
           >
-            Einladung widerrufen
+            {t("Einladung widerrufen")}
           </button>
         </article>
       ))}

@@ -20,3 +20,8 @@ env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=
   "$tofu_bin" -chdir="$work_dir/src/application" validate -no-color
 env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
   "$tofu_bin" -chdir="$work_dir/src/application" test -no-color
+cp "$work_dir/src/application/.terraform.lock.hcl" "$work_dir/src/modules/landing-zone/.terraform.lock.hcl"
+env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+  "$tofu_bin" -chdir="$work_dir/src/modules/landing-zone" init -backend=false -input=false -no-color
+env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+  "$tofu_bin" -chdir="$work_dir/src/modules/landing-zone" test -no-color

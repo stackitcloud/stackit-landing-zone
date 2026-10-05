@@ -5,6 +5,7 @@ export type PendingGitHubLogin = {
   bindingHash: string;
   verifier: string;
   expiresAt: number;
+  linkedSessionId?: string;
 };
 const sha256 = (value: string) =>
   createHash("sha256").update(value).digest("base64url");

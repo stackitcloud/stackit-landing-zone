@@ -55,6 +55,8 @@ export const applicationTemplateSchema = z.discriminatedUnion(
     legacyApplicationTemplateSchema.extend({
       schema_version: z.literal(2),
       env: z.string().regex(/^[a-z][a-z0-9-]{0,15}$/),
+      network_enabled: z.boolean().default(false),
+      network_prefix_length: z.number().int().nullable().default(null),
       parameter_policy: templateParameterPolicySchema,
       custom_roles: z.array(projectCustomRoleSchema).max(100).default([]),
       role_assignments: z
@@ -119,6 +121,8 @@ export function compileApplicationPlan(input: {
             kind: target.corporate ? "corporate" : "public",
             settings: {
               env: template.env,
+              network_enabled: template.network_enabled,
+              network_prefix_length: template.network_prefix_length,
               ...template.services,
               custom_roles: template.custom_roles,
               role_assignments: template.role_assignments,
@@ -135,6 +139,8 @@ export function compileApplicationPlan(input: {
     ? legacyApplicationTemplateSchema.shape.services
         .extend({
           env: z.string().regex(/^[a-z][a-z0-9-]{0,15}$/),
+          network_enabled: z.boolean(),
+          network_prefix_length: z.number().int().nullable(),
           custom_roles: z.array(projectCustomRoleSchema).max(100),
           role_assignments: z.array(projectRoleAssignmentSchema).max(100),
           observability:

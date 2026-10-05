@@ -75,7 +75,9 @@ it("binds a preparation to the saved configuration, code revision, secret versio
   expect(platformExport).not.toContain("project_name");
 
   expect(manifest.accelerator.commit).toBe(acceleratorCommit);
-  expect(manifest.source.commit).toBe(input.head);
+  expect("repository" in manifest.source && manifest.source.commit).toBe(
+    input.head,
+  );
   expect(manifest.configuration).toEqual(document);
   expect(manifest.credential).toEqual({
     id: input.credentialId,
@@ -84,6 +86,37 @@ it("binds a preparation to the saved configuration, code revision, secret versio
   });
   expect(manifest.tfvarsSha256).toMatch(/^[a-f0-9]{64}$/);
   expect(manifest.limitations).toContain("plan-not-created");
+  const databaseManifest = preparationManifest(
+    {
+      source: "database",
+      configurationId: document.id,
+      revision: 2,
+      credentialId: input.credentialId,
+    },
+    { ...snapshot, head: "2" },
+    checked,
+  );
+  expect(databaseManifest.source).toMatchObject({
+    kind: "database",
+    configurationId: document.id,
+    revision: 2,
+  });
+  expect(
+    "documentSha256" in databaseManifest.source &&
+      databaseManifest.source.documentSha256,
+  ).toMatch(/^[a-f0-9]{64}$/);
+  expect(() =>
+    preparationManifest(
+      {
+        source: "database",
+        configurationId: document.id,
+        revision: 3,
+        credentialId: input.credentialId,
+      },
+      { ...snapshot, head: "2" },
+      checked,
+    ),
+  ).toThrow();
   expect(() =>
     preparationManifest(input, { ...snapshot, head: "b".repeat(40) }, checked),
   ).toThrow();
@@ -185,6 +218,31 @@ it("requires session and CSRF, rejects caller-supplied organization/code and for
       session,
       "ghu_only_this_user",
       payload,
+    );
+    auth.tokens.get = vi.fn(async () => {
+      throw new Error("GitHub must not be used");
+    });
+    const databaseInput = {
+      source: "database",
+      configurationId: randomUUID(),
+      revision: 1,
+      credentialId: payload.credentialId,
+    };
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/v1/preparations",
+          headers,
+          payload: databaseInput,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(auth.tokens.get).not.toHaveBeenCalled();
+    expect(preparations.create).toHaveBeenLastCalledWith(
+      session,
+      null,
+      databaseInput,
     );
     expect(result.body).not.toContain("ghu_");
     expect(

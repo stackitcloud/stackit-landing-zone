@@ -79,6 +79,14 @@ export type ParameterizedTemplate = {
   settings: Values;
   parameterPolicy?: TemplateParameterPolicy | undefined;
 };
+
+function hasProjectNetwork(template: ParameterizedTemplate): boolean {
+  return (
+    template.kind === "corporate" ||
+    (template.kind === "public" && template.settings.network_enabled === true)
+  );
+}
+
 const defaults: Record<TemplateParameterPath, JsonValue> = {
   env: "dev",
   secretsmanager_enabled: true,
@@ -200,9 +208,9 @@ export function validateTemplateParameterPolicy(
       continue;
     }
     if (source.source === "binding") {
-      if (path !== "observability.acl" || template.kind !== "corporate")
+      if (path !== "observability.acl" || !hasProjectNetwork(template))
         throw new Error(
-          "Die Projektnetz-Bindung benötigt ein Corporate-Projekt und gilt nur für die Observability-ACL.",
+          "Die Projektnetz-Bindung benötigt ein aktiviertes lokales Projektnetz oder ein Corporate-Netz und gilt nur für die Observability-ACL.",
         );
       const acl = get(template.settings, "observability.acl");
       if (!Array.isArray(acl) || acl.length)
@@ -369,11 +377,11 @@ export function resolveTemplateParameters(
   }
   if (fields["observability.acl"]?.source === "binding") {
     if (
-      template.kind !== "corporate" ||
+      !hasProjectNetwork(template) ||
       get(settings, "observability.enabled") !== true
     )
       throw new Error(
-        "Die Projektnetz-Bindung benötigt ein Corporate-Netzwerk und eingeschaltetes STACKIT Observability.",
+        "Die Projektnetz-Bindung benötigt ein Projektnetz und eingeschaltetes STACKIT Observability.",
       );
     settings.observability = {
       ...objectValue(settings.observability),

@@ -1,5 +1,6 @@
 import { type JsonValue, objectValue, textValue } from "@lzc/domain";
 import { useState } from "react";
+import { t } from "../i18n";
 
 const issuer = "https://token.actions.githubusercontent.com";
 const audience = "sts.accounts.stackit.cloud";
@@ -24,21 +25,18 @@ export function FederatedIdentityEditor({
   return (
     <section
       className="federation-editor"
-      aria-label="Service-Account-Föderation"
+      aria-label={t("Service-Account-Föderation")}
     >
-      <h3>Service-Account-Föderation für CI/CD</h3>
+      <h3>{t("Service-Account-Föderation für CI/CD")}</h3>
       <p>
-        Optional: Eine externe Pipeline darf sich mit ihrem kurzlebigen
-        OIDC-Token am Management-Service-Account der Landing Zone anmelden. Sie
-        erhält dessen Berechtigungen. Für eine kleine Landing Zone und den
-        aktuellen Configurator-Runner ist diese Komponente nicht erforderlich.
+        {t(
+          "Optional: Eine externe Pipeline darf sich mit ihrem kurzlebigen OIDC-Token am Management-Service-Account der Landing Zone anmelden. Sie erhält dessen Berechtigungen. Für eine kleine Landing Zone und den aktuellen Configurator-Runner ist diese Komponente nicht erforderlich.",
+        )}
       </p>
       <p className="info-banner">
-        Dies konfiguriert Workload Identity Federation für Automatisierung,
-        nicht die Anmeldung von Menschen am Configurator oder STACKIT-Portal.
-        Die Accelerator-Konfiguration richtet weder einen Workflow noch einen
-        Token-Austausch ein und entfernt keinen bestehenden
-        Service-Account-Schlüssel.
+        {t(
+          "Dies konfiguriert Workload Identity Federation für Automatisierung, nicht die Anmeldung von Menschen am Configurator oder STACKIT-Portal. Die Accelerator-Konfiguration richtet weder einen Workflow noch einen Token-Austausch ein und entfernt keinen bestehenden Service-Account-Schlüssel.",
+        )}
       </p>
       {providers.map((raw, index) => {
         const provider = objectValue(raw);
@@ -59,13 +57,13 @@ export function FederatedIdentityEditor({
             className="federation-rule"
             // biome-ignore lint/suspicious/noArrayIndexKey: Controlled list items have no IDs and are not reordered.
             key={index}
-            aria-label={`Vertrauensregel ${index + 1}`}
+            aria-label={t("Vertrauensregel {{value0}}", { value0: index + 1 })}
           >
-            <h4>{textValue(provider.name) || "Neue Vertrauensregel"}</h4>
+            <h4>{textValue(provider.name) || t("Neue Vertrauensregel")}</h4>
             <div className="form-grid">
               <div className="field">
                 <label htmlFor={`federation-${index}-name`}>
-                  Name der Vertrauensregel
+                  {t("Name der Vertrauensregel")}
                 </label>
                 <input
                   id={`federation-${index}-name`}
@@ -75,13 +73,14 @@ export function FederatedIdentityEditor({
                   }
                 />
                 <p className="field-hint">
-                  Eindeutige Kennung im Accelerator. Änderungen an bestehenden
-                  Namen können einen Ersatz auslösen.
+                  {t(
+                    "Eindeutige Kennung im Accelerator. Änderungen an bestehenden Namen können einen Ersatz auslösen.",
+                  )}
                 </p>
               </div>
               <div className="field">
                 <label htmlFor={`federation-${index}-issuer`}>
-                  Token-Aussteller (Issuer-URL)
+                  {t("Token-Aussteller (Issuer-URL)")}
                 </label>
                 <input
                   id={`federation-${index}-issuer`}
@@ -92,22 +91,23 @@ export function FederatedIdentityEditor({
                   }
                 />
                 <p className="field-hint">
-                  Nur Tokens dieses vertrauenswürdigen OIDC-Ausstellers sollen
-                  akzeptiert werden.
+                  {t(
+                    "Nur Tokens dieses vertrauenswürdigen OIDC-Ausstellers sollen akzeptiert werden.",
+                  )}
                 </p>
               </div>
             </div>
-            <h4>Welche Tokens dürfen verwendet werden?</h4>
+            <h4>{t("Welche Tokens dürfen verwendet werden?")}</h4>
             <p>
-              Alle Bedingungen müssen zutreffen. „aud“ bezeichnet die Zielgruppe
-              des Tokens; „sub“ grenzt die zugelassene Pipeline ein. Jeder Wert
-              wird exakt verglichen, ohne Platzhalter.
+              {t(
+                "Alle Bedingungen müssen zutreffen. „aud“ bezeichnet die Zielgruppe des Tokens; „sub“ grenzt die zugelassene Pipeline ein. Jeder Wert wird exakt verglichen, ohne Platzhalter.",
+              )}
             </p>
             {!assertions.some(
               (a) => textValue(objectValue(a).item) === "aud",
             ) && (
               <p role="alert" className="validation-box">
-                Eine Bedingung für die Zielgruppe „aud“ ist erforderlich.
+                {t("Eine Bedingung für die Zielgruppe „aud“ ist erforderlich.")}
               </p>
             )}
             {assertions.map((rawAssertion, row) => {
@@ -119,7 +119,7 @@ export function FederatedIdentityEditor({
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor={`federation-${index}-${row}-claim`}>
-                        Token-Merkmal (Claim)
+                        {t("Token-Merkmal (Claim)")}
                       </label>
                       <input
                         id={`federation-${index}-${row}-claim`}
@@ -132,7 +132,7 @@ export function FederatedIdentityEditor({
                     </div>
                     <div className="field">
                       <label htmlFor={`federation-${index}-${row}-operator`}>
-                        Vergleich
+                        {t("Vergleich")}
                       </label>
                       <select
                         id={`federation-${index}-${row}-operator`}
@@ -143,22 +143,23 @@ export function FederatedIdentityEditor({
                       >
                         {operator !== "equals" && (
                           <option value={operator}>
-                            {operator || "Nicht gesetzt"} – importierter Wert
+                            {operator || t("Nicht gesetzt")}{" "}
+                            {t("– importierter Wert")}
                           </option>
                         )}
-                        <option value="equals">Ist genau gleich</option>
+                        <option value="equals">{t("Ist genau gleich")}</option>
                       </select>
                       {operator !== "equals" && (
                         <p className="field-hint">
-                          Der aktuelle STACKIT-Provider unterstützt nur
-                          „equals“. Der importierte Wert bleibt bis zu deiner
-                          Änderung erhalten.
+                          {t(
+                            "Der aktuelle STACKIT-Provider unterstützt nur „equals“. Der importierte Wert bleibt bis zu deiner Änderung erhalten.",
+                          )}
                         </p>
                       )}
                     </div>
                     <div className="field">
                       <label htmlFor={`federation-${index}-${row}-value`}>
-                        Erwarteter Wert
+                        {t("Erwarteter Wert")}
                       </label>
                       <input
                         id={`federation-${index}-${row}-value`}
@@ -175,7 +176,9 @@ export function FederatedIdentityEditor({
                     onClick={() => {
                       if (
                         window.confirm(
-                          "Bedingung entfernen? Dies kann den erlaubten Zugriff erweitern.",
+                          t(
+                            "Bedingung entfernen? Dies kann den erlaubten Zugriff erweitern.",
+                          ),
                         )
                       )
                         update(index, {
@@ -183,7 +186,7 @@ export function FederatedIdentityEditor({
                         });
                     }}
                   >
-                    Bedingung entfernen
+                    {t("Bedingung entfernen")}
                   </button>
                 </div>
               );
@@ -200,7 +203,7 @@ export function FederatedIdentityEditor({
                 })
               }
             >
-              Bedingung hinzufügen
+              {t("Bedingung hinzufügen")}
             </button>
             <button
               type="button"
@@ -208,34 +211,35 @@ export function FederatedIdentityEditor({
               onClick={() => {
                 if (
                   window.confirm(
-                    "Diese Vertrauensregel aus der Konfiguration entfernen? Bereits bereitgestellte Zugänge ändern sich erst durch einen gesonderten Apply.",
+                    t(
+                      "Diese Vertrauensregel aus der Konfiguration entfernen? Bereits bereitgestellte Zugänge ändern sich erst durch einen gesonderten Apply.",
+                    ),
                   )
                 )
                   onChange(providers.filter((_, i) => i !== index));
               }}
             >
-              Vertrauensregel entfernen
+              {t("Vertrauensregel entfernen")}
             </button>
           </section>
         );
       })}
       <datalist id="federation-claims">
-        <option value="aud">Zielgruppe</option>
-        <option value="sub">Identität der Pipeline</option>
-        <option value="email">E-Mail-Claim</option>
+        <option value="aud">{t("Zielgruppe")}</option>
+        <option value="sub">{t("Identität der Pipeline")}</option>
+        <option value="email">{t("E-Mail-Claim")}</option>
       </datalist>
       <details>
-        <summary>GitHub-Actions-Zugang hinzufügen</summary>
+        <summary>{t("GitHub-Actions-Zugang hinzufügen")}</summary>
         <p>
-          Beschränke den Zugang auf ein Repository und einen Branch. Dieser
-          Vorschlag gilt für Jobs ohne GitHub Environment und ohne angepassten
-          Subject-Claim. Jobs mit einem Environment benötigen eine eigene, exakt
-          passende „sub“-Bedingung.
+          {t(
+            "Beschränke den Zugang auf ein Repository und einen Branch. Dieser Vorschlag gilt für Jobs ohne GitHub Environment und ohne angepassten Subject-Claim. Jobs mit einem Environment benötigen eine eigene, exakt passende „sub“-Bedingung.",
+          )}
         </p>
         <div className="form-grid">
           <div className="field">
             <label htmlFor="federation-new-name">
-              Name der neuen Vertrauensregel
+              {t("Name der neuen Vertrauensregel")}
             </label>
             <input
               id="federation-new-name"
@@ -244,7 +248,9 @@ export function FederatedIdentityEditor({
             />
           </div>
           <div className="field">
-            <label htmlFor="federation-repository">GitHub-Repository</label>
+            <label htmlFor="federation-repository">
+              {t("GitHub-Repository")}
+            </label>
             <input
               id="federation-repository"
               placeholder="organisation/repository"
@@ -253,7 +259,9 @@ export function FederatedIdentityEditor({
             />
           </div>
           <div className="field">
-            <label htmlFor="federation-branch">Zugelassener Branch</label>
+            <label htmlFor="federation-branch">
+              {t("Zugelassener Branch")}
+            </label>
             <input
               id="federation-branch"
               value={branch}
@@ -262,11 +270,13 @@ export function FederatedIdentityEditor({
           </div>
         </div>
         <p>
-          Der Workflow muss ein OIDC-Token mit der Audience{" "}
-          <code>{audience}</code> anfordern. Dies ist kein GitHub-Passwort oder
-          persönliches Zugriffstoken.
+          {t("Der Workflow muss ein OIDC-Token mit der Audience")}{" "}
+          <code>{audience}</code>{" "}
+          {t(
+            "anfordern. Dies ist kein GitHub-Passwort oder persönliches Zugriffstoken.",
+          )}
         </p>
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{t(error)}</p>}
         <button
           type="button"
           className="button secondary"
@@ -307,15 +317,15 @@ export function FederatedIdentityEditor({
             setError("");
           }}
         >
-          GitHub-Vertrauensregel übernehmen
+          {t("GitHub-Vertrauensregel übernehmen")}
         </button>
       </details>
       <details>
-        <summary>Anderen OIDC-Aussteller konfigurieren</summary>
+        <summary>{t("Anderen OIDC-Aussteller konfigurieren")}</summary>
         <p>
-          Für erfahrene Anwender: Issuer, Audience und mindestens eine
-          zusätzliche Eingrenzung müssen zum tatsächlichen Token deiner Pipeline
-          passen. Der neue Entwurf ist vor dem Speichern zu vervollständigen.
+          {t(
+            "Für erfahrene Anwender: Issuer, Audience und mindestens eine zusätzliche Eingrenzung müssen zum tatsächlichen Token deiner Pipeline passen. Der neue Entwurf ist vor dem Speichern zu vervollständigen.",
+          )}
         </p>
         <button
           type="button"
@@ -334,7 +344,7 @@ export function FederatedIdentityEditor({
             ])
           }
         >
-          Eigene Vertrauensregel hinzufügen
+          {t("Eigene Vertrauensregel hinzufügen")}
         </button>
       </details>
       <p className="field-hint">
@@ -343,7 +353,7 @@ export function FederatedIdentityEditor({
           target="_blank"
           rel="noreferrer"
         >
-          STACKIT-Provider: Service-Account-Föderation
+          {t("STACKIT-Provider: Service-Account-Föderation")}
         </a>
       </p>
     </section>

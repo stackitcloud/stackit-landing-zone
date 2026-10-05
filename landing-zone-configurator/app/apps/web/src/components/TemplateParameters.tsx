@@ -8,6 +8,7 @@ import {
   type Values,
 } from "@lzc/domain";
 import { useEffect, useId, useState } from "react";
+import { t } from "../i18n";
 import { useCatalogueOptions } from "./CloudCatalogues";
 
 function read(settings: Values, path: string): JsonValue | undefined {
@@ -50,6 +51,16 @@ const defaults: Record<string, JsonValue> = {
   "observability.plan_name": "Observability-Starter-EU01",
   "observability.acl": [],
 };
+
+export function templateObservabilityConfigurable(
+  template: ProjectTemplateDraft,
+): boolean {
+  return (
+    template.parameterPolicy?.fields["observability.enabled"]?.source ===
+      "input" || read(template.settings, "observability.enabled") === true
+  );
+}
+
 function ListInput({
   label,
   value,
@@ -65,7 +76,7 @@ function ListInput({
   useEffect(() => setText(serialized), [serialized]);
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>{t(label)}</label>
       <textarea
         id={id}
         rows={3}
@@ -83,7 +94,7 @@ function ListInput({
         }
       />
       <p className="field-hint">
-        Ein Wert pro Zeile; beim Verlassen des Felds übernehmen.
+        {t("Ein Wert pro Zeile; beim Verlassen des Felds übernehmen.")}
       </p>
     </div>
   );
@@ -104,27 +115,29 @@ function ValueInput({
   const id = useId();
   if (type === "string-list" && choices?.length)
     return (
-      <fieldset>
-        <legend>{label}</legend>
-        {choices.map((choice) => (
-          <label key={choice} className="parameter-choice">
-            <input
-              type="checkbox"
-              checked={Array.isArray(value) && value.includes(choice)}
-              onChange={(event) => {
-                const selected = Array.isArray(value)
-                  ? value.filter((v): v is string => typeof v === "string")
-                  : [];
-                onChange(
-                  event.target.checked
-                    ? [...selected, choice]
-                    : selected.filter((v) => v !== choice),
-                );
-              }}
-            />
-            {choice}
-          </label>
-        ))}
+      <fieldset className="parameter-options">
+        <legend>{t(label)}</legend>
+        <div className="parameter-choice-list">
+          {choices.map((choice) => (
+            <label key={choice} className="parameter-choice">
+              <input
+                type="checkbox"
+                checked={Array.isArray(value) && value.includes(choice)}
+                onChange={(event) => {
+                  const selected = Array.isArray(value)
+                    ? value.filter((v): v is string => typeof v === "string")
+                    : [];
+                  onChange(
+                    event.target.checked
+                      ? [...selected, choice]
+                      : selected.filter((v) => v !== choice),
+                  );
+                }}
+              />
+              <span>{choice}</span>
+            </label>
+          ))}
+        </div>
       </fieldset>
     );
   if (type === "string-list")
@@ -141,16 +154,18 @@ function ValueInput({
     );
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>{t(label)}</label>
       {type === "boolean" ? (
         <select
           id={id}
           value={value === undefined ? "" : String(value)}
           onChange={(e) => onChange(e.target.value === "true")}
         >
-          {value === undefined && <option value="">Bitte auswählen</option>}
-          <option value="true">Eingeschaltet</option>
-          <option value="false">Ausgeschaltet</option>
+          {value === undefined && (
+            <option value="">{t("Bitte auswählen")}</option>
+          )}
+          <option value="true">{t("Eingeschaltet")}</option>
+          <option value="false">{t("Ausgeschaltet")}</option>
         </select>
       ) : choices?.length ? (
         <select
@@ -161,8 +176,10 @@ function ValueInput({
           {!choices.includes(String(value)) && (
             <option value={typeof value === "string" ? value : ""}>
               {value === undefined
-                ? "Bitte auswählen"
-                : `${String(value)} (nicht freigegeben)`}
+                ? t("Bitte auswählen")
+                : t("{{value0}} (nicht freigegeben)", {
+                    value0: String(value),
+                  })}
             </option>
           )}
           {choices.map((choice) => (
@@ -200,32 +217,36 @@ function AllowedValues({
     return <ListInput label={label} value={value} onChange={onChange} />;
   const available = new Set(options.map((option) => option.value));
   return (
-    <fieldset>
-      <legend>{label}</legend>
-      {[
-        ...options,
-        ...value
-          .filter((choice) => !available.has(choice))
-          .map((choice) => ({
-            value: choice,
-            label: `${choice} (nicht im geladenen Katalog)`,
-          })),
-      ].map((option) => (
-        <label key={option.value} className="parameter-choice">
-          <input
-            type="checkbox"
-            checked={value.includes(option.value)}
-            onChange={(event) =>
-              onChange(
-                event.target.checked
-                  ? [...value, option.value]
-                  : value.filter((choice) => choice !== option.value),
-              )
-            }
-          />
-          {option.label}
-        </label>
-      ))}
+    <fieldset className="parameter-options">
+      <legend>{t(label)}</legend>
+      <div className="parameter-choice-list">
+        {[
+          ...options,
+          ...value
+            .filter((choice) => !available.has(choice))
+            .map((choice) => ({
+              value: choice,
+              label: t("{{value0}} (nicht im geladenen Katalog)", {
+                value0: choice,
+              }),
+            })),
+        ].map((option) => (
+          <label key={option.value} className="parameter-choice">
+            <input
+              type="checkbox"
+              checked={value.includes(option.value)}
+              onChange={(event) =>
+                onChange(
+                  event.target.checked
+                    ? [...value, option.value]
+                    : value.filter((choice) => choice !== option.value),
+                )
+              }
+            />
+            <span>{t(option.label)}</span>
+          </label>
+        ))}
+      </div>
     </fieldset>
   );
 }
@@ -251,7 +272,11 @@ export function TemplateParameters({
     "role_assignments[*].role",
     template.region,
   );
-  const fields = templateParameterFields;
+  const fields = templateParameterFields.filter(
+    (field) =>
+      !["observability.plan_name", "observability.acl"].includes(field.path) ||
+      templateObservabilityConfigurable(template),
+  );
   const policy: TemplateParameterPolicy = template.parameterPolicy ?? {
     schema_version: 1,
     fields: {},
@@ -270,26 +295,29 @@ export function TemplateParameters({
   if (template.kind === "sandbox")
     return (
       <p className="info-banner">
-        Sandbox-Einstellungen bleiben vorerst fest vorgegeben. Ihre Parameter
-        müssen gesondert gegen das Sandbox-Modul qualifiziert werden.
+        {t(
+          "Sandbox-Einstellungen bleiben vorerst fest vorgegeben. Ihre Parameter müssen gesondert gegen das Sandbox-Modul qualifiziert werden.",
+        )}
       </p>
     );
   return (
     <section
       className="template-parameters"
-      aria-label={`Eingaben und Verknüpfungen: ${template.name}`}
+      aria-label={t("Eingaben und Verknüpfungen: {{value0}}", {
+        value0: template.name,
+      })}
     >
-      <h4>Eingaben und Verknüpfungen</h4>
+      <h4>{t("Eingaben und Verknüpfungen")}</h4>
       <p>
-        Lege fest, was vorgegeben ist und was ein Application Owner bei der
-        Bestellung auswählen darf. Alle weiteren Einstellungen, Region und SNA
-        bleiben fest. Organisation und verantwortliche Person stammen später aus
-        dem verifizierten Kontext.
+        {t(
+          "Lege fest, was vorgegeben ist und was ein Application Owner bei der Bestellung auswählen darf. Alle weiteren Einstellungen, Region und SNA bleiben fest. Organisation und verantwortliche Person stammen später aus dem verifizierten Kontext.",
+        )}
       </p>
       {!template.parameterPolicy && (
         <p className="info-banner">
-          Bestehender Entwurf: Alle Werte bleiben fest, bis du eine Eingabe
-          ausdrücklich freigibst.
+          {t(
+            "Bestehender Entwurf: Alle Werte bleiben fest, bis du eine Eingabe ausdrücklich freigibst.",
+          )}
         </p>
       )}
       {fields.map((field) => {
@@ -316,14 +344,14 @@ export function TemplateParameters({
           return (
             <details key={field.path} className="parameter-card">
               <summary>
-                {field.label} ·{" "}
+                {t(field.label)} ·{" "}
                 {rule.source === "context"
-                  ? "Aus verifiziertem Kontext"
-                  : "Fest vorgegeben"}
+                  ? t("Aus verifiziertem Kontext")
+                  : t("Fest vorgegeben")}
               </summary>
               <div className="field">
                 <label htmlFor={`${template.id}-roles-source`}>
-                  Wertquelle: {field.label}
+                  {t("Wertquelle:")} {t(field.label)}
                 </label>
                 <select
                   id={`${template.id}-roles-source`}
@@ -341,15 +369,17 @@ export function TemplateParameters({
                     )
                   }
                 >
-                  <option value="fixed">Fest vorgegeben</option>
-                  <option value="context">Aus verifiziertem Kontext</option>
+                  <option value="fixed">{t("Fest vorgegeben")}</option>
+                  <option value="context">
+                    {t("Aus verifiziertem Kontext")}
+                  </option>
                 </select>
               </div>
               {rule.source === "context" && (
                 <>
                   <div className="field">
                     <label htmlFor={`${template.id}-roles-variable`}>
-                      Instanziierungsvariable
+                      {t("Instanziierungsvariable")}
                     </label>
                     <select
                       id={`${template.id}-roles-variable`}
@@ -357,19 +387,20 @@ export function TemplateParameters({
                       disabled
                     >
                       <option value="verified-project-owner">
-                        Projektverantwortliche Person (verifizierte
-                        STACKIT-Identität)
+                        {t(
+                          "Projektverantwortliche Person (verifizierte STACKIT-Identität)",
+                        )}
                       </option>
                     </select>
                   </div>
                   <fieldset className="role-options">
                     <legend>
-                      Rollen für die projektverantwortliche Person
+                      {t("Rollen für die projektverantwortliche Person")}
                     </legend>
                     <div className="role-filters">
                       <div className="field">
                         <label htmlFor={`${template.id}-role-search`}>
-                          Projektrollen durchsuchen
+                          {t("Projektrollen durchsuchen")}
                         </label>
                         <input
                           id={`${template.id}-role-search`}
@@ -388,12 +419,13 @@ export function TemplateParameters({
                             setSelectedRolesOnly(event.target.checked)
                           }
                         />
-                        Nur ausgewählte Rollen
+                        {t("Nur ausgewählte Rollen")}
                       </label>
                     </div>
                     <p className="field-hint" role="status">
-                      {assigned.length} ausgewählt · {visibleRoles.length} von{" "}
-                      {roleOptions.length} Rollen
+                      {assigned.length} {t("ausgewählt ·")}{" "}
+                      {visibleRoles.length} von {roleOptions.length}{" "}
+                      {t("Rollen")}
                     </p>
                     <div className="role-list">
                       {visibleRoles.map((role) => (
@@ -419,21 +451,21 @@ export function TemplateParameters({
                     </div>
                     {!visibleRoles.length && roleOptions.length > 0 && (
                       <p className="field-hint">
-                        Keine Rollen für diesen Filter.
+                        {t("Keine Rollen für diesen Filter.")}
                       </p>
                     )}
                   </fieldset>
                   {!roleOptions.length && (
                     <p className="field-hint">
-                      Kein Rollenkatalog geladen und keine eigene Projektrolle
-                      definiert.
+                      {t(
+                        "Kein Rollenkatalog geladen und keine eigene Projektrolle definiert.",
+                      )}
                     </p>
                   )}
                   <p className="field-hint">
-                    Die Identität wird bei der Instanziierung geprüft. Ein
-                    GitHub-Login ist keine STACKIT-Identität. Rollen aus dem
-                    Referenzprojekt benötigen im Zielprojekt eine entsprechende
-                    Rollendefinition.
+                    {t(
+                      "Die Identität wird bei der Instanziierung geprüft. Ein GitHub-Login ist keine STACKIT-Identität. Rollen aus dem Referenzprojekt benötigen im Zielprojekt eine entsprechende Rollendefinition.",
+                    )}
                   </p>
                 </>
               )}
@@ -445,16 +477,16 @@ export function TemplateParameters({
         return (
           <details key={field.path} className="parameter-card">
             <summary>
-              {field.label} ·{" "}
+              {t(field.label)} ·{" "}
               {rule.source === "fixed"
-                ? "Fest vorgegeben"
+                ? t("Fest vorgegeben")
                 : rule.source === "input"
-                  ? "Bei Bestellung auswählbar"
-                  : "Automatisch verknüpft"}
+                  ? t("Bei Bestellung auswählbar")
+                  : t("Automatisch verknüpft")}
             </summary>
             <div className="field">
               <label htmlFor={`${template.id}-${field.path}-source`}>
-                Wertquelle: {field.label}
+                {t("Wertquelle:")} {t(field.label)}
               </label>
               <select
                 id={`${template.id}-${field.path}-source`}
@@ -469,7 +501,9 @@ export function TemplateParameters({
                       Array.isArray(current) &&
                       current.length &&
                       !window.confirm(
-                        "Die feste ACL durch eine Projektnetz-Verknüpfung ersetzen? Diese Verknüpfung ist noch nicht zur Ausführung freigegeben.",
+                        t(
+                          "Die feste ACL durch eine Projektnetz-Verknüpfung ersetzen? Diese Verknüpfung ist noch nicht zur Ausführung freigegeben.",
+                        ),
                       )
                     )
                       return;
@@ -525,31 +559,41 @@ export function TemplateParameters({
                     });
                 }}
               >
-                <option value="fixed">Fest vorgegeben</option>
+                <option value="fixed">{t("Fest vorgegeben")}</option>
                 {(field.sources as readonly string[]).includes("input") && (
-                  <option value="input">Bei Bestellung auswählbar</option>
+                  <option value="input">
+                    {t("Bei Bestellung auswählbar")}
+                  </option>
                 )}
                 {(field.sources as readonly string[]).includes("binding") && (
                   <option
                     value="binding"
-                    disabled={template.kind !== "corporate"}
+                    disabled={
+                      template.kind !== "corporate" &&
+                      !(
+                        template.kind === "public" &&
+                        template.settings.network_enabled === true
+                      )
+                    }
                   >
-                    Eigenes Projektnetz (noch nicht ausführbar)
+                    {t("Eigenes Projektnetz (noch nicht ausführbar)")}
                   </option>
                 )}
               </select>
               {field.path === "observability.acl" &&
                 template.kind === "public" && (
                   <p className="field-hint">
-                    Public-Vorlagen erzeugen kein eigenes Projektnetz. Diese
-                    Bindung benötigt ein Corporate-Netz und einen nachgewiesenen
-                    öffentlichen Egress.
+                    {template.settings.network_enabled !== true &&
+                      "Für diese Verknüpfung zuerst ein lokales Projektnetz aktivieren. "}
+                    {t(
+                      "Für Public-Projekte ist die öffentliche Egress-Adresse noch nicht qualifiziert. Ein lokales Projektnetz allein liefert keine nachgewiesene Quelladresse für die Observability-ACL.",
+                    )}
                   </p>
                 )}
             </div>
             {rule.source === "fixed" && (
               <ValueInput
-                label={`Fester Wert: ${field.label}`}
+                label={t("Fester Wert: {{value0}}", { value0: t(field.label) })}
                 type={field.type}
                 value={current}
                 choices={
@@ -570,7 +614,9 @@ export function TemplateParameters({
                   <AllowedValues
                     path={field.path}
                     region={template.region}
-                    label={`Erlaubte Werte: ${field.label}`}
+                    label={t("Erlaubte Werte: {{value0}}", {
+                      value0: t(field.label),
+                    })}
                     value={rule.choices ?? []}
                     onChange={(choices) => {
                       const next = { ...rule, choices };
@@ -599,7 +645,7 @@ export function TemplateParameters({
                       })
                     }
                   />{" "}
-                  Pflichtangabe bei Bestellung
+                  {t("Pflichtangabe bei Bestellung")}
                 </label>
                 <label>
                   <input
@@ -631,11 +677,13 @@ export function TemplateParameters({
                       setPolicy(field.path, next);
                     }}
                   />{" "}
-                  Vorauswahl anbieten
+                  {t("Vorauswahl anbieten")}
                 </label>
                 {rule.default !== undefined && (
                   <ValueInput
-                    label={`Vorauswahl: ${field.label}`}
+                    label={t("Vorauswahl: {{value0}}", {
+                      value0: t(field.label),
+                    })}
                     type={field.type}
                     value={rule.default}
                     choices={rule.choices}
@@ -649,7 +697,7 @@ export function TemplateParameters({
                 )}
                 <div className="field">
                   <label htmlFor={`${template.id}-${field.path}-hint`}>
-                    Erklärung für Besteller: {field.label}
+                    {t("Erklärung für Besteller:")} {t(field.label)}
                   </label>
                   <input
                     id={`${template.id}-${field.path}-hint`}
@@ -666,37 +714,34 @@ export function TemplateParameters({
             )}
             {rule.source === "binding" && (
               <p className="validation-box">
-                Referenz auf das eigene Projektnetz dieser Instanz. Die Adresse
-                steht erst bei der Bereitstellung fest. STACKIT Observability
-                filtert öffentliche Quelladressen; die Zuordnung zum wirksamen
-                Egress ist noch nicht qualifiziert. Veröffentlichung und
-                Ausführung dieser Verknüpfung bleiben gesperrt.
+                {t(
+                  "Referenz auf das eigene Projektnetz dieser Instanz. Die Adresse steht erst bei der Bereitstellung fest. STACKIT Observability filtert öffentliche Quelladressen; die Zuordnung zum wirksamen Egress ist noch nicht qualifiziert. Veröffentlichung und Ausführung dieser Verknüpfung bleiben gesperrt.",
+                )}
               </p>
             )}
             {field.path === "env" && (
               <p className="field-hint">
-                Stage wird bei Anlage ausgewählt. Sie beeinflusst
-                Ressourcennamen; spätere Änderungen benötigen einen gesondert
-                geprüften Update-Vorgang.
+                {t(
+                  "Stage wird bei Anlage ausgewählt. Sie beeinflusst Ressourcennamen; spätere Änderungen benötigen einen gesondert geprüften Update-Vorgang.",
+                )}
               </p>
             )}
             {field.path === "observability.acl" && (
               <p className="field-hint">
-                Eine leere feste ACL begrenzt den Zugriff nicht. Für eine
-                Bestellauswahl gültige CIDRs in die erlaubten Werte aufnehmen.
-                Keine automatische Freigabe bei einer fehlenden
-                Netzwerkreferenz.
+                {t(
+                  "Eine leere feste ACL begrenzt den Zugriff nicht. Für eine Bestellauswahl gültige CIDRs in die erlaubten Werte aufnehmen. Keine automatische Freigabe bei einer fehlenden Netzwerkreferenz.",
+                )}
               </p>
             )}
           </details>
         );
       })}
       <details className="parameter-preview">
-        <summary>Bestellung testen</summary>
+        <summary>{t("Bestellung testen")}</summary>
         <p>
-          Lokale Vorschau des späteren Bestellformulars. Es werden keine
-          Ressourcen erstellt und keine Cloud-Zugriffe ausgeführt.
-          Veröffentlichung und Application-Self-Service folgen separat.
+          {t(
+            "Lokale Vorschau des späteren Bestellformulars. Es werden keine Ressourcen erstellt und keine Cloud-Zugriffe ausgeführt. Veröffentlichung und Bestellungen für Application Landing Zones folgen separat.",
+          )}
         </p>
         {fields
           .filter((field) => policy.fields[field.path]?.source === "input")
@@ -706,7 +751,9 @@ export function TemplateParameters({
             return (
               <div key={field.path}>
                 <ValueInput
-                  label={`Bestellung: ${field.label}`}
+                  label={t("Bestellung: {{value0}}", {
+                    value0: t(field.label),
+                  })}
                   type={field.type}
                   value={inputs[field.path] ?? rule.default}
                   choices={rule.choices}
@@ -723,28 +770,30 @@ export function TemplateParameters({
           className="text-button"
           onClick={() => setInputs({})}
         >
-          Testeingaben zurücksetzen
+          {t("Testeingaben zurücksetzen")}
         </button>
         {!preview.valid ? (
           <p role="alert">{preview.error}</p>
         ) : (
           <>
-            <h5>Wirksame Werte und Herkunft</h5>
+            <h5>{t("Wirksame Werte und Herkunft")}</h5>
             <dl>
               {fields.map((field) => (
                 <div key={field.path}>
-                  <dt>{field.label}</dt>
+                  <dt>{t(field.label)}</dt>
                   <dd>
                     {preview.result.contextBindings.some(
                       (binding) =>
                         binding.path === field.path &&
                         binding.status === "unresolved",
                     )
-                      ? "Projektverantwortliche Person wird bei der Instanziierung zugeordnet"
+                      ? t(
+                          "Projektverantwortliche Person wird bei der Instanziierung zugeordnet",
+                        )
                       : preview.result.bindings.some(
                             (b) => b.path === field.path,
                           )
-                        ? "Wird aus der Ressourcenverknüpfung ermittelt"
+                        ? t("Wird aus der Ressourcenverknüpfung ermittelt")
                         : displayValue(
                             read(preview.result.settings, field.path),
                           )}{" "}
@@ -755,7 +804,7 @@ export function TemplateParameters({
             </dl>
             {preview.result.qualificationBlockers.map((message) => (
               <p className="validation-box" key={message}>
-                {message}
+                {t(message)}
               </p>
             ))}
           </>

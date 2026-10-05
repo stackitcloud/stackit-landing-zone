@@ -78,13 +78,32 @@ kein Import bestehender Ressourcen und keine Anweisung, die Plattform parallel
 neu auszurollen. Bereits bestehende Ressourcen benötigen den separat geplanten
 Migrations-/State-Lebenszyklus.
 
+## Aktueller Katalogstand (2026-10-05)
+
+Tenantgebundene Veroeffentlichung, unveraenderliche Versionen, freigegebene
+Anwendereingaben und forklose Application-Owner-Bestellungen sind implementiert.
+Platform Engineer waehlen beim Publizieren `approval-required` (Standard) oder
+`direct`. Die Policy gehoert zur unveraenderlichen Version und wird serverseitig
+in die Bestellung uebernommen; eine Policy-Aenderung erzeugt eine neue Version.
+Clients koennen sie bei Bestellung oder Plan-Input nicht ueberschreiben.
+
+Eine ausdruecklich bestaetigte Stilllegung erzeugt einen unveraenderlichen,
+idempotenten Nachweis. Stillgelegte Versionen verschwinden aus der AO-Auswahl;
+neue Bestellungen werden auch serverseitig gesperrt. Bestehende Instanzen und
+idempotente Bestellwiederholungen bleiben erhalten. Parallel laufende Bestellung
+und Stilllegung verwenden dieselbe transaktionale Sperre. Erneutes Publizieren
+stillgelegter Inhalte erzeugt eine neue Version statt die alte wiederzubeleben.
+
+Die zweisprachige Publisher-Oberflaeche nutzt explizite API-Capabilities. Die
+Migrationen 021/022 sind lokal getestet, aber noch nicht in der laufenden
+Kunden-API aktiviert. `direct` aktiviert weder Cloud-Ausfuehrung noch einen
+automatischen Apply; eine ausdrueckliche Kunden-Apply-Freigabe bleibt erforderlich.
+
 ## Noch offen
 
-[#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) bleibt offen:
-tenantgebundene Veröffentlichung, unveränderliche Versionen, freigegebene
-Anwendereingaben und direkte/genehmigungspflichtige Policy. Die
-Application-Owner-Sicht bekommt erst veröffentlichte, berechtigte Angebote;
-lokale oder private Fork-Entwürfe werden dort nicht angezeigt.
+[#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) bleibt fuer
+die produktive Veroeffentlichungsabnahme unter autoritativ verifizierter
+Tenantbindung offen. Private Entwuerfe werden nicht im AO-Katalog angezeigt.
 
 [#91](https://github.com/stackitcloud/stackit-landing-zone/issues/91) und
 [#93](https://github.com/stackitcloud/stackit-landing-zone/issues/93) liefern die

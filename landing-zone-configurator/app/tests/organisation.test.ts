@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
+import { ApplicationError } from "../apps/api/src/applications/service.js";
+import { platformAccessError } from "../apps/api/src/auth/platform-access.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import type { Session } from "../apps/api/src/auth/store.js";
 
@@ -43,7 +45,29 @@ function setup() {
     archive: vi.fn(async () => {}),
     editMember: vi.fn(async () => {}),
   };
-  const app = buildApp({ auth, organisations: service });
+  const applications = {
+    listTemplates: vi.fn(async () => []),
+    retire: vi.fn(async () => ({
+      versionId: randomUUID(),
+      retiredAt: new Date().toISOString(),
+      retiredBy: session.userId,
+    })),
+    listInstances: vi.fn(async () => []),
+    listPlatformContracts: vi.fn(async () => []),
+    preparePlanInput: vi.fn(async () => {
+      throw new ApplicationError(409, "application_platform_contract_required");
+    }),
+    approvePlatformContract: vi.fn(async () => {
+      throw new ApplicationError(403, "application_access_denied");
+    }),
+    publish: vi.fn(async () => {
+      throw new ApplicationError(403, "application_access_denied");
+    }),
+    order: vi.fn(async () => {
+      throw new ApplicationError(409, "idempotency_conflict");
+    }),
+  };
+  const app = buildApp({ auth, organisations: service, applications });
   apps.push(app);
   const headers = {
     cookie: `__Host-lzc-session=${"b".repeat(43)}`,
@@ -51,8 +75,143 @@ function setup() {
     "x-lzc-csrf": session.csrfToken,
     "x-lzc-tenant": session.tenantId,
   };
-  return { app, service, headers };
+  return { app, service, headers, applications, auth };
 }
+
+it("protects template retirement with current tenant, origin, CSRF and a valid version ID", async () => {
+  const { app, headers, applications } = setup();
+  const versionId = randomUUID();
+  const url = `/api/v1/applications/templates/${versionId}/retire`;
+  const payload = { confirmRetirement: true };
+  expect(
+    (await app.inject({ method: "POST", url, headers, payload })).statusCode,
+  ).toBe(200);
+  expect(applications.retire).toHaveBeenCalledWith(session, versionId, payload);
+  applications.retire.mockClear();
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/applications/templates/not-a-version/retire",
+        headers,
+        payload,
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect(applications.retire).not.toHaveBeenCalled();
+});
+
+it("allows organisation platform engineers to access credentials, catalogues and platform plans but denies application owners", () => {
+  const engineer = {
+    ...session,
+    tenantKind: "organisation" as const,
+    productRoles: ["platform-engineer" as const],
+  };
+  const owner = { ...engineer, productRoles: ["application-owner" as const] };
+  for (const path of [
+    "/api/v1/credentials",
+    "/api/v1/cloud-catalogues/automatic",
+    "/api/v1/preparations",
+    "/api/v1/plans",
+  ]) {
+    expect(platformAccessError(engineer, path)).toBeNull();
+    expect(platformAccessError(owner, path)).toBe("platform_engineer_required");
+  }
+});
+
+it("keeps the original authenticated tenant throughout an application request", async () => {
+  const { app, applications, headers, auth } = setup();
+  vi.mocked(auth.store.resolveSession)
+    .mockResolvedValueOnce(session)
+    .mockResolvedValueOnce({ ...session, tenantId: randomUUID() });
+  expect(
+    (await app.inject({ url: "/api/v1/applications/templates", headers }))
+      .statusCode,
+  ).toBe(200);
+  expect(auth.store.resolveSession).toHaveBeenCalledTimes(1);
+  expect(applications.listTemplates).toHaveBeenCalledWith(session);
+});
+
+it("scopes every application read and mutation to the authenticated active tenant", async () => {
+  const { app, applications, headers } = setup();
+  for (const resource of ["templates", "instances"]) {
+    const url = `/api/v1/applications/${resource}`;
+    expect((await app.inject({ url })).statusCode).toBe(401);
+    expect(
+      (await app.inject({ url, headers: { cookie: headers.cookie } }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          url,
+          headers: { ...headers, "x-lzc-tenant": randomUUID() },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url,
+          headers: { ...headers, origin: "https://attacker.example" },
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url,
+          headers: { cookie: headers.cookie, "x-lzc-tenant": session.tenantId },
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(403);
+  }
+  for (const operation of Object.values(applications))
+    expect(operation).not.toHaveBeenCalled();
+  expect(
+    (
+      await app.inject({ url: "/api/v1/applications/templates", headers })
+    ).json(),
+  ).toEqual({
+    versions: [],
+    retirementEnabled: true,
+    deploymentPolicyEnabled: true,
+  });
+  expect(applications.listTemplates).toHaveBeenCalledWith(session);
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/applications/templates",
+        headers,
+        payload: {},
+      })
+    ).json(),
+  ).toEqual({ error: "application_access_denied" });
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/applications/instances",
+        headers,
+        payload: {},
+      })
+    ).statusCode,
+  ).toBe(409);
+});
 it("requires authentication and same-origin CSRF on all organisation mutations", async () => {
   const { app, service, headers } = setup();
   const endpoints = [

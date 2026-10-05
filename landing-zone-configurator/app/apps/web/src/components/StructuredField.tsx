@@ -5,6 +5,7 @@ import {
   regionalConnectivityType,
 } from "@lzc/domain";
 import { useId, useState } from "react";
+import { t } from "../i18n";
 import {
   useCatalogueOptions,
   useCatalogueRoleTemplates,
@@ -41,6 +42,7 @@ export function StructuredField({
   networkAreaKeys = {},
   regionContext = "eu01",
   roleNames = [],
+  hideInactiveDetails = false,
 }: {
   name: string;
   type: InputType;
@@ -57,6 +59,7 @@ export function StructuredField({
   networkAreaKeys?: Record<string, string[]>;
   regionContext?: string;
   roleNames?: string[];
+  hideInactiveDetails?: boolean;
 }) {
   const id = useId();
   const [newKey, setNewKey] = useState("");
@@ -100,35 +103,44 @@ export function StructuredField({
       ]
     : path.endsWith("role_assignments[*].role") && projectRoleNames.length
       ? projectRoleNames
-      : path.endsWith(".network_area_key")
-        ? (networkAreaKeys[regionContext] ?? [])
-        : path === "firewall_config.aliases[*].type"
-          ? [
-              "host",
-              "network",
-              "port",
-              "url",
-              "urltable",
-              "urljson",
-              "geoip",
-              "asn",
-              "networkgroup",
-              "mac",
-              "external",
-            ]
-          : path === "firewall_config.rules[*].action"
-            ? ["pass", "block", "reject"]
-            : path === "firewall_config.rules[*].direction"
-              ? ["in", "out"]
-              : path === "region" || path.endsWith(".region")
-                ? ["eu01", "eu02"]
-                : path.endsWith(".secrets_enforcement.mode")
-                  ? ["audit", "soft", "strict"]
-                  : name === "resource_type" && path.startsWith("audit_logs.")
-                    ? ["organization", "folder", "project"]
-                    : name === "routing_type" && path.includes(".vpn.")
-                      ? ["POLICY_BASED", "ROUTE_BASED"]
-                      : undefined;
+      : path.endsWith(".dns_zones[*].type")
+        ? ["primary", "secondary"]
+        : path.includes(".vpn.") && path.endsWith(".encryption_algorithms[*]")
+          ? ["aes256", "aes128gcm16", "aes256gcm16"]
+          : path.includes(".vpn.") && path.endsWith(".integrity_algorithms[*]")
+            ? ["sha1", "sha2_256", "sha2_384", "sha2_512"]
+            : path.includes(".vpn.") && path.endsWith(".dh_groups[*]")
+              ? ["modp1024", "modp2048", "ecp256", "ecp384", "modp2048s256"]
+              : path.endsWith(".network_area_key")
+                ? (networkAreaKeys[regionContext] ?? [])
+                : path === "firewall_config.aliases[*].type"
+                  ? [
+                      "host",
+                      "network",
+                      "port",
+                      "url",
+                      "urltable",
+                      "urljson",
+                      "geoip",
+                      "asn",
+                      "networkgroup",
+                      "mac",
+                      "external",
+                    ]
+                  : path === "firewall_config.rules[*].action"
+                    ? ["pass", "block", "reject"]
+                    : path === "firewall_config.rules[*].direction"
+                      ? ["in", "out"]
+                      : path === "region" || path.endsWith(".region")
+                        ? ["eu01", "eu02"]
+                        : path.endsWith(".secrets_enforcement.mode")
+                          ? ["audit", "soft", "strict"]
+                          : name === "resource_type" &&
+                              path.startsWith("audit_logs.")
+                            ? ["organization", "folder", "project"]
+                            : name === "routing_type" && path.includes(".vpn.")
+                              ? ["POLICY_BASED", "ROUTE_BASED"]
+                              : undefined;
   const keyChoices =
     path === "connectivity_regions"
       ? ["eu01", "eu02"]
@@ -145,7 +157,7 @@ export function StructuredField({
         disabled={value === undefined}
         onClick={() => onChange(undefined)}
       >
-        Accelerator-Standard verwenden
+        {t("Accelerator-Standard verwenden")}
       </button>
       {!simple && allowDisable && (
         <button
@@ -156,14 +168,17 @@ export function StructuredField({
             if (
               !missing &&
               !window.confirm(
-                `${label} deaktivieren? Zugehörige Konfigurationen werden entfernt. Abhängige Dienste anschließend prüfen.`,
+                t(
+                  "{{value0}} deaktivieren? Zugehörige Konfigurationen werden entfernt. Abhängige Dienste anschließend prüfen.",
+                  { value0: label },
+                ),
               )
             )
               return;
             onChange(structuredClone(disableValue));
           }}
         >
-          Deaktivieren
+          {t("Deaktivieren")}
         </button>
       )}
     </div>
@@ -171,20 +186,21 @@ export function StructuredField({
   if (missing && optional)
     return (
       <div className="shared-field optional-field">
-        <strong>{label}</strong>
+        <strong>{t(label)}</strong>
         <p className="field-hint">
           {value === null && allowDisable
-            ? "Deaktiviert"
-            : `Standard: ${standard}`}
+            ? t("Deaktiviert")
+            : t("Standard: {{value0}}", { value0: standard })}
         </p>
         {cloudOptions && (
           <p className="field-hint">
-            Aus dem geladenen STACKIT-Produktkatalog. Fehlende Bestandswerte
-            werden nicht automatisch ersetzt.
+            {t(
+              "Aus dem geladenen STACKIT-Produktkatalog. Fehlende Bestandswerte werden nicht automatisch ersetzt.",
+            )}
           </p>
         )}
         {fieldDescription(path, name) && (
-          <p className="field-hint">{fieldDescription(path, name)}</p>
+          <p className="field-hint">{t(fieldDescription(path, name))}</p>
         )}
         <button
           type="button"
@@ -197,7 +213,7 @@ export function StructuredField({
             )
           }
         >
-          {simple ? "Eigene Einstellung" : "Konfigurieren"}: {label}
+          {simple ? t("Eigene Einstellung") : t("Konfigurieren")}: {t(label)}
         </button>
         {controls}
       </div>
@@ -205,15 +221,15 @@ export function StructuredField({
   if (simple)
     return (
       <div className="field shared-field">
-        <label htmlFor={id}>{label}</label>
+        <label htmlFor={id}>{t(label)}</label>
         {type === "bool" ? (
           <select
             id={id}
             value={String(value ?? false)}
             onChange={(event) => onChange(event.target.value === "true")}
           >
-            <option value="true">Eingeschaltet</option>
-            <option value="false">Ausgeschaltet</option>
+            <option value="true">{t("Eingeschaltet")}</option>
+            <option value="false">{t("Ausgeschaltet")}</option>
           </select>
         ) : choices ? (
           <select
@@ -222,7 +238,7 @@ export function StructuredField({
             onChange={(event) => onChange(event.target.value)}
           >
             <option value="" disabled>
-              Bitte auswählen
+              {t("Bitte auswählen")}
             </option>
             {typeof value === "string" &&
               value !== "" &&
@@ -230,8 +246,8 @@ export function StructuredField({
                 <option value={value} disabled>
                   {value} (
                   {cloudOptions
-                    ? "nicht im geladenen Katalog"
-                    : "nicht unterstützt"}
+                    ? t("nicht im geladenen Katalog")
+                    : t("nicht unterstützt")}
                   )
                 </option>
               )}
@@ -261,7 +277,7 @@ export function StructuredField({
           />
         )}
         {fieldDescription(path, name) && (
-          <p className="field-hint">{fieldDescription(path, name)}</p>
+          <p className="field-hint">{t(fieldDescription(path, name))}</p>
         )}
         {controls}
       </div>
@@ -279,7 +295,7 @@ export function StructuredField({
   return (
     <details className="feature-section" open={name === "identity"}>
       <summary>
-        {label}
+        {t(label)}
         {Array.isArray(value)
           ? ` · ${value.length}`
           : type[0] === "map"
@@ -287,13 +303,15 @@ export function StructuredField({
             : ""}
       </summary>
       {fieldDescription(path, name) && (
-        <p className="field-hint">{fieldDescription(path, name)}</p>
+        <p className="field-hint">{t(fieldDescription(path, name))}</p>
       )}
-      {disabled && <p className="field-hint">Deaktiviert</p>}
+      {disabled && <p className="field-hint">{t("Deaktiviert")}</p>}
       {controls}
       {name === "custom_roles" && roleTemplates.length > 0 && (
         <div className="field">
-          <label htmlFor={`${id}-role-template`}>STACKIT-Rollenvorlage</label>
+          <label htmlFor={`${id}-role-template`}>
+            {t("STACKIT-Rollenvorlage")}
+          </label>
           <select
             id={`${id}-role-template`}
             value=""
@@ -311,7 +329,7 @@ export function StructuredField({
                 ]);
             }}
           >
-            <option value="">Bitte auswählen</option>
+            <option value="">{t("Bitte auswählen")}</option>
             {roleTemplates.map((role) => (
               <option
                 key={role.name}
@@ -333,11 +351,25 @@ export function StructuredField({
       {type[0] === "object" ? (
         <div className="structured-grid">
           {Object.entries(type[1])
-            .filter(([key]) => !omit.includes(key))
+            .filter(
+              ([key]) =>
+                !omit.includes(key) &&
+                (!hideInactiveDetails ||
+                  ((objectValue(value).enabled !== false ||
+                    key === "enabled") &&
+                    !Object.entries(objectValue(value)).some(
+                      ([toggle, enabled]) =>
+                        enabled === false &&
+                        toggle.endsWith("_enabled") &&
+                        key !== toggle &&
+                        key.startsWith(toggle.slice(0, -"enabled".length)),
+                    ))),
+            )
             .map(([key, fieldType]) => (
               <StructuredField
                 key={key}
                 name={key}
+                hideInactiveDetails={hideInactiveDetails}
                 path={`${path}.${key}`}
                 referenceKeys={referenceKeys}
                 roleNames={projectRoleNames}
@@ -361,6 +393,7 @@ export function StructuredField({
             <div className="collection-entry" key={key}>
               <StructuredField
                 name={key}
+                hideInactiveDetails={hideInactiveDetails}
                 path={`${path}[*]`}
                 referenceKeys={referenceKeys}
                 roleNames={projectRoleNames}
@@ -381,25 +414,30 @@ export function StructuredField({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `Eintrag „${key}“ entfernen? Abhängige Projekte und Dienste anschließend prüfen.`,
+                      t(
+                        "Eintrag „{{value0}}“ entfernen? Abhängige Projekte und Dienste anschließend prüfen.",
+                        { value0: key },
+                      ),
                     )
                   )
                     updateObject(key, undefined);
                 }}
               >
-                Eintrag entfernen: {key}
+                {t("Eintrag entfernen:")} {key}
               </button>
             </div>
           ))}
           <div className="field">
-            <label htmlFor={`${id}-key`}>Neue Kennung für {label}</label>
+            <label htmlFor={`${id}-key`}>
+              {t("Neue Kennung für")} {t(label)}
+            </label>
             {keyChoices ? (
               <select
                 id={`${id}-key`}
                 value={newKey}
                 onChange={(event) => setNewKey(event.target.value)}
               >
-                <option value="">Bitte auswählen</option>
+                <option value="">{t("Bitte auswählen")}</option>
                 {keyChoices
                   .filter((key) => !Object.hasOwn(objectValue(value), key))
                   .map((key) => (
@@ -437,9 +475,9 @@ export function StructuredField({
               setError("");
             }}
           >
-            Eintrag zu {label} hinzufügen
+            {t("Eintrag zu")} {t(label)} {t("hinzufügen")}
           </button>
-          {error && <p role="alert">{error}</p>}
+          {error && <p role="alert">{t(error)}</p>}
         </>
       ) : (
         <>
@@ -448,6 +486,7 @@ export function StructuredField({
             <div className="collection-entry" key={`${id}-${index}`}>
               <StructuredField
                 name={name}
+                hideInactiveDetails={hideInactiveDetails}
                 path={`${path}[*]`}
                 referenceKeys={referenceKeys}
                 roleNames={projectRoleNames}
@@ -475,7 +514,7 @@ export function StructuredField({
                   onChange(items);
                 }}
               >
-                Eintrag {index + 1} entfernen
+                {t("Eintrag")} {index + 1} entfernen
               </button>
             </div>
           ))}
@@ -489,7 +528,7 @@ export function StructuredField({
               ])
             }
           >
-            Eintrag zu {label} hinzufügen
+            {t("Eintrag zu")} {t(label)} {t("hinzufügen")}
           </button>
         </>
       )}

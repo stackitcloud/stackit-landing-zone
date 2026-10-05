@@ -1,11 +1,13 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { t } from "../i18n";
 import { workspaceKey } from "../workspace";
 import type { Session } from "./Account";
 import { type CloudCatalogue, catalogueField } from "./cloud-catalogue-fields";
@@ -41,22 +43,32 @@ function readSelection(key: string | null): CatalogueSelection | null {
 
 type CatalogueState = {
   data: CloudCatalogue | null;
+  regions: Record<string, CloudCatalogue>;
   setData: (data: CloudCatalogue | null) => void;
 };
 const CatalogueContext = createContext<CatalogueState>({
   data: null,
+  regions: {},
   setData: () => {},
 });
 export function CloudCatalogueProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<CloudCatalogue | null>(null);
+  const [data, setCurrent] = useState<CloudCatalogue | null>(null);
+  const [regions, setRegions] = useState<Record<string, CloudCatalogue>>({});
+  const setData = useCallback((value: CloudCatalogue | null) => {
+    setCurrent(value);
+    setRegions((previous) =>
+      value ? { ...previous, [value.region]: value } : {},
+    );
+  }, []);
   return (
-    <CatalogueContext.Provider value={{ data, setData }}>
+    <CatalogueContext.Provider value={{ data, regions, setData }}>
       {children}
     </CatalogueContext.Provider>
   );
 }
 export function useCatalogueOptions(path: string, region: string) {
-  const { data } = useContext(CatalogueContext);
+  const context = useContext(CatalogueContext);
+  const data = context.regions[region] ?? context.data;
   const field = catalogueField(path);
   if (
     !field ||
@@ -78,6 +90,9 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
   const [projectId, setProjectId] = useState("");
   const [region, setRegion] = useState("eu01");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"pending" | "manual" | "automatic">(
+    "pending",
+  );
   const activeRequest = useRef<AbortController | null>(null);
   useEffect(() => () => activeRequest.current?.abort(), []);
   const [error, setError] = useState("");
@@ -105,10 +120,55 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
     setRegion(saved?.region ?? "eu01");
     setError("");
     setStorageWarning("");
+    setMode("pending");
     if (!session) return;
     const controller = new AbortController();
-    void fetch("/api/v1/credentials", { signal: controller.signal })
-      .then(async (response) => {
+    void (async () => {
+      try {
+        const statusResponse = await fetch("/auth/status", {
+          signal: controller.signal,
+        });
+        if (!statusResponse.ok) throw new Error();
+        const providers = await statusResponse.json();
+        if (controller.signal.aborted) return;
+        if (
+          providers.primary === "stackit" ||
+          session.tenant?.kind === "organisation"
+        ) {
+          setMode("automatic");
+          setBusy(true);
+          await Promise.all(
+            ["eu01", "eu02"].map(async (region) => {
+              const result = await fetch("/api/v1/cloud-catalogues/automatic", {
+                method: "POST",
+                signal: controller.signal,
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-lzc-csrf": session.csrfToken,
+                  "x-lzc-tenant": session.tenant?.id ?? "",
+                },
+                body: JSON.stringify({ region }),
+              });
+              if (result.status === 404) {
+                if (!controller.signal.aborted)
+                  setError(
+                    "Katalogzugang nicht verfügbar. Prüfe die gespeicherten Deployment-Zugänge im aktiven Arbeitsbereich.",
+                  );
+                return;
+              }
+              if (!result.ok) throw new Error();
+              const catalogue = await result.json();
+              if (!controller.signal.aborted) setData(catalogue);
+            }),
+          );
+          return;
+        }
+        setMode("manual");
+        const credentials = await fetch("/api/v1/credentials", {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        const response = credentials;
         if (!response.ok) throw new Error();
         const body = (await response.json()) as {
           profiles: { id: string; name: string; state: string }[];
@@ -122,18 +182,69 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
             ? (saved?.profileId ?? "")
             : "",
         );
-      })
-      .catch(() => {
+      } catch {
         if (!controller.signal.aborted)
-          setError("Gespeicherte Zugänge konnten nicht geladen werden.");
-      });
+          setError(
+            "Aktuelle STACKIT-Produktoptionen sind derzeit nicht verfügbar.",
+          );
+      } finally {
+        if (!controller.signal.aborted) setBusy(false);
+      }
+    })();
     return () => controller.abort();
   }, [session?.user.id, session?.tenant?.id, setData, session]);
-  if (!session)
+  if (!session || mode === "pending") return null;
+  if (mode === "automatic") {
+    const unavailable = data
+      ? (
+          [
+            ["gitFlavors", "Git"],
+            ["vpnPlans", "VPN"],
+            ["kubernetesVersions", "Kubernetes"],
+            ["machineTypes", "SKE-Maschinentypen"],
+            ["availabilityZones", "SKE-Zonen"],
+            ["volumeTypes", "SKE-Speichertypen"],
+            ["machineImages", "SKE-Betriebssysteme"],
+            ["observabilityPlans", "Observability"],
+            ["bastionMachineTypes", "IaaS-Maschinentypen"],
+            ["bastionImages", "Bastion-Images"],
+            ["bastionAvailabilityZones", "IaaS-Zonen"],
+            ["projectRoles", "Projektrollen"],
+            ["projectPermissions", "Projektberechtigungen"],
+          ] as const
+        )
+          .filter(([key]) => data[key]?.status === "unavailable")
+          .map(([, label]) => label)
+      : [];
     return (
-      <p className="field-hint">
-        Nach der Anmeldung können Produktoptionen mit einem eigenen
-        STACKIT-Zugang geladen werden.
+      <p role="status" className="field-hint">
+        {busy
+          ? t("STACKIT-Produktkataloge werden geladen.")
+          : error ||
+            (data
+              ? t("STACKIT-Produktkataloge geladen ({{value0}}).", {
+                  value0: data.region,
+                })
+              : "")}
+        {!busy &&
+          data &&
+          unavailable.length > 0 &&
+          t(" Nicht verfügbar: {{value0}}.{{value1}}", {
+            value0: unavailable.join(", "),
+            value1:
+              data.projectId === null
+                ? " Kein zugängliches Referenzprojekt gefunden."
+                : "",
+          })}
+      </p>
+    );
+  }
+  if (session.tenant?.kind === "organisation")
+    return (
+      <p className="info-banner">
+        {t(
+          "STACKIT-Angebote können derzeit im persönlichen Arbeitsbereich geladen werden. Für diesen Organisationsarbeitsbereich muss zunächst die STACKIT-Zuordnung verifiziert werden.",
+        )}
       </p>
     );
   async function load() {
@@ -168,19 +279,18 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
   }
   return (
     <details className="feature-section">
-      <summary>STACKIT-Produktoptionen laden</summary>
+      <summary>{t("STACKIT-Produktoptionen laden")}</summary>
       <p className="field-hint">
-        Lädt aktuelle Auswahlwerte mit deinem gespeicherten Zugang. Das
-        Referenzprojekt wird für Git, Observability und IaaS verwendet; Optionen
-        sind keine Zusage für Quoten oder Verfügbarkeit in später neu angelegten
-        Projekten. Es werden keine Cloud-Ressourcen verändert.
+        {t(
+          "Lädt aktuelle Auswahlwerte mit deinem gespeicherten Zugang. Das Referenzprojekt wird für Git, Observability und IaaS verwendet; Optionen sind keine Zusage für Quoten oder Verfügbarkeit in später neu angelegten Projekten. Es werden keine Cloud-Ressourcen verändert.",
+        )}
       </p>
       <div className="structured-grid">
         <label>
-          Katalogzugang
+          {t("Katalogzugang")}
           <select
             disabled={busy}
-            aria-label="Katalogzugang"
+            aria-label={t("Katalogzugang")}
             value={profileId}
             onChange={(event) => {
               setProfileId(event.target.value);
@@ -188,7 +298,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
               setData(null);
             }}
           >
-            <option value="">Bitte auswählen</option>
+            <option value="">{t("Bitte auswählen")}</option>
             {profiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
                 {profile.name}
@@ -197,11 +307,11 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
           </select>
         </label>
         <label>
-          Referenzprojekt-ID
+          {t("Referenzprojekt-ID")}
           <input
             disabled={busy}
             value={projectId}
-            placeholder="UUID eines vorhandenen STACKIT-Projekts"
+            placeholder={t("UUID eines vorhandenen STACKIT-Projekts")}
             onChange={(event) => {
               setProjectId(event.target.value);
               remember({ profileId, projectId: event.target.value, region });
@@ -210,10 +320,10 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
           />
         </label>
         <label>
-          Katalogregion
+          {t("Katalogregion")}
           <select
             disabled={busy}
-            aria-label="Katalogregion"
+            aria-label={t("Katalogregion")}
             value={region}
             onChange={(event) => {
               setRegion(event.target.value);
@@ -238,15 +348,15 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
         }
         onClick={() => void load()}
       >
-        {busy ? "Wird geladen …" : "Produktoptionen aktualisieren"}
+        {busy ? t("Wird geladen …") : t("Produktoptionen aktualisieren")}
       </button>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{t(error)}</p>}
       {storageWarning && <p role="status">{storageWarning}</p>}
       {data && (
         <>
           <p role="status">
-            Produktoptionen für {data.region} geladen. Bestehende
-            Konfigurationswerte bleiben unverändert.
+            {t("Produktoptionen für")} {data.region}{" "}
+            {t("geladen. Bestehende Konfigurationswerte bleiben unverändert.")}
           </p>
           <ul>
             {(
@@ -254,6 +364,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
                 ["gitFlavors", "STACKIT Git"],
                 ["vpnPlans", "STACKIT VPN"],
                 ["kubernetesVersions", "STACKIT Kubernetes Engine"],
+                ["machineImages", "SKE-Knoten: Betriebssysteme"],
                 ["observabilityPlans", "STACKIT Observability"],
                 ["projectRoles", "STACKIT-Projektrollen"],
                 ["projectPermissions", "STACKIT-Projektberechtigungen"],
@@ -266,10 +377,12 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
               ] as const
             ).map(([key, label]) => (
               <li key={key}>
-                {label}:{" "}
+                {t(label)}:{" "}
                 {data[key]?.status === "available"
-                  ? `${data[key]?.options.length} Auswahlwerte`
-                  : "nicht verfügbar; manuelle Eingabe bleibt möglich"}
+                  ? t("{{value0}} Auswahlwerte", {
+                      value0: data[key]?.options.length,
+                    })
+                  : t("nicht verfügbar; manuelle Eingabe bleibt möglich")}
               </li>
             ))}
           </ul>

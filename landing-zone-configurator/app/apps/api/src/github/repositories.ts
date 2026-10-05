@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import {
+  type S3BackendDescriptor,
+  s3BackendConfiguration,
+} from "@lzc/contracts";
+import {
   type ConfigurationRecord,
   editorIssues,
   initialPlanIssues,
@@ -366,8 +370,12 @@ export class Repositories {
     expectedHead: string,
     mode: "create" | "update",
     document: ConfigurationRecord,
+    serverDescriptor?: S3BackendDescriptor,
   ) {
     const valid = readConfigurationRecord(document);
+    const backendConfiguration = serverDescriptor
+      ? s3BackendConfiguration(serverDescriptor)
+      : undefined;
     if (Buffer.byteLength(JSON.stringify(valid, null, 2)) > 1024 * 1024 - 1)
       throw new RepositoryError(400, "configuration_document_too_large");
     if (editorIssues(recordDraft(valid)).length)
@@ -404,6 +412,63 @@ export class Repositories {
       )
         throw new RepositoryError(409, "generated_configuration_changed");
     }
+    const backendPath = `src/config/custom/${valid.id}/backend.tf.json`;
+    const existingBackend = tree.entries.find(
+      (entry) => entry.path === backendPath,
+    );
+    if (existingBackend) {
+      if (backendConfiguration === undefined)
+        throw new RepositoryError(409, "backend_configuration_missing");
+      const expectedSha = createHash("sha1")
+        .update(`blob ${Buffer.byteLength(backendConfiguration)}\0`)
+        .update(backendConfiguration)
+        .digest("hex");
+      if (
+        existingBackend.type !== "blob" ||
+        existingBackend.mode !== "100644" ||
+        existingBackend.sha !== expectedSha
+      )
+        throw new RepositoryError(409, "backend_configuration_changed");
+    }
+    const instructions = backendConfiguration
+      ? `# Independent Terraform configuration
+
+Use the reviewed accelerator code at this commit. In src, disable the original
+backend.tf backend block before copying config/custom/${valid.id}/backend.tf.json
+to backend.tf.json. Keep exactly one active backend block.
+
+Retrieve this management bucket's AWS access keys from the management Secrets
+Manager using the standard LZA procedure. Set AWS_ACCESS_KEY_ID and
+AWS_SECRET_ACCESS_KEY in your shell; do not commit credentials or state files.
+
+\`\`\`sh
+cd src
+cp config/custom/${valid.id}/backend.tf.json backend.tf.json
+tofu init
+tofu plan -var-file=config/custom/${valid.id}/landing-zone.tfvars
+\`\`\`
+
+This backend selects the existing state and uses native S3 locking. For an alias
+with a different configuration ID, explicitly select the registered backend ID
+when preparing in the configurator. No state migration is performed by export.
+`
+      : `# Independent Terraform configuration
+
+Use the reviewed accelerator code at this commit. No verified S3 backend is bound
+yet. Follow the standard LZA first-bootstrap procedure with a durably protected
+state, then migrate that state to the management bucket with tofu init -migrate-state
+and verify a no-change plan. Export again after the S3 binding is verified.
+
+\`\`\`sh
+cd src
+tofu init
+tofu plan -var-file=config/custom/${valid.id}/landing-zone.tfvars
+\`\`\`
+
+Before bootstrap init, ensure no unconfigured original backend block is active.
+Retrieve AWS access keys from the management Secrets Manager for subsequent S3
+use. Never commit credentials or state files. Export does not apply or migrate.
+`;
     const prefix = this.prefix(fork);
     const createdTree = z.object({ sha: shaSchema }).parse(
       await this.call(token, `${prefix}/git/trees`, "POST", {
@@ -420,6 +485,22 @@ export class Repositories {
             mode: "100644",
             type: "blob",
             content: serializeTfvars(recordValues(valid)),
+          },
+          ...(backendConfiguration === undefined
+            ? []
+            : [
+                {
+                  path: backendPath,
+                  mode: "100644",
+                  type: "blob",
+                  content: backendConfiguration,
+                },
+              ]),
+          {
+            path: `src/config/custom/${valid.id}/README.md`,
+            mode: "100644",
+            type: "blob",
+            content: instructions,
           },
         ],
       }),

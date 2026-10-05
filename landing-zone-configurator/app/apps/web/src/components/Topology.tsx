@@ -7,6 +7,7 @@ import {
   type Values,
 } from "@lzc/domain";
 import type { ReactNode } from "react";
+import { t } from "../i18n";
 
 function Project({ name, detail }: { name: string; detail: string }) {
   return (
@@ -15,7 +16,9 @@ function Project({ name, detail }: { name: string; detail: string }) {
         □
       </span>
       <div>
-        <small>Projekt · {detail}</small>
+        <small>
+          {t("Projekt ·")} {detail}
+        </small>
         <strong>{name}</strong>
       </div>
     </div>
@@ -29,8 +32,8 @@ function Folder({ name, children }: { name: string; children: ReactNode }) {
           ▱
         </span>
         <div>
-          <small>Ordner</small>
-          <strong>{name || "Unbenannter Ordner"}</strong>
+          <small>{t("Ordner")}</small>
+          <strong>{name || t("Unbenannter Ordner")}</strong>
         </div>
       </div>
       <div className="tree-children">{children}</div>
@@ -130,7 +133,7 @@ export function Topology({
               nodes
             ) : (
               <p className="muted empty-folder">
-                Keine Projekte in dieser Konfiguration
+                {t("Keine Projekte in dieser Konfiguration")}
               </p>
             )}
           </Folder>
@@ -143,20 +146,22 @@ export function Topology({
     <figure className="topology">
       <figcaption>
         {projectTemplates
-          ? "Struktur deiner Plattform"
-          : "Struktur deiner Landing Zone"}
+          ? t("Struktur deiner Plattform")
+          : t("Struktur deiner Landing Zone")}
       </figcaption>
       <p className="muted topology-note">
-        Geplante Organisationsstruktur · keine Abfrage bestehender Ressourcen
+        {t(
+          "Geplante Organisationsstruktur · keine Abfrage bestehender Ressourcen",
+        )}
       </p>
       <div className="tree-root">
         <span className="node-symbol" aria-hidden="true">
           ▦
         </span>
         <div>
-          <small>Organisation · Bezeichnung aus Konfiguration</small>
+          <small>{t("Organisation · Bezeichnung aus Konfiguration")}</small>
           <strong>
-            {textValue(values.company_name) || "Deine Organisation"}
+            {textValue(values.company_name) || t("Deine Organisation")}
           </strong>
         </div>
       </div>
@@ -172,12 +177,13 @@ export function Topology({
       {projectTemplates && (
         <section
           className="template-preview"
-          aria-label="Projekt-Template-Entwürfe"
+          aria-label={t("Application Landing Zone Template-Entwürfe")}
         >
-          <h3>Projekt-Template-Entwürfe</h3>
+          <h3>{t("Application Landing Zone Template-Entwürfe")}</h3>
           <p className="muted">
-            Vorlagen für spätere Bestellungen durch Application Owner. Diese
-            Einträge sind keine Projekte im Plattform-Deployment.
+            {t(
+              "Vorlagen für spätere Bestellungen durch Application Owner. Diese Einträge sind keine Projekte im Plattform-Deployment.",
+            )}
           </p>
           {projectTemplates.length ? (
             projectTemplates.map((template) => (
@@ -187,20 +193,22 @@ export function Topology({
                 </span>
                 <div>
                   <small>
-                    Template ·{" "}
+                    {t("Template ·")}{" "}
                     {template.kind === "public"
-                      ? "Public"
+                      ? t("Public")
                       : template.kind === "corporate"
-                        ? "Corporate"
-                        : "Sandbox"}{" "}
+                        ? t("Corporate")
+                        : t("Sandbox")}{" "}
                     · {template.region}
                   </small>
-                  <strong>{template.name || "Unbenanntes Template"}</strong>
+                  <strong>{template.name || t("Unbenanntes Template")}</strong>
                 </div>
               </div>
             ))
           ) : (
-            <p className="muted">Noch keine Projekt-Templates definiert.</p>
+            <p className="muted">
+              {t("Noch keine Application Landing Zone Templates definiert.")}
+            </p>
           )}
         </section>
       )}

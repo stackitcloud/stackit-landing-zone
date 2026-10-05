@@ -279,12 +279,13 @@ module "landing_zone" {
   owner_email            = each.value.owner_email
   labels                 = var.labels
   role_assignments       = each.value.role_assignments
+  network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
-  ipv4_nameservers       = try(module.connectivity[0].network_area_nameservers[each.value.network_area_key], null)
+  ipv4_nameservers       = each.value.corporate ? try(module.connectivity[0].network_area_nameservers[each.value.network_area_key], null) : null
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
-  firewall_next_hop_ip   = try(module.connectivity[0].firewall_next_hop_ip[each.value.network_area_key], null)
+  firewall_next_hop_ip   = each.value.corporate ? try(module.connectivity[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
 }
 
 module "landing_zone_eu01" {
@@ -301,12 +302,13 @@ module "landing_zone_eu01" {
   owner_email            = each.value.owner_email
   labels                 = var.labels
   role_assignments       = each.value.role_assignments
+  network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
-  ipv4_nameservers       = try(module.connectivity_eu01[0].network_area_nameservers[each.value.network_area_key], null)
+  ipv4_nameservers       = each.value.corporate ? try(module.connectivity_eu01[0].network_area_nameservers[each.value.network_area_key], null) : null
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
-  firewall_next_hop_ip   = try(module.connectivity_eu01[0].firewall_next_hop_ip[each.value.network_area_key], null)
+  firewall_next_hop_ip   = each.value.corporate ? try(module.connectivity_eu01[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
 }
 
 module "landing_zone_eu02" {
@@ -323,10 +325,11 @@ module "landing_zone_eu02" {
   owner_email            = each.value.owner_email
   labels                 = var.labels
   role_assignments       = each.value.role_assignments
+  network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
-  ipv4_nameservers       = try(module.connectivity_eu02[0].network_area_nameservers[each.value.network_area_key], null)
+  ipv4_nameservers       = each.value.corporate ? try(module.connectivity_eu02[0].network_area_nameservers[each.value.network_area_key], null) : null
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
-  firewall_next_hop_ip   = try(module.connectivity_eu02[0].firewall_next_hop_ip[each.value.network_area_key], null)
+  firewall_next_hop_ip   = each.value.corporate ? try(module.connectivity_eu02[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
 }

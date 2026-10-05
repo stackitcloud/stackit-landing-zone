@@ -1,5 +1,6 @@
 import { effectiveInput, inputDefinition, type Values } from "@lzc/domain";
 import { type ReactNode, useState } from "react";
+import { t } from "../i18n";
 import { labelFor } from "./feature-labels";
 
 // This is presentation state only. Opening the catalogue never edits an export.
@@ -28,10 +29,10 @@ export function ComponentPicker({
   );
   const available = names.filter((name) => !visible.includes(name));
   return (
-    <section aria-label="Optionale Komponenten">
+    <section aria-label={t("Optionale Komponenten")}>
       {visible.length === 0 && (
         <p className="muted">
-          Hier sind noch keine optionalen Komponenten aktiviert.
+          {t("Hier sind noch keine optionalen Komponenten aktiviert.")}
         </p>
       )}
       {visible.map((name) => (
@@ -45,7 +46,7 @@ export function ComponentPicker({
                 setEditing(editing.filter((item) => item !== name))
               }
             >
-              Konfiguration schließen: {labelFor(name)}
+              {t("Konfiguration schließen:")} {labelFor(name)}
             </button>
           )}
         </div>
@@ -57,14 +58,18 @@ export function ComponentPicker({
           aria-expanded={catalogueOpen}
           onClick={() => setCatalogueOpen(!catalogueOpen)}
         >
-          Komponente hinzufügen
+          {t("Komponente hinzufügen")}
         </button>
       )}
       {catalogueOpen && available.length > 0 && (
-        <section className="project-card" aria-label="Verfügbare Komponenten">
+        <section
+          className="project-card"
+          aria-label={t("Verfügbare Komponenten")}
+        >
           <p>
-            Wähle eine Komponente. Erst ihre Konfiguration verändert den
-            Entwurf.
+            {t(
+              "Wähle eine Komponente. Erst ihre Konfiguration verändert den Entwurf.",
+            )}
           </p>
           {available.map((name) => (
             <p key={name}>
@@ -76,7 +81,7 @@ export function ComponentPicker({
                   setCatalogueOpen(false);
                 }}
               >
-                Hinzufügen: {labelFor(name)}
+                {t("Hinzufügen:")} {labelFor(name)}
               </button>
             </p>
           ))}

@@ -9,6 +9,7 @@ import {
   type Values,
 } from "@lzc/domain";
 import { useState } from "react";
+import { t } from "../i18n";
 import { labelFor } from "./feature-labels";
 import { StructuredField } from "./StructuredField";
 import { VpnEditor } from "./VpnEditor";
@@ -55,11 +56,11 @@ export function NetworkEditor({
     }
   };
   return (
-    <section aria-label="Connectivity nach Region">
+    <section aria-label={t("Connectivity nach Region")}>
       <p>
-        Jede Region enthält ihre STACKIT Network Areas (SNAs) und die
-        zugehörigen Connectivity-Dienste. Gleiche SNA-Kennungen verbinden
-        Regionen nicht automatisch.
+        {t(
+          "Jede Region enthält ihre STACKIT Network Areas (SNAs) und die zugehörigen Connectivity-Dienste. Gleiche SNA-Kennungen verbinden Regionen nicht automatisch.",
+        )}
       </p>
       {sections.map(({ key, region, settings, legacy }) => (
         <RegionConnectivity
@@ -75,22 +76,21 @@ export function NetworkEditor({
       ))}
       {single ? (
         <p className="field-hint">
-          Diese Konfiguration nutzt die Standardregion aus den Grundlagen.
-          Weitere Regionen benötigen eine ausdrückliche Migration auf regionale
-          Accelerator-Module. Ein automatischer Wechsel könnte bestehende
-          Ressourcenzuordnungen ändern und wird deshalb nicht durchgeführt.
+          {t(
+            "Diese Konfiguration nutzt die Standardregion aus den Grundlagen. Weitere Regionen benötigen eine ausdrückliche Migration auf regionale Accelerator-Module. Ein automatischer Wechsel könnte bestehende Ressourcenzuordnungen ändern und wird deshalb nicht durchgeführt.",
+          )}
         </p>
       ) : (
         <div className="project-card">
           <label htmlFor="connectivity-new-region">
-            Weitere Connectivity-Region
+            {t("Weitere Connectivity-Region")}
           </label>
           <select
             id="connectivity-new-region"
             value={newRegion}
             onChange={(event) => setNewRegion(event.target.value)}
           >
-            <option value="">Region wählen</option>
+            <option value="">{t("Region wählen")}</option>
             {["eu01", "eu02"]
               .filter((region) => !Object.hasOwn(regional, region))
               .map((region) => (
@@ -111,27 +111,26 @@ export function NetworkEditor({
               setNewRegion("");
             }}
           >
-            Region hinzufügen
+            {t("Region hinzufügen")}
           </button>
           <p className="field-hint">
-            Im regionalen Modell müssen Landing-Zone-Projekte ihre Region
-            ausdrücklich angeben. Eine Region kann zunächst ohne SNA vorbereitet
-            werden.
+            {t(
+              "Im regionalen Modell müssen Landing-Zone-Projekte ihre Region ausdrücklich angeben. Eine Region kann zunächst ohne SNA vorbereitet werden.",
+            )}
           </p>
         </div>
       )}
       <details className="feature-section">
-        <summary>Routing-Tabellen und Routen</summary>
+        <summary>{t("Routing-Tabellen und Routen")}</summary>
         <p>
-          Der Accelerator erzeugt je SNA eine WAN-Routing-Tabelle mit
-          Systemrouten und einer Standardroute ins Internet. Corporate-Projekte
-          mit Firewall erhalten eine eigene Tabelle mit Standardroute zur
-          Firewall-LAN-IP bzw. HA-VIP.
+          {t(
+            "Der Accelerator erzeugt je SNA eine WAN-Routing-Tabelle mit Systemrouten und einer Standardroute ins Internet. Corporate-Projekte mit Firewall erhalten eine eigene Tabelle mit Standardroute zur Firewall-LAN-IP bzw. HA-VIP.",
+          )}
         </p>
         <p>
-          Frei definierbare zusätzliche Tabellen sind kein aktuelles
-          Root-Feature. Statische VPN-Routen werden je VPN-Verbindung
-          konfiguriert. Inter-Region-Verbindungen entstehen nicht automatisch.
+          {t(
+            "Frei definierbare zusätzliche Tabellen sind kein aktuelles Root-Feature. Statische VPN-Routen werden je VPN-Verbindung konfiguriert. Inter-Region-Verbindungen entstehen nicht automatisch.",
+          )}
         </p>
       </details>
     </section>
@@ -199,10 +198,15 @@ function RegionConnectivity({
     (name) => !active(name) && !editing.includes(name),
   );
   return (
-    <section className="project-card" aria-label={`Connectivity ${region}`}>
-      <h3>Region {region}</h3>
+    <section
+      className="project-card"
+      aria-label={t("Connectivity {{value0}}", { value0: region })}
+    >
+      <h3>
+        {t("Region")} {region}
+      </h3>
       <p>
-        {areaKeys.length} STACKIT Network Areas (SNAs)
+        {areaKeys.length} {t("STACKIT Network Areas (SNAs)")}
         {legacy ? " · Standardregion" : ""}
       </p>
       {settings.network_area != null ? (
@@ -222,14 +226,14 @@ function RegionConnectivity({
               onChange(next);
             }}
           >
-            Mehrere Netzwerkbereiche verwalten
+            {t("Mehrere Netzwerkbereiche verwalten")}
           </button>
           {settings.network_areas != null && (
             <>
               <p role="alert">
-                Einzelkonfiguration und SNA-Liste sind gleichzeitig gesetzt.
-                Bitte die gewünschte Variante beibehalten und die andere
-                ausdrücklich entfernen.
+                {t(
+                  "Einzelkonfiguration und SNA-Liste sind gleichzeitig gesetzt. Bitte die gewünschte Variante beibehalten und die andere ausdrücklich entfernen.",
+                )}
               </p>
               {field("network_areas")}
             </>
@@ -261,7 +265,7 @@ function RegionConnectivity({
                   setEditing(editing.filter((item) => item !== name))
                 }
               >
-                Konfiguration schließen: {labelFor(name)}
+                {t("Konfiguration schließen:")} {labelFor(name)}
               </button>
             )}
           </div>
@@ -273,11 +277,15 @@ function RegionConnectivity({
           aria-expanded={adding}
           onClick={() => setAdding(!adding)}
         >
-          Komponente hinzufügen in {region}
+          {t("Komponente hinzufügen in")} {region}
         </button>
       )}
       {adding && (
-        <section aria-label={`Verfügbare Connectivity-Komponenten ${region}`}>
+        <section
+          aria-label={t("Verfügbare Connectivity-Komponenten {{value0}}", {
+            value0: region,
+          })}
+        >
           {available.map((name) => (
             <p key={name}>
               <button
@@ -288,14 +296,14 @@ function RegionConnectivity({
                   setAdding(false);
                 }}
               >
-                Hinzufügen: {labelFor(name)}
+                {t("Hinzufügen:")} {labelFor(name)}
               </button>
             </p>
           ))}
         </section>
       )}
       <details className="feature-section">
-        <summary>Erweiterte Connectivity-Einstellungen</summary>
+        <summary>{t("Erweiterte Connectivity-Einstellungen")}</summary>
         {field("naming_pattern")}
       </details>
       <button
@@ -304,13 +312,16 @@ function RegionConnectivity({
         onClick={() => {
           if (
             window.confirm(
-              `Connectivity ${region} aus der Konfiguration entfernen? Zugehörige SNAs und Dienste würden bei einem späteren Apply entfernt. Referenzierte SNAs müssen zuerst umgeordnet werden.`,
+              t(
+                "Connectivity {{value0}} aus der Konfiguration entfernen? Zugehörige SNAs und Dienste würden bei einem späteren Apply entfernt. Referenzierte SNAs müssen zuerst umgeordnet werden.",
+                { value0: region },
+              ),
             )
           )
             onChange(null);
         }}
       >
-        Connectivity {region} entfernen
+        {t("Connectivity")} {region} entfernen
       </button>
     </section>
   );

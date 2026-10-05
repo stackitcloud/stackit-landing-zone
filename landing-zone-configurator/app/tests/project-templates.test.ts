@@ -20,6 +20,37 @@ import {
 } from "@lzc/domain";
 import { expect, it } from "vitest";
 
+it("retains a local network in a public template without creating a platform project", () => {
+  const draft = addProjectTemplate(
+    createEditorConfiguration("standalone", randomUUID()),
+    "public",
+    "vm-network",
+  );
+  const template = projectTemplates(draft).find(
+    (entry) => entry.key === "vm-network",
+  );
+  if (!template) throw new Error("Missing public template");
+  const changed = updateProjectTemplate(draft, template.id, {
+    settings: {
+      ...template.settings,
+      network_enabled: true,
+      network_prefix_length: 24,
+    },
+  });
+  expect(projectTemplates(readCommonConfiguration(changed))).toContainEqual(
+    expect.objectContaining({
+      kind: "public",
+      settings: expect.objectContaining({
+        network_enabled: true,
+        network_prefix_length: 24,
+      }),
+    }),
+  );
+  expect(projectTemplateIssues(changed)).toEqual([]);
+  expect(compileCommonConfiguration(changed).landing_zones).toEqual({});
+  expect(exportCommonTfvars(changed)).not.toContain("network_enabled");
+});
+
 it.each(catalogue.templates.map((template) => template.id))(
   "creates platform-only %s drafts without losing project policies",
   (templateId) => {

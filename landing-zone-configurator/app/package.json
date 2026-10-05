@@ -14,6 +14,8 @@
   ],
   "scripts": {
     "dev": "npm run build:packages && npm run dev --workspace=@lzc/api",
+    "dev:login": "npm run build:packages && node --use-system-ca --import tsx scripts/local-stackit-login.ts",
+    "dev:execution": "npm run build:packages && node --use-system-ca --import tsx scripts/local-stackit-login.ts --execution",
     "dev:web": "npm run dev --workspace=@lzc/web",
     "build:packages": "tsc -b packages/contracts packages/domain",
     "typecheck": "tsc -b && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tsconfig.tests.json",

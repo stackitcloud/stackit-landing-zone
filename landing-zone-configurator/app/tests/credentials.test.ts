@@ -1,9 +1,21 @@
 import { generateKeyPairSync, randomUUID } from "node:crypto";
+import {
+  copyFile,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import type { Session } from "../apps/api/src/auth/store.js";
 import { parseServiceAccountKey } from "../apps/api/src/credentials/key.js";
+import { LocalCredentialSecrets } from "../apps/api/src/credentials/local-secrets.js";
 import { VaultCredentialSecrets } from "../apps/api/src/credentials/secrets.js";
 import { VaultConnection } from "../apps/api/src/storage/vault.js";
 
@@ -39,6 +51,45 @@ const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
+it("persists local keys encrypted, create-only, owner-bound and removable across restarts", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lzc-secrets-"));
+  try {
+    const secrets = await LocalCredentialSecrets.open(directory);
+    const id = randomUUID();
+    await secrets.put(session, id, parseServiceAccountKey(key));
+    await expect(
+      secrets.put(session, id, parseServiceAccountKey(key)),
+    ).rejects.toThrow();
+    const filename = (await readdir(directory)).find((name) =>
+      name.endsWith(".sealed"),
+    );
+    if (!filename) throw new Error("Encrypted secret missing");
+    const path = join(directory, filename);
+    const sealed = await readFile(path);
+    expect(sealed.includes(Buffer.from(privateKey))).toBe(false);
+    expect(sealed.includes(Buffer.from(key.credentials.iss))).toBe(false);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
+    const restarted = await LocalCredentialSecrets.open(directory);
+    expect(await restarted.get(session, id)).toEqual({ key, version: 1 });
+    const other = { ...session, tenantId: randomUUID(), userId: randomUUID() };
+    await expect(restarted.get(other, id)).rejects.toThrow();
+    await copyFile(
+      path,
+      join(directory, `${other.tenantId}_${other.userId}_${id}.sealed`),
+    );
+    await expect(restarted.get(other, id)).rejects.toThrow();
+    sealed.writeUInt8(sealed.readUInt8(12) ^ 1, 12);
+    await writeFile(path, sealed);
+    await expect(restarted.get(session, id)).rejects.toThrow();
+    await restarted.remove(session, id);
+    await restarted.remove(session, id);
+    await expect(restarted.get(session, id)).rejects.toThrow();
+    await expect(restarted.remove(session, "../master.key")).rejects.toThrow();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 it("accepts generated RSA keys but rejects malformed, inactive, expired and mismatched keys", () => {
   expect(parseServiceAccountKey({ ...key, unexpected: "discard" })).toEqual(
     key,

@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
@@ -14,11 +14,15 @@ import {
 } from "@lzc/domain";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { buildApp } from "../apps/api/src/app.js";
+import { Applications } from "../apps/api/src/applications/service.js";
 import {
   createGitHubLogin,
   newSessionToken,
 } from "../apps/api/src/auth/github-flow.js";
+import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
+import { Configurations } from "../apps/api/src/configurations/service.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { Preparations } from "../apps/api/src/deployments/preparations.js";
 import { Invitations } from "../apps/api/src/organisation/invitations.js";
@@ -110,6 +114,1280 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL session and tenant boundaries", () => {
+  it("persists configurations across service restarts with owner isolation and revision conflicts", async () => {
+    const template = catalogue.templates.find(
+      (item) => item.id === "standalone",
+    ) as Template;
+    const draft = createDraft(template);
+    draft.name = "Database configuration";
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(alice, draft);
+    try {
+      expect(
+        await new Configurations(pool).get(alice, stored.id),
+      ).toMatchObject({ draft, revision: 1 });
+      await expect(configurations.get(bob, stored.id)).rejects.toMatchObject({
+        status: 404,
+      });
+      const shared = { ...bob, tenantId: alice.tenantId };
+      expect(
+        (
+          await withTenant(pool, shared, (client) =>
+            client.query("SELECT id FROM lzc.configurations WHERE id=$1", [
+              stored.id,
+            ]),
+          )
+        ).rows,
+      ).toEqual([]);
+      expect(
+        (
+          await withTenant(pool, alice, (client) =>
+            client.query(
+              "SELECT id FROM lzc.configurations WHERE id=$1 AND created_by=$2",
+              [stored.id, alice.userId],
+            ),
+          )
+        ).rows,
+      ).toHaveLength(1);
+      const updated = await configurations.update(alice, stored.id, 1, {
+        ...draft,
+        name: "Updated configuration",
+      });
+      expect(updated.revision).toBe(2);
+      await expect(
+        configurations.update(alice, stored.id, 1, draft),
+      ).rejects.toMatchObject({ status: 409 });
+      await expect(
+        configurations.remove(alice, stored.id, 1),
+      ).rejects.toMatchObject({ status: 409 });
+      expect((await configurations.get(alice, stored.id)).name).toBe(
+        "Updated configuration",
+      );
+    } finally {
+      const current = await configurations.get(alice, stored.id);
+      await configurations.remove(alice, stored.id, current.revision);
+    }
+    await expect(configurations.get(alice, stored.id)).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+  it("logs in with STACKIT without GitHub, preserves subject ownership and links GitHub without merging users", async () => {
+    const identity = {
+      issuer: "https://accounts.stackit.cloud",
+      subject: randomUUID(),
+      email: "login@example.test",
+      emailVerified: true as const,
+      verificationMethod: "device-grant-userinfo" as const,
+      tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+      organization: null,
+    };
+    const token = newSessionToken();
+    const session = await store.createStackitSession({
+      identity,
+      id: randomUUID(),
+      hash: token.hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 240000),
+    });
+    expect(session.githubId).toBe("");
+    expect(await store.resolveSession(token.token)).toMatchObject({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      login: identity.email,
+      githubId: "",
+    });
+    expect(await new StackitIdentities(pool).status(session)).toMatchObject({
+      verified: true,
+      organizationVerified: false,
+    });
+    const again = await store.createStackitSession({
+      identity: { ...identity, email: "changed@example.test" },
+      id: randomUUID(),
+      hash: newSessionToken().hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 240000),
+    });
+    expect(again.userId).toBe(session.userId);
+    const other = await store.createStackitSession({
+      identity: { ...identity, subject: randomUUID() },
+      id: randomUUID(),
+      hash: newSessionToken().hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 240000),
+    });
+    expect(other.userId).not.toBe(session.userId);
+    const legacyToken = newSessionToken();
+    const legacy = await store.createSession({
+      githubId: 302,
+      login: "legacy",
+      id: randomUUID(),
+      hash: legacyToken.hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 300000),
+    });
+    const migrated = await store.createStackitSession({
+      identity: { ...identity, subject: randomUUID() },
+      existingSessionId: legacy.id,
+      id: randomUUID(),
+      hash: newSessionToken().hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 240000),
+    });
+    expect(migrated).toMatchObject({
+      userId: legacy.userId,
+      tenantId: legacy.tenantId,
+      githubId: "302",
+    });
+    await expect(
+      store.createStackitSession({
+        identity,
+        existingSessionId: legacy.id,
+        id: randomUUID(),
+        hash: newSessionToken().hash,
+        csrfToken: randomBytes(32).toString("base64url"),
+        expiresAt: new Date(Date.now() + 240000),
+      }),
+    ).rejects.toMatchObject({ code: "23505" });
+    await expect(store.linkGitHub(session, 101, "alice")).rejects.toMatchObject(
+      { code: "23505" },
+    );
+    const linked = await store.linkGitHub(session, 301, "optional-github");
+    expect(linked).toMatchObject({
+      id: session.id,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      githubId: "301",
+    });
+    await expect(
+      store.linkGitHub(other, 301, "optional-github"),
+    ).rejects.toMatchObject({ code: "23505" });
+    await store.deleteSession(token.token);
+    await expect(
+      store.linkGitHub(session, 301, "optional-github"),
+    ).rejects.toMatchObject({ code: "P0002" });
+  });
+
+  it("binds STACKIT issuer and subject to one user without email merging and isolates organization proofs", async () => {
+    const identities = new StackitIdentities(pool);
+    const organizationId = randomUUID();
+    const tenantId = await new PostgresOrganisations(pool).create(
+      alice,
+      "STACKIT identity test",
+      organizationId,
+    );
+    const session = { ...alice, tenantId };
+    const proof = {
+      issuer: "https://accounts.stackit.cloud",
+      subject: randomUUID(),
+      email: "same-email@example.test",
+      emailVerified: true as const,
+      verificationMethod: "device-grant-userinfo" as const,
+      tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+      organization: {
+        id: organizationId,
+        name: "Verified organization",
+        permissions: ["organization.read", "organization.write"],
+      },
+    };
+    await identities.save(session, proof);
+    expect(await identities.status(session)).toMatchObject({
+      verified: true,
+      organizationVerified: true,
+      identity: proof,
+    });
+    const audits = () =>
+      withTenant(pool, session, (client) =>
+        client.query(
+          "SELECT * FROM lzc.stackit_organization_authorizations ORDER BY verified_at,id",
+        ),
+      );
+    const originalAudit = (await audits()).rows[0];
+    expect(originalAudit).toMatchObject({
+      tenant_id: tenantId,
+      user_id: session.userId,
+      organization_id: organizationId,
+      issuer: proof.issuer,
+      subject: proof.subject,
+      email: proof.email,
+      permissions: proof.organization.permissions,
+    });
+    expect(
+      (await new PostgresOrganisations(pool).overview(session)).tenants.find(
+        (tenant) => tenant.id === tenantId,
+      )?.organizationVerified,
+    ).toBe(false);
+    expect(
+      (
+        await withTenant(pool, bob, (client) =>
+          client.query("SELECT * FROM lzc.stackit_organization_authorizations"),
+        )
+      ).rows,
+    ).toEqual([]);
+    await expect(
+      withTenant(pool, session, (client) =>
+        client.query(
+          "INSERT INTO lzc.stackit_organization_authorizations SELECT * FROM lzc.stackit_organization_authorizations",
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      migration.query(
+        "UPDATE lzc.stackit_organization_authorizations SET permissions='{}' WHERE id=$1",
+        [originalAudit.id],
+      ),
+    ).rejects.toMatchObject({ code: "55000" });
+    await expect(
+      migration.query(
+        "DELETE FROM lzc.stackit_organization_authorizations WHERE id=$1",
+        [originalAudit.id],
+      ),
+    ).rejects.toMatchObject({ code: "55000" });
+    await identities.save(session, {
+      ...proof,
+      organization: {
+        ...proof.organization,
+        permissions: ["organization.read"],
+      },
+    });
+    expect(
+      (await identities.status(session)).identity?.organization?.permissions,
+    ).toEqual(["organization.read"]);
+    expect((await audits()).rows).toHaveLength(2);
+    expect(
+      (await audits()).rows.find((audit) => audit.id === originalAudit.id),
+    ).toEqual(originalAudit);
+    expect(await identities.status(bob)).toEqual({
+      identity: null,
+      verified: false,
+      organizationVerified: false,
+    });
+    await expect(
+      identities.save(bob, { ...proof, organization: null }),
+    ).rejects.toMatchObject({ code: "identity_already_bound" });
+    await identities.save(bob, {
+      ...proof,
+      subject: randomUUID(),
+      organization: null,
+    });
+    expect((await identities.status(bob)).identity?.subject).not.toBe(
+      proof.subject,
+    );
+    await expect(
+      identities.save(session, { ...proof, subject: randomUUID() }),
+    ).rejects.toMatchObject({ code: "identity_binding_conflict" });
+    await expect(
+      identities.save(session, {
+        ...proof,
+        organization: { id: randomUUID(), name: "Wrong organization" },
+      }),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      withTenant(pool, bob, (client) =>
+        client.query(
+          "UPDATE lzc.stackit_identities SET subject=$1 WHERE user_id=$2",
+          [randomUUID(), alice.userId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await identities.revoke(session);
+    expect(await identities.status(session)).toMatchObject({
+      verified: false,
+      organizationVerified: false,
+    });
+    expect(
+      (await identities.status(session)).identity?.organization,
+    ).toBeNull();
+    expect((await audits()).rows).toHaveLength(2);
+    await identities.save(session, { ...proof, organization: null });
+    expect(await identities.status(session)).toMatchObject({
+      verified: true,
+      organizationVerified: false,
+    });
+    const restored = await store.createStackitSession({
+      identity: { ...proof, organization: null },
+      id: randomUUID(),
+      hash: newSessionToken().hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 240000),
+    });
+    expect(restored.userId).toBe(alice.userId);
+    await identities.revoke(session);
+    await identities.revoke(bob);
+  });
+
+  it("requires current human owner permissions and explicit confirmation for auditable organization binding", async () => {
+    const organisations = new PostgresOrganisations(pool);
+    const identities = new StackitIdentities(pool);
+    const original = (await identities.status(alice)).identity;
+    const other = (await identities.status(bob)).identity;
+    if (!original || !other)
+      throw new Error("Expected existing identity fixtures");
+    const organizationId = randomUUID();
+    const tenantId = await organisations.create(
+      alice,
+      "Human owner binding",
+      organizationId,
+    );
+    await organisations.switch(alice, tenantId);
+    const session = { ...alice, tenantId };
+    const proof = {
+      ...original,
+      tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+      organization: {
+        id: organizationId,
+        name: "Human owner organization",
+        permissions: ["organization.read"],
+        ownerPermissions: ["organization.read", "organization.write"],
+      },
+    };
+    try {
+      await identities.save(session, proof);
+      await expect(identities.bindOrganization(session, {})).rejects.toThrow();
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: false,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+          organizationId,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      expect((await identities.status(session)).organizationAdminVerified).toBe(
+        false,
+      );
+      const ownerProof = {
+        ...proof,
+        organization: {
+          ...proof.organization,
+          permissions: proof.organization.ownerPermissions,
+        },
+      };
+      await identities.save(session, {
+        ...ownerProof,
+        organization: {
+          id: organizationId,
+          name: proof.organization.name,
+          permissions: ownerProof.organization.permissions,
+        },
+      });
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await identities.save(session, ownerProof);
+      expect((await identities.status(session)).organizationAdminVerified).toBe(
+        true,
+      );
+      await identities.clearOrganizationProof(session);
+      expect((await identities.status(session)).verified).toBe(true);
+      expect((await identities.status(session)).organizationVerified).toBe(
+        false,
+      );
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await identities.save(session, ownerProof);
+      expect(
+        (await organisations.overview(session)).tenants.find(
+          (tenant) => tenant.id === tenantId,
+        )?.organizationVerified,
+      ).toBe(false);
+      await migration.query(
+        "INSERT INTO lzc.memberships(tenant_id,user_id,role,product_roles) VALUES($1,$2,'viewer',ARRAY['application-owner'])",
+        [tenantId, bob.userId],
+      );
+      await organisations.switch(bob, tenantId);
+      const ownerSession = { ...bob, tenantId };
+      await identities.save(ownerSession, {
+        ...ownerProof,
+        subject: other.subject,
+        email: other.email,
+      });
+      await expect(
+        identities.bindOrganization(ownerSession, {
+          confirmOrganizationBinding: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await identities.revoke(session);
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await identities.save(session, ownerProof);
+      await migration.query(
+        "UPDATE lzc.stackit_identities SET valid_until=now()-interval '1 second' WHERE user_id=$1",
+        [session.userId],
+      );
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await identities.save(session, ownerProof);
+      const binding = await identities.bindOrganization(session, {
+        confirmOrganizationBinding: true,
+      });
+      expect(binding).toMatchObject({
+        tenantId,
+        organizationId,
+        authorizationId: expect.any(String),
+        boundBy: session.userId,
+        boundAt: expect.any(String),
+      });
+      expect(
+        await identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+        }),
+      ).toEqual(binding);
+      expect(
+        (await organisations.overview(session)).tenants.find(
+          (tenant) => tenant.id === tenantId,
+        )?.organizationVerified,
+      ).toBe(true);
+      expect(
+        (
+          await migration.query(
+            "SELECT count(*)::int AS count FROM lzc_auth.membership_audit WHERE tenant_id=$1 AND action='organization_bound'",
+            [tenantId],
+          )
+        ).rows[0].count,
+      ).toBe(1);
+      await organisations.switch(alice, alice.tenantId);
+      await expect(
+        identities.bindOrganization(session, {
+          confirmOrganizationBinding: true,
+        }),
+      ).rejects.toMatchObject({ code: "40001" });
+    } finally {
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+      await identities.revoke(session);
+      await identities.revoke({ ...bob, tenantId });
+    }
+  });
+
+  it("isolates immutable application publications and idempotent orders with current product roles", async () => {
+    const organisations = new PostgresOrganisations(pool);
+    const tenantId = await organisations.create(
+      alice,
+      "Application catalogue",
+      randomUUID(),
+    );
+    const engineer = { ...alice, tenantId };
+    const owner = { ...bob, tenantId };
+    const concurrentPool = new pg.Pool({
+      ...migrationConfig,
+      user: "configurator_app",
+      password: "runtime-test-only",
+      max: 4,
+    });
+    const applications = new Applications(concurrentPool);
+    try {
+      await organisations.switch(alice, tenantId);
+      await expect(applications.listTemplates(alice)).rejects.toMatchObject({
+        code: "42501",
+      });
+      const template = {
+        id: randomUUID(),
+        key: "local-network",
+        name: "Public local network",
+        kind: "public",
+        region: "eu01",
+        settings: {
+          env: "dev",
+          network_enabled: true,
+          network_prefix_length: 24,
+        },
+      };
+      const published = await applications.publish(engineer, { template });
+      expect(published.version).toBe(1);
+      expect((await applications.publish(engineer, { template })).id).toBe(
+        published.id,
+      );
+      const updated = await applications.publish(engineer, {
+        template: {
+          ...template,
+          settings: { ...template.settings, network_prefix_length: 26 },
+        },
+      });
+      expect(updated.version).toBe(2);
+      expect(updated.id).not.toBe(published.id);
+      expect(
+        (await applications.listTemplates(engineer)).find(
+          (row) => row.id === published.id,
+        )?.template.settings.network_prefix_length,
+      ).toBe(24);
+      expect(await applications.listTemplates(bob)).toEqual([]);
+      const request = {
+        versionId: published.id,
+        idempotencyKey: randomUUID(),
+        name: "First application",
+        parameters: {},
+      };
+      await expect(applications.order(bob, request)).rejects.toMatchObject({
+        status: 404,
+      });
+      const [first, replay] = await Promise.all([
+        applications.order(engineer, request),
+        applications.order(engineer, request),
+      ]);
+      expect(first.id).toBe(replay.id);
+      expect(first.stateKey).toBe(
+        `applications/${tenantId}/${first.id}/terraform.tfstate`,
+      );
+      expect(first.settings.network_prefix_length).toBe(24);
+      expect(first.planStatus).toBe("blocked");
+      expect(first.executionEnabled).toBe(false);
+      expect(first.blockers.length).toBeGreaterThanOrEqual(3);
+      const api = buildApp({
+        applications,
+        auth: {
+          origin: "https://configurator.example",
+          clientId: "test",
+          store,
+          github: { authorize: vi.fn() },
+          tokens: { put: vi.fn(), get: vi.fn(), remove: vi.fn() },
+        },
+      });
+      const headers = {
+        cookie: `__Host-lzc-session=${aliceToken}`,
+        origin: "https://configurator.example",
+        "x-lzc-csrf": alice.csrfToken,
+        "x-lzc-tenant": tenantId,
+      };
+      try {
+        const response = await api.inject({
+          method: "POST",
+          url: "/api/v1/applications/instances",
+          headers,
+          payload: request,
+        });
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toMatchObject({
+          id: first.id,
+          stateKey: first.stateKey,
+          executionEnabled: false,
+          planStatus: "blocked",
+        });
+        expect(
+          (
+            await api.inject({ url: "/api/v1/applications/instances", headers })
+          ).json(),
+        ).toMatchObject({ instances: [{ id: first.id }] });
+        expect(
+          (
+            await api.inject({
+              url: "/api/v1/applications/templates",
+              headers: { ...headers, "x-lzc-tenant": bob.tenantId },
+            })
+          ).statusCode,
+        ).toBe(403);
+        const rejected = await api.inject({
+          method: "POST",
+          url: "/api/v1/applications/instances",
+          headers,
+          payload: { ...request, owner_email: "injected@example.com" },
+        });
+        expect(rejected.statusCode).toBe(400);
+        expect(rejected.json()).toEqual({
+          error: "invalid_application_request",
+        });
+      } finally {
+        await api.close();
+      }
+      await expect(
+        applications.order(engineer, { ...request, name: "Changed order" }),
+      ).rejects.toMatchObject({ status: 409, code: "idempotency_conflict" });
+      await expect(
+        applications.order(engineer, {
+          ...request,
+          idempotencyKey: randomUUID(),
+          parameters: { network_enabled: false },
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(() =>
+        applications.order(engineer, {
+          ...request,
+          owner_email: "injected@example.com",
+        }),
+      ).toThrow();
+      await expect(
+        withTenant(pool, engineer, (client) =>
+          client.query(
+            "UPDATE lzc.application_template_versions SET version=5 WHERE id=$1",
+            [published.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_template_versions SET version=5 WHERE id=$1",
+          [published.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await inviteMember(engineer, bob, ["application-owner"], false);
+      await organisations.switch(bob, tenantId);
+      expect((await applications.listTemplates(owner)).length).toBe(2);
+      await expect(
+        applications.publish(owner, { template }),
+      ).rejects.toMatchObject({ code: "42501" });
+      expect(await applications.listInstances(owner)).toEqual([]);
+      const identities = new StackitIdentities(pool);
+      const proof = (await identities.status(owner)).identity;
+      if (!proof) throw new Error("Expected existing test STACKIT identity");
+      await identities.save(owner, {
+        ...proof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      const own = await applications.order(owner, {
+        ...request,
+        idempotencyKey: randomUUID(),
+        name: "Owner application",
+      });
+      expect(own.id).not.toBe(first.id);
+      expect(own.settings.owner_email).toBe(proof.email);
+      expect(own.blockers).not.toContain(
+        "Verifizierte STACKIT-Benutzeridentität für diese Bestellung fehlt.",
+      );
+      expect(own.executionEnabled).toBe(false);
+      expect(
+        (await applications.listInstances(owner)).map((row) => row.id),
+      ).toEqual([own.id]);
+      await identities.revoke(owner);
+      const revoked = await applications.order(owner, {
+        ...request,
+        idempotencyKey: randomUUID(),
+        name: "Revoked identity",
+      });
+      expect(revoked.settings.owner_email).toBeUndefined();
+      expect(revoked.blockers).toContain(
+        "Verifizierte STACKIT-Benutzeridentität für diese Bestellung fehlt.",
+      );
+      await migration.query(
+        "UPDATE lzc.stackit_identities SET revoked_at=NULL,valid_until=now()-interval '1 second' WHERE user_id=$1",
+        [owner.userId],
+      );
+      const expired = await applications.order(owner, {
+        ...request,
+        idempotencyKey: randomUUID(),
+        name: "Expired identity",
+      });
+      expect(expired.settings.owner_email).toBeUndefined();
+      expect(expired.blockers).toContain(
+        "Verifizierte STACKIT-Benutzeridentität für diese Bestellung fehlt.",
+      );
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_instances(tenant_id,version_id,requested_by,idempotency_key,name,parameters,resolved_settings,qualification_blockers) VALUES($1,$2,$3,$4,'injected','{}','{}','[\"blocked\"]')",
+            [tenantId, published.id, alice.userId, randomUUID()],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      const beforeRetirement = await applications.listInstances(engineer);
+      expect(() =>
+        applications.retire(engineer, published.id, {
+          confirmRetirement: false,
+        }),
+      ).toThrow();
+      await expect(
+        applications.retire(owner, published.id, { confirmRetirement: true }),
+      ).rejects.toMatchObject({ code: "42501" });
+      const [retired, retiredAgain] = await Promise.all([
+        applications.retire(engineer, published.id, {
+          confirmRetirement: true,
+        }),
+        applications.retire(engineer, published.id, {
+          confirmRetirement: true,
+        }),
+      ]);
+      expect(retiredAgain).toEqual(retired);
+      expect(retired.retiredBy).toBe(engineer.userId);
+      expect(
+        (await applications.listTemplates(owner)).map((row) => row.id),
+      ).toEqual([updated.id]);
+      expect(
+        (await applications.listTemplates(engineer)).find(
+          (row) => row.id === published.id,
+        ),
+      ).toMatchObject({
+        retiredAt: retired.retiredAt,
+        template: published.template,
+      });
+      await expect(
+        applications.order(owner, { ...request, idempotencyKey: randomUUID() }),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "template_version_retired",
+      });
+      expect((await applications.order(engineer, request)).id).toBe(first.id);
+      expect(await applications.listInstances(engineer)).toEqual(
+        beforeRetirement,
+      );
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_instances(tenant_id,version_id,requested_by,idempotency_key,name,parameters,resolved_settings,qualification_blockers) VALUES($1,$2,$3,$4,'retired','{}','{}','[\"blocked\"]')",
+            [tenantId, published.id, owner.userId, randomUUID()],
+          ),
+        ),
+      ).rejects.toMatchObject({
+        code: "55000",
+        message: "template_version_retired",
+      });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_template_retirements(tenant_id,version_id,retired_by) VALUES($1,$2,$3)",
+            [tenantId, updated.id, owner.userId],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_template_retirements SET retired_at=now() WHERE tenant_id=$1 AND version_id=$2",
+          [tenantId, published.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      const [racingOrder, racingRetirement] = await Promise.allSettled([
+        applications.order(engineer, {
+          ...request,
+          versionId: updated.id,
+          idempotencyKey: randomUUID(),
+        }),
+        applications.retire(engineer, updated.id, { confirmRetirement: true }),
+      ]);
+      expect(racingRetirement.status).toBe("fulfilled");
+      if (racingOrder.status === "rejected")
+        expect(racingOrder.reason).toMatchObject({
+          code: "template_version_retired",
+        });
+      else expect(racingOrder.value.versionId).toBe(updated.id);
+      expect(await applications.listTemplates(owner)).toEqual([]);
+      const republished = await applications.publish(engineer, {
+        template: updated.template,
+      });
+      expect(republished.version).toBe(3);
+      expect(republished.retiredAt).toBeUndefined();
+      expect(republished.id).not.toBe(updated.id);
+      const changedPolicy = await applications.publish(engineer, {
+        template: updated.template,
+        deploymentPolicy: "direct",
+      });
+      expect(changedPolicy.version).toBe(4);
+      expect(changedPolicy.deploymentPolicy).toBe("direct");
+      expect(changedPolicy.template).toEqual(republished.template);
+      expect(
+        (
+          await applications.publish(engineer, {
+            template: updated.template,
+            deploymentPolicy: "direct",
+          })
+        ).id,
+      ).toBe(changedPolicy.id);
+      const policyOrder = await applications.order(engineer, {
+        ...request,
+        versionId: changedPolicy.id,
+        idempotencyKey: randomUUID(),
+      });
+      expect(policyOrder.deploymentPolicy).toBe("direct");
+      expect(policyOrder.executionEnabled).toBe(false);
+      expect(
+        (await applications.order(engineer, request)).deploymentPolicy,
+      ).toBe("approval-required");
+      expect(() =>
+        applications.order(engineer, {
+          ...request,
+          deploymentPolicy: "direct",
+        }),
+      ).toThrow("invalid_application_request");
+      await expect(
+        withTenant(pool, engineer, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_instances(tenant_id,version_id,requested_by,idempotency_key,name,parameters,resolved_settings,qualification_blockers) VALUES($1,$2,$3,$4,'policy override','{}','{}','[\"blocked\"]')",
+            [tenantId, changedPolicy.id, engineer.userId, randomUUID()],
+          ),
+        ),
+      ).rejects.toMatchObject({
+        code: "55000",
+        message: "application_policy_mismatch",
+      });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_instances SET deployment_policy='approval-required' WHERE id=$1",
+          [policyOrder.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      expect(
+        (await applications.listTemplates(owner)).map((row) => row.id),
+      ).toEqual([changedPolicy.id, republished.id]);
+      await expect(applications.listTemplates(bob)).rejects.toMatchObject({
+        code: "42501",
+      });
+      await organisations.editMember(
+        engineer,
+        bob.userId,
+        ["platform-engineer"],
+        false,
+      );
+      await organisations.editMember(
+        engineer,
+        bob.userId,
+        ["application-owner"],
+        false,
+      );
+      await migration.query(
+        "UPDATE lzc.memberships SET product_roles='{}' WHERE tenant_id=$1 AND user_id=$2",
+        [tenantId, bob.userId],
+      );
+      await expect(applications.listTemplates(owner)).rejects.toMatchObject({
+        code: "42501",
+      });
+      await organisations.switch(bob, bob.tenantId);
+      await organisations.editMember(engineer, bob.userId, [], false, true);
+      await expect(
+        organisations.archive(alice, tenantId),
+      ).rejects.toMatchObject({ code: "55000" });
+    } finally {
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+      await concurrentPool.end();
+    }
+  }, 30000);
+  it("binds immutable platform contracts to template versions with current verified PE approval", async () => {
+    const organisations = new PostgresOrganisations(pool);
+    const identities = new StackitIdentities(pool);
+    const organizationId = randomUUID();
+    const profileId = randomUUID();
+    const technical = {
+      list: vi.fn(async () => [
+        {
+          id: profileId,
+          name: "Tenant automation",
+          serviceAccount: "automation@sa.stackit.cloud",
+          keyId: "test-key",
+          state: "stored" as const,
+          createdAt: new Date(),
+        },
+      ]),
+      verifyForPreparation: vi.fn(async () => ({
+        check: {
+          status: "passed" as const,
+          code: "organization_readable" as const,
+          organizationId,
+          organizationName: "Approved platform",
+          checkedAt: new Date().toISOString(),
+        },
+        version: 1,
+        keyId: "test-key",
+      })),
+    };
+    const applications = new Applications(pool, technical);
+    const tenantId = await organisations.create(
+      alice,
+      "Approved platform",
+      organizationId,
+    );
+    const engineer = { ...alice, tenantId };
+    const owner = { ...bob, tenantId };
+    const template = {
+      id: randomUUID(),
+      key: "approved-public",
+      name: "Public local network",
+      kind: "public",
+      region: "eu01",
+      settings: {
+        env: "dev",
+        network_enabled: true,
+        network_prefix_length: 24,
+      },
+    };
+    const input = {
+      schema_version: 1,
+      organization_id: organizationId,
+      confirmApproval: true,
+      targets: {
+        public: {
+          folder_id: randomUUID(),
+          region: "eu01",
+          corporate: false,
+          network_area_id: null,
+          firewall_next_hop_ip: null,
+          ipv4_nameservers: null,
+        },
+      },
+    };
+    try {
+      await organisations.switch(alice, tenantId);
+      await expect(
+        applications.approvePlatformContract(engineer, input),
+      ).rejects.toMatchObject({
+        status: 403,
+        code: "verified_platform_organization_required",
+      });
+      const proof = (await identities.status(engineer)).identity;
+      if (!proof) throw new Error("Expected existing PE STACKIT identity");
+      await identities.save(engineer, {
+        ...proof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      const approved = await applications.approvePlatformContract(
+        engineer,
+        input,
+      );
+      await expect(
+        applications.approvePlatformContract(engineer, {
+          ...input,
+          credentialProfileId: randomUUID(),
+        }),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_credential_required",
+      });
+      technical.list.mockResolvedValueOnce([]);
+      await expect(
+        applications.approvePlatformContract(engineer, input),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_credential_required",
+      });
+      const failedTechnical = new Applications(pool, {
+        ...technical,
+        verifyForPreparation: async () => {
+          const checked = await technical.verifyForPreparation();
+          return {
+            ...checked,
+            check: { ...checked.check, status: "failed" as const },
+          };
+        },
+      });
+      await expect(
+        failedTechnical.approvePlatformContract(engineer, input),
+      ).rejects.toMatchObject({
+        status: 422,
+        code: "application_technical_access_failed",
+      });
+      expect(approved.document).toMatchObject({
+        schema_version: 1,
+        tenant_id: tenantId,
+        organization_id: organizationId,
+        targets: input.targets,
+      });
+      expect(approved.approvedBy).toBe(alice.userId);
+      await expect(
+        migration.query(
+          "INSERT INTO lzc.application_platform_contracts(revision,tenant_id,organization_id,approved_by,credential_profile_id,credential_version,credential_key_id,credential_checked_at,document) SELECT $1,tenant_id,organization_id,approved_by,credential_profile_id,credential_version,credential_key_id,credential_checked_at,jsonb_build_object('tenant_id',tenant_id,'revision',$1::uuid) FROM lzc.application_platform_contracts WHERE revision=$2",
+          [randomUUID(), approved.document.revision],
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+      expect(technical.verifyForPreparation).toHaveBeenCalledWith(
+        engineer,
+        profileId,
+        organizationId,
+      );
+      expect(await applications.listPlatformContracts(bob)).toEqual([]);
+      const binding = {
+        platformRevision: approved.document.revision,
+        targetKey: "public",
+      };
+      await expect(
+        applications.publish(bob, { template, ...binding }),
+      ).rejects.toMatchObject({
+        status: 404,
+        code: "platform_contract_not_found",
+      });
+      await expect(
+        applications.publish(engineer, {
+          template,
+          ...binding,
+          targetKey: "missing",
+        }),
+      ).rejects.toMatchObject({
+        status: 400,
+        code: "invalid_application_target",
+      });
+      await expect(
+        applications.publish(engineer, {
+          template: { ...template, region: "eu02" },
+          ...binding,
+        }),
+      ).rejects.toMatchObject({
+        status: 400,
+        code: "invalid_application_target",
+      });
+      const first = await applications.publish(engineer, {
+        template,
+        ...binding,
+      });
+      expect(first).toMatchObject({ version: 1, ...binding });
+      expect(
+        (await applications.publish(engineer, { template, ...binding })).id,
+      ).toBe(first.id);
+      const next = await applications.approvePlatformContract(engineer, input);
+      const second = await applications.publish(engineer, {
+        template,
+        platformRevision: next.document.revision,
+        targetKey: "public",
+      });
+      expect(second.version).toBe(2);
+      expect(
+        (await applications.listTemplates(engineer)).find(
+          (item) => item.id === first.id,
+        )?.platformRevision,
+      ).toBe(approved.document.revision);
+      await expect(
+        withTenant(pool, engineer, (client) =>
+          client.query(
+            "UPDATE lzc.application_platform_contracts SET approved_by=$1 WHERE revision=$2",
+            [bob.userId, approved.document.revision],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_platform_contracts SET document=document WHERE revision=$1",
+          [approved.document.revision],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await inviteMember(engineer, bob, ["application-owner"], false);
+      await organisations.switch(bob, tenantId);
+      expect(await applications.listPlatformContracts(owner)).toHaveLength(2);
+      await expect(
+        applications.approvePlatformContract(owner, input),
+      ).rejects.toMatchObject({ code: "42501" });
+      const ownerProof = (await identities.status(owner)).identity;
+      if (!ownerProof) throw new Error("Expected existing AO STACKIT identity");
+      await identities.save(owner, {
+        ...ownerProof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      const order = await applications.order(owner, {
+        versionId: first.id,
+        idempotencyKey: randomUUID(),
+        name: "Bound owner application",
+        parameters: {},
+      });
+      expect(order.settings.owner_email).toBe(ownerProof.email);
+      expect(order.executionEnabled).toBe(false);
+      expect(order.blockers).toEqual([
+        "Der isolierte Application-Plan-Runner ist noch nicht freigegeben. Es wurde kein Cloud-Plan ausgeführt.",
+      ]);
+      const prepared = await applications.preparePlanInput(owner, order.id);
+      expect(prepared).toMatchObject({
+        kind: "application-plan-input",
+        cloudPlanExecuted: false,
+        plan: {
+          entrypoint: "src/application",
+          executionEnabled: false,
+          requestedBy: bob.userId,
+          stateKey: order.stateKey,
+          variables: {
+            application: {
+              owner_email: ownerProof.email,
+              network_enabled: true,
+              network_prefix_length: 24,
+              platform_revision: approved.document.revision,
+            },
+            platform_contract: {
+              revision: approved.document.revision,
+              targets: input.targets,
+            },
+          },
+        },
+      });
+      await expect(
+        applications.preparePlanInput(engineer, order.id),
+      ).rejects.toMatchObject({ status: 404 });
+      const directVersion = await applications.publish(engineer, {
+        template,
+        ...binding,
+        deploymentPolicy: "direct",
+      });
+      const directOrder = await applications.order(owner, {
+        versionId: directVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Direct policy",
+        parameters: order.parameters,
+      });
+      expect(
+        await applications.preparePlanInput(owner, directOrder.id),
+      ).toMatchObject({
+        cloudPlanExecuted: false,
+        requiresExplicitApplyApproval: true,
+        plan: { applyPolicy: "direct", executionEnabled: false },
+      });
+      await identities.revoke(owner);
+      await expect(
+        applications.preparePlanInput(owner, order.id),
+      ).rejects.toMatchObject({
+        status: 403,
+        code: "verified_application_identity_required",
+      });
+      await identities.save(owner, {
+        ...ownerProof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: { id: organizationId, name: "Approved platform" },
+      });
+      await migration.query(
+        "UPDATE lzc.stackit_identities SET email='changed@example.test' WHERE user_id=$1",
+        [bob.userId],
+      );
+      await expect(
+        applications.preparePlanInput(owner, order.id),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_owner_identity_changed",
+      });
+      await identities.save(owner, {
+        ...ownerProof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: { id: organizationId, name: "Approved platform" },
+      });
+      const api = buildApp({
+        applications,
+        auth: {
+          origin: "https://configurator.example",
+          clientId: "test",
+          store,
+          github: { authorize: vi.fn() },
+          tokens: { put: vi.fn(), get: vi.fn(), remove: vi.fn() },
+        },
+      });
+      const headers = {
+        cookie: `__Host-lzc-session=${aliceToken}`,
+        origin: "https://configurator.example",
+        "x-lzc-csrf": alice.csrfToken,
+        "x-lzc-tenant": tenantId,
+      };
+      try {
+        const engineerOrder = await applications.order(engineer, {
+          versionId: first.id,
+          idempotencyKey: randomUUID(),
+          name: "Engineer own application",
+          parameters: {},
+        });
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: `/api/v1/applications/instances/${engineerOrder.id}/plan-input`,
+              headers,
+              payload: {},
+            })
+          ).json(),
+        ).toMatchObject({
+          kind: "application-plan-input",
+          cloudPlanExecuted: false,
+          plan: {
+            executionEnabled: false,
+            requestedBy: alice.userId,
+            stateKey: engineerOrder.stateKey,
+          },
+        });
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: `/api/v1/applications/instances/${engineerOrder.id}/plan-input`,
+              headers,
+              payload: { owner_email: "injected@example.test" },
+            })
+          ).statusCode,
+        ).toBe(400);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: `/api/v1/applications/instances/${order.id}/plan-input`,
+              headers,
+              payload: {},
+            })
+          ).statusCode,
+        ).toBe(404);
+        expect(
+          (
+            await api.inject({
+              url: "/api/v1/applications/platform-contracts",
+              headers,
+            })
+          ).json(),
+        ).toMatchObject({
+          contracts: [
+            { document: { revision: next.document.revision } },
+            { document: { revision: approved.document.revision } },
+          ],
+        });
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: "/api/v1/applications/platform-contracts",
+              headers,
+              payload: { ...input, tenant_id: randomUUID() },
+            })
+          ).statusCode,
+        ).toBe(400);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: "/api/v1/applications/platform-contracts",
+              headers: { ...headers, "x-lzc-csrf": "wrong" },
+              payload: input,
+            })
+          ).statusCode,
+        ).toBe(403);
+        expect(
+          (
+            await api.inject({
+              method: "POST",
+              url: "/api/v1/applications/platform-contracts",
+              headers,
+              payload: input,
+            })
+          ).statusCode,
+        ).toBe(200);
+      } finally {
+        await api.close();
+      }
+      await identities.revoke(engineer);
+      await expect(
+        applications.approvePlatformContract(engineer, input),
+      ).rejects.toMatchObject({ status: 403 });
+      await migration.query(
+        "UPDATE lzc.memberships SET product_roles='{}' WHERE tenant_id=$1 AND user_id=$2",
+        [tenantId, bob.userId],
+      );
+      await expect(
+        applications.listPlatformContracts(owner),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.preparePlanInput(owner, order.id),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        organisations.archive(alice, tenantId),
+      ).rejects.toMatchObject({ code: "55000" });
+    } finally {
+      await identities.revoke(engineer);
+      await identities.revoke(owner);
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+    }
+  });
   it("uses a runtime role without ownership, superuser or bypass privileges", async () => {
     const result = await pool.query(
       "SELECT rolsuper, rolbypassrls, rolcreaterole FROM pg_roles WHERE rolname=current_user",
@@ -214,11 +1492,31 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           c.query("SELECT id FROM lzc.configurations"),
         )
       ).rows,
-    ).toEqual([{ id: aliceDocument }]);
+    ).toEqual([]);
     expect(
       (
         await withTenant(pool, viewer, (c) =>
           c.query("UPDATE lzc.configurations SET name='Attack' WHERE id=$1", [
+            aliceDocument,
+          ]),
+        )
+      ).rowCount,
+    ).toBe(0);
+    await migration.query(
+      "UPDATE lzc.memberships SET role='editor',product_roles=ARRAY['platform-engineer'] WHERE tenant_id=$1 AND user_id=$2",
+      [alice.tenantId, bob.userId],
+    );
+    expect(
+      (
+        await withTenant(pool, viewer, (client) =>
+          client.query("SELECT id FROM lzc.configurations"),
+        )
+      ).rows,
+    ).toEqual([]);
+    expect(
+      (
+        await withTenant(pool, viewer, (client) =>
+          client.query("DELETE FROM lzc.configurations WHERE id=$1", [
             aliceDocument,
           ]),
         )
@@ -678,7 +1976,14 @@ describe("independent external identities", () => {
     try {
       await migration.query("DROP TABLE lzc_auth.external_identities");
       await migration.query(
-        "DELETE FROM lzc_auth.users WHERE github_id IS NULL",
+        `WITH legacy_users AS (
+          SELECT id, (SELECT coalesce(max(github_id), 0) FROM lzc_auth.users)
+            + row_number() OVER (ORDER BY id) AS github_id
+          FROM lzc_auth.users WHERE github_id IS NULL
+        )
+        UPDATE lzc_auth.users SET github_id = legacy_users.github_id,
+          github_login = 'migration-fixture'
+        FROM legacy_users WHERE users.id = legacy_users.id`,
       );
       const sql = await readFile(
         `${directory}/006_external_identities.sql`,
@@ -763,6 +2068,65 @@ describe("organisation draft workspaces", () => {
     bob = (await create(902)).session;
   });
   const organisations = new PostgresOrganisations(pool);
+  it("authorizes owner-scoped organisation credentials by product role, including role revocation", async () => {
+    const id = await organisations.create(
+      alice,
+      "Credential team",
+      randomUUID(),
+    );
+    await organisations.switch(alice, id);
+    const engineer = { ...alice, tenantId: id };
+    const secrets = { put: vi.fn(), get: vi.fn(), remove: vi.fn() };
+    const profiles = new PostgresCredentialProfiles(pool, secrets);
+    const key = {
+      active: true as const,
+      credentials: {
+        kid: randomUUID(),
+        iss: "test@sa.stackit.cloud",
+        sub: randomUUID(),
+        aud: "https://service-account.api.stackit.cloud" as const,
+        privateKey: generateKeyPairSync("rsa", { modulusLength: 2048 })
+          .privateKey.export({ format: "pem", type: "pkcs8" })
+          .toString(),
+      },
+    };
+    await profiles.create(engineer, "Platform", key);
+    const [profile] = await profiles.list(engineer);
+    if (!profile) throw new Error("Credential metadata missing");
+    expect(profile?.state).toBe("stored");
+    expect(await profiles.list(alice)).toEqual([]);
+    await inviteMember(engineer, bob, ["application-owner"], false);
+    await organisations.switch(bob, id);
+    const owner = { ...bob, tenantId: id };
+    await expect(
+      profiles.create(owner, "Forbidden", key),
+    ).rejects.toMatchObject({ code: "credential_role_required" });
+    expect(await profiles.list(owner)).toEqual([]);
+    await organisations.editMember(
+      engineer,
+      bob.userId,
+      ["platform-engineer"],
+      true,
+    );
+    expect(await profiles.list(owner)).toEqual([]);
+    await expect(profiles.remove(owner, profile.id)).rejects.toMatchObject({
+      code: "credential_not_found",
+    });
+    await organisations.editMember(
+      owner,
+      alice.userId,
+      ["application-owner"],
+      false,
+    );
+    expect(await profiles.list(engineer)).toEqual([]);
+    await expect(
+      profiles.create(engineer, "Revoked", key),
+    ).rejects.toMatchObject({ code: "credential_role_required" });
+    expect(secrets.get).not.toHaveBeenCalled();
+    expect(secrets.remove).not.toHaveBeenCalled();
+    await organisations.switch(alice, alice.tenantId);
+    await organisations.switch(bob, bob.tenantId);
+  });
   it("creates draft membership, preserves personal token binding and revokes membership", async () => {
     expect(
       (await organisations.overview(alice)).tenants.find(

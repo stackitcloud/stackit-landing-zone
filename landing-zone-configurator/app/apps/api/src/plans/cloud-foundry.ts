@@ -12,6 +12,12 @@ export class RunnerRequestError extends Error {
 }
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 export interface PlanRunner {
+  supportsArtifact?(identity: string): boolean;
+  output?(
+    id: string,
+    appId: string | null,
+    saved?: { bytes: Buffer; sha256: string; identity: string },
+  ): Promise<{ text: string; truncated: boolean; kind: "live" | "saved-plan" }>;
   start(
     id: string,
     ticket: string,

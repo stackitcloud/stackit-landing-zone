@@ -14,7 +14,13 @@ restricted by STACKIT permissions and backend policy.
 The reused module creates a project, an automation service account and its key,
 Object Storage buckets/credentials, plus the selected Secrets Manager and
 Observability services. Corporate instances reference a platform-owned SNA and
-may create their project network/routing. This scope must appear in template
+create their project network/routing. Public instances can optionally create a
+local project network using `network_enabled`, with an optional
+`network_prefix_length`. This network is not SNA-routed; legacy public inputs
+without the option continue to create no network. Schema 2 templates fix these
+values rather than allowing order overrides. The root exposes a non-secret
+`project_network` reference, not service credentials. A local network does not
+qualify its private CIDR as an Observability ACL source. This scope must appear in template
 publication and plan review. Generated credentials remain in the protected
 application state; they are not exposed by the root outputs.
 

@@ -1,5 +1,217 @@
 @import "./nebula-tokens.css";
 
+[hidden] {
+  display: none !important;
+}
+.workspace-switch {
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.language-switch {
+  width: 94px;
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  color: var(--text);
+  font: inherit;
+}
+
+@media (max-width: 520px) {
+  .portal-header {
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    padding-block: 8px;
+    gap: 8px;
+  }
+
+  .portal-header .product-name {
+    display: none;
+  }
+}
+.nav-section {
+  grid-column: 1 / -1;
+  padding: 20px 16px 8px;
+  font-size: 12px;
+}
+.configuration-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #f8f9fa;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.configuration-context {
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.deployment-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid #d7dce0;
+  font-size: 14px;
+}
+
+.summary-list.plan-counts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.plan-counts > div {
+  min-width: 0;
+}
+.plan-counts dt {
+  font-size: 14px;
+}
+.plan-counts dd {
+  font-size: 20px;
+}
+
+.configuration-tabs button {
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.configuration-tabs button[aria-current="page"] {
+  border-bottom-color: currentColor;
+  font-weight: 600;
+}
+.configuration-tabs button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.configuration-save {
+  margin-bottom: 24px;
+}
+
+.application-self-service > section {
+  padding-block: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+:where(.application-self-service) .field,
+:where(.application-self-service) select,
+:where(.application-self-service) input {
+  min-width: 0;
+  max-width: 100%;
+}
+.application-self-service textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.application-template-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.application-template-catalog legend {
+  padding: 0;
+}
+.application-template-choice {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.application-template-choice:hover,
+.application-template-choice:focus-visible {
+  border-color: var(--accent);
+}
+.application-template-choice[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.application-template-choice:disabled {
+  cursor: not-allowed;
+}
+.application-self-service .toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.application-properties {
+  display: grid;
+  grid-template-columns: minmax(8rem, 10rem) minmax(0, 1fr);
+  gap: 0.5rem 1rem;
+}
+.application-properties dt {
+  font-weight: 700;
+}
+.application-properties dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.application-orders article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-wrap: anywhere;
+}
+:where(.application-self-service) pre {
+  max-width: 100%;
+  max-height: 24rem;
+  overflow: auto;
+}
+@media (max-width: 600px) {
+  .application-properties,
+  .application-orders article {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .application-orders .button {
+    justify-self: start;
+  }
+}
+
 @font-face {
   font-family: "DIN 2014";
   src: url("/brand/DIN2014-normal.woff2") format("woff2");
@@ -763,6 +975,25 @@ pre {
   .portal-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+  .deployment-workflow .sidebar nav {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .deployment-workflow .sidebar .nav-item {
+    flex: 0 0 auto;
+    padding: 8px;
+    white-space: nowrap;
+  }
+  .deployment-workflow .nav-section {
+    display: none;
+  }
+  .deployment-workflow .configuration-tabs {
+    gap: 6px;
+  }
+  .deployment-workflow .configuration-tabs button {
+    font-size: 14px;
+  }
   .sidebar {
     padding: 0.625rem 1rem;
     border-right: 0;
@@ -863,19 +1094,53 @@ pre {
   height: auto;
 }
 
+.stackit-login {
+  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+
+.stackit-login::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.stackit-login output {
+  display: block;
+  margin-bottom: 20px;
+  font-family: monospace;
+  font-size: 24px;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.stackit-login h2 {
+  font-size: 20px;
+}
+
 .account {
   gap: 12px;
   position: relative;
+}
+.account > span {
+  min-width: 0;
+  max-width: 220px;
+  overflow-wrap: anywhere;
 }
 .account .button {
   padding: 8px 12px;
   white-space: nowrap;
 }
 .account-error {
+  overflow-wrap: anywhere;
   position: absolute;
   right: 0;
   top: 100%;
   background: var(--nds-color-background-default, white);
+  color: #17252b;
   padding: 12px;
   width: 260px;
   z-index: 10;
@@ -913,6 +1178,44 @@ pre {
 
 .credential-account {
   overflow-wrap: anywhere;
+}
+
+.plan-runs .field-hint:has(input[type="checkbox"]) {
+  display: block;
+  margin-block: 0.75rem;
+}
+
+.plan-output {
+  min-width: 0;
+  margin-block: 12px;
+}
+
+.plan-output summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.plan-console {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 560px;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+}
+
+.plan-runs .button {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .tree-folder {
@@ -1061,7 +1364,8 @@ pre {
   overflow-wrap: anywhere;
 }
 
-.role-options {
+.role-options,
+.parameter-options {
   min-width: 0;
   margin-block: 16px;
   padding: 12px;
@@ -1078,7 +1382,8 @@ pre {
   flex: 1 1 240px;
   min-width: 0;
 }
-.role-list {
+.role-list,
+.parameter-choice-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   align-content: start;
@@ -1087,7 +1392,8 @@ pre {
   overflow: auto;
   scrollbar-gutter: stable;
 }
-.role-options .parameter-choice {
+.role-options .parameter-choice,
+.parameter-options .parameter-choice {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -1098,7 +1404,8 @@ pre {
   overflow-wrap: anywhere;
   cursor: pointer;
 }
-.role-options .parameter-choice input {
+.role-options .parameter-choice input,
+.parameter-options .parameter-choice input {
   flex: 0 0 16px;
   width: 16px;
   height: 16px;

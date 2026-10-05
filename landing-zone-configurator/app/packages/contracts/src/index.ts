@@ -1,11 +1,31 @@
+export * from "./backend.js";
+
 import { z } from "zod";
 
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),
   service: z.literal("landing-zone-configurator"),
-  authentication: z.enum(["not-configured", "github"]),
+  authentication: z.enum(["not-configured", "github", "stackit"]),
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
+
+export const applicationInstanceSchema = z.strictObject({
+  id: z.uuid(),
+  versionId: z.uuid(),
+  deploymentPolicy: z.enum(["approval-required", "direct"]).optional(),
+  requestedBy: z.uuid(),
+  name: z.string().min(1).max(40),
+  parameters: z.record(z.string(), z.json()),
+  settings: z.record(z.string(), z.json()),
+  createdAt: z.iso.datetime(),
+  stateKey: z
+    .string()
+    .regex(/^applications\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/terraform\.tfstate$/),
+  planStatus: z.literal("blocked"),
+  executionEnabled: z.literal(false),
+  blockers: z.array(z.string().min(1)).min(1),
+});
+export type ApplicationInstance = z.infer<typeof applicationInstanceSchema>;
 
 export type { ActionCounts, PlanAction, PlanSummary } from "./plan.js";
 export { InvalidPlan, summarizePlan } from "./plan.js";
@@ -13,6 +33,7 @@ export const planStageSchema = z.enum([
   "initializing",
   "validating",
   "planning",
+  "applying",
 ]);
 const count = z.number().int().min(0).max(100000);
 const counts = z
@@ -52,12 +73,35 @@ export const planFailureSchema = z.enum([
   "summary_failed",
   "timed_out",
   "cancelled",
+  "apply_failed",
+  "state_failed",
+  "artifact_invalid",
 ]);
 export const planResultSchema = z.discriminatedUnion("status", [
   z
-    .object({ status: z.literal("succeeded"), summary: planSummarySchema })
+    .object({
+      status: z.literal("succeeded"),
+      summary: planSummarySchema.optional(),
+      artifactSha256: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .optional(),
+    })
     .strict(),
   z
     .object({ status: z.literal("failed"), errorCode: planFailureSchema })
     .strict(),
 ]);
+
+export const platformApplySchema = z.strictObject({
+  artifactSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  organizationId: z.uuid(),
+  confirmApply: z.literal(true),
+});
+export const runnerArtifactSchema = z.strictObject({
+  data: z
+    .string()
+    .min(4)
+    .max(22 * 1024 * 1024),
+  summary: planSummarySchema,
+});

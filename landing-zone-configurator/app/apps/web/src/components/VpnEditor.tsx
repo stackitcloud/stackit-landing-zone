@@ -1,5 +1,6 @@
 import { type InputType, type JsonValue, objectValue } from "@lzc/domain";
 import { useId, useState } from "react";
+import { t } from "../i18n";
 import { labelFor } from "./feature-labels";
 import { emptyValue, StructuredField } from "./StructuredField";
 
@@ -72,7 +73,7 @@ export function VpnEditor({
         onChange={(child) => set(name, child)}
         title={
           name === "availability_zones"
-            ? "Verfügbarkeitszonen der beiden Tunnel"
+            ? t("Verfügbarkeitszonen der beiden Tunnel")
             : labelFor(name)
         }
       />
@@ -81,14 +82,19 @@ export function VpnEditor({
   const zones = objectValue(current.availability_zones);
   for (const tunnel of ["tunnel1", "tunnel2"]) {
     if (typeof zones[tunnel] !== "string" || !String(zones[tunnel]).trim())
-      missing.push(`Verfügbarkeitszone für ${tunnel}`);
+      missing.push(t("Verfügbarkeitszone für {{value0}}", { value0: tunnel }));
   }
   for (const [key, entry] of Object.entries(connections)) {
     const connection = objectValue(entry);
     for (const tunnel of ["tunnel1", "tunnel2"]) {
       const address = objectValue(connection[tunnel]).remote_address;
       if (typeof address !== "string" || !address.trim())
-        missing.push(`${key}: Gegenstellenadresse für ${tunnel}`);
+        missing.push(
+          t("{{value0}}: Gegenstellenadresse für {{value1}}", {
+            value0: key,
+            value1: tunnel,
+          }),
+        );
     }
     const required =
       routing === "POLICY_BASED"
@@ -113,37 +119,41 @@ export function VpnEditor({
   if (value == null)
     return (
       <section className="notice">
-        <h3>STACKIT VPN</h3>
-        <p>Kein VPN-Gateway konfiguriert.</p>
+        <h3>{t("STACKIT VPN")}</h3>
+        <p>{t("Kein VPN-Gateway konfiguriert.")}</p>
         <button
           type="button"
           className="button secondary"
           onClick={() => onChange(emptyValue(type))}
         >
-          STACKIT VPN hinzufügen
+          {t("STACKIT VPN hinzufügen")}
         </button>
       </section>
     );
   return (
     <section className="vpn-editor">
-      <h3>STACKIT VPN · {region}</h3>
+      <h3>
+        {t("STACKIT VPN ·")} {region}
+      </h3>
       <p>
-        Der Accelerator erstellt je SNA dieser Region ein VPN-Gateway und
-        übernimmt dieselben Verbindungen für alle diese Gateways. Eine Auswahl
-        einzelner SNAs wird derzeit nicht unterstützt.
+        {t(
+          "Der Accelerator erstellt je SNA dieser Region ein VPN-Gateway und übernimmt dieselben Verbindungen für alle diese Gateways. Eine Auswahl einzelner SNAs wird derzeit nicht unterstützt.",
+        )}
       </p>
       <p className="notice">
-        Dieser Assistent erstellt die Konfiguration der STACKIT-Seite. Das
-        entfernte VPN-Gerät muss separat eingerichtet werden. VPN-Deployments
-        und die geschützte Anbindung der Pre-Shared Keys sind im gemeinsamen
-        Editor noch nicht verfügbar.
+        {t(
+          "Dieser Assistent erstellt die Konfiguration der STACKIT-Seite. Das entfernte VPN-Gerät muss separat eingerichtet werden. VPN-Deployments und die geschützte Anbindung der Pre-Shared Keys sind im gemeinsamen Editor noch nicht verfügbar.",
+        )}
       </p>
       <p>
         <a href={documentation} target="_blank" rel="noreferrer">
-          STACKIT VPN-Dokumentation
+          {t("STACKIT VPN-Dokumentation")}
         </a>
       </p>
-      <nav aria-label="VPN-Konfigurationsschritte" className="field-options">
+      <nav
+        aria-label={t("VPN-Konfigurationsschritte")}
+        className="field-options"
+      >
         {steps.map((label, index) => (
           <button
             key={label}
@@ -152,71 +162,74 @@ export function VpnEditor({
             aria-current={step === index ? "step" : undefined}
             onClick={() => setStep(index)}
           >
-            {index + 1}. {label}
+            {index + 1}. {t(label)}
           </button>
         ))}
       </nav>
       {step === 0 && (
         <div>
-          <h4>Gateway</h4>
+          <h4>{t("Gateway")}</h4>
           <p>
-            Das Gateway ist der STACKIT-Endpunkt. Beide Tunnel erhalten eine
-            Verfügbarkeitszone; ihre öffentlichen Adressen stehen erst nach
-            einer Bereitstellung fest.
+            {t(
+              "Das Gateway ist der STACKIT-Endpunkt. Beide Tunnel erhalten eine Verfügbarkeitszone; ihre öffentlichen Adressen stehen erst nach einer Bereitstellung fest.",
+            )}
           </p>
           <a
             href={`${documentation}getting-started/gateway-create/`}
             target="_blank"
             rel="noreferrer"
           >
-            STACKIT VPN-Gateway erstellen
+            {t("STACKIT VPN-Gateway erstellen")}
           </a>
           {field("display_name")}
           {field("plan_id")}
           {field("availability_zones")}
           <p className="field-hint">
-            Leistungsplan und Verfügbarkeitszonen müssen in der gewählten Region
-            verfügbar sein. Diese Produktkataloge werden hier noch nicht live
-            abgefragt.
+            {t(
+              "Leistungsplan und Verfügbarkeitszonen müssen in der gewählten Region verfügbar sein. Diese Produktkataloge werden hier noch nicht live abgefragt.",
+            )}
           </p>
         </div>
       )}
       {step === 1 && (
         <div>
-          <h4>Routing</h4>
+          <h4>{t("Routing")}</h4>
           {field("routing_type")}
           <p>
-            Das Routingverfahren eines bestehenden Gateways kann nicht
-            nachträglich geändert werden. Ein Wechsel erfordert den Ersatz des
-            Gateways; vor einer späteren Ausführung muss der Plan auf diese
-            Auswirkung geprüft werden.
+            {t(
+              "Das Routingverfahren eines bestehenden Gateways kann nicht nachträglich geändert werden. Ein Wechsel erfordert den Ersatz des Gateways; vor einer späteren Ausführung muss der Plan auf diese Auswirkung geprüft werden.",
+            )}
           </p>
           <p>
             {routing === "POLICY_BASED"
-              ? "Policy-based: Pro Verbindung werden die lokalen und entfernten Netze angegeben, deren Verkehr über das VPN laufen soll."
-              : "Route-based: Pro Verbindung werden die statischen Routen zu den entfernten Netzen konfiguriert."}
+              ? t(
+                  "Policy-based: Pro Verbindung werden die lokalen und entfernten Netze angegeben, deren Verkehr über das VPN laufen soll.",
+                )
+              : t(
+                  "Route-based: Pro Verbindung werden die statischen Routen zu den entfernten Netzen konfiguriert.",
+                )}
           </p>
           <p>
-            BGP wird durch das aktuelle Accelerator-Modul nicht unterstützt.
-            Diese VPN-Einstellungen ersetzen keine allgemeine
-            SNA-Routing-Tabelle.
+            {t(
+              "BGP wird durch das aktuelle Accelerator-Modul nicht unterstützt. Diese VPN-Einstellungen ersetzen keine allgemeine SNA-Routing-Tabelle.",
+            )}
           </p>
           <a
             href={`${documentation}basics/gateway-and-connection-options/`}
             target="_blank"
             rel="noreferrer"
           >
-            Gateway- und Verbindungsoptionen
+            {t("Gateway- und Verbindungsoptionen")}
           </a>
         </div>
       )}
       {step === 2 && (
         <div>
-          <h4>Verbindungen und Tunnel</h4>
+          <h4>{t("Verbindungen und Tunnel")}</h4>
           <p>
-            Eine Verbindung enthält zwei Tunnel zur Gegenstelle. Die Schlüssel
-            werden später über eine geschützte Zugangsanbindung bereitgestellt
-            und gehören nicht in diese Konfiguration.
+            {t(
+              "Eine Verbindung enthält zwei Tunnel zur Gegenstelle. Die Schlüssel werden später über eine geschützte Zugangsanbindung bereitgestellt und gehören nicht in diese Konfiguration.",
+            )}
           </p>
           {Object.entries(connections).map(([key, entry]) => {
             if (!connectionType) return null;
@@ -248,7 +261,9 @@ export function VpnEditor({
               );
             return (
               <section className="project-card" key={key}>
-                <h4>Verbindung: {key}</h4>
+                <h4>
+                  {t("Verbindung:")} {key}
+                </h4>
                 {connectionField("display_name")}
                 {connectionField("enabled")}
                 {routing === "POLICY_BASED" ? (
@@ -261,8 +276,9 @@ export function VpnEditor({
                 )}
                 <details>
                   <summary>
-                    Weitere Routing-Einstellungen (vorhandene Werte bleiben
-                    erhalten)
+                    {t(
+                      "Weitere Routing-Einstellungen (vorhandene Werte bleiben erhalten)",
+                    )}
                   </summary>
                   {routing === "POLICY_BASED" ? (
                     connectionField("static_routes")
@@ -283,10 +299,12 @@ export function VpnEditor({
                   );
                   return (
                     <section key={tunnelName}>
-                      <h5>Tunnel {index + 1}</h5>
+                      <h5>
+                        {t("Tunnel")} {index + 1}
+                      </h5>
                       <StructuredField
                         name="remote_address"
-                        title="Öffentliche IP-Adresse der Gegenstelle"
+                        title={t("Öffentliche IP-Adresse der Gegenstelle")}
                         type={tunnelSchema.remote_address ?? "string"}
                         value={tunnel.remote_address}
                         path={`connectivity.vpn.connections.${key}.${tunnelName}.remote_address`}
@@ -302,7 +320,9 @@ export function VpnEditor({
                         }
                       />
                       <details>
-                        <summary>Erweiterte Tunnel-Einstellungen</summary>
+                        <summary>
+                          {t("Erweiterte Tunnel-Einstellungen")}
+                        </summary>
                         {["peering", "phase1", "phase2"].map(
                           (name) =>
                             tunnelSchema[name] && (
@@ -337,7 +357,10 @@ export function VpnEditor({
                   onClick={() => {
                     if (
                       window.confirm(
-                        `VPN-Verbindung ${key} aus der Konfiguration entfernen?`,
+                        t(
+                          "VPN-Verbindung {{value0}} aus der Konfiguration entfernen?",
+                          { value0: key },
+                        ),
                       )
                     )
                       set(
@@ -346,13 +369,13 @@ export function VpnEditor({
                       );
                   }}
                 >
-                  Verbindung entfernen
+                  {t("Verbindung entfernen")}
                 </button>
               </section>
             );
           })}
           <div className="field">
-            <label htmlFor={id}>Kennung der neuen VPN-Verbindung</label>
+            <label htmlFor={id}>{t("Kennung der neuen VPN-Verbindung")}</label>
             <input
               id={id}
               value={newKey}
@@ -387,26 +410,26 @@ export function VpnEditor({
               setError("");
             }}
           >
-            VPN-Verbindung hinzufügen
+            {t("VPN-Verbindung hinzufügen")}
           </button>
-          {error && <p role="alert">{error}</p>}
+          {error && <p role="alert">{t(error)}</p>}
           <p>
             <a
               href={`${documentation}getting-started/connection-create/`}
               target="_blank"
               rel="noreferrer"
             >
-              Verbindung und Gegenstelle konfigurieren
+              {t("Verbindung und Gegenstelle konfigurieren")}
             </a>
           </p>
         </div>
       )}
       {step === 3 && (
         <div>
-          <h4>Zusammenfassung</h4>
+          <h4>{t("Zusammenfassung")}</h4>
           {missing.length > 0 && (
             <div className="notice">
-              <strong>Noch auszufüllen</strong>
+              <strong>{t("Noch auszufüllen")}</strong>
               <ul>
                 {missing.map((item) => (
                   <li key={item}>{item}</li>
@@ -415,21 +438,29 @@ export function VpnEditor({
             </div>
           )}
           <ul>
-            <li>Region: {region}</li>
-            <li>Routing: {routing}</li>
             <li>
-              {Object.keys(connections).length} Verbindungen mit jeweils zwei
-              Tunneln pro SNA
+              {t("Region:")} {region}
             </li>
-            <li>STACKIT-Seite: Gateway und konfigurierte Verbindungen</li>
             <li>
-              Noch erforderlich: geschützte Tunnel-Schlüssel, Einrichtung der
-              Gegenstelle und Prüfung der Erreichbarkeit
+              {t("Routing:")} {routing}
+            </li>
+            <li>
+              {Object.keys(connections).length}{" "}
+              {t("Verbindungen mit jeweils zwei Tunneln pro SNA")}
+            </li>
+            <li>
+              {t("STACKIT-Seite: Gateway und konfigurierte Verbindungen")}
+            </li>
+            <li>
+              {t(
+                "Noch erforderlich: geschützte Tunnel-Schlüssel, Einrichtung der Gegenstelle und Prüfung der Erreichbarkeit",
+              )}
             </li>
           </ul>
           <p>
-            Diese Übersicht ist keine erfolgreiche Verbindungsprüfung. Ein
-            Gateway ohne Verbindungen stellt noch keine VPN-Verbindung her.
+            {t(
+              "Diese Übersicht ist keine erfolgreiche Verbindungsprüfung. Ein Gateway ohne Verbindungen stellt noch keine VPN-Verbindung her.",
+            )}
           </p>
         </div>
       )}
@@ -440,7 +471,7 @@ export function VpnEditor({
           disabled={step === 0}
           onClick={() => setStep(step - 1)}
         >
-          Zurück
+          {t("Zurück")}
         </button>
         <button
           type="button"
@@ -448,7 +479,7 @@ export function VpnEditor({
           disabled={step === steps.length - 1}
           onClick={() => setStep(step + 1)}
         >
-          Weiter
+          {t("Weiter")}
         </button>
       </div>
     </section>

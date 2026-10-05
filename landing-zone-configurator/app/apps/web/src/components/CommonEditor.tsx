@@ -20,6 +20,7 @@ import {
   type Values,
 } from "@lzc/domain";
 import { useState } from "react";
+import { t } from "../i18n";
 import type { EditorStep } from "../navigation";
 import { ComponentPicker } from "./ComponentPicker";
 import { FederatedIdentityEditor } from "./FederatedIdentityEditor";
@@ -105,7 +106,7 @@ export function CommonEditor({
   const stepTitle = (id: EditorStep, title: string) =>
     id === "projects"
       ? platformDraft
-        ? "Projekt-Templates"
+        ? "Application Landing Zone Templates"
         : "Projekte (Bestand)"
       : title;
   const values = compileCommonConfiguration(draft);
@@ -153,13 +154,13 @@ export function CommonEditor({
     hint?: string,
   ) => (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>{t(label)}</label>
       <input
         id={id}
         value={value}
         onChange={(event) => change(event.target.value)}
       />
-      {hint && <p className="field-hint">{hint}</p>}
+      {hint && <p className="field-hint">{t(hint)}</p>}
     </div>
   );
   const root = (name: string) => {
@@ -202,14 +203,21 @@ export function CommonEditor({
       <div className="draft-banner">
         <span>
           {platformDraft
-            ? "Plattformentwurf · zentrale Dienste und Projekt-Templates. Anwendungsprojekte entstehen später durch Bestellungen von Application Ownern."
-            : "Bestehende Gesamtkonfiguration · konkrete Anwendungsprojekte bleiben für die Bestandsverwaltung erhalten."}
+            ? t(
+                "Plattformentwurf · zentrale Dienste und Application Landing Zone Templates. Anwendungsprojekte entstehen später durch Bestellungen von Application Ownern.",
+              )
+            : t(
+                "Bestehende Gesamtkonfiguration · konkrete Anwendungsprojekte bleiben für die Bestandsverwaltung erhalten.",
+              )}
         </span>
         <button type="button" className="text-button" onClick={onOpenStorage}>
-          Zu deinen Forks →
+          {t("Konfigurationen →")}
         </button>
       </div>
-      <nav aria-label="Konfigurationsschritte" className="steps shared-steps">
+      <nav
+        aria-label={t("Konfigurationsschritte")}
+        className="steps shared-steps"
+      >
         {steps.map((item, index) => (
           <button
             type="button"
@@ -228,7 +236,7 @@ export function CommonEditor({
           <h2>{active && stepTitle(active.id, active.title)}</h2>
           {error && (
             <p role="alert" className="validation-box">
-              {error}
+              {t(error)}
             </p>
           )}
           {step === "basics" &&
@@ -241,31 +249,25 @@ export function CommonEditor({
             )}
           {step === "folders" && (
             <p>
-              Die vier Ordnerrollen bestimmen die Projektzuordnung. Anzeigenamen
-              und Zugriffsrechte können hier geändert werden.
-              Ordnerbeschreibungen werden vom Accelerator derzeit nicht wirksam
-              übernommen.
+              {t(
+                "Die vier Ordnerrollen bestimmen die Projektzuordnung. Anzeigenamen und Zugriffsrechte können hier geändert werden. Ordnerbeschreibungen werden vom Accelerator derzeit nicht wirksam übernommen.",
+              )}
             </p>
           )}
           {step === "platform" && (
             <p>
-              Observability stellt zentrales Monitoring bereit. Die separate
-              Audit-Protokollierung nutzt einen Telemetry Router, der
-              Audit-Ereignisse an STACKIT Logs und das Object-Storage-Archiv
-              verteilt. Der Archiv-Bucket gehört auch bei deaktivierter
-              Audit-Protokollierung zur Management-Infrastruktur.
+              {t(
+                "Observability stellt zentrales Monitoring bereit. Die separate Audit-Protokollierung nutzt einen Telemetry Router, der Audit-Ereignisse an STACKIT Logs und das Object-Storage-Archiv verteilt. Der Archiv-Bucket gehört auch bei deaktivierter Audit-Protokollierung zur Management-Infrastruktur.",
+              )}
             </p>
           )}
           {step === "basics" &&
             !platformDraft &&
             draft.origin.templateId === "standalone" && (
               <p className="info-banner">
-                Neue Standalone-Entwürfe markieren das Beispielprojekt
-                ausdrücklich als Public (Korrektur für Accelerator-Issue #84).
-                Organisations-ID und verantwortliche E-Mail-Adressen bitte durch
-                eigene Angaben ersetzen. „Accelerator-Standard verwenden“
-                entfernt eine eigene Einstellung; es stellt nicht die Vorlage
-                wieder her.
+                {t(
+                  "Neue Standalone-Entwürfe markieren das Beispielprojekt ausdrücklich als Public (Korrektur für Accelerator-Issue #84). Organisations-ID und verantwortliche E-Mail-Adressen bitte durch eigene Angaben ersetzen. „Accelerator-Standard verwenden“ entfernt eine eigene Einstellung; es stellt nicht die Vorlage wieder her.",
+                )}
               </p>
             )}
           {step === "projects" && platformDraft && (
@@ -274,34 +276,32 @@ export function CommonEditor({
           {step === "projects" && !platformDraft && (
             <>
               <p className="info-banner">
-                Bestehende Konfiguration: Diese Einträge sind konkrete Projekte,
-                keine Projekt-Templates. Sie bleiben unverändert, damit
-                gespeicherte Konfigurationen und ihre Ressourcenadressen
-                erhalten bleiben.
+                {t(
+                  "Bestehende Konfiguration: Diese Einträge sind konkrete Projekte, keine Application Landing Zone Templates. Sie bleiben unverändert, damit gespeicherte Konfigurationen und ihre Ressourcenadressen erhalten bleiben.",
+                )}
                 {onCreatePlatformCopy && (
                   <button
                     type="button"
                     className="text-button"
                     onClick={onCreatePlatformCopy}
                   >
-                    Als neue Plattformkonfiguration übernehmen
+                    {t("Als neue Plattformkonfiguration übernehmen")}
                   </button>
                 )}
               </p>
               <p>
-                Public-Projekte sind unabhängig vom zentralen Netzwerk.
-                Corporate-Projekte gehören zu einem vorhandenen Bereich ihrer
-                Region. Sandboxes sind eigenständige Experimentierprojekte.
+                {t(
+                  "Public-Projekte sind unabhängig vom zentralen Netzwerk. Corporate-Projekte gehören zu einem vorhandenen Bereich ihrer Region. Sandboxes sind eigenständige Experimentierprojekte.",
+                )}
               </p>
               {draft.origin.templateId === "standalone" &&
                 projects.some(
                   (project) => project.kind === "corporate" && !project.areaId,
                 ) && (
                   <p className="info-banner">
-                    Die Accelerator-Vorlage Standalone enthält eine
-                    unvollständige Public-Markierung (#84). Wähle für das
-                    Beispielprojekt ausdrücklich „Public“, wenn du kein
-                    zentrales Netzwerk benötigst.
+                    {t(
+                      "Die Accelerator-Vorlage Standalone enthält eine unvollständige Public-Markierung (#84). Wähle für das Beispielprojekt ausdrücklich „Public“, wenn du kein zentrales Netzwerk benötigst.",
+                    )}
                   </p>
                 )}
               {projects.map((project) => {
@@ -316,18 +316,20 @@ export function CommonEditor({
                     className="project-card"
                     key={project.id}
                     aria-label={
-                      textValue(settings.project_name) || "Neues Projekt"
+                      textValue(settings.project_name) || t("Neues Projekt")
                     }
                   >
                     <h3>
-                      {textValue(settings.project_name) || "Neues Projekt"}
+                      {textValue(settings.project_name) || t("Neues Projekt")}
                     </h3>
                     <p className="muted">
-                      Zielordner: {folders[project.folder]}
+                      {t("Zielordner:")} {folders[project.folder]}
                     </p>
                     <div className="form-grid">
                       <div className="field">
-                        <label htmlFor={`${prefix}-kind`}>Projektart</label>
+                        <label htmlFor={`${prefix}-kind`}>
+                          {t("Projektart")}
+                        </label>
                         <select
                           id={`${prefix}-kind`}
                           value={project.kind}
@@ -335,7 +337,9 @@ export function CommonEditor({
                           onChange={(event) => {
                             if (
                               window.confirm(
-                                "Projektart und Zielordner ändern? Bei bestehenden Ressourcen kann dies einen Umzug oder Ersatz auslösen. Ein Apply wird nicht gestartet.",
+                                t(
+                                  "Projektart und Zielordner ändern? Bei bestehenden Ressourcen kann dies einen Umzug oder Ersatz auslösen. Ein Apply wird nicht gestartet.",
+                                ),
                               )
                             )
                               updateProject(project.id, {
@@ -344,18 +348,21 @@ export function CommonEditor({
                           }}
                         >
                           {project.kind === "sandbox" ? (
-                            <option value="sandbox">Sandbox</option>
+                            <option value="sandbox">{t("Sandbox")}</option>
                           ) : (
                             <>
-                              <option value="public">Public</option>
-                              <option value="corporate">Corporate</option>
+                              <option value="public">{t("Public")}</option>
+                              <option value="corporate">
+                                {t("Corporate")}
+                              </option>
                             </>
                           )}
                         </select>
                         {project.kind === "sandbox" && (
                           <p className="field-hint">
-                            Sandboxes haben ein eigenes Ressourcenmodell. Für
-                            eine andere Art ein neues Projekt anlegen.
+                            {t(
+                              "Sandboxes haben ein eigenes Ressourcenmodell. Für eine andere Art ein neues Projekt anlegen.",
+                            )}
                           </p>
                         )}
                       </div>
@@ -385,10 +392,13 @@ export function CommonEditor({
                       {project.key && (
                         <>
                           <div className="field">
-                            <strong>Eindeutige Kennung: {project.key}</strong>
+                            <strong>
+                              {t("Eindeutige Kennung:")} {project.key}
+                            </strong>
                             <p className="field-hint">
-                              Stabile Zuordnung im Accelerator; Umbenennen
-                              ändert Ressourcenadressen.
+                              {t(
+                                "Stabile Zuordnung im Accelerator; Umbenennen ändert Ressourcenadressen.",
+                              )}
                             </p>
                             <button
                               type="button"
@@ -402,7 +412,9 @@ export function CommonEditor({
                                   key !== null &&
                                   key !== project.key &&
                                   window.confirm(
-                                    "Kennung und zugehörige Namespace-Referenzen umbenennen?",
+                                    t(
+                                      "Kennung und zugehörige Namespace-Referenzen umbenennen?",
+                                    ),
                                   )
                                 )
                                   perform(() =>
@@ -410,7 +422,7 @@ export function CommonEditor({
                                   );
                               }}
                             >
-                              Kennung ändern
+                              {t("Kennung ändern")}
                             </button>
                           </div>
                           {simple(
@@ -422,7 +434,9 @@ export function CommonEditor({
                             "Wird im Ressourcennamen verwendet, unabhängig von der stabilen Kennung.",
                           )}
                           <div className="field">
-                            <label htmlFor={`${prefix}-region`}>Region</label>
+                            <label htmlFor={`${prefix}-region`}>
+                              {t("Region")}
+                            </label>
                             <select
                               id={`${prefix}-region`}
                               value={textValue(settings.region) || ""}
@@ -432,7 +446,7 @@ export function CommonEditor({
                                 })
                               }
                             >
-                              <option value="">Standardregion</option>
+                              <option value="">{t("Standardregion")}</option>
                               <option value="eu01">eu01</option>
                               <option value="eu02">eu02</option>
                             </select>
@@ -440,7 +454,7 @@ export function CommonEditor({
                           {project.kind === "corporate" && (
                             <div className="field">
                               <label htmlFor={`${prefix}-area`}>
-                                Netzwerkbereich
+                                {t("Netzwerkbereich")}
                               </label>
                               <select
                                 id={`${prefix}-area`}
@@ -457,7 +471,7 @@ export function CommonEditor({
                                 }}
                               >
                                 <option value="">
-                                  Bitte einen Bereich wählen
+                                  {t("Bitte einen Bereich wählen")}
                                 </option>
                                 {areas
                                   .filter(
@@ -479,11 +493,11 @@ export function CommonEditor({
                     {project.key && (
                       <fieldset className="project-services">
                         <legend>
-                          Automatisch bereitgestellte Projektdienste
+                          {t("Automatisch bereitgestellte Projektdienste")}
                         </legend>
                         <div className="field">
                           <label htmlFor={`${prefix}-secretsmanager`}>
-                            Secrets Manager bereitstellen
+                            {t("Secrets Manager bereitstellen")}
                           </label>
                           <select
                             id={`${prefix}-secretsmanager`}
@@ -497,17 +511,18 @@ export function CommonEditor({
                               })
                             }
                           >
-                            <option value="true">Eingeschaltet</option>
-                            <option value="false">Ausgeschaltet</option>
+                            <option value="true">{t("Eingeschaltet")}</option>
+                            <option value="false">{t("Ausgeschaltet")}</option>
                           </select>
                           <p className="field-hint">
-                            Eigene Secrets-Manager-Instanz in diesem Projekt.
-                            Accelerator-Standard: eingeschaltet.
+                            {t(
+                              "Eigene Secrets-Manager-Instanz in diesem Projekt. Accelerator-Standard: eingeschaltet.",
+                            )}
                           </p>
                         </div>
                         <div className="field">
                           <label htmlFor={`${prefix}-observability`}>
-                            Observability bereitstellen
+                            {t("Observability bereitstellen")}
                           </label>
                           <select
                             id={`${prefix}-observability`}
@@ -524,22 +539,20 @@ export function CommonEditor({
                               })
                             }
                           >
-                            <option value="true">Eingeschaltet</option>
-                            <option value="false">Ausgeschaltet</option>
+                            <option value="true">{t("Eingeschaltet")}</option>
+                            <option value="false">{t("Ausgeschaltet")}</option>
                           </select>
                           <p className="field-hint">
-                            Eigene Observability-Instanz in diesem Projekt,
-                            zusätzlich zum zentralen Plattformdienst.
-                            Accelerator-Standard: ausgeschaltet. Plan und
-                            Zugriffsnetze stehen unter den weiteren
-                            Projektdiensten.
+                            {t(
+                              "Eigene Observability-Instanz in diesem Projekt, zusätzlich zum zentralen Plattformdienst. Accelerator-Standard: ausgeschaltet. Plan und Zugriffsnetze stehen unter den weiteren Projektdiensten.",
+                            )}
                           </p>
                         </div>
                       </fieldset>
                     )}
                     <StructuredField
                       name="project-details"
-                      title="Weitere Projektdienste und Rechte"
+                      title={t("Weitere Projektdienste und Rechte")}
                       type={collectionType[1] as InputType}
                       value={settings}
                       effective={
@@ -582,23 +595,25 @@ export function CommonEditor({
                       onClick={() => {
                         if (
                           window.confirm(
-                            "Projekt aus der Konfiguration entfernen? Bestehende Ressourcen würden erst durch ein gesondertes Apply geändert.",
+                            t(
+                              "Projekt aus der Konfiguration entfernen? Bestehende Ressourcen würden erst durch ein gesondertes Apply geändert.",
+                            ),
                           )
                         )
                           perform(() => removeCommonProject(draft, project.id));
                       }}
                     >
-                      Projekt entfernen
+                      {t("Projekt entfernen")}
                     </button>
                   </section>
                 );
               })}
               <div className="project-card">
-                <h3>Projekt hinzufügen</h3>
+                <h3>{t("Projekt hinzufügen")}</h3>
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="new-project-kind">
-                      Art des neuen Projekts
+                      {t("Art des neuen Projekts")}
                     </label>
                     <select
                       id="new-project-kind"
@@ -607,9 +622,9 @@ export function CommonEditor({
                         setNewKind(event.target.value as typeof newKind)
                       }
                     >
-                      <option value="public">Public</option>
-                      <option value="corporate">Corporate</option>
-                      <option value="sandbox">Sandbox</option>
+                      <option value="public">{t("Public")}</option>
+                      <option value="corporate">{t("Corporate")}</option>
+                      <option value="sandbox">{t("Sandbox")}</option>
                     </select>
                   </div>
                   {newKind !== "sandbox" &&
@@ -628,7 +643,7 @@ export function CommonEditor({
                     perform(() => addCommonProject(draft, newKind, newKey))
                   }
                 >
-                  Projekt hinzufügen
+                  {t("Projekt hinzufügen")}
                 </button>
               </div>
             </>
@@ -660,34 +675,36 @@ export function CommonEditor({
           )}
           {step === "operations" && (
             <div className="info-banner">
-              <strong>Geschützte Deployment-Zugänge</strong>
+              <strong>{t("Geschützte Deployment-Zugänge")}</strong>
               <p>
-                VPN-Schlüssel, Firewall-Passwörter, API-Secrets und Kubeconfigs
-                gehören nicht in diese Konfiguration. Ihre zusätzlichen
-                geschützten Bindings und die Ausführung des neuen Formats folgen
-                separat.
+                {t(
+                  "VPN-Schlüssel, Firewall-Passwörter, API-Secrets und Kubeconfigs gehören nicht in diese Konfiguration. Ihre zusätzlichen geschützten Bindings und die Ausführung des neuen Formats folgen separat.",
+                )}
               </p>
             </div>
           )}
           {step === "review" && (
             <>
-              <h3>Konfiguration prüfen</h3>
+              <h3>{t("Konfiguration prüfen")}</h3>
               {issues.length ? (
                 <div className="validation-box" role="alert">
-                  <strong>{issues.length} Angaben bitte prüfen</strong>
+                  <strong>
+                    {issues.length} {t("Angaben bitte prüfen")}
+                  </strong>
                   <ul>
                     {issues.map((issue) => (
                       <li key={`${issue.field}-${issue.message}`}>
                         {labelFor(issue.field.split(".")[0] ?? issue.field)}:{" "}
-                        {issue.message}
+                        {t(issue.message)}
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : (
                 <p className="success-banner">
-                  Die Eingaben sind für Speichern und Exportieren vollständig.
-                  Dies ist noch kein Deployment-Plan.
+                  {t(
+                    "Die Eingaben sind für Speichern und Exportieren vollständig. Dies ist noch kein Deployment-Plan.",
+                  )}
                 </p>
               )}
               {assessment.findings
@@ -697,14 +714,15 @@ export function CommonEditor({
                 )
                 .map((item) => (
                   <p className="info-banner" key={`${item.path}-${item.code}`}>
-                    {item.message}{" "}
+                    {t(item.message)}{" "}
                     {item.issue && (
                       <a
                         href={`https://github.com/stackitcloud/stackit-landing-zone/issues/${item.issue}`}
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Issue #{item.issue}
+                        {t("Issue #")}
+                        {item.issue}
                       </a>
                     )}
                   </p>
@@ -725,22 +743,20 @@ export function CommonEditor({
                     link.download = "landing-zone.tfvars";
                     link.click();
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    setNotice(
-                      "tfvars zum Download bereitgestellt. Bitte zusätzlich im Fork speichern.",
-                    );
+                    setNotice("tfvars zum Download bereitgestellt.");
                   }}
                 >
-                  tfvars herunterladen
+                  {t("tfvars herunterladen")}
                 </button>
                 <button
                   type="button"
                   className="button primary"
                   onClick={onOpenStorage}
                 >
-                  Im Fork speichern →
+                  {t("Konfiguration speichern →")}
                 </button>
               </div>
-              {notice && <p role="status">{notice}</p>}
+              {notice && <p role="status">{t(notice)}</p>}
             </>
           )}
           <div className="actions">
@@ -759,7 +775,7 @@ export function CommonEditor({
                   )
                 }
               >
-                Zurück
+                {t("Zurück")}
               </button>
             )}
             {step !== "review" && (
@@ -773,7 +789,7 @@ export function CommonEditor({
                   )
                 }
               >
-                Weiter →
+                {t("Weiter →")}
               </button>
             )}
           </div>
@@ -782,7 +798,7 @@ export function CommonEditor({
           <Topology values={values} projectTemplates={draft.projectTemplates} />
           {areas.length > 0 && (
             <figure className="topology network-topology">
-              <figcaption>Netzwerkzuordnung</figcaption>
+              <figcaption>{t("Netzwerkzuordnung")}</figcaption>
               {[...new Set(areas.map((area) => area.region))].map((region) => (
                 <section key={region}>
                   <h3>{region}</h3>
@@ -796,7 +812,7 @@ export function CommonEditor({
                         <p className="muted">
                           {Array.isArray(area.settings.ranges)
                             ? area.settings.ranges.join(", ")
-                            : "Adressbereich offen"}
+                            : t("Adressbereich offen")}
                         </p>
                         <ul>
                           {projects

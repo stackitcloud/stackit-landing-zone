@@ -1,5 +1,214 @@
 import { expect, test } from "@playwright/test";
 
+for (const kind of ["personal", "organisation"]) {
+  test(`automatic technical catalogues require no additional editor setup in ${kind}`, async ({
+    page,
+  }, testInfo) => {
+    const regions: string[] = [];
+    const session = {
+      user: {
+        id: "11111111-1111-4111-8111-111111111111",
+        login: "engineer@example.test",
+      },
+      tenant: {
+        id: "22222222-2222-4222-8222-222222222222",
+        kind,
+        roles: ["platform-engineer"],
+      },
+      csrfToken: "c".repeat(43),
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    };
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/auth/github/status", (route) =>
+      route.fulfill({ json: { connected: false } }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({ json: session }),
+    );
+    await page.route("**/api/v1/cloud-catalogues/automatic", (route) => {
+      const input = route.request().postDataJSON();
+      expect(Object.keys(input)).toEqual(["region"]);
+      expect(route.request().headers()["x-lzc-tenant"]).toBe(session.tenant.id);
+      expect(route.request().headers()["x-lzc-csrf"]).toBe(session.csrfToken);
+      regions.push(input.region);
+      const missing = { status: "unavailable", options: [] };
+      return route.fulfill({
+        json: {
+          region: input.region,
+          projectId: "33333333-3333-4333-8333-333333333333",
+          fetchedAt: new Date().toISOString(),
+          gitFlavors: {
+            status: "available",
+            options: [{ value: "automatic-git", label: "Automatic Git" }],
+          },
+          vpnPlans: missing,
+          kubernetesVersions: {
+            status: "available",
+            options: [{ value: "1.35.1", label: "1.35.1" }],
+          },
+          machineTypes: {
+            status: "available",
+            options: [{ value: "g3i.4", label: "g3i.4" }],
+          },
+          volumeTypes: missing,
+          availabilityZones: {
+            status: "available",
+            options: [
+              { value: `${input.region}-1`, label: `${input.region}-1` },
+            ],
+          },
+          observabilityPlans: {
+            status: "available",
+            options: [
+              "Observability-Monitoring-Medium-EU01",
+              "Observability-Metrics-Endpoint-100k-EU01",
+              "Observability-Frontend-Starter-EU01",
+            ].map((value) => ({ value, label: value })),
+          },
+        },
+      });
+    });
+    await page.goto("/templates/standalone");
+    await expect.poll(() => [...regions].sort()).toEqual(["eu01", "eu02"]);
+    await page
+      .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+      .click();
+    await expect.poll(() => [...regions].sort()).toEqual(["eu01", "eu02"]);
+    await expect(page.getByLabel("Katalogzugang")).toHaveCount(0);
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: /STACKIT-Produktkataloge geladen/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("status").filter({ hasText: /Nicht verfügbar:.*VPN/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByPlaceholder("UUID eines vorhandenen STACKIT-Projekts"),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "4 Plattform", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Komponente hinzufügen", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Hinzufügen: Git-Service", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Konfigurieren: Git-Service", exact: true })
+      .click();
+    await page
+      .locator("summary")
+      .filter({ hasText: /^Git-Service/ })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Eigene Einstellung: Git-Leistungsklasse",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("option", { name: "Automatic Git", exact: true }).first(),
+    ).toBeAttached();
+    await page.screenshot({
+      path: testInfo.outputPath("automatic-catalogues.png"),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page
+      .getByRole("button", {
+        name: "5 Application Landing Zone Templates",
+        exact: true,
+      })
+      .click();
+    const template = page.locator("section.project-card").first();
+    await template
+      .getByText("STACKIT Observability · Fest vorgegeben", { exact: true })
+      .click();
+    await template
+      .getByLabel("Fester Wert: STACKIT Observability", { exact: true })
+      .selectOption("true");
+    await template
+      .getByText("Observability-Leistungsklasse · Fest vorgegeben", {
+        exact: true,
+      })
+      .click();
+    await template
+      .getByLabel("Wertquelle: Observability-Leistungsklasse", { exact: true })
+      .selectOption("input");
+    const allowed = template.getByRole("group", {
+      name: "Erlaubte Werte: Observability-Leistungsklasse",
+      exact: true,
+    });
+    await expect(allowed.getByRole("checkbox")).toHaveCount(4);
+    await expect(allowed).toContainText("nicht im geladenen Katalog");
+    expect(
+      await allowed
+        .locator(".parameter-choice-list")
+        .evaluate((element) => getComputedStyle(element).display),
+    ).toBe("grid");
+    expect(
+      await allowed
+        .locator(".parameter-choice")
+        .evaluateAll((elements) =>
+          elements.every(
+            (element) => element.scrollWidth <= element.clientWidth,
+          ),
+        ),
+    ).toBe(true);
+    await allowed.screenshot({
+      path: testInfo.outputPath("observability-choice-grid.png"),
+    });
+    if (kind === "organisation") {
+      await page.route("**/api/v1/credentials", (route) =>
+        route.fulfill({ json: { profiles: [] } }),
+      );
+      await page.getByRole("button", { name: "Zugänge", exact: true }).click();
+      await expect(
+        page.getByRole("heading", {
+          name: "Deployment-Zugänge",
+          exact: true,
+          level: 2,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByLabel("Service-Account-Schlüssel (JSON)"),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Zugänge aktualisieren", exact: true })
+        .click();
+      await expect
+        .poll(() => [...regions].sort())
+        .toEqual(["eu01", "eu01", "eu02", "eu02"]);
+      await page
+        .getByRole("button", { name: "Konfigurationen", exact: true })
+        .click();
+      await page.getByRole("button", { name: /weiterbearbeiten$/ }).click();
+      await page
+        .getByRole("button", { name: "4 Plattform", exact: true })
+        .click();
+      await page
+        .locator("summary")
+        .filter({ hasText: /^Git-Service/ })
+        .click();
+      await expect(
+        page
+          .getByRole("option", { name: "Automatic Git", exact: true })
+          .first(),
+      ).toBeAttached();
+    }
+  });
+}
+
 test("product choices preserve imported values and restore manual fields when catalogue access fails", async ({
   page,
 }, testInfo) => {
@@ -49,10 +258,26 @@ test("product choices preserve imported values and restore manual fields when ca
             }
           : missing,
         vpnPlans: missing,
-        kubernetesVersions: missing,
-        machineTypes: missing,
-        volumeTypes: missing,
-        availabilityZones: missing,
+        kubernetesVersions: {
+          status: "available",
+          options: [{ value: "1.35.1", label: "1.35.1" }],
+        },
+        machineTypes: {
+          status: "available",
+          options: [{ value: "g3i.4", label: "g3i.4" }],
+        },
+        machineImages: {
+          status: "available",
+          options: [{ value: "flatcar", label: "flatcar" }],
+        },
+        volumeTypes: {
+          status: "available",
+          options: [{ value: "storage_premium_perf2", label: "Premium" }],
+        },
+        availabilityZones: {
+          status: "available",
+          options: [{ value: "eu01-1", label: "eu01-1" }],
+        },
         observabilityPlans: {
           status: "available",
           options: [
@@ -199,6 +424,79 @@ test("product choices preserve imported values and restore manual fields when ca
     .filter({ hasText: /^test$/ })
     .click();
   await page.getByLabel("Region", { exact: true }).selectOption("eu01");
+  const cluster = page.locator("details").filter({
+    has: page.locator(":scope > summary", { hasText: /^Cluster$/ }),
+  });
+  await cluster.locator(":scope > summary").click();
+  await cluster
+    .getByRole("button", {
+      name: "Eigene Einstellung: Mindestversion von Kubernetes",
+      exact: true,
+    })
+    .click();
+  await cluster
+    .getByLabel("Mindestversion von Kubernetes", { exact: true })
+    .selectOption("1.35.1");
+  await cluster
+    .getByRole("button", { name: "Konfigurieren: Knotengruppen", exact: true })
+    .click();
+  await cluster
+    .locator("summary")
+    .filter({ hasText: /^Knotengruppen/ })
+    .click();
+  await cluster
+    .getByRole("button", {
+      name: "Eintrag zu Knotengruppen hinzufügen",
+      exact: true,
+    })
+    .click();
+  await cluster
+    .locator("summary")
+    .filter({ hasText: /^Knotengruppen 1$/ })
+    .click();
+  await cluster
+    .getByLabel("Maschinentyp", { exact: true })
+    .selectOption("g3i.4");
+  await cluster
+    .locator("summary")
+    .filter({ hasText: /^Verfügbarkeitszonen/ })
+    .click();
+  await cluster
+    .getByRole("button", {
+      name: "Eintrag zu Verfügbarkeitszonen hinzufügen",
+      exact: true,
+    })
+    .click();
+  await cluster
+    .getByLabel("Verfügbarkeitszonen 1", { exact: true })
+    .selectOption("eu01-1");
+  await cluster
+    .getByRole("button", {
+      name: "Eigene Einstellung: Speichertyp",
+      exact: true,
+    })
+    .click();
+  await cluster
+    .getByLabel("Speichertyp", { exact: true })
+    .selectOption("storage_premium_perf2");
+  await cluster
+    .getByRole("button", {
+      name: "Eigene Einstellung: Betriebssystem",
+      exact: true,
+    })
+    .click();
+  await cluster
+    .getByLabel("Betriebssystem", { exact: true })
+    .selectOption("flatcar");
+  await expect(
+    cluster.getByLabel("Betriebssystem", { exact: true }),
+  ).toHaveValue("flatcar");
+  await expect(
+    cluster.getByLabel("Mindestversion von Kubernetes", { exact: true }),
+  ).toHaveValue("1.35.1");
+  await expect(
+    cluster.getByLabel("Verfügbarkeitszonen 1", { exact: true }),
+  ).toHaveValue("eu01-1");
   await page
     .getByRole("button", {
       name: "Konfigurieren: Diagnose-Bastion für das private Cluster-Netz",
@@ -257,9 +555,18 @@ test("product choices preserve imported values and restore manual fields when ca
     .getByLabel("Dienst-Leistungsklasse", { exact: true })
     .selectOption("Observability-Starter-EU01");
   await page
-    .getByRole("button", { name: "5 Projekt-Templates", exact: true })
+    .getByRole("button", {
+      name: "5 Application Landing Zone Templates",
+      exact: true,
+    })
     .click();
   const template = page.locator("section.project-card").first();
+  await template
+    .getByText("STACKIT Observability · Fest vorgegeben", { exact: true })
+    .click();
+  await template
+    .getByLabel("Fester Wert: STACKIT Observability", { exact: true })
+    .selectOption("true");
   await template
     .getByText("Observability-Leistungsklasse · Fest vorgegeben", {
       exact: true,

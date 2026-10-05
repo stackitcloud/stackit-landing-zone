@@ -10,6 +10,7 @@ import {
   validateDraft,
 } from "@lzc/domain";
 import { useState } from "react";
+import { t } from "../i18n";
 import type { EditorStep as Step } from "../navigation";
 import { Field } from "./Field";
 import { ProjectsStep } from "./ProjectsStep";
@@ -110,16 +111,12 @@ export function ConfigurationEditor({
   return (
     <>
       <div className="draft-banner">
-        <span>
-          Nach Anmeldung wird dein Arbeitsstand in diesem Browser automatisch
-          gemerkt. Speichere Änderungen zusätzlich im Fork oder lade sie
-          herunter.
-        </span>
+        <span>{t("Lokaler Entwurf")}</span>
         <button type="button" className="text-button" onClick={onOpenStorage}>
-          Zu deinen Forks →
+          {t("Konfigurationen →")}
         </button>
       </div>
-      <nav aria-label="Konfigurationsschritte" className="steps">
+      <nav aria-label={t("Konfigurationsschritte")} className="steps">
         {steps.map((item, index) => (
           <button
             type="button"
@@ -132,7 +129,7 @@ export function ConfigurationEditor({
             }}
           >
             <span>{index + 1}</span>
-            {item.title}
+            {t(item.title)}
           </button>
         ))}
       </nav>
@@ -141,11 +138,13 @@ export function ConfigurationEditor({
           {step === "basics" && (
             <section className="panel">
               <div className="section-heading">
-                <h2>Grundlagen</h2>
-                <span className="muted">* Pflichtfelder</span>
+                <h2>{t("Grundlagen")}</h2>
+                <span className="muted">{t("* Pflichtfelder")}</span>
               </div>
               <p className="section-description">
-                Wer betreibt diese Landing Zone und wo soll sie entstehen?
+                {t(
+                  "Wer betreibt diese Landing Zone und wo soll sie entstehen?",
+                )}
               </p>
               <div className="form-grid">
                 <Field
@@ -210,18 +209,18 @@ export function ConfigurationEditor({
                     setStep("folders");
                   }}
                 >
-                  Weiter zu Ordnern →
+                  {t("Weiter zu Ordnern →")}
                 </button>
               </div>
             </section>
           )}
           {step === "folders" && (
             <section className="panel">
-              <h2>Ordner</h2>
+              <h2>{t("Ordner")}</h2>
               <p className="section-description">
-                Diese vier Ordner strukturieren deine Organisation. Du kannst
-                ihre Anzeigenamen ändern; die Zuordnung der Projekte bleibt
-                erhalten. Auch leere Ordner werden angelegt.
+                {t(
+                  "Diese vier Ordner strukturieren deine Organisation. Du kannst ihre Anzeigenamen ändern; die Zuordnung der Projekte bleibt erhalten. Auch leere Ordner werden angelegt.",
+                )}
               </p>
               <div className="form-grid">
                 {folderKeys.map((key) => (
@@ -255,9 +254,9 @@ export function ConfigurationEditor({
                 ))}
               </div>
               <p className="muted">
-                Für alle Ordner gilt die unter Grundlagen angegebene technisch
-                verantwortliche Person. Anzeigenamen ändern weder interne
-                Kennungen noch Projektkürzel.
+                {t(
+                  "Für alle Ordner gilt die unter Grundlagen angegebene technisch verantwortliche Person. Anzeigenamen ändern weder interne Kennungen noch Projektkürzel.",
+                )}
               </p>
               <div className="actions">
                 <button
@@ -265,7 +264,7 @@ export function ConfigurationEditor({
                   className="button secondary"
                   onClick={() => setStep("basics")}
                 >
-                  Zurück
+                  {t("Zurück")}
                 </button>
                 <button
                   type="button"
@@ -275,7 +274,7 @@ export function ConfigurationEditor({
                     setStep("projects");
                   }}
                 >
-                  Weiter zu Projekten →
+                  {t("Weiter zu Projekten →")}
                 </button>
               </div>
             </section>
@@ -291,10 +290,12 @@ export function ConfigurationEditor({
           )}
           {step === "review" && (
             <section className="panel">
-              <h2>Entwurf prüfen</h2>
+              <h2>{t("Entwurf prüfen")}</h2>
               {issues.length ? (
                 <div className="validation-box" role="alert">
-                  <h3>{issues.length} Angaben bitte prüfen</h3>
+                  <h3>
+                    {issues.length} {t("Angaben bitte prüfen")}
+                  </h3>
                   <ul>
                     {issues.map((issue) => (
                       <li key={issue.field}>
@@ -303,7 +304,7 @@ export function ConfigurationEditor({
                           className="text-button"
                           onClick={() => focusIssue(issue.field)}
                         >
-                          {issueLabel(issue.field, draft)}: {issue.message}
+                          {issueLabel(issue.field, draft)}: {t(issue.message)}
                         </button>
                       </li>
                     ))}
@@ -311,30 +312,27 @@ export function ConfigurationEditor({
                 </div>
               ) : (
                 <div className="success-banner" role="status">
-                  Die Eingaben sind vollständig und formal gültig.
+                  {t("Die Eingaben sind vollständig und formal gültig.")}
                 </div>
               )}
               <dl className="summary-list">
-                <dt>Organisation</dt>
+                <dt>{t("Organisation")}</dt>
                 <dd>{draft.company}</dd>
-                <dt>Region</dt>
+                <dt>{t("Region")}</dt>
                 <dd>{draft.region}</dd>
-                <dt>Ordner</dt>
+                <dt>{t("Ordner")}</dt>
                 <dd>{folderKeys.length}</dd>
-                <dt>Landing Zones</dt>
+                <dt>{t("Landing Zones")}</dt>
                 <dd>{draft.projects.length}</dd>
-                <dt>Sandboxes</dt>
+                <dt>{t("Sandboxes")}</dt>
                 <dd>{draft.sandboxes.length}</dd>
-                <dt>Vorlage</dt>
-                <dd>Standalone</dd>
+                <dt>{t("Vorlage")}</dt>
+                <dd>{t("Standalone")}</dd>
               </dl>
               <p>
-                Der Download enthält die OpenTofu-/Terraform-Variablen als
-                .tfvars. Beim Speichern im Fork entsteht zusätzlich ein
-                JSON-Dokument, mit dem du die Konfiguration hier wieder
-                bearbeiten kannst. Berechtigungen, Dienstverfügbarkeit und die
-                tatsächliche Ressourcenplanung werden erst beim späteren
-                Deployment geprüft.
+                {t(
+                  "Der Download enthält die OpenTofu-/Terraform-Variablen als .tfvars. Beim Speichern im Fork entsteht zusätzlich ein JSON-Dokument, mit dem du die Konfiguration hier wieder bearbeiten kannst. Berechtigungen, Dienstverfügbarkeit und die tatsächliche Ressourcenplanung werden erst beim späteren Deployment geprüft.",
+                )}
               </p>
               <div className="actions">
                 <button
@@ -342,14 +340,14 @@ export function ConfigurationEditor({
                   className="button secondary"
                   onClick={() => setStep("projects")}
                 >
-                  Zurück
+                  {t("Zurück")}
                 </button>
                 <button
                   type="button"
                   className="button primary"
                   onClick={download}
                 >
-                  tfvars herunterladen
+                  {t("tfvars herunterladen")}
                 </button>
               </div>
               <button
@@ -357,11 +355,11 @@ export function ConfigurationEditor({
                 className="button primary"
                 onClick={onOpenStorage}
               >
-                Im Fork speichern →
+                {t("Konfiguration speichern →")}
               </button>
-              <p role="status">{notice}</p>
+              <p role="status">{t(notice)}</p>
               <details className="technical">
-                <summary>Konfigurationsdaten ansehen</summary>
+                <summary>{t("Konfigurationsdaten ansehen")}</summary>
                 <pre>{JSON.stringify(values, null, 2)}</pre>
               </details>
             </section>

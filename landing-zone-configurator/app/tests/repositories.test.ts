@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { s3BackendConfiguration } from "@lzc/contracts";
 import {
   catalogue,
   configurationValues,
@@ -12,11 +13,16 @@ import {
   serializeTfvars,
   type Template,
 } from "@lzc/domain";
+import Fastify from "fastify";
 import { expect, it, vi } from "vitest";
+import type { AuthServices } from "../apps/api/src/auth/routes.js";
+import type { Session } from "../apps/api/src/auth/store.js";
+import { CredentialError } from "../apps/api/src/credentials/profiles.js";
 import {
   Repositories,
   upstreamId,
 } from "../apps/api/src/github/repositories.js";
+import { registerRepositories } from "../apps/api/src/github/routes.js";
 
 const original = "a".repeat(40),
   treeSha = "b".repeat(40),
@@ -26,6 +32,13 @@ const original = "a".repeat(40),
 const id = "11111111-2222-4333-8444-555555555555";
 const target = { id: 123, owner: "alice", name: "accelerator" };
 const token = "ghu_only_this_user";
+const descriptor = {
+  bucket: "customer-management-tfstate",
+  endpoint: "https://object.storage.eu01.onstackit.cloud",
+  region: "eu01",
+  key: `platform/${id}/terraform.tfstate`,
+  useLockfile: true,
+} as const;
 function validDocument() {
   const template = catalogue.templates.find(
     (t) => t.id === "standalone",
@@ -51,6 +64,9 @@ function fixture() {
     truncated: false,
     exportSha: "",
     exportMode: "100644",
+    backendSha: "",
+    backendMode: "100644",
+    backendType: "blob",
   };
   const metadata = () => ({
     id: state.repoId,
@@ -108,6 +124,16 @@ function fixture() {
       return Response.json({
         truncated: state.truncated,
         tree: [
+          ...(state.backendSha
+            ? [
+                {
+                  path: `src/config/custom/${id}/backend.tf.json`,
+                  type: state.backendType,
+                  mode: state.backendMode,
+                  sha: state.backendSha,
+                },
+              ]
+            : []),
           ...(state.exportSha
             ? [
                 {
@@ -153,6 +179,234 @@ function fixture() {
     document,
   };
 }
+it("exports a standard non-secret S3 backend alongside unchanged JSON and tfvars", async () => {
+  const test = fixture();
+  await test.service.save(
+    token,
+    target,
+    original,
+    "update",
+    test.document,
+    descriptor,
+  );
+  const tree = test.writes[0]?.body.tree as { path: string; content: string }[];
+  expect(tree).toHaveLength(4);
+  expect(JSON.parse(tree[0]?.content ?? "{}")).toEqual(test.document);
+  expect(tree[1]?.content).toBe(
+    serializeTfvars(configurationValues(test.document)),
+  );
+  expect(tree[2]).toMatchObject({
+    path: `src/config/custom/${id}/backend.tf.json`,
+    content: s3BackendConfiguration(descriptor),
+  });
+  const backend = JSON.parse(tree[2]?.content ?? "{}").terraform.backend.s3;
+  expect(backend).toMatchObject({
+    bucket: descriptor.bucket,
+    key: descriptor.key,
+    use_lockfile: true,
+  });
+  expect(Object.keys(backend).sort()).toEqual([
+    "bucket",
+    "endpoints",
+    "key",
+    "region",
+    "skip_credentials_validation",
+    "skip_region_validation",
+    "skip_requesting_account_id",
+    "skip_s3_checksum",
+    "use_lockfile",
+  ]);
+  expect(tree[3]?.content).toContain(
+    `tofu plan -var-file=config/custom/${id}/landing-zone.tfvars`,
+  );
+  expect(tree[3]?.content).toContain("exactly one active backend block");
+  expect(tree.some((entry) => entry.path.endsWith("terraform.tfstate"))).toBe(
+    false,
+  );
+  expect(JSON.stringify(tree)).not.toContain(token);
+  expect(JSON.stringify(tree)).not.toContain("secret_access_key");
+  expect(JSON.stringify(tree)).not.toContain("service_account_key");
+});
+
+it("accepts only the exact immutable current backend and never overwrites manual changes", async () => {
+  const configuration = s3BackendConfiguration(descriptor);
+  const backendSha = createHash("sha1")
+    .update(`blob ${Buffer.byteLength(configuration)}\0`)
+    .update(configuration)
+    .digest("hex");
+  const matching = fixture();
+  matching.state.backendSha = backendSha;
+  await matching.service.save(
+    token,
+    target,
+    original,
+    "update",
+    matching.document,
+    descriptor,
+  );
+  expect(matching.writes).toHaveLength(3);
+  for (const change of [
+    { backendSha: "f".repeat(40) },
+    { backendSha, backendMode: "120000" },
+    { backendSha, backendType: "tree", backendMode: "040000" },
+  ]) {
+    const test = fixture();
+    Object.assign(test.state, change);
+    await expect(
+      test.service.save(
+        token,
+        target,
+        original,
+        "update",
+        test.document,
+        descriptor,
+      ),
+    ).rejects.toMatchObject({ code: "backend_configuration_changed" });
+    expect(test.writes).toHaveLength(0);
+  }
+  const missing = fixture();
+  missing.state.backendSha = backendSha;
+  await expect(
+    missing.service.save(token, target, original, "update", missing.document),
+  ).rejects.toMatchObject({ code: "backend_configuration_missing" });
+  expect(missing.writes).toHaveLength(0);
+});
+
+it("rejects credential-bearing descriptors before any GitHub request", async () => {
+  const test = fixture();
+  await expect(
+    test.service.save(token, target, original, "update", test.document, {
+      ...descriptor,
+      secretAccessKey: "must-not-be-exported",
+    } as typeof descriptor),
+  ).rejects.toThrow();
+  expect(test.request).not.toHaveBeenCalled();
+});
+
+it("resolves exports from the authenticated source binding and fails closed on backend errors", async () => {
+  const test = fixture();
+  const app = Fastify();
+  const session: Session = {
+    id: randomUUID(),
+    userId: randomUUID(),
+    tenantId: randomUUID(),
+    githubId: "101",
+    login: "alice",
+    csrfToken: "c".repeat(43),
+    expiresAt: new Date(Date.now() + 60000),
+  };
+  const resolveSession = vi.fn(async () => session);
+  const auth: AuthServices = {
+    origin: "https://configurator.example",
+    clientId: "client",
+    store: {
+      resolveSession,
+      beginLogin: async () => {},
+      consumeLogin: async () => null,
+      createSession: async () => session,
+      deleteSession: async () => {},
+    },
+    github: {
+      authorize: async () => {
+        throw new Error("unused");
+      },
+    },
+    tokens: {
+      get: async () => token,
+      put: async () => {},
+      remove: async () => {},
+    },
+  };
+  const lookup = vi.fn(async (_session: Session, _id: string) => ({
+    id: randomUUID(),
+    descriptor,
+    configuration: "not trusted rendered content",
+  }));
+  registerRepositories(app, auth, test.service, {
+    configurationForSource: lookup,
+  });
+  const sourceConfigurationId = randomUUID();
+  const payload = {
+    target,
+    head: original,
+    mode: "update",
+    document: test.document,
+  };
+  const post = (body: object) =>
+    app.inject({
+      method: "POST",
+      url: "/api/v1/github/configuration",
+      headers: {
+        cookie: `__Host-lzc-session=${"s".repeat(43)}`,
+        origin: auth.origin,
+        "x-lzc-csrf": session.csrfToken,
+      },
+      payload: body,
+    });
+  try {
+    expect((await post({ ...payload, sourceConfigurationId })).statusCode).toBe(
+      200,
+    );
+    expect(lookup).toHaveBeenLastCalledWith(session, sourceConfigurationId);
+    expect(resolveSession).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(test.writes)).toContain("use_lockfile");
+    expect(JSON.stringify(test.writes)).not.toContain(
+      "not trusted rendered content",
+    );
+    test.state.head = original;
+    lookup.mockRejectedValueOnce(new CredentialError(404, "backend_not_found"));
+    expect((await post(payload)).statusCode).toBe(200);
+    expect(lookup).toHaveBeenLastCalledWith(session, id);
+    const noBackendTree = test.writes[3]?.body.tree as { path: string }[];
+    expect(noBackendTree).toHaveLength(3);
+    expect(
+      noBackendTree.some((entry) => entry.path.endsWith("backend.tf.json")),
+    ).toBe(false);
+    for (const [error, status, code] of [
+      [
+        new CredentialError(403, "backend_access_denied"),
+        403,
+        "backend_access_denied",
+      ],
+      [new CredentialError(404, "other_not_found"), 404, "other_not_found"],
+      [
+        new CredentialError(503, "backend_unavailable"),
+        503,
+        "backend_unavailable",
+      ],
+      [new Error("database unavailable"), 503, "backend_request_failed"],
+    ] as const) {
+      const before = test.writes.length;
+      lookup.mockRejectedValueOnce(error);
+      const response = await post(payload);
+      expect(response.statusCode).toBe(status);
+      expect(response.json()).toEqual({ error: code });
+      expect(test.writes).toHaveLength(before);
+    }
+    for (const extra of [
+      { descriptor },
+      { sourceConfigurationId: "invalid" },
+    ]) {
+      const before = lookup.mock.calls.length;
+      expect((await post({ ...payload, ...extra })).statusCode).toBe(400);
+      expect(lookup).toHaveBeenCalledTimes(before);
+    }
+    const configuration = s3BackendConfiguration(descriptor);
+    test.state.backendSha = createHash("sha1")
+      .update(`blob ${Buffer.byteLength(configuration)}\0`)
+      .update(configuration)
+      .digest("hex");
+    test.state.head = original;
+    lookup.mockRejectedValueOnce(new CredentialError(404, "backend_not_found"));
+    const before = test.writes.length;
+    const response = await post(payload);
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ error: "backend_configuration_missing" });
+    expect(test.writes).toHaveLength(before);
+  } finally {
+    await app.close();
+  }
+});
 it("lists only verified writable Accelerator forks using the user's token", async () => {
   const f = fixture();
   expect((await f.service.list(token, 1)).forks).toHaveLength(1);
@@ -185,7 +439,7 @@ it("reads valid documents from an immutable branch snapshot", async () => {
     f.document,
   );
 });
-it("changes only the two fixed config paths and advances the work branch without force", async () => {
+it("exports config paths and CLI instructions and advances the work branch without force", async () => {
   const f = fixture();
   const result = await f.service.save(
     token,
@@ -209,9 +463,15 @@ it("changes only the two fixed config paths and advances the work branch without
         type: "blob",
         content: serializeTfvars(configurationValues(f.document)),
       },
+      {
+        path: `src/config/custom/${id}/README.md`,
+        mode: "100644",
+        type: "blob",
+        content: expect.stringContaining("first-bootstrap"),
+      },
     ],
   });
-  expect(f.writes[0]?.body.tree as unknown[]).toHaveLength(2);
+  expect(f.writes[0]?.body.tree as unknown[]).toHaveLength(3);
   expect(f.writes[1]?.body.parents).toEqual([original]);
   expect(f.writes[2]).toEqual({
     path: "/repos/alice/accelerator/git/refs/heads/lzc/configurations",

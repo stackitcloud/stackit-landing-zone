@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 export const labels: Record<string, string> = {
   projectTemplates: "Projekt-Templates",
   owner_email: "Technisch verantwortlich",
@@ -128,6 +129,7 @@ export const labels: Record<string, string> = {
   network_area: "STACKIT Network Area (SNA, Einzelkonfiguration)",
   network_area_key: "Netzwerkbereich",
   network_areas: "STACKIT Network Areas (SNAs)",
+  network_enabled: "Lokales Projektnetz anlegen",
   network_prefix_length: "Präfixlänge des Projektnetzes",
   node_pools: "Knotengruppen",
   operator: "Vergleichsoperation",
@@ -236,33 +238,47 @@ export const hints: Record<string, string> = {
   ssh_public_key_path:
     "Bezieht sich auf das Dateisystem des späteren Runners, nicht auf deinen Computer. Alternativ den öffentlichen Schlüssel hinterlegen.",
 };
-export const labelFor = (name: string) => labels[name] ?? name;
+export const labelFor = (name: string) => t(labels[name] ?? name);
 
 export function fieldLabel(path: string, name: string): string {
   if (name === "observability" && path.startsWith("platform_kubernetes"))
-    return "Cluster-Monitoring · STACKIT Observability";
-  if (path === "observability") return "Zentrale STACKIT Observability";
+    return t("Cluster-Monitoring · STACKIT Observability");
+  if (path === "observability") return t("Zentrale STACKIT Observability");
   if (name === "debug_bastion")
-    return "Diagnose-Bastion für das private Cluster-Netz";
-  return labelFor(name);
+    return t("Diagnose-Bastion für das private Cluster-Netz");
+  return t(labelFor(name));
 }
 export function fieldDescription(
   path: string,
   name: string,
 ): string | undefined {
   if (name === "organization_owners")
-    return "Vergibt die STACKIT-IAM-Rolle owner auf Organisationsebene an diese Personen. Das sind weitreichende Cloud-Berechtigungen, keine Platform-Engineer-Rollen im Configurator.";
+    return t(
+      "Vergibt die STACKIT-IAM-Rolle owner auf Organisationsebene an diese Personen. Das sind weitreichende Cloud-Berechtigungen, keine Platform-Engineer-Rollen im Configurator.",
+    );
   if (name === "organization_auditors")
-    return "Vergibt die STACKIT-IAM-Rolle organization.auditor auf Organisationsebene. Dies ist keine Configurator-Mitgliedschaft.";
+    return t(
+      "Vergibt die STACKIT-IAM-Rolle organization.auditor auf Organisationsebene. Dies ist keine Configurator-Mitgliedschaft.",
+    );
   if (name === "owner_emails" && path.startsWith("rm_folders"))
-    return "Vergibt die STACKIT-IAM-Rolle owner auf diesem Ordner. Diese Cloud-Berechtigungen sind unabhängig von Rollen im Configurator.";
+    return t(
+      "Vergibt die STACKIT-IAM-Rolle owner auf diesem Ordner. Diese Cloud-Berechtigungen sind unabhängig von Rollen im Configurator.",
+    );
   if (name === "reader_emails" && path.startsWith("rm_folders"))
-    return "Vergibt die STACKIT-IAM-Rolle auditor auf diesem Ordner. Es werden keine Configurator-Mitgliedschaften angelegt.";
+    return t(
+      "Vergibt die STACKIT-IAM-Rolle auditor auf diesem Ordner. Es werden keine Configurator-Mitgliedschaften angelegt.",
+    );
   if (name === "observability" && path.startsWith("platform_kubernetes"))
-    return "Der Accelerator erstellt derzeit eine zusätzliche STACKIT Observability-Instanz im Cluster-Projekt und verbindet sie mit dem SKE-Monitoring. Dies ist kein Dienst im Kubernetes-Cluster. Die Wiederverwendung einer bestehenden oder zentral definierten Instanz wird in Issue #88 ergänzt. Anwendungsmetriken benötigen eine eigene Anbindung.";
+    return t(
+      "Der Accelerator erstellt derzeit eine zusätzliche STACKIT Observability-Instanz im Cluster-Projekt und verbindet sie mit dem SKE-Monitoring. Dies ist kein Dienst im Kubernetes-Cluster. Die Wiederverwendung einer bestehenden oder zentral definierten Instanz wird in Issue #88 ergänzt. Anwendungsmetriken benötigen eine eigene Anbindung.",
+    );
   if (path === "observability")
-    return "Erstellt STACKIT Observability im zentralen Management-Projekt. Diese Instanz wird derzeit nicht automatisch für das Cluster-Monitoring wiederverwendet (Issue #88). Der STACKIT Telemetry Router gehört separat zur Audit-Protokollierung.";
+    return t(
+      "Erstellt STACKIT Observability im zentralen Management-Projekt. Diese Instanz wird derzeit nicht automatisch für das Cluster-Monitoring wiederverwendet (Issue #88). Der STACKIT Telemetry Router gehört separat zur Audit-Protokollierung.",
+    );
   if (name === "debug_bastion")
-    return "Eine eigenständige virtuelle Maschine im SNA-Netz des Plattform-Clusters, kein Kubernetes-Pod. Im aktuellen Accelerator wird sie nur mit diesem Cluster-Projekt erstellt und benötigt dessen SNA-Anbindung. Ein unabhängig konfigurierbarer Bastion-Host wird in Issue #87 verfolgt. Sie stellt noch keinen Netzwerkzugang für den Configurator-Runner her.";
-  return hints[name];
+    return t(
+      "Eine eigenständige virtuelle Maschine im SNA-Netz des Plattform-Clusters, kein Kubernetes-Pod. Im aktuellen Accelerator wird sie nur mit diesem Cluster-Projekt erstellt und benötigt dessen SNA-Anbindung. Ein unabhängig konfigurierbarer Bastion-Host wird in Issue #87 verfolgt. Sie stellt noch keinen Netzwerkzugang für den Configurator-Runner her.",
+    );
+  return t(hints[name]);
 }

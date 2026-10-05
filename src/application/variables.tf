@@ -36,6 +36,8 @@ variable "application" {
     env                    = optional(string, null)
     owner_email            = string
     target_key             = string
+    network_enabled        = optional(bool, false)
+    network_prefix_length  = optional(number, null)
     secretsmanager_enabled = bool
     custom_roles = optional(list(object({
       name        = string
