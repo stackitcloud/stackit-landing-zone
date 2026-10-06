@@ -268,91 +268,137 @@ for (const responseKind of ["unavailable", "html"] as const) {
   });
 }
 
-for (const codeFlow of [false, true]) {
-  test(`STACKIT primary login, approval dialog and logout without GitHub ${codeFlow ? "PKCE" : "device"}`, async ({
-    page,
+for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
+  {
+    codeFlow: false,
+    returning: false,
+    completedElsewhere: false,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: false,
+    completedElsewhere: false,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: true,
+    completedElsewhere: false,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: true,
+    completedElsewhere: true,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: true,
+    completedElsewhere: false,
+    missingFlow: true,
+  },
+]) {
+  test(`STACKIT primary login, approval dialog and logout without GitHub ${codeFlow ? "PKCE" : "device"}${returning ? ` return${completedElsewhere ? " race" : missingFlow ? " missing" : ""}` : ""}`, async ({
+    page: initialPage,
+    context,
   }, testInfo) => {
+    let page = initialPage;
     let loggedIn = false;
     let approved = false;
+    let returnPolls = 0;
     const extraRequests: string[] = [];
-    page.on("request", (request) => {
+    context.on("request", (request) => {
       if (
         /\/api\/v1\/(github|credentials|cloud-catalogues)/.test(request.url())
       )
         extraRequests.push(request.url());
     });
-    await page.route("**/auth/status", (route) =>
-      route.fulfill({
-        json: { github: false, stackit: true, primary: "stackit" },
-      }),
-    );
-    await page.route("**/api/v1/session", (route) =>
-      route.fulfill(
-        loggedIn
-          ? {
-              json: {
-                user: {
-                  id: "11111111-1111-4111-8111-111111111111",
-                  login: "owner@example.test",
+    async function installLoginRoutes(targetPage: typeof initialPage) {
+      await targetPage.route("**/auth/status", (route) =>
+        route.fulfill({
+          json: { github: false, stackit: true, primary: "stackit" },
+        }),
+      );
+      await targetPage.route("**/api/v1/session", (route) =>
+        route.fulfill(
+          loggedIn
+            ? {
+                json: {
+                  user: {
+                    id: "11111111-1111-4111-8111-111111111111",
+                    login: "owner@example.test",
+                  },
+                  tenant: {
+                    id: "22222222-2222-4222-8222-222222222222",
+                    kind: "organisation",
+                    roles: ["application-owner"],
+                  },
+                  csrfToken: "c".repeat(43),
+                  expiresAt: new Date(Date.now() + 3600000).toISOString(),
                 },
-                tenant: {
-                  id: "22222222-2222-4222-8222-222222222222",
-                  kind: "organisation",
-                  roles: ["application-owner"],
-                },
-                csrfToken: "c".repeat(43),
-                expiresAt: new Date(Date.now() + 3600000).toISOString(),
+              }
+            : { status: 401, json: { error: "authentication_required" } },
+        ),
+      );
+      await targetPage.route("**/api/v1/applications/**", (route) =>
+        route.fulfill({ json: { versions: [], instances: [] } }),
+      );
+      await targetPage.route("**/api/v1/organisation", (route) =>
+        route.fulfill({
+          json: {
+            userId: "11111111-1111-4111-8111-111111111111",
+            activeTenantId: "22222222-2222-4222-8222-222222222222",
+            tenants: [
+              {
+                id: "22222222-2222-4222-8222-222222222222",
+                name: "Mein Arbeitsbereich",
+                kind: "organisation",
+                organizationId: "33333333-3333-4333-8333-333333333333",
+                organizationVerified: false,
+                roles: ["application-owner"],
+                manageMembers: false,
               },
-            }
-          : { status: 401, json: { error: "authentication_required" } },
-      ),
-    );
-    await page.route("**/api/v1/applications/**", (route) =>
-      route.fulfill({ json: { versions: [], instances: [] } }),
-    );
-    await page.route("**/api/v1/organisation", (route) =>
-      route.fulfill({
-        json: {
-          userId: "11111111-1111-4111-8111-111111111111",
-          activeTenantId: "22222222-2222-4222-8222-222222222222",
-          tenants: [
-            {
-              id: "22222222-2222-4222-8222-222222222222",
-              name: "Mein Arbeitsbereich",
-              kind: "organisation",
-              organizationId: "33333333-3333-4333-8333-333333333333",
-              organizationVerified: false,
-              roles: ["application-owner"],
-              manageMembers: false,
-            },
-          ],
-          members: [],
-        },
-      }),
-    );
-    await page.route("**/auth/stackit/start", (route) =>
-      route.fulfill({
-        json: {
-          verificationUri: codeFlow
-            ? "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256"
-            : "https://accounts.stackit.cloud/device?user_code=TEST-CODE",
-          ...(codeFlow ? {} : { userCode: "TEST-CODE" }),
-          expiresAt: new Date(Date.now() + 300000).toISOString(),
-          retryAfterMs: 50,
-        },
-      }),
-    );
-    await page.route("**/auth/stackit/poll", (route) => {
-      if (approved) {
-        loggedIn = true;
-        return route.fulfill({ json: { status: "verified" } });
-      }
-      return route.fulfill({ json: { status: "waiting", retryAfterMs: 50 } });
-    });
-    await page.route("**/auth/logout", (route) => {
-      loggedIn = false;
-      return route.fulfill({ status: 204 });
-    });
+            ],
+            members: [],
+          },
+        }),
+      );
+      await targetPage.route("**/auth/stackit/start", (route) =>
+        route.fulfill({
+          json: {
+            verificationUri: codeFlow
+              ? "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256"
+              : "https://accounts.stackit.cloud/device?user_code=TEST-CODE",
+            ...(codeFlow ? {} : { userCode: "TEST-CODE" }),
+            expiresAt: new Date(Date.now() + 300000).toISOString(),
+            retryAfterMs: 50,
+          },
+        }),
+      );
+      await targetPage.route("**/auth/stackit/poll", (route) => {
+        if (approved) {
+          if (returning && returnPolls++ === 0)
+            return route.fulfill({
+              json: { status: "waiting", retryAfterMs: 50 },
+            });
+          loggedIn = !missingFlow;
+          if (completedElsewhere || missingFlow)
+            return route.fulfill({
+              status: 409,
+              json: { error: "stackit_flow_missing" },
+            });
+          return route.fulfill({ json: { status: "verified" } });
+        }
+        return route.fulfill({ json: { status: "waiting", retryAfterMs: 50 } });
+      });
+      await targetPage.route("**/auth/logout", (route) => {
+        loggedIn = false;
+        return route.fulfill({ status: 204 });
+      });
+    }
+    await installLoginRoutes(page);
     await page.goto("/organisation");
     await page
       .getByRole("button", { name: "Mit STACKIT anmelden", exact: true })
@@ -384,12 +430,36 @@ for (const codeFlow of [false, true]) {
       path: testInfo.outputPath("stackit-login.png"),
       fullPage: true,
     });
-    approved = true;
+    if (returning) {
+      await page.close();
+      page = await context.newPage();
+      await installLoginRoutes(page);
+      approved = true;
+      await page.goto("/#stackit-login");
+      await expect(page).not.toHaveURL(/#stackit-login/);
+    } else approved = true;
+    if (missingFlow) {
+      await expect(page.locator(".account")).toContainText(
+        "STACKIT-Anmeldung fehlgeschlagen",
+      );
+      await expect(
+        page.getByRole("button", { name: "Abmelden", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
+      ).toBeEnabled();
+      return;
+    }
     await expect(
       page.getByRole("button", { name: "Abmelden", exact: true }),
     ).toBeVisible();
-    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.locator(".account")).toContainText("owner@example.test");
+    if (returning)
+      await page.screenshot({
+        path: testInfo.outputPath("stackit-login-return.png"),
+        fullPage: true,
+      });
     await expect(page).toHaveURL(/\/workspaces$/);
     await expect(
       page.getByRole("button", {

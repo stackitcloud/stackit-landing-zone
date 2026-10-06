@@ -203,7 +203,7 @@ it("binds authorization callbacks to the initiating browser cookie and never cre
       headers: { cookie: bound },
     });
     expect(accepted.statusCode).toBe(302);
-    expect(accepted.headers.location).toBe(auth.origin);
+    expect(accepted.headers.location).toBe(`${auth.origin}/#stackit-login`);
     expect(accepted.headers["cache-control"]).toBe("no-store");
     expect(createStackitSession).not.toHaveBeenCalled();
     expect(

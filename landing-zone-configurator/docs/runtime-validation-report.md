@@ -1026,6 +1026,33 @@ Der browsergebundene eigene Pruefflow wurde abgebrochen und sein Browserkontext
 geschlossen. Anonymer Providerstart ist keine Abnahme menschlicher Identitaet,
 effektiver IAM-Rechte oder der Organisationsbindung.
 
+## PKCE-Rueckkehr und Session-Uebernahme (2026-10-06)
+
+Der Benutzer konnte sich bei STACKIT anmelden, sah im Rueckkehr-Tab aber weiter
+den Gaststatus. Die einmalige initiale Session-Abfrage konnte vor dem Abschluss
+des Pollings im anderen Tab erfolgen. Der feste geheimnisfreie Rueckkehrmarker
+startet nun das bestehende geschuetzte Polling im Rueckkehr-Tab. Bei konkretem
+`stackit_flow_missing` nach Parallelabschluss muss eine echte serverbestaetigte
+Session vorliegen; der Marker ist kein Authentifizierungsnachweis.
+
+```text
+auth: PASS - 62 tests; fixed callback marker, unchanged state/nonce/cookie gates
+browser: PARTIAL - 10 desktop/mobile cases; API mocks, return/race/missing-flow
+types-and-lint: PASS - application/test projects, no new errors
+canonical: PASS - 395 unit passed, 45 expected skips
+runner-gate: RETRIED - first full run kill EPERM in unrelated cleanup; narrow/full retry passed
+activation: PASS - fresh private backup; isolated runtime auth/types qualified
+preservation: PASS - schema 034, all 33 customer tables unchanged after restart
+live-guards: PASS - unbound callback 400, disabled application runner 404
+human-browser: NEEDS_SIGNOFF - user's displayed session after fix not yet confirmed
+cloud: NOT_RUN - same pinned runner; no migrations 035/036 or Plan/Apply
+```
+
+Der Fehler im ersten erweiterten Browserlauf betraf die Test-Fixture:
+globale Page-Mocks uebersteuerten Context-Mocks. Die bestehende Login-Fixture
+wird jetzt pro Tab registriert. Der Runner wurde fuer den Aufraeumfehler nicht
+veraendert. Aktive Login-Ausfuehrung bleibt isoliert vom neueren Application-Code.
+
 ## Serverbasierte Applied-Platform-Bindung (2026-10-06)
 
 Lokaler PE-Weg: angewendete Plattform auswaehlen, serverseitige Vorschau,

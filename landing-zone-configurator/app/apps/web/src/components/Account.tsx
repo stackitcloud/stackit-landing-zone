@@ -25,6 +25,9 @@ export function Account({
 }) {
   const [enabled, setEnabled] = useState(false);
   const [primary, setPrimary] = useState<"github" | "stackit">("github");
+  const [returning, setReturning] = useState(
+    () => window.location.hash === "#stackit-login",
+  );
   const [authorization, setAuthorization] = useState<{
     verificationUri: string;
     userCode?: string;
@@ -40,6 +43,13 @@ export function Account({
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
+    const returningFromStackit = window.location.hash === "#stackit-login";
+    if (returningFromStackit)
+      window.history.replaceState(
+        window.history.state,
+        "",
+        window.location.pathname + window.location.search,
+      );
     void (async () => {
       try {
         const status = await fetch("/auth/status", {
@@ -54,6 +64,7 @@ export function Account({
         if (!providers.github && !providers.stackit) return;
         setPrimary(providers.primary === "stackit" ? "stackit" : "github");
         setEnabled(true);
+        if (returningFromStackit) return;
         const response = await fetch("/api/v1/session", {
           signal: controller.signal,
         });
@@ -68,14 +79,17 @@ export function Account({
     return () => controller.abort();
   }, []);
   useEffect(() => {
-    if (!authorization) return;
-    dialog.current?.showModal();
+    if (!authorization && !returning) return;
+    if (authorization) dialog.current?.showModal();
     const controller = new AbortController();
+    const expiresAt =
+      authorization?.expiresAt ?? new Date(Date.now() + 900000).toISOString();
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
-      if (!authorization || controller.signal.aborted) return;
-      if (Date.parse(authorization.expiresAt) <= Date.now()) {
+      if (controller.signal.aborted) return;
+      if (Date.parse(expiresAt) <= Date.now()) {
         setAuthorization(null);
+        setReturning(false);
         setError("Die Anmeldung ist abgelaufen. Bitte erneut anmelden.");
         return;
       }
@@ -84,23 +98,27 @@ export function Account({
           method: "POST",
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error();
         const result = await response.json();
+        const completedElsewhere =
+          response.status === 409 && result.error === "stackit_flow_missing";
+        if (!response.ok && !completedElsewhere) throw new Error();
         if (result.status === "waiting") {
           timer = setTimeout(
             () => void poll(),
             Math.max(1000, result.retryAfterMs ?? 5000),
           );
-        } else if (result.status === "verified") {
+        } else if (result.status === "verified" || completedElsewhere) {
           const current = await fetch("/api/v1/session", {
             signal: controller.signal,
           });
           if (!current.ok) throw new Error();
           setSession(await current.json());
           setAuthorization(null);
+          setReturning(false);
           onLogin?.();
         } else {
           setAuthorization(null);
+          setReturning(false);
           setError(
             "STACKIT-Anmeldung nicht abgeschlossen. Bitte erneut versuchen.",
           );
@@ -108,17 +126,18 @@ export function Account({
       } catch {
         if (!controller.signal.aborted) {
           setAuthorization(null);
+          setReturning(false);
           setError("STACKIT-Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
         }
       }
     }
-    timer = setTimeout(() => void poll(), authorization.retryAfterMs);
+    timer = setTimeout(() => void poll(), authorization?.retryAfterMs ?? 0);
     return () => {
       controller.abort();
       clearTimeout(timer);
       dialog.current?.close();
     };
-  }, [authorization, onLogin]);
+  }, [authorization, returning, onLogin]);
   async function start() {
     if (!beforeLogin()) return;
     if (primary === "github") {
@@ -203,7 +222,7 @@ export function Account({
           <button
             type="button"
             className="button secondary"
-            disabled={busy || !!authorization}
+            disabled={busy || !!authorization || returning}
             onClick={() => void start()}
           >
             {primary === "stackit"

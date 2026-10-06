@@ -35,7 +35,9 @@ export function registerStackitLogin(
     const entry = key ? pending.get(key) : undefined;
     if (!entry || entry.busy || !entry.flow.acceptAuthorization(request.query))
       return reply.code(400).send({ error: "invalid_stackit_callback" });
-    return reply.header("Referrer-Policy", "no-referrer").redirect(auth.origin);
+    return reply
+      .header("Referrer-Policy", "no-referrer")
+      .redirect(new URL("/#stackit-login", auth.origin).toString());
   });
   app.addHook("onClose", async () => {
     for (const entry of pending.values()) entry.flow.cancel();

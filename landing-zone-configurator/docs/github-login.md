@@ -75,6 +75,30 @@ beendet. Vollstaendiger menschlicher Login und echter Organisationsnachweis
 bleiben noch abzunehmen; #91 bleibt offen. Die isolierte Aktivierung erlaubt
 keinen ungeprueften Start des aktuellen Repository-Scripts mit Migrationen 035/036.
 
+### Rueckkehr-Tab und Session-Uebernahme
+
+Der Nutzer bestaetigt den erfolgreichen Login bei STACKIT, aber die App im
+Rueckkehr-Tab blieb unangemeldet. Die bisherige Initialisierung fragte die Session
+nur einmal ab; zum Zeitpunkt der Rueckkehr konnte das urspruengliche Tab den
+Code noch nicht per geschuetztem Polling in eine Session umgewandelt haben.
+Zwei neue Sessions waren bereits gespeichert, ohne dass dies den geoeffneten
+Rueckkehr-Tab aktualisierte.
+
+Der Callback leitet jetzt zum festen `/#stackit-login` am Configurator-Origin.
+Der Marker enthaelt weder Code noch Tokens und wird aus der Browseradresse
+entfernt. Das Rueckkehr-Tab setzt das browsergebundene Polling selbst fort,
+auch wenn das Ursprungstab geschlossen wurde. Hat ein anderes Tab den Flow
+bereits abgeschlossen, wird ausschliesslich die vom Server anhand des echten
+Session-Cookies bestaetigte Session eingelesen. Ein Marker ohne gueltigen Flow
+oder Session erzeugt keine Anmeldung. State-, Nonce-, Replay- und Cookie-Gates
+bleiben unveraendert; der Callback selbst erzeugt weiterhin keine Session.
+
+Der Login-only-Fix ist nach erneuter privater Sicherung lokal aktiviert;
+Schema bleibt 034, alle 33 Kundentabellen sind nach Neustart unveraendert.
+62 Auth- und 10 Desktop-/Mobil-Loginfaelle bestehen, einschliesslich Rueckkehr
+ohne Ursprungstab und Parallelabschluss. Die Browserfaelle verwenden API-Mocks.
+Die tatsaechliche Anzeige im Browser des Nutzers muss nochmals geprueft werden.
+
 ## Primärer STACKIT-Login
 
 Platform Engineer und Application Owner melden sich mit ihrer persönlichen
