@@ -1025,3 +1025,29 @@ cloud: NOT_RUN - no Plan, Apply, source rebinding or migration 035/036 activatio
 Der browsergebundene eigene Pruefflow wurde abgebrochen und sein Browserkontext
 geschlossen. Anonymer Providerstart ist keine Abnahme menschlicher Identitaet,
 effektiver IAM-Rechte oder der Organisationsbindung.
+
+## Serverbasierte Applied-Platform-Bindung (2026-10-06)
+
+Lokaler PE-Weg: angewendete Plattform auswaehlen, serverseitige Vorschau,
+ausdrueckliche Freigabe mit geprueftem technischem Zugang. Keine kopierten Ziele,
+kein voller Plattform-State und keine Credentials im Browser. Source-Belege
+sind unveraenderlich und behalten Apply-/State-/Dokument-Provenienz.
+Aktuelle Nachweise und State werden auch nach technischer Verifikation erneut
+geprueft; parallele Wiederholungen erzeugen keine doppelten Verträge.
+
+```text
+canonical: PASS - npm run check; lint, application/test types, 395 unit passed
+gated-unit: SKIPPED - 45 expected database/native gates outside default unit run
+postgres: PASS - full platform-plan suite; actual HTTP and source approvals
+negative: PASS - cookie/tenant/CSRF, target/hash tampering, expired/revoked proof
+race: PASS - proof expires during technical verification; no source persisted
+idempotency: PASS - concurrent approvals and successful HTTP retry
+browser: PARTIAL - 6 existing catalogue/publication cases, desktop/mobile, API mocks
+visual: PASS - reviewed desktop/mobile screenshots, no content overlap
+live-source-and-cloud: NOT_RUN - active schema remains 034, application disabled
+```
+
+Die API-Capability bleibt fuer aeltere Server optional; ihr Antwortformat bleibt
+unveraendert. Migrationen 035/036 und der vollstaendige neue Runtime-Stand sind
+nicht aktiviert. Menschliche IAM-/Publikationsabnahme und echte Application-
+Ausfuehrung bleiben offen. Kein Push, Merge, Release oder Cloud-Apply.

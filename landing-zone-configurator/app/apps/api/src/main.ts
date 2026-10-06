@@ -111,6 +111,7 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       backends,
       undefined,
       artifactCrypto,
+      artifactCrypto ? plans : undefined,
     );
   }
   auth = {

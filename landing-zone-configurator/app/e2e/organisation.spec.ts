@@ -183,8 +183,12 @@ test("workspace-first creation opens configurations, remembers access and ignore
   });
 });
 
-for (const publishing of [true, false]) {
-  test(`application catalogue ${publishing ? "immutable publication" : "owner order without fork"}`, async ({
+for (const { publishing, applied } of [
+  { publishing: true, applied: false },
+  { publishing: true, applied: true },
+  { publishing: false, applied: false },
+]) {
+  test(`application catalogue ${publishing ? `immutable publication${applied ? " from applied platform" : ""}` : "owner order without fork"}`, async ({
     page,
   }, testInfo) => {
     const versionId = "44444444-4444-4444-8444-444444444444";
@@ -192,6 +196,13 @@ for (const publishing of [true, false]) {
     const instanceId = "66666666-6666-4666-8666-666666666666";
     const platformRevision = "77777777-7777-4777-8777-777777777777";
     const credentialProfileId = "99999999-9999-4999-8999-999999999999";
+    const source = {
+      applyRunId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      stateKey: `platforms/${tenantId}/terraform.tfstate`,
+      stateVersion: "4",
+      contractRevision: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      documentSha256: "a".repeat(64),
+    };
     const defaultGroupId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
     const customGroupId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
     const applicationOwnerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -333,6 +344,39 @@ for (const publishing of [true, false]) {
         "/platform-contracts",
       );
       const pathname = new URL(request.url()).pathname;
+      if (
+        request.method() === "GET" &&
+        pathname.endsWith("/applied-platforms")
+      ) {
+        expect(applied).toBe(true);
+        return route.fulfill({
+          json: {
+            platforms: [
+              {
+                id: source.applyRunId,
+                stateKey: source.stateKey,
+                stateVersion: source.stateVersion,
+                organizationId: organisationId,
+                finishedAt: approvedContract.approvedAt,
+              },
+            ],
+          },
+        });
+      }
+      if (request.method() === "GET" && pathname.endsWith("/preview")) {
+        expect(pathname).toBe(
+          `/api/v1/applications/applied-platforms/${source.applyRunId}/preview`,
+        );
+        return route.fulfill({
+          json: {
+            document: {
+              ...approvedContract.document,
+              revision: source.contractRevision,
+            },
+            source,
+          },
+        });
+      }
       if (request.method() === "GET" && pathname.endsWith("/groups"))
         return route.fulfill({
           json: {
@@ -358,11 +402,21 @@ for (const publishing of [true, false]) {
                   retirementEnabled: true,
                   deploymentPolicyEnabled: true,
                   groupAccessEnabled: true,
+                  appliedPlatformsEnabled: applied,
                 }
               : { instances },
         });
       expect(request.headers()["x-lzc-csrf"]).toBe("test-csrf");
       const body = request.postDataJSON();
+      if (pathname.endsWith("/applied-platforms/approve")) {
+        expect(body).toEqual({
+          source,
+          confirmApproval: true,
+          credentialProfileId,
+        });
+        contracts.push(approvedContract);
+        return route.fulfill({ json: { ...approvedContract, source } });
+      }
       if (pathname === "/api/v1/applications/groups") {
         expect(publishing).toBe(true);
         expect(body).toEqual({ name: "Research applications" });
@@ -552,19 +606,33 @@ for (const publishing of [true, false]) {
           exact: true,
         })
         .click();
-      await page
-        .getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true })
-        .setInputFiles({
-          name: "platform-contract.json",
-          mimeType: "application/json",
-          buffer: Buffer.from(
-            JSON.stringify({
-              schema_version: 1,
-              organization_id: organisationId,
-              targets: approvedContract.document.targets,
-            }),
-          ),
-        });
+      if (applied) {
+        await expect(
+          page.getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true }),
+        ).toHaveCount(0);
+        await page
+          .getByLabel("Angewendete Plattform", { exact: true })
+          .selectOption(source.applyRunId);
+        await page
+          .getByRole("button", { name: "Plattform prüfen", exact: true })
+          .click();
+        await expect(
+          page.locator(".application-properties").first(),
+        ).toContainText(source.applyRunId);
+      } else
+        await page
+          .getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true })
+          .setInputFiles({
+            name: "platform-contract.json",
+            mimeType: "application/json",
+            buffer: Buffer.from(
+              JSON.stringify({
+                schema_version: 1,
+                organization_id: organisationId,
+                targets: approvedContract.document.targets,
+              }),
+            ),
+          });
       await expect(
         page.getByRole("button", {
           name: "Plattformvertrag freigeben",

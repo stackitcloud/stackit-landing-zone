@@ -14,17 +14,20 @@ import {
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
+import { Applications } from "../apps/api/src/applications/service.js";
 import { newSessionToken } from "../apps/api/src/auth/github-flow.js";
 import {
   PostgresAuthStore,
   type Session,
   tokenHash,
 } from "../apps/api/src/auth/store.js";
+import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { Backends, contentHash } from "../apps/api/src/deployments/backends.js";
 import {
   Preparations,
   preparationManifest,
 } from "../apps/api/src/deployments/preparations.js";
+import { PostgresOrganisations } from "../apps/api/src/organisation/service.js";
 import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
 import {
   PlatformExecution,
@@ -156,12 +159,34 @@ describe.skipIf(!enabled)(
         expiresAt: new Date(Date.now() + 3600000),
       });
     }
-    async function fixture() {
-      const owner = await session();
+    async function fixture(applicationContracts = false) {
+      let owner = await session();
       const organizationId = randomUUID(),
         configurationId = randomUUID(),
         credentialId = randomUUID(),
         preparationId = randomUUID();
+      if (applicationContracts) {
+        const organisations = new PostgresOrganisations(pool);
+        const tenantId = await organisations.create(
+          owner,
+          "Applied contract fixture",
+          organizationId,
+        );
+        await organisations.switch(owner, tenantId);
+        owner = { ...owner, tenantId };
+        await migration!.query(
+          "UPDATE lzc.tenants SET organization_verified=true WHERE id=$1",
+          [tenantId],
+        );
+        await migration!.query(
+          "INSERT INTO lzc.stackit_identities(user_id,issuer,subject,email,verification_method,valid_until) VALUES($1,'https://accounts.stackit.cloud',$2,'owner@stackit.cloud','device-grant-userinfo',now()+interval '1 hour')",
+          [owner.userId, randomUUID()],
+        );
+        await migration!.query(
+          "INSERT INTO lzc.stackit_organization_access(tenant_id,user_id,organization_id,organization_name,valid_until) VALUES($1,$2,$3,'Applied contract fixture',now()+interval '1 hour')",
+          [tenantId, owner.userId, organizationId],
+        );
+      }
       const draft = createDraft(
         catalogue.templates.find(
           (item) => item.id === "standalone",
@@ -1830,8 +1855,21 @@ describe.skipIf(!enabled)(
     });
 
     it("authenticates HTTP backend tickets, applies strict CSRF approval and exports only a validated platform contract", async () => {
-      const test = await fixture();
+      const test = await fixture(true);
       const saved = await test.plan();
+      const profileStore = new PostgresCredentialProfiles(pool, test.secrets);
+      const applications = new Applications(
+        pool,
+        {
+          list: (current) => profileStore.list(current),
+          verifyForPreparation: test.profiles.verifyForPreparation,
+        },
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        test.plans,
+      );
       const auth = {
         origin: "https://configurator.example",
         clientId: "test",
@@ -1845,7 +1883,7 @@ describe.skipIf(!enabled)(
         github: { authorize: vi.fn() },
         tokens: { get: test.token, put: vi.fn(), remove: vi.fn() },
       };
-      const app = buildApp({ auth, plans: test.plans });
+      const app = buildApp({ auth, plans: test.plans, applications });
       const headers = {
         cookie: `__Host-lzc-session=${"b".repeat(43)}`,
         origin: auth.origin,
@@ -1994,7 +2032,196 @@ describe.skipIf(!enabled)(
         expect(output.json()).toEqual({
           applicationPlatformContract: contract,
         });
+        expect(
+          await test.plans.outputs(test.owner, run.id, true),
+        ).toMatchObject({
+          applicationPlatformContract: contract,
+          source: {
+            applyRunId: run.id,
+            stateKey: stableStateKey(test.owner, test.manifest),
+            stateVersion: expect.stringMatching(/^[1-9][0-9]*$/),
+            contractRevision: contract.revision,
+            documentSha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+          },
+        });
         expect(output.body).not.toContain("do-not-publish");
+        const candidates = await applications.listAppliedPlatforms(test.owner);
+        expect(candidates.map((candidate) => candidate.id)).toEqual([run.id]);
+        const preview = await applications.previewAppliedPlatform(
+          test.owner,
+          run.id,
+        );
+        expect(preview.document).toEqual(contract);
+        expect(JSON.stringify(preview)).not.toContain("do-not-publish");
+        test.profiles.verifyForPreparation.mockClear();
+        const sourceHeaders = {
+          ...headers,
+          "x-lzc-tenant": test.owner.tenantId,
+        };
+        const sourceUrl = "/api/v1/applications/applied-platforms";
+        expect((await app.inject({ url: sourceUrl })).statusCode).toBe(401);
+        expect((await app.inject({ url: sourceUrl, headers })).statusCode).toBe(
+          403,
+        );
+        expect(
+          (await app.inject({ url: sourceUrl, headers: sourceHeaders })).json(),
+        ).toEqual({ platforms: candidates });
+        expect(
+          (
+            await app.inject({
+              url: `${sourceUrl}/${run.id}/preview`,
+              headers: sourceHeaders,
+            })
+          ).json(),
+        ).toEqual(preview);
+        const httpApproval = { source: preview.source, confirmApproval: true };
+        for (const changedHeaders of [
+          { ...sourceHeaders, "x-lzc-csrf": "wrong" },
+          { ...sourceHeaders, "x-lzc-tenant": randomUUID() },
+        ]) {
+          expect(
+            (
+              await app.inject({
+                method: "POST",
+                url: `${sourceUrl}/approve`,
+                headers: changedHeaders,
+                payload: httpApproval,
+              })
+            ).statusCode,
+          ).toBe(403);
+        }
+        expect(
+          (
+            await app.inject({
+              method: "POST",
+              url: `${sourceUrl}/approve`,
+              headers: sourceHeaders,
+              payload: { ...httpApproval, targets: contract.targets },
+            })
+          ).statusCode,
+        ).toBe(400);
+        expect(
+          (
+            await app.inject({
+              method: "POST",
+              url: `${sourceUrl}/approve`,
+              headers: sourceHeaders,
+              payload: {
+                ...httpApproval,
+                source: { ...preview.source, documentSha256: "0".repeat(64) },
+              },
+            })
+          ).statusCode,
+        ).toBe(409);
+        expect(test.profiles.verifyForPreparation).not.toHaveBeenCalled();
+        await migration!.query(
+          "UPDATE lzc.stackit_organization_access SET valid_until=now()-interval '1 second' WHERE tenant_id=$1",
+          [test.owner.tenantId],
+        );
+        expect(await applications.listAppliedPlatforms(test.owner)).toEqual([]);
+        await expect(
+          applications.approveAppliedPlatform(test.owner, {
+            source: preview.source,
+            confirmApproval: true,
+          }),
+        ).rejects.toMatchObject({
+          code: "application_platform_source_unavailable",
+        });
+        expect(test.profiles.verifyForPreparation).not.toHaveBeenCalled();
+        await migration!.query(
+          "UPDATE lzc.stackit_organization_access SET valid_until=now()+interval '1 hour' WHERE tenant_id=$1",
+          [test.owner.tenantId],
+        );
+        const verifyProfile =
+          test.profiles.verifyForPreparation.getMockImplementation();
+        if (!verifyProfile)
+          throw new Error("Missing profile verification fixture");
+        test.profiles.verifyForPreparation.mockImplementationOnce(
+          async (...arguments_) => {
+            const verified = await verifyProfile(...arguments_);
+            await migration!.query(
+              "UPDATE lzc.stackit_organization_access SET valid_until=now()-interval '1 second' WHERE tenant_id=$1",
+              [test.owner.tenantId],
+            );
+            return verified;
+          },
+        );
+        await expect(
+          applications.approveAppliedPlatform(test.owner, httpApproval),
+        ).rejects.toMatchObject({
+          code: "application_platform_source_unavailable",
+        });
+        expect(
+          (
+            await migration!.query(
+              "SELECT 1 FROM lzc.application_platform_sources WHERE apply_run_id=$1",
+              [run.id],
+            )
+          ).rowCount,
+        ).toBe(0);
+        await migration!.query(
+          "UPDATE lzc.stackit_organization_access SET valid_until=now()+interval '1 hour' WHERE tenant_id=$1",
+          [test.owner.tenantId],
+        );
+        test.profiles.verifyForPreparation.mockClear();
+        await expect(
+          applications.approveAppliedPlatform(test.owner, {
+            source: { ...preview.source, documentSha256: "0".repeat(64) },
+            confirmApproval: true,
+          }),
+        ).rejects.toMatchObject({
+          code: "application_platform_source_changed",
+        });
+        await expect(
+          applications.approveAppliedPlatform(test.owner, {
+            source: preview.source,
+            targets: contract.targets,
+            confirmApproval: true,
+          }),
+        ).rejects.toThrow();
+        expect(test.profiles.verifyForPreparation).not.toHaveBeenCalled();
+        const foreign = await session();
+        await expect(
+          applications.previewAppliedPlatform(foreign, run.id),
+        ).rejects.toMatchObject({ status: 404 });
+        const approvalInput = { source: preview.source, confirmApproval: true };
+        const starts = test.runner.start.mock.calls.length;
+        const approved = await Promise.all([
+          applications.approveAppliedPlatform(test.owner, approvalInput),
+          applications.approveAppliedPlatform(test.owner, approvalInput),
+        ]);
+        expect(approved[0]).toEqual(approved[1]);
+        expect(approved[0]).toMatchObject({
+          document: { targets: contract.targets },
+          source: preview.source,
+        });
+        expect(approved[0]?.document.revision).not.toBe(contract.revision);
+        const retried = await app.inject({
+          method: "POST",
+          url: `${sourceUrl}/approve`,
+          headers: sourceHeaders,
+          payload: httpApproval,
+        });
+        expect(retried.statusCode).toBe(200);
+        expect(retried.json()).toEqual(approved[0]);
+        expect(
+          (await applications.listPlatformContracts(test.owner))[0],
+        ).toEqual(approved[0]);
+        expect(
+          (
+            await migration!.query(
+              "SELECT revision FROM lzc.application_platform_sources WHERE apply_run_id=$1",
+              [run.id],
+            )
+          ).rows,
+        ).toHaveLength(1);
+        expect(test.runner.start).toHaveBeenCalledTimes(starts);
+        await expect(
+          migration!.query(
+            "UPDATE lzc.application_platform_sources SET state_version=state_version WHERE apply_run_id=$1",
+            [run.id],
+          ),
+        ).rejects.toMatchObject({ code: "55000" });
         const stateKey = stableStateKey(test.owner, test.manifest);
         for (const unsafe of [
           { ...contract, secret: "do-not-publish" },
@@ -2034,6 +2261,14 @@ describe.skipIf(!enabled)(
         await expect(
           test.plans.outputs(test.owner, run.id),
         ).rejects.toMatchObject({ code: "platform_contract_unavailable" });
+        await expect(
+          applications.approveAppliedPlatform(test.owner, approvalInput),
+        ).rejects.toMatchObject({
+          code: "application_platform_source_unavailable",
+        });
+        expect(
+          (await applications.listPlatformContracts(test.owner))[0],
+        ).toEqual(approved[0]);
         expect(
           (await app.inject({ url: "/api/runner/state", headers: backend }))
             .statusCode,

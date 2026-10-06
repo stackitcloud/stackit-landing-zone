@@ -1,6 +1,7 @@
 import {
   type ApplicationInstance,
   applicationInstanceSchema,
+  appliedPlatformSourceSchema,
 } from "@lzc/contracts";
 import {
   type CommonConfiguration,
@@ -53,6 +54,10 @@ const errors: Record<string, string> = {
     "Das Plattformziel passt nicht zur Projektart und Region des Templates.",
   application_platform_contract_required:
     "Diese Template-Version benötigt einen freigegebenen Plattformvertrag.",
+  application_platform_source_unavailable:
+    "Die angewendete Plattform ist nicht mehr aktuell oder der Organisationsnachweis ist abgelaufen.",
+  application_platform_source_changed:
+    "Die Plattformquelle hat sich geändert. Bitte erneut prüfen.",
   verified_application_identity_required:
     "Bitte mit STACKIT für die Organisation dieses Tenants erneut anmelden.",
   application_owner_identity_changed:
@@ -92,6 +97,23 @@ const applicationGroupsSchema = z.object({
       }),
     )
     .max(1000),
+});
+const appliedPlatformsSchema = z.object({
+  platforms: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        stateKey: appliedPlatformSourceSchema.shape.stateKey,
+        stateVersion: z.string().regex(/^[1-9][0-9]*$/),
+        organizationId: z.uuid(),
+        finishedAt: z.iso.datetime(),
+      }),
+    )
+    .max(100),
+});
+const appliedPreviewSchema = z.object({
+  document: platformContractSchema,
+  source: appliedPlatformSourceSchema,
 });
 const contractImportSchema = platformContractSchema.omit({
   tenant_id: true,
@@ -187,6 +209,14 @@ export function Applications({
     z.infer<typeof approvedContractSchema>[]
   >([]);
   const [platformRevision, setPlatformRevision] = useState("");
+  const [appliedPlatformsEnabled, setAppliedPlatformsEnabled] = useState(false);
+  const [appliedPlatforms, setAppliedPlatforms] = useState<
+    z.infer<typeof appliedPlatformsSchema>["platforms"]
+  >([]);
+  const [applyRunId, setApplyRunId] = useState("");
+  const [appliedPreview, setAppliedPreview] = useState<
+    (z.infer<typeof appliedPreviewSchema> & { session: Session }) | null
+  >(null);
   const [technicalProfiles, setTechnicalProfiles] = useState<
     { id: string; name: string }[]
   >([]);
@@ -225,12 +255,25 @@ export function Applications({
           retirementEnabled: z.boolean().default(false),
           deploymentPolicyEnabled: z.boolean().default(false),
           groupAccessEnabled: z.boolean().default(false),
+          appliedPlatformsEnabled: z.boolean().default(false),
         })
         .parse(catalogue);
       setVersions(published.versions);
       setRetirementEnabled(published.retirementEnabled);
       setDeploymentPolicyEnabled(published.deploymentPolicyEnabled);
       setGroupAccessEnabled(published.groupAccessEnabled);
+      setAppliedPlatformsEnabled(published.appliedPlatformsEnabled);
+      if (
+        published.appliedPlatformsEnabled &&
+        (session.tenant?.kind !== "organisation" ||
+          session.tenant.roles?.includes("platform-engineer"))
+      ) {
+        const applied = appliedPlatformsSchema.parse(
+          await request("applied-platforms", session, undefined, signal),
+        );
+        if (signal?.aborted) return;
+        setAppliedPlatforms(applied.platforms);
+      } else setAppliedPlatforms([]);
       if (published.groupAccessEnabled) {
         const access = applicationGroupsSchema.parse(
           await request("groups", session, undefined, signal),
@@ -307,6 +350,11 @@ export function Applications({
   const canPublish =
     session.tenant?.kind !== "organisation" ||
     session.tenant.roles?.includes("platform-engineer");
+  const currentPreview =
+    appliedPreview?.session === session ? appliedPreview : null;
+  const visibleCandidate = appliedPlatformsEnabled
+    ? currentPreview?.document
+    : contractCandidate;
   const canManageGroups =
     canPublish &&
     (session.tenant?.kind !== "organisation" ||
@@ -517,11 +565,32 @@ export function Applications({
       );
     }
   }
+  async function previewAppliedContract() {
+    if (!session || !applyRunId || busy) return;
+    setBusy(true);
+    setError("");
+    setAppliedPreview(null);
+    setConfirmApproval(false);
+    try {
+      const preview = appliedPreviewSchema.parse(
+        await request(`applied-platforms/${applyRunId}/preview`, session),
+      );
+      setAppliedPreview({ ...preview, session });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Plattform konnte nicht geprüft werden.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   async function approveContract() {
     if (
       !session ||
       busy ||
-      !contractCandidate ||
+      !visibleCandidate ||
       !confirmApproval ||
       !credentialProfileId
     )
@@ -530,16 +599,25 @@ export function Applications({
     setError("");
     try {
       const approved = approvedContractSchema.parse(
-        await request("platform-contracts", session, {
-          ...contractCandidate,
-          confirmApproval: true,
-          credentialProfileId,
-        }),
+        await request(
+          appliedPlatformsEnabled
+            ? "applied-platforms/approve"
+            : "platform-contracts",
+          session,
+          {
+            ...(appliedPlatformsEnabled
+              ? { source: currentPreview?.source }
+              : contractCandidate),
+            confirmApproval: true,
+            credentialProfileId,
+          },
+        ),
       );
       await load();
       setPlatformRevision(approved.document.revision);
       setTargetKey("");
       setContractCandidate(null);
+      setAppliedPreview(null);
       setConfirmApproval(false);
       setNotice(
         "Plattformvertrag freigegeben. Es wurden keine Cloud-Ressourcen geändert.",
@@ -765,24 +843,69 @@ export function Applications({
               ))}
             </select>
           </div>
-          <div className="field">
-            <label htmlFor="application-contract-import">
-              {t("Plattform-Outputs · JSON-Vertrag")}
-            </label>
-            <input
-              id="application-contract-import"
-              type="file"
-              accept=".json,application/json"
-              disabled={busy}
-              onChange={(event) => void importContract(event.target.files?.[0])}
-            />
-          </div>
-          {contractCandidate && (
+          {appliedPlatformsEnabled ? (
+            <>
+              <div className="field">
+                <label htmlFor="application-applied-platform">
+                  {t("Angewendete Plattform")}
+                </label>
+                <select
+                  id="application-applied-platform"
+                  value={applyRunId}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setApplyRunId(event.target.value);
+                    setAppliedPreview(null);
+                    setConfirmApproval(false);
+                  }}
+                >
+                  <option value="">{t("Plattform wählen")}</option>
+                  {appliedPlatforms.map((platform) => (
+                    <option key={platform.id} value={platform.id}>
+                      {platform.stateKey} · {platform.stateVersion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                className="button"
+                disabled={busy || !applyRunId}
+                onClick={() => void previewAppliedContract()}
+              >
+                {t("Plattform prüfen")}
+              </button>
+            </>
+          ) : (
+            <div className="field">
+              <label htmlFor="application-contract-import">
+                {t("Plattform-Outputs · JSON-Vertrag")}
+              </label>
+              <input
+                id="application-contract-import"
+                type="file"
+                accept=".json,application/json"
+                disabled={busy}
+                onChange={(event) =>
+                  void importContract(event.target.files?.[0])
+                }
+              />
+            </div>
+          )}
+          {visibleCandidate && (
             <>
               <dl className="application-properties">
                 <dt>{t("Organisation")}</dt>
-                <dd>{contractCandidate.organization_id}</dd>
-                {Object.entries(contractCandidate.targets).map(
+                <dd>{visibleCandidate.organization_id}</dd>
+                {currentPreview && (
+                  <>
+                    <dt>{t("State-Version")}</dt>
+                    <dd>{currentPreview.source.stateVersion}</dd>
+                    <dt>{t("Apply-Lauf")}</dt>
+                    <dd>{currentPreview.source.applyRunId}</dd>
+                  </>
+                )}
+                {Object.entries(visibleCandidate.targets).map(
                   ([key, target]) => (
                     <div key={key}>
                       <dt>

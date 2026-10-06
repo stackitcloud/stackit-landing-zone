@@ -124,6 +124,10 @@ export function registerApplications(
         | "createGroup"
         | "setGroupMembers"
         | "setTemplateGroups"
+        | "appliedPlatformsEnabled"
+        | "listAppliedPlatforms"
+        | "previewAppliedPlatform"
+        | "approveAppliedPlatform"
       >
     >,
 ) {
@@ -183,6 +187,35 @@ export function registerApplications(
         return applications.approvePlatformContract(session, request.body);
       },
     );
+    if (applications.appliedPlatformsEnabled?.()) {
+      routes.get(
+        "/api/v1/applications/applied-platforms",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return {
+            platforms: await applications.listAppliedPlatforms?.(session),
+          };
+        },
+      );
+      routes.get(
+        "/api/v1/applications/applied-platforms/:id/preview",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.object({ id: z.uuid() }).parse(request.params);
+          return applications.previewAppliedPlatform?.(session, id);
+        },
+      );
+      routes.post(
+        "/api/v1/applications/applied-platforms/approve",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return applications.approveAppliedPlatform?.(session, request.body);
+        },
+      );
+    }
     if (applications.listGroups)
       routes.get("/api/v1/applications/groups", async (request, reply) => {
         const session = sessions.get(request);
@@ -228,6 +261,9 @@ export function registerApplications(
         versions: await applications.listTemplates(session),
         retirementEnabled: true,
         deploymentPolicyEnabled: true,
+        ...(applications.appliedPlatformsEnabled?.()
+          ? { appliedPlatformsEnabled: true }
+          : {}),
         ...(applications.listGroups && applications.setTemplateGroups
           ? { groupAccessEnabled: true }
           : {}),

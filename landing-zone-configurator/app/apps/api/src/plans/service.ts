@@ -1188,7 +1188,7 @@ export class Plans {
       );
     });
   }
-  async outputs(session: Session, id: string) {
+  async outputs(session: Session, id: string, withSource = false) {
     if (!this.execution) throw invalid("execution_disabled", 503);
     return withTenant(this.pool, session, async (client) => {
       const run = (
@@ -1253,7 +1253,20 @@ export class Plans {
         )
       )
         throw invalid("platform_contract_unavailable");
-      return { applicationPlatformContract: parsed.data };
+      return {
+        applicationPlatformContract: parsed.data,
+        ...(withSource
+          ? {
+              source: {
+                applyRunId: run.id as string,
+                stateKey: run.state_key as string,
+                stateVersion: String(state.version),
+                contractRevision: parsed.data.revision,
+                documentSha256: sha256(canonicalJson(parsed.data)),
+              },
+            }
+          : {}),
+      };
     });
   }
   async maintain() {

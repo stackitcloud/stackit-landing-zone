@@ -1,7 +1,9 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   type ApplicationInstance,
+  type AppliedPlatformSource,
   applicationInstanceSchema,
+  appliedPlatformSourceSchema,
   planResultSchema,
   runnerArtifactSchema,
   s3BackendDescriptorSchema,
@@ -30,6 +32,8 @@ import type { CredentialSecrets } from "../credentials/secrets.js";
 import type { Backends } from "../deployments/backends.js";
 import type { PlanRunner } from "../plans/cloud-foundry.js";
 import { type ArtifactCrypto, canonicalBase64 } from "../plans/crypto.js";
+import { canonicalJson, sha256 } from "../plans/execution.js";
+import type { Plans } from "../plans/service.js";
 import { withTenant } from "../storage/database.js";
 
 export class ApplicationError extends Error {
@@ -69,13 +73,23 @@ type ContractRow = {
   document: unknown;
   approved_by: string;
   approved_at: Date;
+  source?: unknown;
 };
+
+const contractSelection = `SELECT contracts.*,CASE WHEN source.revision IS NULL THEN NULL ELSE jsonb_build_object(
+ 'applyRunId',source.apply_run_id,'stateKey',source.state_key,'stateVersion',source.state_version::text,
+ 'contractRevision',source.source_contract_revision,'documentSha256',source.document_sha256) END AS source
+ FROM lzc.application_platform_contracts contracts LEFT JOIN lzc.application_platform_sources source
+ ON source.tenant_id=contracts.tenant_id AND source.revision=contracts.revision`;
 
 function contract(row: ContractRow) {
   return {
     document: platformContractSchema.parse(row.document),
     approvedBy: row.approved_by,
     approvedAt: row.approved_at.toISOString(),
+    ...(row.source
+      ? { source: appliedPlatformSourceSchema.parse(row.source) }
+      : {}),
   };
 }
 
@@ -142,6 +156,7 @@ export class Applications {
     private readonly backends?: Pick<Backends, "runner">,
     private readonly dispatch?: { runner: PlanRunner; origin: string },
     private readonly artifactCrypto?: ArtifactCrypto,
+    private readonly platforms?: Pick<Plans, "outputs">,
   ) {}
 
   private work<T>(
@@ -320,10 +335,109 @@ export class Applications {
   listPlatformContracts(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<ContractRow>(
-        "SELECT * FROM lzc.application_platform_contracts ORDER BY approved_at DESC,revision DESC LIMIT 200",
+        `${contractSelection} ORDER BY contracts.approved_at DESC,contracts.revision DESC LIMIT 200`,
       );
       return result.rows.map(contract);
     });
+  }
+
+  appliedPlatformsEnabled() {
+    return Boolean(this.platforms);
+  }
+
+  listAppliedPlatforms(session: Session, applyRunId?: string) {
+    if (!this.platforms)
+      throw new ApplicationError(
+        503,
+        "application_applied_platforms_unavailable",
+      );
+    if (applyRunId) z.uuid().parse(applyRunId);
+    return this.work(session, "publish", async (client) => {
+      const result = await client.query<{
+        id: string;
+        state_key: string;
+        state_version: string;
+        organization_id: string;
+        finished_at: Date;
+      }>(
+        "SELECT run.id,run.state_key,state.version::text AS state_version,preparation.manifest->'organization'->>'id' AS organization_id,run.finished_at FROM lzc.plan_runs run JOIN lzc.platform_states state ON state.state_key=run.state_key JOIN lzc.deployment_preparations preparation ON preparation.id=run.preparation_id JOIN lzc.tenants tenant ON tenant.id=run.tenant_id WHERE run.operation='apply' AND run.status='succeeded' AND run.finished_at IS NOT NULL AND run.applied_state_version=state.version AND state.lock_run_id IS NULL AND tenant.organization_verified AND tenant.archived_at IS NULL AND tenant.organization_id::text=preparation.manifest->'organization'->>'id' AND EXISTS(SELECT 1 FROM lzc.stackit_organization_access access JOIN lzc.stackit_identities identity ON identity.user_id=access.user_id WHERE access.tenant_id=run.tenant_id AND access.user_id=lzc.current_user_id() AND access.organization_id=tenant.organization_id AND access.valid_until>now() AND identity.revoked_at IS NULL AND identity.valid_until>now() AND access.verified_at>=identity.verified_at) AND ($1::uuid IS NULL OR run.id=$1) ORDER BY run.finished_at DESC,run.id DESC LIMIT 100",
+        [applyRunId ?? null],
+      );
+      return result.rows.map((row) => ({
+        id: row.id,
+        stateKey: row.state_key,
+        stateVersion: row.state_version,
+        organizationId: row.organization_id,
+        finishedAt: row.finished_at.toISOString(),
+      }));
+    });
+  }
+
+  async previewAppliedPlatform(session: Session, applyRunId: string) {
+    const candidate = (
+      await this.listAppliedPlatforms(session, z.uuid().parse(applyRunId))
+    )[0];
+    if (!candidate || !this.platforms)
+      throw new ApplicationError(
+        404,
+        "application_platform_source_unavailable",
+      );
+    await this.work(session, "publish", (client) =>
+      this.publisherProof(client, session, candidate.organizationId),
+    );
+    let exported: Awaited<ReturnType<Plans["outputs"]>>;
+    try {
+      exported = await this.platforms.outputs(session, applyRunId, true);
+    } catch {
+      throw new ApplicationError(
+        409,
+        "application_platform_source_unavailable",
+      );
+    }
+    const document = platformContractSchema.parse(
+      exported.applicationPlatformContract,
+    );
+    const source = appliedPlatformSourceSchema.parse(exported.source);
+    if (
+      document.tenant_id !== session.tenantId ||
+      document.organization_id !== candidate.organizationId ||
+      source.applyRunId !== candidate.id ||
+      source.stateKey !== candidate.stateKey ||
+      source.stateVersion !== candidate.stateVersion ||
+      source.contractRevision !== document.revision ||
+      source.documentSha256 !== sha256(canonicalJson(document))
+    )
+      throw new ApplicationError(409, "application_platform_source_changed");
+    return { document, source };
+  }
+
+  async approveAppliedPlatform(session: Session, input: unknown) {
+    const request = z
+      .strictObject({
+        source: appliedPlatformSourceSchema,
+        confirmApproval: z.literal(true),
+        credentialProfileId: z.uuid().optional(),
+      })
+      .parse(input);
+    const current = await this.previewAppliedPlatform(
+      session,
+      request.source.applyRunId,
+    );
+    if (canonicalJson(current.source) !== canonicalJson(request.source))
+      throw new ApplicationError(409, "application_platform_source_changed");
+    return this.approvePlatformContract(
+      session,
+      {
+        schema_version: current.document.schema_version,
+        organization_id: current.document.organization_id,
+        targets: current.document.targets,
+        confirmApproval: true,
+        ...(request.credentialProfileId
+          ? { credentialProfileId: request.credentialProfileId }
+          : {}),
+      },
+      current.source,
+    );
   }
 
   private async publisherProof(
@@ -342,7 +456,11 @@ export class Applications {
       );
   }
 
-  async approvePlatformContract(session: Session, input: unknown) {
+  async approvePlatformContract(
+    session: Session,
+    input: unknown,
+    source?: AppliedPlatformSource,
+  ) {
     assertBoundedJson(input);
     const request = platformContractSchema
       .omit({ tenant_id: true, revision: true })
@@ -379,8 +497,59 @@ export class Applications {
       checked.check.organizationId !== request.organization_id
     )
       throw new ApplicationError(422, "application_technical_access_failed");
+    if (source) {
+      const current = await this.previewAppliedPlatform(
+        session,
+        source.applyRunId,
+      );
+      if (
+        canonicalJson(current.source) !== canonicalJson(source) ||
+        sha256(
+          canonicalJson({
+            schema_version: request.schema_version,
+            tenant_id: session.tenantId,
+            revision: source.contractRevision,
+            organization_id: request.organization_id,
+            targets: request.targets,
+          }),
+        ) !== source.documentSha256
+      )
+        throw new ApplicationError(409, "application_platform_source_changed");
+    }
     return this.work(session, "publish", async (client) => {
       await this.publisherProof(client, session, request.organization_id);
+      if (source) {
+        await client
+          .query(
+            "SELECT 1 FROM lzc.plan_runs run JOIN lzc.platform_states state ON state.state_key=run.state_key WHERE run.id=$1 AND run.operation='apply' AND run.status='succeeded' AND run.applied_state_version=$2::bigint AND state.version=$2::bigint AND state.state_key=$3 AND state.lock_run_id IS NULL FOR SHARE OF run,state",
+            [source.applyRunId, source.stateVersion, source.stateKey],
+          )
+          .then((result) => {
+            if (result.rowCount !== 1)
+              throw new ApplicationError(
+                409,
+                "application_platform_source_changed",
+              );
+          });
+        await client.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+          [
+            `application-platform-source:${session.tenantId}:${source.applyRunId}:${source.documentSha256}:${profile.id}:${checked.version}:${checked.keyId}`,
+          ],
+        );
+        const existing = await client.query<ContractRow>(
+          `${contractSelection} WHERE contracts.tenant_id=$1 AND source.apply_run_id=$2 AND source.document_sha256=$3 AND contracts.credential_profile_id=$4 AND contracts.credential_version=$5 AND contracts.credential_key_id=$6`,
+          [
+            session.tenantId,
+            source.applyRunId,
+            source.documentSha256,
+            profile.id,
+            checked.version,
+            checked.keyId,
+          ],
+        );
+        if (existing.rows[0]) return contract(existing.rows[0]);
+      }
       const document = platformContractSchema.parse({
         schema_version: request.schema_version,
         tenant_id: session.tenantId,
@@ -405,7 +574,24 @@ export class Applications {
       const row = result.rows[0];
       if (!row)
         throw new ApplicationError(503, "platform_contract_approval_failed");
-      return contract(row);
+      if (source)
+        await client.query(
+          "INSERT INTO lzc.application_platform_sources(revision,tenant_id,apply_run_id,state_key,state_version,source_contract_revision,document_sha256,approval_session_id,credential_profile_id,credential_version,credential_key_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+          [
+            document.revision,
+            session.tenantId,
+            source.applyRunId,
+            source.stateKey,
+            source.stateVersion,
+            source.contractRevision,
+            source.documentSha256,
+            session.id,
+            profile.id,
+            checked.version,
+            checked.keyId,
+          ],
+        );
+      return contract({ ...row, ...(source ? { source } : {}) });
     });
   }
 

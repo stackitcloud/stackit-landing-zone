@@ -809,6 +809,16 @@ export const englishMessages: Record<string, string> = {
     "Remove this membership? This ends access to the workspace.",
   "Diese Template-Version benötigt einen freigegebenen Plattformvertrag.":
     "This template version requires an approved platform contract.",
+  "Angewendete Plattform": "Applied platform",
+  "Plattform wählen": "Select platform",
+  "Plattform prüfen": "Check platform",
+  "Apply-Lauf": "Apply run",
+  "Die angewendete Plattform ist nicht mehr aktuell oder der Organisationsnachweis ist abgelaufen.":
+    "The applied platform is no longer current or the organisation proof has expired.",
+  "Die Plattformquelle hat sich geändert. Bitte erneut prüfen.":
+    "The platform source has changed. Please check it again.",
+  "Plattform konnte nicht geprüft werden.":
+    "The platform could not be checked.",
   "Diese Template-Version ist in deinem Arbeitsbereich nicht verfügbar.":
     "This template version is unavailable in your workspace.",
   "Diese Übersicht ist keine erfolgreiche Verbindungsprüfung. Ein Gateway ohne Verbindungen stellt noch keine VPN-Verbindung her.":

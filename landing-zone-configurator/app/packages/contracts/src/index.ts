@@ -64,6 +64,15 @@ export const applicationInstanceSchema = z.strictObject({
 });
 export type ApplicationInstance = z.infer<typeof applicationInstanceSchema>;
 
+export const appliedPlatformSourceSchema = z.strictObject({
+  applyRunId: z.uuid(),
+  stateKey: z.string().min(1).max(512),
+  stateVersion: z.string().regex(/^[1-9][0-9]{0,18}$/),
+  contractRevision: z.uuid(),
+  documentSha256: z.string().regex(/^[0-9a-f]{64}$/),
+});
+export type AppliedPlatformSource = z.infer<typeof appliedPlatformSourceSchema>;
+
 export type { ActionCounts, PlanAction, PlanSummary } from "./plan.js";
 export { InvalidPlan, summarizePlan } from "./plan.js";
 export const planStageSchema = z.enum([

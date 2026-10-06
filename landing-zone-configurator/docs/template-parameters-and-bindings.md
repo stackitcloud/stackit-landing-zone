@@ -1,8 +1,35 @@
 # Projekt-Templates: Eingaben, feste Vorgaben und Ressourcenverknüpfungen
 
-Stand: 2026-10-02. Parametervertrag, Template-Editor, tenantgebundener Testkatalog und persistente Bestellaufträge implementiert. Verifizierte Plattform-/Identitätsbindung, Application-Cloud-Plan und produktive Instanziierung bleiben offen. Dieser Stand ist lokal, noch nicht veröffentlicht.
+Stand: 2026-10-06. Parametervertrag, Template-Editor, tenantgebundener Testkatalog, persistente Bestellaufträge und serverbasierte Applied-Platform-Bindung implementiert. Live-Aktivierung und menschliche Abnahme, Application-Cloud-Plan und produktive Instanziierung bleiben offen. Dieser Stand ist lokal, noch nicht veröffentlicht.
 Ergänzt [Projekt-Template-Entwürfe](project-template-drafts.md) und die
 [Plattform-/Application-Architektur](platform-application-architecture.md).
+
+## Serverbasierte Plattformbindung
+
+Bei aktivierter Capability `appliedPlatformsEnabled` waehlt der Platform Engineer
+eine erfolgreich angewendete Plattform seines aktiven Tenants und laesst den
+Server die nicht geheimen Plattformziele vorpruefen. Nur abgeschlossene Applies
+mit weiterhin passender, unverriegelter State-Version und aktuellem menschlichen
+Nachweis fuer die verifizierte Organisation stehen zur Auswahl.
+Der normale Weg verlangt keinen JSON-Transfer; der Datei-Import bleibt lediglich
+als Kompatibilitaetsweg fuer aeltere APIs erhalten.
+
+Die Vorschau liefert Ziele und einen Source-Beleg aus Apply-ID, State-Key und
+Version, urspruenglicher Vertragsrevision und SHA-256 des validierten Dokuments.
+Zur ausdruecklichen Freigabe sendet der Browser nur diesen Beleg, Zustimmung und
+die gewaehlte technische Profil-ID. Ziele und Organisation kommen erneut vom
+Server, nicht aus kopierten Browserdaten. Menschlicher Nachweis, aktueller State
+und technischer Zugriff werden erneut geprueft. Aenderungen waehrend der Pruefung
+verhindern die Uebernahme. Die Quelle bleibt append-only und tenantgebunden;
+konkurrierende Wiederholungen mit demselben geprueften Zugang sind idempotent.
+
+Die Freigabe reserviert keine neue Cloud-Ausfuehrung und aendert keine vorhandene
+Application-Instanz. Alte Bestellungen behalten ihre Vertragsrevision; ein neuer
+Plattform-Apply bindet sie nicht automatisch um. Die API-Erweiterung und Migration
+036 sind lokal qualifiziert, aber nicht Teil des laufenden Login-only-Standes 034.
+Gruppenmigration 035 und Source-Migration 036 benoetigen eine separate Aktivierung.
+Echte Application-Plans, explizite Applies, Drift und Upgrades bleiben eigenstaendige
+Folgeschritte in #93. Der eigenstaendige Accelerator bleibt unabhaengig nutzbar.
 
 ## Implementierter Umfang
 

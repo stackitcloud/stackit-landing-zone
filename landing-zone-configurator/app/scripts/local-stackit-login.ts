@@ -258,6 +258,7 @@ async function start() {
       ? { runner: applicationRunner, origin: "http://127.0.0.1:3000" }
       : undefined,
     crypto,
+    plans,
   );
   stage = "api";
   let codeCallback:
