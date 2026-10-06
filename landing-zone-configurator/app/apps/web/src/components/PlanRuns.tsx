@@ -290,7 +290,8 @@ function CheckpointReview({
   async function perform(action: "checkpoint" | "reconcile") {
     if (
       pending.current ||
-      (action === "reconcile" && (!confirmed || !checkpoint?.canResume))
+      (action === "reconcile" &&
+        (!confirmed || !(checkpoint?.canResume || checkpoint?.migration)))
     )
       return;
     const controller = new AbortController();
@@ -315,11 +316,18 @@ function CheckpointReview({
           body: JSON.stringify(
             action === "checkpoint"
               ? {}
-              : {
-                  confirmRetainState: true,
-                  stateVersion: checkpoint?.stateVersion,
-                  checkpointSha256: checkpoint?.checkpointSha256,
-                },
+              : checkpoint?.migration
+                ? {
+                    confirmCompleteMigration: true,
+                    stateVersion: checkpoint.stateVersion,
+                    checkpointSha256: checkpoint.checkpointSha256,
+                    remoteIdentity: checkpoint.migration.remoteIdentity,
+                  }
+                : {
+                    confirmRetainState: true,
+                    stateVersion: checkpoint?.stateVersion,
+                    checkpointSha256: checkpoint?.checkpointSha256,
+                  },
           ),
         },
       );
@@ -394,6 +402,22 @@ function CheckpointReview({
               )}
             </dd>
           </dl>
+          {checkpoint.migration && (
+            <dl className="summary-list">
+              <dt>{t("S3-Abgleich")}</dt>
+              <dd>{t("Übereinstimmend")}</dd>
+              <dt>{t("S3-State-Serial")}</dt>
+              <dd>{checkpoint.migration.serial}</dd>
+              <dt>{t("Lineage erhalten")}</dt>
+              <dd>
+                {t(checkpoint.migration.lineagePreserved ? "Ja" : "Nein")}
+              </dd>
+              <dt>{t("S3-Prüfstand")}</dt>
+              <dd>
+                <code>{checkpoint.migration.remoteIdentity}</code>
+              </dd>
+            </dl>
+          )}
           <ul>
             {checkpoint.resources.map((resource) => (
               <li key={`${resource.mode}:${resource.type}`}>
@@ -403,7 +427,7 @@ function CheckpointReview({
               </li>
             ))}
           </ul>
-          {!checkpoint.canResume ? (
+          {!checkpoint.canResume && !checkpoint.migration ? (
             <p className="validation-box">
               {t(
                 "Dieser Recovery-Fall benötigt einen gesonderten State-Abgleich.",
@@ -419,7 +443,9 @@ function CheckpointReview({
                   onChange={(event) => setConfirmed(event.target.checked)}
                 />{" "}
                 {t(
-                  "Ich habe den Checkpoint geprüft und bestätige, dass der bestehende State unverändert erhalten bleibt.",
+                  checkpoint.migration
+                    ? "Ich habe den S3-Abgleich geprüft und bestätige die Umstellung auf diesen S3-State ohne erneuten Apply."
+                    : "Ich habe den Checkpoint geprüft und bestätige, dass der bestehende State unverändert erhalten bleibt.",
                 )}
               </label>
               <button
@@ -428,7 +454,11 @@ function CheckpointReview({
                 disabled={busy || !confirmed}
                 onClick={() => void perform("reconcile")}
               >
-                {t("Erneute Planung freigeben")}
+                {t(
+                  checkpoint.migration
+                    ? "Backend-Migration bestätigen"
+                    : "Erneute Planung freigeben",
+                )}
               </button>
             </>
           )}

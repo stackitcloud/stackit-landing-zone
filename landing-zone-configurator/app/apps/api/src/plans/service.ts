@@ -178,7 +178,22 @@ export class Plans {
         "SELECT EXISTS(SELECT 1 FROM lzc.state_recoveries WHERE run_id=$1) AS available",
         [id],
       );
+      const migration =
+        run.error_code === "state_failed" &&
+        run.input_claimed === true &&
+        run.finished_at &&
+        state.pending_backend_id &&
+        !state.lock_run_id &&
+        recovery.rows[0]?.available === false
+          ? await execution.inspectMigration(
+              client,
+              session,
+              state.state_key,
+              id,
+            )
+          : undefined;
       return {
+        ...(migration ? { migration } : {}),
         stateVersion: String(state.version),
         checkpointSha256: sha256(bytes),
         serial: document.serial,
@@ -204,14 +219,23 @@ export class Plans {
   async reconcile(session: Session, id: string, raw: unknown) {
     z.uuid().parse(id);
     const input = z
-      .strictObject({
-        confirmRetainState: z.literal(true),
-        stateVersion: z.string().regex(/^[1-9][0-9]*$/),
-        checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),
-      })
+      .union([
+        z.strictObject({
+          confirmRetainState: z.literal(true),
+          stateVersion: z.string().regex(/^[1-9][0-9]*$/),
+          checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),
+        }),
+        z.strictObject({
+          confirmCompleteMigration: z.literal(true),
+          stateVersion: z.string().regex(/^[1-9][0-9]*$/),
+          checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),
+          remoteIdentity: z.string().min(1).max(512),
+        }),
+      ])
       .parse(raw);
     const execution = this.execution;
     if (!execution) throw invalid("checkpoint_unavailable", 503);
+    const completingMigration = "confirmCompleteMigration" in input;
     return withTenant(this.pool, session, async (client) => {
       const roles = await client.query(
         "SELECT lzc.deployment_role() AS allowed",
@@ -232,7 +256,10 @@ export class Plans {
         )
       ).rows[0];
       if (receipt) {
-        if (run.operation !== "apply" || run.status !== "failed")
+        if (
+          run.operation !== "apply" ||
+          run.status !== (completingMigration ? "succeeded" : "failed")
+        )
           throw invalid("reconciliation_not_available");
         if (
           String(receipt.state_version) !== input.stateVersion ||
@@ -244,7 +271,8 @@ export class Plans {
       if (
         run.operation !== "apply" ||
         run.status !== "recovery_required" ||
-        run.error_code !== "apply_failed" ||
+        run.error_code !==
+          (completingMigration ? "state_failed" : "apply_failed") ||
         !run.input_claimed ||
         !run.finished_at
       )
@@ -263,7 +291,7 @@ export class Plans {
         !state ||
         state.backend_id ||
         state.lock_run_id ||
-        state.pending_backend_id ||
+        (!completingMigration && state.pending_backend_id) ||
         !state.ciphertext ||
         recoveries.rowCount
       )
@@ -275,6 +303,23 @@ export class Plans {
         sha256(bytes) !== input.checkpointSha256
       )
         throw invalid("checkpoint_changed");
+      if ("confirmCompleteMigration" in input) {
+        const preparation = (
+          await client.query(
+            "SELECT manifest FROM lzc.deployment_preparations WHERE id=$1",
+            [run.preparation_id],
+          )
+        ).rows[0];
+        if (!preparation) throw invalid("input_invalid");
+        await execution.migration(
+          client,
+          session,
+          run,
+          "complete",
+          preparation.manifest.organization.id,
+          input,
+        );
+      }
       await client.query(
         "INSERT INTO lzc.platform_reconciliations(run_id,tenant_id,owner_user_id,session_id,state_key,state_version,checkpoint_sha256) VALUES($1,$2,$3,$4,$5,$6,$7)",
         [
@@ -288,8 +333,8 @@ export class Plans {
         ],
       );
       await client.query(
-        "UPDATE lzc.plan_runs SET status='failed' WHERE id=$1",
-        [id],
+        "UPDATE lzc.plan_runs SET status=$2,error_code=CASE WHEN $2='succeeded' THEN NULL ELSE error_code END WHERE id=$1",
+        [id, completingMigration ? "succeeded" : "failed"],
       );
       return { id, reconciled: true };
     });

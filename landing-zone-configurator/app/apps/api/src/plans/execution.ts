@@ -9,6 +9,7 @@ import {
   bindStateSource,
   contentHash,
   managementRunnerKey,
+  migrationStateMatches,
   stateDocument,
   stateForSource,
 } from "../deployments/backends.js";
@@ -29,6 +30,8 @@ type ExecutionRun = {
   provider_lock_sha256: string;
   runner_droplet_id: string | null;
   summary: unknown;
+  error_code?: string | null;
+  finished_at?: Date | string | null;
 };
 type PlanArtifact = {
   run_id: string;
@@ -591,17 +594,84 @@ export class PlatformExecution {
     return { sha256: hash };
   }
 
+  private async migrationTarget(
+    client: pg.PoolClient,
+    session: Session,
+    state: PlatformState,
+    runId: string,
+  ) {
+    if (
+      !this.backends ||
+      state.backend_id ||
+      state.lock_run_id ||
+      !state.pending_backend_id ||
+      state.migration_run_id !== runId ||
+      String(state.migration_version) !== String(state.version)
+    )
+      throw fail("migration_not_ready");
+    const source = stateDocument(this.bootstrap(session, state));
+    if (state.migration_sha256 !== contentHash(source))
+      throw fail("state_changed");
+    const backend = await this.backends.runner(
+      client,
+      session,
+      state.pending_backend_id,
+    );
+    const target = await this.backends.current(backend);
+    if (!migrationStateMatches(source, target.document))
+      throw fail("migration_verification_failed");
+    return { source, target };
+  }
+
+  async inspectMigration(
+    client: pg.PoolClient,
+    session: Session,
+    stateKey: string,
+    runId: string,
+  ) {
+    const state = (
+      await client.query<PlatformState>(
+        "SELECT * FROM lzc.platform_states WHERE state_key=$1 FOR SHARE",
+        [stateKey],
+      )
+    ).rows[0];
+    if (!state) throw fail("migration_not_ready");
+    const { source, target } = await this.migrationTarget(
+      client,
+      session,
+      state,
+      runId,
+    );
+    return {
+      remoteIdentity: target.identity,
+      serial: target.document.serial,
+      lineagePreserved: source.lineage === target.document.lineage,
+    };
+  }
+
   async migration(
     client: pg.PoolClient,
     session: Session,
     run: ExecutionRun,
     phase: "prepare" | "complete",
     organizationId?: string,
+    recoveryConfirmation?: {
+      stateVersion: string;
+      checkpointSha256: string;
+      remoteIdentity: string;
+    },
   ) {
     if (!this.backends) throw fail("backend_service_unavailable", 503);
     if (
       run.operation !== "apply" ||
-      run.status !== "applying" ||
+      (run.status !== "applying" &&
+        !(
+          phase === "complete" &&
+          recoveryConfirmation &&
+          run.status === "recovery_required" &&
+          run.error_code === "state_failed" &&
+          run.finished_at
+        )) ||
       !run.input_claimed
     )
       throw fail("invalid_runner_transition");
@@ -706,18 +776,24 @@ export class PlatformExecution {
       state.migration_sha256 !== hash
     )
       throw fail("state_changed");
-    const backend = await this.backends.runner(
+    if (
+      recoveryConfirmation &&
+      (recoveryConfirmation.stateVersion !== String(state.version) ||
+        recoveryConfirmation.checkpointSha256 !==
+          sha256(this.bootstrap(session, state)))
+    )
+      throw fail("checkpoint_changed");
+    const { target } = await this.migrationTarget(
       client,
       session,
-      state.pending_backend_id,
+      state,
+      run.id,
     );
-    const target = await this.backends.current(backend);
     if (
-      contentHash(target.document) !== hash ||
-      target.document.lineage !== source.lineage ||
-      target.document.serial !== source.serial
+      recoveryConfirmation &&
+      recoveryConfirmation.remoteIdentity !== target.identity
     )
-      throw fail("migration_verification_failed");
+      throw fail("checkpoint_changed");
     const runnerKey = organizationId
       ? managementRunnerKey(source, organizationId)
       : undefined;

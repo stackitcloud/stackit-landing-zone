@@ -10,6 +10,13 @@ export const platformCheckpointSchema = z.strictObject({
   pendingMigration: z.boolean(),
   recoveryAvailable: z.boolean(),
   canResume: z.boolean(),
+  migration: z
+    .strictObject({
+      remoteIdentity: z.string().min(1).max(512),
+      serial: z.number().int().nonnegative().refine(Number.isSafeInteger),
+      lineagePreserved: z.boolean(),
+    })
+    .optional(),
   resources: z
     .array(
       z.strictObject({

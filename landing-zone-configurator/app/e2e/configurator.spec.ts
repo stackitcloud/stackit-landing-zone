@@ -2904,21 +2904,40 @@ test.describe("explicit saved-plan approval", () => {
     });
   }
 
-  for (const outcome of ["success", "changed", "locked"]) {
+  for (const outcome of [
+    "success",
+    "changed",
+    "locked",
+    "migration",
+    "migration-changed",
+  ]) {
     test(`user-controlled Bootstrap checkpoint recovery ${outcome}`, async ({
       page,
     }, testInfo) => {
       await setup(page);
       let reconciled = false;
       const actions: string[] = [];
+      const migrating = outcome.startsWith("migration");
+      const releaseLabel = migrating
+        ? "Backend-Migration bestätigen"
+        : "Erneute Planung freigeben";
       const checkpoint = {
         stateVersion: "1",
         checkpointSha256: "d".repeat(64),
         serial: 1,
         lockHeld: outcome === "locked",
-        pendingMigration: false,
+        pendingMigration: migrating,
         recoveryAvailable: false,
-        canResume: outcome !== "locked",
+        canResume: !migrating && outcome !== "locked",
+        ...(migrating
+          ? {
+              migration: {
+                remoteIdentity: "e".repeat(64),
+                serial: 1,
+                lineagePreserved: false,
+              },
+            }
+          : {}),
         resources: [
           {
             mode: "managed",
@@ -2938,8 +2957,12 @@ test.describe("explicit saved-plan approval", () => {
                 id: applyId,
                 operation: "apply",
                 planId,
-                status: reconciled ? "failed" : "recovery_required",
-                errorCode: "apply_failed",
+                status: reconciled
+                  ? migrating
+                    ? "succeeded"
+                    : "failed"
+                  : "recovery_required",
+                errorCode: migrating ? "state_failed" : "apply_failed",
               },
             ],
           },
@@ -2955,13 +2978,15 @@ test.describe("explicit saved-plan approval", () => {
       await page.route(`**/api/v1/plans/${applyId}/reconcile`, (route) => {
         actions.push("reconcile");
         expect(route.request().postDataJSON()).toEqual({
-          confirmRetainState: true,
+          ...(migrating
+            ? { confirmCompleteMigration: true, remoteIdentity: "e".repeat(64) }
+            : { confirmRetainState: true }),
           stateVersion: "1",
           checkpointSha256: "d".repeat(64),
         });
         expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
         expect(route.request().headers()["x-lzc-tenant"]).toBe("personal");
-        if (outcome === "changed")
+        if (outcome.endsWith("changed"))
           return route.fulfill({
             status: 409,
             json: { error: "checkpoint_changed" },
@@ -2977,7 +3002,7 @@ test.describe("explicit saved-plan approval", () => {
       await expect(review).toBeVisible();
       expect(actions).toEqual([]);
       await expect(
-        review.getByRole("button", { name: "Erneute Planung freigeben" }),
+        review.getByRole("button", { name: releaseLabel }),
       ).toHaveCount(0);
       await review
         .getByRole("button", { name: "Checkpoint prüfen", exact: true })
@@ -3004,6 +3029,20 @@ test.describe("explicit saved-plan approval", () => {
       await expect(
         englishReview.getByText("State version", { exact: true }),
       ).toBeVisible();
+      if (migrating) {
+        await expect(
+          englishReview.getByText("Matching", { exact: true }),
+        ).toBeVisible();
+        await expect(
+          englishReview.getByText("e".repeat(64), { exact: true }),
+        ).toBeVisible();
+        await expect(
+          englishReview.getByRole("button", {
+            name: "Confirm backend migration",
+            exact: true,
+          }),
+        ).toBeDisabled();
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -3026,17 +3065,19 @@ test.describe("explicit saved-plan approval", () => {
         ).toBeVisible();
       } else {
         const confirm = review.getByRole("checkbox", {
-          name: /Ich habe den Checkpoint geprüft/,
+          name: migrating
+            ? /Ich habe den S3-Abgleich geprüft/
+            : /Ich habe den Checkpoint geprüft/,
         });
         const release = review.getByRole("button", {
-          name: "Erneute Planung freigeben",
+          name: releaseLabel,
           exact: true,
         });
         await expect(release).toBeDisabled();
         await confirm.check();
         await expect(release).toBeEnabled();
         await release.click();
-        if (outcome === "changed") {
+        if (outcome.endsWith("changed")) {
           await expect(review.getByRole("alert")).toHaveText(
             "Der Checkpoint wurde geändert. Prüfe ihn erneut.",
           );

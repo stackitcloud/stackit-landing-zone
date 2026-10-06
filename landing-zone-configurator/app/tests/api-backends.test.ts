@@ -1,4 +1,9 @@
+import { spawn } from "node:child_process";
 import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { type S3RunnerBackend, s3BackendConfiguration } from "@lzc/contracts";
 import type pg from "pg";
 import { describe, expect, it, vi } from "vitest";
@@ -10,8 +15,10 @@ import {
   Backends,
   contentHash,
   managementRunnerKey,
+  migrationStateMatches,
   registerBackendSchema,
   stateDocument,
+  type TerraformState,
 } from "../apps/api/src/deployments/backends.js";
 import type { PreparationManifest } from "../apps/api/src/deployments/preparations.js";
 import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
@@ -20,6 +27,164 @@ import {
   sha256,
   stableStateKey,
 } from "../apps/api/src/plans/execution.js";
+
+it.each([
+  "full",
+  "native",
+  "changed-content",
+  "changed-version",
+  "same-lineage-reset",
+  "wrong-serial",
+])("verifies migration payload and pinned native metadata: %s", (variant) => {
+  const source = stateDocument(
+    Buffer.from(
+      JSON.stringify({
+        version: 4,
+        terraform_version: "1.12.6",
+        serial: 7,
+        lineage: randomUUID(),
+        outputs: { proof: { value: "test-only" } },
+        resources: [],
+      }),
+    ),
+  );
+  const target =
+    variant === "full"
+      ? { ...source }
+      : { ...source, lineage: randomUUID(), serial: 1 };
+  if (variant === "changed-content")
+    target.outputs = { proof: { value: "different" } };
+  if (variant === "changed-version") target.terraform_version = "1.12.5";
+  if (variant === "same-lineage-reset") target.lineage = source.lineage;
+  if (variant === "wrong-serial") target.serial = 2;
+  expect(migrationStateMatches(source, target)).toBe(
+    variant === "full" || variant === "native",
+  );
+});
+
+it.skipIf(process.env.LZC_NATIVE_RUNNER_TEST !== "true")(
+  "verifies actual OpenTofu HTTP-to-S3 metadata transformation without any cloud credentials",
+  async () => {
+    let source: TerraformState | undefined;
+    const objects = new Map<string, Buffer>();
+    const server = createServer(async (request, response) => {
+      const address = new URL(request.url ?? "/", "http://localhost");
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const bytes = Buffer.concat(chunks);
+      if (address.pathname === "/source") {
+        if (request.method === "POST") source = stateDocument(bytes);
+        if (request.method === "GET" && !source) response.statusCode = 404;
+        response.setHeader("content-type", "application/json");
+        response.end(
+          request.method === "GET" && source ? JSON.stringify(source) : "{}",
+        );
+        return;
+      }
+      if (request.method === "HEAD") {
+        response.end();
+        return;
+      }
+      if (address.searchParams.get("list-type") === "2") {
+        response.setHeader("content-type", "application/xml");
+        response.end(
+          '<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>migration-probe</Name><KeyCount>0</KeyCount><IsTruncated>false</IsTruncated></ListBucketResult>',
+        );
+        return;
+      }
+      if (request.method === "PUT") objects.set(address.pathname, bytes);
+      if (request.method === "DELETE") objects.delete(address.pathname);
+      const stored = objects.get(address.pathname);
+      if (request.method === "GET" && !stored) {
+        response.statusCode = 404;
+        response.setHeader("content-type", "application/xml");
+        response.end("<Error><Code>NoSuchKey</Code></Error>");
+        return;
+      }
+      if (stored) response.setHeader("etag", `"${sha256(stored)}"`);
+      response.end(request.method === "GET" ? stored : "");
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const directory = await mkdtemp(join(tmpdir(), "lzc-native-s3-migration-"));
+    const binding = server.address();
+    if (!binding || typeof binding === "string")
+      throw new Error("Loopback test listener required");
+    const endpoint = `http://127.0.0.1:${binding.port}`;
+    async function command(args: string[]) {
+      const child = spawn(process.env.LZC_NATIVE_TOFU_BINARY ?? "tofu", args, {
+        cwd: directory,
+        env: {
+          PATH: process.env.PATH ?? "/usr/bin:/bin",
+          HOME: directory,
+          TF_IN_AUTOMATION: "true",
+          AWS_ACCESS_KEY_ID: "test-access",
+          AWS_SECRET_ACCESS_KEY: "test-secret",
+          AWS_EC2_METADATA_DISABLED: "true",
+        },
+      });
+      let output = "";
+      child.stdout.on("data", (bytes) => {
+        output += bytes;
+      });
+      child.stderr.on("data", (bytes) => {
+        output += bytes;
+      });
+      await new Promise<void>((resolve, reject) => {
+        child.once("error", reject);
+        child.once("exit", (code) =>
+          code === 0 ? resolve() : reject(new Error(output)),
+        );
+      });
+    }
+    try {
+      await writeFile(
+        join(directory, "main.tf"),
+        'resource "terraform_data" "proof" { input = "synthetic-only" }\noutput "proof" { value = terraform_data.proof.output }\n',
+        { mode: 0o600 },
+      );
+      await writeFile(
+        join(directory, "backend.tf"),
+        `terraform {\n backend "http" {\n address = "${endpoint}/source"\n lock_address = "${endpoint}/source"\n unlock_address = "${endpoint}/source"\n }\n}\n`,
+        { mode: 0o600 },
+      );
+      await command(["init", "-input=false", "-no-color"]);
+      await command(["apply", "-auto-approve", "-input=false", "-no-color"]);
+      await writeFile(
+        join(directory, "main.tf"),
+        'resource "terraform_data" "proof" { input = "synthetic-updated" }\noutput "proof" { value = terraform_data.proof.output }\n',
+      );
+      await command(["apply", "-auto-approve", "-input=false", "-no-color"]);
+      if (!source) throw new Error("Native HTTP state missing");
+      expect(source.terraform_version).toBe("1.12.6");
+      expect(source.serial).toBeGreaterThan(1);
+      await writeFile(
+        join(directory, "backend.tf"),
+        `terraform {\n backend "s3" {\n bucket = "migration-probe"\n key = "terraform.tfstate"\n region = "eu01"\n endpoints = { s3 = "${endpoint}" }\n use_path_style = true\n use_lockfile = true\n skip_credentials_validation = true\n skip_region_validation = true\n skip_metadata_api_check = true\n skip_requesting_account_id = true\n skip_s3_checksum = true\n }\n}\n`,
+      );
+      await command([
+        "init",
+        "-migrate-state",
+        "-force-copy",
+        "-input=false",
+        "-no-color",
+      ]);
+      const bytes = objects.get("/migration-probe/terraform.tfstate");
+      if (!bytes) throw new Error("Native S3 state missing");
+      const target = stateDocument(bytes);
+      expect(target.serial).toBe(1);
+      expect(target.lineage).not.toBe(source.lineage);
+      expect(target.resources).toEqual(source.resources);
+      expect(target.outputs).toEqual(source.outputs);
+      expect(migrationStateMatches(source, target)).toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+  60000,
+);
 
 const descriptor = {
   bucket: "customer-management-tfstate",

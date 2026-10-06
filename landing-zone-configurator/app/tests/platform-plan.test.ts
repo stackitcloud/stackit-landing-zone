@@ -274,6 +274,7 @@ describe.skipIf(!enabled)(
       );
       const execution = new PlatformExecution(crypto, backends);
       const managementState = (state: {
+        terraform_version?: string;
         outputs?: object;
         resources?: object[];
         lineage: string;
@@ -1088,113 +1089,328 @@ describe.skipIf(!enabled)(
       return { ...test, saved, run, checkpoint };
     }
 
-    it("requires owner session, origin, CSRF, current tenant and explicit snapshot confirmation for checkpoint HTTP recovery", async () => {
-      const test = await failedCheckpoint();
-      const auth = {
-        origin: "https://configurator.example",
-        clientId: "test",
-        store: {
-          resolveSession: vi.fn(async () => test.owner),
-          beginLogin: vi.fn(),
-          consumeLogin: vi.fn(),
-          createSession: vi.fn(),
-          deleteSession: vi.fn(),
-        },
-        github: { authorize: vi.fn() },
-        tokens: { get: test.token, put: vi.fn(), remove: vi.fn() },
-      };
-      const app = buildApp({ auth, plans: test.plans });
-      const headers = {
-        cookie: `__Host-lzc-session=${"b".repeat(43)}`,
-        origin: auth.origin,
-        "x-lzc-csrf": test.owner.csrfToken,
-        "x-lzc-tenant": test.owner.tenantId,
-      };
-      const confirmation = {
-        confirmRetainState: true,
-        stateVersion: test.checkpoint.stateVersion,
-        checkpointSha256: test.checkpoint.checkpointSha256,
-      };
-      try {
-        for (const action of ["checkpoint", "reconcile"] as const) {
-          const url = `/api/v1/plans/${test.run.id}/${action}`;
-          const payload = action === "checkpoint" ? {} : confirmation;
-          expect(
-            (await app.inject({ method: "POST", url, payload })).statusCode,
-          ).toBe(401);
-          for (const attempt of [
-            {
-              headers: { ...headers, origin: "https://attacker.example" },
-              code: 403,
-            },
-            { headers: { ...headers, "x-lzc-csrf": "wrong" }, code: 403 },
-            {
-              headers: { ...headers, "x-lzc-tenant": randomUUID() },
-              code: 409,
-            },
-          ])
+    it.each(["bootstrap", "migration"])(
+      "requires owner session, origin, CSRF, current tenant and explicit snapshot confirmation for checkpoint HTTP recovery: %s",
+      async (kind) => {
+        const test =
+          kind === "migration"
+            ? await failedMigration()
+            : await failedCheckpoint();
+        const auth = {
+          origin: "https://configurator.example",
+          clientId: "test",
+          store: {
+            resolveSession: vi.fn(async () => test.owner),
+            beginLogin: vi.fn(),
+            consumeLogin: vi.fn(),
+            createSession: vi.fn(),
+            deleteSession: vi.fn(),
+          },
+          github: { authorize: vi.fn() },
+          tokens: { get: test.token, put: vi.fn(), remove: vi.fn() },
+        };
+        const app = buildApp({ auth, plans: test.plans });
+        const headers = {
+          cookie: `__Host-lzc-session=${"b".repeat(43)}`,
+          origin: auth.origin,
+          "x-lzc-csrf": test.owner.csrfToken,
+          "x-lzc-tenant": test.owner.tenantId,
+        };
+        const confirmation = {
+          ...(kind === "migration"
+            ? {
+                confirmCompleteMigration: true,
+                remoteIdentity: test.checkpoint.migration!.remoteIdentity,
+              }
+            : { confirmRetainState: true }),
+          stateVersion: test.checkpoint.stateVersion,
+          checkpointSha256: test.checkpoint.checkpointSha256,
+        };
+        try {
+          for (const action of ["checkpoint", "reconcile"] as const) {
+            const url = `/api/v1/plans/${test.run.id}/${action}`;
+            const payload = action === "checkpoint" ? {} : confirmation;
+            expect(
+              (await app.inject({ method: "POST", url, payload })).statusCode,
+            ).toBe(401);
+            for (const attempt of [
+              {
+                headers: { ...headers, origin: "https://attacker.example" },
+                code: 403,
+              },
+              { headers: { ...headers, "x-lzc-csrf": "wrong" }, code: 403 },
+              {
+                headers: { ...headers, "x-lzc-tenant": randomUUID() },
+                code: 409,
+              },
+            ])
+              expect(
+                (
+                  await app.inject({
+                    method: "POST",
+                    url,
+                    headers: attempt.headers,
+                    payload,
+                  })
+                ).statusCode,
+              ).toBe(attempt.code);
             expect(
               (
                 await app.inject({
                   method: "POST",
                   url,
-                  headers: attempt.headers,
-                  payload,
+                  headers,
+                  payload: { ...payload, forceUnlock: true },
                 })
               ).statusCode,
-            ).toBe(attempt.code);
+            ).toBe(400);
+            expect(
+              (await app.inject({ method: "GET", url, headers })).statusCode,
+            ).toBe(404);
+          }
+          const inspected = await app.inject({
+            method: "POST",
+            url: `/api/v1/plans/${test.run.id}/checkpoint`,
+            headers,
+            payload: {},
+          });
+          expect(inspected.statusCode).toBe(200);
+          expect(inspected.headers["cache-control"]).toContain("no-store");
+          expect(inspected.json()).toEqual(test.checkpoint);
+          expect(inspected.body).not.toMatch(
+            /not-in-checkpoint-response|"lineage"\s*:|attributes|outputs/,
+          );
           expect(
             (
               await app.inject({
                 method: "POST",
-                url,
+                url: `/api/v1/plans/${test.run.id}/reconcile`,
                 headers,
-                payload: { ...payload, forceUnlock: true },
+                payload: {},
               })
             ).statusCode,
           ).toBe(400);
-          expect(
-            (await app.inject({ method: "GET", url, headers })).statusCode,
-          ).toBe(404);
+          const reconciled = await app.inject({
+            method: "POST",
+            url: `/api/v1/plans/${test.run.id}/reconcile`,
+            headers,
+            payload: confirmation,
+          });
+          expect(reconciled.statusCode).toBe(200);
+          expect(reconciled.json()).toEqual({
+            id: test.run.id,
+            reconciled: true,
+          });
+          expect(reconciled.headers["cache-control"]).toContain("no-store");
+        } finally {
+          await app.close();
         }
-        const inspected = await app.inject({
-          method: "POST",
-          url: `/api/v1/plans/${test.run.id}/checkpoint`,
-          headers,
-          payload: {},
-        });
-        expect(inspected.statusCode).toBe(200);
-        expect(inspected.headers["cache-control"]).toContain("no-store");
-        expect(inspected.json()).toEqual(test.checkpoint);
-        expect(inspected.body).not.toMatch(
-          /not-in-checkpoint-response|lineage|attributes|outputs/,
-        );
+      },
+    );
+
+    async function failedMigration() {
+      const test = await fixture();
+      const saved = await test.plan();
+      const run = await test.plans.apply(
+        test.owner,
+        test.token,
+        saved.id,
+        test.approval(saved.artifactSha256),
+      );
+      const ticket = test.tickets.get(run.id)!;
+      await test.plans.input(ticket);
+      await test.plans.stage(ticket, "validating");
+      await test.plans.stage(ticket, "applying");
+      const state = test.managementState({
+        version: 4,
+        terraform_version: "1.12.6",
+        serial: 3,
+        lineage: randomUUID(),
+        outputs: {},
+        resources: [],
+      });
+      await test.plans.state(ticket, "lock", undefined, "migration-review");
+      await test.plans.state(ticket, "write", state, "migration-review");
+      await test.plans.state(ticket, "unlock", undefined, "migration-review");
+      await test.plans.migration(ticket, { phase: "prepare" });
+      test.remote.set(
+        "terraform.tfstate",
+        Buffer.from(
+          JSON.stringify({ ...state, lineage: randomUUID(), serial: 1 }),
+        ),
+      );
+      await test.plans.result(ticket, {
+        status: "failed",
+        errorCode: "state_failed",
+      });
+      const checkpoint = await test.plans.checkpoint(test.owner, run.id);
+      return { ...test, saved, run, ticket, state, checkpoint };
+    }
+
+    it("completes only explicitly reviewed S3 migration recovery without replaying Apply or changing remote data", async () => {
+      const test = await failedMigration();
+      expect(test.checkpoint.canResume).toBe(false);
+      expect(test.checkpoint.migration).toMatchObject({
+        serial: 1,
+        lineagePreserved: false,
+      });
+      const input = {
+        confirmCompleteMigration: true,
+        stateVersion: test.checkpoint.stateVersion,
+        checkpointSha256: test.checkpoint.checkpointSha256,
+        remoteIdentity: test.checkpoint.migration!.remoteIdentity,
+      };
+      await expect(
+        test.plans.reconcile(await session(), test.run.id, input),
+      ).rejects.toMatchObject({ code: "plan_not_found" });
+      await expect(
+        test.plans.reconcile(test.owner, test.run.id, {
+          ...input,
+          confirmCompleteMigration: false,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        test.plans.reconcile(test.owner, test.run.id, {
+          ...input,
+          remoteIdentity: "changed",
+        }),
+      ).rejects.toMatchObject({ code: "checkpoint_changed" });
+      const starts = test.runner.start.mock.calls.length;
+      const secretReads = test.secrets.get.mock.calls.length;
+      const remoteBefore = [...test.remote];
+      const results = await Promise.all([
+        test.plans.reconcile(test.owner, test.run.id, input),
+        test.plans.reconcile(test.owner, test.run.id, input),
+      ]);
+      expect(results).toEqual([
+        { id: test.run.id, reconciled: true },
+        { id: test.run.id, reconciled: true },
+      ]);
+      expect(test.runner.start.mock.calls).toHaveLength(starts);
+      expect(test.secrets.get.mock.calls).toHaveLength(secretReads);
+      expect([...test.remote]).toEqual(remoteBefore);
+      const key = stableStateKey(test.owner, test.manifest);
+      const state = (
+        await migration!.query(
+          "SELECT * FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rows[0];
+      expect(state.backend_id).not.toBeNull();
+      expect(state.ciphertext).toBeNull();
+      expect(state.lock_run_id).toBeNull();
+      expect(
+        (
+          await migration!.query(
+            "SELECT status,error_code FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0],
+      ).toEqual({ status: "succeeded", error_code: null });
+      expect(
+        (
+          await migration!.query(
+            "SELECT count(*)::integer AS count FROM lzc.platform_reconciliations WHERE run_id=$1",
+            [test.run.id],
+          )
+        ).rows[0].count,
+      ).toBe(1);
+      await expect(
+        test.plans.apply(
+          test.owner,
+          test.token,
+          test.saved.id,
+          test.approval(test.saved.artifactSha256),
+        ),
+      ).rejects.toMatchObject({ code: "plan_not_approvable" });
+    });
+
+    it.each([
+      "locked",
+      "changed-content",
+      "remote-changed",
+      "snapshot",
+      "ambiguous",
+      "separate-recovery",
+    ])(
+      "preserves migration recovery when the reviewed proof is invalid: %s",
+      async (reason) => {
+        const test = await failedMigration();
+        const key = stableStateKey(test.owner, test.manifest);
+        const input = {
+          confirmCompleteMigration: true,
+          stateVersion: test.checkpoint.stateVersion,
+          checkpointSha256: test.checkpoint.checkpointSha256,
+          remoteIdentity: test.checkpoint.migration!.remoteIdentity,
+        };
+        if (reason === "locked")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET lock_run_id=$2,lock_id='held' WHERE state_key=$1",
+            [key, test.run.id],
+          );
+        if (reason === "changed-content")
+          test.remote.set(
+            "terraform.tfstate",
+            Buffer.from(
+              JSON.stringify({
+                ...test.state,
+                serial: 1,
+                lineage: randomUUID(),
+                outputs: {},
+              }),
+            ),
+          );
+        if (reason === "remote-changed")
+          test.remote.set(
+            "terraform.tfstate",
+            Buffer.from(
+              JSON.stringify({
+                ...test.state,
+                serial: 1,
+                lineage: randomUUID(),
+              }),
+            ),
+          );
+        if (reason === "snapshot") input.checkpointSha256 = "0".repeat(64);
+        if (reason === "ambiguous")
+          await migration!.query(
+            "UPDATE lzc.plan_runs SET error_code='timed_out' WHERE id=$1",
+            [test.run.id],
+          );
+        if (reason === "separate-recovery")
+          await migration!.query(
+            "INSERT INTO lzc.state_recoveries(run_id,tenant_id,state_key,sha256,ciphertext) SELECT $1,tenant_id,state_key,$2,ciphertext FROM lzc.platform_states WHERE state_key=$3",
+            [test.run.id, input.checkpointSha256, key],
+          );
+        await expect(
+          test.plans.reconcile(test.owner, test.run.id, input),
+        ).rejects.toBeDefined();
+        const state = (
+          await migration!.query(
+            "SELECT backend_id,ciphertext FROM lzc.platform_states WHERE state_key=$1",
+            [key],
+          )
+        ).rows[0];
+        expect(state.backend_id).toBeNull();
+        expect(state.ciphertext).not.toBeNull();
         expect(
           (
-            await app.inject({
-              method: "POST",
-              url: `/api/v1/plans/${test.run.id}/reconcile`,
-              headers,
-              payload: {},
-            })
-          ).statusCode,
-        ).toBe(400);
-        const reconciled = await app.inject({
-          method: "POST",
-          url: `/api/v1/plans/${test.run.id}/reconcile`,
-          headers,
-          payload: confirmation,
-        });
-        expect(reconciled.statusCode).toBe(200);
-        expect(reconciled.json()).toEqual({
-          id: test.run.id,
-          reconciled: true,
-        });
-        expect(reconciled.headers["cache-control"]).toContain("no-store");
-      } finally {
-        await app.close();
-      }
-    });
+            await migration!.query(
+              "SELECT status FROM lzc.plan_runs WHERE id=$1",
+              [test.run.id],
+            )
+          ).rows[0].status,
+        ).toBe("recovery_required");
+        expect(
+          (
+            await migration!.query(
+              "SELECT count(*)::integer AS count FROM lzc.platform_reconciliations WHERE run_id=$1",
+              [test.run.id],
+            )
+          ).rows[0].count,
+        ).toBe(0);
+      },
+    );
 
     it("reconciles only explicitly reviewed checkpoints once and preserves state for a corrected fresh plan", async () => {
       const test = await failedCheckpoint();
@@ -2262,6 +2478,7 @@ describe.skipIf(!enabled)(
       await test.plans.stage(ticket, "applying");
       const state = test.managementState({
         version: 4,
+        terraform_version: "1.12.6",
         serial: 3,
         lineage: randomUUID(),
         outputs: {},
@@ -2419,6 +2636,12 @@ describe.skipIf(!enabled)(
         data: recovered.toString("base64"),
         sha256: sha256(recovered),
       });
+      test.remote.set(
+        "terraform.tfstate",
+        Buffer.from(
+          JSON.stringify({ ...state, lineage: randomUUID(), serial: 1 }),
+        ),
+      );
       await test.plans.migration(ticket, { phase: "complete" });
       const persisted = (
         await migration!.query(

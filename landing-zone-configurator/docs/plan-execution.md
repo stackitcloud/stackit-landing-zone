@@ -224,8 +224,10 @@ Application- und Configurator-Infrastruktur-States bleiben getrennt.
 
 Legacy-State-Zuordnungen sind mit `legacy_state_migration_required` gesperrt und
 benötigen eine explizite Zuordnung/Migration, keinen neuen leeren State. Bei
-`state_failed` oder unbestätigter Migration ist vor Wiederaufnahme der Recovery-
-Export des vorhandenen States erforderlich. Der Runner übermittelt einen geprüften,
+`state_failed` oder unbestätigter Migration ist vor Wiederaufnahme ein expliziter
+State-Abgleich erforderlich; eine abgeschlossene S3-Kopie kann wie unten
+beschrieben ohne erneuten Apply bestätigt werden. Andere Recovery-Fälle
+benötigen weiterhin einen geschützten Export. Der Runner übermittelt einen geprüften,
 verschlüsselten Recovery-Nachweis und entfernt lokale Fehlerstates erst nach
 passender dauerhafter Empfangsbestätigung. Das garantiert keine automatische
 vollständige Wiederherstellung nach jedem harten Runner-Verlust; Abgleich und
@@ -256,10 +258,42 @@ Vorbereitung waehlen und einen neuen Plan gegen denselben bestehenden State
 starten. Fuer Apply ist erneut die separate Pruefung und Freigabe des neuen
 gespeicherten Plans erforderlich. Der alte Plan bleibt verbraucht. Bei einem
 zwischenzeitlich veraenderten Checkpoint ist eine neue Pruefung erforderlich.
-Unklare Runner-Abbrueche, `state_failed`, Migrationen und separate Recovery-
+Unklare Runner-Abbrueche, nicht verifizierbare Migrationen und separate Recovery-
 States bleiben gesperrt und benoetigen einen gesonderten operativen Abgleich.
 Es gibt keine automatische Entsperrung, State-Loeschung, Import- oder
 Destroy-Aktion. Die Migration muss vor Nutzung der neuen API aktiviert sein.
+
+### Erfolgreichen Apply mit offener S3-Bestaetigung abschliessen
+
+OpenTofu 1.12.6 verwendet bei der HTTP-zu-S3-Migration eine neue Lineage und
+Serial 1. Das ist mit dem echten, gepinnten Runner-Binary und ausschliesslich
+synthetischen lokalen HTTP-/S3-Endpunkten reproduziert, auch nach mehreren
+Ausgangs-State-Schreibvorgaengen. Die fruehere Forderung nach identischem
+Gesamt-Hash, Lineage und Serial lehnte diese erfolgreiche Kopie ab.
+`migrationStateMatches` akzeptiert neben einer exakten Vollkopie nur diese
+nachgewiesene Transformation: Quellversion 1.12.6, neue Lineage, Ziel-Serial 1
+und ansonsten exakt gleicher kanonischer State-Inhalt. Ressourcen, Attribute,
+Outputs, Format, Version und alle weiteren Felder bleiben vollstaendig geprueft.
+Unbekannte Versionen oder beliebige Serial-/Inhaltsaenderungen werden nicht
+freigegeben. Das Host-Binary darf nicht als Runner-Version angenommen werden;
+der Native-Test verwendet `LZC_NATIVE_TOFU_BINARY` und prueft die echte Version.
+
+Bei einem regulaer beendeten `state_failed` mit gebundener offener Migration
+liest **Checkpoint pruefen** auf ausdruecklichen Klick den verschluesselten
+Bootstrap-State und den bereits registrierten S3-State. Es werden nur aggregierte
+Metadaten angezeigt, einschliesslich S3-Pruefstand, Serial und dem Bool-Wert,
+ob die Lineage erhalten blieb. Ohne Lock, separate Recovery oder abweichenden
+Inhalt kann der Benutzer die eigene **Backend-Migration bestaetigen**.
+
+Diese Bestaetigung bindet Quellversion, Quell-SHA und den exakten Remote-
+Objektstand. Vor Abschluss werden alle Belege erneut geprueft. In derselben
+Transaktion erfolgen der bereits vorhandene CAS-Backend-Wechsel, der
+unveraenderliche Auditbeleg und der Abschluss des Applys als `succeeded`.
+Erst nach erfolgreichem S3-Abgleich wird der temporaere Bootstrap-Primaerstate
+entfernt. Identische parallele Bestaetigungen sind idempotent. Kein Runner,
+Apply, S3-Schreibzugriff, Import, Unlock oder Destroy wird dabei gestartet.
+Bei einem geaenderten Pruefstand bleiben Bootstrap-Sicherung und Recovery-
+Sperre erhalten. Eine neue Schema-Migration ist hierfuer nicht erforderlich.
 
 ### Lokale Aktivierung am 2026-10-06
 
@@ -284,6 +318,25 @@ Diese Aktivierung pruefte ausschliesslich Sicherung, Schema, Datenbewahrung
 und Zugriffssperren. Der Kunden-Checkpoint wurde weder entschluesselt noch
 freigegeben. Die echte Checkpoint-Pruefung und Bestaetigung erfolgen durch den
 Benutzer in seiner angemeldeten UI. Es wurde kein Cloud-Plan/Apply gestartet.
+
+### Aktivierung des S3-Abschluss-Fixes am 2026-10-06
+
+Nach dem vom Benutzer gemeldeten erfolgreichen Apply und `init -migrate-state`
+wurde der aktuelle DB-Stand erneut privat gesichert. Vor dem reinen Code-
+Neustart liefen keine Platform- oder Application-Jobs. Zeilenzahlen und Hashes
+aller 33 bestehenden Tabellen, nun einschliesslich Recovery-Belegen, blieben
+nach dem Neustart unveraendert. Migrationen 001 bis 034, das gebundene native
+Platform-Paket und die deaktivierte Application-Ausfuehrung bleiben bestehen.
+API und UI-Proxy `/healthz` antworten mit 200; Checkpoint-/Freigaberouten ohne
+Anmeldung mit 401 und der deaktivierte Application-Runner mit 404.
+
+Der aktuelle Build besteht das kanonische Gate mit 376 Unit-Tests sowie alle
+42 isolierten PostgreSQL-Brokerfaelle, 16 Backend-Tests einschliesslich echter
+lokaler OpenTofu-1.12.6-Migration und 12 betroffene Desktop-/Mobil-Browserfaelle.
+Die Browser- und Brokerfaelle verwenden kontrollierte Testdaten; sie belegen
+nicht den erfolgreichen S3-Abgleich des Kundenlaufs. Dieser wurde bei der
+Aktivierung weder gelesen noch bestaetigt und bleibt ein ausdruecklicher
+UI-Schritt des Benutzers. Es wurde kein Kunden-Apply wiederholt.
 
 ## Portabler GitHub-Export
 

@@ -125,6 +125,23 @@ export function contentHash(value: unknown): string {
   );
   return createHash("sha256").update(canonical).digest("hex");
 }
+export function migrationStateMatches(
+  source: TerraformState,
+  target: TerraformState,
+): boolean {
+  const sourceHash = contentHash(source);
+  if (contentHash(target) === sourceHash) return true;
+  return (
+    source.terraform_version === "1.12.6" &&
+    target.lineage !== source.lineage &&
+    target.serial === 1 &&
+    contentHash({
+      ...target,
+      lineage: source.lineage,
+      serial: source.serial,
+    }) === sourceHash
+  );
+}
 export type RemoteState = { bytes: Buffer; identity: string } | null;
 export type BackendReader = (
   backend: S3RunnerBackend,

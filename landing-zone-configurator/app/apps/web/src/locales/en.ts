@@ -1,5 +1,13 @@
 export const englishMessages: Record<string, string> = {
   "Recovery-Abgleich": "Recovery reconciliation",
+  "S3-Abgleich": "S3 verification",
+  Übereinstimmend: "Matching",
+  "S3-State-Serial": "S3 state serial",
+  "Lineage erhalten": "Lineage preserved",
+  "S3-Prüfstand": "S3 snapshot",
+  "Backend-Migration bestätigen": "Confirm backend migration",
+  "Ich habe den S3-Abgleich geprüft und bestätige die Umstellung auf diesen S3-State ohne erneuten Apply.":
+    "I have reviewed the S3 verification and confirm switching to this S3 state without another Apply.",
   Ja: "Yes",
   Nein: "No",
   Vorhanden: "Available",
