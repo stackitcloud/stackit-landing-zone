@@ -2910,6 +2910,8 @@ test.describe("explicit saved-plan approval", () => {
     "locked",
     "migration",
     "migration-changed",
+    "migration-mismatch",
+    "checkpoint-invalid",
   ]) {
     test(`user-controlled Bootstrap checkpoint recovery ${outcome}`, async ({
       page,
@@ -2973,6 +2975,20 @@ test.describe("explicit saved-plan approval", () => {
         expect(route.request().postDataJSON()).toEqual({});
         expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
         expect(route.request().headers()["x-lzc-tenant"]).toBe("personal");
+        if (
+          outcome === "migration-mismatch" ||
+          outcome === "checkpoint-invalid"
+        )
+          return route.fulfill({
+            status: 409,
+            json: {
+              error:
+                outcome === "migration-mismatch"
+                  ? "migration_verification_failed"
+                  : "state_invalid",
+              detail: "private-state-content-must-not-be-displayed",
+            },
+          });
         return route.fulfill({ json: checkpoint });
       });
       await page.route(`**/api/v1/plans/${applyId}/reconcile`, (route) => {
@@ -3007,6 +3023,38 @@ test.describe("explicit saved-plan approval", () => {
       await review
         .getByRole("button", { name: "Checkpoint prüfen", exact: true })
         .click();
+      if (
+        outcome === "migration-mismatch" ||
+        outcome === "checkpoint-invalid"
+      ) {
+        await expect(review.getByRole("alert")).toHaveText(
+          outcome === "migration-mismatch"
+            ? "Der S3-State stimmt nicht mit dem Bootstrap-Checkpoint überein. Die Migration bleibt gesperrt; keinen erneuten Apply starten."
+            : "Der Bootstrap- oder S3-State konnte nicht als gültiger State gelesen werden. Die Migration bleibt gesperrt.",
+        );
+        await expect(review.getByRole("checkbox")).toHaveCount(0);
+        await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+        const englishReview = page.getByRole("region", {
+          name: "Recovery reconciliation",
+          exact: true,
+        });
+        await expect(englishReview.getByRole("alert")).toHaveText(
+          outcome === "migration-mismatch"
+            ? "The S3 state does not match the bootstrap checkpoint. Migration remains blocked; do not start another Apply."
+            : "The bootstrap or S3 state could not be read as a valid state. Migration remains blocked.",
+        );
+        await expect(
+          page.getByText("private-state-content-must-not-be-displayed"),
+        ).toHaveCount(0);
+        expect(actions).toEqual(["checkpoint"]);
+        expect(reconciled).toBe(false);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        return;
+      }
       await expect(
         review.getByText("time_rotating", { exact: true }),
       ).toBeVisible();

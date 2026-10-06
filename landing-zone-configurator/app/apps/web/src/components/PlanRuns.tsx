@@ -272,6 +272,30 @@ function PlanOutput({ run }: { run: Run }) {
   );
 }
 
+const checkpointFailures: Record<string, string> = {
+  migration_verification_failed:
+    "Der S3-State stimmt nicht mit dem Bootstrap-Checkpoint überein. Die Migration bleibt gesperrt; keinen erneuten Apply starten.",
+  migration_not_ready:
+    "Die offene Backend-Migration ist diesem Apply nicht eindeutig zugeordnet. Ein gesonderter State-Abgleich ist erforderlich.",
+  state_invalid:
+    "Der Bootstrap- oder S3-State konnte nicht als gültiger State gelesen werden. Die Migration bleibt gesperrt.",
+  checkpoint_invalid:
+    "Die Ressourcen im Bootstrap-Checkpoint konnten nicht sicher ausgewertet werden.",
+  checkpoint_not_available:
+    "Für diesen Apply ist kein prüfbarer Bootstrap-Checkpoint verfügbar. Aktualisiere den Ausführungsstatus.",
+  checkpoint_unavailable:
+    "Die Checkpoint-Prüfung ist in dieser Umgebung nicht verfügbar.",
+  backend_credentials_invalid:
+    "Der gespeicherte S3-Zugang konnte nicht gelesen werden. Die Migration bleibt gesperrt.",
+  backend_not_found:
+    "Das zugeordnete S3-Backend ist nicht verfügbar. Die Migration bleibt gesperrt.",
+  state_changed: "Der Checkpoint wurde geändert. Prüfe ihn erneut.",
+  stale_tenant_context:
+    "Der Arbeitsbereich wurde geändert. Lade die Seite neu und prüfe den Checkpoint erneut.",
+  plan_request_failed:
+    "Der Server konnte die Checkpoint-Prüfung nicht abschließen. Der bestehende State bleibt gesichert.",
+};
+
 function CheckpointReview({
   runId,
   session,
@@ -338,14 +362,17 @@ function CheckpointReview({
             ? "Der Checkpoint wurde geändert. Prüfe ihn erneut."
             : result.error === "reconciliation_not_available"
               ? "Dieser Recovery-Fall benötigt einen gesonderten State-Abgleich."
-              : (failures[result.error] ??
+              : (checkpointFailures[result.error] ??
+                failures[result.error] ??
                 "Checkpoint-Prüfung oder Freigabe fehlgeschlagen.");
         throw new Error(failure);
       }
       if (controller.signal.aborted) return;
-      if (action === "checkpoint")
+      if (action === "checkpoint") {
+        failure =
+          "Die Checkpoint-Antwort konnte nicht sicher ausgewertet werden. Lade die Seite neu; keinen erneuten Apply starten.";
         setCheckpoint(platformCheckpointSchema.parse(result));
-      else {
+      } else {
         if (result.id !== runId || result.reconciled !== true)
           throw new Error("Checkpoint-Prüfung oder Freigabe fehlgeschlagen.");
         await onReconciled();

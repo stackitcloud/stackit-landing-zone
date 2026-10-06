@@ -1,4 +1,26 @@
 export const englishMessages: Record<string, string> = {
+  "Der S3-State stimmt nicht mit dem Bootstrap-Checkpoint überein. Die Migration bleibt gesperrt; keinen erneuten Apply starten.":
+    "The S3 state does not match the bootstrap checkpoint. Migration remains blocked; do not start another Apply.",
+  "Die offene Backend-Migration ist diesem Apply nicht eindeutig zugeordnet. Ein gesonderter State-Abgleich ist erforderlich.":
+    "The pending backend migration is not uniquely bound to this Apply. Separate state reconciliation is required.",
+  "Der Bootstrap- oder S3-State konnte nicht als gültiger State gelesen werden. Die Migration bleibt gesperrt.":
+    "The bootstrap or S3 state could not be read as a valid state. Migration remains blocked.",
+  "Die Ressourcen im Bootstrap-Checkpoint konnten nicht sicher ausgewertet werden.":
+    "The resources in the bootstrap checkpoint could not be safely inspected.",
+  "Für diesen Apply ist kein prüfbarer Bootstrap-Checkpoint verfügbar. Aktualisiere den Ausführungsstatus.":
+    "No inspectable bootstrap checkpoint is available for this Apply. Refresh execution status.",
+  "Die Checkpoint-Prüfung ist in dieser Umgebung nicht verfügbar.":
+    "Checkpoint inspection is not available in this environment.",
+  "Der gespeicherte S3-Zugang konnte nicht gelesen werden. Die Migration bleibt gesperrt.":
+    "The stored S3 credentials could not be read. Migration remains blocked.",
+  "Das zugeordnete S3-Backend ist nicht verfügbar. Die Migration bleibt gesperrt.":
+    "The assigned S3 backend is unavailable. Migration remains blocked.",
+  "Der Arbeitsbereich wurde geändert. Lade die Seite neu und prüfe den Checkpoint erneut.":
+    "The workspace changed. Reload the page and inspect the checkpoint again.",
+  "Der Server konnte die Checkpoint-Prüfung nicht abschließen. Der bestehende State bleibt gesichert.":
+    "The server could not complete checkpoint inspection. The existing state remains retained.",
+  "Die Checkpoint-Antwort konnte nicht sicher ausgewertet werden. Lade die Seite neu; keinen erneuten Apply starten.":
+    "The checkpoint response could not be safely validated. Reload the page; do not start another Apply.",
   "Recovery-Abgleich": "Recovery reconciliation",
   "S3-Abgleich": "S3 verification",
   Übereinstimmend: "Matching",
