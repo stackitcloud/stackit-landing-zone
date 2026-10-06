@@ -11,7 +11,11 @@ const uuid = z.uuid();
 const key = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
 const targetSchema = z
   .strictObject({
-    folder_id: uuid,
+    folder_id: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[A-Za-z0-9_-]+$/),
     region: z.enum(["eu01", "eu02"]),
     corporate: z.boolean(),
     network_area_id: uuid.nullable(),

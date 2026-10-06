@@ -2600,7 +2600,7 @@ test.describe("explicit saved-plan approval", () => {
       organization_id: organizationId,
       targets: {
         public: {
-          folder_id: "77777777-2222-4333-8444-555555555555",
+          folder_id: "f-01J9D4KS8HZZ2NKBAQ6CNWE8NQ",
           region: "eu01",
           corporate: false,
           network_area_id: null,
@@ -2610,7 +2610,15 @@ test.describe("explicit saved-plan approval", () => {
       },
     };
     await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
-      route.fulfill({ json: { applicationPlatformContract: contract } }),
+      route.fulfill({
+        json: {
+          applicationPlatformContract: {
+            ...contract,
+            tenant_id: "11111111-2222-4333-8444-555555555555",
+            revision: applyId,
+          },
+        },
+      }),
     );
     await page.goto("/deployments/apply");
     const button = page.getByRole("button", {

@@ -141,6 +141,37 @@ it("marks compiled applications as Configurator executions", () => {
   ).toBe(true);
 });
 
+it("preserves native STACKIT container identifiers and rejects unsafe folder references", () => {
+  const input = fixture();
+  const folderId = "f-01J9D4KS8HZZ2NKBAQ6CNWE8NQ";
+  input.platform.targets.public.folder_id = folderId;
+  expect(
+    compileApplicationPlan(input).variables.platform_contract.targets.public
+      ?.folder_id,
+  ).toBe(folderId);
+  for (const invalid of [
+    "",
+    " ",
+    "../folder",
+    "https://example.com",
+    "<script>",
+    "f\nunsafe",
+    "a".repeat(129),
+  ]) {
+    expect(() =>
+      compileApplicationPlan({
+        ...input,
+        platform: {
+          ...input.platform,
+          targets: {
+            public: { ...input.platform.targets.public, folder_id: invalid },
+          },
+        },
+      }),
+    ).toThrow();
+  }
+});
+
 it("compiles a fixed local project network without SNA and rejects order overrides", () => {
   const old = fixture();
   const input = {

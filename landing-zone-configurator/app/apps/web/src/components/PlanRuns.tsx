@@ -868,14 +868,16 @@ export function PlanRuns({
         "applicationPlatformContract" in payload
           ? payload.applicationPlatformContract
           : payload;
-      const result = platformContractSchema
-        .omit({ tenant_id: true, revision: true })
-        .safeParse(candidate);
+      const result = platformContractSchema.safeParse(candidate);
       if (!result.success)
         throw new Error(
           "Der Plattformvertrag ist ungültig. Es wurden keine State-Daten exportiert.",
         );
-      const contract = result.data;
+      const contract = {
+        schema_version: result.data.schema_version,
+        organization_id: result.data.organization_id,
+        targets: result.data.targets,
+      };
       if (currentScope.current !== requestScope) return;
       const url = URL.createObjectURL(
         new Blob([JSON.stringify(contract, null, 2)], {

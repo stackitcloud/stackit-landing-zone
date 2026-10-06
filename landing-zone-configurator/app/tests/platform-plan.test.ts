@@ -2187,7 +2187,7 @@ describe.skipIf(!enabled)(
           organization_id: test.organizationId,
           targets: {
             public: {
-              folder_id: randomUUID(),
+              folder_id: "f-01J9D4KS8HZZ2NKBAQ6CNWE8NQ",
               region: "eu01",
               corporate: false,
               network_area_id: null,
