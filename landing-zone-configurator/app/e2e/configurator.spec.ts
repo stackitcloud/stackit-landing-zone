@@ -1830,6 +1830,15 @@ test.describe("explicit saved-plan approval", () => {
       page.getByRole("button", { name: "Neue Konfiguration", exact: true }),
     ).toBeVisible();
     await page
+      .getByRole("button", { name: "Deployments", exact: true })
+      .click();
+    const initialConfigurationTab = page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Konfiguration", exact: true });
+    await expect(initialConfigurationTab).toBeEnabled();
+    await initialConfigurationTab.click();
+    await expect(page).toHaveURL(/\/configurations$/);
+    await page
       .getByRole("button", { name: "Konfiguration öffnen: Meine Plattform" })
       .click();
     const tabs = page.getByRole("navigation", {

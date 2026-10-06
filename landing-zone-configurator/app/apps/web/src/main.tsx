@@ -603,8 +603,7 @@ function App() {
                 <button
                   type="button"
                   aria-current={view === "editor" ? "page" : undefined}
-                  disabled={!draft}
-                  onClick={() => setView("editor")}
+                  onClick={() => setView(draft ? "editor" : "repositories")}
                 >
                   {t("Konfiguration")}
                 </button>
