@@ -2,6 +2,31 @@ export * from "./backend.js";
 
 import { z } from "zod";
 
+export const platformCheckpointSchema = z.strictObject({
+  stateVersion: z.string().regex(/^[1-9][0-9]*$/),
+  checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  serial: z.number().int().nonnegative().refine(Number.isSafeInteger),
+  lockHeld: z.boolean(),
+  pendingMigration: z.boolean(),
+  recoveryAvailable: z.boolean(),
+  canResume: z.boolean(),
+  resources: z
+    .array(
+      z.strictObject({
+        mode: z.enum(["managed", "data"]),
+        type: z.string().regex(/^[a-z][a-z0-9_]{0,127}$/),
+        instances: z.number().int().nonnegative().refine(Number.isSafeInteger),
+        deposedInstances: z
+          .number()
+          .int()
+          .nonnegative()
+          .refine(Number.isSafeInteger),
+      }),
+    )
+    .max(1024),
+});
+export type PlatformCheckpoint = z.infer<typeof platformCheckpointSchema>;
+
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),
   service: z.literal("landing-zone-configurator"),

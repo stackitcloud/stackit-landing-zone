@@ -1,4 +1,9 @@
-import type { PlanSummary, S3BackendDescriptor } from "@lzc/contracts";
+import {
+  type PlanSummary,
+  type PlatformCheckpoint,
+  platformCheckpointSchema,
+  type S3BackendDescriptor,
+} from "@lzc/contracts";
 import { platformContractSchema } from "@lzc/domain";
 import { useEffect, useRef, useState } from "react";
 import { currentLanguage, t } from "../i18n";
@@ -264,6 +269,172 @@ function PlanOutput({ run }: { run: Run }) {
         </p>
       )}
     </details>
+  );
+}
+
+function CheckpointReview({
+  runId,
+  session,
+  onReconciled,
+}: {
+  runId: string;
+  session: Session;
+  onReconciled: () => Promise<void>;
+}) {
+  const [checkpoint, setCheckpoint] = useState<PlatformCheckpoint | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const pending = useRef<AbortController | null>(null);
+  useEffect(() => () => pending.current?.abort(), []);
+  async function perform(action: "checkpoint" | "reconcile") {
+    if (
+      pending.current ||
+      (action === "reconcile" && (!confirmed || !checkpoint?.canResume))
+    )
+      return;
+    const controller = new AbortController();
+    pending.current = controller;
+    setBusy(true);
+    setError("");
+    setConfirmed(false);
+    let failure = "Checkpoint-Prüfung oder Freigabe fehlgeschlagen.";
+    try {
+      const response = await fetch(
+        `/api/v1/plans/${encodeURIComponent(runId)}/${action}`,
+        {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+          headers: {
+            "content-type": "application/json",
+            "x-lzc-csrf": session.csrfToken,
+            "x-lzc-tenant": session.tenant?.id ?? "",
+          },
+          body: JSON.stringify(
+            action === "checkpoint"
+              ? {}
+              : {
+                  confirmRetainState: true,
+                  stateVersion: checkpoint?.stateVersion,
+                  checkpointSha256: checkpoint?.checkpointSha256,
+                },
+          ),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok) {
+        failure =
+          result.error === "checkpoint_changed"
+            ? "Der Checkpoint wurde geändert. Prüfe ihn erneut."
+            : result.error === "reconciliation_not_available"
+              ? "Dieser Recovery-Fall benötigt einen gesonderten State-Abgleich."
+              : (failures[result.error] ??
+                "Checkpoint-Prüfung oder Freigabe fehlgeschlagen.");
+        throw new Error(failure);
+      }
+      if (controller.signal.aborted) return;
+      if (action === "checkpoint")
+        setCheckpoint(platformCheckpointSchema.parse(result));
+      else {
+        if (result.id !== runId || result.reconciled !== true)
+          throw new Error("Checkpoint-Prüfung oder Freigabe fehlgeschlagen.");
+        await onReconciled();
+      }
+    } catch {
+      if (!controller.signal.aborted) {
+        setCheckpoint(null);
+        setError(failure);
+      }
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+      pending.current = null;
+    }
+  }
+  return (
+    <section aria-label={t("Recovery-Abgleich")}>
+      <h5>{t("Recovery-Abgleich")}</h5>
+      <button
+        type="button"
+        className="button secondary"
+        disabled={busy}
+        onClick={() => void perform("checkpoint")}
+      >
+        {t("Checkpoint prüfen")}
+      </button>
+      {error && (
+        <p role="alert" className="validation-box">
+          {t(error)}
+        </p>
+      )}
+      {checkpoint && (
+        <>
+          <dl className="summary-list">
+            <dt>{t("Apply-ID")}</dt>
+            <dd>
+              <code>{runId}</code>
+            </dd>
+            <dt>{t("State-Version")}</dt>
+            <dd>{checkpoint.stateVersion}</dd>
+            <dt>Checkpoint-SHA256</dt>
+            <dd>
+              <code>{checkpoint.checkpointSha256}</code>
+            </dd>
+            <dt>{t("State-Serial")}</dt>
+            <dd>{checkpoint.serial}</dd>
+            <dt>{t("State-Lock")}</dt>
+            <dd>{t(checkpoint.lockHeld ? "Gesperrt" : "Frei")}</dd>
+            <dt>{t("Offene Backend-Migration")}</dt>
+            <dd>{t(checkpoint.pendingMigration ? "Ja" : "Nein")}</dd>
+            <dt>{t("Separater Recovery-State")}</dt>
+            <dd>
+              {t(
+                checkpoint.recoveryAvailable ? "Vorhanden" : "Nicht vorhanden",
+              )}
+            </dd>
+          </dl>
+          <ul>
+            {checkpoint.resources.map((resource) => (
+              <li key={`${resource.mode}:${resource.type}`}>
+                <code>{resource.type}</code> ({resource.mode}):{" "}
+                {resource.instances} · {t("Ersetzte Instanzen")}:{" "}
+                {resource.deposedInstances}
+              </li>
+            ))}
+          </ul>
+          {!checkpoint.canResume ? (
+            <p className="validation-box">
+              {t(
+                "Dieser Recovery-Fall benötigt einen gesonderten State-Abgleich.",
+              )}
+            </p>
+          ) : (
+            <>
+              <label className="field-hint">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  disabled={busy}
+                  onChange={(event) => setConfirmed(event.target.checked)}
+                />{" "}
+                {t(
+                  "Ich habe den Checkpoint geprüft und bestätige, dass der bestehende State unverändert erhalten bleibt.",
+                )}
+              </label>
+              <button
+                type="button"
+                className="button primary"
+                disabled={busy || !confirmed}
+                onClick={() => void perform("reconcile")}
+              >
+                {t("Erneute Planung freigeben")}
+              </button>
+            </>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -830,6 +1001,21 @@ export function PlanRuns({
                   </dl>
                 </details>
               )}
+              {!readOnly &&
+                !historical &&
+                phase === "apply" &&
+                run.status === "recovery_required" && (
+                  <CheckpointReview
+                    key={`${scope}:${run.id}:checkpoint`}
+                    runId={run.id}
+                    session={session}
+                    onReconciled={async () => {
+                      setConfirmed(false);
+                      await refresh();
+                      onStep?.("plan");
+                    }}
+                  />
+                )}
               {!readOnly &&
                 !historical &&
                 run.operation !== "apply" &&

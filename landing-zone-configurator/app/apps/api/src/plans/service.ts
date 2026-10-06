@@ -24,7 +24,7 @@ import {
   type PostgresCredentialProfiles,
 } from "../credentials/profiles.js";
 import type { CredentialSecrets } from "../credentials/secrets.js";
-import { stateForSource } from "../deployments/backends.js";
+import { stateDocument, stateForSource } from "../deployments/backends.js";
 import {
   acceleratorCommit,
   type PreparationManifest,
@@ -112,6 +112,187 @@ export class Plans {
       }
     }
     return rows;
+  }
+  async checkpoint(session: Session, id: string) {
+    z.uuid().parse(id);
+    const execution = this.execution;
+    if (!execution) throw invalid("checkpoint_unavailable", 503);
+    return withTenant(this.pool, session, async (client) => {
+      const roles = await client.query(
+        "SELECT lzc.deployment_role() AS allowed",
+      );
+      if (!roles.rows[0]?.allowed)
+        throw invalid("credential_role_required", 403);
+      const run = (
+        await client.query(
+          "SELECT operation,status,state_key,error_code,input_claimed,finished_at FROM lzc.plan_runs WHERE id=$1 AND owner_user_id=$2 FOR SHARE",
+          [id, session.userId],
+        )
+      ).rows[0];
+      if (!run) throw invalid("plan_not_found", 404);
+      if (run.operation !== "apply" || run.status !== "recovery_required")
+        throw invalid("checkpoint_not_available");
+      const state = (
+        await client.query(
+          "SELECT state_key,version,ciphertext,stable_aad,backend_id,lock_run_id,pending_backend_id FROM lzc.platform_states WHERE state_key=$1 FOR SHARE",
+          [run.state_key],
+        )
+      ).rows[0];
+      if (!state || state.backend_id || !state.ciphertext)
+        throw invalid("checkpoint_not_available");
+      const bytes = execution.bootstrap(session, state);
+      const document = stateDocument(bytes);
+      const resources = new Map<
+        string,
+        {
+          mode: string;
+          type: string;
+          instances: number;
+          deposedInstances: number;
+        }
+      >();
+      for (const resource of document.resources) {
+        const { mode, type, instances } = resource;
+        if (
+          (mode !== "managed" && mode !== "data") ||
+          typeof type !== "string" ||
+          !/^[a-z][a-z0-9_]{0,127}$/.test(type) ||
+          !instances
+        )
+          throw invalid("checkpoint_invalid");
+        const key = `${mode}:${type}`;
+        const summary = resources.get(key) ?? {
+          mode,
+          type,
+          instances: 0,
+          deposedInstances: 0,
+        };
+        summary.instances += instances.length;
+        summary.deposedInstances += instances.filter(
+          (instance) => instance.deposed,
+        ).length;
+        resources.set(key, summary);
+        if (resources.size > 1024) throw invalid("checkpoint_invalid");
+      }
+      const recovery = await client.query(
+        "SELECT EXISTS(SELECT 1 FROM lzc.state_recoveries WHERE run_id=$1) AS available",
+        [id],
+      );
+      return {
+        stateVersion: String(state.version),
+        checkpointSha256: sha256(bytes),
+        serial: document.serial,
+        lockHeld: Boolean(state.lock_run_id),
+        pendingMigration: Boolean(state.pending_backend_id),
+        recoveryAvailable: recovery.rows[0]?.available === true,
+        canResume:
+          run.error_code === "apply_failed" &&
+          run.input_claimed === true &&
+          Boolean(run.finished_at) &&
+          BigInt(state.version) > 0n &&
+          !state.lock_run_id &&
+          !state.pending_backend_id &&
+          recovery.rows[0]?.available === false,
+        resources: [...resources.values()].sort((left, right) =>
+          `${left.mode}:${left.type}`.localeCompare(
+            `${right.mode}:${right.type}`,
+          ),
+        ),
+      };
+    });
+  }
+  async reconcile(session: Session, id: string, raw: unknown) {
+    z.uuid().parse(id);
+    const input = z
+      .strictObject({
+        confirmRetainState: z.literal(true),
+        stateVersion: z.string().regex(/^[1-9][0-9]*$/),
+        checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .parse(raw);
+    const execution = this.execution;
+    if (!execution) throw invalid("checkpoint_unavailable", 503);
+    return withTenant(this.pool, session, async (client) => {
+      const roles = await client.query(
+        "SELECT lzc.deployment_role() AS allowed",
+      );
+      if (!roles.rows[0]?.allowed)
+        throw invalid("credential_role_required", 403);
+      const run = (
+        await client.query(
+          "SELECT * FROM lzc.plan_runs WHERE id=$1 AND owner_user_id=$2 FOR UPDATE",
+          [id, session.userId],
+        )
+      ).rows[0];
+      if (!run) throw invalid("plan_not_found", 404);
+      const receipt = (
+        await client.query(
+          "SELECT state_version,checkpoint_sha256 FROM lzc.platform_reconciliations WHERE run_id=$1",
+          [id],
+        )
+      ).rows[0];
+      if (receipt) {
+        if (run.operation !== "apply" || run.status !== "failed")
+          throw invalid("reconciliation_not_available");
+        if (
+          String(receipt.state_version) !== input.stateVersion ||
+          receipt.checkpoint_sha256 !== input.checkpointSha256
+        )
+          throw invalid("checkpoint_changed");
+        return { id, reconciled: true };
+      }
+      if (
+        run.operation !== "apply" ||
+        run.status !== "recovery_required" ||
+        run.error_code !== "apply_failed" ||
+        !run.input_claimed ||
+        !run.finished_at
+      )
+        throw invalid("reconciliation_not_available");
+      const state = (
+        await client.query(
+          "SELECT * FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE",
+          [run.state_key],
+        )
+      ).rows[0];
+      const recoveries = await client.query(
+        "SELECT run_id FROM lzc.state_recoveries WHERE run_id=$1",
+        [id],
+      );
+      if (
+        !state ||
+        state.backend_id ||
+        state.lock_run_id ||
+        state.pending_backend_id ||
+        !state.ciphertext ||
+        recoveries.rowCount
+      )
+        throw invalid("reconciliation_not_available");
+      const bytes = execution.bootstrap(session, state);
+      stateDocument(bytes);
+      if (
+        String(state.version) !== input.stateVersion ||
+        sha256(bytes) !== input.checkpointSha256
+      )
+        throw invalid("checkpoint_changed");
+      await client.query(
+        "INSERT INTO lzc.platform_reconciliations(run_id,tenant_id,owner_user_id,session_id,state_key,state_version,checkpoint_sha256) VALUES($1,$2,$3,$4,$5,$6,$7)",
+        [
+          id,
+          session.tenantId,
+          session.userId,
+          session.id,
+          state.state_key,
+          state.version,
+          input.checkpointSha256,
+        ],
+      );
+      await client.query(
+        "UPDATE lzc.plan_runs SET status='failed' WHERE id=$1",
+        [id],
+      );
+      return { id, reconciled: true };
+    });
   }
   async output(session: Session, id: string) {
     z.uuid().parse(id);

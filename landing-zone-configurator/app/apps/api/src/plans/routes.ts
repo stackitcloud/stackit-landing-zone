@@ -25,6 +25,8 @@ export type PlanRoutesServices = Pick<
       | "migration"
       | "recovery"
       | "revokeCredentialGrant"
+      | "checkpoint"
+      | "reconcile"
     >
   >;
 export function registerPlans(
@@ -78,6 +80,26 @@ export function registerPlans(
           reply.header("Cache-Control", "private, no-store");
           return plans.output!(session, id);
         });
+      for (const action of ["checkpoint", "reconcile"] as const) {
+        if (!plans[action]) continue;
+        user.post(
+          `/api/v1/plans/:id/${action}`,
+          { bodyLimit: 2048 },
+          async (request, reply) => {
+            const session = await authenticatedSession(request, auth);
+            if (!session) return reply.code(401).send();
+            if (request.headers["x-lzc-tenant"] !== session.tenantId)
+              return reply.code(409).send({ error: "stale_tenant_context" });
+            const { id } = z.object({ id: z.uuid() }).parse(request.params);
+            reply.header("Cache-Control", "private, no-store");
+            if (action === "checkpoint") {
+              z.strictObject({}).parse(request.body);
+              return plans.checkpoint!(session, id);
+            }
+            return plans.reconcile!(session, id, request.body);
+          },
+        );
+      }
       user.post("/api/v1/plans", async (request, reply) => {
         const session = await authenticatedSession(request, auth);
         if (!session) return reply.code(401).send();

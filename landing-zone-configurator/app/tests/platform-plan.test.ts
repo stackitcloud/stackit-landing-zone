@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   catalogue,
   createDraft,
+  readSavedDraft,
   recordValues,
   savedDraft,
   serializeTfvars,
@@ -1047,6 +1048,323 @@ describe.skipIf(!enabled)(
       ).rejects.toBeDefined();
     });
 
+    async function failedCheckpoint() {
+      const test = await fixture();
+      const saved = await test.plan();
+      const run = await test.plans.apply(
+        test.owner,
+        test.token,
+        saved.id,
+        test.approval(saved.artifactSha256),
+      );
+      const ticket = test.tickets.get(run.id)!;
+      await test.plans.input(ticket);
+      await test.plans.stage(ticket, "validating");
+      await test.plans.stage(ticket, "applying");
+      const state = {
+        version: 4,
+        serial: 1,
+        lineage: randomUUID(),
+        outputs: {
+          secret: { value: "not-in-checkpoint-response", sensitive: true },
+        },
+        resources: [
+          {
+            mode: "managed",
+            type: "time_rotating",
+            name: "private-name",
+            instances: [{ attributes: { secret: "private-key" } }],
+          },
+        ],
+      };
+      await test.plans.state(ticket, "lock", undefined, "checkpoint-test");
+      await test.plans.state(ticket, "write", state, "checkpoint-test");
+      await test.plans.state(ticket, "unlock", undefined, "checkpoint-test");
+      await test.plans.result(ticket, {
+        status: "failed",
+        errorCode: "apply_failed",
+      });
+      const checkpoint = await test.plans.checkpoint(test.owner, run.id);
+      return { ...test, saved, run, checkpoint };
+    }
+
+    it("requires owner session, origin, CSRF, current tenant and explicit snapshot confirmation for checkpoint HTTP recovery", async () => {
+      const test = await failedCheckpoint();
+      const auth = {
+        origin: "https://configurator.example",
+        clientId: "test",
+        store: {
+          resolveSession: vi.fn(async () => test.owner),
+          beginLogin: vi.fn(),
+          consumeLogin: vi.fn(),
+          createSession: vi.fn(),
+          deleteSession: vi.fn(),
+        },
+        github: { authorize: vi.fn() },
+        tokens: { get: test.token, put: vi.fn(), remove: vi.fn() },
+      };
+      const app = buildApp({ auth, plans: test.plans });
+      const headers = {
+        cookie: `__Host-lzc-session=${"b".repeat(43)}`,
+        origin: auth.origin,
+        "x-lzc-csrf": test.owner.csrfToken,
+        "x-lzc-tenant": test.owner.tenantId,
+      };
+      const confirmation = {
+        confirmRetainState: true,
+        stateVersion: test.checkpoint.stateVersion,
+        checkpointSha256: test.checkpoint.checkpointSha256,
+      };
+      try {
+        for (const action of ["checkpoint", "reconcile"] as const) {
+          const url = `/api/v1/plans/${test.run.id}/${action}`;
+          const payload = action === "checkpoint" ? {} : confirmation;
+          expect(
+            (await app.inject({ method: "POST", url, payload })).statusCode,
+          ).toBe(401);
+          for (const attempt of [
+            {
+              headers: { ...headers, origin: "https://attacker.example" },
+              code: 403,
+            },
+            { headers: { ...headers, "x-lzc-csrf": "wrong" }, code: 403 },
+            {
+              headers: { ...headers, "x-lzc-tenant": randomUUID() },
+              code: 409,
+            },
+          ])
+            expect(
+              (
+                await app.inject({
+                  method: "POST",
+                  url,
+                  headers: attempt.headers,
+                  payload,
+                })
+              ).statusCode,
+            ).toBe(attempt.code);
+          expect(
+            (
+              await app.inject({
+                method: "POST",
+                url,
+                headers,
+                payload: { ...payload, forceUnlock: true },
+              })
+            ).statusCode,
+          ).toBe(400);
+          expect(
+            (await app.inject({ method: "GET", url, headers })).statusCode,
+          ).toBe(404);
+        }
+        const inspected = await app.inject({
+          method: "POST",
+          url: `/api/v1/plans/${test.run.id}/checkpoint`,
+          headers,
+          payload: {},
+        });
+        expect(inspected.statusCode).toBe(200);
+        expect(inspected.headers["cache-control"]).toContain("no-store");
+        expect(inspected.json()).toEqual(test.checkpoint);
+        expect(inspected.body).not.toMatch(
+          /not-in-checkpoint-response|lineage|attributes|outputs/,
+        );
+        expect(
+          (
+            await app.inject({
+              method: "POST",
+              url: `/api/v1/plans/${test.run.id}/reconcile`,
+              headers,
+              payload: {},
+            })
+          ).statusCode,
+        ).toBe(400);
+        const reconciled = await app.inject({
+          method: "POST",
+          url: `/api/v1/plans/${test.run.id}/reconcile`,
+          headers,
+          payload: confirmation,
+        });
+        expect(reconciled.statusCode).toBe(200);
+        expect(reconciled.json()).toEqual({
+          id: test.run.id,
+          reconciled: true,
+        });
+        expect(reconciled.headers["cache-control"]).toContain("no-store");
+      } finally {
+        await app.close();
+      }
+    });
+
+    it("reconciles only explicitly reviewed checkpoints once and preserves state for a corrected fresh plan", async () => {
+      const test = await failedCheckpoint();
+      expect(test.checkpoint.canResume).toBe(true);
+      const input = {
+        confirmRetainState: true,
+        stateVersion: test.checkpoint.stateVersion,
+        checkpointSha256: test.checkpoint.checkpointSha256,
+      };
+      await expect(
+        test.plans.checkpoint(await session(), test.run.id),
+      ).rejects.toBeDefined();
+      await expect(
+        test.plans.reconcile(test.owner, test.run.id, {
+          ...input,
+          confirmRetainState: false,
+        }),
+      ).rejects.toBeDefined();
+      await expect(
+        test.plans.reconcile(test.owner, test.run.id, {
+          ...input,
+          checkpointSha256: "0".repeat(64),
+        }),
+      ).rejects.toMatchObject({ code: "checkpoint_changed" });
+      const key = stableStateKey(test.owner, test.manifest);
+      const before = (
+        await migration!.query(
+          "SELECT version,ciphertext,lock_run_id FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rows[0];
+      const starts = test.runner.start.mock.calls.length;
+      const secrets = test.secrets.get.mock.calls.length;
+      expect(
+        await Promise.all([
+          test.plans.reconcile(test.owner, test.run.id, input),
+          test.plans.reconcile(test.owner, test.run.id, input),
+        ]),
+      ).toEqual([
+        { id: test.run.id, reconciled: true },
+        { id: test.run.id, reconciled: true },
+      ]);
+      expect(test.runner.start).toHaveBeenCalledTimes(starts);
+      expect(test.secrets.get).toHaveBeenCalledTimes(secrets);
+      expect(
+        (
+          await migration!.query(
+            "SELECT version,ciphertext,lock_run_id FROM lzc.platform_states WHERE state_key=$1",
+            [key],
+          )
+        ).rows[0],
+      ).toEqual(before);
+      expect(
+        (
+          await migration!.query(
+            "SELECT count(*)::int AS count FROM lzc.platform_reconciliations WHERE run_id=$1",
+            [test.run.id],
+          )
+        ).rows[0].count,
+      ).toBe(1);
+      await expect(
+        migration!.query(
+          "DELETE FROM lzc.platform_reconciliations WHERE run_id=$1",
+          [test.run.id],
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+      await expect(
+        test.plans.apply(
+          test.owner,
+          test.token,
+          test.saved.id,
+          test.approval(test.saved.artifactSha256),
+        ),
+      ).rejects.toBeDefined();
+      const original = readSavedDraft(test.manifest.configuration);
+      const corrected = {
+        ...original,
+        draft: { ...original.draft, name: "Corrected configuration" },
+      };
+      const preparationId = randomUUID();
+      const manifest = preparationManifest(
+        {
+          source: "database",
+          configurationId: test.configurationId,
+          revision: 2,
+          credentialId: test.credentialId,
+        },
+        {
+          document: corrected,
+          head: "2",
+          tfvars: serializeTfvars(recordValues(corrected)),
+        },
+        {
+          check: test.manifest.check,
+          version: test.manifest.credential.secretVersion,
+          keyId: test.manifest.credential.keyId,
+        },
+      );
+      await migration!.query(
+        "UPDATE lzc.configurations SET revision=2,document=$2 WHERE id=$1",
+        [test.configurationId, JSON.stringify(corrected.draft)],
+      );
+      await migration!.query(
+        "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,credential_id,name,manifest) VALUES($1,$2,$3,$4,'Corrected preparation',$5)",
+        [
+          preparationId,
+          test.owner.tenantId,
+          test.owner.userId,
+          test.credentialId,
+          JSON.stringify(manifest),
+        ],
+      );
+      const fresh = await test.plans.start(
+        test.owner,
+        test.token,
+        preparationId,
+      );
+      expect(fresh.id).not.toBe(test.saved.id);
+      expect(
+        (
+          await migration!.query(
+            "SELECT state_version FROM lzc.plan_runs WHERE id=$1",
+            [fresh.id],
+          )
+        ).rows[0].state_version,
+      ).toBe("1");
+    });
+
+    it("refuses reconciliation of locked, ambiguous, changed or separately recovered checkpoints", async () => {
+      for (const reason of ["lock", "uncertain", "changed", "recovery"]) {
+        const test = await failedCheckpoint();
+        const key = stableStateKey(test.owner, test.manifest);
+        if (reason === "lock")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET lock_run_id=$2,lock_id='held' WHERE state_key=$1",
+            [key, test.run.id],
+          );
+        if (reason === "uncertain")
+          await migration!.query(
+            "UPDATE lzc.plan_runs SET error_code='timed_out' WHERE id=$1",
+            [test.run.id],
+          );
+        if (reason === "changed")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET version=version+1 WHERE state_key=$1",
+            [key],
+          );
+        if (reason === "recovery")
+          await migration!.query(
+            "INSERT INTO lzc.state_recoveries(run_id,tenant_id,state_key,sha256,ciphertext) SELECT $1,tenant_id,state_key,$2,ciphertext FROM lzc.platform_states WHERE state_key=$3",
+            [test.run.id, test.checkpoint.checkpointSha256, key],
+          );
+        await expect(
+          test.plans.reconcile(test.owner, test.run.id, {
+            confirmRetainState: true,
+            stateVersion: test.checkpoint.stateVersion,
+            checkpointSha256: test.checkpoint.checkpointSha256,
+          }),
+        ).rejects.toBeDefined();
+        expect(
+          (
+            await migration!.query(
+              "SELECT status FROM lzc.plan_runs WHERE id=$1",
+              [test.run.id],
+            )
+          ).rows[0].status,
+        ).toBe("recovery_required");
+      }
+    });
+
     it("enforces plan-readonly, own persistent locks, version checks and preserves encrypted state after failed apply", async () => {
       const test = await fixture();
       const saved = await test.plan();
@@ -1075,7 +1393,14 @@ describe.skipIf(!enabled)(
         serial: 1,
         lineage: randomUUID(),
         outputs: { secret: { value: "private-state-secret" } },
-        resources: [],
+        resources: [
+          {
+            mode: "managed",
+            type: "time_rotating",
+            name: "private-resource-name",
+            instances: [{ attributes: { secret: "private-attribute-secret" } }],
+          },
+        ],
       };
       await expect(
         test.plans.state(ticket, "write", state, "lock"),
@@ -1103,6 +1428,26 @@ describe.skipIf(!enabled)(
         (await test.plans.list(test.owner)).find((item) => item.id === run.id)
           .status,
       ).toBe("recovery_required");
+      const checkpoint = await test.plans.checkpoint(test.owner, run.id);
+      expect(checkpoint).toMatchObject({
+        stateVersion: "1",
+        serial: 1,
+        lockHeld: true,
+        pendingMigration: false,
+        recoveryAvailable: false,
+        canResume: false,
+        resources: [
+          {
+            mode: "managed",
+            type: "time_rotating",
+            instances: 1,
+            deposedInstances: 0,
+          },
+        ],
+      });
+      expect(JSON.stringify(checkpoint)).not.toMatch(
+        /private-state-secret|private-resource-name|private-attribute-secret|lineage|attributes|outputs/,
+      );
       expect(
         (
           await migration!.query(

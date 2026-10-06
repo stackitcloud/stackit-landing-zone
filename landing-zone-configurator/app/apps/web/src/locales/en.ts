@@ -1,4 +1,28 @@
 export const englishMessages: Record<string, string> = {
+  "Recovery-Abgleich": "Recovery reconciliation",
+  Ja: "Yes",
+  Nein: "No",
+  Vorhanden: "Available",
+  "Nicht vorhanden": "Not available",
+  Gesperrt: "Locked",
+  "Apply-ID": "Apply ID",
+  "Checkpoint prüfen": "Inspect checkpoint",
+  "State-Version": "State version",
+  "State-Serial": "State serial",
+  "State-Lock": "State lock",
+  Frei: "Free",
+  "Offene Backend-Migration": "Pending backend migration",
+  "Separater Recovery-State": "Separate recovery state",
+  "Ersetzte Instanzen": "Deposed instances",
+  "Der Checkpoint wurde geändert. Prüfe ihn erneut.":
+    "The checkpoint changed. Inspect it again.",
+  "Dieser Recovery-Fall benötigt einen gesonderten State-Abgleich.":
+    "This recovery case requires a separate state reconciliation.",
+  "Checkpoint-Prüfung oder Freigabe fehlgeschlagen.":
+    "Checkpoint inspection or confirmation failed.",
+  "Ich habe den Checkpoint geprüft und bestätige, dass der bestehende State unverändert erhalten bleibt.":
+    "I have reviewed the checkpoint and confirm that the existing state will be retained unchanged.",
+  "Erneute Planung freigeben": "Allow a new plan",
   "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden.":
     "New plans are blocked until the failed apply and its state have been reviewed and reconciled.",
   "STACKIT-Organisationsnachweis": "STACKIT organization proof",

@@ -2904,6 +2904,175 @@ test.describe("explicit saved-plan approval", () => {
     });
   }
 
+  for (const outcome of ["success", "changed", "locked"]) {
+    test(`user-controlled Bootstrap checkpoint recovery ${outcome}`, async ({
+      page,
+    }, testInfo) => {
+      await setup(page);
+      let reconciled = false;
+      const actions: string[] = [];
+      const checkpoint = {
+        stateVersion: "1",
+        checkpointSha256: "d".repeat(64),
+        serial: 1,
+        lockHeld: outcome === "locked",
+        pendingMigration: false,
+        recoveryAvailable: false,
+        canResume: outcome !== "locked",
+        resources: [
+          {
+            mode: "managed",
+            type: "time_rotating",
+            instances: 1,
+            deposedInstances: 0,
+          },
+        ],
+      };
+      await page.route("**/api/v1/plans", (route) => {
+        expect(route.request().method()).toBe("GET");
+        return route.fulfill({
+          json: {
+            runs: [
+              {
+                ...savedPlan(),
+                id: applyId,
+                operation: "apply",
+                planId,
+                status: reconciled ? "failed" : "recovery_required",
+                errorCode: "apply_failed",
+              },
+            ],
+          },
+        });
+      });
+      await page.route(`**/api/v1/plans/${applyId}/checkpoint`, (route) => {
+        actions.push("checkpoint");
+        expect(route.request().postDataJSON()).toEqual({});
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+        expect(route.request().headers()["x-lzc-tenant"]).toBe("personal");
+        return route.fulfill({ json: checkpoint });
+      });
+      await page.route(`**/api/v1/plans/${applyId}/reconcile`, (route) => {
+        actions.push("reconcile");
+        expect(route.request().postDataJSON()).toEqual({
+          confirmRetainState: true,
+          stateVersion: "1",
+          checkpointSha256: "d".repeat(64),
+        });
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+        expect(route.request().headers()["x-lzc-tenant"]).toBe("personal");
+        if (outcome === "changed")
+          return route.fulfill({
+            status: 409,
+            json: { error: "checkpoint_changed" },
+          });
+        reconciled = true;
+        return route.fulfill({ json: { id: applyId, reconciled: true } });
+      });
+      await page.goto("/deployments/apply");
+      const review = page.getByRole("region", {
+        name: "Recovery-Abgleich",
+        exact: true,
+      });
+      await expect(review).toBeVisible();
+      expect(actions).toEqual([]);
+      await expect(
+        review.getByRole("button", { name: "Erneute Planung freigeben" }),
+      ).toHaveCount(0);
+      await review
+        .getByRole("button", { name: "Checkpoint prüfen", exact: true })
+        .click();
+      await expect(
+        review.getByText("time_rotating", { exact: true }),
+      ).toBeVisible();
+      expect(actions).toEqual(["checkpoint"]);
+      await expect(review.getByText(applyId, { exact: true })).toBeVisible();
+      await expect(
+        review.getByText("d".repeat(64), { exact: true }),
+      ).toBeVisible();
+      await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+      const englishReview = page.getByRole("region", {
+        name: "Recovery reconciliation",
+        exact: true,
+      });
+      await expect(
+        englishReview.getByRole("button", {
+          name: "Inspect checkpoint",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        englishReview.getByText("State version", { exact: true }),
+      ).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`checkpoint-${outcome}-reviewed-en.png`),
+        fullPage: true,
+      });
+      await page.getByLabel("Language", { exact: true }).selectOption("de");
+      expect(actions).toEqual(["checkpoint"]);
+      if (outcome === "locked") {
+        await expect(
+          review.getByRole("button", { name: "Erneute Planung freigeben" }),
+        ).toHaveCount(0);
+        await expect(
+          review.getByText(
+            "Dieser Recovery-Fall benötigt einen gesonderten State-Abgleich.",
+          ),
+        ).toBeVisible();
+      } else {
+        const confirm = review.getByRole("checkbox", {
+          name: /Ich habe den Checkpoint geprüft/,
+        });
+        const release = review.getByRole("button", {
+          name: "Erneute Planung freigeben",
+          exact: true,
+        });
+        await expect(release).toBeDisabled();
+        await confirm.check();
+        await expect(release).toBeEnabled();
+        await release.click();
+        if (outcome === "changed") {
+          await expect(review.getByRole("alert")).toHaveText(
+            "Der Checkpoint wurde geändert. Prüfe ihn erneut.",
+          );
+          await expect(confirm).toHaveCount(0);
+          expect(reconciled).toBe(false);
+        } else {
+          await expect(page).toHaveURL(/\/deployments\/plan$/);
+          await page
+            .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+            .selectOption(preparationId);
+          const planButton = page.getByRole("button", {
+            name: "Plattform planen",
+            exact: true,
+          });
+          await expect(planButton).toBeDisabled();
+          await page
+            .getByRole("checkbox", {
+              name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
+            })
+            .check();
+          await expect(planButton).toBeEnabled();
+        }
+        expect(actions).toEqual(["checkpoint", "reconcile"]);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`checkpoint-${outcome}.png`),
+        fullPage: true,
+      });
+    });
+  }
+
   test("deployment steps isolate preparation, plan and apply without automatic execution or retained approval", async ({
     page,
   }, testInfo) => {

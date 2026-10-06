@@ -232,6 +232,35 @@ vollständige Wiederherstellung nach jedem harten Runner-Verlust; Abgleich und
 operative Recovery bleiben erforderlich. Ein echter Cloud-S3-Lock-Test wurde
 nicht durchgeführt. Kein Kunden-Apply wurde in dieser Umsetzung ausgeführt.
 
+## Konfiguration nach fehlgeschlagenem Bootstrap-Apply korrigieren
+
+Migration `034_platform_reconciliation.sql` ergaenzt einen ausdruecklichen,
+auditierten UI-Abgleich. In der Apply-Ansicht liest erst **Checkpoint pruefen**
+den verschluesselten Bootstrap-Checkpoint des eigenen fehlgeschlagenen Applys.
+Die Antwort enthaelt nur State-Version, SHA256, Serial, Lock-/Migrationsstatus
+und Ressourcenanzahlen nach Typ; keine Attribute, Outputs oder Rohstates.
+
+**Erneute Planung freigeben** erfordert eine gesonderte Bestaetigung zum
+unveraenderten Erhalten des States. Die API prueft die angezeigte Version und
+Pruefsumme erneut in einer Transaktion. Nur ein regulaer mit `apply_failed`
+beendeter, bereits gestarteter Apply mit lesbarem Bootstrap-Checkpoint,
+positiver State-Version, ohne gehaltenen Lock, offene Migration oder separaten
+Recovery-State ist freigebbar. Ein unveraenderlicher, tenant-/ownergebundener
+Auditbeleg bindet Apply, echte Sitzung, State-Key, Version und Pruefsumme.
+Gleichzeitige identische Bestaetigungen erzeugen nur einen Beleg. Der Run wird
+als fehlgeschlagen abgeschlossen; State, Version, Lock und Backend bleiben
+unveraendert. Es erfolgen weder Cloud-Zugriffe noch ein automatischer Plan/Apply.
+
+Danach kann der Benutzer die korrigierte Konfiguration speichern, eine neue
+Vorbereitung waehlen und einen neuen Plan gegen denselben bestehenden State
+starten. Fuer Apply ist erneut die separate Pruefung und Freigabe des neuen
+gespeicherten Plans erforderlich. Der alte Plan bleibt verbraucht. Bei einem
+zwischenzeitlich veraenderten Checkpoint ist eine neue Pruefung erforderlich.
+Unklare Runner-Abbrueche, `state_failed`, Migrationen und separate Recovery-
+States bleiben gesperrt und benoetigen einen gesonderten operativen Abgleich.
+Es gibt keine automatische Entsperrung, State-Loeschung, Import- oder
+Destroy-Aktion. Die Migration muss vor Nutzung der neuen API aktiviert sein.
+
 ## Portabler GitHub-Export
 
 Der Export schreibt atomar `landing-zone.json`, `landing-zone.tfvars` und eine
