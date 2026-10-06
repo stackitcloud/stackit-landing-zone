@@ -274,6 +274,13 @@ Gesamt-Hash, Lineage und Serial lehnte diese erfolgreiche Kopie ab.
 nachgewiesene Transformation: Quellversion 1.12.6, neue Lineage, Ziel-Serial 1
 und ansonsten exakt gleicher kanonischer State-Inhalt. Ressourcen, Attribute,
 Outputs, Format, Version und alle weiteren Felder bleiben vollstaendig geprueft.
+Nur die Reihenfolge der obersten `check_results`-Liste wird beim gepinnten
+nativen Migrationsvergleich normalisiert. Alle vollstaendigen Pruefeintraege
+einschliesslich ihrer verschachtelten Inhalte und mehrfacher Eintraege bleiben
+erhalten; es wird nichts entfernt oder auf erfolgreiche Statuswerte reduziert.
+Diese Reihenfolgeaenderung ist mit echten OpenTofu-Validierungen reproduziert.
+Globale State-Hashes, Quell-Sicherungsbelege und andere Array-Reihenfolgen
+bleiben unveraendert. Geaenderte Pruefergebnisse oder Ressourcen bleiben gesperrt.
 Unbekannte Versionen oder beliebige Serial-/Inhaltsaenderungen werden nicht
 freigegeben. Das Host-Binary darf nicht als Runner-Version angenommen werden;
 der Native-Test verwendet `LZC_NATIVE_TOFU_BINARY` und prueft die echte Version.
@@ -337,6 +344,28 @@ Die Browser- und Brokerfaelle verwenden kontrollierte Testdaten; sie belegen
 nicht den erfolgreichen S3-Abgleich des Kundenlaufs. Dieser wurde bei der
 Aktivierung weder gelesen noch bestaetigt und bleibt ein ausdruecklicher
 UI-Schritt des Benutzers. Es wurde kein Kunden-Apply wiederholt.
+
+### Nachgewiesene Check-Reihenfolge und Korrektur am 2026-10-06
+
+Nach ausdruecklicher Freigabe wurde genau der offene Migrationsfall lokal
+entschluesselt und dessen gebundener S3-State ausschliesslich lesend verglichen.
+Es wurden nur maskierte Strukturpfade und Gleichheits-/Anzahlmetadaten
+ausgegeben, keine Werte, Schluessel oder Rohstates. Alle 36 vollstaendigen
+Pruefeintraege waren gleich, aber anders angeordnet; Ressourcen, Attribute und
+Outputs waren identisch. Der korrigierte Vergleich besteht auch fuer diesen
+State. Der vorherige Vergleich wurde mit 24 echten lokalen OpenTofu-
+Validierungen als fehlschlagender Native-Regressionsfall reproduziert.
+
+Nach frischem privaten Backup und null aktiven Jobs wurde nur die API mit
+unveraendertem Platform-Paket neu gestartet. Alle 30 Nicht-Authentifizierungs-
+Tabellen, insbesondere States, Backends, Plans, Artefakte und Recovery-Belege,
+blieben unveraendert. Parallel wurden eine weitere Sitzung und Aenderungen an
+Identitaets-/Zugangsmetadaten beobachtet; diese drei Tabellen sind deshalb
+nicht als unveraendert ausgewiesen und wurden nicht zurueckgesetzt.
+Keine Schema-Migration oder S3-Schreibaktion wurde durchgefuehrt; die eigentliche
+Backend-Bestaetigung bleibt ein gesonderter Benutzer-UI-Schritt.
+Das Gate besteht mit 387 Unit-Tests, 27 Backend-Tests einschliesslich nativer
+Migration und allen 42 isolierten PostgreSQL-Brokerfaellen.
 
 ## Portabler GitHub-Export
 

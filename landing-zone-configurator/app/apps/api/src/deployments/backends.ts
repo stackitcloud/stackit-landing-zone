@@ -131,15 +131,26 @@ export function migrationStateMatches(
 ): boolean {
   const sourceHash = contentHash(source);
   if (contentHash(target) === sourceHash) return true;
+  const migrationPayloadHash = (state: TerraformState) =>
+    contentHash({
+      ...state,
+      ...(Array.isArray(state.check_results)
+        ? {
+            check_results: [...state.check_results].sort((left, right) =>
+              contentHash(left).localeCompare(contentHash(right)),
+            ),
+          }
+        : {}),
+    });
   return (
     source.terraform_version === "1.12.6" &&
     target.lineage !== source.lineage &&
     target.serial === 1 &&
-    contentHash({
+    migrationPayloadHash({
       ...target,
       lineage: source.lineage,
       serial: source.serial,
-    }) === sourceHash
+    }) === migrationPayloadHash(source)
   );
 }
 export type RemoteState = { bytes: Buffer; identity: string } | null;

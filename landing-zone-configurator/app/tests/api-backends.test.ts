@@ -62,6 +62,94 @@ it.each([
   );
 });
 
+it.each([
+  "reordered",
+  "changed-status",
+  "changed-check-object",
+  "removed-check",
+  "duplicated-check",
+  "reordered-nested-objects",
+  "changed-resource",
+  "reordered-resources",
+  "reordered-output-array",
+  "unknown-engine",
+  "wrong-serial",
+])(
+  "only normalizes complete top-level migration check order: %s",
+  (variant) => {
+    const source = stateDocument(
+      Buffer.from(
+        JSON.stringify({
+          version: 4,
+          terraform_version: "1.12.6",
+          serial: 4,
+          lineage: randomUUID(),
+          outputs: { proof: { value: ["first", "second"], sensitive: false } },
+          resources: [
+            {
+              type: "terraform_data",
+              name: "first",
+              instances: [{ attributes: { input: "first" } }],
+            },
+            {
+              type: "terraform_data",
+              name: "second",
+              instances: [{ attributes: { input: "second" } }],
+            },
+          ],
+          check_results: [
+            {
+              object_kind: "var",
+              config_addr: "var.first",
+              status: "pass",
+              objects: [{ object_addr: "var.first", status: "pass" }],
+            },
+            {
+              object_kind: "resource",
+              config_addr: "terraform_data.second",
+              status: "pass",
+              objects: [
+                { object_addr: "terraform_data.second[0]", status: "pass" },
+                { object_addr: "terraform_data.second[1]", status: "pass" },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+    const originalHash = contentHash(source);
+    const target: TerraformState = {
+      ...structuredClone(source),
+      lineage: randomUUID(),
+      serial: 1,
+    };
+    const checks = target.check_results;
+    if (!Array.isArray(checks)) throw new Error("Test check results required");
+    checks.reverse();
+    if (variant === "changed-status") checks[0].status = "fail";
+    if (variant === "changed-check-object")
+      checks[0].objects[0].object_addr = "terraform_data.other";
+    if (variant === "removed-check") checks.pop();
+    if (variant === "duplicated-check") checks.push(structuredClone(checks[0]));
+    if (variant === "reordered-nested-objects") checks[0].objects.reverse();
+    if (variant === "changed-resource")
+      target.resources[0]!.instances![0]!.attributes!.input = "changed";
+    if (variant === "reordered-resources") target.resources.reverse();
+    if (variant === "reordered-output-array")
+      target.outputs = {
+        proof: { value: ["second", "first"], sensitive: false },
+      };
+    if (variant === "unknown-engine")
+      source.terraform_version = target.terraform_version = "1.12.5";
+    if (variant === "wrong-serial") target.serial = 2;
+    const targetHash = contentHash(target);
+    expect(migrationStateMatches(source, target)).toBe(variant === "reordered");
+    expect(contentHash(target)).toBe(targetHash);
+    if (variant !== "unknown-engine")
+      expect(contentHash(source)).toBe(originalHash);
+  },
+);
+
 it.skipIf(process.env.LZC_NATIVE_RUNNER_TEST !== "true")(
   "verifies actual OpenTofu HTTP-to-S3 metadata transformation without any cloud credentials",
   async () => {
@@ -139,9 +227,14 @@ it.skipIf(process.env.LZC_NATIVE_RUNNER_TEST !== "true")(
       });
     }
     try {
+      const validationVariables = Array.from(
+        { length: 24 },
+        (_, index) =>
+          `variable "proof_${index}" {\n type = number\n default = ${index}\n validation {\n condition = var.proof_${index} >= 0\n error_message = "Synthetic proof must be nonnegative."\n }\n}\n`,
+      ).join("\n");
       await writeFile(
         join(directory, "main.tf"),
-        'resource "terraform_data" "proof" { input = "synthetic-only" }\noutput "proof" { value = terraform_data.proof.output }\n',
+        `${validationVariables}\nresource "terraform_data" "proof" { input = "synthetic-only" }\noutput "proof" { value = terraform_data.proof.output }\n`,
         { mode: 0o600 },
       );
       await writeFile(
@@ -153,12 +246,16 @@ it.skipIf(process.env.LZC_NATIVE_RUNNER_TEST !== "true")(
       await command(["apply", "-auto-approve", "-input=false", "-no-color"]);
       await writeFile(
         join(directory, "main.tf"),
-        'resource "terraform_data" "proof" { input = "synthetic-updated" }\noutput "proof" { value = terraform_data.proof.output }\n',
+        `${validationVariables}\nresource "terraform_data" "proof" { input = "synthetic-updated" }\noutput "proof" { value = terraform_data.proof.output }\n`,
       );
       await command(["apply", "-auto-approve", "-input=false", "-no-color"]);
       if (!source) throw new Error("Native HTTP state missing");
       expect(source.terraform_version).toBe("1.12.6");
       expect(source.serial).toBeGreaterThan(1);
+      const sourceChecks = source.check_results;
+      if (!Array.isArray(sourceChecks))
+        throw new Error("Native checks missing");
+      expect(sourceChecks).toHaveLength(24);
       await writeFile(
         join(directory, "backend.tf"),
         `terraform {\n backend "s3" {\n bucket = "migration-probe"\n key = "terraform.tfstate"\n region = "eu01"\n endpoints = { s3 = "${endpoint}" }\n use_path_style = true\n use_lockfile = true\n skip_credentials_validation = true\n skip_region_validation = true\n skip_metadata_api_check = true\n skip_requesting_account_id = true\n skip_s3_checksum = true\n }\n}\n`,
@@ -177,6 +274,10 @@ it.skipIf(process.env.LZC_NATIVE_RUNNER_TEST !== "true")(
       expect(target.lineage).not.toBe(source.lineage);
       expect(target.resources).toEqual(source.resources);
       expect(target.outputs).toEqual(source.outputs);
+      expect(target.check_results).toEqual(
+        expect.arrayContaining(sourceChecks),
+      );
+      expect(target.check_results).toHaveLength(sourceChecks.length);
       expect(migrationStateMatches(source, target)).toBe(true);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));

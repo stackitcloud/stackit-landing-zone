@@ -1221,14 +1221,30 @@ describe.skipIf(!enabled)(
       await test.plans.input(ticket);
       await test.plans.stage(ticket, "validating");
       await test.plans.stage(ticket, "applying");
-      const state = test.managementState({
-        version: 4,
-        terraform_version: "1.12.6",
-        serial: 3,
-        lineage: randomUUID(),
-        outputs: {},
-        resources: [],
-      });
+      const state = {
+        ...test.managementState({
+          version: 4,
+          terraform_version: "1.12.6",
+          serial: 3,
+          lineage: randomUUID(),
+          outputs: {},
+          resources: [],
+        }),
+        check_results: [
+          {
+            object_kind: "var",
+            config_addr: "var.first",
+            status: "pass",
+            objects: [{ object_addr: "var.first", status: "pass" }],
+          },
+          {
+            object_kind: "var",
+            config_addr: "var.second",
+            status: "pass",
+            objects: [{ object_addr: "var.second", status: "pass" }],
+          },
+        ],
+      };
       await test.plans.state(ticket, "lock", undefined, "migration-review");
       await test.plans.state(ticket, "write", state, "migration-review");
       await test.plans.state(ticket, "unlock", undefined, "migration-review");
@@ -1236,7 +1252,12 @@ describe.skipIf(!enabled)(
       test.remote.set(
         "terraform.tfstate",
         Buffer.from(
-          JSON.stringify({ ...state, lineage: randomUUID(), serial: 1 }),
+          JSON.stringify({
+            ...state,
+            lineage: randomUUID(),
+            serial: 1,
+            check_results: [...state.check_results].reverse(),
+          }),
         ),
       );
       await test.plans.result(ticket, {
