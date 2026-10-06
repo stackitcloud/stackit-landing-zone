@@ -2,10 +2,25 @@
 
 Stand: 2026-10-06. STACKIT als primärer Login lokal implementiert und getestet.
 Die ausdrueckliche Dev-Client-Freigabe ersetzt keine Produktionsregistrierung.
-Die Organisationsbindung ist mit Migrationen bis 034 lokal aktiviert, ihre
-erfolgreiche Kundenabnahme steht noch aus. GitHub bleibt als Legacy-Modus erhalten.
+Migrationen bis 039 sind nach privaten Sicherungen und vollstaendigen isolierten
+Restore-Pruefungen lokal aktiviert. Echter menschlicher Login, vollstaendiger
+Owner-Nachweis und ausdrueckliche Organisationsbindung sind in der bestehenden
+Kundenorganisation erfolgreich abgenommen. GitHub bleibt als Legacy-Modus erhalten.
+
+Der Resource Manager liefert fuer die exakt angefragte Organisations-UUID einen
+IAM-Containerbezug. Die Pruefung verwendet ausschliesslich diesen Bezug fuer
+IAM-Rechte und Rollen; fremde Container bleiben gesperrt. Die reale Antwort mit
+965 Owner-Rechten wird vollstaendig geprueft. Parser und Migration 037 erlauben
+hoechstens 4096 Rechte, bei unveraenderter Antwortgroessen- und Autoritaetspruefung.
+Migration 023 wurde nicht veraendert. Der PKCE-Nachweis kehrt zu
+`/organisation#stackit-proof` zurueck; geschuetztes Polling setzt ihn fort.
+Die Benutzerverwaltung erlaubt auch nach erfolgter Bindung eine erneute
+zeitlich begrenzte Owner-Pruefung, ohne eine weitere Bindung anzubieten.
 
 ## CLI-PKCE und Nachweisdiagnose
+
+Die folgenden Diagnose- und Aktivierungsabschnitte dokumentieren historische
+Zwischenstaende. Fuer die aktuelle Abnahme gilt der Stand oberhalb dieses Abschnitts.
 
 Ein anonymer Browser ohne bestehende STACKIT-Sitzung erreicht mit dem freigegebenen
 CLI-Device-Client die Provider-Seite `/ui/login/user`, aber nur mit einem
@@ -140,8 +155,13 @@ Der neue Device Grant verifiziert dieselbe menschliche Identitaet und die exakte
 Organisation. Derselbe kurzlebige menschliche Bearer Token fragt am festen
 IAM-Origin `https://authorization.api.stackit.cloud` folgende APIs ab:
 
-- `GET /v2/users/{verifiedEmail}/permissions?resourceType=organization&resource={organizationId}`
-- `GET /v2/organization/{organizationId}/roles`
+- `GET /v2/users/{verifiedEmail}/permissions?resourceType=organization&resource={verifiedOrganizationResourceId}`
+- `GET /v2/organization/{verifiedOrganizationResourceId}/roles`
+
+`verifiedOrganizationResourceId` ist der Containerbezug aus der erfolgreich
+geprueften Resource-Manager-Antwort, ersatzweise deren Organisations-UUID, falls
+kein Containerbezug geliefert wurde. Zurueckgegebene IAM-Ressourcen muessen exakt
+diesem Bezug entsprechen; die gebundene Organisation behaelt ihre echte UUID.
 
 Antworten werden auf Organisation, Ressourcentyp, Umfang und Struktur geprueft.
 Das konservative Minimum umfasst alle Rechte genau einer nicht leeren

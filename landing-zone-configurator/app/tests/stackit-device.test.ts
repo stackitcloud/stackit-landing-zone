@@ -116,10 +116,14 @@ it("accepts proof callbacks only for the original live session and tenant withou
         .statusCode,
     ).toBe(400);
     session.tenantId = "proof-tenant";
-    expect(
-      (await app.inject({ url: callback, headers: { cookie: bound } }))
-        .statusCode,
-    ).toBe(302);
+    const confirmed = await app.inject({
+      url: callback,
+      headers: { cookie: bound },
+    });
+    expect(confirmed.statusCode).toBe(302);
+    expect(confirmed.headers.location).toBe(
+      `${auth.origin}/organisation#stackit-proof`,
+    );
     expect(save).not.toHaveBeenCalled();
     expect(bindOrganization).not.toHaveBeenCalled();
     expect(
@@ -538,6 +542,7 @@ async function setup(
     wrongSignature?: boolean;
     errors?: string[];
     organizationId?: string;
+    organizationContainerId?: string;
     organizationPermissions?: unknown;
     organizationPermissionsStatus?: number;
     organizationRoles?: unknown;
@@ -612,14 +617,14 @@ async function setup(
     }
     if (String(url).endsWith("/roles")) {
       expect(String(url)).toBe(
-        `https://authorization.api.stackit.cloud/v2/organization/${options.organizationId}/roles`,
+        `https://authorization.api.stackit.cloud/v2/organization/${options.organizationContainerId ?? options.organizationId}/roles`,
       );
       expect(init?.headers).toEqual({
         Authorization: "Bearer private-access-token",
       });
       return Response.json(
         options.organizationRoles ?? {
-          resourceId: options.organizationId,
+          resourceId: options.organizationContainerId ?? options.organizationId,
           resourceType: "organization",
           roles: [
             {
@@ -643,7 +648,7 @@ async function setup(
         "organization",
       );
       expect(permissionsUrl.searchParams.get("resource")).toBe(
-        options.organizationId,
+        options.organizationContainerId ?? options.organizationId,
       );
       expect(init?.headers).toEqual({
         Authorization: "Bearer private-access-token",
@@ -655,6 +660,9 @@ async function setup(
     if (String(url).includes("/organizations/"))
       return Response.json({
         organizationId: options.organizationId,
+        ...(options.organizationContainerId
+          ? { containerId: options.organizationContainerId }
+          : {}),
         name: "Test organization",
         lifecycleState: "ACTIVE",
       });
@@ -877,6 +885,136 @@ it.each([
     expect(await flow.poll()).toEqual({
       status: "failed",
       code: "organization_roles_response_invalid_response",
+    });
+  },
+);
+
+it("binds large official permission and owner sets to the exact verified organization container", async () => {
+  const organizationId = "11111111-1111-4111-8111-111111111111";
+  const organizationContainerId = "root_container_reference_27";
+  const permissions = Array.from({ length: 965 }, (_, index) => ({
+    name: `organization.permission.${String.fromCharCode(97 + Math.floor(index / 676), 97 + (Math.floor(index / 26) % 26), 97 + (index % 26))}`,
+  }));
+  const { flow, advance } = await setup({
+    organizationId,
+    organizationContainerId,
+    organizationPermissions: {
+      items: [
+        {
+          resourceId: organizationContainerId,
+          resourceType: "organization",
+          permissions,
+        },
+      ],
+    },
+    organizationRoles: {
+      resourceId: organizationContainerId,
+      resourceType: "organization",
+      roles: [{ name: "owner", permissions }],
+      padding: "x".repeat(89070),
+    },
+  });
+  await flow.begin();
+  advance(5000);
+  const names = permissions.map((permission) => permission.name).sort();
+  expect(await flow.poll()).toMatchObject({
+    status: "verified",
+    identity: {
+      organization: {
+        id: organizationId,
+        permissions: names,
+        ownerPermissions: names,
+      },
+    },
+  });
+});
+
+it.each([
+  "another_container_reference",
+  "11111111-1111-4111-8111-111111111111",
+])(
+  "rejects IAM reference %s when Resource Manager specifies a different container",
+  async (resourceId) => {
+    const { flow, advance } = await setup({
+      organizationId: "11111111-1111-4111-8111-111111111111",
+      organizationContainerId: "root_container_reference_27",
+      organizationPermissions: {
+        items: [
+          {
+            resourceId,
+            resourceType: "organization",
+            permissions: [{ name: "organization.read" }],
+          },
+        ],
+      },
+    });
+    await flow.begin();
+    advance(5000);
+    expect(await flow.poll()).toEqual({
+      status: "failed",
+      code: "organization_permissions_binding_mismatch",
+    });
+  },
+);
+
+it("accepts bounded official permission metadata larger than 64 KiB", async () => {
+  const organizationId = "11111111-1111-4111-8111-111111111111";
+  const { flow, advance } = await setup({
+    organizationId,
+    organizationPermissions: {
+      items: [
+        {
+          resourceId: organizationId,
+          resourceType: "organization",
+          permissions: [
+            { name: "organization.read", description: "x".repeat(89070) },
+          ],
+        },
+      ],
+    },
+  });
+  await flow.begin();
+  advance(5000);
+  expect(await flow.poll()).toMatchObject({
+    status: "verified",
+    identity: {
+      organization: { id: organizationId, permissions: ["organization.read"] },
+    },
+  });
+});
+
+it.each(["permissions", "roles"])(
+  "rejects an oversized official %s response with a specific safe error",
+  async (responseKind) => {
+    const organizationId = "11111111-1111-4111-8111-111111111111";
+    const { flow, advance } = await setup({
+      organizationId,
+      organizationRoles: {
+        resourceId: organizationId,
+        resourceType: "organization",
+        roles: [
+          { name: "owner", permissions: [{ name: "organization.read" }] },
+        ],
+        ...(responseKind === "roles" ? { padding: "x".repeat(1048577) } : {}),
+      },
+      organizationPermissions: {
+        items: [
+          {
+            resourceId: organizationId,
+            resourceType: "organization",
+            permissions: [{ name: "organization.read" }],
+          },
+        ],
+        ...(responseKind === "permissions"
+          ? { padding: "x".repeat(1048577) }
+          : {}),
+      },
+    });
+    await flow.begin();
+    advance(5000);
+    expect(await flow.poll()).toEqual({
+      status: "failed",
+      code: `organization_${responseKind}_response_invalid_response`,
     });
   },
 );

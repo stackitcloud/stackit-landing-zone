@@ -54,7 +54,7 @@ export function registerStackitIdentity(
       return reply.code(400).send({ error: "invalid_stackit_callback" });
     return reply
       .header("Referrer-Policy", "no-referrer")
-      .redirect(`${auth.origin}/organisation`);
+      .redirect(`${auth.origin}/organisation#stackit-proof`);
   });
   app.register(async (routes) => {
     routes.setErrorHandler((error, _request, reply) => {

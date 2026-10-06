@@ -4,6 +4,12 @@ import { z } from "zod";
 
 const issuer = "https://accounts.stackit.cloud";
 const clientId = "stackit-cli-0000-0000-000000000001";
+export const maxOrganizationPermissions = 4096;
+const organizationResourceSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9_-]+$/);
 const verificationUrl = z.url().refine((value) => {
   const url = new URL(value);
   return url.origin === issuer && !url.username && !url.password;
@@ -355,18 +361,21 @@ export class StackitDeviceFlow {
         const record = z
           .object({
             organizationId: z.uuid(),
+            containerId: organizationResourceSchema.optional(),
             name: z.string().min(1).max(256),
             lifecycleState: z.literal("ACTIVE"),
           })
           .parse(await result.json());
         if (record.organizationId !== this.organizationId)
           throw new DeviceFlowError("organization_binding_mismatch");
+        const organizationResourceId =
+          record.containerId ?? record.organizationId;
         stage = "organization_permissions_request";
         const permissionsUrl = new URL(
           `https://authorization.api.stackit.cloud/v2/users/${encodeURIComponent(user.email)}/permissions`,
         );
         permissionsUrl.searchParams.set("resourceType", "organization");
-        permissionsUrl.searchParams.set("resource", this.organizationId);
+        permissionsUrl.searchParams.set("resource", organizationResourceId);
         const permissionsResponse = await this.request(permissionsUrl, {
           redirect: "error",
           signal: AbortSignal.timeout(15000),
@@ -375,17 +384,22 @@ export class StackitDeviceFlow {
         if (!permissionsResponse.ok)
           throw new DeviceFlowError("organization_permissions_denied");
         stage = "organization_permissions_response";
-        if (Number(permissionsResponse.headers.get("content-length")) > 65536)
-          throw new DeviceFlowError("provider_response_invalid");
+        if (Number(permissionsResponse.headers.get("content-length")) > 1048576)
+          throw new DeviceFlowError(
+            "organization_permissions_response_invalid_response",
+          );
         const permissionsText = await permissionsResponse.text();
-        if (permissionsText.length > 65536)
-          throw new DeviceFlowError("provider_response_invalid");
+        if (Buffer.byteLength(permissionsText, "utf8") > 1048576)
+          throw new DeviceFlowError(
+            "organization_permissions_response_invalid_response",
+          );
+        const permissionsData: unknown = JSON.parse(permissionsText);
         const permissions = z
           .object({
             items: z
               .array(
                 z.object({
-                  resourceId: z.uuid(),
+                  resourceId: organizationResourceSchema,
                   resourceType: z.literal("organization"),
                   permissions: z
                     .array(
@@ -393,15 +407,15 @@ export class StackitDeviceFlow {
                         name: z.string().regex(/^[a-z](?:[-.]?[a-z]){1,63}$/),
                       }),
                     )
-                    .max(512),
+                    .max(maxOrganizationPermissions),
                 }),
               )
               .max(1),
           })
-          .parse(JSON.parse(permissionsText));
+          .parse(permissionsData);
         if (
           permissions.items.some(
-            (item) => item.resourceId !== this.organizationId,
+            (item) => item.resourceId !== organizationResourceId,
           )
         )
           throw new DeviceFlowError(
@@ -421,7 +435,7 @@ export class StackitDeviceFlow {
         if (organization.permissions?.length) {
           stage = "organization_roles_request";
           const rolesResponse = await this.request(
-            `https://authorization.api.stackit.cloud/v2/organization/${this.organizationId}/roles`,
+            `https://authorization.api.stackit.cloud/v2/organization/${organizationResourceId}/roles`,
             {
               redirect: "error",
               signal: AbortSignal.timeout(15000),
@@ -430,14 +444,18 @@ export class StackitDeviceFlow {
           );
           if (rolesResponse.ok) {
             stage = "organization_roles_response";
-            if (Number(rolesResponse.headers.get("content-length")) > 65536)
-              throw new DeviceFlowError("provider_response_invalid");
+            if (Number(rolesResponse.headers.get("content-length")) > 1048576)
+              throw new DeviceFlowError(
+                "organization_roles_response_invalid_response",
+              );
             const rolesText = await rolesResponse.text();
-            if (rolesText.length > 65536)
-              throw new DeviceFlowError("provider_response_invalid");
+            if (Buffer.byteLength(rolesText, "utf8") > 1048576)
+              throw new DeviceFlowError(
+                "organization_roles_response_invalid_response",
+              );
             const roles = z
               .object({
-                resourceId: z.literal(this.organizationId),
+                resourceId: z.literal(organizationResourceId),
                 resourceType: z.literal("organization"),
                 roles: z
                   .array(
@@ -451,7 +469,7 @@ export class StackitDeviceFlow {
                               .regex(/^[a-z](?:[-.]?[a-z]){1,63}$/),
                           }),
                         )
-                        .max(512),
+                        .max(maxOrganizationPermissions),
                     }),
                   )
                   .max(128),

@@ -1,7 +1,10 @@
 import type pg from "pg";
 import { z } from "zod";
 import { withTenant } from "../storage/database.js";
-import type { DeviceIdentity } from "./stackit-device.js";
+import {
+  type DeviceIdentity,
+  maxOrganizationPermissions,
+} from "./stackit-device.js";
 import type { Session } from "./store.js";
 
 const proofSchema = z.object({
@@ -23,12 +26,12 @@ const proofSchema = z.object({
       name: z.string().min(1).max(256),
       permissions: z
         .array(z.string().regex(/^[a-z](?:[-.]?[a-z]){1,63}$/))
-        .max(512)
+        .max(maxOrganizationPermissions)
         .optional(),
       ownerPermissions: z
         .array(z.string().regex(/^[a-z](?:[-.]?[a-z]){1,63}$/))
         .min(1)
-        .max(512)
+        .max(maxOrganizationPermissions)
         .optional(),
     })
     .nullable(),
