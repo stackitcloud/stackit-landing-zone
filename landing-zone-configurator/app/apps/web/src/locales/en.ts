@@ -1,4 +1,6 @@
 export const englishMessages: Record<string, string> = {
+  "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden.":
+    "New plans are blocked until the failed apply and its state have been reviewed and reconciled.",
   "STACKIT-Organisationsnachweis": "STACKIT organization proof",
   "Nachweis prüfen": "Check proof",
   "STACKIT öffnen": "Open STACKIT",

@@ -2809,7 +2809,7 @@ test.describe("explicit saved-plan approval", () => {
   ]) {
     test(`apply lifecycle ${status} is distinct and cannot cancel or export`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       await setup(page);
       await page.route("**/api/v1/plans", (route) =>
         route.fulfill({
@@ -2848,12 +2848,59 @@ test.describe("explicit saved-plan approval", () => {
       );
       if (status === "failed")
         await expect(page.getByText(/Apply ist fehlgeschlagen/)).toBeVisible();
-      if (status === "recovery_required")
+      if (status === "recovery_required") {
         await expect(
           page
             .locator(".plan-runs > article")
             .getByText(/Apply: Wiederherstellung erforderlich/),
         ).toBeVisible();
+        const mutations: string[] = [];
+        page.on("request", (request) => {
+          if (
+            request.method() !== "GET" &&
+            new URL(request.url()).pathname.startsWith("/api/v1/plans")
+          )
+            mutations.push(request.url());
+        });
+        await page.goto("/deployments/plan");
+        await page
+          .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+          .selectOption(preparationId);
+        await page
+          .getByRole("checkbox", {
+            name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
+          })
+          .check();
+        const planButton = page.getByRole("button", {
+          name: "Plattform planen",
+          exact: true,
+        });
+        await expect(planButton).toBeDisabled();
+        await expect(planButton).toHaveAttribute(
+          "aria-describedby",
+          "plan-blocked-reason",
+        );
+        await expect(page.locator("#plan-blocked-reason")).toHaveText(
+          "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden.",
+        );
+        await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+        await expect(page.locator("#plan-blocked-reason")).toHaveText(
+          "New plans are blocked until the failed apply and its state have been reviewed and reconciled.",
+        );
+        await expect(
+          page.getByRole("button", { name: "Plan platform", exact: true }),
+        ).toBeDisabled();
+        expect(mutations).toEqual([]);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        await page.screenshot({
+          path: testInfo.outputPath("plan-recovery-blocked.png"),
+          fullPage: true,
+        });
+      }
     });
   }
 

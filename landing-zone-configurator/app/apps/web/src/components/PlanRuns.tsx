@@ -652,9 +652,11 @@ export function PlanRuns({
       setBusy(false);
     }
   }
-  const blockedByRun = runs.some(
-    (run) => active.has(run.status) || run.status === "recovery_required",
+  const blockedByRecovery = runs.some(
+    (run) => run.status === "recovery_required",
   );
+  const blockedByRun =
+    blockedByRecovery || runs.some((run) => active.has(run.status));
   const scopedRuns = runs
     .filter(
       (run) =>
@@ -1067,10 +1069,26 @@ export function PlanRuns({
                 "Ich bestätige: Zielorganisation und State-Zuordnung passen zur Landing Zone.",
               )}
             </label>
+            {blockedByRun && (
+              <p
+                id="plan-blocked-reason"
+                role="alert"
+                className="validation-box"
+              >
+                {t(
+                  blockedByRecovery
+                    ? "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden."
+                    : failures.plan_already_running,
+                )}
+              </p>
+            )}
             <p>
               <button
                 className="button primary"
                 type="button"
+                aria-describedby={
+                  blockedByRun ? "plan-blocked-reason" : undefined
+                }
                 disabled={
                   busy ||
                   !selected ||
