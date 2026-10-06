@@ -116,7 +116,14 @@ export function registerApplications(
     Partial<
       Pick<
         Applications,
-        "prepareJob" | "revokeJobGrant" | "approveJobBackend" | "dispatchJob"
+        | "prepareJob"
+        | "revokeJobGrant"
+        | "approveJobBackend"
+        | "dispatchJob"
+        | "listGroups"
+        | "createGroup"
+        | "setGroupMembers"
+        | "setTemplateGroups"
       >
     >,
 ) {
@@ -176,6 +183,44 @@ export function registerApplications(
         return applications.approvePlatformContract(session, request.body);
       },
     );
+    if (applications.listGroups)
+      routes.get("/api/v1/applications/groups", async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        return applications.listGroups?.(session);
+      });
+    if (applications.createGroup)
+      routes.post(
+        "/api/v1/applications/groups",
+        { bodyLimit: 1024 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return applications.createGroup?.(session, request.body);
+        },
+      );
+    if (applications.setGroupMembers)
+      routes.post(
+        "/api/v1/applications/groups/:id/members",
+        { bodyLimit: 16384 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.object({ id: z.uuid() }).parse(request.params);
+          return applications.setGroupMembers?.(session, id, request.body);
+        },
+      );
+    if (applications.setTemplateGroups)
+      routes.post(
+        "/api/v1/applications/templates/:id/groups",
+        { bodyLimit: 8192 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.object({ id: z.uuid() }).parse(request.params);
+          return applications.setTemplateGroups?.(session, id, request.body);
+        },
+      );
     routes.get("/api/v1/applications/templates", async (request, reply) => {
       const session = sessions.get(request);
       if (!session) return reply.code(401).send();
@@ -183,6 +228,9 @@ export function registerApplications(
         versions: await applications.listTemplates(session),
         retirementEnabled: true,
         deploymentPolicyEnabled: true,
+        ...(applications.listGroups && applications.setTemplateGroups
+          ? { groupAccessEnabled: true }
+          : {}),
       };
     });
     routes.post("/api/v1/applications/templates", async (request, reply) => {

@@ -742,6 +742,62 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       await inviteMember(engineer, bob, ["application-owner"], false);
       await organisations.switch(bob, tenantId);
       expect((await applications.listTemplates(owner)).length).toBe(2);
+      const groups = await applications.listGroups(engineer);
+      const defaultGroup = groups.groups.find((group) => group.isDefault);
+      expect(defaultGroup?.memberIds).toContain(owner.userId);
+      const restrictedGroup = await applications.createGroup(engineer, {
+        name: "Research applications",
+      });
+      await applications.setTemplateGroups(engineer, published.id, {
+        groupIds: [restrictedGroup.id],
+        confirmAccessChange: true,
+      });
+      expect(
+        (await applications.listTemplates(owner)).some(
+          (item) => item.id === published.id,
+        ),
+      ).toBe(false);
+      await expect(
+        applications.order(owner, { ...request, idempotencyKey: randomUUID() }),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        applications.createGroup(owner, { name: "Escalation" }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.setGroupMembers(engineer, restrictedGroup.id, {
+          memberIds: [randomUUID()],
+          confirmMembershipChange: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      if (!defaultGroup) throw new Error("Default group missing");
+      await expect(
+        applications.setGroupMembers(engineer, defaultGroup.id, {
+          memberIds: [],
+          confirmMembershipChange: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await applications.setGroupMembers(engineer, restrictedGroup.id, {
+        memberIds: [owner.userId],
+        confirmMembershipChange: true,
+      });
+      expect(
+        (await applications.listTemplates(owner)).find(
+          (item) => item.id === published.id,
+        )?.allowedGroupIds,
+      ).toEqual([restrictedGroup.id]);
+      await applications.setGroupMembers(engineer, restrictedGroup.id, {
+        memberIds: [],
+        confirmMembershipChange: true,
+      });
+      expect(
+        (await applications.listTemplates(owner)).some(
+          (item) => item.id === published.id,
+        ),
+      ).toBe(false);
+      await applications.setGroupMembers(engineer, restrictedGroup.id, {
+        memberIds: [owner.userId],
+        confirmMembershipChange: true,
+      });
       await expect(
         applications.publish(owner, { template }),
       ).rejects.toMatchObject({ code: "42501" });
@@ -1729,8 +1785,84 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         );
         return prepared;
       };
+      const originalCliGroups =
+        (await applications.listTemplates(engineer)).find(
+          (version) => version.id === cliOrder.versionId,
+        )?.allowedGroupIds ?? [];
+      const jobGroup = await applications.createGroup(engineer, {
+        name: "Restricted runner access",
+      });
+      await applications.setGroupMembers(engineer, jobGroup.id, {
+        memberIds: [owner.userId],
+        confirmMembershipChange: true,
+      });
+      await applications.setTemplateGroups(engineer, cliOrder.versionId, {
+        groupIds: [jobGroup.id],
+        confirmAccessChange: true,
+      });
+      try {
+        const deniedGroupJob = await releaseJob();
+        await applications.setGroupMembers(engineer, jobGroup.id, {
+          memberIds: [],
+          confirmMembershipChange: true,
+        });
+        technical.verifyForPreparation.mockClear();
+        applicationSecrets.get.mockClear();
+        await expect(
+          withTenant(pool, engineer, (client) =>
+            client.query(
+              "SELECT * FROM lzc_auth.claim_application_job_grant($1,$2)",
+              [engineer.id, deniedGroupJob.id],
+            ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        expect(
+          (
+            await migration.query(
+              "SELECT job_id FROM lzc.application_job_claims WHERE job_id=$1",
+              [deniedGroupJob.id],
+            )
+          ).rows,
+        ).toHaveLength(0);
+        expect(technical.verifyForPreparation).not.toHaveBeenCalled();
+        expect(applicationSecrets.get).not.toHaveBeenCalled();
+        await applications.setGroupMembers(engineer, jobGroup.id, {
+          memberIds: [owner.userId],
+          confirmMembershipChange: true,
+        });
+        const groupInterruptedJob = await releaseJob();
+        applicationSecrets.get.mockImplementationOnce(async () => {
+          await applications.setGroupMembers(engineer, jobGroup.id, {
+            memberIds: [],
+            confirmMembershipChange: true,
+          });
+          return applicationSecret;
+        });
+        await expect(
+          applications.releaseJobCredential(
+            engineer,
+            groupInterruptedJob.id,
+            cliRevision,
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        expect(applicationSecrets.get).toHaveBeenCalledTimes(1);
+        expect(
+          (
+            await migration.query(
+              "SELECT job_id FROM lzc.application_job_claims WHERE job_id=$1",
+              [groupInterruptedJob.id],
+            )
+          ).rows,
+        ).toHaveLength(1);
+      } finally {
+        await applications.setTemplateGroups(engineer, cliOrder.versionId, {
+          groupIds: originalCliGroups,
+          confirmAccessChange: true,
+        });
+      }
       const releasedJob = await releaseJob();
       technical.verifyForPreparation.mockClear();
+      applicationSecrets.get.mockClear();
       applicationSecrets.get.mockImplementationOnce(async () => {
         expect(
           (
@@ -1955,6 +2087,59 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
           [engineer.id, actualPeExpiry],
         );
+      }
+      const groupTicketJob = await releaseJob();
+      const groupTicket = await applications.issueRunnerTicket(
+        engineer,
+        groupTicketJob.id,
+        ticketPackage,
+      );
+      const groupTicketHash = (
+        await migration.query<{ ticket_hash: string }>(
+          "SELECT ticket_hash FROM lzc.application_runner_tickets WHERE job_id=$1",
+          [groupTicketJob.id],
+        )
+      ).rows[0]?.ticket_hash;
+      await applications.setTemplateGroups(engineer, cliOrder.versionId, {
+        groupIds: [],
+        confirmAccessChange: true,
+      });
+      applicationBackends.runner.mockClear();
+      applicationSecrets.get.mockClear();
+      try {
+        await expect(
+          applications.runnerInput(groupTicket.ticket, ticketPackage),
+        ).rejects.toMatchObject({ status: 401 });
+        await expect(
+          withTenant(pool, engineer, (client) =>
+            client.query(
+              "SELECT lzc_auth.consume_application_runner_ticket($1,$2,$3,$4,$5,$6)",
+              [
+                engineer.id,
+                groupTicketJob.id,
+                groupTicketHash,
+                ticketPackage.runnerPackageId,
+                ticketPackage.acceleratorRevision,
+                ticketPackage.providerLockSha256,
+              ],
+            ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        expect(
+          (
+            await migration.query(
+              "SELECT consumed_at FROM lzc.application_runner_tickets WHERE job_id=$1",
+              [groupTicketJob.id],
+            )
+          ).rows[0]?.consumed_at,
+        ).toBeNull();
+        expect(applicationBackends.runner).not.toHaveBeenCalled();
+        expect(applicationSecrets.get).not.toHaveBeenCalled();
+      } finally {
+        await applications.setTemplateGroups(engineer, cliOrder.versionId, {
+          groupIds: originalCliGroups,
+          confirmAccessChange: true,
+        });
       }
       const inputJob = await releaseJob();
       const inputTicket = await applications.issueRunnerTicket(

@@ -192,6 +192,17 @@ for (const publishing of [true, false]) {
     const instanceId = "66666666-6666-4666-8666-666666666666";
     const platformRevision = "77777777-7777-4777-8777-777777777777";
     const credentialProfileId = "99999999-9999-4999-8999-999999999999";
+    const defaultGroupId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const customGroupId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const applicationOwnerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const groups = [
+      {
+        id: defaultGroupId,
+        name: "Application Owners",
+        isDefault: true,
+        memberIds: [publishing ? applicationOwnerId : userId],
+      },
+    ];
     const approvedContract = {
       document: {
         schema_version: 1,
@@ -244,6 +255,7 @@ for (const publishing of [true, false]) {
       publishedBy: userId,
       publishedAt: "2026-10-02T00:00:00.000Z",
       acceleratorRevision: "a".repeat(40),
+      allowedGroupIds: [defaultGroupId],
       platformRevision,
       targetKey: "public",
       template: publishing
@@ -306,6 +318,7 @@ for (const publishing of [true, false]) {
             name: "Pilot",
             kind: "organisation",
             roles: [publishing ? "platform-engineer" : "application-owner"],
+            manageMembers: publishing,
           },
           csrfToken: "test-csrf",
           expiresAt: new Date(Date.now() + 3600000).toISOString(),
@@ -319,6 +332,22 @@ for (const publishing of [true, false]) {
       const platforms = new URL(request.url()).pathname.endsWith(
         "/platform-contracts",
       );
+      const pathname = new URL(request.url()).pathname;
+      if (request.method() === "GET" && pathname.endsWith("/groups"))
+        return route.fulfill({
+          json: {
+            groups,
+            members: publishing
+              ? [
+                  {
+                    userId: applicationOwnerId,
+                    login: "application-owner",
+                    roles: ["application-owner"],
+                  },
+                ]
+              : [],
+          },
+        });
       if (request.method() === "GET")
         return route.fulfill({
           json: platforms
@@ -328,11 +357,55 @@ for (const publishing of [true, false]) {
                   versions,
                   retirementEnabled: true,
                   deploymentPolicyEnabled: true,
+                  groupAccessEnabled: true,
                 }
               : { instances },
         });
       expect(request.headers()["x-lzc-csrf"]).toBe("test-csrf");
       const body = request.postDataJSON();
+      if (pathname === "/api/v1/applications/groups") {
+        expect(publishing).toBe(true);
+        expect(body).toEqual({ name: "Research applications" });
+        groups.push({
+          id: customGroupId,
+          name: body.name,
+          isDefault: false,
+          memberIds: [],
+        });
+        return route.fulfill({ json: { id: customGroupId } });
+      }
+      if (pathname.endsWith("/members")) {
+        expect(publishing).toBe(true);
+        expect(pathname).toBe(
+          `/api/v1/applications/groups/${customGroupId}/members`,
+        );
+        expect(body).toEqual({
+          memberIds: [applicationOwnerId],
+          confirmMembershipChange: true,
+        });
+        const group = groups.find((item) => item.id === customGroupId);
+        if (!group) throw new Error("Expected new group");
+        group.memberIds = body.memberIds;
+        return route.fulfill({ json: { id: customGroupId } });
+      }
+      if (pathname.endsWith("/groups")) {
+        expect(publishing).toBe(true);
+        expect(pathname).toBe(
+          `/api/v1/applications/templates/${versionId}/groups`,
+        );
+        expect(body).toEqual({
+          groupIds: [customGroupId],
+          confirmAccessChange: true,
+        });
+        const index = versions.findIndex(
+          (item) => publishedProjectTemplateSchema.parse(item).id === versionId,
+        );
+        versions[index] = {
+          ...publishedProjectTemplateSchema.parse(versions[index]),
+          allowedGroupIds: body.groupIds,
+        };
+        return route.fulfill({ json: { id: versionId } });
+      }
       if (new URL(request.url()).pathname.endsWith("/retire")) {
         expect(publishing).toBe(true);
         expect(body).toEqual({ confirmRetirement: true });
@@ -402,17 +475,20 @@ for (const publishing of [true, false]) {
         expect(Object.keys(body)).toEqual([
           "template",
           "deploymentPolicy",
+          "allowedGroupIds",
           ...(body.platformRevision ? ["platformRevision", "targetKey"] : []),
         ]);
         if (body.platformRevision)
           expect(body).toMatchObject({ platformRevision, targetKey: "public" });
         expect(body.template.settings.network_enabled).toBe(true);
+        expect(body.allowedGroupIds).toEqual([defaultGroupId]);
         expect(body.deploymentPolicy).toBe(
           versions.length ? "direct" : "approval-required",
         );
         const published = {
           ...initialVersion,
           deploymentPolicy: body.deploymentPolicy,
+          allowedGroupIds: body.allowedGroupIds,
           id: versions.length ? nextVersionId : versionId,
           version: versions.length + 1,
           templateId: body.template.id,
@@ -595,7 +671,9 @@ for (const publishing of [true, false]) {
       await expect(
         page.getByRole("button", { name: /, Version 2,.*Stillgelegt/ }),
       ).toBeVisible();
-      await expect(page.locator("main form")).toHaveCount(0);
+      await expect(page.getByLabel("Projektname", { exact: true })).toHaveCount(
+        0,
+      );
       await page.screenshot({
         path: testInfo.outputPath("application-retired.png"),
         fullPage: true,
@@ -616,6 +694,12 @@ for (const publishing of [true, false]) {
       ]);
     } else {
       await expect(page).toHaveURL(/\/applications$/);
+      await expect(
+        page.getByRole("heading", { name: "Application-Gruppen", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Freigaben speichern", exact: true }),
+      ).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: "Konfigurationen", exact: true }),
       ).toHaveCount(0);
@@ -644,6 +728,90 @@ for (const publishing of [true, false]) {
         exact: true,
       }),
     ).toHaveAttribute("aria-pressed", "true");
+    if (publishing) {
+      const membership = page.getByRole("group", {
+        name: "Application Owner",
+        exact: true,
+      });
+      await page
+        .getByLabel("Gruppe", { exact: true })
+        .selectOption(defaultGroupId);
+      await expect(
+        membership.getByLabel("application-owner", { exact: true }),
+      ).toBeChecked();
+      await expect(
+        membership.getByLabel("application-owner", { exact: true }),
+      ).toBeDisabled();
+      await page
+        .getByLabel("Gruppenname", { exact: true })
+        .fill("Research applications");
+      await page
+        .getByRole("button", { name: "Gruppe anlegen", exact: true })
+        .click();
+      await expect(page.getByRole("status")).toContainText(
+        "Gruppenänderung gespeichert.",
+      );
+      await expect(page.getByLabel("Gruppe", { exact: true })).toHaveValue(
+        customGroupId,
+      );
+      await membership.getByLabel("application-owner", { exact: true }).check();
+      await expect(
+        page.getByRole("button", {
+          name: "Mitgliedschaften speichern",
+          exact: true,
+        }),
+      ).toBeDisabled();
+      await page
+        .getByLabel("Gruppenmitgliedschaften geprüft", { exact: true })
+        .check();
+      await page
+        .getByRole("button", {
+          name: "Mitgliedschaften speichern",
+          exact: true,
+        })
+        .click();
+      await expect(
+        page.getByRole("button", {
+          name: "Mitgliedschaften speichern",
+          exact: true,
+        }),
+      ).toBeDisabled();
+      const access = page.getByRole("group", {
+        name: "Freigaben dieser Template-Version",
+        exact: true,
+      });
+      const immutableVersion = publishedProjectTemplateSchema.parse(
+        versions[0],
+      );
+      await access.getByLabel("Application Owners", { exact: true }).uncheck();
+      await access.getByLabel("Research applications", { exact: true }).check();
+      await expect(
+        access.getByRole("button", {
+          name: "Freigaben speichern",
+          exact: true,
+        }),
+      ).toBeDisabled();
+      await access
+        .getByLabel("Template-Freigaben geprüft", { exact: true })
+        .check();
+      await access
+        .getByRole("button", { name: "Freigaben speichern", exact: true })
+        .click();
+      await expect(
+        access.getByRole("button", {
+          name: "Freigaben speichern",
+          exact: true,
+        }),
+      ).toBeDisabled();
+      expect(publishedProjectTemplateSchema.parse(versions[0])).toEqual({
+        ...immutableVersion,
+        allowedGroupIds: [customGroupId],
+      });
+      await page.screenshot({
+        path: testInfo.outputPath("application-groups.png"),
+        fullPage: true,
+      });
+    }
     await expect(
       page.getByText("Lokal, ohne SNA", { exact: true }),
     ).toBeVisible();

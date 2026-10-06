@@ -62,6 +62,7 @@ type VersionRow = {
   document: unknown;
   platform_revision: string | null;
   target_key: string | null;
+  allowed_group_ids?: string[];
 };
 
 type ContractRow = {
@@ -102,6 +103,9 @@ function version(row: VersionRow): PublishedProjectTemplate {
     publishedBy: row.published_by,
     publishedAt: row.published_at.toISOString(),
     deploymentPolicy: row.deployment_policy,
+    ...(row.allowed_group_ids
+      ? { allowedGroupIds: row.allowed_group_ids }
+      : {}),
     ...(row.retired_at ? { retiredAt: row.retired_at.toISOString() } : {}),
     acceleratorRevision: row.accelerator_revision,
     platformRevision: row.platform_revision,
@@ -158,7 +162,7 @@ export class Applications {
   listTemplates(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<VersionRow>(
-        "SELECT v.*,r.retired_at FROM lzc.application_template_versions v LEFT JOIN lzc.application_template_retirements r ON r.tenant_id=v.tenant_id AND r.version_id=v.id WHERE r.version_id IS NULL OR lzc.application_role('platform-engineer') ORDER BY v.published_at DESC,v.id DESC LIMIT 200",
+        "SELECT v.*,r.retired_at,ARRAY(SELECT access.group_id FROM lzc.application_template_groups access WHERE access.tenant_id=v.tenant_id AND access.version_id=v.id ORDER BY access.group_id) AS allowed_group_ids FROM lzc.application_template_versions v LEFT JOIN lzc.application_template_retirements r ON r.tenant_id=v.tenant_id AND r.version_id=v.id WHERE r.version_id IS NULL OR lzc.application_role('platform-engineer') ORDER BY v.published_at DESC,v.id DESC LIMIT 200",
       );
       return result.rows.map(version);
     });
@@ -172,6 +176,111 @@ export class Applications {
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
       `application-availability:${session.tenantId}:${versionId}`,
     ]);
+  }
+
+  listGroups(session: Session) {
+    return this.work(session, "read", async (client) => {
+      const groups = await client.query<{
+        id: string;
+        name: string;
+        is_default: boolean;
+        member_ids: string[];
+      }>(
+        "SELECT groups.id,groups.name,groups.is_default,ARRAY(SELECT member.user_id FROM lzc.application_group_members member WHERE member.tenant_id=groups.tenant_id AND member.group_id=groups.id ORDER BY member.user_id) AS member_ids FROM lzc.application_groups groups ORDER BY groups.is_default DESC,groups.name,groups.id LIMIT 100",
+      );
+      const overview = (
+        await client.query<{
+          overview: {
+            members: { userId: string; login: string; roles: string[] }[];
+          };
+        }>("SELECT lzc_auth.organisation_overview($1) AS overview", [
+          session.id,
+        ])
+      ).rows[0]?.overview;
+      return {
+        groups: groups.rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          isDefault: row.is_default,
+          memberIds: row.member_ids,
+        })),
+        members: (overview?.members ?? []).filter((member) =>
+          member.roles.includes("application-owner"),
+        ),
+      };
+    });
+  }
+
+  createGroup(session: Session, input: unknown) {
+    const request = z
+      .strictObject({ name: z.string().trim().min(1).max(80) })
+      .parse(input);
+    return this.work(session, "publish", async (client) => {
+      const row = (
+        await client.query<{ id: string }>(
+          "SELECT lzc_auth.create_application_group($1,$2,$3) AS id",
+          [session.id, session.tenantId, request.name],
+        )
+      ).rows[0];
+      if (!row)
+        throw new ApplicationError(503, "application_group_creation_failed");
+      return { id: row.id };
+    });
+  }
+
+  setGroupMembers(session: Session, groupId: string, input: unknown) {
+    z.uuid().parse(groupId);
+    const request = z
+      .strictObject({
+        memberIds: z.array(z.uuid()).max(200),
+        confirmMembershipChange: z.literal(true),
+      })
+      .parse(input);
+    return this.work(session, "publish", async (client) => {
+      await client.query(
+        "SELECT lzc_auth.set_application_group_members($1,$2,$3,$4)",
+        [session.id, session.tenantId, groupId, request.memberIds],
+      );
+      return { id: groupId };
+    });
+  }
+
+  setTemplateGroups(session: Session, versionId: string, input: unknown) {
+    z.uuid().parse(versionId);
+    const request = z
+      .strictObject({
+        groupIds: z.array(z.uuid()).max(100),
+        confirmAccessChange: z.literal(true),
+      })
+      .parse(input);
+    return this.work(session, "publish", async (client) => {
+      await client.query(
+        "SELECT lzc_auth.set_application_template_groups($1,$2,$3,$4)",
+        [session.id, session.tenantId, versionId, request.groupIds],
+      );
+      return { id: versionId };
+    });
+  }
+
+  private async publicationAccess(
+    client: pg.PoolClient,
+    session: Session,
+    row: VersionRow,
+    groupIds?: string[],
+  ) {
+    if (groupIds !== undefined)
+      await client.query(
+        "SELECT lzc_auth.set_application_template_groups($1,$2,$3,$4)",
+        [session.id, session.tenantId, row.id, groupIds],
+      );
+    const access = await client.query<{ group_id: string }>(
+      "SELECT group_id FROM lzc.application_template_groups WHERE version_id=$1 ORDER BY group_id",
+      [row.id],
+    );
+    return version({
+      ...row,
+      allowed_group_ids: access.rows.map((item) => item.group_id),
+    });
   }
 
   retire(session: Session, versionId: string, input: unknown) {
@@ -347,7 +456,13 @@ export class Applications {
           "SELECT 1 FROM lzc.application_template_retirements WHERE tenant_id=$1 AND version_id=$2",
           [session.tenantId, latest.rows[0].id],
         );
-        if (retired.rowCount === 0) return version(latest.rows[0]);
+        if (retired.rowCount === 0)
+          return this.publicationAccess(
+            client,
+            session,
+            latest.rows[0],
+            binding.allowedGroupIds,
+          );
       }
       const result = await client.query<VersionRow>(
         "INSERT INTO lzc.application_template_versions(tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
@@ -365,7 +480,12 @@ export class Applications {
       );
       const row = result.rows[0];
       if (!row) throw new ApplicationError(503, "publication_failed");
-      return version(row);
+      return this.publicationAccess(
+        client,
+        session,
+        row,
+        binding.allowedGroupIds,
+      );
     });
   }
 
@@ -844,6 +964,9 @@ export class Applications {
     });
     const current = () =>
       this.work(session, "publish", async (client) => {
+        await client.query("SELECT lzc_auth.assert_application_job_group($1)", [
+          jobId,
+        ]);
         const row = (
           await client.query<{ context: unknown }>(
             "SELECT lzc_auth.application_runner_input_context($1,$2) AS context",
@@ -1089,6 +1212,9 @@ export class Applications {
     });
     const current = () =>
       this.work(session, "publish", async (client) => {
+        await client.query("SELECT lzc_auth.assert_application_job_group($1)", [
+          jobId,
+        ]);
         const row = (
           await client.query<{ context: unknown }>(
             "SELECT lzc_auth.application_job_credential_context($1,$2) AS context",

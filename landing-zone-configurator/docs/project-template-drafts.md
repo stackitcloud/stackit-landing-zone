@@ -78,7 +78,7 @@ kein Import bestehender Ressourcen und keine Anweisung, die Plattform parallel
 neu auszurollen. Bereits bestehende Ressourcen benötigen den separat geplanten
 Migrations-/State-Lebenszyklus.
 
-## Aktueller Katalogstand (2026-10-05)
+## Aktueller Katalogstand (2026-10-06)
 
 Tenantgebundene Veroeffentlichung, unveraenderliche Versionen, freigegebene
 Anwendereingaben und forklose Application-Owner-Bestellungen sind implementiert.
@@ -95,9 +95,39 @@ und Stilllegung verwenden dieselbe transaktionale Sperre. Erneutes Publizieren
 stillgelegter Inhalte erzeugt eine neue Version statt die alte wiederzubeleben.
 
 Die zweisprachige Publisher-Oberflaeche nutzt explizite API-Capabilities. Die
-Migrationen 021/022 sind lokal getestet, aber noch nicht in der laufenden
-Kunden-API aktiviert. `direct` aktiviert weder Cloud-Ausfuehrung noch einen
+laufende Kunden-API verwendet Migrationen bis 034. Gruppenfreigaben aus
+Migration 035 sind auf einer isolierten Testdatenbank qualifiziert, aber noch
+nicht in der Kunden-API aktiviert. `direct` aktiviert weder Cloud-Ausfuehrung noch einen
 automatischen Apply; eine ausdrueckliche Kunden-Apply-Freigabe bleibt erforderlich.
+
+### Gruppenfreigaben
+
+Jeder Arbeitsbereich erhaelt automatisch die Default-Gruppe `Application Owners`.
+Application Owner werden beim Beitritt oder Rollenwechsel automatisch aufgenommen;
+bei Rollenentzug werden ihre Gruppenmitgliedschaften entfernt. Die Default-Gruppe
+kann nicht manuell bearbeitet werden. Bestehende Veroeffentlichungen werden bei
+Migration 035 dieser Gruppe zugeordnet; Versionsinhalte, Quellen und Instanzen
+bleiben unveraendert.
+
+Gruppenanlage und Mitgliedschaftsaenderungen erfordern die aktuelle
+Mitgliederverwaltungsberechtigung des Arbeitsbereichs. Custom-Gruppen nehmen nur
+Application Owner desselben Arbeitsbereichs auf. Platform Engineers waehlen die
+Freigabegruppen beim Veroeffentlichen oder bestaetigen eine separate Aenderung der
+Freigaben einer vorhandenen Version. Eine leere Freigabeliste sperrt die Version
+fuer Application Owner, ohne deren Instanzen oder State zu loeschen.
+
+Gruppenfreigaben sind auditierte Nutzungsrechte, kein Bestandteil der
+unveraenderlichen Versionsinhalte. AO-Katalog und neue Bestellungen werden
+serverseitig gefiltert. Aktuelle Rechte werden auch vor Jobvorbereitung,
+Backend-Freigabe, Grant-Claim und Runner-Ticket-Verbrauch sowie vor und nach dem
+Secret-/Backend-Zugriff geprueft. Gruppenentzug waehrend eines Credential-Zugriffs
+verhindert die Rueckgabe des Secrets. AO erhalten weder Gruppenverwaltung noch
+technische Credentials. API-Mutationen erfordern Tenantbindung, Origin und CSRF.
+
+Die UI aktiviert diese Controls nur mit `groupAccessEnabled`. Tests pruefen
+Default-Mitgliedschaft, eingeschraenkte Gruppen, fremde Nutzer, direkte
+SQL-Claims/Tickets, Entzug waehrend Secret-Zugriff und Desktop-/Mobil-Bedienung.
+Dies ist noch keine Abnahme von Application-Plan/Apply, Drift oder Upgrades.
 
 ## Noch offen
 

@@ -178,7 +178,7 @@ it.each([
   },
 );
 
-function setup(dispatchEnabled = false) {
+function setup(dispatchEnabled = false, groupsEnabled = false) {
   const auth: AuthServices = {
     origin: "https://configurator.example",
     clientId: "test",
@@ -206,6 +206,20 @@ function setup(dispatchEnabled = false) {
   };
   const applications = {
     listTemplates: vi.fn(async () => []),
+    ...(groupsEnabled
+      ? {
+          listGroups: vi.fn(async () => ({ groups: [], members: [] })),
+          createGroup: vi.fn(async (_session: Session, _input: unknown) => ({
+            id: randomUUID(),
+          })),
+          setGroupMembers: vi.fn(
+            async (_session: Session, id: string, _input: unknown) => ({ id }),
+          ),
+          setTemplateGroups: vi.fn(
+            async (_session: Session, id: string, _input: unknown) => ({ id }),
+          ),
+        }
+      : {}),
     retire: vi.fn(async () => ({
       versionId: randomUUID(),
       retiredAt: new Date().toISOString(),
@@ -246,6 +260,76 @@ function setup(dispatchEnabled = false) {
   };
   return { app, service, headers, applications, auth };
 }
+
+it("protects group and template-access mutations with the current tenant, origin and CSRF", async () => {
+  const { app, headers, applications } = setup(false, true);
+  const groupId = randomUUID();
+  const versionId = randomUUID();
+  for (const operation of [
+    {
+      url: "/api/v1/applications/groups",
+      payload: { name: "Research" },
+      handler: applications.createGroup,
+    },
+    {
+      url: `/api/v1/applications/groups/${groupId}/members`,
+      payload: { memberIds: [session.userId], confirmMembershipChange: true },
+      handler: applications.setGroupMembers,
+    },
+    {
+      url: `/api/v1/applications/templates/${versionId}/groups`,
+      payload: { groupIds: [groupId], confirmAccessChange: true },
+      handler: applications.setTemplateGroups,
+    },
+  ]) {
+    for (const rejected of [
+      { ...headers, "x-lzc-tenant": randomUUID() },
+      { ...headers, "x-lzc-csrf": "" },
+      { ...headers, origin: "https://untrusted.example" },
+    ])
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: operation.url,
+            headers: rejected,
+            payload: operation.payload,
+          })
+        ).statusCode,
+      ).toBe(403);
+    expect(operation.handler).not.toHaveBeenCalled();
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: operation.url,
+          headers,
+          payload: operation.payload,
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(operation.handler).toHaveBeenCalledTimes(1);
+  }
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/applications/groups/not-a-group/members",
+        headers,
+        payload: { memberIds: [], confirmMembershipChange: true },
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect(
+    (await app.inject({ url: "/api/v1/applications/groups", headers })).json(),
+  ).toEqual({ groups: [], members: [] });
+  expect(applications.listGroups).toHaveBeenCalledExactlyOnceWith(session);
+  expect(
+    (
+      await app.inject({ url: "/api/v1/applications/templates", headers })
+    ).json(),
+  ).toMatchObject({ groupAccessEnabled: true });
+});
 
 it("requires current tenant, origin, CSRF and explicit plan confirmation before application dispatch", async () => {
   const { app, headers, applications } = setup(true);

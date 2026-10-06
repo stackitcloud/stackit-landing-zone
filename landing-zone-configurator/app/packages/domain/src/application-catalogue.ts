@@ -21,6 +21,7 @@ export const applicationPublicationSchema = z
     deploymentPolicy: z
       .enum(["approval-required", "direct"])
       .default("approval-required"),
+    allowedGroupIds: z.array(z.uuid()).max(100).optional(),
     platformRevision: z.uuid().optional(),
     targetKey: z
       .string()
@@ -47,6 +48,7 @@ export const publishedProjectTemplateSchema = z.strictObject({
   publishedBy: z.uuid(),
   publishedAt: z.iso.datetime(),
   deploymentPolicy: z.enum(["approval-required", "direct"]).optional(),
+  allowedGroupIds: z.array(z.uuid()).max(100).optional(),
   retiredAt: z.iso.datetime().optional(),
   acceleratorRevision: z.string().regex(/^[0-9a-f]{40}$/),
   platformRevision: z.uuid().nullable().optional(),

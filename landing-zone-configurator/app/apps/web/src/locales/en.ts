@@ -1,4 +1,20 @@
 export const englishMessages: Record<string, string> = {
+  "Application-Gruppen": "Application groups",
+  Gruppenname: "Group name",
+  "Gruppe anlegen": "Create group",
+  Gruppe: "Group",
+  "Gruppe wählen": "Choose group",
+  "Automatisch verwaltet": "Automatically managed",
+  "Gruppenmitgliedschaften geprüft": "Group memberships reviewed",
+  "Mitgliedschaften speichern": "Save memberships",
+  "Für Gruppen freigeben": "Make available to groups",
+  "Für keine Application Owner freigegeben":
+    "Not available to any Application Owners",
+  "Freigaben dieser Template-Version": "Access to this template version",
+  "Template-Freigaben geprüft": "Template access reviewed",
+  "Freigaben speichern": "Save access",
+  "Gruppenänderung gespeichert.": "Group change saved.",
+  "Gruppenänderung fehlgeschlagen.": "Group change failed.",
   "Der S3-State stimmt nicht mit dem Bootstrap-Checkpoint überein. Die Migration bleibt gesperrt; keinen erneuten Apply starten.":
     "The S3 state does not match the bootstrap checkpoint. Migration remains blocked; do not start another Apply.",
   "Die offene Backend-Migration ist diesem Apply nicht eindeutig zugeordnet. Ein gesonderter State-Abgleich ist erforderlich.":

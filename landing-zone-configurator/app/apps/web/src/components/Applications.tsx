@@ -72,6 +72,27 @@ const approvedContractSchema = z.object({
   approvedBy: z.uuid(),
   approvedAt: z.iso.datetime(),
 });
+const applicationGroupsSchema = z.object({
+  groups: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        name: z.string(),
+        isDefault: z.boolean(),
+        memberIds: z.array(z.uuid()).max(10000),
+      }),
+    )
+    .max(100),
+  members: z
+    .array(
+      z.object({
+        userId: z.uuid(),
+        login: z.string(),
+        roles: z.array(z.string()),
+      }),
+    )
+    .max(1000),
+});
 const contractImportSchema = platformContractSchema.omit({
   tenant_id: true,
   revision: true,
@@ -143,6 +164,19 @@ export function Applications({
   const [versionId, setVersionId] = useState("");
   const [retirementEnabled, setRetirementEnabled] = useState(false);
   const [deploymentPolicyEnabled, setDeploymentPolicyEnabled] = useState(false);
+  const [groupAccessEnabled, setGroupAccessEnabled] = useState(false);
+  const [applicationGroups, setApplicationGroups] = useState<
+    z.infer<typeof applicationGroupsSchema>
+  >({ groups: [], members: [] });
+  const [groupName, setGroupName] = useState("");
+  const [groupId, setGroupId] = useState("");
+  const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
+  const [confirmGroupMembers, setConfirmGroupMembers] = useState(false);
+  const [publicationGroupIds, setPublicationGroupIds] = useState<
+    string[] | null
+  >(null);
+  const [versionGroupIds, setVersionGroupIds] = useState<string[]>([]);
+  const [confirmGroupAccess, setConfirmGroupAccess] = useState(false);
   const [deploymentPolicy, setDeploymentPolicy] =
     useState<NonNullable<PublishedProjectTemplate["deploymentPolicy"]>>(
       "approval-required",
@@ -190,11 +224,20 @@ export function Applications({
           versions: z.array(publishedProjectTemplateSchema).max(200),
           retirementEnabled: z.boolean().default(false),
           deploymentPolicyEnabled: z.boolean().default(false),
+          groupAccessEnabled: z.boolean().default(false),
         })
         .parse(catalogue);
       setVersions(published.versions);
       setRetirementEnabled(published.retirementEnabled);
       setDeploymentPolicyEnabled(published.deploymentPolicyEnabled);
+      setGroupAccessEnabled(published.groupAccessEnabled);
+      if (published.groupAccessEnabled) {
+        const access = applicationGroupsSchema.parse(
+          await request("groups", session, undefined, signal),
+        );
+        if (signal?.aborted) return;
+        setApplicationGroups(access);
+      } else setApplicationGroups({ groups: [], members: [] });
       setInstances(
         z
           .object({ instances: z.array(applicationInstanceSchema).max(200) })
@@ -264,6 +307,18 @@ export function Applications({
   const canPublish =
     session.tenant?.kind !== "organisation" ||
     session.tenant.roles?.includes("platform-engineer");
+  const canManageGroups =
+    canPublish &&
+    (session.tenant?.kind !== "organisation" ||
+      session.tenant.manageMembers === true);
+  const selectedGroup = applicationGroups.groups.find(
+    (group) => group.id === groupId,
+  );
+  const publicationAccess =
+    publicationGroupIds ??
+    applicationGroups.groups
+      .filter((group) => group.isDefault)
+      .map((group) => group.id);
   const drafts =
     canPublish && draft
       ? projectTemplates(draft).filter((item) => item.kind !== "sandbox")
@@ -302,6 +357,8 @@ export function Applications({
     setVersionId(nextVersionId);
     setConfirmRetirement(false);
     const version = versions.find((item) => item.id === nextVersionId);
+    setVersionGroupIds(version?.allowedGroupIds ?? []);
+    setConfirmGroupAccess(false);
     const defaults: Record<string, JsonValue> = {};
     for (const [path, source] of Object.entries(
       version?.template.parameterPolicy?.fields ?? {},
@@ -332,6 +389,7 @@ export function Applications({
         await request("templates", session, {
           template,
           ...(deploymentPolicyEnabled ? { deploymentPolicy } : {}),
+          ...(groupAccessEnabled ? { allowedGroupIds: publicationAccess } : {}),
           ...(platformRevision && targetKey
             ? { platformRevision, targetKey }
             : {}),
@@ -391,6 +449,38 @@ export function Applications({
         cause instanceof Error
           ? cause.message
           : "Die Template-Version konnte nicht stillgelegt werden.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeGroupAccess(
+    path: string,
+    input: Record<string, unknown>,
+  ) {
+    if (!session || busy) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = z
+        .object({ id: z.uuid() })
+        .parse(await request(path, session, input));
+      await load();
+      if (path === "groups") {
+        setGroupId(result.id);
+        setGroupName("");
+        setGroupMemberIds([]);
+      }
+      setConfirmGroupMembers(false);
+      setConfirmGroupAccess(false);
+      setNotice("Gruppenänderung gespeichert.");
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Gruppenänderung fehlgeschlagen.",
       );
     } finally {
       setBusy(false);
@@ -535,6 +625,124 @@ export function Applications({
       )}
       {!loaded && !error && (
         <p role="status">{t("Application Landing Zones werden geladen.")}</p>
+      )}
+      {groupAccessEnabled && canManageGroups && (
+        <section>
+          <h2>{t("Application-Gruppen")}</h2>
+          <form
+            className="form-grid"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void changeGroupAccess("groups", { name: groupName.trim() });
+            }}
+          >
+            <div className="field">
+              <label htmlFor="application-group-name">{t("Gruppenname")}</label>
+              <input
+                id="application-group-name"
+                value={groupName}
+                maxLength={80}
+                disabled={busy}
+                onChange={(event) => setGroupName(event.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <button
+                type="submit"
+                className="button"
+                disabled={busy || !groupName.trim()}
+              >
+                {t("Gruppe anlegen")}
+              </button>
+            </div>
+          </form>
+          <div className="field">
+            <label htmlFor="application-group-members">{t("Gruppe")}</label>
+            <select
+              id="application-group-members"
+              value={groupId}
+              disabled={busy}
+              onChange={(event) => {
+                setGroupId(event.target.value);
+                setGroupMemberIds(
+                  applicationGroups.groups.find(
+                    (group) => group.id === event.target.value,
+                  )?.memberIds ?? [],
+                );
+                setConfirmGroupMembers(false);
+              }}
+            >
+              <option value="">{t("Gruppe wählen")}</option>
+              {applicationGroups.groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                  {group.isDefault ? ` · ${t("Automatisch verwaltet")}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedGroup && (
+            <fieldset>
+              <legend>{t("Application Owner")}</legend>
+              {selectedGroup.isDefault ? (
+                <p>{t("Automatisch verwaltet")}</p>
+              ) : null}
+              {applicationGroups.members.map((member) => (
+                <label className="toggle-label" key={member.userId}>
+                  <input
+                    type="checkbox"
+                    checked={(selectedGroup.isDefault
+                      ? selectedGroup.memberIds
+                      : groupMemberIds
+                    ).includes(member.userId)}
+                    disabled={busy || selectedGroup.isDefault}
+                    onChange={(event) => {
+                      setGroupMemberIds((previous) =>
+                        event.target.checked
+                          ? [...previous, member.userId]
+                          : previous.filter((id) => id !== member.userId),
+                      );
+                      setConfirmGroupMembers(false);
+                    }}
+                  />
+                  {member.login}
+                </label>
+              ))}
+              {!selectedGroup.isDefault && (
+                <>
+                  <label className="toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={confirmGroupMembers}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setConfirmGroupMembers(event.target.checked)
+                      }
+                    />
+                    {t("Gruppenmitgliedschaften geprüft")}
+                  </label>
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={busy || !confirmGroupMembers}
+                    onClick={() =>
+                      void changeGroupAccess(
+                        `groups/${selectedGroup.id}/members`,
+                        {
+                          memberIds: groupMemberIds,
+                          confirmMembershipChange: true,
+                        },
+                      )
+                    }
+                  >
+                    {t("Mitgliedschaften speichern")}
+                  </button>
+                </>
+              )}
+            </fieldset>
+          )}
+        </section>
       )}
       {canPublish && (
         <section>
@@ -726,6 +934,35 @@ export function Applications({
                   {t("Version veröffentlichen")}
                 </button>
               </div>
+              {groupAccessEnabled && (
+                <fieldset>
+                  <legend>{t("Für Gruppen freigeben")}</legend>
+                  {applicationGroups.groups.map((group) => (
+                    <label className="toggle-label" key={group.id}>
+                      <input
+                        type="checkbox"
+                        checked={publicationAccess.includes(group.id)}
+                        disabled={busy}
+                        onChange={(event) =>
+                          setPublicationGroupIds(
+                            event.target.checked
+                              ? [...publicationAccess, group.id]
+                              : publicationAccess.filter(
+                                  (id) => id !== group.id,
+                                ),
+                          )
+                        }
+                      />
+                      {group.name}
+                    </label>
+                  ))}
+                  {!publicationAccess.length && (
+                    <p role="status">
+                      {t("Für keine Application Owner freigegeben")}
+                    </p>
+                  )}
+                </fieldset>
+              )}
             </div>
           ) : (
             <p className="muted">
@@ -810,6 +1047,58 @@ export function Applications({
                 </span>
               </button>
             ))}
+          </fieldset>
+        )}
+        {canPublish && groupAccessEnabled && selected && (
+          <fieldset>
+            <legend>{t("Freigaben dieser Template-Version")}</legend>
+            {applicationGroups.groups.map((group) => (
+              <label className="toggle-label" key={group.id}>
+                <input
+                  type="checkbox"
+                  checked={versionGroupIds.includes(group.id)}
+                  disabled={busy || Boolean(selected.retiredAt)}
+                  onChange={(event) => {
+                    setVersionGroupIds((previous) =>
+                      event.target.checked
+                        ? [...previous, group.id]
+                        : previous.filter((id) => id !== group.id),
+                    );
+                    setConfirmGroupAccess(false);
+                  }}
+                />
+                {group.name}
+              </label>
+            ))}
+            {!versionGroupIds.length && (
+              <p>{t("Für keine Application Owner freigegeben")}</p>
+            )}
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={confirmGroupAccess}
+                disabled={busy || Boolean(selected.retiredAt)}
+                onChange={(event) =>
+                  setConfirmGroupAccess(event.target.checked)
+                }
+              />
+              {t("Template-Freigaben geprüft")}
+            </label>
+            <button
+              type="button"
+              className="button"
+              disabled={
+                busy || !confirmGroupAccess || Boolean(selected.retiredAt)
+              }
+              onClick={() =>
+                void changeGroupAccess(`templates/${selected.id}/groups`, {
+                  groupIds: versionGroupIds,
+                  confirmAccessChange: true,
+                })
+              }
+            >
+              {t("Freigaben speichern")}
+            </button>
           </fieldset>
         )}
         {canPublish && retirementEnabled && selected && (
