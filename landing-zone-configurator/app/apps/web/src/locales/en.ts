@@ -1,4 +1,25 @@
 export const englishMessages: Record<string, string> = {
+  Gruppenverwaltung: "Group management",
+  Gruppenmitglieder: "Group members",
+  "Gruppe löschen": "Delete group",
+  "Gruppe gelöscht.": "Group deleted.",
+  "Diese Gruppe löschen? Ihre Mitglieder bleiben im Arbeitsbereich.":
+    "Delete this group? Its members remain in the workspace.",
+  "Dieser Gruppe sind noch Templates zugeordnet. Entferne zuerst deren Gruppenfreigaben.":
+    "Templates are still assigned to this group. Remove their group access first.",
+  "Du darfst die Gruppen dieses Arbeitsbereichs nicht verwalten.":
+    "You cannot manage groups in this workspace.",
+  "Die Sitzung wurde geändert. Lade die Seite neu.":
+    "The session changed. Reload the page.",
+  "Bitte prüfe Gruppenname und Mitglieder.":
+    "Check the group name and members.",
+  "Die Gruppenänderung konnte nicht ausgeführt werden.":
+    "The group change could not be completed.",
+  "Die Gruppenverwaltung ist derzeit nicht verfügbar.":
+    "Group management is currently unavailable.",
+  "Benutzerverwaltung wird geladen …": "Loading user management …",
+  "Erfolgreicher Plattform-Apply": "Successful platform Apply",
+  "Apply-Lauf wählen": "Choose Apply run",
   "Application-Gruppen": "Application groups",
   Gruppenname: "Group name",
   "Gruppe anlegen": "Create group",
@@ -1232,7 +1253,7 @@ export const englishMessages: Record<string, string> = {
   Mitglied: "Member",
   "Mitglied einladen": "Invite member",
   "Mitglied entfernen": "Remove member",
-  "Mitglieder & Einstellungen": "Members & settings",
+  Benutzerverwaltung: "User management",
   "Mitglieder in": "Members in",
   "Mitglieder verwalten": "Manage members",
   "Mitgliedschaft speichern": "Save membership",

@@ -206,12 +206,23 @@ export class Applications {
       const overview = (
         await client.query<{
           overview: {
-            members: { userId: string; login: string; roles: string[] }[];
+            members: {
+              userId: string;
+              login: string | null;
+              roles: string[];
+            }[];
           };
         }>("SELECT lzc_auth.organisation_overview($1) AS overview", [
           session.id,
         ])
       ).rows[0]?.overview;
+      const emails = await client.query<{ user_id: string; email: string }>(
+        "SELECT user_id,email FROM lzc_auth.application_group_member_emails($1,$2)",
+        [session.id, session.tenantId],
+      );
+      const memberEmails = new Map(
+        emails.rows.map((row) => [row.user_id, row.email]),
+      );
       return {
         groups: groups.rows.map((row) => ({
           id: row.id,
@@ -219,9 +230,10 @@ export class Applications {
           isDefault: row.is_default,
           memberIds: row.member_ids,
         })),
-        members: (overview?.members ?? []).filter((member) =>
-          member.roles.includes("application-owner"),
-        ),
+        members: (overview?.members ?? []).map((member) => ({
+          ...member,
+          email: memberEmails.get(member.userId) ?? null,
+        })),
       };
     });
   }
@@ -240,6 +252,28 @@ export class Applications {
       if (!row)
         throw new ApplicationError(503, "application_group_creation_failed");
       return { id: row.id };
+    });
+  }
+
+  deleteGroup(session: Session, groupId: string, input: unknown) {
+    z.uuid().parse(groupId);
+    z.strictObject({ confirmDeletion: z.literal(true) }).parse(input);
+    return this.work(session, "publish", async (client) => {
+      try {
+        await client.query(
+          "SELECT lzc_auth.delete_application_group($1,$2,$3)",
+          [session.id, session.tenantId, groupId],
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          "code" in error &&
+          (error.code === "55000" || error.code === "23503")
+        )
+          throw new ApplicationError(409, "application_group_in_use");
+        throw error;
+      }
+      return { id: groupId };
     });
   }
 

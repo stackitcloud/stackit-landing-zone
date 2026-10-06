@@ -117,6 +117,85 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL session and tenant boundaries", () => {
+  it("persists bounded large organization proofs without changing the complete owner comparison", async () => {
+    const proof = {
+      issuer: "https://accounts.stackit.cloud",
+      subject: randomUUID(),
+      email: "large-proof@example.test",
+      emailVerified: true as const,
+      verificationMethod: "signed-id-token-and-userinfo" as const,
+      tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+      organization: null,
+    };
+    const loginSession = await store.createStackitSession({
+      identity: proof,
+      id: randomUUID(),
+      hash: newSessionToken().hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 300000),
+    });
+    const permissions = Array.from(
+      { length: 965 },
+      (_, index) =>
+        `organization.permission.${String.fromCharCode(97 + Math.floor(index / 676), 97 + (Math.floor(index / 26) % 26), 97 + (index % 26))}`,
+    );
+    const identities = new StackitIdentities(pool);
+    const organization = {
+      id: randomUUID(),
+      name: "Large official proof",
+      permissions,
+      ownerPermissions: permissions,
+    };
+    const organisations = new PostgresOrganisations(pool);
+    const tenantId = await organisations.create(
+      loginSession,
+      organization.name,
+      organization.id,
+    );
+    await organisations.switch(loginSession, tenantId);
+    const session = { ...loginSession, tenantId };
+    await identities.save(session, { ...proof, organization });
+    const verified = await identities.status(session);
+    expect(verified.organizationAdminVerified).toBe(true);
+    expect(verified.identity?.organization?.permissions).toHaveLength(965);
+    await identities.save(session, {
+      ...proof,
+      organization: { ...organization, permissions: permissions.slice(1) },
+    });
+    expect((await identities.status(session)).organizationAdminVerified).toBe(
+      false,
+    );
+    await expect(
+      identities.save(session, {
+        ...proof,
+        organization: {
+          ...organization,
+          permissions: Array(4097).fill("organization.read"),
+        },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      withTenant(pool, session, (client) =>
+        client.query(
+          "UPDATE lzc.stackit_organization_access SET permissions=$1 WHERE tenant_id=$2 AND user_id=$3",
+          [
+            Array(4097).fill("organization.read"),
+            session.tenantId,
+            session.userId,
+          ],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+    await expect(
+      withTenant(pool, session, (client) =>
+        client.query(
+          "UPDATE lzc.stackit_organization_access SET owner_permissions=$1 WHERE tenant_id=$2 AND user_id=$3",
+          [[null], session.tenantId, session.userId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+  });
+
   it("persists configurations across service restarts with owner isolation and revision conflicts", async () => {
     const template = catalogue.templates.find(
       (item) => item.id === "standalone",
@@ -745,6 +824,57 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       const groups = await applications.listGroups(engineer);
       const defaultGroup = groups.groups.find((group) => group.isDefault);
       expect(defaultGroup?.memberIds).toContain(owner.userId);
+      const groupMemberIdentity = (
+        await new StackitIdentities(pool).status(owner)
+      ).identity;
+      if (!groupMemberIdentity) throw new Error("Expected member identity");
+      await new StackitIdentities(pool).save(owner, {
+        ...groupMemberIdentity,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      await migration.query(
+        "UPDATE lzc_auth.users SET github_login=NULL WHERE id=$1",
+        [owner.userId],
+      );
+      try {
+        const stackitGroups = await applications.listGroups(engineer);
+        expect(
+          stackitGroups.members.find(
+            (member) => member.userId === owner.userId,
+          ),
+        ).toMatchObject({ login: null, email: groupMemberIdentity.email });
+        for (const [lookupSession, lookupTenant] of [
+          [owner.id, tenantId],
+          [engineer.id, randomUUID()],
+        ]) {
+          expect(
+            (
+              await withTenant(pool, engineer, (client) =>
+                client.query(
+                  "SELECT * FROM lzc_auth.application_group_member_emails($1,$2)",
+                  [lookupSession, lookupTenant],
+                ),
+              )
+            ).rows,
+          ).toEqual([]);
+        }
+        expect(
+          (
+            await withTenant(pool, owner, (client) =>
+              client.query(
+                "SELECT * FROM lzc_auth.application_group_member_emails($1,$2)",
+                [owner.id, tenantId],
+              ),
+            )
+          ).rows,
+        ).toEqual([]);
+      } finally {
+        await migration.query(
+          "UPDATE lzc_auth.users SET github_login=$2 WHERE id=$1",
+          [owner.userId, owner.login],
+        );
+      }
       const restrictedGroup = await applications.createGroup(engineer, {
         name: "Research applications",
       });
@@ -770,6 +900,63 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         }),
       ).rejects.toMatchObject({ code: "42501" });
       if (!defaultGroup) throw new Error("Default group missing");
+      await expect(
+        applications.deleteGroup(engineer, defaultGroup.id, {
+          confirmDeletion: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.deleteGroup(owner, restrictedGroup.id, {
+          confirmDeletion: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.deleteGroup(engineer, restrictedGroup.id, {
+          confirmDeletion: true,
+        }),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_group_in_use",
+      });
+      const removableGroup = await applications.createGroup(engineer, {
+        name: "Temporary team",
+      });
+      expect(() =>
+        applications.deleteGroup(engineer, removableGroup.id, {
+          confirmDeletion: false,
+        }),
+      ).toThrow();
+      await expect(
+        applications.deleteGroup(bob, removableGroup.id, {
+          confirmDeletion: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await applications.setGroupMembers(engineer, removableGroup.id, {
+        memberIds: [owner.userId, engineer.userId],
+        confirmMembershipChange: true,
+      });
+      await migration.query(
+        "UPDATE lzc.memberships SET product_roles=product_roles WHERE tenant_id=$1 AND user_id=$2",
+        [tenantId, engineer.userId],
+      );
+      expect(
+        (await applications.listGroups(engineer)).groups.find(
+          (group) => group.id === removableGroup.id,
+        )?.memberIds,
+      ).toEqual([owner.userId, engineer.userId].sort());
+      await applications.deleteGroup(engineer, removableGroup.id, {
+        confirmDeletion: true,
+      });
+      expect(
+        (await applications.listGroups(engineer)).groups.some(
+          (group) => group.id === removableGroup.id,
+        ),
+      ).toBe(false);
+      expect(
+        (await new PostgresOrganisations(pool).overview(engineer)).members.some(
+          (member) => member.userId === owner.userId,
+        ),
+      ).toBe(true);
       await expect(
         applications.setGroupMembers(engineer, defaultGroup.id, {
           memberIds: [],

@@ -23,6 +23,7 @@ import {
   t,
 } from "../i18n";
 import type { Session } from "./Account";
+import { applicationGroupsSchema } from "./ApplicationGroups";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
@@ -77,27 +78,6 @@ const approvedContractSchema = z.object({
   approvedBy: z.uuid(),
   approvedAt: z.iso.datetime(),
 });
-const applicationGroupsSchema = z.object({
-  groups: z
-    .array(
-      z.object({
-        id: z.uuid(),
-        name: z.string(),
-        isDefault: z.boolean(),
-        memberIds: z.array(z.uuid()).max(10000),
-      }),
-    )
-    .max(100),
-  members: z
-    .array(
-      z.object({
-        userId: z.uuid(),
-        login: z.string(),
-        roles: z.array(z.string()),
-      }),
-    )
-    .max(1000),
-});
 const appliedPlatformsSchema = z.object({
   platforms: z
     .array(
@@ -107,6 +87,7 @@ const appliedPlatformsSchema = z.object({
         stateVersion: z.string().regex(/^[1-9][0-9]*$/),
         organizationId: z.uuid(),
         finishedAt: z.iso.datetime(),
+        configurationName: z.string().min(1).max(256).default("Plattform"),
       }),
     )
     .max(100),
@@ -190,10 +171,6 @@ export function Applications({
   const [applicationGroups, setApplicationGroups] = useState<
     z.infer<typeof applicationGroupsSchema>
   >({ groups: [], members: [] });
-  const [groupName, setGroupName] = useState("");
-  const [groupId, setGroupId] = useState("");
-  const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
-  const [confirmGroupMembers, setConfirmGroupMembers] = useState(false);
   const [publicationGroupIds, setPublicationGroupIds] = useState<
     string[] | null
   >(null);
@@ -356,10 +333,6 @@ export function Applications({
   const visibleCandidate = appliedPlatformsEnabled
     ? currentPreview?.document
     : contractCandidate;
-  const canManageGroups =
-    canPublish &&
-    (session.tenant?.kind !== "organisation" ||
-      session.tenant.manageMembers === true);
   const tabs = [
     { id: "catalogue", label: "Katalog" },
     { id: "orders", label: "Bestellungen" },
@@ -369,18 +342,12 @@ export function Applications({
           { id: "platform", label: "Plattformanbindung" },
         ]
       : []),
-    ...(groupAccessEnabled && canManageGroups
-      ? [{ id: "groups", label: "Gruppen" }]
-      : []),
   ];
   const selectedTab = tabs.some((tab) => tab.id === activeTab)
     ? activeTab
     : canPublish
       ? "publish"
       : "catalogue";
-  const selectedGroup = applicationGroups.groups.find(
-    (group) => group.id === groupId,
-  );
   const publicationAccess =
     publicationGroupIds ??
     applicationGroups.groups
@@ -532,16 +499,8 @@ export function Applications({
     setError("");
     setNotice("");
     try {
-      const result = z
-        .object({ id: z.uuid() })
-        .parse(await request(path, session, input));
+      z.object({ id: z.uuid() }).parse(await request(path, session, input));
       await load();
-      if (path === "groups") {
-        setGroupId(result.id);
-        setGroupName("");
-        setGroupMemberIds([]);
-      }
-      setConfirmGroupMembers(false);
       setConfirmGroupAccess(false);
       setNotice("Gruppenänderung gespeichert.");
     } catch (cause) {
@@ -763,129 +722,6 @@ export function Applications({
       {!loaded && !error && (
         <p role="status">{t("Application Landing Zones werden geladen.")}</p>
       )}
-      {groupAccessEnabled && canManageGroups && (
-        <section
-          id="application-panel-groups"
-          role="tabpanel"
-          aria-labelledby="application-tab-groups"
-          hidden={selectedTab !== "groups"}
-        >
-          <h2>{t("Application-Gruppen")}</h2>
-          <form
-            className="form-grid"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void changeGroupAccess("groups", { name: groupName.trim() });
-            }}
-          >
-            <div className="field">
-              <label htmlFor="application-group-name">{t("Gruppenname")}</label>
-              <input
-                id="application-group-name"
-                value={groupName}
-                maxLength={80}
-                disabled={busy}
-                onChange={(event) => setGroupName(event.target.value)}
-                required
-              />
-            </div>
-            <div className="field">
-              <button
-                type="submit"
-                className="button"
-                disabled={busy || !groupName.trim()}
-              >
-                {t("Gruppe anlegen")}
-              </button>
-            </div>
-          </form>
-          <div className="field">
-            <label htmlFor="application-group-members">{t("Gruppe")}</label>
-            <select
-              id="application-group-members"
-              value={groupId}
-              disabled={busy}
-              onChange={(event) => {
-                setGroupId(event.target.value);
-                setGroupMemberIds(
-                  applicationGroups.groups.find(
-                    (group) => group.id === event.target.value,
-                  )?.memberIds ?? [],
-                );
-                setConfirmGroupMembers(false);
-              }}
-            >
-              <option value="">{t("Gruppe wählen")}</option>
-              {applicationGroups.groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                  {group.isDefault ? ` · ${t("Automatisch verwaltet")}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          {selectedGroup && (
-            <fieldset>
-              <legend>{t("Application Owner")}</legend>
-              {selectedGroup.isDefault ? (
-                <p>{t("Automatisch verwaltet")}</p>
-              ) : null}
-              {applicationGroups.members.map((member) => (
-                <label className="toggle-label" key={member.userId}>
-                  <input
-                    type="checkbox"
-                    checked={(selectedGroup.isDefault
-                      ? selectedGroup.memberIds
-                      : groupMemberIds
-                    ).includes(member.userId)}
-                    disabled={busy || selectedGroup.isDefault}
-                    onChange={(event) => {
-                      setGroupMemberIds((previous) =>
-                        event.target.checked
-                          ? [...previous, member.userId]
-                          : previous.filter((id) => id !== member.userId),
-                      );
-                      setConfirmGroupMembers(false);
-                    }}
-                  />
-                  {member.login}
-                </label>
-              ))}
-              {!selectedGroup.isDefault && (
-                <>
-                  <label className="toggle-label">
-                    <input
-                      type="checkbox"
-                      checked={confirmGroupMembers}
-                      disabled={busy}
-                      onChange={(event) =>
-                        setConfirmGroupMembers(event.target.checked)
-                      }
-                    />
-                    {t("Gruppenmitgliedschaften geprüft")}
-                  </label>
-                  <button
-                    type="button"
-                    className="button"
-                    disabled={busy || !confirmGroupMembers}
-                    onClick={() =>
-                      void changeGroupAccess(
-                        `groups/${selectedGroup.id}/members`,
-                        {
-                          memberIds: groupMemberIds,
-                          confirmMembershipChange: true,
-                        },
-                      )
-                    }
-                  >
-                    {t("Mitgliedschaften speichern")}
-                  </button>
-                </>
-              )}
-            </fieldset>
-          )}
-        </section>
-      )}
       {canPublish && (
         <section
           id="application-panel-platform"
@@ -916,7 +752,7 @@ export function Applications({
             <>
               <div className="field">
                 <label htmlFor="application-applied-platform">
-                  {t("Angewendete Plattform")}
+                  {t("Erfolgreicher Plattform-Apply")}
                 </label>
                 <select
                   id="application-applied-platform"
@@ -928,10 +764,13 @@ export function Applications({
                     setConfirmApproval(false);
                   }}
                 >
-                  <option value="">{t("Plattform wählen")}</option>
+                  <option value="">{t("Apply-Lauf wählen")}</option>
                   {appliedPlatforms.map((platform) => (
                     <option key={platform.id} value={platform.id}>
-                      {platform.stateKey} · {platform.stateVersion}
+                      {platform.configurationName} · {t("Apply")}{" "}
+                      {new Date(platform.finishedAt).toLocaleString(
+                        currentLanguage(),
+                      )}
                     </option>
                   ))}
                 </select>

@@ -454,7 +454,7 @@ function App() {
               aria-current={view === "organisation" ? "page" : undefined}
               onClick={() => setView("organisation")}
             >
-              {t("Mitglieder & Einstellungen")}
+              {t("Benutzerverwaltung")}
             </button>
           </nav>
           <a
@@ -484,7 +484,7 @@ function App() {
                 : view === "applications"
                   ? t("Application Landing Zones")
                   : view === "organisation"
-                    ? t("Mitglieder & Einstellungen")
+                    ? t("Benutzerverwaltung")
                     : view === "templates"
                       ? t("Templates")
                       : view === "preview"
@@ -512,7 +512,7 @@ function App() {
                   : view === "applications"
                     ? t("Application Landing Zones")
                     : view === "organisation"
-                      ? t("Mitglieder & Einstellungen")
+                      ? t("Benutzerverwaltung")
                       : view === "templates"
                         ? t("Neue Konfiguration")
                         : view === "preview"

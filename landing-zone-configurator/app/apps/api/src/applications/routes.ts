@@ -122,6 +122,7 @@ export function registerApplications(
         | "dispatchJob"
         | "listGroups"
         | "createGroup"
+        | "deleteGroup"
         | "setGroupMembers"
         | "setTemplateGroups"
         | "appliedPlatformsEnabled"
@@ -230,6 +231,17 @@ export function registerApplications(
           const session = sessions.get(request);
           if (!session) return reply.code(401).send();
           return applications.createGroup?.(session, request.body);
+        },
+      );
+    if (applications.deleteGroup)
+      routes.delete(
+        "/api/v1/applications/groups/:id",
+        { bodyLimit: 1024 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.object({ id: z.uuid() }).parse(request.params);
+          return applications.deleteGroup?.(session, id, request.body);
         },
       );
     if (applications.setGroupMembers)

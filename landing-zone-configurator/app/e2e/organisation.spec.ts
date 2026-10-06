@@ -121,7 +121,7 @@ test("workspace-first creation opens configurations, remembers access and ignore
     }),
   ).toBeVisible();
   await navigation
-    .getByRole("button", { name: "Mitglieder & Einstellungen", exact: true })
+    .getByRole("button", { name: "Benutzerverwaltung", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Mitglieder in Bestehender Bereich" }),
@@ -336,6 +336,39 @@ for (const { publishing, applied } of [
         },
       }),
     );
+    await page.route("**/api/v1/organisation", (route) =>
+      route.fulfill({
+        json: {
+          userId,
+          activeTenantId: tenantId,
+          tenants: [
+            {
+              id: tenantId,
+              name: "Pilot",
+              kind: "organisation",
+              organizationId: organisationId,
+              organizationVerified: true,
+              roles: [publishing ? "platform-engineer" : "application-owner"],
+              manageMembers: publishing,
+            },
+          ],
+          members: [
+            {
+              userId,
+              login: "pilot",
+              roles: [publishing ? "platform-engineer" : "application-owner"],
+              manageMembers: publishing,
+            },
+            {
+              userId: applicationOwnerId,
+              login: "application-owner",
+              roles: ["application-owner"],
+              manageMembers: false,
+            },
+          ],
+        },
+      }),
+    );
     await page.route("**/api/v1/applications/**", async (route) => {
       const request = route.request();
       expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
@@ -358,6 +391,7 @@ for (const { publishing, applied } of [
                 stateVersion: source.stateVersion,
                 organizationId: organisationId,
                 finishedAt: approvedContract.approvedAt,
+                configurationName: "Pilot Landing Zone",
               },
             ],
           },
@@ -385,7 +419,8 @@ for (const { publishing, applied } of [
               ? [
                   {
                     userId: applicationOwnerId,
-                    login: "application-owner",
+                    login: null,
+                    email: "application-owner@example.test",
                     roles: ["application-owner"],
                   },
                 ]
@@ -408,6 +443,15 @@ for (const { publishing, applied } of [
         });
       expect(request.headers()["x-lzc-csrf"]).toBe("test-csrf");
       const body = request.postDataJSON();
+      if (request.method() === "DELETE") {
+        expect(publishing).toBe(true);
+        expect(pathname).toBe(`/api/v1/applications/groups/${customGroupId}`);
+        expect(body).toEqual({ confirmDeletion: true });
+        const index = groups.findIndex((group) => group.id === customGroupId);
+        expect(index).toBeGreaterThanOrEqual(0);
+        groups.splice(index, 1);
+        return route.fulfill({ json: { id: customGroupId } });
+      }
       if (pathname.endsWith("/applied-platforms/approve")) {
         expect(body).toEqual({
           source,
@@ -434,9 +478,12 @@ for (const { publishing, applied } of [
           `/api/v1/applications/groups/${customGroupId}/members`,
         );
         expect(body).toEqual({
-          memberIds: [applicationOwnerId],
+          memberIds: expect.any(Array),
           confirmMembershipChange: true,
         });
+        expect(
+          body.memberIds.every((id: string) => id === applicationOwnerId),
+        ).toBe(true);
         const group = groups.find((item) => item.id === customGroupId);
         if (!group) throw new Error("Expected new group");
         group.memberIds = body.memberIds;
@@ -613,11 +660,16 @@ for (const { publishing, applied } of [
         await page
           .getByRole("tab", { name: "Plattformanbindung", exact: true })
           .click();
+        const applyOption = page.getByRole("option", {
+          name: /Pilot Landing Zone · Apply/,
+        });
+        await expect(applyOption).toHaveCount(1);
+        await expect(applyOption).not.toContainText(source.stateKey);
         await expect(
           page.getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true }),
         ).toHaveCount(0);
         await page
-          .getByLabel("Angewendete Plattform", { exact: true })
+          .getByLabel("Erfolgreicher Plattform-Apply", { exact: true })
           .selectOption(source.applyRunId);
         await page
           .getByRole("button", { name: "Plattform prüfen", exact: true })
@@ -847,20 +899,34 @@ for (const { publishing, applied } of [
       }),
     ).toHaveAttribute("aria-pressed", "true");
     if (publishing) {
-      await page.getByRole("tab", { name: "Gruppen", exact: true }).click();
+      await expect(
+        page.getByRole("tab", { name: "Gruppen", exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("navigation", { name: "Hauptnavigation" })
+        .getByRole("button", { name: "Benutzerverwaltung", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "Benutzerverwaltung", exact: true }),
+      ).toBeVisible();
       const membership = page.getByRole("group", {
-        name: "Application Owner",
+        name: "Gruppenmitglieder",
         exact: true,
       });
       await page
         .getByLabel("Gruppe", { exact: true })
         .selectOption(defaultGroupId);
       await expect(
-        membership.getByLabel("application-owner", { exact: true }),
+        membership.getByLabel("application-owner@example.test", {
+          exact: true,
+        }),
       ).toBeChecked();
       await expect(
-        membership.getByLabel("application-owner", { exact: true }),
+        membership.getByLabel("application-owner@example.test", {
+          exact: true,
+        }),
       ).toBeDisabled();
+      await expect(membership).not.toContainText(applicationOwnerId);
       await page
         .getByLabel("Gruppenname", { exact: true })
         .fill("Research applications");
@@ -873,7 +939,9 @@ for (const { publishing, applied } of [
       await expect(page.getByLabel("Gruppe", { exact: true })).toHaveValue(
         customGroupId,
       );
-      await membership.getByLabel("application-owner", { exact: true }).check();
+      await membership
+        .getByLabel("application-owner@example.test", { exact: true })
+        .check();
       await expect(
         page.getByRole("button", {
           name: "Mitgliedschaften speichern",
@@ -895,7 +963,75 @@ for (const { publishing, applied } of [
           exact: true,
         }),
       ).toBeDisabled();
+      await membership
+        .getByLabel("application-owner@example.test", { exact: true })
+        .uncheck();
+      await page
+        .getByLabel("Gruppenmitgliedschaften geprüft", { exact: true })
+        .check();
+      await page
+        .getByRole("button", {
+          name: "Mitgliedschaften speichern",
+          exact: true,
+        })
+        .click();
+      await expect(
+        page.getByRole("button", {
+          name: "Mitgliedschaften speichern",
+          exact: true,
+        }),
+      ).toBeDisabled();
+      expect(
+        groups.find((group) => group.id === customGroupId)?.memberIds,
+      ).toEqual([]);
+      page.once("dialog", (dialog) => dialog.accept());
+      await page
+        .getByRole("button", { name: "Gruppe löschen", exact: true })
+        .click();
+      await expect(page.getByRole("status")).toContainText("Gruppe gelöscht.");
+      await expect(page.getByLabel("Gruppe", { exact: true })).toHaveValue("");
+      await expect(
+        page.getByRole("heading", { name: "Mitglieder in Pilot", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByLabel("Gruppenname", { exact: true })
+        .fill("Research applications");
+      await page
+        .getByRole("button", { name: "Gruppe anlegen", exact: true })
+        .click();
+      await expect(page.getByLabel("Gruppe", { exact: true })).toHaveValue(
+        customGroupId,
+      );
+      await membership
+        .getByLabel("application-owner@example.test", { exact: true })
+        .check();
+      await page
+        .getByLabel("Gruppenmitgliedschaften geprüft", { exact: true })
+        .check();
+      await page
+        .getByRole("button", {
+          name: "Mitgliedschaften speichern",
+          exact: true,
+        })
+        .click();
+      await expect(
+        page.getByRole("button", {
+          name: "Mitgliedschaften speichern",
+          exact: true,
+        }),
+      ).toBeDisabled();
+      await page.screenshot({
+        path: testInfo.outputPath("user-management-groups.png"),
+        fullPage: true,
+      });
+      await page
+        .getByRole("navigation", { name: "Hauptnavigation" })
+        .getByRole("button", { name: "Application Landing Zones", exact: true })
+        .click();
       await page.getByRole("tab", { name: "Katalog", exact: true }).click();
+      await page
+        .getByRole("button", { name: /, Version 1, eu01, Public$/ })
+        .click();
       const access = page.getByRole("group", {
         name: "Freigaben dieser Template-Version",
         exact: true,
@@ -1035,21 +1171,25 @@ for (const proofOutcome of [
   "unsafe-provider-detail",
   "constructor",
   "pkce-owner",
+  "pkce-return",
+  "bound-owner",
 ] as const) {
-  const codeFlow = proofOutcome === "pkce-owner";
-  const ownerProof = proofOutcome === true || codeFlow;
+  const codeFlow =
+    proofOutcome === "pkce-owner" || proofOutcome === "pkce-return";
+  const alreadyBound = proofOutcome === "bound-owner";
+  const ownerProof = proofOutcome === true || codeFlow || alreadyBound;
   const failureCode =
-    typeof proofOutcome === "string" && proofOutcome !== "pkce-owner"
+    typeof proofOutcome === "string" && !codeFlow && !alreadyBound
       ? proofOutcome
       : null;
   const verificationUri = codeFlow
     ? "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256"
     : "https://accounts.stackit.cloud/device?user_code=ABCD-1234";
-  test(`explicit human organization binding ${codeFlow ? "pkce-owner" : (failureCode ?? (ownerProof ? "owner" : "read-only"))}`, async ({
+  test(`explicit human organization binding ${codeFlow || alreadyBound ? proofOutcome : (failureCode ?? (ownerProof ? "owner" : "read-only"))}`, async ({
     page,
   }, testInfo) => {
     let checked = false;
-    let bound = false;
+    let bound = alreadyBound;
     const mutations: string[] = [];
     await page.route("**/auth/status", (route) =>
       route.fulfill({
@@ -1114,7 +1254,7 @@ for (const proofOutcome of [
             organizationId: organisationId,
             authorizationId: userId,
             boundBy: userId,
-            boundAt: new Date().toISOString(),
+            boundAt: new Date().toISOString().replace("Z", "+00:00"),
           },
         });
       }
@@ -1182,7 +1322,7 @@ for (const proofOutcome of [
     });
     await page.goto("/organisation");
     await page
-      .getByRole("button", { name: "Mitglieder & Einstellungen", exact: true })
+      .getByRole("button", { name: "Benutzerverwaltung", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
@@ -1206,6 +1346,11 @@ for (const proofOutcome of [
       await expect(page.getByText("ABCD-1234", { exact: true })).toHaveCount(0);
     else
       await expect(page.getByText("ABCD-1234", { exact: true })).toBeVisible();
+    if (proofOutcome === "pkce-return") {
+      await page.goto("/organisation#stackit-proof");
+      await page.reload();
+      await expect(page).toHaveURL(/\/organisation$/);
+    }
     if (failureCode) {
       await expect(page.getByRole("alert")).toContainText(
         proofFailures[failureCode],
@@ -1242,6 +1387,24 @@ for (const proofOutcome of [
       ).toEqual([]);
       return;
     }
+    if (alreadyBound) {
+      await expect(
+        page.getByText("Organization owner permissions verified", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Check proof", exact: true }),
+      ).toBeEnabled();
+      await expect(
+        page.getByRole("button", { name: "Bind organization", exact: true }),
+      ).toHaveCount(0);
+      expect(
+        mutations.filter((path) => path.endsWith("/bind-organization")),
+      ).toEqual([]);
+      expect(bound).toBe(true);
+      return;
+    }
     await expect(
       page.getByRole("button", { name: "Bind organization", exact: true }),
     ).toBeDisabled();
@@ -1272,11 +1435,11 @@ for (const proofOutcome of [
       .click();
     await expect(page.getByText(/Zuordnung verifiziert/)).toBeVisible();
     await expect(
-      page.getByRole("heading", {
-        name: "STACKIT-Organisationsnachweis",
-        exact: true,
-      }),
+      page.getByRole("button", { name: "Organisation verbinden", exact: true }),
     ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
+    ).toBeEnabled();
     expect(
       mutations.filter((path) => path.endsWith("/bind-organization")),
     ).toHaveLength(1);
@@ -1358,7 +1521,7 @@ for (const manager of [true, false]) {
       ).toHaveCount(0);
     }
     await page
-      .getByRole("button", { name: "Mitglieder & Einstellungen", exact: true })
+      .getByRole("button", { name: "Benutzerverwaltung", exact: true })
       .click();
     await expect(page).toHaveURL(/\/organisation$/);
     await expect(
@@ -1409,7 +1572,7 @@ for (const manager of [true, false]) {
       ).toHaveCount(0);
       await page
         .getByRole("button", {
-          name: "Mitglieder & Einstellungen",
+          name: "Benutzerverwaltung",
           exact: true,
         })
         .click();

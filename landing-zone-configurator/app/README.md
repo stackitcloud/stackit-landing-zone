@@ -148,8 +148,18 @@ Seiten-URLs bleiben erhalten; der Arbeitsbereichswechsel steht im Header bereit.
 
 **Arbeitsbereiche** steht an erster Stelle der Hauptnavigation. Oeffnen fuehrt zu
 den Konfigurationen des gewaehlten Bereichs, fuer Application Owner zur eigenen
-Application-Ansicht. **Mitglieder & Einstellungen** verwaltet ausschliesslich
-den aktiven Bereich; Auswahl und Erstellung anderer Bereiche liegen nicht dort.
+Application-Ansicht. **Benutzerverwaltung** verwaltet Mitglieder, Rollen und
+Gruppen des aktiven Bereichs. Berechtigte Platform Engineers koennen eigene
+Gruppen anlegen und loeschen sowie Mitglieder zuweisen und wieder entfernen.
+Gruppenmitglieder werden mit ihrer bestaetigten STACKIT-E-Mail angezeigt;
+Benutzer-IDs bleiben intern. Legacy-Konten ohne STACKIT-E-Mail behalten ihren
+Benutzernamen, unbekannte Namen werden nicht durch IDs ersetzt.
+Die automatische Gruppe **Application Owners** folgt den Rollen und ist nicht
+manuell aenderbar. Gruppen mit Template-Freigaben koennen erst nach deren
+Entfernung geloescht werden; Arbeitsbereichsmitglieder bleiben erhalten.
+Template-Gruppenfreigaben liegen weiterhin unter **Application Landing Zones >
+Veroeffentlichung**, nicht in einem zusaetzlichen Gruppen-Reiter. Auswahl und
+Erstellung anderer Arbeitsbereiche liegen nicht in der Benutzerverwaltung.
 Auch eine neue inline STACKIT-Anmeldung von einer zuvor offenen Verwaltungsseite
 fuehrt ohne offenen Entwurf zum Arbeitsbereichseinstieg. Bereits angemeldete
 Deep Links und gesicherte Login-Entwuerfe bleiben erhalten.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "../i18n";
 import type { Session } from "./Account";
+import { ApplicationGroups } from "./ApplicationGroups";
 import { Invitations } from "./Invitations";
 import { OrganizationBinding } from "./OrganizationBinding";
 
@@ -422,7 +423,7 @@ export function Organisation({
         </section>
       )}
       {!selectionOnly && !data && !error && (
-        <p role="status">{t("Einstellungen werden geladen …")}</p>
+        <p role="status">{t("Benutzerverwaltung wird geladen …")}</p>
       )}
       {!selectionOnly && active && (
         <section className="panel">
@@ -443,12 +444,12 @@ export function Organisation({
             session &&
             active.kind === "organisation" &&
             active.manageMembers &&
-            active.roles.includes("platform-engineer") &&
-            !active.organizationVerified && (
+            active.roles.includes("platform-engineer") && (
               <OrganizationBinding
                 key={`${session.csrfToken}:${active.id}`}
                 session={session}
                 tenantId={active.id}
+                organizationVerified={active.organizationVerified}
                 onBound={() => load()}
               />
             )}
@@ -600,6 +601,17 @@ export function Organisation({
           )}
         </section>
       )}
+      {!selectionOnly &&
+        active &&
+        (active.kind === "personal" ||
+          (active.manageMembers &&
+            active.roles.includes("platform-engineer"))) && (
+          <ApplicationGroups
+            key={`${session.csrfToken}:${active.id}`}
+            session={session}
+            tenantId={active.id}
+          />
+        )}
     </div>
   );
 }

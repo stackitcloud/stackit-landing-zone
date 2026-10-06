@@ -69,10 +69,12 @@ const flowSchema = z.discriminatedUnion("status", [
 export function OrganizationBinding({
   session,
   tenantId,
+  organizationVerified,
   onBound,
 }: {
   session: Session;
   tenantId: string;
+  organizationVerified: boolean;
   onBound: () => Promise<unknown>;
 }) {
   const [status, setStatus] = useState<z.infer<typeof statusSchema> | null>(
@@ -81,6 +83,9 @@ export function OrganizationBinding({
   const [authorization, setAuthorization] = useState<z.infer<
     typeof authorizationSchema
   > | null>(null);
+  const [returning, setReturning] = useState(
+    () => window.location.hash === "#stackit-proof",
+  );
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -116,6 +121,12 @@ export function OrganizationBinding({
   useEffect(() => {
     const scope = new AbortController();
     controller.current = scope;
+    if (window.location.hash === "#stackit-proof")
+      window.history.replaceState(
+        window.history.state,
+        "",
+        window.location.pathname + window.location.search,
+      );
     setStatus(null);
     setAuthorization(null);
     setConfirmed(false);
@@ -132,12 +143,12 @@ export function OrganizationBinding({
   }, [request]);
 
   useEffect(() => {
-    if (!authorization) return;
+    if (!authorization && !returning) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
       try {
-        if (Date.now() >= Date.parse(authorization.expiresAt))
+        if (authorization && Date.now() >= Date.parse(authorization.expiresAt))
           throw new Error("proof_expired");
         const flow = flowSchema.parse(await request("/poll", {}));
         if (!active) return;
@@ -154,6 +165,7 @@ export function OrganizationBinding({
         if (!active) return;
         setStatus(next);
         setAuthorization(null);
+        setReturning(false);
         if (!next.organizationAdminVerified)
           setError(
             "Vollständige Organisations-Owner-Rechte sind nicht nachgewiesen.",
@@ -161,16 +173,17 @@ export function OrganizationBinding({
       } catch (cause) {
         if (active && !controller.current?.signal.aborted) {
           setAuthorization(null);
+          setReturning(false);
           setError(proofError(cause instanceof Error ? cause.message : ""));
         }
       }
     };
-    timer = setTimeout(() => void poll(), authorization.retryAfterMs);
+    timer = setTimeout(() => void poll(), authorization?.retryAfterMs ?? 0);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [authorization, request]);
+  }, [authorization, returning, request]);
 
   async function start() {
     setBusy(true);
@@ -204,6 +217,7 @@ export function OrganizationBinding({
 
   async function bind() {
     if (
+      organizationVerified ||
       !confirmed ||
       !status?.organizationAdminVerified ||
       busy ||
@@ -218,7 +232,7 @@ export function OrganizationBinding({
         organizationId: z.uuid(),
         authorizationId: z.uuid(),
         boundBy: z.uuid(),
-        boundAt: z.iso.datetime(),
+        boundAt: z.iso.datetime({ offset: true }),
       }).parse(
         await request("/bind-organization", {
           confirmOrganizationBinding: true,
@@ -261,7 +275,7 @@ export function OrganizationBinding({
           <button
             className="button"
             type="button"
-            disabled={busy || authorization !== null}
+            disabled={busy || authorization !== null || returning}
             onClick={() => void start()}
           >
             {t("Nachweis prüfen")}
@@ -295,25 +309,31 @@ export function OrganizationBinding({
           {status.organizationAdminVerified && !authorization && (
             <>
               <p>{t("Organisations-Owner-Rechte geprüft")}</p>
-              <label className="toggle-label">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  disabled={busy}
-                  onChange={(event) => setConfirmed(event.target.checked)}
-                />
-                {t("Organisationsbindung bestätigen")}
-              </label>
-              <button
-                className="button primary"
-                type="button"
-                disabled={busy || !confirmed}
-                onClick={() => void bind()}
-              >
-                {t("Organisation verbinden")}
-              </button>
             </>
           )}
+          {!organizationVerified &&
+            status.organizationAdminVerified &&
+            !authorization && (
+              <>
+                <label className="toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    disabled={busy}
+                    onChange={(event) => setConfirmed(event.target.checked)}
+                  />
+                  {t("Organisationsbindung bestätigen")}
+                </label>
+                <button
+                  className="button primary"
+                  type="button"
+                  disabled={busy || !confirmed}
+                  onClick={() => void bind()}
+                >
+                  {t("Organisation verbinden")}
+                </button>
+              </>
+            )}
         </>
       )}
     </>
