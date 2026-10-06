@@ -18,6 +18,7 @@ import { promisify } from "node:util";
 import {
   applicationRunnerBindingSchema,
   planResultSchema,
+  platformRunnerSourceSchema,
   type S3RunnerBackend,
   s3BackendConfiguration,
   s3RunnerBackendSchema,
@@ -160,9 +161,21 @@ export async function runWorker(
     const applicationJob =
       mode === "application-plan" || mode === "application-apply";
     const applying = mode === "platform-apply" || mode === "application-apply";
+    const platformSource = applicationJob
+      ? undefined
+      : await readFile(
+          resolve(options.root, "platform-source.json"),
+          "utf8",
+        ).then(
+          (value) => platformRunnerSourceSchema.parse(JSON.parse(value)),
+          (error: NodeJS.ErrnoException) => {
+            if (error.code !== "ENOENT") throw error;
+            return undefined;
+          },
+        );
     const expectedCommit = applicationJob
       ? applicationAcceleratorCommit
-      : acceleratorCommit;
+      : (platformSource?.acceleratorCommit ?? acceleratorCommit);
     const expectedLockHash = applicationJob
       ? applicationProviderLockHash
       : providerLockHash;

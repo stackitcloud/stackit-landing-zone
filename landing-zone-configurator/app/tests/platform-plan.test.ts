@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { platformUpgradeAcceleratorCommit } from "@lzc/contracts";
 import {
   catalogue,
   createDraft,
@@ -262,6 +263,10 @@ describe.skipIf(!enabled)(
       const tickets = new Map<string, string>();
       const sourceDroplet = randomUUID();
       const runner = {
+        supportsAccelerator: vi.fn(
+          (commit: string) =>
+            commit === "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+        ),
         supportsArtifact: vi.fn(() => true),
         output: vi.fn(
           async (
@@ -400,6 +405,103 @@ describe.skipIf(!enabled)(
         managementState,
       };
     }
+
+    it("prepares an explicitly selected platform upgrade on the exact existing state without rebinding the old preparation", async () => {
+      const test = await fixture();
+      const descriptor = {
+        bucket: "customer-state",
+        endpoint: "https://object.storage.eu01.onstackit.cloud",
+        region: "eu01",
+        key: "terraform.tfstate",
+        useLockfile: true,
+      } as const;
+      const registered = await test.backends.register(test.owner, {
+        descriptor,
+        credentials: {
+          accessKeyId: "upgrade-access",
+          secretAccessKey: "upgrade-secret",
+        },
+      });
+      test.remote.set(
+        descriptor.key,
+        Buffer.from(
+          JSON.stringify({
+            version: 4,
+            serial: 1,
+            lineage: randomUUID(),
+            outputs: {},
+            resources: [],
+          }),
+        ),
+      );
+      const input = {
+        source: "database" as const,
+        configurationId: test.configurationId,
+        revision: 1,
+        credentialId: test.credentialId,
+      };
+      const legacy = new Preparations(pool, test.repositories, test.profiles);
+      const initial = await legacy.create(test.owner, null, {
+        ...input,
+        backendId: registered.id,
+      });
+      const first = await test.plans.start(test.owner, test.token, initial.id);
+      await test.plans.cancel(test.owner, first.id);
+      const before = (await legacy.list(test.owner)).find(
+        (item) => item.id === initial.id,
+      )?.manifest;
+      const request = {
+        ...input,
+        platformUpgrade: {
+          confirm: true,
+          acceleratorCommit: platformUpgradeAcceleratorCommit,
+        } as const,
+      };
+      test.profiles.verifyForPreparation.mockClear();
+      await expect(
+        legacy.create(test.owner, null, request),
+      ).rejects.toMatchObject({ code: "platform_upgrade_unavailable" });
+      expect(test.profiles.verifyForPreparation).not.toHaveBeenCalled();
+      const upgrades = new Preparations(
+        pool,
+        test.repositories,
+        test.profiles,
+        true,
+      );
+      const upgraded = await upgrades.create(test.owner, null, request);
+      const manifests = await upgrades.list(test.owner);
+      const next = manifests.find((item) => item.id === upgraded.id)?.manifest;
+      expect(next.backend).toEqual(before.backend);
+      expect(next.source).toEqual(before.source);
+      expect(next.configuration).toEqual(before.configuration);
+      expect(next.platformContractNamespace).toBe(test.owner.tenantId);
+      expect(
+        manifests.find((item) => item.id === initial.id)?.manifest,
+      ).toEqual(before);
+      await expect(
+        test.plans.start(test.owner, test.token, upgraded.id),
+      ).rejects.toMatchObject({ code: "input_invalid" });
+      test.runner.supportsAccelerator.mockImplementation(
+        (commit) => commit === platformUpgradeAcceleratorCommit,
+      );
+      const run = await test.plans.start(test.owner, test.token, upgraded.id);
+      const bindings = await withTenant(pool, test.owner, (client) =>
+        client.query(
+          "SELECT state_key,state_version FROM lzc.plan_runs WHERE id=ANY($1::uuid[]) ORDER BY created_at",
+          [[first.id, run.id]],
+        ),
+      );
+      expect(bindings.rows).toHaveLength(2);
+      expect(bindings.rows[1]).toEqual(bindings.rows[0]);
+      const ticket = test.tickets.get(run.id);
+      if (!ticket) throw new Error("Missing upgrade fixture ticket");
+      const worker = await test.plans.input(ticket);
+      expect(worker.acceleratorCommit).toBe(platformUpgradeAcceleratorCommit);
+      expect(worker.tfvars).toContain(test.owner.tenantId);
+      expect(worker.tfvarsSha256).toBe(next.tfvarsSha256);
+      expect(worker.backend?.kind).toBe("s3");
+      expect(test.remote.get(descriptor.key)).toBeDefined();
+    });
 
     it.each(["revoked", "expired"])(
       "never releases credentials for a %s job grant",

@@ -74,7 +74,12 @@ export const appliedPlatformSourceSchema = z.strictObject({
 export type AppliedPlatformSource = z.infer<typeof appliedPlatformSourceSchema>;
 
 export type { ActionCounts, PlanAction, PlanSummary } from "./plan.js";
-export { InvalidPlan, summarizePlan } from "./plan.js";
+export {
+  InvalidPlan,
+  platformRunnerSourceSchema,
+  platformUpgradeAcceleratorCommit,
+  summarizePlan,
+} from "./plan.js";
 export const planStageSchema = z.enum([
   "initializing",
   "validating",

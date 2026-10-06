@@ -4,6 +4,7 @@ import {
   planResultSchema,
   planStageSchema,
   platformApplySchema,
+  platformUpgradeAcceleratorCommit,
   runnerArtifactSchema,
 } from "@lzc/contracts";
 import {
@@ -28,6 +29,7 @@ import { stateDocument, stateForSource } from "../deployments/backends.js";
 import {
   acceleratorCommit,
   type PreparationManifest,
+  preparationTfvars,
 } from "../deployments/preparations.js";
 import type { Repositories } from "../github/repositories.js";
 import { withTenant } from "../storage/database.js";
@@ -486,7 +488,14 @@ export class Plans {
       if (!row?.credential_id) throw invalid("credential_not_found", 404);
       const manifest = row.manifest as PreparationManifest;
       if (
-        manifest.accelerator.commit !== acceleratorCommit ||
+        (manifest.accelerator.commit !== acceleratorCommit &&
+          manifest.accelerator.commit !== platformUpgradeAcceleratorCommit) ||
+        (manifest.accelerator.commit === platformUpgradeAcceleratorCommit &&
+          (manifest.platformContractNamespace !== session.tenantId ||
+            this.runner.supportsAccelerator?.(manifest.accelerator.commit) !==
+              true)) ||
+        (this.runner.supportsAccelerator !== undefined &&
+          !this.runner.supportsAccelerator(manifest.accelerator.commit)) ||
         manifest.credential.id !== row.credential_id
       )
         throw invalid("input_invalid");
@@ -564,7 +573,8 @@ export class Plans {
     if (
       snapshot.head !== manifest.source.commit ||
       snapshot.document.id !== manifest.source.configurationId ||
-      sha256(snapshot.tfvars) !== manifest.tfvarsSha256 ||
+      snapshot.tfvars !==
+        serializeTfvars(recordValues(manifest.configuration)) ||
       canonicalJson(snapshot.document) !== canonicalJson(manifest.configuration)
     )
       throw invalid("configuration_changed");
@@ -604,10 +614,7 @@ export class Plans {
       )
         throw invalid("configuration_changed");
     }
-    if (
-      sha256(serializeTfvars(recordValues(manifest.configuration))) !==
-      manifest.tfvarsSha256
-    )
+    if (sha256(preparationTfvars(manifest)) !== manifest.tfvarsSha256)
       throw invalid("input_invalid");
   }
   private async requireEmptyInitialState(
@@ -870,7 +877,7 @@ export class Plans {
       secret.key.credentials.kid !== manifest.credential.keyId
     )
       throw invalid("credential_changed");
-    const tfvars = serializeTfvars(recordValues(manifest.configuration));
+    const tfvars = preparationTfvars(manifest);
     if (
       createHash("sha256").update(tfvars).digest("hex") !==
       manifest.tfvarsSha256
@@ -968,7 +975,7 @@ export class Plans {
     return {
       id,
       mode: run.mode,
-      acceleratorCommit,
+      acceleratorCommit: manifest.accelerator.commit,
       lockHash,
       tfvars,
       tfvarsSha256: manifest.tfvarsSha256,

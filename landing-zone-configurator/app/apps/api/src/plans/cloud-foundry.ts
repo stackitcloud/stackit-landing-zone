@@ -13,6 +13,7 @@ export class RunnerRequestError extends Error {
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 export interface PlanRunner {
   supportsArtifact?(identity: string): boolean;
+  supportsAccelerator?(commit: string): boolean;
   output?(
     id: string,
     appId: string | null,

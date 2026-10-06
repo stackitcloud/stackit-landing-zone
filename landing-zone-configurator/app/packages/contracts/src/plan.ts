@@ -1,3 +1,11 @@
+import { z } from "zod";
+
+export const platformUpgradeAcceleratorCommit =
+  "c4b43c36af198985980b17626c48d357795e3fbd";
+export const platformRunnerSourceSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  acceleratorCommit: z.literal(platformUpgradeAcceleratorCommit),
+});
 /** Deliberately projects counts only: even addresses and diagnostics can contain secrets. */
 export type PlanAction =
   | "unchanged"

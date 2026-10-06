@@ -89,6 +89,50 @@ auf `NULL`; der historische Manifestnachweis bleibt erhalten. Die UI zeigt die
 Vorbereitung als nicht verwendbar. Rechte können sich ebenfalls ändern: Vor jedem
 künftigen Plan/Apply müssen Zugriff, Secret-Version und Ziel erneut geprüft werden.
 
+## Lokaler Platform-Upgrade-Plan
+
+Ergänzung vom 2026-10-06: Die gewöhnliche Vorbereitung bleibt auf `a256f68`
+gebunden. Für den Contract-Output kann eine zusätzliche Vorbereitung ausdrücklich
+den fest qualifizierten Commit `c4b43c36af198985980b17626c48d357795e3fbd` wählen.
+Das ist derzeit ein lokaler, opt-in Laufpfad, keine allgemeine Source-Auswahl und
+keine Produktionsfreigabe.
+
+Das neue Paket wird mit `LZC_LOCAL_RUNNER_PACKAGE=true`,
+`LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true` und einem neuen
+`LZC_RUNNER_PACKAGE_DIR` erstellt. Bestehende Verzeichnisse werden nicht überschrieben.
+Die Source-Metadatei `platform-source.json` wird strikt validiert und gehört zum
+Paket-Fingerprint. Der Runner akzeptiert nur den dazu passenden Quellcommit;
+gespeicherte Plans eines anderen Pakets bleiben ungültig für diesen Runner.
+
+`POST /api/v1/preparations` verwendet die vorhandene gespeicherte Konfiguration,
+Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
+
+```json
+{
+  "platformUpgrade": {
+    "confirm": true,
+    "acceleratorCommit": "c4b43c36af198985980b17626c48d357795e3fbd"
+  }
+}
+```
+
+Der Server verlangt ein passendes qualifiziertes Paket sowie einen bestehenden,
+entsperrten S3-State. Fremde Revisionen, zusätzliche Namespace-/Tenant-Felder und
+abweichende Backend-Bindungen werden abgelehnt. Die neue Vorbereitung verwendet
+denselben State und dieselbe Konfiguration. Alte Manifeste, Artefakte, Revisionen
+und Freigaben werden nicht umgeschrieben.
+
+Der Contract-Namensraum stammt aus der authentifizierten Serversitzung und ist Teil
+des exakten neuen tfvars-Hashes. Die API lockert ihre Tenant-/Organisationsprüfung
+nicht. Im unabhängigen Accelerator bleibt der optionale CLI-Namensraum erhalten;
+es entsteht keine Configurator-Laufzeitabhängigkeit.
+
+Erst ein neuer vollständiger, gespeicherter echter Plan zeigt die tatsächlichen
+Ressourcen-/Output-Änderungen. Auch ein reiner Output-Plan benötigt eine ausdrückliche
+Freigabe seines konkreten SHA-256. Abgelaufene Plans werden weder verlängert noch
+angewendet; ein neuer Plan braucht eine eigene Freigabe. Ein Apply wird nicht
+automatisch wiederholt.
+
 ## Bewusste Grenze und nächste Schritte
 
 Diese Vorbereitung ist **kein OpenTofu-Plan**, kein genehmigtes Deployment und kein

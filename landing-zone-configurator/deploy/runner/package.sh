@@ -4,6 +4,9 @@ set -euo pipefail
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	test "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true"
 fi
+if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
+	test "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true"
+fi
 runner_dir=../.local/runner
 provider_platform=linux_amd64
 if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true" ]]; then
@@ -33,9 +36,14 @@ else
 fi
 cp "$(command -v tofu)" "$runner_dir/tools/tofu"
 cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
-# Only this immutable upstream commit, never user-fork Terraform code.
-git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git a256f6896d11134fdc351786f1be5eba4e56b2e2
-git -C "$(git rev-parse --show-toplevel)" archive a256f6896d11134fdc351786f1be5eba4e56b2e2 src | tar -x --strip-components=1 -C "$runner_dir/accelerator"
+platform_commit=a256f6896d11134fdc351786f1be5eba4e56b2e2
+if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
+	platform_commit=c4b43c36af198985980b17626c48d357795e3fbd
+	node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync(process.argv[1], JSON.stringify({schemaVersion:1,acceleratorCommit:process.argv[2]}), {flag:"wx",mode:0o600})' "$runner_dir/platform-source.json" "$platform_commit"
+else
+	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
+fi
+git -C "$(git rev-parse --show-toplevel)" archive "$platform_commit" src | tar -x --strip-components=1 -C "$runner_dir/accelerator"
 cp ../deploy/runner/accelerator.lock.hcl "$runner_dir/accelerator/.terraform.lock.hcl"
 node --input-type=module -e 'import {readFileSync} from "node:fs"; import {createHash} from "node:crypto"; if (createHash("sha256").update(readFileSync(process.argv[1])).digest("hex") !== "a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888") process.exit(1)' "$runner_dir/accelerator/.terraform.lock.hcl"
 tofu -chdir="$runner_dir/accelerator" init -backend=false -input=false -lockfile=readonly -no-color

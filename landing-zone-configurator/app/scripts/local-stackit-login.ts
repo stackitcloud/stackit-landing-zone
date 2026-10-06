@@ -190,6 +190,7 @@ async function start() {
     ),
   );
   const backends = new Backends(pool, crypto);
+  let platformUpgradeEnabled = false;
   if (localExecution || process.env.LZC_EXECUTION_ENABLED === "true") {
     const required = (key: string) => {
       const value = process.env[key];
@@ -219,6 +220,10 @@ async function start() {
           spaceId: required("LZC_RUNNER_SPACE_ID"),
           templateId: required("LZC_RUNNER_TEMPLATE_ID"),
         });
+    platformUpgradeEnabled =
+      runner.supportsAccelerator?.(
+        "c4b43c36af198985980b17626c48d357795e3fbd",
+      ) === true;
     plans = new Plans(
       pool,
       new PostgresCredentialProfiles(pool, secrets),
@@ -298,6 +303,7 @@ async function start() {
       pool,
       { prepareSnapshot: unavailable },
       new PostgresCredentialProfiles(pool, secrets),
+      platformUpgradeEnabled,
     ),
     applications,
     ...(applicationRunner

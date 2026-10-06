@@ -1,3 +1,4 @@
+import { platformUpgradeAcceleratorCommit } from "@lzc/contracts";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
@@ -59,6 +60,14 @@ export function registerPreparations(
               head: z.string().regex(/^[a-f0-9]{40}$/),
               credentialId: z.uuid(),
               backendId: z.uuid().optional(),
+              platformUpgrade: z
+                .strictObject({
+                  confirm: z.literal(true),
+                  acceleratorCommit: z.literal(
+                    platformUpgradeAcceleratorCommit,
+                  ),
+                })
+                .optional(),
             })
             .strict(),
           z
@@ -68,6 +77,14 @@ export function registerPreparations(
               revision: z.number().int().positive(),
               credentialId: z.uuid(),
               backendId: z.uuid().optional(),
+              platformUpgrade: z
+                .strictObject({
+                  confirm: z.literal(true),
+                  acceleratorCommit: z.literal(
+                    platformUpgradeAcceleratorCommit,
+                  ),
+                })
+                .optional(),
             })
             .strict(),
         ])

@@ -74,6 +74,25 @@ async function fixture(
   return { root: await realpath(root), jobs: await realpath(jobs), runner };
 }
 
+it("binds the explicit platform upgrade source into the package identity and rejects unknown sources", async () => {
+  const { root, jobs, runner } = await fixture();
+  const upgrade = "c4b43c36af198985980b17626c48d357795e3fbd";
+  expect(runner.supportsAccelerator(upgrade)).toBe(false);
+  await writeFile(
+    join(root, "platform-source.json"),
+    JSON.stringify({ schemaVersion: 1, acceleratorCommit: upgrade }),
+  );
+  const upgraded = await LocalPlanRunner.open(root, jobs);
+  expect(upgraded.supportsAccelerator(upgrade)).toBe(true);
+  expect(upgraded.packageId).not.toBe(runner.packageId);
+  expect(runner.supportsArtifact(upgraded.packageId)).toBe(false);
+  await writeFile(
+    join(root, "platform-source.json"),
+    JSON.stringify({ schemaVersion: 1, acceleratorCommit: "a".repeat(40) }),
+  );
+  await expect(LocalPlanRunner.open(root, jobs)).rejects.toThrow();
+});
+
 it.each(["platform", "application"] as const)(
   "records a stable $0 package identity before launching a private minimal-env worker",
   async (broker) => {

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { platformUpgradeAcceleratorCommit } from "@lzc/contracts";
 import {
   catalogue,
   configurationValues,
@@ -18,6 +19,7 @@ import type { Session } from "../apps/api/src/auth/store.js";
 import {
   acceleratorCommit,
   preparationManifest,
+  preparationTfvars,
 } from "../apps/api/src/deployments/preparations.js";
 
 it("binds a preparation to the saved configuration, code revision, secret version and exact organization", () => {
@@ -135,6 +137,34 @@ it("binds a preparation to the saved configuration, code revision, secret versio
     configurationId: document.id,
     revision: 2,
   });
+  const tenantId = randomUUID();
+  const upgradeInput = {
+    ...input,
+    platformUpgrade: {
+      confirm: true,
+      acceleratorCommit: platformUpgradeAcceleratorCommit,
+    } as const,
+  };
+  expect(() => preparationManifest(upgradeInput, snapshot, checked)).toThrow(
+    "platform_upgrade_unavailable",
+  );
+  const upgraded = preparationManifest(
+    upgradeInput,
+    snapshot,
+    checked,
+    tenantId,
+  );
+  expect(upgraded.accelerator.commit).toBe(platformUpgradeAcceleratorCommit);
+  expect(upgraded.platformContractNamespace).toBe(tenantId);
+  expect(upgraded.configuration).toEqual(manifest.configuration);
+  expect(upgraded.source).toEqual(manifest.source);
+  expect(upgraded.credential).toEqual(manifest.credential);
+  expect(upgraded.organization).toEqual(manifest.organization);
+  expect(upgraded.tfvarsSha256).not.toBe(manifest.tfvarsSha256);
+  expect(preparationTfvars(upgraded)).toContain(tenantId);
+  expect(preparationTfvars(manifest)).toBe(snapshot.tfvars);
+  expect(manifest.accelerator.commit).toBe(acceleratorCommit);
+  expect(manifest.platformContractNamespace).toBeUndefined();
   expect(
     "documentSha256" in databaseManifest.source &&
       databaseManifest.source.documentSha256,
@@ -230,6 +260,20 @@ it("requires session and CSRF, rejects caller-supplied organization/code and for
       { organizationId: randomUUID() },
       { acceleratorCommit: "b".repeat(40) },
       { tenantId: randomUUID() },
+      {
+        platformUpgrade: {
+          confirm: false,
+          acceleratorCommit: platformUpgradeAcceleratorCommit,
+        },
+      },
+      { platformUpgrade: { confirm: true, acceleratorCommit: "b".repeat(40) } },
+      {
+        platformUpgrade: {
+          confirm: true,
+          acceleratorCommit: platformUpgradeAcceleratorCommit,
+          tenantId: randomUUID(),
+        },
+      },
     ])
       expect(
         (
@@ -277,6 +321,28 @@ it("requires session and CSRF, rejects caller-supplied organization/code and for
       session,
       null,
       databaseInput,
+    );
+    const upgradeInput = {
+      ...databaseInput,
+      platformUpgrade: {
+        confirm: true,
+        acceleratorCommit: platformUpgradeAcceleratorCommit,
+      },
+    };
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/v1/preparations",
+          headers,
+          payload: upgradeInput,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(preparations.create).toHaveBeenLastCalledWith(
+      session,
+      null,
+      upgradeInput,
     );
     expect(result.body).not.toContain("ghu_");
     expect(

@@ -16,6 +16,7 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { platformRunnerSourceSchema } from "@lzc/contracts";
 import { z } from "zod";
 import type { PlanRunner } from "./cloud-foundry.js";
 
@@ -58,6 +59,18 @@ async function fingerprint(
     hash.update("application\0");
     await add("application-src");
   }
+  if (broker === "platform") {
+    const metadata = await lstat(join(root, "platform-source.json")).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+        return null;
+      },
+    );
+    if (metadata) {
+      hash.update("platform-source\0");
+      await add("platform-source.json");
+    }
+  }
   const digest = hash.digest("hex");
   return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
@@ -87,6 +100,7 @@ export class LocalPlanRunner implements PlanRunner {
     private readonly jobs: string,
     private readonly identity: string,
     private readonly broker: "platform" | "application",
+    readonly acceleratorCommit: string,
   ) {}
 
   static async open(
@@ -110,6 +124,21 @@ export class LocalPlanRunner implements PlanRunner {
     );
     if (JSON.parse(engine.stdout).terraform_version !== "1.12.6")
       throw new Error("Local runner requires OpenTofu 1.12.6");
+    const source =
+      broker === "platform"
+        ? await readFile(
+            join(packageRoot, "platform-source.json"),
+            "utf8",
+          ).then(
+            (value) =>
+              platformRunnerSourceSchema.parse(JSON.parse(value))
+                .acceleratorCommit,
+            (error: NodeJS.ErrnoException) => {
+              if (error.code !== "ENOENT") throw error;
+              return "a256f6896d11134fdc351786f1be5eba4e56b2e2";
+            },
+          )
+        : "c4b43c36af198985980b17626c48d357795e3fbd";
     const identity = await fingerprint(packageRoot, broker);
     await mkdir(jobs, { recursive: true, mode: 0o700 });
     await chmod(jobs, 0o700);
@@ -118,11 +147,16 @@ export class LocalPlanRunner implements PlanRunner {
       await realpath(jobs),
       identity,
       broker,
+      source,
     );
   }
 
   get packageId() {
     return this.identity;
+  }
+
+  supportsAccelerator(commit: string) {
+    return this.broker === "platform" && commit === this.acceleratorCommit;
   }
 
   supportsArtifact(identity: string) {
