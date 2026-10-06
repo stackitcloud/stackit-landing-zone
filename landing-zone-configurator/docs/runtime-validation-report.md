@@ -1145,5 +1145,6 @@ delivery: LOCAL_ONLY - no push, merge or release
 Die frische Sicherung vor 038 enthaelt bereits den genehmigten Plattformvertrag
 und die veroeffentlichte Version. Private Dumps und Hashbelege bleiben ausserhalb
 des Repositorys mit restriktiven Dateirechten; keine Credentials oder Roh-States
-wurden ausgegeben oder committed. #91/#92/#93 bleiben fuer ihre weiteren
-urspruenglichen MVP-Abnahmekriterien offen.
+wurden ausgegeben oder committed. #92 ist nach Erfuellung aller urspruenglichen
+Publikationskriterien geschlossen. #91 und #93 bleiben fuer ihre weiteren
+Sicherheits-, Produktiv- und Ausfuehrungsabnahmen offen.

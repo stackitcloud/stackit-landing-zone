@@ -61,12 +61,19 @@ Alle sieben mit `mvp:required` markierten Issues #89 bis #95 waren bei Beginn
 dieses Abgleichs offen. Ein implementiertes Teilkriterium ist kein abgeschlossener
 Gesamt-MVP und kein Beleg fuer eine Live-Abnahme.
 
+Aktualisierung 2026-10-06: Echter menschlicher Owner-Nachweis und ausdrueckliche
+Organisationsbindung sind in der bestehenden lokalen Kundenorganisation
+abgenommen. Die reale Template-Veroeffentlichung ist abgeschlossen; #92 ist
+geschlossen. #91 und #93 bleiben fuer ihre weiteren Kriterien offen, der
+Gesamt-MVP ist nicht abgeschlossen. Migrationen bis 039 sind restorequalifiziert
+aktiviert; Application-Ausfuehrung bleibt deaktiviert.
+
 | Issue | Inzwischen implementiert / nachgewiesen | Verbleibende Abnahme oder Umsetzung |
 |---|---|---|
 | [#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89) | Gemeinsamer Datensatz, begrenzte Standalone-/Governance-Freigabe, unveraenderliche Vorbereitung, Broker-Pruefung; persoenliche Kunden-Plans erfolgreich, zuletzt `6fb07c43-bd5d-47e7-bf30-3a14eb10b605`; leerer Erstplanpfad auch bei deaktivierter Plattformausfuehrung gegen Checkpoint, Teilstate, Aliase und unzugeordneten Altstate gesperrt | Weitere Komponenten einzeln mit nativen Contracts und gegebenenfalls privater Erreichbarkeit qualifizieren; Editorumfang ist keine Ausfuehrungsfreigabe |
 | [#90](https://github.com/stackitcloud/stackit-landing-zone/issues/90) | Verschluesselter gespeicherter Plan, explizite Freigabe, unveraenderliche Bindungen, serialisierte Ausfuehrung, temporaerer Bootstrap-State, kundeneigener S3-Zielbackend, geschuetzte Recovery-Nachweise und CLI-Ausgaben | Nachgewiesene Live-Abnahme von Apply, Migration, Folgeplan und hartem Runner-Verlust; operatorseitige Wiederherstellung und Abgleich unterbrochener Laeufe |
 | [#91](https://github.com/stackitcloud/stackit-landing-zone/issues/91) | Primaerer STACKIT-Device-Login, verifizierte menschliche Identitaet, optionaler benutzergebundener GitHub-Connector, Rollen-/Eigentums-/Tenant-Pruefungen; lokal gepruefte menschliche IAM-Owner-Bindung mit separater Bestaetigung und unveraenderlichen Auditbelegen; persistente einmalige Plattform-Job-Grants mit Ablauf/Widerruf vor technischer Credential-Nutzung | Echte Zwei-Organisations-Abnahme; Least-Privilege-Providerqualifizierung, Application-Job-Grant-Anbindung, Live-Widerruf/abgelaufene Jobs und Produktions-Client-Freigabe |
-| [#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) | Gespeicherte Template-Entwuerfe, unveraenderliche tenantgebundene Versionen, Compiler-/Plattformvertrag, strikte Eingabepolicies, forklose AO-Sicht/Bestellung; explizite idempotente Stilllegung mit serverseitiger Sichtbarkeits-/Bestellsperre; versionierte direkte/Freigabe-Policy mit unveraenderlichem Instanz-Snapshot | Vollstaendige Kundenveroeffentlichungsabnahme unter autoritativ verifizierter Tenantbindung (#91); kein automatischer Application-Apply |
+| [#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) | Unveraenderliche tenantgebundene Versionen, strikte Policies, forklose AO-Sicht/Bestellung, Stilllegung und Deployment-Policy; reale Public-Version 1 unter verifizierter Tenantbindung mit genehmigtem aktuellem Plattformvertrag, public-eu01 und Application-Owners-Freigabe nach Reload bestaetigt; Gruppen-CRUD und E-Mail-Anzeige in Benutzerverwaltung abgenommen | Abgeschlossen und geschlossen; echte Application-Ausfuehrung bleibt getrennt in #93, Produktiv-/Release-Gates in #91/#95 |
 | [#93](https://github.com/stackitcloud/stackit-landing-zone/issues/93) | Versionierter nicht geheimer Plattformvertrag, SA-gebundene PE-Freigabe, persistente idempotente Bestellungen, verifizierte Owner-Bindung und erneuter Plan-Input-Check; lokal qualifizierter eigener Application-Quell-Pin/Provider-Lock, Opt-in-Paket und Worker-Root-/Instanz-State-Isolation; explizite neue Quellversion, idempotente vorbereitete Jobs mit SQL-abgeleiteten unveraenderlichen Grant-Snapshots und Widerruf; explizite sessiongebundene PE-S3-Backend-Freigabe mit festem Instanz-Key ohne AO-Credential-Zugriff | Freigegebener Application-Dispatch mit einmaliger technischer Credential-Freigabe, eigener realer State/Lock, Cloud-Plan, Quoten und ausdruecklicher Upgrade-Pfad |
 | [#94](https://github.com/stackitcloud/stackit-landing-zone/issues/94) | Betreiber-Binding fuer Model Serving | Begrenzter Backend-/UI-Assistent, Wissensstand, validierter Vorschlag mit bestaetigtem Diff sowie Sicherheits- und echter Model-Serving-Nachweis |
 | [#95](https://github.com/stackitcloud/stackit-landing-zone/issues/95) | Lokale Lint-/Typ-/Build-Gates, Unit-/Browser-/native Nachweise und dokumentierte Laufzeitgrenzen | Finale Revision/CI, Zwei-Org- und Betriebsabnahme, Restore/Rotation, PR/Branchschutz/Deployment-Entscheidung und ausdruecklicher Merge-Entscheid |
@@ -327,6 +334,7 @@ Release ausgeführt. Der Kunden-Plan ist noch nicht persönlich abgenommen.
 - [x] Stage-Naming im separaten Application-Root, bestehendes Naming ohne Stage unverändert.
 - [x] Symbolische Projektnetzbindung mit ausdrücklicher Ausführungssperre und [Issue #96](https://github.com/stackitcloud/stackit-landing-zone/issues/96) für Egress-Qualifikation.
 - [ ] Weitere Parameterfelder und Sandbox-Vertrag qualifizieren.
-- [ ] Unveränderliche Veröffentlichung, Application-Owner-Bestellung und produktive Ausführung weiterhin #92/#93.
+- [x] Unveränderliche Veröffentlichung real abgenommen; #92 abgeschlossen (2026-10-06).
+- [ ] Echte Application-Owner-Bestellung und produktive Ausführung weiterhin #93.
 
 [Vertrag, Grenzen und Prüfungen](template-parameters-and-bindings.md).
