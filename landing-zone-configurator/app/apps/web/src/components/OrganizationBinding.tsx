@@ -71,11 +71,13 @@ export function OrganizationBinding({
   tenantId,
   organizationVerified,
   onBound,
+  onVerified,
 }: {
   session: Session;
   tenantId: string;
   organizationVerified: boolean;
   onBound: () => Promise<unknown>;
+  onVerified?: () => Promise<unknown>;
 }) {
   const [status, setStatus] = useState<z.infer<typeof statusSchema> | null>(
     null,
@@ -150,7 +152,19 @@ export function OrganizationBinding({
       try {
         if (authorization && Date.now() >= Date.parse(authorization.expiresAt))
           throw new Error("proof_expired");
-        const flow = flowSchema.parse(await request("/poll", {}));
+        const flow = flowSchema.parse(
+          await request("/poll", {}).catch(async (cause: unknown) => {
+            if (
+              cause instanceof Error &&
+              cause.message === "stackit_flow_missing"
+            ) {
+              const current = statusSchema.parse(await request(""));
+              if (current.verified && current.organizationAdminVerified)
+                return { status: "verified" };
+            }
+            throw cause;
+          }),
+        );
         if (!active) return;
         if (flow.status === "waiting") {
           timer = setTimeout(
@@ -170,6 +184,7 @@ export function OrganizationBinding({
           setError(
             "Vollständige Organisations-Owner-Rechte sind nicht nachgewiesen.",
           );
+        else await onVerified?.();
       } catch (cause) {
         if (active && !controller.current?.signal.aborted) {
           setAuthorization(null);
@@ -183,7 +198,7 @@ export function OrganizationBinding({
       active = false;
       clearTimeout(timer);
     };
-  }, [authorization, returning, request]);
+  }, [authorization, returning, request, onVerified]);
 
   async function start() {
     setBusy(true);
