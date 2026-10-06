@@ -72,6 +72,30 @@ export const englishMessages: Record<string, string> = {
   "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden.":
     "New plans are blocked until the failed apply and its state have been reviewed and reconciled.",
   "STACKIT-Organisationsnachweis": "STACKIT organization proof",
+  "Configurator-Benutzer": "Configurator user",
+  "STACKIT-E-Mail": "STACKIT email",
+  "Noch kein STACKIT-Nachweis": "No STACKIT identity verified yet",
+  "STACKIT-Nachweis abgelaufen": "STACKIT identity proof expired",
+  "Der angemeldete STACKIT-Benutzer hat keinen Zugriff auf diese Organisation.":
+    "The signed-in STACKIT user has no access to this organization.",
+  "Die STACKIT-Berechtigungen dieses Benutzers konnten nicht gelesen werden.":
+    "This user's STACKIT permissions could not be read.",
+  "STACKIT hat eine unerwartete Berechtigungsantwort geliefert. Die Organisationsbindung bleibt gesperrt.":
+    "STACKIT returned an unexpected permissions response. Organization binding remains blocked.",
+  "STACKIT hat eine unerwartete Rollenantwort geliefert. Die Organisationsbindung bleibt gesperrt.":
+    "STACKIT returned an unexpected roles response. Organization binding remains blocked.",
+  "Der bestätigte STACKIT-Account gehört nicht zum angemeldeten Configurator-Benutzer. Bitte mit demselben Account bestätigen.":
+    "The confirmed STACKIT account does not belong to the signed-in Configurator user. Confirm with the same account.",
+  "Dieser STACKIT-Account gehört bereits zu einem anderen Configurator-Benutzer.":
+    "This STACKIT account is already linked to another Configurator user.",
+  "Der Arbeitsbereich wurde geändert. Lade die Seite neu und prüfe den Nachweis erneut.":
+    "The workspace changed. Reload the page and check the proof again.",
+  "Die Sitzung wurde geändert. Lade die Seite neu und prüfe den Nachweis erneut.":
+    "The session changed. Reload the page and check the proof again.",
+  "Der STACKIT-Nachweis ist abgelaufen. Bitte erneut prüfen.":
+    "The STACKIT proof expired. Please check again.",
+  "Die STACKIT-Bestätigung wurde abgelehnt. Bitte erneut prüfen.":
+    "STACKIT confirmation was denied. Please check again.",
   "Nachweis prüfen": "Check proof",
   "STACKIT öffnen": "Open STACKIT",
   "Organisations-Owner-Rechte geprüft":

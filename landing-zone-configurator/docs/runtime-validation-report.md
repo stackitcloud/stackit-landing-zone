@@ -937,3 +937,33 @@ Migrationen 021 bis 032 nicht in Kunden-API aktiviert. Aktive API, Runner-Paket,
 Kundenplans und CLI-Unabhaengigkeit unveraendert; keine Kunden-Credentials/-Daten
 gelesen, kein Cloud-Plan/Apply, Push, Release, Merge oder State-Migration.
 #93 bleibt offen; Quoten, Upgrade-Plans und reale State-/Lock-/Recovery-Abnahme fehlen.
+
+## STACKIT-Login und Nachweisdiagnose, 2026-10-06
+
+Bestehende `e2e/organisation.spec.ts`-Nachweisfaelle minimal erweitert: sichtbare
+Configurator-/STACKIT-Identitaet, Device-Fehlercodes, HTTP-409-Identitaetskonflikt,
+unbekannte Codes einschliesslich `constructor`, keine Providerdetail-Ausgabe und
+keine Organisationsbindung bei Fehlern. Bestehende Owner-/Readonly-Pfade bleiben
+erhalten. Keine neue Testinfrastruktur; synthetische Identitaeten und API-Mocks.
+
+```text
+environment:
+	docker: AVAILABLE - Docker daemon 29.6.2; no database needed for UI-only change
+	node: AVAILABLE - Node 24.21.0/npm 11.19.0 via npm exec
+	playwright: AVAILABLE - installed browser exercised successfully
+	infra-tier: UNCHANGED - API mocks for existing UI suite; no customer DB access
+	browser-tier: PRIMARY(Playwright) - desktop 1440x1000/mobile 390x844
+startup: PASS - fresh Vite build and isolated preview on 4284
+integration: PASS - exit_code: 0; 61 device/i18n tests, 0 failed, 0 skipped
+types: PASS - exit_code: 0; app and test TypeScript projects
+e2e: PARTIAL - exit_code: 0; 14 passed, 0 failed; mock proof flows, not live IAM
+overall: NEEDS_SIGNOFF - real cold login fails at provider; real org failure unknown
+```
+
+Anonyme isolierte Provider-Browser ohne Sitzung reproduzieren `/ui/login/user`
+mit nur Weiter und drei versteckten Inputs. Complete-Link, Basis-Link mit
+manueller Code-Eingabe und zusaetzlicher Profile-Scope liefern keinen Login.
+Kein menschlicher Login abgeschlossen, keine Credentials/Tokeninhalte ausgegeben.
+Der bereits freigegebene CLI-Client bleibt unveraendert; die Provider-/Client-Policy
+und eigene Produktionsregistrierung brauchen Klaerung. Bestehende Kundensitzungen,
+API-Prozess, Runner-Paket, State und Migrationen bleiben unveraendert. #91 offen.

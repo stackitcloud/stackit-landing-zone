@@ -6,7 +6,42 @@ import type { Session } from "./Account";
 const statusSchema = z.object({
   bindingEnabled: z.boolean().default(false),
   organizationAdminVerified: z.boolean().default(false),
+  verified: z.boolean().default(false),
+  identity: z.object({ email: z.email() }).nullable().default(null),
 });
+const proofErrors: Record<string, string> = {
+  organization_access_denied:
+    "Der angemeldete STACKIT-Benutzer hat keinen Zugriff auf diese Organisation.",
+  organization_permissions_denied:
+    "Die STACKIT-Berechtigungen dieses Benutzers konnten nicht gelesen werden.",
+  organization_permissions_response_invalid_response:
+    "STACKIT hat eine unerwartete Berechtigungsantwort geliefert. Die Organisationsbindung bleibt gesperrt.",
+  organization_roles_response_invalid_response:
+    "STACKIT hat eine unerwartete Rollenantwort geliefert. Die Organisationsbindung bleibt gesperrt.",
+  identity_binding_conflict:
+    "Der bestätigte STACKIT-Account gehört nicht zum angemeldeten Configurator-Benutzer. Bitte mit demselben Account bestätigen.",
+  identity_already_bound:
+    "Dieser STACKIT-Account gehört bereits zu einem anderen Configurator-Benutzer.",
+  authentication_required: "Bitte erneut anmelden.",
+  stale_tenant_context:
+    "Der Arbeitsbereich wurde geändert. Lade die Seite neu und prüfe den Nachweis erneut.",
+  invalid_request_origin_or_csrf:
+    "Die Sitzung wurde geändert. Lade die Seite neu und prüfe den Nachweis erneut.",
+  stackit_flow_missing:
+    "Der STACKIT-Nachweis ist abgelaufen. Bitte erneut prüfen.",
+  proof_expired: "Der STACKIT-Nachweis ist abgelaufen. Bitte erneut prüfen.",
+  expired: "Der STACKIT-Nachweis ist abgelaufen. Bitte erneut prüfen.",
+  access_denied:
+    "Die STACKIT-Bestätigung wurde abgelehnt. Bitte erneut prüfen.",
+  organization_admin_proof_required:
+    "Vollständige Organisations-Owner-Rechte sind nicht nachgewiesen.",
+};
+function proofError(code: string) {
+  return Object.hasOwn(proofErrors, code)
+    ? (proofErrors[code] ??
+        "Der Organisationsnachweis konnte nicht geprüft werden.")
+    : "Der Organisationsnachweis konnte nicht geprüft werden.";
+}
 const authorizationSchema = z.object({
   verificationUri: z.url().refine((value) => {
     const url = new URL(value);
@@ -27,6 +62,7 @@ const flowSchema = z.discriminatedUnion("status", [
   }),
   z.object({
     status: z.enum(["verified", "failed", "expired", "cancelled", "idle"]),
+    code: z.string().max(160).optional(),
   }),
 ]);
 
@@ -64,7 +100,14 @@ export function OrganizationBinding({
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
-      if (!response.ok) throw new Error("binding_request_failed");
+      if (!response.ok) {
+        const result = z
+          .object({ error: z.string().max(160) })
+          .safeParse(await response.json().catch(() => null));
+        throw new Error(
+          result.success ? result.data.error : "binding_request_failed",
+        );
+      }
       return response.json() as Promise<unknown>;
     },
     [session.csrfToken, tenantId],
@@ -73,13 +116,17 @@ export function OrganizationBinding({
   useEffect(() => {
     const scope = new AbortController();
     controller.current = scope;
+    setStatus(null);
+    setAuthorization(null);
+    setConfirmed(false);
+    setError("");
     void request("")
       .then((data) => {
         if (!scope.signal.aborted) setStatus(statusSchema.parse(data));
       })
-      .catch(() => {
+      .catch((cause: unknown) => {
         if (!scope.signal.aborted)
-          setError("Der Organisationsnachweis konnte nicht geprüft werden.");
+          setError(proofError(cause instanceof Error ? cause.message : ""));
       });
     return () => scope.abort();
   }, [request]);
@@ -101,7 +148,8 @@ export function OrganizationBinding({
           );
           return;
         }
-        if (flow.status !== "verified") throw new Error("proof_failed");
+        if (flow.status !== "verified")
+          throw new Error(flow.code ?? flow.status);
         const next = statusSchema.parse(await request(""));
         if (!active) return;
         setStatus(next);
@@ -110,10 +158,10 @@ export function OrganizationBinding({
           setError(
             "Vollständige Organisations-Owner-Rechte sind nicht nachgewiesen.",
           );
-      } catch {
+      } catch (cause) {
         if (active && !controller.current?.signal.aborted) {
           setAuthorization(null);
-          setError("Der Organisationsnachweis konnte nicht geprüft werden.");
+          setError(proofError(cause instanceof Error ? cause.message : ""));
         }
       }
     };
@@ -132,9 +180,9 @@ export function OrganizationBinding({
     try {
       const next = authorizationSchema.parse(await request("/start", {}));
       if (!controller.current?.signal.aborted) setAuthorization(next);
-    } catch {
+    } catch (cause) {
       if (!controller.current?.signal.aborted)
-        setError("Der Organisationsnachweis konnte nicht geprüft werden.");
+        setError(proofError(cause instanceof Error ? cause.message : ""));
     } finally {
       if (!controller.current?.signal.aborted) setBusy(false);
     }
@@ -146,9 +194,9 @@ export function OrganizationBinding({
     setBusy(true);
     try {
       await request("/cancel", {});
-    } catch {
+    } catch (cause) {
       if (!controller.current?.signal.aborted)
-        setError("Der Organisationsnachweis konnte nicht geprüft werden.");
+        setError(proofError(cause instanceof Error ? cause.message : ""));
     } finally {
       if (!controller.current?.signal.aborted) setBusy(false);
     }
@@ -180,7 +228,9 @@ export function OrganizationBinding({
     } catch {
       if (!controller.current?.signal.aborted) {
         setConfirmed(false);
-        setStatus({ bindingEnabled: true, organizationAdminVerified: false });
+        setStatus((previous) =>
+          previous ? { ...previous, organizationAdminVerified: false } : null,
+        );
         setError(
           "Die Organisationsbindung wurde nicht bestätigt. Bitte den Nachweis erneut prüfen.",
         );
@@ -197,6 +247,17 @@ export function OrganizationBinding({
       {status?.bindingEnabled && (
         <>
           <h3>{t("STACKIT-Organisationsnachweis")}</h3>
+          <dl className="application-properties">
+            <dt>{t("Configurator-Benutzer")}</dt>
+            <dd style={{ overflowWrap: "anywhere" }}>{session.user.login}</dd>
+            <dt>{t("STACKIT-E-Mail")}</dt>
+            <dd style={{ overflowWrap: "anywhere" }}>
+              {status.identity?.email ?? t("Noch kein STACKIT-Nachweis")}
+            </dd>
+            {status.identity && !status.verified && (
+              <dd>{t("STACKIT-Nachweis abgelaufen")}</dd>
+            )}
+          </dl>
           <button
             className="button"
             type="button"

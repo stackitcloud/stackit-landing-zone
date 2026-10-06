@@ -891,8 +891,28 @@ for (const publishing of [true, false]) {
     if (!publishing) expect(setupRequests).toEqual([]);
   });
 }
-for (const ownerProof of [true, false]) {
-  test(`explicit human organization binding ${ownerProof ? "owner" : "read-only"}`, async ({
+const proofFailures = {
+  organization_access_denied:
+    "The signed-in STACKIT user has no access to this organization.",
+  organization_permissions_response_invalid_response:
+    "STACKIT returned an unexpected permissions response. Organization binding remains blocked.",
+  identity_binding_conflict:
+    "The confirmed STACKIT account does not belong to the signed-in Configurator user.",
+  "unsafe-provider-detail": "The organization proof could not be verified.",
+  constructor: "The organization proof could not be verified.",
+};
+for (const proofOutcome of [
+  true,
+  false,
+  "organization_access_denied",
+  "organization_permissions_response_invalid_response",
+  "identity_binding_conflict",
+  "unsafe-provider-detail",
+  "constructor",
+] as const) {
+  const ownerProof = proofOutcome === true;
+  const failureCode = typeof proofOutcome === "string" ? proofOutcome : null;
+  test(`explicit human organization binding ${failureCode ?? (ownerProof ? "owner" : "read-only")}`, async ({
     page,
   }, testInfo) => {
     let checked = false;
@@ -932,7 +952,23 @@ for (const ownerProof of [true, false]) {
         if (path.endsWith("/poll")) {
           expect(request.postDataJSON()).toEqual({});
           checked = true;
-          return route.fulfill({ json: { status: "verified" } });
+          if (failureCode === "identity_binding_conflict")
+            return route.fulfill({
+              status: 409,
+              json: {
+                error: failureCode,
+                privateDetail: "do-not-display-provider-details",
+              },
+            });
+          return route.fulfill({
+            json: failureCode
+              ? {
+                  status: "failed",
+                  code: failureCode,
+                  privateDetail: "do-not-display-provider-details",
+                }
+              : { status: "verified" },
+          });
         }
         expect(path.endsWith("/bind-organization")).toBe(true);
         expect(ownerProof && checked).toBe(true);
@@ -998,6 +1034,8 @@ for (const ownerProof of [true, false]) {
           json: {
             bindingEnabled: true,
             organizationAdminVerified: checked && ownerProof,
+            verified: true,
+            identity: { email: "pilot@example.test" },
           },
         });
       if (path === "/api/v1/invitations")
@@ -1017,6 +1055,12 @@ for (const ownerProof of [true, false]) {
     await expect(
       page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
     ).toBeEnabled();
+    await expect(
+      page.getByText("pilot@example.test", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Configurator-Benutzer", { exact: true }),
+    ).toBeVisible();
     expect(mutations).toEqual([]);
     await page.getByLabel("Sprache", { exact: true }).selectOption("en");
     expect(mutations).toEqual([]);
@@ -1030,6 +1074,29 @@ for (const ownerProof of [true, false]) {
       "https://accounts.stackit.cloud/device?user_code=ABCD-1234",
     );
     await expect(page.getByText("ABCD-1234", { exact: true })).toBeVisible();
+    if (failureCode) {
+      await expect(page.getByRole("alert")).toContainText(
+        proofFailures[failureCode],
+      );
+      await expect(
+        page.getByRole("button", { name: "Bind organization", exact: true }),
+      ).toHaveCount(0);
+      expect(bound).toBe(false);
+      expect(
+        mutations.filter((path) => path.endsWith("/bind-organization")),
+      ).toEqual([]);
+      await expect(page.locator("body")).not.toContainText(
+        "do-not-display-provider-details",
+      );
+      await expect(page.locator("body")).not.toContainText(
+        "unsafe-provider-detail",
+      );
+      await page.screenshot({
+        path: testInfo.outputPath("organization-proof-failure.png"),
+        fullPage: true,
+      });
+      return;
+    }
     if (!ownerProof) {
       await expect(page.getByRole("alert")).toContainText(
         "Full organization owner permissions have not been verified.",

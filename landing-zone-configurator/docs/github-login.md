@@ -1,9 +1,37 @@
 # STACKIT-Login, optionale GitHub-Verbindung und Mandantentrennung
 
-Stand: 2026-10-05. STACKIT als primärer Login lokal implementiert und getestet.
+Stand: 2026-10-06. STACKIT als primärer Login lokal implementiert und getestet.
 Die ausdrueckliche Dev-Client-Freigabe ersetzt keine Produktionsregistrierung.
-Die neue Organisationsbindung ist lokal geprueft, aber noch nicht in der
-laufenden Kundendatenbank aktiviert. GitHub bleibt als Legacy-Modus erhalten.
+Die Organisationsbindung ist mit Migrationen bis 034 lokal aktiviert, ihre
+erfolgreiche Kundenabnahme steht noch aus. GitHub bleibt als Legacy-Modus erhalten.
+
+## Aktueller Login-Blocker und Nachweisdiagnose
+
+Ein anonymer Browser ohne bestehende STACKIT-Sitzung erreicht mit dem freigegebenen
+CLI-Device-Client die Provider-Seite `/ui/login/user`, aber nur mit einem
+Weiter-Button und versteckten Formularfeldern, ohne Login-Eingabe. Weiter fuehrt
+wieder auf dieselbe Seite. Dies wurde auch mit `openid email profile` und mit
+manueller Code-Eingabe am Basis-Bestaetigungslink reproduziert. Scope- oder
+Linkwechsel sind daher kein belegter Fix. Der Befund liegt auf der Provider-Seite;
+die konkrete Login-Policy-/Client-Ursache muss mit STACKIT geklaert werden.
+Eine bereits bestehende STACKIT-Sitzung ist nur ein beobachteter Workaround,
+keine Cold-Login-Abnahme. Ein eigener registrierter Web-OIDC-Client bleibt offen.
+
+Die Nachweisoberflaeche zeigt den angemeldeten Configurator-Benutzer und die
+zuletzt bestaetigte STACKIT-E-Mail. Abgelaufene Nachweise bleiben als solche
+gekennzeichnet; Benutzer-/Tenantwechsel entfernen die bisherige Anzeige.
+Bekannte Zugriffs-, Berechtigungs-, Identitaets- und Provider-Antwortfehler haben
+kontrollierte DE/EN-Meldungen. Unbekannte Codes und Providerdetails werden nicht
+angezeigt. Fehler erlauben weder Organisationsbindung noch Wiederverwendung
+alter Owner-Rechte. Der echte gemeldete Organisationsfehler ist noch nicht
+identifiziert: im eigenen authentifizierten Browser neu laden, Nachweis pruefen
+und die konkrete Meldung samt angezeigter Identitaet pruefen. Keine Tokens teilen.
+
+Nachweise: 61 Device-/Uebersetzungstests, TypeScript und 14 vorhandene erweiterte
+Desktop-/Mobil-Browserfaelle bestanden. Die Browserfaelle verwenden synthetische
+Identitaeten und gemockte APIs; sie sind keine reale Organisationsabnahme.
+Keine API-Neustarts, Kundenmigrationen, Cloud-Plans oder Applies fuer diese
+Diagnoseaenderung. #91 bleibt offen.
 
 ## Primärer STACKIT-Login
 
