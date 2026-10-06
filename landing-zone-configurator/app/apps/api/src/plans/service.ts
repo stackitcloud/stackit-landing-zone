@@ -1258,7 +1258,9 @@ export class Plans {
           JSON.parse(
             this.execution!.bootstrap(session, state).toString("utf8"),
           );
-        const output = document.outputs?.application_platform_contract;
+        const output =
+          document.outputs?.platform_contract ??
+          document.outputs?.application_platform_contract;
         if (output?.sensitive === true)
           throw invalid("platform_contract_unavailable");
         raw = output?.value;

@@ -2099,7 +2099,7 @@ describe.skipIf(!enabled)(
           serial: 1,
           lineage: randomUUID(),
           outputs: {
-            application_platform_contract: { value: contract },
+            platform_contract: { value: contract },
             private: { value: "do-not-publish" },
           },
           resources: [{ private: "do-not-publish" }],
