@@ -347,7 +347,8 @@ Bestelleingaben oder Bindungen. Keine automatische Freigabe bisher gesperrter We
 - [x] Stage als erste vollständige Bestelleingabe mit Default, Auswahl und festen Werten;
       unverändertes Lesen alter Entwürfe, explizite Konvertierung.
 - [x] Template-Editor und lokale Bestellvorschau aus demselben Vertrag erzeugen.
-- [ ] Veröffentlichten Tenant-Katalog und echte Application-Owner-Bestellung anbinden (#92/#93).
+- [x] Veröffentlichten Tenant-Katalog anbinden (#92/#93); reale unveraenderliche Version 1 lokal abgenommen.
+- [ ] Echte Application-Owner-Bestellung mit anschliessendem Plan/Apply abnehmen (#93).
 - [x] Compiler prüft Policy unabhängig vom Formular bei manipulierten Eingaben; Tests für
       unbekannte Felder, unzulässige Defaults, Tenantwechsel und Versionsbindung.
 - [ ] Accelerator-Modul um typisierte Projekt-Netz-/Observability-Bindung erweitern;
@@ -368,3 +369,23 @@ kein nachträglicher Komfortausbau eines bereits vollständigen MVP.
   sowie Stage-Naming, Legacy-Erhalt und die harte Netzwerkbindungs-Sperre.
 - Browserprüfung und Release-Nachweis werden nach erfolgreicher Bereitstellung ergänzt.
 - Kein Kunden-Apply und keine automatische Änderung vorhandener Projekte.
+
+### Reale Template-Veroeffentlichung (2026-10-06)
+
+Das bestehende Public-Template wurde als Version 1 aus dem gespeicherten Entwurf
+veroeffentlicht: Region eu01, lokales Projektnetz, freigegebener serverbasierter
+Plattformvertrag, Ziel `public-eu01`, automatische Gruppe **Application Owners**
+und **Bereitstellung mit Freigabe**. Der Vertrag stammt aus dem erfolgreichen
+aktuellen Plattform-Apply mit State-Version 6; alte Applies und rohe States sind
+keine frei waehlbaren Quellen. Der Katalog zeigt dieselbe Version nach Reload.
+Veroeffentlichung erzeugt keine Cloud-Ressourcen, Application-Ausfuehrung bleibt
+deaktiviert. Eine echte Application-Owner-Bestellung und Cloud-Ausfuehrung sind
+damit noch nicht abgenommen.
+
+Eigene Gruppen werden in **Benutzerverwaltung** angelegt, mit Mitgliedern
+besetzt und geloescht; die Veroeffentlichung verwaltet nur deren Template-Freigaben.
+**Erfolgreicher Plattform-Apply** zeigt Konfigurationsname und Abschlussdatum
+statt eines State-Key-Hashes. Auswaehlbar sind nur erfolgreiche, aktuelle,
+unverriegelte Applies im verifizierten Arbeitsbereich mit gueltigem menschlichem
+Organisationsnachweis. Dessen Erneuerung bleibt auch nach Organisationsbindung
+in der Benutzerverwaltung erreichbar.

@@ -393,8 +393,9 @@ export class Applications {
         state_version: string;
         organization_id: string;
         finished_at: Date;
+        configuration_name: string;
       }>(
-        "SELECT run.id,run.state_key,state.version::text AS state_version,preparation.manifest->'organization'->>'id' AS organization_id,run.finished_at FROM lzc.plan_runs run JOIN lzc.platform_states state ON state.state_key=run.state_key JOIN lzc.deployment_preparations preparation ON preparation.id=run.preparation_id JOIN lzc.tenants tenant ON tenant.id=run.tenant_id WHERE run.operation='apply' AND run.status='succeeded' AND run.finished_at IS NOT NULL AND run.applied_state_version=state.version AND state.lock_run_id IS NULL AND tenant.organization_verified AND tenant.archived_at IS NULL AND tenant.organization_id::text=preparation.manifest->'organization'->>'id' AND EXISTS(SELECT 1 FROM lzc.stackit_organization_access access JOIN lzc.stackit_identities identity ON identity.user_id=access.user_id WHERE access.tenant_id=run.tenant_id AND access.user_id=lzc.current_user_id() AND access.organization_id=tenant.organization_id AND access.valid_until>now() AND identity.revoked_at IS NULL AND identity.valid_until>now() AND access.verified_at>=identity.verified_at) AND ($1::uuid IS NULL OR run.id=$1) ORDER BY run.finished_at DESC,run.id DESC LIMIT 100",
+        "SELECT run.id,run.state_key,state.version::text AS state_version,preparation.manifest->'organization'->>'id' AS organization_id,run.finished_at,coalesce(nullif(preparation.manifest->'configuration'->>'name',''),'Plattform') AS configuration_name FROM lzc.plan_runs run JOIN lzc.platform_states state ON state.state_key=run.state_key JOIN lzc.deployment_preparations preparation ON preparation.id=run.preparation_id JOIN lzc.tenants tenant ON tenant.id=run.tenant_id WHERE run.operation='apply' AND run.status='succeeded' AND run.finished_at IS NOT NULL AND run.applied_state_version=state.version AND state.lock_run_id IS NULL AND tenant.organization_verified AND tenant.archived_at IS NULL AND tenant.organization_id::text=preparation.manifest->'organization'->>'id' AND EXISTS(SELECT 1 FROM lzc.stackit_organization_access access JOIN lzc.stackit_identities identity ON identity.user_id=access.user_id WHERE access.tenant_id=run.tenant_id AND access.user_id=lzc.current_user_id() AND access.organization_id=tenant.organization_id AND access.valid_until>now() AND identity.revoked_at IS NULL AND identity.valid_until>now() AND access.verified_at>=identity.verified_at) AND ($1::uuid IS NULL OR run.id=$1) ORDER BY run.finished_at DESC,run.id DESC LIMIT 100",
         [applyRunId ?? null],
       );
       return result.rows.map((row) => ({
@@ -403,6 +404,7 @@ export class Applications {
         stateVersion: row.state_version,
         organizationId: row.organization_id,
         finishedAt: row.finished_at.toISOString(),
+        configurationName: row.configuration_name,
       }));
     });
   }

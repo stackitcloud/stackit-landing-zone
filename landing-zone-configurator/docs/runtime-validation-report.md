@@ -1078,3 +1078,72 @@ Die API-Capability bleibt fuer aeltere Server optional; ihr Antwortformat bleibt
 unveraendert. Migrationen 035/036 und der vollstaendige neue Runtime-Stand sind
 nicht aktiviert. Menschliche IAM-/Publikationsabnahme und echte Application-
 Ausfuehrung bleiben offen. Kein Push, Merge, Release oder Cloud-Apply.
+
+## Reale Veroeffentlichung und Benutzerverwaltung (2026-10-06)
+
+Dieser Stand ersetzt die vorstehenden Aussagen zu nicht aktivierten Migrationen
+035/036 und noch fehlender menschlicher Publikationsabnahme. Die aktuelle
+Repository-API verwendet Schema 039; der bisherige isolierte Login-only-Runtime
+ist nicht mehr aktiv. Der qualifizierte Plattform-Runner bleibt unveraendert,
+Application-Ausfuehrung ist weiterhin ausdruecklich deaktiviert.
+
+Der reale menschliche Owner-Nachweis verwendet den vom Resource Manager fuer die
+exakte Organisation gelieferten IAM-Containerbezug. Alle 965 offiziellen
+Owner-Rechte werden geprueft, nicht abgeschnitten. Migration 037 erhoeht beide
+bestehenden Rechtegrenzen auf 4096, ohne Nullwerte oder unvollstaendige Rechte
+zuzulassen. Nach normalem PKCE-SSO, geschuetztem Polling und separater Bestaetigung
+ist die Organisationsbindung tatsaechlich verifiziert.
+
+Das bestehende Public-Template ist als unveraenderliche Version 1 mit freigegebenem
+aktuellen Plattformvertrag, Ziel public-eu01, automatischer Application-Owners-
+Gruppe und Freigaberichtlinie veroeffentlicht. Der echte Katalog behaelt die
+Version nach Reload. Es wurden dafuer keine Cloud-Ressourcen erstellt.
+
+Gruppenverwaltung liegt jetzt unter Benutzerverwaltung. Eigene Gruppen lassen
+sich anlegen und loeschen; Mitglieder lassen sich hinzufuegen und entfernen.
+Die Standardgruppe bleibt rollenbasiert. Gruppen mit Template-Freigaben bleiben
+gegen Loeschung geschuetzt. Eine Rollenaktualisierung entfernt keine manuell
+vergebenen Mitgliedschaften in eigenen Gruppen. Die reale Pruefgruppe wurde
+ueber die normale Oberflaeche angelegt, besetzt, nach Reload geprueft, geleert
+und wieder geloescht; beide Arbeitsbereichsmitglieder und die Standardgruppe
+blieben erhalten. Bestehende Template-Freigaben wurden nicht veraendert.
+
+Gruppenmitglieder zeigen ihre gespeicherte bestaetigte STACKIT-E-Mail, keine UUID.
+Migration 039 bietet dafuer eine begrenzte Lesefunktion auf der bereits
+berechtigten Mitgliedersicht: echte aktuelle Sitzung, identischer Benutzer und
+Tenant, bestehende Mitgliederverwaltung und keine widerrufene Identitaet.
+Fremde Sitzungen, fremde Tenants und nicht verwaltende Mitglieder liefern keine
+E-Mail-Liste. IDs bleiben ausschliesslich interne Mitgliedschaftsschluessel.
+Legacy-Konten ohne E-Mail behalten den Benutzernamen, bei fehlendem Namen gibt
+es eine neutrale Benutzerbezeichnung statt einer erfundenen Adresse oder UUID.
+Die echte Oberflaeche zeigt beide vorhandenen Mitglieder mit E-Mail-Adresse.
+
+Ein abgelaufener menschlicher Owner-Nachweis kann auch nach erfolgter Bindung
+erneuert werden; dabei wird keine weitere Bindung angeboten oder erzeugt.
+Die echte passwortfreie PKCE-Erneuerung war erfolgreich. Anschliessend zeigt die
+Apply-Auswahl den Konfigurationsnamen und das Abschlussdatum, keinen State-Key.
+
+```text
+canonical: PASS - npm run check, 403 unit tests; 52 expected gated skips
+auth: PASS - 68 tests, 965 rights, exact container binding, bounded provider bodies
+identity-postgres: PASS - 30 real isolated tests including 4096 limit and group lifecycle
+platform-postgres: PASS - 49 real isolated broker/source tests, unchanged authority gates
+browser: PASS - all 32 desktop/mobile management, publication, email and proof cases
+visual: PASS - desktop/mobile group screenshots reviewed
+backup-restore: PASS - fresh full restores for 034->036, 036->037, 037->038 and 038->039
+idempotency: PASS - migrations repeated on restored databases
+preservation: PASS - all 37 existing tables unchanged after restored 038 migration
+live-preservation: PASS - operational tables unchanged after actual 038 activation
+auth-differences: EXPECTED - concurrent sessions and credential-profile rows only
+email-preservation: PASS - all operational tables unchanged after 039; no auth differences
+email-boundaries: PASS - null GitHub login, foreign session/tenant, non-manager denied
+live-ui: PASS - group CRUD, email labels, owner renewal, readable Apply, published version after reload
+application-cloud: NOT_RUN - execution disabled, no Application Plan/Apply
+delivery: LOCAL_ONLY - no push, merge or release
+```
+
+Die frische Sicherung vor 038 enthaelt bereits den genehmigten Plattformvertrag
+und die veroeffentlichte Version. Private Dumps und Hashbelege bleiben ausserhalb
+des Repositorys mit restriktiven Dateirechten; keine Credentials oder Roh-States
+wurden ausgegeben oder committed. #91/#92/#93 bleiben fuer ihre weiteren
+urspruenglichen MVP-Abnahmekriterien offen.
