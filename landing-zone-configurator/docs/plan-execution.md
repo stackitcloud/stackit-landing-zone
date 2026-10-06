@@ -261,6 +261,30 @@ States bleiben gesperrt und benoetigen einen gesonderten operativen Abgleich.
 Es gibt keine automatische Entsperrung, State-Loeschung, Import- oder
 Destroy-Aktion. Die Migration muss vor Nutzung der neuen API aktiviert sein.
 
+### Lokale Aktivierung am 2026-10-06
+
+Nach ausdruecklicher Freigabe wurden die laufende Kunden-DB privat gesichert,
+der vollstaendige Dump in einer getrennten loopbackgebundenen PostgreSQL-17-
+Instanz restauriert und dort mit dem echten Migrator auf Migration 034 gebracht.
+Zeilenzahlen und Hashes aller 32 bestehenden Tabellen in `lzc` und `lzc_auth`
+blieben unveraendert. Erst danach wurde die API ohne laufende Kundenjobs neu
+gestartet. Derselbe Vergleich bestand auch nach der Live-Migration.
+
+Die Live-DB enthaelt nun Migrationen 001 bis 034; die neue Audit-Tabelle ist leer
+und hat erzwungene RLS. Der fehlgeschlagene Apply bleibt `recovery_required`.
+Das bisherige unveraenderliche Platform-Runner-Paket bleibt aktiv;
+Application-Ausfuehrung bleibt ausdruecklich deaktiviert. API und UI-Proxy
+antworten auf Health-Pruefungen mit 200, die neuen Checkpoint-/Freigaberouten
+ohne Anmeldung mit 401 und der deaktivierte Application-Runner mit 404.
+Die UI liefert den qualifizierten aktuellen Build. Die temporaere Restore-
+Instanz samt eigenem Volume wurde entfernt; privater Dump und Hash-Nachweise
+bleiben fuer Wiederherstellung erhalten.
+
+Diese Aktivierung pruefte ausschliesslich Sicherung, Schema, Datenbewahrung
+und Zugriffssperren. Der Kunden-Checkpoint wurde weder entschluesselt noch
+freigegeben. Die echte Checkpoint-Pruefung und Bestaetigung erfolgen durch den
+Benutzer in seiner angemeldeten UI. Es wurde kein Cloud-Plan/Apply gestartet.
+
 ## Portabler GitHub-Export
 
 Der Export schreibt atomar `landing-zone.json`, `landing-zone.tfvars` und eine
