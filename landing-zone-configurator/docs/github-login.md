@@ -54,9 +54,26 @@ Keine API-Neustarts, Kundenmigrationen, Cloud-Plans oder Applies fuer diese
 Diagnoseaenderung. #91 bleibt offen.
 
 PKCE-Folgepruefung: 62 Auth-Tests, insgesamt 395 Tests mit 45 erwarteten Skips,
-TypeScript sowie 4 Login- und 16 Nachweis-Browserfaelle bestanden. Der globale
-`npm run check` stoppt an fuenf Format-/Importdiagnosen in den pausierten
-Applied-Platform-Aenderungen; der begrenzte Login-Biome-Check hat keine Fehler.
+TypeScript sowie 4 Login- und 16 Nachweis-Browserfaelle bestanden. Vor der
+Wiederaufnahme stoppt der globale `npm run check` an fuenf Format-/Importdiagnosen
+in den pausierten Applied-Platform-Aenderungen; der begrenzte Login-Biome-Check
+hat keine Fehler. Diese historische Blockade wurde bei der Wiederaufnahme behoben.
+
+### Lokale Aktivierung (2026-10-06)
+
+Der freigegebene Login-only-Stand ist lokal aktiviert. Ein isolierter Runtime-Stand
+enthält Basis `056d4df`, Nachweisoberflaeche `929f7fd` und CLI-PKCE `ce6db69`, aber
+nicht die nachfolgenden Gruppen-/Application-Migrationen. Vor dem API-Neustart
+wurde die private Sicherung vollstaendig in einem eigenen PostgreSQL-Container
+wiederhergestellt und der unveraenderte Migrationsstand 034 geprueft. Nach dem
+Neustart sind alle 33 Kundentabellen unveraendert. Der bisherige Plattform-Runner
+bleibt derselbe; Application-Ausfuehrung bleibt deaktiviert.
+
+Der reale anonyme Start ueber die laufende UI erreicht die Provider-Seite mit
+sichtbarem Benutzernamenfeld und ohne Device-Code. Der eigene Pruefflow wurde
+beendet. Vollstaendiger menschlicher Login und echter Organisationsnachweis
+bleiben noch abzunehmen; #91 bleibt offen. Die isolierte Aktivierung erlaubt
+keinen ungeprueften Start des aktuellen Repository-Scripts mit Migrationen 035/036.
 
 ## Primärer STACKIT-Login
 

@@ -1003,3 +1003,25 @@ falscher State/Issuer, Replay, Ablauf, Cancel, fehlendes ID-Token, falsche Nonce
 fremde/unregistrierte Callback-Ziele, doppelte Query-Parameter. Screenshots zeigen
 korrekte Desktop-/Mobilansichten und gesperrte Bindung vor separater Bestaetigung.
 Keine Kundenmigration, API-Neustart, Runner-Aenderung oder Cloud-Operation.
+
+## Lokale PKCE-Aktivierung (2026-10-06)
+
+Nach ausdruecklicher Freigabe wurde ausschliesslich der isolierte Login-only-Stand
+aktiviert. Private Sicherung vollstaendig in eigenem PostgreSQL 17 wiederhergestellt;
+Migrationscheck mit der vorgeschriebenen Migrationsrolle bleibt exakt 034.
+Nach regularem API-Neustart stimmen alle 33 Kundentabellen mit der Sicherung
+ueberein. Plattform-State, Runs, Backend und festes Runner-Paket bleiben unveraendert;
+Application-Ausfuehrung bleibt deaktiviert. Der eigene Restore-Container ist entfernt.
+
+```text
+restore: PASS - full database restore, 33 tables unchanged
+migrations: PASS - isolated runtime remains exactly 001-034
+health: PASS - API and Web proxy; disabled application runner returns 404
+provider-start: PASS - actual anonymous UI start, visible username, no device code
+human-login-and-organisation: NEEDS_SIGNOFF - not performed by the assistant
+cloud: NOT_RUN - no Plan, Apply, source rebinding or migration 035/036 activation
+```
+
+Der browsergebundene eigene Pruefflow wurde abgebrochen und sein Browserkontext
+geschlossen. Anonymer Providerstart ist keine Abnahme menschlicher Identitaet,
+effektiver IAM-Rechte oder der Organisationsbindung.
