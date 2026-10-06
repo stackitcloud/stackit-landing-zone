@@ -32,6 +32,12 @@ const active = new Set([
   "planning",
   "applying",
 ]);
+const contractExportFailures: Record<string, string> = {
+  platform_contract_unavailable:
+    "Für die aktuelle State-Version ist kein gültiger Plattformvertrag eines erfolgreichen Apply verfügbar. Es wurden keine State-Daten exportiert.",
+  state_failed:
+    "Der aktuelle State konnte nicht sicher gelesen werden. Prüfe den Backend-Zugang und ausstehende Wiederherstellungsschritte. Es wurden keine State-Daten exportiert.",
+};
 const labels: Record<string, string> = {
   starting: "Runner wird vorbereitet",
   initializing: "OpenTofu initialisiert",
@@ -840,10 +846,21 @@ export function PlanRuns({
       const response = await fetch(`/api/v1/plans/${run.id}/outputs`, {
         credentials: "same-origin",
       });
-      if (!response.ok)
+      if (!response.ok) {
+        const failure: unknown = await response.json().catch(() => null);
+        const errorCode =
+          failure &&
+          typeof failure === "object" &&
+          "error" in failure &&
+          typeof failure.error === "string"
+            ? failure.error
+            : "";
         throw new Error(
-          "Der Plattformvertrag ist nicht verfügbar. Es wurden keine State-Daten exportiert.",
+          Object.hasOwn(contractExportFailures, errorCode)
+            ? contractExportFailures[errorCode]
+            : "Der Plattformvertrag ist nicht verfügbar. Es wurden keine State-Daten exportiert.",
         );
+      }
       const payload: unknown = await response.json();
       const candidate =
         payload &&

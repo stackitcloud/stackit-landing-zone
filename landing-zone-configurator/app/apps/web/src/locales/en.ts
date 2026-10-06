@@ -328,6 +328,10 @@ export const englishMessages: Record<string, string> = {
     "Application Landing Zone Template version",
   "Application Landing Zone Templates": "Application Landing Zone Templates",
   "Application Landing Zones": "Application Landing Zones",
+  "Für die aktuelle State-Version ist kein gültiger Plattformvertrag eines erfolgreichen Apply verfügbar. Es wurden keine State-Daten exportiert.":
+    "No valid platform contract from a successful apply is available for the current state version. No state data was exported.",
+  "Der aktuelle State konnte nicht sicher gelesen werden. Prüfe den Backend-Zugang und ausstehende Wiederherstellungsschritte. Es wurden keine State-Daten exportiert.":
+    "The current state could not be read safely. Check backend access and outstanding recovery steps. No state data was exported.",
   Katalog: "Catalogue",
   Veröffentlichung: "Publication",
   Plattformanbindung: "Platform binding",

@@ -3570,6 +3570,47 @@ test.describe("explicit saved-plan approval", () => {
     page.on("download", () => downloads++);
     await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
       route.fulfill({
+        status: 400,
+        json: {
+          error: "platform_contract_unavailable",
+          state: "must-not-export",
+        },
+      }),
+    );
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Für die aktuelle State-Version ist kein gültiger Plattformvertrag eines erfolgreichen Apply verfügbar",
+    );
+    await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+    await expect(page.getByRole("alert")).toContainText(
+      "No valid platform contract from a successful apply is available for the current state version",
+    );
+    await page.getByLabel("Language", { exact: true }).selectOption("de");
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({ status: 400, json: { error: "state_failed" } }),
+    );
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Der aktuelle State konnte nicht sicher gelesen werden",
+    );
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({
+        status: 400,
+        json: { error: "__proto__", state: "must-not-export" },
+      }),
+    );
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Der Plattformvertrag ist nicht verfügbar",
+    );
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({
         json: { resources: [], outputs: {}, credentials: "must-not-export" },
       }),
     );
