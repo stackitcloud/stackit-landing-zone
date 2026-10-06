@@ -5,17 +5,37 @@ Die ausdrueckliche Dev-Client-Freigabe ersetzt keine Produktionsregistrierung.
 Die Organisationsbindung ist mit Migrationen bis 034 lokal aktiviert, ihre
 erfolgreiche Kundenabnahme steht noch aus. GitHub bleibt als Legacy-Modus erhalten.
 
-## Aktueller Login-Blocker und Nachweisdiagnose
+## CLI-PKCE und Nachweisdiagnose
 
 Ein anonymer Browser ohne bestehende STACKIT-Sitzung erreicht mit dem freigegebenen
 CLI-Device-Client die Provider-Seite `/ui/login/user`, aber nur mit einem
 Weiter-Button und versteckten Formularfeldern, ohne Login-Eingabe. Weiter fuehrt
 wieder auf dieselbe Seite. Dies wurde auch mit `openid email profile` und mit
 manueller Code-Eingabe am Basis-Bestaetigungslink reproduziert. Scope- oder
-Linkwechsel sind daher kein belegter Fix. Der Befund liegt auf der Provider-Seite;
-die konkrete Login-Policy-/Client-Ursache muss mit STACKIT geklaert werden.
-Eine bereits bestehende STACKIT-Sitzung ist nur ein beobachteter Workaround,
-keine Cold-Login-Abnahme. Ein eigener registrierter Web-OIDC-Client bleibt offen.
+Linkwechsel sind daher kein belegter Fix. Der Vergleich mit dem lokal geklonten
+STACKIT-CLI korrigiert die urspruengliche Einordnung als allgemeiner Providerfehler:
+`stackit auth login` verwendet Authorization Code mit PKCE, nicht Device Flow.
+Ein frischer anonymer CLI-artiger Authorization-Code-Aufruf liefert tatsaechlich
+ein Benutzernamenfeld. Der vollstaendige menschliche Login ist noch nicht abgenommen.
+
+Der lokale Startscript verwendet jetzt denselben CLI-Client, S256-PKCE und
+`openid offline_access email`. Zusaetzlich schuetzen zufaelliger State und Nonce
+den Browserflow. Ein Loopback-Listener waehlt einen freien Port zwischen 8000 und
+8020 und verwendet exakt `http://localhost:<port>` als registrierten Callback.
+Die Weiterleitung ist auf den festen lokalen Configurator-Origin begrenzt;
+Code und Callback-URLs werden nicht geloggt. Der Configurator-Callback verlangt
+das urspruengliche Browsercookie bzw. die echte Nachweissitzung und denselben
+Tenant. Fremde, abgelaufene, wiederholte oder unpassende Callbacks werden abgelehnt.
+Erst das bestehende browsergebundene Polling tauscht den Code mit dem Verifier
+aus und prueft signiertes ID-Token, Nonce, Issuer, Audience und Userinfo. Der
+Callback erzeugt keine Sitzung und bindet keine Organisation automatisch.
+Refresh-Tokens werden trotz CLI-kompatiblem Scope nicht gespeichert.
+
+PKCE ist nur lokal vorbereitet, nicht in der laufenden API aktiviert. Der
+Standard-Device-Flow bleibt kompatibel. Der CLI-Loopback-Callback ist kein
+Deployment-Verfahren fuer gehostete Apps; ein eigener registrierter Web-OIDC-Client
+mit passendem Callback bleibt fuer Produktion erforderlich. Bestehende Sitzungen
+und die pausierten Application-Migrationen werden nicht automatisch veraendert.
 
 Die Nachweisoberflaeche zeigt den angemeldeten Configurator-Benutzer und die
 zuletzt bestaetigte STACKIT-E-Mail. Abgelaufene Nachweise bleiben als solche
@@ -33,6 +53,11 @@ Identitaeten und gemockte APIs; sie sind keine reale Organisationsabnahme.
 Keine API-Neustarts, Kundenmigrationen, Cloud-Plans oder Applies fuer diese
 Diagnoseaenderung. #91 bleibt offen.
 
+PKCE-Folgepruefung: 62 Auth-Tests, insgesamt 395 Tests mit 45 erwarteten Skips,
+TypeScript sowie 4 Login- und 16 Nachweis-Browserfaelle bestanden. Der globale
+`npm run check` stoppt an fuenf Format-/Importdiagnosen in den pausierten
+Applied-Platform-Aenderungen; der begrenzte Login-Biome-Check hat keine Fehler.
+
 ## Primärer STACKIT-Login
 
 Platform Engineer und Application Owner melden sich mit ihrer persönlichen
@@ -43,15 +68,18 @@ Produktkataloge verwenden danach denselben Zugang automatisch, ohne weitere
 Profil- oder Projektwahl im Editor. Persönliche Login-Tokens werden nicht für
 technische STACKIT-Automatisierungen gespeichert oder wiederverwendet.
 
-`POST /auth/stackit/start` beginnt einen browsergebundenen Device Flow.
-Der Browser erhält nur den öffentlichen Bestätigungscode und den festen
-STACKIT-Bestätigungslink. `/auth/stackit/poll` verifiziert die Identität serverseitig
+`POST /auth/stackit/start` beginnt den konfigurierten browsergebundenen Flow.
+Lokal ist dies CLI-PKCE; ohne explizite Flow-Factory bleibt es Device Flow.
+Beim Device Flow erhält der Browser den öffentlichen Bestätigungscode und den
+STACKIT-Bestätigungslink, bei PKCE nur den Authorization-Link ohne Device-Code.
+`/auth/stackit/poll` verifiziert die Identität serverseitig
 und erzeugt die normale opaque Session. Ein vorhandenes ID-Token wird vollständig
 geprüft; fehlt es, wird ausschließlich Userinfo mit dem im selben Device Grant
 erhaltenen Access Token verwendet. Ein bestätigtes persönliches Konto ist Pflicht.
 Issuer und Subject bestimmen den stabilen Benutzer, niemals allein die E-Mail-Adresse.
 
-Device-Cookies sind `Secure`, `HttpOnly`, `SameSite=Strict`; Sessions verwenden
+Device-Cookies sind `Secure`, `HttpOnly`, `SameSite=Strict`; fuer die PKCE-
+Callback-Rueckkehr verwendet die Browserbindung `SameSite=Lax`. Sessions verwenden
 `SameSite=Lax`. Pre-Auth-POSTs verlangen die exakte Origin, authentifizierte
 Änderungen zusätzlich CSRF. Sessions gelten höchstens acht Stunden und enden
 spätestens 30 Sekunden vor dem Provider-Token. Kein Refresh-Token wird behalten.

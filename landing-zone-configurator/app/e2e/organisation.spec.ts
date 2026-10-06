@@ -909,10 +909,18 @@ for (const proofOutcome of [
   "identity_binding_conflict",
   "unsafe-provider-detail",
   "constructor",
+  "pkce-owner",
 ] as const) {
-  const ownerProof = proofOutcome === true;
-  const failureCode = typeof proofOutcome === "string" ? proofOutcome : null;
-  test(`explicit human organization binding ${failureCode ?? (ownerProof ? "owner" : "read-only")}`, async ({
+  const codeFlow = proofOutcome === "pkce-owner";
+  const ownerProof = proofOutcome === true || codeFlow;
+  const failureCode =
+    typeof proofOutcome === "string" && proofOutcome !== "pkce-owner"
+      ? proofOutcome
+      : null;
+  const verificationUri = codeFlow
+    ? "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256"
+    : "https://accounts.stackit.cloud/device?user_code=ABCD-1234";
+  test(`explicit human organization binding ${codeFlow ? "pkce-owner" : (failureCode ?? (ownerProof ? "owner" : "read-only"))}`, async ({
     page,
   }, testInfo) => {
     let checked = false;
@@ -941,9 +949,8 @@ for (const proofOutcome of [
           checked = false;
           return route.fulfill({
             json: {
-              verificationUri:
-                "https://accounts.stackit.cloud/device?user_code=ABCD-1234",
-              userCode: "ABCD-1234",
+              verificationUri,
+              ...(codeFlow ? {} : { userCode: "ABCD-1234" }),
               expiresAt: new Date(Date.now() + 300000).toISOString(),
               retryAfterMs: 1000,
             },
@@ -1069,11 +1076,11 @@ for (const proofOutcome of [
       .click();
     await expect(
       page.getByRole("link", { name: "Open STACKIT", exact: true }),
-    ).toHaveAttribute(
-      "href",
-      "https://accounts.stackit.cloud/device?user_code=ABCD-1234",
-    );
-    await expect(page.getByText("ABCD-1234", { exact: true })).toBeVisible();
+    ).toHaveAttribute("href", verificationUri);
+    if (codeFlow)
+      await expect(page.getByText("ABCD-1234", { exact: true })).toHaveCount(0);
+    else
+      await expect(page.getByText("ABCD-1234", { exact: true })).toBeVisible();
     if (failureCode) {
       await expect(page.getByRole("alert")).toContainText(
         proofFailures[failureCode],

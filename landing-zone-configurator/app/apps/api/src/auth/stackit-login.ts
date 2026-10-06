@@ -30,6 +30,13 @@ export function registerStackitLogin(
     "__Host-lzc-device=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0";
   const requestKey = (request: FastifyRequest) =>
     cookie(request, "__Host-lzc-device");
+  app.get("/auth/stackit/callback", async (request, reply) => {
+    const key = requestKey(request);
+    const entry = key ? pending.get(key) : undefined;
+    if (!entry || entry.busy || !entry.flow.acceptAuthorization(request.query))
+      return reply.code(400).send({ error: "invalid_stackit_callback" });
+    return reply.header("Referrer-Policy", "no-referrer").redirect(auth.origin);
+  });
   app.addHook("onClose", async () => {
     for (const entry of pending.values()) entry.flow.cancel();
     pending.clear();
@@ -88,7 +95,7 @@ export function registerStackitLogin(
           entry.expiresAt = Date.parse(authorization.expiresAt);
           reply.header(
             "Set-Cookie",
-            `__Host-lzc-device=${key}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${Math.max(1, Math.ceil((entry.expiresAt - Date.now()) / 1000))}`,
+            `__Host-lzc-device=${key}; Path=/; HttpOnly; Secure; SameSite=${entry.flow.usesAuthorizationCode ? "Lax" : "Strict"}; Max-Age=${Math.max(1, Math.ceil((entry.expiresAt - Date.now()) / 1000))}`,
           );
           return authorization;
         } catch (error) {

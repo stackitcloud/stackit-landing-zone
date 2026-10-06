@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { createRemoteJWKSet, customFetch, errors, jwtVerify } from "jose";
 import { z } from "zod";
 
@@ -43,6 +44,18 @@ export type DeviceState =
   | { status: "failed"; code: string }
   | { status: "verified"; identity: DeviceIdentity };
 
+export type StackitAuthorization = {
+  verificationUri: string;
+  userCode?: string;
+  expiresAt: string;
+  retryAfterMs: number;
+};
+
+export type AuthorizationCodeOptions = {
+  redirectUri: string;
+  purpose: "login" | "proof";
+};
+
 export class StackitDeviceFlow {
   private deviceCode: string | null = null;
   private expiresAt = 0;
@@ -52,14 +65,34 @@ export class StackitDeviceFlow {
   private current: DeviceState = { status: "idle" };
   private readonly keys;
   private readonly organizationId: string | undefined;
+  private codeVerifier: string | null = null;
+  private codeState: string | null = null;
+  private nonce: string | null = null;
+  private authorizationCode: string | null = null;
 
   constructor(
     private readonly request: typeof fetch = fetch,
     private readonly now: () => number = Date.now,
     organizationId?: string,
+    private readonly codeOptions?: AuthorizationCodeOptions,
   ) {
     this.organizationId =
       organizationId === undefined ? undefined : z.uuid().parse(organizationId);
+    if (codeOptions) {
+      const redirect = new URL(codeOptions.redirectUri);
+      if (
+        redirect.protocol !== "http:" ||
+        redirect.hostname !== "localhost" ||
+        Number(redirect.port) < 8000 ||
+        Number(redirect.port) > 8020 ||
+        redirect.pathname !== "/" ||
+        redirect.search ||
+        redirect.hash ||
+        redirect.username ||
+        redirect.password
+      )
+        throw new DeviceFlowError("invalid_cli_callback");
+    }
     this.keys = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`), {
       [customFetch]: (input, init) =>
         this.request(input, { ...init, redirect: "error" }),
@@ -80,9 +113,41 @@ export class StackitDeviceFlow {
     return { response, data: JSON.parse(text) as unknown };
   }
 
-  async begin() {
+  get usesAuthorizationCode() {
+    return this.codeOptions !== undefined;
+  }
+
+  async begin(): Promise<StackitAuthorization> {
     if (this.current.status !== "idle")
       throw new DeviceFlowError("flow_already_started");
+    if (this.codeOptions) {
+      this.codeVerifier = randomBytes(32).toString("base64url");
+      this.codeState = `${this.codeOptions.purpose}.${randomBytes(32).toString("base64url")}`;
+      this.nonce = randomBytes(32).toString("base64url");
+      const authorization = new URL(`${issuer}/oauth/v2/authorize`);
+      authorization.search = new URLSearchParams({
+        client_id: clientId,
+        response_type: "code",
+        scope: "openid offline_access email",
+        redirect_uri: this.codeOptions.redirectUri,
+        code_challenge: createHash("sha256")
+          .update(this.codeVerifier)
+          .digest("base64url"),
+        code_challenge_method: "S256",
+        state: this.codeState,
+        nonce: this.nonce,
+        max_age: "28800",
+      }).toString();
+      this.expiresAt = this.now() + 900000;
+      this.intervalMs = 1000;
+      this.nextPollAt = this.now() + this.intervalMs;
+      this.current = { status: "waiting", retryAfterMs: this.intervalMs };
+      return {
+        verificationUri: authorization.toString(),
+        expiresAt: new Date(this.expiresAt).toISOString(),
+        retryAfterMs: this.intervalMs,
+      };
+    }
     const { response, data } = await this.call(
       "/oauth/v2/device_authorization",
       {
@@ -122,6 +187,10 @@ export class StackitDeviceFlow {
 
   cancel(): DeviceState {
     this.deviceCode = null;
+    this.codeVerifier = null;
+    this.codeState = null;
+    this.nonce = null;
+    this.authorizationCode = null;
     this.current = { status: "cancelled" };
     return this.current;
   }
@@ -129,34 +198,83 @@ export class StackitDeviceFlow {
   state(): DeviceState {
     if (this.current.status === "waiting" && this.now() >= this.expiresAt) {
       this.deviceCode = null;
+      this.codeVerifier = null;
+      this.codeState = null;
+      this.nonce = null;
+      this.authorizationCode = null;
       this.current = { status: "expired" };
     }
     return structuredClone(this.current);
+  }
+
+  acceptAuthorization(query: unknown): boolean {
+    const callback = z
+      .strictObject({
+        state: z.string().max(128),
+        code: z.string().min(1).max(4096).optional(),
+        error: z
+          .enum(["access_denied", "login_required", "interaction_required"])
+          .optional(),
+        iss: z.literal(issuer).optional(),
+      })
+      .safeParse(query);
+    if (
+      !callback.success ||
+      !this.codeOptions ||
+      !this.codeState ||
+      this.state().status !== "waiting" ||
+      this.authorizationCode ||
+      this.polling ||
+      callback.data.state !== this.codeState ||
+      Boolean(callback.data.code) === Boolean(callback.data.error)
+    )
+      return false;
+    this.codeState = null;
+    if (callback.data.error) {
+      this.current = { status: "failed", code: "access_denied" };
+      this.codeVerifier = null;
+      this.nonce = null;
+    } else this.authorizationCode = callback.data.code ?? null;
+    return true;
   }
 
   async poll(): Promise<DeviceState> {
     if (this.state().status !== "waiting" || this.polling) return this.state();
     if (this.now() < this.nextPollAt)
       return { status: "waiting", retryAfterMs: this.nextPollAt - this.now() };
+    if (this.codeOptions && !this.authorizationCode)
+      return { status: "waiting", retryAfterMs: this.intervalMs };
     this.polling = true;
     this.nextPollAt = this.now() + this.intervalMs;
     let stage = "token_response";
     try {
+      const tokenRequest = this.codeOptions
+        ? new URLSearchParams({
+            client_id: clientId,
+            grant_type: "authorization_code",
+            code: this.authorizationCode ?? "",
+            code_verifier: this.codeVerifier ?? "",
+            redirect_uri: this.codeOptions.redirectUri,
+          })
+        : new URLSearchParams({
+            client_id: clientId,
+            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+            device_code: this.deviceCode ?? "",
+          });
+      this.authorizationCode = null;
+      this.codeVerifier = null;
       const { response, data } = await this.call("/oauth/v2/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id: clientId,
-          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-          device_code: this.deviceCode ?? "",
-        }),
+        body: tokenRequest,
       });
       if (this.state().status !== "waiting") return this.state();
       if (!response.ok) {
         const failure = z.object({ error: z.string() }).parse(data);
         if (
-          failure.error === "authorization_pending" ||
-          failure.error === "slow_down"
+          !this.codeOptions &&
+          (failure.error === "authorization_pending" ||
+            failure.error === "slow_down")
         ) {
           if (failure.error === "slow_down") this.intervalMs += 5000;
           this.nextPollAt = this.now() + this.intervalMs;
@@ -185,16 +303,23 @@ export class StackitDeviceFlow {
         .parse(data);
       let identity: { sub: string; email?: string | undefined } | undefined;
       let tokenExpiresAt = this.now() + tokens.expires_in * 1000;
+      if (this.codeOptions && !tokens.id_token)
+        throw new DeviceFlowError("id_token_required");
       if (tokens.id_token !== undefined) {
         stage = "id_token_verification";
         const { payload } = await jwtVerify(tokens.id_token, this.keys, {
           issuer,
           audience: clientId,
           algorithms: ["RS256"],
-          requiredClaims: ["sub", "iat", "exp"],
+          requiredClaims: this.codeOptions
+            ? ["sub", "iat", "exp", "nonce"]
+            : ["sub", "iat", "exp"],
           maxTokenAge: "10m",
           currentDate: new Date(this.now()),
         });
+        if (this.codeOptions && payload.nonce !== this.nonce)
+          throw new DeviceFlowError("identity_nonce_mismatch");
+        this.nonce = null;
         stage = "id_token_claims";
         identity = identitySchema
           .partial({ email: true, email_verified: true })
@@ -397,6 +522,12 @@ export class StackitDeviceFlow {
         };
       }
     } finally {
+      if (this.codeOptions) {
+        this.codeVerifier = null;
+        this.codeState = null;
+        this.nonce = null;
+        this.authorizationCode = null;
+      }
       this.polling = false;
     }
     return this.state();

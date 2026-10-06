@@ -268,142 +268,155 @@ for (const responseKind of ["unavailable", "html"] as const) {
   });
 }
 
-test("STACKIT primary login, approval dialog and logout without GitHub", async ({
-  page,
-}, testInfo) => {
-  let loggedIn = false;
-  let approved = false;
-  const extraRequests: string[] = [];
-  page.on("request", (request) => {
-    if (/\/api\/v1\/(github|credentials|cloud-catalogues)/.test(request.url()))
-      extraRequests.push(request.url());
-  });
-  await page.route("**/auth/status", (route) =>
-    route.fulfill({
-      json: { github: false, stackit: true, primary: "stackit" },
-    }),
-  );
-  await page.route("**/api/v1/session", (route) =>
-    route.fulfill(
-      loggedIn
-        ? {
-            json: {
-              user: {
-                id: "11111111-1111-4111-8111-111111111111",
-                login: "owner@example.test",
+for (const codeFlow of [false, true]) {
+  test(`STACKIT primary login, approval dialog and logout without GitHub ${codeFlow ? "PKCE" : "device"}`, async ({
+    page,
+  }, testInfo) => {
+    let loggedIn = false;
+    let approved = false;
+    const extraRequests: string[] = [];
+    page.on("request", (request) => {
+      if (
+        /\/api\/v1\/(github|credentials|cloud-catalogues)/.test(request.url())
+      )
+        extraRequests.push(request.url());
+    });
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill(
+        loggedIn
+          ? {
+              json: {
+                user: {
+                  id: "11111111-1111-4111-8111-111111111111",
+                  login: "owner@example.test",
+                },
+                tenant: {
+                  id: "22222222-2222-4222-8222-222222222222",
+                  kind: "organisation",
+                  roles: ["application-owner"],
+                },
+                csrfToken: "c".repeat(43),
+                expiresAt: new Date(Date.now() + 3600000).toISOString(),
               },
-              tenant: {
-                id: "22222222-2222-4222-8222-222222222222",
-                kind: "organisation",
-                roles: ["application-owner"],
-              },
-              csrfToken: "c".repeat(43),
-              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            }
+          : { status: 401, json: { error: "authentication_required" } },
+      ),
+    );
+    await page.route("**/api/v1/applications/**", (route) =>
+      route.fulfill({ json: { versions: [], instances: [] } }),
+    );
+    await page.route("**/api/v1/organisation", (route) =>
+      route.fulfill({
+        json: {
+          userId: "11111111-1111-4111-8111-111111111111",
+          activeTenantId: "22222222-2222-4222-8222-222222222222",
+          tenants: [
+            {
+              id: "22222222-2222-4222-8222-222222222222",
+              name: "Mein Arbeitsbereich",
+              kind: "organisation",
+              organizationId: "33333333-3333-4333-8333-333333333333",
+              organizationVerified: false,
+              roles: ["application-owner"],
+              manageMembers: false,
             },
-          }
-        : { status: 401, json: { error: "authentication_required" } },
-    ),
-  );
-  await page.route("**/api/v1/applications/**", (route) =>
-    route.fulfill({ json: { versions: [], instances: [] } }),
-  );
-  await page.route("**/api/v1/organisation", (route) =>
-    route.fulfill({
-      json: {
-        userId: "11111111-1111-4111-8111-111111111111",
-        activeTenantId: "22222222-2222-4222-8222-222222222222",
-        tenants: [
-          {
-            id: "22222222-2222-4222-8222-222222222222",
-            name: "Mein Arbeitsbereich",
-            kind: "organisation",
-            organizationId: "33333333-3333-4333-8333-333333333333",
-            organizationVerified: false,
-            roles: ["application-owner"],
-            manageMembers: false,
-          },
-        ],
-        members: [],
-      },
-    }),
-  );
-  await page.route("**/auth/stackit/start", (route) =>
-    route.fulfill({
-      json: {
-        verificationUri:
-          "https://accounts.stackit.cloud/device?user_code=TEST-CODE",
-        userCode: "TEST-CODE",
-        expiresAt: new Date(Date.now() + 300000).toISOString(),
-        retryAfterMs: 50,
-      },
-    }),
-  );
-  await page.route("**/auth/stackit/poll", (route) => {
-    if (approved) {
-      loggedIn = true;
-      return route.fulfill({ json: { status: "verified" } });
-    }
-    return route.fulfill({ json: { status: "waiting", retryAfterMs: 50 } });
+          ],
+          members: [],
+        },
+      }),
+    );
+    await page.route("**/auth/stackit/start", (route) =>
+      route.fulfill({
+        json: {
+          verificationUri: codeFlow
+            ? "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256"
+            : "https://accounts.stackit.cloud/device?user_code=TEST-CODE",
+          ...(codeFlow ? {} : { userCode: "TEST-CODE" }),
+          expiresAt: new Date(Date.now() + 300000).toISOString(),
+          retryAfterMs: 50,
+        },
+      }),
+    );
+    await page.route("**/auth/stackit/poll", (route) => {
+      if (approved) {
+        loggedIn = true;
+        return route.fulfill({ json: { status: "verified" } });
+      }
+      return route.fulfill({ json: { status: "waiting", retryAfterMs: 50 } });
+    });
+    await page.route("**/auth/logout", (route) => {
+      loggedIn = false;
+      return route.fulfill({ status: 204 });
+    });
+    await page.goto("/organisation");
+    await page
+      .getByRole("button", { name: "Mit STACKIT anmelden", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    if (codeFlow) await expect(dialog.getByLabel("Anmeldecode")).toHaveCount(0);
+    else await expect(dialog.getByLabel("Anmeldecode")).toHaveText("TEST-CODE");
+    await expect(
+      dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
+    ).toHaveAttribute(
+      "href",
+      codeFlow
+        ? /^https:\/\/accounts\.stackit\.cloud\/oauth\/v2\/authorize/
+        : /^https:\/\/accounts\.stackit\.cloud\/device/,
+    );
+    expect(
+      await dialog.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return (
+          box.left >= 0 &&
+          box.right <= innerWidth &&
+          box.top >= 0 &&
+          box.bottom <= innerHeight
+        );
+      }),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("stackit-login.png"),
+      fullPage: true,
+    });
+    approved = true;
+    await expect(
+      page.getByRole("button", { name: "Abmelden", exact: true }),
+    ).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator(".account")).toContainText("owner@example.test");
+    await expect(page).toHaveURL(/\/workspaces$/);
+    await expect(
+      page.getByRole("button", {
+        name: "Arbeitsbereich öffnen: Mein Arbeitsbereich",
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", {
+        name: "Arbeitsbereich öffnen: Mein Arbeitsbereich",
+      })
+      .click();
+    await expect(page).toHaveURL(/\/applications$/);
+    await expect(
+      page.getByRole("button", { name: "Mit GitHub anmelden" }),
+    ).toHaveCount(0);
+    expect(extraRequests).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.getByRole("button", { name: "Abmelden", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
+    ).toBeVisible();
   });
-  await page.route("**/auth/logout", (route) => {
-    loggedIn = false;
-    return route.fulfill({ status: 204 });
-  });
-  await page.goto("/organisation");
-  await page
-    .getByRole("button", { name: "Mit STACKIT anmelden", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel("Anmeldecode")).toHaveText("TEST-CODE");
-  await expect(
-    dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
-  ).toHaveAttribute("href", /^https:\/\/accounts\.stackit\.cloud\/device/);
-  expect(
-    await dialog.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      return (
-        box.left >= 0 &&
-        box.right <= innerWidth &&
-        box.top >= 0 &&
-        box.bottom <= innerHeight
-      );
-    }),
-  ).toBe(true);
-  await page.screenshot({
-    path: testInfo.outputPath("stackit-login.png"),
-    fullPage: true,
-  });
-  approved = true;
-  await expect(
-    page.getByRole("button", { name: "Abmelden", exact: true }),
-  ).toBeVisible();
-  await expect(dialog).toHaveCount(0);
-  await expect(page.locator(".account")).toContainText("owner@example.test");
-  await expect(page).toHaveURL(/\/workspaces$/);
-  await expect(
-    page.getByRole("button", {
-      name: "Arbeitsbereich öffnen: Mein Arbeitsbereich",
-    }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Arbeitsbereich öffnen: Mein Arbeitsbereich" })
-    .click();
-  await expect(page).toHaveURL(/\/applications$/);
-  await expect(
-    page.getByRole("button", { name: "Mit GitHub anmelden" }),
-  ).toHaveCount(0);
-  expect(extraRequests).toEqual([]);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await page.getByRole("button", { name: "Abmelden", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
-  ).toBeVisible();
-});
+}
 
 test("GitHub connection is optional and starts only in the repository workspace", async ({
   page,

@@ -19,7 +19,10 @@ export type StackitServices = {
       Pick<StackitIdentities, "bindOrganization" | "clearOrganizationProof">
     >;
   organisations: Pick<OrganisationService, "overview">;
-  createFlow?: (organizationId?: string) => StackitDeviceFlow;
+  createFlow?: (
+    organizationId?: string,
+    purpose?: "login" | "proof",
+  ) => StackitDeviceFlow;
 };
 
 export function registerStackitIdentity(
@@ -41,6 +44,17 @@ export function registerStackitIdentity(
   app.addHook("onClose", async () => {
     for (const entry of pending.values()) entry.flow.cancel();
     pending.clear();
+  });
+  app.get("/auth/stackit/proof-callback", async (request, reply) => {
+    const session = await authenticatedSession(request, auth);
+    const entry = session
+      ? pending.get(`${session.id}:${session.tenantId}`)
+      : undefined;
+    if (!entry || entry.busy || !entry.flow.acceptAuthorization(request.query))
+      return reply.code(400).send({ error: "invalid_stackit_callback" });
+    return reply
+      .header("Referrer-Policy", "no-referrer")
+      .redirect(`${auth.origin}/organisation`);
   });
   app.register(async (routes) => {
     routes.setErrorHandler((error, _request, reply) => {
@@ -140,7 +154,7 @@ export function registerStackitIdentity(
           if (organizationId)
             await service.identities.clearOrganizationProof?.(session);
           entry.flow =
-            service.createFlow?.(organizationId) ??
+            service.createFlow?.(organizationId, "proof") ??
             new StackitDeviceFlow(fetch, Date.now, organizationId);
           entry.authorization = await entry.flow.begin();
           entry.expiresAt = Math.min(

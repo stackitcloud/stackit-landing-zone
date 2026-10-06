@@ -967,3 +967,39 @@ Kein menschlicher Login abgeschlossen, keine Credentials/Tokeninhalte ausgegeben
 Der bereits freigegebene CLI-Client bleibt unveraendert; die Provider-/Client-Policy
 und eigene Produktionsregistrierung brauchen Klaerung. Bestehende Kundensitzungen,
 API-Prozess, Runner-Paket, State und Migrationen bleiben unveraendert. #91 offen.
+
+## CLI-PKCE-Folgekorrektur, 2026-10-06
+
+Die lokale Quelle `stackit-cli/internal/pkg/auth/user_login.go` zeigt Authorization
+Code mit S256-PKCE, `openid offline_access email`, `max_age` und einen Callback auf
+localhost:8000-8020. Der Configurator nutzte dagegen Device Flow. Ein anonymer
+isolierter Browser mit frischem CLI-artigem Authorization-Code-Start zeigt ein
+Benutzernamenfeld auf `/ui/login/user`. Die vorherige allgemeine Provider-Blocker-
+Einordnung ist damit zu weitgehend; noch keine vollstaendige menschliche Abnahme.
+
+Lokale Implementierung mit zufaelligem State/Nonce und PKCE, einmaligem Callback,
+urspruenglicher Browser-/Sitzungs-/Tenantbindung und signierter Nonce-Pruefung.
+Bestehende Identitaets-, Owner-, Origin-/CSRF- und explizite Bindungsgates bleiben.
+Loopback-Bridge leitet nur zum festen Configurator-Origin weiter und verwirft
+Providerdetails. Callback erzeugt keine Session und speichert keinen Nachweis;
+die bestehenden geschuetzten Poll-Routen erledigen dies nach Tokenverifikation.
+Keine Refresh-Token-Ablage. CLI-Callback ausschliesslich fuer lokale Nutzung,
+Produktions-Webclient und dessen registrierter Callback weiterhin erforderlich.
+
+```text
+auth: PASS - exit_code: 0; 62 tests incl real loopback HTTP bridge and callback gates
+unit: PASS - exit_code: 0; 395 passed, 45 gated skipped
+types: PASS - exit_code: 0; app and test projects
+lint-scope: PASS - exit_code: 0; no errors in changed login files
+canonical: BLOCKED - exit_code: 1; five paused Applied-Platform format/import errors
+browser: PARTIAL - exit_code: 0; 4 login + 16 proof desktop/mobile cases; API mocks
+provider-start: PASS - fresh anonymous CLI-style start renders username input
+overall: NEEDS_SIGNOFF - local API not restarted; human login/real IAM not exercised
+```
+
+Bestehende Browsertests wiederverwendet, jeweils eine codefreie PKCE-Variante
+ergänzt. Negativtests: falsche/fehlende Browserbindung, fremde Sitzung/Tenant,
+falscher State/Issuer, Replay, Ablauf, Cancel, fehlendes ID-Token, falsche Nonce,
+fremde/unregistrierte Callback-Ziele, doppelte Query-Parameter. Screenshots zeigen
+korrekte Desktop-/Mobilansichten und gesperrte Bindung vor separater Bestaetigung.
+Keine Kundenmigration, API-Neustart, Runner-Aenderung oder Cloud-Operation.

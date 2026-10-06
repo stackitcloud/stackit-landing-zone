@@ -140,7 +140,7 @@ export function buildApp(
         app,
         options.auth,
         options.stackit.createFlow
-          ? () => options.stackit!.createFlow!()
+          ? () => options.stackit!.createFlow!(undefined, "login")
           : undefined,
       );
     if (options.applications)

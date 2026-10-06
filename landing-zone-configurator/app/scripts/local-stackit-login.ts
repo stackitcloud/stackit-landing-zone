@@ -9,6 +9,7 @@ import pg from "pg";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
 import { GitHubClient } from "../apps/api/src/auth/github-client.js";
+import { StackitDeviceFlow } from "../apps/api/src/auth/stackit-device.js";
 import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
 import { PostgresAuthStore } from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
@@ -25,6 +26,7 @@ import { PlatformExecution } from "../apps/api/src/plans/execution.js";
 import { LocalPlanRunner } from "../apps/api/src/plans/local.js";
 import { Plans } from "../apps/api/src/plans/service.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
+import { openStackitCodeCallback } from "./stackit-code-callback.js";
 
 if (process.env.LZC_STACKIT_CLI_CLIENT_APPROVED !== "true") {
   throw new Error("Explicit STACKIT CLI client approval required");
@@ -258,6 +260,9 @@ async function start() {
     crypto,
   );
   stage = "api";
+  let codeCallback:
+    | Awaited<ReturnType<typeof openStackitCodeCallback>>
+    | undefined;
   const app = buildApp({
     backends,
     auth: {
@@ -274,7 +279,17 @@ async function start() {
       }),
       tokens: { get: unavailable, put: unavailable, remove: unavailable },
     },
-    stackit: { identities: new StackitIdentities(pool), organisations },
+    stackit: {
+      identities: new StackitIdentities(pool),
+      organisations,
+      createFlow: (organizationId, purpose = "login") => {
+        if (!codeCallback) throw new Error("cli_callback_unavailable");
+        return new StackitDeviceFlow(fetch, Date.now, organizationId, {
+          redirectUri: codeCallback.redirectUri,
+          purpose,
+        });
+      },
+    },
     organisations,
     invitations: new Invitations(pool),
     configurations: new Configurations(pool),
@@ -322,6 +337,7 @@ async function start() {
   maintenance?.unref();
   app.addHook("onClose", async () => {
     clearInterval(maintenance);
+    await codeCallback?.close();
     await pool.end();
   });
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
@@ -331,6 +347,7 @@ async function start() {
   }
   try {
     stage = "listener";
+    codeCallback = await openStackitCodeCallback(origin);
     await app.listen({ host: "127.0.0.1", port: 3000 });
     console.log("Local STACKIT login ready; UI: http://127.0.0.1:4181/");
   } catch (error) {

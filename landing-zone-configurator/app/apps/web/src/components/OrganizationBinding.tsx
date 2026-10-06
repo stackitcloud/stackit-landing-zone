@@ -51,7 +51,7 @@ const authorizationSchema = z.object({
       !url.password
     );
   }),
-  userCode: z.string().min(1).max(128),
+  userCode: z.string().min(1).max(128).optional(),
   expiresAt: z.iso.datetime(),
   retryAfterMs: z.number().int().min(1000).max(60000),
 });
@@ -275,8 +275,13 @@ export function OrganizationBinding({
               >
                 {t("STACKIT öffnen")}
               </a>
-              {" · "}
-              <code>{authorization.userCode}</code>{" "}
+              {authorization.userCode && (
+                <>
+                  {" "}
+                  {" · "}
+                  <code>{authorization.userCode}</code>
+                </>
+              )}{" "}
               <button
                 className="button"
                 type="button"

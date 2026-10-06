@@ -27,7 +27,7 @@ export function Account({
   const [primary, setPrimary] = useState<"github" | "stackit">("github");
   const [authorization, setAuthorization] = useState<{
     verificationUri: string;
-    userCode: string;
+    userCode?: string;
     expiresAt: string;
     retryAfterMs: number;
   } | null>(null);
@@ -233,9 +233,11 @@ export function Account({
           }}
         >
           <h2>{t("STACKIT-Anmeldung")}</h2>
-          <output aria-label={t("Anmeldecode")}>
-            {authorization.userCode}
-          </output>
+          {authorization.userCode && (
+            <output aria-label={t("Anmeldecode")}>
+              {authorization.userCode}
+            </output>
+          )}
           <a
             className="button"
             href={authorization.verificationUri}

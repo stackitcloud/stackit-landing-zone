@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import { StackitDeviceFlow } from "../apps/api/src/auth/stackit-device.js";
+import { openStackitCodeCallback } from "../scripts/stackit-code-callback.js";
 import { buildDeviceSpike } from "../scripts/stackit-device-flow.js";
 
 const issuer = "https://accounts.stackit.cloud";
@@ -17,6 +19,402 @@ const jwk = {
 };
 const subject = "human-test-subject";
 const email = "person@example.test";
+
+it("accepts proof callbacks only for the original live session and tenant without saving or binding", async () => {
+  const session = {
+    id: "proof-session",
+    userId: "proof-user",
+    tenantId: "proof-tenant",
+    githubId: "",
+    login: email,
+    csrfToken: "c".repeat(43),
+    expiresAt: new Date(Date.now() + 3600000),
+  };
+  const organizationId = "11111111-1111-4111-8111-111111111111";
+  const save = vi.fn();
+  const bindOrganization = vi.fn();
+  const flow = new StackitDeviceFlow(vi.fn(), Date.now, organizationId, {
+    redirectUri: "http://localhost:8000",
+    purpose: "proof",
+  });
+  const auth: AuthServices = {
+    origin: "https://configurator.example",
+    clientId: "",
+    store: {
+      beginLogin: vi.fn(),
+      consumeLogin: vi.fn(),
+      createSession: vi.fn(),
+      deleteSession: vi.fn(),
+      resolveSession: vi.fn(async (token: string) =>
+        token === "s".repeat(43)
+          ? session
+          : { ...session, id: "other-session" },
+      ),
+    },
+    github: { authorize: vi.fn() },
+    tokens: { put: vi.fn(), get: vi.fn(), remove: vi.fn() },
+  };
+  const app = buildApp({
+    auth,
+    stackit: {
+      identities: {
+        status: vi.fn(),
+        save,
+        revoke: vi.fn(),
+        bindOrganization,
+        clearOrganizationProof: vi.fn(),
+      },
+      organisations: {
+        overview: vi.fn(async () => ({
+          userId: session.userId,
+          activeTenantId: session.tenantId,
+          tenants: [
+            {
+              id: session.tenantId,
+              name: "Proof",
+              kind: "organisation" as const,
+              organizationId,
+              organizationVerified: false,
+              roles: [],
+              manageMembers: false,
+            },
+          ],
+          members: [],
+        })),
+      },
+      createFlow: () => flow,
+    },
+  });
+  try {
+    const bound = `__Host-lzc-session=${"s".repeat(43)}`;
+    const started = await app.inject({
+      method: "POST",
+      url: "/api/v1/stackit/identity/start",
+      headers: {
+        origin: auth.origin,
+        cookie: bound,
+        "x-lzc-csrf": session.csrfToken,
+        "x-lzc-tenant": session.tenantId,
+      },
+      payload: {},
+    });
+    expect(started.statusCode).toBe(200);
+    const authorization = new URL(started.json().verificationUri);
+    const callback = `/auth/stackit/proof-callback?${new URLSearchParams({ state: authorization.searchParams.get("state") ?? "", code: "test-code" })}`;
+    expect((await app.inject(callback)).statusCode).toBe(400);
+    expect(
+      (
+        await app.inject({
+          url: callback,
+          headers: { cookie: `__Host-lzc-session=${"b".repeat(43)}` },
+        })
+      ).statusCode,
+    ).toBe(400);
+    session.tenantId = "different-tenant";
+    expect(
+      (await app.inject({ url: callback, headers: { cookie: bound } }))
+        .statusCode,
+    ).toBe(400);
+    session.tenantId = "proof-tenant";
+    expect(
+      (await app.inject({ url: callback, headers: { cookie: bound } }))
+        .statusCode,
+    ).toBe(302);
+    expect(save).not.toHaveBeenCalled();
+    expect(bindOrganization).not.toHaveBeenCalled();
+    expect(
+      (await app.inject({ url: callback, headers: { cookie: bound } }))
+        .statusCode,
+    ).toBe(400);
+  } finally {
+    await app.close();
+  }
+});
+
+it("binds authorization callbacks to the initiating browser cookie and never creates a session in the callback", async () => {
+  const flow = new StackitDeviceFlow(vi.fn(), Date.now, undefined, {
+    redirectUri: "http://localhost:8000",
+    purpose: "login",
+  });
+  const createStackitSession = vi.fn();
+  const auth: AuthServices = {
+    origin: "https://configurator.example",
+    clientId: "",
+    primaryStackit: true,
+    githubEnabled: false,
+    store: {
+      beginLogin: vi.fn(),
+      consumeLogin: vi.fn(),
+      createSession: vi.fn(),
+      createStackitSession,
+      resolveSession: vi.fn(async () => null),
+      deleteSession: vi.fn(),
+    },
+    github: { authorize: vi.fn() },
+    tokens: { put: vi.fn(), get: vi.fn(), remove: vi.fn() },
+  };
+  const app = buildApp({
+    auth,
+    stackit: {
+      identities: { save: vi.fn(), status: vi.fn(), revoke: vi.fn() },
+      organisations: { overview: vi.fn() },
+      createFlow: () => flow,
+    },
+  });
+  try {
+    const started = await app.inject({
+      method: "POST",
+      url: "/auth/stackit/start",
+      headers: { origin: auth.origin },
+    });
+    expect(started.statusCode).toBe(200);
+    expect(started.cookies[0]).toMatchObject({
+      secure: true,
+      httpOnly: true,
+      sameSite: "Lax",
+    });
+    const authorization = new URL(started.json().verificationUri);
+    const callback = `/auth/stackit/callback?${new URLSearchParams({ state: authorization.searchParams.get("state") ?? "", code: "test-code" })}`;
+    const browserCookie = started.cookies[0];
+    if (!browserCookie) throw new Error("Login browser cookie missing");
+    const bound = `${browserCookie.name}=${browserCookie.value}`;
+    expect((await app.inject(callback)).statusCode).toBe(400);
+    expect(
+      (
+        await app.inject({
+          url: callback,
+          headers: { cookie: `__Host-lzc-device=${"b".repeat(43)}` },
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await app.inject({
+          url: callback.replace(
+            "test-code",
+            "test-code&iss=https%3A%2F%2Fevil.example",
+          ),
+          headers: { cookie: bound },
+        })
+      ).statusCode,
+    ).toBe(400);
+    const accepted = await app.inject({
+      url: callback,
+      headers: { cookie: bound },
+    });
+    expect(accepted.statusCode).toBe(302);
+    expect(accepted.headers.location).toBe(auth.origin);
+    expect(accepted.headers["cache-control"]).toBe("no-store");
+    expect(createStackitSession).not.toHaveBeenCalled();
+    expect(
+      (await app.inject({ url: callback, headers: { cookie: bound } }))
+        .statusCode,
+    ).toBe(400);
+  } finally {
+    await app.close();
+  }
+});
+
+it.each(["missing-id-token", "wrong-nonce"])(
+  "rejects authorization-code identity with %s",
+  async (failure) => {
+    let clock = now;
+    const request = vi.fn<typeof fetch>(async (url) => {
+      if (String(url).endsWith("jwks.json"))
+        return Response.json({ keys: [jwk] });
+      if (!String(url).endsWith("/token"))
+        throw new Error("unexpected endpoint");
+      const idToken = await new SignJWT({
+        nonce: "wrong",
+        email,
+        email_verified: true,
+      })
+        .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+        .setIssuer(issuer)
+        .setAudience(clientId)
+        .setSubject(subject)
+        .setIssuedAt()
+        .setExpirationTime("5m")
+        .sign(pair.privateKey);
+      return Response.json({
+        access_token: "private-access-token",
+        token_type: "Bearer",
+        expires_in: 300,
+        ...(failure === "wrong-nonce" ? { id_token: idToken } : {}),
+      });
+    });
+    const flow = new StackitDeviceFlow(request, () => clock, undefined, {
+      redirectUri: "http://localhost:8000",
+      purpose: "login",
+    });
+    const authorization = new URL((await flow.begin()).verificationUri);
+    expect(
+      flow.acceptAuthorization({
+        state: authorization.searchParams.get("state"),
+        code: "test-code",
+      }),
+    ).toBe(true);
+    clock += 2000;
+    expect(await flow.poll()).toEqual({
+      status: "failed",
+      code:
+        failure === "wrong-nonce"
+          ? "identity_nonce_mismatch"
+          : "id_token_required",
+    });
+    expect(
+      request.mock.calls.some(([url]) => String(url).endsWith("userinfo")),
+    ).toBe(false);
+  },
+);
+
+it("rejects expired and cancelled authorization callbacks and unregistered CLI redirect targets", async () => {
+  for (const terminal of ["expire", "cancel"]) {
+    let clock = now;
+    const flow = new StackitDeviceFlow(vi.fn(), () => clock, undefined, {
+      redirectUri: "http://localhost:8000",
+      purpose: "proof",
+    });
+    const authorization = new URL((await flow.begin()).verificationUri);
+    if (terminal === "expire") clock += 900001;
+    else flow.cancel();
+    expect(
+      flow.acceptAuthorization({
+        state: authorization.searchParams.get("state"),
+        code: "test-code",
+      }),
+    ).toBe(false);
+  }
+  for (const redirectUri of [
+    "http://localhost:4181",
+    "https://evil.example",
+    "http://localhost:8000/path",
+    "http://user@localhost:8000",
+  ])
+    expect(
+      () =>
+        new StackitDeviceFlow(vi.fn(), Date.now, undefined, {
+          redirectUri,
+          purpose: "login",
+        }),
+    ).toThrow("invalid_cli_callback");
+});
+
+it("forwards local CLI callbacks only to the fixed browser origin and rejects duplicate state", async () => {
+  const callback = await openStackitCodeCallback("http://127.0.0.1:4181");
+  try {
+    for (const purpose of ["login", "proof"]) {
+      const url = new URL(callback.redirectUri);
+      url.search = new URLSearchParams({
+        state: `${purpose}.${"a".repeat(43)}`,
+        code: "test-code",
+        error_description: "must-not-forward",
+        redirect_uri: "https://evil.example",
+      }).toString();
+      const response = await fetch(url, { redirect: "manual" });
+      expect(response.status).toBe(303);
+      expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+      const forwarded = new URL(response.headers.get("location") ?? "");
+      expect(forwarded.origin).toBe("http://127.0.0.1:4181");
+      expect(forwarded.pathname).toBe(
+        purpose === "proof"
+          ? "/auth/stackit/proof-callback"
+          : "/auth/stackit/callback",
+      );
+      expect(forwarded.searchParams.get("code")).toBe("test-code");
+      expect(forwarded.searchParams.has("redirect_uri")).toBe(false);
+      expect(forwarded.searchParams.has("error_description")).toBe(false);
+      url.searchParams.append("state", "wrong");
+      expect((await fetch(url, { redirect: "manual" })).status).toBe(400);
+    }
+    expect((await fetch(callback.redirectUri, { method: "POST" })).status).toBe(
+      400,
+    );
+  } finally {
+    await callback.close();
+  }
+  await expect(openStackitCodeCallback("https://evil.example")).rejects.toThrow(
+    "invalid_local_callback_origin",
+  );
+});
+
+it("uses the CLI authorization-code PKCE start and accepts only a once-bound signed identity", async () => {
+  let clock = now;
+  let authorization: URL;
+  const request = vi.fn<typeof fetch>(async (url, init) => {
+    if (String(url).endsWith("/token")) {
+      const body = new URLSearchParams(String(init?.body));
+      expect(body.get("grant_type")).toBe("authorization_code");
+      expect(body.get("redirect_uri")).toBe("http://localhost:8000");
+      expect(body.get("code")).toBe("private-authorization-code");
+      expect(
+        createHash("sha256")
+          .update(body.get("code_verifier") ?? "")
+          .digest("base64url"),
+      ).toBe(authorization.searchParams.get("code_challenge"));
+      const idToken = await new SignJWT({
+        email,
+        email_verified: true,
+        nonce: authorization.searchParams.get("nonce"),
+      })
+        .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+        .setIssuer(issuer)
+        .setAudience(clientId)
+        .setSubject(subject)
+        .setIssuedAt()
+        .setExpirationTime("5m")
+        .sign(pair.privateKey);
+      return Response.json({
+        access_token: "private-access-token",
+        id_token: idToken,
+        refresh_token: "must-not-retain",
+        token_type: "Bearer",
+        expires_in: 300,
+      });
+    }
+    if (String(url).endsWith("jwks.json"))
+      return Response.json({ keys: [jwk] });
+    if (String(url).endsWith("userinfo"))
+      return Response.json({ sub: subject, email, email_verified: true });
+    throw new Error("unexpected endpoint");
+  });
+  const flow = new StackitDeviceFlow(request, () => clock, undefined, {
+    redirectUri: "http://localhost:8000",
+    purpose: "login",
+  });
+  const start = await flow.begin();
+  authorization = new URL(start.verificationUri);
+  expect(authorization.pathname).toBe("/oauth/v2/authorize");
+  expect(authorization.searchParams.get("scope")).toBe(
+    "openid offline_access email",
+  );
+  expect(authorization.searchParams.get("code_challenge_method")).toBe("S256");
+  expect(start).not.toHaveProperty("userCode");
+  expect(await flow.poll()).toMatchObject({ status: "waiting" });
+  expect(request).not.toHaveBeenCalled();
+  expect(
+    flow.acceptAuthorization({
+      state: "wrong",
+      code: "private-authorization-code",
+    }),
+  ).toBe(false);
+  const callback = {
+    state: authorization.searchParams.get("state"),
+    code: "private-authorization-code",
+  };
+  expect(flow.acceptAuthorization(callback)).toBe(true);
+  expect(flow.acceptAuthorization(callback)).toBe(false);
+  clock += 2000;
+  const verified = await flow.poll();
+  expect(verified).toMatchObject({
+    status: "verified",
+    identity: { subject, email },
+  });
+  expect(JSON.stringify(verified)).not.toContain("private-access-token");
+  expect(JSON.stringify(verified)).not.toContain("must-not-retain");
+  flow.cancel();
+  expect(flow.acceptAuthorization(callback)).toBe(false);
+});
 
 it("uses STACKIT as primary login without GitHub and binds approval to a secure browser cookie", async () => {
   const { flow, advance } = await setup({ tokens: { id_token: undefined } });
@@ -943,7 +1341,7 @@ it("binds API device flows to the current session and tenant and persists only p
     expect(clearOrganizationProof).not.toHaveBeenCalled();
     expect((await post("start")).statusCode).toBe(200);
     expect(clearOrganizationProof).toHaveBeenCalledExactlyOnceWith(session);
-    expect(createFlow).toHaveBeenCalledWith(organizationId);
+    expect(createFlow).toHaveBeenCalledWith(organizationId, "proof");
     expect((await post("start")).statusCode).toBe(409);
     expect(
       (await post("poll", { cookie: `__Host-lzc-session=${"b".repeat(43)}` }))
