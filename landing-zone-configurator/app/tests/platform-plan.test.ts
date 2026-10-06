@@ -1348,11 +1348,15 @@ describe.skipIf(!enabled)(
       expect(
         (
           await migration!.query(
-            "SELECT status,error_code FROM lzc.plan_runs WHERE id=$1",
+            "SELECT status,error_code,applied_state_version FROM lzc.plan_runs WHERE id=$1",
             [test.run.id],
           )
         ).rows[0],
-      ).toEqual({ status: "succeeded", error_code: null });
+      ).toEqual({
+        status: "succeeded",
+        error_code: null,
+        applied_state_version: String(state.version),
+      });
       expect(
         (
           await migration!.query(
@@ -1361,6 +1365,36 @@ describe.skipIf(!enabled)(
           )
         ).rows[0].count,
       ).toBe(1);
+      await migration!.query(
+        "UPDATE lzc.plan_runs SET applied_state_version=NULL WHERE id=$1",
+        [test.run.id],
+      );
+      await expect(
+        test.plans.reconcile(test.owner, test.run.id, {
+          ...input,
+          remoteIdentity: "changed",
+        }),
+      ).rejects.toMatchObject({ code: "checkpoint_changed" });
+      expect(
+        (
+          await migration!.query(
+            "SELECT applied_state_version FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0].applied_state_version,
+      ).toBeNull();
+      await test.plans.reconcile(test.owner, test.run.id, input);
+      expect(
+        (
+          await migration!.query(
+            "SELECT applied_state_version FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0].applied_state_version,
+      ).toBe(String(state.version));
+      expect(test.runner.start.mock.calls).toHaveLength(starts);
+      expect(test.secrets.get.mock.calls).toHaveLength(secretReads);
+      expect([...test.remote]).toEqual(remoteBefore);
       await expect(
         test.plans.apply(
           test.owner,
@@ -1370,6 +1404,82 @@ describe.skipIf(!enabled)(
         ),
       ).rejects.toMatchObject({ code: "plan_not_approvable" });
     });
+
+    it.each([
+      "locked",
+      "newer-state",
+      "another-migration",
+      "backend-changed",
+      "remote-changed",
+      "another-owner",
+    ])(
+      "refuses ambiguous historical migration completion: %s",
+      async (reason) => {
+        const test = await failedMigration();
+        const input = {
+          confirmCompleteMigration: true,
+          stateVersion: test.checkpoint.stateVersion,
+          checkpointSha256: test.checkpoint.checkpointSha256,
+          remoteIdentity: test.checkpoint.migration!.remoteIdentity,
+        };
+        await test.plans.reconcile(test.owner, test.run.id, input);
+        await migration!.query(
+          "UPDATE lzc.plan_runs SET applied_state_version=NULL WHERE id=$1",
+          [test.run.id],
+        );
+        const key = stableStateKey(test.owner, test.manifest);
+        if (reason === "locked")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET lock_run_id=$2,lock_id='held' WHERE state_key=$1",
+            [key, test.run.id],
+          );
+        if (reason === "newer-state")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET version=version+1 WHERE state_key=$1",
+            [key],
+          );
+        if (reason === "another-migration")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET migration_run_id=$2 WHERE state_key=$1",
+            [key, test.saved.id],
+          );
+        if (reason === "backend-changed")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET pending_backend_id=NULL WHERE state_key=$1",
+            [key],
+          );
+        if (reason === "remote-changed")
+          test.remote.set(
+            "terraform.tfstate",
+            Buffer.from(
+              JSON.stringify({
+                ...test.state,
+                serial: 2,
+                lineage: randomUUID(),
+              }),
+            ),
+          );
+        const remoteBefore = [...test.remote];
+        const starts = test.runner.start.mock.calls.length;
+        await expect(
+          test.plans.reconcile(
+            reason === "another-owner" ? await session() : test.owner,
+            test.run.id,
+            input,
+          ),
+        ).rejects.toBeDefined();
+        expect(
+          (
+            await migration!.query(
+              "SELECT applied_state_version FROM lzc.plan_runs WHERE id=$1",
+              [test.run.id],
+            )
+          ).rows[0].applied_state_version,
+        ).toBeNull();
+        expect(test.runner.start.mock.calls).toHaveLength(starts);
+        expect([...test.remote]).toEqual(remoteBefore);
+      },
+    );
 
     it.each([
       "locked",

@@ -266,6 +266,39 @@ export class Plans {
           receipt.checkpoint_sha256 !== input.checkpointSha256
         )
           throw invalid("checkpoint_changed");
+        if (
+          "confirmCompleteMigration" in input &&
+          run.applied_state_version === null
+        ) {
+          const state = (
+            await client.query(
+              "SELECT * FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE",
+              [run.state_key],
+            )
+          ).rows[0];
+          if (
+            !state ||
+            state.lock_run_id ||
+            state.ciphertext !== null ||
+            !state.backend_id ||
+            state.backend_id !== state.pending_backend_id ||
+            state.migration_run_id !== id ||
+            String(state.migration_version) !== String(receipt.state_version) ||
+            String(state.version) !==
+              (BigInt(receipt.state_version) + 1n).toString() ||
+            !state.migration_sha256 ||
+            state.remote_identity !== input.remoteIdentity ||
+            state.owner_user_id !== session.userId ||
+            !run.input_claimed ||
+            !run.finished_at
+          )
+            throw invalid("checkpoint_changed");
+          await execution.current(client, session, state);
+          await client.query(
+            "UPDATE lzc.plan_runs SET applied_state_version=$2 WHERE id=$1 AND applied_state_version IS NULL",
+            [id, state.version],
+          );
+        }
         return { id, reconciled: true };
       }
       if (
@@ -333,7 +366,7 @@ export class Plans {
         ],
       );
       await client.query(
-        "UPDATE lzc.plan_runs SET status=$2,error_code=CASE WHEN $2='succeeded' THEN NULL ELSE error_code END WHERE id=$1",
+        "UPDATE lzc.plan_runs SET status=$2,error_code=CASE WHEN $2='succeeded' THEN NULL ELSE error_code END,applied_state_version=CASE WHEN $2='succeeded' THEN (SELECT version FROM lzc.platform_states WHERE state_key=lzc.plan_runs.state_key) ELSE applied_state_version END WHERE id=$1",
         [id, completingMigration ? "succeeded" : "failed"],
       );
       return { id, reconciled: true };
