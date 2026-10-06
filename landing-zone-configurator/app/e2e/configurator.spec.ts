@@ -1712,6 +1712,7 @@ test.describe("explicit saved-plan approval", () => {
     };
     const cloudMutations: string[] = [];
     let saves = 0;
+    let configurationReads = 0;
     page.on("request", (request) => {
       if (
         request.method() !== "GET" &&
@@ -1754,6 +1755,7 @@ test.describe("explicit saved-plan approval", () => {
       }),
     );
     await page.route(`**/api/v1/configurations/${configurationId}`, (route) => {
+      if (route.request().method() === "GET") configurationReads++;
       if (route.request().method() === "PUT") {
         expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
         const body = route.request().postDataJSON();
@@ -1764,6 +1766,12 @@ test.describe("explicit saved-plan approval", () => {
         saves++;
       }
       return route.fulfill({ json: { configuration: stored } });
+    });
+    await page.route("**/api/v1/applications/**", (route) => {
+      expect(route.request().method()).toBe("GET");
+      return route.fulfill({
+        json: { versions: [], instances: [], contracts: [] },
+      });
     });
     const otherPreparation = {
       ...preparation,
@@ -1905,8 +1913,29 @@ test.describe("explicit saved-plan approval", () => {
     ).toHaveCount(0);
     await page.reload();
     await expect(tabs).toContainText("Revision 7");
-    await tabs
-      .getByRole("button", { name: "Konfiguration", exact: true })
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Application Landing Zones", exact: true })
+      .click();
+    const beforeApplicationReload = configurationReads;
+    await page.reload();
+    await expect
+      .poll(() => configurationReads)
+      .toBe(beforeApplicationReload + 1);
+    await expect(
+      page.getByRole("tab", { name: "Katalog", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(saves).toBe(0);
+    expect(cloudMutations).toEqual([]);
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Konfigurationen", exact: true })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Meine Plattform weiterbearbeiten",
+        exact: true,
+      })
       .click();
     const name = page.getByRole("textbox", {
       name: "Name der Konfiguration",

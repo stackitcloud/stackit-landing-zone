@@ -183,12 +183,13 @@ test("workspace-first creation opens configurations, remembers access and ignore
   });
 });
 
-for (const { publishing, applied } of [
-  { publishing: true, applied: false },
-  { publishing: true, applied: true },
-  { publishing: false, applied: false },
+for (const { publishing, applied, renewProof } of [
+  { publishing: true, applied: false, renewProof: false },
+  { publishing: true, applied: true, renewProof: false },
+  { publishing: true, applied: true, renewProof: true },
+  { publishing: false, applied: false, renewProof: false },
 ]) {
-  test(`application catalogue ${publishing ? `immutable publication${applied ? " from applied platform" : ""}` : "owner order without fork"}`, async ({
+  test(`application catalogue ${publishing ? `immutable publication${applied ? " from applied platform" : ""}${renewProof ? " after owner renewal" : ""}` : "owner order without fork"}`, async ({
     page,
   }, testInfo) => {
     const versionId = "44444444-4444-4444-8444-444444444444";
@@ -214,6 +215,40 @@ for (const { publishing, applied } of [
         memberIds: [publishing ? applicationOwnerId : userId],
       },
     ];
+    let ownerProofVerified = !renewProof;
+    const proofMutations: string[] = [];
+    await page.route("**/api/v1/stackit/identity**", async (route) => {
+      const request = route.request();
+      expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
+      if (request.method() === "GET")
+        return route.fulfill({
+          json: {
+            bindingEnabled: true,
+            verified: true,
+            organizationAdminVerified: ownerProofVerified,
+            identity: { email: "pilot@example.test" },
+          },
+        });
+      expect(request.headers()["x-lzc-csrf"]).toBe("test-csrf");
+      expect(request.postDataJSON()).toEqual({});
+      const path = new URL(request.url()).pathname;
+      proofMutations.push(path);
+      if (path.endsWith("/start"))
+        return route.fulfill({
+          json: {
+            verificationUri:
+              "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256",
+            expiresAt: new Date(Date.now() + 300000).toISOString(),
+            retryAfterMs: 1000,
+          },
+        });
+      expect(path.endsWith("/poll")).toBe(true);
+      ownerProofVerified = true;
+      return route.fulfill({
+        status: 409,
+        json: { error: "stackit_flow_missing" },
+      });
+    });
     const approvedContract = {
       document: {
         schema_version: 1,
@@ -384,16 +419,18 @@ for (const { publishing, applied } of [
         expect(applied).toBe(true);
         return route.fulfill({
           json: {
-            platforms: [
-              {
-                id: source.applyRunId,
-                stateKey: source.stateKey,
-                stateVersion: source.stateVersion,
-                organizationId: organisationId,
-                finishedAt: approvedContract.approvedAt,
-                configurationName: "Pilot Landing Zone",
-              },
-            ],
+            platforms: ownerProofVerified
+              ? [
+                  {
+                    id: source.applyRunId,
+                    stateKey: source.stateKey,
+                    stateVersion: source.stateVersion,
+                    organizationId: organisationId,
+                    finishedAt: approvedContract.approvedAt,
+                    configurationName: "Pilot Landing Zone",
+                  },
+                ]
+              : [],
           },
         });
       }
@@ -660,10 +697,25 @@ for (const { publishing, applied } of [
         await page
           .getByRole("tab", { name: "Plattformanbindung", exact: true })
           .click();
+        if (renewProof) {
+          await expect(
+            page
+              .getByLabel("Erfolgreicher Plattform-Apply", { exact: true })
+              .locator("option"),
+          ).toHaveCount(1);
+          await page
+            .getByRole("button", { name: "Nachweis prüfen", exact: true })
+            .click();
+        }
         const applyOption = page.getByRole("option", {
           name: /Pilot Landing Zone · Apply/,
         });
         await expect(applyOption).toHaveCount(1);
+        if (renewProof)
+          expect(proofMutations).toEqual([
+            "/api/v1/stackit/identity/start",
+            "/api/v1/stackit/identity/poll",
+          ]);
         await expect(applyOption).not.toContainText(source.stateKey);
         await expect(
           page.getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true }),
@@ -727,13 +779,19 @@ for (const { publishing, applied } of [
         .getByRole("tab", { name: "Veröffentlichung", exact: true })
         .click();
       await page
+        .getByLabel("Freigegebener Plattformvertrag", { exact: true })
+        .selectOption(platformRevision);
+      await expect(
+        page.getByLabel("Plattformziel", { exact: true }),
+      ).toBeDisabled();
+      await page
         .getByLabel("Application Landing Zone Template aus meinem Entwurf", {
           exact: true,
         })
         .selectOption({ index: 1 });
-      await page
-        .getByLabel("Freigegebener Plattformvertrag", { exact: true })
-        .selectOption(platformRevision);
+      await expect(
+        page.getByLabel("Plattformziel", { exact: true }),
+      ).toBeEnabled();
       await expect(
         page.getByRole("button", {
           name: "Version veröffentlichen",
@@ -1161,6 +1219,7 @@ const proofFailures = {
     "The confirmed STACKIT account does not belong to the signed-in Configurator user.",
   "unsafe-provider-detail": "The organization proof could not be verified.",
   constructor: "The organization proof could not be verified.",
+  stackit_flow_missing: "The STACKIT proof expired. Please check again.",
 };
 for (const proofOutcome of [
   true,
@@ -1173,9 +1232,13 @@ for (const proofOutcome of [
   "pkce-owner",
   "pkce-return",
   "bound-owner",
+  "pkce-completed",
+  "stackit_flow_missing",
 ] as const) {
   const codeFlow =
-    proofOutcome === "pkce-owner" || proofOutcome === "pkce-return";
+    proofOutcome === "pkce-owner" ||
+    proofOutcome === "pkce-return" ||
+    proofOutcome === "pkce-completed";
   const alreadyBound = proofOutcome === "bound-owner";
   const ownerProof = proofOutcome === true || codeFlow || alreadyBound;
   const failureCode =
@@ -1224,6 +1287,14 @@ for (const proofOutcome of [
         if (path.endsWith("/poll")) {
           expect(request.postDataJSON()).toEqual({});
           checked = true;
+          if (
+            proofOutcome === "pkce-completed" ||
+            failureCode === "stackit_flow_missing"
+          )
+            return route.fulfill({
+              status: 409,
+              json: { error: "stackit_flow_missing" },
+            });
           if (failureCode === "identity_binding_conflict")
             return route.fulfill({
               status: 409,

@@ -118,6 +118,10 @@ export const englishMessages: Record<string, string> = {
   "Die STACKIT-Bestätigung wurde abgelehnt. Bitte erneut prüfen.":
     "STACKIT confirmation was denied. Please check again.",
   "Nachweis prüfen": "Check proof",
+  "Kein aktueller erfolgreicher Plattform-Apply verfügbar.":
+    "No current successful platform Apply is available.",
+  "Kein passendes Plattformziel für dieses Template.":
+    "No compatible platform target for this template.",
   "STACKIT öffnen": "Open STACKIT",
   "Organisations-Owner-Rechte geprüft":
     "Organization owner permissions verified",

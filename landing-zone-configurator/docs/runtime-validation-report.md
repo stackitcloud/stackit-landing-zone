@@ -1148,3 +1148,42 @@ des Repositorys mit restriktiven Dateirechten; keine Credentials oder Roh-States
 wurden ausgegeben oder committed. #92 ist nach Erfuellung aller urspruenglichen
 Publikationskriterien geschlossen. #91 und #93 bleiben fuer ihre weiteren
 Sicherheits-, Produktiv- und Ausfuehrungsabnahmen offen.
+
+## Direkter Application-Einstieg nach Login und Reload (2026-10-06)
+
+Der gespeicherte Konfigurationskontext wird jetzt auch beim direkten Einstieg
+in Application Landing Zones aus der berechtigten serverseitigen Konfiguration
+geladen. Ein vorheriger Besuch von Deployments ist nicht mehr erforderlich.
+Ohne geoeffneten Entwurf erscheint zuerst der vorhandene Katalog; die
+Veroeffentlichung bietet eine ausdrueckliche Konfigurationsauswahl. Es wird kein
+beliebiger Entwurf automatisch ausgewaehlt oder aus einer publizierten Version
+erfunden.
+
+Die Plattformziel-Auswahl setzt Template und freigegebenen Vertrag voraus;
+Region und Public-/Corporate-Typ bleiben verbindlich. Ein Template-Wechsel
+verwirft die alte Zielauswahl. Fehlende passende Ziele erhalten einen eigenen
+Status statt einer scheinbar funktionslosen Auswahl.
+
+Ein erneuter Login kann den bisherigen menschlichen Owner-Nachweis ueberholen.
+Die Apply-Auswahl bleibt dann sicher gesperrt und bietet die Nachweiserneuerung
+direkt an. Nach erfolgreicher Verifikation werden die Daten erneut geladen.
+Bei einem bereits in einem anderen Tab abgeschlossenen PKCE-Flow wird nur eine
+aktuelle serverseitig verifizierte Identitaet MIT vollstaendigem Owner-Nachweis
+als Erfolg akzeptiert. Ein fehlender Flow ohne diese Rechte bleibt abgelehnt.
+
+```text
+canonical: PASS - lint, types, build, 403 unit tests; 52 expected gated skips
+browser: PASS - 36 focused desktop/mobile catalogue, proof and reload cases
+diagnostics: PASS - changed source and test files have no editor errors
+live-login: PASS - ordinary password-free SSO and immediate existing Version 1 catalogue
+live-reload: PASS - saved Public template restored directly at /applications, no Deployments visit
+live-proof: PASS - protected renewal and readable successful Apply selection
+live-target: PASS - disabled before template selection, compatible public-eu01 afterwards
+database-tests: NOT_RERUN - frontend-only change, no migration or API restart
+cloud: NOT_RUN - no new publication, contract approval, Plan or Apply
+delivery: LOCAL_ONLY - no push, merge or release
+```
+
+Die vorhandene Version 1 und der bereits freigegebene Plattformvertrag bleiben
+unveraendert. Application-Ausfuehrung bleibt deaktiviert; #91 und #93 sind damit
+nicht vollstaendig abgenommen.

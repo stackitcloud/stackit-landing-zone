@@ -24,6 +24,7 @@ import {
 } from "../i18n";
 import type { Session } from "./Account";
 import { applicationGroupsSchema } from "./ApplicationGroups";
+import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
@@ -158,9 +159,11 @@ async function request(
 export function Applications({
   session,
   draft,
+  onSelectConfiguration,
 }: {
   session: Session | null;
   draft: CommonConfiguration | null;
+  onSelectConfiguration: () => void;
 }) {
   const [versions, setVersions] = useState<PublishedProjectTemplate[]>([]);
   const [instances, setInstances] = useState<ApplicationInstance[]>([]);
@@ -186,7 +189,9 @@ export function Applications({
     z.infer<typeof approvedContractSchema>[]
   >([]);
   const [platformRevision, setPlatformRevision] = useState("");
-  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>(() =>
+    draft ? "publish" : "catalogue",
+  );
   const [appliedPlatformsEnabled, setAppliedPlatformsEnabled] = useState(false);
   const [appliedPlatforms, setAppliedPlatforms] = useState<
     z.infer<typeof appliedPlatformsSchema>["platforms"]
@@ -775,6 +780,25 @@ export function Applications({
                   ))}
                 </select>
               </div>
+              {loaded && !appliedPlatforms.length && (
+                <>
+                  <p role="status">
+                    {t(
+                      "Kein aktueller erfolgreicher Plattform-Apply verfügbar.",
+                    )}
+                  </p>
+                  {session.tenant?.kind === "organisation" &&
+                    session.tenant.manageMembers && (
+                      <OrganizationBinding
+                        session={session}
+                        tenantId={session.tenant.id}
+                        organizationVerified={true}
+                        onBound={load}
+                        onVerified={load}
+                      />
+                    )}
+                </>
+              )}
               <button
                 type="button"
                 className="button"
@@ -869,7 +893,10 @@ export function Applications({
                 <select
                   id="application-publication"
                   value={templateId}
-                  onChange={(event) => setTemplateId(event.target.value)}
+                  onChange={(event) => {
+                    setTemplateId(event.target.value);
+                    setTargetKey("");
+                  }}
                   disabled={busy}
                 >
                   <option value="">{t("Template wählen")}</option>
@@ -943,16 +970,27 @@ export function Applications({
                   <select
                     id="application-platform-target"
                     value={targetKey}
-                    disabled={busy}
+                    disabled={busy || !publicationTemplate || !targets.length}
                     onChange={(event) => setTargetKey(event.target.value)}
                   >
-                    <option value="">{t("Passendes Ziel wählen")}</option>
+                    <option value="">
+                      {t(
+                        publicationTemplate
+                          ? "Passendes Ziel wählen"
+                          : "Template wählen",
+                      )}
+                    </option>
                     {targets.map(([key, target]) => (
                       <option key={key} value={key}>
                         {key} · {target.region} · {target.folder_id}
                       </option>
                     ))}
                   </select>
+                  {publicationTemplate && !targets.length && (
+                    <p role="status">
+                      {t("Kein passendes Plattformziel für dieses Template.")}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="field">
@@ -1004,11 +1042,20 @@ export function Applications({
               )}
             </div>
           ) : (
-            <p className="muted">
-              {t(
-                "Kein Application Landing Zone Template im aktuellen Entwurf.",
-              )}
-            </p>
+            <>
+              <p className="muted">
+                {t(
+                  "Kein Application Landing Zone Template im aktuellen Entwurf.",
+                )}
+              </p>
+              <button
+                type="button"
+                className="button"
+                onClick={onSelectConfiguration}
+              >
+                {t("Konfiguration auswählen")}
+              </button>
+            </>
           )}
         </section>
       )}

@@ -132,7 +132,7 @@ function App() {
       !platformAccess ||
       draft ||
       configurationBinding ||
-      !["editor", "deployments", "history"].includes(view)
+      !["editor", "deployments", "history", "applications"].includes(view)
     )
       return;
     let id: string | null;
@@ -159,7 +159,7 @@ function App() {
           id: configuration.id,
           revision: configuration.revision,
         });
-        if (view !== "editor")
+        if (["deployments", "history"].includes(view))
           setDeploymentSelection(
             configurationDeploymentSelection(configuration),
           );
@@ -663,6 +663,7 @@ function App() {
               key={`applications:${workspaceKey(session) ?? "guest"}`}
               session={session}
               draft={draft && isCommonDraft(draft) ? draft : null}
+              onSelectConfiguration={() => setView("repositories")}
             />
           )}
           {platformAccess && (
