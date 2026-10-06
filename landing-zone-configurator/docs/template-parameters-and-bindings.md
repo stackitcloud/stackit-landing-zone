@@ -31,6 +31,29 @@ Gruppenmigration 035 und Source-Migration 036 benoetigen eine separate Aktivieru
 Echte Application-Plans, explizite Applies, Drift und Upgrades bleiben eigenstaendige
 Folgeschritte in #93. Der eigenstaendige Accelerator bleibt unabhaengig nutzbar.
 
+## Aufgaben in der Oberflaeche
+
+Der Editor-Schritt **Template-Entwürfe** bearbeitet unveröffentlichte Vorlagen.
+Die Seite **Application Landing Zones** trennt die weiteren Aufgaben in Reiter:
+**Katalog** für veröffentlichte Versionen und Bestellformulare sowie
+**Bestellungen** für gespeicherte Instanzen und deren Details.
+Platform Engineers sehen zusätzlich **Veröffentlichung** und
+**Plattformanbindung**; berechtigte Gruppenmanager sehen **Gruppen**.
+Application Owner erhalten keine Verwaltungsreiter. Nach erfolgreicher
+Veröffentlichung öffnet sich der Katalog, nach einer Bestellung deren Auftragsbereich.
+
+Die Plattformanbindung ist keine Veröffentlichung eines Templates und keine
+Cloud-Ausführung. Der normale, serverbasierte Weg benötigt keinen Datei-Upload.
+Bei älteren APIs liegt der bisherige Upload eingeklappt unter
+**Kompatibilitätsimport**. Hier gehört ausschließlich der exportierte JSON-Vertrag
+einer tatsächlich angewendeten Platform Landing Zone hinein, nicht ein beliebiges
+JSON, Terraform-State, tfvars oder Zugangsdaten. Der Vertrag enthält die
+Organisations-ID und freigegebene Zielordner mit ihren Plattformreferenzen;
+der Server prüft ihn vor einer ausdrücklichen Freigabe.
+
+Diese UI-Trennung ist lokal qualifiziert. Sie aktiviert weder die Migrationen
+035/036 noch ein Backend-Feature oder eine Application-Cloud-Ausführung.
+
 ## Implementierter Umfang
 
 `ProjectTemplateDraft.parameterPolicy` (Version 1) definiert die Wertquelle je

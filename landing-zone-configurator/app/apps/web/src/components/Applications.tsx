@@ -209,6 +209,7 @@ export function Applications({
     z.infer<typeof approvedContractSchema>[]
   >([]);
   const [platformRevision, setPlatformRevision] = useState("");
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [appliedPlatformsEnabled, setAppliedPlatformsEnabled] = useState(false);
   const [appliedPlatforms, setAppliedPlatforms] = useState<
     z.infer<typeof appliedPlatformsSchema>["platforms"]
@@ -359,6 +360,24 @@ export function Applications({
     canPublish &&
     (session.tenant?.kind !== "organisation" ||
       session.tenant.manageMembers === true);
+  const tabs = [
+    { id: "catalogue", label: "Katalog" },
+    { id: "orders", label: "Bestellungen" },
+    ...(canPublish
+      ? [
+          { id: "publish", label: "Veröffentlichung" },
+          { id: "platform", label: "Plattformanbindung" },
+        ]
+      : []),
+    ...(groupAccessEnabled && canManageGroups
+      ? [{ id: "groups", label: "Gruppen" }]
+      : []),
+  ];
+  const selectedTab = tabs.some((tab) => tab.id === activeTab)
+    ? activeTab
+    : canPublish
+      ? "publish"
+      : "catalogue";
   const selectedGroup = applicationGroups.groups.find(
     (group) => group.id === groupId,
   );
@@ -444,6 +463,7 @@ export function Applications({
         }),
       );
       await load();
+      setActiveTab("catalogue");
       setNotice(
         formatMessage(
           "{{value0}} · Version {{value1}} veröffentlicht. Cloud-Ausführung bleibt gesperrt.",
@@ -646,6 +666,7 @@ export function Applications({
         ...previous.filter((item) => item.id !== instance.id),
       ]);
       setSelectedInstance(instance);
+      setActiveTab("orders");
       setPlanInput(null);
       setNotice(
         "Bestellung gespeichert. Es wurden keine Cloud-Ressourcen erzeugt.",
@@ -691,6 +712,44 @@ export function Applications({
   }
   return (
     <div className="application-self-service">
+      <div
+        className="application-tabs"
+        role="tablist"
+        aria-label={t("Application Landing Zones")}
+      >
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.id}
+            id={`application-tab-${tab.id}`}
+            type="button"
+            role="tab"
+            aria-selected={selectedTab === tab.id}
+            aria-controls={`application-panel-${tab.id}`}
+            tabIndex={selectedTab === tab.id ? 0 : -1}
+            onClick={() => setActiveTab(tab.id)}
+            onKeyDown={(event) => {
+              const next =
+                event.key === "ArrowRight"
+                  ? (index + 1) % tabs.length
+                  : event.key === "ArrowLeft"
+                    ? (index + tabs.length - 1) % tabs.length
+                    : event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? tabs.length - 1
+                        : null;
+              if (next === null) return;
+              event.preventDefault();
+              const target = tabs[next];
+              if (!target) return;
+              setActiveTab(target.id);
+              document.getElementById(`application-tab-${target.id}`)?.focus();
+            }}
+          >
+            {t(tab.label)}
+          </button>
+        ))}
+      </div>
       {error && (
         <p role="alert" className="validation-box">
           {t(error)}
@@ -705,7 +764,12 @@ export function Applications({
         <p role="status">{t("Application Landing Zones werden geladen.")}</p>
       )}
       {groupAccessEnabled && canManageGroups && (
-        <section>
+        <section
+          id="application-panel-groups"
+          role="tabpanel"
+          aria-labelledby="application-tab-groups"
+          hidden={selectedTab !== "groups"}
+        >
           <h2>{t("Application-Gruppen")}</h2>
           <form
             className="form-grid"
@@ -823,8 +887,13 @@ export function Applications({
         </section>
       )}
       {canPublish && (
-        <section>
-          <h2>{t("Plattformvertrag")}</h2>
+        <section
+          id="application-panel-platform"
+          role="tabpanel"
+          aria-labelledby="application-tab-platform"
+          hidden={selectedTab !== "platform"}
+        >
+          <h2>{t("Plattformanbindung")}</h2>
           <div className="field">
             <label htmlFor="application-technical-profile">
               {t("Technischer STACKIT-Zugang")}
@@ -877,20 +946,23 @@ export function Applications({
               </button>
             </>
           ) : (
-            <div className="field">
-              <label htmlFor="application-contract-import">
-                {t("Plattform-Outputs · JSON-Vertrag")}
-              </label>
-              <input
-                id="application-contract-import"
-                type="file"
-                accept=".json,application/json"
-                disabled={busy}
-                onChange={(event) =>
-                  void importContract(event.target.files?.[0])
-                }
-              />
-            </div>
+            <details>
+              <summary>{t("Kompatibilitätsimport")}</summary>
+              <div className="field">
+                <label htmlFor="application-contract-import">
+                  {t("Plattform-Outputs · JSON-Vertrag")}
+                </label>
+                <input
+                  id="application-contract-import"
+                  type="file"
+                  accept=".json,application/json"
+                  disabled={busy}
+                  onChange={(event) =>
+                    void importContract(event.target.files?.[0])
+                  }
+                />
+              </div>
+            </details>
           )}
           {visibleCandidate && (
             <>
@@ -942,7 +1014,12 @@ export function Applications({
         </section>
       )}
       {canPublish && (
-        <section>
+        <section
+          id="application-panel-publish"
+          role="tabpanel"
+          aria-labelledby="application-tab-publish"
+          hidden={selectedTab !== "publish"}
+        >
           <h2>{t("Application Landing Zone Template veröffentlichen")}</h2>
           {drafts.length ? (
             <div className="form-grid">
@@ -1096,7 +1173,12 @@ export function Applications({
           )}
         </section>
       )}
-      <section>
+      <section
+        id="application-panel-catalogue"
+        role="tabpanel"
+        aria-labelledby="application-tab-catalogue"
+        hidden={selectedTab !== "catalogue"}
+      >
         <h2>{t("Application Landing Zone Templates")}</h2>
         <p>
           {t(
@@ -1404,7 +1486,12 @@ export function Applications({
           </form>
         )}
       </section>
-      <section>
+      <section
+        id="application-panel-orders"
+        role="tabpanel"
+        aria-labelledby="application-tab-orders"
+        hidden={selectedTab !== "orders"}
+      >
         <h2>{t("Bestellungen")}</h2>
         {loaded && !instances.length && (
           <p className="muted">{t("Noch keine Bestellungen.")}</p>
@@ -1431,7 +1518,10 @@ export function Applications({
         </div>
       </section>
       {selectedInstance && (
-        <section aria-label={t("Bestelldetails")}>
+        <section
+          aria-label={t("Bestelldetails")}
+          hidden={selectedTab !== "orders"}
+        >
           <h2>{selectedInstance.name}</h2>
           <dl className="application-properties">
             <dt>{t("Instanz")}</dt>

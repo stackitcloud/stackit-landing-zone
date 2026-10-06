@@ -790,7 +790,7 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
   await page.getByRole("button", { name: "2 Ordner", exact: true }).click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -807,7 +807,7 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
   await page.goForward();
   await expect(
     page.getByRole("heading", {
-      name: "Application Landing Zone Templates",
+      name: "Template-Entwürfe",
       exact: true,
     }),
   ).toBeVisible();

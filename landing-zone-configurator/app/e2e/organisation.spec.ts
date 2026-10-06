@@ -591,7 +591,7 @@ for (const { publishing, applied } of [
         .click();
       await page
         .getByRole("button", {
-          name: "5 Application Landing Zone Templates",
+          name: "5 Template-Entwürfe",
           exact: true,
         })
         .click();
@@ -608,6 +608,12 @@ for (const { publishing, applied } of [
         .click();
       if (applied) {
         await expect(
+          page.getByRole("tab", { name: "Veröffentlichung", exact: true }),
+        ).toHaveAttribute("aria-selected", "true");
+        await page
+          .getByRole("tab", { name: "Plattformanbindung", exact: true })
+          .click();
+        await expect(
           page.getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true }),
         ).toHaveCount(0);
         await page
@@ -619,7 +625,14 @@ for (const { publishing, applied } of [
         await expect(
           page.locator(".application-properties").first(),
         ).toContainText(source.applyRunId);
-      } else
+      } else {
+        await page
+          .getByRole("tab", { name: "Plattformanbindung", exact: true })
+          .click();
+        await expect(
+          page.getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true }),
+        ).toBeHidden();
+        await page.getByText("Kompatibilitätsimport", { exact: true }).click();
         await page
           .getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true })
           .setInputFiles({
@@ -633,6 +646,11 @@ for (const { publishing, applied } of [
               }),
             ),
           });
+      }
+      await page.screenshot({
+        path: testInfo.outputPath("application-platform-binding.png"),
+        fullPage: true,
+      });
       await expect(
         page.getByRole("button", {
           name: "Plattformvertrag freigeben",
@@ -654,6 +672,9 @@ for (const { publishing, applied } of [
         "Plattformvertrag freigegeben",
       );
       await page
+        .getByRole("tab", { name: "Veröffentlichung", exact: true })
+        .click();
+      await page
         .getByLabel("Application Landing Zone Template aus meinem Entwurf", {
           exact: true,
         })
@@ -670,6 +691,10 @@ for (const { publishing, applied } of [
       await page
         .getByLabel("Plattformziel", { exact: true })
         .selectOption("public");
+      await page.screenshot({
+        path: testInfo.outputPath("application-publication.png"),
+        fullPage: true,
+      });
       await page
         .getByRole("button", { name: "Version veröffentlichen", exact: true })
         .click();
@@ -682,7 +707,7 @@ for (const { publishing, applied } of [
       await page.getByRole("button", { name: /weiterbearbeiten$/ }).click();
       await page
         .getByRole("button", {
-          name: "5 Application Landing Zone Templates",
+          name: "5 Template-Entwürfe",
           exact: true,
         })
         .click();
@@ -763,6 +788,30 @@ for (const { publishing, applied } of [
     } else {
       await expect(page).toHaveURL(/\/applications$/);
       await expect(
+        page.getByRole("tab", { name: "Katalog", exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+      await expect(
+        page.getByRole("tab", { name: "Veröffentlichung", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("tab", { name: "Plattformanbindung", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("tab", { name: "Gruppen", exact: true }),
+      ).toHaveCount(0);
+      await page.getByRole("tab", { name: "Katalog", exact: true }).focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(
+        page.getByRole("tab", { name: "Bestellungen", exact: true }),
+      ).toBeFocused();
+      await expect(
+        page.getByRole("tabpanel", { name: "Bestellungen", exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press("Home");
+      await expect(
+        page.getByRole("tab", { name: "Katalog", exact: true }),
+      ).toBeFocused();
+      await expect(
         page.getByRole("heading", { name: "Application-Gruppen", exact: true }),
       ).toHaveCount(0);
       await expect(
@@ -778,6 +827,7 @@ for (const { publishing, applied } of [
         }),
       ).toHaveCount(0);
     }
+    await page.getByRole("tab", { name: "Katalog", exact: true }).click();
     await expect(
       page.getByRole("heading", {
         name: "Application Landing Zone Templates",
@@ -797,6 +847,7 @@ for (const { publishing, applied } of [
       }),
     ).toHaveAttribute("aria-pressed", "true");
     if (publishing) {
+      await page.getByRole("tab", { name: "Gruppen", exact: true }).click();
       const membership = page.getByRole("group", {
         name: "Application Owner",
         exact: true,
@@ -844,6 +895,7 @@ for (const { publishing, applied } of [
           exact: true,
         }),
       ).toBeDisabled();
+      await page.getByRole("tab", { name: "Katalog", exact: true }).click();
       const access = page.getByRole("group", {
         name: "Freigaben dieser Template-Version",
         exact: true,
@@ -895,11 +947,16 @@ for (const { publishing, applied } of [
     await expect(page.getByRole("status")).toContainText(
       "Bestellung gespeichert",
     );
+    await expect(
+      page.getByRole("tab", { name: "Bestellungen", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Katalog", exact: true }).click();
     await page.getByRole("button", { name: "Bestellen", exact: true }).click();
     await expect.poll(() => orderKeys.length).toBe(2);
     expect(orderKeys[0]).toBe(orderKeys[1]);
     expect(instances).toHaveLength(1);
     await page.reload();
+    await page.getByRole("tab", { name: "Bestellungen", exact: true }).click();
     await page
       .getByRole("button", {
         name: /Details anzeigen\s*:\s*Network application/,

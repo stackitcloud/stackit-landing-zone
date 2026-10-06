@@ -106,7 +106,7 @@ export function CommonEditor({
   const stepTitle = (id: EditorStep, title: string) =>
     id === "projects"
       ? platformDraft
-        ? "Application Landing Zone Templates"
+        ? "Template-Entwürfe"
         : "Projekte (Bestand)"
       : title;
   const values = compileCommonConfiguration(draft);

@@ -328,6 +328,12 @@ export const englishMessages: Record<string, string> = {
     "Application Landing Zone Template version",
   "Application Landing Zone Templates": "Application Landing Zone Templates",
   "Application Landing Zones": "Application Landing Zones",
+  Katalog: "Catalogue",
+  Veröffentlichung: "Publication",
+  Plattformanbindung: "Platform binding",
+  Gruppen: "Groups",
+  Kompatibilitätsimport: "Compatibility import",
+  "Template-Entwürfe": "Template drafts",
   "Application Landing Zones werden geladen.":
     "Loading Application Landing Zones.",
   "Application Owner": "Application Owner",

@@ -48,7 +48,8 @@
   padding: 20px 16px 8px;
   font-size: 12px;
 }
-.configuration-tabs {
+.configuration-tabs,
+.application-tabs {
   position: sticky;
   top: 0;
   z-index: 5;
@@ -90,7 +91,8 @@
   font-size: 20px;
 }
 
-.configuration-tabs button {
+.configuration-tabs button,
+.application-tabs button {
   padding: 10px 4px;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -99,13 +101,18 @@
   font: inherit;
   cursor: pointer;
 }
-.configuration-tabs button[aria-current="page"] {
+.configuration-tabs button[aria-current="page"],
+.application-tabs button[aria-selected="true"] {
   border-bottom-color: currentColor;
   font-weight: 600;
 }
 .configuration-tabs button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.application-self-service > section[hidden] {
+  display: none;
 }
 .configuration-save {
   margin-bottom: 24px;
