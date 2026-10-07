@@ -6,7 +6,7 @@ import {
   type Template,
   upgradeEditorDraft,
 } from "@lzc/domain";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "./fixtures";
 
 async function restoreLegacy(page: Page) {
   const template = catalogue.templates.find(

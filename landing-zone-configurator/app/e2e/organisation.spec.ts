@@ -2,33 +2,11 @@ import {
   createEditorConfiguration,
   publishedProjectTemplateSchema,
 } from "@lzc/domain";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const tenantId = "22222222-2222-4222-8222-222222222222";
 const organisationId = "33333333-3333-4333-8333-333333333333";
-
-test.beforeEach(async ({ context }) => {
-  const lists = {
-    configurations: { configurations: [] },
-    preparations: { preparations: [] },
-    plans: { runs: [] },
-    invitations: { invitations: [] },
-  };
-  for (const [path, json] of Object.entries(lists)) {
-    await context.route(`**/api/v1/${path}`, (route) =>
-      route.request().method() === "GET"
-        ? route.fulfill({ json })
-        : route.abort(),
-    );
-  }
-  await context.route("**/api/v1/cloud-catalogues/automatic", (route) =>
-    route.fulfill({ status: 503, json: { error: "catalogue_unavailable" } }),
-  );
-  await context.route("**/auth/github/status", (route) =>
-    route.fulfill({ json: { connected: false } }),
-  );
-});
 
 test("workspace-first creation opens configurations, remembers access and ignores stale preference", async ({
   page,

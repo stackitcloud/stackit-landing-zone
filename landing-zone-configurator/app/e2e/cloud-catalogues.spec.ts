@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 for (const kind of ["personal", "organisation"]) {
   test(`automatic technical catalogues require no additional editor setup in ${kind}`, async ({

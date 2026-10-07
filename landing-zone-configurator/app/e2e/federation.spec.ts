@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("CI federation stays optional and creates exact GitHub trust conditions", async ({
   page,

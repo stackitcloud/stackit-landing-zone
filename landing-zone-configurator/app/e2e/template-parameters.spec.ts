@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("an empty ACL draft can become an order input without granting unrestricted access", async ({
   page,

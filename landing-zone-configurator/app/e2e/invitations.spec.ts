@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("invitation survives login redirect without joining until confirmation", async ({
   page,

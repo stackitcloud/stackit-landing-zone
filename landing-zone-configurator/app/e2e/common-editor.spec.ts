@@ -7,7 +7,7 @@ import {
   readConfigurationRecord,
   recordValues,
 } from "@lzc/domain";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/auth/status", (route) =>

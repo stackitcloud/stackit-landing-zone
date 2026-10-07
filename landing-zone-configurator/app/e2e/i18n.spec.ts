@@ -1,5 +1,5 @@
 import { catalogue, createDraft, type Template } from "@lzc/domain";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.use({ locale: "en-US" });
 
