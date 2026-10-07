@@ -214,6 +214,7 @@ export function buildApp(
     for (const path of [
       "/templates",
       "/repositories",
+      "/configurations",
       "/credentials",
       "/deployments",
       "/organisation",
