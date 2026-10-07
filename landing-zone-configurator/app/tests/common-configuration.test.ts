@@ -48,12 +48,12 @@ describe("shared accelerator feature contract", () => {
       landing_zone_configurator: "true",
     });
   });
-  it("assigns all 28 inputs exactly once, including every protected input", () => {
+  it("assigns all 29 inputs exactly once, including every protected input", () => {
     const assigned = Object.values(featureGroups).flatMap((group) => [
       ...group.inputs,
     ]);
-    expect(assigned.length).toBe(28);
-    expect(new Set(assigned).size).toBe(28);
+    expect(assigned.length).toBe(29);
+    expect(new Set(assigned).size).toBe(29);
     expect([...assigned].sort()).toEqual(
       acceleratorInputs.map((input) => input.name).sort(),
     );
@@ -69,6 +69,11 @@ describe("shared accelerator feature contract", () => {
     expect(fields.some((field) => field.type === "dynamic")).toBe(false);
     expect(fields).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          path: "platform_contract_namespace",
+          group: "identity",
+          sensitive: false,
+        }),
         expect.objectContaining({
           path: "connectivity_regions[*].network_areas[*].ranges[*]",
           group: "network",

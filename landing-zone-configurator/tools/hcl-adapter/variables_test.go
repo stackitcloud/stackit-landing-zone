@@ -19,12 +19,16 @@ func TestCompleteRootVariableInventory(t *testing.T) {
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Variables) != 28 {
+	if len(result.Variables) != 29 {
 		t.Fatalf("review Accelerator feature coverage: %d inputs", len(result.Variables))
 	}
 	variables := map[string]variableDefinition{}
 	for _, variable := range result.Variables {
 		variables[variable.Name] = variable
+	}
+	namespace, exists := variables["platform_contract_namespace"]
+	if !exists || string(namespace.Type) != `"string"` || namespace.Sensitive || len(namespace.Validations) == 0 {
+		t.Fatal("platform contract namespace metadata lost")
 	}
 	var compact bytes.Buffer
 	if err := json.Compact(&compact, variables["connectivity_regions"].Type); err != nil {

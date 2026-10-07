@@ -14,6 +14,7 @@ export const featureGroups = {
       "company_name",
       "company_code",
       "region",
+      "platform_contract_namespace",
       "labels",
     ],
   },

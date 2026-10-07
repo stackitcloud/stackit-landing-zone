@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceSha256": "061118b024a39670724bd59d5be07774425b75ab70791cfe0599616585e4d411",
+  "sourceSha256": "b77e59054c7d2c6dabcb9f9add22c1efb56d79735fd14eb5461e11d99c105f57",
   "variables": [
     {
       "name": "owner_email",
@@ -61,8 +61,20 @@
       "sensitive": true
     },
     {
-      "name": "labels",
+      "name": "platform_contract_namespace",
       "line": 44,
+      "description": "Optional stable UUID namespace for Application handoff; defaults to the organization ID for independent CLI use. This is metadata, not an authorization boundary.",
+      "type": "string",
+      "required": false,
+      "sensitive": false,
+      "default": null,
+      "validations": [
+        "validation {\n    condition     = var.platform_contract_namespace == null ? true : can(regex(\"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\", var.platform_contract_namespace))\n    error_message = \"The platform contract namespace must be a UUID.\"\n  }"
+      ]
+    },
+    {
+      "name": "labels",
+      "line": 55,
       "description": "Additional labels to apply to all resources.",
       "type": [
         "map",
@@ -74,7 +86,7 @@
     },
     {
       "name": "organization_owners",
-      "line": 50,
+      "line": 61,
       "description": "List of organization owners.",
       "type": [
         "list",
@@ -86,7 +98,7 @@
     },
     {
       "name": "organization_auditors",
-      "line": 56,
+      "line": 67,
       "description": "List of organization auditors.",
       "type": [
         "list",
@@ -98,7 +110,7 @@
     },
     {
       "name": "devops",
-      "line": 62,
+      "line": 73,
       "description": "DevOps module configuration. Set to null to skip deployment.",
       "type": [
         "object",
@@ -128,7 +140,7 @@
     },
     {
       "name": "platform_kubernetes",
-      "line": 71,
+      "line": 82,
       "description": "Map of central, region-scoped platform Kubernetes deployments. Empty map skips deployment.",
       "type": [
         "map",
@@ -492,7 +504,7 @@
     },
     {
       "name": "observability",
-      "line": 173,
+      "line": 184,
       "description": "Observability instance configuration for the management module. Set to null to skip observability deployment.",
       "type": [
         "object",
@@ -535,7 +547,7 @@
     },
     {
       "name": "audit_logs",
-      "line": 187,
+      "line": 198,
       "description": "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link_scopes defaults to a single organization-wide link. retention_days applies to both the Logs instance and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock is off by default and turns on GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment.",
       "type": [
         "object",
@@ -580,7 +592,7 @@
     },
     {
       "name": "federated_identity_providers",
-      "line": 201,
+      "line": 212,
       "description": "List of federated identity providers to configure for the management service account.",
       "type": [
         "list",
@@ -609,7 +621,7 @@
     },
     {
       "name": "rm_folders",
-      "line": 215,
+      "line": 226,
       "description": "Map of resource manager folders to create under the root organization.",
       "type": [
         "map",
@@ -671,7 +683,7 @@
     },
     {
       "name": "connectivity",
-      "line": 256,
+      "line": 267,
       "description": "Connectivity configuration including DNS zones, network areas, firewalls, and VPN. Use network_areas with descriptive keys that reflect any business, security, tenant, or regional boundary; network_area and firewall remain supported for existing single-area configurations. Use firewalls for per-area appliance settings.",
       "type": [
         "object",
@@ -1269,7 +1281,7 @@
     },
     {
       "name": "connectivity_regions",
-      "line": 409,
+      "line": 420,
       "description": "Regional connectivity configuration for the statically supported eu01 and eu02 hubs. Set to null to use the single-region connectivity input.",
       "type": [
         "map",
@@ -1284,7 +1296,7 @@
     },
     {
       "name": "vpn_pre_shared_keys",
-      "line": 420,
+      "line": 431,
       "description": "Pre-shared keys per connectivity.vpn.connections key, one per tunnel. Kept out of the connectivity object so the topology stays committable; supply through TF_VAR_vpn_pre_shared_keys or a gitignored tfvars file. Minimum 20 characters.",
       "type": [
         "map",
@@ -1301,7 +1313,7 @@
     },
     {
       "name": "firewall_config",
-      "line": 434,
+      "line": 445,
       "description": "Policy pushed to one OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched.",
       "type": [
         "object",
@@ -1587,7 +1599,7 @@
     },
     {
       "name": "firewall_admin_username",
-      "line": 522,
+      "line": 533,
       "description": "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root.",
       "type": "string",
       "required": false,
@@ -1596,7 +1608,7 @@
     },
     {
       "name": "firewall_admin_password",
-      "line": 528,
+      "line": 539,
       "description": "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead.",
       "type": "string",
       "required": false,
@@ -1604,7 +1616,7 @@
     },
     {
       "name": "firewall_bootstrap",
-      "line": 535,
+      "line": 546,
       "description": "Pass -var firewall_bootstrap=true on the two greenfield applies that create the OPNsense API key. It suppresses the Secrets Manager read, which would otherwise fail at plan time because the secret does not exist yet. Never set it on an established deployment: without the bootstrap cache file it plans the destruction of the policy and the stored key. The steady state needs no variable at all.",
       "type": "bool",
       "required": false,
@@ -1613,7 +1625,7 @@
     },
     {
       "name": "firewall_api_secret_version",
-      "line": 541,
+      "line": 552,
       "description": "Write version of the OPNsense API key in the Secrets Manager. The key is only transmitted when this number changes, so bump it by one after a re-bootstrap has produced a fresh key, otherwise the Secrets Manager keeps serving the old one.",
       "type": "number",
       "required": false,
@@ -1622,7 +1634,7 @@
     },
     {
       "name": "firewall_api_credentials",
-      "line": 547,
+      "line": 558,
       "description": "OPNsense API key and secret. Bootstrap them once from the appliance login with src/modules/firewall-config/scripts/bootstrap-api-key.sh, then supply through TF_VAR_firewall_api_credentials or a gitignored tfvars file. Kept out of firewall_config so the policy stays committable.",
       "type": [
         "object",
@@ -1636,7 +1648,7 @@
     },
     {
       "name": "sandboxes",
-      "line": 561,
+      "line": 572,
       "description": "List of sandboxes to create.",
       "type": [
         "list",
@@ -1661,7 +1673,7 @@
     },
     {
       "name": "landing_zones",
-      "line": 575,
+      "line": 586,
       "description": "Map of landing zones to create. Public landing zones can create a local network with network_enabled. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions.",
       "type": [
         "map",
@@ -1777,7 +1789,7 @@
     },
     {
       "name": "landing_zone_namespace_services",
-      "line": 629,
+      "line": 640,
       "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
       "type": [
         "map",

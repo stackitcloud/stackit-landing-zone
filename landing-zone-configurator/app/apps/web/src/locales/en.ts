@@ -1584,6 +1584,7 @@ export const englishMessages: Record<string, string> = {
   "STACKIT Network Area (SNA)": "STACKIT Network Area (SNA)",
   "STACKIT Network Areas (SNAs)": "STACKIT Network Areas (SNAs)",
   "STACKIT Observability": "STACKIT Observability",
+  "Namespace des Plattformvertrags": "Platform contract namespace",
   "STACKIT Organisations-ID": "STACKIT organization ID",
   "STACKIT Region, in der die Ressourcen angelegt werden sollen.":
     "STACKIT region where resources should be created.",

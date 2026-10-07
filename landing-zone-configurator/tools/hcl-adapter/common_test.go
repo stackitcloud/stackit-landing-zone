@@ -13,7 +13,10 @@ func TestCommonModelNativeRoundTrip(t *testing.T) {
 	cmd := exec.Command("node", "--input-type=module", "-e", `
 import { catalogue, createCommonConfiguration, exportCommonTfvars } from './packages/domain/dist/index.js';
 process.stdout.write(JSON.stringify(catalogue.templates.map(template => ({
-  id: template.id, expected: template.values,
+	id: template.id, expected: {
+		...template.values,
+		labels: { ...template.values.labels, landing_zone_accelerator: 'true', landing_zone_configurator: 'true' }
+	},
   hcl: exportCommonTfvars(createCommonConfiguration(template.id, '11111111-2222-4333-8444-555555555555'))
 }))));`)
 	cmd.Dir = "../../app"
