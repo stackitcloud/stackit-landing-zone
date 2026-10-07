@@ -9,7 +9,10 @@ import pg from "pg";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
 import { GitHubClient } from "../apps/api/src/auth/github-client.js";
-import { StackitDeviceFlow } from "../apps/api/src/auth/stackit-device.js";
+import {
+  configuredStackitFlow,
+  stackitCliClientId,
+} from "../apps/api/src/auth/stackit-device.js";
 import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
 import { PostgresAuthStore } from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
@@ -28,7 +31,11 @@ import { Plans } from "../apps/api/src/plans/service.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 import { openStackitCodeCallback } from "./stackit-code-callback.js";
 
-if (process.env.LZC_STACKIT_CLI_CLIENT_APPROVED !== "true") {
+if (
+  (process.env.LZC_STACKIT_CLIENT_ID ?? stackitCliClientId) ===
+    stackitCliClientId &&
+  process.env.LZC_STACKIT_CLI_CLIENT_APPROVED !== "true"
+) {
   throw new Error("Explicit STACKIT CLI client approval required");
 }
 
@@ -288,12 +295,19 @@ async function start() {
     stackit: {
       identities: new StackitIdentities(pool),
       organisations,
+      authFlow: "authorization-code",
       createFlow: (organizationId, purpose = "login") => {
         if (!codeCallback) throw new Error("cli_callback_unavailable");
-        return new StackitDeviceFlow(fetch, Date.now, organizationId, {
-          redirectUri: codeCallback.redirectUri,
-          purpose,
-        });
+        return configuredStackitFlow({
+          ...process.env,
+          LZC_STACKIT_AUTH_FLOW:
+            process.env.LZC_STACKIT_AUTH_FLOW ?? "authorization-code",
+          LZC_STACKIT_CLIENT_ID:
+            process.env.LZC_STACKIT_CLIENT_ID ?? stackitCliClientId,
+          LZC_STACKIT_REDIRECT_URI:
+            process.env.LZC_STACKIT_REDIRECT_URI ?? codeCallback.redirectUri,
+          LZC_PUBLIC_ORIGIN: origin,
+        })(organizationId, purpose);
       },
     },
     organisations,

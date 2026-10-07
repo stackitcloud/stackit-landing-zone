@@ -3,7 +3,7 @@ import { createRemoteJWKSet, customFetch, errors, jwtVerify } from "jose";
 import { z } from "zod";
 
 const issuer = "https://accounts.stackit.cloud";
-const clientId = "stackit-cli-0000-0000-000000000001";
+export const stackitCliClientId = "stackit-cli-0000-0000-000000000001";
 export const maxOrganizationPermissions = 4096;
 const organizationResourceSchema = z
   .string()
@@ -58,11 +58,73 @@ export type StackitAuthorization = {
 };
 
 export type AuthorizationCodeOptions = {
+  clientId?: string;
   redirectUri: string;
   purpose: "login" | "proof";
 };
 
+export function configuredStackitFlow(
+  environment: Readonly<Record<string, string | undefined>>,
+) {
+  if (environment.LZC_STACKIT_AUTH_FLOW !== "authorization-code")
+    throw new Error(
+      "Explicit STACKIT authorization-code configuration required",
+    );
+  const configuredClientId = environment.LZC_STACKIT_CLIENT_ID;
+  const redirectUri = environment.LZC_STACKIT_REDIRECT_URI;
+  const origin = environment.LZC_PUBLIC_ORIGIN;
+  if (!configuredClientId || !redirectUri || !origin)
+    throw new Error("STACKIT PKCE client and callback configuration required");
+  const callback = new URL(redirectUri);
+  const publicOrigin = new URL(origin);
+  const cli = configuredClientId === stackitCliClientId;
+  if (
+    publicOrigin.pathname !== "/" ||
+    publicOrigin.search ||
+    publicOrigin.hash ||
+    publicOrigin.username ||
+    publicOrigin.password
+  )
+    throw new Error("STACKIT public application origin must be canonical");
+  if (cli) {
+    if (environment.LZC_STACKIT_CLI_CLIENT_APPROVED !== "true")
+      throw new Error("Explicit STACKIT CLI client approval required");
+    if (
+      publicOrigin.protocol !== "http:" ||
+      !["localhost", "127.0.0.1"].includes(publicOrigin.hostname)
+    )
+      throw new Error(
+        "STACKIT CLI client requires a local loopback application origin",
+      );
+  }
+  if (
+    !cli &&
+    (publicOrigin.protocol !== "https:" ||
+      callback.origin !== publicOrigin.origin ||
+      callback.pathname !== "/auth/stackit/callback")
+  )
+    throw new Error(
+      "STACKIT callback must match the public application origin",
+    );
+  const proofRedirectUri = cli
+    ? redirectUri
+    : new URL("/auth/stackit/proof-callback", publicOrigin).toString();
+  for (const target of [redirectUri, proofRedirectUri])
+    new StackitDeviceFlow(fetch, Date.now, undefined, {
+      clientId: configuredClientId,
+      redirectUri: target,
+      purpose: "login",
+    });
+  return (organizationId?: string, purpose: "login" | "proof" = "login") =>
+    new StackitDeviceFlow(fetch, Date.now, organizationId, {
+      clientId: configuredClientId,
+      redirectUri: purpose === "proof" ? proofRedirectUri : redirectUri,
+      purpose,
+    });
+}
+
 export class StackitDeviceFlow {
+  private readonly clientId: string;
   private deviceCode: string | null = null;
   private expiresAt = 0;
   private nextPollAt = 0;
@@ -82,22 +144,35 @@ export class StackitDeviceFlow {
     organizationId?: string,
     private readonly codeOptions?: AuthorizationCodeOptions,
   ) {
+    this.clientId = codeOptions?.clientId ?? stackitCliClientId;
+    if (!z.string().min(1).max(255).safeParse(this.clientId).success)
+      throw new DeviceFlowError("invalid_client_id");
     this.organizationId =
       organizationId === undefined ? undefined : z.uuid().parse(organizationId);
     if (codeOptions) {
       const redirect = new URL(codeOptions.redirectUri);
       if (
-        redirect.protocol !== "http:" ||
-        redirect.hostname !== "localhost" ||
-        Number(redirect.port) < 8000 ||
-        Number(redirect.port) > 8020 ||
-        redirect.pathname !== "/" ||
+        (this.clientId === stackitCliClientId
+          ? redirect.protocol !== "http:" ||
+            redirect.hostname !== "localhost" ||
+            Number(redirect.port) < 8000 ||
+            Number(redirect.port) > 8020 ||
+            redirect.pathname !== "/"
+          : redirect.protocol !== "https:" ||
+            ![
+              "/auth/stackit/callback",
+              "/auth/stackit/proof-callback",
+            ].includes(redirect.pathname)) ||
         redirect.search ||
         redirect.hash ||
         redirect.username ||
         redirect.password
       )
-        throw new DeviceFlowError("invalid_cli_callback");
+        throw new DeviceFlowError(
+          this.clientId === stackitCliClientId
+            ? "invalid_cli_callback"
+            : "invalid_web_callback",
+        );
     }
     this.keys = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`), {
       [customFetch]: (input, init) =>
@@ -132,7 +207,7 @@ export class StackitDeviceFlow {
       this.nonce = randomBytes(32).toString("base64url");
       const authorization = new URL(`${issuer}/oauth/v2/authorize`);
       authorization.search = new URLSearchParams({
-        client_id: clientId,
+        client_id: this.clientId,
         response_type: "code",
         scope: "openid offline_access email",
         redirect_uri: this.codeOptions.redirectUri,
@@ -160,7 +235,7 @@ export class StackitDeviceFlow {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_id: clientId,
+          client_id: this.clientId,
           scope: "openid email",
         }),
       },
@@ -256,14 +331,14 @@ export class StackitDeviceFlow {
     try {
       const tokenRequest = this.codeOptions
         ? new URLSearchParams({
-            client_id: clientId,
+            client_id: this.clientId,
             grant_type: "authorization_code",
             code: this.authorizationCode ?? "",
             code_verifier: this.codeVerifier ?? "",
             redirect_uri: this.codeOptions.redirectUri,
           })
         : new URLSearchParams({
-            client_id: clientId,
+            client_id: this.clientId,
             grant_type: "urn:ietf:params:oauth:grant-type:device_code",
             device_code: this.deviceCode ?? "",
           });
@@ -315,7 +390,7 @@ export class StackitDeviceFlow {
         stage = "id_token_verification";
         const { payload } = await jwtVerify(tokens.id_token, this.keys, {
           issuer,
-          audience: clientId,
+          audience: this.clientId,
           algorithms: ["RS256"],
           requiredClaims: this.codeOptions
             ? ["sub", "iat", "exp", "nonce"]

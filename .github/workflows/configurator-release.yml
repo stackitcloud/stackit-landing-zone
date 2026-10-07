@@ -8,10 +8,22 @@ on:
       - 'landing-zone-configurator/deploy/cloud-foundry/**'
       - 'landing-zone-configurator/deploy/runner/**'
       - 'landing-zone-configurator/infra/ci/prepare-release.mjs'
+      - 'landing-zone-configurator/infra/ci/prepare-release.test.mjs'
+      - 'landing-zone-configurator/infra/ci/release-artifact.mjs'
       - '.github/workflows/configurator-release.yml'
   workflow_dispatch:
+    inputs:
+      build_only:
+        description: Build and publish the immutable release without deploying
+        type: boolean
+        default: false
+      release_run_id:
+        description: Promote this existing successful build without rebuilding
+        type: string
+        required: false
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -20,7 +32,7 @@ concurrency:
 
 jobs:
   build:
-    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && !inputs.release_run_id && ((github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -50,6 +62,7 @@ jobs:
           npm install --global npm@11.19.0
           npm ci
           npm run check
+          node --test ../infra/ci/prepare-release.test.mjs
       - name: Test database migrations and tenant isolation
         run: npm run test:database
         env:
@@ -95,20 +108,24 @@ jobs:
         run: |
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
           bash ../deploy/runner/package.sh
+      - name: Assemble immutable stage-neutral release
+        run: |
+          node ../infra/ci/release-artifact.mjs create ../.local
+          tar -czf ../.local/configurator-release.tar.gz -C ../.local release.tar.gz release.sha256 runner.tar.gz runner.sha256 release-manifest.json
+          (cd ../.local && sha256sum configurator-release.tar.gz > configurator-release.sha256)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: configurator-app-${{ github.run_id }}
+          name: configurator-release-${{ github.run_id }}
           path: |
-            landing-zone-configurator/.local/release.tar.gz
-            landing-zone-configurator/.local/release.sha256
-            landing-zone-configurator/.local/runner.tar.gz
-            landing-zone-configurator/.local/runner.sha256
+            landing-zone-configurator/.local/configurator-release.tar.gz
+            landing-zone-configurator/.local/configurator-release.sha256
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
 
   deploy:
     needs: build
+    if: always() && !cancelled() && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && (needs.build.result == 'success' || (needs.build.result == 'skipped' && github.event_name == 'workflow_dispatch' && inputs.release_run_id != ''))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -131,7 +148,19 @@ jobs:
         with:
           tofu_version: '1.12.6'
           tofu_wrapper: false
+      - name: Resolve successful immutable release build
+        id: source
+        run: node infra/ci/release-artifact.mjs source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LZC_RELEASE_RUN_ID: ${{ inputs.release_run_id || github.run_id }}
+      - name: Checkout the artifact's exact source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.source.outputs.release_revision }}
+          persist-credentials: false
       - name: Reject a superseded branch revision
+        if: inputs.release_run_id == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -147,10 +176,19 @@ jobs:
           echo "$RUNNER_TEMP/cf-bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: configurator-app-${{ github.run_id }}
+          artifact-ids: ${{ steps.source.outputs.artifact_id }}
+          run-id: ${{ steps.source.outputs.release_run_id }}
+          github-token: ${{ github.token }}
+          merge-multiple: true
           path: landing-zone-configurator/.local
       - name: Unpack application
+        env:
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
+          LZC_RELEASE_RUN_ID: ${{ steps.source.outputs.release_run_id }}
         run: |
+          (cd .local && sha256sum --check configurator-release.sha256)
+          tar -xzf .local/configurator-release.tar.gz -C .local
+          node infra/ci/release-artifact.mjs verify .local
           (cd .local && sha256sum --check release.sha256)
           mkdir -p .local/release
           tar -xzf .local/release.tar.gz -C .local/release
@@ -181,6 +219,9 @@ jobs:
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
           LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
           LZC_STACKIT_CLI_CLIENT_APPROVED: ${{ vars.LZC_STACKIT_CLI_CLIENT_APPROVED }}
+          LZC_STACKIT_AUTH_FLOW: ${{ vars.LZC_STACKIT_AUTH_FLOW }}
+          LZC_STACKIT_CLIENT_ID: ${{ vars.LZC_STACKIT_CLIENT_ID }}
+          LZC_STACKIT_REDIRECT_URI: ${{ vars.LZC_STACKIT_REDIRECT_URI }}
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
       - name: Stage isolated runner template in its own organisation
@@ -243,7 +284,7 @@ jobs:
           if [ "$LZC_AUTH_ENABLED" = true ]; then expected=github; fi
           if [ "$LZC_AUTH_ENABLED" = true ] && [ "$LZC_STACKIT_DEVICE_ENABLED" = true ]; then expected=stackit; fi
           curl --fail --silent --show-error --retry 3 "$LZC_URL/healthz" | jq -e --arg expected "$expected" '.status == "ok" and .authentication == $expected'
-          curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e --arg expected "$expected" 'if $expected == "stackit" then .primary == "stackit" and .stackit == true else .github == ($expected == "github") end'
+          curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e --arg expected "$expected" 'if $expected == "stackit" then .primary == "stackit" and .stackit == true and .stackitFlow == "authorization-code" else .github == ($expected == "github") end'
           curl --fail --silent --show-error "$LZC_URL/" | grep -q 'Landing Zone Configurator'
           test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/session")" = 401
           curl --fail --silent --show-error "$LZC_URL/applications" | grep -q 'Landing Zone Configurator'

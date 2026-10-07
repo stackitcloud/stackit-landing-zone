@@ -1,15 +1,46 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, readFileSync, statSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, statSync, rmSync, existsSync, mkdirSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { approvedReleaseSource, createReleaseManifest, verifyReleaseManifest } from "./release-artifact.mjs";
 const script=fileURLToPath(new URL("./prepare-release.mjs",import.meta.url));
+test("one release manifest binds both packages to the same immutable build",()=>{
+ const directory=mkdtempSync(join(tmpdir(),"lzc-release-artifact-test-"));
+ const source={revision:"a".repeat(40),runId:"12345"};
+ try {
+  writeFileSync(join(directory,"release.tar.gz"),"compiled application and migrations");
+  writeFileSync(join(directory,"runner.tar.gz"),"isolated pinned runner");
+  const manifest=createReleaseManifest(directory,source);
+  assert.deepEqual(verifyReleaseManifest(directory,source),manifest);
+  assert.throws(()=>createReleaseManifest(directory,source));
+  assert.throws(()=>verifyReleaseManifest(directory,{...source,revision:"b".repeat(40)}));
+  assert.throws(()=>verifyReleaseManifest(directory,{...source,runId:"54321"}));
+  writeFileSync(join(directory,"runner.tar.gz"),"changed runner");
+  assert.throws(()=>verifyReleaseManifest(directory,source),/checksum mismatch/);
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});
+test("promotion requires the successful build's exact repository, source and immutable artifact",()=>{
+ const run={id:12345,run_attempt:1,path:".github/workflows/configurator-release.yml",head_sha:"a".repeat(40),head_repository:{full_name:"stackitcloud/stackit-landing-zone"},head_branch:"feature/landing-zone-configurator",event:"workflow_dispatch"};
+ const jobs=[{name:"build",status:"completed",conclusion:"success"}];
+ const artifact={id:67890,name:"configurator-release-12345",expired:false,workflow_run:{id:12345,head_sha:run.head_sha}};
+ assert.deepEqual(approvedReleaseSource(run,jobs,[artifact],"12345"),{revision:run.head_sha,runId:"12345",artifactId:"67890"});
+ for(const changed of [{...run,event:"pull_request"},{...run,head_repository:{full_name:"someone/fork"}},{...run,path:".github/workflows/other.yml"},{...run,head_branch:"unapproved"},{...run,run_attempt:2}])
+  assert.throws(()=>approvedReleaseSource(changed,jobs,[artifact],"12345"));
+ assert.throws(()=>approvedReleaseSource(run,[],[artifact],"12345"));
+ assert.throws(()=>approvedReleaseSource(run,[{...jobs[0],conclusion:"failure"}],[artifact],"12345"));
+ assert.throws(()=>approvedReleaseSource(run,jobs,[{...artifact,expired:true}],"12345"));
+ assert.throws(()=>approvedReleaseSource(run,jobs,[{...artifact,workflow_run:{id:12345,head_sha:"b".repeat(40)}}],"12345"));
+ assert.throws(()=>approvedReleaseSource(run,jobs,[artifact,artifact],"12345"));
+});
 test("release uses private inputs, rejects wrong destinations and omits privileged credentials",()=>{
  const dir=mkdtempSync(join(tmpdir(),"lzc-release-test-"));
  const env={...process.env,GITHUB_REPOSITORY:"stackitcloud/stackit-landing-zone",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",RUNNER_TEMP:dir,GITHUB_ENV:join(dir,"environment"),LZC_WORKLOAD_BUCKET:"lzc-dev-state-7dbff805",LZC_STATE_KEY_PLATFORM:"p".repeat(40),LZC_STATE_KEY_RUNTIME:"r".repeat(40),LZC_WORKLOAD_ACCESS_KEY:"test-access",LZC_WORKLOAD_SECRET_KEY:"test-secret"};
- const run=mode=>spawnSync(process.execPath,[script,mode],{env,encoding:"utf8"});
+ const artifactApi=join(dir,".local/release/apps/api");mkdirSync(artifactApi,{recursive:true});
+ symlinkSync(fileURLToPath(new URL("../../app/apps/api/dist",import.meta.url)),join(artifactApi,"dist"),"dir");
+ const run=mode=>spawnSync(process.execPath,[script,mode],{env,cwd:dir,encoding:"utf8"});
  Object.assign(env,{LZC_AUTH_ENABLED:"false",LZC_STACKIT_DEVICE_ENABLED:"false",LZC_STACKIT_CLI_CLIENT_APPROVED:"false",LZC_GITHUB_CLIENT_ID:"",LZC_GITHUB_CLIENT_SECRET:""});
  try {
   assert.equal(run("backend").status,0);
@@ -27,7 +58,7 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const result=run("application");assert.equal(result.status,0,result.stderr);
   const vars=join(privateDir,"app-vars.json");assert.equal(statSync(vars).mode&0o777,0o600);
   const app=JSON.parse(readFileSync(vars));
-    assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID"]);
+    assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_STACKIT_AUTH_FLOW","LZC_STACKIT_CLIENT_ID","LZC_STACKIT_REDIRECT_URI","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID"]);
   assert.equal(app.LZC_AUTH_ENABLED,"false");
     assert.equal(app.LZC_STACKIT_DEVICE_ENABLED,"false");
     assert.equal(app.LZC_STACKIT_CLI_CLIENT_APPROVED,"false");
@@ -52,11 +83,21 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
     env.LZC_STACKIT_CLI_CLIENT_APPROVED="true";
     env.LZC_GITHUB_CLIENT_ID="";
     env.LZC_GITHUB_CLIENT_SECRET="";
+    assert.notEqual(run("application").status,0,"must reject missing PKCE configuration before staging");
+    env.LZC_STACKIT_CLI_CLIENT_APPROVED="false";
+    env.LZC_STACKIT_AUTH_FLOW="authorization-code";
+    env.LZC_STACKIT_CLIENT_ID="registered-web-client";
+    env.LZC_STACKIT_REDIRECT_URI="https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback";
     assert.equal(run("application").status,0,"STACKIT login must not require GitHub");
     const stackit=JSON.parse(readFileSync(vars));
     assert.equal(stackit.LZC_STACKIT_DEVICE_ENABLED,"true");
-    assert.equal(stackit.LZC_STACKIT_CLI_CLIENT_APPROVED,"true");
+    assert.equal(stackit.LZC_STACKIT_CLI_CLIENT_APPROVED,"false");
     assert.equal(stackit.LZC_GITHUB_CLIENT_SECRET,"");
+    assert.equal(stackit.LZC_STACKIT_AUTH_FLOW,"authorization-code");
+    assert.equal(stackit.LZC_STACKIT_CLIENT_ID,"registered-web-client");
+    env.LZC_STACKIT_CLIENT_ID="stackit-cli-0000-0000-000000000001";
+    assert.notEqual(run("application").status,0,"must reject an unregistered hosted CLI callback");
+    env.LZC_STACKIT_CLIENT_ID="registered-web-client";
     env.LZC_GITHUB_CLIENT_ID="test-client";
     assert.notEqual(run("application").status,0,"must reject incomplete optional GitHub credentials");
     env.LZC_GITHUB_CLIENT_SECRET="test-oauth-secret";

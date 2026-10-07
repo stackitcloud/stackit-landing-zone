@@ -23,15 +23,34 @@ App OAuth client credentials. The user explicitly approved the latter transfer t
 activates login; the client secret never enters the frontend build.
 
 STACKIT becomes the primary login when the protected Environment sets both
-`LZC_STACKIT_DEVICE_ENABLED=true` and `LZC_STACKIT_CLI_CLIENT_APPROVED=true`,
-in addition to `LZC_AUTH_ENABLED=true`. The latter STACKIT flag records explicit
-approval to reuse the public CLI client; technical Device Flow support is not
-that approval. Both STACKIT flags are currently provisioned as `false`.
-Release preparation rejects unapproved activation before CF deployment. It passes
-the flags through the private variables file and manifest, and public route
-checks verify the selected primary provider. GitHub credentials are optional in
+`LZC_STACKIT_DEVICE_ENABLED=true` and `LZC_AUTH_ENABLED=true`. The legacy
+`DEVICE_ENABLED` name is a provider toggle, not an authentication-method selector.
+Local and hosted startup use the same `configuredStackitFlow` implementation.
+The protected Environment supplies the explicit PKCE configuration:
+
+| Variable | Hosted configuration |
+| --- | --- |
+| `LZC_STACKIT_AUTH_FLOW` | `authorization-code` |
+| `LZC_STACKIT_CLIENT_ID` | Registered public Web client supporting PKCE |
+| `LZC_STACKIT_REDIRECT_URI` | Public origin followed by `/auth/stackit/callback` |
+
+Register both login and `/auth/stackit/proof-callback` HTTPS callbacks with that
+client. The callbacks must belong to the configured `LZC_PUBLIC_ORIGIN`; query
+strings, fragments and embedded credentials are rejected. There is no silent
+fallback to Device Flow. `LZC_STACKIT_CLI_CLIENT_APPROVED` only grants explicit
+local CLI-client reuse: that client remains restricted to loopback applications
+and its registered localhost ports. A hosted Web client needs no CLI approval.
+The local development helper supplies loopback defaults and a callback relay;
+it does not select a different implementation of PKCE.
+
+The successful provider switch on 2026-10-07 used Device Flow and therefore did
+not qualify hosted PKCE. A registered Web client and both HTTPS callbacks are
+required before deploying this version. Release preparation validates the actual
+compiled artifact's configuration before the first CF staging, and public route
+checks require `stackitFlow: "authorization-code"` as well as the primary provider.
+GitHub remains an optional repository connection. GitHub credentials are optional in
 STACKIT mode but must be configured as a complete pair if repository access is
-enabled. Versioned migrations 011 and 012 run before the new application starts.
+enabled. All missing versioned migrations run before the new application starts.
 Bind existing GitHub users through a valid session before switching their login;
 there is no automatic account merge by email.
 
@@ -55,12 +74,12 @@ token. A health check alone does not prove service connectivity.
 
 All mutations share `configurator-lzc-dev-mutation` with infrastructure workflows.
 Feature-branch releases require Environment approval. A superseded branch revision
-is rejected before deployment. GitHub concurrency is not FIFO: newer pending runs
+is rejected for a new build; an explicit promotion uses the selected qualified
+build's exact source revision, even when the branch has advanced. GitHub concurrency is not FIFO: newer pending runs
 can replace older pending runs. Never run local applies or pushes concurrently.
 
-The initial single-instance `cf push` can interrupt service briefly. Immutable
-archive/checksum retention is seven days; explicit rollback/promotion and rolling
-releases are subsequent milestones. Versioned SQL migrations run before the web
+The initial single-instance `cf push` can interrupt service briefly. Rolling
+releases remain a subsequent milestone. Versioned SQL migrations run before the web
 release in `landing-zone-configurator-migrate`, a separate task-only app with no
 route. Only this short-lived app receives the database-owner credentials; it is
 deleted after migration and on failure. Migration checksums and an advisory lock
@@ -69,6 +88,44 @@ Initial customer plan previews use ephemeral runner tasks. Apply/destroy are not
 
 Raw CF logs are not exported to CI, since router URLs may contain OAuth codes.
 Task status, sanitized diagnostics and public health checks provide release evidence.
+
+## Immutable release and promotion
+
+Build once; deploy the same bytes. The workflow publishes one immutable GitHub
+artifact, `configurator-release-<build-run-id>`, containing a central
+`configurator-release.tar.gz` and its SHA-256 checksum. Inside are the compiled
+API, Web assets, migrations and pinned Node runtime in `release.tar.gz`, plus the
+isolated `runner.tar.gz` and `release-manifest.json`. The manifest binds both
+packages to the build run ID and source commit through their SHA-256 checksums.
+No stage configuration or credentials enter this release.
+
+Build and qualify without changing CF:
+
+```sh
+gh workflow run configurator-release.yml \
+	--ref feature/landing-zone-configurator -f build_only=true
+```
+
+Promote that successful build to the protected Dev Environment without rebuilding:
+
+```sh
+gh workflow run configurator-release.yml \
+	--ref feature/landing-zone-configurator -f release_run_id=<build-run-id>
+```
+
+Promotion verifies the repository, allowed source branch and event, workflow,
+successful build job, original run attempt, unexpired immutable artifact ID and
+matching source SHA. It checks out that source revision, verifies the central
+archive and manifest before extracting the application, then injects the current
+protected Environment's runtime variables and secrets. Environment approval,
+destination restrictions, migration guards and service checks still apply.
+Artifact retention is 30 days; expired artifacts are not silently rebuilt.
+
+Only Dev is currently an enabled deployment target. Additional stages need their
+own reviewed destination configuration and protected Environments, not separate
+application builds or authentication implementations. Promoting older bytes is
+not an automatic database rollback: migrations are forward-only, and reverting
+application code requires explicit schema compatibility qualification.
 
 ## Network verification
 

@@ -3,7 +3,10 @@ import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
-import { StackitDeviceFlow } from "../apps/api/src/auth/stackit-device.js";
+import {
+  configuredStackitFlow,
+  StackitDeviceFlow,
+} from "../apps/api/src/auth/stackit-device.js";
 import { openStackitCodeCallback } from "../scripts/stackit-code-callback.js";
 import { buildDeviceSpike } from "../scripts/stackit-device-flow.js";
 
@@ -19,6 +22,103 @@ const jwk = {
 };
 const subject = "human-test-subject";
 const email = "person@example.test";
+
+it("requires explicit PKCE configuration instead of falling back to Device Flow", () => {
+  expect(() => configuredStackitFlow({})).toThrow("authorization-code");
+  expect(() =>
+    configuredStackitFlow({ LZC_STACKIT_AUTH_FLOW: "authorization-code" }),
+  ).toThrow("client and callback");
+});
+
+it("uses the same configured PKCE factory for local CLI and hosted web clients", async () => {
+  for (const [configuredClientId, origin, redirectUri] of [
+    [clientId, "http://127.0.0.1:4181", "http://localhost:8000"],
+    [
+      "registered-web-client",
+      "https://configurator.example",
+      "https://configurator.example/auth/stackit/callback",
+    ],
+  ]) {
+    const factory = configuredStackitFlow({
+      LZC_STACKIT_AUTH_FLOW: "authorization-code",
+      LZC_STACKIT_CLIENT_ID: configuredClientId,
+      LZC_STACKIT_CLI_CLIENT_APPROVED:
+        configuredClientId === clientId ? "true" : "false",
+      LZC_STACKIT_REDIRECT_URI: redirectUri,
+      LZC_PUBLIC_ORIGIN: origin,
+    });
+    for (const purpose of ["login", "proof"] as const) {
+      const flow = factory(undefined, purpose);
+      const authorization = new URL((await flow.begin()).verificationUri);
+      expect(flow.usesAuthorizationCode).toBe(true);
+      expect(authorization.searchParams.get("client_id")).toBe(
+        configuredClientId,
+      );
+      expect(authorization.searchParams.get("code_challenge_method")).toBe(
+        "S256",
+      );
+      expect(authorization.searchParams.get("state")).toMatch(
+        new RegExp(`^${purpose}\\.`),
+      );
+      expect(authorization.searchParams.get("redirect_uri")).toBe(
+        purpose === "proof" && configuredClientId !== clientId
+          ? `${origin}/auth/stackit/proof-callback`
+          : redirectUri,
+      );
+      flow.cancel();
+    }
+  }
+});
+
+it("rejects hosted CLI callbacks and callbacks outside the configured public origin", () => {
+  const environment = {
+    LZC_STACKIT_AUTH_FLOW: "authorization-code",
+    LZC_STACKIT_CLIENT_ID: "registered-web-client",
+    LZC_STACKIT_REDIRECT_URI:
+      "https://configurator.example/auth/stackit/callback",
+    LZC_PUBLIC_ORIGIN: "https://configurator.example",
+  };
+  expect(() =>
+    configuredStackitFlow({
+      ...environment,
+      LZC_STACKIT_CLIENT_ID: clientId,
+      LZC_STACKIT_CLI_CLIENT_APPROVED: "true",
+    }),
+  ).toThrow("loopback");
+  expect(() =>
+    configuredStackitFlow({
+      ...environment,
+      LZC_STACKIT_CLIENT_ID: clientId,
+      LZC_PUBLIC_ORIGIN: "http://127.0.0.1:4181",
+      LZC_STACKIT_REDIRECT_URI: "http://localhost:8000",
+    }),
+  ).toThrow("approval");
+  expect(() =>
+    configuredStackitFlow({
+      ...environment,
+      LZC_PUBLIC_ORIGIN: "https://configurator.example/subpath",
+    }),
+  ).toThrow("canonical");
+  expect(() =>
+    configuredStackitFlow({
+      ...environment,
+      LZC_PUBLIC_ORIGIN: "https://configurator.example?query=1",
+    }),
+  ).toThrow("canonical");
+  expect(() =>
+    configuredStackitFlow({
+      ...environment,
+      LZC_STACKIT_REDIRECT_URI: "https://other.example/auth/stackit/callback",
+    }),
+  ).toThrow("public application origin");
+  expect(() =>
+    configuredStackitFlow({
+      ...environment,
+      LZC_STACKIT_REDIRECT_URI:
+        "https://configurator.example/auth/stackit/callback#fragment",
+    }),
+  ).toThrow("invalid_web_callback");
+});
 
 it("accepts proof callbacks only for the original live session and tenant without saving or binding", async () => {
   const session = {
@@ -163,9 +263,13 @@ it("binds authorization callbacks to the initiating browser cookie and never cre
       identities: { save: vi.fn(), status: vi.fn(), revoke: vi.fn() },
       organisations: { overview: vi.fn() },
       createFlow: () => flow,
+      authFlow: "authorization-code",
     },
   });
   try {
+    expect(
+      (await app.inject({ method: "GET", url: "/auth/status" })).json(),
+    ).toMatchObject({ stackit: true, stackitFlow: "authorization-code" });
     const started = await app.inject({
       method: "POST",
       url: "/auth/stackit/start",
@@ -342,83 +446,99 @@ it("forwards local CLI callbacks only to the fixed browser origin and rejects du
   );
 });
 
-it("uses the CLI authorization-code PKCE start and accepts only a once-bound signed identity", async () => {
-  let clock = now;
-  let authorization: URL;
-  const request = vi.fn<typeof fetch>(async (url, init) => {
-    if (String(url).endsWith("/token")) {
-      const body = new URLSearchParams(String(init?.body));
-      expect(body.get("grant_type")).toBe("authorization_code");
-      expect(body.get("redirect_uri")).toBe("http://localhost:8000");
-      expect(body.get("code")).toBe("private-authorization-code");
-      expect(
-        createHash("sha256")
-          .update(body.get("code_verifier") ?? "")
-          .digest("base64url"),
-      ).toBe(authorization.searchParams.get("code_challenge"));
-      const idToken = await new SignJWT({
-        email,
-        email_verified: true,
-        nonce: authorization.searchParams.get("nonce"),
-      })
-        .setProtectedHeader({ alg: "RS256", kid: "test-key" })
-        .setIssuer(issuer)
-        .setAudience(clientId)
-        .setSubject(subject)
-        .setIssuedAt()
-        .setExpirationTime("5m")
-        .sign(pair.privateKey);
-      return Response.json({
-        access_token: "private-access-token",
-        id_token: idToken,
-        refresh_token: "must-not-retain",
-        token_type: "Bearer",
-        expires_in: 300,
-      });
-    }
-    if (String(url).endsWith("jwks.json"))
-      return Response.json({ keys: [jwk] });
-    if (String(url).endsWith("userinfo"))
-      return Response.json({ sub: subject, email, email_verified: true });
-    throw new Error("unexpected endpoint");
-  });
-  const flow = new StackitDeviceFlow(request, () => clock, undefined, {
-    redirectUri: "http://localhost:8000",
-    purpose: "login",
-  });
-  const start = await flow.begin();
-  authorization = new URL(start.verificationUri);
-  expect(authorization.pathname).toBe("/oauth/v2/authorize");
-  expect(authorization.searchParams.get("scope")).toBe(
-    "openid offline_access email",
-  );
-  expect(authorization.searchParams.get("code_challenge_method")).toBe("S256");
-  expect(start).not.toHaveProperty("userCode");
-  expect(await flow.poll()).toMatchObject({ status: "waiting" });
-  expect(request).not.toHaveBeenCalled();
-  expect(
-    flow.acceptAuthorization({
-      state: "wrong",
+it.each([
+  { configuredClientId: clientId, redirectUri: "http://localhost:8000" },
+  {
+    configuredClientId: "registered-web-client",
+    redirectUri: "https://configurator.example/auth/stackit/callback",
+  },
+])(
+  "uses $configuredClientId PKCE and accepts only a once-bound signed identity",
+  async ({ configuredClientId, redirectUri }) => {
+    let clock = now;
+    let authorization: URL;
+    const request = vi.fn<typeof fetch>(async (url, init) => {
+      if (String(url).endsWith("/token")) {
+        const body = new URLSearchParams(String(init?.body));
+        expect(body.get("grant_type")).toBe("authorization_code");
+        expect(body.get("client_id")).toBe(configuredClientId);
+        expect(body.get("redirect_uri")).toBe(redirectUri);
+        expect(body.get("code")).toBe("private-authorization-code");
+        expect(
+          createHash("sha256")
+            .update(body.get("code_verifier") ?? "")
+            .digest("base64url"),
+        ).toBe(authorization.searchParams.get("code_challenge"));
+        const idToken = await new SignJWT({
+          email,
+          email_verified: true,
+          nonce: authorization.searchParams.get("nonce"),
+        })
+          .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+          .setIssuer(issuer)
+          .setAudience(configuredClientId)
+          .setSubject(subject)
+          .setIssuedAt()
+          .setExpirationTime("5m")
+          .sign(pair.privateKey);
+        return Response.json({
+          access_token: "private-access-token",
+          id_token: idToken,
+          refresh_token: "must-not-retain",
+          token_type: "Bearer",
+          expires_in: 300,
+        });
+      }
+      if (String(url).endsWith("jwks.json"))
+        return Response.json({ keys: [jwk] });
+      if (String(url).endsWith("userinfo"))
+        return Response.json({ sub: subject, email, email_verified: true });
+      throw new Error("unexpected endpoint");
+    });
+    const flow = new StackitDeviceFlow(request, () => clock, undefined, {
+      clientId: configuredClientId,
+      redirectUri,
+      purpose: "login",
+    });
+    const start = await flow.begin();
+    authorization = new URL(start.verificationUri);
+    expect(authorization.searchParams.get("client_id")).toBe(
+      configuredClientId,
+    );
+    expect(authorization.pathname).toBe("/oauth/v2/authorize");
+    expect(authorization.searchParams.get("scope")).toBe(
+      "openid offline_access email",
+    );
+    expect(authorization.searchParams.get("code_challenge_method")).toBe(
+      "S256",
+    );
+    expect(start).not.toHaveProperty("userCode");
+    expect(await flow.poll()).toMatchObject({ status: "waiting" });
+    expect(request).not.toHaveBeenCalled();
+    expect(
+      flow.acceptAuthorization({
+        state: "wrong",
+        code: "private-authorization-code",
+      }),
+    ).toBe(false);
+    const callback = {
+      state: authorization.searchParams.get("state"),
       code: "private-authorization-code",
-    }),
-  ).toBe(false);
-  const callback = {
-    state: authorization.searchParams.get("state"),
-    code: "private-authorization-code",
-  };
-  expect(flow.acceptAuthorization(callback)).toBe(true);
-  expect(flow.acceptAuthorization(callback)).toBe(false);
-  clock += 2000;
-  const verified = await flow.poll();
-  expect(verified).toMatchObject({
-    status: "verified",
-    identity: { subject, email },
-  });
-  expect(JSON.stringify(verified)).not.toContain("private-access-token");
-  expect(JSON.stringify(verified)).not.toContain("must-not-retain");
-  flow.cancel();
-  expect(flow.acceptAuthorization(callback)).toBe(false);
-});
+    };
+    expect(flow.acceptAuthorization(callback)).toBe(true);
+    expect(flow.acceptAuthorization(callback)).toBe(false);
+    clock += 2000;
+    const verified = await flow.poll();
+    expect(verified).toMatchObject({
+      status: "verified",
+      identity: { subject, email },
+    });
+    expect(JSON.stringify(verified)).not.toContain("private-access-token");
+    expect(JSON.stringify(verified)).not.toContain("must-not-retain");
+    flow.cancel();
+    expect(flow.acceptAuthorization(callback)).toBe(false);
+  },
+);
 
 it("uses STACKIT as primary login without GitHub and binds approval to a secure browser cookie", async () => {
   const { flow, advance } = await setup({ tokens: { id_token: undefined } });

@@ -4,6 +4,7 @@ import { Applications } from "./applications/service.js";
 import { GitHubClient } from "./auth/github-client.js";
 import type { AuthServices } from "./auth/routes.js";
 import { SecretsManagerTokenStore } from "./auth/secrets.js";
+import { configuredStackitFlow } from "./auth/stackit-device.js";
 import { StackitIdentities } from "./auth/stackit-identities.js";
 import type { StackitServices } from "./auth/stackit-routes.js";
 import { PostgresAuthStore } from "./auth/store.js";
@@ -52,6 +53,9 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
   };
   const origin = required("LZC_PUBLIC_ORIGIN");
   const primaryStackit = process.env.LZC_STACKIT_DEVICE_ENABLED === "true";
+  const createStackitFlow = primaryStackit
+    ? configuredStackitFlow(process.env)
+    : undefined;
   const clientId = process.env.LZC_GITHUB_CLIENT_ID ?? "";
   const clientSecret = process.env.LZC_GITHUB_CLIENT_SECRET ?? "";
   if (
@@ -128,10 +132,8 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     tokens: new SecretsManagerTokenStore(secretConfig),
   };
   if (process.env.LZC_STACKIT_DEVICE_ENABLED === "true") {
-    if (process.env.LZC_STACKIT_CLI_CLIENT_APPROVED !== "true")
-      throw new Error(
-        "STACKIT CLI client use must be explicitly approved before enabling Device integration",
-      );
+    if (!createStackitFlow)
+      throw new Error("Configured STACKIT PKCE flow required");
     await pool.query("SELECT user_id FROM lzc.stackit_identities LIMIT 0");
     await pool.query(
       "SELECT user_id FROM lzc.stackit_organization_access LIMIT 0",
@@ -139,6 +141,8 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     stackit = {
       identities: new StackitIdentities(pool),
       organisations: new PostgresOrganisations(pool),
+      createFlow: createStackitFlow,
+      authFlow: "authorization-code",
     };
   }
 }

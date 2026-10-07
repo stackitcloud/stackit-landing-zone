@@ -2,6 +2,7 @@
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
 const mode=process.argv[2];
 if(!["backend","application","runner"].includes(mode)) throw new Error("Expected backend or application");
 const required=name=>{if(!process.env[name])throw new Error(`Missing ${name}`);return process.env[name];};
@@ -46,11 +47,17 @@ if(mode==="backend") {
   const enabled=process.env.LZC_AUTH_ENABLED==="true";
   const stackitEnabled=process.env.LZC_STACKIT_DEVICE_ENABLED==="true";
   const clientApproved=process.env.LZC_STACKIT_CLI_CLIENT_APPROVED==="true";
-  if(stackitEnabled && (!enabled || !clientApproved))throw new Error("STACKIT login requires authentication and explicit CLI client approval");
+  if(stackitEnabled && !enabled)throw new Error("STACKIT login requires authentication");
+  const stackitConfiguration={LZC_STACKIT_AUTH_FLOW:process.env.LZC_STACKIT_AUTH_FLOW??"",LZC_STACKIT_CLIENT_ID:process.env.LZC_STACKIT_CLIENT_ID??"",LZC_STACKIT_REDIRECT_URI:process.env.LZC_STACKIT_REDIRECT_URI??""};
+  if(stackitEnabled){
+    const {configuredStackitFlow}=await import(pathToFileURL(resolve(".local/release/apps/api/dist/auth/stackit-device.js")));
+    configuredStackitFlow({...stackitConfiguration,LZC_STACKIT_CLI_CLIENT_APPROVED:String(clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud"});
+  }
   const clientId=enabled?(process.env.LZC_GITHUB_CLIENT_ID??""):"";
   const clientSecret=enabled?(process.env.LZC_GITHUB_CLIENT_SECRET??""):"";
   if(enabled && ((!stackitEnabled && (!clientId || !clientSecret)) || !!clientId!==!!clientSecret))throw new Error("GitHub configuration incomplete");
   Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_STACKIT_DEVICE_ENABLED:String(stackitEnabled),LZC_STACKIT_CLI_CLIENT_APPROVED:String(stackitEnabled && clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:clientId,LZC_GITHUB_CLIENT_SECRET:clientSecret});
+  Object.assign(vars,stackitConfiguration);
   if(clientSecret)mask(clientSecret);
   Object.assign(vars,{LZC_PLANS_ENABLED:"false",LZC_RUNNER_CF_USERNAME:"",LZC_RUNNER_CF_PASSWORD:"",LZC_RUNNER_SPACE_ID:"",LZC_RUNNER_TEMPLATE_ID:""});
   const runner=platform.plan_runner_cf?.value, runnerSpace=runtime.runner_space?.value;

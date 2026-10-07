@@ -121,6 +121,7 @@ export function buildApp(
   app.get("/auth/status", async () => ({
     github: !!options.auth && options.auth.githubEnabled !== false,
     stackit: !!options.stackit,
+    stackitFlow: options.stackit?.authFlow,
     primary: options.auth?.primaryStackit ? "stackit" : "github",
   }));
   if (options.applicationRunner)

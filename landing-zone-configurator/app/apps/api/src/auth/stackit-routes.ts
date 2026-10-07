@@ -14,6 +14,7 @@ import {
 import type { Session } from "./store.js";
 
 export type StackitServices = {
+  authFlow?: "authorization-code";
   identities: Pick<StackitIdentities, "status" | "save" | "revoke"> &
     Partial<
       Pick<StackitIdentities, "bindOrganization" | "clearOrganizationProof">
