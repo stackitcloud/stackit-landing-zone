@@ -32,7 +32,7 @@ test("platform editor defines project templates without concrete application pro
     .fill("Plattform mit Templates");
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -63,7 +63,7 @@ test("platform editor defines project templates without concrete application pro
   await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -293,7 +293,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .click();
   await expect(
     page.getByRole("heading", {
-      name: "Application Landing Zone Templates",
+      name: "Template-Entwürfe",
       exact: true,
     }),
   ).toBeVisible();
@@ -330,7 +330,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -361,7 +361,7 @@ test("Standalone starts Public and offers regional choices and explicit platform
   await page.getByLabel("Region", { exact: true }).selectOption("eu02");
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();

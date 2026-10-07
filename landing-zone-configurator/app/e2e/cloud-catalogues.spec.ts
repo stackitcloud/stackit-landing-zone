@@ -126,7 +126,7 @@ for (const kind of ["personal", "organisation"]) {
     ).toBe(true);
     await page
       .getByRole("button", {
-        name: "5 Application Landing Zone Templates",
+        name: "5 Template-Entwürfe",
         exact: true,
       })
       .click();
@@ -556,7 +556,7 @@ test("product choices preserve imported values and restore manual fields when ca
     .selectOption("Observability-Starter-EU01");
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();

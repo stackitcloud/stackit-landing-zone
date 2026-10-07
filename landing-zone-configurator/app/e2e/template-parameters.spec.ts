@@ -9,7 +9,7 @@ test("an empty ACL draft can become an order input without granting unrestricted
     .click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -75,7 +75,7 @@ test("disabled Observability hides dependent details without discarding their va
     .click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -150,7 +150,7 @@ test("a public template retains its local VM network independently of SNA", asyn
     .click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -172,7 +172,7 @@ test("a public template retains its local VM network independently of SNA", asyn
   await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -227,7 +227,7 @@ test("platform engineer controls stage inputs and can test an order without prov
     .click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -284,7 +284,7 @@ test("platform engineer controls stage inputs and can test an order without prov
   await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
@@ -318,7 +318,7 @@ test("project-network relationship stays visibly blocked without an approved egr
     .click();
   await page
     .getByRole("button", {
-      name: "5 Application Landing Zone Templates",
+      name: "5 Template-Entwürfe",
       exact: true,
     })
     .click();
