@@ -6,12 +6,12 @@ import { resolve } from "node:path";
 import evidence from "../integration/fixtures/governance/source.json" with {
   type: "json",
 };
-import { supportedAcceleratorRevision } from "../packages/domain/dist/index.js";
+import { platformUpgradeAcceleratorCommit } from "../packages/contracts/dist/index.js";
 
 const target = process.argv[2];
 if (!target?.startsWith("/"))
   throw new Error("Absolute fixture directory required");
-if (evidence.acceleratorRevision !== supportedAcceleratorRevision)
+if (evidence.acceleratorRevision !== platformUpgradeAcceleratorCommit)
   throw new Error("Requalify governance for the updated engine pin");
 for (const [path, expected] of Object.entries(evidence.files)) {
   const source = new URL(`../../../${path}`, import.meta.url);

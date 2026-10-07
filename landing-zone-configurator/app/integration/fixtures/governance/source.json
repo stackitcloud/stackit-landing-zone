@@ -1,8 +1,9 @@
 {
-  "acceleratorRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+  "acceleratorRevision": "c4b43c36af198985980b17626c48d357795e3fbd",
   "files": {
-    "src/main.tf": "73742d81e450dfb9c2bad49ce07d089acf04f6d4e1f83970d3e1455b88f22079",
-    "src/variables.tf": "061118b024a39670724bd59d5be07774425b75ab70791cfe0599616585e4d411",
+    "src/main.tf": "8592367381556c5eb6ae376d4bfe58ff4afe8bb7c37e1b8d8052d7678834d4d9",
+    "src/variables.tf": "b77e59054c7d2c6dabcb9f9add22c1efb56d79735fd14eb5461e11d99c105f57",
+    "src/locals.tf": "7c4f7c2887755b8581b31982ada8d63c2c0796c963994e61da95c270db1c8d78",
     "src/modules/governance/1-rm-folders.tf": "f1ff318487c780914620a3b516f55b2f17f13af4dd38364937d9567c93cd865b",
     "src/modules/governance/2-custom-roles.tf": "5cf14fc37fb6ad76d0914d38177c0b9bf7600606f2110827f85fded466a1c3d0",
     "src/modules/governance/3-organization-roles.tf": "209a6456b0d627516c36c8cfcfe0cf8444840c8b62ac01d352cef8f0ba4391da",
