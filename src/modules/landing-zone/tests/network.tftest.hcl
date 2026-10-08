@@ -28,6 +28,11 @@ run "legacy_public_without_network" {
   command = plan
 
   assert {
+    condition     = stackit_objectstorage_credentials_group.this.name == var.naming_pattern
+    error_message = "Existing credentials group names within the API limit must remain unchanged."
+  }
+
+  assert {
     condition     = length(stackit_network.this) == 0
     error_message = "Existing public projects must not gain a network implicitly."
   }
@@ -98,5 +103,36 @@ run "observability_acl_user_managed" {
   assert {
     condition     = stackit_observability_instance.this[0].acl == toset(["203.0.113.0/24"])
     error_message = "A later plan must not replace a user-managed ACL with an empty list."
+  }
+}
+
+run "objectstorage_credentials_group_name_bounded" {
+  command = plan
+
+  variables {
+    naming_pattern = "app-116aee67-9384-4b50-a683-f392b6367e0d-dev"
+  }
+
+  assert {
+    condition     = length(stackit_objectstorage_credentials_group.this.name) == 32 && stackit_objectstorage_credentials_group.this.name == "${substr(var.naming_pattern, 0, 23)}-${substr(sha256(var.naming_pattern), 0, 8)}"
+    error_message = "UUID-based Application credentials group names must fit the 32-character API limit with a stable hash suffix."
+  }
+
+  assert {
+    condition     = stackit_objectstorage_bucket.default.name == "${var.naming_pattern}-default"
+    error_message = "Bounding the credentials group name must not rename buckets or other resources."
+  }
+}
+
+run "objectstorage_credentials_group_name_distinct" {
+  command = plan
+
+  variables {
+    naming_pattern = "app-116aee67-9384-4b50-a683-f392b6367e0e-dev"
+  }
+
+  assert {
+    condition     = length(stackit_objectstorage_credentials_group.this.name) == 32 && stackit_objectstorage_credentials_group.this.name != "${substr("app-116aee67-9384-4b50-a683-f392b6367e0d-dev", 0, 23)}-${substr(sha256("app-116aee67-9384-4b50-a683-f392b6367e0d-dev"), 0, 8)}"
+    error_message = "Credentials group names with a shared truncated prefix must remain distinct."
   }
 }
