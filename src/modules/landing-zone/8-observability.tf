@@ -9,4 +9,8 @@ resource "stackit_observability_instance" "this" {
   name       = var.observability.name != null ? var.observability.name : var.naming_pattern
   plan_name  = var.observability.plan_name
   acl        = var.observability.acl
+
+  lifecycle {
+    ignore_changes = [acl]
+  }
 }

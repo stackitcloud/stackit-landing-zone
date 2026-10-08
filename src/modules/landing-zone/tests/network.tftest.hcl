@@ -66,3 +66,37 @@ run "legacy_corporate_network" {
     error_message = "Corporate projects must retain their existing routed network and resource name."
   }
 }
+
+run "observability_acl_existing_value" {
+  command = apply
+
+  variables {
+    observability = {
+      enabled   = true
+      plan_name = "Observability-Starter-EU01"
+      acl       = ["203.0.113.0/24"]
+    }
+  }
+
+  assert {
+    condition     = stackit_observability_instance.this[0].acl == toset(["203.0.113.0/24"])
+    error_message = "The existing ACL fixture must be preserved in state."
+  }
+}
+
+run "observability_acl_user_managed" {
+  command = plan
+
+  variables {
+    observability = {
+      enabled   = true
+      plan_name = "Observability-Starter-EU01"
+      acl       = []
+    }
+  }
+
+  assert {
+    condition     = stackit_observability_instance.this[0].acl == toset(["203.0.113.0/24"])
+    error_message = "A later plan must not replace a user-managed ACL with an empty list."
+  }
+}
