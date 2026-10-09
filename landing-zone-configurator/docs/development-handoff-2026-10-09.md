@@ -1,5 +1,9 @@
 # Entwicklungsuebergabe vom 2026-10-09
 
+Ergaenzung: Der private Bestand wurde inzwischen nach Ubuntu uebernommen. Details,
+Pruefnachweise und die noch offene Startpruefung stehen im
+[Ubuntu-Transferbericht](ubuntu-transfer-2026-10-09.md).
+
 ## Einstieg auf einem anderen Rechner
 
 Repository: https://github.com/stackitcloud/stackit-landing-zone
