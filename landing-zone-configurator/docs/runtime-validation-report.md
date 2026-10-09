@@ -24,17 +24,36 @@ local canonical check: PASS - exit_code 0; 433 unit passed, 53 gated skips
 types/build/lint: PASS - existing warnings only; same final Web assets
 CF regression: PASS - 6 cases, separate brokers/exact droplet/package-change denial
 release preparation: PASS - 3 cases including durable key and droplet requirements
+Linux CI build: PASS - run 37929894997, source 4a09889, deploy deliberately skipped
+Linux DB/browser: PASS - full database gate and 270 desktop/mobile browser cases
+native contracts: PASS - 16 Application, 7 network, 3 governance tests; packaged roots validated
+artifact: configurator-release-37929894997, immutable ID 11616895038, not expired
 online target: NOT_LIVE - requested suffix-free origin currently HTTP 404
 hosted activation: PENDING - requested STACKIT PKCE Web client not yet provisioned
 customer operations: NOT_RUN - no Cloud Plan/Apply/Destroy or state mutation
-overall: NEEDS_SIGNOFF - Linux CI qualification and client provisioning pending
+overall: BUILD_QUALIFIED / HOSTED_PENDING_CLIENT - no additional database backups
 ```
 
 Es wird weder ein erneuter Client-Antrag noch die Wiederverwendung des lokalen
 Loopback-CLI-Clients verlangt. Vor Promotion muss `lzc-dev-release` den
 bereitgestellten Web-Client, Authorization Code/S256 und beide HTTPS-Callbacks
-am suffixfreien Origin erhalten. Kein Auth-Fallback, kein zusaetzliches DB-Backup
-und keine Aenderung der laufenden Online-App oder lokalen API in dieser Vorbereitung.
+am suffixfreien Origin erhalten. PKCE-Modus, suffixfreier Redirect, deaktivierte
+CLI-Freigabe und beide Ausfuehrungsflags sind im geschuetzten Environment gesetzt.
+Der dauerhafte Artefaktschluessel wurde einmalig als Environment-Secret erzeugt,
+ohne ihn auszugeben oder in das Artefakt aufzunehmen. Die oeffentliche Client-ID
+bleibt ausstehend; kein Ersatzwert wurde gesetzt. Kein Auth-Fallback, kein
+zusaetzliches DB-Backup und keine Aenderung der laufenden Online-App oder lokalen
+API in dieser Vorbereitung. Der eigene markierte PostgreSQL-Testcontainer wurde
+nach erfolgreichen 31 Tests entfernt; Customer-DB und andere Container bleiben.
+
+Der erste CI-Run lief in das Standardlimit von fuenf Sekunden des erweiterten
+DB-Lifecycle-Tests; das CI-Gate verwendet nun begrenzte 30 Sekunden. Eine bestehende
+Login-Fixture berechnete Session- und Proof-Ablauf getrennt und verletzte sporadisch
+den echten SQL-Guard `session_expiry <= proof_expiry`; die Fixture bindet jetzt
+beide exakt, ohne Auth- oder Laufzeit-Gates abzuschwaechen. Im zweiten Run fehlten
+die nativen Source-Pins im flachen Checkout. Hosted-Paketierung laedt nun nur die
+beiden festen freigegebenen Commits nach; ein echter shallow-clone-Test und der
+abschliessende vollstaendige Linux-Build sind gruen. Die Pins bleiben unveraendert.
 
 ## Aktiviert: Application-Destroy und Drift (2026-10-09)
 
