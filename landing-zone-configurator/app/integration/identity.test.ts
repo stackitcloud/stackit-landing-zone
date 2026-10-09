@@ -133,7 +133,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       id: randomUUID(),
       hash: newSessionToken().hash,
       csrfToken: randomBytes(32).toString("base64url"),
-      expiresAt: new Date(Date.now() + 300000),
+      expiresAt: new Date(proof.tokenExpiresAt),
     });
     const permissions = Array.from(
       { length: 965 },
