@@ -45,6 +45,9 @@ if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
 else
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi
+if [[ "${LZC_HOSTED_EXECUTION_PACKAGE:-false}" == "true" && "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
+	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
+fi
 git -C "$(git rev-parse --show-toplevel)" archive "$platform_commit" src | tar -x --strip-components=1 -C "$runner_dir/accelerator"
 cp ../deploy/runner/accelerator.lock.hcl "$runner_dir/accelerator/.terraform.lock.hcl"
 node --input-type=module -e 'import {readFileSync} from "node:fs"; import {createHash} from "node:crypto"; if (createHash("sha256").update(readFileSync(process.argv[1])).digest("hex") !== "a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888") process.exit(1)' "$runner_dir/accelerator/.terraform.lock.hcl"
@@ -59,6 +62,9 @@ test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name 
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	mkdir -p "$runner_dir/application-src"
 	application_commit=57ad1f6a651c1787694b74ff8aa8b241a3dcd16f
+	if [[ "${LZC_HOSTED_EXECUTION_PACKAGE:-false}" == "true" ]]; then
+		git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$application_commit"
+	fi
 	node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync(process.argv[1], JSON.stringify({schemaVersion:1,acceleratorCommit:process.argv[2],maintenanceEnabled:true}), {flag:"wx",mode:0o600})' "$runner_dir/application-source.json" "$application_commit"
 	git -C "$(git rev-parse --show-toplevel)" archive "$application_commit" src/application src/modules/landing-zone | tar -x --strip-components=1 -C "$runner_dir/application-src"
 	cp ../deploy/runner/application.lock.hcl "$runner_dir/application-src/application/.terraform.lock.hcl"
