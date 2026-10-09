@@ -2,11 +2,16 @@
 
 Zentral gehostete, mandantenfähige Anwendung zum Erstellen, Bearbeiten und Deployen von Konfigurationen des STACKIT Landing Zone Accelerators.
 
-Status: Entwicklungsumgebung mit GitHub-Login, gemeinsamem Konfigurationseditor,
-Fork-Speicherung, persönlichen Zugängen und isolierten Erstbereitstellungsplänen.
-Organisationsarbeitsbereiche haben Rollen und Einladungen, aber noch keine verifizierte
-STACKIT-Bindung oder freigegebene Ausführung. Kunden-Apply, Application-Self-Service
-und Model-Serving-Chat fehlen noch zum MVP.
+Status vom 2026-10-09: STACKIT-Login, Organisationsbindung sowie Platform- und
+Application-Plan/Apply sind lokal implementiert, ebenso Application-Destroy und
+read-only Drift Detection. Das gehostete Release ist qualifiziert, aber wegen der
+noch fehlenden öffentlichen ID des bereits angeforderten Web-Clients nicht aktiviert.
+Recovery-Abgleich, explizite Application-Upgrades, Quoten und Model-Serving-Chat
+bleiben offene MVP-Themen.
+
+**Rechnerwechsel und aktueller Arbeitsstand:**
+[Entwicklungsübergabe](docs/development-handoff-2026-10-09.md) und
+[bereinigter Chat-Export](docs/development-chat-2026-10-09.md).
 
 **Aktuelle Arbeitspakete und Abnahme: [MVP-Arbeitsliste](docs/mvp-readiness.md).**
 [Priorisierte Accelerator-Issues](docs/backlog-priorities.md).

@@ -28,6 +28,10 @@ openai.token
 .agents
 .claude
 
+# Python interpreter caches
+__pycache__/
+*.py[cod]
+
 # Local E2E runtime variables
 src/config/e2e.tfvars
 src/config/e2e-bootstrap.override.tfvars
