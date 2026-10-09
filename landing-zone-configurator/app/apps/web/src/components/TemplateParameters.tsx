@@ -49,7 +49,6 @@ const defaults: Record<string, JsonValue> = {
   secretsmanager_enabled: true,
   "observability.enabled": false,
   "observability.plan_name": "Observability-Starter-EU01",
-  "observability.acl": [],
 };
 
 export function templateObservabilityConfigurable(
@@ -274,7 +273,7 @@ export function TemplateParameters({
   );
   const fields = templateParameterFields.filter(
     (field) =>
-      !["observability.plan_name", "observability.acl"].includes(field.path) ||
+      field.path !== "observability.plan_name" ||
       templateObservabilityConfigurable(template),
   );
   const policy: TemplateParameterPolicy = template.parameterPolicy ?? {
@@ -496,31 +495,7 @@ export function TemplateParameters({
                   setInputs({});
                   if (source === "fixed")
                     setPolicy(field.path, { source: "fixed" });
-                  else if (source === "binding") {
-                    if (
-                      Array.isArray(current) &&
-                      current.length &&
-                      !window.confirm(
-                        t(
-                          "Die feste ACL durch eine Projektnetz-Verknüpfung ersetzen? Diese Verknüpfung ist noch nicht zur Ausführung freigegeben.",
-                        ),
-                      )
-                    )
-                      return;
-                    onChange({
-                      settings: write(template.settings, field.path, []),
-                      parameterPolicy: {
-                        ...policy,
-                        fields: {
-                          ...policy.fields,
-                          [field.path]: {
-                            source: "binding",
-                            binding: "own-project-network",
-                          },
-                        },
-                      },
-                    });
-                  } else
+                  else
                     setPolicy(field.path, {
                       source: "input",
                       required: true,
@@ -565,31 +540,7 @@ export function TemplateParameters({
                     {t("Bei Bestellung auswählbar")}
                   </option>
                 )}
-                {(field.sources as readonly string[]).includes("binding") && (
-                  <option
-                    value="binding"
-                    disabled={
-                      template.kind !== "corporate" &&
-                      !(
-                        template.kind === "public" &&
-                        template.settings.network_enabled === true
-                      )
-                    }
-                  >
-                    {t("Eigenes Projektnetz (noch nicht ausführbar)")}
-                  </option>
-                )}
               </select>
-              {field.path === "observability.acl" &&
-                template.kind === "public" && (
-                  <p className="field-hint">
-                    {template.settings.network_enabled !== true &&
-                      "Für diese Verknüpfung zuerst ein lokales Projektnetz aktivieren. "}
-                    {t(
-                      "Für Public-Projekte ist die öffentliche Egress-Adresse noch nicht qualifiziert. Ein lokales Projektnetz allein liefert keine nachgewiesene Quelladresse für die Observability-ACL.",
-                    )}
-                  </p>
-                )}
             </div>
             {rule.source === "fixed" && (
               <ValueInput
@@ -712,24 +663,10 @@ export function TemplateParameters({
                 </div>
               </>
             )}
-            {rule.source === "binding" && (
-              <p className="validation-box">
-                {t(
-                  "Referenz auf das eigene Projektnetz dieser Instanz. Die Adresse steht erst bei der Bereitstellung fest. STACKIT Observability filtert öffentliche Quelladressen; die Zuordnung zum wirksamen Egress ist noch nicht qualifiziert. Veröffentlichung und Ausführung dieser Verknüpfung bleiben gesperrt.",
-                )}
-              </p>
-            )}
             {field.path === "env" && (
               <p className="field-hint">
                 {t(
                   "Stage wird bei Anlage ausgewählt. Sie beeinflusst Ressourcennamen; spätere Änderungen benötigen einen gesondert geprüften Update-Vorgang.",
-                )}
-              </p>
-            )}
-            {field.path === "observability.acl" && (
-              <p className="field-hint">
-                {t(
-                  "Eine leere feste ACL begrenzt den Zugriff nicht. Für eine Bestellauswahl gültige CIDRs in die erlaubten Werte aufnehmen. Keine automatische Freigabe bei einer fehlenden Netzwerkreferenz.",
                 )}
               </p>
             )}

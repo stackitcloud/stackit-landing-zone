@@ -147,10 +147,22 @@ export function Account({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/auth/stackit/start", {
-        method: "POST",
-        ...(session ? { headers: { "x-lzc-csrf": session.csrfToken } } : {}),
-      });
+      const startRequest = () =>
+        fetch("/auth/stackit/start", {
+          method: "POST",
+          ...(session ? { headers: { "x-lzc-csrf": session.csrfToken } } : {}),
+        });
+      let response = await startRequest();
+      if (
+        response.status === 409 &&
+        (await response.json()).error === "flow_already_started"
+      ) {
+        const cancelled = await fetch("/auth/stackit/cancel", {
+          method: "POST",
+        });
+        if (!cancelled.ok) throw new Error();
+        response = await startRequest();
+      }
       if (!response.ok) throw new Error();
       const result = await response.json();
       const url = new URL(result.verificationUri);

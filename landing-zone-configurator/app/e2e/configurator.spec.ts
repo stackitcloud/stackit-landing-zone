@@ -268,6 +268,123 @@ for (const responseKind of ["unavailable", "html"] as const) {
   });
 }
 
+for (const failedRequest of ["start", "poll"] as const) {
+  test(`STACKIT login recovers from a lost ${failedRequest} response without reloading`, async ({
+    page,
+  }) => {
+    let starts = 0;
+    let polls = 0;
+    let cancellations = 0;
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        status: 401,
+        json: { error: "authentication_required" },
+      }),
+    );
+    await page.route("**/auth/stackit/start", (route) => {
+      starts += 1;
+      if (starts === 1 && failedRequest === "start")
+        return route.abort("connectionreset");
+      if (starts === 2)
+        return route.fulfill({
+          status: 409,
+          json: { error: "flow_already_started" },
+        });
+      return route.fulfill({
+        json: {
+          verificationUri:
+            "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code",
+          expiresAt: new Date(Date.now() + 900000).toISOString(),
+          retryAfterMs: 10,
+        },
+      });
+    });
+    await page.route("**/auth/stackit/poll", (route) => {
+      polls += 1;
+      if (polls === 1 && failedRequest === "poll")
+        return route.abort("connectionreset");
+      return route.fulfill({ json: { status: "waiting", retryAfterMs: 5000 } });
+    });
+    await page.route("**/auth/stackit/cancel", (route) => {
+      cancellations += 1;
+      return route.fulfill({ json: { status: "cancelled" } });
+    });
+    await page.goto("/");
+    const login = page.getByRole("button", {
+      name: "Mit STACKIT anmelden",
+      exact: true,
+    });
+    await login.click();
+    await expect(page.locator(".account-error")).toHaveText(
+      failedRequest === "start"
+        ? "STACKIT-Anmeldung derzeit nicht erreichbar."
+        : "STACKIT-Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
+    );
+    await expect(login).toBeEnabled();
+    expect(cancellations).toBe(0);
+    await login.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.locator(".account-error")).toHaveCount(0);
+    expect(starts).toBe(3);
+    expect(cancellations).toBe(1);
+  });
+}
+
+for (const rejection of ["busy", "other-conflict", "unavailable"] as const) {
+  test(`STACKIT login does not restart a ${rejection} flow automatically`, async ({
+    page,
+  }) => {
+    let starts = 0;
+    let cancellations = 0;
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        status: 401,
+        json: { error: "authentication_required" },
+      }),
+    );
+    await page.route("**/auth/stackit/start", (route) => {
+      starts += 1;
+      return route.fulfill({
+        status: rejection === "unavailable" ? 503 : 409,
+        json: {
+          error:
+            rejection === "busy" ? "flow_already_started" : "unrelated_error",
+        },
+      });
+    });
+    await page.route("**/auth/stackit/cancel", (route) => {
+      cancellations += 1;
+      return route.fulfill({
+        status: 409,
+        json: { error: "stackit_flow_busy" },
+      });
+    });
+    await page.goto("/");
+    const login = page.getByRole("button", {
+      name: "Mit STACKIT anmelden",
+      exact: true,
+    });
+    await login.click();
+    await expect(page.locator(".account-error")).toHaveText(
+      "STACKIT-Anmeldung derzeit nicht erreichbar.",
+    );
+    await expect(login).toBeEnabled();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(starts).toBe(1);
+    expect(cancellations).toBe(rejection === "busy" ? 1 : 0);
+  });
+}
+
 for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
   {
     codeFlow: false,

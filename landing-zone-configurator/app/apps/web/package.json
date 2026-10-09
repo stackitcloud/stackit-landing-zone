@@ -12,6 +12,7 @@
     "@lzc/contracts": "0.1.0",
     "@lzc/domain": "0.1.0",
     "i18next": "26.4.2",
+    "lucide-react": "1.53.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-i18next": "17.0.15"

@@ -414,9 +414,13 @@ it.each([true, false])(
     };
     const plan = compileApplicationPlan(input);
     expect(plan.variables.application).toMatchObject({
-      observability: { access_source: "project-network", acl: [] },
+      observability: { enabled: true, acl: [] },
     });
-    expect(plan.parameterResolution?.qualificationBlockers).toHaveLength(1);
+    expect(plan.variables.application.observability).not.toHaveProperty(
+      "access_source",
+    );
+    expect(plan.parameterResolution?.qualificationBlockers).toHaveLength(0);
+    expect(plan.parameterResolution?.bindings).toEqual([]);
     expect(plan.executionEnabled).toBe(false);
   },
 );

@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import {
+  applicationMvpAcceleratorCommit,
   applicationRunnerBindingSchema,
   planResultSchema,
   platformRunnerSourceSchema,
@@ -26,11 +27,10 @@ import {
 } from "@lzc/contracts";
 
 export const brokerOrigin =
-  "https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud";
+  "https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud";
 export const localBrokerOrigin = "http://127.0.0.1:3000";
 export const acceleratorCommit = "a256f6896d11134fdc351786f1be5eba4e56b2e2";
-export const applicationAcceleratorCommit =
-  "c4b43c36af198985980b17626c48d357795e3fbd";
+export const applicationAcceleratorCommit = applicationMvpAcceleratorCommit;
 export const applicationProviderLockHash =
   "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5";
 export const providerLockHash =
@@ -112,6 +112,10 @@ export async function runWorker(
   let pluginTemp: string | undefined;
   let errorCode = "input_invalid";
   let recoveryState = false;
+  let resultReported = false;
+  let outputReported = false;
+  let executionSucceeded = false;
+  let diagnostic: { text: string; truncated: boolean } | undefined;
   let publishOutput = async () => {};
   const expectedOrigin = options.local ? localBrokerOrigin : brokerOrigin;
   const broker = options.broker ?? "platform";
@@ -132,7 +136,7 @@ export async function runWorker(
           method: "POST",
           redirect: "error",
           signal: AbortSignal.timeout(
-            path === "recovery" || path === "output"
+            path === "recovery" || path === "output" || path === "result"
               ? 60000
               : Math.max(1, Math.min(60000, deadline - Date.now())),
           ),
@@ -208,6 +212,8 @@ export async function runWorker(
     const applicationBinding = applicationJob
       ? applicationRunnerBindingSchema.parse(input.application)
       : undefined;
+    if (applying && applicationBinding?.purpose === "drift")
+      throw new Error("Drift cannot be applied");
     if (!applicationJob && input.application !== undefined)
       throw new Error("Unexpected application binding");
     const httpEnv: NodeJS.ProcessEnv = {};
@@ -429,7 +435,9 @@ export async function runWorker(
             await file.close();
           }
         }
-        await report("output", { text, truncated });
+        diagnostic = { text, truncated };
+        await report("output", diagnostic);
+        outputReported = true;
       } catch {}
     };
     async function command(phase: string, reportStage = true) {
@@ -450,9 +458,13 @@ export async function runWorker(
             phase,
             applying
               ? "platform-apply"
-              : mode === "initial-plan-only"
-                ? mode
-                : "platform-plan",
+              : applicationBinding?.purpose === "destroy"
+                ? "application-destroy-plan"
+                : applicationBinding?.purpose === "drift"
+                  ? "application-drift-plan"
+                  : mode === "initial-plan-only"
+                    ? mode
+                    : "platform-plan",
           ],
           {
             cwd: work as string,
@@ -523,8 +535,10 @@ export async function runWorker(
           throw new Error("Recovery state present");
         await report("migration", { phase: "complete" });
       }
+      executionSucceeded = true;
       await publishOutput();
       await report("result", { status: "succeeded" });
+      resultReported = true;
     } else {
       errorCode = "plan_failed";
       await command("planning");
@@ -541,6 +555,13 @@ export async function runWorker(
         exitCode,
         "opentofu-1.12.6",
       );
+      if (
+        applicationBinding?.purpose === "destroy" &&
+        (summary.resources.create ||
+          summary.resources.update ||
+          summary.resources.replace)
+      )
+        throw new Error("Invalid application destroy plan");
       if (mode !== "initial-plan-only") {
         errorCode = "artifact_invalid";
         const bytes = await boundedFile(
@@ -560,12 +581,14 @@ export async function runWorker(
           summary,
           artifactSha256: uploaded.sha256,
         });
+        resultReported = true;
       } else {
         await publishOutput();
         await report(
           "result",
           planResultSchema.parse({ status: "succeeded", summary }),
         );
+        resultReported = true;
       }
     }
     console.log(
@@ -614,12 +637,29 @@ export async function runWorker(
     await publishOutput();
     try {
       await report("result", { status: "failed", errorCode });
+      resultReported = true;
     } catch {}
     console.error(
       JSON.stringify({ event: "plan_finished", status: "failed", errorCode }),
     );
     return "failed";
   } finally {
+    if (
+      options.local &&
+      options.workRoot &&
+      (!resultReported || !outputReported) &&
+      diagnostic
+    )
+      await writeFile(
+        resolve(options.workRoot, "completion-report.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          executionSucceeded,
+          errorCode,
+          output: diagnostic,
+        }),
+        { mode: 0o600 },
+      ).catch(() => {});
     if (pluginTemp) await rm(pluginTemp, { recursive: true, force: true });
     if (work) {
       if (recoveryState) {

@@ -12,11 +12,12 @@ import {
   type ParameterizedTemplate,
   resolveTemplateParameters,
   type TemplateParameterPolicy,
+  templateParameterFields,
   templateParameterPreview,
   validateTemplateParameterPolicy,
 } from "../packages/domain/src/template-parameters.js";
 
-it("retains an unfinished ACL choice draft without allowing it to resolve", () => {
+it("does not require inputs for a retained legacy ACL choice draft", () => {
   const input = template();
   input.parameterPolicy = {
     schema_version: 1,
@@ -26,15 +27,15 @@ it("retains an unfinished ACL choice draft without allowing it to resolve", () =
     },
   };
   expect(() => validateTemplateParameterPolicy(input)).not.toThrow();
-  expect(() => resolveTemplateParameters(input)).toThrow("Pflichtangabe fehlt");
+  expect(() => resolveTemplateParameters(input)).not.toThrow();
   expect(() =>
     resolveTemplateParameters(input, { "observability.acl": [] }),
-  ).toThrow();
+  ).not.toThrow();
   expect(() =>
     resolveTemplateParameters(input, {
       "observability.acl": ["203.0.113.0/24"],
     }),
-  ).toThrow();
+  ).not.toThrow();
 });
 
 function template(): ParameterizedTemplate {
@@ -62,6 +63,42 @@ function template(): ParameterizedTemplate {
     },
   };
 }
+it.each(["fixed", "input", "binding"] as const)(
+  "omits legacy Observability ACL %s policies from MVP resolution",
+  (source) => {
+    const input = template();
+    input.settings.observability = {
+      enabled: true,
+      plan_name: "Observability-Starter-EU01",
+      acl: ["203.0.113.0/24"],
+      access_source: "project-network",
+    };
+    input.parameterPolicy = {
+      schema_version: 1,
+      fields: {
+        "observability.acl":
+          source === "binding"
+            ? { source, binding: "own-project-network" }
+            : source === "input"
+              ? { source, required: true, choices: [] }
+              : { source },
+      },
+    };
+    const before = structuredClone(input);
+    const result = resolveTemplateParameters(input);
+    expect(templateParameterFields.map((field) => field.path)).not.toContain(
+      "observability.acl",
+    );
+    expect(result).toMatchObject({
+      settings: { observability: { enabled: true, acl: ["203.0.113.0/24"] } },
+      bindings: [],
+      qualificationBlockers: [],
+    });
+    expect(result.settings.observability).not.toHaveProperty("access_source");
+    expect(result.provenance).not.toHaveProperty("observability.acl");
+    expect(input).toEqual(before);
+  },
+);
 it("resolves project-role variables only from verified context and keeps previews unresolved", () => {
   const input = template();
   input.parameterPolicy = {
@@ -196,7 +233,7 @@ it("keeps required inputs unresolved without a default and checks optional fallb
   };
   expect(() => resolveTemplateParameters(input)).toThrow();
 });
-it("limits ACL inputs to explicit CIDR choices and rejects empty or unrestricted requests", () => {
+it("ignores obsolete ACL inputs rather than applying them to the instance", () => {
   const input = template();
   input.parameterPolicy = {
     schema_version: 1,
@@ -212,11 +249,12 @@ it("limits ACL inputs to explicit CIDR choices and rejects empty or unrestricted
     resolveTemplateParameters(input, {
       "observability.acl": ["203.0.113.0/24"],
     }).provenance["observability.acl"]?.source,
-  ).toBe("input");
+  ).toBeUndefined();
   for (const value of [[], ["0.0.0.0/0"], ["nonsense"], "203.0.113.0/24"])
-    expect(() =>
-      resolveTemplateParameters(input, { "observability.acl": value }),
-    ).toThrow();
+    expect(
+      resolveTemplateParameters(input, { "observability.acl": value }).settings
+        .observability,
+    ).toMatchObject({ acl: [] });
   for (const source of [
     { source: "input", required: true, choices: ["not-cidr"] },
     { source: "input", required: false, choices: ["203.0.113.0/24"] },
@@ -225,10 +263,10 @@ it("limits ACL inputs to explicit CIDR choices and rejects empty or unrestricted
     input.parameterPolicy.fields["observability.acl"] = JSON.parse(
       JSON.stringify(source),
     );
-    expect(() => validateTemplateParameterPolicy(input)).toThrow();
+    expect(() => validateTemplateParameterPolicy(input)).not.toThrow();
   }
 });
-it("retains own-network binding symbolically and always reports its unqualified network source", () => {
+it("retires an active own-network ACL binding without changing stored values", () => {
   const input = template();
   input.parameterPolicy = {
     schema_version: 1,
@@ -241,23 +279,16 @@ it("retains own-network binding symbolically and always reports its unqualified 
   };
   const result = resolveTemplateParameters(input);
   expect(result.settings.observability).toMatchObject({
-    access_source: "project-network",
     acl: [],
   });
-  expect(result.bindings).toEqual([
-    expect.objectContaining({
-      path: "observability.acl",
-      binding: "own-project-network",
-      status: "unresolved",
-    }),
-  ]);
-  expect(result.qualificationBlockers).toHaveLength(1);
+  expect(result.bindings).toEqual([]);
+  expect(result.qualificationBlockers).toHaveLength(0);
   expect(result.executionEnabled).toBe(false);
-  expect(result.provenance["observability.acl"]?.source).toBe("binding");
+  expect(result.provenance["observability.acl"]).toBeUndefined();
   expect(() =>
     resolveTemplateParameters({ ...input, kind: "public" }),
-  ).toThrow();
-  expect(() =>
+  ).not.toThrow();
+  expect(
     resolveTemplateParameters({
       ...input,
       settings: {
@@ -265,7 +296,7 @@ it("retains own-network binding symbolically and always reports its unqualified 
         observability: { enabled: false, acl: [] },
       },
     }),
-  ).toThrow();
+  ).toMatchObject({ bindings: [], qualificationBlockers: [] });
   expect(() =>
     resolveTemplateParameters({
       ...input,
@@ -274,17 +305,58 @@ it("retains own-network binding symbolically and always reports its unqualified 
         observability: { enabled: true, acl: ["203.0.113.0/24"] },
       },
     }),
-  ).toThrow();
+  ).not.toThrow();
   input.parameterPolicy.fields["observability.enabled"] = {
     source: "input",
     required: true,
     default: true,
   };
-  expect(() =>
+  expect(
     resolveTemplateParameters(input, { "observability.enabled": false }),
-  ).toThrow();
+  ).toMatchObject({ bindings: [], qualificationBlockers: [] });
 });
-it("allows a local public network binding only as an unresolved, non-executable draft", () => {
+it.each(["public", "corporate"] as const)(
+  "orders a %s project network without activating the disabled observability ACL binding",
+  (kind) => {
+    const input: ParameterizedTemplate = {
+      ...template(),
+      kind,
+      settings: { ...template().settings, network_enabled: true },
+      parameterPolicy: {
+        schema_version: 1,
+        fields: {
+          "observability.enabled": {
+            source: "input",
+            required: true,
+            default: true,
+          },
+          "observability.acl": {
+            source: "binding",
+            binding: "own-project-network",
+          },
+        },
+      },
+    };
+    const before = structuredClone(input);
+    const result = resolveTemplateParameters(input, {
+      "observability.enabled": false,
+    });
+    expect(result).toMatchObject({
+      settings: { network_enabled: true, observability: { enabled: false } },
+      bindings: [],
+      qualificationBlockers: [],
+      provenance: { "observability.enabled": { source: "input" } },
+      executionEnabled: false,
+      cloudAccess: false,
+    });
+    expect(input).toEqual(before);
+    expect(resolveTemplateParameters(input).qualificationBlockers).toHaveLength(
+      0,
+    );
+  },
+);
+
+it("does not couple MVP Observability to a local project network", () => {
   const input: ParameterizedTemplate = {
     ...template(),
     kind: "public",
@@ -302,11 +374,10 @@ it("allows a local public network binding only as an unresolved, non-executable 
   expect(() => validateTemplateParameterPolicy(input)).not.toThrow();
   const result = resolveTemplateParameters(input);
   expect(result.settings.observability).toMatchObject({
-    access_source: "project-network",
     acl: [],
   });
-  expect(result.bindings[0]?.status).toBe("unresolved");
-  expect(result.qualificationBlockers).toHaveLength(1);
+  expect(result.bindings).toEqual([]);
+  expect(result.qualificationBlockers).toHaveLength(0);
   expect(result.executionEnabled).toBe(false);
   expect(result.cloudAccess).toBe(false);
   for (const settings of [
@@ -318,8 +389,8 @@ it("allows a local public network binding only as an unresolved, non-executable 
         ...input,
         settings,
       }),
-    ).toThrow("Projektnetz");
-  expect(() =>
+    ).not.toThrow();
+  expect(
     resolveTemplateParameters({
       ...input,
       settings: {
@@ -327,7 +398,11 @@ it("allows a local public network binding only as an unresolved, non-executable 
         observability: { enabled: false, acl: [] },
       },
     }),
-  ).toThrow("eingeschaltetes STACKIT Observability");
+  ).toMatchObject({
+    settings: { network_enabled: true, observability: { enabled: false } },
+    bindings: [],
+    qualificationBlockers: [],
+  });
 });
 
 it("migration preserves fixed stages while newly added templates opt into stage input", () => {

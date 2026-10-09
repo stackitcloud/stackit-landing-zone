@@ -5,6 +5,7 @@ import { ApplicationError } from "../apps/api/src/applications/service.js";
 import { platformAccessError } from "../apps/api/src/auth/platform-access.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import type { Session } from "../apps/api/src/auth/store.js";
+import { applicationOrderDecisionSchema } from "../packages/contracts/src/index.js";
 
 const session: Session = {
   id: randomUUID(),
@@ -18,6 +19,29 @@ const session: Session = {
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
+});
+
+it("requires explicit application order decisions and a rejection reason", () => {
+  expect(
+    applicationOrderDecisionSchema.parse({
+      decision: "approved",
+      confirmDecision: true,
+    }),
+  ).toEqual({ decision: "approved", reason: "", confirmDecision: true });
+  expect(
+    applicationOrderDecisionSchema.parse({
+      decision: "rejected",
+      reason: "  Not permitted  ",
+      confirmDecision: true,
+    }).reason,
+  ).toBe("Not permitted");
+  for (const input of [
+    { decision: "approved" },
+    { decision: "approved", confirmDecision: false },
+    { decision: "rejected", reason: " ", confirmDecision: true },
+    { decision: "approved", confirmDecision: true, decidedBy: randomUUID() },
+  ])
+    expect(applicationOrderDecisionSchema.safeParse(input).success).toBe(false);
 });
 
 function runnerSetup() {
@@ -226,6 +250,30 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
       retiredBy: session.userId,
     })),
     listInstances: vi.fn(async () => []),
+    outputJob: vi.fn(async () => ({
+      text: "Apply complete",
+      truncated: false,
+      kind: "execution" as const,
+    })),
+    listExecutionBindings: vi.fn(async () => []),
+    configureExecution: vi.fn(
+      async (_session: Session, revision: string, input: unknown) => ({
+        id: randomUUID(),
+        platformRevision: revision,
+        enabled: (input as { enabled: boolean }).enabled,
+      }),
+    ),
+    deleteOrder: vi.fn(async (_session: Session, id: string) => ({
+      instanceId: id,
+      deletedBy: session.userId,
+      deletedAt: new Date().toISOString(),
+    })),
+    decideOrder: vi.fn(
+      async (_session: Session, id: string, input: unknown) => ({
+        id,
+        ...applicationOrderDecisionSchema.parse(input),
+      }),
+    ),
     listPlatformContracts: vi.fn(async () => []),
     preparePlanInput: vi.fn(async () => {
       throw new ApplicationError(409, "application_platform_contract_required");
@@ -238,12 +286,44 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
     }),
     ...(dispatchEnabled
       ? {
+          executionCapabilities: vi.fn(() => ({
+            planEnabled: true,
+            applyEnabled: false,
+          })),
+          listJobs: vi.fn(async () => []),
+          prepareJob: vi.fn(
+            async (_session: Session, id: string, _input: unknown) => ({
+              id: randomUUID(),
+              instanceId: id,
+              status: "prepared" as const,
+              expiresAt: new Date(Date.now() + 60000).toISOString(),
+              executionEnabled: false as const,
+              cloudPlanExecuted: false as const,
+            }),
+          ),
           dispatchJob: vi.fn(
             async (_session: Session, jobId: string, _input: unknown) => ({
               jobId,
               dispatched: true,
             }),
           ),
+          startPlan: vi.fn(
+            async (_session: Session, id: string, _input: unknown) => ({
+              jobId: id,
+              dispatched: true,
+            }),
+          ),
+          startApply: vi.fn(
+            async (_session: Session, id: string, _input: unknown) => ({
+              jobId: id,
+              dispatched: true,
+            }),
+          ),
+          previewPlan: vi.fn(async (_session: Session, id: string) => ({
+            jobId: id,
+            artifactSha256: "a".repeat(64),
+            resources: [],
+          })),
         }
       : {}),
     order: vi.fn(async () => {
@@ -329,6 +409,325 @@ it("protects group and template-access mutations with the current tenant, origin
       await app.inject({ url: "/api/v1/applications/templates", headers })
     ).json(),
   ).toMatchObject({ groupAccessEnabled: true });
+});
+
+it("protects one-click application planning and saved-plan apply with strict tenant, origin and CSRF", async () => {
+  const { app, applications, headers } = setup(true);
+  const id = randomUUID();
+  for (const endpoint of [
+    {
+      path: `instances/${id}/plan`,
+      body: { idempotencyKey: randomUUID() },
+      method: applications.startPlan,
+    },
+    {
+      path: `jobs/${id}/apply`,
+      body: { artifactSha256: "a".repeat(64) },
+      method: applications.startApply,
+    },
+  ]) {
+    const url = `/api/v1/applications/${endpoint.path}`;
+    for (const invalid of [
+      { ...headers, origin: "https://other.example" },
+      { ...headers, "x-lzc-csrf": "wrong" },
+      { ...headers, "x-lzc-tenant": randomUUID() },
+    ])
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url,
+            headers: invalid,
+            payload: endpoint.body,
+          })
+        ).statusCode,
+      ).toBe(403);
+    expect(endpoint.method).not.toHaveBeenCalled();
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url,
+          headers,
+          payload: { ...endpoint.body, credential: "must-not-be-accepted" },
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url,
+          headers,
+          payload: endpoint.body,
+        })
+      ).statusCode,
+    ).toBe(202);
+    expect(endpoint.method).toHaveBeenCalledTimes(1);
+  }
+  expect(
+    (
+      await app.inject({
+        method: "GET",
+        url: `/api/v1/applications/jobs/${id}/preview`,
+        headers: { ...headers, "x-lzc-tenant": randomUUID() },
+      })
+    ).statusCode,
+  ).toBe(403);
+  expect(applications.previewPlan).not.toHaveBeenCalled();
+  expect(
+    (
+      await app.inject({
+        method: "GET",
+        url: `/api/v1/applications/jobs/${id}/preview`,
+        headers,
+      })
+    ).statusCode,
+  ).toBe(200);
+  expect(
+    (
+      await app.inject({
+        url: `/api/v1/applications/jobs/${id}/output`,
+        headers: { ...headers, "x-lzc-tenant": randomUUID() },
+      })
+    ).statusCode,
+  ).toBe(403);
+  expect(applications.outputJob).not.toHaveBeenCalled();
+  const output = await app.inject({
+    url: `/api/v1/applications/jobs/${id}/output`,
+    headers,
+  });
+  expect(output.statusCode).toBe(200);
+  expect(output.json()).toEqual({
+    text: "Apply complete",
+    truncated: false,
+    kind: "execution",
+  });
+  expect(output.headers["cache-control"]).toBe("no-store");
+  expect(applications.outputJob).toHaveBeenCalledExactlyOnceWith(session, id);
+});
+
+it("protects application order decisions with current tenant, origin, CSRF and explicit confirmation", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID();
+  const url = `/api/v1/applications/instances/${id}/decision`;
+  const payload = { decision: "approved", confirmDecision: true };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  for (const invalid of [
+    { decision: "approved" },
+    { decision: "rejected", confirmDecision: true },
+    { ...payload, decidedBy: randomUUID() },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.decideOrder).not.toHaveBeenCalled();
+  expect(
+    (await app.inject({ method: "POST", url, headers, payload })).statusCode,
+  ).toBe(200);
+  expect(applications.decideOrder).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+    { ...payload, reason: "" },
+  );
+  applications.decideOrder.mockRejectedValueOnce(
+    Object.assign(new Error("application_order_decision_conflict"), {
+      code: "40001",
+    }),
+  );
+  expect(
+    (await app.inject({ method: "POST", url, headers, payload })).statusCode,
+  ).toBe(409);
+});
+
+it("protects once-per-platform execution setup and revocation with tenant, origin, CSRF and strict confirmation", async () => {
+  const { app, headers, applications } = setup();
+  const revision = randomUUID();
+  const url = `/api/v1/applications/platform-contracts/${revision}/execution`;
+  const payload = {
+    enabled: true,
+    stateBackendId: randomUUID(),
+    confirmExecution: true,
+  };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  for (const invalid of [
+    {},
+    { ...payload, confirmExecution: false },
+    { ...payload, key: "forbidden" },
+    { enabled: false },
+    { enabled: false, confirmRevocation: false },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.configureExecution).not.toHaveBeenCalled();
+  expect(
+    (await app.inject({ method: "POST", url, headers, payload })).statusCode,
+  ).toBe(200);
+  expect(applications.configureExecution).toHaveBeenCalledWith(
+    expect.any(Object),
+    revision,
+    payload,
+  );
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url,
+        headers,
+        payload: { enabled: false, confirmRevocation: true },
+      })
+    ).statusCode,
+  ).toBe(200);
+  expect(
+    (
+      await app.inject({
+        url: "/api/v1/applications/execution-bindings",
+        headers,
+      })
+    ).json(),
+  ).toEqual({ bindings: [] });
+});
+
+it("protects pre-execution deletion with tenant, origin, CSRF and explicit confirmation", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID();
+  const url = `/api/v1/applications/instances/${id}`;
+  const payload = { confirmDeletion: true };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "DELETE", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  for (const invalid of [
+    {},
+    { confirmDeletion: false },
+    { confirmArchive: false },
+    { confirmDeletion: true, confirmArchive: true },
+    { ...payload, deletedBy: randomUUID() },
+  ])
+    expect(
+      (await app.inject({ method: "DELETE", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.deleteOrder).not.toHaveBeenCalled();
+  expect(
+    (
+      await app.inject({
+        method: "DELETE",
+        url,
+        headers: { ...headers, cookie: "" },
+        payload,
+      })
+    ).statusCode,
+  ).toBe(401);
+  expect(
+    (await app.inject({ method: "DELETE", url, headers, payload })).statusCode,
+  ).toBe(200);
+  expect(applications.deleteOrder).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+    payload,
+  );
+  for (const code of [
+    "application_order_execution_started",
+    "application_order_deleted",
+    "application_order_archive_unavailable",
+  ]) {
+    applications.deleteOrder.mockRejectedValueOnce(
+      Object.assign(new Error(code), { code: "40001" }),
+    );
+    expect(
+      (await app.inject({ method: "DELETE", url, headers, payload })).json(),
+    ).toEqual({ error: code });
+  }
+  const archive = { confirmArchive: true };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url,
+          headers: rejected,
+          payload: archive,
+        })
+      ).statusCode,
+    ).toBe(403);
+  expect(
+    (await app.inject({ method: "DELETE", url, headers, payload: archive }))
+      .statusCode,
+  ).toBe(200);
+  expect(applications.deleteOrder).toHaveBeenLastCalledWith(
+    session,
+    id,
+    archive,
+  );
+});
+
+it("reports actual plan capabilities and protects job reads with the current tenant", async () => {
+  const disabled = setup();
+  const unavailable = await disabled.app.inject({
+    method: "GET",
+    url: "/api/v1/applications/instances",
+    headers: disabled.headers,
+  });
+  expect(unavailable.json()).toMatchObject({
+    planJobsEnabled: false,
+    execution: { planEnabled: false, applyEnabled: false },
+  });
+  const { app, headers, applications } = setup(true);
+  const enabled = await app.inject({
+    method: "GET",
+    url: "/api/v1/applications/instances",
+    headers,
+  });
+  expect(enabled.json()).toMatchObject({
+    planJobsEnabled: true,
+    execution: { planEnabled: true, applyEnabled: false },
+  });
+  const id = randomUUID();
+  const url = `/api/v1/applications/instances/${id}/jobs`;
+  expect((await app.inject({ method: "GET", url })).statusCode).toBe(401);
+  expect(
+    (
+      await app.inject({
+        method: "GET",
+        url,
+        headers: { ...headers, "x-lzc-tenant": randomUUID() },
+      })
+    ).statusCode,
+  ).toBe(403);
+  expect(applications.listJobs).not.toHaveBeenCalled();
+  const reply = await app.inject({ method: "GET", url, headers });
+  expect(reply.statusCode).toBe(200);
+  expect(reply.json()).toEqual({ jobs: [] });
+  expect(applications.listJobs).toHaveBeenCalledExactlyOnceWith(session, id);
 });
 
 it("requires current tenant, origin, CSRF and explicit plan confirmation before application dispatch", async () => {

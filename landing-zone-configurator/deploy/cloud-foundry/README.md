@@ -84,7 +84,39 @@ release in `landing-zone-configurator-migrate`, a separate task-only app with no
 route. Only this short-lived app receives the database-owner credentials; it is
 deleted after migration and on failure. Migration checksums and an advisory lock
 protect repeat execution. The web app uses its restricted runtime role and RLS.
-Initial customer plan previews use ephemeral runner tasks. Apply/destroy are not implemented. See [plan execution](../../docs/plan-execution.md).
+Customer Plans and explicitly confirmed saved-plan Applies/Destroy use ephemeral
+runner tasks. Application drift is read-only. Hosted execution additionally needs
+`LZC_EXECUTION_ENABLED=true`, `LZC_APPLICATION_EXECUTION_ENABLED=true` and the
+protected Environment secret `LZC_DEPLOYMENT_ARTIFACT_KEY` (canonical Base64 of
+32 random bytes). Keep that key across releases; never replace it to repair a job.
+The release binds execution to the exact staged droplet and packages the same
+OpenTofu/provider/source bytes in the API for backend-free saved-plan inspection.
+Only the isolated runner receives job credentials. The API inspection subprocess
+has a minimal environment without database, Vault or Cloud credentials. The API
+uses 1024 MiB memory and 4096 MiB disk for this inspection; the release validates
+both native roots and probes both broker namespaces with invalid tickets.
+Old plans are not rebound after a droplet change. See [plan execution](../../docs/plan-execution.md).
+
+### Dev Activation Prerequisite (2026-10-09)
+
+The sole target origin is
+`https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud`, without a suffix.
+The STACKIT public Web client has already been requested for this origin;
+provisioning and its public client ID are still pending. No second client request
+is required. The existing suffixed route was checked only as a read-only baseline,
+not chosen as a deployment target. The release route, Public Origin and callbacks
+all use the suffix-free origin.
+
+Before promotion, set `LZC_STACKIT_AUTH_FLOW=authorization-code`, the provisioned
+public `LZC_STACKIT_CLIENT_ID`,
+`LZC_STACKIT_REDIRECT_URI=https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback`
+and `LZC_STACKIT_CLI_CLIENT_APPROVED=false` in `lzc-dev-release`. The requested
+PKCE/S256 client needs both HTTPS callbacks, `/auth/stackit/callback` and
+`/auth/stackit/proof-callback`. The CLI client cannot be reused for a public
+callback. No Device Flow or GitHub fallback is performed.
+The user approved Commit/Push/Dev deployment but requested no additional database
+backups, relying on scheduled STACKIT backups. Customer Plan/Apply/Destroy remain
+separate explicit operations, not part of application release validation.
 
 Raw CF logs are not exported to CI, since router URLs may contain OAuth codes.
 Task status, sanitized diagnostics and public health checks provide release evidence.

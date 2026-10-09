@@ -1,5 +1,33 @@
 # Projekt-Templates: Eingaben, feste Vorgaben und Ressourcenverknüpfungen
 
+## Aktueller MVP: ACL-Einrichtung durch den Benutzer
+
+Stand: 2026-10-08. Die Observability-ACL ist kein Configurator-Parameter mehr.
+Editor, Bestellformular und Vorschau bieten weder CIDR-Auswahl noch
+Projektnetz-Bindung an. Eine aktivierte Observability-Instanz erzeugt keinen
+ACL-Pflichtfeld- oder Egress-Qualifikationsblocker. Der Benutzer richtet die
+Zugriffsquellen selbst direkt in STACKIT ein; der Configurator ermittelt oder
+konfiguriert keinen automatischen Zugangsweg.
+
+Gespeicherte ACL-Werte und alte Policies bleiben in ihren Vorlagen erhalten.
+Alte ACL-Bestelleingaben und Policies werden bei neuer Auflösung ignoriert;
+vorhandene feste Werte bleiben als Kompatibilitätswerte erhalten. Es wird kein
+privates Projektnetz in Internet-Quelladressen übersetzt.
+
+Die neue native Application-Revision `88149782bf8e91dcdbb43a203b54337886023f7f`
+verwendet `ignore_changes = [acl]`, damit spätere manuelle ACL-Änderungen keinen
+Terraform-Änderungsplan auslösen. Der STACKIT-Provider setzt beim Erstellen
+weiterhin den anfänglichen ACL-Wert und überträgt bei anderen Instance-Updates
+den eingelesenen Wert erneut. Eine gleichzeitige manuelle Änderung zwischen
+Plan und Apply ist dadurch nicht gegen Überschreiben geschützt.
+
+Neue Veröffentlichungen nutzen die aktiv angebotene Runner-Revision.
+Bestehende veröffentlichte Versionen, Bestellungen und Saved Plans werden nicht
+umgebunden. Für sie ist eine neue Veröffentlichung mit anschließender neuer
+Bestellung erforderlich; alte Pakete und Historie bleiben erhalten. Die
+folgenden ACL-Bindungsbeschreibungen dokumentieren den früheren Entwurfsstand,
+nicht den aktuellen MVP.
+
 Stand: 2026-10-06. Parametervertrag, Template-Editor, tenantgebundener Testkatalog, persistente Bestellaufträge und serverbasierte Applied-Platform-Bindung implementiert. Live-Aktivierung und menschliche Abnahme, Application-Cloud-Plan und produktive Instanziierung bleiben offen. Dieser Stand ist lokal, noch nicht veröffentlicht.
 Ergänzt [Projekt-Template-Entwürfe](project-template-drafts.md) und die
 [Plattform-/Application-Architektur](platform-application-architecture.md).
@@ -214,10 +242,13 @@ Rolle definiert oder als verfügbare Zielrolle vor Veröffentlichung qualifizier
 
 Public-Projektvorlagen mit aktiviertem lokalem Netz können die Observability-
 Bindung ebenso wie Corporate-Vorlagen als symbolischen Entwurf auswählen.
-Ohne Projektnetz ist die Auswahl gesperrt; zur Auflösung muss Observability
-aktiviert sein. Ein symbolischer Snapshot darf im Testkatalog gespeichert werden;
-produktive Freigabe und Ausführung bleiben für beide Netzarten ohne nachgewiesene
-öffentliche Egress-Adresse gesperrt.
+Ohne Projektnetz ist die Auswahl gesperrt. Die ACL-Bindung wird nur bei aktiviertem
+Observability ausgewertet. Wird Observability bei der Bestellung ausgeschaltet,
+bleibt das Projektnetz erhalten; die inaktive ACL-Bindung erzeugt weder eine
+Ressourcenbindung noch einen Qualifikationsblocker. Die Template-Policy bleibt
+unverändert. Ein symbolischer Snapshot darf im Testkatalog gespeichert werden;
+produktive Freigabe und Ausführung der aktiven ACL-Bindung bleiben für beide
+Netzarten ohne nachgewiesene öffentliche Egress-Adresse gesperrt.
 
 ## Ausgangsproblem und überprüfte Accelerator-Grenzen
 

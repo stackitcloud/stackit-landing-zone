@@ -1,4 +1,203 @@
 export const englishMessages: Record<string, string> = {
+  Destroy: "Destroy",
+  Drift: "Drift",
+  "Destroy-Plan": "Destroy plan",
+  "Destroy-Plan erstellen": "Create destroy plan",
+  "Destroy anzeigen": "Show destroy",
+  "Nur abgeschlossene fehlgeschlagene Bereitstellungen oder erfolgreich gelöschte Application Landing Zones können archiviert werden.":
+    "Only completed failed deployments or successfully destroyed Application Landing Zones can be archived.",
+  "Diese Bestellung archivieren? Cloud-Ressourcen, State und Ausführungshistorie bleiben erhalten. Die Bestellung verschwindet aus der aktiven Liste.":
+    "Archive this order? Cloud resources, state and execution history are retained. The order disappears from the active list.",
+  "Drift-Prüfung": "Drift check",
+  "Drift prüfen": "Check drift",
+  "Zu löschende Ressourcen": "Resources to delete",
+  "Cloud → Soll-Konfiguration": "Cloud → Desired configuration",
+  "State → Cloud": "State → Cloud",
+  "Fehlt in der Cloud": "Missing in the cloud",
+  "Geändert in der Cloud": "Changed in the cloud",
+  "Abweichungen zwischen gespeichertem State und Cloud":
+    "Differences between stored state and cloud",
+  "Prüfumfang: Ressourcen dieses Application-States. Nicht erfasste Cloud-Ressourcen sind nicht enthalten.":
+    "Scope: resources tracked in this application state. Untracked cloud resources are not included.",
+  "Ich bestätige das Löschen der Ressourcen dieser Application Landing Zone.":
+    "I confirm deleting the resources of this Application Landing Zone.",
+  "Application Landing Zone löschen": "Delete Application Landing Zone",
+  "Application Landing Zone wird gelöscht": "Deleting Application Landing Zone",
+  "Application Landing Zone gelöscht": "Application Landing Zone deleted",
+  "Application-Destroy: Abschluss prüfen":
+    "Application destroy: Review completion",
+  "Application-Destroy fehlgeschlagen": "Application destroy failed",
+  "Destroy und Drift sind auf diesem Server nicht aktiviert.":
+    "Destroy and drift are not enabled on this server.",
+  "Eine Drift-Prüfung kann nicht angewendet werden.":
+    "A drift check cannot be applied.",
+  "Der Destroy-Plan enthält andere Aktionen als Löschungen und kann nicht ausgeführt werden.":
+    "The destroy plan includes non-delete actions and cannot be executed.",
+  "Bitte das Löschen für diese Application Landing Zone ausdrücklich bestätigen.":
+    "Explicitly confirm deletion for this Application Landing Zone.",
+  "Die Löschbestätigung passt nicht zu diesem Plan.":
+    "The deletion confirmation does not match this plan.",
+  Bestellung: "Order",
+  Bestelldatum: "Order date",
+  "Bestell-ID": "Order ID",
+  Freigabe: "Approval",
+  Ausführung: "Execution",
+  Aktionen: "Actions",
+  "Status nicht verfügbar": "Status unavailable",
+  "Status wird geladen": "Loading status",
+  "Noch keine Ausführung": "No execution yet",
+  Vorbereitet: "Prepared",
+  Reserviert: "Reserved",
+  Startet: "Starting",
+  Läuft: "Running",
+  Erfolgreich: "Succeeded",
+  Fehlgeschlagen: "Failed",
+  "Fehlgeschlagen · State prüfen": "Failed · Review state",
+  "Abschluss prüfen": "Review completion",
+  "Die Ausführung ist beendet, aber ihre Abschlussmeldung fehlt. Historische Logs konnten nicht wiederhergestellt werden.":
+    "Execution has stopped, but its completion report is missing. Historical logs could not be recovered.",
+  "Application-Apply: Abschluss prüfen": "Application apply: Review completion",
+  "Apply-Job": "Apply job",
+  Ausführungslogs: "Execution logs",
+  "Ausführungslogs aktualisieren": "Refresh execution logs",
+  "Die Ausführungslogs sind derzeit nicht verfügbar.":
+    "Execution logs are currently unavailable.",
+  "Noch keine Ausführungslogs verfügbar.": "No execution logs available yet.",
+  "Die Ausführungslogs wurden gekürzt.": "Execution logs were truncated.",
+  Bestellablauf: "Order workflow",
+  Ausführungsdetails: "Execution details",
+  Bereitstellungsfortschritt: "Deployment progress",
+  Bereitstellung: "Deployment",
+  "Noch kein Apply gestartet": "No apply started yet",
+  "Zum Plan": "Go to plan",
+  "Apply anzeigen": "Show apply",
+  "Bestellung archivieren": "Archive order",
+  "Bestellung archiviert.": "Order archived.",
+  "Nur abgeschlossene fehlgeschlagene Bereitstellungen können archiviert werden.":
+    "Only completed failed deployments can be archived.",
+  "Fehlgeschlagene Bestellung archivieren? Cloud-Ressourcen, State und Ausführungshistorie bleiben erhalten. Die Bestellung verschwindet aus der aktiven Liste.":
+    "Archive failed order? Cloud resources, state and execution history are retained. The order disappears from the active list.",
+  "Es können bereits Cloud-Ressourcen angelegt worden sein. State und Ressourcen müssen vor einem weiteren Apply geklärt werden. Archivieren löscht keine Cloud-Ressourcen.":
+    "Cloud resources may already have been created. State and resources must be reconciled before another apply. Archiving does not delete cloud resources.",
+  "Bestellung gespeichert. Cloud-Plan gestartet.":
+    "Order saved. Cloud plan started.",
+  "Application Landing Zone wird erstellt": "Creating Application Landing Zone",
+  "Application Landing Zone erstellt": "Application Landing Zone created",
+  "Application Landing Zone erstellen": "Create Application Landing Zone",
+  "Application-Apply fehlgeschlagen": "Application apply failed",
+  "Geplante Ressourcen": "Planned resources",
+  "Ressourcen-Vorschau aktualisieren": "Refresh resource preview",
+  "Die Ressourcen-Vorschau konnte nicht geladen werden.":
+    "The resource preview could not be loaded.",
+  "Sensibler Wert": "Sensitive value",
+  "Erst nach Apply bekannt": "Known after apply",
+  "Dieser Plan ist bereits verwendet oder nicht mehr ausführbar.":
+    "This plan has already been used or is no longer executable.",
+  "Dieser Plan ist nicht mehr ausführbar. Bitte einen neuen Cloud-Plan starten.":
+    "This plan is no longer executable. Start a new cloud plan.",
+  "Das Runner-Paket passt nicht mehr zum gespeicherten Plan. Bitte einen neuen Cloud-Plan starten.":
+    "The runner package no longer matches the saved plan. Start a new cloud plan.",
+  "Die gespeicherte Plan-Datei passt nicht zur geprüften Bestellung.":
+    "The saved plan file does not match the verified order.",
+  "Application-Apply ist auf diesem Server nicht aktiviert.":
+    "Application apply is not enabled on this server.",
+  "Die Ressourcen-Vorschau ist auf diesem Server nicht verfügbar.":
+    "The resource preview is not available on this server.",
+  Projektberechtigung: "Project permission",
+  Projektrolle: "Project role",
+  "Service-Account-Schlüssel": "Service account key",
+  "Object-Storage-Bucket": "Object storage bucket",
+  "Object-Storage-Zugangsgruppe": "Object storage credential group",
+  "Object-Storage-Zugang": "Object storage credential",
+  Plattformbindung: "Platform binding",
+  Schlüsselrotation: "Key rotation",
+  name: "Name",
+  description: "Description",
+  region: "Region",
+  project_id: "Project ID",
+  ipv4_cidr: "IPv4 CIDR",
+  "Die Plattform-Ausführungsberechtigung ist nicht mehr gültig. Bitte den Platform Owner kontaktieren.":
+    "The platform execution permission is no longer valid. Contact the platform owner.",
+  "Für diesen Plattformvertrag ist bereits ein anderes State Backend hinterlegt. Die bestehende Ausführungsberechtigung muss zuerst widerrufen werden.":
+    "This platform contract already has a different state backend. Revoke the existing execution permission first.",
+  "Die Plattform-Ausführung ist noch nicht eingerichtet. Bitte den Platform Owner kontaktieren.":
+    "Platform execution has not been configured. Contact the platform owner.",
+  "State Backends konnten nicht geladen werden.":
+    "State backends could not be loaded.",
+  "Ausführungsberechtigung widerrufen? Weitere Runner-Zugriffe werden gesperrt.":
+    "Revoke execution permission? Further runner access will be blocked.",
+  "Plattform-Ausführung eingerichtet.": "Platform execution configured.",
+  "Ausführungsberechtigung widerrufen.": "Execution permission revoked.",
+  "Plattform-Ausführung konnte nicht geändert werden.":
+    "Platform execution could not be changed.",
+  "Plattform-Ausführung": "Platform execution",
+  "Plattformvertrag für Ausführung": "Platform contract for execution",
+  "Plattformvertrag wählen": "Select platform contract",
+  "State-Backend für Applications": "State backend for applications",
+  "Ausführungsberechtigung widerrufen": "Revoke execution permission",
+  "Ausführung einrichten": "Configure execution",
+  "Diese Bestellung wurde gelöscht. Bitte die Bestellungen aktualisieren.":
+    "This order was deleted. Refresh the orders.",
+  "Diese Bestellung kann nicht gelöscht werden, weil ihre Ausführung bereits begonnen hat.":
+    "This order cannot be deleted because its execution has already started.",
+  "Bestellungen können auf diesem Server noch nicht gelöscht werden.":
+    "Orders cannot be deleted on this server yet.",
+  "Diese Bestellung löschen? Es werden keine Cloud-Ressourcen gelöscht.":
+    "Delete this order? No cloud resources will be deleted.",
+  "Bestellung gelöscht.": "Order deleted.",
+  "Bestellung konnte nicht gelöscht werden.": "The order could not be deleted.",
+  "Bestellung löschen": "Delete order",
+  "Freigegebene Runner-Revision": "Approved runner revision",
+  "Diese Bestellung verwendet eine Accelerator-Revision, die der Application-Runner nicht unterstützt. Bitte eine neue Template-Version mit der freigegebenen Runner-Revision veröffentlichen und neu bestellen.":
+    "This order uses an accelerator revision not supported by the Application runner. Publish a new template version with the approved runner revision and place a new order.",
+  "Der STACKIT-Nachweis für diesen Plan ist abgelaufen. Bitte erneut mit STACKIT anmelden.":
+    "The STACKIT proof for this plan expired. Sign in with STACKIT again.",
+  "Application-Plan": "Application plan",
+  "Der Application-Plan-Runner ist nicht aktiviert.":
+    "The Application plan runner is not enabled.",
+  "Der Application-Plan konnte nicht gestartet werden.":
+    "The Application plan could not be started.",
+  "Application-Plan-Jobs sind auf diesem Server nicht verfügbar.":
+    "Application plan jobs are not available on this server.",
+  "Für diesen Plan ist bereits ein anderes State-Backend freigegeben.":
+    "A different state backend has already been approved for this plan.",
+  "Für diese Bestellung läuft bereits ein Plan oder eine Klärung ist erforderlich.":
+    "A plan is already running for this order or reconciliation is required.",
+  "Diese Plan-Freigabe wurde bereits verwendet. Bitte den Status aktualisieren.":
+    "This plan approval has already been used. Refresh the status.",
+  "Die Plan-Freigabe ist nicht mehr gültig. Bitte einen neuen Plan vorbereiten.":
+    "The plan approval is no longer valid. Prepare a new plan.",
+  "Der Planstatus konnte nicht geladen werden.":
+    "The plan status could not be loaded.",
+  "Planstatus aktualisieren": "Refresh plan status",
+  "Plan vorbereiten": "Prepare plan",
+  "Plan-Vorbereitung bestätigen": "Confirm plan preparation",
+  "Noch kein Plan vorbereitet": "No plan prepared yet",
+  "Plan vorbereitet": "Plan prepared",
+  "Plan reserviert": "Plan reserved",
+  "Plan startet": "Plan starting",
+  "Backend wird initialisiert": "Initializing backend",
+  "Terraform wird validiert": "Validating Terraform",
+  "Cloud-Plan läuft": "Cloud plan running",
+  "Cloud-Plan erfolgreich": "Cloud plan succeeded",
+  "Cloud-Plan fehlgeschlagen": "Cloud plan failed",
+  "Planstatus muss geklärt werden": "Plan status requires reconciliation",
+  "Plan-Job": "Plan job",
+  "Erstellt am": "Created at",
+  "Freigabe gültig bis": "Approval valid until",
+  "Technische Plan-Freigabe ausstehend": "Technical plan approval pending",
+  "State-Backend freigeben": "Approve state backend",
+  "State-Backend wählen": "Choose state backend",
+  "State-Backend-Freigabe bestätigen": "Confirm state backend approval",
+  "Cloud-Plan": "Cloud plan",
+  "Cloud-Plan bestätigen": "Confirm cloud plan",
+  "Cloud-Plan starten": "Start cloud plan",
+  "Destruktive Änderungen": "Destructive changes",
+  "Application-Apply ist noch nicht verfügbar.":
+    "Application Apply is not available yet.",
+  "Neuen Plan vorbereiten": "Prepare a new plan",
+  "Planstatus in den Details": "Plan status in details",
+  "Plan-Zusammenfassung in den Details": "Plan summary in details",
   Gruppenverwaltung: "Group management",
   Gruppenmitglieder: "Group members",
   "Gruppe löschen": "Delete group",
@@ -647,8 +846,8 @@ export const englishMessages: Record<string, string> = {
   "Der Katalog konnte nicht geladen werden.": "Could not load the catalogue.",
   "Der letzte Arbeitsbereich konnte nicht geladen werden.":
     "Could not load the last workspace.",
-  "Der MVP-Plan unterstützt Public-Projekte mit lokalem Netz ohne Observability oder Namespace-Dienste.":
-    "The MVP plan supports public projects with a local network and without Observability or namespace services.",
+  "Der MVP-Plan unterstützt Public-Projekte mit lokalem Netz, optionaler Observability und ohne Namespace-Dienste.":
+    "The MVP plan supports public projects with a local network, optional Observability and no namespace services.",
   "Der persönliche Zugang ist nicht mehr verfügbar.":
     "The personal credentials are no longer available.",
   "Der Plan enthält Löschungen oder Ersetzungen.":
@@ -1926,4 +2125,25 @@ export const englishMessages: Record<string, string> = {
     "{{value0}}: peer address for {{value1}}",
   "VPN-Verbindung {{value0}} aus der Konfiguration entfernen?":
     "Remove VPN connection {{value0}} from the configuration?",
+  "Freigabe ausstehend": "Awaiting approval",
+  "Bestellung freigegeben": "Order approved",
+  "Bestellung abgelehnt": "Order rejected",
+  "Keine Bestellfreigabe erforderlich": "No order approval required",
+  "Bestellungen aktualisieren": "Refresh orders",
+  "Entschieden am": "Decided at",
+  Begründung: "Reason",
+  "Keine Begründung angegeben": "No reason provided",
+  Bestellentscheidung: "Order decision",
+  "Bestellentscheidung bestätigen": "Confirm order decision",
+  "Bestellung freigeben": "Approve order",
+  "Bestellung ablehnen": "Reject order",
+  "Bestellentscheidung fehlgeschlagen.": "Order decision failed.",
+  "Die Bestellung wurde bereits anders entschieden. Bitte die Bestellungen aktualisieren.":
+    "The order already has a different decision. Refresh the orders.",
+  "Diese Bestellung benötigt keine Freigabe.":
+    "This order does not require approval.",
+  "Die Bestellung ist noch nicht freigegeben oder wurde abgelehnt.":
+    "The order has not been approved or was rejected.",
+  "Bestellentscheidungen sind auf diesem Server noch nicht verfügbar.":
+    "Order decisions are not yet available on this server.",
 };

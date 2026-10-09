@@ -10,6 +10,8 @@ export const applicationAcceleratorRevisionSchema = z.enum([
   "a256f6896d11134fdc351786f1be5eba4e56b2e2",
   "4d15d7870afa323badd93559d8b37c5a8d138dcf",
   "c4b43c36af198985980b17626c48d357795e3fbd",
+  "88149782bf8e91dcdbb43a203b54337886023f7f",
+  "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
 ]);
 
 export const applicationPublicationSchema = z
@@ -71,8 +73,14 @@ export function validateApplicationPublication(input: unknown) {
   if (template.kind === "sandbox")
     throw new Error("Sandbox-Veröffentlichungen sind noch nicht qualifiziert.");
   if (!template.name.trim()) throw new Error("Der Template-Name fehlt.");
-  for (const source of Object.values(template.parameterPolicy?.fields ?? {}))
-    if (source.source === "input" && source.choices?.length === 0)
+  for (const [path, source] of Object.entries(
+    template.parameterPolicy?.fields ?? {},
+  ))
+    if (
+      path !== "observability.acl" &&
+      source.source === "input" &&
+      source.choices?.length === 0
+    )
       throw new Error("Erlaubte Bestellwerte dürfen nicht leer sein.");
   return template;
 }

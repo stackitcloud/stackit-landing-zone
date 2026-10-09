@@ -1,6 +1,7 @@
 import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { summarizePlan } from "@lzc/contracts";
 import {
   catalogue,
   configurationValues,
@@ -659,6 +660,265 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     }
   });
 
+  it("persists immutable order decisions with role, tenant, self-approval and job isolation", async () => {
+    const organisations = new PostgresOrganisations(pool);
+    const tenantId = await organisations.create(
+      alice,
+      "Order decisions",
+      randomUUID(),
+    );
+    const engineer = { ...alice, tenantId };
+    const owner = { ...bob, tenantId };
+    const applications = new Applications(pool);
+    await organisations.switch(alice, tenantId);
+    try {
+      const invite = await invitations.create(
+        engineer,
+        ["application-owner"],
+        false,
+      );
+      await invitations.use(bob, invite.token, true);
+      await organisations.switch(bob, tenantId);
+      const template = {
+        id: randomUUID(),
+        key: "decisions",
+        name: "Decision template",
+        kind: "public",
+        region: "eu01",
+        settings: { env: "dev", network_enabled: true },
+      };
+      const published = await applications.publish(engineer, { template });
+      const request = {
+        versionId: published.id,
+        idempotencyKey: randomUUID(),
+        name: "Order to approve",
+        parameters: {},
+      };
+      const ordered = await applications.order(owner, request);
+      expect(ordered.approval).toEqual({ status: "pending" });
+      const approve = { decision: "approved", confirmDecision: true };
+      await expect(
+        applications.decideOrder(owner, ordered.id, approve),
+      ).rejects.toMatchObject({ code: "42501" });
+      const ownOrder = await applications.order(engineer, {
+        ...request,
+        idempotencyKey: randomUUID(),
+        name: "Self order",
+      });
+      await expect(
+        applications.decideOrder(engineer, ownOrder.id, approve),
+      ).rejects.toMatchObject({ code: "42501" });
+      const attemptJob = (instanceId: string) =>
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at) VALUES($1,$2,$3,$4,$5,$6,'plan','{}',$7,now()+interval '1 hour')",
+            [
+              randomUUID(),
+              tenantId,
+              instanceId,
+              owner.userId,
+              owner.id,
+              randomUUID(),
+              "a".repeat(64),
+            ],
+          ),
+        );
+      await expect(attemptJob(ordered.id)).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_not_approved",
+      });
+      await organisations.switch(alice, alice.tenantId);
+      await expect(
+        applications.decideOrder(alice, ordered.id, approve),
+      ).rejects.toMatchObject({ code: "42501" });
+      expect(await applications.listInstances(alice)).toEqual([]);
+      await organisations.switch(alice, tenantId);
+      const [decided, replay] = await Promise.all([
+        applications.decideOrder(engineer, ordered.id, approve),
+        applications.decideOrder(engineer, ordered.id, approve),
+      ]);
+      expect(decided.approval).toMatchObject({
+        status: "approved",
+        decidedBy: engineer.userId,
+      });
+      expect(replay).toEqual(decided);
+      expect(decided.executionEnabled).toBe(false);
+      expect(decided.settings).toEqual(ordered.settings);
+      expect((await applications.order(owner, request)).approval).toEqual(
+        decided.approval,
+      );
+      await expect(
+        applications.decideOrder(engineer, ordered.id, {
+          decision: "rejected",
+          reason: "Changed",
+          confirmDecision: true,
+        }),
+      ).rejects.toMatchObject({ code: "40001" });
+      const rejectedOrder = await applications.order(owner, {
+        ...request,
+        idempotencyKey: randomUUID(),
+        name: "Order to reject",
+      });
+      const rejected = await applications.decideOrder(
+        engineer,
+        rejectedOrder.id,
+        {
+          decision: "rejected",
+          reason: "Outside approved scope",
+          confirmDecision: true,
+        },
+      );
+      expect(rejected.approval).toMatchObject({
+        status: "rejected",
+        reason: "Outside approved scope",
+      });
+      await expect(attemptJob(rejectedOrder.id)).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_not_approved",
+      });
+      const directVersion = await applications.publish(engineer, {
+        template,
+        deploymentPolicy: "direct",
+      });
+      const directOrder = await applications.order(owner, {
+        ...request,
+        versionId: directVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Direct order",
+      });
+      expect(directOrder.approval).toEqual({ status: "not-required" });
+      await expect(
+        applications.decideOrder(engineer, directOrder.id, approve),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "application_approval_not_required",
+      });
+      for (const sql of [
+        "UPDATE lzc.application_order_decisions SET reason='changed' WHERE instance_id=$1",
+        "DELETE FROM lzc.application_order_decisions WHERE instance_id=$1",
+      ])
+        await expect(migration.query(sql, [ordered.id])).rejects.toMatchObject({
+          code: "55000",
+        });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_order_decisions(instance_id,tenant_id,decision,decided_by,reason) VALUES($1,$2,'approved',$3,'')",
+            [ownOrder.id, tenantId, owner.userId],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      expect(
+        (await applications.listInstances(owner)).find(
+          (item) => item.id === ordered.id,
+        )?.approval,
+      ).toEqual(decided.approval);
+      const confirmation = { confirmDeletion: true };
+      await expect(
+        applications.deleteOrder(owner, ownOrder.id, confirmation),
+      ).rejects.toMatchObject({ code: "42501" });
+      expect(() =>
+        applications.deleteOrder(owner, ordered.id, { confirmDeletion: false }),
+      ).toThrow();
+      await organisations.switch(alice, alice.tenantId);
+      await expect(
+        applications.deleteOrder(alice, ordered.id, confirmation),
+      ).rejects.toMatchObject({ code: "42501" });
+      await organisations.switch(alice, tenantId);
+      const deleted = await applications.deleteOrder(
+        owner,
+        ordered.id,
+        confirmation,
+      );
+      expect(deleted).toMatchObject({
+        instanceId: ordered.id,
+        deletedBy: owner.userId,
+      });
+      expect(
+        await applications.deleteOrder(engineer, ordered.id, confirmation),
+      ).toEqual(deleted);
+      await expect(
+        applications.decideOrder(engineer, ordered.id, approve),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_deleted",
+      });
+      expect(
+        (await applications.listInstances(owner)).some(
+          (item) => item.id === ordered.id,
+        ),
+      ).toBe(false);
+      await expect(applications.order(owner, request)).rejects.toMatchObject({
+        code: "application_order_deleted",
+        status: 409,
+      });
+      await expect(attemptJob(ordered.id)).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_deleted",
+      });
+      await expect(
+        applications.preparePlanInput(owner, ordered.id),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(
+        (
+          await migration.query(
+            "SELECT decision FROM lzc.application_order_decisions WHERE instance_id=$1",
+            [ordered.id],
+          )
+        ).rows,
+      ).toEqual([{ decision: "approved" }]);
+      for (const sql of [
+        "UPDATE lzc.application_order_deletions SET deleted_at=now() WHERE instance_id=$1",
+        "DELETE FROM lzc.application_order_deletions WHERE instance_id=$1",
+      ])
+        await expect(migration.query(sql, [ordered.id])).rejects.toMatchObject({
+          code: "55000",
+        });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_order_deletions(instance_id,tenant_id,deleted_by) VALUES($1,$2,$3)",
+            [ownOrder.id, tenantId, owner.userId],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await applications.deleteOrder(engineer, ownOrder.id, confirmation);
+      await expect(
+        applications.decideOrder(engineer, ownOrder.id, approve),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_deleted",
+      });
+      const pendingDeletion = await applications.order(owner, {
+        ...request,
+        idempotencyKey: randomUUID(),
+        name: "Pending deletion",
+      });
+      await applications.deleteOrder(
+        engineer,
+        pendingDeletion.id,
+        confirmation,
+      );
+      await expect(
+        applications.decideOrder(engineer, pendingDeletion.id, approve),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_deleted",
+      });
+      await organisations.switch(bob, bob.tenantId);
+      expect(
+        (
+          await withTenant(pool, bob, (client) =>
+            client.query("SELECT * FROM lzc.application_order_decisions"),
+          )
+        ).rows,
+      ).toEqual([]);
+    } finally {
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+    }
+  });
+
   it("isolates immutable application publications and idempotent orders with current product roles", async () => {
     const organisations = new PostgresOrganisations(pool);
     const tenantId = await organisations.create(
@@ -1277,6 +1537,11 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         env: "dev",
         network_enabled: true,
         network_prefix_length: 24,
+        observability: {
+          enabled: true,
+          plan_name: "Observability-Starter-EU01",
+          acl: [],
+        },
       },
     };
     const input = {
@@ -1504,6 +1769,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         template,
         ...binding,
         acceleratorRevision: applicationRevision,
+        deploymentPolicy: "direct",
       });
       expect(runnerVersion.version).toBe(directVersion.version + 1);
       expect(
@@ -1512,6 +1778,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             template,
             ...binding,
             acceleratorRevision: applicationRevision,
+            deploymentPolicy: "direct",
           })
         ).id,
       ).toBe(runnerVersion.id);
@@ -1568,14 +1835,35 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         executionEnabled: false,
         cloudPlanExecuted: false,
       });
+      expect(await applications.listJobs(owner, jobOrder.id)).toEqual([
+        expect.objectContaining({
+          id: job.id,
+          requestedBy: owner.userId,
+          approvedBy: engineer.userId,
+          status: "prepared",
+          grantActive: true,
+          canApproveBackend: false,
+          canDispatch: false,
+          summary: null,
+          errorCode: null,
+        }),
+      ]);
+      expect(await applications.listJobs(engineer, jobOrder.id)).toEqual([
+        expect.objectContaining({
+          id: job.id,
+          canApproveBackend: true,
+          canDispatch: false,
+        }),
+      ]);
       expect(
         await applications.prepareJob(owner, jobOrder.id, jobRequest),
       ).toEqual(job);
-      const cliRevision = "c4b43c36af198985980b17626c48d357795e3fbd";
+      const cliRevision = "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f";
       const cliVersion = await applications.publish(engineer, {
         template,
         ...binding,
         acceleratorRevision: cliRevision,
+        deploymentPolicy: "direct",
       });
       expect(cliVersion.version).toBe(runnerVersion.version + 1);
       expect(
@@ -1584,6 +1872,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             template,
             ...binding,
             acceleratorRevision: cliRevision,
+            deploymentPolicy: "direct",
           })
         ).id,
       ).toBe(cliVersion.id);
@@ -1593,12 +1882,27 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         name: "CLI compatible source",
         parameters: {},
       });
+      expect(cliOrder.canDelete).toBe(true);
       const cliJobRequest = { idempotencyKey: randomUUID(), confirmPlan: true };
       const cliJob = await applications.prepareJob(
         owner,
         cliOrder.id,
         cliJobRequest,
       );
+      const plannedObservability = (
+        await withTenant(pool, owner, (client) =>
+          client.query(
+            "SELECT inputs->'variables'->'application'->'observability' AS observability FROM lzc.application_jobs WHERE id=$1",
+            [cliJob.id],
+          ),
+        )
+      ).rows[0].observability;
+      expect(plannedObservability).toMatchObject({
+        enabled: true,
+        plan_name: "Observability-Starter-EU01",
+        acl: [],
+      });
+      expect(plannedObservability).not.toHaveProperty("access_source");
       expect(
         await applications.prepareJob(owner, cliOrder.id, cliJobRequest),
       ).toEqual(cliJob);
@@ -1704,6 +2008,124 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         stateBackendId: backendId,
         confirmBackendApproval: true,
       };
+      const deletedOrder = await applications.order(owner, {
+        versionId: cliVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Prepared deletion",
+        parameters: {},
+      });
+      const deletedJob = await applications.prepareJob(owner, deletedOrder.id, {
+        idempotencyKey: randomUUID(),
+        confirmPlan: true,
+      });
+      expect(
+        (await applications.listInstances(owner)).find(
+          (item) => item.id === deletedOrder.id,
+        )?.canDelete,
+      ).toBe(true);
+      await applications.deleteOrder(owner, deletedOrder.id, {
+        confirmDeletion: true,
+      });
+      expect(await applications.listJobs(engineer, deletedOrder.id)).toEqual(
+        [],
+      );
+      await expect(
+        applications.approveJobBackend(engineer, deletedJob.id, backendRequest),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_deleted",
+      });
+      await expect(
+        applications.claimJobGrant(engineer, deletedJob.id),
+      ).rejects.toBeDefined();
+      const racePool = new pg.Pool({
+        ...migrationConfig,
+        user: "configurator_app",
+        password: "runtime-test-only",
+        max: 4,
+      });
+      try {
+        const racing = new Applications(racePool);
+        const preapprovedOrder = await applications.order(owner, {
+          versionId: cliVersion.id,
+          idempotencyKey: randomUUID(),
+          name: "Backend approved deletion",
+          parameters: {},
+        });
+        const preapprovedJob = await applications.prepareJob(
+          owner,
+          preapprovedOrder.id,
+          { idempotencyKey: randomUUID(), confirmPlan: true },
+        );
+        await applications.approveJobBackend(
+          engineer,
+          preapprovedJob.id,
+          backendRequest,
+        );
+        await applications.deleteOrder(owner, preapprovedOrder.id, {
+          confirmDeletion: true,
+        });
+        await expect(
+          applications.approveJobBackend(
+            engineer,
+            preapprovedJob.id,
+            backendRequest,
+          ),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_order_deleted",
+        });
+        await expect(
+          applications.claimJobGrant(engineer, preapprovedJob.id),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_order_deleted",
+        });
+        await expect(
+          applications.issueRunnerTicket(engineer, preapprovedJob.id, {
+            runnerPackageId: randomUUID(),
+            acceleratorRevision: cliRevision,
+            providerLockSha256:
+              "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+          }),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_order_deleted",
+        });
+        for (let iteration = 0; iteration < 4; iteration++) {
+          const raceOrder = await applications.order(owner, {
+            versionId: cliVersion.id,
+            idempotencyKey: randomUUID(),
+            name: `Deletion race ${iteration}`,
+            parameters: {},
+          });
+          const racedJob = await applications.prepareJob(owner, raceOrder.id, {
+            idempotencyKey: randomUUID(),
+            confirmPlan: true,
+          });
+          await applications.approveJobBackend(
+            engineer,
+            racedJob.id,
+            backendRequest,
+          );
+          const results = await Promise.allSettled([
+            racing.deleteOrder(owner, raceOrder.id, { confirmDeletion: true }),
+            racing.claimJobGrant(engineer, racedJob.id),
+          ]);
+          expect(
+            results.filter((result) => result.status === "fulfilled"),
+          ).toHaveLength(1);
+          const state = (
+            await migration.query(
+              "SELECT EXISTS(SELECT 1 FROM lzc.application_order_deletions WHERE instance_id=$1) AS deleted, EXISTS(SELECT 1 FROM lzc.application_job_claims WHERE job_id=$2) AS claimed",
+              [raceOrder.id, racedJob.id],
+            )
+          ).rows[0];
+          expect(state.deleted).not.toBe(state.claimed);
+        }
+      } finally {
+        await racePool.end();
+      }
       await expect(
         applications.approveJobBackend(owner, job.id, backendRequest),
       ).rejects.toMatchObject({ code: "42501" });
@@ -2170,6 +2592,34 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
       };
       const ticketJob = await releaseJob();
+      const otherSessionJobs = await applications.listJobs(
+        { ...substitutePe, tenantId },
+        cliOrder.id,
+      );
+      expect(otherSessionJobs).toContainEqual(
+        expect.objectContaining({ id: ticketJob.id, canDispatch: false }),
+      );
+      expect(otherSessionJobs.every((listed) => !listed.canDispatch)).toBe(
+        true,
+      );
+      const peerToken = newSessionToken();
+      const peer = await store.createSession({
+        githubId: 999999,
+        login: "other-platform-engineer",
+        id: randomUUID(),
+        hash: peerToken.hash,
+        csrfToken: randomBytes(32).toString("base64url"),
+        expiresAt: new Date(Date.now() + 3600000),
+      });
+      await migration.query(
+        "INSERT INTO lzc.memberships(tenant_id,user_id,role,product_roles) VALUES($1,$2,'viewer',ARRAY['platform-engineer'])",
+        [tenantId, peer.userId],
+      );
+      await organisations.switch(peer, tenantId);
+      expect(
+        await applications.listJobs({ ...peer, tenantId }, cliOrder.id),
+      ).toEqual([]);
+      expect(await applications.listJobs(owner, randomUUID())).toEqual([]);
       await expect(
         applications.issueRunnerTicket(owner, ticketJob.id, ticketPackage),
       ).rejects.toMatchObject({ code: "42501" });
@@ -2442,6 +2892,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         ),
       ).rejects.toMatchObject({ code: "55000" });
       const dispatchRunner = {
+        acceleratorCommit: cliRevision,
         start: vi.fn<PlanRunner["start"]>(),
         remove: vi.fn<PlanRunner["remove"]>(),
       };
@@ -2515,6 +2966,20 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       expect(starts.filter((receipt) => receipt.dispatched)).toHaveLength(1);
       expect(starts.filter((receipt) => !receipt.dispatched)).toHaveLength(1);
       expect(dispatchRunner.start).toHaveBeenCalledTimes(2);
+      expect(
+        (await applications.listInstances(owner)).find(
+          (item) => item.id === cliOrder.id,
+        )?.canDelete,
+      ).toBe(false);
+      for (const caller of [owner, engineer])
+        await expect(
+          applications.deleteOrder(caller, cliOrder.id, {
+            confirmDeletion: true,
+          }),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_order_execution_started",
+        });
       expect(
         await dispatchApplications.runnerInput(dispatchedTicket, ticketPackage),
       ).toMatchObject({
@@ -3140,6 +3605,1143 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       } finally {
         await api.close();
       }
+      const delegatedBackendId = randomUUID();
+      await migration.query(
+        "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id,state) VALUES($1,$2,$3,'Delegated test','automation@sa.stackit.cloud','test-key','stored')",
+        [profileId, tenantId, engineer.userId],
+      );
+      const delegatedBackendCredentials = {
+        accessKeyId: "delegated-test-only",
+        secretAccessKey: "delegated-test-only",
+      };
+      await migration.query(
+        "INSERT INTO lzc.state_backends(id,tenant_id,descriptor,identity_sha256,credentials_ciphertext) VALUES($1,$2,$3,$4,$5)",
+        [
+          delegatedBackendId,
+          tenantId,
+          JSON.stringify(backendDescriptor),
+          randomBytes(32).toString("hex"),
+          applicationCrypto.encrypt(
+            Buffer.from(JSON.stringify(delegatedBackendCredentials)),
+            tenantId,
+            delegatedBackendId,
+            `backend:${delegatedBackendId}`,
+          ),
+        ],
+      );
+      const delegatedTechnical = {
+        ...technical,
+        verifyDelegated: vi.fn(
+          async () => (await technical.verifyForPreparation()).check,
+        ),
+      };
+      const delegatedRunner = {
+        acceleratorCommit: cliRevision,
+        applicationMaintenanceEnabled: true,
+        start: vi.fn<PlanRunner["start"]>(),
+        remove: vi.fn<PlanRunner["remove"]>(),
+        supportsArtifact: vi.fn(() => true),
+        preview: vi.fn<
+          (
+            saved?: Parameters<NonNullable<PlanRunner["preview"]>>[0],
+          ) => Promise<unknown>
+        >(async () => ({
+          format_version: "1.2",
+          terraform_version: "1.12.6",
+          errored: false,
+          complete: true,
+          configuration: {},
+          planned_values: {},
+          resource_changes: [
+            {
+              mode: "managed",
+              type: "stackit_resourcemanager_project",
+              name: "application",
+              change: {
+                actions: ["create"],
+                before: null,
+                after: { name: "Delegated direct order", region: "eu01" },
+                after_sensitive: {},
+                after_unknown: { project_id: true },
+              },
+            },
+          ],
+        })),
+      };
+      const delegatedApplications = new Applications(
+        pool,
+        delegatedTechnical,
+        applicationSecrets,
+        applicationBackends,
+        { runner: delegatedRunner, origin: "http://127.0.0.1:3000" },
+        applicationCrypto,
+      );
+      const executionRequest = {
+        enabled: true,
+        stateBackendId: delegatedBackendId,
+        confirmExecution: true,
+      };
+      await expect(
+        delegatedApplications.configureExecution(
+          owner,
+          approved.document.revision,
+          executionRequest,
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      const executionBinding = await delegatedApplications.configureExecution(
+        engineer,
+        approved.document.revision,
+        executionRequest,
+      );
+      expect(
+        await delegatedApplications.configureExecution(
+          engineer,
+          approved.document.revision,
+          executionRequest,
+        ),
+      ).toEqual(executionBinding);
+      expect(
+        await delegatedApplications.listExecutionBindings(owner),
+      ).toContainEqual({
+        id: executionBinding.id,
+        platformRevision: approved.document.revision,
+        backendId: delegatedBackendId,
+        configuredBy: engineer.userId,
+      });
+      await applications.prepareJob(owner, cliOrder.id, cliJobRequest);
+      expect(
+        (
+          await migration.query(
+            "SELECT 1 FROM lzc.application_job_delegations WHERE job_id=$1",
+            [cliJob.id],
+          )
+        ).rowCount,
+      ).toBe(0);
+      const delegatedOrderRequest = {
+        versionId: cliVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Delegated direct order",
+        parameters: {},
+      };
+      const delegatedOrder = await delegatedApplications.order(
+        owner,
+        delegatedOrderRequest,
+      );
+      expect(delegatedOrder.executionConfigured).toBe(true);
+      expect(
+        (await delegatedApplications.order(owner, delegatedOrderRequest))
+          .executionConfigured,
+      ).toBe(true);
+      const delegatedJob = await delegatedApplications.prepareJob(
+        owner,
+        delegatedOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      expect(
+        await delegatedApplications.listJobs(owner, delegatedOrder.id),
+      ).toMatchObject([
+        {
+          id: delegatedJob.id,
+          backendId: delegatedBackendId,
+          delegatedExecution: true,
+          canApproveBackend: false,
+          canDispatch: true,
+        },
+      ]);
+      const engineerExpiry = (
+        await migration.query(
+          "SELECT expires_at FROM lzc_auth.sessions WHERE id=$1",
+          [engineer.id],
+        )
+      ).rows[0].expires_at;
+      let delegatedTicket = "";
+      delegatedRunner.start.mockImplementation(
+        async (id, ticket, _origin, record) => {
+          delegatedTicket = ticket;
+          await record(id, ticketPackage.runnerPackageId);
+        },
+      );
+      await migration.query(
+        "UPDATE lzc_auth.sessions SET expires_at=now()-interval '1 second' WHERE id=$1",
+        [engineer.id],
+      );
+      try {
+        expect(
+          await delegatedApplications.dispatchJob(owner, delegatedJob.id, {
+            confirmPlan: true,
+          }),
+        ).toEqual({ jobId: delegatedJob.id, dispatched: true });
+        const secretReads = applicationSecrets.get.mock.calls.length;
+        expect(
+          await delegatedApplications.runnerInput(
+            delegatedTicket,
+            ticketPackage,
+          ),
+        ).toMatchObject({
+          id: delegatedJob.id,
+          key: applicationSecret.key,
+          mode: "application-plan",
+          backend: {
+            kind: "s3",
+            descriptor: { ...backendDescriptor, key: delegatedOrder.stateKey },
+            credentials: delegatedBackendCredentials,
+          },
+        });
+        expect(applicationSecrets.get).toHaveBeenLastCalledWith(
+          { tenantId, userId: engineer.userId },
+          profileId,
+        );
+        expect(delegatedTechnical.verifyDelegated).toHaveBeenCalledWith(
+          applicationSecret.key,
+          organizationId,
+        );
+        await expect(
+          delegatedApplications.releaseRunnerCredential(
+            delegatedTicket,
+            ticketPackage,
+          ),
+        ).rejects.toBeDefined();
+        expect(applicationSecrets.get.mock.calls.length).toBe(secretReads + 1);
+        await expect(
+          delegatedApplications.runnerInput(delegatedTicket, ticketPackage),
+        ).rejects.toBeDefined();
+        for (const stage of ["initializing", "validating", "planning"] as const)
+          await delegatedApplications.runnerStage(
+            delegatedTicket,
+            ticketPackage,
+            { stage },
+          );
+        await expect(
+          withTenant(pool, owner, (client) =>
+            client.query(
+              "SELECT lzc_auth.delegated_application_operation($1,$2,'result',$3::jsonb)",
+              [
+                owner.id,
+                delegatedJob.id,
+                JSON.stringify({ status: "succeeded" }),
+              ],
+            ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        const artifact = await delegatedApplications.runnerArtifact(
+          delegatedTicket,
+          ticketPackage,
+          {
+            data: Buffer.from("delegated-test-plan").toString("base64"),
+            summary: summarizePlan(
+              await delegatedRunner.preview(),
+              2,
+              "opentofu-1.12.6",
+            ),
+          },
+        );
+        await delegatedApplications.runnerResult(
+          delegatedTicket,
+          ticketPackage,
+          {
+            status: "succeeded",
+            summary: summarizePlan(
+              await delegatedRunner.preview(),
+              2,
+              "opentofu-1.12.6",
+            ),
+            artifactSha256: artifact.sha256,
+          },
+        );
+        const preview = await delegatedApplications.previewPlan(
+          owner,
+          delegatedJob.id,
+        );
+        expect(preview).toMatchObject({
+          jobId: delegatedJob.id,
+          artifactSha256: artifact.sha256,
+          resources: [
+            { type: "stackit_resourcemanager_project", action: "create" },
+          ],
+        });
+        expect(
+          (await delegatedApplications.listJobs(owner, delegatedOrder.id))[0]
+            ?.canApply,
+        ).toBe(true);
+        expect(
+          (await delegatedApplications.listInstances(owner)).find(
+            (item) => item.id === delegatedOrder.id,
+          )?.canDelete,
+        ).toBe(true);
+        await expect(
+          delegatedApplications.startApply(owner, delegatedJob.id, {
+            artifactSha256: "f".repeat(64),
+          }),
+        ).rejects.toMatchObject({ code: "40001" });
+        await expect(
+          delegatedApplications.startApply(engineer, delegatedJob.id, {
+            artifactSha256: artifact.sha256,
+          }),
+        ).rejects.toBeDefined();
+        const beforeApply = delegatedRunner.start.mock.calls.length;
+        const shortExpiry = new Date(Date.now() + 39000);
+        const originalExpiry = (
+          await migration.query(
+            "SELECT expires_at FROM lzc_auth.sessions WHERE id=$1",
+            [owner.id],
+          )
+        ).rows[0].expires_at;
+        let apply: Awaited<ReturnType<Applications["startApply"]>>;
+        try {
+          await migration.query(
+            "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+            [owner.id, shortExpiry],
+          );
+          apply = await delegatedApplications.startApply(
+            { ...owner, expiresAt: shortExpiry },
+            delegatedJob.id,
+            { artifactSha256: artifact.sha256 },
+          );
+          const lease = (
+            await migration.query(
+              "SELECT j.created_at,j.expires_at,t.expires_at AS ticket_expiry FROM lzc.application_jobs j JOIN lzc.application_runner_tickets t ON t.job_id=j.id WHERE j.id=$1",
+              [apply.jobId],
+            )
+          ).rows[0];
+          expect(lease.expires_at.getTime()).toBeGreaterThan(
+            shortExpiry.getTime(),
+          );
+          expect(lease.expires_at.getTime() - lease.created_at.getTime()).toBe(
+            25 * 60000,
+          );
+          expect(lease.ticket_expiry).toEqual(lease.expires_at);
+        } finally {
+          await migration.query(
+            "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+            [owner.id, originalExpiry],
+          );
+        }
+        expect(apply.dispatched).toBe(true);
+        expect(delegatedRunner.start.mock.calls.length).toBe(beforeApply + 1);
+        await expect(
+          delegatedApplications.deleteOrder(owner, delegatedOrder.id, {
+            confirmArchive: true,
+          }),
+        ).rejects.toMatchObject({
+          message: "application_order_archive_unavailable",
+        });
+        expect(
+          (await delegatedApplications.listInstances(owner)).find(
+            (item) => item.id === delegatedOrder.id,
+          )?.canDelete,
+        ).toBe(false);
+        await expect(
+          delegatedApplications.deleteOrder(owner, delegatedOrder.id, {
+            confirmDeletion: true,
+          }),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_order_execution_started",
+        });
+        expect(
+          await delegatedApplications.startApply(owner, delegatedJob.id, {
+            artifactSha256: artifact.sha256,
+          }),
+        ).toEqual({ jobId: apply.jobId, dispatched: false });
+        expect(delegatedRunner.start.mock.calls.length).toBe(beforeApply + 1);
+        const applyTicket = delegatedTicket;
+        expect(
+          await delegatedApplications.runnerInput(applyTicket, ticketPackage),
+        ).toMatchObject({
+          id: apply.jobId,
+          mode: "application-apply",
+          plan: {
+            data: Buffer.from("delegated-test-plan").toString("base64"),
+            sha256: artifact.sha256,
+          },
+          backend: {
+            descriptor: { ...backendDescriptor, key: delegatedOrder.stateKey },
+          },
+        });
+        await expect(
+          delegatedApplications.runnerInput(applyTicket, ticketPackage),
+        ).rejects.toBeDefined();
+        const identityExpiry = (
+          await migration.query(
+            "SELECT valid_until FROM lzc.stackit_identities WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+            [owner.userId],
+          )
+        ).rows[0].valid_until;
+        try {
+          await migration.query(
+            "UPDATE lzc_auth.sessions SET expires_at=now()-interval '1 second' WHERE id=$1",
+            [owner.id],
+          );
+          await migration.query(
+            "UPDATE lzc.stackit_identities SET valid_until=now()-interval '1 second' WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+            [owner.userId],
+          );
+          await expect(
+            delegatedApplications.listJobs(owner, delegatedOrder.id),
+          ).rejects.toBeDefined();
+          await expect(
+            delegatedApplications.runnerInput(applyTicket, ticketPackage),
+          ).rejects.toMatchObject({
+            code: "invalid_application_runner_ticket",
+          });
+          for (const stage of ["initializing", "validating", "applying"])
+            await delegatedApplications.runnerStage(
+              applyTicket,
+              ticketPackage,
+              { stage },
+            );
+          await delegatedApplications.runnerOutput(applyTicket, ticketPackage, {
+            text: "Apply complete",
+            truncated: false,
+          });
+          await delegatedApplications.runnerResult(applyTicket, ticketPackage, {
+            status: "succeeded",
+          });
+          await expect(
+            delegatedApplications.runnerResult(applyTicket, ticketPackage, {
+              status: "succeeded",
+            }),
+          ).rejects.toBeDefined();
+        } finally {
+          await migration.query(
+            "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+            [owner.id, originalExpiry],
+          );
+          await migration.query(
+            "UPDATE lzc.stackit_identities SET valid_until=$2 WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+            [owner.userId, identityExpiry],
+          );
+        }
+        expect(
+          await delegatedApplications.outputJob(owner, apply.jobId),
+        ).toEqual({
+          text: "Apply complete",
+          truncated: false,
+          kind: "execution",
+        });
+        await expect(
+          delegatedApplications.outputJob(engineer, apply.jobId),
+        ).rejects.toBeDefined();
+        await expect(
+          delegatedApplications.deleteOrder(owner, delegatedOrder.id, {
+            confirmArchive: true,
+          }),
+        ).rejects.toMatchObject({
+          message: "application_order_archive_unavailable",
+        });
+        const appliedJobs = await delegatedApplications.listJobs(
+          owner,
+          delegatedOrder.id,
+        );
+        expect(appliedJobs).toContainEqual(
+          expect.objectContaining({
+            id: apply.jobId,
+            operation: "apply",
+            planId: delegatedJob.id,
+            status: "succeeded",
+          }),
+        );
+        expect(
+          appliedJobs.find((item) => item.id === delegatedJob.id)?.canApply,
+        ).toBe(false);
+        const freshPlan = async (name: string) => {
+          const ordered = await delegatedApplications.order(owner, {
+            versionId: cliVersion.id,
+            idempotencyKey: randomUUID(),
+            name,
+            parameters: {},
+          });
+          const key = randomUUID();
+          const started = await delegatedApplications.startPlan(
+            owner,
+            ordered.id,
+            { idempotencyKey: key },
+          );
+          const starts = delegatedRunner.start.mock.calls.length;
+          expect(
+            await delegatedApplications.startPlan(owner, ordered.id, {
+              idempotencyKey: key,
+            }),
+          ).toEqual({ jobId: started.jobId, dispatched: false });
+          expect(delegatedRunner.start.mock.calls.length).toBe(starts);
+          const ticket = delegatedTicket;
+          await delegatedApplications.runnerInput(ticket, ticketPackage);
+          for (const stage of ["initializing", "validating", "planning"])
+            await delegatedApplications.runnerStage(ticket, ticketPackage, {
+              stage,
+            });
+          const summary = summarizePlan(
+            await delegatedRunner.preview(),
+            2,
+            "opentofu-1.12.6",
+          );
+          const receipt = await delegatedApplications.runnerArtifact(
+            ticket,
+            ticketPackage,
+            {
+              data: Buffer.from("delegated-test-plan").toString("base64"),
+              summary,
+            },
+          );
+          await delegatedApplications.runnerResult(ticket, ticketPackage, {
+            status: "succeeded",
+            summary,
+            artifactSha256: receipt.sha256,
+          });
+          return { ordered, id: started.jobId, sha: receipt.sha256 };
+        };
+        const maintenance = await freshPlan("Application maintenance");
+        const failedApply = await delegatedApplications.startApply(
+          owner,
+          maintenance.id,
+          { artifactSha256: maintenance.sha },
+        );
+        const failedTicket = delegatedTicket;
+        await delegatedApplications.runnerInput(failedTicket, ticketPackage);
+        for (const stage of ["initializing", "validating", "applying"])
+          await delegatedApplications.runnerStage(failedTicket, ticketPackage, {
+            stage,
+          });
+        await expect(
+          delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+            idempotencyKey: randomUUID(),
+            purpose: "destroy",
+          }),
+        ).rejects.toMatchObject({ code: "40001" });
+        await delegatedApplications.runnerResult(failedTicket, ticketPackage, {
+          status: "failed",
+          errorCode: "apply_failed",
+        });
+        await expect(
+          delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+            idempotencyKey: randomUUID(),
+            purpose: "drift",
+          }),
+        ).rejects.toMatchObject({ code: "40001" });
+        await admin.query("BEGIN; SET LOCAL session_replication_role=replica");
+        try {
+          await admin.query(
+            "UPDATE lzc.application_runner_tickets SET expires_at=clock_timestamp()-interval '1 microsecond' WHERE job_id=$1",
+            [failedApply.jobId],
+          );
+          await admin.query("COMMIT");
+        } catch (error) {
+          await admin.query("ROLLBACK");
+          throw error;
+        }
+        const historical = (
+          await migration.query(
+            "SELECT * FROM lzc.application_dispatches WHERE job_id=$1",
+            [failedApply.jobId],
+          )
+        ).rows;
+        await expect(
+          delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+            idempotencyKey: randomUUID(),
+          }),
+        ).rejects.toMatchObject({ code: "40001" });
+        const originalPreview = await delegatedRunner.preview({
+          bytes: Buffer.alloc(0),
+          sha256: "a".repeat(64),
+          identity: ticketPackage.runnerPackageId,
+        });
+        const maintenancePlan = async (purpose: "destroy" | "drift") => {
+          const change =
+            purpose === "destroy"
+              ? {
+                  actions: ["delete"],
+                  before: { name: "Application maintenance", region: "eu01" },
+                  after: null,
+                }
+              : {
+                  actions: ["update"],
+                  before: { name: "Cloud name", region: "eu01" },
+                  after: { name: "Application maintenance", region: "eu01" },
+                };
+          delegatedRunner.preview.mockResolvedValue({
+            format_version: "1.2",
+            terraform_version: "1.12.6",
+            errored: false,
+            configuration: {},
+            planned_values: {},
+            resource_changes: [
+              {
+                mode: "managed",
+                type: "stackit_resourcemanager_project",
+                name: "application",
+                change,
+              },
+            ],
+            resource_drift:
+              purpose === "drift"
+                ? [
+                    {
+                      mode: "managed",
+                      type: "stackit_resourcemanager_project",
+                      name: "application",
+                      change: {
+                        actions: ["update"],
+                        before: {
+                          name: "Application maintenance",
+                          description: "private-drift",
+                        },
+                        after: {
+                          name: "Cloud name",
+                          description: "private-drift",
+                        },
+                        before_sensitive: { description: true },
+                        after_sensitive: { description: true },
+                      },
+                    },
+                  ]
+                : [],
+          });
+          const key = randomUUID();
+          const job = await delegatedApplications.startPlan(
+            owner,
+            maintenance.ordered.id,
+            { idempotencyKey: key, purpose },
+          );
+          await expect(
+            delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+              idempotencyKey: key,
+              purpose: purpose === "destroy" ? "drift" : "destroy",
+            }),
+          ).rejects.toMatchObject({ code: "idempotency_conflict" });
+          const ticket = delegatedTicket;
+          expect(
+            (await delegatedApplications.runnerInput(ticket, ticketPackage))
+              .application.purpose,
+          ).toBe(purpose);
+          for (const stage of ["initializing", "validating", "planning"])
+            await delegatedApplications.runnerStage(ticket, ticketPackage, {
+              stage,
+            });
+          const summary = summarizePlan(
+            await delegatedRunner.preview({
+              bytes: Buffer.alloc(0),
+              sha256: "a".repeat(64),
+              identity: ticketPackage.runnerPackageId,
+            }),
+            2,
+            "opentofu-1.12.6",
+          );
+          const artifact = await delegatedApplications.runnerArtifact(
+            ticket,
+            ticketPackage,
+            {
+              data: Buffer.from("delegated-test-plan").toString("base64"),
+              summary,
+            },
+          );
+          await delegatedApplications.runnerResult(ticket, ticketPackage, {
+            status: "succeeded",
+            summary,
+            artifactSha256: artifact.sha256,
+          });
+          return { id: job.jobId, sha: artifact.sha256 };
+        };
+        const drift = await maintenancePlan("drift");
+        expect(
+          (
+            await delegatedApplications.listJobs(owner, maintenance.ordered.id)
+          ).find((job) => job.id === drift.id),
+        ).toMatchObject({ purpose: "drift", canApply: false });
+        const observed = await delegatedApplications.previewPlan(
+          owner,
+          drift.id,
+        );
+        expect(observed.drift).toHaveLength(1);
+        expect(JSON.stringify(observed)).not.toContain("private-drift");
+        await expect(
+          delegatedApplications.startApply(owner, drift.id, {
+            artifactSha256: drift.sha,
+          }),
+        ).rejects.toMatchObject({ code: "application_drift_read_only" });
+        const destroyed = await maintenancePlan("destroy");
+        for (const input of [
+          { artifactSha256: destroyed.sha },
+          {
+            artifactSha256: destroyed.sha,
+            confirmDestroy: true,
+            instanceId: randomUUID(),
+          },
+        ])
+          await expect(
+            delegatedApplications.startApply(owner, destroyed.id, input),
+          ).rejects.toMatchObject({
+            code: "application_destroy_confirmation_required",
+          });
+        const destroyApply = await delegatedApplications.startApply(
+          owner,
+          destroyed.id,
+          {
+            artifactSha256: destroyed.sha,
+            confirmDestroy: true,
+            instanceId: maintenance.ordered.id,
+          },
+        );
+        const destroyTicket = delegatedTicket;
+        expect(
+          (
+            await delegatedApplications.runnerInput(
+              destroyTicket,
+              ticketPackage,
+            )
+          ).application.purpose,
+        ).toBe("destroy");
+        await expect(
+          delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+            idempotencyKey: randomUUID(),
+            purpose: "drift",
+          }),
+        ).rejects.toMatchObject({ code: "40001" });
+        for (const stage of ["initializing", "validating", "applying"])
+          await delegatedApplications.runnerStage(
+            destroyTicket,
+            ticketPackage,
+            { stage },
+          );
+        await delegatedApplications.runnerResult(destroyTicket, ticketPackage, {
+          status: "succeeded",
+        });
+        expect(
+          (
+            await delegatedApplications.listJobs(owner, maintenance.ordered.id)
+          ).find((job) => job.id === destroyApply.jobId),
+        ).toMatchObject({
+          purpose: "destroy",
+          operation: "apply",
+          status: "succeeded",
+        });
+        expect(
+          (
+            await migration.query(
+              "SELECT * FROM lzc.application_dispatches WHERE job_id=$1",
+              [failedApply.jobId],
+            )
+          ).rows,
+        ).toEqual(historical);
+        expect(
+          (await delegatedApplications.listInstances(owner)).find(
+            (item) => item.id === maintenance.ordered.id,
+          ),
+        ).toMatchObject({ canDelete: false, canArchive: true });
+        delegatedRunner.preview.mockResolvedValue(originalPreview);
+        const deletablePlan = await freshPlan("Completed plan deletion");
+        const storedArtifact = await migration.query(
+          "SELECT sha256,ciphertext FROM lzc.application_runner_records WHERE job_id=$1 AND kind='artifact'",
+          [deletablePlan.id],
+        );
+        expect(
+          (await delegatedApplications.listInstances(owner)).find(
+            (item) => item.id === deletablePlan.ordered.id,
+          )?.canDelete,
+        ).toBe(true);
+        await delegatedApplications.deleteOrder(
+          owner,
+          deletablePlan.ordered.id,
+          {
+            confirmDeletion: true,
+          },
+        );
+        expect(
+          (await delegatedApplications.listInstances(owner)).some(
+            (item) => item.id === deletablePlan.ordered.id,
+          ),
+        ).toBe(false);
+        expect(
+          await delegatedApplications.listJobs(owner, deletablePlan.ordered.id),
+        ).toEqual([]);
+        const startsAfterDeletion = delegatedRunner.start.mock.calls.length;
+        for (const attempt of [
+          () => delegatedApplications.previewPlan(owner, deletablePlan.id),
+          () =>
+            delegatedApplications.startApply(owner, deletablePlan.id, {
+              artifactSha256: deletablePlan.sha,
+            }),
+        ])
+          await expect(attempt()).rejects.toMatchObject({
+            code: "40001",
+            message: "application_order_deleted",
+          });
+        expect(delegatedRunner.start.mock.calls.length).toBe(
+          startsAfterDeletion,
+        );
+        expect(
+          (
+            await migration.query(
+              "SELECT sha256,ciphertext FROM lzc.application_runner_records WHERE job_id=$1 AND kind='artifact'",
+              [deletablePlan.id],
+            )
+          ).rows,
+        ).toEqual(storedArtifact.rows);
+        const deletionRacePool = new pg.Pool({
+          ...migrationConfig,
+          user: "configurator_app",
+          password: "runtime-test-only",
+          max: 4,
+        });
+        try {
+          const racingApplications = new Applications(
+            deletionRacePool,
+            delegatedTechnical,
+            applicationSecrets,
+            applicationBackends,
+            { runner: delegatedRunner, origin: "http://127.0.0.1:3000" },
+            applicationCrypto,
+          );
+          for (let iteration = 0; iteration < 4; iteration++) {
+            const racedPlan = await freshPlan(
+              `Plan deletion race ${iteration}`,
+            );
+            const results = await Promise.allSettled([
+              racingApplications.deleteOrder(owner, racedPlan.ordered.id, {
+                confirmDeletion: true,
+              }),
+              racingApplications.startApply(owner, racedPlan.id, {
+                artifactSha256: racedPlan.sha,
+              }),
+            ]);
+            expect(
+              results.filter((result) => result.status === "fulfilled"),
+            ).toHaveLength(1);
+            const state = (
+              await migration.query(
+                "SELECT EXISTS(SELECT 1 FROM lzc.application_order_deletions WHERE instance_id=$1) AS deleted, EXISTS(SELECT 1 FROM lzc.application_jobs WHERE instance_id=$1 AND operation='apply') AS applied",
+                [racedPlan.ordered.id],
+              )
+            ).rows[0];
+            expect(state.deleted).not.toBe(state.applied);
+          }
+        } finally {
+          await deletionRacePool.end();
+        }
+        const superseded = await freshPlan("Superseded application plan");
+        delegatedRunner.supportsArtifact.mockReturnValueOnce(false);
+        await expect(
+          delegatedApplications.startApply(owner, superseded.id, {
+            artifactSha256: superseded.sha,
+          }),
+        ).rejects.toMatchObject({ code: "application_apply_package_changed" });
+        await delegatedApplications.prepareJob(owner, superseded.ordered.id, {
+          idempotencyKey: randomUUID(),
+          confirmPlan: true,
+        });
+        await expect(
+          delegatedApplications.startApply(owner, superseded.id, {
+            artifactSha256: superseded.sha,
+          }),
+        ).rejects.toMatchObject({ code: "40001" });
+        const recovering = await freshPlan("Application recovery");
+        const recoveryApply = await delegatedApplications.startApply(
+          owner,
+          recovering.id,
+          { artifactSha256: recovering.sha },
+        );
+        const recoveryTicket = delegatedTicket;
+        await delegatedApplications.runnerInput(recoveryTicket, ticketPackage);
+        for (const stage of ["initializing", "validating", "applying"])
+          await delegatedApplications.runnerStage(
+            recoveryTicket,
+            ticketPackage,
+            { stage },
+          );
+        const recoveryBytes = Buffer.from(
+          JSON.stringify({
+            version: 4,
+            lineage: randomUUID(),
+            serial: 1,
+            resources: [],
+            outputs: { secret: "private-recovery-only" },
+          }),
+        );
+        const recoveryHash = (await import("node:crypto"))
+          .createHash("sha256")
+          .update(recoveryBytes)
+          .digest("hex");
+        await expect(
+          delegatedApplications.runnerRecovery(recoveryTicket, ticketPackage, {
+            data: recoveryBytes.toString("base64"),
+            sha256: "f".repeat(64),
+          }),
+        ).rejects.toMatchObject({ code: "application_recovery_invalid" });
+        expect(
+          await delegatedApplications.runnerRecovery(
+            recoveryTicket,
+            ticketPackage,
+            { data: recoveryBytes.toString("base64"), sha256: recoveryHash },
+          ),
+        ).toEqual({ sha256: recoveryHash });
+        await delegatedApplications.runnerResult(
+          recoveryTicket,
+          ticketPackage,
+          { status: "failed", errorCode: "state_failed" },
+        );
+        expect(
+          await delegatedApplications.listJobs(owner, recovering.ordered.id),
+        ).toContainEqual(
+          expect.objectContaining({
+            id: recoveryApply.jobId,
+            status: "reconciliation_required",
+          }),
+        );
+        const storedRecovery = (
+          await migration.query(
+            "SELECT ciphertext FROM lzc.application_runner_records WHERE job_id=$1 AND kind='recovery'",
+            [recoveryApply.jobId],
+          )
+        ).rows[0];
+        expect(
+          storedRecovery.ciphertext.includes(
+            Buffer.from("private-recovery-only"),
+          ),
+        ).toBe(false);
+        await admin.query("BEGIN; SET LOCAL session_replication_role=replica");
+        try {
+          await admin.query(
+            "UPDATE lzc.application_runner_tickets SET expires_at=clock_timestamp()-interval '1 microsecond' WHERE job_id=$1",
+            [recoveryApply.jobId],
+          );
+          await admin.query("COMMIT");
+        } catch (error) {
+          await admin.query("ROLLBACK");
+          throw error;
+        }
+        for (const purpose of ["destroy", "drift"])
+          await expect(
+            delegatedApplications.startPlan(owner, recovering.ordered.id, {
+              idempotencyKey: randomUUID(),
+              purpose,
+            }),
+          ).rejects.toMatchObject({
+            code: "40001",
+            message: "application_instance_running",
+          });
+        await expect(
+          delegatedApplications.startPlan(owner, recovering.ordered.id, {
+            idempotencyKey: randomUUID(),
+          }),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_instance_running",
+        });
+        expect(await delegatedApplications.listInstances(owner)).toContainEqual(
+          expect.objectContaining({
+            id: recovering.ordered.id,
+            canDelete: false,
+            canArchive: true,
+          }),
+        );
+        await expect(
+          delegatedApplications.deleteOrder(owner, recovering.ordered.id, {
+            confirmDeletion: true,
+          }),
+        ).rejects.toMatchObject({
+          message: "application_order_execution_started",
+        });
+        await delegatedApplications.deleteOrder(owner, recovering.ordered.id, {
+          confirmArchive: true,
+        });
+        expect(
+          await delegatedApplications.listInstances(owner),
+        ).not.toContainEqual(
+          expect.objectContaining({ id: recovering.ordered.id }),
+        );
+        expect(
+          await delegatedApplications.listJobs(owner, recovering.ordered.id),
+        ).toEqual([]);
+        expect(
+          (
+            await migration.query(
+              "SELECT ciphertext FROM lzc.application_runner_records WHERE job_id=$1 AND kind='recovery'",
+              [recoveryApply.jobId],
+            )
+          ).rows[0].ciphertext,
+        ).toEqual(storedRecovery.ciphertext);
+        await expect(
+          delegatedApplications.startPlan(owner, recovering.ordered.id, {
+            idempotencyKey: randomUUID(),
+          }),
+        ).rejects.toMatchObject({ message: "application_order_deleted" });
+      } finally {
+        await migration.query(
+          "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+          [engineer.id, engineerExpiry],
+        );
+      }
+      const revokedOrder = await delegatedApplications.order(owner, {
+        versionId: cliVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Revoked delegation order",
+        parameters: {},
+      });
+      const revokedJob = await delegatedApplications.prepareJob(
+        owner,
+        revokedOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      await withTenant(pool, owner, (client) =>
+        client.query(
+          "SELECT lzc_auth.delegated_application_operation($1,$2,'reserve','{}')",
+          [owner.id, revokedJob.id],
+        ),
+      );
+      await delegatedApplications.configureExecution(
+        engineer,
+        approved.document.revision,
+        { enabled: false, confirmRevocation: true },
+      );
+      expect(
+        await delegatedApplications.listJobs(owner, revokedOrder.id),
+      ).toMatchObject([{ canDispatch: false }]);
+      await expect(
+        delegatedApplications.dispatchJob(owner, revokedJob.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      await withTenant(pool, owner, (client) =>
+        client.query(
+          "SELECT lzc_auth.delegated_application_operation($1,$2,'fail','{}')",
+          [owner.id, revokedJob.id],
+        ),
+      );
+      expect(
+        (
+          await migration.query(
+            "SELECT status FROM lzc.application_dispatches WHERE job_id=$1",
+            [revokedJob.id],
+          )
+        ).rows[0].status,
+      ).toBe("failed");
+      const renewedBinding = await delegatedApplications.configureExecution(
+        engineer,
+        approved.document.revision,
+        executionRequest,
+      );
+      expect(renewedBinding.id).not.toBe(executionBinding.id);
+      expect(
+        await delegatedApplications.listJobs(owner, revokedOrder.id),
+      ).toMatchObject([{ canDispatch: false }]);
+      const renewedJob = await delegatedApplications.prepareJob(
+        owner,
+        revokedOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      expect(
+        (await delegatedApplications.listJobs(owner, revokedOrder.id)).find(
+          (item) => item.id === renewedJob.id,
+        ),
+      ).toMatchObject({ canDispatch: true, delegatedExecution: true });
+      await expect(
+        delegatedApplications.dispatchJob(engineer, renewedJob.id, {
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+      const changedCredentialOrder = await delegatedApplications.order(owner, {
+        versionId: cliVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Changed delegated credential",
+        parameters: {},
+      });
+      const changedCredentialJob = await delegatedApplications.prepareJob(
+        owner,
+        changedCredentialOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      await delegatedApplications.dispatchJob(owner, changedCredentialJob.id, {
+        confirmPlan: true,
+      });
+      applicationSecrets.get.mockResolvedValueOnce({
+        ...applicationSecret,
+        version: 2,
+      });
+      await expect(
+        delegatedApplications.runnerInput(delegatedTicket, ticketPackage),
+      ).rejects.toMatchObject({ code: "application_credential_changed" });
+      await withTenant(pool, owner, (client) =>
+        client.query(
+          "SELECT lzc_auth.delegated_application_operation($1,$2,'fail','{}')",
+          [owner.id, changedCredentialJob.id],
+        ),
+      );
+      const secretRevokedOrder = await delegatedApplications.order(owner, {
+        versionId: cliVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Revoke during delegated secret read",
+        parameters: {},
+      });
+      const secretRevokedJob = await delegatedApplications.prepareJob(
+        owner,
+        secretRevokedOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      await delegatedApplications.dispatchJob(owner, secretRevokedJob.id, {
+        confirmPlan: true,
+      });
+      applicationSecrets.get.mockImplementationOnce(async () => {
+        await delegatedApplications.configureExecution(
+          engineer,
+          approved.document.revision,
+          { enabled: false, confirmRevocation: true },
+        );
+        return applicationSecret;
+      });
+      await expect(
+        delegatedApplications.runnerInput(delegatedTicket, ticketPackage),
+      ).rejects.toMatchObject({ code: "42501" });
+      await withTenant(pool, owner, (client) =>
+        client.query(
+          "SELECT lzc_auth.delegated_application_operation($1,$2,'fail','{}')",
+          [owner.id, secretRevokedJob.id],
+        ),
+      );
+      await delegatedApplications.configureExecution(
+        engineer,
+        approved.document.revision,
+        executionRequest,
+      );
+      const approvalVersion = await delegatedApplications.publish(engineer, {
+        template,
+        ...binding,
+        acceleratorRevision: cliRevision,
+        deploymentPolicy: "approval-required",
+      });
+      const approvalOrder = await delegatedApplications.order(owner, {
+        versionId: approvalVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Delegated approval order",
+        parameters: {},
+      });
+      await expect(
+        delegatedApplications.prepareJob(owner, approvalOrder.id, {
+          idempotencyKey: randomUUID(),
+          confirmPlan: true,
+        }),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "application_order_not_approved",
+      });
+      const approvedOrder = await delegatedApplications.decideOrder(
+        engineer,
+        approvalOrder.id,
+        {
+          decision: "approved",
+          reason: "Business approval test",
+          confirmDecision: true,
+        },
+      );
+      expect(approvedOrder.executionConfigured).toBe(true);
+      const approvalJob = await delegatedApplications.prepareJob(
+        owner,
+        approvalOrder.id,
+        { idempotencyKey: randomUUID(), confirmPlan: true },
+      );
+      expect(
+        await delegatedApplications.listJobs(owner, approvalOrder.id),
+      ).toMatchObject([
+        { id: approvalJob.id, canDispatch: true, delegatedExecution: true },
+      ]);
       await identities.revoke(engineer);
       await expect(
         applications.approvePlatformContract(engineer, input),

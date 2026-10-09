@@ -39,7 +39,7 @@ try {
 try {
   // CF router access logs record the source of this request to our own app.
   const response = await fetch(
-    "https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud/healthz?probe=cf-network",
+    "https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/healthz?probe=cf-network",
     { redirect: "error", signal: AbortSignal.timeout(10000) },
   );
   await response.arrayBuffer();

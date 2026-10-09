@@ -22,7 +22,12 @@ or use operator credentials. Check these prerequisites with the registered app
 before claiming end-to-end fork support.
 
 Callback URL:
-`https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud/auth/github/callback`
+`https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/github/callback`
+
+When switching the Dev route, update the existing GitHub App's homepage and
+callback URL to match before testing GitHub authorization. Updating the manifest
+does not change an already registered App. The App name and installation URL stay
+unchanged.
 
 Backend inputs to provision after registration: `LZC_GITHUB_CLIENT_ID` and
 `LZC_GITHUB_CLIENT_SECRET`. The client secret must be supplied through protected

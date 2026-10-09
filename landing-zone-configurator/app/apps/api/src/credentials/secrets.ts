@@ -5,7 +5,7 @@ import { parseServiceAccountKey, type ServiceAccountKey } from "./key.js";
 
 export interface CredentialSecrets {
   get(
-    session: Session,
+    session: Pick<Session, "tenantId" | "userId">,
     id: string,
   ): Promise<{ key: ServiceAccountKey; version: number }>;
   put(session: Session, id: string, key: ServiceAccountKey): Promise<void>;
@@ -13,7 +13,11 @@ export interface CredentialSecrets {
 }
 export class VaultCredentialSecrets implements CredentialSecrets {
   constructor(private readonly vault: VaultConnection) {}
-  private path(session: Session, id: string, metadata = false) {
+  private path(
+    session: Pick<Session, "tenantId" | "userId">,
+    id: string,
+    metadata = false,
+  ) {
     const ids = [session.tenantId, session.userId, id].map((value) =>
       z.uuid().parse(value),
     );
@@ -40,7 +44,7 @@ export class VaultCredentialSecrets implements CredentialSecrets {
       await response.arrayBuffer();
     });
   }
-  async get(session: Session, id: string) {
+  async get(session: Pick<Session, "tenantId" | "userId">, id: string) {
     const path = this.path(session, id);
     return this.vault.authorized(async (headers) => {
       const response = await this.vault.call(path, { headers });

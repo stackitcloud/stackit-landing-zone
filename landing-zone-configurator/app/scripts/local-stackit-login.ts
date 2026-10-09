@@ -326,7 +326,7 @@ async function start() {
             applications,
             binding: {
               runnerPackageId: applicationRunner.packageId,
-              acceleratorRevision: "c4b43c36af198985980b17626c48d357795e3fbd",
+              acceleratorRevision: applicationRunner.acceleratorCommit,
               providerLockSha256:
                 "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
             },

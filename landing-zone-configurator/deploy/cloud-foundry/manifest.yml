@@ -2,8 +2,8 @@
 applications:
   - name: landing-zone-configurator
     instances: 1
-    memory: 256M
-    disk_quota: 512M
+    memory: 1024M
+    disk_quota: 4096M
     stack: cflinuxfs4
     buildpacks: [binary_buildpack]
     command: ./runtime/bin/node apps/api/dist/main.js
@@ -11,7 +11,7 @@ applications:
     health-check-http-endpoint: /healthz
     timeout: 120
     routes:
-      - route: lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
+      - route: lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
     env:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -33,6 +33,10 @@ applications:
       LZC_STACKIT_CLIENT_ID: ((LZC_STACKIT_CLIENT_ID))
       LZC_STACKIT_REDIRECT_URI: ((LZC_STACKIT_REDIRECT_URI))
       LZC_APPLICATIONS_ENABLED: "true"
+      LZC_EXECUTION_ENABLED: ((LZC_EXECUTION_ENABLED))
+      LZC_APPLICATION_EXECUTION_ENABLED: ((LZC_APPLICATION_EXECUTION_ENABLED))
+      LZC_DEPLOYMENT_ARTIFACT_KEY: ((LZC_DEPLOYMENT_ARTIFACT_KEY))
+      LZC_RUNNER_INSPECTION_DIR: /home/vcap/app/inspection
       LZC_PUBLIC_ORIGIN: ((LZC_PUBLIC_ORIGIN))
       LZC_GITHUB_CLIENT_ID: ((LZC_GITHUB_CLIENT_ID))
       LZC_GITHUB_CLIENT_SECRET: ((LZC_GITHUB_CLIENT_SECRET))
@@ -41,3 +45,4 @@ applications:
       LZC_RUNNER_CF_PASSWORD: ((LZC_RUNNER_CF_PASSWORD))
       LZC_RUNNER_SPACE_ID: ((LZC_RUNNER_SPACE_ID))
       LZC_RUNNER_TEMPLATE_ID: ((LZC_RUNNER_TEMPLATE_ID))
+      LZC_RUNNER_DROPLET_ID: ((LZC_RUNNER_DROPLET_ID))

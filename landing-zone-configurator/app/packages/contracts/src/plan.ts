@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+export const applicationMvpAcceleratorCommit =
+  "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f";
+export const applicationRunnerSourceSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  acceleratorCommit: z.enum([
+    "88149782bf8e91dcdbb43a203b54337886023f7f",
+    applicationMvpAcceleratorCommit,
+  ]),
+  maintenanceEnabled: z.literal(true).optional(),
+});
 export const platformUpgradeAcceleratorCommit =
   "c4b43c36af198985980b17626c48d357795e3fbd";
 export const platformRunnerSourceSchema = z.strictObject({
@@ -34,6 +44,130 @@ export class InvalidPlan extends Error {
       "Der Plan ist unvollständig, fehlgeschlagen oder hat ein nicht unterstütztes Format.",
     );
   }
+}
+
+const applicationResourceChangesSchema = z
+  .array(
+    z.strictObject({
+      type: z.string().regex(/^[a-z][a-z0-9_]*$/),
+      name: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/),
+      action: z.enum([
+        "create",
+        "update",
+        "delete",
+        "replace",
+        "read",
+        "unchanged",
+      ]),
+      attributes: z
+        .array(
+          z.strictObject({
+            name: z.string(),
+            before: z.union([
+              z.string().max(1024),
+              z.number(),
+              z.boolean(),
+              z.null(),
+            ]),
+            after: z.union([
+              z.string().max(1024),
+              z.number(),
+              z.boolean(),
+              z.null(),
+            ]),
+            sensitive: z.boolean(),
+            unknown: z.boolean(),
+          }),
+        )
+        .max(30),
+    }),
+  )
+  .max(10000);
+
+export const applicationPlanPreviewSchema = z.strictObject({
+  resources: applicationResourceChangesSchema,
+  drift: applicationResourceChangesSchema.default([]),
+});
+
+export function applicationPlanPreview(raw: unknown) {
+  const plan = object(raw);
+  const allowed = new Set([
+    "name",
+    "description",
+    "region",
+    "organization_id",
+    "parent_id",
+    "project_id",
+    "network_id",
+    "network_area_id",
+    "ipv4_cidr",
+    "ipv4_prefix",
+    "ipv4_prefix_length",
+    "ipv6_cidr",
+    "prefix_length",
+    "cidr",
+    "gateway",
+    "role",
+    "role_id",
+    "public_ip",
+    "availability_zone",
+    "machine_type",
+    "disk_size",
+    "volume_size",
+    "type",
+    "enabled",
+  ]);
+  const scalar = (value: unknown) => {
+    if (typeof value === "string") return value.slice(0, 1024);
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "boolean") return value;
+    return null;
+  };
+  const values = (value: unknown) => (value == null ? {} : object(value));
+  const marked = (value: unknown, key: string) =>
+    value === true ||
+    (value != null &&
+      typeof value === "object" &&
+      (value as Record<string, unknown>)[key] !== undefined &&
+      (value as Record<string, unknown>)[key] !== false);
+  const changes = (input: unknown) =>
+    array(input ?? []).map((item) => {
+      const resource = object(item);
+      const change = object(resource.change);
+      const before = values(change.before);
+      const after = values(change.after);
+      const unknown = values(change.after_unknown);
+      return {
+        type: resource.type,
+        name: resource.name,
+        action: action(change.actions),
+        attributes: [
+          ...new Set([
+            ...Object.keys(before),
+            ...Object.keys(after),
+            ...Object.keys(unknown),
+          ]),
+        ]
+          .filter((key) => allowed.has(key))
+          .map((key) => {
+            const sensitive =
+              marked(change.before_sensitive, key) ||
+              marked(change.after_sensitive, key);
+            const pending = marked(change.after_unknown, key);
+            return {
+              name: key,
+              before: sensitive ? null : scalar(before[key]),
+              after: sensitive || pending ? null : scalar(after[key]),
+              sensitive,
+              unknown: pending,
+            };
+          }),
+      };
+    });
+  return applicationPlanPreviewSchema.parse({
+    resources: changes(plan.resource_changes),
+    drift: changes(plan.resource_drift),
+  });
 }
 
 function object(value: unknown): Record<string, unknown> {

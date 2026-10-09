@@ -154,61 +154,157 @@ it("requires session, CSRF and explicit new-deployment confirmation; exposes no 
     await app.close();
   }
 });
-it("creates a separate route-free runner app with only its own capability and a fixed command", async () => {
-  const spaceId = randomUUID(),
-    templateId = randomUUID(),
-    appId = randomUUID(),
-    source = randomUUID(),
-    dropletId = randomUUID();
-  const responses = [
-    { access_token: "operator-token" },
-    {
-      name: "lzc-plan-template",
-      relationships: { space: { data: { guid: spaceId } } },
+it.each(["platform", "application"] as const)(
+  "creates a separate route-free %s runner app with only its own capability and a fixed command",
+  async (broker) => {
+    const spaceId = randomUUID(),
+      templateId = randomUUID(),
+      appId = randomUUID(),
+      source = randomUUID(),
+      dropletId = randomUUID();
+    const responses = [
+      { access_token: "operator-token" },
+      {
+        name: "lzc-plan-template",
+        relationships: { space: { data: { guid: spaceId } } },
+      },
+      { guid: source, state: "STAGED" },
+      { guid: appId },
+      { guid: dropletId },
+      { state: "STAGED" },
+      {},
+      {},
+    ];
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const mock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify(responses.shift()), { status: 200 });
+    });
+    vi.stubGlobal("fetch", mock);
+    try {
+      const runner = new CloudFoundryPlanRunner({
+        username: "operator-user",
+        password: "operator-password",
+        spaceId,
+        templateId,
+        broker,
+      });
+      const record = vi.fn(async () => {}),
+        id = randomUUID();
+      await runner.start(
+        id,
+        "job-ticket",
+        "https://configurator.example",
+        record,
+      );
+      expect(record).toHaveBeenCalledWith(appId, source);
+      const body = JSON.parse(
+        String(calls.find((c) => c.url.endsWith("/v3/apps"))?.init?.body),
+      );
+      expect(body.environment_variables).toEqual({
+        LZC_RUN_TICKET: "job-ticket",
+        LZC_BROKER_ORIGIN: "https://configurator.example",
+        LZC_RUN_ID: id,
+        ...(broker === "application"
+          ? { LZC_RUNNER_BROKER: "application" }
+          : {}),
+      });
+      expect(JSON.stringify(body)).not.toContain("operator-");
+      expect(calls.some((c) => c.url.includes("routes"))).toBe(false);
+      const task = JSON.parse(String(calls.at(-1)?.init?.body));
+      expect(task.command).toBe("./runtime/bin/node apps/worker/dist/main.js");
+      expect(task.command).not.toContain("job-ticket");
+      expect(calls.every((c) => c.init?.redirect === "error")).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
+it("binds hosted preview to the exact droplet and isolated inspection package", async () => {
+  const dropletId = randomUUID();
+  const packageId = randomUUID();
+  const preview = vi.fn(async () => ({ resource_changes: [] }));
+  const output = vi.fn(async () => ({
+    text: "safe plan",
+    truncated: false,
+    kind: "saved-plan" as const,
+  }));
+  const runner = new CloudFoundryPlanRunner({
+    username: "operator-user",
+    password: "operator-password",
+    spaceId: randomUUID(),
+    templateId: randomUUID(),
+    broker: "application",
+    dropletId,
+    inspection: {
+      packageId,
+      acceleratorCommit: "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+      applicationMaintenanceEnabled: true,
+      preview,
+      output,
+      start: vi.fn(),
+      remove: vi.fn(),
     },
-    { guid: source, state: "STAGED" },
-    { guid: appId },
-    { guid: dropletId },
-    { state: "STAGED" },
-    {},
-    {},
-  ];
-  const calls: { url: string; init: RequestInit | undefined }[] = [];
-  const mock = vi.fn(async (url: unknown, init?: RequestInit) => {
-    calls.push({ url: String(url), init });
-    return new Response(JSON.stringify(responses.shift()), { status: 200 });
   });
-  vi.stubGlobal("fetch", mock);
+  const saved = {
+    bytes: Buffer.from("saved plan"),
+    sha256: "a".repeat(64),
+    identity: dropletId,
+  };
+  expect(runner.applicationMaintenanceEnabled).toBe(true);
+  expect(runner.supportsArtifact(dropletId)).toBe(true);
+  expect(runner.supportsArtifact(packageId)).toBe(false);
+  await expect(runner.preview?.(saved)).resolves.toEqual({
+    resource_changes: [],
+  });
+  expect(preview).toHaveBeenCalledWith({ ...saved, identity: packageId });
+  await expect(
+    runner.preview?.({ ...saved, identity: randomUUID() }),
+  ).rejects.toThrow("Runner package changed");
+  expect(preview).toHaveBeenCalledTimes(1);
+  const id = randomUUID();
+  await expect(runner.output?.(id, randomUUID(), saved)).resolves.toMatchObject(
+    { kind: "saved-plan" },
+  );
+  expect(output).toHaveBeenCalledWith(id, id, {
+    ...saved,
+    identity: packageId,
+  });
+});
+
+it("rejects a changed hosted droplet before creating a job app", async () => {
+  const spaceId = randomUUID();
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ access_token: "operator-token" }))
+    .mockResolvedValueOnce(
+      Response.json({
+        name: "lzc-plan-template",
+        relationships: { space: { data: { guid: spaceId } } },
+      }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ guid: randomUUID(), state: "STAGED" }),
+    );
+  vi.stubGlobal("fetch", fetchMock);
   try {
     const runner = new CloudFoundryPlanRunner({
       username: "operator-user",
       password: "operator-password",
       spaceId,
-      templateId,
+      templateId: randomUUID(),
+      dropletId: randomUUID(),
     });
-    const record = vi.fn(async () => {}),
-      id = randomUUID();
-    await runner.start(
-      id,
-      "job-ticket",
-      "https://configurator.example",
-      record,
-    );
-    expect(record).toHaveBeenCalledWith(appId, source);
-    const body = JSON.parse(
-      String(calls.find((c) => c.url.endsWith("/v3/apps"))?.init?.body),
-    );
-    expect(body.environment_variables).toEqual({
-      LZC_RUN_TICKET: "job-ticket",
-      LZC_BROKER_ORIGIN: "https://configurator.example",
-      LZC_RUN_ID: id,
-    });
-    expect(JSON.stringify(body)).not.toContain("operator-");
-    expect(calls.some((c) => c.url.includes("routes"))).toBe(false);
-    const task = JSON.parse(String(calls.at(-1)?.init?.body));
-    expect(task.command).toBe("./runtime/bin/node apps/worker/dist/main.js");
-    expect(task.command).not.toContain("job-ticket");
-    expect(calls.every((c) => c.init?.redirect === "error")).toBe(true);
+    await expect(
+      runner.start(
+        randomUUID(),
+        "job-ticket",
+        "https://configurator.example",
+        vi.fn(),
+      ),
+    ).rejects.toThrow("Runner package changed");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   } finally {
     vi.unstubAllGlobals();
   }

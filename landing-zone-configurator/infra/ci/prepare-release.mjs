@@ -31,6 +31,9 @@ if(mode==="backend") {
   const id=required("LZC_RUNNER_TEMPLATE_ID");
   if(!/^[a-f0-9-]{36}$/.test(id) || !vars.LZC_RUNNER_CF_PASSWORD || !vars.LZC_RUNNER_SPACE_ID)throw new Error("Runner not staged");
   vars.LZC_RUNNER_TEMPLATE_ID=id;vars.LZC_PLANS_ENABLED="true";
+  const droplet=required("LZC_RUNNER_DROPLET_ID");
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(droplet))throw new Error("Runner droplet invalid");
+  vars.LZC_RUNNER_DROPLET_ID=droplet;
   writeFileSync(file,JSON.stringify(vars),{mode:0o600});
 } else {
   const platform=JSON.parse(readFileSync(resolve(dir,"platform-outputs.json"),"utf8"));
@@ -51,13 +54,20 @@ if(mode==="backend") {
   const stackitConfiguration={LZC_STACKIT_AUTH_FLOW:process.env.LZC_STACKIT_AUTH_FLOW??"",LZC_STACKIT_CLIENT_ID:process.env.LZC_STACKIT_CLIENT_ID??"",LZC_STACKIT_REDIRECT_URI:process.env.LZC_STACKIT_REDIRECT_URI??""};
   if(stackitEnabled){
     const {configuredStackitFlow}=await import(pathToFileURL(resolve(".local/release/apps/api/dist/auth/stackit-device.js")));
-    configuredStackitFlow({...stackitConfiguration,LZC_STACKIT_CLI_CLIENT_APPROVED:String(clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud"});
+    configuredStackitFlow({...stackitConfiguration,LZC_STACKIT_CLI_CLIENT_APPROVED:String(clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud"});
   }
   const clientId=enabled?(process.env.LZC_GITHUB_CLIENT_ID??""):"";
   const clientSecret=enabled?(process.env.LZC_GITHUB_CLIENT_SECRET??""):"";
   if(enabled && ((!stackitEnabled && (!clientId || !clientSecret)) || !!clientId!==!!clientSecret))throw new Error("GitHub configuration incomplete");
-  Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_STACKIT_DEVICE_ENABLED:String(stackitEnabled),LZC_STACKIT_CLI_CLIENT_APPROVED:String(stackitEnabled && clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:clientId,LZC_GITHUB_CLIENT_SECRET:clientSecret});
+  Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_STACKIT_DEVICE_ENABLED:String(stackitEnabled),LZC_STACKIT_CLI_CLIENT_APPROVED:String(stackitEnabled && clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:clientId,LZC_GITHUB_CLIENT_SECRET:clientSecret});
   Object.assign(vars,stackitConfiguration);
+  const executionEnabled=process.env.LZC_EXECUTION_ENABLED==="true";
+  const applicationExecutionEnabled=process.env.LZC_APPLICATION_EXECUTION_ENABLED==="true";
+  if((executionEnabled&&!enabled)||(applicationExecutionEnabled&&!executionEnabled))throw new Error("Execution requires authentication and platform execution");
+  const artifactKey=executionEnabled?required("LZC_DEPLOYMENT_ARTIFACT_KEY"):"";
+  if(executionEnabled&&(Buffer.from(artifactKey,"base64").length!==32||Buffer.from(artifactKey,"base64").toString("base64")!==artifactKey))throw new Error("Artifact key invalid");
+  if(artifactKey)mask(artifactKey);
+  Object.assign(vars,{LZC_EXECUTION_ENABLED:String(executionEnabled),LZC_APPLICATION_EXECUTION_ENABLED:String(applicationExecutionEnabled),LZC_DEPLOYMENT_ARTIFACT_KEY:artifactKey,LZC_RUNNER_DROPLET_ID:""});
   if(clientSecret)mask(clientSecret);
   Object.assign(vars,{LZC_PLANS_ENABLED:"false",LZC_RUNNER_CF_USERNAME:"",LZC_RUNNER_CF_PASSWORD:"",LZC_RUNNER_SPACE_ID:"",LZC_RUNNER_TEMPLATE_ID:""});
   const runner=platform.plan_runner_cf?.value, runnerSpace=runtime.runner_space?.value;

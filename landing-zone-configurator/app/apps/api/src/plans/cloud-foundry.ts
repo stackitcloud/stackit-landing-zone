@@ -12,6 +12,13 @@ export class RunnerRequestError extends Error {
 }
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 export interface PlanRunner {
+  readonly acceleratorCommit?: string;
+  readonly applicationMaintenanceEnabled?: boolean;
+  preview?(saved: {
+    bytes: Buffer;
+    sha256: string;
+    identity: string;
+  }): Promise<unknown>;
   supportsArtifact?(identity: string): boolean;
   supportsAccelerator?(commit: string): boolean;
   output?(
@@ -28,16 +35,70 @@ export interface PlanRunner {
   remove(id: string, appId: string | null): Promise<void>;
 }
 export class CloudFoundryPlanRunner implements PlanRunner {
+  readonly acceleratorCommit?: string;
+  readonly applicationMaintenanceEnabled?: boolean;
+  readonly preview?: NonNullable<PlanRunner["preview"]>;
+  readonly output?: NonNullable<PlanRunner["output"]>;
+
   constructor(
     private readonly config: {
       username: string;
       password: string;
       spaceId: string;
       templateId: string;
+      broker?: "platform" | "application";
+      dropletId?: string;
+      inspection?: PlanRunner & { readonly packageId: string };
     },
   ) {
     guid(config.spaceId);
     guid(config.templateId);
+    z.enum(["platform", "application"]).parse(config.broker ?? "platform");
+    if (config.inspection) {
+      guid(config.dropletId);
+      const inspection = config.inspection;
+      if (
+        !inspection.preview ||
+        !inspection.output ||
+        !inspection.acceleratorCommit
+      )
+        throw new Error("Runner inspection configuration incomplete");
+      this.acceleratorCommit = inspection.acceleratorCommit;
+      this.applicationMaintenanceEnabled =
+        inspection.applicationMaintenanceEnabled === true;
+      this.preview = async (saved) => {
+        if (!this.supportsArtifact(saved.identity))
+          throw new Error("Runner package changed");
+        return inspection.preview?.({
+          ...saved,
+          identity: inspection.packageId,
+        });
+      };
+      this.output = async (id, _appId, saved) => {
+        if (!saved) return { text: "", truncated: false, kind: "live" };
+        if (!this.supportsArtifact(saved.identity))
+          throw new Error("Runner package changed");
+        return (
+          inspection.output?.(id, id, {
+            ...saved,
+            identity: inspection.packageId,
+          }) ?? { text: "", truncated: false, kind: "live" }
+        );
+      };
+    }
+  }
+
+  supportsAccelerator(commit: string) {
+    return (
+      commit ===
+      (this.acceleratorCommit ?? "a256f6896d11134fdc351786f1be5eba4e56b2e2")
+    );
+  }
+
+  supportsArtifact(identity: string) {
+    return Boolean(
+      this.config.inspection && identity === this.config.dropletId,
+    );
   }
   private async authorized() {
     const deadline = Date.now() + 120000;
@@ -115,6 +176,8 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       `apps/${this.config.templateId}/droplets/current`,
     );
     if (droplet.state !== "STAGED") throw new Error("Runner not staged");
+    if (this.config.dropletId && droplet.guid !== this.config.dropletId)
+      throw new Error("Runner package changed");
     const app = await call("apps", "POST", {
       name: `lzc-plan-${id}`,
       lifecycle: {
@@ -126,6 +189,9 @@ export class CloudFoundryPlanRunner implements PlanRunner {
         LZC_RUN_TICKET: ticket,
         LZC_BROKER_ORIGIN: origin,
         LZC_RUN_ID: id,
+        ...(this.config.broker === "application"
+          ? { LZC_RUNNER_BROKER: "application" }
+          : {}),
       },
     });
     const appId = guid(app.guid);
@@ -187,7 +253,11 @@ export class CloudFoundryPlanRunner implements PlanRunner {
         .parse(environment.var);
       if (
         Object.keys(variables).sort().join(",") !==
-        "LZC_BROKER_ORIGIN,LZC_RUN_ID,LZC_RUN_TICKET"
+          (this.config.broker === "application"
+            ? "LZC_BROKER_ORIGIN,LZC_RUNNER_BROKER,LZC_RUN_ID,LZC_RUN_TICKET"
+            : "LZC_BROKER_ORIGIN,LZC_RUN_ID,LZC_RUN_TICKET") ||
+        (this.config.broker === "application" &&
+          variables.LZC_RUNNER_BROKER !== "application")
       )
         throw new Error("Unexpected runner environment");
       for (const path of [

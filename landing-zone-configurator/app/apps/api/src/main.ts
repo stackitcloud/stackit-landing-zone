@@ -20,6 +20,7 @@ import { PostgresOrganisations } from "./organisation/service.js";
 import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
 import { ArtifactCrypto } from "./plans/crypto.js";
 import { PlatformExecution } from "./plans/execution.js";
+import { LocalPlanRunner } from "./plans/local.js";
 import { Plans } from "./plans/service.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
@@ -33,7 +34,18 @@ let auth: AuthServices | undefined;
 let credentials: PostgresCredentialProfiles | undefined;
 let applications: Applications | undefined;
 let stackit: StackitServices | undefined;
+let applicationRunner: CloudFoundryPlanRunner | undefined;
+let applicationRunnerPackageId: string | undefined;
 const executionEnabled = process.env.LZC_EXECUTION_ENABLED === "true";
+const applicationExecutionEnabled =
+  process.env.LZC_APPLICATION_EXECUTION_ENABLED === "true";
+if (
+  applicationExecutionEnabled &&
+  (!executionEnabled || process.env.LZC_APPLICATIONS_ENABLED !== "true")
+)
+  throw new Error(
+    "Application execution requires execution and applications configuration",
+  );
 const artifactCrypto = executionEnabled
   ? new ArtifactCrypto(process.env.LZC_DEPLOYMENT_ARTIFACT_KEY ?? "")
   : undefined;
@@ -83,6 +95,41 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
   credentials = new PostgresCredentialProfiles(pool, credentialSecrets);
   catalogues = new PostgresCloudCatalogues(pool, credentialSecrets);
   backends = artifactCrypto ? new Backends(pool, artifactCrypto) : undefined;
+  const runnerConfiguration = () => ({
+    username: required("LZC_RUNNER_CF_USERNAME"),
+    password: required("LZC_RUNNER_CF_PASSWORD"),
+    spaceId: required("LZC_RUNNER_SPACE_ID"),
+    templateId: required("LZC_RUNNER_TEMPLATE_ID"),
+  });
+  const inspectionRoot = executionEnabled
+    ? required("LZC_RUNNER_INSPECTION_DIR")
+    : undefined;
+  const dropletId = executionEnabled
+    ? required("LZC_RUNNER_DROPLET_ID")
+    : undefined;
+  const platformInspection = inspectionRoot
+    ? await LocalPlanRunner.open(
+        inspectionRoot,
+        "/tmp/lzc-platform-inspection",
+        "platform",
+      )
+    : undefined;
+  if (applicationExecutionEnabled && inspectionRoot && dropletId) {
+    const inspection = await LocalPlanRunner.open(
+      inspectionRoot,
+      "/tmp/lzc-application-inspection",
+      "application",
+    );
+    if (!inspection.applicationMaintenanceEnabled)
+      throw new Error("Application maintenance runner required");
+    applicationRunnerPackageId = dropletId;
+    applicationRunner = new CloudFoundryPlanRunner({
+      ...runnerConfiguration(),
+      broker: "application",
+      dropletId,
+      inspection,
+    });
+  }
   if (process.env.LZC_PLANS_ENABLED === "true") {
     plans = new Plans(
       pool,
@@ -90,10 +137,10 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       credentialSecrets,
       repositories,
       new CloudFoundryPlanRunner({
-        username: required("LZC_RUNNER_CF_USERNAME"),
-        password: required("LZC_RUNNER_CF_PASSWORD"),
-        spaceId: required("LZC_RUNNER_SPACE_ID"),
-        templateId: required("LZC_RUNNER_TEMPLATE_ID"),
+        ...runnerConfiguration(),
+        ...(platformInspection && dropletId
+          ? { inspection: platformInspection, dropletId }
+          : {}),
       }),
       origin,
       artifactCrypto
@@ -113,7 +160,7 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       credentials,
       credentialSecrets,
       backends,
-      undefined,
+      applicationRunner ? { runner: applicationRunner, origin } : undefined,
       artifactCrypto,
       artifactCrypto ? plans : undefined,
     );
@@ -158,10 +205,30 @@ const app = buildApp({
     : {}),
   ...(catalogues ? { catalogues } : {}),
   ...(applications ? { applications } : {}),
+  ...(applications && applicationRunner && applicationRunnerPackageId
+    ? {
+        applicationRunner: {
+          applications,
+          binding: {
+            runnerPackageId: applicationRunnerPackageId,
+            acceleratorRevision: applicationRunner.acceleratorCommit,
+            providerLockSha256:
+              "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+          },
+        },
+      }
+    : {}),
   ...(plans ? { plans } : {}),
   ...(backends ? { backends } : {}),
   ...(pool && credentials
-    ? { preparations: new Preparations(pool, repositories, credentials) }
+    ? {
+        preparations: new Preparations(
+          pool,
+          repositories,
+          credentials,
+          executionEnabled,
+        ),
+      }
     : {}),
   ...(process.env.LZC_WEB_ROOT ? { webRoot: process.env.LZC_WEB_ROOT } : {}),
   ...(auth ? { auth } : {}),

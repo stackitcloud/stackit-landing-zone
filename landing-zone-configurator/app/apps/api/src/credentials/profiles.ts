@@ -151,6 +151,10 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
       return { check, version, keyId: profile.keyId };
     });
   }
+
+  verifyDelegated(key: ServiceAccountKey, organizationId: string) {
+    return this.cloud.check(key, organizationId);
+  }
   async remove(session: Session, id: string) {
     await withTenant(this.pool, session, async (c) => {
       const row = await c.query(

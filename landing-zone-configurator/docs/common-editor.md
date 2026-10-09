@@ -90,7 +90,7 @@ Code `527bd9582f95d3cf845cfaf242f9022e1495fad8` veröffentlicht:
 - Direkter Live-Browsercheck: Multi-Region-Vorlage öffnen, neuen Editor starten, Projektliste/Netzwerkansicht auf Desktop und Mobilgerät prüfen; keine Seitenfehler oder horizontales Überlaufen.
 - Öffentliche JavaScript-/CSS-Dateien per SHA-256 mit dem getesteten Build abgeglichen; `/healthz` liefert `ok`, Sitzung ohne Anmeldung `401`.
 
-[Live-Anwendung](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud).
+[Live-Anwendung](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud).
 Keine Kunden-Konfiguration angewendet und keine Änderung nach `main` übernommen.
 
 

@@ -33,8 +33,126 @@ it("allows an unchanged organization folder without weakening the destruction ga
 
 import { expect, it } from "vitest";
 import { summarizePlan } from "../apps/worker/src/plans/summary.js";
+import { applicationPlanPreview } from "../packages/contracts/src/plan.js";
+
+it("projects application resource details while masking sensitive and unknown values", () => {
+  const preview = applicationPlanPreview(
+    plan({
+      resource_changes: [
+        {
+          mode: "managed",
+          type: "stackit_resourcemanager_project",
+          name: "application",
+          address: `project["${secret}"]`,
+          change: {
+            actions: ["create"],
+            before: null,
+            after: {
+              name: "Research",
+              region: "eu01",
+              description: secret,
+              password: secret,
+              unmarked: secret,
+              project_id: secret,
+            },
+            after_sensitive: { description: true },
+            after_unknown: { project_id: true },
+          },
+        },
+      ],
+    }),
+  );
+  expect(JSON.stringify(preview)).not.toContain(secret);
+  expect(preview.resources[0]).toMatchObject({
+    type: "stackit_resourcemanager_project",
+    name: "application",
+    action: "create",
+  });
+  expect(preview.resources[0]?.attributes).toContainEqual({
+    name: "name",
+    before: null,
+    after: "Research",
+    sensitive: false,
+    unknown: false,
+  });
+  expect(preview.resources[0]?.attributes).toContainEqual({
+    name: "description",
+    before: null,
+    after: null,
+    sensitive: true,
+    unknown: false,
+  });
+});
+
+it("does not expose before-values when a value becomes sensitive", () => {
+  const preview = applicationPlanPreview(
+    plan({
+      resource_changes: [
+        {
+          type: "stackit_network",
+          name: "application",
+          change: {
+            actions: ["update"],
+            before: { name: secret },
+            after: { name: secret },
+            before_sensitive: {},
+            after_sensitive: true,
+          },
+        },
+      ],
+    }),
+  );
+  expect(JSON.stringify(preview)).not.toContain(secret);
+  expect(preview.resources[0]?.attributes[0]?.sensitive).toBe(true);
+});
 
 const secret = "NEVER-EXPOSE-THIS-PRIVATE-VALUE";
+it("separates state-to-cloud drift from cloud-to-desired changes and masks both", () => {
+  const preview = applicationPlanPreview(
+    plan({
+      resource_drift: [
+        {
+          type: "stackit_network",
+          name: "application",
+          change: {
+            actions: ["update"],
+            before: { name: "Deployed", description: secret, password: secret },
+            after: { name: "Cloud", description: secret },
+            before_sensitive: { description: true },
+            after_sensitive: { description: true },
+          },
+        },
+      ],
+      resource_changes: [
+        {
+          type: "stackit_network",
+          name: "application",
+          change: {
+            actions: ["update"],
+            before: { name: "Cloud", description: secret },
+            after: { name: "Desired", description: secret },
+            after_sensitive: { description: true },
+          },
+        },
+      ],
+    }),
+  );
+  expect(preview.drift[0]?.attributes).toContainEqual({
+    name: "name",
+    before: "Deployed",
+    after: "Cloud",
+    sensitive: false,
+    unknown: false,
+  });
+  expect(preview.resources[0]?.attributes).toContainEqual({
+    name: "name",
+    before: "Cloud",
+    after: "Desired",
+    sensitive: false,
+    unknown: false,
+  });
+  expect(JSON.stringify(preview)).not.toContain(secret);
+});
 function resource(actions: string[], mode = "managed") {
   return {
     mode,

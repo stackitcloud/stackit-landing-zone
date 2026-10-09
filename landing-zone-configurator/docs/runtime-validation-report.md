@@ -3,7 +3,520 @@
 Generated: 2026-10-02T10:14:20Z
 Target: `landing-zone-configurator/app`, lokale STACKIT-Login-Umstellung.
 
-## Ergebnis
+## Hosted Application Maintenance: Vorbereitet (2026-10-09)
+
+Der Benutzer hat Commit, Push und Dev-Deployment freigegeben; zusaetzliche
+DB-Backups sind ausdruecklich nicht gewuenscht, da STACKIT regelmaessig sichert.
+Einziges Ziel ist `https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud`
+ohne Suffix. Der Web-Client fuer genau dieses Ziel ist bereits angefordert;
+Bereitstellung und oeffentliche Client-ID sind noch ausstehend. Die bestehende
+Suffix-Adresse wurde nur als lesender Iststand geprueft, nicht als Ziel gewaehlt.
+
+Die CF-API bindet getrennte Platform-/Application-Broker an die qualifizierte
+Droplet-ID. Vorschau und CLI-Anzeige verwenden die vorhandene backendfreie
+Inspektion mit minimaler credentialfreier Prozessumgebung. Das Release liefert
+identische Runner-/Inspektionsbytes und prueft beide nativen Roots sowie beide
+Broker-Isolationspfade. Alte Plans werden nicht umgebunden. Die schreibgeschuetzte
+Drift-Ansicht und die exakte Destroy-Bestaetigung behalten alle bestehenden Gates.
+
+```text
+local canonical check: PASS - exit_code 0; 433 unit passed, 53 gated skips
+types/build/lint: PASS - existing warnings only; same final Web assets
+CF regression: PASS - 6 cases, separate brokers/exact droplet/package-change denial
+release preparation: PASS - 3 cases including durable key and droplet requirements
+online target: NOT_LIVE - requested suffix-free origin currently HTTP 404
+hosted activation: PENDING - requested STACKIT PKCE Web client not yet provisioned
+customer operations: NOT_RUN - no Cloud Plan/Apply/Destroy or state mutation
+overall: NEEDS_SIGNOFF - Linux CI qualification and client provisioning pending
+```
+
+Es wird weder ein erneuter Client-Antrag noch die Wiederverwendung des lokalen
+Loopback-CLI-Clients verlangt. Vor Promotion muss `lzc-dev-release` den
+bereitgestellten Web-Client, Authorization Code/S256 und beide HTTPS-Callbacks
+am suffixfreien Origin erhalten. Kein Auth-Fallback, kein zusaetzliches DB-Backup
+und keine Aenderung der laufenden Online-App oder lokalen API in dieser Vorbereitung.
+
+## Aktiviert: Application-Destroy und Drift (2026-10-09)
+
+Migration `050_application_maintenance.sql` ist lokal angewandt und ab jetzt
+unveraenderlich. Die neuen Reiter erstellen explizit native Plans auf demselben
+Application-S3-Key: Destroy mit `-destroy`, Drift mit `-refresh=true` und ohne
+Apply-Moeglichkeit. Der Drift-Preview trennt `resource_drift` (State -> Cloud)
+von `resource_changes` (Cloud -> bestellte Soll-Konfiguration). Nur erlaubte,
+maskierte Attribute werden ausgegeben; untracked Cloud-Ressourcen sind nicht
+Teil dieser Pruefung. Das ist keine organisationsweite Inventarisierung.
+
+Destroy verlangt den geprueften, gespeicherten Binary-Plan, dessen exakten Hash
+und eine separate instanzgebundene Bestaetigung. Worker, API und SQL verwerfen
+Create/Update/Replace in einem Destroy-Plan; der globale Folder-Schutz bleibt
+erhalten. Aktive Jobs, frische Tickets und persistierter Recovery-State sperren
+Maintenance. Ein regelmaessig beendeter Reconciliation-Job darf nur bei
+abgelaufenem Ticket und ohne Recovery gezielt durch Destroy/Drift untersucht
+werden. Sein historischer Abschluss wird nicht umgeschrieben. Erfolgreicher
+Destroy erlaubt eine separate Archivierung ohne Verlust der Audit-Historie.
+Provider-Purge, IAM und passende unveraenderlich gebundene Source bleiben Grenzen.
+
+Aktive lokale API: PID `69665`, Terminal
+`6c2bc4bd-8769-48e1-8169-0bea22eae983`, Port 3000. Web bleibt auf Port 4181.
+PKCE und beide Ausfuehrungsflags sind unveraendert. Das bestehende Platform-Paket
+`runner-local-20261006-platform-contract-upgrade` wurde nicht veraendert.
+Neues unveraenderliches Application-Paket:
+`runner-local-20261009-application-maintenance`, ID
+`8293d556-7f04-5fb5-aee3-e4f66b3af7ad`, Source
+`57ad1f6a651c1787694b74ff8aa8b241a3dcd16f`, Archiv-SHA256
+`8a385ff55d9b0390b6903c9cb7bcbc12965782063cdbfc828540c7144b19bfac`.
+Alte Pakete und Plans wurden nicht umgebunden; fuer weitere Ausfuehrungen wird
+ein neuer passender Plan erstellt.
+
+```text
+environment: Docker PostgreSQL 17.11, Node 24.21.0/npm 11.19.0, Playwright available
+startup: PASS - local API/Web healthz 200; PKCE authorization-code retained
+unit: PASS - exit_code 0; npm test -- --maxWorkers=2; 430 passed, 53 gated skips
+integration: PASS - exit_code 0; 31 real isolated PostgreSQL tests
+	guards: purpose replay, drift Apply denial, exact Destroy confirmation,
+	active/expired ticket, recovery even after ticket expiry, archive after Destroy,
+	sensitive drift masking and unchanged historical reconciliation evidence
+browser: PASS - exit_code 0; 52 desktop/mobile lifecycle cases, including DE/EN drift
+native: PASS - exit_code 0; new package backend-free init/validate and native fixture
+types/lint: PASS - scoped check; one existing non-null warning, existing CSS warnings
+build: PASS - existing bundle-size warning only
+restore: PASS - actual 049 dump restored; 050 migrated twice as normal migration role
+retention: PASS - all 41 customer tables and 3 private files unchanged after restart
+live: PASS - guest requests 401, invalid runner input 401, exact served build verified
+cloud: NOT_RUN - no customer Plan/Apply/Destroy, state rewrite, or auth impersonation
+overall: LOCAL_PASS / CLOUD_NEEDS_SIGNOFF - Cloud/Vault/runner mocked in DB/browser cases
+delivery: LOCAL_ONLY - no commit, push, merge, Cloud Foundry release or customer archive
+```
+
+Private konsistente Dumps und Retention-Nachweise liegen unter
+`/Users/weberruss/lzc-application-maintenance-20261009-6bdRlO`
+(Verzeichnis 0700, Dumps/Nachweise 0600). Die Restore-Pruefung und der frische
+Rollout-Snapshot verwendeten einen gemeinsamen PostgreSQL-Snapshot mit pg_dump.
+Customer-DB, vorhandene State-Keys und alle historischen Packages bleiben erhalten.
+Die folgenden datierten Abschnitte dokumentieren vorherige Runtime-Staende.
+
+## Aktiviert: Application-Abschlussmeldung und Logpfad (2026-10-09)
+
+Der nachfolgende lesende Befund wurde korrigiert und lokal aktiviert. Neue
+delegierte Application-Jobs erhalten eine eigene, auf 25 Minuten begrenzte
+Ausfuehrungsfreigabe statt der kurzen Restlaufzeit der Browser-Session. Start
+und einmalige Credential-Uebernahme verlangen weiterhin die echte gueltige
+Session. Nur bereits konsumierte, exakt gebundene Tickets duerfen innerhalb
+der Job-Laufzeit nach Browser-/Human-Proof-Ablauf weitere Meldungen abgeben;
+aktueller Benutzer, Tenant, Rollen, Gruppen, Delegation, Credential-Version
+und Widerrufe werden weiterhin geprueft. Alte Tickets oder Sessions wurden
+nicht verlaengert. Legacy-Jobs behalten ihre bisherigen Laufzeitgrenzen.
+
+Application-Live-Logs werden nun im tatsaechlichen Unterverzeichnis
+`lzc-runner-*/application` gelesen. Der Worker reserviert fuer die terminale
+Meldung bis zu 60 Sekunden auch nach Ablauf des Ausfuehrungsbudgets. Wird
+Output oder Ergebnis nicht angenommen, bleibt lokal eine streng validierte,
+bereits redigierte Abschlussdiagnose mit Dateirechten `0600` erhalten. Sie ist
+auch nach API-Neustart lesbar, ersetzt aber keinen akzeptierten Ergebnisbeleg
+und loest weder Wiederholung noch automatische Erfolgskorrektur aus. Raw-Logs,
+Credentials, Plan-/State-Scratch werden weiterhin aufgeraeumt.
+
+Migration `049_application_execution_window.sql` ist lokal angewandt.
+Neuer API-Prozess: PID 6748, Terminal
+`1741293c-0848-4ed9-b435-79d0dc90ad42`, API `http://127.0.0.1:3000`,
+Web `http://127.0.0.1:4181`. Beide Ausfuehrungsflags und der bestehende
+Authorization-Code-/PKCE-Login bleiben aktiv. Das Platform-Paket
+`runner-local-20261006-platform-contract-upgrade` ist unveraendert.
+Das neue Application-Paket `runner-local-20261009-report-completion-v2`
+hat ID `1c5950bf-a9fe-50c3-a166-29af5669ec0e` und denselben Accelerator-Pin
+`57ad1f6a651c1787694b74ff8aa8b241a3dcd16f` wie zuvor. OpenTofu 1.12.6,
+Provider-Locks, native Initialisierung/Validierung und Paketidentitaet wurden
+geprueft. Historische Pakete und gespeicherte Plan-Bindungen bleiben erhalten;
+alte Artefakte wurden nicht an das neue Paket gebunden.
+
+Der konkrete Apply `dc92b569-b759-4d2c-a197-1f51f9fb2f1e` wurde erst nach dem
+bereits dokumentierten lesenden State-/Ressourcenabgleich, erneutem Nachweis
+des fehlenden Workers, leerem Jobverzeichnis, abgelaufenem konsumiertem Ticket
+und fehlenden Runner-Records operativ geschlossen. Genau eine transaktional
+bewachte Zeile wechselte von `applying` zu `reconciliation_required`, mit
+`runner_report_missing` und `finished_at=2026-10-09T09:26:10.362779Z`.
+Dieser Zeitpunkt bezeichnet die Statuskorrektur, nicht einen nachgewiesenen
+Terraform-Exit. Die UI zeigt neutral "Abschluss pruefen" und erklaert die
+fehlende Abschlussmeldung sowie die nicht wiederherstellbaren historischen
+Logs. Sie behauptet weder Apply-Erfolg noch Terraform-Fehlschlag und bietet
+keinen erneuten Apply fuer diesen Auftrag an. State und Ressourcen muessen
+vor weiterer Ausfuehrung geprueft werden; Archivieren ist kein Destroy.
+
+Private Sicherung und Vorher-/Nachher-Nachweise liegen unter
+`/Users/weberruss/lzc-report-completion-20261009-i9SVAM` (Verzeichnis `0700`,
+Dateien `0600`). Der echte Schema-048-Dump wurde isoliert wiederhergestellt
+und Migration 049 zweimal mit dem normalen Migration-Account geprueft.
+Alle 41 bestehenden Tabellen blieben im Clone und beim echten API-Neustart
+inhaltlich identisch; alle drei privaten Key-/Credential-Dateien ebenfalls.
+Nach der einzelnen operativen Statuskorrektur sind die anderen 40 Tabellen,
+alle anderen Dispatch-Zeilen und saemtliche anderen Felder des Ziel-Dispatchs
+unveraendert. Vorher-/Nachher-Status und Begruendung sind privat protokolliert.
+Keine Cloud-Schreiboperation, kein Plan/Apply/Destroy, keine State-/Lock-
+Aenderung, keine Owner-Session-Impersonation, kein Commit/Push/Hosted Release.
+
+Bestanden: finaler Build/Typecheck, 425 Unit-Tests (53 bestehende gated Skips),
+31 echte isolierte PostgreSQL-Identity-/Brokertests und 44 Application-Ablauf-
+Browserfaelle auf Desktop/Mobile. Der neue Regressionstest belegt exakt
+39 Sekunden Browser-Restlaufzeit, die unabhaengige 25-Minuten-Jobfreigabe,
+abgelehnte Browser-/Input-Replays nach Ablauf sowie akzeptierte Output-/
+Ergebnismeldungen des bereits konsumierten Jobs. Die Browserpruefungen verwenden
+API-Fixtures, nicht die ungeteilte echte Owner-Session. Native Paketpruefungen
+fuehren keinen Cloud-Apply aus. Bestehende Bundle-Groessen-/Lint-Warnungen
+wurden nicht im Rahmen dieser Korrektur bereinigt.
+
+Abschliessend bestaetigt: API und Web-Proxy `/healthz` HTTP 200, echte UI-Assets
+`index-CBjsEPeR.js` und `index-0B7QWbX-.css` byte-identisch zum geprueften Build,
+Authorization-Code-Flow weiterhin aktiv, unauthentifizierter privater
+Application-Output an beiden Origins HTTP 401 und ungueltiges Runner-Input-
+Ticket HTTP 401. Desktop-/Mobile-Screenshots zeigen den Hinweis ohne
+Textueberlagerung oder widerspruechliche Fehleranzeige. Enger Biome-Check:
+keine Fehler, zwei bestehende Warnungen. Editor-Diagnostik: keine Fehler.
+Gezielter Gitleaks-Scan von Quellcode-Diff, neuer Migration und Report:
+keine Funde. Nur der eigene Testcontainer `lzc-report-flow-20261009` wurde
+nach Namens-/Image-/Port-/Datenbankpruefung entfernt; Kunden-DB, aktive
+API/Web-Prozesse, historische Pakete und private Sicherungen bleiben erhalten.
+
+## Lesender Abgleich des nicht abgeschlossenen Applies (2026-10-09)
+
+Der Benutzer hat den lesenden State-/Cloud-Abgleich ausdrücklich freigegeben.
+Betroffen: Apply `dc92b569-b759-4d2c-a197-1f51f9fb2f1e`, Bestellung
+`0821d9ac-0d80-4dd7-92bc-5a8c8a86fc17`. Erstellung 08:19:55.100 UTC,
+Ticket konsumiert 08:19:55.824 UTC. Session und Ticket liefen bereits
+08:20:34.102 UTC ab, rund 39 Sekunden nach Übernahme. `applying` ist bei
+diesem Pfad eine vom Worker nach Initialisierung/Validierung gemeldete Phase,
+nicht bloß eine Reservierung. Der Apply wurde tatsächlich gestartet.
+
+Der exakt gebundene S3-State wurde über den vorhandenen Read-Adapter gelesen:
+State vorhanden, Serial 4, kein Lock, 14 Ressourceninstanzen entsprechend den
+14 geplanten Creates, keine deposed Instanzen und drei bestandene State-Checks.
+Enthalten sind unter anderem Projekt, Netzwerk, zwei Buckets, Object-Storage-
+Credentials-Group und Credential, Secrets Manager sowie Observability.
+Projekt `5ce020c0-08df-4fc0-92c2-bcc952d7009d` wurde per Resource-Manager-GET
+mit HTTP 200 und `ACTIVE` bestätigt; Netzwerk
+`6eb7429d-16be-42c8-ad89-5f102bd43f1e` per IaAS-v2-GET mit HTTP 200 und
+`CREATED`. Die Resource-Manager-/IaAS-Abfragen nutzten ausschließlich den
+projektspezifischen Service Account aus dem State. Keys, Tokens und sensitive
+State-Werte wurden weder ausgegeben noch in Dateien gespeichert.
+
+Der fehlende Abschlussbericht bleibt ein separater Fehler: Die Broker-Guards
+verlangen für Output-/Ergebnismeldungen ein noch gültiges Ticket und eine noch
+gültige Session. Deren kurze Restlaufzeit erklärt die fehlende Rückmeldung
+plausibel; Worker-Exitcode und frühere HTTP-Fehler sind nicht erhalten und
+werden deshalb nicht behauptet. Zusätzlich liest der lokale Application-
+Live-Output derzeit im Container-Wurzelverzeichnis, während der Worker seine
+Phasenlogs im Unterverzeichnis `application` schreibt. Das erklärt fehlende
+Live-Logs auch vor dem Aufräumen. Beide Codepfade wurden gelesen, nicht geändert.
+
+Keine DB-Statuskorrektur, kein neuer Apply/Plan/Destroy, keine Credential-,
+State-, Lock-, Ressourcen- oder Runner-Änderung. Die vorhandenen Ressourcen
+belegen die Bereitstellung, ersetzen aber nicht die fehlende authentifizierte
+Abschlussmeldung. Erneuter Apply ist nicht angezeigt; zuerst müssen Reporting-
+Laufzeit, Logpfad und kontrollierter Abschlussabgleich behoben werden.
+
+## Korrektur: Laufenden Apply erneut öffnen (2026-10-09)
+
+Erneutes Öffnen derselben Bestellung setzte den Reiter auf Plan zurück, ohne
+den keyed Detailbereich neu zu initialisieren. Der bestehende Einmal-Guard
+für die automatische Apply-Auswahl blieb gesetzt. Die Details-Aktion erhöht
+jetzt den vorhandenen Refresh-Key; dadurch werden der aktuelle Apply und seine
+Logabfrage erneut gewählt. Zusätzlich öffnet ein Klick auf den Ausführungsstatus
+direkt den zugehörigen Plan-/Apply-Reiter und scrollt zum Detailbereich.
+
+Bestanden: 42 betroffene Ablauf-/Tabellen-Browserfälle auf Desktop/Mobile,
+einschließlich Statusklick und Übersicht -> erneutes Öffnen -> Apply mit Logs,
+Typecheck, Web-Build und enger Biome-Check. UI-only, kein API-/Runner-Neustart.
+
+Separater tatsächlicher Betriebsbefund: Der neueste Kunden-Apply ist in der DB
+weiterhin `applying`, ohne `finished_at` und ohne gespeicherten Output-Record.
+Das lokale Jobverzeichnis ist leer; PID 91083 hat nur den esbuild-Hilfsprozess
+als direktes Kind, keinen Apply-Worker. Die temporären Logs konnten deshalb
+nicht über den bestehenden Live-Reader gefunden werden. Dieser Befund belegt
+keinen erfolgreichen oder fehlgeschlagenen Cloud-Abschluss. Status, State,
+Kundenauftrag und Ressourcen wurden nicht verändert; vor einem erneuten Apply
+ist ein autorisierter State-/Ressourcenabgleich erforderlich. Keine tatsächliche
+Owner-Loganzeige oder erfolgreicher Cloud-Abschluss behauptet.
+
+## Aktiviert: Tabellarische Bestellübersicht (2026-10-09)
+
+Die Bestellliste ist jetzt eine semantische Tabelle mit Name und kurzer
+Bestell-ID, lokalisiertem Bestelldatum einschließlich Uhrzeit, separater
+Freigabe, tatsächlichem letztem Plan-/Apply-Status und kompakten Icon-Aktionen
+mit benannten Tooltips. Die ausgewählte Bestellung ist hervorgehoben.
+Gleichnamige Aufträge bleiben dadurch eindeutig ihren Details zuordenbar.
+
+Statusdaten kommen ausschließlich aus der vorhandenen authentifizierten
+Job-Read-API. Laufende und ausgewählte Bestellungen werden ohne überlappende
+Anfragen aktualisiert; beim Verlassen des Bestellreiters werden Timer und
+Requests abgebrochen. Fehlende oder fehlgeschlagene Statusabfragen werden
+explizit als nicht verfügbar dargestellt, nicht als erfolgreiche Ausführung.
+Freigabe und Ausführungsstatus werden nicht miteinander vermischt.
+
+Auf Mobilgeräten scrollt nur die Tabelle horizontal. Mindestbreiten für
+Freigabe und Ausführung verhindern unlesbare Buchstaben-Umbrüche. Zwei
+gleichnamige Bestellungen mit unterschiedlichen Daten sowie laufendem und
+fehlgeschlagenem Apply wurden auf Desktop und Mobile geprüft, einschließlich
+Statusfarben, Aktionen, Detailzuordnung und begrenzter Seitenbreite.
+
+Bestanden: 90 Organisations-Browserfälle, sechs Übersetzungstests, Typecheck,
+Web-Build und enger Biome-Check. Nach der visuellen Spaltenkorrektur bestanden
+die beiden Tabellenfälle erneut mit expliziten Mindestbreiten-Assertions.
+Keine API-, Datenbank-, Runner- oder OIDC-Konfigurationsänderung; keine echte
+Bestellung oder Cloud-Ausführung durch den Agenten verändert.
+
+## Aktiviert: Apply-Flow, Archivierung und Object-Storage-Namenslimit (2026-10-08)
+
+Die beiden realen Application-Applies sind terminal mit `reconciliation_required`
+und `apply_failed`. Ihre gespeicherten, redigierten Ausführungslogs belegen
+STACKIT HTTP 422: Der Credentials-Group-Name `app-<instance UUID>-dev` hat
+44 Zeichen, die API erlaubt höchstens 32. Native Commit
+`57ad1f6a651c1787694b74ff8aa8b241a3dcd16f` erhält kurze Namen unverändert und
+begrenzt lange Namen auf 23 Zeichen, Bindestrich und acht SHA-256-Zeichen.
+Bucket-Namen und State-Identitäten bleiben unverändert. Der Commit ist lokal;
+es wurde nichts gepusht.
+
+Bestelldetails verwenden jetzt die Reiter Übersicht, Plan, Apply und Verlauf.
+Nur der aktuelle Plan beziehungsweise Apply steht im jeweiligen Arbeitsreiter;
+historische Jobs erscheinen ohne Ausführungsaktionen im Verlauf. Apply-Status,
+Fortschritt und Owner-exklusive Ausführungslogs ersetzen den irreführenden
+Hinweis auf einen bereits verwendeten Plan. Logs werden authentifiziert,
+mandantengebunden und mit `no-store` geliefert, nicht als State oder Planartefakt.
+
+Migration 047 ergänzt die explizite Archivierung terminal fehlgeschlagener
+Applies über `confirmArchive`. Sie nutzt das bestehende append-only Ledger und
+entfernt Aufträge aus der aktiven Liste, nicht die zugrunde liegenden Jobs,
+Auditdaten, verschlüsselten Artefakte oder Recovery-Daten. Laufende, reservierte,
+vorbereitete und erfolgreiche Applies bleiben geschützt. Normales Löschen mit
+`confirmDeletion` behält seine bestehende Apply-Sperre. Archivieren ist kein
+Destroy: Bereits angelegte Cloud-Ressourcen und State müssen vor einem weiteren
+Apply geklärt werden.
+
+Migration 048 lässt zusätzlich den neuen Native-Commit zu, ohne historische
+Source-Pins zu entfernen. Vorhandene veröffentlichte Versionen werden nicht
+umgebunden; für künftige Bereitstellungen mit dem Namensfix ist eine neue
+Template-Version erforderlich. Das neue unveränderliche Application-Paket
+`runner-local-20261008-application-order-flow` ist mit OpenTofu 1.12.6 qualifiziert,
+Package-ID `16501f6e-881f-5365-ace3-277b788b83d9`. Der Builder prüft diese Engine
+vor dem Erzeugen eines Pakets. Historisches Application-Paket
+`b314975d-30d4-5728-af32-75f6deb8d924` und das weiterhin aktive Platform-Paket
+`40ee48fa-dbb7-5f26-a7bf-b1a6c1c1be73` sind unverändert erhalten.
+
+Bestanden: 23 Native-Mock-Tests, OpenTofu- und Terraform-Validierung, 31
+PostgreSQL-Integrationstests, 421 Unit-Tests (53 bestehende Skips), 88
+Organisations-Browserprüfungen auf Desktop/Mobile, Typecheck und Web-Build.
+Der erste unbeschränkte Unit-Gesamtlauf zeigte einen Prozessgruppen-Cleanup-Flake
+(`kill EPERM`); der isolierte Runner-Test und der Gesamtlauf mit zwei Workern
+bestanden. Enger Biome-Check ist fehlerfrei, mit einer bestehenden
+Non-null-Assertion-Warnung. Die exakt gepinnte neue Icon-Abhängigkeit
+`lucide-react@1.53.0` hat in npm audit und dem CVE-Scan keine bekannten Befunde.
+
+Aktivierung erfolgte erst nach frischen Inaktivitätschecks für Application und
+Platform, privatem Backup und erfolgreicher Restore-Probe. Das gleiche Backup
+wurde als 046-Baseline und als zweimal über die normale Migrationsrolle
+migrierte 048-Kopie geprüft: Alle 41 Originaltabellen-Hashes sind gleich.
+Ein zwischen Dump und Live-Snapshot erfolgter OAuth-Refresh wurde nicht
+zurückgesetzt. Unmittelbar vor und nach dem Live-Neustart stimmen sämtliche
+Originaltabellen- und privaten Schlüsseldatei-Hashes überein. Backup:
+`/Users/weberruss/lzc-local-application-order-flow-20261008` (0700/0600).
+
+Lokale API: PID 91083, Schema `048_application_objectstorage_source.sql`,
+Application-Ausführung mit dem neuen Paket und unverändertem Platform-Paket.
+Damit sind auch die zuvor vorbereiteten frischen `canDelete`-Metadaten aktiv.
+Keine Kundenbestellung archiviert oder gelöscht, keine Veröffentlichung,
+Delegation, Cloud-Plan/Apply/Destroy oder Rebind durch den Agenten. Ein realer
+Cloud-Apply mit dem neuen Namensfix wurde nicht durchgeführt.
+
+## Korrektur: Bestellungen direkt in der Liste löschen (2026-10-08)
+
+Die tatsächliche Owner-Prüfung ergab zwei löschbare ältere Bestellungen und
+eine geschützte Bestellung mit laufendem Apply. Die UI bot die Löschaktion nur
+in geöffneten Details an. Jetzt besitzt jede vom Server als löschbar gemeldete
+Listenzeile eine eigene Aktion. Das Ziel ist die angeklickte Bestellung, nicht
+die zufällig geöffneten Details; andere ausgewählte Bestellungen bleiben
+erhalten. Bestehende Bestätigung und serverseitige Apply-Sperre bleiben bestehen.
+
+Der bestehende Owner-Browserfall löscht nun direkt aus der Liste ohne
+Detailöffnung, während eine zweite Bestellung mit Apply weiterhin keine
+Löschaktion anbietet. Alle acht Löschfälle auf Desktop/Mobile bestanden mit
+Exit-Code 0, einschließlich Abbruch, Bestätigung, PE-Zugriff und Fehlerfall.
+Typecheck und Web-Build bestanden; das neue Web-Bundle ist lokal aktiv.
+
+Zusätzlich fehlte `canDelete` in frischen Bestell-/Entscheidungsantworten.
+Die Metadaten-Anreicherung verwendet jetzt auch dort denselben unveränderten
+DB-Guard. Alle 31 PostgreSQL-Integrationstests bestanden, einschließlich des
+neuen Belegs für die frische Owner-Antwort. Diese API-Korrektur ist im Code
+vorbereitet, aber noch nicht im laufenden Prozess aktiviert: Ein tatsächlicher
+Kunden-Apply läuft, weshalb kein API-Neustart durchgeführt wurde. Bestehende
+Bestellungen erhalten ihre korrekten Löschmetadaten bereits beim Laden der
+Liste; deren Aufräumen benötigt den ausstehenden API-Neustart nicht.
+
+Keine Migration, kein Runner-Paketwechsel, keine Kundenlöschung und keine
+Unterbrechung des laufenden Applies durch den Agenten. Vorhandene unabhängige
+Preview-Lintfehler bleiben unverändert.
+
+## Korrektur: API-Plan mit aktivierter Observability (2026-10-08)
+
+Nach der ACL-Entfernung blieb im privaten API-Plan-Compiler ein zusätzlicher
+Scope-Guard bestehen, der aktivierte Observability ausdrücklich ablehnte.
+Außerdem setzte derselbe Pfad `observability.enabled` fest auf `false`.
+Beides ist korrigiert: Public-Projekte mit lokalem Netz können Observability
+verwenden. Die bestehende Einschränkung für Namespace-Dienste bleibt bestehen;
+Fehlertext und englische Übersetzung entsprechen diesem Umfang.
+
+Der vorhandene vollständige PostgreSQL-Bestell-/Plan-/Apply-Test aktiviert nun
+Observability. Eine zusätzliche Assertion liest die tatsächlich gespeicherten
+Plan-Variablen und beweist `enabled: true`, die gewählte Leistungsklasse und
+keine ACL-Netz-Bindung. Alle 31 DB-Tests sowie 18 Compiler-/Übersetzungstests
+bestanden mit Exit-Code 0; Typecheck und Web-Build ebenfalls. Der gesonderte
+Biome-Lauf meldete drei bestehende Fehler in unveränderten Preview-Hooks und
+Preview-Schlüsseln; diese wurden nicht in den Scope-Fix aufgenommen.
+
+Keine neue Migration oder Runner-Quelle ist erforderlich. Für diesen API-Fix
+kann der Benutzer eine vorhandene Bestellung auf der aktuellen Runner-Revision
+nach Neuladen erneut planen; eine weitere Veröffentlichung ist nicht nötig.
+Kein echter Cloud-Plan oder Apply wurde durch den Agenten gestartet.
+
+## Nachtrag: ACL-Einrichtung außerhalb des MVP (2026-10-08)
+
+ACL-Editor, Bestelleingaben, Projektnetz-Bindung und zugehörige
+Qualifikationsblocker sind aus dem aktiven Parametervertrag entfernt.
+Kompatibilitätstests beweisen den Erhalt gespeicherter Werte und Policies;
+obsolete Eingaben ändern die aufgelöste ACL nicht. Native Revision
+`88149782bf8e91dcdbb43a203b54337886023f7f` ergänzt ausschließlich
+`ignore_changes = [acl]` und einen Mock-Apply/Plan-Regressionstest. Der Provider
+setzt weiterhin initiale Werte und kann bei anderen Updates eingelesene Werte
+erneut übertragen; konkurrierende manuelle Änderungen sind nicht garantiert
+geschützt. Es wurde kein Cloud-Apply ausgeführt.
+
+| Prüfung | Ergebnis | Exit-Code |
+| --- | --- | --- |
+| Kanonische Unit-Suite | 421 bestanden, 53 bestehende Skips | 0 |
+| PostgreSQL 17.11 | 31 bestanden, neue Source-Grants, Tickets, delegierter Plan/Apply und Löschrennen | 0 |
+| Playwright Desktop/Mobile | 90 bestanden: 80 Organisation-/Bestellfälle und 10 Parameterfälle | 0 |
+| OpenTofu 1.12.6 Mock-Provider | 16 Application- und 5 Landing-Zone-Tests bestanden | 0 |
+| Typecheck und Web-Build | bestanden | 0 |
+| Neues Runner-Paket | gepinnte Quellen, Lock-Hashes, Init, Validate, Provider-Mirror und Archiv-SHA geprüft | 0 |
+| Kundendatenbank-Klon | 045 nach 046 zweimal migriert; zweiter Lauf idempotent | 0 |
+| Lokaler Neustart | direkte und Proxy-Healthchecks erfolgreich | 0 |
+
+Docker 29.6.2, Node 24.21.0 und Playwright mit lokalem Chrome waren verfügbar;
+keine Ersatz-Testumgebung wurde verwendet. Die vorhandenen Browserfälle wurden
+gezielt auf ACL-Abwesenheit angepasst, Stage-/Netzwerk-/Leistungsklassen-
+Bedienung bleibt geprüft. Initiale Source-Dispatch-Fixture-Abweichungen wurden
+korrigiert; der finale vollständige DB-Lauf ist ohne Skips grün. Die bekannte
+sporadische Identitäts-Fixture-Abweichung wurde nicht verändert.
+
+Lokal aktiv sind Schema 046, das unveränderte Plattform-Paket und das neue
+Application-Paket `runner-local-20261008-observability-mvp`, Identität
+`b314975d-30d4-5728-af32-75f6deb8d924`. Frisches privates Backup und
+Klonqualifikation gingen voraus. Alle ursprünglichen Werte aus 41 Tabellen und
+alle drei privaten Dateien sind auch nach dem tatsächlichen Neustart
+unverändert. Alte Pakete, veröffentlichte Versionen, Bestellungen und Saved
+Plans bleiben erhalten und werden nicht neu gebunden. Für die neue Quelle
+benötigt der Benutzer eine neue Veröffentlichung und Bestellung.
+
+Kein Push, keine Cloud-Ausführung und keine Kundenveröffentlichung, Bestellung,
+Delegation oder Löschung durch den Agenten. Die tatsächliche Owner-Session
+wurde nicht impersoniert; die Annahme eines echten Cloud-Plans bleibt ungeprüft.
+
+## Nachtrag: Bestellung nach abgeschlossenem Plan löschen (2026-10-08)
+
+Migration 045 ersetzt ausschließlich den Lösch-Guard: Ein abgeschlossener Plan
+ohne Apply-Anforderung blockiert das Löschen nicht mehr. Laufende/ungeklärte
+Ausführungen und alle Apply-Jobs bleiben gesperrt. Migrationen 040 bis 044 wurden
+nicht verändert. Lokal ist Schema 045 aktiv; die bestehenden Runner-Pakete und
+das Web-Bundle wurden nicht verändert.
+
+Alle 31 PostgreSQL-Integrationstests bestanden im finalen Lauf. Ergänzt wurden
+die Löschbarkeit nach einem erfolgreichen Saved Plan, die tatsächliche Löschung
+mit unverändertem verschlüsseltem Artefakt, die Abweisung von Vorschau und Apply
+nach Löschung sowie die Löschsperre ab Apply-Anforderung. Vier parallele
+Lösch-/Apply-Rennen mit mehreren DB-Verbindungen erlaubten jeweils genau einen
+Erfolg und niemals gleichzeitig eine Löschung und einen Apply-Job.
+
+Typecheck, scoped Biome, Editor-Diagnostik, Whitespace-Prüfung und Secret-Scan
+bestanden. Ein erster Lauf zeigte die bereits bekannte sporadische
+`invalid_stackit_identity`-Fixture-Abweichung; die betroffene Löschregression
+bestand, die folgenden beiden vollständigen Datenbankläufe waren grün. Die
+Identitäts-Fixture wurde nicht geändert oder übersprungen. Da nur SQL und Tests
+geändert wurden, war für diesen Fix kein neuer Browserlauf erforderlich.
+
+Vor Aktivierung waren keine Jobs aktiv. Ein frisches privates Backup wurde in
+einem eigenen Testcontainer restauriert und mit der normalen Migrationsrolle
+044 nach 045 migriert; der zweite Lauf war idempotent. Alle bisherigen Werte in
+41 Tabellen waren sowohl im Klon als auch nach dem tatsächlichen lokalen
+Neustart unverändert; alle drei privaten Schlüsseldateien ebenfalls. Der
+API-Healthcheck war erfolgreich. Keine Kundenbestellung wurde gelöscht und
+kein Kunden-Plan, Apply oder Cloud-Destroy durch den Agenten gestartet.
+
+## Nachtrag: Bestellung, Ressourcen-Vorschau und Saved-Plan-Apply (2026-10-08)
+
+Aktueller Stand: Eine direkte, ausführbare Bestellung startet den Plan ohne
+zusätzliche Bestätigung. Die Detailansicht zeigt eine sichere Projektion des
+gespeicherten Plans; ein expliziter Apply-Klick verwendet exakt dieses Artefakt.
+Die älteren Abschnitte dokumentieren historische Prüfstände, nicht die aktuelle
+Application-Apply-Verfügbarkeit.
+
+| Pruefung | Status | Umfang |
+| --- | --- | --- |
+| Build und Typecheck | PASS | API, Web, gemeinsame Verträge und Tests |
+| Kanonische Unit-Tests | PASS | 417 bestanden, 53 bestehende Skips |
+| PostgreSQL-Integration | PASS | 31 Tests gegen isoliertes PostgreSQL 17.11 |
+| Organisations-Browserlauf | PASS | 80 Desktop-/Mobile-Fälle, einschließlich automatischem Plan und einmaligem Apply |
+| Visuelle Kontrolle | PASS | Ressourcen-Vorschau auf Desktop und Mobil; keine Überlappung oder horizontaler Overflow |
+| Kundenklon-Migration | PASS | Reguläre Migrationsrolle, 043 nach 044, zweiter Lauf idempotent |
+| Lokaler Bestandsschutz | PASS | Sämtliche bisherigen Spaltenwerte in 41 Tabellen und alle drei privaten Dateien unverändert |
+| Lokale Laufzeit | PASS | Schema 044, API-Healthcheck und aktuelles Web-Bundle auf Port 4181 |
+
+Die Datenbanktests prüfen unter anderem Fremdnutzer-/Tenant-Abweisung,
+Artifact-Hash und Paketbindung, aktuelle Plan-Version, One-Use-Runner-Input,
+idempotenten Apply-Start sowie verschlüsselte Recovery und Ausführungssperre
+nach einem möglicherweise teilweise ausgeführten Apply. HTTP-Tests prüfen
+zusätzlich Origin, CSRF, Tenant und strikt begrenzte Request-Bodies.
+
+Vor dem lokalen Neustart wurden keine aktiven Plan-/Apply-Jobs festgestellt und
+ein privates Backup mit Verzeichnisrechten 0700 und Dateirechten 0600 erstellt.
+Bestehende Runner-Pakete wurden nicht verändert. Kein Kunden-Plan oder
+Kunden-Apply wurde für diese Verifikation gestartet; Browser- und
+Ausführungstests verwendeten isolierte Fixtures. Keine Veröffentlichung,
+Delegationsänderung oder Cloud-Foundry-Auslieferung wurde durchgeführt.
+
+## Nachtrag: Application-Plan-UI (2026-10-07)
+
+Scope: vorhandene Plan-/Backend-/Dispatch-Endpunkte im Bestell-UI verbinden,
+tenantgebundene Job-Sichtbarkeit mit Migration 041 und isolierten lokalen
+Application-Plan-Runner aktivieren. Kein Kunden-Job, Cloud-Plan oder Apply gestartet.
+
+| Pruefung | Status | Exit Code | Umfang |
+| --- | --- | --- | --- |
+| Build/Typecheck | PASS | 0 | Gemeinsame Job-Vertraege, API und Web |
+| Kanonische Unit-Tests | PASS | 0 | 412 bestanden, 53 erwartete Skips |
+| HTTP/i18n | PASS | 0 | 31 Faelle einschliesslich Capability und tenantgebundener Job-Liste |
+| PostgreSQL | PASS | 0 | 31 echte Session-/Rollen-/Tenant-/Application-Tests |
+| Browser | PASS | 0 | 60 Organisations-/Application-Faelle; nach finalem Retry-Fix alle 16 neuen Plan-Faelle erneut bestanden |
+| Native Runner | PASS | 0 | 94 Runner-Faelle, 2 erwartete Skips; Paket-Init/Validate ohne Backend oder Cloud |
+| Restore/Upgrade | PASS | 0 | 040 -> 041 zweimal mit normaler Migrationsrolle; alle 38 Tabellen unveraendert |
+| Lokaler API-/Web-Start | PASS | 0 | Ports 3000/4181, STACKIT Authorization Code/PKCE, Gast-Jobzugriff 401 |
+| Echter Application-Cloud-Plan | UNVERIFIED | n/a | Benutzer fuehrt den ersten Plan selbst im UI aus |
+| Application-Apply | UNAVAILABLE | n/a | Noch nicht implementiert; `applyEnabled=false` |
+
+Docker 29.6.2 funktional, Node 24.21.0/npm 11.19.0 gepinnt. Bestehendes Playwright
+Chromium genutzt, Desktop 1440x1000 und Mobil 390x844 visuell geprueft, kein
+Browser-Fallback. UI-Tests simulieren API-Antworten; PostgreSQL-Pruefungen verwenden
+eine getrennte lokale Testinstanz und keine Kundendaten. Native Runner-Pruefungen
+qualifizieren Paket/Isolation, nicht S3-Lock oder echte STACKIT-Plan-Ausfuehrung.
+
+Abgedeckte Wege: bestaetigte Vorbereitung durch den Besteller, Backend-Freigabe und
+bestaetigter Dispatch durch den gebundenen Platform Engineer, Status/Ergebnis nach
+Reload, ausstehende/abgelehnte Bestellungen, deaktivierter Runner, Dispatch-Fehler,
+verlorener POST-Response und erfolgreicher POST mit ausgefallenem Statusabruf.
+Andere Platform Engineers sehen keine ungebundenen Jobs. Eine zweite Sitzung des
+richtigen Freigebers darf lesen, aber keinen an die erste Sitzung gebundenen Job
+dispatchen. Schluessel, roher State und Runner-Ausgabe werden nicht angezeigt.
+
+Overall: PASS fuer den lokalen Plan-UI-Anschluss; echter Cloud-Plan UNVERIFIED,
+Ressourcenerstellung per Application-Apply weiterhin nicht verfuegbar.
+
+## Ergebnis (2026-10-02)
 
 | Pruefung | Status | Exit Code | Umfang |
 | --- | --- | --- | --- |
@@ -1187,3 +1700,68 @@ delivery: LOCAL_ONLY - no push, merge or release
 Die vorhandene Version 1 und der bereits freigegebene Plattformvertrag bleiben
 unveraendert. Application-Ausfuehrung bleibt deaktiviert; #91 und #93 sind damit
 nicht vollstaendig abgenommen.
+
+## Runner-Revision und Loeschung vor Ausfuehrung (2026-10-07)
+
+Die betroffene bestehende Bestellung bindet die Revision
+`a256f6896d11134fdc351786f1be5eba4e56b2e2`; der lokale Application-Runner
+qualifiziert `c4b43c36af198985980b17626c48d357795e3fbd`. Der Plan wurde vor
+Jobanlage korrekt abgewiesen. Die UI erklaert diese Ursache nun konkret und
+bindet neue, explizit bestaetigte Publikationen an die angebotene Runner-Revision.
+Keine bestehende Version oder Bestellung wurde umgeschrieben.
+
+Bestellloeschung ist ausschliesslich vor Dispatch, Runner-Ticket oder
+Credential-Claim verfuegbar. Migration 042 fuegt einen unveraenderlichen
+Loeschvermerk hinzu, ohne Ressourcen, State oder Bestell-/Freigabehistorie zu
+entfernen. Vorbereitete Jobs werden dadurch fuer jede weitere Freigabe gesperrt.
+
+```text
+database: PASS - 31 real PostgreSQL tests, migration twice, deletion/claim races
+http/i18n: PASS - 32 tests including strict DELETE confirmation, tenant/origin/CSRF
+browser: PASS - 72 desktop/mobile organisation, approval, Plan and deletion cases
+canonical: PASS - lint, types, build, 413 unit tests; 53 expected gated skips
+local-rollout: PASS - private backup, restored upgrade twice, schema 042
+data-retention: PASS - all 38 existing tables and 3 key/credential files unchanged
+cloud: NOT_RUN - no customer order deleted, publication, job, Plan or Apply
+delivery: LOCAL_ONLY - no push, merge or hosted release
+```
+
+Der unveraenderte grosse Identity-Proof-Test war bei Zwischenlaeufen sporadisch
+rot; der abschliessende vollstaendige DB-Lauf inklusive der neuen Sicherheits-
+und Parallelitaetsfaelle ist gruen. Application-Apply bleibt unimplementiert.
+
+## Delegierte Application-Plan-Ausfuehrung (2026-10-08)
+
+Migration 043 ergaenzt widerrufbare, unveraenderlich gebundene technische
+Ausfuehrungsberechtigungen pro Plattformvertrag. Neue Jobs erhalten die passende
+Service-Account-/Backend-Bindung bei ihrer Vorbereitung. Der Besteller startet
+explizit; eine aktive Sitzung des Platform Owners und eine weitere technische
+Backend-Freigabe pro Bestellung sind nicht erforderlich. Fachliche Freigaben
+bei `approval-required` bleiben erhalten. Bestehende Jobs und Vertraege werden
+nicht automatisch umgebunden oder freigeschaltet.
+
+```text
+database: PASS - 31 real PostgreSQL tests; delegated direct/approval-required paths
+delegation: PASS - owner start without active PE session; one-use ticket/credential
+revocation: PASS - before start, during secret read, safe dispatch cleanup
+bindings: PASS - changed credential version denied; old jobs not rebound/resurrected
+results: PASS - successful Plan requires a persisted, matching artifact
+http/i18n: PASS - 33 tests; strict setup/revocation, tenant/origin/CSRF
+browser: PASS - 76 desktop/mobile organisation, publication and order cases
+canonical: PASS - lint, types, build, 414 unit tests; 53 expected gated skips
+editor: PASS - no errors in the 11 touched code files
+secret-scan: PASS - changed code/docs and new SQL; no leaks
+local-rollout: PASS - fresh private backups; restored clone migrated twice; schema 043
+data-retention: PASS - all 39 existing tables and 3 key/credential files unchanged
+live: PASS - healthz, STACKIT PKCE, guest denial, current Web build on port 4181
+cloud: NOT_RUN - no customer Plan/Apply or automatic platform execution delegation
+delivery: LOCAL_ONLY - no commit, push, merge or hosted release
+```
+
+Die bestehende Identity-Proof-Fixture war in Zwischenlaeufen sporadisch rot;
+der abschliessende vollstaendige DB-Lauf ist gruen. Bestehende Lint-/Bundle-Warnungen
+bleiben unveraendert. Migrationen 040 bis 042 wurden nicht geaendert. Das lokale
+Backup liegt privat unter `/Users/weberruss/lzc-local-application-delegation-20261008.zFGc0p`
+mit Verzeichnisrechten 0700 und Dump-/Nachweisrechten 0600. Der eigene markierte
+Test-/Clone-Container wurde entfernt; Benutzer-DB und laufende Server bleiben
+erhalten. Application-Apply bleibt unimplementiert.

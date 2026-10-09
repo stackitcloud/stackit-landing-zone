@@ -9,6 +9,9 @@ else
 fi
 mode="${2:-initial-plan-only}"
 case "$mode:${1:-}" in
+  application-destroy-plan:initializing|application-destroy-plan:validating|application-destroy-plan:planning|application-drift-plan:initializing|application-drift-plan:validating|application-drift-plan:planning)
+    test "${LZC_BACKEND_KIND:-}" = s3 || exit 1
+    ;;
   initial-plan-only:initializing|initial-plan-only:validating|initial-plan-only:planning|platform-plan:initializing|platform-plan:validating|platform-plan:planning|platform-apply:initializing|platform-apply:validating) ;;
   platform-apply:applying)
     test -f saved-plan.bin && test ! -L saved-plan.bin && test -s saved-plan.bin || exit 1
@@ -50,8 +53,13 @@ case "${1:-}" in
     tofu init -migrate-state -force-copy -input=false -no-color -lockfile=readonly > migration.log 2>&1
     ;;
   planning)
+    plan_flag=""
+    case "$mode" in
+      application-destroy-plan) plan_flag="-destroy" ;;
+      application-drift-plan) plan_flag="-refresh=true" ;;
+    esac
     set +e
-    tofu plan -input=false -no-color -parallelism=4 -lock-timeout=0s -detailed-exitcode -var-file=landing-zone.tfvars -out=plan.bin > plan.log 2>&1
+    tofu plan ${plan_flag:+"$plan_flag"} -input=false -no-color -parallelism=4 -lock-timeout=0s -detailed-exitcode -var-file=landing-zone.tfvars -out=plan.bin > plan.log 2>&1
     plan_exit=$?
     set -e
     if [ "$plan_exit" -ne 0 ] && [ "$plan_exit" -ne 2 ]; then exit 1; fi

@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 
-test("an empty ACL draft can become an order input without granting unrestricted access", async ({
+test("MVP Observability has no ACL editor or required order input", async ({
   page,
 }) => {
   await page.goto("/templates/standalone");
@@ -20,40 +20,21 @@ test("an empty ACL draft can become an order input without granting unrestricted
   await template
     .getByLabel("Fester Wert: STACKIT Observability", { exact: true })
     .selectOption("true");
-  await template
-    .getByText("Observability-Zugriffsquellen · Fest vorgegeben", {
-      exact: true,
-    })
-    .click();
-  const source = template.getByLabel(
-    "Wertquelle: Observability-Zugriffsquellen",
-    { exact: true },
+  await expect(template.getByText(/Observability-Zugriffsquellen/)).toHaveCount(
+    0,
   );
-  await expect(source.locator('option[value="binding"]')).toBeDisabled();
-  await expect(template).toContainText(
-    "Für Public-Projekte ist die öffentliche Egress-Adresse noch nicht qualifiziert",
-  );
-  await source.selectOption("input");
-  await expect(source).toHaveValue("input");
+  await expect(
+    template.getByLabel("Wertquelle: Observability-Zugriffsquellen"),
+  ).toHaveCount(0);
   await template.getByText("Bestellung testen", { exact: true }).click();
   await expect(template.locator(".parameter-preview")).toContainText(
-    "Pflichtangabe fehlt: Observability-Zugriffsquellen",
+    "Eingeschaltet",
   );
-  const choices = template.getByLabel(
-    "Erlaubte Werte: Observability-Zugriffsquellen",
-    { exact: true },
+  await expect(template.locator(".parameter-preview")).not.toContainText(
+    "Observability-Zugriffsquellen",
   );
-  await choices.fill("203.0.113.0/24");
-  await choices.blur();
-  await template
-    .getByRole("group", {
-      name: "Bestellung: Observability-Zugriffsquellen",
-      exact: true,
-    })
-    .getByLabel("203.0.113.0/24", { exact: true })
-    .check();
-  await expect(template.locator(".parameter-preview")).toContainText(
-    "Explizite Bestelleingabe",
+  await expect(template.locator(".parameter-preview")).not.toContainText(
+    "Pflichtangabe fehlt",
   );
 });
 
@@ -106,15 +87,7 @@ test("disabled Observability hides dependent details without discarding their va
   await template
     .getByLabel("Fester Wert: Observability-Leistungsklasse", { exact: true })
     .fill("Observability-Medium-EU01");
-  await aclSection.click();
-  const acl = template.getByLabel(
-    "Fester Wert: Observability-Zugriffsquellen",
-    {
-      exact: true,
-    },
-  );
-  await acl.fill("203.0.113.0/24");
-  await acl.blur();
+  await expect(aclSection).toHaveCount(0);
   await enabled.selectOption("false");
   await expect(planSection).toHaveCount(0);
   await expect(aclSection).toHaveCount(0);
@@ -131,14 +104,13 @@ test("disabled Observability hides dependent details without discarding their va
       exact: true,
     }),
   ).toHaveValue("Observability-Medium-EU01");
-  await aclSection.click();
-  await expect(acl).toHaveValue("203.0.113.0/24");
+  await expect(aclSection).toHaveCount(0);
   await enabled.selectOption("false");
   await template
     .getByLabel("Wertquelle: STACKIT Observability", { exact: true })
     .selectOption("input");
   await expect(planSection).toBeVisible();
-  await expect(aclSection).toBeVisible();
+  await expect(aclSection).toHaveCount(0);
 });
 
 test("a public template retains its local VM network independently of SNA", async ({
@@ -200,20 +172,11 @@ test("a public template retains its local VM network independently of SNA", asyn
   await template
     .getByLabel("Fester Wert: STACKIT Observability", { exact: true })
     .selectOption("true");
-  await template
-    .getByText("Observability-Zugriffsquellen · Fest vorgegeben", {
-      exact: true,
-    })
-    .click();
-  const source = template.getByLabel(
-    "Wertquelle: Observability-Zugriffsquellen",
-    { exact: true },
-  );
-  await expect(source.locator('option[value="binding"]')).toBeEnabled();
-  await source.selectOption("binding");
-  await expect(source).toHaveValue("binding");
+  await expect(
+    template.getByLabel("Wertquelle: Observability-Zugriffsquellen"),
+  ).toHaveCount(0);
   await template.getByText("Bestellung testen", { exact: true }).click();
-  await expect(template.locator(".parameter-preview")).toContainText(
+  await expect(template.locator(".parameter-preview")).not.toContainText(
     "Veröffentlichung und Ausführung dieser Bindung bleiben gesperrt",
   );
 });
@@ -309,7 +272,7 @@ test("platform engineer controls stage inputs and can test an order without prov
     fullPage: true,
   });
 });
-test("project-network relationship stays visibly blocked without an approved egress path", async ({
+test("corporate Observability does not require an ACL network relationship", async ({
   page,
 }) => {
   await page.goto("/templates/hub-and-spoke");
@@ -332,20 +295,17 @@ test("project-network relationship stays visibly blocked without an approved egr
   await template
     .getByLabel("Fester Wert: STACKIT Observability", { exact: true })
     .selectOption("true");
-  await template
-    .getByText("Observability-Zugriffsquellen · Fest vorgegeben", {
-      exact: true,
-    })
-    .click();
-  page.on("dialog", (dialog) => dialog.accept());
-  await template
-    .getByLabel("Wertquelle: Observability-Zugriffsquellen")
-    .selectOption("binding");
+  await expect(
+    template.getByLabel("Wertquelle: Observability-Zugriffsquellen"),
+  ).toHaveCount(0);
   await template.getByText("Bestellung testen", { exact: true }).click();
-  await expect(template.locator(".parameter-preview")).toContainText(
+  await expect(template.locator(".parameter-preview")).not.toContainText(
     "Veröffentlichung und Ausführung dieser Bindung bleiben gesperrt",
   );
-  await expect(template.locator(".parameter-preview")).toContainText(
+  await expect(template.locator(".parameter-preview")).not.toContainText(
     "Wird aus der Ressourcenverknüpfung ermittelt",
+  );
+  await expect(template.locator(".parameter-preview")).toContainText(
+    "Eingeschaltet",
   );
 });

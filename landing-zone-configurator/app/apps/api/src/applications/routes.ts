@@ -1,3 +1,7 @@
+import {
+  applicationOrderDecisionSchema,
+  applicationPlanPurposeSchema,
+} from "@lzc/contracts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
@@ -19,7 +23,8 @@ export type ApplicationRunnerServices = Pick<
   | "runnerArtifact"
   | "runnerOutput"
   | "runnerResult"
->;
+> &
+  Partial<Pick<Applications, "runnerRecovery">>;
 
 export function registerApplicationRunner(
   app: FastifyInstance,
@@ -96,6 +101,18 @@ export function registerApplicationRunner(
         },
       );
     }
+    const recovery = applications.runnerRecovery?.bind(applications);
+    if (recovery)
+      routes.post(
+        "/api/application-runner/recovery",
+        { bodyLimit: 22 * 1024 * 1024 + 65536 },
+        async (request) =>
+          recovery(
+            ticket(request.headers.authorization),
+            binding,
+            request.body,
+          ),
+      );
   });
 }
 
@@ -117,9 +134,19 @@ export function registerApplications(
       Pick<
         Applications,
         | "prepareJob"
+        | "decideOrder"
+        | "deleteOrder"
+        | "configureExecution"
+        | "listExecutionBindings"
+        | "executionCapabilities"
+        | "listJobs"
         | "revokeJobGrant"
         | "approveJobBackend"
         | "dispatchJob"
+        | "startPlan"
+        | "previewPlan"
+        | "outputJob"
+        | "startApply"
         | "listGroups"
         | "createGroup"
         | "deleteGroup"
@@ -140,6 +167,20 @@ export function registerApplications(
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_application_request" });
       if (error instanceof Error && "code" in error && error.code === "40001") {
+        if (
+          [
+            "application_order_decision_conflict",
+            "application_approval_not_required",
+            "application_order_not_approved",
+            "application_order_deleted",
+            "application_order_execution_started",
+            "application_order_archive_unavailable",
+            "application_execution_binding_conflict",
+            "application_apply_plan_unavailable",
+            "application_apply_package_changed",
+          ].includes(error.message)
+        )
+          return reply.code(409).send({ error: error.message });
         const code =
           error.message === "application_instance_running"
             ? "application_instance_running"
@@ -172,6 +213,43 @@ export function registerApplications(
           .send({ error: "invalid_request_origin_or_csrf" });
       sessions.set(request, session);
     });
+    routes.get(
+      "/api/v1/applications/execution-bindings",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        return {
+          bindings: (await applications.listExecutionBindings?.(session)) ?? [],
+        };
+      },
+    );
+    routes.post(
+      "/api/v1/applications/platform-contracts/:id/execution",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.configureExecution)
+          return reply
+            .code(503)
+            .send({ error: "application_execution_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        const input = z
+          .discriminatedUnion("enabled", [
+            z.strictObject({
+              enabled: z.literal(true),
+              stateBackendId: z.uuid(),
+              confirmExecution: z.literal(true),
+            }),
+            z.strictObject({
+              enabled: z.literal(false),
+              confirmRevocation: z.literal(true),
+            }),
+          ])
+          .parse(request.body);
+        return applications.configureExecution(session, id, input);
+      },
+    );
     routes.get(
       "/api/v1/applications/platform-contracts",
       async (request, reply) => {
@@ -298,13 +376,60 @@ export function registerApplications(
     routes.get("/api/v1/applications/instances", async (request, reply) => {
       const session = sessions.get(request);
       if (!session) return reply.code(401).send();
-      return { instances: await applications.listInstances(session) };
+      return {
+        instances: await applications.listInstances(session),
+        orderDecisionEnabled: Boolean(applications.decideOrder),
+        executionDelegationEnabled: Boolean(applications.configureExecution),
+        orderDeletionEnabled: Boolean(applications.deleteOrder),
+        execution: applications.executionCapabilities?.() ?? {
+          planEnabled: false,
+          applyEnabled: false,
+        },
+        planJobsEnabled: Boolean(
+          applications.listJobs && applications.prepareJob,
+        ),
+      };
     });
+    routes.delete(
+      "/api/v1/applications/instances/:id",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.deleteOrder)
+          return reply
+            .code(503)
+            .send({ error: "application_deletions_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        const input = z
+          .union([
+            z.strictObject({ confirmDeletion: z.literal(true) }),
+            z.strictObject({ confirmArchive: z.literal(true) }),
+          ])
+          .parse(request.body);
+        return applications.deleteOrder(session, id, input);
+      },
+    );
     routes.post("/api/v1/applications/instances", async (request, reply) => {
       const session = sessions.get(request);
       if (!session) return reply.code(401).send();
       return applications.order(session, request.body);
     });
+    routes.post(
+      "/api/v1/applications/instances/:id/decision",
+      { bodyLimit: 8192 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.decideOrder)
+          return reply
+            .code(503)
+            .send({ error: "application_decisions_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        const input = applicationOrderDecisionSchema.parse(request.body);
+        return applications.decideOrder(session, id, input);
+      },
+    );
     routes.post(
       "/api/v1/applications/instances/:id/plan-input",
       async (request, reply) => {
@@ -313,6 +438,75 @@ export function registerApplications(
         const { id } = z.object({ id: z.uuid() }).parse(request.params);
         z.strictObject({}).parse(request.body);
         return applications.preparePlanInput(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/instances/:id/plan",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.startPlan)
+          return reply
+            .code(503)
+            .send({ error: "application_dispatch_disabled" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        const input = z
+          .strictObject({
+            idempotencyKey: z.uuid(),
+            purpose: applicationPlanPurposeSchema.optional(),
+          })
+          .parse(request.body);
+        return reply
+          .code(202)
+          .send(await applications.startPlan(session, id, input));
+      },
+    );
+    routes.get(
+      "/api/v1/applications/jobs/:id/preview",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.previewPlan)
+          return reply
+            .code(503)
+            .send({ error: "application_preview_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.previewPlan(session, id);
+      },
+    );
+    routes.get(
+      "/api/v1/applications/jobs/:id/output",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.outputJob)
+          return reply
+            .code(503)
+            .send({ error: "application_output_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.outputJob(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/apply",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.startApply)
+          return reply.code(503).send({ error: "application_apply_disabled" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        const input = z
+          .strictObject({
+            artifactSha256: z.string().regex(/^[0-9a-f]{64}$/),
+            confirmDestroy: z.literal(true).optional(),
+            instanceId: z.uuid().optional(),
+          })
+          .parse(request.body);
+        return reply
+          .code(202)
+          .send(await applications.startApply(session, id, input));
       },
     );
     routes.post(
@@ -327,6 +521,19 @@ export function registerApplications(
             .send({ error: "application_jobs_unavailable" });
         const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
         return applications.prepareJob(session, id, request.body);
+      },
+    );
+    routes.get(
+      "/api/v1/applications/instances/:id/jobs",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.listJobs)
+          return reply
+            .code(503)
+            .send({ error: "application_jobs_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return { jobs: await applications.listJobs(session, id) };
       },
     );
     routes.post(

@@ -11,7 +11,7 @@ und Model-Serving-Chat fehlen noch zum MVP.
 **Aktuelle Arbeitspakete und Abnahme: [MVP-Arbeitsliste](docs/mvp-readiness.md).**
 [Priorisierte Accelerator-Issues](docs/backlog-priorities.md).
 
-Entwicklungsumgebung: [Configurator öffnen](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud).
+Entwicklungsumgebung: [Configurator öffnen](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud).
 Start und Prüfungen: [Entwicklungsanleitung](app/README.md).
 [Betriebsstand](docs/platform-readiness.md), [IaC-Bedienung](infra/README.md),
 [CI-Betrieb](infra/ci/README.md).

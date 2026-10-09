@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   chmod,
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
   readdir,
@@ -168,7 +169,7 @@ if (phase === "plan") {
   process.exit(2);
 }
 if (phase === "show") {
-  console.log(JSON.stringify({format_version:"1.2", terraform_version:"1.12.6", errored:false, configuration:{secret:${JSON.stringify(secret)}}, planned_values:{}, resource_changes:[{mode:"managed", change:{actions:["create"], after:{secret:${JSON.stringify(secret)}}}}]}));
+  console.log(JSON.stringify({format_version:"1.2", terraform_version:"1.12.6", errored:false, configuration:{secret:${JSON.stringify(secret)}}, planned_values:{}, resource_changes:[{mode:"managed", change:{actions:[${JSON.stringify(behavior === "destroy" ? "delete" : "create")}], after:{secret:${JSON.stringify(secret)}}}}]}));
   process.exit(0);
 }
 if (phase === "apply") {
@@ -382,6 +383,58 @@ it("plans the pinned application root with sibling modules and only its instance
   expect(
     test.reports.filter((report) => report.path === "artifact"),
   ).toHaveLength(1);
+});
+
+it.each(["destroy", "drift"])(
+  "plans an application %s without executing an Apply",
+  async (purpose) => {
+    const test = await fixture("platform-plan", purpose);
+    applicationInput(test);
+    test.input.application = {
+      ...(test.input.application as Record<string, unknown>),
+      purpose,
+    };
+    expect(await test.execute()).toBe("succeeded");
+    const calls = await test.calls();
+    expect(calls.map((call) => call.args[0])).toEqual([
+      "init",
+      "validate",
+      "plan",
+      "show",
+    ]);
+    const arguments_ = calls.find((call) => call.args[0] === "plan")?.args;
+    expect(arguments_).toContain(
+      purpose === "destroy" ? "-destroy" : "-refresh=true",
+    );
+    expect(arguments_).not.toContain(
+      purpose === "destroy" ? "-refresh=true" : "-destroy",
+    );
+  },
+);
+
+it("rejects applying an application drift artifact", async () => {
+  const test = await fixture("platform-apply");
+  applicationInput(test, "application-apply");
+  test.input.application = {
+    ...(test.input.application as Record<string, unknown>),
+    purpose: "drift",
+  };
+  expect(await test.execute()).toBe("failed");
+  expect(await test.calls()).toEqual([]);
+});
+
+it("rejects a destroy plan containing an unexpected create before artifact upload", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  test.input.application = {
+    ...(test.input.application as Record<string, unknown>),
+    purpose: "destroy",
+  };
+  expect(await test.execute()).toBe("failed");
+  expect(test.reports.some((report) => report.path === "artifact")).toBe(false);
+  expect((await test.calls()).some((call) => call.args[0] === "apply")).toBe(
+    false,
+  );
 });
 
 it("does not silently rebind an older application job to the new source package", async () => {
@@ -601,6 +654,68 @@ it.runIf(process.env.LZC_NATIVE_RUNNER_TEST === "true")(
   120000,
 );
 
+it.runIf(process.env.LZC_NATIVE_APPLICATION_RUNNER_TEST === "true")(
+  "validates packaged native application providers without a backend or cloud planning",
+  async () => {
+    const packageDirectory = process.env.LZC_APPLICATION_RUNNER_PACKAGE_DIR;
+    expect(packageDirectory).toBeTruthy();
+    const root = await realpath(packageDirectory as string);
+    const workRoot = await mkdtemp(join(tmpdir(), "lzc-native-application-"));
+    directories.push(workRoot);
+    const source = join(root, "application-src");
+    const workingSource = join(workRoot, "application-src");
+    const applicationRoot = join(workingSource, "application");
+    const lock = await readFile(
+      join(source, "application/.terraform.lock.hcl"),
+    );
+    expect(digest(lock)).toBe(applicationProviderLockHash);
+    await cp(source, workingSource, { recursive: true });
+    const configuration = join(workRoot, "runner.tfrc");
+    await writeFile(
+      configuration,
+      `provider_installation {\n  filesystem_mirror {\n    path = ${JSON.stringify(join(root, "providers"))}\n  }\n}\ndisable_checkpoint = true\n`,
+      { mode: 0o600 },
+    );
+    const execute = (arguments_: string[]) =>
+      promisify(execFile)(join(root, "tools/tofu"), arguments_, {
+        cwd: applicationRoot,
+        env: {
+          PATH: "/usr/bin:/bin",
+          HOME: workRoot,
+          TMPDIR: workRoot,
+          TF_CLI_CONFIG_FILE: configuration,
+          TF_IN_AUTOMATION: "1",
+          CHECKPOINT_DISABLE: "1",
+        },
+        timeout: 60000,
+        maxBuffer: 1024 * 1024,
+      });
+    const engine = await execute(["version", "-json"]);
+    expect(JSON.parse(engine.stdout).terraform_version).toBe("1.12.6");
+    await execute([
+      "init",
+      "-backend=false",
+      "-input=false",
+      "-lockfile=readonly",
+      "-no-color",
+    ]);
+    const validation = await execute(["validate", "-json"]);
+    expect(JSON.parse(validation.stdout)).toMatchObject({
+      valid: true,
+      error_count: 0,
+    });
+    expect(
+      await readFile(join(applicationRoot, ".terraform.lock.hcl")),
+    ).toEqual(lock);
+    expect(
+      await readFile(join(source, "application/.terraform.lock.hcl")),
+    ).toEqual(lock);
+    expect(await readdir(applicationRoot)).not.toContain("terraform.tfstate");
+    expect(await readdir(applicationRoot)).not.toContain("plan.bin");
+  },
+  120000,
+);
+
 it.each(["success", "apply-failure", "migration-failure"])(
   "publishes redacted Apply output before the terminal result and cleanup: %s",
   async (behavior) => {
@@ -618,6 +733,45 @@ it.each(["success", "apply-failure", "migration-failure"])(
     ).toBeLessThan(test.reports.findIndex(({ path }) => path === "result"));
     for (const call of await test.calls())
       await expect(stat(call.work)).rejects.toThrow("ENOENT");
+  },
+);
+
+it.each(["output", "completion"])(
+  "retains only a private redacted local report when %s cannot be published",
+  async (failure) => {
+    const test = await fixture("platform-apply");
+    applicationInput(test, "application-apply");
+    const workRoot = await mkdtemp(join(tmpdir(), "lzc-report-test-"));
+    directories.push(workRoot);
+    const result = await runWorker({
+      root: test.root,
+      id: "run-id",
+      ticket,
+      broker: "application",
+      brokerOrigin: localBrokerOrigin,
+      local: true,
+      workRoot,
+      report: async (path, body) => {
+        if (
+          path === "output" ||
+          (failure === "completion" && path === "result")
+        )
+          throw new Error(secret);
+        return test.report(path, body);
+      },
+    });
+    expect(result).toBe(failure === "completion" ? "failed" : "succeeded");
+    const path = join(workRoot, "completion-report.json");
+    const saved = await readFile(path, "utf8");
+    expect(JSON.parse(saved)).toMatchObject({
+      schemaVersion: 1,
+      executionSucceeded: true,
+      output: { text: expect.stringContaining("$ tofu apply saved-plan.bin") },
+    });
+    expect(saved).not.toContain(secret);
+    expect(saved).not.toContain(ticket);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
+    expect(await readdir(workRoot)).toEqual(["completion-report.json"]);
   },
 );
 

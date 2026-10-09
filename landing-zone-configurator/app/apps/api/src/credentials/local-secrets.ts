@@ -40,7 +40,7 @@ export class LocalCredentialSecrets implements CredentialSecrets {
     return new LocalCredentialSecrets(directory, masterKey);
   }
 
-  private location(session: Session, id: string) {
+  private location(session: Pick<Session, "tenantId" | "userId">, id: string) {
     const binding = [session.tenantId, session.userId, id]
       .map((value) => z.uuid().parse(value))
       .join("_");
@@ -67,7 +67,7 @@ export class LocalCredentialSecrets implements CredentialSecrets {
     );
   }
 
-  async get(session: Session, id: string) {
+  async get(session: Pick<Session, "tenantId" | "userId">, id: string) {
     const { path, binding } = this.location(session, id);
     const sealed = await readFile(path);
     if (sealed.length <= 28 || sealed.length > 32768)

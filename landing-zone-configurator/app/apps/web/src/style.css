@@ -188,6 +188,17 @@
   grid-template-columns: minmax(8rem, 10rem) minmax(0, 1fr);
   gap: 0.5rem 1rem;
 }
+.application-resource-preview details {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.application-resource-preview summary,
+.application-resource-preview code {
+  overflow-wrap: anywhere;
+}
+.application-resource-attribute {
+  display: contents;
+}
 .application-properties dt {
   font-weight: 700;
 }
@@ -195,14 +206,117 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
-.application-orders article {
+.application-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.application-order-tabs {
+  position: static;
+  z-index: auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 1rem;
-  padding-block: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+  margin-block: 1rem;
+}
+.application-order-tabs [role="tab"] {
+  min-width: 0;
+  justify-content: center;
+  padding-inline: 0.25rem;
+}
+.application-execution-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0;
+  margin-block: 1rem;
+  list-style: none;
+}
+.application-execution-steps li {
+  padding-block: 0.5rem;
+  border-bottom: 3px solid var(--border-subtle);
+  overflow-wrap: anywhere;
+}
+.application-execution-steps [data-status="current"] {
+  border-color: #01767b;
+  font-weight: 700;
+}
+.application-execution-steps [data-status="complete"] {
+  border-color: #367446;
+}
+.application-plan-job summary {
+  overflow-wrap: anywhere;
+}
+.application-orders {
+  max-width: 100%;
+  margin-block: 1rem;
+  overflow-x: auto;
+}
+.application-orders table {
+  width: 100%;
+  min-width: 42rem;
+  border-collapse: collapse;
+  text-align: left;
+}
+.application-orders th,
+.application-orders td {
+  padding: 0.75rem;
+  vertical-align: top;
   border-bottom: 1px solid var(--border-subtle);
   overflow-wrap: anywhere;
+}
+.application-orders thead th {
+  font-size: 0.875rem;
+}
+.application-orders tbody th {
+  min-width: 11rem;
+  font-weight: 400;
+}
+.application-orders small {
+  display: block;
+  margin-top: 0.25rem;
+}
+.application-orders time {
+  display: block;
+  min-width: 8rem;
+  font-variant-numeric: tabular-nums;
+}
+.application-orders td:nth-child(3) {
+  min-width: 10rem;
+}
+.application-orders td:nth-child(4) {
+  min-width: 14rem;
+}
+.application-orders tr[data-selected="true"] {
+  background: #edf7f6;
+}
+.application-order-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.application-order-actions .button {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  justify-content: center;
+}
+.application-order-status {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.application-order-status[data-tone="error"] {
+  color: #a12622;
+}
+.application-order-status[data-tone="success"] {
+  color: #367446;
 }
 :where(.application-self-service) pre {
   max-width: 100%;
@@ -210,12 +324,8 @@
   overflow: auto;
 }
 @media (max-width: 600px) {
-  .application-properties,
-  .application-orders article {
+  .application-properties {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .application-orders .button {
-    justify-self: start;
   }
 }
 

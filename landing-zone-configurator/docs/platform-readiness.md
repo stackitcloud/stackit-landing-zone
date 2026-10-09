@@ -183,7 +183,9 @@ fehlschlagen lassen. Es werden weder Kunden-Secrets gelesen noch Probe-Secrets
 angelegt. **Ein Secret-Write/Read-Roundtrip, Mandantenautorisierung und Rotation
 sind damit noch nicht abgenommen.** Die Laufzeitidentität ist in IaC read-only.
 
-Erreichbar: [lzc-dev Configurator](https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud).
+Dev-Adresse: [lzc-dev Configurator](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud).
+Die kurze Route wird mit dem naechsten Release eingerichtet; die Live-Umstellung
+und die aktualisierten OAuth-Callbacks muessen danach separat geprueft werden.
 Dies ist das technische App-Grundgerüst. GitHub-Login, persistentes Mandantenschema,
 Template-Editor, persönliche Credentials, Kunden-Plan/Apply und Chat folgen in der
 [aktuellen MVP-Checkliste](planning.md#aktueller-meilenstein-cf-hosting-und-service-verbindungen).

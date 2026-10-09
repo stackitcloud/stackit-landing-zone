@@ -3,11 +3,16 @@ import {
   type ApplicationInstance,
   type AppliedPlatformSource,
   applicationInstanceSchema,
+  applicationOrderDecisionSchema,
+  applicationPlanJobSchema,
+  applicationPlanPreview,
+  applicationPlanPurposeSchema,
   appliedPlatformSourceSchema,
   planResultSchema,
   runnerArtifactSchema,
   s3BackendDescriptorSchema,
   s3RunnerBackendSchema,
+  summarizePlan,
 } from "@lzc/contracts";
 import {
   applicationAcceleratorRevisionSchema,
@@ -47,7 +52,11 @@ export class ApplicationError extends Error {
 
 export const applicationRunnerPackageSchema = z.strictObject({
   runnerPackageId: z.uuid(),
-  acceleratorRevision: z.literal("c4b43c36af198985980b17626c48d357795e3fbd"),
+  acceleratorRevision: z.enum([
+    "c4b43c36af198985980b17626c48d357795e3fbd",
+    "88149782bf8e91dcdbb43a203b54337886023f7f",
+    "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+  ]),
   providerLockSha256: z.literal(
     "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
   ),
@@ -106,6 +115,14 @@ type InstanceRow = {
   qualification_blockers: string[];
   created_at: Date;
   matches?: boolean;
+  decision?: "approved" | "rejected" | null;
+  decided_by?: string;
+  decided_at?: Date;
+  reason?: string;
+  can_delete?: boolean;
+  can_archive?: boolean;
+  execution_configured?: boolean;
+  deleted_at?: Date | null;
 };
 
 function version(row: VersionRow): PublishedProjectTemplate {
@@ -134,6 +151,22 @@ function instance(row: InstanceRow): ApplicationInstance {
     versionId: row.version_id,
     deploymentPolicy: row.deployment_policy,
     requestedBy: row.requested_by,
+    ...(row.can_delete !== undefined ? { canDelete: row.can_delete } : {}),
+    ...(row.can_archive !== undefined ? { canArchive: row.can_archive } : {}),
+    ...(row.execution_configured !== undefined
+      ? { executionConfigured: row.execution_configured }
+      : {}),
+    approval: row.decision
+      ? {
+          status: row.decision,
+          decidedBy: row.decided_by,
+          decidedAt: row.decided_at?.toISOString(),
+          reason: row.reason,
+        }
+      : {
+          status:
+            row.deployment_policy === "direct" ? "not-required" : "pending",
+        },
     name: row.name,
     parameters: row.parameters,
     settings: row.resolved_settings,
@@ -151,13 +184,167 @@ export class Applications {
     private readonly profiles?: Pick<
       PostgresCredentialProfiles,
       "list" | "verifyForPreparation"
-    >,
+    > &
+      Partial<Pick<PostgresCredentialProfiles, "verifyDelegated">>,
     private readonly secrets?: Pick<CredentialSecrets, "get">,
     private readonly backends?: Pick<Backends, "runner">,
     private readonly dispatch?: { runner: PlanRunner; origin: string },
     private readonly artifactCrypto?: ArtifactCrypto,
     private readonly platforms?: Pick<Plans, "outputs">,
   ) {}
+
+  executionCapabilities() {
+    return {
+      planEnabled: Boolean(
+        this.dispatch &&
+          this.backends &&
+          this.secrets &&
+          this.profiles &&
+          this.artifactCrypto,
+      ),
+      applyEnabled: Boolean(
+        this.dispatch?.runner.preview &&
+          this.dispatch.runner.supportsArtifact &&
+          this.backends &&
+          this.secrets &&
+          this.profiles &&
+          this.artifactCrypto,
+      ),
+      delegatedExecutionEnabled: Boolean(this.dispatch),
+      maintenanceEnabled: Boolean(
+        this.dispatch?.runner.applicationMaintenanceEnabled &&
+          this.dispatch.runner.preview &&
+          this.dispatch.runner.supportsArtifact &&
+          this.backends &&
+          this.secrets &&
+          this.profiles &&
+          this.artifactCrypto,
+      ),
+      acceleratorRevision: this.dispatch
+        ? (this.dispatch.runner.acceleratorCommit ??
+          "c4b43c36af198985980b17626c48d357795e3fbd")
+        : null,
+    };
+  }
+
+  listExecutionBindings(session: Session) {
+    return this.work(session, "read", async (client) => {
+      const rows = await client.query<{
+        id: string;
+        platform_revision: string;
+        backend_id: string;
+        delegated_by: string;
+      }>(
+        "SELECT id,platform_revision,backend_id,delegated_by FROM lzc.application_execution_delegations WHERE revoked_at IS NULL ORDER BY created_at DESC",
+      );
+      return rows.rows.map((row) => ({
+        id: row.id,
+        platformRevision: row.platform_revision,
+        backendId: row.backend_id,
+        configuredBy: row.delegated_by,
+      }));
+    });
+  }
+
+  async configureExecution(session: Session, revision: string, input: unknown) {
+    z.uuid().parse(revision);
+    const request = z
+      .discriminatedUnion("enabled", [
+        z.strictObject({
+          enabled: z.literal(true),
+          stateBackendId: z.uuid(),
+          confirmExecution: z.literal(true),
+        }),
+        z.strictObject({
+          enabled: z.literal(false),
+          confirmRevocation: z.literal(true),
+        }),
+      ])
+      .parse(input);
+    if (request.enabled) {
+      const backends = this.backends;
+      if (!this.profiles || !backends)
+        throw new ApplicationError(503, "application_execution_unavailable");
+      const contract = await this.work(session, "publish", async (client) => {
+        const contract = (
+          await client.query<{
+            credential_profile_id: string;
+            credential_version: number;
+            credential_key_id: string;
+            organization_id: string;
+          }>(
+            "SELECT credential_profile_id,credential_version,credential_key_id,organization_id FROM lzc.application_platform_contracts WHERE revision=$1 AND approved_by=$2",
+            [revision, session.userId],
+          )
+        ).rows[0];
+        if (!contract)
+          throw new ApplicationError(403, "application_access_denied");
+        await backends.runner(client, session, request.stateBackendId);
+        return contract;
+      });
+      const verified = await this.profiles.verifyForPreparation(
+        session,
+        contract.credential_profile_id,
+        contract.organization_id,
+      );
+      if (
+        verified.check.status !== "passed" ||
+        verified.check.organizationId !== contract.organization_id ||
+        verified.version !== contract.credential_version ||
+        verified.keyId !== contract.credential_key_id
+      )
+        throw new ApplicationError(409, "application_credential_changed");
+    }
+    return this.work(session, "publish", async (client) => {
+      const row = (
+        await client.query<{ id: string | null }>(
+          "SELECT lzc_auth.configure_application_execution($1,$2,$3,$4) AS id",
+          [
+            session.id,
+            revision,
+            request.enabled ? request.stateBackendId : null,
+            !request.enabled,
+          ],
+        )
+      ).rows[0];
+      return {
+        id: row?.id ?? null,
+        platformRevision: revision,
+        enabled: request.enabled,
+      };
+    });
+  }
+
+  private async jobQuery<Row extends pg.QueryResultRow>(
+    client: pg.PoolClient,
+    session: Session,
+    jobId: string,
+    sql: string,
+    values: unknown[],
+    operation: string,
+    payload: Record<string, unknown> = {},
+  ) {
+    const delegated = (
+      await client.query(
+        "SELECT 1 FROM lzc.application_job_delegations WHERE job_id=$1 AND tenant_id=$2",
+        [jobId, session.tenantId],
+      )
+    ).rowCount;
+    if (!delegated) return client.query<Row>(sql, values);
+    const response = await client.query<{ result: Record<string, unknown> }>(
+      "SELECT lzc_auth.delegated_application_operation($1,$2,$3,$4::jsonb) AS result",
+      [session.id, jobId, operation, JSON.stringify(payload)],
+    );
+    return {
+      ...response,
+      rows: response.rows.map(({ result }) => {
+        for (const field of ["claimed_at", "expires_at"])
+          if (typeof result[field] === "string")
+            result[field] = new Date(result[field]);
+        return result as Row;
+      }),
+    };
+  }
 
   private work<T>(
     session: Session,
@@ -711,13 +898,91 @@ export class Applications {
     });
   }
 
+  private async instanceWithExecution(client: pg.PoolClient, row: InstanceRow) {
+    const result = await client.query<{
+      execution_configured: boolean;
+      can_delete: boolean;
+      can_archive: boolean;
+    }>(
+      "SELECT lzc.application_order_deletable($3) AS can_delete,lzc.application_order_archivable($3) AS can_archive,EXISTS(SELECT 1 FROM lzc.application_template_versions v JOIN lzc.application_execution_delegations binding ON binding.platform_revision=v.platform_revision AND binding.tenant_id=v.tenant_id AND binding.revoked_at IS NULL WHERE v.id=$1 AND v.tenant_id=$2) AS execution_configured",
+      [row.version_id, row.tenant_id, row.id],
+    );
+    return instance({
+      ...row,
+      can_delete: result.rows[0]?.can_delete ?? false,
+      can_archive: result.rows[0]?.can_archive ?? false,
+      execution_configured: result.rows[0]?.execution_configured ?? false,
+    });
+  }
+
   listInstances(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<InstanceRow>(
-        "SELECT * FROM lzc.application_instances ORDER BY created_at DESC,id DESC LIMIT 200",
+        "SELECT i.*,d.decision,d.decided_by,d.decided_at,d.reason,lzc.application_order_deletable(i.id) AS can_delete,lzc.application_order_archivable(i.id) AS can_archive,EXISTS(SELECT 1 FROM lzc.application_template_versions v JOIN lzc.application_execution_delegations binding ON binding.platform_revision=v.platform_revision AND binding.tenant_id=v.tenant_id AND binding.revoked_at IS NULL WHERE v.id=i.version_id AND v.tenant_id=i.tenant_id) AS execution_configured FROM lzc.application_instances i LEFT JOIN lzc.application_order_decisions d ON d.instance_id=i.id AND d.tenant_id=i.tenant_id WHERE NOT EXISTS(SELECT 1 FROM lzc.application_order_deletions deleted WHERE deleted.instance_id=i.id AND deleted.tenant_id=i.tenant_id) ORDER BY i.created_at DESC,i.id DESC LIMIT 200",
       );
       return result.rows.map(instance);
     });
+  }
+
+  decideOrder(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    const request = applicationOrderDecisionSchema.parse(input);
+    return this.work(session, "publish", async (client) => {
+      await this.requireActiveOrder(client, session, id);
+      await client.query(
+        "SELECT lzc_auth.decide_application_order($1,$2,$3,$4)",
+        [session.id, id, request.decision, request.reason],
+      );
+      const result = await client.query<InstanceRow>(
+        "SELECT i.*,d.decision,d.decided_by,d.decided_at,d.reason FROM lzc.application_instances i JOIN lzc.application_order_decisions d ON d.instance_id=i.id AND d.tenant_id=i.tenant_id WHERE i.id=$1",
+        [id],
+      );
+      if (!result.rows[0])
+        throw new ApplicationError(503, "application_decision_failed");
+      return this.instanceWithExecution(client, result.rows[0]);
+    });
+  }
+
+  deleteOrder(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    const request = z
+      .union([
+        z.strictObject({ confirmDeletion: z.literal(true) }),
+        z.strictObject({ confirmArchive: z.literal(true) }),
+      ])
+      .parse(input);
+    return this.work(session, "read", async (client) => {
+      const deleted = (
+        await client.query<{
+          instance_id: string;
+          deleted_by: string;
+          deleted_at: Date;
+        }>(
+          "confirmArchive" in request
+            ? "SELECT * FROM lzc_auth.archive_application_order($1,$2)"
+            : "SELECT * FROM lzc_auth.delete_application_order($1,$2)",
+          [session.id, id],
+        )
+      ).rows[0];
+      if (!deleted)
+        throw new ApplicationError(503, "application_deletion_failed");
+      return {
+        instanceId: deleted.instance_id,
+        deletedBy: deleted.deleted_by,
+        deletedAt: deleted.deleted_at.toISOString(),
+      };
+    });
+  }
+
+  private async requireActiveOrder(
+    client: pg.PoolClient,
+    session: Session,
+    instanceId: string,
+  ) {
+    await client.query(
+      "SELECT lzc_auth.require_active_application_order($1,$2)",
+      [session.id, instanceId],
+    );
   }
 
   order(session: Session, input: unknown) {
@@ -736,7 +1001,7 @@ export class Applications {
         ],
       );
       const existing = await client.query<InstanceRow>(
-        "SELECT *,version_id=$3 AND name=$4 AND parameters=$5::jsonb AS matches FROM lzc.application_instances WHERE requested_by=$1 AND idempotency_key=$2",
+        "SELECT i.*,d.decision,d.decided_by,d.decided_at,d.reason,i.version_id=$3 AND i.name=$4 AND i.parameters=$5::jsonb AS matches FROM lzc.application_instances i LEFT JOIN lzc.application_order_decisions d ON d.instance_id=i.id AND d.tenant_id=i.tenant_id WHERE i.requested_by=$1 AND i.idempotency_key=$2",
         [
           session.userId,
           request.idempotencyKey,
@@ -746,9 +1011,15 @@ export class Applications {
         ],
       );
       if (existing.rows[0]) {
+        const deleted = await client.query(
+          "SELECT 1 FROM lzc.application_order_deletions WHERE instance_id=$1",
+          [existing.rows[0].id],
+        );
+        if (deleted.rowCount)
+          throw new ApplicationError(409, "application_order_deleted");
         if (!existing.rows[0].matches)
           throw new ApplicationError(409, "idempotency_conflict");
-        return instance(existing.rows[0]);
+        return this.instanceWithExecution(client, existing.rows[0]);
       }
       const published = await client.query<VersionRow>(
         "SELECT * FROM lzc.application_template_versions WHERE id=$1",
@@ -818,7 +1089,7 @@ export class Applications {
       );
       const row = result.rows[0];
       if (!row) throw new ApplicationError(503, "application_order_failed");
-      return instance(row);
+      return this.instanceWithExecution(client, row);
     });
   }
 
@@ -829,11 +1100,343 @@ export class Applications {
     );
   }
 
+  listJobs(session: Session, instanceId: string) {
+    const id = z.uuid().parse(instanceId);
+    return this.work(session, "read", async (client) => {
+      const result = await client.query<{
+        id: string;
+        instance_id: string;
+        owner_user_id: string;
+        approved_by: string;
+        created_at: Date;
+        expires_at: Date;
+        status: string;
+        grant_active: boolean;
+        backend_id: string | null;
+        can_approve_backend: boolean;
+        can_dispatch: boolean;
+        delegated_execution: boolean;
+        summary: unknown;
+        error_code: string | null;
+        operation: "plan" | "apply";
+        purpose: "standard" | "destroy" | "drift";
+        plan_id: string | null;
+        artifact_sha256: string | null;
+        can_apply: boolean;
+      }>(
+        `SELECT j.id,j.instance_id,j.owner_user_id,g.approved_by,j.created_at,j.expires_at,
+         coalesce(d.status,j.status) AS status,g.revoked_at IS NULL AND g.expires_at>now() AS grant_active,
+         b.backend_id,g.approved_by=$3 AND g.revoked_at IS NULL AND g.expires_at>now()
+          AND b.job_id IS NULL AND d.job_id IS NULL AND c.job_id IS NULL AS can_approve_backend,
+         CASE WHEN jd.job_id IS NOT NULL THEN lzc_auth.delegated_application_ready($4,j.id) ELSE g.approved_by=$3 AND g.revoked_at IS NULL AND g.expires_at>now()
+          AND b.approval_session_id=$4 AND b.expires_at>now() AND d.job_id IS NULL AND c.job_id IS NULL END AS can_dispatch,
+         jd.job_id IS NOT NULL AS delegated_execution,
+         j.operation,coalesce(j.inputs->>'purpose','standard') AS purpose,j.plan_id,a.sha256 AS artifact_sha256,
+         CASE WHEN j.operation='plan' AND a.sha256 IS NOT NULL AND j.owner_user_id=$3 THEN lzc_auth.application_apply_available($4,j.id,a.sha256) ELSE false END AS can_apply,
+         d.summary,d.error_code FROM lzc.application_jobs j
+         JOIN lzc.application_job_grants g ON g.job_id=j.id AND g.tenant_id=j.tenant_id
+         LEFT JOIN lzc.application_job_backends b ON b.job_id=j.id AND b.tenant_id=j.tenant_id
+         LEFT JOIN lzc.application_dispatches d ON d.job_id=j.id AND d.tenant_id=j.tenant_id
+         LEFT JOIN lzc.application_job_claims c ON c.job_id=j.id AND c.tenant_id=j.tenant_id
+         LEFT JOIN lzc.application_job_delegations jd ON jd.job_id=j.id AND jd.tenant_id=j.tenant_id
+         LEFT JOIN lzc.application_runner_records a ON a.job_id=j.id AND a.kind='artifact'
+         WHERE j.instance_id=$1 AND j.tenant_id=$2 AND NOT EXISTS(SELECT 1 FROM lzc.application_order_deletions deleted WHERE deleted.instance_id=j.instance_id AND deleted.tenant_id=j.tenant_id) ORDER BY j.created_at DESC,j.id DESC LIMIT 50`,
+        [id, session.tenantId, session.userId, session.id],
+      );
+      return result.rows.map((row) =>
+        applicationPlanJobSchema.parse({
+          id: row.id,
+          instanceId: row.instance_id,
+          requestedBy: row.owner_user_id,
+          approvedBy: row.approved_by,
+          createdAt: row.created_at.toISOString(),
+          expiresAt: row.expires_at.toISOString(),
+          operation: row.operation,
+          purpose: row.purpose,
+          planId: row.plan_id,
+          artifactSha256: row.artifact_sha256,
+          canApply: this.executionCapabilities().applyEnabled && row.can_apply,
+          status: row.status,
+          grantActive: row.grant_active,
+          backendId: row.backend_id,
+          canApproveBackend: row.can_approve_backend,
+          canDispatch: row.can_dispatch ?? false,
+          ...(row.delegated_execution ? { delegatedExecution: true } : {}),
+          summary: row.summary,
+          errorCode: row.error_code,
+        }),
+      );
+    });
+  }
+
+  private async savedPlan(session: Session, jobId: string) {
+    const crypto = this.artifactCrypto;
+    const runner = this.dispatch?.runner;
+    if (!crypto || !runner?.preview)
+      throw new ApplicationError(503, "application_preview_unavailable");
+    return this.work(session, "read", async (client) => {
+      const row = (
+        await client.query<{
+          instance_id: string;
+          ciphertext: Buffer;
+          sha256: string;
+          runner_package_id: string;
+          summary: unknown;
+          purpose: unknown;
+        }>(
+          "SELECT j.instance_id,a.ciphertext,a.sha256,a.runner_package_id,a.summary,coalesce(j.inputs->>'purpose','standard') AS purpose FROM lzc.application_jobs j JOIN lzc.application_runner_records a ON a.job_id=j.id AND a.kind='artifact' JOIN lzc.application_dispatches d ON d.job_id=j.id AND d.status='succeeded' AND d.summary=a.summary WHERE j.id=$1 AND j.operation='plan' AND j.owner_user_id=$2 AND j.tenant_id=$3",
+          [jobId, session.userId, session.tenantId],
+        )
+      ).rows[0];
+      if (!row) throw new ApplicationError(404, "application_plan_not_found");
+      await this.requireActiveOrder(client, session, row.instance_id);
+      const bytes = crypto.decrypt(
+        row.ciphertext,
+        session.tenantId,
+        session.userId,
+        `application-artifact:${jobId}`,
+      );
+      if (
+        createHash("sha256").update(bytes).digest("hex") !== row.sha256 ||
+        !runner.supportsArtifact?.(row.runner_package_id)
+      )
+        throw new ApplicationError(409, "application_apply_package_changed");
+      return {
+        bytes,
+        sha256: row.sha256,
+        identity: row.runner_package_id,
+        summary: row.summary,
+        purpose: applicationPlanPurposeSchema.parse(row.purpose),
+      };
+    });
+  }
+
+  async outputJob(session: Session, jobId: string) {
+    const id = z.uuid().parse(jobId);
+    const recorded = await this.work(session, "read", async (client) => {
+      const row = (
+        await client.query<{
+          instance_id: string;
+          ciphertext: Buffer | null;
+          truncated: boolean | null;
+        }>(
+          "SELECT j.instance_id,r.ciphertext,r.truncated FROM lzc.application_jobs j LEFT JOIN lzc.application_runner_records r ON r.job_id=j.id AND r.kind='output' WHERE j.id=$1 AND j.tenant_id=$2 AND j.owner_user_id=$3",
+          [id, session.tenantId, session.userId],
+        )
+      ).rows[0];
+      if (!row) throw new ApplicationError(404, "application_plan_not_found");
+      await this.requireActiveOrder(client, session, row.instance_id);
+      if (!row.ciphertext) return null;
+      if (!this.artifactCrypto)
+        throw new ApplicationError(503, "application_output_unavailable");
+      const bytes = this.artifactCrypto.decrypt(
+        row.ciphertext,
+        session.tenantId,
+        session.userId,
+        `application-output:${id}`,
+      );
+      try {
+        return {
+          text: bytes.toString("utf8"),
+          truncated: Boolean(row.truncated),
+          kind: "execution" as const,
+        };
+      } finally {
+        bytes.fill(0);
+      }
+    });
+    if (recorded) return recorded;
+    if (!this.dispatch?.runner.output)
+      return { text: "", truncated: false, kind: "live" as const };
+    try {
+      const output = await this.dispatch.runner.output(id, id);
+      return {
+        text: output.text,
+        truncated: output.truncated,
+        kind: "live" as const,
+      };
+    } catch {
+      throw new ApplicationError(503, "application_output_unavailable");
+    }
+  }
+
+  async previewPlan(session: Session, jobId: string) {
+    const id = z.uuid().parse(jobId);
+    const runner = this.dispatch?.runner;
+    if (!runner?.preview)
+      throw new ApplicationError(503, "application_preview_unavailable");
+    const saved = await this.savedPlan(session, id);
+    const raw = await runner.preview(saved);
+    const summary = summarizePlan(
+      raw,
+      (saved.summary as { result: string }).result === "changes" ? 2 : 0,
+      "opentofu-1.12.6",
+    );
+    if (canonicalJson(summary) !== canonicalJson(saved.summary))
+      throw new ApplicationError(409, "application_plan_artifact_invalid");
+    if (
+      saved.purpose === "destroy" &&
+      (summary.resources.create ||
+        summary.resources.update ||
+        summary.resources.replace)
+    )
+      throw new ApplicationError(409, "application_destroy_plan_invalid");
+    return {
+      jobId: id,
+      artifactSha256: saved.sha256,
+      ...applicationPlanPreview(raw),
+    };
+  }
+
+  async startApply(session: Session, planId: string, input: unknown) {
+    const id = z.uuid().parse(planId);
+    const request = z
+      .strictObject({
+        artifactSha256: z.string().regex(/^[0-9a-f]{64}$/),
+        confirmDestroy: z.literal(true).optional(),
+        instanceId: z.uuid().optional(),
+      })
+      .parse(input);
+    if (!this.executionCapabilities().applyEnabled)
+      throw new ApplicationError(503, "application_apply_disabled");
+    await this.previewPlan(session, id);
+    const job = await this.work(session, "order", async (client) => {
+      await client.query(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+        [`application-apply:${session.tenantId}:${id}`],
+      );
+      const parent = (
+        await client.query<{
+          instance_id: string;
+          inputs: unknown;
+          binding_sha256: string;
+        }>(
+          "SELECT instance_id,inputs,binding_sha256 FROM lzc.application_jobs WHERE id=$1 AND tenant_id=$2 AND owner_user_id=$3 AND operation='plan'",
+          [id, session.tenantId, session.userId],
+        )
+      ).rows[0];
+      if (!parent)
+        throw new ApplicationError(404, "application_plan_not_found");
+      const purpose = applicationPlanPurposeSchema.parse(
+        z.record(z.string(), z.unknown()).parse(parent.inputs).purpose ??
+          "standard",
+      );
+      if (purpose === "drift")
+        throw new ApplicationError(409, "application_drift_read_only");
+      if (
+        purpose === "destroy" &&
+        (request.confirmDestroy !== true ||
+          request.instanceId !== parent.instance_id)
+      )
+        throw new ApplicationError(
+          400,
+          "application_destroy_confirmation_required",
+        );
+      if (
+        purpose !== "destroy" &&
+        (request.confirmDestroy || request.instanceId)
+      )
+        throw new ApplicationError(
+          400,
+          "application_destroy_confirmation_invalid",
+        );
+      await this.requireActiveOrder(client, session, parent.instance_id);
+      const existing = (
+        await client.query<{
+          id: string;
+          artifact_sha256: string;
+          status: string | null;
+        }>(
+          "SELECT j.id,j.artifact_sha256,d.status FROM lzc.application_jobs j LEFT JOIN lzc.application_dispatches d ON d.job_id=j.id WHERE j.plan_id=$1 AND j.tenant_id=$2 AND j.owner_user_id=$3 AND j.operation='apply'",
+          [id, session.tenantId, session.userId],
+        )
+      ).rows[0];
+      if (existing) {
+        if (existing.artifact_sha256 !== request.artifactSha256)
+          throw new ApplicationError(409, "idempotency_conflict");
+        return { id: existing.id, dispatched: existing.status !== null };
+      }
+      const prepared = await this.planInput(
+        client,
+        session,
+        parent.instance_id,
+      );
+      const expected =
+        purpose === "standard" ? prepared.plan : { ...prepared.plan, purpose };
+      if (canonicalJson(expected) !== canonicalJson(parent.inputs))
+        throw new ApplicationError(409, "application_plan_artifact_invalid");
+      const created = (
+        await client.query<{ id: string }>(
+          "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at,plan_id,artifact_sha256) SELECT $1,$2,$3,$4,$5,$6,'apply',$7::jsonb,$8,lzc_auth.application_job_expiry($5,$3,$9::timestamptz),$6,$10 FROM lzc.stackit_identities i WHERE i.user_id=$4 AND i.issuer='https://accounts.stackit.cloud' AND i.revoked_at IS NULL AND i.valid_until>now() RETURNING id",
+          [
+            randomUUID(),
+            session.tenantId,
+            parent.instance_id,
+            session.userId,
+            session.id,
+            id,
+            JSON.stringify(parent.inputs),
+            parent.binding_sha256,
+            session.expiresAt,
+            request.artifactSha256,
+          ],
+        )
+      ).rows[0];
+      if (!created)
+        throw new ApplicationError(403, "application_job_identity_unavailable");
+      await client.query(
+        "SELECT lzc_auth.bind_application_job_execution($1,$2)",
+        [session.id, created.id],
+      );
+      return { id: created.id, dispatched: false };
+    });
+    if (job.dispatched) return { jobId: job.id, dispatched: false };
+    return this.dispatchJob(session, job.id, { confirmPlan: true });
+  }
+
+  async startPlan(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    const request = z
+      .strictObject({
+        idempotencyKey: z.uuid(),
+        purpose: applicationPlanPurposeSchema.default("standard"),
+      })
+      .parse(input);
+    if (!this.executionCapabilities().planEnabled)
+      throw new ApplicationError(503, "application_dispatch_disabled");
+    const existing = await this.work(session, "order", async (client) => {
+      await this.requireActiveOrder(client, session, id);
+      return (
+        await client.query<{ id: string; purpose: string }>(
+          "SELECT j.id,coalesce(j.inputs->>'purpose','standard') AS purpose FROM lzc.application_jobs j JOIN lzc.application_dispatches d ON d.job_id=j.id WHERE j.instance_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3 AND j.operation='plan'",
+          [id, session.userId, request.idempotencyKey],
+        )
+      ).rows[0];
+    });
+    if (existing && existing.purpose !== request.purpose)
+      throw new ApplicationError(409, "idempotency_conflict");
+    if (existing) return { jobId: existing.id, dispatched: false };
+    const job = await this.prepareJob(session, id, {
+      ...request,
+      confirmPlan: true,
+    });
+    return this.dispatchJob(session, job.id, { confirmPlan: true });
+  }
+
   prepareJob(session: Session, instanceId: string, input: unknown) {
     const id = z.uuid().parse(instanceId);
     const request = z
-      .strictObject({ idempotencyKey: z.uuid(), confirmPlan: z.literal(true) })
+      .strictObject({
+        idempotencyKey: z.uuid(),
+        confirmPlan: z.literal(true),
+        purpose: applicationPlanPurposeSchema.default("standard"),
+      })
       .parse(input);
+    if (
+      request.purpose !== "standard" &&
+      !this.executionCapabilities().maintenanceEnabled
+    )
+      throw new ApplicationError(503, "application_maintenance_disabled");
     return this.work(session, "order", async (client) => {
       await client.query(
         "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
@@ -842,15 +1445,27 @@ export class Applications {
         ],
       );
       const prepared = await this.planInput(client, session, id);
+      const plan =
+        request.purpose === "standard"
+          ? prepared.plan
+          : { ...prepared.plan, purpose: request.purpose };
       if (
         ![
           "4d15d7870afa323badd93559d8b37c5a8d138dcf",
           "c4b43c36af198985980b17626c48d357795e3fbd",
+          "88149782bf8e91dcdbb43a203b54337886023f7f",
+          "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
         ].includes(prepared.plan.acceleratorRevision)
       )
         throw new ApplicationError(409, "application_runner_revision_required");
+      if (
+        this.dispatch?.runner.supportsAccelerator?.(
+          prepared.plan.acceleratorRevision,
+        ) === false
+      )
+        throw new ApplicationError(409, "application_runner_revision_required");
       const bindingHash = createHash("sha256")
-        .update(JSON.stringify(prepared.plan))
+        .update(JSON.stringify(plan))
         .digest("hex");
       type JobRow = {
         id: string;
@@ -882,7 +1497,7 @@ export class Applications {
         existing ??
         (
           await client.query<JobRow>(
-            "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at) SELECT $1,$2,$3,$4,$5,$6,'plan',$7::jsonb,$8,least($9::timestamptz,i.valid_until,now()+interval '25 minutes') FROM lzc.stackit_identities i WHERE i.user_id=$4 AND i.issuer='https://accounts.stackit.cloud' AND i.revoked_at IS NULL AND i.valid_until>now() RETURNING *",
+            "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at) SELECT $1,$2,$3,$4,$5,$6,'plan',$7::jsonb,$8,lzc_auth.application_job_expiry($5,$3,$9::timestamptz) FROM lzc.stackit_identities i WHERE i.user_id=$4 AND i.issuer='https://accounts.stackit.cloud' AND i.revoked_at IS NULL AND i.valid_until>now() RETURNING *",
             [
               randomUUID(),
               session.tenantId,
@@ -890,7 +1505,7 @@ export class Applications {
               session.userId,
               session.id,
               request.idempotencyKey,
-              JSON.stringify(prepared.plan),
+              JSON.stringify(plan),
               bindingHash,
               session.expiresAt,
             ],
@@ -898,6 +1513,11 @@ export class Applications {
         ).rows[0];
       if (!job)
         throw new ApplicationError(403, "application_job_identity_unavailable");
+      if (!existing)
+        await client.query(
+          "SELECT lzc_auth.bind_application_job_execution($1,$2)",
+          [session.id, job.id],
+        );
       return {
         id: job.id,
         instanceId: id,
@@ -943,6 +1563,13 @@ export class Applications {
       })
       .parse(input);
     return this.work(session, "publish", async (client) => {
+      const job = (
+        await client.query<{ instance_id: string }>(
+          "SELECT instance_id FROM lzc.application_jobs WHERE id=$1",
+          [id],
+        )
+      ).rows[0];
+      if (job) await this.requireActiveOrder(client, session, job.instance_id);
       const approved = (
         await client.query<{
           job_id: string;
@@ -973,16 +1600,20 @@ export class Applications {
 
   claimJobGrant(session: Session, jobId: string) {
     const id = z.uuid().parse(jobId);
-    return this.work(session, "publish", async (client) => {
+    return this.work(session, "order", async (client) => {
       const claimed = (
-        await client.query<{
+        await this.jobQuery<{
           job_id: string;
           claimed_at: Date;
           expires_at: Date;
-        }>("SELECT * FROM lzc_auth.claim_application_job_grant($1,$2)", [
-          session.id,
+        }>(
+          client,
+          session,
           id,
-        ])
+          "SELECT * FROM lzc_auth.claim_application_job_grant($1,$2)",
+          [session.id, id],
+          "claim",
+        )
       ).rows[0];
       if (!claimed)
         throw new ApplicationError(
@@ -1005,9 +1636,12 @@ export class Applications {
   ) {
     z.uuid().parse(jobId);
     const binding = applicationRunnerPackageSchema.parse(input);
-    const expiresAt = await this.work(session, "publish", async (client) => {
+    const expiresAt = await this.work(session, "order", async (client) => {
       const row = (
-        await client.query<{ expires_at: Date }>(
+        await this.jobQuery<{ expires_at: Date }>(
+          client,
+          session,
+          jobId,
           "SELECT lzc_auth.issue_application_runner_ticket($1,$2,$3,$4,$5,$6) AS expires_at",
           [
             session.id,
@@ -1017,6 +1651,13 @@ export class Applications {
             binding.acceleratorRevision,
             binding.providerLockSha256,
           ],
+          "ticket",
+          {
+            hash: tokenHash(ticket),
+            package: binding.runnerPackageId,
+            source: binding.acceleratorRevision,
+            lock: binding.providerLockSha256,
+          },
         )
       ).rows[0];
       if (!row)
@@ -1043,11 +1684,15 @@ export class Applications {
     z.strictObject({ confirmPlan: z.literal(true) }).parse(input);
     if (!this.dispatch || !this.backends || !this.secrets || !this.profiles)
       throw new ApplicationError(503, "application_dispatch_disabled");
-    const created = await this.work(session, "publish", async (client) => {
+    const created = await this.work(session, "order", async (client) => {
       const row = (
-        await client.query<{ created: boolean }>(
+        await this.jobQuery<{ created: boolean }>(
+          client,
+          session,
+          jobId,
           "SELECT lzc_auth.reserve_application_dispatch($1,$2) AS created",
           [session.id, jobId],
+          "reserve",
         )
       ).rows[0];
       return row?.created === true;
@@ -1067,16 +1712,23 @@ export class Applications {
             jobId,
             {
               runnerPackageId,
-              acceleratorRevision: "c4b43c36af198985980b17626c48d357795e3fbd",
+              acceleratorRevision:
+                this.dispatch?.runner.acceleratorCommit ??
+                "c4b43c36af198985980b17626c48d357795e3fbd",
               providerLockSha256:
                 "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
             },
             ticket,
           );
-          await this.work(session, "publish", async (client) => {
-            await client.query(
+          await this.work(session, "order", async (client) => {
+            await this.jobQuery(
+              client,
+              session,
+              jobId,
               "SELECT lzc_auth.bind_application_dispatch($1,$2,$3,$4)",
               [session.id, jobId, appId, runnerPackageId],
+              "bind",
+              { app: appId, package: runnerPackageId },
             );
           });
           recorded = true;
@@ -1086,11 +1738,15 @@ export class Applications {
         throw new ApplicationError(503, "application_dispatch_binding_missing");
       return { jobId, dispatched: true };
     } catch {
-      await this.work(session, "publish", async (client) => {
-        await client.query("SELECT lzc_auth.fail_application_dispatch($1,$2)", [
-          session.id,
+      await this.work(session, "order", async (client) => {
+        await this.jobQuery(
+          client,
+          session,
           jobId,
-        ]);
+          "SELECT lzc_auth.fail_application_dispatch($1,$2)",
+          [session.id, jobId],
+          "fail",
+        );
       });
       throw new ApplicationError(503, "application_dispatch_failed");
     }
@@ -1111,7 +1767,7 @@ export class Applications {
         tenant_id: string;
         expires_at: Date;
       }>(
-        "SELECT * FROM lzc_auth.resolve_application_runner_ticket($1,$2,$3,$4)",
+        "SELECT * FROM lzc_auth.resolve_delegated_application_runner($1,$2,$3,$4,false) UNION ALL SELECT * FROM lzc_auth.resolve_application_runner_ticket($1,$2,$3,$4)",
         [
           hash,
           binding.runnerPackageId,
@@ -1131,8 +1787,11 @@ export class Applications {
       login: "",
       csrfToken: "",
     };
-    await this.work(session, "publish", async (client) => {
-      await client.query(
+    await this.work(session, "order", async (client) => {
+      await this.jobQuery(
+        client,
+        session,
+        row.job_id,
         "SELECT lzc_auth.consume_application_runner_ticket($1,$2,$3,$4,$5,$6)",
         [
           session.id,
@@ -1142,6 +1801,13 @@ export class Applications {
           binding.acceleratorRevision,
           binding.providerLockSha256,
         ],
+        "consume",
+        {
+          hash,
+          package: binding.runnerPackageId,
+          source: binding.acceleratorRevision,
+          lock: binding.providerLockSha256,
+        },
       );
     });
     return { session, jobId: row.job_id };
@@ -1155,10 +1821,14 @@ export class Applications {
       jobId,
       binding.acceleratorRevision,
     );
-    await this.work(session, "publish", async (client) => {
-      await client.query(
+    await this.work(session, "order", async (client) => {
+      await this.jobQuery(
+        client,
+        session,
+        jobId,
         "SELECT lzc_auth.assert_application_runner_ticket_current($1,$2)",
         [session.id, jobId],
+        "assert",
       );
     });
     return credential;
@@ -1178,24 +1848,47 @@ export class Applications {
       tenantId: z.literal(session.tenantId),
       instanceId: z.uuid(),
       backendId: z.uuid(),
+      operation: z.literal("apply").optional(),
+      planId: z.uuid().optional(),
+      artifactSha256: z.string().optional(),
+      runnerPackageId: z.uuid().optional(),
       descriptor: s3BackendDescriptorSchema,
+      backendCiphertext: z
+        .string()
+        .regex(/^[0-9a-f]+$/)
+        .optional(),
       variables: z.strictObject({
         platform_contract: platformContractSchema,
         application: z.record(z.string(), z.json()),
       }),
     });
     const current = () =>
-      this.work(session, "publish", async (client) => {
+      this.work(session, "order", async (client) => {
         await client.query("SELECT lzc_auth.assert_application_job_group($1)", [
           jobId,
         ]);
         const row = (
-          await client.query<{ context: unknown }>(
+          await this.jobQuery<{ context: unknown }>(
+            client,
+            session,
+            jobId,
             "SELECT lzc_auth.application_runner_input_context($1,$2) AS context",
             [session.id, jobId],
+            "input",
           )
         ).rows[0];
-        return schema.parse(row?.context);
+        const planned = (
+          await client.query<{ purpose: unknown }>(
+            "SELECT coalesce(inputs->>'purpose','standard') AS purpose FROM lzc.application_jobs WHERE id=$1 AND tenant_id=$2",
+            [jobId, session.tenantId],
+          )
+        ).rows[0];
+        if (!planned)
+          throw new ApplicationError(404, "application_plan_not_found");
+        return {
+          ...schema.parse(row?.context),
+          purpose: applicationPlanPurposeSchema.parse(planned.purpose),
+        };
       });
     const context = await current();
     if (
@@ -1206,10 +1899,26 @@ export class Applications {
         `applications/${context.tenantId}/${context.instanceId}/terraform.tfstate`
     )
       throw new ApplicationError(409, "application_runner_inputs_invalid");
+    const encryptedBackend = context.backendCiphertext
+      ? this.artifactCrypto?.decrypt(
+          Buffer.from(context.backendCiphertext, "hex"),
+          session.tenantId,
+          context.backendId,
+          `backend:${context.backendId}`,
+        )
+      : undefined;
+    if (context.backendCiphertext && !encryptedBackend)
+      throw new ApplicationError(503, "application_backend_broker_unavailable");
     const backend = s3RunnerBackendSchema.parse(
-      await this.work(session, "publish", (client) =>
-        this.backends!.runner(client, session, context.backendId),
-      ),
+      encryptedBackend
+        ? {
+            kind: "s3",
+            descriptor: context.descriptor,
+            credentials: JSON.parse(encryptedBackend.toString("utf8")),
+          }
+        : await this.work(session, "order", (client) =>
+            this.backends!.runner(client, session, context.backendId),
+          ),
     );
     const descriptor = s3BackendDescriptorSchema.parse({
       ...backend.descriptor,
@@ -1222,15 +1931,41 @@ export class Applications {
     if (Buffer.byteLength(tfvars) > 1024 * 1024)
       throw new ApplicationError(409, "application_runner_inputs_invalid");
     await current();
-    await this.work(session, "publish", async (client) => {
-      await client.query(
+    await this.work(session, "order", async (client) => {
+      await this.jobQuery(
+        client,
+        session,
+        jobId,
         "SELECT lzc_auth.assert_application_runner_ticket_current($1,$2)",
         [session.id, jobId],
+        "assert",
       );
     });
+    const saved =
+      context.operation === "apply"
+        ? await this.savedPlan(session, z.uuid().parse(context.planId))
+        : undefined;
+    if (
+      saved &&
+      (saved.sha256 !== context.artifactSha256 ||
+        saved.identity !== binding.runnerPackageId)
+    )
+      throw new ApplicationError(409, "application_plan_artifact_invalid");
+    await current();
     return {
       id: jobId,
-      mode: "application-plan" as const,
+      mode:
+        context.operation === "apply"
+          ? ("application-apply" as const)
+          : ("application-plan" as const),
+      ...(saved
+        ? {
+            plan: {
+              data: saved.bytes.toString("base64"),
+              sha256: saved.sha256,
+            },
+          }
+        : {}),
       acceleratorCommit: binding.acceleratorRevision,
       lockHash: binding.providerLockSha256,
       tfvars,
@@ -1240,6 +1975,7 @@ export class Applications {
       application: {
         tenantId: context.tenantId,
         instanceId: context.instanceId,
+        ...(context.purpose !== "standard" ? { purpose: context.purpose } : {}),
       },
     };
   }
@@ -1264,7 +2000,7 @@ export class Applications {
         tenant_id: string;
         expires_at: Date;
       }>(
-        "SELECT * FROM lzc_auth.resolve_application_runner_report($1,$2,$3,$4)",
+        "SELECT * FROM lzc_auth.resolve_delegated_application_runner($1,$2,$3,$4,true) UNION ALL SELECT * FROM lzc_auth.resolve_application_runner_report($1,$2,$3,$4)",
         [
           tokenHash(ticket),
           binding.runnerPackageId,
@@ -1284,23 +2020,31 @@ export class Applications {
       login: "",
       csrfToken: "",
     };
-    return this.work(session, "publish", (client) =>
-      task(client, session, row.job_id),
-    );
+    return withTenant(this.pool, session, async (client) => {
+      await client.query(
+        "SELECT lzc_auth.authorize_application_execution($1,$2)",
+        [session.id, row.job_id],
+      );
+      return task(client, session, row.job_id);
+    });
   }
 
   runnerStage(ticket: string, binding: unknown, input: unknown) {
     const { stage } = z
       .strictObject({
-        stage: z.enum(["initializing", "validating", "planning"]),
+        stage: z.enum(["initializing", "validating", "planning", "applying"]),
       })
       .parse(input);
     return this.reportWork(ticket, binding, async (client, session, jobId) => {
-      await client.query("SELECT lzc_auth.application_report_stage($1,$2,$3)", [
-        session.id,
+      await this.jobQuery(
+        client,
+        session,
         jobId,
-        stage,
-      ]);
+        "SELECT lzc_auth.application_report_stage($1,$2,$3)",
+        [session.id, jobId, stage],
+        "stage",
+        { stage },
+      );
     });
   }
 
@@ -1329,7 +2073,10 @@ export class Applications {
         grant.owner_user_id,
         `application-artifact:${jobId}`,
       );
-      await client.query(
+      await this.jobQuery(
+        client,
+        session,
+        jobId,
         "SELECT lzc_auth.application_report_record($1,$2,'artifact',$3,$4,$5,false)",
         [
           session.id,
@@ -1338,6 +2085,14 @@ export class Applications {
           sha256,
           JSON.stringify(request.summary),
         ],
+        "record",
+        {
+          kind: "artifact",
+          cipher: ciphertext.toString("hex"),
+          sha: sha256,
+          summary: request.summary,
+          truncated: false,
+        },
       );
       return { sha256 };
     });
@@ -1368,28 +2123,94 @@ export class Applications {
       ).rows[0];
       if (!grant)
         throw new ApplicationError(403, "application_output_unavailable");
-      await client.query(
+      const ciphertext = crypto.encrypt(
+        bytes,
+        session.tenantId,
+        grant.owner_user_id,
+        `application-output:${jobId}`,
+      );
+      await this.jobQuery(
+        client,
+        session,
+        jobId,
         "SELECT lzc_auth.application_report_record($1,$2,'output',$3,$4,NULL,$5)",
         [
           session.id,
           jobId,
-          crypto.encrypt(
-            bytes,
-            session.tenantId,
-            grant.owner_user_id,
-            `application-output:${jobId}`,
-          ),
+          ciphertext,
           createHash("sha256").update(bytes).digest("hex"),
           output.truncated,
         ],
+        "record",
+        {
+          kind: "output",
+          cipher: ciphertext.toString("hex"),
+          sha: createHash("sha256").update(bytes).digest("hex"),
+          summary: null,
+          truncated: output.truncated,
+        },
       );
+    });
+  }
+
+  async runnerRecovery(ticket: string, binding: unknown, input: unknown) {
+    const request = z
+      .strictObject({
+        data: z.string(),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .parse(input);
+    const crypto = this.artifactCrypto;
+    if (!crypto)
+      throw new ApplicationError(
+        503,
+        "application_artifact_storage_unavailable",
+      );
+    const bytes = canonicalBase64(request.data, 16 * 1024 * 1024);
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    const state = z
+      .object({
+        version: z.literal(4),
+        lineage: z.uuid(),
+        serial: z.number().int().nonnegative(),
+        resources: z.array(z.unknown()),
+      })
+      .safeParse(JSON.parse(bytes.toString("utf8")));
+    if (hash !== request.sha256 || !state.success)
+      throw new ApplicationError(400, "application_recovery_invalid");
+    return this.reportWork(ticket, binding, async (client, session, jobId) => {
+      const ciphertext = crypto.encrypt(
+        bytes,
+        session.tenantId,
+        session.userId,
+        `application-recovery:${jobId}`,
+      );
+      await this.jobQuery(
+        client,
+        session,
+        jobId,
+        "SELECT false",
+        [],
+        "record",
+        {
+          kind: "recovery",
+          cipher: ciphertext.toString("hex"),
+          sha: hash,
+          summary: null,
+          truncated: false,
+        },
+      );
+      return { sha256: hash };
     });
   }
 
   runnerResult(ticket: string, binding: unknown, input: unknown) {
     const result = planResultSchema.parse(input);
     return this.reportWork(ticket, binding, async (client, session, jobId) => {
-      await client.query(
+      await this.jobQuery(
+        client,
+        session,
+        jobId,
         "SELECT lzc_auth.application_report_result($1,$2,$3,$4,$5,$6)",
         [
           session.id,
@@ -1403,6 +2224,13 @@ export class Applications {
             : null,
           result.status === "failed" ? result.errorCode : null,
         ],
+        "result",
+        {
+          status: result.status,
+          sha: result.status === "succeeded" ? result.artifactSha256 : null,
+          summary: result.status === "succeeded" ? result.summary : null,
+          error: result.status === "failed" ? result.errorCode : null,
+        },
       );
     });
   }
@@ -1416,6 +2244,8 @@ export class Applications {
     z.enum([
       "4d15d7870afa323badd93559d8b37c5a8d138dcf",
       "c4b43c36af198985980b17626c48d357795e3fbd",
+      "88149782bf8e91dcdbb43a203b54337886023f7f",
+      "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
     ]).parse(acceleratorRevision);
     if (!this.profiles || !this.secrets)
       throw new ApplicationError(
@@ -1431,21 +2261,57 @@ export class Applications {
       credentialVersion: z.number().int().positive(),
       credentialKeyId: z.string().min(1),
       expiresAt: z.iso.datetime({ offset: true }),
+      credentialOwnerId: z.uuid().optional(),
+      serviceAccount: z.string().min(1).optional(),
     });
     const current = () =>
-      this.work(session, "publish", async (client) => {
+      this.work(session, "order", async (client) => {
         await client.query("SELECT lzc_auth.assert_application_job_group($1)", [
           jobId,
         ]);
         const row = (
-          await client.query<{ context: unknown }>(
+          await this.jobQuery<{ context: unknown }>(
+            client,
+            session,
+            jobId,
             "SELECT lzc_auth.application_job_credential_context($1,$2) AS context",
             [session.id, jobId],
+            "credential",
           )
         ).rows[0];
         return contextSchema.parse(row?.context);
       });
     const context = await current();
+    if (context.credentialOwnerId) {
+      if (!this.profiles.verifyDelegated)
+        throw new ApplicationError(
+          503,
+          "application_credential_broker_unavailable",
+        );
+      const secret = await this.secrets.get(
+        { tenantId: session.tenantId, userId: context.credentialOwnerId },
+        context.credentialProfileId,
+      );
+      if (
+        secret.version !== context.credentialVersion ||
+        secret.key.credentials.kid !== context.credentialKeyId ||
+        secret.key.credentials.iss !== context.serviceAccount
+      )
+        throw new ApplicationError(409, "application_credential_changed");
+      const check = await this.profiles.verifyDelegated(
+        secret.key,
+        context.organizationId,
+      );
+      if (
+        check.status !== "passed" ||
+        check.organizationId !== context.organizationId
+      )
+        throw new ApplicationError(403, "application_execution_unavailable");
+      const finalContext = await current();
+      if (Date.parse(finalContext.expiresAt) <= Date.now())
+        throw new ApplicationError(403, "application_credential_grant_expired");
+      return { ...finalContext, key: secret.key };
+    }
     const verified = await this.profiles.verifyForPreparation(
       session,
       context.credentialProfileId,
@@ -1481,7 +2347,7 @@ export class Applications {
 
   private async planInput(client: pg.PoolClient, session: Session, id: string) {
     const instances = await client.query<InstanceRow>(
-      "SELECT * FROM lzc.application_instances WHERE id=$1 AND requested_by=$2",
+      "SELECT i.* FROM lzc.application_instances i WHERE i.id=$1 AND i.requested_by=$2 AND NOT EXISTS(SELECT 1 FROM lzc.application_order_deletions deleted WHERE deleted.instance_id=i.id AND deleted.tenant_id=i.tenant_id)",
       [id, session.userId],
     );
     const row = instances.rows[0];
@@ -1534,7 +2400,6 @@ export class Applications {
     if (
       template.kind !== "public" ||
       settings.network_enabled !== true ||
-      observability.enabled === true ||
       Object.keys(template.namespaceServices ?? {}).length
     )
       throw new ApplicationError(409, "application_plan_scope_not_supported");
@@ -1562,7 +2427,7 @@ export class Applications {
         services: {
           secretsmanager_enabled: settings.secretsmanager_enabled === true,
           observability: {
-            enabled: false,
+            enabled: observability.enabled === true,
             plan_name:
               observability.plan_name ??
               `Observability-Starter-${template.region.toUpperCase()}`,
@@ -1593,9 +2458,11 @@ export class Applications {
       cloudPlanExecuted: false as const,
       requiresExplicitApplyApproval: true as const,
       plan,
-      blockers: [
-        "Der freigegebene Runner unterstützt ausschließlich den initialen Plattform-Plan. Application-Ausführung und eigener State-Backend-Zugang sind noch nicht freigegeben.",
-      ],
+      blockers: this.executionCapabilities().planEnabled
+        ? []
+        : [
+            "Der isolierte Application-Plan-Runner ist noch nicht freigegeben. Es wurde kein Cloud-Plan ausgeführt.",
+          ],
     };
   }
 }

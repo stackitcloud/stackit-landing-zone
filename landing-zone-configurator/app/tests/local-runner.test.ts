@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { applicationMvpAcceleratorCommit } from "@lzc/contracts";
 import { afterEach, expect, it, vi } from "vitest";
 import { approvableSummary } from "../apps/api/src/plans/execution.js";
 import { LocalPlanRunner } from "../apps/api/src/plans/local.js";
@@ -128,6 +129,41 @@ it.each(["platform", "application"] as const)(
   },
 );
 
+it("qualifies new Application source metadata without relabeling legacy packages", async () => {
+  const {
+    root,
+    jobs,
+    runner: legacy,
+  } = await fixture("1.12.6", false, "application");
+  expect(legacy.acceleratorCommit).toBe(
+    "c4b43c36af198985980b17626c48d357795e3fbd",
+  );
+  await writeFile(
+    join(root, "application-source.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      acceleratorCommit: applicationMvpAcceleratorCommit,
+    }),
+    { mode: 0o600 },
+  );
+  const runner = await LocalPlanRunner.open(root, jobs, "application");
+  expect(runner.acceleratorCommit).toBe(applicationMvpAcceleratorCommit);
+  expect(runner.supportsAccelerator(applicationMvpAcceleratorCommit)).toBe(
+    true,
+  );
+  expect(runner.supportsAccelerator(legacy.acceleratorCommit)).toBe(false);
+  expect(runner.packageId).not.toBe(legacy.packageId);
+  await writeFile(join(root, "application-source.json"), "{}");
+  await expect(
+    LocalPlanRunner.open(root, jobs, "application"),
+  ).rejects.toThrow();
+  const recorded = vi.fn(async () => {});
+  await expect(runner.start(id, ticket, origin, recorded)).rejects.toThrow(
+    "Local runner package changed",
+  );
+  expect(recorded).not.toHaveBeenCalled();
+});
+
 it("includes application sources and sibling modules in the immutable package identity", async () => {
   const { root, runner } = await fixture("1.12.6", false, "application");
   await writeFile(
@@ -141,33 +177,66 @@ it("includes application sources and sibling modules in the immutable package id
   expect(recorded).not.toHaveBeenCalled();
 });
 
-it("reads only owned live logs and redacts nested credentials without exposing other jobs", async () => {
-  const { jobs, runner } = await fixture("1.12.6", true);
-  await runner.start(id, ticket, origin, async () => {});
-  const work = join(jobs, id, "lzc-runner-fixture");
-  await mkdir(work, { mode: 0o700 });
+it.each(["platform", "application"] as const)(
+  "reads only owned %s live logs and redacts nested credentials without exposing other jobs",
+  async (broker) => {
+    const { jobs, runner } = await fixture("1.12.6", true, broker);
+    await runner.start(id, ticket, origin, async () => {});
+    const container = join(jobs, id, "lzc-runner-fixture");
+    const work =
+      broker === "application" ? join(container, "application") : container;
+    await mkdir(work, { mode: 0o700, recursive: true });
+    await writeFile(
+      join(work, "credential.json"),
+      JSON.stringify({
+        credentials: { privateKey: "test-private-credential" },
+      }),
+    );
+    await writeFile(
+      join(work, "plan.log"),
+      "module.management.stackit_project.example: Refreshing state...\ntest-private-credential\n",
+    );
+    try {
+      const result = await runner.output(id, id);
+      expect(result.text).toContain("Refreshing state...");
+      expect(result.text).not.toContain("test-private-credential");
+      expect(result.text).toContain("(sensitive value)");
+      expect(
+        await runner.output(
+          "22222222-2222-4333-8444-555555555555",
+          "22222222-2222-4333-8444-555555555555",
+        ),
+      ).toMatchObject({ text: "" });
+    } finally {
+      await runner.remove(id, id);
+    }
+  },
+);
+
+it("reads a bounded masked completion report after restart without reviving the worker", async () => {
+  const { jobs, runner } = await fixture("1.12.6", false, "application");
+  await mkdir(join(jobs, id), { mode: 0o700 });
+  const output = {
+    text: "$ tofu apply\n(sensitive value)\n",
+    truncated: false,
+  };
+  const path = join(jobs, id, "completion-report.json");
   await writeFile(
-    join(work, "credential.json"),
-    JSON.stringify({ credentials: { privateKey: "test-private-credential" } }),
+    path,
+    JSON.stringify({
+      schemaVersion: 1,
+      executionSucceeded: true,
+      errorCode: "apply_failed",
+      output,
+    }),
+    { mode: 0o600 },
   );
-  await writeFile(
-    join(work, "plan.log"),
-    "module.management.stackit_project.example: Refreshing state...\ntest-private-credential\n",
-  );
-  try {
-    const result = await runner.output(id, id);
-    expect(result.text).toContain("Refreshing state...");
-    expect(result.text).not.toContain("test-private-credential");
-    expect(result.text).toContain("(sensitive value)");
-    expect(
-      await runner.output(
-        "22222222-2222-4333-8444-555555555555",
-        "22222222-2222-4333-8444-555555555555",
-      ),
-    ).toMatchObject({ text: "" });
-  } finally {
-    await runner.remove(id, id);
-  }
+  expect(await runner.output(id, id)).toEqual({ ...output, kind: "live" });
+  await expect(
+    runner.output(id, "22222222-2222-4333-8444-555555555555"),
+  ).rejects.toThrow("identity mismatch");
+  await writeFile(path, JSON.stringify({ schemaVersion: 1, output }));
+  await expect(runner.output(id, id)).rejects.toThrow();
 });
 
 it("reads an exact saved plan without planning/applying or inherited credentials and cleans inspection files", async () => {

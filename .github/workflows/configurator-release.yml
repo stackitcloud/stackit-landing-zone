@@ -41,7 +41,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: lzc-test-only
           POSTGRES_DB: configurator_test
-        ports: [5432:5432]
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres -d configurator_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
@@ -98,8 +98,6 @@ jobs:
           echo "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  $RUNNER_TEMP/node.tar.xz" | sha256sum --check
           tar -xJf "$RUNNER_TEMP/node.tar.xz" --strip-components=1 -C ../.local/release/runtime node-v24.21.0-linux-x64/bin/node node-v24.21.0-linux-x64/LICENSE
           ../.local/release/runtime/bin/node --version
-          tar -czf ../.local/release.tar.gz -C ../.local/release .
-          (cd ../.local && sha256sum release.tar.gz > release.sha256)
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: '1.12.6'
@@ -107,7 +105,10 @@ jobs:
       - name: Test real OpenTofu contract and package isolated runner
         run: |
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
-          bash ../deploy/runner/package.sh
+          LZC_HOSTED_EXECUTION_PACKAGE=true LZC_PACKAGE_APPLICATION_ROOT=true LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true bash ../deploy/runner/package.sh
+          cp -R ../.local/runner ../.local/release/inspection
+          tar -czf ../.local/release.tar.gz -C ../.local/release .
+          (cd ../.local && sha256sum release.tar.gz > release.sha256)
       - name: Assemble immutable stage-neutral release
         run: |
           node ../infra/ci/release-artifact.mjs create ../.local
@@ -130,7 +131,7 @@ jobs:
     timeout-minutes: 30
     environment:
       name: lzc-dev-release
-      url: https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
+      url: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
     defaults:
       run:
         working-directory: landing-zone-configurator
@@ -195,6 +196,7 @@ jobs:
           (cd .local && sha256sum --check runner.sha256)
           mkdir -p .local/runner
           tar -xzf .local/runner.tar.gz -C .local/runner
+          diff -qr .local/release/inspection .local/runner
       - name: Prepare encrypted state read access
         run: node infra/ci/prepare-release.mjs backend
         env:
@@ -222,6 +224,9 @@ jobs:
           LZC_STACKIT_AUTH_FLOW: ${{ vars.LZC_STACKIT_AUTH_FLOW }}
           LZC_STACKIT_CLIENT_ID: ${{ vars.LZC_STACKIT_CLIENT_ID }}
           LZC_STACKIT_REDIRECT_URI: ${{ vars.LZC_STACKIT_REDIRECT_URI }}
+          LZC_EXECUTION_ENABLED: ${{ vars.LZC_EXECUTION_ENABLED }}
+          LZC_APPLICATION_EXECUTION_ENABLED: ${{ vars.LZC_APPLICATION_EXECUTION_ENABLED }}
+          LZC_DEPLOYMENT_ARTIFACT_KEY: ${{ secrets.LZC_DEPLOYMENT_ARTIFACT_KEY }}
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
       - name: Stage isolated runner template in its own organisation
@@ -233,8 +238,10 @@ jobs:
           test "$(cf space plans --guid)" = "$LZC_RUNNER_SPACE_ID"
           cf push --task -f deploy/runner/manifest.yml -p .local/runner --redact-env
           export LZC_RUNNER_TEMPLATE_ID="$(cf app lzc-plan-template --guid)"
+          export LZC_RUNNER_DROPLET_ID="$(cf curl "/v3/apps/$LZC_RUNNER_TEMPLATE_ID/droplets/current" | jq -er '.guid')"
           node infra/ci/prepare-release.mjs runner
           cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=accelerator init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=accelerator validate -no-color' --name "engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
+          cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=application-src/application init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=application-src/application validate -no-color' --name "application-engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
       - name: CF login and target
         run: |
           cf version
@@ -276,7 +283,7 @@ jobs:
       - name: Public route checks
         if: always() && steps.push.outcome == 'success'
         env:
-          LZC_URL: https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud
+          LZC_URL: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
           LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
         run: |

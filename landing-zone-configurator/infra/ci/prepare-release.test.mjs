@@ -58,8 +58,9 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const result=run("application");assert.equal(result.status,0,result.stderr);
   const vars=join(privateDir,"app-vars.json");assert.equal(statSync(vars).mode&0o777,0o600);
   const app=JSON.parse(readFileSync(vars));
-    assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_STACKIT_AUTH_FLOW","LZC_STACKIT_CLIENT_ID","LZC_STACKIT_REDIRECT_URI","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID"]);
+    assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_STACKIT_AUTH_FLOW","LZC_STACKIT_CLIENT_ID","LZC_STACKIT_REDIRECT_URI","LZC_EXECUTION_ENABLED","LZC_APPLICATION_EXECUTION_ENABLED","LZC_DEPLOYMENT_ARTIFACT_KEY","LZC_RUNNER_DROPLET_ID","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID"]);
   assert.equal(app.LZC_AUTH_ENABLED,"false");
+  assert.equal(app.LZC_PUBLIC_ORIGIN,"https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud");
     assert.equal(app.LZC_STACKIT_DEVICE_ENABLED,"false");
     assert.equal(app.LZC_STACKIT_CLI_CLIENT_APPROVED,"false");
   assert.equal(app.LZC_GITHUB_CLIENT_SECRET,"");
@@ -78,6 +79,19 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const authenticated=JSON.parse(readFileSync(vars));
   assert.equal(authenticated.LZC_AUTH_ENABLED,"true");
   assert.equal(authenticated.LZC_GITHUB_CLIENT_SECRET,"test-oauth-secret");
+  env.LZC_APPLICATION_EXECUTION_ENABLED="true";
+  assert.notEqual(run("application").status,0,"Application execution requires platform execution");
+  env.LZC_EXECUTION_ENABLED="true";
+  assert.notEqual(run("application").status,0,"Execution requires a durable artifact key");
+  env.LZC_DEPLOYMENT_ARTIFACT_KEY="invalid";
+  assert.notEqual(run("application").status,0,"Execution requires a canonical 32-byte key");
+  env.LZC_DEPLOYMENT_ARTIFACT_KEY=Buffer.alloc(32,7).toString("base64");
+  assert.equal(run("application").status,0);
+  assert.equal(JSON.parse(readFileSync(vars)).LZC_APPLICATION_EXECUTION_ENABLED,"true");
+  assert.ok(!readFileSync(migration,"utf8").includes(env.LZC_DEPLOYMENT_ARTIFACT_KEY));
+  env.LZC_EXECUTION_ENABLED="false";
+  env.LZC_APPLICATION_EXECUTION_ENABLED="false";
+  env.LZC_DEPLOYMENT_ARTIFACT_KEY="";
     env.LZC_STACKIT_DEVICE_ENABLED="true";
     assert.notEqual(run("application").status,0,"must reject unapproved CLI client use");
     env.LZC_STACKIT_CLI_CLIENT_APPROVED="true";
@@ -88,6 +102,8 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
     env.LZC_STACKIT_AUTH_FLOW="authorization-code";
     env.LZC_STACKIT_CLIENT_ID="registered-web-client";
     env.LZC_STACKIT_REDIRECT_URI="https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback";
+    assert.notEqual(run("application").status,0,"must reject the previous public origin callback");
+    env.LZC_STACKIT_REDIRECT_URI="https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback";
     assert.equal(run("application").status,0,"STACKIT login must not require GitHub");
     const stackit=JSON.parse(readFileSync(vars));
     assert.equal(stackit.LZC_STACKIT_DEVICE_ENABLED,"true");
@@ -123,10 +139,13 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   writeFileSync(join(privateDir,"runtime-outputs.json"),JSON.stringify(runtime));
   assert.equal(run("application").status,0);
   env.LZC_RUNNER_TEMPLATE_ID="33333333-3333-4333-8333-333333333333";
+  assert.notEqual(run("runner").status,0,"Runner droplet must be bound explicitly");
+  env.LZC_RUNNER_DROPLET_ID="44444444-4444-4444-8444-444444444444";
   assert.equal(run("runner").status,0);
   const enabled=JSON.parse(readFileSync(vars));
   assert.equal(enabled.LZC_PLANS_ENABLED,"true");
   assert.equal(enabled.LZC_RUNNER_CF_PASSWORD,"runner-only-secret");
+  assert.equal(enabled.LZC_RUNNER_DROPLET_ID,env.LZC_RUNNER_DROPLET_ID);
   assert.ok(!readFileSync(migration,"utf8").includes("runner-only-secret"));
 
  } finally {rmSync(dir,{recursive:true,force:true});}

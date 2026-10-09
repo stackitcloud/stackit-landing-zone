@@ -2,44 +2,46 @@ import { z } from "zod";
 import { type JsonValue, objectValue, type Values } from "./configuration.js";
 import { assertBoundedJson } from "./features.js";
 
-export const templateParameterFields = [
-  {
-    path: "env",
-    label: "Umgebung / Stage",
-    type: "string",
-    sources: ["fixed", "input"],
-  },
-  {
-    path: "secretsmanager_enabled",
-    label: "STACKIT Secrets Manager",
-    type: "boolean",
-    sources: ["fixed", "input"],
-  },
-  {
-    path: "observability.enabled",
-    label: "STACKIT Observability",
-    type: "boolean",
-    sources: ["fixed", "input"],
-  },
-  {
-    path: "observability.plan_name",
-    label: "Observability-Leistungsklasse",
-    type: "string",
-    sources: ["fixed", "input"],
-  },
-  {
-    path: "observability.acl",
-    label: "Observability-Zugriffsquellen",
-    type: "string-list",
-    sources: ["fixed", "input", "binding"],
-  },
-  {
-    path: "role_assignments",
-    label: "Projektrollen der verantwortlichen Person",
-    type: "role-assignments",
-    sources: ["fixed", "context"],
-  },
-] as const;
+export const templateParameterFields = (
+  [
+    {
+      path: "env",
+      label: "Umgebung / Stage",
+      type: "string",
+      sources: ["fixed", "input"],
+    },
+    {
+      path: "secretsmanager_enabled",
+      label: "STACKIT Secrets Manager",
+      type: "boolean",
+      sources: ["fixed", "input"],
+    },
+    {
+      path: "observability.enabled",
+      label: "STACKIT Observability",
+      type: "boolean",
+      sources: ["fixed", "input"],
+    },
+    {
+      path: "observability.plan_name",
+      label: "Observability-Leistungsklasse",
+      type: "string",
+      sources: ["fixed", "input"],
+    },
+    {
+      path: "observability.acl",
+      label: "Observability-Zugriffsquellen",
+      type: "string-list",
+      sources: ["fixed", "input", "binding"],
+    },
+    {
+      path: "role_assignments",
+      label: "Projektrollen der verantwortlichen Person",
+      type: "role-assignments",
+      sources: ["fixed", "context"],
+    },
+  ] as const
+).filter((field): boolean => field.path !== "observability.acl");
 export type TemplateParameterPath =
   (typeof templateParameterFields)[number]["path"];
 const valueSchema = z.union([
@@ -196,6 +198,7 @@ export function validateTemplateParameterPolicy(
       "Sandbox-Vorlagen unterstützen diese Bestellparameter noch nicht.",
     );
   for (const [path, source] of Object.entries(policy.fields)) {
+    if (path === "observability.acl") continue;
     const field = fieldFor(path);
     if (!(field.sources as readonly string[]).includes(source.source))
       throw new Error(
@@ -269,6 +272,7 @@ export function resolveTemplateParameters(
   validateTemplateParameterPolicy(template);
   const fields = template.parameterPolicy?.fields ?? {};
   for (const path of Object.keys(inputs)) {
+    if (path === "observability.acl") continue;
     fieldFor(path);
     if (fields[path]?.source !== "input")
       throw new Error(
@@ -375,35 +379,12 @@ export function resolveTemplateParameters(
     }
     put(settings, field.path, value);
   }
-  if (fields["observability.acl"]?.source === "binding") {
-    if (
-      !hasProjectNetwork(template) ||
-      get(settings, "observability.enabled") !== true
-    )
-      throw new Error(
-        "Die Projektnetz-Bindung benötigt ein Projektnetz und eingeschaltetes STACKIT Observability.",
-      );
-    settings.observability = {
-      ...objectValue(settings.observability),
-      access_source: "project-network",
-      acl: [],
-    };
-    bindings.push({
-      path: "observability.acl",
-      binding: "own-project-network",
-      status: "unresolved",
-      description:
-        "Eigenes Projektnetz dieser Instanz; keine Adresse aufgelöst. Die am Observability-Dienst sichtbare öffentliche Quelladresse ist noch nicht nachgewiesen.",
-    });
-    provenance["observability.acl"] = {
-      source: "binding",
-      description:
-        "Symbolische Ressourcenbindung; kein CIDR-Wert und keine ausführbare ACL.",
-    };
-    qualificationBlockers.push(
-      "Observability filtert Internet-Quelladressen. Eine private Projekt-CIDR hinter NAT ist kein nachgewiesener Zugangsweg. Veröffentlichung und Ausführung dieser Bindung bleiben gesperrt.",
-    );
-  }
+  const observability = objectValue(settings.observability);
+  delete observability.access_source;
+  settings.observability = {
+    ...observability,
+    acl: get(settings, "observability.acl"),
+  };
   return {
     settings,
     provenance,

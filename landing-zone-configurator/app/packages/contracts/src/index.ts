@@ -41,16 +41,48 @@ export const healthResponseSchema = z.object({
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
+export const applicationPlanPurposeSchema = z.enum([
+  "standard",
+  "destroy",
+  "drift",
+]);
+
 export const applicationRunnerBindingSchema = z.strictObject({
   tenantId: z.uuid(),
   instanceId: z.uuid(),
+  purpose: applicationPlanPurposeSchema.optional(),
 });
+
+export const applicationOrderDecisionSchema = z
+  .strictObject({
+    decision: z.enum(["approved", "rejected"]),
+    reason: z.string().trim().max(1000).default(""),
+    confirmDecision: z.literal(true),
+  })
+  .refine((value) => value.decision !== "rejected" || value.reason.length > 0, {
+    message: "Eine Ablehnung benötigt eine Begründung.",
+    path: ["reason"],
+  });
 
 export const applicationInstanceSchema = z.strictObject({
   id: z.uuid(),
   versionId: z.uuid(),
   deploymentPolicy: z.enum(["approval-required", "direct"]).optional(),
+  approval: z
+    .discriminatedUnion("status", [
+      z.strictObject({ status: z.enum(["pending", "not-required"]) }),
+      z.strictObject({
+        status: z.enum(["approved", "rejected"]),
+        decidedBy: z.uuid(),
+        decidedAt: z.iso.datetime(),
+        reason: z.string().max(1000),
+      }),
+    ])
+    .optional(),
   requestedBy: z.uuid(),
+  canDelete: z.boolean().optional(),
+  canArchive: z.boolean().optional(),
+  executionConfigured: z.boolean().optional(),
   name: z.string().min(1).max(40),
   parameters: z.record(z.string(), z.json()),
   settings: z.record(z.string(), z.json()),
@@ -75,6 +107,10 @@ export type AppliedPlatformSource = z.infer<typeof appliedPlatformSourceSchema>;
 
 export type { ActionCounts, PlanAction, PlanSummary } from "./plan.js";
 export {
+  applicationMvpAcceleratorCommit,
+  applicationPlanPreview,
+  applicationPlanPreviewSchema,
+  applicationRunnerSourceSchema,
   InvalidPlan,
   platformRunnerSourceSchema,
   platformUpgradeAcceleratorCommit,
@@ -128,6 +164,46 @@ export const planFailureSchema = z.enum([
   "state_failed",
   "artifact_invalid",
 ]);
+export const applicationPlanJobSchema = z.strictObject({
+  id: z.uuid(),
+  instanceId: z.uuid(),
+  requestedBy: z.uuid(),
+  approvedBy: z.uuid(),
+  createdAt: z.iso.datetime(),
+  expiresAt: z.iso.datetime(),
+  operation: z.enum(["plan", "apply"]).default("plan"),
+  purpose: applicationPlanPurposeSchema.default("standard"),
+  planId: z.uuid().nullable().optional(),
+  artifactSha256: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .nullable()
+    .optional(),
+  canApply: z.boolean().default(false),
+  status: z.enum([
+    "prepared",
+    "reserved",
+    "starting",
+    "initializing",
+    "validating",
+    "planning",
+    "applying",
+    "succeeded",
+    "failed",
+    "reconciliation_required",
+  ]),
+  grantActive: z.boolean(),
+  backendId: z.uuid().nullable(),
+  canApproveBackend: z.boolean(),
+  canDispatch: z.boolean(),
+  delegatedExecution: z.boolean().optional(),
+  summary: planSummarySchema.nullable(),
+  errorCode: z
+    .union([planFailureSchema, z.literal("runner_report_missing")])
+    .nullable(),
+});
+export type ApplicationPlanJob = z.infer<typeof applicationPlanJobSchema>;
+
 export const planResultSchema = z.discriminatedUnion("status", [
   z
     .object({

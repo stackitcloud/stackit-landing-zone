@@ -1,6 +1,6 @@
 import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { constants, createReadStream } from "node:fs";
 import {
   chmod,
   cp,
@@ -16,7 +16,10 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { platformRunnerSourceSchema } from "@lzc/contracts";
+import {
+  applicationRunnerSourceSchema,
+  platformRunnerSourceSchema,
+} from "@lzc/contracts";
 import { z } from "zod";
 import type { PlanRunner } from "./cloud-foundry.js";
 
@@ -58,6 +61,16 @@ async function fingerprint(
   if (broker === "application") {
     hash.update("application\0");
     await add("application-src");
+    const metadata = await lstat(join(root, "application-source.json")).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+        return null;
+      },
+    );
+    if (metadata) {
+      hash.update("application-source\0");
+      await add("application-source.json");
+    }
   }
   if (broker === "platform") {
     const metadata = await lstat(join(root, "platform-source.json")).catch(
@@ -101,6 +114,7 @@ export class LocalPlanRunner implements PlanRunner {
     private readonly identity: string,
     private readonly broker: "platform" | "application",
     readonly acceleratorCommit: string,
+    readonly applicationMaintenanceEnabled: boolean,
   ) {}
 
   static async open(
@@ -124,6 +138,7 @@ export class LocalPlanRunner implements PlanRunner {
     );
     if (JSON.parse(engine.stdout).terraform_version !== "1.12.6")
       throw new Error("Local runner requires OpenTofu 1.12.6");
+    let maintenanceEnabled = false;
     const source =
       broker === "platform"
         ? await readFile(
@@ -138,7 +153,22 @@ export class LocalPlanRunner implements PlanRunner {
               return "a256f6896d11134fdc351786f1be5eba4e56b2e2";
             },
           )
-        : "c4b43c36af198985980b17626c48d357795e3fbd";
+        : await readFile(
+            join(packageRoot, "application-source.json"),
+            "utf8",
+          ).then(
+            (value) => {
+              const metadata = applicationRunnerSourceSchema.parse(
+                JSON.parse(value),
+              );
+              maintenanceEnabled = metadata.maintenanceEnabled === true;
+              return metadata.acceleratorCommit;
+            },
+            (error: NodeJS.ErrnoException) => {
+              if (error.code !== "ENOENT") throw error;
+              return "c4b43c36af198985980b17626c48d357795e3fbd";
+            },
+          );
     const identity = await fingerprint(packageRoot, broker);
     await mkdir(jobs, { recursive: true, mode: 0o700 });
     await chmod(jobs, 0o700);
@@ -148,6 +178,7 @@ export class LocalPlanRunner implements PlanRunner {
       identity,
       broker,
       source,
+      maintenanceEnabled,
     );
   }
 
@@ -156,7 +187,7 @@ export class LocalPlanRunner implements PlanRunner {
   }
 
   supportsAccelerator(commit: string) {
-    return this.broker === "platform" && commit === this.acceleratorCommit;
+    return commit === this.acceleratorCommit;
   }
 
   supportsArtifact(identity: string) {
@@ -197,12 +228,43 @@ export class LocalPlanRunner implements PlanRunner {
     }
     let text = "";
     let truncated = false;
-    if (!this.children.has(id)) return { text, truncated, kind: "live" };
     const directory = join(this.jobs, id);
+    const diagnostic = await open(
+      join(directory, "completion-report.json"),
+      constants.O_RDONLY | constants.O_NOFOLLOW,
+    ).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    });
+    if (diagnostic) {
+      try {
+        const info = await diagnostic.stat();
+        if (!info.isFile() || info.size > 16 * 1024 * 1024)
+          throw new Error("Local runner diagnostic invalid");
+        const saved = z
+          .strictObject({
+            schemaVersion: z.literal(1),
+            executionSucceeded: z.boolean(),
+            errorCode: z.string().regex(/^[a-z_]{1,64}$/),
+            output: z.strictObject({
+              text: z.string().max(2 * 1024 * 1024),
+              truncated: z.boolean(),
+            }),
+          })
+          .parse(JSON.parse(await diagnostic.readFile("utf8")));
+        return { ...saved.output, kind: "live" };
+      } finally {
+        await diagnostic.close();
+      }
+    }
+    if (!this.children.has(id)) return { text, truncated, kind: "live" };
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (!entry.isDirectory() || !entry.name.startsWith("lzc-runner-"))
         continue;
-      const work = join(directory, entry.name);
+      const work =
+        this.broker === "application"
+          ? join(directory, entry.name, "application")
+          : join(directory, entry.name);
       const credentials = await readFile(
         join(work, "credential.json"),
         "utf8",
@@ -253,8 +315,20 @@ export class LocalPlanRunner implements PlanRunner {
     return { text, truncated, kind: "live" };
   }
 
+  async preview(saved: { bytes: Buffer; sha256: string; identity: string }) {
+    if (
+      saved.identity !== this.identity ||
+      saved.bytes.length > 16 * 1024 * 1024 ||
+      createHash("sha256").update(saved.bytes).digest("hex") !== saved.sha256
+    )
+      throw new Error("Plan artifact invalid");
+    const result = await this.inspect(saved.bytes, true);
+    return JSON.parse(result.text) as unknown;
+  }
+
   private async inspect(
     bytes: Buffer,
+    json = false,
   ): Promise<{ text: string; truncated: boolean; kind: "saved-plan" }> {
     if (this.inspecting >= 2) throw new Error("Plan output busy");
     this.inspecting++;
@@ -303,8 +377,13 @@ export class LocalPlanRunner implements PlanRunner {
       );
       const result = await promisify(execFile)(
         join(this.root, "tools/tofu"),
-        ["show", "-no-color", "saved-plan.bin"],
-        { cwd: work, env, timeout: 60000, maxBuffer: 2 * 1024 * 1024 },
+        ["show", json ? "-json" : "-no-color", "saved-plan.bin"],
+        {
+          cwd: work,
+          env,
+          timeout: 60000,
+          maxBuffer: (json ? 32 : 2) * 1024 * 1024,
+        },
       );
       return { text: result.stdout, truncated: false, kind: "saved-plan" };
     } catch {
