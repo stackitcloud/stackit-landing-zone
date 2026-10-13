@@ -1,3 +1,4 @@
+export * from "./assistant.js";
 export * from "./backend.js";
 
 import { z } from "zod";
@@ -37,7 +38,12 @@ export type PlatformCheckpoint = z.infer<typeof platformCheckpointSchema>;
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),
   service: z.literal("landing-zone-configurator"),
-  authentication: z.enum(["not-configured", "github", "stackit"]),
+  authentication: z.enum([
+    "not-configured",
+    "github",
+    "stackit",
+    "development",
+  ]),
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
@@ -203,6 +209,119 @@ export const applicationPlanJobSchema = z.strictObject({
     .nullable(),
 });
 export type ApplicationPlanJob = z.infer<typeof applicationPlanJobSchema>;
+
+export const applicationRecoveryDiagnosisSchema = z.strictObject({
+  jobId: z.uuid(),
+  instanceId: z.uuid(),
+  operation: applicationPlanJobSchema.shape.operation,
+  purpose: applicationPlanPurposeSchema,
+  status: applicationPlanJobSchema.shape.status,
+  errorCode: applicationPlanJobSchema.shape.errorCode,
+  planId: z.uuid().nullable(),
+  runnerPackageId: z.uuid().nullable(),
+  acceleratorRevision: z.string().regex(/^[a-f0-9]{40}$/),
+  bindingSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  stateKey: z.string().min(1),
+  finishedAt: z.iso.datetime().nullable(),
+  assessment: z.enum([
+    "not-dispatched",
+    "in-progress",
+    "completed",
+    "operator-review-required",
+    "state-recovery-required",
+  ]),
+  evidence: z
+    .array(
+      z.strictObject({
+        kind: z.enum(["artifact", "output", "recovery"]),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        createdAt: z.iso.datetime(),
+        runnerPackageId: z.uuid(),
+      }),
+    )
+    .max(3),
+});
+export type ApplicationRecoveryDiagnosis = z.infer<
+  typeof applicationRecoveryDiagnosisSchema
+>;
+
+export const applicationRecoveryReconciliationSchema = z.strictObject({
+  observedAt: z.iso.datetime({ offset: true }),
+  stage: z.enum([
+    "not-dispatched",
+    "start-unresolved",
+    "execution-in-progress",
+    "completion-unresolved",
+    "execution-failed",
+    "state-recovery-required",
+    "reported-completion",
+  ]),
+  runnerAppId: z.uuid().nullable(),
+  runnerStop: z.literal("unknown"),
+  stateLock: z.literal("unknown"),
+  cloudState: z.literal("unknown"),
+  credentialRevocation: z.literal("unknown"),
+  authorizesExecution: z.literal(false),
+  grant: z.strictObject({
+    status: z.enum(["unexpired", "expired", "revoked"]),
+    expiresAt: z.iso.datetime({ offset: true }),
+    revokedAt: z.iso.datetime({ offset: true }).nullable(),
+  }),
+  ticket: z
+    .strictObject({
+      status: z.enum(["unexpired", "expired"]),
+      expiresAt: z.iso.datetime({ offset: true }),
+      consumedAt: z.iso.datetime({ offset: true }).nullable(),
+    })
+    .nullable(),
+  delegation: z.enum(["not-used", "not-revoked", "revoked"]),
+  reports: z
+    .array(
+      applicationRecoveryDiagnosisSchema.shape.evidence.element.extend({
+        createdAt: z.iso.datetime({ offset: true }),
+      }),
+    )
+    .max(3),
+});
+
+export const applicationRecoveryReviewContextSchema = z.strictObject({
+  jobId: z.uuid(),
+  instanceId: z.uuid(),
+  bindingSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  status: applicationPlanJobSchema.shape.status,
+  operation: applicationPlanJobSchema.shape.operation,
+  finishedAt: z.iso.datetime({ offset: true }).nullable(),
+  recoverySha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  finding: z.enum(["state-review-required", "completion-review-required"]),
+  reconciliation: applicationRecoveryReconciliationSchema,
+});
+export const applicationRecoveryReviewRequestSchema = z.strictObject({
+  instanceId: z.uuid(),
+  confirmReview: z.literal(true),
+  bindingSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  recoverySha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+});
+export const applicationRecoveryReviewSchema = z.strictObject({
+  jobId: z.uuid(),
+  reviewedBy: z.uuid(),
+  reviewedAt: z.iso.datetime(),
+  bindingSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  recoverySha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  finding: applicationRecoveryReviewContextSchema.shape.finding,
+});
+export const applicationRecoveryReviewViewSchema =
+  applicationRecoveryReviewContextSchema.extend({
+    review: applicationRecoveryReviewSchema.nullable(),
+  });
 
 export const planResultSchema = z.discriminatedUnion("status", [
   z

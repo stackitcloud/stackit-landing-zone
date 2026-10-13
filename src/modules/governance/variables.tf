@@ -11,10 +11,11 @@ variable "custom_roles" {
 variable "rm_folders" {
   type = map(object({
     name          = string
+    description   = optional(string, null)
     owner_emails  = optional(list(string), [])
     reader_emails = optional(list(string), [])
   }))
-  description = "Map of folder keys to folder configuration. Each folder has a display name and optional lists of owner and reader subjects."
+  description = "Map of folder keys to folder configuration. Each folder has a display name and optional lists of owner and reader subjects. Descriptions are unsupported; omit description or leave it empty."
   default = {
     platform = {
       name          = "Platform"
@@ -36,6 +37,11 @@ variable "rm_folders" {
       owner_emails  = []
       reader_emails = []
     }
+  }
+
+  validation {
+    condition     = alltrue([for folder in values(var.rm_folders) : trimspace(coalesce(folder.description, " ")) == ""])
+    error_message = "Resource Manager folder descriptions are not supported by the reviewed STACKIT provider. Remove non-empty rm_folders[*].description values; they must not be silently discarded."
   }
 }
 

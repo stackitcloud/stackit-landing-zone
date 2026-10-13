@@ -1,6 +1,7 @@
 import {
   applicationOrderDecisionSchema,
   applicationPlanPurposeSchema,
+  applicationRecoveryReviewRequestSchema,
 } from "@lzc/contracts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -146,6 +147,9 @@ export function registerApplications(
         | "startPlan"
         | "previewPlan"
         | "outputJob"
+        | "diagnoseRecovery"
+        | "recoveryReviewContext"
+        | "recordRecoveryReview"
         | "startApply"
         | "listGroups"
         | "createGroup"
@@ -178,6 +182,8 @@ export function registerApplications(
             "application_execution_binding_conflict",
             "application_apply_plan_unavailable",
             "application_apply_package_changed",
+            "application_recovery_review_changed",
+            "application_recovery_review_unavailable",
           ].includes(error.message)
         )
           return reply.code(409).send({ error: error.message });
@@ -486,6 +492,50 @@ export function registerApplications(
             .send({ error: "application_output_unavailable" });
         const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
         return applications.outputJob(session, id);
+      },
+    );
+    routes.get(
+      "/api/v1/applications/jobs/:id/recovery-diagnosis",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.diagnoseRecovery)
+          return reply
+            .code(503)
+            .send({ error: "application_recovery_diagnosis_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.diagnoseRecovery(session, id);
+      },
+    );
+    routes.get(
+      "/api/v1/applications/jobs/:id/recovery-review",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.recoveryReviewContext)
+          return reply
+            .code(503)
+            .send({ error: "application_recovery_review_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.recoveryReviewContext(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/recovery-review",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.recordRecoveryReview)
+          return reply
+            .code(503)
+            .send({ error: "application_recovery_review_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.recordRecoveryReview(
+          session,
+          id,
+          applicationRecoveryReviewRequestSchema.parse(request.body),
+        );
       },
     );
     routes.post(

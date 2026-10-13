@@ -13,6 +13,8 @@
     "apps/api/src/**/*.ts",
     "e2e/**/*.ts",
     "playwright.config.ts",
-    "integration/**/*.ts"
+    "integration/**/*.ts",
+    "scripts/assistant-tests.ts",
+    "scripts/local-workstation.ts"
   ]
 }

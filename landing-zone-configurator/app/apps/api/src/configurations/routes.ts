@@ -62,13 +62,21 @@ export function registerConfigurations(
       const session = await authenticatedSession(request, auth);
       if (!session)
         return reply.code(401).send({ error: "authentication_required" });
-      const { draft } = z
-        .object({ draft: z.unknown() })
+      const { draft, templateAdvice } = z
+        .object({
+          draft: z.unknown(),
+          templateAdvice: z
+            .object({ id: z.uuid(), revision: z.number().int().positive() })
+            .strict()
+            .optional(),
+        })
         .strict()
         .parse(request.body);
-      return reply
-        .code(201)
-        .send({ configuration: await configurations.create(session, draft) });
+      return reply.code(201).send({
+        configuration: templateAdvice
+          ? await configurations.create(session, draft, templateAdvice)
+          : await configurations.create(session, draft),
+      });
     });
     routes.put("/api/v1/configurations/:id", async (request, reply) => {
       const session = await authenticatedSession(request, auth);

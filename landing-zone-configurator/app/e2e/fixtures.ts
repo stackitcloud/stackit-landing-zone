@@ -8,6 +8,7 @@ export const test = base.extend<{ backgroundRequests: undefined }>({
       const unmocked: string[] = [];
       const lists: Record<string, unknown> = {
         "/api/v1/configurations": { configurations: [] },
+        "/api/v1/configurations/template-advice": { advice: null },
         "/api/v1/preparations": { preparations: [] },
         "/api/v1/plans": { runs: [] },
         "/api/v1/invitations": { invitations: [] },
@@ -19,6 +20,14 @@ export const test = base.extend<{ backgroundRequests: undefined }>({
         const path = new URL(request.url()).pathname;
         if (request.method() === "GET" && path in lists) {
           await route.fulfill({ json: lists[path] });
+        } else if (
+          request.method() === "GET" &&
+          /^\/api\/v1\/configurations\/[a-f0-9-]+\/assistant$/.test(path)
+        ) {
+          await route.fulfill({
+            status: 404,
+            json: { error: "assistant_disabled" },
+          });
         } else if (
           (request.method() === "POST" &&
             path === "/api/v1/cloud-catalogues/automatic") ||

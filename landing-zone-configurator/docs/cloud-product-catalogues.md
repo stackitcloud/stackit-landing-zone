@@ -164,6 +164,41 @@ Die öffentliche [STACKIT PIM API v2](https://docs.api.eu01.stackit.cloud/docume
 - `GET https://pim.api.stackit.cloud/v2/products/{productId}/skus`
 - `GET https://pim.api.stackit.cloud/v2/skus`
 - SKU-Attribute wie Region, technische Merkmale, Produktreife und Deprecation sowie Artikelnummern für Abrechnung.
-- Öffentlich verfügbare Listen mit Cursor-Paginierung (`pageSize` maximal 100). Ein späterer PIM-Adapter muss sämtliche Folgeseiten berücksichtigen.
+- Öffentlich verfügbare Listen mit Cursor-Paginierung (`pageSize` maximal 100). Der Adapter berücksichtigt Folgeseiten innerhalb expliziter Zeit-/Seitenlimits und verwirft unvollständig abgerufene Listen.
 
-PIM eignet sich als ergänzende Quelle für einheitliche Produktbezeichnungen, technische Erklärungen und SKU-Zuordnung. Seine öffentlichen SKU-Listen bestätigen keine Bestellbarkeit oder Berechtigung in einem konkreten Projekt, keine Quoten, keine aktuellen Kubernetes-Versionen und keine verfügbaren VM-Images. Daher bleiben die jeweiligen Produkt-APIs die Quelle der technischen Auswahlwerte. PIM-Daten sollen später diese Werte anreichern, nicht alle Abrechnungs-SKUs ungeprüft zu Editoroptionen machen. Es wurde noch kein PIM-Adapter implementiert. Die in der API-Übersicht als auslaufend markierte v1 wird nicht neu angebunden.
+PIM eignet sich als ergänzende Quelle für einheitliche Produktbezeichnungen, technische Erklärungen und SKU-Zuordnung. Seine öffentlichen SKU-Listen bestätigen keine Bestellbarkeit oder Berechtigung in einem konkreten Projekt, keine Quoten, keine aktuellen Kubernetes-Versionen und keine verfügbaren VM-Images. Daher bleiben die jeweiligen Produkt-APIs die Quelle der technischen Auswahlwerte. Die in der API-Übersicht als auslaufend markierte v1 wird nicht neu angebunden.
+
+### Assistent: aktueller PIM-v2-Abruf (2026-10-10)
+
+Editor-Chat und vorgelagerte Template-Beratung laden pro Nachricht erneut die
+Produktkataloge über dieselbe benutzer-/tenantgebundene Abstraktion wie der Editor
+und ergänzend öffentliche PIM-Daten. Der Chat verwendet die Konfigurationsregion;
+die Template-Beratung fragt eu01 und eu02 getrennt ab. Kein gemeinsamer
+Benutzer-/Tenant-Cache und kein Operator-Credential-Fallback. Ein Ausfall des
+berechtigten Produktkatalogs verhindert nicht die Erklärung öffentlicher PIM-Fakten,
+ist aber kein Nachweis eines auswählbaren Plans.
+
+Implementiert: Products und nach Produkt/Region gefilterte SKUs, Cursor-Paginierung
+mit 100 Einträgen je Seite, maximal 30 Seiten und 15 Sekunden Budget pro Liste.
+Der relevante Produktumfang ist begrenzt (maximal acht Produkte), nicht der gesamte
+STACKIT-Katalog. Beim echten eu01-Abruf: Kubernetes Engine, VPN, Observability,
+Server und Git, insgesamt 330 SKUs; VPN mit 100, 500 und 1000 Mbit/s.
+Der echte eu02-Abruf liefert dieselben fünf Produktbezeichnungen und 129 SKUs,
+darunter keine VPN-SKUs. Das ist kein Anlass, eu01-VPN-Pläne für eu02 anzubieten.
+
+Das Modell erhält normalisierte Labels/Werte und öffentliche technische Attribute,
+keine Credential-Profile, IAM-Rollen/Permissions, Referenzprojekt-IDs, Schlüssel,
+Preise oder Rohantworten. Kontextlimits: 50 Optionen je Produktkatalog und
+100 priorisierte PIM-SKUs je Region, jeweils mit Gesamtzahl/Ausschnitt-Markierung
+und Abrufzeit. Daher keine Zusage vollständiger oder ständig verfügbarer Listen.
+Die SKU-ID ist eine Abrechnungsartikelnummer, nicht die VPN-Plan-ID; Zuordnung
+technischer Auswahlwerte nur über planId/flavor und berechtigte Produktoptionen.
+
+Für Fragen zu VPN-Leistungsklassen und Flavors ergänzt eine deterministische,
+begrenzte Faktenliste den Modelltext, weil Qwen in echten Tests Zahlen trotz
+geliefertem Kontext ausgelassen hat. Abgekündigte Einträge werden ausgeschlossen;
+Bandbreite/Verbindungszahl/vCPU stammen aus gelieferten Attributen. Die RAM-Einheit
+ist noch nicht verifiziert und wird nicht als GB behauptet. Die Faktenliste ist
+derzeit deutschsprachig. Technische ID-Felder sind keine zulässigen Rückfragen.
+Freie fachliche Beratung, zweisprachige Darstellung und vollständige komplexe
+Konfigurationsänderungen bleiben gesondert zu qualifizieren.

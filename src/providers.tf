@@ -82,8 +82,6 @@ provider "vault" {
   }
 }
 
-provider "time" {}
-
 provider "opnsense" {
   uri            = local.firewall_endpoint
   api_key        = local.firewall_api_credentials.api_key

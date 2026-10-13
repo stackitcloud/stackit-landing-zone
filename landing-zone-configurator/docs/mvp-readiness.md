@@ -1,5 +1,14 @@
 # MVP-Abnahme und Weg zum Merge
 
+Aktuelle Ubuntu-Nachweise, offene Benutzerabnahmen und eigenstaendige Arbeitspakete
+stehen in der [MVP-Abnahmeliste](mvp-acceptance.md). Die datierten Abschnitte unten
+bleiben historische Detailnachweise.
+
+Der erste Wurf umfasst seit der Benutzerentscheidung vom 2026-10-09 alle
+`mvp:required`-Issues sowie die offenen `effort:s`-Issues. Der aktuelle GitHub-
+Abgleich und die groesseren Lieferpakete stehen verbindlich in der Abnahmeliste;
+historische Issue-Tabellen unten ersetzen diesen Live-Abgleich nicht.
+
 Stand: 2026-10-05. Dies ist die aktuelle Arbeitsliste; die ausführliche
 [Architekturplanung](planning.md) bleibt das Entscheidungsprotokoll.
 **Der fachliche MVP ist noch nicht erreicht. Ein Merge ist noch nicht freigegeben.**

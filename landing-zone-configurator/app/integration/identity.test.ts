@@ -1,22 +1,35 @@
 import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { summarizePlan } from "@lzc/contracts";
+import { assistantProposalFields, summarizePlan } from "@lzc/contracts";
 import {
   catalogue,
+  compileCommonConfiguration,
   configurationValues,
   createDraft,
+  createEditorConfiguration,
   editCommonInput,
+  effectiveInput,
+  exportCommonTfvars,
   migrateCommonConfiguration,
+  objectValue,
   recordValues,
   savedDraft,
   serializeTfvars,
+  setCommonInput,
   type Template,
 } from "@lzc/domain";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
+import type { Dialogue } from "../apps/api/src/assistant/dialogue.js";
+import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
+import type {
+  AssistantCatalogueContext,
+  AssistantModelServing,
+} from "../apps/api/src/assistant/model-serving.js";
+import { AssistantConversations } from "../apps/api/src/assistant/service.js";
 import {
   createGitHubLogin,
   newSessionToken,
@@ -24,6 +37,7 @@ import {
 import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
+import type { CloudCatalogue } from "../apps/api/src/credentials/catalogues.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import type { Backends } from "../apps/api/src/deployments/backends.js";
 import { Preparations } from "../apps/api/src/deployments/preparations.js";
@@ -33,6 +47,10 @@ import type { PlanRunner } from "../apps/api/src/plans/cloud-foundry.js";
 import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
+import {
+  assistantScenarioFixture,
+  assistantScenarios,
+} from "../scripts/assistant-scenarios.js";
 
 const address = process.env.LZC_TEST_DATABASE_URL;
 if (!address)
@@ -195,6 +213,1546 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         ),
       ),
     ).rejects.toMatchObject({ code: "23514" });
+  });
+
+  it("persists workspace template advice without creating configs and prevents late resurrection", async () => {
+    const configurations = new Configurations(pool);
+    const count = (await configurations.list(alice)).length;
+    const model = {
+      converse: vi.fn(),
+      adviseTemplates: vi.fn(async () => ({
+        templateId: "standalone",
+        explanation: "Public starting point",
+        questions: [
+          { text: "Which region?", options: ["eu01", "eu02", "Not decided"] },
+        ],
+        references: ["public-corporate"],
+        knowledgeSha256: buildAssistantKnowledge().sha256,
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const advice = await assistant.sendTemplateAdvice(
+      alice,
+      "Public team, no corporate connection",
+    );
+    expect(advice?.recommendation?.templateId).toBe("standalone");
+    expect(advice?.recommendation?.questions).toEqual([
+      { text: "Which region?", options: ["eu01", "eu02", "Not decided"] },
+    ]);
+    expect(advice?.messages.at(-1)?.content).toBe(
+      "Public starting point\nWhich region?",
+    );
+    expect(advice?.messages).toHaveLength(2);
+    expect((await configurations.list(alice)).length).toBe(count);
+    expect(
+      (await new AssistantConversations(pool, model).getTemplateAdvice(alice))
+        ?.id,
+    ).toBe(advice?.id);
+    expect(await assistant.getTemplateAdvice(bob)).toBeNull();
+    expect(
+      (await assistant.getTemplateAdvice(alice))?.recommendation?.questions,
+    ).toEqual(advice?.recommendation?.questions);
+    await assistant.sendTemplateAdvice(alice, "eu01");
+    expect((await assistant.getTemplateAdvice(alice))?.messages).toHaveLength(
+      4,
+    );
+    expect((await assistant.getTemplateAdvice(alice))?.expiresAt).toBe(
+      advice?.expiresAt,
+    );
+    await expect(
+      withTenant(pool, alice, (client) =>
+        client.query(
+          "UPDATE lzc.assistant_template_advice SET expires_at=now()+interval '1 year'",
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    const late = new AssistantConversations(pool, {
+      converse: vi.fn(),
+      adviseTemplates: async () => {
+        await assistant.removeTemplateAdvice(alice);
+        return model.adviseTemplates();
+      },
+    });
+    await expect(
+      late.sendTemplateAdvice(alice, "Another question"),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(await assistant.getTemplateAdvice(alice)).toBeNull();
+    await assistant.sendTemplateAdvice(alice, "Start again");
+    await migration.query(
+      "UPDATE lzc.assistant_template_advice SET expires_at=now()-interval '1 second' WHERE created_by=$1",
+      [alice.userId],
+    );
+    await assistant.prune();
+    expect(await assistant.getTemplateAdvice(alice)).toBeNull();
+  });
+
+  it("hands template requirements to the configuration chat without extending expiry or copying identities to the model", async () => {
+    const configurations = new Configurations(pool);
+    const model = {
+      adviseTemplates: vi.fn(async () => ({
+        templateId: "hub-and-spoke",
+        explanation: "Hub und Spoke",
+        questions: [],
+        references: ["configuration-contract"],
+        knowledgeSha256: buildAssistantKnowledge().sha256,
+      })),
+      converse: vi.fn(async (..._arguments: unknown[]) => ({
+        explanation: "Bitte Adresspool nennen",
+        questions: [],
+        changes: [],
+        references: ["configuration-contract"],
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const advice = await assistant.sendTemplateAdvice(
+      alice,
+      "CLUE GmbH: etwa 100 Projekte, zuerst SNA, Firewall spaeter.",
+    );
+    if (!advice) throw new Error("missing_advice");
+    const reference = { id: advice.id, revision: advice.revision };
+    const draft = createEditorConfiguration("hub-and-spoke", randomUUID());
+    await expect(
+      configurations.create(bob, draft, reference),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      configurations.create(alice, draft, {
+        ...reference,
+        revision: reference.revision + 1,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    const stored = await configurations.create(alice, draft, reference);
+    const context = await withTenant(
+      pool,
+      alice,
+      async (client) =>
+        (
+          await client.query(
+            "SELECT * FROM lzc.assistant_configuration_context WHERE configuration_id=$1",
+            [stored.id],
+          )
+        ).rows[0],
+    );
+    expect(context.expires_at.toISOString()).toBe(advice.expiresAt);
+    await assistant.send(alice, stored.id, 1, "Machen wir damit weiter");
+    expect(model.converse.mock.calls[0]?.[5]).toEqual(advice.messages);
+    expect((await assistant.get(alice, stored.id))?.messages).toHaveLength(2);
+    await expect(
+      withTenant(pool, alice, (client) =>
+        client.query(
+          "UPDATE lzc.assistant_configuration_context SET expires_at=now()+interval '1 year'",
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await assistant.removeTemplateAdvice(alice);
+    expect(
+      await withTenant(
+        pool,
+        alice,
+        async (client) =>
+          (
+            await client.query(
+              "SELECT * FROM lzc.assistant_configuration_context WHERE configuration_id=$1",
+              [stored.id],
+            )
+          ).rowCount,
+      ),
+    ).toBe(0);
+    await assistant.send(alice, stored.id, 1, "Neue Rueckfrage");
+    expect(model.converse.mock.calls[1]?.[5]).toEqual([]);
+    await configurations.remove(alice, stored.id, 1);
+  });
+
+  it("loads fresh owner-scoped product catalogues for chat and advice without leaking access metadata", async () => {
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(
+      alice,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    const projectId = randomUUID();
+    const contexts: (AssistantCatalogueContext | undefined)[] = [];
+    let generation = 0;
+    const catalogues = {
+      pim: vi.fn(async (_session: Session, region: "eu01" | "eu02") => ({
+        region,
+        fetchedAt: new Date().toISOString(),
+        products: [],
+        skus: [
+          {
+            id: "billing-article",
+            productName: "VPN",
+            title: "VPN 100",
+            region,
+            deprecated: "No",
+            maturityModelState: "ga",
+            version: "1",
+            productSpecificAttributes: {
+              discriminator: "Network",
+              planId: "p100",
+              maxBandWidth: 100,
+            },
+          },
+        ],
+      })),
+      automatic: vi.fn(async (session: Session, region: "eu01" | "eu02") => {
+        await withTenant(pool, session, (client) => client.query("SELECT 1"));
+        if (region === "eu02") throw new Error("unavailable");
+        generation++;
+        const empty = { status: "unavailable" as const, options: [] };
+        return {
+          region,
+          projectId,
+          fetchedAt: new Date().toISOString(),
+          gitFlavors: empty,
+          vpnPlans: {
+            status: "available",
+            options: Array.from({ length: 55 }, (_, index) => ({
+              value: `opaque-${index}`,
+              label: `Current plan ${generation}-${index}`,
+            })),
+          },
+          kubernetesVersions: empty,
+          machineTypes: empty,
+          availabilityZones: empty,
+          volumeTypes: empty,
+          credential: "never-send-credential",
+        } as CloudCatalogue;
+      }),
+    };
+    const model = {
+      converse: vi.fn(
+        async (
+          _selection: unknown,
+          _values: unknown,
+          _history: unknown,
+          _message: string,
+          context?: AssistantCatalogueContext,
+        ) => {
+          contexts.push(context);
+          return {
+            explanation: "Aktuelle Angebote beruecksichtigt",
+            questions: [],
+            changes: [],
+            references: ["configuration-contract"],
+          };
+        },
+      ),
+      adviseTemplates: vi.fn(
+        async (
+          _history: unknown,
+          _message: string,
+          context?: AssistantCatalogueContext,
+        ) => {
+          contexts.push(context);
+          return {
+            templateId: "standalone",
+            explanation: "Aktuelle Angebote beruecksichtigt",
+            questions: [],
+            references: ["configuration-contract"],
+            knowledgeSha256: buildAssistantKnowledge().sha256,
+          };
+        },
+      ),
+    };
+    const assistant = new AssistantConversations(pool, model, catalogues);
+    await expect(
+      assistant.send(bob, stored.id, 1, "Welche Angebote gibt es?"),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(catalogues.automatic).not.toHaveBeenCalled();
+    expect(catalogues.pim).not.toHaveBeenCalled();
+    await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Welche VPN-Leistungsklassen gibt es?",
+    );
+    await assistant.send(alice, stored.id, 1, "Bitte erneut aktuell nachsehen");
+    expect(catalogues.automatic).toHaveBeenCalledTimes(2);
+    expect(catalogues.automatic).toHaveBeenCalledWith(alice, "eu01");
+    expect(contexts[0]?.regions[0]?.products.vpnPlans).toMatchObject({
+      truncated: true,
+      totalOptions: 55,
+      options: expect.arrayContaining([
+        { value: "opaque-0", label: "Current plan 1-0" },
+      ]),
+    });
+    expect(contexts[0]?.regions[0]?.products.vpnPlans?.options).toHaveLength(
+      50,
+    );
+    expect(contexts[1]?.regions[0]?.products.vpnPlans?.options[0]?.label).toBe(
+      "Current plan 2-0",
+    );
+    await assistant.sendTemplateAdvice(
+      alice,
+      "Welche Vorlagen und Leistungsangebote passen?",
+    );
+    expect(catalogues.automatic).toHaveBeenCalledWith(alice, "eu02");
+    expect(contexts[2]?.regions[1]).toMatchObject({
+      region: "eu02",
+      fetchedAt: null,
+      products: { vpnPlans: { status: "unavailable", options: [] } },
+    });
+    expect(contexts[2]?.regions[1]?.pim).toMatchObject({
+      status: "available",
+      skus: [
+        {
+          id: "billing-article",
+          productSpecificAttributes: { planId: "p100", maxBandWidth: 100 },
+        },
+      ],
+    });
+    expect(JSON.stringify(contexts)).not.toContain(projectId);
+    expect(JSON.stringify(contexts)).not.toContain("never-send-credential");
+    await assistant.removeTemplateAdvice(alice);
+    await configurations.remove(alice, stored.id, 1);
+  });
+
+  it("validates SNA proposals before presentation and saves native configuration only after acceptance", async () => {
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(
+      alice,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    const area = {
+      ranges: ["10.64.0.0/16"],
+      transfer_network: "10.63.0.0/24",
+      min_prefix_length: 24,
+      max_prefix_length: 24,
+      default_prefix_length: 24,
+    };
+    let proposal: Dialogue = {
+      explanation: "SNA vorbereiten",
+      questions: [],
+      changes: [
+        {
+          path: "connectivity.network_areas",
+          value: { default: { ...area, min_prefix_length: 28 } },
+        },
+      ],
+      references: ["stackit-network-components"],
+    };
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => proposal),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    await expect(
+      assistant.send(bob, stored.id, 1, "SNA erstellen"),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(model.converse).not.toHaveBeenCalled();
+    await expect(
+      assistant.send(alice, stored.id, 1, "SNA erstellen"),
+    ).rejects.toThrow("assistant_configuration_invalid");
+    const before = await configurations.get(alice, stored.id);
+    expect(before.revision).toBe(1);
+    proposal = {
+      ...proposal,
+      changes: [
+        { path: "connectivity.network_areas", value: { default: area } },
+      ],
+    };
+    const conversation = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Adresspool und Transfernetz wie angegeben",
+    );
+    expect(conversation.proposal?.changes[0]?.before).toBeNull();
+    expect((await configurations.get(alice, stored.id)).draft).toEqual(
+      before.draft,
+    );
+    const controller = new AbortController();
+    const onText = vi.fn();
+    model.converse.mockImplementationOnce(
+      async (
+        _selection,
+        _values,
+        _history,
+        _message,
+        _catalogues,
+        _context,
+        stream,
+      ) => {
+        stream?.onText("Vorläufiger SNA-Text");
+        controller.abort();
+        return proposal;
+      },
+    );
+    await expect(
+      assistant.send(alice, stored.id, 1, "Abgebrochene Antwort", {
+        signal: controller.signal,
+        onText,
+      }),
+    ).rejects.toThrow();
+    expect(onText).toHaveBeenCalledWith("Vorläufiger SNA-Text");
+    expect(await assistant.get(alice, stored.id)).toEqual(conversation);
+    expect((await configurations.get(alice, stored.id)).draft).toEqual(
+      before.draft,
+    );
+    await expect(
+      assistant.accept(alice, stored.id, conversation.revision + 1, 1),
+    ).rejects.toMatchObject({ status: 409 });
+    await migration.query(
+      "UPDATE lzc.assistant_conversations SET proposal=$2 WHERE id=$1",
+      [
+        conversation.id,
+        JSON.stringify({
+          ...proposal,
+          changes: [{ path: "firewall_bootstrap", value: true }],
+        }),
+      ],
+    );
+    await expect(
+      assistant.accept(alice, stored.id, conversation.revision, 1),
+    ).rejects.toThrow("assistant_invalid_proposal");
+    expect((await configurations.get(alice, stored.id)).revision).toBe(1);
+    await migration.query(
+      "UPDATE lzc.assistant_conversations SET proposal=$2 WHERE id=$1",
+      [conversation.id, JSON.stringify(proposal)],
+    );
+    await migration.query(
+      "UPDATE lzc.assistant_conversations SET knowledge_hash='previous-knowledge' WHERE id=$1",
+      [conversation.id],
+    );
+    expect((await assistant.get(alice, stored.id))?.stale).toBe(true);
+    await expect(
+      assistant.accept(alice, stored.id, conversation.revision, 1),
+    ).rejects.toThrow("assistant_proposal_changed");
+    const continued = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Bitte mit aktuellem Wissen weiterarbeiten",
+    );
+    expect(continued.id).toBe(conversation.id);
+    expect(continued.messages.slice(0, 2)).toEqual(conversation.messages);
+    expect(continued.messages).toHaveLength(4);
+    expect(continued.expiresAt).toBe(conversation.expiresAt);
+    expect(continued.stale).toBe(false);
+    expect(model.converse.mock.calls.at(-1)?.[0]).toMatchObject({
+      knowledgeSha256: buildAssistantKnowledge().sha256,
+    });
+    expect(
+      (
+        await migration.query(
+          "SELECT knowledge_hash FROM lzc.assistant_conversations WHERE id=$1",
+          [conversation.id],
+        )
+      ).rows[0].knowledge_hash,
+    ).toBe(buildAssistantKnowledge().sha256);
+    const accepted = await new AssistantConversations(pool, model).accept(
+      alice,
+      stored.id,
+      continued.revision,
+      1,
+    );
+    expect(accepted.revision).toBe(2);
+    const values = recordValues(
+      accepted.draft as Parameters<typeof recordValues>[0],
+    );
+    expect(objectValue(values.connectivity).network_areas).toEqual({
+      default: area,
+    });
+    expect(objectValue(values.connectivity).firewall).toBeUndefined();
+    expect(serializeTfvars(values)).toContain("10.64.0.0/16");
+    expect((await assistant.get(alice, stored.id))?.proposal).toBeNull();
+    await configurations.remove(alice, stored.id, 2);
+  });
+
+  it("persists DNS settings only after whole-proposal acceptance and preserves omitted zone metadata", async () => {
+    const configurations = new Configurations(pool);
+    const source = createEditorConfiguration(
+      "hub-and-spoke-firewall",
+      randomUUID(),
+    );
+    const connectivity = objectValue(
+      compileCommonConfiguration(source).connectivity,
+    );
+    const zones = objectValue(connectivity.dns_zones);
+    const draft = editCommonInput(source, "connectivity", {
+      ...connectivity,
+      dns_zones: {
+        ...zones,
+        "example-corp": {
+          ...objectValue(zones["example-corp"]),
+          contact_email: "dns-operator@example.invalid",
+          description: "Keep this metadata",
+          default_ttl: 7200,
+        },
+      },
+    });
+    const stored = await configurations.create(alice, draft);
+    let seenValues: unknown;
+    const model = {
+      async converse(_selection: unknown, values: unknown) {
+        seenValues = values;
+        return {
+          explanation:
+            "Bestätigten DNS-Namen zur Übernahme vorgeschlagen, keine Cloud-Ausführung.",
+          questions: [],
+          changes: [
+            {
+              path: "connectivity.dns_zones",
+              value: {
+                "example-corp": {
+                  dns_name: "example-gmbh.runs.onstackit.cloud",
+                  name: "example-gmbh-dns",
+                  description: "Zentrale DNS-Zone der Example GmbH",
+                  default_ttl: 3600,
+                  type: "primary",
+                },
+              },
+            },
+          ],
+          references: ["dns-zones"],
+        } satisfies Dialogue;
+      },
+    } as unknown as AssistantModelServing;
+    const assistant = new AssistantConversations(pool, model);
+    const proposed = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Für example-gmbh.runs.onstackit.cloud auch die übrigen DNS-Einstellungen vorschlagen.",
+    );
+    expect(
+      (seenValues as Record<string, unknown>)["connectivity.dns_zones"],
+    ).toEqual({
+      "example-corp": {
+        dns_name: "example-corp.stackit.run",
+        contact_email: "dns-operator@example.invalid",
+        description: "Keep this metadata",
+        default_ttl: 7200,
+        name: null,
+        acl: null,
+        network_area_key: "default",
+        type: "primary",
+      },
+    });
+    expect(proposed.proposal?.changes[0]?.before).toEqual({
+      "example-corp": {
+        dns_name: "example-corp.stackit.run",
+        contact_email: "dns-operator@example.invalid",
+        description: "Keep this metadata",
+        default_ttl: 7200,
+        name: null,
+        acl: null,
+        network_area_key: "default",
+        type: "primary",
+      },
+    });
+    expect((await configurations.get(alice, stored.id)).draft).toEqual(draft);
+    await expect(
+      assistant.accept(bob, stored.id, proposed.revision, 1),
+    ).rejects.toMatchObject({ status: 404 });
+    const accepted = await assistant.accept(
+      alice,
+      stored.id,
+      proposed.revision,
+      1,
+    );
+    const acceptedDraft = accepted.draft as typeof draft;
+    expect(
+      objectValue(compileCommonConfiguration(acceptedDraft).connectivity),
+    ).toEqual({
+      ...objectValue(compileCommonConfiguration(draft).connectivity),
+      dns_zones: {
+        ...objectValue(
+          objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+        ),
+        "example-corp": {
+          ...objectValue(
+            objectValue(
+              objectValue(compileCommonConfiguration(draft).connectivity)
+                .dns_zones,
+            )["example-corp"],
+          ),
+          dns_name: "example-gmbh.runs.onstackit.cloud",
+          name: "example-gmbh-dns",
+          description: "Zentrale DNS-Zone der Example GmbH",
+          default_ttl: 3600,
+          type: "primary",
+        },
+      },
+    });
+    expect(acceptedDraft.identities).toEqual(draft.identities);
+    expect(accepted.revision).toBe(2);
+    expect(exportCommonTfvars(acceptedDraft)).toContain(
+      "example-gmbh.runs.onstackit.cloud",
+    );
+    expect(exportCommonTfvars(acceptedDraft)).toContain("example-gmbh-dns");
+    expect(exportCommonTfvars(acceptedDraft)).toContain(
+      "dns-operator@example.invalid",
+    );
+    expect((await assistant.get(alice, stored.id))?.proposal).toBeNull();
+    await configurations.remove(alice, stored.id, 2);
+  });
+
+  it("exposes only the active user's valid human email to the assistant, never identity credentials", async () => {
+    const token = newSessionToken();
+    const email = "assistant-owner@example.invalid";
+    const session = await store.createStackitSession({
+      id: randomUUID(),
+      hash: token.hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt: new Date(Date.now() + 3600000),
+      identity: {
+        issuer: "https://accounts.stackit.cloud",
+        subject: randomUUID(),
+        email,
+        emailVerified: true,
+        verificationMethod: "signed-id-token-and-userinfo",
+        tokenExpiresAt: new Date(Date.now() + 3600000).toISOString(),
+        organization: null,
+      },
+    });
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(
+      session,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+        explanation: "Keine Änderung vorgeschlagen.",
+        questions: [],
+        changes: [],
+        references: ["configuration-contract"],
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    await assistant.send(session, stored.id, 1, "Welche E-Mail ist bekannt?");
+    expect(model.converse.mock.calls[0]?.[1]).toMatchObject({
+      "assistant.user_email": email,
+      "assistant.owner_email_is_template_default": true,
+    });
+    await new StackitIdentities(pool).revoke(session);
+    await assistant.send(session, stored.id, 1, "Erneut prüfen");
+    expect(model.converse.mock.calls[1]?.[1]).toMatchObject({
+      "assistant.user_email": null,
+    });
+    expect(JSON.stringify(model.converse.mock.calls)).not.toContain(
+      token.token,
+    );
+    await configurations.remove(session, stored.id, 1);
+  });
+
+  it("accepts selected governance role fields transactionally without changing identities or granting live access", async () => {
+    const configurations = new Configurations(pool);
+    let draft = createEditorConfiguration(
+      "hub-and-spoke-firewall",
+      randomUUID(),
+    );
+    draft = setCommonInput(draft, "organization_owners", [
+      "org-existing@example.test",
+    ]);
+    const folders = objectValue(
+      effectiveInput(compileCommonConfiguration(draft), "rm_folders"),
+    );
+    draft = setCommonInput(draft, "rm_folders", {
+      ...folders,
+      platform: {
+        ...objectValue(folders.platform),
+        owner_emails: ["folder-existing@example.test"],
+        reader_emails: ["reader-existing@example.test"],
+      },
+    });
+    const stored = await configurations.create(alice, draft);
+    const proposal: Dialogue = {
+      explanation:
+        "Berechtigungen vorgeschlagen, noch nichts gespeichert. Keine Cloud-Ausführung.",
+      questions: [],
+      changes: [
+        {
+          path: "organization_owners",
+          value: ["org-existing@example.test", "org-member@example.test"],
+        },
+        {
+          path: "rm_folders",
+          value: {
+            platform: {
+              owner_emails: [
+                "folder-existing@example.test",
+                "folder-member@example.test",
+              ],
+              reader_emails: [
+                "reader-existing@example.test",
+                "folder-member@example.test",
+              ],
+            },
+          },
+        },
+      ],
+      references: ["governance-folders"],
+    };
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => proposal),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const proposed = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Zusätzliche Organisations- und Folder-Berechtigungen vorschlagen",
+    );
+    expect(
+      assistantProposalFields(proposed.proposal?.changes ?? []).map(
+        (field) => field.id,
+      ),
+    ).toEqual([
+      "organization_owners",
+      "rm_folders/platform/owner_emails",
+      "rm_folders/platform/reader_emails",
+    ]);
+    await expect(
+      assistant.accept(bob, stored.id, proposed.revision, 1, [
+        "organization_owners",
+      ]),
+    ).rejects.toMatchObject({ status: 404 });
+    const first = await assistant.accept(
+      alice,
+      stored.id,
+      proposed.revision,
+      1,
+      ["organization_owners"],
+    );
+    expect(first.revision).toBe(2);
+    expect(compileCommonConfiguration(first.draft).organization_owners).toEqual(
+      proposal.changes[0]?.value,
+    );
+    expect(compileCommonConfiguration(first.draft).rm_folders).toEqual(
+      compileCommonConfiguration(draft).rm_folders,
+    );
+    expect(first.draft.identities).toEqual(draft.identities);
+    const remaining = await assistant.get(alice, stored.id);
+    if (!remaining) throw new Error("Missing remaining folder proposals");
+    expect(remaining.stale).toBe(false);
+    expect(
+      assistantProposalFields(remaining.proposal?.changes ?? []).map(
+        (field) => field.id,
+      ),
+    ).toEqual([
+      "rm_folders/platform/owner_emails",
+      "rm_folders/platform/reader_emails",
+    ]);
+    const second = await assistant.accept(
+      alice,
+      stored.id,
+      remaining.revision,
+      2,
+      ["rm_folders/platform/reader_emails"],
+    );
+    const actualFolder = objectValue(
+      objectValue(compileCommonConfiguration(second.draft).rm_folders).platform,
+    );
+    expect(actualFolder.owner_emails).toEqual(["folder-existing@example.test"]);
+    expect(actualFolder.reader_emails).toEqual([
+      "reader-existing@example.test",
+      "folder-member@example.test",
+    ]);
+    const last = await assistant.get(alice, stored.id);
+    if (!last) throw new Error("Missing remaining folder-owner proposal");
+    await assistant.accept(alice, stored.id, last.revision, 3);
+    expect((await assistant.get(alice, stored.id))?.proposal).toBeNull();
+    expect(model.converse).toHaveBeenCalledTimes(1);
+    await configurations.remove(alice, stored.id, 4);
+  });
+
+  it("previews selected proposals across revisions, preserves drafts, confirms conflicts and never persists acceptance", async () => {
+    const scenario = assistantScenarios.find(
+      (entry) => entry.id === "firewall-native-ha",
+    );
+    if (!scenario) throw new Error("Missing synthetic firewall fixture");
+    const { draft } = assistantScenarioFixture(scenario);
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(alice, draft);
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+        explanation: "HA im Entwurf. Keine Ausführung.",
+        references: ["firewall-infrastructure"],
+        questions: [],
+        changes: [
+          {
+            path: "connectivity.firewalls",
+            value: {
+              default: { ha: { backup_zone: "eu01-2", vhid: 23 } },
+            },
+          },
+        ],
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const proposal = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "HA vorschlagen",
+    );
+    const backup = ["connectivity.firewalls/default/ha/backup_zone"];
+    const vhid = ["connectivity.firewalls/default/ha/vhid"];
+    const local = { ...draft, name: "Local editor change" };
+    await expect(
+      assistant.preview(
+        bob,
+        stored.id,
+        proposal.revision,
+        1,
+        backup,
+        local,
+        draft,
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+    for (const selection of [
+      [],
+      [
+        "connectivity.firewalls/default/ha/backup_zone",
+        "connectivity.firewalls/default/ha/backup_zone",
+      ],
+      ["credentials"],
+      vhid,
+    ])
+      await expect(
+        assistant.preview(
+          alice,
+          stored.id,
+          proposal.revision,
+          1,
+          selection,
+          local,
+          draft,
+        ),
+      ).rejects.toMatchObject({
+        status: 422,
+        code: "assistant_invalid_selection",
+      });
+    const remote = setCommonInput(
+      draft,
+      "owner_email",
+      "remote-owner@example.test",
+    );
+    const saved = await configurations.update(alice, stored.id, 1, remote);
+    const first = await assistant.preview(
+      alice,
+      stored.id,
+      proposal.revision,
+      1,
+      backup,
+      local,
+      draft,
+    );
+    expect(first.configuration).toMatchObject({
+      revision: 2,
+      persisted: false,
+    });
+    expect(first.configuration.draft.name).toBe(local.name);
+    expect(
+      compileCommonConfiguration(first.configuration.draft).owner_email,
+    ).toBe("remote-owner@example.test");
+    expect(first.savedConfiguration).toEqual(saved.draft);
+    expect(
+      assistantProposalFields(first.conversation.proposal?.changes ?? []).map(
+        (field) => field.id,
+      ),
+    ).toEqual(vhid);
+    expect((await configurations.get(alice, stored.id))?.draft).toEqual(remote);
+    expect((await assistant.get(alice, stored.id))?.revision).toBe(
+      proposal.revision,
+    );
+    const connectivity = objectValue(
+      compileCommonConfiguration(first.configuration.draft).connectivity,
+    );
+    const firewalls = objectValue(connectivity.firewalls);
+    const changed = setCommonInput(first.configuration.draft, "connectivity", {
+      ...connectivity,
+      firewalls: {
+        ...firewalls,
+        default: {
+          ...objectValue(firewalls.default),
+          ha: { backup_zone: "eu01-2", vhid: 55 },
+        },
+      },
+    });
+    const conflict = assistant.preview(
+      alice,
+      stored.id,
+      proposal.revision,
+      1,
+      vhid,
+      changed,
+      remote,
+    );
+    await expect(conflict).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_merge_confirmation_required",
+      details: {
+        configurationRevision: 2,
+        conflicts: [
+          {
+            kind: "proposal",
+            path: "connectivity.firewalls.default.ha.vhid",
+            before: null,
+            current: 55,
+            value: 23,
+            baselineAvailable: true,
+          },
+        ],
+      },
+    });
+    expect((await configurations.get(alice, stored.id))?.revision).toBe(2);
+    expect((await assistant.get(alice, stored.id))?.revision).toBe(
+      proposal.revision,
+    );
+    const newer = setCommonInput(
+      remote,
+      "owner_email",
+      "newer-owner@example.test",
+    );
+    await configurations.update(alice, stored.id, 2, newer);
+    await expect(
+      assistant.preview(
+        alice,
+        stored.id,
+        proposal.revision,
+        1,
+        vhid,
+        changed,
+        remote,
+        2,
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      details: { configurationRevision: 3 },
+    });
+    const confirmed = await assistant.preview(
+      alice,
+      stored.id,
+      proposal.revision,
+      1,
+      vhid,
+      changed,
+      remote,
+      3,
+    );
+    expect(confirmed.configuration.draft.name).toBe(local.name);
+    const confirmedValues = compileCommonConfiguration(
+      confirmed.configuration.draft,
+    );
+    expect(confirmedValues.owner_email).toBe("newer-owner@example.test");
+    expect(
+      objectValue(
+        objectValue(objectValue(confirmedValues.connectivity).firewalls)
+          .default,
+      ).ha,
+    ).toEqual({ backup_zone: "eu01-2", vhid: 23 });
+    expect((await configurations.get(alice, stored.id))?.draft).toEqual(newer);
+    expect((await assistant.get(alice, stored.id))?.revision).toBe(
+      proposal.revision,
+    );
+    await withTenant(pool, alice, (client) =>
+      client.query(
+        "UPDATE lzc.assistant_conversations SET proposal_baseline=NULL,knowledge_hash='legacy-knowledge' WHERE configuration_id=$1",
+        [stored.id],
+      ),
+    );
+    const legacy = await assistant.get(alice, stored.id);
+    expect(legacy?.proposal?.changes[0]?.baselineAvailable).toBe(false);
+    expect(legacy?.proposal?.changes[0]?.before).toBeNull();
+    await expect(
+      assistant.preview(
+        alice,
+        stored.id,
+        proposal.revision,
+        1,
+        backup,
+        newer,
+        newer,
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_merge_confirmation_required",
+      details: { conflicts: [{ kind: "proposal", baselineAvailable: false }] },
+    });
+    const oldConfirmed = await assistant.preview(
+      alice,
+      stored.id,
+      proposal.revision,
+      1,
+      backup,
+      newer,
+      newer,
+      3,
+    );
+    expect(oldConfirmed.configuration.persisted).toBe(false);
+    const contextDraft = setCommonInput(
+      newer,
+      "owner_email",
+      "local-context@example.test",
+    );
+    const next = await assistant.send(
+      alice,
+      stored.id,
+      3,
+      "HA im lokalen Entwurf",
+      undefined,
+      contextDraft,
+    );
+    expect(model.converse.mock.calls.at(-1)?.[1]).toMatchObject({
+      owner_email: "local-context@example.test",
+    });
+    expect((await configurations.get(alice, stored.id))?.draft).toEqual(newer);
+    await expect(
+      assistant.preview(
+        alice,
+        stored.id,
+        proposal.revision,
+        1,
+        backup,
+        newer,
+        newer,
+        3,
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_proposal_changed",
+    });
+    expect(next.revision).toBeGreaterThan(proposal.revision);
+    await configurations.remove(alice, stored.id, 3);
+  });
+
+  it("rebases additive role proposals without removing new grants or restoring manually removed old grants", async () => {
+    const scenario = assistantScenarios.find(
+      (entry) => entry.id === "firewall-native-ha",
+    );
+    if (!scenario) throw new Error("Missing synthetic fixture");
+    const baseline = setCommonInput(
+      assistantScenarioFixture(scenario).draft,
+      "organization_owners",
+      ["old@example.test"],
+    );
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(alice, baseline);
+    const assistant = new AssistantConversations(pool, {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+        explanation: "Zusätzlicher Owner. Keine IAM-Ausführung.",
+        questions: [],
+        references: ["governance-folders"],
+        changes: [
+          {
+            path: "organization_owners",
+            value: ["old@example.test", "added@example.test"],
+          },
+        ],
+      })),
+    });
+    const proposal = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Owner hinzufügen",
+    );
+    const remote = setCommonInput(baseline, "organization_owners", [
+      "old@example.test",
+      "remote@example.test",
+    ]);
+    await configurations.update(alice, stored.id, 1, remote);
+    const local = setCommonInput(remote, "organization_owners", [
+      "remote@example.test",
+    ]);
+    const preview = await assistant.preview(
+      alice,
+      stored.id,
+      proposal.revision,
+      1,
+      ["organization_owners"],
+      local,
+      remote,
+    );
+    expect(
+      compileCommonConfiguration(preview.configuration.draft)
+        .organization_owners,
+    ).toEqual(["remote@example.test", "added@example.test"]);
+    expect((await configurations.get(alice, stored.id))?.draft).toEqual(remote);
+    await configurations.remove(alice, stored.id, 2);
+  });
+
+  it("accepts nested firewall HA fields transactionally and rejects incomplete dependencies without saving", async () => {
+    const scenario = assistantScenarios.find(
+      (entry) => entry.id === "firewall-native-ha",
+    );
+    if (!scenario) throw new Error("Missing synthetic firewall fixture");
+    const { draft } = assistantScenarioFixture(scenario);
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(alice, draft);
+    const proposal: Dialogue = {
+      explanation:
+        "HA vorgeschlagen, noch nichts gespeichert. Plan/Apply separat.",
+      questions: [],
+      changes: [
+        {
+          path: "connectivity.firewalls",
+          value: {
+            default: { ha: { backup_zone: "eu01-2", vhid: 23 } },
+          },
+        },
+      ],
+      references: ["firewall-infrastructure"],
+    };
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => proposal),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const proposed = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Native HA vorschlagen",
+    );
+    expect(
+      assistantProposalFields(proposed.proposal?.changes ?? [])
+        .map((field) => field.id)
+        .sort(),
+    ).toEqual([
+      "connectivity.firewalls/default/ha/backup_zone",
+      "connectivity.firewalls/default/ha/vhid",
+    ]);
+    await expect(
+      assistant.accept(bob, stored.id, proposed.revision, 1),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      assistant.accept(alice, stored.id, proposed.revision, 1, [
+        "connectivity.firewalls/default/ha/vhid",
+      ]),
+    ).rejects.toMatchObject({
+      status: 422,
+      code: "assistant_invalid_selection",
+    });
+    expect((await configurations.get(alice, stored.id))?.revision).toBe(1);
+    expect((await assistant.get(alice, stored.id))?.revision).toBe(
+      proposed.revision,
+    );
+    const first = await assistant.accept(
+      alice,
+      stored.id,
+      proposed.revision,
+      1,
+      ["connectivity.firewalls/default/ha/backup_zone"],
+    );
+    const before = compileCommonConfiguration(draft);
+    const connectivity = objectValue(before.connectivity);
+    const firewalls = objectValue(connectivity.firewalls);
+    const firewall = objectValue(firewalls.default);
+    expect(compileCommonConfiguration(first.draft)).toEqual({
+      ...before,
+      connectivity: {
+        ...connectivity,
+        firewalls: {
+          ...firewalls,
+          default: { ...firewall, ha: { backup_zone: "eu01-2" } },
+        },
+      },
+    });
+    expect(first.draft.identities).toEqual(draft.identities);
+    const remaining = await assistant.get(alice, stored.id);
+    if (!remaining) throw new Error("Missing pending HA field");
+    expect(remaining.stale).toBe(false);
+    expect(
+      assistantProposalFields(remaining.proposal?.changes ?? []).map(
+        (field) => field.id,
+      ),
+    ).toEqual(["connectivity.firewalls/default/ha/vhid"]);
+    const second = await assistant.accept(
+      alice,
+      stored.id,
+      remaining.revision,
+      2,
+      ["connectivity.firewalls/default/ha/vhid"],
+    );
+    expect(
+      objectValue(
+        objectValue(
+          objectValue(compileCommonConfiguration(second.draft).connectivity)
+            .firewalls,
+        ).default,
+      ).ha,
+    ).toEqual({ backup_zone: "eu01-2", vhid: 23 });
+    expect((await assistant.get(alice, stored.id))?.proposal).toBeNull();
+    expect(model.converse).toHaveBeenCalledTimes(1);
+    await configurations.remove(alice, stored.id, second.revision);
+  });
+
+  it("accepts selected DNS fields transactionally and keeps the remaining proposal on the new revision", async () => {
+    const configurations = new Configurations(pool);
+    const draft = createEditorConfiguration(
+      "hub-and-spoke-firewall",
+      randomUUID(),
+    );
+    const stored = await configurations.create(alice, draft);
+    const proposal: Dialogue = {
+      explanation: "Mehrere DNS-Felder vorgeschlagen, nicht gespeichert.",
+      questions: [],
+      changes: [
+        {
+          path: "connectivity.dns_zones",
+          value: {
+            "example-corp": {
+              name: "example-dns",
+              description: "Example DNS description",
+              default_ttl: 7200,
+            },
+          },
+        },
+      ],
+      references: ["dns-zones"],
+    };
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => proposal),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const proposed = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "DNS-Felder ergänzen",
+    );
+    for (const selected of [
+      [],
+      ["connectivity.dns_zones/example-corp/unknown"],
+      [
+        "connectivity.dns_zones/example-corp/name",
+        "connectivity.dns_zones/example-corp/name",
+      ],
+    ])
+      await expect(
+        assistant.accept(alice, stored.id, proposed.revision, 1, selected),
+      ).rejects.toMatchObject({
+        status: 422,
+        code: "assistant_invalid_selection",
+      });
+    expect((await configurations.get(alice, stored.id)).draft).toEqual(draft);
+    await expect(
+      assistant.accept(bob, stored.id, proposed.revision, 1, [
+        "connectivity.dns_zones/example-corp/name",
+      ]),
+    ).rejects.toMatchObject({ status: 404 });
+    const first = await assistant.accept(
+      alice,
+      stored.id,
+      proposed.revision,
+      1,
+      ["connectivity.dns_zones/example-corp/name"],
+    );
+    const firstDraft = createEditorConfiguration(
+      "hub-and-spoke-firewall",
+      draft.id,
+    );
+    const beforeConnectivity = objectValue(
+      compileCommonConfiguration(firstDraft).connectivity,
+    );
+    const firstZone = objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(first.draft).connectivity)
+          .dns_zones,
+      )["example-corp"],
+    );
+    const beforeZone = objectValue(
+      objectValue(beforeConnectivity.dns_zones)["example-corp"],
+    );
+    expect(firstZone).toEqual({ ...beforeZone, name: "example-dns" });
+    expect(first.draft.features.identity).toEqual(draft.features.identity);
+    expect(first.revision).toBe(2);
+    const remaining = await assistant.get(alice, stored.id);
+    expect(remaining?.stale).toBe(false);
+    expect(remaining?.baseRevision).toBe(2);
+    expect(remaining?.proposal?.changes).toEqual([
+      {
+        ...proposal.changes[0],
+        value: {
+          "example-corp": {
+            description: "Example DNS description",
+            default_ttl: 7200,
+          },
+        },
+        before: {
+          "example-corp": expect.objectContaining({ name: "example-dns" }),
+        },
+      },
+    ]);
+    await expect(
+      assistant.accept(alice, stored.id, proposed.revision, 1, [
+        "connectivity.dns_zones/example-corp/description",
+      ]),
+    ).rejects.toMatchObject({ status: 409 });
+    if (!remaining) throw new Error("Missing remaining proposal");
+    const second = await assistant.accept(
+      alice,
+      stored.id,
+      remaining.revision,
+      2,
+      ["connectivity.dns_zones/example-corp/description"],
+    );
+    expect(exportCommonTfvars(second.draft)).toContain(
+      "Example DNS description",
+    );
+    const last = await assistant.get(alice, stored.id);
+    if (!last) throw new Error("Missing remaining TTL");
+    await assistant.accept(alice, stored.id, last.revision, 3);
+    expect((await assistant.get(alice, stored.id))?.proposal).toBeNull();
+    expect(model.converse).toHaveBeenCalledTimes(1);
+    await configurations.remove(alice, stored.id, 4);
+  });
+
+  it("validates dependent network fields before partial acceptance and preserves unselected settings", async () => {
+    const configurations = new Configurations(pool);
+    const area = {
+      ranges: ["10.64.0.0/16"],
+      transfer_network: "10.63.0.0/24",
+      min_prefix_length: 24,
+      max_prefix_length: 24,
+      default_prefix_length: 24,
+    };
+    const draft = editCommonInput(
+      createEditorConfiguration("standalone", randomUUID()),
+      "connectivity",
+      {
+        network_areas: { default: area },
+      },
+    );
+    const stored = await configurations.create(alice, draft);
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+        explanation: "Präfixgrenzen vorgeschlagen.",
+        questions: [],
+        changes: [
+          {
+            path: "connectivity.network_areas",
+            value: {
+              default: {
+                ...area,
+                max_prefix_length: 28,
+                default_prefix_length: 28,
+              },
+            },
+          },
+        ],
+        references: ["stackit-network-components"],
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const proposal = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Präfixe anpassen",
+    );
+    await expect(
+      assistant.accept(alice, stored.id, proposal.revision, 1, [
+        "connectivity.network_areas/default/default_prefix_length",
+      ]),
+    ).rejects.toMatchObject({
+      status: 422,
+      code: "assistant_invalid_selection",
+    });
+    expect((await configurations.get(alice, stored.id)).draft).toEqual(draft);
+    const first = await assistant.accept(
+      alice,
+      stored.id,
+      proposal.revision,
+      1,
+      ["connectivity.network_areas/default/max_prefix_length"],
+    );
+    expect(
+      objectValue(compileCommonConfiguration(first.draft).connectivity)
+        .network_areas,
+    ).toEqual({
+      default: { ...area, max_prefix_length: 28 },
+    });
+    const remaining = await assistant.get(alice, stored.id);
+    if (!remaining) throw new Error("Missing dependent network proposal");
+    const final = await assistant.accept(
+      alice,
+      stored.id,
+      remaining.revision,
+      2,
+    );
+    expect(
+      objectValue(compileCommonConfiguration(final.draft).connectivity)
+        .network_areas,
+    ).toEqual({
+      default: { ...area, max_prefix_length: 28, default_prefix_length: 28 },
+    });
+    await configurations.remove(alice, stored.id, 3);
+  });
+
+  it("accepts delegated folder names without exposing or modifying folder access and identities", async () => {
+    const configurations = new Configurations(pool);
+    const source = createEditorConfiguration("standalone", randomUUID());
+    const folders = structuredClone(
+      objectValue(
+        effectiveInput(compileCommonConfiguration(source), "rm_folders"),
+      ),
+    );
+    folders.platform = {
+      ...objectValue(folders.platform),
+      description: "Preserve folder metadata",
+      owner_emails: ["owner@example.invalid"],
+      reader_emails: ["reader@example.invalid"],
+    };
+    const draft = editCommonInput(source, "rm_folders", folders);
+    const stored = await configurations.create(alice, draft);
+    const names = Object.fromEntries(
+      Object.entries(folders).map(([key, folder]) => [
+        key,
+        { name: objectValue(folder).name },
+      ]),
+    );
+    let seenValues: unknown;
+    const model = {
+      async converse(_selection: unknown, values: unknown) {
+        seenValues = values;
+        return {
+          explanation:
+            "Firmenkürzel und vorhandene Ordnernamen vorgeschlagen, noch nicht übernommen.",
+          questions: [],
+          changes: [
+            { path: "company_name", value: "Example GmbH" },
+            { path: "company_code", value: "exg" },
+            {
+              path: "rm_folders",
+              value: { platform: { name: "EXG Platform" } },
+            },
+          ],
+          references: ["governance-folders"],
+        } satisfies Dialogue;
+      },
+    } as unknown as AssistantModelServing;
+    const assistant = new AssistantConversations(pool, model);
+    const proposed = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      'Richte die Grundlagen für "Example GmbH" ein und wähle passende Kürzel und Ordnernamen.',
+    );
+    expect((seenValues as { rm_folders: unknown }).rm_folders).toEqual(names);
+    expect(JSON.stringify(seenValues)).not.toContain("owner@example.invalid");
+    expect(JSON.stringify(seenValues)).not.toContain("reader@example.invalid");
+    const unchanged = await configurations.get(alice, stored.id);
+    expect(unchanged.draft).toEqual(draft);
+    const accepted = await assistant.accept(
+      alice,
+      stored.id,
+      proposed.revision,
+      1,
+    );
+    const acceptedDraft = accepted.draft as typeof draft;
+    expect(compileCommonConfiguration(acceptedDraft).rm_folders).toEqual({
+      ...folders,
+      platform: { ...objectValue(folders.platform), name: "EXG Platform" },
+    });
+    expect(acceptedDraft.identities).toEqual(draft.identities);
+    expect(exportCommonTfvars(acceptedDraft)).toContain("EXG Platform");
+    expect(exportCommonTfvars(acceptedDraft)).toContain(
+      "owner@example.invalid",
+    );
+    expect(accepted.revision).toBe(2);
+    await configurations.remove(alice, stored.id, 2);
+  });
+
+  it("persists assistant conversations, accepts only current proposals and cascades parent deletion", async () => {
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(
+      alice,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    const model = {
+      converse: vi.fn(async () => ({
+        explanation: "Firmenname vorgeschlagen",
+        questions: [],
+        changes: [{ path: "company_name", value: "Assistant example" }],
+        references: ["configuration-contract"],
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const conversation = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Firma Assistant example",
+    );
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.proposal?.changes).toHaveLength(1);
+    expect(
+      (await new AssistantConversations(pool, model).get(alice, stored.id))?.id,
+    ).toBe(conversation.id);
+    await expect(assistant.get(bob, stored.id)).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(
+      assistant.accept(alice, stored.id, conversation.revision + 1, 1),
+    ).rejects.toMatchObject({ status: 409 });
+    const accepted = await assistant.accept(
+      alice,
+      stored.id,
+      conversation.revision,
+      1,
+    );
+    expect(accepted.revision).toBe(2);
+    expect(
+      recordValues(accepted.draft as Parameters<typeof recordValues>[0])
+        .company_name,
+    ).toBe("Assistant example");
+    expect((await assistant.get(alice, stored.id))?.proposal).toBeNull();
+    await assistant.send(alice, stored.id, 2, "Noch eine Frage");
+    const before = await assistant.get(alice, stored.id);
+    await migration.query(
+      "UPDATE lzc.assistant_conversations SET expires_at=now()-interval '1 second' WHERE id=$1",
+      [before?.id],
+    );
+    expect(await assistant.get(alice, stored.id)).toBeNull();
+    await assistant.send(alice, stored.id, 2, "Neues Gespräch");
+    const late = vi.fn(async () => {
+      await configurations.remove(alice, stored.id, 2);
+      return model.converse();
+    });
+    await expect(
+      new AssistantConversations(pool, { converse: late }).send(
+        alice,
+        stored.id,
+        2,
+        "Späte Antwort",
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(
+      (
+        await migration.query(
+          "SELECT id FROM lzc.assistant_conversations WHERE configuration_id=$1",
+          [stored.id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    const expiring = await configurations.create(
+      alice,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    await assistant.send(alice, expiring.id, 1, "Frage zur Umgebung");
+    await expect(
+      withTenant(pool, alice, (client) =>
+        client.query(
+          "UPDATE lzc.assistant_conversations SET expires_at=now()+interval '1 year' WHERE configuration_id=$1",
+          [expiring.id],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await migration.query(
+      "UPDATE lzc.assistant_conversations SET expires_at=now()-interval '1 second' WHERE configuration_id=$1",
+      [expiring.id],
+    );
+    await assistant.prune();
+    expect(
+      (
+        await migration.query(
+          "SELECT id FROM lzc.assistant_conversations WHERE configuration_id=$1",
+          [expiring.id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    await configurations.remove(alice, expiring.id, 1);
   });
 
   it("persists configurations across service restarts with owner isolation and revision conflicts", async () => {
@@ -992,6 +2550,28 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       expect(first.planStatus).toBe("blocked");
       expect(first.executionEnabled).toBe(false);
       expect(first.blockers.length).toBeGreaterThanOrEqual(3);
+      const retryPool = new pg.Pool({
+        ...migrationConfig,
+        user: "configurator_app",
+        password: "runtime-test-only",
+        max: 4,
+      });
+      try {
+        const restarted = new Applications(retryPool);
+        const retries = await Promise.all(
+          Array.from({ length: 8 }, () => restarted.order(engineer, request)),
+        );
+        for (const retry of retries) {
+          expect(retry).toEqual(first);
+        }
+        expect(
+          (await restarted.listInstances(engineer)).map(
+            (instance) => instance.id,
+          ),
+        ).toEqual([first.id]);
+      } finally {
+        await retryPool.end();
+      }
       const api = buildApp({
         applications,
         auth: {
@@ -3675,6 +5255,8 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         applicationBackends,
         { runner: delegatedRunner, origin: "http://127.0.0.1:3000" },
         applicationCrypto,
+        undefined,
+        { recoveryReviewsEnabled: true },
       );
       const executionRequest = {
         enabled: true,
@@ -4440,6 +6022,91 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           { artifactSha256: recovering.sha },
         );
         const recoveryTicket = delegatedTicket;
+        const expiredEngineer = (
+          await migration.query(
+            "SELECT expires_at FROM lzc_auth.sessions WHERE id=$1",
+            [engineer.id],
+          )
+        ).rows[0].expires_at;
+        await migration.query(
+          "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+          [engineer.id, engineerExpiry],
+        );
+        const initialReconciliation = (
+          await delegatedApplications.recoveryReviewContext(
+            engineer,
+            recoveryApply.jobId,
+          )
+        ).reconciliation;
+        expect(initialReconciliation).toMatchObject({
+          stage: "execution-in-progress",
+          ticket: { status: "unexpired" },
+          grant: { status: "unexpired" },
+          delegation: "not-revoked",
+          runnerStop: "unknown",
+          stateLock: "unknown",
+          cloudState: "unknown",
+          credentialRevocation: "unknown",
+          authorizesExecution: false,
+          reports: [],
+        });
+        const originalDispatch = (
+          await migration.query(
+            "SELECT * FROM lzc.application_dispatches WHERE job_id=$1",
+            [recoveryApply.jobId],
+          )
+        ).rows[0];
+        try {
+          for (const missingRunner of [false, true]) {
+            await admin.query(
+              "BEGIN; SET LOCAL session_replication_role=replica",
+            );
+            await admin.query(
+              "UPDATE lzc.application_dispatches SET status='reconciliation_required',finished_at=now(),error_code='runner_report_missing',runner_app_id=$2,runner_package_id=$3 WHERE job_id=$1",
+              [
+                recoveryApply.jobId,
+                missingRunner ? null : originalDispatch.runner_app_id,
+                missingRunner ? null : originalDispatch.runner_package_id,
+              ],
+            );
+            await admin.query("COMMIT");
+            const unresolved =
+              await delegatedApplications.recoveryReviewContext(
+                engineer,
+                recoveryApply.jobId,
+              );
+            expect(unresolved.reconciliation).toMatchObject({
+              stage: missingRunner
+                ? "start-unresolved"
+                : "completion-unresolved",
+              reports: [],
+              authorizesExecution: false,
+              runnerStop: "unknown",
+            });
+            expect(unresolved.recoverySha256).toBeNull();
+          }
+        } finally {
+          await admin.query("ROLLBACK");
+          await admin.query(
+            "BEGIN; SET LOCAL session_replication_role=replica",
+          );
+          await admin.query(
+            "UPDATE lzc.application_dispatches SET status=$2,finished_at=$3,error_code=$4,runner_app_id=$5,runner_package_id=$6 WHERE job_id=$1",
+            [
+              recoveryApply.jobId,
+              originalDispatch.status,
+              originalDispatch.finished_at,
+              originalDispatch.error_code,
+              originalDispatch.runner_app_id,
+              originalDispatch.runner_package_id,
+            ],
+          );
+          await admin.query("COMMIT");
+          await migration.query(
+            "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+            [engineer.id, expiredEngineer],
+          );
+        }
         await delegatedApplications.runnerInput(recoveryTicket, ticketPackage);
         for (const stage of ["initializing", "validating", "applying"])
           await delegatedApplications.runnerStage(
@@ -4497,6 +6164,41 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             Buffer.from("private-recovery-only"),
           ),
         ).toBe(false);
+        const diagnosis = await delegatedApplications.diagnoseRecovery(
+          owner,
+          recoveryApply.jobId,
+        );
+        expect(diagnosis).toMatchObject({
+          jobId: recoveryApply.jobId,
+          instanceId: recovering.ordered.id,
+          operation: "apply",
+          status: "reconciliation_required",
+          errorCode: "state_failed",
+          assessment: "state-recovery-required",
+          stateKey: `applications/${owner.tenantId}/${recovering.ordered.id}/terraform.tfstate`,
+          planId: recovering.id,
+          evidence: [
+            expect.objectContaining({ kind: "recovery", sha256: recoveryHash }),
+          ],
+        });
+        expect(JSON.stringify(diagnosis)).not.toContain(
+          "private-recovery-only",
+        );
+        expect(JSON.stringify(diagnosis)).not.toContain("ciphertext");
+        await expect(
+          delegatedApplications.diagnoseRecovery(engineer, recoveryApply.jobId),
+        ).rejects.toMatchObject({ code: "P0002" });
+        await expect(
+          delegatedApplications.diagnoseRecovery(bob, recoveryApply.jobId),
+        ).rejects.toThrow();
+        expect(
+          await delegatedApplications.listJobs(owner, recovering.ordered.id),
+        ).toContainEqual(
+          expect.objectContaining({
+            id: recoveryApply.jobId,
+            status: "reconciliation_required",
+          }),
+        );
         await admin.query("BEGIN; SET LOCAL session_replication_role=replica");
         try {
           await admin.query(
@@ -4508,6 +6210,214 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           await admin.query("ROLLBACK");
           throw error;
         }
+        for (const purpose of ["destroy", "drift"])
+          await expect(
+            delegatedApplications.startPlan(owner, recovering.ordered.id, {
+              idempotencyKey: randomUUID(),
+              purpose,
+            }),
+          ).rejects.toMatchObject({
+            code: "40001",
+            message: "application_instance_running",
+          });
+        const reviewInput = {
+          instanceId: recovering.ordered.id,
+          confirmReview: true,
+          bindingSha256: diagnosis.bindingSha256,
+          recoverySha256: recoveryHash,
+        };
+        await expect(
+          delegatedApplications.recordRecoveryReview(
+            owner,
+            recoveryApply.jobId,
+            reviewInput,
+          ),
+        ).rejects.toThrow();
+        await expect(
+          delegatedApplications.recordRecoveryReview(
+            bob,
+            recoveryApply.jobId,
+            reviewInput,
+          ),
+        ).rejects.toThrow();
+        await expect(
+          delegatedApplications.recordRecoveryReview(
+            engineer,
+            recoveryApply.jobId,
+            reviewInput,
+          ),
+        ).rejects.toMatchObject({ code: "P0002" });
+        await migration.query(
+          "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+          [engineer.id, engineerExpiry],
+        );
+        const reviewContext = await delegatedApplications.recoveryReviewContext(
+          engineer,
+          recoveryApply.jobId,
+        );
+        expect(reviewContext).toMatchObject({
+          jobId: recoveryApply.jobId,
+          instanceId: recovering.ordered.id,
+          recoverySha256: recoveryHash,
+          finding: "state-review-required",
+        });
+        expect(reviewContext.review).toBeNull();
+        expect(reviewContext.reconciliation).toMatchObject({
+          stage: "state-recovery-required",
+          runnerStop: "unknown",
+          stateLock: "unknown",
+          cloudState: "unknown",
+          credentialRevocation: "unknown",
+          authorizesExecution: false,
+          ticket: { status: "expired" },
+          reports: [
+            expect.objectContaining({ kind: "recovery", sha256: recoveryHash }),
+          ],
+        });
+        expect(JSON.stringify(reviewContext)).not.toMatch(
+          /private-recovery-only|ciphertext|ticket_hash|credential_key_id/,
+        );
+        expect(
+          (
+            await delegatedApplications.recoveryReviewContext(
+              engineer,
+              recovering.id,
+            )
+          ).reconciliation,
+        ).toMatchObject({
+          stage: "reported-completion",
+          authorizesExecution: false,
+          runnerStop: "unknown",
+        });
+        await expect(
+          new Applications(pool).recordRecoveryReview(
+            engineer,
+            recoveryApply.jobId,
+            reviewInput,
+          ),
+        ).rejects.toMatchObject({
+          code: "application_recovery_review_unavailable",
+        });
+        await expect(
+          delegatedApplications.recordRecoveryReview(engineer, recovering.id, {
+            ...reviewInput,
+            recoverySha256: null,
+          }),
+        ).rejects.toMatchObject({ code: "40001" });
+        await expect(
+          delegatedApplications.recordRecoveryReview(
+            engineer,
+            recoveryApply.jobId,
+            { ...reviewInput, confirmReview: false },
+          ),
+        ).rejects.toThrow();
+        await expect(
+          delegatedApplications.recordRecoveryReview(
+            engineer,
+            recoveryApply.jobId,
+            { ...reviewInput, instanceId: randomUUID() },
+          ),
+        ).rejects.toMatchObject({
+          code: "application_recovery_review_changed",
+        });
+        await expect(
+          delegatedApplications.recordRecoveryReview(
+            engineer,
+            recoveryApply.jobId,
+            { ...reviewInput, recoverySha256: null },
+          ),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_recovery_review_changed",
+        });
+        const review = await delegatedApplications.recordRecoveryReview(
+          engineer,
+          recoveryApply.jobId,
+          reviewInput,
+        );
+        expect(review).toMatchObject({
+          jobId: recoveryApply.jobId,
+          reviewedBy: engineer.userId,
+          recoverySha256: recoveryHash,
+          finding: "state-review-required",
+        });
+        expect(
+          await delegatedApplications.recordRecoveryReview(
+            engineer,
+            recoveryApply.jobId,
+            reviewInput,
+          ),
+        ).toEqual(review);
+        expect(
+          (
+            await delegatedApplications.recoveryReviewContext(
+              engineer,
+              recoveryApply.jobId,
+            )
+          ).review,
+        ).toEqual(review);
+        await expect(
+          withTenant(pool, engineer, (client) =>
+            client.query(
+              "DELETE FROM lzc.application_recovery_reviews WHERE job_id=$1",
+              [recoveryApply.jobId],
+            ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        await expect(
+          delegatedApplications.recordRecoveryReview(
+            engineer,
+            recoveryApply.jobId,
+            { ...reviewInput, bindingSha256: "0".repeat(64) },
+          ),
+        ).rejects.toMatchObject({
+          code: "40001",
+          message: "application_recovery_review_changed",
+        });
+        const identityBeforeReview = (
+          await migration.query(
+            "SELECT revoked_at FROM lzc.stackit_identities WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+            [engineer.userId],
+          )
+        ).rows[0];
+        await migration.query(
+          "UPDATE lzc.stackit_identities SET revoked_at=now() WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+          [engineer.userId],
+        );
+        try {
+          await expect(
+            delegatedApplications.recordRecoveryReview(
+              engineer,
+              recoveryApply.jobId,
+              reviewInput,
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+        } finally {
+          await migration.query(
+            "UPDATE lzc.stackit_identities SET revoked_at=$2 WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+            [engineer.userId, identityBeforeReview.revoked_at],
+          );
+        }
+        await expect(
+          migration.query(
+            "UPDATE lzc.application_recovery_reviews SET finding='completion-review-required' WHERE job_id=$1",
+            [recoveryApply.jobId],
+          ),
+        ).rejects.toMatchObject({ code: "55000" });
+        await expect(
+          migration.query(
+            "DELETE FROM lzc.application_recovery_reviews WHERE job_id=$1",
+            [recoveryApply.jobId],
+          ),
+        ).rejects.toMatchObject({ code: "55000" });
+        expect(
+          await delegatedApplications.listJobs(owner, recovering.ordered.id),
+        ).toContainEqual(
+          expect.objectContaining({
+            id: recoveryApply.jobId,
+            status: "reconciliation_required",
+          }),
+        );
         for (const purpose of ["destroy", "drift"])
           await expect(
             delegatedApplications.startPlan(owner, recovering.ordered.id, {
@@ -4540,6 +6450,48 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         ).rejects.toMatchObject({
           message: "application_order_execution_started",
         });
+        await expect(
+          migration.query(
+            "UPDATE lzc.application_job_grants SET revoked_at=now() WHERE job_id=$1",
+            [recoveryApply.jobId],
+          ),
+        ).rejects.toMatchObject({ message: "application_grant_consumed" });
+        await migration.query("BEGIN");
+        try {
+          await migration.query(
+            "SELECT set_config('lzc.user_id',$1,true),set_config('lzc.tenant_id',$2,true)",
+            [engineer.userId, engineer.tenantId],
+          );
+          await migration.query(
+            "UPDATE lzc.application_execution_delegations SET revoked_at=now() WHERE id IN (SELECT delegation_id FROM lzc.application_job_delegations WHERE job_id=$1)",
+            [recoveryApply.jobId],
+          );
+          const revokedContext = (
+            await migration.query(
+              "SELECT lzc_auth.application_recovery_reconciliation_context($1,$2) AS context",
+              [engineer.id, recoveryApply.jobId],
+            )
+          ).rows[0].context;
+          expect(revokedContext.reconciliation).toMatchObject({
+            grant: { status: "unexpired", revokedAt: null },
+            delegation: "revoked",
+            ticket: { status: "expired" },
+            stage: "state-recovery-required",
+            runnerStop: "unknown",
+            credentialRevocation: "unknown",
+            authorizesExecution: false,
+          });
+        } finally {
+          await migration.query("ROLLBACK");
+        }
+        expect(
+          (
+            await delegatedApplications.recoveryReviewContext(
+              engineer,
+              recoveryApply.jobId,
+            )
+          ).review,
+        ).toEqual(review);
         await delegatedApplications.deleteOrder(owner, recovering.ordered.id, {
           confirmArchive: true,
         });
@@ -4551,6 +6503,9 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         expect(
           await delegatedApplications.listJobs(owner, recovering.ordered.id),
         ).toEqual([]);
+        await expect(
+          delegatedApplications.diagnoseRecovery(owner, recoveryApply.jobId),
+        ).rejects.toThrow();
         expect(
           (
             await migration.query(

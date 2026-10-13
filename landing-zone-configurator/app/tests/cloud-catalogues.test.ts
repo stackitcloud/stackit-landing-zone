@@ -8,6 +8,111 @@ import { StackitCatalogueClient } from "../apps/api/src/credentials/catalogues.j
 import { parseServiceAccountKey } from "../apps/api/src/credentials/key.js";
 import { catalogueField } from "../apps/web/src/components/cloud-catalogue-fields.js";
 
+const pimProductExample = {
+  id: "public-product",
+  shortName: "VPN",
+  longName: "STACKIT VPN",
+  apiIdentifier: ["vpn"],
+};
+const pimSkuExample = {
+  id: "billing-article",
+  productName: "VPN",
+  title: "VPN 100",
+  region: "eu01",
+  deprecated: "No",
+  maturityModelState: "ga",
+  version: "1",
+  productSpecificAttributes: {
+    discriminator: "Network",
+    planId: "p100",
+    maxBandWidth: 100,
+    os: "",
+  },
+};
+
+it("reads all public PIM pages, preserves plan attributes and accepts an empty terminal page", async () => {
+  const request = vi.fn<typeof fetch>(async (url, init) => {
+    const target = new URL(String(url));
+    expect(target.origin).toBe("https://pim.api.stackit.cloud");
+    expect(new Headers(init?.headers).has("Authorization")).toBe(false);
+    expect(init?.redirect).toBe("error");
+    expect(target.searchParams.get("pageSize")).toBe("100");
+    if (target.pathname.endsWith("products"))
+      return Response.json(
+        target.searchParams.has("cursor")
+          ? { data: [], meta: { nextCursor: "products-end" } }
+          : { data: [pimProductExample], meta: { nextCursor: "products-end" } },
+      );
+    expect(target.searchParams.get("region")).toBe("eu01");
+    return Response.json(
+      target.searchParams.has("cursor")
+        ? {
+            data: [
+              {
+                ...pimSkuExample,
+                id: "billing-article-2",
+                productSpecificAttributes: {
+                  discriminator: "Network",
+                  planId: "p1000",
+                  maxBandWidth: 1000,
+                },
+              },
+            ],
+            meta: {},
+          }
+        : { data: [pimSkuExample], meta: { nextCursor: "sku-next" } },
+    );
+  });
+  const result = await new StackitCatalogueClient(request).pim("eu01");
+  expect(request).toHaveBeenCalledTimes(4);
+  expect(
+    result.skus.map((sku) => sku.productSpecificAttributes?.planId),
+  ).toEqual(["p100", "p1000"]);
+  expect(result.skus[0]?.id).not.toBe(
+    result.skus[0]?.productSpecificAttributes?.planId,
+  );
+});
+
+it("rejects nonempty PIM cursor cycles instead of claiming complete product data", async () => {
+  const request = vi.fn<typeof fetch>(async () =>
+    Response.json({
+      data: [pimProductExample],
+      meta: { nextCursor: "repeated" },
+    }),
+  );
+  await expect(new StackitCatalogueClient(request).pim("eu01")).rejects.toThrow(
+    "pim_cursor_cycle",
+  );
+  expect(request).toHaveBeenCalledTimes(2);
+});
+
+it.each(["wrong-region", "invalid-attributes"])(
+  "rejects invalid PIM data: %s",
+  async (scenario) => {
+    const request = vi.fn<typeof fetch>(async (url) =>
+      Response.json({
+        data: String(url).includes("/products?")
+          ? [pimProductExample]
+          : [
+              scenario === "wrong-region"
+                ? { ...pimSkuExample, region: "eu02" }
+                : {
+                    ...pimSkuExample,
+                    productSpecificAttributes: {
+                      discriminator: "Network",
+                      maxBandWidth: "invented",
+                    },
+                  },
+            ],
+        meta: {},
+      }),
+    );
+    await expect(
+      new StackitCatalogueClient(request).pim("eu01"),
+    ).rejects.toThrow();
+  },
+);
+
 it("loads project-scoped IAM role templates and permissions without transferring resource IDs", async () => {
   const request = vi.fn<typeof fetch>(async (url) => {
     const target = String(url);

@@ -271,6 +271,109 @@ run "standalone_plan" {
   }
 }
 
+run "implicit_corporate_requires_connectivity" {
+  command = plan
+
+  variables {
+    landing_zones = {
+      legacy = {
+        project_name = "Legacy project"
+        project_code = "legacy"
+        owner_email  = "example@digits.schwarz"
+        env          = "test"
+      }
+    }
+  }
+
+  expect_failures = [var.landing_zones]
+}
+
+run "reject_root_folder_description" {
+  command = plan
+
+  variables {
+    rm_folders = merge(var.rm_folders, {
+      landing_zones_public = {
+        name          = "Public"
+        description   = "Must not be ignored"
+        owner_emails  = []
+        reader_emails = []
+      }
+    })
+  }
+
+  expect_failures = [var.rm_folders]
+}
+
+run "reject_direct_governance_folder_description" {
+  command = plan
+
+  variables {
+    rm_folders = {
+      public = {
+        name        = "Public"
+        description = "Must not be ignored"
+      }
+    }
+  }
+
+  module {
+    source = "./modules/governance"
+  }
+
+  expect_failures = [var.rm_folders]
+}
+
+run "direct_governance_empty_description_compatibility" {
+  command = plan
+
+  variables {
+    rm_folders = {
+      null_description = {
+        name        = "Null description"
+        description = null
+      }
+      empty_description = {
+        name        = "Empty description"
+        description = ""
+      }
+      whitespace_description = {
+        name        = "Whitespace description"
+        description = " \t\n"
+      }
+    }
+  }
+
+  module {
+    source = "./modules/governance"
+  }
+
+  assert {
+    condition     = length(output.folder_container_ids) == 4
+    error_message = "Null, empty and whitespace-only descriptions must preserve all three folders and the root."
+  }
+}
+
+run "empty_folder_description_compatibility" {
+  command = plan
+
+  variables {
+    rm_folders = merge(var.rm_folders, {
+      landing_zones_public = {
+        name          = "Public"
+        description   = ""
+        owner_emails  = []
+        reader_emails = []
+      }
+    })
+  }
+
+  assert {
+    condition     = output.landing_zone_projects["test-public"].landing_zone_type == "public"
+    error_message = "Empty deprecated folder descriptions must preserve the Public project contract."
+  }
+}
+
 run "standalone_local_project_network" {
   command = plan
 

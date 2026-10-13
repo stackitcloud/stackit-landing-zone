@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type EditorDraft, readEditorDraft } from "@lzc/domain";
 import type pg from "pg";
 import { z } from "zod";
+import { buildAssistantKnowledge } from "../assistant/knowledge.js";
 import type { Session } from "../auth/store.js";
 import { withTenant } from "../storage/database.js";
 
@@ -78,7 +79,11 @@ export class Configurations {
     });
   }
 
-  create(session: Session, input: unknown) {
+  create(
+    session: Session,
+    input: unknown,
+    templateAdvice?: { id: string; revision: number },
+  ) {
     const draft = document(input);
     return this.work(session, async (client) => {
       const result = await client.query<Row>(
@@ -93,6 +98,20 @@ export class Configurations {
       );
       const row = result.rows[0];
       if (!row) throw new ConfigurationError(503, "configuration_save_failed");
+      if (templateAdvice) {
+        const context = await client.query(
+          "INSERT INTO lzc.assistant_configuration_context(configuration_id,advice_id,tenant_id,created_by,advice_revision,expires_at,messages) SELECT $1,id,tenant_id,created_by,revision,expires_at,messages FROM lzc.assistant_template_advice WHERE id=$2 AND revision=$3 AND created_by=$4 AND expires_at>now() AND recommendation->>'knowledgeSha256'=$5 RETURNING configuration_id",
+          [
+            row.id,
+            z.uuid().parse(templateAdvice.id),
+            z.number().int().positive().parse(templateAdvice.revision),
+            session.userId,
+            buildAssistantKnowledge().sha256,
+          ],
+        );
+        if (!context.rowCount)
+          throw new ConfigurationError(409, "template_advice_changed");
+      }
       return { ...summary(row), draft: readEditorDraft(row.document) };
     });
   }

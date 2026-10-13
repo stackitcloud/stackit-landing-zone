@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { platformRunnerSourceSchema } from "@lzc/contracts";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   acceleratorCommit,
@@ -571,10 +572,25 @@ it.runIf(process.env.LZC_NATIVE_RUNNER_TEST === "true")(
         fileURLToPath(new URL("../../.local/runner-local/", import.meta.url)),
     );
     const workRoot = await mkdtemp(join(tmpdir(), "lzc-native-init-test-"));
-    const { runWorker: nativeWorker }: { runWorker: typeof runWorker } =
-      await import(
-        pathToFileURL(join(root, "apps/worker/dist/runner.js")).href
-      );
+    const {
+      runWorker: nativeWorker,
+      acceleratorCommit: nativeCommit,
+      providerLockHash: nativeLockHash,
+    }: typeof import("../apps/worker/src/runner.js") = await import(
+      pathToFileURL(join(root, "apps/worker/dist/runner.js")).href
+    );
+    const nativeSource = await readFile(
+      join(root, "platform-source.json"),
+      "utf8",
+    )
+      .then(
+        (value) =>
+          platformRunnerSourceSchema.parse(JSON.parse(value)).acceleratorCommit,
+      )
+      .catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+        return nativeCommit;
+      });
     directories.push(workRoot);
     const stages: string[] = [];
     const diagnostics: string[] = [];
@@ -592,8 +608,8 @@ it.runIf(process.env.LZC_NATIVE_RUNNER_TEST === "true")(
           return {
             id: "native-init-test",
             mode: "initial-plan-only",
-            acceleratorCommit,
-            lockHash: providerLockHash,
+            acceleratorCommit: nativeSource,
+            lockHash: nativeLockHash,
             tfvars,
             tfvarsSha256: digest(tfvars),
             key: {},

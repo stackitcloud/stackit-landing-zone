@@ -1,3 +1,4 @@
+import { assistantValuesEqual } from "@lzc/contracts";
 import {
   compileCommonConfiguration,
   createEditorConfiguration,
@@ -19,6 +20,7 @@ import {
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { Applications } from "./components/Applications";
+import { AssistantChat } from "./components/AssistantChat";
 import {
   CloudCataloguePanel,
   CloudCatalogueProvider,
@@ -38,6 +40,7 @@ import {
 import { ForkWorkspace } from "./components/ForkWorkspace";
 import { InvitationAcceptance } from "./components/Invitations";
 import { Organisation } from "./components/Organisation";
+import { TemplateAdvice } from "./components/TemplateAdvice";
 import { Topology } from "./components/Topology";
 import { currentLanguage, setLanguage, t } from "./i18n";
 import { type DeploymentStep, useNavigation } from "./navigation";
@@ -89,7 +92,10 @@ function App() {
     useState<ConfigurationBinding | null>(null);
   const [draft, setDraft] = useState<EditorDraft | null>(restoredDraft);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
-  const draftDirty = Boolean(draft && JSON.stringify(draft) !== savedDraft);
+  const draftDirty = Boolean(
+    draft &&
+      (!savedDraft || !assistantValuesEqual(draft, JSON.parse(savedDraft))),
+  );
   const finishLogin = useCallback(() => {
     if (draft) return;
     setReturningFromLogin(true);
@@ -704,6 +710,16 @@ function App() {
                   }
                 />
               )}
+              {(view === "repositories" || view === "templates") && session && (
+                <TemplateAdvice
+                  key={`template-advice:${workspaceKey(session)}`}
+                  session={session}
+                  onChoose={(id) => {
+                    if (templates.some((item) => item.id === id))
+                      setView("preview", id);
+                  }}
+                />
+              )}
               {view === "templates" && (
                 <>
                   <div className="info-banner">
@@ -910,6 +926,25 @@ function App() {
                   )}
                 </div>
               </div>
+              {view === "editor" && draft && session && (
+                <AssistantChat
+                  key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
+                  session={session}
+                  binding={configurationBinding}
+                  dirty={draftDirty}
+                  draft={draft}
+                  savedDraft={
+                    savedDraft ? readEditorDraft(JSON.parse(savedDraft)) : null
+                  }
+                  onAccepted={(loaded, binding, persisted) => {
+                    setDraft(loaded);
+                    setDraftEpoch((value) => value + 1);
+                    setConfigurationBinding(binding);
+                    setSavedDraft(JSON.stringify(persisted));
+                    setDeploymentSelection(null);
+                  }}
+                />
+              )}
               {view === "editor" && !draft && (
                 <section className="panel">
                   <h2>{t("Kein Entwurf in diesem Tab")}</h2>

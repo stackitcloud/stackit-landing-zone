@@ -1,0 +1,1 @@
+GRANT UPDATE(knowledge_hash) ON lzc.assistant_conversations TO configurator_app;

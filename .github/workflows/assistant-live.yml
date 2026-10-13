@@ -1,0 +1,49 @@
+name: Assistant live regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Knowledge topic ID, or all'
+        required: true
+        default: 'all'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  assistant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: assistant-tests
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+          cache: npm
+          cache-dependency-path: landing-zone-configurator/app/package-lock.json
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - name: Run synthetic cases against real Model Serving
+        env:
+          LZC_MODEL_SERVING_TOKEN: ${{ secrets.LZC_MODEL_SERVING_TOKEN }}
+          LZC_MODEL_SERVING_INTENT_MODEL: openai/gpt-oss-120b
+          LZC_ASSISTANT_TEST_TOPIC: ${{ inputs.topic }}
+        run: |
+          set -o pipefail
+          npm run assistant:check
+          node --use-system-ca --import tsx scripts/assistant-tests.ts --topic "$LZC_ASSISTANT_TEST_TOPIC" | tee assistant-live-results.jsonl
+      - name: Upload synthetic results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: assistant-live-results
+          path: landing-zone-configurator/app/assistant-live-results.jsonl
+          retention-days: 7

@@ -1,0 +1,7355 @@
+{
+  "schemaVersion": 1,
+  "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+  "status": "concept-coverage-not-ai-qualification",
+  "sourceDigests": {
+    "packages/domain/src/features.ts": "6f99918f825b2891db70ba023284a8d1ae529965c56d06445a9108fb0d791138",
+    "packages/domain/src/accelerator-inputs.json": "6c7c17d9fe550e4f9e1ee41db4463b6ed4840b63e4e01620b99626c8ff8737de",
+    "packages/domain/src/catalogue.json": "0c9fc73cbfff4eb0ea2e9956165646e409fbff107cbf9ca1eb3b78a25dca2059",
+    "packages/domain/src/project-templates.ts": "f7732079e9dcdeccb090ded4a7946f533ec437c9373489e462a509a0a6f03f3b",
+    "packages/domain/src/template-parameters.ts": "ea2cb1e272f4f51da6bc68ea78895febe128b83f2b3022371a5aeeb666120e0a",
+    "packages/domain/src/common-validation.ts": "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+    "packages/domain/src/common-document.ts": "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
+    "packages/domain/src/editor-document.ts": "b807d40f04b7739cab026d43a412ed9252d22cb9bd1034fbad858825308c1345",
+    "packages/domain/src/application-catalogue.ts": "2e1dfe53840775f5acd6212b783d7823673c71620c868abf919dae7e3a0b798a",
+    "packages/domain/src/application-plan.ts": "748832e7c2284bba61b11f194164c8f513225010d18571f283ee7b72723bf302"
+  },
+  "groups": [
+    {
+      "id": "identity",
+      "inputs": [
+        {
+          "input": "organization_id",
+          "scenarios": [
+            "A01",
+            "A15"
+          ]
+        },
+        {
+          "input": "owner_email",
+          "scenarios": [
+            "A01",
+            "A15"
+          ]
+        },
+        {
+          "input": "company_name",
+          "scenarios": [
+            "A01"
+          ]
+        },
+        {
+          "input": "company_code",
+          "scenarios": [
+            "A01"
+          ]
+        },
+        {
+          "input": "region",
+          "scenarios": [
+            "A01",
+            "A05"
+          ]
+        },
+        {
+          "input": "platform_contract_namespace",
+          "scenarios": [
+            "A01",
+            "A14"
+          ]
+        },
+        {
+          "input": "labels",
+          "scenarios": [
+            "A01",
+            "A12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "governance",
+      "inputs": [
+        {
+          "input": "rm_folder_parent_id",
+          "scenarios": [
+            "A02"
+          ]
+        },
+        {
+          "input": "rm_folders",
+          "scenarios": [
+            "A02"
+          ]
+        },
+        {
+          "input": "organization_owners",
+          "scenarios": [
+            "A02"
+          ]
+        },
+        {
+          "input": "organization_auditors",
+          "scenarios": [
+            "A02"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "management",
+      "inputs": [
+        {
+          "input": "observability",
+          "scenarios": [
+            "A03",
+            "A09"
+          ]
+        },
+        {
+          "input": "audit_logs",
+          "scenarios": [
+            "A03"
+          ]
+        },
+        {
+          "input": "federated_identity_providers",
+          "scenarios": [
+            "A03"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "network",
+      "inputs": [
+        {
+          "input": "connectivity",
+          "scenarios": [
+            "A04",
+            "A06",
+            "A07"
+          ]
+        },
+        {
+          "input": "connectivity_regions",
+          "scenarios": [
+            "A05",
+            "A06",
+            "A07"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "inputs": [
+        {
+          "input": "devops",
+          "scenarios": [
+            "A08"
+          ]
+        },
+        {
+          "input": "platform_kubernetes",
+          "scenarios": [
+            "A09"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "projects",
+      "inputs": [
+        {
+          "input": "landing_zones",
+          "scenarios": [
+            "A10",
+            "A14"
+          ]
+        },
+        {
+          "input": "sandboxes",
+          "scenarios": [
+            "A11"
+          ]
+        },
+        {
+          "input": "landing_zone_namespace_services",
+          "scenarios": [
+            "A12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "firewall",
+      "inputs": [
+        {
+          "input": "firewall_config",
+          "scenarios": [
+            "A13"
+          ]
+        },
+        {
+          "input": "firewall_admin_username",
+          "scenarios": [
+            "A13"
+          ]
+        },
+        {
+          "input": "firewall_bootstrap",
+          "scenarios": [
+            "A13"
+          ]
+        },
+        {
+          "input": "firewall_api_secret_version",
+          "scenarios": [
+            "A13"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "credentials",
+      "inputs": [
+        {
+          "input": "platform_kubernetes_kube_config_override",
+          "scenarios": [
+            "A09",
+            "A16"
+          ]
+        },
+        {
+          "input": "vpn_pre_shared_keys",
+          "scenarios": [
+            "A07",
+            "A16"
+          ]
+        },
+        {
+          "input": "firewall_admin_password",
+          "scenarios": [
+            "A13",
+            "A16"
+          ]
+        },
+        {
+          "input": "firewall_api_credentials",
+          "scenarios": [
+            "A13",
+            "A16"
+          ]
+        }
+      ]
+    }
+  ],
+  "fields": [
+    {
+      "path": "owner_email",
+      "group": "identity",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01",
+        "A15"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "company_name",
+      "group": "identity",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "company_code",
+      "group": "identity",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "organization_id",
+      "group": "identity",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01",
+        "A15"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folder_parent_id",
+      "group": "governance",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "region",
+      "group": "identity",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01",
+        "A05"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes_kube_config_override",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A09",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_contract_namespace",
+      "group": "identity",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "labels",
+      "group": "identity",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01",
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "labels[*]",
+      "group": "identity",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A01",
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "organization_owners",
+      "group": "governance",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "organization_owners[*]",
+      "group": "governance",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "organization_auditors",
+      "group": "governance",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "organization_auditors[*]",
+      "group": "governance",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "devops",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A08"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "devops.allowed_network_ranges",
+      "group": "platform",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A08"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "devops.allowed_network_ranges[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A08"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "devops.git_flavor",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A08"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes",
+      "group": "platform",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.kubernetes_version_min",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.maintenance",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.maintenance.enable_kubernetes_version_updates",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.maintenance.enable_machine_image_version_updates",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.maintenance.end",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.maintenance.start",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools",
+      "group": "platform",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].allow_system_components",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].availability_zones",
+      "group": "platform",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].availability_zones[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].labels",
+      "group": "platform",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].labels[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].maximum",
+      "group": "platform",
+      "sensitive": false,
+      "type": "number",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].minimum",
+      "group": "platform",
+      "sensitive": false,
+      "type": "number",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].os_name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].volume_size",
+      "group": "platform",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].cluster.node_pools[*].volume_type",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.assign_public_ip",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.availability_zone",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.boot_volume_size",
+      "group": "platform",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.enabled",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.image_id",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.install_kubectl",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.machine_type",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.ssh_allowed_cidrs",
+      "group": "platform",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.ssh_allowed_cidrs[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.ssh_public_key",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].debug_bastion.ssh_public_key_path",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].dns",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].dns.create_zones",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].dns.enabled",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].dns.gateway_api",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].dns.zones",
+      "group": "platform",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].dns.zones[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].encrypted_volumes",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].encrypted_volumes.enabled",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].encrypted_volumes.kms_key_name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].encrypted_volumes.kms_key_version",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].encrypted_volumes.kms_keyring_name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].encrypted_volumes.storage_class_name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].network",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].network.firewall_next_hop_ip",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].network.network_area_key",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].network.sna_enabled",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].network.sna_network_area_id",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].network.sna_network_prefix_length",
+      "group": "platform",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].observability",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].observability.acl",
+      "group": "platform",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].observability.acl[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].observability.enabled",
+      "group": "platform",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].observability.name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].observability.plan_name",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].region",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].role_assignments",
+      "group": "platform",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].role_assignments[*]",
+      "group": "platform",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].role_assignments[*].role",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "platform_kubernetes[*].role_assignments[*].subject",
+      "group": "platform",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability",
+      "group": "management",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.acl",
+      "group": "management",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.acl[*]",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.logs_retention_days",
+      "group": "management",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.metrics_retention_days",
+      "group": "management",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.metrics_retention_days_1h_downsampling",
+      "group": "management",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.metrics_retention_days_5m_downsampling",
+      "group": "management",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.plan_name",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "observability.traces_retention_days",
+      "group": "management",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A09"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs",
+      "group": "management",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.acl",
+      "group": "management",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.acl[*]",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.link_scopes",
+      "group": "management",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.link_scopes[*]",
+      "group": "management",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.link_scopes[*].resource_id",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.link_scopes[*].resource_type",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.retention_days",
+      "group": "management",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "audit_logs.s3_object_lock",
+      "group": "management",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers",
+      "group": "management",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*]",
+      "group": "management",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*].assertions",
+      "group": "management",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*].assertions[*]",
+      "group": "management",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*].assertions[*].item",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*].assertions[*].operator",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*].assertions[*].value",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*].issuer",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "federated_identity_providers[*].name",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders",
+      "group": "governance",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders[*]",
+      "group": "governance",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders[*].description",
+      "group": "governance",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "not-effective",
+      "assistantMode": "explain-rejection-no-proposal",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders[*].name",
+      "group": "governance",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders[*].owner_emails",
+      "group": "governance",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders[*].owner_emails[*]",
+      "group": "governance",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders[*].reader_emails",
+      "group": "governance",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "rm_folders[*].reader_emails[*]",
+      "group": "governance",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A02"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].acl",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].contact_email",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].default_ttl",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].description",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].dns_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].network_area_key",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].region",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.dns_zones[*].type",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.flavor",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.ha",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.ha.backup_lan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.ha.backup_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.ha.backup_wan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.ha.backup_zone",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.ha.lan_vip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.ha.vhid",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.lan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.lan_network_range",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.volume_performance_class",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.volume_size",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.wan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.wan_network_range",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewall.zone",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].flavor",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].ha",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].ha.backup_lan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].ha.backup_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].ha.backup_wan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].ha.backup_zone",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].ha.lan_vip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].ha.vhid",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].lan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].lan_network_range",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].volume_performance_class",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].volume_size",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].wan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].wan_network_range",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.firewalls[*].zone",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.naming_pattern",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.default_nameservers",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.default_nameservers[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.default_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.max_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.min_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.ranges",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.ranges[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_area.transfer_network",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].default_nameservers",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].default_nameservers[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].default_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].max_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].min_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].ranges",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].ranges[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.network_areas[*].transfer_network",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.availability_zones",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.availability_zones.tunnel1",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.availability_zones.tunnel2",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].display_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].enabled",
+      "group": "network",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].local_subnets",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].local_subnets[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].remote_subnets",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].remote_subnets[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].static_routes",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].static_routes[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.peering",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.peering.local_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.peering.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase1.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.dpd_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.phase2.start_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel1.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.peering",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.peering.local_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.peering.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase1.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.dpd_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.phase2.start_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.connections[*].tunnel2.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.display_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.plan_id",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity.vpn.routing_type",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A04",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].naming_pattern",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].acl",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].contact_email",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].default_ttl",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].description",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].dns_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].network_area_key",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].region",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].dns_zones[*].type",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].default_nameservers",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].default_nameservers[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].default_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].max_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].min_prefix_length",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].ranges",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].ranges[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].network_areas[*].transfer_network",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].flavor",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].ha",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].ha.backup_lan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].ha.backup_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].ha.backup_wan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].ha.backup_zone",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].ha.lan_vip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].ha.vhid",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].lan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].lan_network_range",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].volume_performance_class",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].volume_size",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].wan_ip",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].wan_network_range",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].firewalls[*].zone",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.availability_zones",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.availability_zones.tunnel1",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.availability_zones.tunnel2",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections",
+      "group": "network",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].display_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].enabled",
+      "group": "network",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].local_subnets",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].local_subnets[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].remote_subnets",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].remote_subnets[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].static_routes",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].static_routes[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering.local_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dpd_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.start_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel1.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering.local_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2",
+      "group": "network",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dh_groups",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dh_groups[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dpd_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.encryption_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.encryption_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.integrity_algorithms",
+      "group": "network",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.integrity_algorithms[*]",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.rekey_time",
+      "group": "network",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.start_action",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.connections[*].tunnel2.remote_address",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.display_name",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.plan_id",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "connectivity_regions[*].vpn.routing_type",
+      "group": "network",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "vpn_pre_shared_keys",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A07",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "vpn_pre_shared_keys[*]",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A07",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "vpn_pre_shared_keys[*].tunnel1",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A07",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "vpn_pre_shared_keys[*].tunnel2",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A07",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*].content",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*].content[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*].description",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*].enabled",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*].stats",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*].type",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.aliases[*].update_freq",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.endpoint",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.insecure",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].description",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].destination_net",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].disable_nat",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].enabled",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].interface",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].ip_protocol",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].log",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].protocol",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].sequence",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].source_net",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.outbound_nat[*].target_ip",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].description",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].destination_net",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].destination_port",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].enabled",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].interfaces",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].interfaces[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].ip_protocol",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].log",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].nat_reflection",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].protocol",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].sequence",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].source_net",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].target_ip",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.port_forwards[*].target_port",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.routes",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.routes[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.routes[*].description",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.routes[*].enabled",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.routes[*].gateway",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.routes[*].network",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].action",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].description",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].destination_invert",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].destination_net",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].destination_port",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].direction",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].enabled",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].interfaces",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].interfaces[*]",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].ip_protocol",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].log",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].protocol",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].quick",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].sequence",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].source_invert",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].source_net",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_config.rules[*].source_port",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_admin_username",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_admin_password",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A13",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_bootstrap",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_api_secret_version",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_api_credentials",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A13",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_api_credentials.api_key",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A13",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_api_credentials.api_secret",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A13",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "sandboxes",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A11"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "sandboxes[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A11"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "sandboxes[*].owner_emails",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A11"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "sandboxes[*].owner_emails[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A11"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "sandboxes[*].project_name",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A11"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "sandboxes[*].project_owner_email",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A11"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones",
+      "group": "projects",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].corporate",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].custom_roles",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].custom_roles[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].custom_roles[*].description",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].custom_roles[*].name",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].custom_roles[*].permissions",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].custom_roles[*].permissions[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].env",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].network_area_key",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].network_enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].network_prefix_length",
+      "group": "projects",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].observability",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].observability.acl",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].observability.acl[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].observability.enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].observability.name",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].observability.plan_name",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].owner_email",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].project_code",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].project_name",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].region",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].role_assignments",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].role_assignments[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].role_assignments[*].role",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].role_assignments[*].subject",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].secretsmanager_enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services",
+      "group": "projects",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].annotations",
+      "group": "projects",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].annotations[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.metrics_path",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scheme",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scrape_interval",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scrape_timeout",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.target_urls",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.target_urls[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].dns_subdomain",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].kubernetes_access",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].kubernetes_access.enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].kubernetes_access.service_account_name",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].labels",
+      "group": "projects",
+      "sensitive": false,
+      "type": "map",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].labels[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].namespace",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].sample_load",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].sample_load.enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].sample_load.image",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.allow_opaque_secret_types",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.allow_opaque_secret_types[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.principals",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.principals[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.ttl_hours",
+      "group": "projects",
+      "sensitive": false,
+      "type": "number",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secrets_enforcement.mode",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zone_namespace_services[*].secretsmanager",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A12"
+      ],
+      "qualification": "not-qualified"
+    }
+  ],
+  "workflowScenarios": [
+    "A14",
+    "A15",
+    "A16",
+    "A17",
+    "A18",
+    "A19",
+    "A20",
+    "A21",
+    "A22",
+    "A23",
+    "A24"
+  ],
+  "workflows": [
+    {
+      "id": "configuration-lifecycle",
+      "scenarios": [
+        "A15",
+        "A17",
+        "A18",
+        "A21"
+      ],
+      "mode": "explain-and-propose-draft-only",
+      "qualification": "not-qualified"
+    },
+    {
+      "id": "application-publication-and-orders",
+      "scenarios": [
+        "A10",
+        "A14",
+        "A22"
+      ],
+      "mode": "propose-template-draft-no-dispatch",
+      "qualification": "not-qualified"
+    },
+    {
+      "id": "tenant-access-and-credentials",
+      "scenarios": [
+        "A02",
+        "A16",
+        "A23"
+      ],
+      "mode": "requirements-only-no-grants-or-secret-values",
+      "qualification": "not-qualified"
+    },
+    {
+      "id": "catalogues-topology-and-locales",
+      "scenarios": [
+        "A01",
+        "A09",
+        "A24"
+      ],
+      "mode": "authorized-metadata-and-deterministic-preview",
+      "qualification": "not-qualified"
+    },
+    {
+      "id": "plans-state-and-recovery",
+      "scenarios": [
+        "A16",
+        "A20",
+        "A23"
+      ],
+      "mode": "explain-sanitized-status-no-execution",
+      "qualification": "not-qualified"
+    }
+  ]
+}

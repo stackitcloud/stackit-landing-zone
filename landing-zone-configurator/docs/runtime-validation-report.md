@@ -3,6 +3,114 @@
 Generated: 2026-10-02T10:14:20Z
 Target: `landing-zone-configurator/app`, lokale STACKIT-Login-Umstellung.
 
+## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
+
+Migration 052 erweitert den bestehenden Operator-Pruefkontext um gespeicherte
+Laufphase, Runner-ID, angenommene Report-Hashes, Ticket-Fenster und Grant-/
+Delegationswiderruf. Dieselben aktuellen Session-/Tenant-/PE-/Human-Guards gelten.
+Es entstehen keine neue Schreibaktion und keine Freigabe aus diesen Metadaten.
+Runner-Stillstand, Credential-Widerruf, State-Lock und Cloud-Abgleich bleiben
+explizit unbekannt. Auch abgelaufene Tickets, widerrufene Delegationen und ein
+gespeicherter Pruefbeleg belegen keine dieser Live-Pruefungen.
+
+```text
+toolchain: Node 24.21.0/npm 11.19.0
+check: PASS - lint/types/build; 435 unit passed, 53 gated skips; existing warnings
+database: PASS - 31 PostgreSQL tests, fresh 052 migration in own loopback test DB
+reconciliation: PASS - unresolved start/completion fault injection, recorded recovery,
+	ticket expiry, denied consumed-grant revocation, real delegation revocation in
+	rolled-back transaction, unchanged receipt and execution/recovery blockers
+contract/http: PASS - 30 focused cases; no claimed live proof/authorization or ticket secret
+browser-focused: PASS - 8 desktop/mobile cases; DE/EN and missing runner/report,
+	no implicit writes or clearance; screenshots reviewed
+browser-full: PASS - final 278 desktop/mobile cases; recovery/drift regression included
+cloud/state: NOT_RUN - no runner/cloud/state-lock probe or customer mutation
+activation: PENDING - migrations 051/052 only isolated, user DB/API remains on 050
+delivery: LOCAL_ONLY - no commit/push/release or changed historical runner/plan bytes
+overall: STORED_RECONCILIATION_PASS / LIVE_EVIDENCE_AND_RECOVERY_RESOLUTION_PENDING
+```
+
+Der gehostete Start verlangt bei Review-Opt-in sowohl Tabelle 051 als auch
+Funktion 052. Ein lokaler Starter-Neustart bleibt ein kontrollierter Migrations-
+schritt. Frische lesende Adapter-Nachweise und echte Wiederherstellungsentscheidungen
+bleiben offen; Details und Benutzerabnahmen stehen in der [Abnahmeliste](mvp-acceptance.md).
+
+## Ubuntu-MVP: Gebundener Recovery-Pruefbeleg (2026-10-09)
+
+Der zweite lokale Recovery-Schritt protokolliert eine ausdrueckliche Pruefung,
+nicht die Wiederherstellung oder den Erfolg eines Laufs. Der urspruenglich
+freigebende Platform Engineer muss aktuell autorisiert sein und eine gueltige
+menschliche STACKIT-Identitaet besitzen. Session-/Rollen-/Identitaetswiderruf und
+Pruefbeleg-Transaktion werden serialisiert. Tenant, aktive Bestellung, Job,
+Bindungs- und Recovery-Hash sind gebunden; ein geaenderter Stand verlangt neues
+Laden und erneute Bestaetigung. Identischer Replay ist nach erneuter aktueller
+Autorisierung idempotent. Der serverseitige Beleg bleibt unveraenderlich.
+
+Die neue Migration 051 wurde frisch ausschliesslich im eigenen synthetischen
+Testcontainer qualifiziert. Die laufende Benutzer-API/-Datenbank bleibt auf 050.
+`LZC_APPLICATION_RECOVERY_REVIEWS_ENABLED` ist standardmaessig ausgeschaltet.
+Ein spaeterer lokaler Starter-Neustart ist wegen automatischer Migrationen ein
+kontrollierter Migrationsschritt. Jobstatus, State, historische Reports und
+Ausfuehrungssperren bleiben auch nach Protokollierung unveraendert.
+
+```text
+toolchain: Node 24.21.0/npm 11.19.0
+check: PASS - lint/types/build; 434 unit passed, 53 gated skips; existing warnings
+database: PASS - 31 PostgreSQL tests, fresh 051 migration in isolated test DB
+review: PASS - current original engineer/human/session, denied owner/foreign actor,
+	snapshot conflict, idempotency with live revocation denial, immutable receipts,
+	runtime direct write denial, unchanged recovery/maintenance/execution blockers
+http: PASS - 29 cases; tenant/origin/CSRF/no-store and strict explicit request
+browser: PASS - 274 desktop/mobile cases on final build; review DE/EN,
+	explicit confirmation, conflict/reload, persisted receipt, no Plan/Apply/Destroy;
+	desktop/mobile screenshots reviewed
+cloud: NOT_RUN - no customer Plan/Apply/Destroy or state recovery
+activation: PENDING - local user DB/API not migrated or restarted for review
+delivery: LOCAL_ONLY - not committed, released or in qualified run 37929894997
+overall: REVIEW_INCREMENT_PASS / RECOVERY_RESOLUTION_AND_LIVE_ACCEPTANCE_PENDING
+```
+
+Die bestehenden Native-Nachweise aus dem ersten Schritt bleiben unveraendert.
+Echte State-/Cloud-Klaerung, Runner-/Ticket-/Lock-Nachweise und kontrollierte
+Ausfuehrungsfreigabe bleiben offen. Benutzerabnahmen und Rollout-Grenzen stehen
+in der [Abnahmeliste](mvp-acceptance.md).
+
+## Ubuntu-MVP: Lesende Application-Recovery-Diagnose (2026-10-09)
+
+Eigenstaendige lokale MVP-Entwicklung und isolierte Tests sind beauftragt.
+Die neue [Abnahmeliste](mvp-acceptance.md) trennt technische Nachweise von
+Benutzer-, Cloud- und Release-Freigaben.
+
+Die Application-Diagnose ist session-/tenant-/bestellergebunden und liefert nur
+historische Job-/Paket-/Source-/State-Bindungen sowie Metadaten angenommener
+Reports. Sie entschluesselt keinen State, prueft keine Cloud-Ressourcen und
+schreibt keinen Laufstatus um. Die UI zeigt sie bei unklaren Laeufen oder
+fehlgeschlagenen Applies. State-Recovery und Operator-Abgleich bleiben offen;
+ein GET ist kein Retry, Unlock, State-Push oder Erfolgseintrag.
+
+Der echte native Platform-Pakettest verwendet jetzt die Source-Metadaten des
+geprueften Pakets statt des alten exportierten Legacy-Pins. Beide Pins bleiben
+unveraendert; der Test stoppt nach Init/Validate vor Cloud-Planung.
+
+```text
+toolchain: Node 24.21.0/npm 11.19.0; packaged OpenTofu 1.12.6 linux_amd64
+check: PASS - lint/types/build; 433 unit passed, 53 gated skips; existing warnings
+database: PASS - 31 real PostgreSQL tests in own isolated loopback test container
+recovery: PASS - report metadata only, no secrets, expired/foreign session denial,
+	archive denial and unchanged historical reconciliation state
+http: PASS - 28 focused cases including diagnosis tenant/UUID/no-store gates
+browser: PASS - 270 desktop/mobile cases; diagnosis DE/EN, refresh failure, no writes
+native: PASS - 16 Application, 7 network, 3 governance contracts;
+	actual Linux Platform worker init/validate, no credentials or cloud plan
+cloud: NOT_RUN - no customer Plan/Apply/Destroy or state recovery
+delivery: LOCAL_ONLY - new increment not included in qualified run 37929894997
+overall: LOCAL_INCREMENT_PASS / OPERATOR_RECOVERY_AND_LIVE_ACCEPTANCE_PENDING
+```
+
+Migrationen 001-050, Kunden-State, Schluessel und historische Pakete bleiben
+unveraendert. Kein zusaetzliches Datenbank-Backup, Commit, Push, Release oder Merge.
+Die nachfolgenden Abschnitte beschreiben vorherige Qualifikationen.
+
 ## Hosted Application Maintenance: Vorbereitet (2026-10-09)
 
 Der Benutzer hat Commit, Push und Dev-Deployment freigegeben; zusaetzliche

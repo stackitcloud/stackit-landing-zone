@@ -13,6 +13,7 @@ export type Session = {
   csrfToken: string;
   expiresAt: string;
   stackitVerified?: boolean;
+  development?: boolean;
 };
 export function Account({
   beforeLogin,
@@ -24,7 +25,13 @@ export function Account({
   onLogin?: () => void;
 }) {
   const [enabled, setEnabled] = useState(false);
-  const [primary, setPrimary] = useState<"github" | "stackit">("github");
+  const [primary, setPrimary] = useState<"github" | "stackit" | "development">(
+    "github",
+  );
+  const [developmentOpen, setDevelopmentOpen] = useState(false);
+  const [username, setUsername] = useState("developer");
+  const [password, setPassword] = useState("");
+  const developmentDialog = useRef<HTMLDialogElement>(null);
   const [returning, setReturning] = useState(
     () => window.location.hash === "#stackit-login",
   );
@@ -61,8 +68,15 @@ export function Account({
           return;
         }
         const providers = await status.json();
-        if (!providers.github && !providers.stackit) return;
-        setPrimary(providers.primary === "stackit" ? "stackit" : "github");
+        if (!providers.github && !providers.stackit && !providers.development)
+          return;
+        setPrimary(
+          providers.primary === "development"
+            ? "development"
+            : providers.primary === "stackit"
+              ? "stackit"
+              : "github",
+        );
         setEnabled(true);
         if (returningFromStackit) return;
         const response = await fetch("/api/v1/session", {
@@ -78,6 +92,9 @@ export function Account({
     })();
     return () => controller.abort();
   }, []);
+  useEffect(() => {
+    if (developmentOpen) developmentDialog.current?.showModal();
+  }, [developmentOpen]);
   useEffect(() => {
     if (!authorization && !returning) return;
     if (authorization) dialog.current?.showModal();
@@ -140,6 +157,11 @@ export function Account({
   }, [authorization, returning, onLogin]);
   async function start() {
     if (!beforeLogin()) return;
+    if (primary === "development") {
+      setError("");
+      setDevelopmentOpen(true);
+      return;
+    }
     if (primary === "github") {
       window.location.assign("/auth/github/start");
       return;
@@ -211,6 +233,38 @@ export function Account({
       setBusy(false);
     }
   }
+  async function developmentSignIn() {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/auth/development/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (response.status === 429) {
+        setError(
+          "Zu viele Anmeldeversuche. Bitte in 15 Minuten erneut versuchen.",
+        );
+        return;
+      }
+      if (response.status === 401) {
+        setError("Benutzername oder Passwort ist falsch.");
+        return;
+      }
+      if (!response.ok) throw new Error("Development login unavailable");
+      const current = await fetch("/api/v1/session");
+      if (!current.ok) throw new Error("Development session unavailable");
+      setSession(await current.json());
+      setDevelopmentOpen(false);
+      onLogin?.();
+    } catch {
+      setError("Anmeldung derzeit nicht erreichbar.");
+    } finally {
+      setPassword("");
+      setBusy(false);
+    }
+  }
   return (
     <div className="header-user account">
       <span>
@@ -239,7 +293,9 @@ export function Account({
           >
             {primary === "stackit"
               ? t("Mit STACKIT anmelden")
-              : t("Mit GitHub anmelden")}
+              : primary === "development"
+                ? t("Entwicklerlogin")
+                : t("Mit GitHub anmelden")}
           </button>
         ))}
       {session &&
@@ -289,6 +345,67 @@ export function Account({
           {error && <p role="alert">{t(error)}</p>}
         </dialog>
       )}
+      {developmentOpen && (
+        <dialog
+          ref={developmentDialog}
+          className="stackit-login"
+          onCancel={() => {
+            setDevelopmentOpen(false);
+            setPassword("");
+          }}
+        >
+          <h2>{t("Entwicklerlogin")}</h2>
+          <p>
+            {t(
+              "Nur Ubuntu-Entwicklung: kein verifizierter STACKIT-Benutzer. Service Account separat hinterlegen; Cloud-Ausführungen benötigen weiterhin eine ausdrückliche Freigabe.",
+            )}
+          </p>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void developmentSignIn();
+            }}
+          >
+            <label>
+              {t("Benutzername")}
+              <input
+                autoComplete="username"
+                value={username}
+                disabled={busy}
+                required
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </label>
+            <label>
+              {t("Passwort")}
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                disabled={busy}
+                required
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            <button type="submit" className="button" disabled={busy}>
+              {t("Anmelden")}
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => {
+                setDevelopmentOpen(false);
+                setPassword("");
+              }}
+            >
+              {t("Abbrechen")}
+            </button>
+          </form>
+          {error && <p role="alert">{t(error)}</p>}
+        </dialog>
+      )}
+      {session?.development && <span>{t("Entwicklungsmodus")}</span>}
       {error && (
         <span role="alert" className="account-error">
           {t(error)}

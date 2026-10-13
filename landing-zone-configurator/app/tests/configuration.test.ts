@@ -25,6 +25,14 @@ function validDraft() {
 }
 
 describe("standalone configuration", () => {
+  it("ships the current Public example explicitly without requiring connectivity", () => {
+    expect(
+      objectValue(objectValue(template.values.landing_zones)["public-exmpl"])
+        .corporate,
+    ).toBe(false);
+    expect(template.values.connectivity).toBeUndefined();
+  });
+
   it("rejects placeholder identity and duplicate project keys before download", () => {
     expect(validateDraft(createDraft(template)).map((i) => i.field)).toContain(
       "organization",

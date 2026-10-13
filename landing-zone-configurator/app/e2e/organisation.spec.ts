@@ -27,6 +27,10 @@ for (const scenario of [
   "apply-running",
   "apply-failed",
   "apply-report-missing",
+  "recovery-review",
+  "recovery-review-conflict",
+  "recovery-review-start-unresolved",
+  "recovery-review-report-missing",
   "archive-failed",
   "archive-blocked",
   "order-table",
@@ -43,15 +47,18 @@ for (const scenario of [
     const jobId = "77777777-7777-4777-8777-777777777777";
     const backendId = "88888888-8888-4888-8888-888888888888";
     const maintenance = scenario.startsWith("maintenance-");
+    const recoveryReview = scenario.startsWith("recovery-review");
     const purpose = scenario === "maintenance-destroy" ? "destroy" : "drift";
     let maintenanceStarted = false;
     const initialApply =
+      recoveryReview ||
       scenario.startsWith("apply-") ||
       scenario.startsWith("archive-") ||
       scenario === "order-table" ||
       scenario === "maintenance-expired" ||
       scenario === "maintenance-running";
     const engineer =
+      recoveryReview ||
       scenario === "engineer" ||
       scenario === "dispatch-failed" ||
       scenario === "delete-engineer";
@@ -108,6 +115,17 @@ for (const scenario of [
     let applied = initialApply;
     let readsAfterDispatch = 0;
     let refreshFailed = false;
+    let diagnosisReads = 0;
+    let reviewRecorded = false;
+    const reviewJobId = "aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const reviewReceipt = {
+      jobId: reviewJobId,
+      reviewedBy: userId,
+      reviewedAt: "2026-10-09T10:01:00.000Z",
+      bindingSha256: "b".repeat(64),
+      recoverySha256: "c".repeat(64),
+      finding: "state-review-required",
+    };
     const preparations: string[] = [];
     const mutations: string[] = [];
     const summary = {
@@ -182,6 +200,108 @@ for (const scenario of [
         "",
       );
       if (request.method() === "GET") {
+        if (path === `jobs/${reviewJobId}/recovery-review`)
+          return route.fulfill({
+            json: {
+              jobId: reviewJobId,
+              instanceId,
+              bindingSha256: "b".repeat(64),
+              status: "reconciliation_required",
+              operation: "apply",
+              finishedAt: "2026-10-09T10:00:00.000Z",
+              recoverySha256: [
+                "recovery-review-start-unresolved",
+                "recovery-review-report-missing",
+              ].includes(scenario)
+                ? null
+                : "c".repeat(64),
+              finding: [
+                "recovery-review-start-unresolved",
+                "recovery-review-report-missing",
+              ].includes(scenario)
+                ? "completion-review-required"
+                : "state-review-required",
+              reconciliation: {
+                observedAt: "2026-10-09T10:02:00.000Z",
+                stage:
+                  scenario === "recovery-review-start-unresolved"
+                    ? "start-unresolved"
+                    : scenario === "recovery-review-report-missing"
+                      ? "completion-unresolved"
+                      : "state-recovery-required",
+                runnerAppId:
+                  scenario === "recovery-review-start-unresolved"
+                    ? null
+                    : "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                runnerStop: "unknown",
+                stateLock: "unknown",
+                cloudState: "unknown",
+                credentialRevocation: "unknown",
+                authorizesExecution: false,
+                grant: {
+                  status: "revoked",
+                  expiresAt: "2026-10-09T10:00:00.000Z",
+                  revokedAt: "2026-10-09T10:01:00.000Z",
+                },
+                ticket: {
+                  status: "expired",
+                  expiresAt: "2026-10-09T10:00:00.000Z",
+                  consumedAt: "2026-10-09T09:59:00.000Z",
+                },
+                delegation: "revoked",
+                reports: [
+                  "recovery-review-start-unresolved",
+                  "recovery-review-report-missing",
+                ].includes(scenario)
+                  ? []
+                  : [
+                      {
+                        kind: "recovery",
+                        sha256: "c".repeat(64),
+                        createdAt: "2026-10-09T10:00:00.000Z",
+                        runnerPackageId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                      },
+                    ],
+              },
+              review: reviewRecorded ? reviewReceipt : null,
+            },
+          });
+        if (
+          path ===
+          "jobs/aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa/recovery-diagnosis"
+        ) {
+          expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
+          if (++diagnosisReads === 2)
+            return route.fulfill({
+              status: 503,
+              json: { error: "application_request_failed" },
+            });
+          return route.fulfill({
+            json: {
+              jobId: "aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              instanceId,
+              operation: "apply",
+              purpose: "standard",
+              status: "reconciliation_required",
+              errorCode: "runner_report_missing",
+              planId: jobId,
+              runnerPackageId: backendId,
+              acceleratorRevision: "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+              bindingSha256: "b".repeat(64),
+              stateKey: instance.stateKey,
+              finishedAt: "2026-10-09T10:00:00.000Z",
+              assessment: "state-recovery-required",
+              evidence: [
+                {
+                  kind: "recovery",
+                  sha256: "c".repeat(64),
+                  createdAt: "2026-10-09T10:00:00.000Z",
+                  runnerPackageId: backendId,
+                },
+              ],
+            },
+          });
+        }
         if (scenario === "unavailable" && path === "templates")
           return route.fulfill({ status: 502, body: "" });
         if (path === "templates")
@@ -222,6 +342,7 @@ for (const scenario of [
               execution: {
                 planEnabled: scenario !== "disabled",
                 applyEnabled: delegated,
+                recoveryReviewsEnabled: recoveryReview,
                 delegatedExecutionEnabled: delegated,
                 maintenanceEnabled: maintenance,
               },
@@ -272,7 +393,9 @@ for (const scenario of [
                         id: "aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
                         instanceId,
                         requestedBy: requesterId,
-                        approvedBy: "99999999-9999-4999-8999-999999999999",
+                        approvedBy: recoveryReview
+                          ? userId
+                          : "99999999-9999-4999-8999-999999999999",
                         createdAt: new Date().toISOString(),
                         expiresAt: new Date(
                           Date.now() +
@@ -479,6 +602,22 @@ for (const scenario of [
       expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
       expect(request.headers()["x-lzc-csrf"]).toBe("csrf-plan");
       mutations.push(path);
+      if (path === `jobs/${reviewJobId}/recovery-review`) {
+        expect(recoveryReview).toBe(true);
+        expect(request.postDataJSON()).toEqual({
+          instanceId,
+          confirmReview: true,
+          bindingSha256: "b".repeat(64),
+          recoverySha256: "c".repeat(64),
+        });
+        if (scenario === "recovery-review-conflict")
+          return route.fulfill({
+            status: 409,
+            json: { error: "application_recovery_review_changed" },
+          });
+        reviewRecorded = true;
+        return route.fulfill({ json: reviewReceipt });
+      }
       if (path === `jobs/${jobId}/apply`) {
         expect(delegated).toBe(true);
         expect(request.postDataJSON()).toEqual({
@@ -857,6 +996,104 @@ for (const scenario of [
         }),
       ).toBeVisible();
       await expect(plan.locator(".application-plan-job")).toHaveCount(1);
+      if (recoveryReview) {
+        const review = plan.getByRole("region", {
+          name: "Recovery-Prüfung",
+          exact: true,
+        });
+        await review
+          .getByRole("button", { name: "Prüfkontext laden", exact: true })
+          .click();
+        await expect(review).toContainText("Nicht nachgewiesen");
+        await expect(review).toContainText(
+          "Ticket-Ablauf belegt keinen Runner-Stillstand",
+        );
+        if (
+          [
+            "recovery-review-start-unresolved",
+            "recovery-review-report-missing",
+          ].includes(scenario)
+        ) {
+          await expect(review).toContainText(
+            scenario === "recovery-review-start-unresolved"
+              ? "Runner-Start unklar"
+              : "Abschlussmeldung fehlt",
+          );
+          await expect(review).toContainText("Keine Reports gespeichert");
+          await expect(review).toContainText("Nicht erteilt");
+          expect(mutations).toEqual([]);
+          expect(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth <= innerWidth,
+            ),
+          ).toBe(true);
+          await details.screenshot({
+            path: testInfo.outputPath("recovery-reconciliation.png"),
+          });
+          return;
+        }
+        const confirmation = review.getByRole("checkbox");
+        const record = review.getByRole("button", {
+          name: "Prüfung protokollieren",
+          exact: true,
+        });
+        await expect(record).toBeDisabled();
+        await expect(review).toContainText("c".repeat(64));
+        await confirmation.check();
+        await record.click();
+        if (scenario === "recovery-review-conflict") {
+          await expect(review.getByRole("alert")).toContainText(
+            "Der Prüfstand hat sich geändert",
+          );
+          await review
+            .getByRole("button", { name: "Prüfkontext laden", exact: true })
+            .click();
+          await expect(confirmation).not.toBeChecked();
+          await expect(record).toBeDisabled();
+        } else {
+          await expect(review.getByRole("status")).toHaveText(
+            "Prüfbeleg gespeichert",
+          );
+          await review
+            .getByRole("button", { name: "Prüfkontext laden", exact: true })
+            .click();
+          await expect(review.getByRole("status")).toHaveText(
+            "Prüfbeleg gespeichert",
+          );
+          await expect(confirmation).toHaveCount(0);
+          await page.getByLabel("Sprache").selectOption("en");
+          const englishReview = page.getByRole("region", {
+            name: "Recovery review",
+            exact: true,
+          });
+          await expect(englishReview).toContainText("Recovery reconciliation");
+          await expect(englishReview).toContainText("Not established");
+          await expect(englishReview).toContainText(
+            "Ticket expiry does not establish runner shutdown",
+          );
+          await expect(
+            page.getByRole("region", { name: "Recovery review", exact: true }),
+          ).toContainText("Review receipt recorded");
+          await page.getByLabel("Language").selectOption("de");
+        }
+        expect(mutations).toEqual([`jobs/${reviewJobId}/recovery-review`]);
+        await expect(plan).toContainText("Application-Apply: Abschluss prüfen");
+        await expect(
+          plan.getByRole("button", {
+            name: "Application Landing Zone erstellen",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        await details.screenshot({
+          path: testInfo.outputPath("recovery-review.png"),
+        });
+        return;
+      }
       if (scenario === "apply-report-missing") {
         await expect(plan).not.toContainText(
           "Application-Apply fehlgeschlagen",
@@ -873,6 +1110,43 @@ for (const scenario of [
             exact: true,
           }),
         ).toHaveCount(0);
+        const diagnosis = plan.getByRole("region", {
+          name: "Abgleichdiagnose",
+          exact: true,
+        });
+        await diagnosis
+          .getByRole("button", { name: "Abgleichdiagnose laden", exact: true })
+          .click();
+        await expect(diagnosis).toContainText(
+          "State-Wiederherstellung muss geprüft werden",
+        );
+        await expect(diagnosis).toContainText("c".repeat(64));
+        await expect(diagnosis).toContainText(instance.stateKey);
+        await expect(diagnosis).toContainText(
+          "Runner-Lebendigkeit und Cloud-Zustand nicht geprüft.",
+        );
+        await page.getByLabel("Sprache").selectOption("en");
+        const englishDiagnosis = page.getByRole("region", {
+          name: "Reconciliation diagnosis",
+          exact: true,
+        });
+        await expect(englishDiagnosis).toContainText(
+          "State recovery requires review",
+        );
+        await expect(englishDiagnosis).toContainText("Accepted evidence");
+        await page.getByLabel("Language").selectOption("de");
+        await diagnosis
+          .getByRole("button", { name: "Abgleichdiagnose laden", exact: true })
+          .click();
+        await expect(diagnosis.getByRole("alert")).toHaveText(
+          "Die Abgleichdiagnose ist derzeit nicht verfügbar.",
+        );
+        await expect(diagnosis).not.toContainText("c".repeat(64));
+        await diagnosis
+          .getByRole("button", { name: "Abgleichdiagnose laden", exact: true })
+          .click();
+        await expect(diagnosis).toContainText("c".repeat(64));
+        expect(mutations).toEqual([]);
         await page.screenshot({
           path: testInfo.outputPath("application-report-missing.png"),
           fullPage: true,

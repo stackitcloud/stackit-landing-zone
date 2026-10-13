@@ -1,12 +1,104 @@
 import { readFile } from "node:fs/promises";
 import {
   catalogue,
+  compileCommonConfiguration,
   createDraft,
+  createEditorConfiguration,
+  objectValue,
+  readCommonConfiguration,
   savedDraft,
+  setCommonInput,
   type Template,
   upgradeEditorDraft,
 } from "@lzc/domain";
+import {
+  assistantScenarioFixture,
+  assistantScenarios,
+} from "../scripts/assistant-scenarios.js";
 import { expect, type Page, test } from "./fixtures";
+
+async function holdAssistantCompletion(page: Page, path: string) {
+  await page.addInitScript((endpoint) => {
+    const original = window.fetch.bind(window);
+    let held = false;
+    window.fetch = async (input, options) => {
+      const response = await original(input, options);
+      if (
+        held ||
+        !response.ok ||
+        options?.method !== "POST" ||
+        new URL(String(input), location.href).pathname !== endpoint
+      )
+        return response;
+      held = true;
+      const data = await response.json();
+      const encoder = new TextEncoder();
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `${JSON.stringify({ type: "text", text: "Teilantwort ist sichtbar.\n".repeat(40) })}\n`,
+              ),
+            );
+            window.addEventListener(
+              "lzc-test-complete",
+              () => {
+                controller.enqueue(
+                  encoder.encode(
+                    `${JSON.stringify({ type: "complete", data })}\n`,
+                  ),
+                );
+                controller.close();
+              },
+              { once: true },
+            );
+          },
+        }),
+        { headers: { "Content-Type": "application/x-ndjson" } },
+      );
+    };
+  }, path);
+}
+
+async function expectChatAtEnd(page: Page, name: string) {
+  const log = page.getByRole("log", { name });
+  await expect
+    .poll(() =>
+      log.evaluate(
+        (element) =>
+          element.scrollHeight - element.scrollTop - element.clientHeight,
+      ),
+    )
+    .toBeLessThan(2);
+}
+
+async function expectCompactOptions(page: Page) {
+  const dimensions = await page
+    .locator(".assistant-options label")
+    .evaluateAll((labels) =>
+      labels.map((label) => {
+        const input = label.querySelector("input")?.getBoundingClientRect();
+        const text = label.querySelector("span")?.getBoundingClientRect();
+        const bounds = label.getBoundingClientRect();
+        return Boolean(
+          input &&
+            text &&
+            input.width <= 24 &&
+            input.height <= 24 &&
+            text.width >=
+              Math.min(
+                35,
+                (label.querySelector("span")?.textContent?.length ?? 0) * 5,
+              ) &&
+            text.height < 100 &&
+            text.right <= bounds.right + 1,
+        );
+      }),
+    );
+  expect(dimensions.length).toBeGreaterThan(0);
+  expect(dimensions.every(Boolean)).toBe(true);
+}
 
 async function restoreLegacy(page: Page) {
   const template = catalogue.templates.find(
@@ -44,6 +136,1167 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/auth/status", (route) =>
     route.fulfill({ json: { github: false } }),
   );
+});
+
+test("template advice is available before any config and explicitly opens a recommended preview", async ({
+  page,
+}, testInfo) => {
+  await holdAssistantCompletion(page, "/api/v1/configurations/template-advice");
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  let advice: Record<string, unknown> | null = null;
+  let rounds = 0;
+  let rejectNext = true;
+  await page.route("**/api/v1/configurations/template-advice", (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: { advice } });
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+    if (route.request().method() === "DELETE") {
+      expect(route.request().headers()["content-type"]).toBeUndefined();
+      expect(route.request().postData()).toBeNull();
+      advice = null;
+      return route.fulfill({ status: 204 });
+    }
+    if (rejectNext) {
+      rejectNext = false;
+      return route.fulfill({
+        status: 503,
+        json: { error: "assistant_inference_failed" },
+      });
+    }
+    rounds++;
+    if (rounds === 2)
+      expect(route.request().postDataJSON().message).toBe(
+        "Zusatz: Nur ein Standort.\n\nBenötigt ihr einen gemeinsamen Hub?\nMeine Antwort: Gemeinsamer Hub\n\nWie viele Teams nutzen die Umgebung?\nMeine Antwort: Zwei Teams",
+      );
+    advice = {
+      id: "advice",
+      expiresAt: "2027-01-10T09:00:00Z",
+      stale: false,
+      messages: [
+        {
+          id: `message-${rounds}`,
+          role: "assistant",
+          content:
+            rounds === 1
+              ? "Benötigt ihr einen gemeinsamen Hub?"
+              : "Hub & Spoke passt zu eurem gemeinsamen Netzwerk.",
+        },
+      ],
+      recommendation:
+        rounds === 1
+          ? {
+              templateId: null,
+              questions: [
+                {
+                  text: "Benötigt ihr einen gemeinsamen Hub?",
+                  options: ["Gemeinsamer Hub", "Getrennte Netze", "Noch offen"],
+                },
+                "Wie viele Teams nutzen die Umgebung?",
+              ],
+            }
+          : { templateId: "hub-and-spoke" },
+    };
+    return route.fulfill({ json: { advice } });
+  });
+  await page.goto("/repositories");
+  const panel = page.getByRole("region", { name: "Template-Beratung" });
+  await expect(panel).toBeVisible();
+  await panel
+    .getByRole("textbox", { name: "Welche Umgebung brauchst du?" })
+    .fill("Zwei Teams brauchen gemeinsame Vernetzung");
+  await panel.getByRole("button", { name: "Template-Anfrage senden" }).click();
+  await expect(panel.getByRole("alert")).toContainText(
+    "Die Modellantwort konnte nicht sicher verarbeitet werden.",
+  );
+  await expect(
+    panel.getByRole("textbox", { name: "Welche Umgebung brauchst du?" }),
+  ).toHaveValue("Zwei Teams brauchen gemeinsame Vernetzung");
+  await panel.getByRole("button", { name: "Template-Anfrage senden" }).click();
+  await expect(
+    panel.getByText("Vorläufig · Antwort wird geprüft"),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "Vorlage ansehen" }),
+  ).toHaveCount(0);
+  await expectChatAtEnd(page, "Template-Gespräch");
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("lzc-test-complete")),
+  );
+  await expect(
+    panel.getByRole("log").getByText("Benötigt ihr einen gemeinsamen Hub?"),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "Vorlage ansehen" }),
+  ).toHaveCount(0);
+  const hubQuestion = panel.getByRole("group", {
+    name: "Benötigt ihr einen gemeinsamen Hub?",
+  });
+  await hubQuestion.getByRole("radio", { name: "Gemeinsamer Hub" }).check();
+  await hubQuestion
+    .getByRole("textbox", { name: "Eigene Antwort" })
+    .fill("Gemeinsamer Hub mit internen Diensten");
+  await expect(
+    hubQuestion.getByRole("radio", { name: "Gemeinsamer Hub" }),
+  ).not.toBeChecked();
+  await hubQuestion.getByRole("radio", { name: "Gemeinsamer Hub" }).check();
+  await panel
+    .getByRole("group", { name: "Wie viele Teams nutzen die Umgebung?" })
+    .getByRole("textbox", { name: "Eigene Antwort" })
+    .fill("Zwei Teams");
+  const compose = panel.getByRole("textbox", {
+    name: "Welche Umgebung brauchst du?",
+  });
+  await compose.fill("Zusatz: Nur ein Standort.");
+  expect(rounds).toBe(1);
+  await expectCompactOptions(page);
+  await page.screenshot({
+    path: testInfo.outputPath("template-questions.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await panel.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(
+    panel.getByRole("heading", { name: "Empfehlung: Hub & Spoke" }),
+  ).toBeVisible();
+  await expect(compose).toHaveValue("");
+  expect(rounds).toBe(2);
+  await page.reload();
+  await expect(
+    panel.getByRole("heading", { name: "Empfehlung: Hub & Spoke" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("template-advice.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await panel.getByRole("button", { name: "Vorlage ansehen" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Hub & Spoke", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Konfiguration erstellen" }),
+  ).toBeVisible();
+  await page.goto("/templates");
+  await expect(panel).toBeVisible();
+  await panel
+    .getByRole("button", { name: "Template-Beratung löschen" })
+    .click();
+  await expect(
+    panel.getByRole("button", { name: "Vorlage ansehen" }),
+  ).toHaveCount(0);
+});
+
+test("configuration chat sends answers directly and requires explicit proposal acceptance", async ({
+  page,
+}, testInfo) => {
+  const networkAreas = {
+    default: {
+      ranges: ["10.64.0.0/16"],
+      transfer_network: "10.63.0.0/24",
+      min_prefix_length: 24,
+      max_prefix_length: 24,
+      default_prefix_length: 24,
+    },
+  };
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  const id = "11111111-2222-4333-8444-000000000001";
+  await holdAssistantCompletion(page, `/api/v1/configurations/${id}/assistant`);
+  const draft = createEditorConfiguration("standalone", id);
+  const revision = 1;
+  const history = Array.from({ length: 20 }, (_, index) => ({
+    id: `old-${index}`,
+    role: index % 2 ? "assistant" : "user",
+    content: `Historie ${index}\n`.repeat(8),
+  }));
+  let conversation: Record<string, unknown> | null = {
+    id,
+    revision: 1,
+    baseRevision: 1,
+    expiresAt: "2027-01-10T09:00:00Z",
+    stale: false,
+    messages: history,
+    proposal: null,
+  };
+  let accepted = 0;
+  let requests = 0;
+  let replyRequests = 0;
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) =>
+    route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision,
+          updatedAt: new Date().toISOString(),
+          draft,
+        },
+      },
+    }),
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant`,
+    async (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({ json: { conversation } });
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+      if (route.request().method() === "DELETE") {
+        conversation = null;
+        return route.fulfill({ status: 204 });
+      }
+      const request = route.request().postDataJSON();
+      expect(request.revision).toBe(1);
+      expect(request.draft).toEqual(draft);
+      if (requests === 0) expect(request.message).toBe("Firma Example");
+      else {
+        expect(request.message).toBe(
+          "Ergänzung bleibt erhalten.\n\nWelches Firmenkürzel?\nMeine Antwort: EXG\n\nWelche Verkehrsarten?\nMeine Antwort: Interne Kommunikation; Internet-Ausgang; Weitere Anforderungen folgen",
+        );
+        replyRequests++;
+        if (replyRequests === 1)
+          return route.fulfill({
+            status: 503,
+            json: { error: "assistant_inference_failed" },
+          });
+      }
+      requests++;
+      conversation = {
+        id,
+        revision: requests + 1,
+        baseRevision: 1,
+        expiresAt: "2027-01-10T09:00:00Z",
+        stale: false,
+        messages: [
+          ...history,
+          { id: "message-user", role: "user", content: "Firma Example" },
+          {
+            id: "message-assistant",
+            role: "assistant",
+            content: "Firmenname Example vorgeschlagen.",
+          },
+        ],
+        proposal: {
+          explanation: "Firmenname",
+          references: ["configuration-contract"],
+          questions:
+            requests === 1
+              ? [
+                  {
+                    path: "company_code",
+                    text: "Welches Firmenkürzel?",
+                    options: ["EXG", "Noch offen"],
+                  },
+                  {
+                    path: "connectivity.firewall.lan_network_range",
+                    text: "Welche Verkehrsarten?",
+                    options: ["Internet-Ausgang", "Interne Kommunikation"],
+                    multiple: true,
+                  },
+                ]
+              : [],
+          changes: [
+            {
+              path: "company_name",
+              before: "Example company",
+              value: "Example",
+            },
+            ...(requests <= 2
+              ? [
+                  {
+                    path: "connectivity.network_areas",
+                    before: null,
+                    value: networkAreas,
+                  },
+                ]
+              : []),
+          ],
+        },
+      };
+      return route.fulfill({ json: { conversation } });
+    },
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      expect(route.request().postDataJSON()).toEqual({
+        revision: 3,
+        baseRevision: 1,
+        selectedFields: ["company_name"],
+        draft,
+        savedDraft: draft,
+      });
+      accepted++;
+      const candidate = setCommonInput(draft, "company_name", "Example");
+      if (conversation)
+        conversation = {
+          ...conversation,
+          revision: 3,
+          baseRevision: 1,
+          proposal: null,
+        };
+      return route.fulfill({
+        json: {
+          configuration: { id, revision, draft: candidate, persisted: false },
+          savedConfiguration: draft,
+          conversation,
+        },
+      });
+    },
+  );
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  await expect(chat).toBeVisible();
+  await expectChatAtEnd(page, "Gespräch");
+  await chat.getByRole("log", { name: "Gespräch" }).evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("Firma Example");
+  await chat.getByRole("button", { name: "Nachricht senden" }).click();
+  await expect(
+    chat.getByText("Vorläufig · Antwort wird geprüft"),
+  ).toBeVisible();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  await expectChatAtEnd(page, "Gespräch");
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("lzc-test-complete")),
+  );
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toBeVisible();
+  await expectChatAtEnd(page, "Gespräch");
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  await expect(
+    chat.getByText("connectivity.network_areas.default.ranges", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(chat.getByText(/10\.64\.0\.0\/16/)).toBeVisible();
+  await page.reload();
+  await expect(
+    chat.getByText("Firmenname Example vorgeschlagen.", { exact: true }),
+  ).toBeVisible();
+  const codeQuestion = chat.getByRole("group", {
+    name: "Welches Firmenkürzel?",
+  });
+  await codeQuestion.getByRole("radio", { name: "EXG" }).check();
+  const traffic = chat.getByRole("group", { name: "Welche Verkehrsarten?" });
+  await traffic.getByRole("checkbox", { name: "Internet-Ausgang" }).check();
+  await traffic
+    .getByRole("checkbox", { name: "Interne Kommunikation" })
+    .check();
+  await traffic.getByRole("checkbox", { name: "Internet-Ausgang" }).uncheck();
+  await traffic.getByRole("checkbox", { name: "Internet-Ausgang" }).check();
+  await traffic
+    .getByRole("textbox", { name: "Eigene Antwort" })
+    .fill("Weitere Anforderungen folgen");
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("x".repeat(4000));
+  await chat.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(chat.getByRole("alert")).toContainText(
+    "Die Antwort ist zu lang.",
+  );
+  expect(requests).toBe(1);
+  expect(replyRequests).toBe(0);
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("Ergänzung bleibt erhalten.");
+  await chat.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(chat.getByRole("alert")).toContainText(
+    "Die Modellantwort konnte nicht sicher verarbeitet werden.",
+  );
+  await expect(
+    chat.getByRole("textbox", { name: "Deine Nachricht" }),
+  ).toHaveValue("Ergänzung bleibt erhalten.");
+  await expect(codeQuestion.getByRole("radio", { name: "EXG" })).toBeChecked();
+  await expect(
+    traffic.getByRole("textbox", { name: "Eigene Antwort" }),
+  ).toHaveValue("Weitere Anforderungen folgen");
+  expect(requests).toBe(1);
+  await expectCompactOptions(page);
+  await chat.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(
+    chat.getByRole("button", { name: "Antwort senden" }),
+  ).toBeDisabled();
+  await expect(
+    chat
+      .getByRole("log", { name: "Gespräch" })
+      .getByText(
+        "Ergänzung bleibt erhalten.\n\nWelches Firmenkürzel?\nMeine Antwort: EXG\n\nWelche Verkehrsarten?\nMeine Antwort: Interne Kommunikation; Internet-Ausgang; Weitere Anforderungen folgen",
+        { exact: true },
+      ),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("lzc-test-complete")),
+  );
+  await expect(
+    chat.getByRole("textbox", { name: "Deine Nachricht" }),
+  ).toHaveValue("");
+  expect(requests).toBe(2);
+  expect(replyRequests).toBe(2);
+  for (const checkbox of await chat
+    .locator('.assistant-diff input[aria-label^="connectivity.network_areas."]')
+    .all())
+    await checkbox.uncheck();
+  await expect(
+    chat.getByRole("button", { name: "Ausgewählte Felder übernehmen" }),
+  ).toBeEnabled();
+  await chat
+    .getByRole("checkbox", { name: "company_name auswählen" })
+    .uncheck();
+  await expect(
+    chat.getByRole("button", { name: "Ausgewählte Felder übernehmen" }),
+  ).toBeDisabled();
+  await chat.getByRole("checkbox", { name: "company_name auswählen" }).check();
+  await chat.getByRole("textbox", { name: "Deine Nachricht" }).fill("");
+  expect(requests).toBe(2);
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  await page.screenshot({
+    path: testInfo.outputPath("assistant-chat-diff.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  expect(requests).toBe(2);
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen" })
+    .click();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(revision).toBe(1);
+  await chat.getByRole("button", { name: "Gespräch löschen" }).click();
+  await expect(
+    chat.getByText("Firmenname Example vorgeschlagen.", { exact: true }),
+  ).toHaveCount(0);
+});
+
+test("firewall HA merges local edits, reviews conflicts and saves separately", async ({
+  page,
+}) => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "firewall-native-ha",
+  );
+  if (!scenario) throw new Error("Missing synthetic firewall fixture");
+  let draft = assistantScenarioFixture(scenario).draft;
+  const id = draft.id;
+  let revision = 1;
+  let proposalBaseRevision = 1;
+  let conversationRevision = 2;
+  let accepted = 0;
+  let localDraft = draft;
+  let mergeRequests = 0;
+  const conversation = () => ({
+    id,
+    revision: conversationRevision,
+    baseRevision: proposalBaseRevision,
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    stale: proposalBaseRevision !== revision,
+    authorizesExecution: false,
+    messages: [],
+    proposal: {
+      explanation:
+        "HA vorgeschlagen, noch nichts gespeichert. Plan/Apply separat.",
+      questions: [],
+      references: ["firewall-infrastructure"],
+      changes: [
+        {
+          path: "connectivity.firewalls",
+          before: {
+            default:
+              accepted === 0 ? { ha: null } : { ha: { backup_zone: "eu01-2" } },
+          },
+          value: {
+            default: {
+              ha:
+                accepted === 0
+                  ? { backup_zone: "eu01-2", vhid: 23 }
+                  : { vhid: 23 },
+            },
+          },
+        },
+      ],
+    },
+  });
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() === "PUT") {
+      expect(route.request().postDataJSON().revision).toBe(revision);
+      draft = readCommonConfiguration(route.request().postDataJSON().draft);
+      revision++;
+    }
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision,
+          updatedAt: new Date().toISOString(),
+          draft,
+        },
+      },
+    });
+  });
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().postDataJSON()).toEqual({
+        revision: 2,
+        message: "Bitte HA erneut vorschlagen.",
+        draft: localDraft,
+      });
+      proposalBaseRevision = revision;
+      conversationRevision++;
+    }
+    return route.fulfill({ json: { conversation: conversation() } });
+  });
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      const request = route.request().postDataJSON();
+      mergeRequests++;
+      expect(request.savedDraft).toBeDefined();
+      const field = accepted === 0 ? "backup_zone" : "vhid";
+      expect(request.selectedFields).toEqual([
+        `connectivity.firewalls/default/ha/${field}`,
+      ]);
+      if (accepted === 1 && request.confirmedRevision === undefined)
+        return route.fulfill({
+          status: 409,
+          json: {
+            error: "assistant_merge_confirmation_required",
+            configurationRevision: revision,
+            conflicts: [
+              {
+                kind: "proposal",
+                path: "connectivity.firewalls.default.ha.vhid",
+                before: null,
+                current: 55,
+                value: 23,
+                baselineAvailable: true,
+              },
+            ],
+          },
+        });
+      if (accepted === 1) expect(request.confirmedRevision).toBe(4);
+      const connectivity = objectValue(
+        compileCommonConfiguration(readCommonConfiguration(request.draft))
+          .connectivity,
+      );
+      const firewalls = objectValue(connectivity.firewalls);
+      localDraft = setCommonInput(
+        readCommonConfiguration(request.draft),
+        "connectivity",
+        {
+          ...connectivity,
+          firewalls: {
+            ...firewalls,
+            default: {
+              ...objectValue(firewalls.default),
+              ha: {
+                backup_zone: "eu01-2",
+                ...(accepted === 1 ? { vhid: 23 } : {}),
+              },
+            },
+          },
+        },
+      );
+      accepted++;
+      return route.fulfill({
+        json: {
+          configuration: { id, revision, draft: localDraft, persisted: false },
+          savedConfiguration: draft,
+          conversation:
+            accepted === 1
+              ? conversation()
+              : { ...conversation(), proposal: null },
+        },
+      });
+    },
+  );
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  const backup = chat.getByRole("checkbox", {
+    name: "connectivity.firewalls.default.ha.backup_zone auswählen",
+    exact: true,
+  });
+  const vhid = chat.getByRole("checkbox", {
+    name: "connectivity.firewalls.default.ha.vhid auswählen",
+    exact: true,
+  });
+  await expect(backup).toBeVisible();
+  await expect(vhid).toBeVisible();
+  expect(accepted).toBe(0);
+  const compose = chat.getByRole("textbox", { name: "Deine Nachricht" });
+  await expect(compose).toBeEnabled();
+  const details = page.locator("details.feature-section > summary").first();
+  await expect(details).toBeVisible();
+  await details.click();
+  await expect(page.getByText(/Revision 1 · Nicht gespeichert/)).toHaveCount(0);
+  await page
+    .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
+    .fill("Manuell geänderte Konfiguration");
+  await expect(compose).toBeEnabled();
+  await expect(backup).toBeEnabled();
+  await expect(vhid).toBeEnabled();
+  await expect(
+    chat.getByText(/Du hast ungespeicherte Editoränderungen/),
+  ).toBeVisible();
+  await chat.getByRole("link", { name: "Zum Speichern", exact: true }).click();
+  await expect(page.locator("#configuration-save")).toBeInViewport();
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(compose).toBeEnabled();
+  await expect(backup).toBeEnabled();
+  await expect(
+    chat.getByText(/Der Vorschlag basiert auf einem älteren/),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
+    .fill("Weitere lokale Änderung");
+  await expect(backup).toBeEnabled();
+  await expect(vhid).toBeEnabled();
+  await expect(compose).toBeEnabled();
+  await vhid.uncheck();
+  await backup.check();
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen" })
+    .click();
+  await expect(backup).toHaveCount(0);
+  await expect(vhid).toBeVisible();
+  await expect(vhid).toBeEnabled();
+  await expect(compose).toBeEnabled();
+  expect(accepted).toBe(1);
+  expect(revision).toBe(2);
+  expect(draft.name).toBe("Manuell geänderte Konfiguration");
+  expect(localDraft.name).toBe("Weitere lokale Änderung");
+  await expect(
+    chat.getByText(/Ausgewählte Vorschläge sind im lokalen Entwurf/),
+  ).toBeVisible();
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(localDraft).connectivity)
+          .firewalls,
+      ).default,
+    ).ha,
+  ).toEqual({ backup_zone: "eu01-2" });
+  await compose.fill("Bitte HA erneut vorschlagen.");
+  await chat
+    .getByRole("button", { name: "Nachricht senden", exact: true })
+    .click();
+  await expect(compose).toHaveValue("");
+  await expect(vhid).toBeEnabled();
+  expect(revision).toBe(2);
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(
+    chat.getByText(/Der Vorschlag basiert auf einem älteren/),
+  ).toBeVisible();
+  expect(revision).toBe(3);
+  const savedConnectivity = objectValue(
+    compileCommonConfiguration(draft).connectivity,
+  );
+  const savedFirewalls = objectValue(savedConnectivity.firewalls);
+  draft = setCommonInput(draft, "connectivity", {
+    ...savedConnectivity,
+    firewalls: {
+      ...savedFirewalls,
+      default: {
+        ...objectValue(savedFirewalls.default),
+        ha: { backup_zone: "eu01-2", vhid: 55 },
+      },
+    },
+  });
+  revision = 4;
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  const conflict = page.getByRole("dialog", {
+    name: "Zwischenzeitliche Änderungen prüfen",
+  });
+  await expect(conflict).toBeVisible();
+  await expect(conflict).toContainText("Aktuell: 55");
+  await expect(conflict).toContainText("Vorschlag: 23");
+  await conflict
+    .getByRole("button", { name: "Abbrechen", exact: true })
+    .click();
+  await expect(conflict).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(revision).toBe(4);
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  await conflict
+    .getByRole("button", { name: "Trotzdem in Entwurf übernehmen" })
+    .click();
+  await expect(conflict).toHaveCount(0);
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(2);
+  expect(mergeRequests).toBe(4);
+  expect(revision).toBe(4);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).firewalls,
+      ).default,
+    ).ha,
+  ).toEqual({ backup_zone: "eu01-2", vhid: 55 });
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(page.getByText(/Revision 5 · Nicht gespeichert/)).toHaveCount(0);
+  expect(revision).toBe(5);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).firewalls,
+      ).default,
+    ).ha,
+  ).toEqual({ backup_zone: "eu01-2", vhid: 23 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+});
+
+test("DNS settings present a multi-field diff and save only after explicit acceptance", async ({
+  page,
+}, testInfo) => {
+  const id = "11111111-2222-4333-8444-000000000002";
+  let draft = createEditorConfiguration("hub-and-spoke-firewall", id);
+  let storedDraft = draft;
+  let revision = 1;
+  let accepted = 0;
+  let conversation: Record<string, unknown> | null = null;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: {
+        github: false,
+        stackit: true,
+        primary: "stackit",
+      },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) =>
+    route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision,
+          updatedAt: new Date().toISOString(),
+          draft,
+        },
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().postDataJSON().message).toBe(
+        "Ja, example-gmbh.runs.onstackit.cloud verwenden.",
+      );
+      conversation = {
+        id,
+        revision: 2,
+        baseRevision: 1,
+        expiresAt: "2027-01-10T09:00:00Z",
+        stale: false,
+        messages: [
+          { id: "user-dns", role: "user", content: "DNS bestätigt" },
+          {
+            id: "assistant-dns",
+            role: "assistant",
+            content:
+              "DNS-Namensänderung vorgeschlagen, noch nicht gespeichert.",
+          },
+        ],
+        proposal: {
+          explanation:
+            "DNS-Namensänderung vorgeschlagen, noch nicht gespeichert.",
+          references: ["dns-zones"],
+          questions: [],
+          changes: [
+            {
+              path: "connectivity.dns_zones",
+              before: {
+                "example-corp": {
+                  dns_name: "example-corp.stackit.run",
+                  default_ttl: 3600,
+                  type: "primary",
+                },
+              },
+              value: {
+                "example-corp": {
+                  dns_name: "example-gmbh.runs.onstackit.cloud",
+                  name: "example-gmbh-dns",
+                  description: "Zentrale DNS-Zone der Example GmbH",
+                  default_ttl: 7200,
+                  type: "primary",
+                },
+              },
+            },
+          ],
+        },
+      };
+    }
+    return route.fulfill({ json: { conversation } });
+  });
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+      expect(route.request().postDataJSON()).toMatchObject({
+        revision: 2,
+        baseRevision: 1,
+        draft,
+        savedDraft: storedDraft,
+        selectedFields:
+          accepted === 0
+            ? ["connectivity.dns_zones/example-corp/name"]
+            : expect.arrayContaining([
+                "connectivity.dns_zones/example-corp/dns_name",
+                "connectivity.dns_zones/example-corp/description",
+                "connectivity.dns_zones/example-corp/default_ttl",
+              ]),
+      });
+      accepted++;
+      const connectivity = objectValue(
+        compileCommonConfiguration(draft).connectivity,
+      );
+      draft = setCommonInput(draft, "connectivity", {
+        ...connectivity,
+        dns_zones: {
+          ...objectValue(connectivity.dns_zones),
+          "example-corp": {
+            ...objectValue(objectValue(connectivity.dns_zones)["example-corp"]),
+            name: "example-gmbh-dns",
+            ...(accepted === 2
+              ? {
+                  dns_name: "example-gmbh.runs.onstackit.cloud",
+                  description: "Zentrale DNS-Zone der Example GmbH",
+                  default_ttl: 7200,
+                  type: "primary",
+                }
+              : {}),
+          },
+        },
+      });
+      if (conversation)
+        conversation = {
+          ...conversation,
+          revision: 2,
+          baseRevision: 1,
+          proposal:
+            accepted === 2
+              ? null
+              : {
+                  explanation: "Verbleibende DNS-Felder",
+                  references: ["dns-zones"],
+                  questions: [],
+                  changes: [
+                    {
+                      path: "connectivity.dns_zones",
+                      before: {
+                        "example-corp": {
+                          dns_name: "example-corp.stackit.run",
+                          name: "example-gmbh-dns",
+                          default_ttl: 3600,
+                          type: "primary",
+                        },
+                      },
+                      value: {
+                        "example-corp": {
+                          dns_name: "example-gmbh.runs.onstackit.cloud",
+                          description: "Zentrale DNS-Zone der Example GmbH",
+                          default_ttl: 7200,
+                          type: "primary",
+                        },
+                      },
+                    },
+                  ],
+                },
+        };
+      return route.fulfill({
+        json: {
+          configuration: { id, revision, draft, persisted: false },
+          savedConfiguration: storedDraft,
+          conversation,
+        },
+      });
+    },
+  );
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("Ja, example-gmbh.runs.onstackit.cloud verwenden.");
+  await chat.getByRole("button", { name: "Nachricht senden" }).click();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toBeVisible();
+  await expect(
+    chat.getByText("connectivity.dns_zones.example-corp.dns_name", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    chat.getByText(/example-gmbh\.runs\.onstackit\.cloud/).last(),
+  ).toBeVisible();
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-corp.stackit.run");
+  const diff = chat.locator(".assistant-diff");
+  await expect(diff).toContainText("example-gmbh-dns");
+  await expect(diff).toContainText("Zentrale DNS-Zone");
+  await expect(diff).toContainText("7200");
+  await expect(
+    chat.getByRole("checkbox", {
+      name: "connectivity.dns_zones.example-corp.type auswählen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(
+    await diff.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("dns-name-proposal.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  for (const checkbox of await diff.getByRole("checkbox").all())
+    await checkbox.uncheck();
+  await chat
+    .getByRole("checkbox", {
+      name: "connectivity.dns_zones.example-corp.name auswählen",
+      exact: true,
+    })
+    .check();
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen" })
+    .click();
+  await expect(
+    chat.getByRole("checkbox", {
+      name: "connectivity.dns_zones.example-corp.name auswählen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(revision).toBe(1);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-corp.stackit.run");
+  await expect(diff).toContainText("Zentrale DNS-Zone");
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(2);
+  expect(revision).toBe(1);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-gmbh.runs.onstackit.cloud");
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ),
+  ).toMatchObject({
+    name: "example-gmbh-dns",
+    description: "Zentrale DNS-Zone der Example GmbH",
+    default_ttl: 7200,
+    type: "primary",
+  });
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(storedDraft).connectivity)
+          .dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-corp.stackit.run");
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    expect(route.request().method()).toBe("PUT");
+    expect(route.request().postDataJSON()).toEqual({ revision: 1, draft });
+    storedDraft = readCommonConfiguration(route.request().postDataJSON().draft);
+    revision++;
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: storedDraft.name,
+          revision,
+          draft: storedDraft,
+        },
+      },
+    });
+  });
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(page.getByText(/Revision 2 · Nicht gespeichert/)).toHaveCount(0);
+  expect(revision).toBe(2);
+  expect(storedDraft).toEqual(draft);
 });
 
 test("database configurations save, reopen, protect revisions and delete without GitHub", async ({

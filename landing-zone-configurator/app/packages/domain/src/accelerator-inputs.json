@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceSha256": "b77e59054c7d2c6dabcb9f9add22c1efb56d79735fd14eb5461e11d99c105f57",
+  "sourceSha256": "a7bdc9a31e93d355e228072c743b5d85a1dae956d3676cd9079ab904e8ee6f23",
   "variables": [
     {
       "name": "owner_email",
@@ -622,7 +622,7 @@
     {
       "name": "rm_folders",
       "line": 226,
-      "description": "Map of resource manager folders to create under the root organization.",
+      "description": "Map of resource manager folders to create under the root organization. Folder descriptions are unsupported; omit description or leave it empty.",
       "type": [
         "map",
         [
@@ -678,12 +678,13 @@
         }
       },
       "validations": [
-        "validation {\n    condition     = alltrue([for folder in values(var.rm_folders) : length(folder.name) \u003e= 1 \u0026\u0026 length(folder.name) \u003c= 40])\n    error_message = \"Every rm_folders[*].name must be between 1 and 40 characters, as required by the STACKIT Resource Manager API.\"\n  }"
+        "validation {\n    condition     = alltrue([for folder in values(var.rm_folders) : length(folder.name) \u003e= 1 \u0026\u0026 length(folder.name) \u003c= 40])\n    error_message = \"Every rm_folders[*].name must be between 1 and 40 characters, as required by the STACKIT Resource Manager API.\"\n  }",
+        "validation {\n    condition     = alltrue([for folder in values(var.rm_folders) : trimspace(coalesce(folder.description, \" \")) == \"\"])\n    error_message = \"Resource Manager folder descriptions are not supported by the reviewed STACKIT provider. Remove non-empty rm_folders[*].description values; they must not be silently discarded.\"\n  }"
       ]
     },
     {
       "name": "connectivity",
-      "line": 267,
+      "line": 272,
       "description": "Connectivity configuration including DNS zones, network areas, firewalls, and VPN. Use network_areas with descriptive keys that reflect any business, security, tenant, or regional boundary; network_area and firewall remain supported for existing single-area configurations. Use firewalls for per-area appliance settings.",
       "type": [
         "object",
@@ -1281,7 +1282,7 @@
     },
     {
       "name": "connectivity_regions",
-      "line": 420,
+      "line": 425,
       "description": "Regional connectivity configuration for the statically supported eu01 and eu02 hubs. Set to null to use the single-region connectivity input.",
       "type": [
         "map",
@@ -1296,7 +1297,7 @@
     },
     {
       "name": "vpn_pre_shared_keys",
-      "line": 431,
+      "line": 436,
       "description": "Pre-shared keys per connectivity.vpn.connections key, one per tunnel. Kept out of the connectivity object so the topology stays committable; supply through TF_VAR_vpn_pre_shared_keys or a gitignored tfvars file. Minimum 20 characters.",
       "type": [
         "map",
@@ -1313,7 +1314,7 @@
     },
     {
       "name": "firewall_config",
-      "line": 445,
+      "line": 450,
       "description": "Policy pushed to one OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched.",
       "type": [
         "object",
@@ -1599,7 +1600,7 @@
     },
     {
       "name": "firewall_admin_username",
-      "line": 533,
+      "line": 538,
       "description": "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root.",
       "type": "string",
       "required": false,
@@ -1608,7 +1609,7 @@
     },
     {
       "name": "firewall_admin_password",
-      "line": 539,
+      "line": 544,
       "description": "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead.",
       "type": "string",
       "required": false,
@@ -1616,7 +1617,7 @@
     },
     {
       "name": "firewall_bootstrap",
-      "line": 546,
+      "line": 551,
       "description": "Pass -var firewall_bootstrap=true on the two greenfield applies that create the OPNsense API key. It suppresses the Secrets Manager read, which would otherwise fail at plan time because the secret does not exist yet. Never set it on an established deployment: without the bootstrap cache file it plans the destruction of the policy and the stored key. The steady state needs no variable at all.",
       "type": "bool",
       "required": false,
@@ -1625,7 +1626,7 @@
     },
     {
       "name": "firewall_api_secret_version",
-      "line": 552,
+      "line": 557,
       "description": "Write version of the OPNsense API key in the Secrets Manager. The key is only transmitted when this number changes, so bump it by one after a re-bootstrap has produced a fresh key, otherwise the Secrets Manager keeps serving the old one.",
       "type": "number",
       "required": false,
@@ -1634,7 +1635,7 @@
     },
     {
       "name": "firewall_api_credentials",
-      "line": 558,
+      "line": 563,
       "description": "OPNsense API key and secret. Bootstrap them once from the appliance login with src/modules/firewall-config/scripts/bootstrap-api-key.sh, then supply through TF_VAR_firewall_api_credentials or a gitignored tfvars file. Kept out of firewall_config so the policy stays committable.",
       "type": [
         "object",
@@ -1648,7 +1649,7 @@
     },
     {
       "name": "sandboxes",
-      "line": 572,
+      "line": 577,
       "description": "List of sandboxes to create.",
       "type": [
         "list",
@@ -1673,7 +1674,7 @@
     },
     {
       "name": "landing_zones",
-      "line": 586,
+      "line": 591,
       "description": "Map of landing zones to create. Public landing zones can create a local network with network_enabled. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions.",
       "type": [
         "map",
@@ -1789,7 +1790,7 @@
     },
     {
       "name": "landing_zone_namespace_services",
-      "line": 640,
+      "line": 645,
       "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
       "type": [
         "map",

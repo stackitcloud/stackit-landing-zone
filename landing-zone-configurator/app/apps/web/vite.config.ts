@@ -3,6 +3,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  preview: {
+    allowedHosts: ["work.lukas.runs.onstackit.cloud"],
+  },
   server: {
     port: 5173,
     strictPort: true,

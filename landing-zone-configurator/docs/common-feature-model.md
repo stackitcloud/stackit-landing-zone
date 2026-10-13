@@ -3,6 +3,13 @@
 Stand: 2026-09-30. Architekturentscheidung nach Benutzerfeedback zur Projekt-/Ordnerauswahl.
 **Die Templates sind Voreinstellungen desselben Accelerators. Sie definieren nicht den Funktionsumfang des Editors.**
 
+Aktueller Konzeptstand 2026-10-10: Die historische Bestandsaufnahme unten nennt
+28 Eingaben. Der heutige Domain-Katalog enthaelt 29, einschliesslich
+`platform_contract_namespace`. Die aktuelle feldgenaue KI-Abdeckung steht in der
+[Assistenten-Matrix](assistant-feature-coverage.md). Deren Quellhashes und Tests
+pruefen den aktuellen lokalen Katalog; sie bestaetigen keine neue Engine- oder
+Cloud-Freigabe unter den historischen Pins dieser Bestandsaufnahme.
+
 Diese Entscheidung ersetzt den Ausbau des Standalone-Editors um einen isolierten
 Corporate-/Einzelbereich-Sonderfall. Der gemeinsame Editor ist inzwischen auf lzc-dev veröffentlicht. Public-/Corporate-
 Zuordnung und Netzwerkbereiche werden auf diesem Modell bearbeitet; die v3-
@@ -124,6 +131,50 @@ separaten Featurelisten je Template. Template-Wechsel ist eine ausdrücklich
 bestätigte neue Voreinstellung; er darf vorhandene Benutzeränderungen nicht
 stillschweigend ersetzen. Für bestehende Konfigurationen ist die Herkunft kein
 Feature-Limit.
+
+### Verbindlicher Accelerator-Vertrag (2026-10-10)
+
+Ergaenzende Wissensarchitektur: Kuratierte Markdown-Bausteine pro Thema/Service
+mit festem Abschnittsvertrag, explizitem Manifest, Quellen-/Inhaltshashes und
+generiertem Backend-Bundle. Die ersten SNA-/Credential-Bausteine sind auf
+19 Themen fuer alle Accelerator-Bereiche und den Konfigurationslebenszyklus
+erweitert. Jede der aktuell 29 Root-Eingaben braucht eine explizite Themen-
+Zuordnung; der Frische-/Vollstaendigkeitsgate prueft diese. Themauswahl folgt
+Feature-Gruppen plus Wissensabhaengigkeiten, nicht Aktivierungszwang; Credential-
+Grundlagen und Lebenszyklus sind Pflicht. Vorlagenwerte sind keine Nutzerfreigabe
+fuer Einrichtung optionaler Komponenten. Kein beliebiges Markdown-/Web-/Kundendaten-Ingest,
+keine Vektordatenbank oder automatische Wissenspromotion. Der erforderliche
+Frischecheck blockiert veraltete Artefakte. Markdown erklaert, Schema/Compiler
+entscheiden. Architektur und Erweiterungsablauf:
+[Service-Wissen](assistant-knowledge/README.md).
+
+Der Assistent uebersetzt freie Anforderungen ausschliesslich in dieses gemeinsame
+Konfigurationsmodell und dessen bereits unterstuetzte Accelerator-Eingaben.
+Er erzeugt weder freies Terraform noch editor-/chat-exklusive Ressourcen oder
+Providerkonfiguration. Der native Export bleibt eine eigenstaendig mit der
+passenden Accelerator-Version verwendbare Konfiguration. Aktuell ist das
+Terraform-tfvars, nicht ein neu erfundenes YAML-Schema. Ein spaeteres YAML-Format
+braucht einen expliziten, versionierten Import-/Compilervertrag zum selben
+Accelerator; es darf keine zweite Fachlogik oder Configurator-Laufzeit voraussetzen.
+
+Feature-Einfuehrung erfolgt durchgaengig: Konzept/Architektur, Accelerator-/Modul-
+Vertrag, Eingabeschema, gemeinsames Fachmodell, Validierung, Import/Export,
+Editor/Assistent, Dokumentation und Tests. Nicht vorhandene Funktionen werden
+als fehlend benannt und dort eingefuehrt, wo die Fachentscheidung liegt, nicht
+als UI-Sonderoption oder frei erzeugter Terraform-Block.
+
+Credentials sind keine Modell-/Patchwerte. Konfiguration und sichere Credential-
+Bindings sind getrennt: Der Export muss benoetigte externe Zugangsvoraussetzungen
+und Referenzen nachvollziehbar machen; ausserhalb des Configurators werden sie
+ueber die dokumentierten Accelerator-/Provider-Eingaben bzw. Umgebungsvariablen
+bereitgestellt. Keine Configurator-exklusiven versteckten Secrets, keine
+Klartext-Secrets in exportierter Konfiguration und keine Credential-Nachfragen
+im Chat. Exportierbarkeit allein ist kein Ausfuehrungs- oder Berechtigungsnachweis.
+
+Der erste strukturierte Chat-Patch erweitert nur vorhandene SNA-Eingaben
+(network_area/network_areas). Er fuehrt kein neues Accelerator-Feature ein.
+Firewall, VPN, regionale Konnektivitaet und andere komplexe Komponenten brauchen
+jeweils einen eigenen geprueften Vorschlags-/Binding-Vertrag.
 
 Import/Export unterscheiden **nicht gesetzt**, **explizit null/deaktiviert** und
 **explizit konfiguriert**. Anzeige wirksamer Defaults darf nicht beim bloßen Öffnen

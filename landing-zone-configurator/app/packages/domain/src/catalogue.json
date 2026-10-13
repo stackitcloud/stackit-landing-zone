@@ -512,7 +512,7 @@
     {
       "id": "standalone",
       "source": "src/config/standalone.tfvars",
-      "sha256": "3fe6a764de8f1bb8eb83dbc07034d44d43373e277efdfccc6432c601319e0f03",
+      "sha256": "dc16b4a86716b4b979edea4a7350c92c426b75e80a2beb8ee3545e010505a2de",
       "values": {
         "company_code": "exc",
         "company_name": "Example Corp",
@@ -521,6 +521,7 @@
         },
         "landing_zones": {
           "public-exmpl": {
+            "corporate": false,
             "env": "prod",
             "owner_email": "owner@example.com",
             "project_code": "api",

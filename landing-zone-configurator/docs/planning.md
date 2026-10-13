@@ -369,6 +369,35 @@ Pro Deployment: Aus, nur erkennen, nach Freigabe korrigieren, später eng begren
 
 ## 11. Chatbot mit STACKIT Model Serving
 
+### Bestätigte Produktentscheidungen (2026-10-10)
+
+- Umfang: alle tatsächlich implementierten Configurator-Features werden dauerhaft 1:1 von der KI-Komponente abgedeckt, einschließlich komplexer Komponenten und ihrer Abhängigkeiten; nicht sämtliche STACKIT-Services. Eine versionsgebundene Abdeckungsmatrix macht Unterstützung und Ausführungsgrenzen sichtbar. Neue oder geänderte Features benötigen entsprechende Wissens-, Dialog-, Validierungs- und Testabdeckung im selben qualifizierten Release; bestehende Ausführungssperren werden dadurch nicht aufgehoben.
+- Dialog: passende Konfigurationsvorlage auswählen, Wünsche schrittweise ergänzen und fehlende Details oder Widersprüche gezielt nachfragen. Vollständigkeit wird durch Schema und Fachregeln geprüft, nicht allein durch das Modell behauptet.
+- Templates: vorhandene autorisierte Application Landing Zone Templates auswählen und neue Template-Entwürfe erstellen. Veröffentlichung bleibt eine separate Aktion berechtigter Platform Engineers.
+- Bestandsänderungen: bestehende Konfiguration analysieren und revisionsgebundene Vorschläge im Chat-Arbeitsentwurf sammeln. Erst ein ausdrücklich bestätigter Gesamt-Diff ändert den Konfigurationsentwurf; keine automatische Änderung veröffentlichter Templates oder bestehender Instanzen.
+- Wissen: aktuelle offizielle STACKIT-Informationen kontrolliert einlesen, Änderungen automatisch erkennen und vor Nutzung geprüft freigeben. Modul-, Provider- und Configurator-Wissen bleibt an die jeweilige Konfigurationsversion gebunden. Keine automatischen Upgrades und kein beliebiger Webzugriff durch das Modell.
+- Modell: `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` als bevorzugter Startwert; Modell, Endpoint und technische Limits bleiben betreiberseitig konfigurierbar. Der vorhandene Terraform-provisionierte Dev-Token wird ausschließlich backendseitig verwendet.
+- Eingaben: Text und Konfigurationen; keine Bilder im MVP.
+- Zugang und Zweck: ausschließlich angemeldete Benutzer mit aktuell gültiger Session und passenden Tenant-/Konfigurationsrechten. Beratung und Vorschläge sind auf die oben genannten Configurator-Aufgaben beschränkt; serverseitige Werkzeug-, Schema- und Rechteprüfungen erzwingen diese Grenze. Keine allgemeine Chat-, Shell-, Secret- oder Cloud-Ausführungsfunktion.
+- Budget: keine monetäre Budgetgrenze im MVP. Begrenzte Requestgrößen, Kontext-/Ausgabelängen, Parallelität, Anfrageraten, Timeouts und Reparaturversuche bleiben zum Missbrauchs- und Betriebsschutz erforderlich. Verbrauch wird secretfrei beobachtet.
+- Gespräche: serverseitig persistent und nach erneuter Anmeldung fortsetzbar, mit verpflichtendem Bezug zu Tenant, Workspace und Konfiguration. Zugriff wird bei jedem Lesen, Fortsetzen und Übernehmen erneut geprüft. Die gebundene Ausgangsrevision wird mit der aktuellen Konfiguration abgeglichen; veraltete Vorschläge werden nicht ungeprüft übernommen.
+- Löschung und Alter: Löschen einer Konfiguration oder ihres Workspaces löscht die zugehörigen Gespräche samt Nachrichten, Zusammenfassungen und Vorschlägen mit; keine verwaisten Gesprächsdaten. Maximales Gesprächsalter sind drei Kalendermonate ab Erstellung, nicht ab letzter Aktivität. Fortsetzen verlängert die Frist nicht. Nach Ablauf kann die weiterhin vorhandene Konfiguration in einem neuen Gespräch erneut analysiert werden.
+- Lastziel: höchstens fünf gleichzeitige Chat-Sitzungen für die MVP-Abnahme. Dies ist kein Limit für die Anzahl gespeicherter Gespräche. Inferenzparallelität, begrenzte Warteschlange und Timeouts berücksichtigen zusätzlich die tatsächlichen Model-Serving-Limits.
+
+Die fachliche Abnahme umfasst jedes implementierte Feature 1:1, nicht nur ausgewählte Beispielvorlagen. Konkrete Referenzkonfigurationen und messbare Antwortzeitziele werden beim Modell-Spike und Aufbau der Feature-Matrix präzisiert. Eine vorläufige Schätzung für den Gesamtumfang beträgt 30–50 Engineering-Personentage einschließlich Tests und Dokumentation, ohne externe Wartezeiten oder zusätzliche fehlende Modul-/Compiler-Funktionen. Die Modell- und Komponentenqualifikation muss diese Spanne einschließlich vollständiger Feature-Abdeckung verfeinern. Der Konzeptbeschluss ist kein Implementierungs- oder Inferenznachweis.
+
+### Gesprächslebenszyklus und Abnahme
+
+Die konkrete [Feature-Matrix und Dialogabnahme](assistant-feature-coverage.md) umfasst alle 29 aktuellen Root-Eingaben, 501 Feld-/Containerpfade, acht Funktionsgruppen, fünf übergreifende Workflow-Bereiche und 24 Szenarien. Die [generierte Matrix](assistant-feature-coverage.json) enthält neun geschützte Feld-/Containerpfade ohne Secret-Werte; jeder Eintrag bleibt bis zum tatsächlichen Modellnachweis `not-qualified`. Ihr Frischetest ist in die bestehende Unit-Suite integriert. Dies ist der erste qualifizierte Konzeptschritt, nicht die Implementierung des Assistenten.
+
+Persistierter Gesprächszustand ist von der kurzlebigen Login-Session und vom begrenzten Modellkontext getrennt. Nach Wiederanmeldung werden nur aktuell autorisierte, nicht gelöschte und nicht abgelaufene Gespräche geladen. Vor der Vorlagenauswahl wird bei Bedarf ein regulärer autorisierter Konfigurationsentwurf angelegt; auch ein neues Gespräch bleibt damit an einen Workspace und eine Konfiguration gebunden. Ohne gültiges Elternobjekt ist kein Chat-Zugriff möglich.
+
+Der Löschpfad muss Nachrichten, Gesprächs-Arbeitsentwürfe, Zusammenfassungen und abgeleitete Cache-/Indexdaten berücksichtigen. Autorisierte Elternlöschung und die Löschung persistierter Gesprächsdaten sind atomar; verspätete Modellantworten dürfen gelöschte oder abgelaufene Gespräche nicht wiederherstellen. Ablauf wird vor jedem Zugriff geprüft und durch einen überwachten Bereinigungsprozess physisch umgesetzt. Logs enthalten keine Gesprächsinhalte. Backup-Aufbewahrung und Restore müssen die Lösch- und Altersgrenzen erhalten; vor erneutem Zugriff nach Restore werden gelöschte und abgelaufene Daten entfernt. Ein Datenbank-Cascade allein ist kein Nachweis der Löschung aller Kopien.
+
+Erforderliche Tests: Fortsetzung nach Wiederanmeldung oder Backend-Neustart, Workspace-/Konfigurations- und Tenant-Isolation, aktueller Rechteentzug, Konfigurationsrevision-Konflikte, beide Elternlöschpfade einschließlich laufender Inferenz, feste Drei-Monats-Grenze ohne Aktivitätsverlängerung und bereinigter Restore. Fünf parallele Sitzungen dürfen weder Kontexte vermischen noch stille Requestverluste oder unbegrenzte Warteschlangen verursachen.
+
+Die Abdeckungsmatrix ordnet jedem implementierten Feature mindestens Analyse, Neuerstellung/Änderung soweit vom Editor unterstützt, fehlende Angaben, Abhängigkeiten, validierten Diff und passende Negativfälle zu. Gemeinsame Schema-/Compilerprüfungen bleiben maßgeblich. CI/Release prüfen fehlende Zuordnungen und Tests; reale Modell-Evaluationen qualifizieren zusätzlich die Dialogqualität, denn eine vollständige Matrix allein beweist keine zuverlässigen Antworten.
+
 ### Fachlicher Vertrag
 
 Der Chat behandelt ausschließlich Planung und Konfiguration des versionsgebundenen Accelerators. Er erklärt Features und Grenzen, fragt aktiv fehlende Informationen ab und erzeugt überprüfbare Änderungen. Außerhalb dieses Bereichs führt er zum unterstützten Thema zurück.
@@ -405,7 +434,7 @@ Der dokumentierte Shared-Model-Einstieg verwendet `https://api.openai-compat.mod
 
 Credentials ausschließlich auf Backend/Chat-App setzen, nie ins Frontend-Build oder Runner. CF-Umgebungsvariablen sind für entsprechend berechtigte Space-Developer lesbar; diese gehören damit zur Betreiber-Vertrauensgrenze. Über geschützte Deployment-Injektion setzen, nicht in Git-Manifeste schreiben; Rotation und Redaktion testen. [CF-Variablen und Secrets](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/manage-environment-variables-and-secrets/)
 
-Token-/Kostenlimits pro Tenant, Timeouts, begrenzte Reparaturversuche für ungültiges JSON und Circuit Breaker. Bei KI-Ausfall bleibt der manuelle Editor nutzbar. Gesprächsaufbewahrung, Löschung und übermittelte Organisationsdaten transparent machen. Tenant-Chatdaten nicht in einen gemeinsamen Wissensindex übernehmen.
+Technische Token-/Anfragelimits pro Tenant, Timeouts, begrenzte Reparaturversuche für ungültiges JSON und Circuit Breaker; keine monetäre Budgetgrenze im MVP. Bei KI-Ausfall bleibt der manuelle Editor nutzbar. Gesprächsaufbewahrung, Löschung und übermittelte Organisationsdaten transparent machen. Tenant-Chatdaten nicht in einen gemeinsamen Wissensindex übernehmen.
 
 Evaluationsfälle: fehlende Pflichtfelder, widersprüchliche Netze, unbekannte Features, Themenwechsel, Prompt Injection, Secret-Offenlegung, fremde Tenants, veraltete Revisionen und ungültige Ausgabe. Der Chat gilt erst mit gemessenen Akzeptanzkriterien als freigegeben.
 

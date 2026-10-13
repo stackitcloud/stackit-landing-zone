@@ -44,6 +44,42 @@ export type CloudCatalogue = {
   }[];
 };
 const text = z.string().min(1).max(256);
+const pimProduct = z.object({
+  id: text.nullable(),
+  shortName: text,
+  longName: text,
+  apiIdentifier: z.array(text).max(50),
+  description: z.string().max(2000).optional(),
+  version: text.optional(),
+});
+const pimSku = z.object({
+  id: text,
+  productName: text.nullable(),
+  title: text,
+  region: text,
+  deprecated: text.nullable(),
+  maturityModelState: text.nullable(),
+  version: text,
+  productSpecificAttributes: z
+    .object({
+      discriminator: text,
+      flavor: text.nullable().optional(),
+      planId: text.nullable().optional(),
+      ram: z.number().nullable().optional(),
+      vCPU: z.number().nullable().optional(),
+      maxBandWidth: z.number().nullable().optional(),
+      maxConnections: z.number().nullable().optional(),
+      hardware: text.nullable().optional(),
+      os: z.string().max(256).nullable().optional(),
+    })
+    .optional(),
+});
+export type PimCatalogue = {
+  region: string;
+  fetchedAt: string;
+  products: z.infer<typeof pimProduct>[];
+  skus: z.infer<typeof pimSku>[];
+};
 const names = z.array(z.object({ name: text })).max(2000);
 const git = z.object({
   flavors: z
@@ -127,6 +163,80 @@ const tokenEndpoints: Record<ServiceAccountKey["credentials"]["aud"], string> =
 /** Product metadata only. No token, private key or raw provider response leaves this service. */
 export class StackitCatalogueClient {
   constructor(private readonly request: typeof fetch = fetch) {}
+  private async pimPages<T>(
+    path: "products" | "skus",
+    parameters: URLSearchParams,
+    schema: z.ZodType<T>,
+  ): Promise<T[]> {
+    const result: T[] = [];
+    const visited = new Set<string>();
+    const deadline = Date.now() + 15000;
+    for (let page = 0; page < 30 && Date.now() < deadline; page++) {
+      const response = z
+        .object({
+          data: z.array(schema).max(100),
+          meta: z
+            .object({ nextCursor: z.string().max(4096).nullish() })
+            .optional(),
+        })
+        .parse(
+          await this.json(
+            `https://pim.api.stackit.cloud/v2/${path}?${parameters}`,
+          ),
+        );
+      result.push(...response.data);
+      const cursor = response.meta?.nextCursor;
+      if (!response.data.length || !cursor) return result;
+      if (visited.has(cursor)) throw new Error("pim_cursor_cycle");
+      visited.add(cursor);
+      parameters.set("cursor", cursor);
+    }
+    throw new Error("pim_catalogue_incomplete");
+  }
+
+  async pim(region: "eu01" | "eu02"): Promise<PimCatalogue> {
+    z.enum(["eu01", "eu02"]).parse(region);
+    const products = await this.pimPages(
+      "products",
+      new URLSearchParams({ pageSize: "100", language: "en" }),
+      pimProduct,
+    );
+    const relevant = products.filter(
+      (product) =>
+        product.apiIdentifier.some((identifier) =>
+          /^(vpn|iaas|computeengine|compute-engine|ske|kubernetes|git|argus|observability|server)$/i.test(
+            identifier,
+          ),
+        ) ||
+        /^(VPN|Git|Compute Engine|Kubernetes Engine|Observability|Server)$/i.test(
+          product.shortName,
+        ),
+    );
+    if (relevant.length > 8) throw new Error("pim_product_budget_exceeded");
+    const pages = await Promise.all(
+      relevant.map((product) =>
+        this.pimPages(
+          "skus",
+          new URLSearchParams({
+            pageSize: "100",
+            language: "en",
+            productName: product.shortName,
+            region,
+          }),
+          pimSku,
+        ),
+      ),
+    );
+    const skus = pages.flat();
+    if (skus.some((sku) => sku.region !== region))
+      throw new Error("pim_region_mismatch");
+    return {
+      region,
+      fetchedAt: new Date().toISOString(),
+      products: relevant,
+      skus,
+    };
+  }
   private async json(url: string, init: RequestInit = {}) {
     const response = await this.request(url, {
       ...init,
@@ -416,6 +526,15 @@ export class PostgresCloudCatalogues {
     private readonly secrets: CredentialSecrets,
     private readonly cloud = new StackitCatalogueClient(),
   ) {}
+  async pim(session: Session, region: "eu01" | "eu02") {
+    await withTenant(this.pool, session, (client) =>
+      client.query("SELECT lzc_auth.authorize_application($1,$2,'publish')", [
+        session.id,
+        session.tenantId,
+      ]),
+    );
+    return this.cloud.pim(region);
+  }
   async load(session: Session, input: CatalogueRequest) {
     const parsed = catalogueRequest.parse(input);
     // Explicit owner/tenant filters in addition to RLS: never borrow a colleague's access.

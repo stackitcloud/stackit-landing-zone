@@ -15,6 +15,8 @@ override.tf.json
 
 # Provider lock file
 .terraform.lock.hcl
+!src/.terraform.lock.hcl
+!src/application/.terraform.lock.hcl
 
 # CLI configuration
 .terraformrc
@@ -51,3 +53,6 @@ src/backend_ci.tf
 /landing-zone-configurator.env
 
 /landing-zone-configurator-credentials.json
+/landing-zone-configurator-dev-lukas-credentials.json
+
+/landing-zone-configurator/app/assistant-live-results.jsonl

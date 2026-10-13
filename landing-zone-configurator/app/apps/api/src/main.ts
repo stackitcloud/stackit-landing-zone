@@ -1,6 +1,11 @@
 import pg from "pg";
 import { buildApp } from "./app.js";
 import { Applications } from "./applications/service.js";
+import {
+  AssistantModelServing,
+  modelServingConfiguration,
+} from "./assistant/model-serving.js";
+import { AssistantConversations } from "./assistant/service.js";
 import { GitHubClient } from "./auth/github-client.js";
 import type { AuthServices } from "./auth/routes.js";
 import { SecretsManagerTokenStore } from "./auth/secrets.js";
@@ -26,6 +31,10 @@ import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
 
 const repositories = new Repositories();
+if (process.env.LZC_DEVELOPMENT_AUTH === "true")
+  throw new Error(
+    "Development login is only available in the separate Ubuntu workstation starter",
+  );
 let plans: Plans | undefined;
 let backends: Backends | undefined;
 let catalogues: PostgresCloudCatalogues | undefined;
@@ -155,6 +164,10 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     await pool.query(
       "SELECT id FROM lzc.application_template_versions LIMIT 0",
     );
+    if (process.env.LZC_APPLICATION_RECOVERY_REVIEWS_ENABLED === "true")
+      await pool.query(
+        "SELECT job_id, 'lzc_auth.application_recovery_reconciliation_context(uuid,uuid)'::regprocedure FROM lzc.application_recovery_reviews LIMIT 0",
+      );
     applications = new Applications(
       pool,
       credentials,
@@ -163,6 +176,10 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       applicationRunner ? { runner: applicationRunner, origin } : undefined,
       artifactCrypto,
       artifactCrypto ? plans : undefined,
+      {
+        recoveryReviewsEnabled:
+          process.env.LZC_APPLICATION_RECOVERY_REVIEWS_ENABLED === "true",
+      },
     );
   }
   auth = {
@@ -196,6 +213,15 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
 
 const app = buildApp({
   repositories,
+  ...(pool && process.env.LZC_ASSISTANT_ENABLED === "true"
+    ? {
+        assistant: new AssistantConversations(
+          pool,
+          new AssistantModelServing(modelServingConfiguration(process.env)),
+          catalogues,
+        ),
+      }
+    : {}),
   ...(pool
     ? {
         organisations: new PostgresOrganisations(pool),

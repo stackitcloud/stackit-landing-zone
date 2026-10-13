@@ -8,6 +8,12 @@ import {
   registerApplications,
 } from "./applications/routes.js";
 import type { Applications } from "./applications/service.js";
+import { registerAssistant } from "./assistant/routes.js";
+import type { AssistantConversations } from "./assistant/service.js";
+import {
+  type DevelopmentLogin,
+  registerDevelopmentLogin,
+} from "./auth/development-login.js";
 import { platformAccessError } from "./auth/platform-access.js";
 import {
   type AuthServices,
@@ -42,6 +48,20 @@ import { type PlanRoutesServices, registerPlans } from "./plans/routes.js";
 export function buildApp(
   options: {
     webRoot?: string;
+    developmentLogin?: DevelopmentLogin;
+    assistant?: Pick<
+      AssistantConversations,
+      "get" | "send" | "accept" | "remove"
+    > &
+      Partial<
+        Pick<
+          AssistantConversations,
+          | "prune"
+          | "getTemplateAdvice"
+          | "sendTemplateAdvice"
+          | "removeTemplateAdvice"
+        >
+      >;
     configurations?: Pick<
       Configurations,
       "list" | "get" | "create" | "update" | "remove"
@@ -82,6 +102,8 @@ export function buildApp(
     preparations?: Pick<Preparations, "list" | "create" | "remove">;
   } = {},
 ) {
+  if (options.developmentLogin && !options.auth)
+    throw new Error("development_login_requires_authentication_services");
   const app = Fastify({
     logController: new LogController({ disableRequestLogging: true }),
     logger: {
@@ -122,7 +144,12 @@ export function buildApp(
     github: !!options.auth && options.auth.githubEnabled !== false,
     stackit: !!options.stackit,
     stackitFlow: options.stackit?.authFlow,
-    primary: options.auth?.primaryStackit ? "stackit" : "github",
+    primary: options.developmentLogin
+      ? "development"
+      : options.auth?.primaryStackit
+        ? "stackit"
+        : "github",
+    ...(options.developmentLogin ? { development: true } : {}),
   }));
   if (options.applicationRunner)
     registerApplicationRunner(
@@ -132,8 +159,31 @@ export function buildApp(
     );
   if (options.auth) {
     registerAuth(app, options.auth);
+    if (options.developmentLogin)
+      registerDevelopmentLogin(app, options.auth, options.developmentLogin);
     if (options.configurations)
       registerConfigurations(app, options.auth, options.configurations);
+    if (options.assistant) {
+      registerAssistant(app, options.auth, options.assistant);
+      if (options.assistant.prune) {
+        const prune = async () => {
+          await options.assistant?.prune?.();
+        };
+        app.addHook("onReady", prune);
+        const cleanup = setInterval(() => {
+          void prune().catch(() =>
+            app.log.warn(
+              { event: "assistant_cleanup_failed" },
+              "Assistant cleanup failed",
+            ),
+          );
+        }, 60000);
+        cleanup.unref();
+        app.addHook("onClose", async () => {
+          clearInterval(cleanup);
+        });
+      }
+    }
     if (options.stackit)
       registerStackitIdentity(app, options.auth, options.stackit);
     if (options.auth.primaryStackit && options.stackit)
@@ -171,9 +221,11 @@ export function buildApp(
       status: "ok",
       service: "landing-zone-configurator",
       authentication: options.auth
-        ? options.auth.primaryStackit
-          ? "stackit"
-          : "github"
+        ? options.developmentLogin
+          ? "development"
+          : options.auth.primaryStackit
+            ? "stackit"
+            : "github"
         : "not-configured",
     }),
   );
@@ -196,6 +248,9 @@ export function buildApp(
           },
           csrfToken: session.csrfToken,
           expiresAt: session.expiresAt.toISOString(),
+          ...(options.developmentLogin
+            ? { development: true, stackitVerified: false }
+            : {}),
           ...(options.auth?.primaryStackit && options.stackit
             ? {
                 stackitVerified: (

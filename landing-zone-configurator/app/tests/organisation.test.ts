@@ -5,7 +5,53 @@ import { ApplicationError } from "../apps/api/src/applications/service.js";
 import { platformAccessError } from "../apps/api/src/auth/platform-access.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import type { Session } from "../apps/api/src/auth/store.js";
-import { applicationOrderDecisionSchema } from "../packages/contracts/src/index.js";
+import {
+  applicationOrderDecisionSchema,
+  applicationRecoveryReconciliationSchema,
+} from "../packages/contracts/src/index.js";
+
+const reconciliationFixture = {
+  observedAt: "2026-10-09T10:02:00.000Z",
+  stage: "state-recovery-required",
+  runnerAppId: randomUUID(),
+  runnerStop: "unknown",
+  stateLock: "unknown",
+  cloudState: "unknown",
+  credentialRevocation: "unknown",
+  authorizesExecution: false,
+  grant: {
+    status: "revoked",
+    expiresAt: "2026-10-09T10:00:00.000Z",
+    revokedAt: "2026-10-09T10:01:00.000Z",
+  },
+  ticket: {
+    status: "expired",
+    expiresAt: "2026-10-09T10:00:00.000Z",
+    consumedAt: null,
+  },
+  delegation: "revoked",
+  reports: [],
+};
+
+it("never treats stored recovery metadata as runner shutdown, state clearance or execution authorization", () => {
+  expect(
+    applicationRecoveryReconciliationSchema.parse(reconciliationFixture),
+  ).toEqual(reconciliationFixture);
+  for (const claimed of [
+    { runnerStop: "stopped" },
+    { stateLock: "unlocked" },
+    { cloudState: "verified" },
+    { credentialRevocation: "revoked" },
+    { authorizesExecution: true },
+    { ticket: { ...reconciliationFixture.ticket, ticketHash: "secret" } },
+  ])
+    expect(
+      applicationRecoveryReconciliationSchema.safeParse({
+        ...reconciliationFixture,
+        ...claimed,
+      }).success,
+    ).toBe(false);
+});
 
 const session: Session = {
   id: randomUUID(),
@@ -250,6 +296,16 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
       retiredBy: session.userId,
     })),
     listInstances: vi.fn(async () => []),
+    recoveryReviewContext: vi.fn(async (_session: Session, jobId: string) => ({
+      reconciliation: reconciliationFixture,
+      jobId,
+    })),
+    recordRecoveryReview: vi.fn(
+      async (_session: Session, jobId: string, _input: unknown) => ({ jobId }),
+    ),
+    diagnoseRecovery: vi.fn(async (_session: Session, jobId: string) => ({
+      jobId,
+    })),
     outputJob: vi.fn(async () => ({
       text: "Apply complete",
       truncated: false,
@@ -505,6 +561,87 @@ it("protects one-click application planning and saved-plan apply with strict ten
   });
   expect(output.headers["cache-control"]).toBe("no-store");
   expect(applications.outputJob).toHaveBeenCalledExactlyOnceWith(session, id);
+  const diagnosisUrl = `/api/v1/applications/jobs/${id}/recovery-diagnosis`;
+  expect(
+    (
+      await app.inject({
+        url: diagnosisUrl,
+        headers: { ...headers, "x-lzc-tenant": randomUUID() },
+      })
+    ).statusCode,
+  ).toBe(403);
+  expect(applications.diagnoseRecovery).not.toHaveBeenCalled();
+  expect(
+    (
+      await app.inject({
+        url: "/api/v1/applications/jobs/not-a-uuid/recovery-diagnosis",
+        headers,
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect(applications.diagnoseRecovery).not.toHaveBeenCalled();
+  const diagnosis = await app.inject({ url: diagnosisUrl, headers });
+  expect(diagnosis.statusCode).toBe(200);
+  expect(diagnosis.json()).toEqual({ jobId: id });
+  expect(diagnosis.headers["cache-control"]).toBe("no-store");
+  expect(applications.diagnoseRecovery).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+  );
+});
+
+it("requires explicit snapshot-bound recovery review with tenant, origin and CSRF protection", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID();
+  const url = `/api/v1/applications/jobs/${id}/recovery-review`;
+  const payload = {
+    instanceId: randomUUID(),
+    confirmReview: true,
+    bindingSha256: "a".repeat(64),
+    recoverySha256: null,
+  };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  for (const invalid of [
+    { ...payload, confirmReview: false },
+    { ...payload, reviewedBy: randomUUID() },
+    { ...payload, recoverySha256: "invalid" },
+    { ...payload, instanceId: undefined },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.recordRecoveryReview).not.toHaveBeenCalled();
+  const result = await app.inject({ method: "POST", url, headers, payload });
+  expect(result.statusCode).toBe(200);
+  expect(result.headers["cache-control"]).toBe("no-store");
+  expect(applications.recordRecoveryReview).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+    payload,
+  );
+  expect(
+    (
+      await app.inject({
+        url,
+        headers: { ...headers, "x-lzc-tenant": randomUUID() },
+      })
+    ).statusCode,
+  ).toBe(403);
+  expect(applications.recoveryReviewContext).not.toHaveBeenCalled();
+  expect((await app.inject({ url, headers })).statusCode).toBe(200);
+  expect(applications.recoveryReviewContext).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+  );
 });
 
 it("protects application order decisions with current tenant, origin, CSRF and explicit confirmation", async () => {

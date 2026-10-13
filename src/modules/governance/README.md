@@ -11,7 +11,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.106.0 |
 
 ## Modules
 
@@ -39,7 +39,7 @@ No modules.
 | <a name="input_organization_owners"></a> [organization\_owners](#input\_organization\_owners) | List of organization role assignments for organization owners. | `list(string)` | `[]` | no |
 | <a name="input_owner_email"></a> [owner\_email](#input\_owner\_email) | Email address of the owner for the folders. Required for STACKIT resource manager. | `string` | n/a | yes |
 | <a name="input_rm_folder_parent_id"></a> [rm\_folder\_parent\_id](#input\_rm\_folder\_parent\_id) | ID of the parent folder under which the resource manager folders will be created. If not provided, the resource manager folders will be created under the organization. | `string` | `null` | no |
-| <a name="input_rm_folders"></a> [rm\_folders](#input\_rm\_folders) | Map of folder keys to folder configuration. Each folder has a display name and optional lists of owner and reader subjects. | <pre>map(object({<br/>    name          = string<br/>    owner_emails  = optional(list(string), [])<br/>    reader_emails = optional(list(string), [])<br/>  }))</pre> | <pre>{<br/>  "landing_zones_corporate": {<br/>    "name": "Landing Zones - Corporate",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "landing_zones_public": {<br/>    "name": "Landing Zones - Public",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "platform": {<br/>    "name": "Platform",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "sandbox": {<br/>    "name": "Sandboxes",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  }<br/>}</pre> | no |
+| <a name="input_rm_folders"></a> [rm\_folders](#input\_rm\_folders) | Map of folder keys to folder configuration. Each folder has a display name and optional lists of owner and reader subjects. Descriptions are unsupported; omit description or leave it empty. | <pre>map(object({<br/>    name          = string<br/>    description   = optional(string, null)<br/>    owner_emails  = optional(list(string), [])<br/>    reader_emails = optional(list(string), [])<br/>  }))</pre> | <pre>{<br/>  "landing_zones_corporate": {<br/>    "name": "Landing Zones - Corporate",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "landing_zones_public": {<br/>    "name": "Landing Zones - Public",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "platform": {<br/>    "name": "Platform",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  },<br/>  "sandbox": {<br/>    "name": "Sandboxes",<br/>    "owner_emails": [],<br/>    "reader_emails": []<br/>  }<br/>}</pre> | no |
 
 ## Outputs
 

@@ -15,5 +15,31 @@ env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=
   "$tofu_bin" -chdir="$work_dir/src" init -backend=false -input=false -no-color
 env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
   "$tofu_bin" -chdir="$work_dir/src" validate -no-color
+mkdir -p "$work_dir/standalone-input"
+cp "$repo_dir/src/variables.tf" "$work_dir/standalone-input/"
+printf '%s\n' 'jsonencode({ corporate = var.landing_zones["public-exmpl"].corporate, connectivity = var.connectivity })' |
+  env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+    "$tofu_bin" -chdir="$work_dir/standalone-input" console -var-file="$repo_dir/src/config/standalone.tfvars" |
+  node --input-type=module -e '
+    import assert from "node:assert/strict";
+    let input = "";
+    for await (const chunk of process.stdin) input += chunk;
+    const example = JSON.parse(JSON.parse(input));
+    assert.equal(example.corporate, false);
+    assert.equal(example.connectivity, null);
+    console.log("PASS: actual Standalone example is Public without connectivity.");
+  '
+env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+  "$tofu_bin" -chdir="$work_dir/src" providers schema -json |
+  node --input-type=module -e '
+    import assert from "node:assert/strict";
+    let input = "";
+    for await (const chunk of process.stdin) input += chunk;
+    const provider = Object.entries(JSON.parse(input).provider_schemas).find(([name]) => name.endsWith("/stackitcloud/stackit"))?.[1];
+    const attributes = provider?.resource_schemas?.stackit_resourcemanager_folder?.block?.attributes;
+    assert.ok(attributes);
+    assert.equal(Object.hasOwn(attributes, "description"), false, "Folder schema changed: qualify description support instead of retaining the unsupported-input contract.");
+    console.log("PASS: reviewed provider does not support folder descriptions.");
+  '
 env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
   "$tofu_bin" -chdir="$work_dir/src" test -no-color

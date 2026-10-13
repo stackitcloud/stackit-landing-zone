@@ -1,4 +1,110 @@
 export const englishMessages: Record<string, string> = {
+  "Antwort senden": "Send answer",
+  "Die Antwort ist zu lang. Bitte kürze deine Nachricht oder beantworte weniger Fragen gemeinsam.":
+    "The answer is too long. Shorten your message or answer fewer questions together.",
+  "Du hast ungespeicherte Editoränderungen. Chat und Vorschläge arbeiten mit deinem lokalen Entwurf. Speichern bleibt ein separater Schritt.":
+    "You have unsaved editor changes. Chat and proposals use your local draft. Saving remains a separate step.",
+  "Speichere den Entwurf zuerst, damit der Chat mit einer gespeicherten Konfigurationsrevision arbeiten kann.":
+    "Save the draft first so the chat can work with a saved configuration revision.",
+  "Zum Speichern": "Go to save",
+  "Der Vorschlag basiert auf einem älteren Stand. Bei der Übernahme werden die aktuellen Werte geprüft; nur tatsächliche Konflikte benötigen deine Bestätigung.":
+    "The proposal is based on an older revision. Acceptance checks current values; only actual conflicts require confirmation.",
+  Ausgangswert: "Original value",
+  "Nicht mehr verfügbar": "No longer available",
+  "Vorschläge werden nur in den lokalen Entwurf übernommen. Erst „Konfiguration speichern“ speichert die Änderungen. Keine Cloud-Ausführung.":
+    "Proposals are applied only to the local draft. Only “Save configuration” persists changes. No cloud execution.",
+  "Ausgewählte Vorschläge sind im lokalen Entwurf übernommen. Noch nicht gespeichert.":
+    "Selected proposals have been applied to the local draft. Not saved yet.",
+  "Zwischenzeitliche Änderungen prüfen": "Review intervening changes",
+  "Einige Ausgangswerte wurden inzwischen geändert. Möchtest du die folgenden Werte trotzdem in deinen lokalen Entwurf übernehmen? Es wird noch nichts gespeichert.":
+    "Some original values have changed. Apply the following values to your local draft anyway? Nothing will be saved yet.",
+  "Die gespeicherte Revision hat sich erneut geändert. Bitte prüfe den aktuellen Abgleich und bestätige nochmals.":
+    "The saved revision has changed again. Review the updated comparison and confirm again.",
+  "Deine manuelle Editoränderung überschreibt eine zwischenzeitlich gespeicherte Änderung. Inhalte geschützter Felder werden hier nicht angezeigt.":
+    "Your manual editor change overwrites an intervening saved change. Protected field contents are not shown here.",
+  "Aktuell: {{value0}}": "Current: {{value0}}",
+  "Vorschlag: {{value0}}": "Proposal: {{value0}}",
+  "Der ursprüngliche Ausgangswert dieses älteren Vorschlags ist nicht mehr verfügbar. Bitte prüfe die Werte ausdrücklich.":
+    "The original value of this older proposal is no longer available. Review the values explicitly.",
+  "Trotzdem in Entwurf übernehmen": "Apply to draft anyway",
+  Entwicklerlogin: "Developer login",
+  Entwicklungsmodus: "Development mode",
+  Benutzername: "Username",
+  Passwort: "Password",
+  "Benutzername oder Passwort ist falsch.": "Incorrect username or password.",
+  "Zu viele Anmeldeversuche. Bitte in 15 Minuten erneut versuchen.":
+    "Too many login attempts. Please try again in 15 minutes.",
+  "Nur Ubuntu-Entwicklung: kein verifizierter STACKIT-Benutzer. Service Account separat hinterlegen; Cloud-Ausführungen benötigen weiterhin eine ausdrückliche Freigabe.":
+    "Ubuntu development only: not a verified STACKIT user. Store a service account separately; cloud executions still require explicit authorization.",
+  Nachweisstand: "Evidence observed at",
+  "Gespeicherte Laufphase": "Recorded execution phase",
+  "Kein Dispatch gespeichert": "No dispatch recorded",
+  "Runner-Start unklar": "Runner start unresolved",
+  "Kein Abschluss gespeichert": "No completion recorded",
+  "Abschlussmeldung fehlt": "Completion report missing",
+  "Fehlgeschlagener Lauf gespeichert": "Failed execution recorded",
+  "Recovery-State gespeichert": "Recovery state recorded",
+  "Abschlussbericht gespeichert": "Completion report recorded",
+  "Runner-ID": "Runner ID",
+  "Job-Freigabe": "Job grant",
+  "Zeitfenster noch offen": "Time window not expired",
+  "Zeitfenster abgelaufen": "Time window expired",
+  Widerrufen: "Revoked",
+  "Runner-Ticket": "Runner ticket",
+  "Nicht ausgestellt": "Not issued",
+  "Ticket erstmals verwendet": "Ticket first used at",
+  Ausführungsdelegation: "Execution delegation",
+  "Nicht verwendet": "Not used",
+  "Kein Widerruf gespeichert": "No revocation recorded",
+  "Runner-Stillstand": "Runner stopped",
+  "Credential-Widerruf": "Credential revocation",
+  "Cloud-Abgleich": "Cloud reconciliation",
+  Ausführungsfreigabe: "Execution authorization",
+  "Nicht nachgewiesen": "Not established",
+  "Nicht erteilt": "Not granted",
+  "Ticket-Ablauf belegt keinen Runner-Stillstand oder Credential-Widerruf.":
+    "Ticket expiry does not establish runner shutdown or credential revocation.",
+  "Angenommene Reports": "Accepted reports",
+  "Keine Reports gespeichert": "No reports recorded",
+  Artefakt: "Artifact",
+  Ausgabe: "Output",
+  "Recovery-Prüfung": "Recovery review",
+  "Prüfkontext laden": "Load review context",
+  "Der Prüfstand hat sich geändert. Bitte den Prüfkontext neu laden.":
+    "The review snapshot changed. Reload the review context.",
+  "Die Recovery-Prüfung ist derzeit nicht verfügbar.":
+    "The recovery review is currently unavailable.",
+  "Laufstatus und Ausführungssperren bleiben unverändert.":
+    "Execution status and execution blocks remain unchanged.",
+  "Prüfbeleg gespeichert": "Review receipt recorded",
+  "Geprüft von": "Reviewed by",
+  "Ich bestätige die Prüfung dieses gebundenen Diagnose-Stands, nicht den Erfolg der Ausführung.":
+    "I confirm reviewing this bound diagnosis snapshot, not execution success.",
+  "Prüfung protokollieren": "Record review",
+  "Dieser Lauf kann noch nicht geprüft werden.":
+    "This execution cannot be reviewed yet.",
+  Abgleichdiagnose: "Reconciliation diagnosis",
+  "Abgleichdiagnose laden": "Load reconciliation diagnosis",
+  "Diagnose wird geladen": "Loading diagnosis",
+  "Die Abgleichdiagnose ist derzeit nicht verfügbar.":
+    "The reconciliation diagnosis is currently unavailable.",
+  "Noch nicht an einen Runner übergeben": "Not yet dispatched to a runner",
+  "Gespeicherter Laufstatus: in Bearbeitung":
+    "Recorded execution status: in progress",
+  "Abschlussmeldung gespeichert": "Completion report recorded",
+  "Operator-Abgleich erforderlich": "Operator reconciliation required",
+  "State-Wiederherstellung muss geprüft werden":
+    "State recovery requires review",
+  "Runner-Lebendigkeit und Cloud-Zustand nicht geprüft.":
+    "Runner liveness and cloud state have not been checked.",
+  "Runner-Paket": "Runner package",
+  Quellrevision: "Source revision",
+  "Bindungs-Hash": "Binding hash",
+  "Angenommene Nachweise": "Accepted evidence",
+  Planartefakt: "Plan artifact",
+  "Recovery-State": "Recovery state",
+  "Erfasst am": "Recorded at",
+  "Keine angenommenen Nachweise gespeichert.": "No accepted evidence recorded.",
   Destroy: "Destroy",
   Drift: "Drift",
   "Destroy-Plan": "Destroy plan",
@@ -1499,6 +1605,14 @@ export const englishMessages: Record<string, string> = {
   "nicht aktiviert": "not enabled",
   "Nicht gebunden": "Not bound",
   "Nicht gesetzt": "Not set",
+  "Gesamten Vorschlag übernehmen": "Accept entire proposal",
+  "Ausgewählte Felder übernehmen": "Accept selected fields",
+  "{{selected}} von {{total}} Feldern ausgewählt.":
+    "{{selected}} of {{total}} fields selected.",
+  "Nicht ausgewählte Vorschläge bleiben für später erhalten.":
+    "Unselected suggestions remain available for later.",
+  "Diese Feldauswahl kann nicht sicher übernommen werden. Wähle zusammengehörige Pflichtfelder gemeinsam; die Konfiguration bleibt unverändert.":
+    "This field selection cannot be accepted safely. Select related required fields together; the configuration remains unchanged.",
   "nicht im geladenen Katalog": "not in the loaded catalogue",
   "nicht unterstützt": "unsupported",
   "Nicht verfügbar": "Unavailable",

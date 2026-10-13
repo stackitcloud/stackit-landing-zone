@@ -125,6 +125,10 @@ platform-only export test runs without the Configurator:
 LZC_TEST_TOFU_BIN="$(command -v tofu)" bash src/tests/check-cli-contract.sh
 ```
 
+The helper also requires Node.js for structured JSON assertions. It evaluates the
+actual Standalone example and checks the reviewed provider's folder schema in
+addition to the credential-free native mock tests.
+
 Remaining acceptance: real separately authorized two-phase CLI Plan/Apply,
 backend lock/recovery, least-privilege credentials, explicit existing-state
 migration and completed Configurator dispatch. Mock tests are not cloud acceptance.

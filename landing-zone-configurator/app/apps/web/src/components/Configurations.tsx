@@ -52,6 +52,8 @@ const messages: Record<string, string> = {
     "Bitte gib einen Namen mit höchstens 64 Zeichen an und prüfe den Entwurf.",
   configuration_document_too_large:
     "Die Konfiguration ist größer als 1 MiB und kann nicht gespeichert werden.",
+  template_advice_changed:
+    "Die Template-Beratung wurde geändert, ist abgelaufen oder nicht mehr aktuell. Bitte neu laden oder ohne Übernahme speichern.",
 };
 
 async function checked(response: Response) {
@@ -86,6 +88,11 @@ export function Configurations({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [templateAdvice, setTemplateAdvice] = useState<{
+    id: string;
+    revision: number;
+  } | null>(null);
+  const [includeAdvice, setIncludeAdvice] = useState(true);
   const [executionStatuses, setExecutionStatuses] = useState<Record<
     string,
     string
@@ -97,6 +104,20 @@ export function Configurations({
     if (!session) return;
     const lifetime = new AbortController();
     controller.current = lifetime;
+    void fetch("/api/v1/configurations/template-advice", {
+      signal: lifetime.signal,
+    })
+      .then(checked)
+      .then((response) => response.json())
+      .then((body) => {
+        if (!lifetime.signal.aborted)
+          setTemplateAdvice(
+            body.advice && !body.advice.stale
+              ? { id: body.advice.id, revision: body.advice.revision }
+              : null,
+          );
+      })
+      .catch(() => {});
     void fetch("/api/v1/configurations", { signal: lifetime.signal })
       .then(checked)
       .then((response) => response.json())
@@ -204,6 +225,9 @@ export function Configurations({
             body: JSON.stringify({
               draft,
               ...(current ? { revision: current.revision } : {}),
+              ...(!current && includeAdvice && templateAdvice
+                ? { templateAdvice }
+                : {}),
             }),
           },
         ),
@@ -223,9 +247,21 @@ export function Configurations({
   if (compact)
     return (
       <section
+        id="configuration-save"
+        tabIndex={-1}
         className="configuration-save"
         aria-label={t("Konfiguration speichern")}
       >
+        {!binding && templateAdvice && (
+          <label>
+            <input
+              type="checkbox"
+              checked={includeAdvice}
+              onChange={(event) => setIncludeAdvice(event.target.checked)}
+            />{" "}
+            Template-Beratung übernehmen
+          </label>
+        )}
         <div className="actions">
           <button
             type="button"
@@ -260,6 +296,16 @@ export function Configurations({
   return (
     <section className="panel" aria-label={t("Gespeicherte Konfigurationen")}>
       <h2>{t("Gespeicherte Konfigurationen")}</h2>
+      {!binding && templateAdvice && (
+        <label>
+          <input
+            type="checkbox"
+            checked={includeAdvice}
+            onChange={(event) => setIncludeAdvice(event.target.checked)}
+          />{" "}
+          Template-Beratung übernehmen
+        </label>
+      )}
       <p className="muted">
         {t("Deine Konfigurationen in diesem Arbeitsbereich.")}
       </p>

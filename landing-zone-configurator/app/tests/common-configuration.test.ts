@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   acceleratorInputs,
   assessCommonConfiguration,
@@ -27,6 +28,7 @@ import {
   validatePublicInputs,
 } from "@lzc/domain";
 import { describe, expect, it } from "vitest";
+import { buildAssistantCoverage } from "../scripts/assistant-coverage.js";
 
 const id = "11111111-2222-4333-8444-555555555555";
 const create = (template = "standalone") =>
@@ -37,6 +39,48 @@ const digest = (text: string) =>
   createHash("sha256").update(text).digest("hex");
 
 describe("shared accelerator feature contract", () => {
+  it("keeps assistant concept coverage current for every field without claiming AI qualification", () => {
+    const coverage = buildAssistantCoverage();
+    expect(
+      JSON.parse(
+        readFileSync(
+          new URL(
+            "../../docs/assistant-feature-coverage.json",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+      ),
+    ).toEqual(coverage);
+    expect(coverage.fields.map((field) => field.path)).toEqual(
+      featureFieldCatalogue().map((field) => field.path),
+    );
+    expect(
+      coverage.fields.every((field) => field.qualification === "not-qualified"),
+    ).toBe(true);
+    const specification = readFileSync(
+      new URL("../../docs/assistant-feature-coverage.md", import.meta.url),
+      "utf8",
+    );
+    for (const scenario of new Set([
+      ...coverage.fields.flatMap((field) => field.scenarios),
+      ...coverage.workflowScenarios,
+    ]))
+      expect(specification).toContain(`| ${scenario} |`);
+    expect(
+      coverage.fields
+        .filter((field) => field.sensitive)
+        .every(
+          (field) => field.assistantMode === "requirements-only-no-values",
+        ),
+    ).toBe(true);
+    expect(
+      coverage.fields.find(
+        (field) => field.path === "rm_folders[*].description",
+      )?.assistantMode,
+    ).toBe("explain-rejection-no-proposal");
+  });
+
   it("adds both provenance labels while retaining customer labels", () => {
     const document = setCommonInput(create(), "labels", {
       customer: "retained",
@@ -110,10 +154,7 @@ describe("shared accelerator feature contract", () => {
       const errors = assessCommonConfiguration(document).findings.filter(
         (item) => item.scope === "configuration" && item.severity === "error",
       );
-      // Upstream #84: Standalone omits corporate=false. Import must not hide it.
-      expect(errors.map((item) => item.code)).toEqual(
-        template.id === "standalone" ? ["project-area-reference"] : [],
-      );
+      expect(errors).toEqual([]);
     });
   }
   it("distinguishes omitted, explicit null and explicit settings", () => {

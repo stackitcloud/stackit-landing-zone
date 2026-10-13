@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { lstat, readFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +9,11 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
+import {
+  AssistantModelServing,
+  modelServingConfiguration,
+} from "../apps/api/src/assistant/model-serving.js";
+import { AssistantConversations } from "../apps/api/src/assistant/service.js";
 import { GitHubClient } from "../apps/api/src/auth/github-client.js";
 import {
   configuredStackitFlow,
@@ -17,6 +23,7 @@ import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
 import { PostgresAuthStore } from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
 import { PostgresCloudCatalogues } from "../apps/api/src/credentials/catalogues.js";
+import { parseServiceAccountKey } from "../apps/api/src/credentials/key.js";
 import { LocalCredentialSecrets } from "../apps/api/src/credentials/local-secrets.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { Backends } from "../apps/api/src/deployments/backends.js";
@@ -29,9 +36,23 @@ import { PlatformExecution } from "../apps/api/src/plans/execution.js";
 import { LocalPlanRunner } from "../apps/api/src/plans/local.js";
 import { Plans } from "../apps/api/src/plans/service.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
+import {
+  createDevelopmentSession,
+  developmentLogin,
+  openDevelopmentAccount,
+} from "./development-auth.js";
 import { openStackitCodeCallback } from "./stackit-code-callback.js";
 
+const workstation = process.argv.includes("--development");
 if (
+  workstation &&
+  (process.env.NODE_ENV === "production" || process.env.VCAP_APPLICATION)
+)
+  throw new Error(
+    "Development authentication is not available in hosted runtimes",
+  );
+if (
+  !workstation &&
   (process.env.LZC_STACKIT_CLIENT_ID ?? stackitCliClientId) ===
     stackitCliClientId &&
   process.env.LZC_STACKIT_CLI_CLIENT_APPROVED !== "true"
@@ -41,8 +62,23 @@ if (
 
 const container = "lzc-local-stackit-login";
 const database = "configurator_local";
-const origin = "http://127.0.0.1:4181";
+const origin = workstation
+  ? (process.env.LZC_DEVELOPMENT_ORIGIN ??
+    "https://work.lukas.runs.onstackit.cloud:4181")
+  : "http://127.0.0.1:4181";
+if (
+  workstation &&
+  (new URL(origin).protocol !== "https:" || new URL(origin).origin !== origin)
+)
+  throw new Error("Canonical HTTPS development origin required");
+const runtimeRole = workstation
+  ? "configurator_development"
+  : "configurator_app";
 const localExecution = process.argv.includes("--execution");
+const assistantModel =
+  process.env.LZC_ASSISTANT_ENABLED === "true"
+    ? new AssistantModelServing(modelServingConfiguration(process.env))
+    : undefined;
 let stage = "database";
 
 function docker(args: string[], input?: string) {
@@ -148,9 +184,11 @@ async function start() {
       IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='configurator_app') THEN
         CREATE ROLE configurator_app LOGIN;
       END IF;
+      ${workstation ? "IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='configurator_development') THEN CREATE ROLE configurator_development LOGIN; END IF;" : ""}
     END $$;
     ALTER ROLE configurator_migration PASSWORD '${migrationPassword}';
-    ALTER ROLE configurator_app PASSWORD '${runtimePassword}';
+    ${workstation ? "GRANT configurator_app TO configurator_development;" : ""}
+    ALTER ROLE ${runtimeRole} PASSWORD '${runtimePassword}';
     ALTER DATABASE configurator_local OWNER TO configurator_migration;
   `,
   );
@@ -165,18 +203,35 @@ async function start() {
     user: "configurator_migration",
     password: migrationPassword,
   });
+  const developmentAccount = workstation
+    ? await openDevelopmentAccount(
+        fileURLToPath(new URL("../../.local/development/", import.meta.url)),
+      )
+    : undefined;
   try {
     await migration.connect();
     await migrate(
       migration,
       fileURLToPath(new URL("../apps/api/db/", import.meta.url)),
     );
+    if (developmentAccount) {
+      await migration.query(
+        await readFile(
+          new URL("./development-auth.sql", import.meta.url),
+          "utf8",
+        ),
+      );
+      await migration.query(
+        "SELECT lzc_auth.provision_development_account($1,$2)",
+        [developmentAccount.id, developmentAccount.username],
+      );
+    }
   } finally {
     await migration.end();
   }
   const pool = new pg.Pool({
     ...connection,
-    user: "configurator_app",
+    user: runtimeRole,
     password: runtimePassword,
   });
   pool.on("error", () => {
@@ -187,6 +242,77 @@ async function start() {
   const secrets = await LocalCredentialSecrets.open(
     fileURLToPath(new URL("../../.local/credential-secrets/", import.meta.url)),
   );
+  const profiles = new PostgresCredentialProfiles(pool, secrets);
+  const credentialFlag = process.argv.indexOf("--service-account-file");
+  if (credentialFlag !== -1) {
+    stage = "development-credentials";
+    const path = process.argv[credentialFlag + 1];
+    if (!developmentAccount || !path || path.startsWith("--"))
+      throw new Error(
+        "Development account and explicit private credential file required",
+      );
+    const file = await lstat(path);
+    if (
+      !file.isFile() ||
+      file.uid !== process.getuid?.() ||
+      (file.mode & 0o077) !== 0 ||
+      file.size > 32768
+    )
+      throw new Error("Private development credential file required");
+    const key = parseServiceAccountKey(
+      JSON.parse(await readFile(path, "utf8")),
+    );
+    const store = new PostgresAuthStore(pool);
+    const token = await createDevelopmentSession(pool, developmentAccount.id);
+    try {
+      const session = await store.resolveSession(token);
+      if (!session) throw new Error("Development credential session missing");
+      let profile = (await profiles.list(session)).find(
+        (p) =>
+          p.keyId === key.credentials.kid &&
+          p.serviceAccount === key.credentials.iss,
+      );
+      if (!profile) {
+        await profiles.create(session, "Ubuntu-Entwicklung", key);
+        profile = (await profiles.list(session)).find(
+          (p) =>
+            p.keyId === key.credentials.kid &&
+            p.serviceAccount === key.credentials.iss,
+        );
+      }
+      if (profile?.state !== "stored")
+        throw new Error("Development credential storage incomplete");
+      const organizationFlag = process.argv.indexOf("--organization");
+      if (organizationFlag !== -1) {
+        const organization = process.argv[organizationFlag + 1];
+        if (
+          !organization ||
+          !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+            organization,
+          )
+        )
+          throw new Error("Explicit organization UUID required");
+        const check = await profiles.check(session, profile.id, organization);
+        console.log(
+          JSON.stringify({
+            event: "development_credential_check",
+            status: check.status,
+            code: check.code,
+          }),
+        );
+        if (check.status !== "passed")
+          throw new Error("Development credential access check failed");
+      }
+      console.log(
+        JSON.stringify({
+          event: "development_credential_stored",
+          encrypted: true,
+        }),
+      );
+    } finally {
+      await store.deleteSession(token);
+    }
+  }
   const unavailable = async (): Promise<never> => {
     throw new Error("GitHub disabled in local login mode");
   };
@@ -233,7 +359,7 @@ async function start() {
       ) === true;
     plans = new Plans(
       pool,
-      new PostgresCredentialProfiles(pool, secrets),
+      profiles,
       secrets,
       { prepareSnapshot: unavailable },
       runner,
@@ -263,7 +389,7 @@ async function start() {
   }
   const applications = new Applications(
     pool,
-    new PostgresCredentialProfiles(pool, secrets),
+    profiles,
     secrets,
     backends,
     applicationRunner
@@ -271,18 +397,30 @@ async function start() {
       : undefined,
     crypto,
     plans,
+    {
+      recoveryReviewsEnabled:
+        process.env.LZC_APPLICATION_RECOVERY_REVIEWS_ENABLED === "true",
+    },
   );
   stage = "api";
   let codeCallback:
     | Awaited<ReturnType<typeof openStackitCodeCallback>>
     | undefined;
   const app = buildApp({
+    ...(developmentAccount
+      ? { developmentLogin: developmentLogin(pool, developmentAccount) }
+      : {}),
+    ...(workstation
+      ? {
+          webRoot: fileURLToPath(new URL("../apps/web/dist/", import.meta.url)),
+        }
+      : {}),
     backends,
     auth: {
       origin,
-      primaryStackit: true,
+      primaryStackit: !workstation,
       githubEnabled: false,
-      allowLoopbackHttp: true,
+      allowLoopbackHttp: !workstation,
       clientId: "",
       store: new PostgresAuthStore(pool),
       github: new GitHubClient({
@@ -292,31 +430,45 @@ async function start() {
       }),
       tokens: { get: unavailable, put: unavailable, remove: unavailable },
     },
-    stackit: {
-      identities: new StackitIdentities(pool),
-      organisations,
-      authFlow: "authorization-code",
-      createFlow: (organizationId, purpose = "login") => {
-        if (!codeCallback) throw new Error("cli_callback_unavailable");
-        return configuredStackitFlow({
-          ...process.env,
-          LZC_STACKIT_AUTH_FLOW:
-            process.env.LZC_STACKIT_AUTH_FLOW ?? "authorization-code",
-          LZC_STACKIT_CLIENT_ID:
-            process.env.LZC_STACKIT_CLIENT_ID ?? stackitCliClientId,
-          LZC_STACKIT_REDIRECT_URI:
-            process.env.LZC_STACKIT_REDIRECT_URI ?? codeCallback.redirectUri,
-          LZC_PUBLIC_ORIGIN: origin,
-        })(organizationId, purpose);
-      },
-    },
+    ...(!workstation
+      ? {
+          stackit: {
+            identities: new StackitIdentities(pool),
+            organisations,
+            authFlow: "authorization-code",
+            createFlow: (organizationId, purpose = "login") => {
+              if (!codeCallback) throw new Error("cli_callback_unavailable");
+              return configuredStackitFlow({
+                ...process.env,
+                LZC_STACKIT_AUTH_FLOW:
+                  process.env.LZC_STACKIT_AUTH_FLOW ?? "authorization-code",
+                LZC_STACKIT_CLIENT_ID:
+                  process.env.LZC_STACKIT_CLIENT_ID ?? stackitCliClientId,
+                LZC_STACKIT_REDIRECT_URI:
+                  process.env.LZC_STACKIT_REDIRECT_URI ??
+                  codeCallback.redirectUri,
+                LZC_PUBLIC_ORIGIN: origin,
+              })(organizationId, purpose);
+            },
+          },
+        }
+      : {}),
     organisations,
     invitations: new Invitations(pool),
     configurations: new Configurations(pool),
+    ...(assistantModel
+      ? {
+          assistant: new AssistantConversations(
+            pool,
+            assistantModel,
+            new PostgresCloudCatalogues(pool, secrets),
+          ),
+        }
+      : {}),
     preparations: new Preparations(
       pool,
       { prepareSnapshot: unavailable },
-      new PostgresCredentialProfiles(pool, secrets),
+      profiles,
       platformUpgradeEnabled,
     ),
     applications,
@@ -333,7 +485,7 @@ async function start() {
           },
         }
       : {}),
-    credentials: new PostgresCredentialProfiles(pool, secrets),
+    credentials: profiles,
     catalogues: new PostgresCloudCatalogues(pool, secrets),
     ...(plans ? { plans } : {}),
   });
@@ -368,9 +520,13 @@ async function start() {
   }
   try {
     stage = "listener";
-    codeCallback = await openStackitCodeCallback(origin);
+    if (!workstation) codeCallback = await openStackitCodeCallback(origin);
     await app.listen({ host: "127.0.0.1", port: 3000 });
-    console.log("Local STACKIT login ready; UI: http://127.0.0.1:4181/");
+    console.log(
+      workstation
+        ? `Development login ready; UI: ${origin}/; account password stays in the private .local/development directory.`
+        : "Local STACKIT login ready; UI: http://127.0.0.1:4181/",
+    );
   } catch (error) {
     await app.close();
     throw error;

@@ -230,7 +230,7 @@ variable "rm_folders" {
     owner_emails  = list(string)
     reader_emails = list(string)
   }))
-  description = "Map of resource manager folders to create under the root organization."
+  description = "Map of resource manager folders to create under the root organization. Folder descriptions are unsupported; omit description or leave it empty."
   default = {
     platform = {
       name          = "Platform"
@@ -257,6 +257,11 @@ variable "rm_folders" {
   validation {
     condition     = alltrue([for folder in values(var.rm_folders) : length(folder.name) >= 1 && length(folder.name) <= 40])
     error_message = "Every rm_folders[*].name must be between 1 and 40 characters, as required by the STACKIT Resource Manager API."
+  }
+
+  validation {
+    condition     = alltrue([for folder in values(var.rm_folders) : trimspace(coalesce(folder.description, " ")) == ""])
+    error_message = "Resource Manager folder descriptions are not supported by the reviewed STACKIT provider. Remove non-empty rm_folders[*].description values; they must not be silently discarded."
   }
 }
 

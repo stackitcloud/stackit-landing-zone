@@ -1,5 +1,11 @@
 # Priorisierung des Accelerator-Backlogs
 
+Erweiterter erster Wurf seit 2026-10-09: Auf Benutzerwunsch sind neben allen
+MVP-markierten Issues auch die offenen `effort:s`-Issues #84, #82 und #59 Teil
+der Lieferung. Live-Status, Kriterien und Paketzuordnung stehen in der
+[MVP-Abnahmeliste](mvp-acceptance.md). Die folgende Triage bleibt historische
+Priorisierung und grenzt diese drei Small-Issues nicht aus dem ersten Wurf aus.
+
 Stand: 2026-10-01. Grundlage: vollständige Beschreibung aller 17 offenen Issues und Quellprüfung auf dem Configurator-Feature-Branch, Stand `faa8c3f`. Die Priorisierung beschreibt die nächsten sinnvollen Arbeiten; sie ist keine Zusage, dass alle Erweiterungen Voraussetzung für den Configurator-MVP sind.
 
 ## Kategorien und GitHub-Labels

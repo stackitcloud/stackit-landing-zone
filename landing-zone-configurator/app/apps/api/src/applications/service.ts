@@ -7,6 +7,10 @@ import {
   applicationPlanJobSchema,
   applicationPlanPreview,
   applicationPlanPurposeSchema,
+  applicationRecoveryDiagnosisSchema,
+  applicationRecoveryReviewContextSchema,
+  applicationRecoveryReviewRequestSchema,
+  applicationRecoveryReviewSchema,
   appliedPlatformSourceSchema,
   planResultSchema,
   runnerArtifactSchema,
@@ -191,10 +195,14 @@ export class Applications {
     private readonly dispatch?: { runner: PlanRunner; origin: string },
     private readonly artifactCrypto?: ArtifactCrypto,
     private readonly platforms?: Pick<Plans, "outputs">,
+    private readonly options: { recoveryReviewsEnabled: boolean } = {
+      recoveryReviewsEnabled: false,
+    },
   ) {}
 
   executionCapabilities() {
     return {
+      recoveryReviewsEnabled: this.options.recoveryReviewsEnabled,
       planEnabled: Boolean(
         this.dispatch &&
           this.backends &&
@@ -1208,6 +1216,171 @@ export class Applications {
         summary: row.summary,
         purpose: applicationPlanPurposeSchema.parse(row.purpose),
       };
+    });
+  }
+
+  async diagnoseRecovery(session: Session, jobId: string) {
+    const id = z.uuid().parse(jobId);
+    return this.work(session, "read", async (client) => {
+      const row = (
+        await client.query<{
+          instance_id: string;
+          operation: string;
+          purpose: string;
+          status: string;
+          error_code: string | null;
+          plan_id: string | null;
+          runner_package_id: string | null;
+          accelerator_revision: string;
+          binding_sha256: string;
+          state_key: string;
+          finished_at: Date | null;
+          dispatched: boolean;
+        }>(
+          `SELECT j.instance_id,j.operation,coalesce(j.inputs->>'purpose','standard') AS purpose,
+         coalesce(d.status,j.status) AS status,d.error_code,j.plan_id,d.runner_package_id,
+         g.accelerator_revision,j.binding_sha256,g.state_key,d.finished_at,d.job_id IS NOT NULL AS dispatched
+         FROM lzc.application_jobs j JOIN lzc.application_job_grants g ON g.job_id=j.id AND g.tenant_id=j.tenant_id
+         LEFT JOIN lzc.application_dispatches d ON d.job_id=j.id AND d.tenant_id=j.tenant_id
+         WHERE j.id=$1 AND j.tenant_id=$2 AND j.owner_user_id=$3`,
+          [id, session.tenantId, session.userId],
+        )
+      ).rows[0];
+      if (!row) throw new ApplicationError(404, "application_plan_not_found");
+      await this.requireActiveOrder(client, session, row.instance_id);
+      const records = await client.query<{
+        kind: string;
+        sha256: string;
+        created_at: Date;
+        runner_package_id: string;
+      }>(
+        "SELECT kind,sha256,created_at,runner_package_id FROM lzc.application_runner_records WHERE job_id=$1 AND tenant_id=$2 AND owner_user_id=$3 ORDER BY kind",
+        [id, session.tenantId, session.userId],
+      );
+      const assessment = records.rows.some(
+        (record) => record.kind === "recovery",
+      )
+        ? "state-recovery-required"
+        : row.status === "reconciliation_required" ||
+            (row.status === "failed" && row.operation === "apply")
+          ? "operator-review-required"
+          : row.status === "succeeded" || row.status === "failed"
+            ? "completed"
+            : row.dispatched
+              ? "in-progress"
+              : "not-dispatched";
+      return applicationRecoveryDiagnosisSchema.parse({
+        jobId: id,
+        instanceId: row.instance_id,
+        operation: row.operation,
+        purpose: row.purpose,
+        status: row.status,
+        errorCode: row.error_code,
+        planId: row.plan_id,
+        runnerPackageId: row.runner_package_id,
+        acceleratorRevision: row.accelerator_revision,
+        bindingSha256: row.binding_sha256,
+        stateKey: row.state_key,
+        finishedAt: row.finished_at?.toISOString() ?? null,
+        assessment,
+        evidence: records.rows.map((record) => ({
+          kind: record.kind,
+          sha256: record.sha256,
+          createdAt: record.created_at.toISOString(),
+          runnerPackageId: record.runner_package_id,
+        })),
+      });
+    });
+  }
+
+  async recoveryReviewContext(session: Session, jobId: string) {
+    const id = z.uuid().parse(jobId);
+    if (!this.options.recoveryReviewsEnabled)
+      throw new ApplicationError(
+        503,
+        "application_recovery_review_unavailable",
+      );
+    return this.work(session, "publish", async (client) => {
+      const row = (
+        await client.query<{ context: unknown }>(
+          "SELECT lzc_auth.application_recovery_reconciliation_context($1,$2) AS context",
+          [session.id, id],
+        )
+      ).rows[0];
+      const review = (
+        await client.query<{
+          job_id: string;
+          reviewed_by: string;
+          reviewed_at: Date;
+          binding_sha256: string;
+          recovery_sha256: string | null;
+          finding: string;
+        }>(
+          "SELECT * FROM lzc.application_recovery_reviews WHERE job_id=$1 AND tenant_id=$2",
+          [id, session.tenantId],
+        )
+      ).rows[0];
+      return {
+        ...applicationRecoveryReviewContextSchema.parse(row?.context),
+        review: review
+          ? applicationRecoveryReviewSchema.parse({
+              jobId: review.job_id,
+              reviewedBy: review.reviewed_by,
+              reviewedAt: review.reviewed_at.toISOString(),
+              bindingSha256: review.binding_sha256,
+              recoverySha256: review.recovery_sha256,
+              finding: review.finding,
+            })
+          : null,
+      };
+    });
+  }
+
+  async recordRecoveryReview(session: Session, jobId: string, input: unknown) {
+    const id = z.uuid().parse(jobId);
+    const request = applicationRecoveryReviewRequestSchema.parse(input);
+    if (!this.options.recoveryReviewsEnabled)
+      throw new ApplicationError(
+        503,
+        "application_recovery_review_unavailable",
+      );
+    return this.work(session, "publish", async (client) => {
+      const context = applicationRecoveryReviewContextSchema.parse(
+        (
+          await client.query<{ context: unknown }>(
+            "SELECT lzc_auth.application_recovery_reconciliation_context($1,$2) AS context",
+            [session.id, id],
+          )
+        ).rows[0]?.context,
+      );
+      if (context.instanceId !== request.instanceId)
+        throw new ApplicationError(409, "application_recovery_review_changed");
+      const row = (
+        await client.query<{
+          job_id: string;
+          reviewed_by: string;
+          reviewed_at: Date;
+          binding_sha256: string;
+          recovery_sha256: string | null;
+          finding: string;
+        }>(
+          "SELECT * FROM lzc_auth.record_application_recovery_review($1,$2,$3,$4)",
+          [session.id, id, request.bindingSha256, request.recoverySha256],
+        )
+      ).rows[0];
+      if (!row)
+        throw new ApplicationError(
+          503,
+          "application_recovery_review_unavailable",
+        );
+      return applicationRecoveryReviewSchema.parse({
+        jobId: row.job_id,
+        reviewedBy: row.reviewed_by,
+        reviewedAt: row.reviewed_at.toISOString(),
+        bindingSha256: row.binding_sha256,
+        recoverySha256: row.recovery_sha256,
+        finding: row.finding,
+      });
     });
   }
 

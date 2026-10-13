@@ -1,5 +1,193 @@
 @import "./nebula-tokens.css";
 
+.assistant-chat {
+  border-top: 1px solid #cbd5db;
+  border-bottom: 1px solid #cbd5db;
+  margin: 16px 0;
+  padding: 16px 0;
+}
+.assistant-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.assistant-heading .button,
+.assistant-proposal .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.assistant-body {
+  max-width: 960px;
+}
+.assistant-messages {
+  max-height: 420px;
+  overflow-y: auto;
+  margin: 12px 0;
+}
+.assistant-message {
+  border-left: 3px solid #008b8b;
+  padding: 8px 12px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.assistant-message.user {
+  border-left-color: #7b8790;
+}
+.assistant-message p {
+  white-space: pre-wrap;
+  margin: 6px 0;
+}
+.assistant-proposal h2 {
+  font-size: 18px;
+}
+.assistant-questions {
+  margin: 16px 0;
+}
+.assistant-questions h3 {
+  font-size: 16px;
+}
+.assistant-questions fieldset {
+  min-width: 0;
+  border: 0;
+  border-top: 1px solid #cbd5db;
+  padding: 12px 0;
+  margin: 8px 0;
+}
+.assistant-questions legend {
+  max-width: 100%;
+  padding: 0 8px 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.assistant-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.assistant-options label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  border: 1px solid #b8c8d2;
+  border-radius: 4px;
+  padding: 8px 12px;
+  max-width: 100%;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.assistant-options label:has(input:checked) {
+  border-color: #008b8b;
+  background: #e4f5ef;
+}
+.assistant-options input[type="radio"],
+.assistant-options input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  margin: 2px 0 0;
+}
+.assistant-options span {
+  min-width: 0;
+}
+.assistant-free-answer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  margin: 10px 0 0;
+  max-width: 640px;
+}
+.assistant-free-answer input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  font: inherit;
+  border: 1px solid #b8c8d2;
+  border-radius: 4px;
+}
+.assistant-questions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.assistant-diff td code {
+  display: block;
+}
+.assistant-diff {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.assistant-diff table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.assistant-diff table {
+  min-width: 440px;
+}
+.assistant-diff th {
+  white-space: nowrap;
+}
+.assistant-diff-label {
+  display: none;
+}
+@media (max-width: 640px) {
+  .assistant-diff table {
+    min-width: 0;
+  }
+  .assistant-diff thead {
+    display: none;
+  }
+  .assistant-diff tbody,
+  .assistant-diff tr,
+  .assistant-diff td {
+    display: block;
+    width: 100%;
+  }
+  .assistant-diff td {
+    min-width: 0;
+  }
+  .assistant-diff-label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+}
+.assistant-compose textarea {
+  font: inherit;
+  padding: 10px;
+  border: 1px solid #b8c8d2;
+  border-radius: 4px;
+}
+.assistant-diff td,
+.assistant-diff th {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #cbd5db;
+  overflow-wrap: anywhere;
+}
+.assistant-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: end;
+  margin: 8px 0;
+}
+.assistant-compose textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+}
+.assistant-compose .button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
 [hidden] {
   display: none !important;
 }
@@ -1211,7 +1399,8 @@ pre {
   height: auto;
 }
 
-.stackit-login {
+.stackit-login,
+.assistant-conflicts {
   width: min(420px, calc(100vw - 32px));
   box-sizing: border-box;
   padding: 24px;
@@ -1221,7 +1410,13 @@ pre {
   overflow: auto;
 }
 
-.stackit-login::backdrop {
+.assistant-conflicts {
+  width: min(680px, calc(100vw - 32px));
+  overflow-wrap: anywhere;
+}
+
+.stackit-login::backdrop,
+.assistant-conflicts::backdrop {
   background: rgb(0 0 0 / 40%);
 }
 

@@ -1,8 +1,12 @@
 import {
   type ApplicationInstance,
+  type ApplicationRecoveryDiagnosis,
   applicationInstanceSchema,
   applicationPlanJobSchema,
   applicationPlanPreviewSchema,
+  applicationRecoveryDiagnosisSchema,
+  applicationRecoveryReviewSchema,
+  applicationRecoveryReviewViewSchema,
   appliedPlatformSourceSchema,
 } from "@lzc/contracts";
 import {
@@ -16,8 +20,15 @@ import {
   resolveApplicationOrder,
   templateParameterFields,
 } from "@lzc/domain";
-import { Archive, Eye, RefreshCw, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Archive,
+  ClipboardCheck,
+  Eye,
+  FileSearch,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import {
   currentLanguage,
@@ -31,6 +42,10 @@ import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_recovery_review_changed:
+    "Der Prüfstand hat sich geändert. Bitte den Prüfkontext neu laden.",
+  application_recovery_review_unavailable:
+    "Die Recovery-Prüfung ist derzeit nicht verfügbar.",
   application_maintenance_disabled:
     "Destroy und Drift sind auf diesem Server nicht aktiviert.",
   application_drift_read_only:
@@ -366,11 +381,368 @@ function ApplicationOrderExecutionStatus({
   );
 }
 
+function RecoveryDiagnosis({
+  session,
+  jobId,
+}: {
+  session: Session;
+  jobId: string;
+}) {
+  const [diagnosis, setDiagnosis] =
+    useState<ApplicationRecoveryDiagnosis | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function load() {
+    setBusy(true);
+    setError("");
+    setDiagnosis(null);
+    try {
+      const result = applicationRecoveryDiagnosisSchema.parse(
+        await request(`jobs/${jobId}/recovery-diagnosis`, session),
+      );
+      if (result.jobId !== jobId)
+        throw new Error("Die Abgleichdiagnose ist derzeit nicht verfügbar.");
+      setDiagnosis(result);
+    } catch {
+      setError("Die Abgleichdiagnose ist derzeit nicht verfügbar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section aria-label={t("Abgleichdiagnose")}>
+      <button
+        type="button"
+        className="button secondary icon-button"
+        aria-label={t("Abgleichdiagnose laden")}
+        title={t("Abgleichdiagnose laden")}
+        disabled={busy}
+        onClick={() => void load()}
+      >
+        <FileSearch size={18} aria-hidden="true" />
+      </button>
+      {busy && <p role="status">{t("Diagnose wird geladen")}</p>}
+      {error && <p role="alert">{t(error)}</p>}
+      {diagnosis && (
+        <>
+          <h5>{t("Abgleichdiagnose")}</h5>
+          <p>
+            {t(
+              {
+                "not-dispatched": "Noch nicht an einen Runner übergeben",
+                "in-progress": "Gespeicherter Laufstatus: in Bearbeitung",
+                completed: "Abschlussmeldung gespeichert",
+                "operator-review-required": "Operator-Abgleich erforderlich",
+                "state-recovery-required":
+                  "State-Wiederherstellung muss geprüft werden",
+              }[diagnosis.assessment],
+            )}
+          </p>
+          <p>{t("Runner-Lebendigkeit und Cloud-Zustand nicht geprüft.")}</p>
+          <dl className="application-properties">
+            <dt>{t("Runner-Paket")}</dt>
+            <dd>{diagnosis.runnerPackageId ?? t("Nicht verfügbar")}</dd>
+            <dt>{t("Quellrevision")}</dt>
+            <dd>{diagnosis.acceleratorRevision}</dd>
+            <dt>{t("Bindungs-Hash")}</dt>
+            <dd>{diagnosis.bindingSha256}</dd>
+            <dt>{t("State-Key")}</dt>
+            <dd>{diagnosis.stateKey}</dd>
+          </dl>
+          <h5>{t("Angenommene Nachweise")}</h5>
+          {diagnosis.evidence.length ? (
+            diagnosis.evidence.map((record) => (
+              <dl key={record.kind} className="application-properties">
+                <dt>
+                  {t(
+                    {
+                      artifact: "Planartefakt",
+                      output: "Ausführungslogs",
+                      recovery: "Recovery-State",
+                    }[record.kind],
+                  )}
+                </dt>
+                <dd>{record.sha256}</dd>
+                <dt>{t("Erfasst am")}</dt>
+                <dd>
+                  {new Date(record.createdAt).toLocaleString(currentLanguage())}
+                </dd>
+              </dl>
+            ))
+          ) : (
+            <p>{t("Keine angenommenen Nachweise gespeichert.")}</p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function RecoveryReview({
+  session,
+  jobId,
+  instanceId,
+}: {
+  session: Session;
+  jobId: string;
+  instanceId: string;
+}) {
+  const [context, setContext] = useState<z.infer<
+    typeof applicationRecoveryReviewViewSchema
+  > | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const windowLabels = {
+    unexpired: "Zeitfenster noch offen",
+    expired: "Zeitfenster abgelaufen",
+    revoked: "Widerrufen",
+  };
+  async function load() {
+    setBusy(true);
+    setError("");
+    setContext(null);
+    setConfirmed(false);
+    try {
+      const current = applicationRecoveryReviewViewSchema.parse(
+        await request(`jobs/${jobId}/recovery-review`, session),
+      );
+      if (current.jobId !== jobId || current.instanceId !== instanceId)
+        throw new Error();
+      setContext(current);
+    } catch {
+      setError("Die Recovery-Prüfung ist derzeit nicht verfügbar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function record() {
+    if (!context || !confirmed || context.review) return;
+    setBusy(true);
+    setError("");
+    try {
+      const review = applicationRecoveryReviewSchema.parse(
+        await request(`jobs/${jobId}/recovery-review`, session, {
+          instanceId,
+          confirmReview: true,
+          bindingSha256: context.bindingSha256,
+          recoverySha256: context.recoverySha256,
+        }),
+      );
+      if (
+        review.jobId !== jobId ||
+        review.bindingSha256 !== context.bindingSha256 ||
+        review.recoverySha256 !== context.recoverySha256
+      )
+        throw new Error();
+      setContext({ ...context, review });
+      setConfirmed(false);
+    } catch (cause) {
+      setContext(null);
+      setConfirmed(false);
+      setError(
+        cause instanceof Error && cause.message
+          ? cause.message
+          : "Die Recovery-Prüfung ist derzeit nicht verfügbar.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section aria-label={t("Recovery-Prüfung")}>
+      <button
+        type="button"
+        className="button secondary icon-button"
+        aria-label={t("Prüfkontext laden")}
+        title={t("Prüfkontext laden")}
+        disabled={busy}
+        onClick={() => void load()}
+      >
+        <FileSearch size={18} aria-hidden="true" />
+      </button>
+      {busy && <p role="status">{t("Diagnose wird geladen")}</p>}
+      {error && <p role="alert">{t(error)}</p>}
+      {context && (
+        <>
+          <h5>{t("Recovery-Prüfung")}</h5>
+          <p>
+            {t(
+              context.finding === "state-review-required"
+                ? "State-Wiederherstellung muss geprüft werden"
+                : "Operator-Abgleich erforderlich",
+            )}
+          </p>
+          <p>{t("Laufstatus und Ausführungssperren bleiben unverändert.")}</p>
+          <dl className="application-properties">
+            <dt>{t("Bindungs-Hash")}</dt>
+            <dd>{context.bindingSha256}</dd>
+            {context.recoverySha256 && (
+              <>
+                <dt>{t("Recovery-State")}</dt>
+                <dd>{context.recoverySha256}</dd>
+              </>
+            )}
+          </dl>
+          <h5>{t("Recovery-Abgleich")}</h5>
+          <dl className="application-properties">
+            <dt>{t("Nachweisstand")}</dt>
+            <dd>
+              {new Date(context.reconciliation.observedAt).toLocaleString(
+                currentLanguage(),
+              )}
+            </dd>
+            <dt>{t("Gespeicherte Laufphase")}</dt>
+            <dd>
+              {t(
+                {
+                  "not-dispatched": "Kein Dispatch gespeichert",
+                  "start-unresolved": "Runner-Start unklar",
+                  "execution-in-progress": "Kein Abschluss gespeichert",
+                  "completion-unresolved": "Abschlussmeldung fehlt",
+                  "execution-failed": "Fehlgeschlagener Lauf gespeichert",
+                  "state-recovery-required": "Recovery-State gespeichert",
+                  "reported-completion": "Abschlussbericht gespeichert",
+                }[context.reconciliation.stage],
+              )}
+            </dd>
+            <dt>{t("Runner-ID")}</dt>
+            <dd>
+              {context.reconciliation.runnerAppId ?? t("Nicht gespeichert")}
+            </dd>
+            <dt>{t("Job-Freigabe")}</dt>
+            <dd>
+              {t(windowLabels[context.reconciliation.grant.status])} ·{" "}
+              {new Date(context.reconciliation.grant.expiresAt).toLocaleString(
+                currentLanguage(),
+              )}
+              {context.reconciliation.grant.revokedAt &&
+                ` · ${new Date(context.reconciliation.grant.revokedAt).toLocaleString(currentLanguage())}`}
+            </dd>
+            <dt>{t("Runner-Ticket")}</dt>
+            <dd>
+              {context.reconciliation.ticket
+                ? `${t(windowLabels[context.reconciliation.ticket.status])} · ${new Date(context.reconciliation.ticket.expiresAt).toLocaleString(currentLanguage())}`
+                : t("Nicht ausgestellt")}
+            </dd>
+            {context.reconciliation.ticket?.consumedAt && (
+              <>
+                <dt>{t("Ticket erstmals verwendet")}</dt>
+                <dd>
+                  {new Date(
+                    context.reconciliation.ticket.consumedAt,
+                  ).toLocaleString(currentLanguage())}
+                </dd>
+              </>
+            )}
+            <dt>{t("Ausführungsdelegation")}</dt>
+            <dd>
+              {t(
+                {
+                  "not-used": "Nicht verwendet",
+                  revoked: "Widerrufen",
+                  "not-revoked": "Kein Widerruf gespeichert",
+                }[context.reconciliation.delegation],
+              )}
+            </dd>
+            <dt>{t("Runner-Stillstand")}</dt>
+            <dd>{t("Nicht nachgewiesen")}</dd>
+            <dt>{t("Credential-Widerruf")}</dt>
+            <dd>{t("Nicht nachgewiesen")}</dd>
+            <dt>{t("State-Lock")}</dt>
+            <dd>{t("Nicht nachgewiesen")}</dd>
+            <dt>{t("Cloud-Abgleich")}</dt>
+            <dd>{t("Nicht nachgewiesen")}</dd>
+            <dt>{t("Ausführungsfreigabe")}</dt>
+            <dd>{t("Nicht erteilt")}</dd>
+          </dl>
+          <p>
+            {t(
+              "Ticket-Ablauf belegt keinen Runner-Stillstand oder Credential-Widerruf.",
+            )}
+          </p>
+          <h5>{t("Angenommene Reports")}</h5>
+          {context.reconciliation.reports.length === 0 ? (
+            <p>{t("Keine Reports gespeichert")}</p>
+          ) : (
+            <dl className="application-properties">
+              {context.reconciliation.reports.map((report) => (
+                <Fragment key={report.kind}>
+                  <dt>
+                    {t(
+                      {
+                        artifact: "Artefakt",
+                        output: "Ausgabe",
+                        recovery: "Recovery-State",
+                      }[report.kind],
+                    )}
+                  </dt>
+                  <dd>
+                    {report.sha256}
+                    <br />
+                    {new Date(report.createdAt).toLocaleString(
+                      currentLanguage(),
+                    )}
+                    <br />
+                    {report.runnerPackageId}
+                  </dd>
+                </Fragment>
+              ))}
+            </dl>
+          )}
+          {context.review ? (
+            <>
+              <p role="status">{t("Prüfbeleg gespeichert")}</p>
+              <dl className="application-properties">
+                <dt>{t("Geprüft von")}</dt>
+                <dd>{context.review.reviewedBy}</dd>
+                <dt>{t("Erfasst am")}</dt>
+                <dd>
+                  {new Date(context.review.reviewedAt).toLocaleString(
+                    currentLanguage(),
+                  )}
+                </dd>
+              </dl>
+            </>
+          ) : context.finishedAt &&
+            ["failed", "reconciliation_required"].includes(context.status) ? (
+            <>
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  disabled={busy}
+                  onChange={(event) => setConfirmed(event.target.checked)}
+                />
+                {t(
+                  "Ich bestätige die Prüfung dieses gebundenen Diagnose-Stands, nicht den Erfolg der Ausführung.",
+                )}
+              </label>
+              <button
+                type="button"
+                className="button secondary"
+                disabled={!confirmed || busy}
+                onClick={() => void record()}
+              >
+                <ClipboardCheck size={18} aria-hidden="true" />
+                {t("Prüfung protokollieren")}
+              </button>
+            </>
+          ) : (
+            <p>{t("Dieser Lauf kann noch nicht geprüft werden.")}</p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function ApplicationPlanControls({
   instance,
   session,
   planEnabled,
   applyEnabled,
+  recoveryReviewsEnabled,
   delegationRequired = false,
   view,
   onViewChange,
@@ -380,6 +752,7 @@ function ApplicationPlanControls({
   session: Session;
   planEnabled: boolean;
   applyEnabled: boolean;
+  recoveryReviewsEnabled: boolean;
   delegationRequired?: boolean;
   view: OrderView;
   onViewChange: (view: OrderView) => void;
@@ -919,6 +1292,26 @@ function ApplicationPlanControls({
                   )}
                 </details>
               )}
+            {job.requestedBy === session.user.id &&
+              (job.status === "reconciliation_required" ||
+                (job.operation === "apply" && job.status === "failed")) && (
+                <RecoveryDiagnosis
+                  key={`${session.tenant?.id}:${session.user.id}:${job.id}`}
+                  session={session}
+                  jobId={job.id}
+                />
+              )}
+            {recoveryReviewsEnabled &&
+              isEngineer &&
+              job.approvedBy === session.user.id &&
+              ["failed", "reconciliation_required"].includes(job.status) && (
+                <RecoveryReview
+                  key={`review:${session.tenant?.id}:${session.user.id}:${job.id}`}
+                  session={session}
+                  jobId={job.id}
+                  instanceId={instance.id}
+                />
+              )}
             <details>
               <summary>{t("Ausführungsdetails")}</summary>
               <dl className="application-properties">
@@ -1317,6 +1710,7 @@ export function Applications({
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [planEnabled, setPlanEnabled] = useState(false);
   const [applyEnabled, setApplyEnabled] = useState(false);
+  const [recoveryReviewsEnabled, setRecoveryReviewsEnabled] = useState(false);
   const [planRefresh, setPlanRefresh] = useState(0);
   const [delegationRequired, setDelegationRequired] = useState(false);
   const [delegationEnabled, setDelegationEnabled] = useState(false);
@@ -1441,6 +1835,7 @@ export function Applications({
             .object({
               planEnabled: z.boolean(),
               applyEnabled: z.boolean(),
+              recoveryReviewsEnabled: z.boolean().default(false),
               maintenanceEnabled: z.boolean().default(false),
               delegatedExecutionEnabled: z.boolean().default(false),
               acceleratorRevision: z
@@ -1452,6 +1847,7 @@ export function Applications({
             .default({
               planEnabled: false,
               applyEnabled: false,
+              recoveryReviewsEnabled: false,
               maintenanceEnabled: false,
               acceleratorRevision: null,
               delegatedExecutionEnabled: false,
@@ -1465,6 +1861,7 @@ export function Applications({
       setPlanJobsEnabled(storedOrders.planJobsEnabled);
       setPlanEnabled(storedOrders.execution.planEnabled);
       setApplyEnabled(storedOrders.execution.applyEnabled);
+      setRecoveryReviewsEnabled(storedOrders.execution.recoveryReviewsEnabled);
       setMaintenanceEnabled(storedOrders.execution.maintenanceEnabled);
       setDelegationRequired(storedOrders.execution.delegatedExecutionEnabled);
       setDelegationEnabled(storedOrders.executionDelegationEnabled);
@@ -3292,6 +3689,7 @@ export function Applications({
                 session={session}
                 planEnabled={planEnabled}
                 applyEnabled={applyEnabled}
+                recoveryReviewsEnabled={recoveryReviewsEnabled}
                 delegationRequired={delegationRequired}
                 view={orderView}
                 onViewChange={setOrderView}

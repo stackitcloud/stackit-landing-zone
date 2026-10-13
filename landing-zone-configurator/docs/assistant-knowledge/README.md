@@ -1,0 +1,236 @@
+# Assistant Service Knowledge
+
+## Architecture Contract
+
+Approved architecture, 2026-10-10: curated Markdown per domain/service, with a
+strict manifest and a generated backend bundle. The initial SNA/credential
+pair is expanded to the complete topic catalogue below. No automatic ingestion of arbitrary documentation, websites,
+customer files, states, plans or secrets. Markdown explains capabilities;
+Accelerator input schemas, patch validation and the shared compiler decide
+what can be configured. Knowledge never grants permissions or new features.
+
+Source of truth:
+
+- manifest.json: stable topic ID, Markdown file, topic version, checked date,
+   local qualification, feature groups, mandatory flag, covered root inputs, dependencies, local
+  authoritative source paths, external references and A01-A24 scenario IDs.
+- Topic Markdown: curated service facts, dialogue requirements and examples.
+- Generated knowledge-topics.generated.ts: deployable snapshot with topic and
+  local-source SHA-256 hashes, engine revision and content. Do not edit manually.
+- knowledge.ts: deterministic selection, global rules, generated field metadata,
+  template metadata and complete bundle hash.
+
+Editor dialogue uses selected feature groups and their topic dependencies.
+Credential foundations and configuration lifecycle are always included.
+Template advice receives the bounded complete topic set. Current editor requests
+select all feature groups, so all 19 topics are available; this is not semantic
+retrieval by message. Dependencies select knowledge, not service activation.
+There is no vector database, model-controlled retrieval or runtime filesystem
+access to docs. The compiled API artifact contains the generated snapshot.
+Topic text is supplied once as trusted curated rules; provenance is separate.
+Customer input/history and PIM labels remain untrusted data, not instructions.
+
+## Complete Topic Catalogue
+
+| Topic | Scope |
+| --- | --- |
+| credential-foundations | Provider, workload and native execution bindings |
+| identity-foundations | Organization, owner, names/codes, region, labels, handoff namespace |
+| governance-folders | Parents, folder roles, ownership and audit rights |
+| management-state | Mandatory management project, state, Secrets Manager and operating identities |
+| observability | Central, project and cluster telemetry/retention |
+| audit-logs | Routing, archive, Object Lock and scope |
+| federated-identities | Issuers/assertions for management operating identity |
+| stackit-network-components | SNA, pools, transfer, prefixes and regional forms |
+| dns-zones | Area zones, resolver selection and DNS dependencies |
+| firewall-infrastructure | OPNsense appliance, LAN/WAN, zones, sizing and HA |
+| firewall-policy | Aliases, routes, rules, NAT and port forwards |
+| firewall-access-bootstrap | Administration, API bindings and bootstrap phases |
+| vpn | Gateway/plan, peer/tunnel, routing and IKE/IPsec boundaries |
+| devops-git | Managed Git service and ACLs |
+| platform-kubernetes | SKE/node pools, DNS, monitoring, KMS and bastion |
+| project-templates | Public/corporate projects, roles, services and application parameters |
+| sandbox-projects | Sandbox ownership and native project list |
+| namespace-services | Namespace/RBAC, secret policies, break-glass and explicit demos |
+| configuration-lifecycle | Workspace, advice handoff, revision/expiry, versions and execution gates |
+
+Every current root input has at least one manifest topic; the generator rejects
+missing/unknown inputs. The existing 501-path catalogue remains the field-level
+authority. A root mapping is not proof that every nested field has a qualified
+dialogue. A01-A24 assignments cover the scenario catalogue, not successful tests
+for all scenarios. New root inputs require explicit reviewed topic mappings.
+New child-module options still require verified root wiring before advertising.
+
+Template values are never user consent to configure or enable optional services.
+"Firewall later" is not "deploy firewall now". Existing inherited settings must
+be distinguished from requested changes and incompatible settings flagged.
+A full native apply still includes mandatory foundations and every enabled
+component; a focused chat step is not a targeted Terraform execution.
+
+## Fixed Topic Structure
+
+Every topic must have one H1 title and these H2 sections in this order. Do not
+add, rename or omit sections; use H3 headings within a section if needed.
+
+```markdown
+# Service Name
+
+## Purpose
+User needs this service can solve.
+
+## Accelerator Contract
+Native fields, supported forms and compiler/patch restrictions.
+
+## Dependencies
+Relationships to other components and declared topic dependencies.
+
+## Dialogue
+Business questions, existing-context reuse and permissible assumptions.
+
+## Examples
+Synthetic user requirement and native configuration, never secret values.
+
+## Limits
+Unsupported capabilities and separate validation/execution gates.
+
+## Credentials
+Required external bindings and safe workflow, never credential values.
+
+## Sources
+Interpretation of manifest references, review triggers and existing tests.
+```
+
+Write precise facts, not an exhaustive encyclopedia. Separate mathematical
+reasoning, user assumptions, implemented functionality and live facts. Lists of
+current SKUs, prices, flavors and versions belong to authorized live catalogues
+and public PIM, not copied static tables. Service-specific bindings must work
+with the native Accelerator contract, not depend on hidden Configurator state.
+Use examples without customer identifiers or secrets. Existing unknown import
+fields must remain preserved outside the model context.
+
+## Adding a Topic
+
+1. Verify the Accelerator/module and shared feature contracts first. Missing
+   features require concept, module/schema, validation, import/export, Editor,
+   assistant, credentials and tests, not merely a knowledge file.
+2. Add a topic using the structure above, then a manifest entry. Reuse existing
+   documentation as authoritative sources instead of duplicating every detail.
+3. Assign existing root inputs, feature groups and A01-A24 scenarios. Add explicit dependency
+   IDs; unknown dependencies and cycles fail. Mandatory credential foundations
+   and configuration lifecycle cannot be removed. Global contract rule IDs cannot be reused as topic IDs.
+4. Review sources and content, update version/checkedOn, and generate the bundle
+   from the app directory using the pinned repository toolchain:
+
+```sh
+npm run knowledge:generate
+npm run knowledge:check
+npm run check
+```
+
+5. Review both Markdown and generated changes, add focused behavioural tests to
+   existing suites and qualify a synthetic model-to-native-export roundtrip.
+   Generation and a clean test do not constitute a reviewed production release.
+
+Reviewed context-budget decision for full scope, 2026-10-10: maximum 20 topics,
+8000 characters per topic and 48000 characters
+total, eight dependencies/groups per topic and twelve local source references.
+The 19-topic catalogue fits without truncation; shared explanations were shortened.
+Do not silently truncate required knowledge. Increase limits only with a reviewed
+context-budget decision. External links are recorded but never fetched by the
+generator or at runtime. Checked dates are author-maintained review metadata,
+not an assertion that an external page was fetched recently.
+
+## Versioning and Acceptance
+
+### Provisional Response Streaming
+
+Both chats request an optional `application/x-ndjson` POST response. The model
+client parses bounded SSE events using `eventsource-parser` and incomplete JSON
+using `partial-json`; only provisional `explanation` text is forwarded. Partial
+text is visibly unreviewed, never a stored/acceptable proposal. The validated
+complete JSON still goes through existing model, field, scope, native compiler,
+authorization, revision and expiry checks before persistence and the final UI
+event. Interrupted, oversized, malformed or wrong-model streams fail closed.
+Disconnects cancel model requests and are checked before saving. Existing JSON
+clients are supported; no automatic retry or execution. Both message containers
+scroll to their end on history changes and provisional text updates.
+
+The optional `LZC_MODEL_SERVING_INTENT_MODEL` selects only the classifier;
+`LZC_MODEL_SERVING_MODEL` still selects answers. Local test activation on
+2026-10-11 uses GPT-OSS-120B intent plus the established Qwen answer model with
+explicit user permission. This is not a production or full dialogue-quality
+qualification. Streaming exposes text earlier, not more trustworthy text.
+
+### Conversation and Change Contracts
+
+Questions expose bounded `text`, `options` and `multiple`: up to six distinct
+160-character choices, native radio/checkbox selection and an always-available
+free-text answer. New inference transport requires structured questions; stored
+legacy questions without options remain valid. Options undergo protected-question
+checks too. Selection only prepares question-associated user text; it never
+sends, accepts or mutates automatically. Existing compose text is retained and
+the combined 4000-character limit is checked before insertion. Choices appear
+only from the completed validated response, not provisional streaming text.
+
+Diff checkboxes prepare a request for a new proposal containing the selected
+paths/values. No direct partial-acceptance endpoint or selected-field mutation
+exists. Whole acceptance is disabled while a subset is selected. The new result
+is validated and reviewed normally; the user must inspect its entire diff and
+explicitly accept it. Related native changes remain atomic; a component-map
+entry is not split into individual nested fields. No execution permission.
+
+Configuration dialogue has two bounded model calls: first classify topic/mode
+from saved user/assistant history, then answer under backend-owned capabilities.
+The classifier cannot grant permissions. Follow-ups need not repeat a topic
+keyword; explicit topic changes override history. The full saved user history
+also accompanies advice so earlier requirements do not disappear after the
+recent-turn window. Assistant suggestions and template defaults are not consent.
+Firewall planning records exact user quotes for traffic, capacity and operations.
+The backend rejects quotes not present in user messages and selects the next
+unresolved decision/path deterministically. Quote categorization remains model
+interpretation, not proof of deployment suitability. The advisory request gets
+only relevant topics/dependencies plus mandatory knowledge, not all services;
+firewall sizing is separated from managed VPN product plans.
+
+Field contracts distinguish user decisions from operator-managed access details.
+Only explicitly listed company name/code/region scalar proposals, name-only
+updates to existing `rm_folders`, and native SNA proposals are supported; no
+blanket scalar or structure permission. Identity values need literal user
+evidence unless the user explicitly delegates choosing company names/codes or
+folder names. Such delegation references an original user message through a
+backend-enumerated source ID, never a model-rewritten quote or assistant turn.
+Nonempty delegated paths require an existing user source. This bounded semantic
+classification is not general consent or deployment authorization. Folder
+names are 1-40 characters; keys, owners, readers, descriptions and identities
+are preserved. Implicit native folder defaults are projected as names only;
+explicit empty maps are not replaced. New folders, Cloud IDs, region choices,
+IAM and operator access settings are not delegated. Admin account,
+API-secret version and bootstrap are excluded from chat questions/changes,
+including when accepting older proposals. Bootstrap means initial management
+access setup, not firewall HA enablement or deployment authorization.
+
+Firewall advice translates traffic scope, capacity and failure/operations into
+human decisions. Its model-generated explanation is bounded to 800 characters
+and at most one native decision question. No fixed answer replacement. Other
+component topics remain advisory unless the backend has an explicit translator.
+This is a firewall dialogue pilot, not a complete semantic configuration compiler
+or production-qualified conversational state machine. Two inference calls add
+latency; persisted intent summaries and full load qualification remain open.
+
+Bundle hash includes curated content, manifest metadata, engine revision and
+local source fingerprints. A source edit makes the generated snapshot stale;
+the required check fails. Regeneration must follow source review, not silently
+make changed sources authoritative. No automatic update during build/start.
+Knowledge changes do not require a new conversation. Each new message uses the
+current bundle and preserves history, identity and the original expiry. The
+new response atomically replaces the proposal and its knowledge hash. Old
+proposals remain stale and cannot be accepted before regeneration with current
+knowledge. No deletion, expiry extension or silent proposal acceptance.
+
+All topics remain local-draft-not-reviewed-release. Sources are allowlisted local
+Terraform, curated Markdown and domain/API TypeScript; only fingerprints, not
+source-file contents, are sent with provenance. No environment, credential or
+state files are source inputs. Complete external source
+retrieval, reviewed historical knowledge releases, automatic promotion and full
+A01-A24 conversational qualification are not implemented by this architecture.
+Future topic partitioning should be explicit and testable before adding RAG.

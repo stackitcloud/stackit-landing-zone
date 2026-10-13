@@ -166,7 +166,7 @@ it("restores unfinished common browser drafts but rejects saving placeholder ide
   expect(migrateCommonConfiguration(document)).toEqual(document);
 });
 
-it("repairs only new Standalone editor presets without changing the source/import contract", () => {
+it("uses the current Public Standalone preset without rewriting legacy imports", () => {
   const source = createCommonConfiguration("standalone", id);
   const original = compileCommonConfiguration(source);
   const draft = createEditorConfiguration("standalone", id);
@@ -185,8 +185,20 @@ it("repairs only new Standalone editor presets without changing the source/impor
   expect(
     commonProjects(source).find((project) => project.key === "public-exmpl")
       ?.kind,
-  ).toBe("corporate");
+  ).toBe("public");
   expect(readEditorDraft(source)).toEqual(source);
+
+  const legacy = structuredClone(source);
+  delete objectValue(
+    objectValue(legacy.features.projects.landing_zones)["public-exmpl"],
+  ).corporate;
+  const legacyValues = compileCommonConfiguration(legacy);
+  expect(
+    commonProjects(legacy).find((project) => project.key === "public-exmpl")
+      ?.kind,
+  ).toBe("corporate");
+  expect(readEditorDraft(legacy)).toEqual(legacy);
+  expect(compileCommonConfiguration(legacy)).toEqual(legacyValues);
 });
 
 it("checks VPN prerequisites without treating an editor draft as deployable", () => {
