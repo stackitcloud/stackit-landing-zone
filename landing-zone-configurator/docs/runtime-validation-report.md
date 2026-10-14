@@ -103,6 +103,11 @@ vor erfolgreichem Web-App-Push nur die historische Route mit Suffix.
 Nach erfolgreichen Pruefungen der kanonischen Route wird die alte Route nur
 von dieser App entfernt, falls sie noch gebunden ist; andere Routen bleiben
 unveraendert.
+Die drei anschliessenden API-Prueftasks entpacken denselben Release-Droplet
+und erhalten ebenfalls 4096 MB Disk statt 512 MB; der Regressionstest prueft
+alle drei expliziten Task-Aufrufe. Der Zwischenbuild von `ffec7b1`
+(Run `38629651422`) wurde vor dem Deployment abgebrochen, um diese gekoppelte
+Korrektur zusammen zu qualifizieren.
 
 ## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
 

@@ -96,6 +96,8 @@ The former 512 MB limit failed during container extraction, before Node or any
 migration code started. The task retains its 128 MB memory limit.
 The exact qualified release contains 505.65 MiB of regular file payload alone;
 filesystem blocks, directories and the container add overhead beyond that.
+The subsequent network, service-connection and runner-isolation tasks also
+unpack this droplet and use the same 4096 MB disk quota.
 Migration task diagnostics report only the release run ID, connection/migration
 phase, migration filename and an allowlisted failure category or SQLSTATE.
 The release filters task logs before cleanup; raw SQL, row values, credentials

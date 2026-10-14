@@ -14,6 +14,9 @@ test("migration task can unpack the full release and web routes match the regist
  assert.match(web,/\n    disk_quota: 4096M\n/);
  assert.match(migration,/\n    disk_quota: 4096M\n/);
  assert.match(workflow,/cf run-task landing-zone-configurator-migrate [^\n]+ -m 128M -k 4096M --wait/);
+ const applicationTasks=workflow.split("\n").filter(line=>line.trim().startsWith("cf run-task landing-zone-configurator ")||line.trim().startsWith("run: cf run-task landing-zone-configurator "));
+ assert.equal(applicationTasks.length,3);
+ for(const task of applicationTasks)assert.match(task,/ -m 128M -k 4096M --wait$/);
  assert.match(web,/\n    routes:\n      - route: lzc-dev-configurator\.apps\.01\.cf\.eu01\.stackit\.cloud\n    env:/);
  assert.ok(!web.includes("lzc-dev-configurator-7dbff805"));
  assert.ok(workflow.indexOf("Retire previous suffixed route after canonical checks")>workflow.indexOf("Public route checks"));
