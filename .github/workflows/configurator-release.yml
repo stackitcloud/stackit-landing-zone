@@ -259,7 +259,19 @@ jobs:
         run: cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 512M --wait
       - name: Sanitized database migration diagnostics
         if: always() && (steps.database_migrations.outcome == 'success' || steps.database_migrations.outcome == 'failure')
-        run: cf logs landing-zone-configurator-migrate --recent | node infra/ci/migration-evidence.mjs "$GITHUB_RUN_ID"
+        run: |
+          for attempt in 1 2 3; do
+            if cf logs landing-zone-configurator-migrate --recent | node infra/ci/migration-evidence.mjs "$GITHUB_RUN_ID" > "$LZC_PRIVATE/migration-evidence.json"; then
+              cat "$LZC_PRIVATE/migration-evidence.json"
+              exit 0
+            fi
+            if [ -s "$LZC_PRIVATE/migration-evidence.json" ]; then
+              cat "$LZC_PRIVATE/migration-evidence.json"
+              exit 1
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 5; fi
+          done
+          exit 1
       - name: Remove privileged migration application
         run: cf delete landing-zone-configurator-migrate -f
       - name: CF push application

@@ -73,6 +73,19 @@ Listeneintrag und das Ende der laufenden Speichern-Aktion. Danach bestanden
 24 gezielte Desktop-/Mobile-Wiederholungen und die komplette Suite (288/288).
 Keine Retries, erhoehten Timeouts oder ausgelassenen Tests wurden eingefuehrt.
 
+Der Build von `255c2c3` (Run `38624110576`) bestand alle Release-Gates.
+CF meldete beim Runner-Staging trotz Buildpack-Exit 0 und abgeschlossenem
+Droplet-Upload einen `StagingError`. Die einmalige Promotion desselben Artefakts
+(Run `38625759797`) bestand anschliessend Runner-Staging und beide nativen
+OpenTofu-Pruefungen, scheiterte aber erneut beim Migrationstask.
+Die Diagnose lieferte keine akzeptierte Evidenz: Der Filter hatte den bereits
+bereinigten Fehler `connection-timeout` nicht zugelassen. Dieser feste Wert wird
+nun mitgetestet; fehlende Log-Evidenz wird bis zu dreimal im Abstand von
+fuenf Sekunden abgerufen, ohne den Migrationstask erneut auszufuehren.
+Der tatsaechliche Migrationsfehler ist damit noch nicht festgestellt.
+Die privilegierte Migration-App wurde entfernt; Web-App-Push, Hosted-Login und
+Organisationsnachweis bleiben offen.
+
 ## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
 
 Migration 052 erweitert den bestehenden Operator-Pruefkontext um gespeicherte

@@ -15,6 +15,10 @@ test("migration diagnostics export only bounded evidence for the selected run",(
  assert.equal(failure.status,1);
  assert.deepEqual(JSON.parse(failure.stdout),{service:"database-migrations",runId:"123",ok:false,phase:"migrate",version:"053_assistant_conversations.sql",error:"42501"});
  assert.ok(!failure.stdout.includes("synthetic-private"));
+ const timeout=run(`LOG ${JSON.stringify({...evidence,phase:"connect",version:undefined,error:"connection-timeout"})}\n`);
+ assert.equal(timeout.status,1);
+ assert.deepEqual(JSON.parse(timeout.stdout),{service:"database-migrations",runId:"123",ok:false,phase:"connect",error:"connection-timeout"});
+ assert.ok(!timeout.stdout.includes("synthetic-private"));
  const success=run(`LOG ${JSON.stringify({service:"database-migrations",runId:"123",ok:true,privateValue:"synthetic-private"})}\n`);
  assert.equal(success.status,0);
  assert.deepEqual(JSON.parse(success.stdout),{service:"database-migrations",runId:"123",ok:true});
