@@ -65,6 +65,14 @@ Ein versuchter rein lesender lokaler Versionsabgleich kam nicht bis zur
 DB-Verbindung: Der alte lokale Operator-State enthaelt keine Migration-
 Credentials. Keine Cloud-Datenbankdaten wurden dadurch gelesen oder geaendert.
 
+Der Diagnose-Build `38622366995` scheiterte vor dem Deployment an einem
+Mobile-Speichern-/Reload-Test (287/288 bestanden). Der Speichern-Hinweis wird
+vor dem anschliessenden Listen-Refresh gesetzt; der Test wartete bislang nur
+auf diesen Hinweis. Er wartet nun vor Reload zusaetzlich auf den gespeicherten
+Listeneintrag und das Ende der laufenden Speichern-Aktion. Danach bestanden
+24 gezielte Desktop-/Mobile-Wiederholungen und die komplette Suite (288/288).
+Keine Retries, erhoehten Timeouts oder ausgelassenen Tests wurden eingefuehrt.
+
 ## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
 
 Migration 052 erweitert den bestehenden Operator-Pruefkontext um gespeicherte

@@ -1403,6 +1403,18 @@ test("database configurations save, reopen, protect revisions and delete without
   await expect(storage.getByRole("status")).toHaveText(
     "Konfiguration in der Datenbank gespeichert.",
   );
+  await expect(
+    storage.getByRole("button", {
+      name: "Konfiguration öffnen: Ohne GitHub gespeichert",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    storage.getByRole("button", {
+      name: "Konfiguration speichern",
+      exact: true,
+    }),
+  ).toBeEnabled();
   await page.reload();
   await expect(
     storage.getByRole("button", {
