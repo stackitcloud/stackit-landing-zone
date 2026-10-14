@@ -4,6 +4,13 @@ Aktuelle Ubuntu-Nachweise, offene Benutzerabnahmen und eigenstaendige Arbeitspak
 stehen in der [MVP-Abnahmeliste](mvp-acceptance.md). Die datierten Abschnitte unten
 bleiben historische Detailnachweise.
 
+Scope-Entscheidung vom 2026-10-13: Gefuehrte Firewall-Policy-Bearbeitung und
+Assistant-Regel-/NAT-Vorschlaege sind ausdruecklich Post-MVP
+([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
+Im MVP pflegt der Firewall-Admin die Policy manuell; vorhandene generische
+Editorfelder bleiben erhalten. Details und Chatgrenze stehen in der
+[Abnahmeliste](mvp-acceptance.md#scope-entscheidung-firewall-policy-ausserhalb-des-mvp).
+
 Der erste Wurf umfasst seit der Benutzerentscheidung vom 2026-10-09 alle
 `mvp:required`-Issues sowie die offenen `effort:s`-Issues. Der aktuelle GitHub-
 Abgleich und die groesseren Lieferpakete stehen verbindlich in der Abnahmeliste;

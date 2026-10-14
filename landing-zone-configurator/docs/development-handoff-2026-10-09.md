@@ -85,9 +85,20 @@ Build: https://github.com/stackitcloud/stackit-landing-zone/actions/runs/3792989
 
 Einziges Ziel: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
 
-Der oeffentliche PKCE-Web-Client ist bereits beantragt. Seine provisionierte
-oeffentliche `LZC_STACKIT_CLIENT_ID` fehlt noch im geschuetzten GitHub-Environment
-`lzc-dev-release`. Kein neuer Antrag, kein Suffix, kein Device-Flow-/GitHub-Ersatz
+Update 2026-10-14: Das Client-Team hat die Registrierung in STACKIT Production
+bestaetigt; der Client war zunaechst irrtuemlich in QA eingerichtet. Bestaetigt sind
+Public Client ohne Secret, verpflichtendes PKCE, Response Type `code`,
+Authorization Code und Refresh Token, JWT Access Tokens, Scopes `openid`,
+`email`, `offline_access` sowie Audiences `api://StackitApp` und
+`api.stackit.cloud`. Das automatisch erzeugte Secret wird nicht verwendet.
+Die Anwendung nutzt bereits den Production-Issuer und PKCE/S256 ohne Secret.
+
+Die oeffentliche `LZC_STACKIT_CLIENT_ID` wurde am 2026-10-14 mit Nutzerfreigabe
+im geschuetzten GitHub-Environment `lzc-dev-release` hinterlegt und durch erneutes
+Auslesen verifiziert. Kein STACKIT Client Secret wurde uebertragen und kein
+Deployment ausgeloest. Der gehostete Login und die Organisationspruefung sind noch
+nicht end-to-end qualifiziert.
+Kein neuer Antrag, kein Suffix, kein Device-Flow-/GitHub-Ersatz
 und kein gehosteter CLI-Client. Beide registrierten Callbacks muessen passen:
 
 ```text
@@ -95,8 +106,11 @@ https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback
 https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/stackit/proof-callback
 ```
 
-Erst nach Client-Bereitstellung das unveraenderte qualifizierte Artefakt ueber den
-geschuetzten Release-Workflow promoten, nicht neu bauen:
+Die folgende Promotion betrifft ausschliesslich den oben genannten historischen
+Build. Seitdem wurden lokale Assistant-Aenderungen vorgenommen; dieser Build
+enthaelt sie nicht. Fuer einen Release inklusive dieser Aenderungen zuerst den
+aktuellen Stand qualifizieren und ein neues Release-Artefakt bauen. Den alten
+Build nicht ungeprueft als aktuellen Stand promoten:
 
 ```sh
 gh workflow run configurator-release.yml \

@@ -1,8 +1,33 @@
 import { z } from "zod";
 
+export const assistantInferenceFailureSchema = z.object({
+  error: z.enum(["assistant_inference_failed", "assistant_unavailable"]),
+  reason: z.enum([
+    "requirements_unconfirmed",
+    "proposal_invalid",
+    "response_invalid",
+    "response_truncated",
+    "response_interrupted",
+    "service_timeout",
+    "service_busy",
+    "service_authentication",
+    "service_unavailable",
+  ]),
+  requestId: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-zA-Z0-9_-]+$/),
+});
+
+export type AssistantFailureReason = z.infer<
+  typeof assistantInferenceFailureSchema
+>["reason"];
+
 export type AssistantProposalChange = {
   path: string;
   value: unknown;
+  operation?: "merge" | "replace" | "default" | undefined;
   before?: unknown;
   baselineAvailable?: boolean;
 };
@@ -15,6 +40,7 @@ export type AssistantProposalField = {
   before: unknown;
   baselineAvailable?: boolean;
   value: unknown;
+  operation?: "merge" | "replace" | "default" | undefined;
 };
 
 export const assistantMergeConfirmationSchema = z.strictObject({
@@ -108,11 +134,16 @@ export function assistantProposalConflicts(
   baselineAvailable: (path: string) => boolean,
 ): AssistantMergeConflict[] {
   return fields.flatMap((field) => {
-    const current = field.keys.reduce(child, values[field.changePath]) ?? null;
+    const current =
+      field.keys.reduce(
+        child,
+        assistantProposalValue(values, field.changePath),
+      ) ?? null;
     const known = baselineAvailable(field.changePath);
     if (
       (known && assistantAdditiveField(field)) ||
-      assistantValuesEqual(current, field.value ?? null) ||
+      (field.operation !== "default" &&
+        assistantValuesEqual(current, field.value ?? null)) ||
       (known && assistantValuesEqual(current, field.before))
     )
       return [];
@@ -131,11 +162,12 @@ export function assistantProposalConflicts(
 
 export function assistantAdditiveField(field: AssistantProposalField): boolean {
   return (
-    ["organization_owners", "organization_auditors"].includes(
+    !field.operation &&
+    (["organization_owners", "organization_auditors"].includes(
       field.changePath,
     ) ||
-    (field.changePath === "rm_folders" &&
-      ["owner_emails", "reader_emails"].includes(field.keys.at(-1) ?? ""))
+      (field.changePath === "rm_folders" &&
+        ["owner_emails", "reader_emails"].includes(field.keys.at(-1) ?? "")))
   );
 }
 
@@ -149,12 +181,44 @@ function child(value: unknown, key: string): unknown {
   return entries(value).find(([name]) => name === key)?.[1];
 }
 
+export function assistantProposalValue(
+  values: Record<string, unknown> | null,
+  path: string,
+): unknown {
+  if (!values) return undefined;
+  if (Object.hasOwn(values, path)) return values[path];
+  const segments = path.split(".");
+  for (let length = segments.length - 1; length > 0; length--) {
+    const prefix = segments.slice(0, length).join(".");
+    if (Object.hasOwn(values, prefix))
+      return segments.slice(length).reduce(child, values[prefix]);
+  }
+  return undefined;
+}
+
+export function assistantProposalBaselineAvailable(
+  values: Record<string, unknown> | null,
+  path: string,
+): boolean {
+  return (
+    values !== null &&
+    path
+      .split(".")
+      .some((_, index, segments) =>
+        Object.hasOwn(values, segments.slice(0, index + 1).join(".")),
+      )
+  );
+}
+
 export function assistantProposalFields(
   changes: readonly AssistantProposalChange[],
 ): AssistantProposalField[] {
   return changes.flatMap((change) => {
-    const depth =
-      change.path === "connectivity.firewalls"
+    const depth = change.operation
+      ? change.operation === "merge"
+        ? Number.POSITIVE_INFINITY
+        : 0
+      : change.path === "connectivity.firewalls"
         ? 3
         : [
               "connectivity.firewall",
@@ -171,14 +235,29 @@ export function assistantProposalFields(
       before: unknown,
       keys: string[],
     ): AssistantProposalField[] => {
+      if (
+        change.operation === "merge" &&
+        entries(value).length === 0 &&
+        value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        before !== null &&
+        typeof before === "object" &&
+        !Array.isArray(before)
+      )
+        return [];
       if (keys.length < depth && entries(value).length > 0)
         return entries(value).flatMap(([key, entry]) =>
           flatten(entry, child(before, key), [...keys, key]),
         );
-      if (assistantValuesEqual(before ?? null, value ?? null)) return [];
+      if (
+        change.operation !== "default" &&
+        assistantValuesEqual(before ?? null, value ?? null)
+      )
+        return [];
       return [
         {
-          id: [change.path, ...keys].join("/"),
+          id: [change.path, ...keys.map(encodeURIComponent)].join("/"),
           path: [change.path, ...keys].join("."),
           changePath: change.path,
           keys,
@@ -187,6 +266,7 @@ export function assistantProposalFields(
             ? { baselineAvailable: false }
             : {}),
           value,
+          ...(change.operation ? { operation: change.operation } : {}),
         },
       ];
     };
@@ -211,6 +291,7 @@ export function selectAssistantProposalFields(
       result.set(field.changePath, {
         path: field.changePath,
         value: field.value,
+        ...(field.operation ? { operation: field.operation } : {}),
       });
       continue;
     }
@@ -224,7 +305,11 @@ export function selectAssistantProposalFields(
     }
     const last = field.keys.at(-1);
     if (last !== undefined) target[last] = field.value;
-    result.set(field.changePath, { path: field.changePath, value: combined });
+    result.set(field.changePath, {
+      path: field.changePath,
+      value: combined,
+      ...(field.operation ? { operation: field.operation } : {}),
+    });
   }
   return [...result.values()];
 }

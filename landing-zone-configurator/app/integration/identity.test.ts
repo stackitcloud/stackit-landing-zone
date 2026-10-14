@@ -25,8 +25,8 @@ import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
 import type { Dialogue } from "../apps/api/src/assistant/dialogue.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
-import type {
-  AssistantCatalogueContext,
+import {
+  type AssistantCatalogueContext,
   AssistantModelServing,
 } from "../apps/api/src/assistant/model-serving.js";
 import { AssistantConversations } from "../apps/api/src/assistant/service.js";
@@ -1602,26 +1602,58 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         { name: objectValue(folder).name },
       ]),
     );
-    let seenValues: unknown;
-    const model = {
-      async converse(_selection: unknown, values: unknown) {
-        seenValues = values;
-        return {
-          explanation:
-            "Firmenkürzel und vorhandene Ordnernamen vorgeschlagen, noch nicht übernommen.",
-          questions: [],
-          changes: [
-            { path: "company_name", value: "Example GmbH" },
-            { path: "company_code", value: "exg" },
-            {
-              path: "rm_folders",
-              value: { platform: { name: "EXG Platform" } },
+    const requests: string[] = [];
+    const request = vi.fn<typeof fetch>(async (_url, options) => {
+      const body = String(options?.body);
+      requests.push(body);
+      const payload = JSON.parse(body);
+      const response =
+        payload.response_format.json_schema.name === "conversation_intent"
+          ? {
+              topic: "configuration-contract",
+              mode: "draft",
+              requirements: [],
+              namingDelegation: {
+                paths: ["company_code", "rm_folders"],
+                source: "current",
+              },
+            }
+          : ({
+              explanation:
+                "Firmenkürzel und vorhandene Ordnernamen vorgeschlagen, noch nicht übernommen.",
+              questions: [],
+              changes: [
+                { path: "company_name", value: "Example GmbH" },
+                { path: "company_code", value: "exg" },
+                {
+                  path: "rm_folders",
+                  value: { platform: { name: "EXG Platform" } },
+                },
+              ],
+              references: ["identity-foundations", "governance-folders"],
+            } satisfies Dialogue);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              role: "assistant",
+              content: JSON.stringify(response),
             },
-          ],
-          references: ["governance-folders"],
-        } satisfies Dialogue;
+          },
+        ],
+      });
+    });
+    const model = new AssistantModelServing(
+      {
+        baseUrl:
+          "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+        model: "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8",
+        token: "test-only-private-token",
+        timeoutMs: 1000,
       },
-    } as unknown as AssistantModelServing;
+      request,
+    );
     const assistant = new AssistantConversations(pool, model);
     const proposed = await assistant.send(
       alice,
@@ -1629,9 +1661,20 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       1,
       'Richte die Grundlagen für "Example GmbH" ein und wähle passende Kürzel und Ordnernamen.',
     );
-    expect((seenValues as { rm_folders: unknown }).rm_folders).toEqual(names);
-    expect(JSON.stringify(seenValues)).not.toContain("owner@example.invalid");
-    expect(JSON.stringify(seenValues)).not.toContain("reader@example.invalid");
+    expect(request).toHaveBeenCalledTimes(2);
+    for (const body of requests) {
+      expect(body).not.toContain("owner@example.invalid");
+      expect(body).not.toContain("reader@example.invalid");
+      expect(body).not.toContain("Preserve folder metadata");
+    }
+    const answerBody = requests[1];
+    if (!answerBody) throw new Error("Missing naming response request");
+    const answerContext = JSON.parse(
+      JSON.parse(answerBody).messages.find(
+        (entry: { role: string }) => entry.role === "user",
+      ).content,
+    );
+    expect(answerContext.currentPublicScalarValues.rm_folders).toEqual(names);
     const unchanged = await configurations.get(alice, stored.id);
     expect(unchanged.draft).toEqual(draft);
     const accepted = await assistant.accept(

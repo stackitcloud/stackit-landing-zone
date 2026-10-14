@@ -136,7 +136,12 @@ export function buildAssistantKnowledgeTopics() {
       "utf8",
     ).replaceAll("\r\n", "\n");
     validateKnowledgeText(topic.id, text);
-    const sources = topic.sources.map((path) => {
+    const sources = [
+      ...new Set([
+        ...topic.sources,
+        "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+      ]),
+    ].map((path) => {
       const absolute = resolve(root, path);
       const local = relative(root, absolute);
       if (

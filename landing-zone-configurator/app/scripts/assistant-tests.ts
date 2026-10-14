@@ -2,7 +2,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import {
   AssistantInferenceError,
-  AssistantModelServing,
   modelServingConfiguration,
 } from "../apps/api/src/assistant/model-serving.js";
 import {
@@ -11,6 +10,10 @@ import {
   buildAssistantScenarioInventory,
   validateAssistantScenario,
 } from "./assistant-scenarios.js";
+import {
+  assistantTestModel,
+  assistantTestRequestIntervalMs,
+} from "./assistant-test-model.js";
 import { loadLocalModelServingToken } from "./local-assistant-credentials.js";
 
 const inventoryPath = new URL(
@@ -105,7 +108,7 @@ async function run() {
     ...process.env,
     LZC_MODEL_SERVING_TOKEN: token,
   });
-  const model = new AssistantModelServing(configuration);
+  const model = assistantTestModel(configuration);
   const knowledge = buildAssistantKnowledge();
   let failed = 0;
   for (const scenario of scenarios) {
@@ -161,6 +164,7 @@ async function run() {
       qualification: "synthetic-smoke-and-regression-only",
       model: configuration.model,
       intentModel: configuration.intentModel ?? configuration.model,
+      requestIntervalMs: assistantTestRequestIntervalMs,
       knowledgeSha256: knowledge.sha256,
       suiteSha256: inventory.suiteSha256,
       engineRevision: knowledge.engineRevision,

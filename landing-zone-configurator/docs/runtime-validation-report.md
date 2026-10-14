@@ -3,6 +3,35 @@
 Generated: 2026-10-02T10:14:20Z
 Target: `landing-zone-configurator/app`, lokale STACKIT-Login-Umstellung.
 
+## Dev-Release: Lokale Qualifikation (2026-10-14)
+
+Der Client ist laut Client-Team in STACKIT Production als Public Client mit
+verpflichtendem PKCE registriert. Die oeffentliche Client-ID wurde mit
+Nutzerfreigabe in `lzc-dev-release` gesetzt und erneut ausgelesen. Kein STACKIT
+Client Secret wurde uebertragen.
+
+Die vollstaendige Release-Pruefung fand zwei gekoppelte Regressionen: Ein
+Platform-Entwurf konnte eine reine Grundlagen-/Namensfrage faelschlich zum
+Template-Vertrag routen; vorhandene Ordner-Rollenadressen erreichten die
+Namensklassifikation. Explizite Template-Themen bzw. Ziel-Inputs bestimmen nun
+die Route, und reine Namenskontexte enthalten nur Ordnernamen. Ein echter
+PostgreSQL-Test prueft beide Model-Serving-Requests sowie die unveraenderte
+Erhaltung von Rollen, Metadaten und Identitaeten nach Vorschlagsannahme.
+Der Governance-Vertrag prueft jetzt die hashgebundenen Git-Quellen des
+tatsaechlich paketierten Runner-Pins statt des neueren Arbeitsstands.
+
+```text
+check: PASS - knowledge/catalogue, lint/types/build; 685 unit passed, 53 gated skips
+database: PASS - 49 real PostgreSQL tests in isolated loopback test database
+browser: PASS - 288 desktop/mobile tests
+release-preparation: PASS - 3 immutable artifact/configuration tests
+opentofu: PASS - plan summary, application/landing-zone contracts; 3 pinned governance tests
+warnings: existing Biome, bundle-size and provider deprecation warnings remain
+hosted-dev: PENDING - target route returned router HTTP 404 before release
+human-login/organization-proof: PENDING - no hosted identity proof claimed
+customer-plan/apply/destroy: NOT_RUN - separate explicit authorization required
+```
+
 ## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
 
 Migration 052 erweitert den bestehenden Operator-Pruefkontext um gespeicherte

@@ -10,6 +10,10 @@ case "$("$tofu_bin" version -json | node -e 'let s="";process.stdin.on("data",c=
 esac
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/lzc-governance-test.XXXXXXXX")"
 trap 'rm -rf "$work_dir"' EXIT
+accelerator_commit="$(node --input-type=module -e 'import evidence from "./integration/fixtures/governance/source.json" with {type:"json"}; process.stdout.write(evidence.acceleratorRevision);')"
+if ! git cat-file -e "$accelerator_commit^{commit}" 2>/dev/null; then
+  git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$accelerator_commit"
+fi
 node "$app_dir/scripts/prepare-governance-contract.ts" "$work_dir"
 : > "$work_dir/empty.tfrc"
 env -i PATH="$PATH" TF_CLI_CONFIG_FILE="$work_dir/empty.tfrc" TF_IN_AUTOMATION=true TF_INPUT=0 "$tofu_bin" -chdir="$work_dir" init -backend=false -lockfile=readonly -input=false -no-color

@@ -2,6 +2,7 @@ import {
   assessCommonConfiguration,
   type CommonConfiguration,
   compileCommonConfiguration,
+  editorIssues,
   featureFieldCatalogue,
   inputDefinition,
   objectValue,
@@ -9,6 +10,12 @@ import {
   setCommonInput,
 } from "@lzc/domain";
 import { z } from "zod";
+import {
+  applyAssistantEditorChange,
+  assertAssistantEditorValue,
+  assistantEditorOperations,
+  validateAssistantEditorChange,
+} from "./editor.js";
 import {
   assistantFirewallPatchSchema,
   assistantFirewallsPatchSchema,
@@ -163,6 +170,7 @@ export const dialogueSchema = z.strictObject({
     .array(
       z.strictObject({
         path: z.string().max(300),
+        operation: z.enum(assistantEditorOperations).optional(),
         value: z.union([
           z.string().max(1000),
           z.boolean(),
@@ -176,6 +184,7 @@ export const dialogueSchema = z.strictObject({
           assistantDnsZoneNamesSchema,
           assistantFirewallPatchSchema,
           assistantFirewallsPatchSchema,
+          z.json(),
         ]),
       }),
     )
@@ -307,13 +316,33 @@ export function validateDialogue(
   input: unknown,
   ruleIds: readonly string[],
 ): Dialogue {
+  assertAssistantEditorValue(input);
   const result = dialogueSchema.parse(input);
   const editable = assistantQuestionFields();
   const scalar = assistantScalarFields();
+  for (const change of result.changes)
+    if (change.operation) {
+      assertAssistantEditorValue(change.value);
+      validateAssistantEditorChange({
+        path: change.path,
+        value: change.value,
+        operation: change.operation,
+      });
+    }
+  if (
+    result.changes.some((change, index) =>
+      result.changes.some(
+        (other, otherIndex) =>
+          index !== otherIndex && change.path.startsWith(`${other.path}.`),
+      ),
+    )
+  )
+    throw new Error("assistant_invalid_proposal");
   if (
     result.questions.some(
       (question) =>
-        !editable.some((field) => field.path === question.path) ||
+        (question.path !== "projectTemplates" &&
+          !editable.some((field) => field.path === question.path)) ||
         /\b(?:plan|project|projekt|organization|organisation|gateway|tenant)[\s_-]*id\b|\buuid\b|interne[\s]+kennung/i.test(
           [question.text, ...(question.options ?? [])].join("\n"),
         ) ||
@@ -322,34 +351,39 @@ export function validateDialogue(
         ),
     ) ||
     result.changes.some((change) =>
-      change.path === "connectivity.firewall"
-        ? !assistantFirewallPatchSchema.safeParse(change.value).success
-        : change.path === "connectivity.firewalls"
-          ? !assistantFirewallsPatchSchema.safeParse(change.value).success
-          : change.path === "connectivity.dns_zones"
-            ? !assistantDnsZoneNamesSchema.safeParse(change.value).success
-            : change.path === "rm_folders"
-              ? !assistantFolderPatchSchema.safeParse(change.value).success
-              : change.path === "organization_owners" ||
-                  change.path === "organization_auditors"
-                ? !assistantEmailListSchema.safeParse(change.value).success
-                : change.path === "connectivity.network_areas"
-                  ? !assistantNetworkAreasSchema.safeParse(change.value).success
-                  : change.path === "connectivity.network_area"
-                    ? !assistantNetworkAreaSchema.safeParse(change.value)
+      change.operation
+        ? false
+        : change.path === "connectivity.firewall"
+          ? !assistantFirewallPatchSchema.safeParse(change.value).success
+          : change.path === "connectivity.firewalls"
+            ? !assistantFirewallsPatchSchema.safeParse(change.value).success
+            : change.path === "connectivity.dns_zones"
+              ? !assistantDnsZoneNamesSchema.safeParse(change.value).success
+              : change.path === "rm_folders"
+                ? !assistantFolderPatchSchema.safeParse(change.value).success
+                : change.path === "organization_owners" ||
+                    change.path === "organization_auditors"
+                  ? !assistantEmailListSchema.safeParse(change.value).success
+                  : change.path === "connectivity.network_areas"
+                    ? !assistantNetworkAreasSchema.safeParse(change.value)
                         .success
-                    : (change.path === "organization_id" &&
-                        !z.uuid().safeParse(change.value).success) ||
-                      (change.path === "owner_email" &&
-                        !z.email().safeParse(change.value).success) ||
-                      !scalar.some(
-                        (field) =>
-                          field.path === change.path &&
-                          (change.value === null
-                            ? field.optional
-                            : typeof change.value ===
-                              (field.type === "bool" ? "boolean" : field.type)),
-                      ),
+                    : change.path === "connectivity.network_area"
+                      ? !assistantNetworkAreaSchema.safeParse(change.value)
+                          .success
+                      : (change.path === "organization_id" &&
+                          !z.uuid().safeParse(change.value).success) ||
+                        (change.path === "owner_email" &&
+                          !z.email().safeParse(change.value).success) ||
+                        !scalar.some(
+                          (field) =>
+                            field.path === change.path &&
+                            (change.value === null
+                              ? field.optional
+                              : typeof change.value ===
+                                (field.type === "bool"
+                                  ? "boolean"
+                                  : field.type)),
+                        ),
     ) ||
     new Set(result.changes.map((change) => change.path)).size !==
       result.changes.length ||
@@ -478,6 +512,15 @@ export function applyAssistantChanges(
 ) {
   let candidate = draft;
   for (const change of changes) {
+    if (change.operation) {
+      assertAssistantEditorValue(change.value);
+      candidate = applyAssistantEditorChange(candidate, {
+        path: change.path,
+        value: change.value,
+        operation: change.operation,
+      });
+      continue;
+    }
     if (
       change.path === "organization_owners" ||
       change.path === "organization_auditors"
@@ -677,6 +720,17 @@ export function applyAssistantChanges(
     candidate = readCommonConfiguration(next);
   }
   compileCommonConfiguration(candidate);
+  if (changes.some((change) => change.operation)) {
+    const previous = new Set(
+      editorIssues(draft).map((issue) => `${issue.field}:${issue.message}`),
+    );
+    if (
+      editorIssues(candidate).some(
+        (issue) => !previous.has(`${issue.field}:${issue.message}`),
+      )
+    )
+      throw new Error("assistant_configuration_invalid");
+  }
   const baseline = new Set(
     assessCommonConfiguration(draft)
       .findings.filter(

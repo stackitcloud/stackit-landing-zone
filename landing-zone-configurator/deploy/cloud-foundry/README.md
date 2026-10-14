@@ -97,13 +97,26 @@ uses 1024 MiB memory and 4096 MiB disk for this inspection; the release validate
 both native roots and probes both broker namespaces with invalid tickets.
 Old plans are not rebound after a droplet change. See [plan execution](../../docs/plan-execution.md).
 
-### Dev Activation Prerequisite (2026-10-09)
+### Dev Activation Prerequisite (updated 2026-10-14)
 
 The sole target origin is
 `https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud`, without a suffix.
-The STACKIT public Web client has already been requested for this origin;
-provisioning and its public client ID are still pending. No second client request
-is required. The existing suffixed route was checked only as a read-only baseline,
+The client team confirmed that the public Web client is now registered in STACKIT
+Production; the initial registration was mistakenly made in QA. The client uses
+JWT access tokens, response type `code`, authorization code and refresh token
+grants, mandatory PKCE, and scopes `openid`, `email`, `offline_access`. The confirmed
+audiences are `api://StackitApp` and `api.stackit.cloud`. The application already
+uses the Production issuer `https://accounts.stackit.cloud`, PKCE/S256 and a
+secretless token exchange. The automatically generated client secret is not
+required and must not be added to the STACKIT login configuration.
+
+The public `LZC_STACKIT_CLIENT_ID` was added to `lzc-dev-release` with user approval
+on 2026-10-14 and verified by reading back the variable. No STACKIT client secret
+was transferred and no deployment was triggered. Registration confirmation does
+not qualify a hosted login:
+both exact callbacks and organization-access verification still need an end-to-end
+test. No second client request is required.
+The existing suffixed route was checked only as a read-only baseline,
 not chosen as a deployment target. The release route, Public Origin and callbacks
 all use the suffix-free origin.
 

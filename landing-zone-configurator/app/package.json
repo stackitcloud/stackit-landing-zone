@@ -25,6 +25,7 @@
     "assistant:generate": "npm run knowledge:generate && node --import tsx scripts/assistant-tests.ts --generate",
     "assistant:check": "npm run knowledge:check && node --import tsx scripts/assistant-tests.ts --check",
     "test:assistant:live": "npm run assistant:check && node --use-system-ca --import tsx scripts/assistant-tests.ts",
+    "test:assistant:journey": "npm run assistant:check && node --use-system-ca --import tsx scripts/assistant-journey.ts",
     "typecheck": "tsc -b && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "build": "npm run typecheck && npm run build --workspace=@lzc/web",
     "lint": "biome check .",

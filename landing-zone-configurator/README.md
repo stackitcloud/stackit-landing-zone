@@ -23,6 +23,7 @@ Start und Prüfungen: [Entwicklungsanleitung](app/README.md).
 
 ## Dokumentation
 
+- [STACKIT-Zielarchitektur und logische Landing-Zone-Sicht](docs/architecture.md)
 - [Architektur, Roadmap und Checklisten](docs/planning.md)
 - [Sprach- und Technologieempfehlung](docs/decisions/0001-application-stack.md)
 

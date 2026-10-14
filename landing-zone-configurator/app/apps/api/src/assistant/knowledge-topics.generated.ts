@@ -38,6 +38,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "14edbcc911095468aaa5ee05448246bfce68952f0ddb03c8084c07f38b6ab6d0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+        },
       ],
       externalSources: [
         "https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/manage-service-account-keys/",
@@ -90,6 +95,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
             "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [
@@ -173,6 +183,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "8592367381556c5eb6ae376d4bfe58ff4afe8bb7c37e1b8d8052d7678834d4d9",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+        },
       ],
       externalSources: [],
       scenarios: ["A01", "A21", "A23"],
@@ -232,6 +247,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
             "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -308,6 +328,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "cef82819e92460649747c175e02c9b78c86e19cfa8d5635c1d46ef3c518e4019",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+        },
       ],
       externalSources: [],
       scenarios: ["A03", "A16", "A23"],
@@ -353,6 +378,11 @@ export const assistantKnowledgeTopics = {
           path: "src/modules/platform-kubernetes/variables.tf",
           sha256:
             "e28b32bc80ca8c3e6a74c12b93318912e30af17f2c7b7bc2d8b37361cf7514e7",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -405,6 +435,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "cc7285016035ea5ec2ff6d0534275b2261d891851ffe9d24331b1cf77241f1a6",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+        },
       ],
       externalSources: [],
       scenarios: ["A03", "A16", "A23", "A24"],
@@ -455,6 +490,11 @@ export const assistantKnowledgeTopics = {
           path: "src/modules/management/4-service-account.tf",
           sha256:
             "06b94bd9d34475c55db7e0f807a309658ae2b3ae06200c7166f7c2d7ff764703",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -516,6 +556,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
             "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [
@@ -597,6 +642,11 @@ export const assistantKnowledgeTopics = {
           path: "src/main.tf",
           sha256:
             "8592367381556c5eb6ae376d4bfe58ff4afe8bb7c37e1b8d8052d7678834d4d9",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -697,6 +747,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/docs/vpn-configuration-scope.md",
           sha256:
             "5edb220a2553cbc9e55de0c33d1471b028d878409fb2f149d340505ad85328ce",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -870,6 +925,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f86dfcdee4ed87209e4576fd0ae7e74849edb619f7e59c6c5a4319acb1514829",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+        },
       ],
       externalSources: [],
       scenarios: ["A13", "A16", "A23", "A24"],
@@ -943,9 +1003,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/firewall-policy.md",
-      text: '# OPNsense Policy, Routes and NAT\n\n## Purpose\n\nImplement explicitly approved traffic policy on an existing supported firewall;\nseparate filtering rules, routing, outbound NAT and internet port forwarding.\n\n## Accelerator Contract\n\nNative firewall_config contains endpoint/TLS configuration and maps for aliases,\nroutes, rules, outbound_nat and port_forwards. Rule action supports pass/block/\nreject, direction in/out; sequences, interfaces, address/port/protocol fields\ncontrol evaluation. Alias and gateway references must resolve to real supported\nobjects. urltable aliases require update_freq. Root bootstrap/provider wiring\ndetermines policy availability. Multi-area/regional infrastructure does not\nprove that the current singleton policy/bootstrap path manages every appliance.\n\n## Dependencies\n\nFirewall infrastructure and access/bootstrap knowledge. HA sync must follow the\nimplemented path; API-written policy does not independently replicate itself.\nRouting to a firewall is not a complete tenant-isolation policy.\n\n## Dialogue\n\nAsk about allowed source/destination flows, direction, ports, required ingress,\negress/NAT and deny/logging intent. "Later a firewall" is not a rule request.\nExplain internet exposure before recommending port forwards. Never silently\ninsert allow-any, wildcard aliases, public management access or inferred vendors.\n\n## Examples\n\nSynthetic opt-out: firewall_config = null. A requested HTTPS flow needs explicit\nsource, destination and interface selection before a native rules entry.\nEmpty maps do not prove the existing appliance is deny-all or has no unmanaged\nrules; fragments are not automatic replacements of live policy.\n\n## Limits\n\nCurrent chat cannot patch the complex policy object. Cross-feature subnet,\nalias/gateway references and effective rule ordering need dedicated validation\nand packet tests. A saved policy or HA sync trigger is not evidence of isolation,\nreachability or current cloud/appliance state. No automatic apply.\n\n## Credentials\n\nOPNsense API credentials, admin access and private reachability are external\nbindings. Never request API key/secret values or copy them into policy examples.\n\n## Sources\n\nFirewall-config variables, root provider/bootstrap and module calls define\neffective behavior. Re-review API/schema/HA changes before regenerating this\nlocal draft; production traffic tests remain separate qualification.',
+      text: "# OPNsense Policy, Routes and NAT\n\n## Purpose\n\nExplain native OPNsense policy; distinguish filtering, routes and NAT.\n\n## Accelerator Contract\n\nNative firewall_config has endpoint/TLS and aliases, routes, rules, outbound_nat,\nport_forwards maps. Rules use pass/block/reject, in/out, sequence, interfaces,\naddresses, ports and protocols. Alias/gateway references must resolve;\nurltable aliases need update_freq. Root bootstrap/provider wiring controls\navailability. The singleton policy path does not manage every area/appliance.\n\n## Dependencies\n\nInfrastructure/access/bootstrap are prerequisites. API-written policy needs\nexplicit HA sync. Firewall routing alone does not prove tenant isolation.\n\n## Dialogue\n\nDisclose immediately: chat cannot define/propose rules or NAT. Guided editor\npolicy management and chat proposals are outside MVP (#101). Existing generic\nfields remain under Operations / Firewall rules, not a qualified workflow.\nThe MVP firewall admin configures policy manually in OPNsense after provisioning.\nNo questionnaire promising rules. Traffic requirements inform infrastructure,\nnot policy. Never insert allow-any, wildcard aliases or public management.\n\n## Examples\n\nfirewall_config = null is native opt-out. HTTPS rules need explicit source,\ndestination and interface. Empty maps do not prove deny-all or absence of\nunmanaged rules; fragments do not automatically replace live policy.\n\n## Limits\n\nSubnet/alias/gateway references and rule ordering need dedicated validation and\npacket tests. Saved policy or HA sync is not isolation, reachability or live-state\nproof. No automatic apply; takeover needs manual-policy/state reconciliation.\n\n## Credentials\n\nAPI credentials, admin access and private reachability are external bindings.\nNever request or show keys/secrets.\n\n## Sources\n\nModule variables, root provider/bootstrap and module calls define behavior.\nRe-review API/schema/HA changes; production packet tests remain separate.",
       sha256:
-        "a5e22ea7ea212c01ea8c16c1e6251a6dc121fc759074dab29c351e234a50e72d",
+        "be59069139954e7ed83e69766a4f9182c5280b6770a75fd4331eea778e4599d4",
     },
     {
       id: "firewall-access-bootstrap",
@@ -983,6 +1043,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/docs/deployment-credentials.md",
           sha256:
             "cef82819e92460649747c175e02c9b78c86e19cfa8d5635c1d46ef3c518e4019",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -1028,6 +1093,11 @@ export const assistantKnowledgeTopics = {
           path: "src/providers.tf",
           sha256:
             "14edbcc911095468aaa5ee05448246bfce68952f0ddb03c8084c07f38b6ab6d0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -1087,6 +1157,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
             "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -1210,6 +1285,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+        },
       ],
       externalSources: [],
       scenarios: ["A04", "A10", "A14", "A22", "A23", "A24"],
@@ -1280,6 +1360,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+        },
       ],
       externalSources: [],
       scenarios: ["A11", "A14", "A23"],
@@ -1332,6 +1417,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
             "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],
@@ -1402,12 +1492,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "3a25f3a8bae621d93ea6917e55582ebf35a62245f154b7c9680277de381cbdf6",
+            "112f1efb60ad0c6194a54ede324dc3cc11cbbb2f411bad3dd276df57686cf324",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
-            "ce5fe75345f130219bf65a7824526918f17175066f099974fdd8e13263a850e0",
+            "00de48da38c1f902639fd2d24f5e36345fc38903e129bb87293e07d06f8486f0",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/firewall.ts",
@@ -1417,22 +1507,27 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "065b16bf6df690c52c2b508f5ba74dfd0a654d8b2f64f0fceb1f1b0c3c0834bb",
+            "e5733c77f2c990f9159333cccc7862a555f0414163fb2b1eaaa11593b9f54ca1",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "84d5e77dc5d801f13faae185fd731026b98b28904d9342cef5d8761fb3f7e955",
+            "83fb601337cacddc2b451808b5181c55eb3d267a47c28faf78bd5de9c3577263",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "7b8dda5f449dcc7290cc93a07eb9e6c496dd74f64ff5ff9a05deacc29c2d8e14",
+            "3a42191ddbbbafef20f9b4a7f1b8eeceeef6663df8bcded0957e56299d2f2c5b",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts",
           sha256:
             "2a9b74c709be67e3dc737af0f30a0dd9df6a07b5e0a3bde46f4c14b4dc5bd6f3",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          sha256:
+            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
         },
       ],
       externalSources: [],

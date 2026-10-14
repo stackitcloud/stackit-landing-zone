@@ -1,0 +1,718 @@
+import {
+  assistantProposalBaselineAvailable,
+  assistantProposalConflicts,
+  assistantProposalFields,
+  assistantProposalValue,
+  selectAssistantProposalFields,
+} from "@lzc/contracts";
+import {
+  catalogue,
+  compileCommonConfiguration,
+  createCommonConfiguration,
+  createEditorConfiguration,
+  exportCommonTfvars,
+  featureFieldCatalogue,
+  type InputType,
+  inputDefinition,
+  type JsonValue,
+  objectValue,
+  regionalConnectivityType,
+} from "@lzc/domain";
+import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import {
+  applyAssistantChanges,
+  validateDialogue,
+} from "../apps/api/src/assistant/dialogue.js";
+import {
+  assistantEditorChangeSchema,
+  assistantEditorCreationValue,
+  assistantEditorInputs,
+  assistantEditorPaths,
+  assistantEditorPolicies,
+  assistantEditorProposalPath,
+  assistantEditorResponseSchema,
+  validateAssistantEditorChange,
+  validateAssistantEditorSources,
+} from "../apps/api/src/assistant/editor.js";
+import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
+import { AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
+import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
+
+function draft() {
+  return createCommonConfiguration("standalone", crypto.randomUUID());
+}
+function patch(
+  path: string,
+  value: JsonValue,
+  operation: "merge" | "replace" | "default" = "merge",
+) {
+  return { path, value, operation };
+}
+function response(
+  changes: ReturnType<typeof patch>[],
+  questions: { path: string; text: string }[] = [],
+) {
+  return {
+    explanation:
+      "Ich schlage diese Entwurfswerte zur Prüfung vor; noch nichts gespeichert.",
+    questions,
+    changes,
+    references: ["configuration-contract"],
+  };
+}
+function sample(
+  type: InputType,
+  segments: string[],
+  path: string,
+  required = false,
+): JsonValue {
+  if (typeof type === "string")
+    return type === "bool" ? true : type === "number" ? 1 : "reviewed-value";
+  if (type[0] === "map")
+    return {
+      example: sample(
+        type[1] === "dynamic" && path === "connectivity_regions"
+          ? regionalConnectivityType()
+          : type[1],
+        segments.slice(1),
+        `${path}[*]`,
+      ),
+    };
+  if (type[0] === "list" || type[0] === "set")
+    return [sample(type[1], segments.slice(1), `${path}[*]`, true)];
+  if (type[0] !== "object") throw new Error("unsupported_sample_type");
+  const key = segments[0];
+  const value: Record<string, JsonValue> = {};
+  if (required)
+    for (const [name, child] of Object.entries(type[1]))
+      if (!type[2]?.includes(name))
+        value[name] = sample(child, [], `${path}.${name}`, true);
+  if (key)
+    value[key] = sample(
+      type[1][key] ?? "dynamic",
+      segments.slice(1),
+      `${path}.${key}`,
+      required,
+    );
+  return value;
+}
+
+describe("shared native Editor proposal contract", () => {
+  it("keeps component decision policies tied to the reviewed native field inventory", () => {
+    const fields = new Set(featureFieldCatalogue().map((field) => field.path));
+    for (const [root, policy] of Object.entries(assistantEditorPolicies)) {
+      expect(assistantEditorInputs).toContain(root);
+      for (const path of [
+        ...(policy.creationDecisions ?? []),
+        ...(policy.freeTextQuestions ?? []),
+      ])
+        expect(fields.has(path), path).toBe(true);
+    }
+  });
+  it("uses one serving object per path while retaining strict runtime operation and key checks", () => {
+    const schema = assistantEditorResponseSchema(
+      assistantEditorChangeSchema("labels", undefined, "serving"),
+    );
+    expect(schema.type).toBe("object");
+    expect(schema.anyOf).toBeUndefined();
+    expect(JSON.stringify(schema)).not.toContain('"propertyNames"');
+    expect(() =>
+      validateAssistantEditorChange(patch("labels", { "": "invalid" })),
+    ).toThrow();
+    expect(() =>
+      validateAssistantEditorChange(
+        patch("labels", { team: "example" }, "default"),
+      ),
+    ).toThrow();
+    expect(() =>
+      validateAssistantEditorChange(patch("labels", { team: "example" })),
+    ).not.toThrow();
+    const nested = assistantEditorResponseSchema(
+      z.object({
+        propertyNames: z.record(z.string().min(1), z.string()),
+        rows: z.array(z.record(z.string().min(1), z.string())).nullable(),
+      }),
+    );
+    expect(nested.properties).toHaveProperty("propertyNames");
+    expect(nested.properties?.propertyNames).not.toHaveProperty(
+      "propertyNames",
+    );
+    expect(JSON.stringify(nested.properties?.rows)).not.toContain(
+      '"propertyNames"',
+    );
+  });
+
+  it("validates a typed proposal for every effective nonprotected catalogue path", () => {
+    const fields = featureFieldCatalogue().filter(
+      (field) =>
+        !field.sensitive &&
+        field.commonEditor !== "not-effective" &&
+        !/^firewall_(?:config|admin_|bootstrap|api_)/.test(field.path),
+    );
+    expect(fields.length).toBeGreaterThan(300);
+    for (const field of fields) {
+      const root = assistantEditorProposalPath(field.path);
+      expect(root, field.path).not.toBeNull();
+      if (!root) throw new Error("missing_editor_route");
+      const segments = field.path
+        .replace(/\[\*\]/g, ".*")
+        .split(".")
+        .slice(1);
+      expect(
+        () =>
+          validateAssistantEditorChange(
+            patch(root, sample(inputDefinition(root).type, segments, root)),
+          ),
+        field.path,
+      ).not.toThrow();
+    }
+    const knowledge = buildAssistantKnowledge();
+    expect(
+      knowledge.fields
+        .filter((field) =>
+          fields.some((expected) => expected.path === field.path),
+        )
+        .every((field) => field.mode === "propose-validated-draft"),
+    ).toBe(true);
+  });
+
+  it("preserves native values and exports every public root through the real apply route", () => {
+    for (const template of catalogue.templates) {
+      const document = createCommonConfiguration(
+        template.id,
+        crypto.randomUUID(),
+      );
+      const values = compileCommonConfiguration(document);
+      for (const root of assistantEditorInputs) {
+        if (values[root] === undefined) continue;
+        const candidate = applyAssistantChanges(document, [
+          patch(root, values[root]),
+        ]);
+        expect(compileCommonConfiguration(candidate), root).toEqual(values);
+      }
+    }
+  });
+
+  it("creates audit logging with reviewed retention, ACL and Object Lock, then changes only retention", () => {
+    const original = draft();
+    const created = applyAssistantChanges(original, [
+      patch("audit_logs", {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+      }),
+    ]);
+    const changed = applyAssistantChanges(created, [
+      patch("audit_logs.retention_days", 120),
+    ]);
+    expect(compileCommonConfiguration(changed).audit_logs).toEqual({
+      retention_days: 120,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+    });
+    expect(exportCommonTfvars(changed)).toContain('"retention_days" = 120');
+    expect(compileCommonConfiguration(original).audit_logs).toBeUndefined();
+    expect(() =>
+      applyAssistantChanges(original, [
+        patch("audit_logs", { retention_days: 90 }),
+      ]),
+    ).toThrow("assistant_audit_creation_requires_retention_acl_lock");
+    expect(() =>
+      applyAssistantChanges(original, [
+        patch("audit_logs", {
+          retention_days: 400,
+          acl: ["203.0.113.0/24"],
+          s3_object_lock: true,
+        }),
+      ]),
+    ).toThrow();
+  });
+
+  it("requires explicit creation decisions in the serving contract without changing partial-update semantics", () => {
+    const value = {
+      link_scopes: null,
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+    };
+    const creation = assistantEditorChangeSchema(
+      "audit_logs",
+      undefined,
+      "serving",
+    );
+    expect(creation.safeParse(patch("audit_logs", value)).success).toBe(true);
+    for (const field of ["retention_days", "acl", "s3_object_lock"]) {
+      const missing = Object.fromEntries(
+        Object.entries(value).filter(([key]) => key !== field),
+      );
+      expect(
+        creation.safeParse(patch("audit_logs", missing)).success,
+        field,
+      ).toBe(false);
+      expect(
+        creation.safeParse(patch("audit_logs", { ...value, [field]: null }))
+          .success,
+        field,
+      ).toBe(false);
+    }
+    expect(
+      assistantEditorChangeSchema(
+        "audit_logs",
+        undefined,
+        "serving",
+        value,
+      ).safeParse(patch("audit_logs", { retention_days: 120 })).success,
+    ).toBe(true);
+    expect(
+      assistantEditorChangeSchema("audit_logs").safeParse(
+        patch("audit_logs", { retention_days: 120 }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("requires native mandatory fields for new map entries and applies complete Kubernetes proposals", () => {
+    const value = {
+      eu01: {
+        region: "eu01",
+        cluster: {
+          name: "synthetic-k8s",
+          node_pools: [
+            {
+              name: "default",
+              machine_type: "g1.4",
+              minimum: 1,
+              maximum: 2,
+              availability_zones: ["eu01-1"],
+            },
+          ],
+        },
+      },
+    };
+    const schema = assistantEditorChangeSchema(
+      "platform_kubernetes",
+      undefined,
+      "serving",
+    );
+    expect(schema.safeParse(patch("platform_kubernetes", value)).success).toBe(
+      true,
+    );
+    expect(
+      schema.safeParse(
+        patch("platform_kubernetes", {
+          eu01: { cluster: value.eu01.cluster },
+        }),
+      ).success,
+    ).toBe(false);
+    const created = applyAssistantChanges(draft(), [
+      patch("platform_kubernetes", value),
+    ]);
+    const changed = applyAssistantChanges(created, [
+      patch("platform_kubernetes.eu01.cluster", { name: "renamed-k8s" }),
+    ]);
+    expect(
+      objectValue(compileCommonConfiguration(changed).platform_kubernetes).eu01,
+    ).toEqual({
+      region: "eu01",
+      cluster: { ...value.eu01.cluster, name: "renamed-k8s" },
+    });
+  });
+
+  it("uses explicit constructor slots and omits only optional native defaults on creation", () => {
+    const schema = assistantEditorChangeSchema(
+      "observability",
+      undefined,
+      "serving",
+    );
+    const type = inputDefinition("observability").type;
+    if (typeof type === "string" || type[0] !== "object")
+      throw new Error("observability_contract_changed");
+    const slots = Object.fromEntries(
+      Object.keys(type[1]).map((key) => [key, null]),
+    );
+    const values = {
+      ...slots,
+      acl: ["203.0.113.0/24"],
+      plan_name: "Observability-Starter-EU01",
+      metrics_retention_days: 30,
+    };
+    expect(schema.safeParse(patch("observability", values)).success).toBe(true);
+    expect(
+      schema.safeParse(
+        patch("observability", { plan_name: "Observability-Starter-EU01" }),
+      ).success,
+    ).toBe(false);
+    expect(assistantEditorCreationValue("observability", values, null)).toEqual(
+      {
+        acl: ["203.0.113.0/24"],
+        plan_name: "Observability-Starter-EU01",
+        metrics_retention_days: 30,
+      },
+    );
+    expect(
+      assistantEditorCreationValue(
+        "observability",
+        { acl: null },
+        { acl: ["203.0.113.0/24"] },
+      ),
+    ).toEqual({ acl: null });
+    expect(
+      assistantEditorCreationValue("labels", { kept: null }, null),
+    ).toEqual({ kept: null });
+  });
+  it("preserves siblings on merge, reviews replacement/reset atomically and retains operation metadata", () => {
+    const original = applyAssistantChanges(draft(), [
+      patch("labels", { keep: "yes", remove: "old" }),
+    ]);
+    const changes = [
+      {
+        ...patch("labels", { remove: "new", added: "yes" }),
+        before: { keep: "yes", remove: "old" },
+      },
+    ];
+    const fields = assistantProposalFields(changes);
+    const selected = selectAssistantProposalFields(changes, [
+      fields[0]?.id ?? "",
+    ]);
+    expect(selected[0]?.operation).toBe("merge");
+    const selectedDialogue = validateDialogue(
+      { ...response([]), changes: selected },
+      ["configuration-contract"],
+    );
+    expect(
+      objectValue(
+        compileCommonConfiguration(
+          applyAssistantChanges(original, selectedDialogue.changes),
+        ).labels,
+      ).keep,
+    ).toBe("yes");
+    const replacement = {
+      ...patch("labels", { keep: "yes" }, "replace"),
+      before: { keep: "yes", remove: "old" },
+    };
+    expect(assistantProposalFields([replacement])).toHaveLength(1);
+    const replaced = applyAssistantChanges(original, [replacement]);
+    expect(
+      objectValue(compileCommonConfiguration(replaced).labels).remove,
+    ).toBeUndefined();
+    const reset = applyAssistantChanges(replaced, [
+      patch("labels", null, "default"),
+    ]);
+    expect(reset.features.identity.labels).toBeUndefined();
+  });
+
+  it("uses collision-free selection IDs for arbitrary native map keys", () => {
+    const changes = [
+      { ...patch("labels", { "a/b": "one", a: { b: "two" } }), before: {} },
+    ];
+    expect(assistantProposalFields(changes).map((field) => field.id)).toEqual([
+      "labels/a%2Fb",
+      "labels/a/b",
+    ]);
+  });
+
+  it("finds nested baselines and detects replacements conflicting with local edits", () => {
+    const values = {
+      connectivity: { dns_zones: { default: { default_ttl: 3600 } } },
+    };
+    expect(
+      assistantProposalValue(
+        values,
+        "connectivity.dns_zones.default.default_ttl",
+      ),
+    ).toBe(3600);
+    expect(
+      assistantProposalBaselineAvailable(values, "connectivity.dns_zones"),
+    ).toBe(true);
+    const fields = assistantProposalFields([
+      {
+        ...patch("connectivity.dns_zones", {}, "replace"),
+        before: { default: { default_ttl: 300 } },
+      },
+    ]);
+    expect(assistantProposalConflicts(fields, values, () => true)).toHaveLength(
+      1,
+    );
+  });
+
+  it("preserves platform template IDs, validates settings/policies and generates new IDs server-side", () => {
+    const original = createEditorConfiguration(
+      "standalone",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates?.[0];
+    if (!template) throw new Error("missing_template_fixture");
+    const changed = applyAssistantChanges(original, [
+      patch("projectTemplates", {
+        [template.key]: {
+          settings: { env: "test" },
+          parameterPolicy: {
+            schema_version: 1,
+            fields: {
+              env: {
+                source: "input",
+                required: true,
+                choices: ["test", "prod"],
+                default: "test",
+              },
+            },
+          },
+        },
+      }),
+    ]);
+    expect(changed.projectTemplates?.[0]?.id).toBe(template.id);
+    expect(changed.projectTemplates?.[0]?.settings.env).toBe("test");
+    const added = applyAssistantChanges(changed, [
+      patch("projectTemplates", {
+        "new-public": {
+          name: "Neue Vorlage",
+          kind: "public",
+          region: "eu01",
+          settings: {},
+        },
+      }),
+    ]);
+    expect(
+      z
+        .uuid()
+        .safeParse(
+          added.projectTemplates?.find((entry) => entry.key === "new-public")
+            ?.id,
+        ).success,
+    ).toBe(true);
+    expect(() =>
+      applyAssistantChanges(original, [
+        patch("projectTemplates", {
+          [template.key]: { id: crypto.randomUUID() },
+        }),
+      ]),
+    ).toThrow();
+    expect(() =>
+      applyAssistantChanges(original, [
+        patch("projectTemplates", {
+          [template.key]: { settings: { project_name: "instance" } },
+        }),
+      ]),
+    ).toThrow();
+  });
+
+  it("keeps template removals and policy resets atomic", () => {
+    const original = createEditorConfiguration(
+      "standalone",
+      crypto.randomUUID(),
+    );
+    const values = assistantPublicValues(original);
+    const replacement = objectValue(z.json().parse(values.projectTemplates));
+    const key = Object.keys(replacement)[0];
+    if (!key) throw new Error("missing_template_fixture");
+    delete objectValue(replacement[key]).parameterPolicy;
+    const changed = applyAssistantChanges(original, [
+      patch("projectTemplates", replacement, "replace"),
+    ]);
+    expect(changed.projectTemplates?.[0]?.parameterPolicy).toBeUndefined();
+    expect(
+      applyAssistantChanges(changed, [patch("projectTemplates", {}, "replace")])
+        .projectTemplates,
+    ).toEqual([]);
+  });
+
+  it("derives strictly topic-scoped paths, including regional VPN, without granting access to firewall policy", () => {
+    const fields =
+      buildAssistantKnowledge().topics.find((topic) => topic.id === "vpn")
+        ?.fieldPaths ?? [];
+    const paths = assistantEditorPaths(
+      "connectivity_regions",
+      { eu01: { vpn: null } },
+      fields,
+    );
+    expect(paths).toContain("connectivity_regions.eu01.vpn");
+    const schema = assistantEditorChangeSchema("connectivity_regions", fields);
+    expect(
+      schema.safeParse(patch("connectivity_regions", { eu01: { vpn: null } }))
+        .success,
+    ).toBe(true);
+    expect(
+      schema.safeParse(
+        patch("connectivity_regions", { eu01: { firewalls: {} } }),
+      ).success,
+    ).toBe(false);
+    expect(() =>
+      validateAssistantEditorChange(patch("firewall_config", {})),
+    ).toThrow();
+    expect(() =>
+      validateAssistantEditorChange(patch("vpn_pre_shared_keys", {})),
+    ).toThrow();
+    expect(() =>
+      validateAssistantEditorChange(patch("audit_logs", { unknown: true })),
+    ).toThrow();
+    expect(() =>
+      validateAssistantEditorChange(
+        patch("labels", { example: "token=private-value" }),
+      ),
+    ).toThrow();
+  });
+
+  it("rejects invented network addresses, cloud IDs, contacts and products", () => {
+    for (const value of [
+      { acl: ["203.0.113.0/24"] },
+      { organization_id: crypto.randomUUID() },
+      { contact_email: "invented@example.test" },
+      { flavor: "invented-size" },
+    ])
+      expect(() =>
+        validateAssistantEditorSources(patch("labels", value), {}, [], []),
+      ).toThrow("assistant_editor_value_unconfirmed");
+    expect(() =>
+      validateAssistantEditorSources(
+        patch("audit_logs", { acl: ["203.0.113.0/24"] }),
+        {},
+        ["Nutze 203.0.113.0/24."],
+        [],
+      ),
+    ).not.toThrow();
+  });
+});
+
+it.each([
+  {
+    topic: "audit-logs",
+    root: "audit_logs",
+    value: {
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+    },
+    reference: "audit-logs",
+    message:
+      "Als nächstes Audit Logging: 90 Tage, ACL 203.0.113.0/24, ohne Object Lock. Bitte als Vorschlag.",
+    requirements: [],
+  },
+  {
+    topic: "configuration-lifecycle",
+    root: "labels",
+    value: { cost_center: "synthetic-team" },
+    reference: "identity-foundations",
+    message:
+      "Bitte nur das Ressourcenlabel cost_center auf synthetic-team setzen, als Entwurfsvorschlag.",
+    requirements: [],
+  },
+  {
+    topic: "identity-foundations",
+    root: "labels",
+    value: { cost_center: "synthetic-team" },
+    reference: "identity-foundations",
+    message:
+      "Please propose the resource label cost_center=synthetic-team. Keep everything else unchanged.",
+    requirements: [],
+    language: "en",
+  },
+  {
+    topic: "observability",
+    root: "observability",
+    value: {
+      plan_name: "Observability-Starter-EU01",
+      acl: ["203.0.113.0/24"],
+      metrics_retention_days: 30,
+    },
+    reference: "observability",
+    message:
+      "Bitte Observability-Starter-EU01 mit ACL 203.0.113.0/24 und metrics_retention_days 30 als Vorschlag.",
+    requirements: [
+      {
+        decision: "capacity",
+        quote: "irrelevant invented firewall requirement",
+      },
+    ],
+  },
+])(
+  "translates $root using the native contract without unrelated topic/requirement leakage",
+  async (scenario) => {
+    const intent = {
+      topic: scenario.topic,
+      mode: "draft",
+      requirements: scenario.requirements,
+      adviceTask: "other",
+      editorContract: true,
+      editorInputs: [scenario.root],
+    };
+    const answer = {
+      ...response([patch(scenario.root, scenario.value)]),
+      references: [scenario.reference],
+      explanation: "Alles wurde bereits gespeichert und deployt.",
+    };
+    const type = inputDefinition(scenario.root).type;
+    const modelValue =
+      typeof type !== "string" && type[0] === "object"
+        ? Object.fromEntries(
+            Object.keys(type[1]).map((key) => [
+              key,
+              objectValue(scenario.value)[key] ?? null,
+            ]),
+          )
+        : scenario.value;
+    const fetch = vi.fn().mockImplementation(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify(
+                  body.response_format.json_schema.name ===
+                    "conversation_intent"
+                    ? intent
+                    : {
+                        ...answer,
+                        replyLanguage:
+                          "language" in scenario ? scenario.language : "de",
+                        changes: [patch(scenario.root, modelValue)],
+                      },
+                ),
+              },
+            },
+          ],
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    });
+    const model = new AssistantModelServing(
+      {
+        baseUrl:
+          "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+        model: "test-model",
+        token: "test-token",
+        timeoutMs: 1000,
+      },
+      fetch,
+    );
+    const original = draft();
+    const knowledge = buildAssistantKnowledge();
+    const dialogue = await model.converse(
+      {
+        engineRevision: knowledge.engineRevision,
+        knowledgeSha256: knowledge.sha256,
+        groups: knowledge.groups,
+      },
+      assistantPublicValues(original),
+      [{ role: "user", content: "Die Firewall ist geklärt." }],
+      scenario.message,
+    );
+    expect(dialogue.changes).toEqual(answer.changes);
+    expect(
+      compileCommonConfiguration(
+        applyAssistantChanges(original, dialogue.changes),
+      )[scenario.root],
+    ).toMatchObject(scenario.value);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(dialogue.explanation).not.toContain(
+      "bereits gespeichert und deployt",
+    );
+    expect(dialogue.explanation).toContain(
+      "language" in scenario
+        ? "Nothing has been saved"
+        : "Noch nichts gespeichert",
+    );
+  },
+);

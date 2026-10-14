@@ -98,6 +98,7 @@ function model(
     capacityDeferred?: boolean;
     operator?: string;
     policy?: string;
+    adviceTask?: "other" | "capability-boundary" | "policy-request";
   } = {},
 ) {
   const request = vi.fn<typeof fetch>(async (_input, options) => {
@@ -164,6 +165,12 @@ function model(
                   ? {
                       topic,
                       mode,
+                      adviceTask: targets.adviceTask ?? "other",
+                      adviceTaskSource:
+                        targets.adviceTask === "capability-boundary" ||
+                        targets.adviceTask === "policy-request"
+                          ? "current"
+                          : "none",
                       networkScope: scope,
                       firewallAvailability: availability,
                       firewallAreaKeys: targets.keys ?? [],
@@ -192,6 +199,109 @@ const proposal: Dialogue = {
   references: ["firewall-infrastructure"],
 };
 
+it("answers native policy capability questions without another model answer or infrastructure questionnaire", async () => {
+  const f = fixture();
+  const { engine, request } = model(
+    proposal,
+    "other",
+    "advice",
+    "firewall-policy",
+    "unspecified",
+    { adviceTask: "capability-boundary" },
+  );
+  const result = await engine.converse(
+    f.selection,
+    f.values,
+    [{ role: "user", content: "Bitte eine zentrale HA-Firewall einrichten." }],
+    "Das ist kein Thema, welches wir behandeln können. Es gibt ein fertiges Firewall-Setup, aber noch keine Firewall-Regeln. Können diese gesetzt werden?",
+  );
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(result.changes).toEqual([]);
+  expect(result.questions).toEqual([]);
+  expect(result.explanation).toContain("nativ über firewall_config");
+  expect(result.explanation).toContain("nicht das komplexe Regel-/NAT-Objekt");
+  expect(result.explanation).toContain("noch keine Regeln konfiguriert");
+  expect(result.references).toContain("firewall-policy");
+});
+
+it.each([
+  [
+    "Definiere die Firewall-Regeln für Internet-Egress.",
+    "draft",
+    "firewall-policy",
+    "other",
+  ],
+  [
+    "Erstelle eine ausgehende NAT-Regel.",
+    "draft",
+    "firewall-policy",
+    "policy-request",
+  ],
+  [
+    "Lege einen Alias für die Plattformdienste an.",
+    "draft",
+    "firewall-policy",
+    "policy-request",
+  ],
+  [
+    "Füge eine Route über das LAN-Gateway hinzu.",
+    "draft",
+    "firewall-policy",
+    "policy-request",
+  ],
+  [
+    "Schlage eine WAN-Portweiterleitung vor.",
+    "draft",
+    "firewall-policy",
+    "policy-request",
+  ],
+  [
+    "Setze jetzt die besprochenen Regeln und NAT.",
+    "draft",
+    "firewall-infrastructure",
+    "policy-request",
+  ],
+  [
+    "Wie pflegen wir die Firewall-Regeln?",
+    "advice",
+    "firewall-policy",
+    "capability-boundary",
+  ],
+] as const)(
+  "discloses the post-MVP policy boundary for %s without proposals or a questionnaire",
+  async (message, mode, topic, adviceTask) => {
+    const f = fixture();
+    const before = structuredClone(f.values);
+    const text: string[] = [];
+    const { engine, request } = model(proposal, "other", mode, topic, "ha", {
+      adviceTask,
+    });
+    const result = await engine.converse(
+      f.selection,
+      f.values,
+      [
+        {
+          role: "user",
+          content: "Eine zentrale HA-Firewall für 100 Projekte einrichten.",
+        },
+      ],
+      message,
+      { regions: [] },
+      [],
+      { onText: (value) => text.push(value) },
+    );
+    expect(result.explanation).toContain("kann aktuell keine Firewall-Regeln");
+    expect(result.explanation).toContain("nicht Teil des MVP");
+    expect(result.explanation).toContain("GitHub-Issue #101");
+    expect(result.explanation).toContain("Firewall-Admin");
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toEqual([]);
+    expect(result.references).toContain("firewall-policy");
+    expect(text).toEqual([result.explanation]);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(f.values).toEqual(before);
+  },
+);
 it.each([false, true])(
   "merges reviewed single/map HA without changing saved network, DNS or identity (%s)",
   (map) => {
@@ -936,7 +1046,7 @@ it("keeps genuine SNA-only and firewall-advice requests free of infrastructure m
   ).rejects.toThrow();
 });
 
-it("marks central native and nested HA fields as proposals, without claiming regional chat support", () => {
+it("marks central and regional native HA fields as validated proposals", () => {
   const knowledge = buildAssistantKnowledge();
   for (const path of [
     "connectivity.firewall.ha.backup_zone",
@@ -950,7 +1060,7 @@ it("marks central native and nested HA fields as proposals, without claiming reg
       (entry) =>
         entry.path === "connectivity_regions[*].firewalls[*].ha.backup_zone",
     )?.proposalPath,
-  ).toBeNull();
+  ).toBe("connectivity_regions");
 });
 
 it("preserves the native legacy single-firewall form with a saved network_areas map", async () => {

@@ -56,3 +56,5 @@ src/backend_ci.tf
 /landing-zone-configurator-dev-lukas-credentials.json
 
 /landing-zone-configurator/app/assistant-live-results.jsonl
+
+/landing-zone-configurator/client

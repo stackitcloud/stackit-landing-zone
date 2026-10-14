@@ -1,4 +1,28 @@
 export const englishMessages: Record<string, string> = {
+  "Zurück auf den nativen Standard.": "Restore the native default.",
+  "Vollständiger Ersatz; ausgelassene Einträge werden entfernt.":
+    "Complete replacement; omitted entries are removed.",
+  "Die Modellantwort hat Angaben vorausgesetzt, die durch deine Aussagen nicht bestätigt sind. Bitte nenne die gewünschte Änderung konkret oder nutze den Editor.":
+    "The model assumed details not confirmed by your statements. Specify the change explicitly or use the editor.",
+  "Der Modellvorschlag passt nicht zu den unterstützten Feldern oder ihren Abhängigkeiten. Bitte ändere die betroffenen Felder im Editor oder frage nach den unterstützten Einstellungen.":
+    "The proposed change does not match the supported fields or their dependencies. Edit the affected fields in the editor or ask which settings are supported.",
+  "Das Modell hat keine gültige strukturierte Antwort geliefert. Du kannst die Anfrage erneut senden oder im Editor weiterarbeiten.":
+    "The model did not return a valid structured response. Send the request again or continue in the editor.",
+  "Die Modellantwort wurde wegen ihrer Länge abgeschnitten. Bitte frage nach einer einzelnen Komponente oder weniger Änderungen gleichzeitig.":
+    "The model response was cut off because of its length. Ask about one component or fewer changes at a time.",
+  "Die Verbindung zur Modellantwort wurde unterbrochen. Bitte sende die Anfrage erneut.":
+    "The connection to the model response was interrupted. Send the request again.",
+  "Der Chatdienst hat nicht rechtzeitig geantwortet. Bitte sende die Anfrage erneut.":
+    "The chat service did not respond in time. Send the request again.",
+  "Der Chatdienst ist ausgelastet. Bitte versuche es später erneut.":
+    "The chat service is busy. Try again later.",
+  "Der Chatdienst kann sich nicht beim Modelldienst anmelden. Die Betreiber müssen den Dienstzugang prüfen; du kannst im Editor weiterarbeiten.":
+    "The chat service cannot authenticate with the model service. Operators must check the service credentials; you can continue in the editor.",
+  "Der Chatdienst ist derzeit nicht verfügbar. Bitte versuche es später erneut oder arbeite im Editor weiter.":
+    "The chat service is currently unavailable. Try again later or continue in the editor.",
+  "Es wurde nichts geändert. Deine Nachricht und Antwortauswahl bleiben erhalten.":
+    "Nothing was changed. Your message and answer selections are preserved.",
+  "Diagnosekennung: {{requestId}}": "Diagnostic reference: {{requestId}}",
   "Antwort senden": "Send answer",
   "Die Antwort ist zu lang. Bitte kürze deine Nachricht oder beantworte weniger Fragen gemeinsam.":
     "The answer is too long. Shorten your message or answer fewer questions together.",

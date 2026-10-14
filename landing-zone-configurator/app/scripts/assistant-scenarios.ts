@@ -7,6 +7,7 @@ import {
   compileCommonConfiguration,
   createCommonConfiguration,
   effectiveInput,
+  type JsonValue,
   objectValue,
   setCommonInput,
 } from "@lzc/domain";
@@ -105,6 +106,7 @@ export type AssistantScenario = {
     | "sna";
   acceptableReferences?: readonly string[];
   requiredOverviewFields?: readonly string[];
+  editorExpected?: { path: string; value: JsonValue };
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
 
@@ -142,6 +144,154 @@ const firewallDeferredCapacity =
   "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen.";
 
 export const assistantScenarios: readonly AssistantScenario[] = [
+  {
+    id: "editor-audit-complete",
+    topic: "audit-logs",
+    fixture: "baseline",
+    message:
+      "Bitte zentrale Audit-Protokollierung als Entwurf konfigurieren: 90 Tage Aufbewahrung, ACL ausschließlich 203.0.113.0/24, Object Lock ausdrücklich deaktiviert. Organisationsweiter Telemetry Link; kein Deployment.",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+      },
+    },
+  },
+  {
+    id: "editor-audit-followup",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: [
+      {
+        role: "user",
+        content:
+          "Bitte zentrale Audit-Protokollierung mittels Telemetry Router als Konfigurationsvorschlag einrichten.",
+      },
+      {
+        role: "assistant",
+        content:
+          "Welche Aufbewahrungsdauer, welche ACL-Zugriffsnetze und soll Object Lock aktiviert werden?",
+      },
+    ],
+    message: "90 Tage, nur 203.0.113.0/24, Object Lock nein.",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+      },
+    },
+  },
+  {
+    id: "editor-observability",
+    topic: "observability",
+    fixture: "baseline",
+    message:
+      "Bitte zentrale Observability als Entwurf einrichten: plan_name Observability-Starter-EU01, ACL 203.0.113.0/24, metrics_retention_days 30.",
+    editorExpected: { path: "observability.metrics_retention_days", value: 30 },
+  },
+  {
+    id: "editor-devops",
+    topic: "devops-git",
+    fixture: "baseline",
+    message:
+      "Bitte den zentralen DevOps-Git-Dienst als Entwurf konfigurieren, allowed_network_ranges ausschließlich [203.0.113.0/24]. Nutze den nativen Git-Flavor-Standard, keine Verfügbarkeitszusage und kein Deployment.",
+    editorExpected: {
+      path: "devops.allowed_network_ranges",
+      value: ["203.0.113.0/24"],
+    },
+  },
+  {
+    id: "editor-federation",
+    topic: "federated-identities",
+    fixture: "baseline",
+    message:
+      "Bitte eine CI/CD-Vertrauensregel als Entwurf hinzufügen: name synthetic-federation, issuer https://issuer.example.test, assertion item aud, operator equals, value synthetic-workload. Keine Benutzer-SSO-Konfiguration und keine Ausführung.",
+    editorExpected: {
+      path: "federated_identity_providers",
+      value: [
+        {
+          name: "synthetic-federation",
+          issuer: "https://issuer.example.test",
+          assertions: [
+            { item: "aud", operator: "equals", value: "synthetic-workload" },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "editor-platform-kubernetes",
+    topic: "platform-kubernetes",
+    fixture: "baseline",
+    message:
+      "Bitte platform_kubernetes als Entwurf hinzufügen, Schlüssel eu01, Region eu01, Clustername synthetic-k8s. Node-Pool default: machine_type g1.4, minimum 1, maximum 2, availability_zones [eu01-1]. Keine SNA-Anbindung, keine DNS-Integration, kein Deployment.",
+    editorExpected: {
+      path: "platform_kubernetes.eu01.cluster.name",
+      value: "synthetic-k8s",
+    },
+  },
+  {
+    id: "editor-labels",
+    topic: "identity-foundations",
+    fixture: "baseline",
+    message:
+      "Bitte nur das Ressourcenlabel cost_center auf synthetic-team setzen. Alle Grundlagenwerte und vorhandenen Labels unverändert erhalten. Als Entwurfsvorschlag, nichts deployen.",
+    editorExpected: { path: "labels.cost_center", value: "synthetic-team" },
+  },
+  {
+    id: "firewall-to-audit-draft",
+    topic: "audit-logs",
+    fixture: "firewall-metro",
+    history: [
+      ...firewallDialogueHistory,
+      { role: "user", content: firewallDeferredCapacity },
+      {
+        role: "assistant",
+        content:
+          "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar?",
+      },
+    ],
+    message:
+      "Nun brauchen wir als nächstes eine zentrale Audit Protokollierung, richte mir das bitte ein.",
+  },
+  {
+    id: "firewall-policy-definition",
+    topic: "firewall-policy",
+    fixture: "firewall-existing",
+    message:
+      "Erstelle jetzt eine ausgehende NAT-Regel für den Internetzugriff und eine Firewall-Filterregel, die eingehenden Verkehr sperrt.",
+  },
+  {
+    id: "firewall-metro-dialogue-policy-definition",
+    topic: "firewall-infrastructure",
+    fixture: "firewall-metro",
+    history: [
+      ...firewallDialogueHistory,
+      { role: "user", content: firewallDeferredCapacity },
+    ],
+    message:
+      "Definiere nun aus den besprochenen Anforderungen die Firewall-Regeln und das ausgehende NAT. Ich möchte dafür einen übernehmbaren Vorschlag, keine weitere Infrastrukturfrage.",
+  },
+  {
+    id: "firewall-metro-dialogue-policy-capability",
+    topic: "firewall-infrastructure",
+    fixture: "firewall-metro",
+    history: [
+      ...firewallDialogueHistory,
+      { role: "user", content: firewallDeferredCapacity },
+      {
+        role: "assistant",
+        content:
+          "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar?",
+      },
+    ],
+    message:
+      "Das ist kein Thema, welches wir in irgendeiner Form behandeln können. Es gibt ein fertiges Firewall-Setup. Ich sehe aber noch keine Firewall-Regeln. Können diese nicht gesetzt werden?",
+  },
   {
     id: "firewall-metro-dialogue-unknown-capacity",
     topic: "firewall-infrastructure",
@@ -540,6 +690,66 @@ export function validateAssistantScenario(
   )
     failures.push("missing_topic_reference");
   const fixture = assistantScenarioFixture(scenario);
+  if (scenario.editorExpected) {
+    if (
+      !dialogue.changes.length ||
+      dialogue.changes.some((change) => !change.operation)
+    )
+      failures.push("missing_editor_proposal");
+    try {
+      const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
+      const value = scenario.editorExpected.path
+        .split(".")
+        .reduce<JsonValue | undefined>(
+          (current, key) => objectValue(current)[key],
+          compileCommonConfiguration(candidate),
+        );
+      if (!isDeepStrictEqual(value, scenario.editorExpected.value))
+        failures.push("editor_expected_value_not_applied");
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      failures.push("editor_proposal_not_applicable");
+    }
+    return { dialogue, failures };
+  }
+  if (scenario.id === "firewall-to-audit-draft") {
+    if (
+      dialogue.changes.length ||
+      dialogue.questions.length < 1 ||
+      dialogue.questions.length > 3 ||
+      !dialogue.references.includes("audit-logs") ||
+      /noch keinen übernehmbaren|nicht unterstützt/.test(
+        dialogue.explanation,
+      ) ||
+      /SNA default:|maximale Unterbrechung|Bestätigte Anforderungen/.test(
+        dialogue.explanation,
+      )
+    )
+      failures.push("explicit_audit_topic_switch_failed");
+    return { dialogue, failures };
+  }
+  if (
+    [
+      "firewall-metro-dialogue-policy-capability",
+      "firewall-metro-dialogue-policy-definition",
+      "firewall-policy-definition",
+    ].includes(scenario.id)
+  ) {
+    if (
+      dialogue.changes.length ||
+      dialogue.questions.length ||
+      !dialogue.references.includes("firewall-policy") ||
+      !dialogue.explanation.includes("nativ über firewall_config") ||
+      !dialogue.explanation.includes("nicht das komplexe Regel-/NAT-Objekt") ||
+      !dialogue.explanation.includes("noch keine Regeln konfiguriert") ||
+      !dialogue.explanation.includes("kann aktuell keine Firewall-Regeln") ||
+      !dialogue.explanation.includes("nicht Teil des MVP") ||
+      !dialogue.explanation.includes("GitHub-Issue #101") ||
+      !dialogue.explanation.includes("Firewall-Admin")
+    )
+      failures.push("firewall_policy_capability_boundary_unclear");
+    return { dialogue, failures };
+  }
   if (scenario.fixture.startsWith("firewall")) {
     const before = compileCommonConfiguration(fixture.draft);
     const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);

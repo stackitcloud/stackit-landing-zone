@@ -31,10 +31,17 @@ export async function readAssistantResponse<Result>(
       completed = true;
     } else if (event.type === "error" && typeof event.error === "string") {
       await checked(
-        new Response(JSON.stringify({ error: event.error }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" },
-        }),
+        new Response(
+          JSON.stringify({
+            error: event.error,
+            reason: event.reason,
+            requestId: event.requestId,
+          }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
       );
       throw new Error("Antwortstream fehlgeschlagen.");
     } else throw new Error("Ungueltiger Antwortstream.");

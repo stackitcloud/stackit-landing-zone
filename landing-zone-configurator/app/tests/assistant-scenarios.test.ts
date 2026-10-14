@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { featureFieldCatalogue } from "@lzc/domain";
+import { featureFieldCatalogue, type JsonValue } from "@lzc/domain";
 import { expect, it } from "vitest";
 import {
   assistantKnowledgeContext,
@@ -109,12 +109,12 @@ it("includes dependency and protected field contracts without exposing their val
   expect(
     fields.get("connectivity.network_areas[*].ranges[*]")?.proposalPath,
   ).toBe("connectivity.network_areas");
-  expect(
-    fields.get("connectivity.dns_zones[*].region")?.proposalPath,
-  ).toBeNull();
+  expect(fields.get("connectivity.dns_zones[*].region")?.proposalPath).toBe(
+    "connectivity",
+  );
   expect(
     fields.get("connectivity_regions[*].dns_zones[*].name")?.proposalPath,
-  ).toBeNull();
+  ).toBe("connectivity_regions");
   expect(fields.get("rm_folders[*].description")?.mode).toBe(
     "explain-rejection",
   );
@@ -127,7 +127,39 @@ it.each(assistantScenarios)(
     expect(JSON.stringify(fixture)).not.toMatch(
       /af026540|lukas|preshared_key/i,
     );
-    if (scenario.fixture === "baseline") {
+    if (scenario.editorExpected) {
+      const root = scenario.editorExpected.path.split(".")[0] ?? "";
+      const values: Record<string, JsonValue> = {
+        audit_logs: {
+          retention_days: 90,
+          acl: ["203.0.113.0/24"],
+          s3_object_lock: false,
+        },
+        observability: { metrics_retention_days: 30 },
+        devops: { allowed_network_ranges: ["203.0.113.0/24"] },
+        federated_identity_providers: [
+          {
+            name: "synthetic-federation",
+            issuer: "https://issuer.example.test",
+            assertions: [
+              { item: "aud", operator: "equals", value: "synthetic-workload" },
+            ],
+          },
+        ],
+        platform_kubernetes: {
+          eu01: { region: "eu01", cluster: { name: "synthetic-k8s" } },
+        },
+        labels: { cost_center: "synthetic-team" },
+      };
+      expect(
+        validateAssistantScenario(scenario, {
+          explanation: "Reviewable local draft only.",
+          questions: [],
+          changes: [{ path: root, value: values[root], operation: "merge" }],
+          references: [scenario.topic],
+        }).failures,
+      ).toEqual([]);
+    } else if (scenario.fixture === "baseline") {
       expect(
         validateAssistantScenario(scenario, {
           explanation: `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung.`,

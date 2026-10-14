@@ -175,7 +175,11 @@ test("template advice is available before any config and explicitly opens a reco
       rejectNext = false;
       return route.fulfill({
         status: 503,
-        json: { error: "assistant_inference_failed" },
+        json: {
+          error: "assistant_inference_failed",
+          reason: "response_truncated",
+          requestId: "req-template-length",
+        },
       });
     }
     rounds++;
@@ -221,8 +225,9 @@ test("template advice is available before any config and explicitly opens a reco
     .fill("Zwei Teams brauchen gemeinsame Vernetzung");
   await panel.getByRole("button", { name: "Template-Anfrage senden" }).click();
   await expect(panel.getByRole("alert")).toContainText(
-    "Die Modellantwort konnte nicht sicher verarbeitet werden.",
+    "Die Modellantwort wurde wegen ihrer Länge abgeschnitten.",
   );
+  await expect(panel.getByRole("alert")).toContainText("req-template-length");
   await expect(
     panel.getByRole("textbox", { name: "Welche Umgebung brauchst du?" }),
   ).toHaveValue("Zwei Teams brauchen gemeinsame Vernetzung");
@@ -407,7 +412,11 @@ test("configuration chat sends answers directly and requires explicit proposal a
         if (replyRequests === 1)
           return route.fulfill({
             status: 503,
-            json: { error: "assistant_inference_failed" },
+            json: {
+              error: "assistant_inference_failed",
+              reason: "requirements_unconfirmed",
+              requestId: "req-unconfirmed-answer",
+            },
           });
       }
       requests++;
@@ -564,9 +573,8 @@ test("configuration chat sends answers directly and requires explicit proposal a
     .getByRole("textbox", { name: "Deine Nachricht" })
     .fill("Ergänzung bleibt erhalten.");
   await chat.getByRole("button", { name: "Antwort senden" }).click();
-  await expect(chat.getByRole("alert")).toContainText(
-    "Die Modellantwort konnte nicht sicher verarbeitet werden.",
-  );
+  await expect(chat.getByRole("alert")).toContainText("nicht bestätigt sind");
+  await expect(chat.getByRole("alert")).toContainText("req-unconfirmed-answer");
   await expect(
     chat.getByRole("textbox", { name: "Deine Nachricht" }),
   ).toHaveValue("Ergänzung bleibt erhalten.");

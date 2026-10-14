@@ -15,6 +15,7 @@ import {
 } from "@lzc/domain";
 import { Check, MessageSquare, Send, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { assistantFailureMessage } from "../assistant-errors";
 import { readAssistantResponse } from "../assistant-stream";
 import { t } from "../i18n";
 import type { Session } from "./Account";
@@ -40,6 +41,7 @@ type Conversation = {
       path: string;
       before: unknown;
       value: unknown;
+      operation?: "merge" | "replace" | "default" | undefined;
       baselineAvailable?: boolean;
     }[];
   } | null;
@@ -101,7 +103,8 @@ async function checked(response: Response) {
         confirmation.data.configurationRevision,
       );
     throw new Error(
-      errors[body.error] ??
+      assistantFailureMessage(body) ??
+        errors[body.error] ??
         (response.status === 404
           ? "Chat ist in dieser Umgebung noch nicht aktiviert."
           : "Die Anfrage konnte nicht abgeschlossen werden. Konfiguration und Entwurf bleiben unverändert."),
@@ -499,6 +502,18 @@ export function AssistantChat({
                             Vorschlag
                           </span>
                           <span>{proposalValue(field.value)}</span>
+                          {field.operation === "default" && (
+                            <small>
+                              {t("Zurück auf den nativen Standard.")}
+                            </small>
+                          )}
+                          {field.operation === "replace" && (
+                            <small>
+                              {t(
+                                "Vollständiger Ersatz; ausgelassene Einträge werden entfernt.",
+                              )}
+                            </small>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -1,8 +1,10 @@
 // Copies real reviewed Accelerator sources, never a reimplementation of resources.
-// Hashes bind qualification to the engine pin even on a shallow CI checkout.
+// Hashes bind qualification to the immutable source packaged in the runner.
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import evidence from "../integration/fixtures/governance/source.json" with {
   type: "json",
 };
@@ -14,15 +16,17 @@ if (!target?.startsWith("/"))
 if (evidence.acceleratorRevision !== platformUpgradeAcceleratorCommit)
   throw new Error("Requalify governance for the updated engine pin");
 for (const [path, expected] of Object.entries(evidence.files)) {
-  const source = new URL(`../../../${path}`, import.meta.url);
-  if (
-    createHash("sha256").update(readFileSync(source)).digest("hex") !== expected
-  )
+  const source = execFileSync(
+    "git",
+    ["show", `${evidence.acceleratorRevision}:${path}`],
+    { cwd: fileURLToPath(new URL("../../../", import.meta.url)) },
+  );
+  if (createHash("sha256").update(source).digest("hex") !== expected)
     throw new Error(`Requalify changed Accelerator source: ${path}`);
   if (path.startsWith("src/modules/governance/"))
-    copyFileSync(
-      source,
+    writeFileSync(
       resolve(target, path.slice("src/modules/governance/".length)),
+      source,
     );
 }
 mkdirSync(resolve(target, "tests"), { recursive: true });

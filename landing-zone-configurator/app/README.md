@@ -86,6 +86,44 @@ benannte Betreiber und bestaetigte Verkehrswege werden nicht erneut abgefragt.
 Regelanforderungen werden zusammengefasst, nicht als konfigurierte Regeln
 ausgegeben. Bestaetigungen verweisen auf tatsaechliche Nutzeraussagen; interne
 Steuertexte werden nicht als Rueckfragen angezeigt.
+Der native Accelerator verwaltet Regeln, Aliase, Routen und NAT ueber
+`firewall_config`; der aktuelle Chat kann diese Policy weder definieren noch
+als Vorschlag uebernehmen. Gefuehrte Editor-Policy-Bearbeitung und
+Assistant-Regel-/NAT-Vorschlaege sind gemaess Benutzerentscheidung Post-MVP
+([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
+Im MVP pflegt der Firewall-Admin die Policy manuell in OPNsense.
+Der gemeinsame Editor hat unter Betrieb / Firewall-Regeln bereits generische
+native Felder, keine qualifizierte Policy-Verwaltung; sie bleiben erhalten.
+Faehigkeits- und Definitionsanfragen erhalten die Grenze ausdruecklich,
+ohne einen Regelvorschlag versprechende Rueckfragen. Infrastruktur/HA allein
+garantiert weder Isolation noch Internetzugriff oder NAT.
+Explizite Themenwechsel haben Vorrang vor alten Netzwerk-/Firewall-Merkmalen.
+"Als naechstes Audit-Protokollierung einrichten" ist ein aktueller Auftrag,
+keine Vertagung. Historische Netzwerkziele werden im anderen Thema nicht als
+aktive Anforderungen weitergereicht; Belegpruefungen bleiben erhalten.
+Audit Logging hat einen nativen Telemetry-Link/Router-/Logs-/Archiv-Vertrag
+und generische Editorfelder unter Plattform. Der Chat verwendet jetzt denselben
+nativen Eingabevertrag fuer uebernehmbare Audit-, Observability-, Federation-,
+VPN-, DevOps-, Kubernetes-, Projekt-/Vorlagen- und Namespace-Vorschlaege.
+Geschuetzte Bindings, Veroeffentlichung, Cloud-Ausfuehrung und Firewall-Policy
+bleiben separate Workflows. Neue Audit-Konfigurationen benoetigen Retention,
+ACL und die ausdrueckliche Object-Lock-Auswahl zusammen; mit Object Lock gilt
+der Bereich 1-365 Tage. Es wird keine Einrichtung oder Ereigniszustellung behauptet.
+
+Editor-Vorschlaege nutzen `merge` fuer partielle Objekt-/Map-Aenderungen,
+`replace` fuer einen atomar geprueften vollstaendigen Ersatz und `default`
+zum Entfernen eines optionalen Overrides. Listen bleiben atomar.
+Ausgelassene Merge-Felder und bestehende Ressourcenkennungen bleiben erhalten.
+Plattform-Entwuerfe bearbeiten Projektvorlagen nach stabilen Schluesseln;
+Vorlagenkennungen entstehen serverseitig, nicht im Modell. Neue/entfernte
+Vorlagen, Einstellungen und Parameterregeln bleiben lokale Entwurfsaenderungen.
+Feldabdeckung und echte Compiler-/Export-/Identitaetspruefungen liegen in
+[assistant-editor.test.ts](tests/assistant-editor.test.ts).
+Abgelehnte Modellantworten liefern eine sichere Fehlerkategorie und
+Diagnosekennung, keine Rohantworten oder Zugangsdaten. Konfigurations-Chat und
+Template-Beratung zeigen lokalisierte Ursachen und naechste Schritte; Nachricht
+und Antwortauswahl bleiben erhalten. HTTP und Antwortstreams nutzen denselben
+Fehlervertrag. Es gibt keine automatische Wiederholung oder Teiluebernahme.
 Chat und Feldannahme funktionieren auch mit ungespeicherten Editoraenderungen.
 Der Chat erhaelt nur die freigegebenen Werte des aktuellen lokalen Entwurfs.
 Rueckfragen im Konfigurations-Chat und in der Template-Beratung werden mit
@@ -122,7 +160,62 @@ LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -
 # Nur ein Thema oder eine Regression
 LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials --topic dns-zones
 LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials --case foundations-restoration
+# Zusammenhaengender Dialog mit GPT-OSS 120B fuer beide Modellrollen
+LZC_MODEL_SERVING_MODEL=openai/gpt-oss-120b \
+  LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
+  npm run test:assistant:journey -- --local-credentials
 ```
+
+Der Journey-Test durchlaeuft zwoelf Schritte von Grundlagen und Rollen ueber
+SNA/Firewall, den Policy-MVP-Hinweis und Audit-Rueckfragen bis Observability,
+DevOps, Kubernetes und Labels. Jeder Schritt nutzt denselben fortgeschriebenen
+Entwurf und die tatsaechliche Gespraechshistorie. Fachlich passende Vorschlaege
+werden im Speicher uebernommen, per JSON-Roundtrip geprueft und abschliessend als
+tfvars exportiert. Fehlerhafte Vorschlaege werden nicht uebernommen; abgelehnte
+Modell-/Anwendungsergebnisse werden wie im API-Service nicht als erfolgreiche
+Gespraechsantwort gespeichert. Modellnamen, Wissens-/Journey-Hashes,
+Einzelergebnisse und Antwortzeiten werden ausgegeben. Dies ersetzt keine
+Browser-, PostgreSQL- oder Cloud-Ausfuehrungspruefung. Beide Live-Runner sperren
+aktivierte Ausfuehrungsflags; sie aendern weder die laufende Modellauswahl noch
+Kundenkonfigurationen und verwenden keine automatischen Wiederholungen.
+
+Beide Runner lassen zwischen tatsaechlichen Serving-Requests mindestens 2500 ms
+Abstand, auch zwischen Intent und Antwort desselben Schritts. Diese Begrenzung
+gilt nur fuer die Tests, nicht fuer den produktiven Assistant. Ausgegebene
+Antwortzeiten enthalten die Wartezeit und sind deshalb nicht direkt mit
+Messungen ohne diese Begrenzung vergleichbar. Quotenfehler bleiben sichtbare Fehler;
+sie werden nicht durch automatische Wiederholungen verdeckt.
+
+#### Weitere Assistant-Komponenten ergaenzen
+
+1. Zuerst den nativen Input-Typ und den manuellen Editor-/Compiler-Pfad pruefen.
+   Der Assistant leitet Pfade, Werte und Pflichtfelder aus demselben Inventar ab;
+   keine zweite, handgeschriebene Komponentenstruktur oder freien HCL-Patches.
+2. Einen geprueften Wissenstopic mit nativen Inputs, Feldpfaden, Quellen und
+   Abhaengigkeiten hinterlegen. Intent und Rueckfragen werden darauf begrenzt.
+3. Nur fachliche Anforderungen ueber den nativen Typ hinaus in
+   `assistantEditorPolicies` ergaenzen, beispielsweise ausdrueckliche
+   Audit-Erstellungsentscheidungen und Freitext statt erfundener ACL-Auswahlwerte.
+   Policy-Feldpfade muessen im nativen Inventar existieren.
+4. Erstellung und Aktualisierung getrennt pruefen: neue Objekte verwenden
+   typisierte Konstruktor-Slots fuer einfache Skalare und Listen; optionale
+   Null-Slots bedeuten native Defaults und werden nur bei Erstellung ohne
+   vorherigen Wert ausgelassen. Komplexe optionale Collections bleiben optional;
+   etwa sind leere Audit-Link-Scopes kein Organisationsdefault.
+   Bestehende Objekte werden partiell geaendert, neue Map-Eintraege brauchen native
+   Pflichtfelder. Ersetzen und Default-Reset bleiben explizite, atomare Operationen.
+5. Tests fuer reale Uebernahme, Geschwistererhalt, Identitaeten, Quellenbindung,
+   fehlende Entscheidungen, Themenwechsel und DE/EN hinzufuegen. Auch eine vom
+   Serving akzeptierte Antwort wird gegen den angebotenen Schema-Vertrag und
+   anschliessend gegen die unveraenderte native Laufzeitvalidierung geprueft.
+6. Nach Wissensgenerierung erst gezielte Offline-/Modellfaelle, dann den seriellen
+   Journey- und vollstaendigen Szenarienlauf qualifizieren. Hashes und verbleibende
+   Fehler dokumentieren; kein Modell-/API-Rollout allein aufgrund gruener Mocks.
+
+Vorschlagstexte mit Aenderungen werden serverseitig als lokale Entwurfsvorschlaege
+formuliert, nicht als vom Modell behauptete Speicherung oder Berechtigungsvergabe.
+Firewall-Policy, Credentials, Organisationsbindung, Publikation und Ausfuehrung
+bleiben getrennte, geschuetzte Workflows.
 
 Der Live-Test verwendet die echte Assistant-Orchestrierung, Intentklassifikation,
 Wissensauswahl, Antwortvalidierung und den lokalen Compiler, aber ausschliesslich

@@ -1,4 +1,8 @@
 import { PassThrough } from "node:stream";
+import {
+  type AssistantFailureReason,
+  assistantInferenceFailureSchema,
+} from "@lzc/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
@@ -12,6 +16,51 @@ import {
   type AssistantStream,
 } from "./model-serving.js";
 import { type AssistantConversations, AssistantError } from "./service.js";
+
+export function publicAssistantFailureReason(
+  reason: string,
+): AssistantFailureReason {
+  if (reason === "intent_evidence") return "requirements_unconfirmed";
+  if (reason === "invalid_scope") return "proposal_invalid";
+  if (["completion_truncated", "response_too_large"].includes(reason))
+    return "response_truncated";
+  if (["stream_incomplete", "connection_interrupted"].includes(reason))
+    return "response_interrupted";
+  if (reason === "service_timeout") return "service_timeout";
+  if (reason === "upstream_status_429") return "service_busy";
+  if (["upstream_status_401", "upstream_status_403"].includes(reason))
+    return "service_authentication";
+  if (/^upstream_status_5\d\d$/.test(reason) || reason === "connection_failed")
+    return "service_unavailable";
+  return "response_invalid";
+}
+
+function inferenceFailure(
+  error: AssistantInferenceError,
+  request: FastifyRequest,
+) {
+  request.log.warn(
+    { event: "assistant_inference_failed", reason: error.reason },
+    "Assistant inference rejected",
+  );
+  return assistantInferenceFailureSchema.parse({
+    error: "assistant_inference_failed",
+    reason: publicAssistantFailureReason(error.reason),
+    requestId: request.id,
+  });
+}
+
+function unavailableFailure(request: FastifyRequest) {
+  request.log.error(
+    { event: "assistant_unavailable" },
+    "Assistant request failed",
+  );
+  return assistantInferenceFailureSchema.parse({
+    error: "assistant_unavailable",
+    reason: "service_unavailable",
+    requestId: request.id,
+  });
+}
 
 function sendStream(
   request: FastifyRequest,
@@ -40,14 +89,15 @@ function sendStream(
     .catch((error) => {
       let code = "assistant_unavailable";
       if (error instanceof AssistantInferenceError) {
-        request.log.warn(
-          { event: "assistant_inference_failed", reason: error.reason },
-          "Assistant inference rejected",
-        );
-        code = "assistant_inference_failed";
+        write({ type: "error", ...inferenceFailure(error, request) });
+        return;
       } else if (error instanceof AssistantError) code = error.code;
       else if (error instanceof z.ZodError) code = "assistant_invalid_request";
       else if (error?.code === "42501") code = "configuration_access_denied";
+      else {
+        write({ type: "error", ...unavailableFailure(request) });
+        return;
+      }
       write({ type: "error", error: code });
     })
     .finally(() => {
@@ -76,11 +126,7 @@ export function registerAssistant(
   app.register(async (routes) => {
     routes.setErrorHandler((error, request, reply) => {
       if (error instanceof AssistantInferenceError) {
-        request.log.warn(
-          { event: "assistant_inference_failed", reason: error.reason },
-          "Assistant inference rejected",
-        );
-        return reply.code(503).send({ error: "assistant_inference_failed" });
+        return reply.code(503).send(inferenceFailure(error, request));
       }
       if (error instanceof AssistantError)
         return reply
@@ -90,7 +136,7 @@ export function registerAssistant(
         return reply.code(400).send({ error: "assistant_invalid_request" });
       if ((error as { code?: string }).code === "42501")
         return reply.code(403).send({ error: "configuration_access_denied" });
-      return reply.code(503).send({ error: "assistant_unavailable" });
+      return reply.code(503).send(unavailableFailure(request));
     });
     routes.addHook("preHandler", async (request, reply) => {
       const session = await authenticatedSession(request, auth);

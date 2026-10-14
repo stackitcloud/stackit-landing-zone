@@ -378,6 +378,14 @@ Pro Deployment: Aus, nur erkennen, nach Freigabe korrigieren, später eng begren
 - Wissen: aktuelle offizielle STACKIT-Informationen kontrolliert einlesen, Änderungen automatisch erkennen und vor Nutzung geprüft freigeben. Modul-, Provider- und Configurator-Wissen bleibt an die jeweilige Konfigurationsversion gebunden. Keine automatischen Upgrades und kein beliebiger Webzugriff durch das Modell.
 - Modell: `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` als bevorzugter Startwert; Modell, Endpoint und technische Limits bleiben betreiberseitig konfigurierbar. Der vorhandene Terraform-provisionierte Dev-Token wird ausschließlich backendseitig verwendet.
 - Eingaben: Text und Konfigurationen; keine Bilder im MVP.
+- Scope-Entscheidung 2026-10-13: Geführte Firewall-Policy-Bearbeitung und
+  Assistant-Vorschläge für Regeln/NAT/Aliase/Routen sind Post-MVP
+  ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
+  Der Assistant benennt diese Grenze sofort; im MVP pflegt der Firewall-Admin
+  die Policy nach Bereitstellung manuell in OPNsense. Generische native
+  Editorfelder bleiben erhalten, sind aber kein Ausführungsnachweis.
+  Firewall-Infrastruktur/HA bleibt im Scope und garantiert allein keine
+  Isolation, Erreichbarkeit oder NAT.
 - Zugang und Zweck: ausschließlich angemeldete Benutzer mit aktuell gültiger Session und passenden Tenant-/Konfigurationsrechten. Beratung und Vorschläge sind auf die oben genannten Configurator-Aufgaben beschränkt; serverseitige Werkzeug-, Schema- und Rechteprüfungen erzwingen diese Grenze. Keine allgemeine Chat-, Shell-, Secret- oder Cloud-Ausführungsfunktion.
 - Budget: keine monetäre Budgetgrenze im MVP. Begrenzte Requestgrößen, Kontext-/Ausgabelängen, Parallelität, Anfrageraten, Timeouts und Reparaturversuche bleiben zum Missbrauchs- und Betriebsschutz erforderlich. Verbrauch wird secretfrei beobachtet.
 - Gespräche: serverseitig persistent und nach erneuter Anmeldung fortsetzbar, mit verpflichtendem Bezug zu Tenant, Workspace und Konfiguration. Zugriff wird bei jedem Lesen, Fortsetzen und Übernehmen erneut geprüft. Die gebundene Ausgangsrevision wird mit der aktuellen Konfiguration abgeglichen; veraltete Vorschläge werden nicht ungeprüft übernommen.

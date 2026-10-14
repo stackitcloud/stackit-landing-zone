@@ -1,5 +1,6 @@
 import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { assistantFailureMessage } from "../assistant-errors";
 import { readAssistantResponse } from "../assistant-stream";
 import { t } from "../i18n";
 import { describe, templates } from "../templates";
@@ -43,7 +44,8 @@ async function checked(response: Response) {
         "Bitte über den lokalen Login-Zugang erneut anmelden.",
     };
     throw new Error(
-      messages[body.error] ??
+      assistantFailureMessage(body) ??
+        messages[body.error] ??
         "Die Template-Beratung ist derzeit nicht verfügbar. Du kannst weiterhin eine Vorlage aus der Liste wählen.",
     );
   }

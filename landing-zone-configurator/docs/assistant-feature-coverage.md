@@ -12,8 +12,8 @@ Katalogfelder (einschliesslich Container und Listenelement-Vertraegen) genau ein
 der 19 Wissensthemen zu. Er fuehrt Typ, Optionalitaet, Verantwortlichkeit,
 tatsaechlichen Modus und erlaubten nativen Patch-Pfad auf. Unterschied zwischen
 bekanntem Feld und unterstuetztem Vorschlag bleibt sichtbar: beispielsweise
-regionale DNS-Felder nur beratend, Kontakte in bestehenden zentralen Zonen
-uebernehmbar, geschuetzte Zugangswerte nur Operator-Voraussetzungen.
+regionale DNS-Felder und zentrale Dienste ueber den gemeinsamen nativen
+Editor-Vertrag vorschlagbar, geschuetzte Zugangswerte nur Operator-Voraussetzungen.
 Management-/Lifecycle-Themen ohne eigene Root-Eingaben haben eigene Chatfaelle.
 
 Die Themenfelder einschliesslich Abhaengigkeiten werden als `componentFields`
@@ -21,13 +21,149 @@ an das Antwortmodell uebergeben; erlaubte Rueckfragefelder bleiben separat
 eingeschraenkt. Antwortquellen sind auf die tatsaechlich gelieferte
 Themenauswahl begrenzt. Metadaten enthalten keine Secret-Werte.
 
-39 feste [Chatfaelle](../app/scripts/assistant-scenarios.ts) decken jedes Thema
+52 feste [Chatfaelle](../app/scripts/assistant-scenarios.ts) decken jedes Thema
 und exakte DNS-/Grundlagen-/SNA-/Rollen-/Firewall-Regressionen ab. Katalog und Live-Bericht sind an
 Wissens-, Engine- und Testquellhash gebunden. Normale PR-Checks pruefen offline
 Frische, Feldzuordnung und Regression-Pruefer; echte Modellaufrufe sind explizit.
 Start, Credentials, Einzelthemen und manueller CI-Lauf sind im
 [App-README](../app/README.md#automatisierte-assistant-themenpruefung) beschrieben.
 Live-Tests nutzen keine Benutzer-SSO-Sitzung und speichern keine Kundenentwuerfe.
+
+### Gemeinsamer Editor-Vorschlagsvertrag
+
+Der Assistant leitet seine geschlossenen Wertschemas aus demselben nativen
+`InputType`-Inventar wie der Editor ab. Alle effektiven, nicht geschuetzten
+Katalogpfade haben eine validierte Vorschlagsroute; Firewall-Policy bleibt
+gemaess #101 ausgeschlossen. Das ist Feld-/Entwurfsparitaet, keine Behauptung
+vollstaendiger Cloud-Ausfuehrungsqualifikation.
+
+`merge` erhaelt ausgelassene Objektattribute und Map-Eintraege. Listen bleiben
+atomar. `replace` und `default` werden als vollstaendiger Ersatz bzw. Rueckkehr
+zum nativen Standard angezeigt, nicht in gefaehrliche Teilersetzungen zerlegt.
+Operationen bleiben durch Feldwahl, Konfliktpruefung, API und Speicherung erhalten.
+Projektvorlagen werden separat von konkreten Projektinstanzen behandelt;
+neue Kennungen werden serverseitig erzeugt. Publikation und Bestellungen sind
+keine Chat-Aktionen.
+
+[Vertragstests](../app/tests/assistant-editor.test.ts) pruefen typisierte Werte
+fuer jeden effektiven nicht ausgeschlossenen Katalogpfad sowie echte
+Anwendung/Export, native Eingaben, Audit-Pflichtentscheidungen, Teilwahl,
+atomare Ersetzung/Standards, stabile Vorlagenkennungen und unbestaetigte
+IP-/ID-/Kontakt-/Produktwerte. Echte synthetische Modellfaelle pruefen die
+natuerliche Uebersetzung separat; reine Metadaten gelten nicht als Dialogabnahme.
+
+Der Vertrag unterscheidet nun den Zustand des Zielobjekts. Bei Erstellung muessen
+einfache skalare/List-Slots im Serving vorhanden sein, statt vom Decoder
+ausgelassen zu werden. Nicht angefragte optionale Null-Slots werden vor der
+Vorschlagsausgabe als native Defaults ausgelassen; bei Updates bleiben explizite
+Null-Werte unveraendert. Komplexe optionale Collections werden nicht zwangsweise
+gefuellt: insbesondere sind leere Audit-Link-Scopes kein Organisationsdefault.
+Neue Map-Eintraege verlangen native Pflichtfelder wie Kubernetes-Region und
+Node-Pool-Name; bestehende Eintraege bleiben ueber bekannte Unterpfade partiell
+aenderbar.
+
+Komponentenspezifische Zusatzregeln liegen deklarativ in
+`assistantEditorPolicies`, nicht in einem zweiten Feldmodell:
+Audit-Erstellungsentscheidungen und ACL-Freitextfragen sind die ersten Regeln.
+Ihre Pfade werden gegen das native Inventar getestet. Angebotenes Serving-Schema
+und unveraenderte native Laufzeitpruefung werden beide durchlaufen; keine
+Reparatur doppelter, unvollstaendiger oder unbestaetigter Antworten.
+Topic-Korrektur verwendet eindeutige Besitzer der validierten nativen Roots,
+nicht frei erfundene Komponentennamen. Irrelevante Firewall-Anforderungen werden
+vor ihrer Quellenpruefung aus Nicht-Netzwerkthemen entfernt; Quellenpruefungen
+fuer tatsaechlich genutzte Netzwerkentscheidungen bleiben strikt.
+DE/EN-Vorschlagstexte mit Aenderungen werden serverseitig als lokale
+Entwurfsvorschlaege erzeugt und koennen keine Speicherung oder Live-Grants
+behaupten. Das [Erweiterungsvorgehen](../app/README.md#weitere-assistant-komponenten-ergaenzen)
+verbindet Inventar, Wissen, Zusatzregeln, Anwendungstests und serielle
+Modellqualifikation.
+
+### Vorheriger Nachweis: Themenwechsel von Firewall zu Audit Logging
+
+Der erkannte aktuelle Topic darf nicht von geerbtem `networkScope` oder alten
+Firewall-Targets ueberschrieben werden. Solche Merkmale gelten ausschliesslich
+im aktiven Netzwerk-/Firewall-Thema; ihre belegten historischen Anforderungen
+werden nach der Belegpruefung aus einem anderen Topic entfernt, nicht geloescht
+oder als dessen aktuelle Anforderungen uebernommen. Ein aktueller Auftrag mit
+"als naechstes ... richte ein" ist keine Vertagung.
+
+Audit-Setup erhaelt eine gepruefte native Feldberatung zu Telemetry Link/Router,
+Logs und Archiv mit der ausdruecklichen Grenze: derzeit kein uebernehmbarer
+Audit-Patch im Chat. Der gemeinsame Editor hat generische Felder unter Plattform.
+Keine stille Aktivierung, Retention-/ACL-Wahl oder Object-Lock-Zusage; keine
+Fortsetzung der Firewall-Unterbrechungsfrage. Audit-Proposals sind damit nicht
+automatisch aus dem MVP genommen.
+
+Nachweis: **209 gezielte Offline-Tests**, Typpruefung und **16/16 echte
+synthetische Modellfaelle** (2 Audit-Faelle einschliesslich des gemeldeten
+Wechsels, 14 Firewall-Regressionen) bestanden. Wissenshash:
+`8d8322d3c83f806d87ebbb7574443a8e06a9d8bcb98995e2557613c7216de906`;
+Testsuitehash:
+`5314926be9bd321415c1377b7433fcd74cf61428295c70200d23db32e4b51d4d`.
+Keine Kundenpolicy/-konfiguration oder Cloud-Ausfuehrung zur Qualifikation.
+Der Stand ist in der HTTPS-Entwicklungsumgebung aktiviert; API-Gesundheit und
+unveraenderte vollstaendige Konfigurations-/Gesprächszeilen sind nach Neustart
+geprueft. Bestehende Gespraeche bleiben fortsetzbar.
+
+### Aktueller MVP-Scope: keine Firewall-Policy-Vorschlaege
+
+Benutzerentscheidung 2026-10-13:
+[Issue #101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)
+verschiebt gefuehrte Policy-Bearbeitung und uebernehmbare Assistant-Vorschlaege
+aus dem MVP. Generische native Felder im gemeinsamen Editor bleiben erhalten;
+die MVP-Alternative ist manuelle Policy-Pflege durch den Firewall-Admin in
+OPNsense. Infrastruktur und HA garantieren allein keine Isolation oder NAT.
+
+Aktuelle Faehigkeits- und Definitionsanfragen fuer Regeln/NAT/Aliase/Routen/
+Port-Forwarding erhalten die explizite Chatgrenze, #101 und die Admin-Alternative,
+ohne Aenderungen oder einen Regelvorschlag versprechende Rueckfragen.
+Native Feldberatung bleibt moeglich. Historische Regelanforderungen verdrangen
+keine aktuelle Infrastruktur-/Kapazitaetsantwort; Infrastruktur/HA-Patches
+bleiben verfuegbar. Weitere MVP-Gates werden damit nicht aufgehoben.
+
+Nachweis: **205 gezielte Offline-Tests**, Typpruefung, Wissens-/Katalogfrische
+und **16/16 echte synthetische Modellfaelle** (14 Infrastruktur-/Dialogfaelle,
+2 Policy-Faelle) bestanden. Die Tests pruefen keine Kundenpolicy und autorisieren
+keine Cloud-Ausfuehrung. Wissenshash:
+`b9892a0d275b920e3089c167157062ef66af29630374df0b8a6d03ba5d24c37b`;
+Testsuitehash:
+`f443f6633a4ffda7662f419d797a01ffe039c56f0ca5c4aaa187316036cc9c81`.
+Der qualifizierte Backend-Stand ist in der HTTPS-Entwicklungsumgebung aktiviert.
+API-Gesundheit und unveraenderte vollstaendige Konfigurations-/Gesprächszeilen
+wurden vor/nach Neustart geprueft; UI und Kundendaten wurden nicht umgebaut.
+
+### Vorheriger Nachweis: Firewall-Faehigkeitsgrenze und handlungsfaehige Fehler
+
+Der native Accelerator verwaltet `firewall_config` mit Regeln, Aliasen, Routen,
+ausgehendem NAT und Port-Forwarding. Der aktuelle Chat kann nur Infrastruktur
+und HA als Vorschlag patchen, nicht den komplexen Policy-Vertrag. Eine aktuelle
+Frage nach dieser Faehigkeit hat Vorrang vor laufenden Infrastrukturfragen.
+Die Antwort nennt den Editorweg, offene Regelziele und API-Voraussetzungen;
+bisherige Verkehrs-/Policy-Antworten bleiben Anforderungen, keine Regeln.
+Historische Faehigkeitsfragen duerfen eine aktuelle Kapazitaetsantwort nicht
+verdraengen. Der Intent benennt dafuer ausdruecklich die aktuelle Quelle.
+
+Abgelehnte Modellantworten werden nicht automatisch wiederholt oder teilweise
+angenommen. JSON und NDJSON liefern denselben redigierten Fehlervertrag:
+unbestaetigte Anforderungen, unpassender Vorschlag, ungueltige/abgeschnittene/
+unterbrochene Antwort, Timeout, Auslastung, Dienstanmeldung oder Verfuegbarkeit.
+Konfigurations-Chat und Template-Beratung zeigen lokalisierte Ursachen,
+konkrete naechste Schritte und eine Diagnosekennung; Eingaben bleiben erhalten.
+Modell-Rohantworten, Transportdetails und Zugangsdaten werden nicht angezeigt.
+
+Nachweis am 2026-10-13: **196 gezielte Offline-Tests**, **6 PostgreSQL-Faelle**,
+**13/13 echte synthetische Firewall-Faelle** und
+**8 Desktop-/Mobil-Browserfaelle** bestanden, einschliesslich der gemeldeten
+Faehigkeitsfrage, unbekannter Kapazitaet, handlungsfaehiger Fehlermeldungen und
+Antwort-/Auswahlerhalt. Wissenshash:
+`53945a3b8988baf2b4096365496e01fa3a38beb83b2d7da3e43bb0fcab798181`;
+Testsuitehash:
+`2caf7ed586cda64bf151f3fa6bd4466b8504da63fb45666ed4ca77e1b2bc4e3d`.
+Dies ist keine Policy-/Paketpruefung und keine Cloud-Ausfuehrungsfreigabe.
+Typpruefung, Wissens-/Katalogfrische und gezieltes Lint bestanden (eine
+vorbestehende Browser-Testwarnung). Der Stand wurde in der HTTPS-
+Entwicklungsumgebung aktiviert; API-Gesundheit und neues UI-Bundle wurden
+geprueft. Vollstaendige Konfigurations-/Gesprächszeilen blieben unveraendert.
 
 Vorheriger Nachweis vor dem Rollenpatch am 2026-10-12: **93 Offline-Tests**, Typpruefung, Wissens-/Katalogfrische
 und gezieltes Lint bestanden. Abschliessender echter Lauf: **24/24 bestanden,
@@ -62,6 +198,126 @@ Die Themen-Smokes pruefen Antwortvertrag, Referenz und Beratungsmodus, nicht jed
 fachliche Textaussage oder jedes Feld einzeln. Fuer Vollqualifikation braucht es
 weitere spezifische Sollwerte, Negativfaelle und Komponentenbeziehungen. Ein
 vollstaendiges Inventar oder ein gruener Smoke ist keine Ausfuehrungsfreigabe.
+
+### Modellversuch GPT-OSS 120B und zusammenhaengender Dialog
+
+Am 2026-10-13 wurden Antwortmodell und Intentmodell in isolierten Testprozessen
+auf `openai/gpt-oss-120b` gesetzt. Die laufende Anwendung, Kundenentwuerfe,
+Gespraeche und Cloud-Ausfuehrung wurden nicht umgestellt.
+
+Der erste komplette 52-Faelle-Lauf bestand **29/52**. Von 23 Fehlern waren neun
+HTTP-429-Antworten; parallel laufende Diagnose-/Journey-Tests beeintraechtigten
+damit die Aussagekraft. Weitere Fehler waren sechs Tokenlimit-Abbrueche, vier
+Scope-Ablehnungen, eine unbestaetigte Intentquelle und drei fachliche
+Sollwertverletzungen. Diese Zahlen sind kein fairer Modellrangvergleich.
+Wissenshash dieses ersten Laufs:
+`c9bcfb0a1e8c3d2be7855a8db2a3a0ffc8ad392e0ed854d880ca876effad2ef2`;
+52-Faelle-Suite:
+`574375fd7a19aa775bba0bf766156660721454ae5db6a7013d69b2689dd6da32`.
+
+Synthetische Rohantworten zeigten wiederholte merge/replace-Alternativen fuer
+denselben Pfad und ausgelassene Audit-ACLs trotz Nennung im Antworttext.
+Die Serving-Schemas verwenden deshalb nun ein einzelnes Operationsobjekt pro
+Pfad und begrenzen die Anzahl auf die angebotenen Pfade. Nicht unterstuetzte
+`propertyNames` werden nur aus dem Serving-Schema entfernt; die urspruengliche
+Zod-Pruefung von Map-Schluesseln, Operationswerten und vollstaendigen
+Ersetzungen bleibt unveraendert. Ein gekuerzter Label-Reply enthielt vor allem
+Whitespace statt Nutzdaten; ein hoeheres Tokenbudget oder automatischer Retry
+ist daher kein nachgewiesener Fix.
+
+Der neue [Journey-Runner](../app/scripts/assistant-journey.ts) wurde danach fuer
+beide Modelle **seriell** mit identischem Skript, Wissensstand, Temperatur und
+Tokenlimit ausgefuehrt. Beide Modellrollen verwendeten jeweils dasselbe Modell.
+Er simuliert Grundlagen, Rollen, SNA, Firewall/HA, die Policy-MVP-Grenze,
+Audit-Themenwechsel/Rueckfragen/Aktualisierung, Observability, DevOps,
+Kubernetes und Labels. Nur gueltige, erwartungsgemaesse Vorschlaege werden im
+Speicher uebernommen. API-konforme Gespraechshistorie, JSON-Roundtrip und
+tfvars-Export bleiben Bestandteil des Laufs; kein Browser, DB-Speichern,
+Plan oder Apply wird dadurch qualifiziert.
+
+| Serieller Journey-Schritt | GPT-OSS 120B | Qwen3-VL 235B A22B |
+|---|---|---|
+| Grundlagen | Scope-Ablehnung | bestanden |
+| Organisations-Owner | bestanden | bestanden |
+| SNA | bestanden | bestanden |
+| Firewall/HA | bestanden | bestanden |
+| Policy-MVP-Hinweis | bestanden | bestanden |
+| Audit-Themenwechsel / fehlende Entscheidungen | Pflichtwerte fehlen | bestanden |
+| Audit-Antwort | Pflichtwerte fehlen | Pflichtwerte fehlen |
+| Audit-Aktualisierung | Pflichtwerte fehlen | Pflichtwerte fehlen |
+| Observability | unbestaetigte Intentquelle | erwartete ACL/Retention fehlen |
+| DevOps | bestanden | bestanden |
+| Kubernetes | Vorschlag nicht anwendbar | Vorschlag nicht anwendbar |
+| Labels | Tokenlimit-Abbruch | falsches Thema / Label fehlt |
+| **Gesamtergebnis** | **5/12, nicht qualifiziert** | **7/12, nicht qualifiziert** |
+
+Die seriellen Laeufe enthielten keine HTTP-429/503-Ablehnungen. Beobachtete
+Turn-Dauern einschliesslich Intentklassifikation: GPT-OSS Median ca. 7,0 s,
+Maximum 22,5 s; Qwen Median ca. 5,7 s, Maximum 12,3 s. Dies sind einzelne
+synthetische Laeufe, keine allgemeine Latenz-, Kosten- oder Qualitaetsgarantie.
+Beide Laeufe verwenden Wissenshash
+`b21aac363a8f2d9110a4e21d4473b630bc193b0b02e9d04926f306f4c98af73d`
+und Journey-Hash
+`80ce96770cd172dbbfd37f73b5443cffd2e3f5e521627d2bf53aa2b20df1dd9e`.
+**228 gezielte Offline-Tests**, Typpruefung, gezieltes Lint und
+Wissens-/Katalogfrische bestanden.
+
+Ergebnis: Ein reiner Modellwechsel behebt die Editor-/Assistant-Probleme nicht.
+GPT-OSS wird auf dieser Basis nicht als neuer Standard aktiviert. Audit-Pflicht-
+und Rueckfragevertraege, Label-Intent, anwendbare Kubernetes-Vorschlaege sowie
+Scope-/Quellenkontinuitaet muessen vor einer erneuten Vollqualifikation
+bearbeitet werden. Auch die native Editor-Erweiterung bleibt unaktiviert.
+
+### Gemeinsame Komponentenvertraege: erneute Qualifikation
+
+Die anschliessende Korrektur erfolgt im gemeinsamen nativen Vorschlagsvertrag,
+nicht ueber modellspezifische Sonderfaelle. Neue Audit-Konfigurationen brauchen
+Retention, ACL und die ausdrueckliche Object-Lock-Entscheidung zusammen.
+Bestehende Objekte bleiben partiell aenderbar. Kubernetes-Erstellung verlangt
+native Pflichtfelder einschliesslich Region und Node-Pool-Name; Labels verwenden
+den geprueften Besitzer ihrer nativen Pfade. Ein Themenwechsel verwirft
+irrelevante Firewall-Anforderungen, nicht aber Quellenpruefungen fuer weiterhin
+genutzte Netzwerkentscheidungen. ACL-Rueckfragen erfinden keine auswaehlbaren
+CIDRs. Vorschlagstexte behaupten weder Speicherung noch Deployment.
+
+Nach diesen Aenderungen bestanden am 2026-10-13:
+
+| Pruefung | Ergebnis |
+|---|---|
+| Gezielt alle acht Assistant-Offline-Suites | **238/238** |
+| Typpruefung und Produktionsbuild | bestanden |
+| Repository-Lint | keine Fehler; bestehende Warnungen bleiben |
+| Wissens- und Szenarienkatalogfrische | bestanden |
+| Zusammenhaengender echter Qwen-Dialog | **12/12** |
+| Vollstaendiger echter Qwen-Szenarienlauf | **52/52** |
+
+Beide Modellrollen verwendeten weiterhin
+`Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`. Die Modelltests liefen nacheinander und
+ohne automatische Wiederholung. Vorherige Laeufe mit denselben
+Komponentenvertraegen waren durch HTTP 429 unvollstaendig geblieben.
+Der [gemeinsame Testadapter](../app/scripts/assistant-test-model.ts) begrenzt
+jetzt jeden tatsaechlichen Request, einschliesslich Intentklassifikation, auf
+mindestens 2500 ms Abstand. Tests pruefen Abstand, fehlenden Retry und Abbruch
+waehrend der Wartezeit. Diese Begrenzung gilt nicht fuer den produktiven
+Assistant; die gemessenen Turn-Zeiten enthalten Testwartezeit.
+Die beiden abschliessenden Laeufe enthielten keine Quoten- oder Modellfehler.
+
+Nachweis-Hashes:
+
+- Wissen: `eb856918ecd71e3f380ea8da9be116d4578cedfc9977088c56311b9e65d44346`
+- Journey: `74b5d41782e20b9d720a63afa1d515e50c4197602f41789d1ce920f1598d64e2`
+- Szenariensuite: `57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498`
+
+Der Journey uebernahm gueltige Vorschlaege in einen fortgeschriebenen
+synthetischen Entwurf, bewahrte 24 Gespraechsnachrichten, pruefte den
+JSON-Roundtrip und exportierte 2069 Bytes tfvars. Dies ist keine Qualifikation
+aller Browser-/Datenbank-Workflows oder von Plan/Apply. Kundenentwuerfe und
+Gespraeche wurden nicht veraendert; die laufende API wurde nicht neu gestartet.
+GPT-OSS ist nach diesen Vertragskorrekturen noch nicht erneut qualifiziert.
+Die Firewall-Policy bleibt als einzige hier ausdruecklich ausgeschlossene
+Komponentenbearbeitung unter #101; es wurden keine weiteren Themen aus dem
+MVP genommen. Weitere Komponenten folgen dem dokumentierten
+[Erweiterungsverfahren](../app/README.md#weitere-assistant-komponenten-ergaenzen).
 
 ### Additive Organisations- und Folder-Rollenvorschlaege
 

@@ -1435,6 +1435,7 @@ it("supports explicitly delegated naming without inventing IDs, new folders or I
   });
   const previous = compileCommonConfiguration(draft);
   const values = {
+    "assistant.platform_draft": true,
     company_name: previous.company_name,
     company_code: previous.company_code,
     rm_folders: Object.fromEntries(
@@ -2106,6 +2107,8 @@ it("requires login, current origin and CSRF for chat and rejects injected tenant
     expect(rejectedAdvice.statusCode).toBe(503);
     expect(rejectedAdvice.json()).toEqual({
       error: "assistant_inference_failed",
+      reason: "response_invalid",
+      requestId: expect.any(String),
     });
     expect(
       (await app.inject({ method: "GET", url: adviceUrl, headers })).headers[
@@ -2192,6 +2195,8 @@ it("requires login, current origin and CSRF for chat and rejects injected tenant
     expect(JSON.parse(failedStream.body)).toEqual({
       type: "error",
       error: "assistant_inference_failed",
+      reason: "response_interrupted",
+      requestId: expect.any(String),
     });
     const loaded = await app.inject({ method: "GET", url, headers });
     expect(loaded.headers["cache-control"]).toBe("no-store");
@@ -2355,6 +2360,17 @@ it.each([
       configuration,
       request,
     ).converse(selection(), {}, history, message);
+    if (topic === "firewall-policy") {
+      expect(result.references).toContain(topic);
+      expect(result.explanation).toContain(
+        "kann aktuell keine Firewall-Regeln",
+      );
+      expect(result.explanation).toContain("GitHub-Issue #101");
+      expect(result.changes).toEqual([]);
+      expect(result.questions).toEqual([]);
+      expect(request).toHaveBeenCalledTimes(1);
+      return;
+    }
     expect(result.references).toEqual([topic]);
     expect(request).toHaveBeenCalledTimes(2);
     await expect(
@@ -2556,7 +2572,7 @@ it("does not use field overviews for draft requests, unrelated advice or invalid
   expect(request).toHaveBeenCalledTimes(2);
   const invalidEvidence = vi.fn<typeof fetch>(async () =>
     answer({
-      topic: "governance-folders",
+      topic: "firewall-infrastructure",
       mode: "advice",
       adviceTask: "field-overview",
       requirements: [{ decision: "capacity", quote: "invented" }],
@@ -2567,7 +2583,7 @@ it("does not use field overviews for draft requests, unrelated advice or invalid
       selection(),
       {},
       [],
-      "Welche Ordnerfelder gibt es?",
+      "Welche Firewallfelder gibt es?",
     ),
   ).rejects.toMatchObject({ reason: "intent_evidence" });
 });
@@ -2903,8 +2919,8 @@ it("supplies the complete selected component field contract while bounding respo
       expect.arrayContaining([
         expect.objectContaining({
           path: "audit_logs.retention_days",
-          mode: "requirements-only",
-          proposalPath: null,
+          mode: "propose-validated-draft",
+          proposalPath: "audit_logs",
         }),
         expect.objectContaining({
           path: "vpn_pre_shared_keys",
@@ -2931,6 +2947,77 @@ it("supplies the complete selected component field contract while bounding respo
     "Welche Audit-Log-Felder gibt es? Nur beraten.",
   );
 });
+
+it.each(["audit-logs", "observability", "dns-zones"] as const)(
+  "does not let historical network/firewall flags override a current %s request",
+  async (topic) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const name = body.response_format.json_schema.name;
+      expect(name).not.toBe("firewall_setup_decisions");
+      if (name === "conversation_intent")
+        return answer({
+          topic,
+          mode: "draft",
+          networkScope: "sna-and-firewall",
+          firewallAvailability: "ha",
+          firewallAreaKeys: ["obsolete", "obsolete"],
+          allFirewalls: true,
+          requirements: [
+            {
+              decision: "operations",
+              quote:
+                "Zentrales Netzwerk und hochverfügbare Firewall einrichten.",
+            },
+          ],
+        });
+      return answer({
+        explanation: `Beratung zum aktuellen Thema ${topic}; nichts gespeichert.`,
+        questions: [],
+        changes: [],
+        references: [topic],
+      });
+    });
+    const values = {
+      "connectivity.network_area": {
+        ranges: ["10.0.0.0/16"],
+        transfer_network: "10.255.0.0/24",
+        min_prefix_length: 24,
+        max_prefix_length: 28,
+        default_prefix_length: 25,
+      },
+    };
+    const before = structuredClone(values);
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      values,
+      [
+        {
+          role: "user",
+          content: "Zentrales Netzwerk und hochverfügbare Firewall einrichten.",
+        },
+        {
+          role: "assistant",
+          content: "Welche maximale Unterbrechung ist tolerierbar?",
+        },
+      ],
+      `Nun bitte mit ${topic} fortfahren und dieses Thema einrichten.`,
+    );
+    expect(result.references).toEqual([topic]);
+    expect(result.questions).toEqual([]);
+    expect(result.changes).toEqual([]);
+    expect(result.explanation).not.toContain("SNA default:");
+    expect(result.explanation).not.toContain("Unterbrechung");
+    if (topic === "audit-logs") {
+      expect(result.explanation).not.toContain("noch keinen übernehmbaren");
+      expect(request).toHaveBeenCalledTimes(2);
+    }
+    expect(values).toEqual(before);
+  },
+);
 
 it("builds deterministic version-bound knowledge without template or secret values", () => {
   const knowledge = buildAssistantKnowledge();

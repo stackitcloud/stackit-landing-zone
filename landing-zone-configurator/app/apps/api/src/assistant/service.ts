@@ -2,8 +2,10 @@ import { randomUUID } from "node:crypto";
 import {
   type AssistantMergeConflict,
   type AssistantProposalChange,
+  assistantProposalBaselineAvailable,
   assistantProposalConflicts,
   assistantProposalFields,
+  assistantProposalValue,
   mergeAssistantDrafts,
   selectAssistantProposalFields,
 } from "@lzc/contracts";
@@ -34,6 +36,7 @@ import {
   type Dialogue,
   validateDialogue,
 } from "./dialogue.js";
+import { assistantEditorPublicValues } from "./editor.js";
 import { assistantPublicFirewall } from "./firewall.js";
 import { buildAssistantKnowledge } from "./knowledge.js";
 import type {
@@ -79,9 +82,11 @@ export function assistantPublicValues(
     (entry) => entry.id === draft.origin.templateId,
   );
   return {
+    ...assistantEditorPublicValues(draft),
     "assistant.owner_email_is_template_default":
       values.owner_email !== undefined &&
       values.owner_email === template?.values.owner_email,
+    "assistant.platform_draft": draft.projectTemplates !== undefined,
     rm_folders: Object.fromEntries(
       Object.entries(objectValue(effectiveInput(values, "rm_folders"))).map(
         ([key, folder]) => [
@@ -174,8 +179,8 @@ function response(row: Conversation, configuration: Configuration) {
           ...row.proposal,
           changes: row.proposal.changes.map((change) => ({
             ...change,
-            before: baseline?.[change.path] ?? null,
-            ...(baseline !== null && Object.hasOwn(baseline, change.path)
+            before: assistantProposalValue(baseline, change.path) ?? null,
+            ...(assistantProposalBaselineAvailable(baseline, change.path)
               ? {}
               : { baselineAvailable: false }),
           })),
@@ -209,6 +214,7 @@ function rebaseAccessSelections(
     ];
   };
   return changes.map((change) => {
+    if (change.operation) return change;
     const known = original !== null && Object.hasOwn(original, change.path);
     if (["organization_owners", "organization_auditors"].includes(change.path))
       return {
@@ -251,7 +257,7 @@ function completeNetworkSelection(
   values: Record<string, unknown>,
 ): Dialogue["changes"] {
   return changes.flatMap((change) => {
-    if (change.path === "connectivity.network_area") {
+    if (!change.operation && change.path === "connectivity.network_area") {
       const parsed = assistantNetworkAreaSchema.safeParse({
         ...assistantNetworkAreaSchema
           .partial()
@@ -262,7 +268,7 @@ function completeNetworkSelection(
         throw new AssistantError(422, "assistant_invalid_selection");
       return [{ path: change.path, value: parsed.data }];
     }
-    if (change.path === "connectivity.network_areas") {
+    if (!change.operation && change.path === "connectivity.network_areas") {
       const partialAreas = z.record(
         z.string(),
         assistantNetworkAreaSchema.partial(),
@@ -692,7 +698,7 @@ export class AssistantConversations {
                 Object.fromEntries(
                   proposal.changes.map((change) => [
                     change.path,
-                    base.values[change.path] ?? null,
+                    assistantProposalValue(base.values, change.path) ?? null,
                   ]),
                 ),
               ),
@@ -806,7 +812,7 @@ export class AssistantConversations {
         ...assistantProposalConflicts(
           fields.filter((field) => selected.includes(field.id)),
           assistantPublicValues(draft),
-          (path) => original !== null && Object.hasOwn(original, path),
+          (path) => assistantProposalBaselineAvailable(original, path),
         ),
       ];
       if (
@@ -831,7 +837,14 @@ export class AssistantConversations {
               error.message === "assistant_folder_creation_not_supported" ||
               error.message.startsWith("assistant_firewall_") ||
               error.message.startsWith("assistant_dns_") ||
-              error.message.startsWith("assistant_network_")))
+              error.message.startsWith("assistant_network_") ||
+              error.message.startsWith("assistant_editor_") ||
+              error.message.startsWith("assistant_audit_") ||
+              error.message === "assistant_ambiguous_sandbox_identity" ||
+              error.message === "assistant_platform_draft_required" ||
+              error.message ===
+                "assistant_project_instances_not_in_platform_draft" ||
+              error.message === "Invalid Accelerator input contract"))
         )
           throw new AssistantError(422, "assistant_invalid_selection");
         throw error;
@@ -855,9 +868,12 @@ export class AssistantConversations {
                 changes: selectAssistantProposalFields(changes, remaining).map(
                   (change) => ({
                     ...change,
-                    before: original?.[change.path] ?? null,
-                    ...(original !== null &&
-                    Object.hasOwn(original, change.path)
+                    before:
+                      assistantProposalValue(original, change.path) ?? null,
+                    ...(assistantProposalBaselineAvailable(
+                      original,
+                      change.path,
+                    )
                       ? {}
                       : { baselineAvailable: false }),
                   }),
@@ -906,7 +922,7 @@ export class AssistantConversations {
       const values = assistantPublicValues(configuration.document);
       const changesWithBaseline = proposal.changes.map((change) => ({
         ...change,
-        before: values[change.path] ?? null,
+        before: assistantProposalValue(values, change.path) ?? null,
       }));
       const fields = assistantProposalFields(changesWithBaseline);
       const selected = selectedFields ?? fields.map((field) => field.id);

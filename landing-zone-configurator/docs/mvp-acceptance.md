@@ -4,6 +4,32 @@ Stand: 2026-10-09, Ubuntu. Diese Liste trennt lokale technische Nachweise von
 fachlicher und echter Cloud-Abnahme. Ein bestandener Mock-Test ersetzt keine
 Cloud-Abnahme. Der Gesamt-MVP und ein Merge sind noch nicht freigegeben.
 
+## Scope-Entscheidung: Firewall-Policy ausserhalb des MVP
+
+Benutzerentscheidung vom 2026-10-13:
+[Issue #101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)
+erfasst die gefuehrte Policy-Bearbeitung im Editor und uebernehmbare
+Assistant-Vorschlaege fuer Firewall-Regeln, Aliase, Routen, ausgehendes NAT und
+Port-Forwarding als Post-MVP-Feature. Es ist kein MVP-/Merge-Blocker.
+
+Der native Accelerator unterstuetzt diese Funktionen fuer die vorhandene
+Single-Appliance-Policy. Der gemeinsame Editor hat bereits generische native
+Felder unter **Betrieb → Firewall-Regeln**; das ist keine gefuehrte oder
+ausfuehrungsqualifizierte Policy-Verwaltung. Diese Bestandsfelder bleiben erhalten.
+Multi-Appliance-Verteilung bleibt separat in
+[Issue #65](https://github.com/stackitcloud/stackit-landing-zone/issues/65).
+
+Im MVP pflegt der Firewall-Admin die Policy nach Bereitstellung manuell in
+OPNsense. Infrastruktur/HA allein ist kein Nachweis fuer Isolation, Internet-
+zugriff oder NAT. Der Assistant nennt seine fehlende Definitions-/Vorschlags-
+faehigkeit bei Policy-Anfragen ausdruecklich, verweist auf #101 und verspricht
+keinen spaeteren Regelvorschlag durch weitere Rueckfragen. Bisherige Verkehrs-
+und Policy-Antworten bleiben Anforderungen, keine konfigurierten Regeln.
+Firewall-Infrastruktur/HA, der begrenzte Assistant und die uebrigen bestehenden
+MVP-Gates bleiben unveraendert im Scope; keine automatische Freigabe oder
+permissive Default-Policy. Bei spaeterer Uebernahme manuell gepflegter Regeln
+muss das Feature Ownership, State/Import und Reconciliation klaeren.
+
 ## Assistant: einzelne Felder, bekannte Kontakte und Grundlagen wiederherstellen
 
 Stand 2026-10-12. Ersetzt die historische Gesamtannahme-/Kontaktgrenze unten.

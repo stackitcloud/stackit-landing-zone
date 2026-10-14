@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "38f58c5895837f28583c834890698e567cae886da03210770b14fe7c9490c0e8",
+  "knowledgeSha256": "413ec7ee30d15bd29cf4ba505eda411c4e4a6958e850ad7571ec4b0c23b0b7bf",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "3d86eb05ca5b3ebd7103720bd1d5517b1283a7535f322bf9870d3773d3edfb7b",
-    "scripts/assistant-tests.ts": "36b324fad40401fa484d443c969d1a0219324fd05f6b8ef240d32d78b367e550"
+    "scripts/assistant-scenarios.ts": "c0b5ef83c102bb475a4495ab88342b5e17fd9bde0904dcd5443ea3a50c859f16",
+    "scripts/assistant-tests.ts": "032685c73a7995632009702c847bb395050f23b71ecc098067e31d73f19b7635"
   },
-  "suiteSha256": "db75e65e906c3c030d0dc02fa5367f566c2e3a912e4897d82eb445c3f6c3b010",
+  "suiteSha256": "57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498",
   "topics": [
     {
       "id": "credential-foundations",
@@ -116,18 +116,18 @@
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.naming_pattern",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.network_area",
@@ -314,126 +314,126 @@
           "group": "network",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*]",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].naming_pattern",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas",
           "group": "network",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*]",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].default_nameservers",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].default_nameservers[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].default_prefix_length",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].max_prefix_length",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].min_prefix_length",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].name",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].ranges",
           "group": "network",
           "type": "list",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].ranges[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].network_areas[*].transfer_network",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
@@ -519,30 +519,45 @@
           "group": "identity",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_contract_namespace",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "labels",
           "group": "identity",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "labels",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "labels[*]",
           "group": "identity",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "labels",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
+        {
+          "id": "editor-labels",
+          "topic": "identity-foundations",
+          "fixture": "baseline",
+          "message": "Bitte nur das Ressourcenlabel cost_center auf synthetic-team setzen. Alle Grundlagenwerte und vorhandenen Labels unverändert erhalten. Als Entwurfsvorschlag, nichts deployen.",
+          "editorExpected": {
+            "path": "labels.cost_center",
+            "value": "synthetic-team"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "identity-foundations-advice",
           "topic": "identity-foundations",
@@ -592,9 +607,9 @@
           "group": "governance",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "rm_folder_parent_id",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "organization_owners",
@@ -646,9 +661,9 @@
           "group": "governance",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "rm_folders[*].description",
@@ -831,84 +846,99 @@
           "group": "management",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.acl",
           "group": "management",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.acl[*]",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.logs_retention_days",
           "group": "management",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.metrics_retention_days",
           "group": "management",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.metrics_retention_days_1h_downsampling",
           "group": "management",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.metrics_retention_days_5m_downsampling",
           "group": "management",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.plan_name",
           "group": "management",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "observability.traces_retention_days",
           "group": "management",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
+        {
+          "id": "editor-observability",
+          "topic": "observability",
+          "fixture": "baseline",
+          "message": "Bitte zentrale Observability als Entwurf einrichten: plan_name Observability-Starter-EU01, ACL 203.0.113.0/24, metrics_retention_days 30.",
+          "editorExpected": {
+            "path": "observability.metrics_retention_days",
+            "value": 30
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "observability-advice",
           "topic": "observability",
@@ -930,84 +960,183 @@
           "group": "management",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.acl",
           "group": "management",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.acl[*]",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.link_scopes",
           "group": "management",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.link_scopes[*]",
           "group": "management",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.link_scopes[*].resource_id",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.link_scopes[*].resource_type",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.retention_days",
           "group": "management",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "audit_logs.s3_object_lock",
           "group": "management",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
+        {
+          "id": "editor-audit-complete",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "message": "Bitte zentrale Audit-Protokollierung als Entwurf konfigurieren: 90 Tage Aufbewahrung, ACL ausschließlich 203.0.113.0/24, Object Lock ausdrücklich deaktiviert. Organisationsweiter Telemetry Link; kein Deployment.",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-followup",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte zentrale Audit-Protokollierung mittels Telemetry Router als Konfigurationsvorschlag einrichten."
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Aufbewahrungsdauer, welche ACL-Zugriffsnetze und soll Object Lock aktiviert werden?"
+            }
+          ],
+          "message": "90 Tage, nur 203.0.113.0/24, Object Lock nein.",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "firewall-to-audit-draft",
+          "topic": "audit-logs",
+          "fixture": "firewall-metro",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte das zentrale Netzwerk für 100 Projekte mit einer hochverfügbaren Firewall konfigurieren."
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Verkehrswege sollen über die zentrale Firewall laufen?"
+            },
+            {
+              "role": "user",
+              "content": "Welche Verkehrswege sollen über die zentrale Firewall laufen?\nMeine Antwort: Internet-Verkehr; Zwischen Projekten; Zu externen Netzen"
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Firewall-Regeln sollen für diese Verkehrswege gelten?"
+            },
+            {
+              "role": "user",
+              "content": "Alle Projekte sollen initial auf das Internet zugreifen dürfen (egress allow). Eingehend ist initial alles gesperrt. Alle Projekte dürfen initial nicht miteinander reden, außer eine explizite Allow-Regel erlaubt es. Alle Projekte dürfen auf zentrale Plattform-Elemente zugreifen. Der ausgehende Verkehr ins Internet wird genattet. Alle weiteren Regeln werden später durch den Firewall-Admin gepflegt."
+            },
+            {
+              "role": "assistant",
+              "content": "Welchen Spitzen-Durchsatz und wie viele parallele Verbindungen erwartest du?"
+            },
+            {
+              "role": "user",
+              "content": "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen."
+            },
+            {
+              "role": "assistant",
+              "content": "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar?"
+            }
+          ],
+          "message": "Nun brauchen wir als nächstes eine zentrale Audit Protokollierung, richte mir das bitte ein.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "audit-logs-advice",
           "topic": "audit-logs",
@@ -1029,84 +1158,111 @@
           "group": "management",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*]",
           "group": "management",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*].assertions",
           "group": "management",
           "type": "list",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*].assertions[*]",
           "group": "management",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*].assertions[*].item",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*].assertions[*].operator",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*].assertions[*].value",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*].issuer",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "federated_identity_providers[*].name",
           "group": "management",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
+        {
+          "id": "editor-federation",
+          "topic": "federated-identities",
+          "fixture": "baseline",
+          "message": "Bitte eine CI/CD-Vertrauensregel als Entwurf hinzufügen: name synthetic-federation, issuer https://issuer.example.test, assertion item aud, operator equals, value synthetic-workload. Keine Benutzer-SSO-Konfiguration und keine Ausführung.",
+          "editorExpected": {
+            "path": "federated_identity_providers",
+            "value": [
+              {
+                "name": "synthetic-federation",
+                "issuer": "https://issuer.example.test",
+                "assertions": [
+                  {
+                    "item": "aud",
+                    "operator": "equals",
+                    "value": "synthetic-workload"
+                  }
+                ]
+              }
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "federated-identities-advice",
           "topic": "federated-identities",
@@ -1209,9 +1365,9 @@
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.dns_zones[*].type",
@@ -1227,99 +1383,99 @@
           "group": "network",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*]",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].acl",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].contact_email",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].default_ttl",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].description",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].dns_name",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].name",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].network_area_key",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].region",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].type",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
@@ -1710,165 +1866,255 @@
           "group": "network",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*]",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].flavor",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_lan_ip",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_name",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_wan_ip",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_zone",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.lan_vip",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.vhid",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].lan_ip",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].lan_network_range",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].name",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].volume_performance_class",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].volume_size",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].wan_ip",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].wan_network_range",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].zone",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
+        {
+          "id": "firewall-metro-dialogue-policy-definition",
+          "topic": "firewall-infrastructure",
+          "fixture": "firewall-metro",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte das zentrale Netzwerk für 100 Projekte mit einer hochverfügbaren Firewall konfigurieren."
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Verkehrswege sollen über die zentrale Firewall laufen?"
+            },
+            {
+              "role": "user",
+              "content": "Welche Verkehrswege sollen über die zentrale Firewall laufen?\nMeine Antwort: Internet-Verkehr; Zwischen Projekten; Zu externen Netzen"
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Firewall-Regeln sollen für diese Verkehrswege gelten?"
+            },
+            {
+              "role": "user",
+              "content": "Alle Projekte sollen initial auf das Internet zugreifen dürfen (egress allow). Eingehend ist initial alles gesperrt. Alle Projekte dürfen initial nicht miteinander reden, außer eine explizite Allow-Regel erlaubt es. Alle Projekte dürfen auf zentrale Plattform-Elemente zugreifen. Der ausgehende Verkehr ins Internet wird genattet. Alle weiteren Regeln werden später durch den Firewall-Admin gepflegt."
+            },
+            {
+              "role": "assistant",
+              "content": "Welchen Spitzen-Durchsatz und wie viele parallele Verbindungen erwartest du?"
+            },
+            {
+              "role": "user",
+              "content": "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen."
+            }
+          ],
+          "message": "Definiere nun aus den besprochenen Anforderungen die Firewall-Regeln und das ausgehende NAT. Ich möchte dafür einen übernehmbaren Vorschlag, keine weitere Infrastrukturfrage.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "firewall-metro-dialogue-policy-capability",
+          "topic": "firewall-infrastructure",
+          "fixture": "firewall-metro",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte das zentrale Netzwerk für 100 Projekte mit einer hochverfügbaren Firewall konfigurieren."
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Verkehrswege sollen über die zentrale Firewall laufen?"
+            },
+            {
+              "role": "user",
+              "content": "Welche Verkehrswege sollen über die zentrale Firewall laufen?\nMeine Antwort: Internet-Verkehr; Zwischen Projekten; Zu externen Netzen"
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Firewall-Regeln sollen für diese Verkehrswege gelten?"
+            },
+            {
+              "role": "user",
+              "content": "Alle Projekte sollen initial auf das Internet zugreifen dürfen (egress allow). Eingehend ist initial alles gesperrt. Alle Projekte dürfen initial nicht miteinander reden, außer eine explizite Allow-Regel erlaubt es. Alle Projekte dürfen auf zentrale Plattform-Elemente zugreifen. Der ausgehende Verkehr ins Internet wird genattet. Alle weiteren Regeln werden später durch den Firewall-Admin gepflegt."
+            },
+            {
+              "role": "assistant",
+              "content": "Welchen Spitzen-Durchsatz und wie viele parallele Verbindungen erwartest du?"
+            },
+            {
+              "role": "user",
+              "content": "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen."
+            },
+            {
+              "role": "assistant",
+              "content": "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar?"
+            }
+          ],
+          "message": "Das ist kein Thema, welches wir in irgendeiner Form behandeln können. Es gibt ein fertiges Firewall-Setup. Ich sehe aber noch keine Firewall-Regeln. Können diese nicht gesetzt werden?",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "firewall-metro-dialogue-unknown-capacity",
           "topic": "firewall-infrastructure",
@@ -2109,1134 +2355,1134 @@
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.availability_zones",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.availability_zones.tunnel1",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.availability_zones.tunnel2",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections",
           "group": "network",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*]",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].display_name",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].enabled",
           "group": "network",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].local_subnets",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].local_subnets[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].remote_subnets",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].remote_subnets[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].static_routes",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].static_routes[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.peering",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.peering.local_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.peering.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.dpd_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.start_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.peering",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.peering.local_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.peering.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.dpd_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.start_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.display_name",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.plan_id",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity.vpn.routing_type",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.availability_zones",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.availability_zones.tunnel1",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.availability_zones.tunnel2",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections",
           "group": "network",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*]",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].display_name",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].enabled",
           "group": "network",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].local_subnets",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].local_subnets[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].remote_subnets",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].remote_subnets[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].static_routes",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].static_routes[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering.local_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dpd_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.start_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2",
           "group": "network",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering.local_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2",
           "group": "network",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dh_groups",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dh_groups[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dpd_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.encryption_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.encryption_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.integrity_algorithms",
           "group": "network",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.integrity_algorithms[*]",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.rekey_time",
           "group": "network",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.start_action",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.remote_address",
           "group": "network",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.display_name",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.plan_id",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "connectivity_regions[*].vpn.routing_type",
           "group": "network",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
@@ -3853,6 +4099,19 @@
       ],
       "cases": [
         {
+          "id": "firewall-policy-definition",
+          "topic": "firewall-policy",
+          "fixture": "firewall-existing",
+          "message": "Erstelle jetzt eine ausgehende NAT-Regel für den Internetzugriff und eine Firewall-Filterregel, die eingehenden Verkehr sperrt.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
           "id": "firewall-policy-advice",
           "topic": "firewall-policy",
           "message": "Welche Einstellungen bietet firewall_config fuer Firewall-Regeln, Aliase und Synchronisierung? Nur beraten, keine Infrastruktur konfigurieren.",
@@ -3929,39 +4188,56 @@
           "group": "platform",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "devops.allowed_network_ranges",
           "group": "platform",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "devops.allowed_network_ranges[*]",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "devops.git_flavor",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
+        {
+          "id": "editor-devops",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "message": "Bitte den zentralen DevOps-Git-Dienst als Entwurf konfigurieren, allowed_network_ranges ausschließlich [203.0.113.0/24]. Nutze den nativen Git-Flavor-Standard, keine Verfügbarkeitszusage und kein Deployment.",
+          "editorExpected": {
+            "path": "devops.allowed_network_ranges",
+            "value": [
+              "203.0.113.0/24"
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "devops-git-advice",
           "topic": "devops-git",
@@ -3983,597 +4259,612 @@
           "group": "platform",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*]",
           "group": "platform",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster",
           "group": "platform",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.kubernetes_version_min",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance",
           "group": "platform",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.enable_kubernetes_version_updates",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.enable_machine_image_version_updates",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.end",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.start",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.name",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools",
           "group": "platform",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*]",
           "group": "platform",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].allow_system_components",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].availability_zones",
           "group": "platform",
           "type": "list",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].availability_zones[*]",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].labels",
           "group": "platform",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].labels[*]",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].machine_type",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].maximum",
           "group": "platform",
           "type": "number",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].minimum",
           "group": "platform",
           "type": "number",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].name",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].os_name",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].volume_size",
           "group": "platform",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].volume_type",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion",
           "group": "platform",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.assign_public_ip",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.availability_zone",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.boot_volume_size",
           "group": "platform",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.enabled",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.image_id",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.install_kubectl",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.machine_type",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.name",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_allowed_cidrs",
           "group": "platform",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_allowed_cidrs[*]",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_public_key",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_public_key_path",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].dns",
           "group": "platform",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].dns.create_zones",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].dns.enabled",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].dns.gateway_api",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].dns.zones",
           "group": "platform",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].dns.zones[*]",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes",
           "group": "platform",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.enabled",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.kms_key_name",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.kms_key_version",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.kms_keyring_name",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.storage_class_name",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].network",
           "group": "platform",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].network.firewall_next_hop_ip",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].network.network_area_key",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].network.sna_enabled",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].network.sna_network_area_id",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].network.sna_network_prefix_length",
           "group": "platform",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].observability",
           "group": "platform",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].observability.acl",
           "group": "platform",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].observability.acl[*]",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].observability.enabled",
           "group": "platform",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].observability.name",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].observability.plan_name",
           "group": "platform",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].region",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].role_assignments",
           "group": "platform",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].role_assignments[*]",
           "group": "platform",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].role_assignments[*].role",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "platform_kubernetes[*].role_assignments[*].subject",
           "group": "platform",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
+        {
+          "id": "editor-platform-kubernetes",
+          "topic": "platform-kubernetes",
+          "fixture": "baseline",
+          "message": "Bitte platform_kubernetes als Entwurf hinzufügen, Schlüssel eu01, Region eu01, Clustername synthetic-k8s. Node-Pool default: machine_type g1.4, minimum 1, maximum 2, availability_zones [eu01-1]. Keine SNA-Anbindung, keine DNS-Integration, kein Deployment.",
+          "editorExpected": {
+            "path": "platform_kubernetes.eu01.cluster.name",
+            "value": "synthetic-k8s"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "platform-kubernetes-advice",
           "topic": "platform-kubernetes",
@@ -4595,252 +4886,252 @@
           "group": "projects",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*]",
           "group": "projects",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].corporate",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].custom_roles",
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].custom_roles[*]",
           "group": "projects",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].custom_roles[*].description",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].custom_roles[*].name",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].custom_roles[*].permissions",
           "group": "projects",
           "type": "list",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].custom_roles[*].permissions[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].env",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].network_area_key",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].network_enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].network_prefix_length",
           "group": "projects",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].observability",
           "group": "projects",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].observability.acl",
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].observability.acl[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].observability.enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].observability.name",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].observability.plan_name",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].owner_email",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].project_code",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].project_name",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].region",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].role_assignments",
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].role_assignments[*]",
           "group": "projects",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].role_assignments[*].role",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].role_assignments[*].subject",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zones[*].secretsmanager_enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
@@ -4865,54 +5156,54 @@
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "sandboxes[*]",
           "group": "projects",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "sandboxes[*].owner_emails",
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "sandboxes[*].owner_emails[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "sandboxes[*].project_name",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "sandboxes[*].project_owner_email",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
@@ -4943,306 +5234,306 @@
           "group": "projects",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*]",
           "group": "projects",
           "type": "object",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].annotations",
           "group": "projects",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].annotations[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion",
           "group": "projects",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.metrics_path",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scheme",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scrape_interval",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scrape_timeout",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.target_urls",
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.target_urls[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].dns_subdomain",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].kubernetes_access",
           "group": "projects",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].kubernetes_access.enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].kubernetes_access.service_account_name",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].labels",
           "group": "projects",
           "type": "map",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].labels[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].namespace",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].sample_load",
           "group": "projects",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].sample_load.enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].sample_load.image",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement",
           "group": "projects",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.allow_opaque_secret_types",
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.allow_opaque_secret_types[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass",
           "group": "projects",
           "type": "object",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.principals",
           "group": "projects",
           "type": "list",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.principals[*]",
           "group": "projects",
           "type": "string",
           "optional": false,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.ttl_hours",
           "group": "projects",
           "type": "number",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.enabled",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.mode",
           "group": "projects",
           "type": "string",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         },
         {
           "path": "landing_zone_namespace_services[*].secretsmanager",
           "group": "projects",
           "type": "bool",
           "optional": true,
-          "proposalPath": null,
+          "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "propose-validated-draft"
         }
       ],
       "cases": [
