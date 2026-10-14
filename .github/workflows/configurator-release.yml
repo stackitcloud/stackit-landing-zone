@@ -254,8 +254,12 @@ jobs:
         id: migration
         run: cf push --task -f deploy/cloud-foundry/migration-manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/migration-vars.json" --redact-env
       - name: Apply versioned database migrations
+        id: database_migrations
         timeout-minutes: 5
-        run: cf run-task landing-zone-configurator-migrate --command './runtime/bin/node apps/api/dist/migrate.js' --name "migrate-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+        run: cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+      - name: Sanitized database migration diagnostics
+        if: always() && (steps.database_migrations.outcome == 'success' || steps.database_migrations.outcome == 'failure')
+        run: cf logs landing-zone-configurator-migrate --recent | node infra/ci/migration-evidence.mjs "$GITHUB_RUN_ID"
       - name: Remove privileged migration application
         run: cf delete landing-zone-configurator-migrate -f
       - name: CF push application

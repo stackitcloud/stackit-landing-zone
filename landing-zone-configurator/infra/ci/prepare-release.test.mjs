@@ -7,6 +7,22 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { approvedReleaseSource, createReleaseManifest, verifyReleaseManifest } from "./release-artifact.mjs";
 const script=fileURLToPath(new URL("./prepare-release.mjs",import.meta.url));
+test("migration diagnostics export only bounded evidence for the selected run",()=>{
+ const parser=fileURLToPath(new URL("./migration-evidence.mjs",import.meta.url));
+ const evidence={service:"database-migrations",runId:"123",ok:false,phase:"migrate",version:"053_assistant_conversations.sql",error:"42501",message:"synthetic-private-sql",password:"synthetic-private-password"};
+ const run=input=>spawnSync(process.execPath,[parser,"123"],{input,encoding:"utf8"});
+ const failure=run(`private router line\nLOG ${JSON.stringify({...evidence,runId:"456"})}\nLOG ${JSON.stringify(evidence)}\n`);
+ assert.equal(failure.status,1);
+ assert.deepEqual(JSON.parse(failure.stdout),{service:"database-migrations",runId:"123",ok:false,phase:"migrate",version:"053_assistant_conversations.sql",error:"42501"});
+ assert.ok(!failure.stdout.includes("synthetic-private"));
+ const success=run(`LOG ${JSON.stringify({service:"database-migrations",runId:"123",ok:true,privateValue:"synthetic-private"})}\n`);
+ assert.equal(success.status,0);
+ assert.deepEqual(JSON.parse(success.stdout),{service:"database-migrations",runId:"123",ok:true});
+ const rejected=run(`LOG ${JSON.stringify({...evidence,error:"synthetic-private"})}\n`);
+ assert.equal(rejected.status,1);
+ assert.equal(rejected.stdout,"");
+ assert.ok(!rejected.stderr.includes("synthetic-private"));
+});
 test("one release manifest binds both packages to the same immutable build",()=>{
  const directory=mkdtempSync(join(tmpdir(),"lzc-release-artifact-test-"));
  const source={revision:"a".repeat(40),runId:"12345"};

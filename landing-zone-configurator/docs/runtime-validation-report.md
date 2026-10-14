@@ -47,8 +47,23 @@ mit 12/12 Schritten, den Katalog jedoch nur mit 51/52 Faellen. Bei der
 Firewall-Fortsetzung wurde ein bereits bestaetigter Verkehrsweg erneut abgefragt.
 Eine explizite Klassifikationsklarstellung unterscheidet Verkehrswege von
 Allow/Deny/NAT und verlangt, bereits beantwortete Historie zu erhalten.
-Der gezielte reale Regressionstest bestand danach (1/1). Die vollstaendige
-Qualifikation des korrigierten Standes bleibt separat nachzuweisen.
+Der gezielte reale Regressionstest bestand danach (1/1). Danach bestanden auf
+`927f20a` der komplette reale Katalog (52/52) und der fortgeschriebene Gesamtdialog
+(12/12) ohne automatische Wiederholung. Wissenshash:
+`12693f9d18db481e57ae668b777bfd19715a96f121aa94efa984bc5cd8747bea`.
+Der geschuetzte Release-Run `38619637998` bestand den Build und erhielt nach
+dieser Qualifikation die regulaere Dev-Freigabe durch den autorisierten Reviewer.
+Gehosteter Login und Organisationsnachweis bleiben bis zum Live-Test offen.
+
+Der Deploy-Teil von Run `38619637998` scheiterte beim Migrationstask; die
+privilegierte Migration-App wurde danach entfernt, der Web-App-Push nicht
+ausgefuehrt. Die bisherige Task-Diagnostik enthielt nur `ok=false`, weshalb
+SQLSTATE/Phase/Migrationsdatei jetzt strikt ohne private SQL-/Zeilenwerte
+protokolliert und vor CI-Ausgabe gefiltert werden. 686 Unit-, 49 PostgreSQL- und
+4 Release-/Diagnostiktests bestanden auf diesem Diagnose-Stand.
+Ein versuchter rein lesender lokaler Versionsabgleich kam nicht bis zur
+DB-Verbindung: Der alte lokale Operator-State enthaelt keine Migration-
+Credentials. Keine Cloud-Datenbankdaten wurden dadurch gelesen oder geaendert.
 
 ## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
 

@@ -90,6 +90,10 @@ release in `landing-zone-configurator-migrate`, a separate task-only app with no
 route. Only this short-lived app receives the database-owner credentials; it is
 deleted after migration and on failure. Migration checksums and an advisory lock
 protect repeat execution. The web app uses its restricted runtime role and RLS.
+Migration task diagnostics report only the release run ID, connection/migration
+phase, migration filename and an allowlisted failure category or SQLSTATE.
+The release filters task logs before cleanup; raw SQL, row values, credentials
+and unrelated CF/router log lines are never exported to CI.
 Customer Plans and explicitly confirmed saved-plan Applies/Destroy use ephemeral
 runner tasks. Application drift is read-only. Hosted execution additionally needs
 `LZC_EXECUTION_ENABLED=true`, `LZC_APPLICATION_EXECUTION_ENABLED=true` and the

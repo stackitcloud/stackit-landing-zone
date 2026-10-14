@@ -1,11 +1,33 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type pg from "pg";
+import pg from "pg";
+import { safeFailure } from "../connectivity.js";
+
+export function migrationFailure(error: unknown): string {
+  const reasons = new Map([
+    ["Migration identity required", "migration-identity-required"],
+    ["Migration files missing", "migration-files-missing"],
+    ["Applied migration missing from release", "applied-migration-missing"],
+    ["Applied migration was modified", "applied-migration-modified"],
+  ]);
+  if (error instanceof Error) {
+    const reason = reasons.get(error.message);
+    if (reason) return reason;
+  }
+  if (
+    error instanceof pg.DatabaseError &&
+    error.code &&
+    /^[A-Z0-9]{5}$/.test(error.code)
+  )
+    return error.code;
+  return safeFailure(error);
+}
 
 export async function migrate(
   client: pg.Client,
   directory: string,
+  onMigration?: (version: string) => void,
 ): Promise<void> {
   await client.query("BEGIN");
   try {
@@ -33,6 +55,7 @@ export async function migrate(
       if (!files.includes(version))
         throw new Error("Applied migration missing from release");
     for (const file of files) {
+      onMigration?.(file);
       const sql = await readFile(join(directory, file), "utf8");
       const hash = createHash("sha256").update(sql).digest("hex");
       if (known.has(file)) {

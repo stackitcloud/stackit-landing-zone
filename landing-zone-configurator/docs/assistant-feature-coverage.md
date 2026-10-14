@@ -319,6 +319,29 @@ Komponentenbearbeitung unter #101; es wurden keine weiteren Themen aus dem
 MVP genommen. Weitere Komponenten folgen dem dokumentierten
 [Erweiterungsverfahren](../app/README.md#weitere-assistant-komponenten-ergaenzen).
 
+### Dev-Release-Qualifikation (2026-10-14)
+
+Der korrigierte Release-Stand `927f20a` wurde erneut mit dem echten Qwen-Modell
+qualifiziert: **52/52** synthetische Katalogfaelle und **12/12** Schritte im
+fortgeschriebenen Gesamtdialog bestanden ohne automatische Wiederholung.
+Der vorangegangene Lauf auf `1aabadb` bestand nur 51/52 Faelle: Eine bestaetigte
+Firewall-Verkehrsentscheidung wurde erneut abgefragt. Die anschliessende
+Klassifikationsklarstellung und der gezielte Regressionstest wurden vor dem
+vollstaendigen Wiederholungslauf ausgefuehrt; der erste Fehlerbeleg bleibt erhalten.
+
+- Wissen: `12693f9d18db481e57ae668b777bfd19715a96f121aa94efa984bc5cd8747bea`
+- Journey: `74b5d41782e20b9d720a63afa1d515e50c4197602f41789d1ce920f1598d64e2`
+- Szenariensuite: `57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498`
+
+Der Journey bewahrte 24 Gespraechsnachrichten und exportierte 2069 Bytes tfvars.
+Zusaetzlich bestanden 685 Unit-, 49 PostgreSQL- und 288 Desktop-/Mobile-Tests
+sowie Typpruefung, Produktionsbuild, Katalogfrische und Release-Vorbereitung.
+Die gehostete Assistant-Aktivierung wird ueber das geschuetzte
+`LZC_ASSISTANT_ENABLED`-Opt-in weitergereicht und verlangt Authentifizierung.
+Realer menschlicher Login, Organisationsnachweis und Kunden-Cloud-Ausfuehrung
+sind separate Nachweise; ihr aktueller Status steht im
+[Runtime-Bericht](runtime-validation-report.md).
+
 ### Additive Organisations- und Folder-Rollenvorschlaege
 
 Die gemeldete Bitte um Nutzung der hinterlegten E-Mail als

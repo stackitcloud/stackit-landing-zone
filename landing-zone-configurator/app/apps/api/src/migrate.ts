@@ -1,16 +1,38 @@
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { databaseConfig } from "./storage/database.js";
-import { migrate } from "./storage/migrations.js";
+import { migrate, migrationFailure } from "./storage/migrations.js";
 
 const client = new pg.Client(databaseConfig());
+const runId = process.argv[2];
+if (runId !== undefined && !/^\d+$/.test(runId))
+  throw new Error("Invalid migration diagnostic run ID");
+let phase = "connect";
+let version: string | undefined;
 try {
   await client.connect();
-  await migrate(client, fileURLToPath(new URL("../db/", import.meta.url)));
-  console.log(JSON.stringify({ service: "database-migrations", ok: true }));
-} catch {
-  // SQL errors can contain credential-bearing input or private schema values.
-  console.error(JSON.stringify({ service: "database-migrations", ok: false }));
+  phase = "migrate";
+  await migrate(
+    client,
+    fileURLToPath(new URL("../db/", import.meta.url)),
+    (file) => {
+      version = file;
+    },
+  );
+  console.log(
+    JSON.stringify({ service: "database-migrations", runId, ok: true }),
+  );
+} catch (error) {
+  console.error(
+    JSON.stringify({
+      service: "database-migrations",
+      runId,
+      ok: false,
+      phase,
+      version,
+      error: migrationFailure(error),
+    }),
+  );
   process.exitCode = 1;
 } finally {
   await client.end();

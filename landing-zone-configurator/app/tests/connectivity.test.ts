@@ -1,11 +1,26 @@
+import pg from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { checkSecrets, safeFailure } from "../apps/api/src/connectivity.js";
+import { migrationFailure } from "../apps/api/src/storage/migrations.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
 describe("connection diagnostics", () => {
+  it("reports migration reasons and SQLSTATE without private SQL error details", () => {
+    const error = new pg.DatabaseError("synthetic-private-value", 0, "error");
+    error.code = "42501";
+    error.detail = "synthetic-private-row";
+    expect(migrationFailure(error)).toBe("42501");
+    expect(migrationFailure(new Error("Applied migration was modified"))).toBe(
+      "applied-migration-modified",
+    );
+    expect(migrationFailure(new Error("synthetic-private-value"))).toBe(
+      "connection-or-response-failed",
+    );
+    expect(migrationFailure({ code: "ECONNREFUSED" })).toBe("ECONNREFUSED");
+  });
   it("never includes raw credentials from driver errors", () => {
     expect(safeFailure(new Error("password=very-secret"))).toBe(
       "connection-or-response-failed",
