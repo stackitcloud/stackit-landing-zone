@@ -5,13 +5,25 @@ Target: `landing-zone-configurator/app`, lokale STACKIT-Login-Umstellung.
 
 ## Dev-Release: Gehosteter Betrieb und Sitzungsabnahme (2026-10-14)
 
-Run `38629852771`, Quelle `576ad96`, bestand Build und geschuetztes Deployment:
-Migrationen bis 057, beide nativen Runner-Pruefungen, Datenbank/Vault-Verbindungen,
+Aktuell laeuft Quelle `1b04566` aus dem erfolgreichen
+[Release `38637449791`](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38637449791)
+auf https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud.
+Build und geschuetztes Deployment bestanden: Migrationen bis 058,
+beide nativen Runner-Pruefungen, Datenbank/Vault-Verbindungen,
 isolierter Runner mit abgelehntem Job-Ticket und alle oeffentlichen Route-Gates.
 Die kanonische suffixfreie Route antwortet mit HTTP 200; die alte Suffix-Route
 wurde nach erfolgreichen Pruefungen von der App entfernt und antwortet mit 404.
 Die Migrationsevidenz lautet `ok=true`, die Runner-Isolation ebenfalls.
-Gemessene Runner-Zeiten: Dispatch 3739 ms, Abschluss 12092 ms.
+Gemessene Runner-Zeiten: Dispatch 4375 ms, Abschluss 12723 ms.
+Der vorherige erfolgreiche Release `38629852771` (`576ad96`) etablierte die
+kanonische Route und die erste echte Login-/Owner-Abnahme.
+
+Die vorherigen `No space left on device`-Fehler entstanden vor dem Node-Start:
+die Migration musste das komplette Droplet in nur 512 MiB entpacken.
+Schon dessen regulaere Dateien belegten 505,65 MiB, ohne Dateisystem-Overhead.
+Migration und die drei ebenfalls das gesamte Droplet entpackenden API-
+Validierungstasks verwenden jetzt 4096 MiB Disk; ihre 128 MiB RAM bleiben
+unveraendert. Der aktuelle Release bestand alle vier Tasks.
 
 Der sourcegebundene Hosted-Smoke bestand acht Pruefungen, darunter Production-
 PKCE/S256, Public Client ohne Secret, beide Callback-Routen, Secure/HttpOnly-
@@ -32,22 +44,48 @@ App-Sitzung und kuerzerem STACKIT-Token: die Sitzung endete ohne Nutzer-Logout.
 Der Nutzer entschied fuer eine achtstuendige App-Sitzung bei unveraendert
 kurzlebigen Identitaets-/Owner-Nachweisen. Migration 058 und Login-Code trennen
 diese Laufzeiten, ohne alte Checksummen oder aktuelle Sitzungen umzuschreiben.
-80 gezielte Auth-Unit- und 50 reale PostgreSQL-Tests sowie TypeScript bestanden.
-Die neue Hosted-Sitzungslaufzeit ist bis zum erneuten Deployment/Login offen.
+80 gezielte Auth-Unit- und 50 reale PostgreSQL-Tests bestanden; der vollstaendige
+Check bestand Knowledge/Katalog, Lint, Types und Build mit 686 Unit-Tests und
+53 bewusst gegateten Skips. Der Release bestand auch die 288 Browsertests.
+Die PostgreSQL-/API-Regression prueft insbesondere: abgelaufener Nachweis bei
+weiterhin HTTP 200 fuer die App-Sitzung, keine fortbestehende Owner-Autoritaet,
+Ablehnung einer Organisationsbindung sowie weiterhin wirksamer Logout.
+
+Nach Deployment von `1b04566` schloss der Nutzer einen frischen echten Login ab.
+Gemessen wurde App-Sitzungsende `2026-10-15T05:25:30.644Z` gegen
+STACKIT-Nachweisende `2026-10-14T21:40:29.590Z`: rund acht Stunden gegen
+15 Minuten. Der Test wartete den tatsaechlichen Nachweisablauf ab.
+Um `21:40:42.975Z` antworteten Session- und Identity-API weiterhin mit HTTP 200:
+`stackitVerified=false`, `verified=false`, unveraendertes App-Sitzungsende.
+Auch nach Neuladen um `21:40:54.140Z` blieb die UI angemeldet (`Sign out` sichtbar).
+Kein Refresh Token wird gespeichert; privilegierte Aktionen erfordern weiter
+einen frischen Nachweis. Bestehende Sitzungen wurden nicht rueckwirkend verlaengert.
 
 Beim zusaetzlichen Hosted-Assistant-Test funktionierten reale Model-Serving-
 Antworten, explizite Vorschlagsannahme und Datenbankzugriff. Ein kombinierter
 Firmen-/Ordnernamensauftrag lieferte auf einer synthetischen Common-Konfiguration
 jedoch nur Firmennamen/-code statt aller angefragten Ordnernamen, ohne Rueckfrage.
-Das ist keine vollstaendige Abnahme dieses kombinierten Modellfalls. Zuvor wurden
+Das ist keine vollstaendige Abnahme dieses kombinierten Modellfalls und wird als
+[Folgebefund in #94](https://github.com/stackitcloud/stackit-landing-zone/issues/94#issuecomment-6178981141)
+nachgehalten. Zuvor wurden
 ein nicht unterstuetzter Legacy-Entwurf mit 409 und ein unvollstaendiges natives
 Ordnerobjekt mit 400 korrekt abgelehnt; eine Assertion verwendete anfangs die
 falsche Feature-Gruppe fuer Ordner. Alle erstellten synthetischen Konfigurationen
 wurden im `finally` entfernt und ihre Entfernung mit 404 bestaetigt; vorhandene
-Kundenkonfigurationen wurden nicht veraendert. Der letzte Fortsetzungstest wurde
-durch die inzwischen abgelaufene Sitzung blockiert.
+Kundenkonfigurationen wurden nicht veraendert.
 
-## Dev-Release: Lokale Qualifikation (2026-10-14)
+Nach dem frischen Login auf `1b04566` bestand ein separater realer Zwei-Turn-
+Dialog fuer Firmenname und Firmencode: Vorschlaege ohne implizites Speichern,
+explizite Annahme beider Turns, exakt persistierte Revision 3, Erhaltung aller
+anderen Felder, Ablehnung einer veralteten Revision mit 409 und mindestens vier
+persistierte Gespraechsnachrichten ohne offenen Vorschlag. Auch diese
+synthetische Konfiguration wurde entfernt und ihr Fehlen mit 404 bestaetigt.
+Dieser bestandene Fall ersetzt nicht die offene kombinierte Ordnernamensabnahme.
+
+## Dev-Release: Historische Qualifikation vor dem ersten erfolgreichen Deployment (2026-10-14)
+
+Die folgenden Ergebnisse und damaligen `PENDING`-Zustaende dokumentieren den
+Release-Verlauf; fuer den aktuellen Hosted-Status gilt die Abnahme oben.
 
 Der Client ist laut Client-Team in STACKIT Production als Public Client mit
 verpflichtendem PKCE registriert. Die oeffentliche Client-ID wurde mit

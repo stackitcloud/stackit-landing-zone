@@ -95,9 +95,35 @@ Die Anwendung nutzt bereits den Production-Issuer und PKCE/S256 ohne Secret.
 
 Die oeffentliche `LZC_STACKIT_CLIENT_ID` wurde am 2026-10-14 mit Nutzerfreigabe
 im geschuetzten GitHub-Environment `lzc-dev-release` hinterlegt und durch erneutes
-Auslesen verifiziert. Kein STACKIT Client Secret wurde uebertragen und kein
-Deployment ausgeloest. Der gehostete Login und die Organisationspruefung sind noch
-nicht end-to-end qualifiziert.
+Auslesen verifiziert. Bei diesem Konfigurationsschritt wurde kein STACKIT Client
+Secret uebertragen und noch kein Deployment ausgeloest.
+
+Aktueller Hosted-Stand am 2026-10-14: Quelle `1b04566`, geschuetzter
+[Release `38637449791`](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38637449791),
+Build und Deployment erfolgreich. Migrationen bis 058, native Runner-Roots,
+PostgreSQL/Vault, Runner-Isolation und acht sourcegebundene Public-Smoke-Pruefungen
+bestanden. Die kanonische Route antwortet mit 200; die alte Suffix-Route wurde
+erst nach erfolgreichen Gates entfernt und antwortet mit 404.
+Migration und alle drei vollstaendige Droplets entpackenden API-Prueftasks
+verwenden wegen des nachgewiesenen 512-MiB-ENOSPC jetzt 4096 MiB Disk.
+
+Echter Public-PKCE-Login und separater Owner-Nachweis wurden auf dem ersten
+erfolgreichen Release `576ad96` bestaetigt. Auf `1b04566` wurde nach dem
+freigegebenen Laufzeitfix erneut echt eingeloggt: App-Sitzung acht Stunden,
+STACKIT-Nachweis rund 15 Minuten. Nach dessen tatsaechlichem Ablauf blieb die
+Session-API mit 200 erreichbar und die UI auch nach Neuladen angemeldet, waehrend
+`stackitVerified` und der Nachweisstatus korrekt false wurden. Nachweise bleiben
+kurzlebig; keine Refresh-Token-Speicherung und keine rueckwirkende Verlaengerung.
+
+Ein realer Zwei-Turn-Assistant-Test fuer Firmenname/-code mit expliziter Annahme,
+Persistenz, History und Revisionskonflikt bestand; synthetische Daten wurden
+entfernt. Der kombinierte Firmen-/Ordnernamensfall blieb unvollstaendig und ist
+in [#94](https://github.com/stackitcloud/stackit-landing-zone/issues/94#issuecomment-6178981141)
+nachgehalten. Details und Testgrenzen stehen im
+[Runtime Validation Report](runtime-validation-report.md).
+Keine bestehende Konfiguration oder Kunden-Cloud-Ressource wurde veraendert;
+die ausdrueckliche Organisationsbindung ist weiterhin nicht bestaetigt.
+
 Kein neuer Antrag, kein Suffix, kein Device-Flow-/GitHub-Ersatz
 und kein gehosteter CLI-Client. Beide registrierten Callbacks muessen passen:
 
@@ -164,5 +190,7 @@ versendete Abschlussantwort.
 Fuer einen neuen Copilot-Chat beide Dokumente als Kontext anhaengen und angeben:
 "Lies die Entwicklungsuebergabe und den Gespraechsexport vom 2026-10-09.
 Pruefe den aktuellen Git-Stand. Keine historischen Migrationen oder Runner-
-Bindungen aendern. Gehostetes Dev bleibt bis zur bereitgestellten Web-Client-ID
-gesperrt. Setze nur das nun ausdruecklich beauftragte Arbeitspaket fort."
+Bindungen aendern. Gehostetes Dev laeuft auf der kanonischen Route; lies fuer die
+aktuelle Abnahme den Runtime Validation Report. Keine Kunden-Cloud-Ausfuehrung
+oder Organisationsbindung ohne ausdrueckliche Freigabe. Setze nur das nun
+ausdruecklich beauftragte Arbeitspaket fort."
