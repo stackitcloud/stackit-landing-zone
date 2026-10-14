@@ -34,6 +34,7 @@ import {
   createGitHubLogin,
   newSessionToken,
 } from "../apps/api/src/auth/github-flow.js";
+import { StackitDeviceFlow } from "../apps/api/src/auth/stackit-device.js";
 import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
@@ -136,6 +137,117 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL session and tenant boundaries", () => {
+  it("keeps an eight-hour STACKIT session while expired human authority remains denied", async () => {
+    const token = newSessionToken();
+    const proof = {
+      issuer: "https://accounts.stackit.cloud",
+      subject: randomUUID(),
+      email: "independent-session@example.test",
+      emailVerified: true as const,
+      verificationMethod: "signed-id-token-and-userinfo" as const,
+      tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+      organization: null,
+    };
+    const expiresAt = new Date(Date.now() + 8 * 3600000);
+    const login = await store.createStackitSession({
+      identity: proof,
+      id: randomUUID(),
+      hash: token.hash,
+      csrfToken: randomBytes(32).toString("base64url"),
+      expiresAt,
+    });
+    const organisations = new PostgresOrganisations(pool);
+    const organizationId = randomUUID();
+    const tenantId = await organisations.create(
+      login,
+      "Independent session authority",
+      organizationId,
+    );
+    await organisations.switch(login, tenantId);
+    const session = { ...login, tenantId };
+    const identities = new StackitIdentities(pool);
+    await identities.save(session, {
+      ...proof,
+      organization: {
+        id: organizationId,
+        name: "Independent session organization",
+        permissions: ["organization.read", "organization.write"],
+        ownerPermissions: ["organization.read", "organization.write"],
+      },
+    });
+    expect((await identities.status(session)).organizationAdminVerified).toBe(
+      true,
+    );
+    await migration.query(
+      "UPDATE lzc.stackit_identities SET valid_until=now()-interval '1 second' WHERE user_id=$1",
+      [session.userId],
+    );
+    expect(await store.resolveSession(token.token)).toMatchObject({
+      id: session.id,
+      expiresAt,
+    });
+    expect(await identities.status(session)).toMatchObject({
+      verified: false,
+      organizationVerified: false,
+      organizationAdminVerified: false,
+    });
+    const app = buildApp({
+      auth: {
+        origin: "https://configurator.example",
+        clientId: "",
+        primaryStackit: true,
+        githubEnabled: false,
+        store,
+        github: { authorize: vi.fn() },
+        tokens: { put: vi.fn(), get: vi.fn(), remove: vi.fn() },
+      },
+      stackit: {
+        identities,
+        organisations,
+        createFlow: () => new StackitDeviceFlow(),
+      },
+    });
+    try {
+      const response = await app.inject({
+        url: "/api/v1/session",
+        headers: { cookie: `__Host-lzc-session=${token.token}` },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        user: { id: session.userId },
+        expiresAt: expiresAt.toISOString(),
+        stackitVerified: false,
+      });
+    } finally {
+      await app.close();
+    }
+    await expect(
+      identities.bindOrganization(session, {
+        confirmOrganizationBinding: true,
+      }),
+    ).rejects.toMatchObject({ code: "42501" });
+    for (const invalid of [
+      { expiresAt: new Date(Date.now() + 9 * 3600000) },
+      {
+        identity: {
+          ...proof,
+          tokenExpiresAt: new Date(Date.now() - 1000).toISOString(),
+        },
+      },
+    ])
+      await expect(
+        store.createStackitSession({
+          identity: proof,
+          id: randomUUID(),
+          hash: newSessionToken().hash,
+          csrfToken: randomBytes(32).toString("base64url"),
+          expiresAt,
+          ...invalid,
+        }),
+      ).rejects.toMatchObject({ code: "23514" });
+    await store.deleteSession(token.token);
+    expect(await store.resolveSession(token.token)).toBeNull();
+  });
   it("persists bounded large organization proofs without changing the complete owner comparison", async () => {
     const proof = {
       issuer: "https://accounts.stackit.cloud",

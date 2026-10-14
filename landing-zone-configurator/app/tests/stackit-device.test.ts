@@ -619,6 +619,7 @@ it("uses STACKIT as primary login without GitHub and binds approval to a secure 
       ).statusCode,
     ).toBe(409);
     advance(5000);
+    const pollStarted = Date.now();
     const poll = await app.inject({
       method: "POST",
       url: "/auth/stackit/poll",
@@ -629,10 +630,24 @@ it("uses STACKIT as primary login without GitHub and binds approval to a secure 
       poll.cookies.find((value) => value.name === "__Host-lzc-session"),
     ).toMatchObject({ secure: true, httpOnly: true });
     expect(createStackitSession).toHaveBeenCalledOnce();
-    expect(createStackitSession.mock.calls[0]![0].identity).toMatchObject({
+    const createdSession = createStackitSession.mock.calls[0]?.[0];
+    if (!createdSession) throw new Error("Expected created STACKIT session");
+    expect(createdSession.identity).toMatchObject({
       subject,
       email,
     });
+    expect(createdSession.expiresAt.getTime()).toBeGreaterThanOrEqual(
+      pollStarted + 8 * 3600000,
+    );
+    expect(createdSession.expiresAt.getTime()).toBeLessThanOrEqual(
+      Date.now() + 8 * 3600000,
+    );
+    expect(Date.parse(createdSession.identity.tokenExpiresAt)).toBeLessThan(
+      createdSession.expiresAt.getTime(),
+    );
+    expect(
+      poll.cookies.find((value) => value.name === "__Host-lzc-session")?.maxAge,
+    ).toBeGreaterThanOrEqual(28798);
     expect(auth.store.createSession).not.toHaveBeenCalled();
     expect(auth.tokens.put).not.toHaveBeenCalled();
     expect(auth.github.authorize).not.toHaveBeenCalled();

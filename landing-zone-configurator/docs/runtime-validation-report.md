@@ -3,6 +3,50 @@
 Generated: 2026-10-02T10:14:20Z
 Target: `landing-zone-configurator/app`, lokale STACKIT-Login-Umstellung.
 
+## Dev-Release: Gehosteter Betrieb und Sitzungsabnahme (2026-10-14)
+
+Run `38629852771`, Quelle `576ad96`, bestand Build und geschuetztes Deployment:
+Migrationen bis 057, beide nativen Runner-Pruefungen, Datenbank/Vault-Verbindungen,
+isolierter Runner mit abgelehntem Job-Ticket und alle oeffentlichen Route-Gates.
+Die kanonische suffixfreie Route antwortet mit HTTP 200; die alte Suffix-Route
+wurde nach erfolgreichen Pruefungen von der App entfernt und antwortet mit 404.
+Die Migrationsevidenz lautet `ok=true`, die Runner-Isolation ebenfalls.
+Gemessene Runner-Zeiten: Dispatch 3739 ms, Abschluss 12092 ms.
+
+Der sourcegebundene Hosted-Smoke bestand acht Pruefungen, darunter Production-
+PKCE/S256, Public Client ohne Secret, beide Callback-Routen, Secure/HttpOnly-
+Cookie, fremde Origins und anonyme API-Ablehnung. Die synthetische Login-Bindung
+wurde geloescht. Ein zu frueh gestarteter Smoke hatte noch die alte Instanz
+waehrend `cf push` erreicht; der finale Smoke verlangt deshalb vorher den
+erfolgreichen Push der exakt qualifizierten Revision.
+
+Der Nutzer schloss echten STACKIT-Login und erneuten Owner-Nachweis ab.
+Authenticated Session, `stackitVerified`, Identitaetsuebereinstimmung,
+`organizationAdminVerified` und Platform-Engineer-Rolle wurden danach aus der
+eigenen Browser-Sitzung bestaetigt; auch ein Neuladen erhielt die Sitzung.
+Die ausdrueckliche Organisationsbindung ist davon getrennt und wurde nicht
+automatisch bestaetigt. Keine Kunden-Cloud-Plans, Applies oder Destroys.
+
+Die anschliessende reale Langlaufabnahme fand die bisherige Kopplung von
+App-Sitzung und kuerzerem STACKIT-Token: die Sitzung endete ohne Nutzer-Logout.
+Der Nutzer entschied fuer eine achtstuendige App-Sitzung bei unveraendert
+kurzlebigen Identitaets-/Owner-Nachweisen. Migration 058 und Login-Code trennen
+diese Laufzeiten, ohne alte Checksummen oder aktuelle Sitzungen umzuschreiben.
+80 gezielte Auth-Unit- und 50 reale PostgreSQL-Tests sowie TypeScript bestanden.
+Die neue Hosted-Sitzungslaufzeit ist bis zum erneuten Deployment/Login offen.
+
+Beim zusaetzlichen Hosted-Assistant-Test funktionierten reale Model-Serving-
+Antworten, explizite Vorschlagsannahme und Datenbankzugriff. Ein kombinierter
+Firmen-/Ordnernamensauftrag lieferte auf einer synthetischen Common-Konfiguration
+jedoch nur Firmennamen/-code statt aller angefragten Ordnernamen, ohne Rueckfrage.
+Das ist keine vollstaendige Abnahme dieses kombinierten Modellfalls. Zuvor wurden
+ein nicht unterstuetzter Legacy-Entwurf mit 409 und ein unvollstaendiges natives
+Ordnerobjekt mit 400 korrekt abgelehnt; eine Assertion verwendete anfangs die
+falsche Feature-Gruppe fuer Ordner. Alle erstellten synthetischen Konfigurationen
+wurden im `finally` entfernt und ihre Entfernung mit 404 bestaetigt; vorhandene
+Kundenkonfigurationen wurden nicht veraendert. Der letzte Fortsetzungstest wurde
+durch die inzwischen abgelaufene Sitzung blockiert.
+
 ## Dev-Release: Lokale Qualifikation (2026-10-14)
 
 Der Client ist laut Client-Team in STACKIT Production als Public Client mit

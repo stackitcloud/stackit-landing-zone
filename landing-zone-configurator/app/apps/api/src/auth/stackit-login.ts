@@ -119,14 +119,13 @@ export function registerStackitLogin(
       try {
         const state = await entry.flow.poll();
         if (state.status !== "verified") return state;
-        const expiresAt = new Date(
-          Math.min(
-            Date.parse(state.identity.tokenExpiresAt) - 30000,
-            Date.now() + 8 * 3600000,
-          ),
-        );
-        if (expiresAt.getTime() <= Date.now())
+        const proofExpiresAt = Date.parse(state.identity.tokenExpiresAt);
+        if (
+          !Number.isFinite(proofExpiresAt) ||
+          proofExpiresAt - 30000 <= Date.now()
+        )
           throw new Error("Identity expired");
+        const expiresAt = new Date(Date.now() + 8 * 3600000);
         const secret = newSessionToken();
         if (
           entry.existingSessionId &&

@@ -7,6 +7,16 @@ Restore-Pruefungen lokal aktiviert. Echter menschlicher Login, vollstaendiger
 Owner-Nachweis und ausdrueckliche Organisationsbindung sind in der bestehenden
 Kundenorganisation erfolgreich abgenommen. GitHub bleibt als Legacy-Modus erhalten.
 
+Seit Migration 058 ist die achtstuendige Configurator-Sitzung unabhaengig von
+der kuerzeren STACKIT-Tokenlaufzeit. Beim Login muss der verifizierte Nachweis
+weiterhin aktuell sein. Identitaets- und Organisations-Owner-Nachweise behalten
+ihre eigenen Ablaufzeiten; abgelaufene Nachweise erlauben weder eine neue
+Organisationsbindung noch geschuetzte Cloud-Aktionen. Sie muessen bei Bedarf
+erneut bestaetigt werden. Refresh-Tokens werden weiterhin nicht gespeichert.
+Logout widerruft die App-Sitzung, und Rollen-/Mandantenpruefungen bleiben aktiv.
+Bestehende Sitzungen werden nicht nachtraeglich verlaengert; die neue Laufzeit
+gilt nach erneuter Anmeldung.
+
 Der Resource Manager liefert fuer die exakt angefragte Organisations-UUID einen
 IAM-Containerbezug. Die Pruefung verwendet ausschliesslich diesen Bezug fuer
 IAM-Rechte und Rollen; fremde Container bleiben gesperrt. Die reale Antwort mit
