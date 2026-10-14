@@ -90,10 +90,19 @@ release in `landing-zone-configurator-migrate`, a separate task-only app with no
 route. Only this short-lived app receives the database-owner credentials; it is
 deleted after migration and on failure. Migration checksums and an advisory lock
 protect repeat execution. The web app uses its restricted runtime role and RLS.
+The migration app and its task both need 4096 MB disk quota because they unpack
+the complete immutable web release, including the pinned inspection runtime.
+The former 512 MB limit failed during container extraction, before Node or any
+migration code started. The task retains its 128 MB memory limit.
+The exact qualified release contains 505.65 MiB of regular file payload alone;
+filesystem blocks, directories and the container add overhead beyond that.
 Migration task diagnostics report only the release run ID, connection/migration
 phase, migration filename and an allowlisted failure category or SQLSTATE.
 The release filters task logs before cleanup; raw SQL, row values, credentials
 and unrelated CF/router log lines are never exported to CI.
+The web manifest uses the registered suffix-free Dev origin. After canonical
+route checks pass, release unmaps the historical suffixed route from this app
+if it is still bound. It does not delete the shared domain or other app routes.
 Customer Plans and explicitly confirmed saved-plan Applies/Destroy use ephemeral
 runner tasks. Application drift is read-only. Hosted execution additionally needs
 `LZC_EXECUTION_ENABLED=true`, `LZC_APPLICATION_EXECUTION_ENABLED=true` and the

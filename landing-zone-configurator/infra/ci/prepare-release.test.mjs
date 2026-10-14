@@ -7,6 +7,18 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { approvedReleaseSource, createReleaseManifest, verifyReleaseManifest } from "./release-artifact.mjs";
 const script=fileURLToPath(new URL("./prepare-release.mjs",import.meta.url));
+test("migration task can unpack the full release and web routes match the registered callback origin",()=>{
+ const web=readFileSync(new URL("../../deploy/cloud-foundry/manifest.yml",import.meta.url),"utf8");
+ const migration=readFileSync(new URL("../../deploy/cloud-foundry/migration-manifest.yml",import.meta.url),"utf8");
+ const workflow=readFileSync(new URL("../../../.github/workflows/configurator-release.yml",import.meta.url),"utf8");
+ assert.match(web,/\n    disk_quota: 4096M\n/);
+ assert.match(migration,/\n    disk_quota: 4096M\n/);
+ assert.match(workflow,/cf run-task landing-zone-configurator-migrate [^\n]+ -m 128M -k 4096M --wait/);
+ assert.match(web,/\n    routes:\n      - route: lzc-dev-configurator\.apps\.01\.cf\.eu01\.stackit\.cloud\n    env:/);
+ assert.ok(!web.includes("lzc-dev-configurator-7dbff805"));
+ assert.ok(workflow.indexOf("Retire previous suffixed route after canonical checks")>workflow.indexOf("Public route checks"));
+ assert.match(workflow,/cf unmap-route landing-zone-configurator apps\.01\.cf\.eu01\.stackit\.cloud --hostname lzc-dev-configurator-7dbff805/);
+});
 test("migration diagnostics export only bounded evidence for the selected run",()=>{
  const parser=fileURLToPath(new URL("./migration-evidence.mjs",import.meta.url));
  const evidence={service:"database-migrations",runId:"123",ok:false,phase:"migrate",version:"053_assistant_conversations.sql",error:"42501",message:"synthetic-private-sql",password:"synthetic-private-password"};

@@ -4,7 +4,7 @@ applications:
     instances: 0
     no-route: true
     memory: 128M
-    disk_quota: 512M
+    disk_quota: 4096M
     stack: cflinuxfs4
     buildpacks: [binary_buildpack]
     command: ./runtime/bin/node apps/api/dist/migrate.js

@@ -256,7 +256,7 @@ jobs:
       - name: Apply versioned database migrations
         id: database_migrations
         timeout-minutes: 5
-        run: cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 512M --wait
+        run: cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
       - name: Sanitized database migration diagnostics
         if: always() && (steps.database_migrations.outcome == 'success' || steps.database_migrations.outcome == 'failure')
         run: |
@@ -320,6 +320,13 @@ jobs:
             for resource in templates instances; do
               test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/applications/$resource")" = 401
             done
+          fi
+      - name: Retire previous suffixed route after canonical checks
+        run: |
+          app_id="$(cf app landing-zone-configurator --guid)"
+          legacy_mapped="$(cf curl "/v3/apps/$app_id/routes" | jq -r 'if .pagination.next != null then error("Unexpected application route pagination") else any(.resources[]; .url == "lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud") end')"
+          if [ "$legacy_mapped" = true ]; then
+            cf unmap-route landing-zone-configurator apps.01.cf.eu01.stackit.cloud --hostname lzc-dev-configurator-7dbff805
           fi
       - name: Clean up migration application after failure or cancellation
         if: (failure() || cancelled()) && (steps.migration.outcome == 'success' || steps.migration.outcome == 'failure' || steps.migration.outcome == 'cancelled')

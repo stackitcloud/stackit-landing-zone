@@ -86,6 +86,24 @@ Der tatsaechliche Migrationsfehler ist damit noch nicht festgestellt.
 Die privilegierte Migration-App wurde entfernt; Web-App-Push, Hosted-Login und
 Organisationsnachweis bleiben offen.
 
+Run `38627154778` bestand den Build, scheiterte aber erneut beim Task-Start
+ohne Anwendungslog-Evidenz. Die vom Nutzer bereitgestellten CF-Cell-Logs zeigen
+`tar: No space left on device` beim Entpacken von Runtime und Workspace-Symlinks.
+Ursache ist die 512-MB-Disk-Quota des Migrationstasks, nicht ein nachgewiesener
+SQL-/Verbindungsfehler. Migration-App und expliziter Task-Aufruf erhalten jetzt
+4096 MB, entsprechend der Web-App; die Memory-Quota bleibt 128 MB.
+Das exakt qualifizierte Artefakt von Run `38627154778` wurde ausgemessen:
+530208307 Bytes / 505,65 MiB regulaere Dateiinhalte (8309 Dateien), noch ohne
+Dateisystem-, Verzeichnis- und Container-Overhead. 512 MB lassen dafuer keine
+ausreichende Reserve.
+Ein Release-Test prueft beide Quotas sowie die suffixfreie Manifest-Route.
+Das aktuelle Manifest und die geschuetzte Callback-Variable nutzen bereits
+`https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud`; live antwortete
+vor erfolgreichem Web-App-Push nur die historische Route mit Suffix.
+Nach erfolgreichen Pruefungen der kanonischen Route wird die alte Route nur
+von dieser App entfernt, falls sie noch gebunden ist; andere Routen bleiben
+unveraendert.
+
 ## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
 
 Migration 052 erweitert den bestehenden Operator-Pruefkontext um gespeicherte
