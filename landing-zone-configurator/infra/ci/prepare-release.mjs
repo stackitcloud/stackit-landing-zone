@@ -48,6 +48,8 @@ if(mode==="backend") {
   mask(migration.password);
   writeFileSync(resolve(dir,"migration-vars.json"),JSON.stringify(migrationVars),{mode:0o600});
   const enabled=process.env.LZC_AUTH_ENABLED==="true";
+  const assistantEnabled=process.env.LZC_ASSISTANT_ENABLED==="true";
+  if(assistantEnabled&&!enabled)throw new Error("Assistant requires authentication");
   const stackitEnabled=process.env.LZC_STACKIT_DEVICE_ENABLED==="true";
   const clientApproved=process.env.LZC_STACKIT_CLI_CLIENT_APPROVED==="true";
   if(stackitEnabled && !enabled)throw new Error("STACKIT login requires authentication");
@@ -59,7 +61,7 @@ if(mode==="backend") {
   const clientId=enabled?(process.env.LZC_GITHUB_CLIENT_ID??""):"";
   const clientSecret=enabled?(process.env.LZC_GITHUB_CLIENT_SECRET??""):"";
   if(enabled && ((!stackitEnabled && (!clientId || !clientSecret)) || !!clientId!==!!clientSecret))throw new Error("GitHub configuration incomplete");
-  Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_STACKIT_DEVICE_ENABLED:String(stackitEnabled),LZC_STACKIT_CLI_CLIENT_APPROVED:String(stackitEnabled && clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:clientId,LZC_GITHUB_CLIENT_SECRET:clientSecret});
+  Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_ASSISTANT_ENABLED:String(assistantEnabled),LZC_STACKIT_DEVICE_ENABLED:String(stackitEnabled),LZC_STACKIT_CLI_CLIENT_APPROVED:String(stackitEnabled && clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:clientId,LZC_GITHUB_CLIENT_SECRET:clientSecret});
   Object.assign(vars,stackitConfiguration);
   const executionEnabled=process.env.LZC_EXECUTION_ENABLED==="true";
   const applicationExecutionEnabled=process.env.LZC_APPLICATION_EXECUTION_ENABLED==="true";

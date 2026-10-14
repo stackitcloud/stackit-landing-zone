@@ -219,6 +219,7 @@ jobs:
         run: node infra/ci/prepare-release.mjs application
         env:
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
+          LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}
           LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
           LZC_STACKIT_CLI_CLIENT_APPROVED: ${{ vars.LZC_STACKIT_CLI_CLIENT_APPROVED }}
           LZC_STACKIT_AUTH_FLOW: ${{ vars.LZC_STACKIT_AUTH_FLOW }}
@@ -285,6 +286,7 @@ jobs:
         env:
           LZC_URL: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
+          LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}
           LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
         run: |
           expected=not-configured
@@ -294,14 +296,17 @@ jobs:
           curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e --arg expected "$expected" 'if $expected == "stackit" then .primary == "stackit" and .stackit == true and .stackitFlow == "authorization-code" else .github == ($expected == "github") end'
           curl --fail --silent --show-error "$LZC_URL/" | grep -q 'Landing Zone Configurator'
           test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/session")" = 401
+          if [ "$LZC_ASSISTANT_ENABLED" = true ]; then
+            test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/configurations/template-advice")" = 401
+          fi
           curl --fail --silent --show-error "$LZC_URL/applications" | grep -q 'Landing Zone Configurator'
           if [ "$LZC_AUTH_ENABLED" = true ]; then
             for resource in templates instances; do
               test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/applications/$resource")" = 401
             done
           fi
-      - name: Clean up migration application after failure
-        if: failure() && (steps.migration.outcome == 'success' || steps.migration.outcome == 'failure')
+      - name: Clean up migration application after failure or cancellation
+        if: (failure() || cancelled()) && (steps.migration.outcome == 'success' || steps.migration.outcome == 'failure' || steps.migration.outcome == 'cancelled')
         run: cf delete landing-zone-configurator-migrate -f
       - name: Remove private deployment inputs
         if: always()

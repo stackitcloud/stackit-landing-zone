@@ -34,6 +34,12 @@ The protected Environment supplies the explicit PKCE configuration:
 | `LZC_STACKIT_CLIENT_ID` | Registered public Web client supporting PKCE |
 | `LZC_STACKIT_REDIRECT_URI` | Public origin followed by `/auth/stackit/callback` |
 
+Set `LZC_ASSISTANT_ENABLED=true` in the protected Environment to activate the
+authenticated Assistant and template advice in the hosted API. The workflow,
+release preparation and manifest forward this opt-in to CF; it remains disabled
+by default and release preparation rejects enabling it without authentication.
+The existing runtime Model Serving token stays backend-only.
+
 Register both login and `/auth/stackit/proof-callback` HTTPS callbacks with that
 client. The callbacks must belong to the configured `LZC_PUBLIC_ORIGIN`; query
 strings, fragments and embedded credentials are rejected. There is no silent

@@ -1317,6 +1317,11 @@ Reviewed knowledge: ${JSON.stringify({ fields: editorFields, topics: context.top
                 "Ordne den laufenden Firewall-Dialog anhand tatsächlicher Nutzeraussagen ein. Antworte pro Belegfeld ausschließlich mit einer ID aus userEvidence oder JSON null, niemals mit freiem Text, true/false, 'unknown' oder 'not specified'. Frageformulierungen sind keine Antworten. scope=setup bei breiter Einrichtung oder Fortsetzung ihrer Rückfragen; Antworten zu Regeln oder unbekanntem Traffic beenden den Einrichtungsauftrag NICHT. setupRequest belegt den ursprünglichen breiten Auftrag. scope=field-update bei gezielter Änderung einzelner nativer Felder (z.B. NUR HA/Backup-Zone/vhid) oder konkretem vollständigem Appliance-Patch, nicht bei beantworteten Geschäftsfragen. scope=advice bei isolierter Beratung ohne laufenden Einrichtungsauftrag. Explizite Themenwechsel haben Vorrang. haRequest belegt ausdrücklich gewünschte Hochverfügbarkeit. traffic belegt gewählte Verkehrswege. capacity belegt bezifferten Durchsatz oder Verbindungen, z.B. 500 Mbit/s und 10000 Verbindungen. capacityDeferred belegt ausdrücklich noch unbekannten Traffic, z.B. 'kann ich heute noch nicht beziffern'; fehlender Benchmark bei bekannten Zahlen gehört NICHT hierher. operations belegt tolerierbare Unterbrechungszeit. operator belegt den Betreiber, z.B. Firewall-Admin. policy belegt konkrete Allow/Deny/NAT-Anforderungen, nicht bloß Verkehrswege. Bewahre frühere beantwortete Punkte. Unbeantwortete Felder sind null. Keine technischen Werte, Regeln, Berechtigungen oder Ausführung erfinden.",
             },
             {
+              role: "system",
+              content:
+                "Prüfe für traffic auch ALLE previousUserMessages: 'Über die zentrale Firewall sollen Internet-Verkehr und Verkehr zwischen Projekten laufen' beantwortet die Verkehrswege bereits. Wähle deren userEvidence-ID für traffic, auch wenn die letzte Nachricht nur 'restliche Einrichtung mit HA fortsetzen' sagt. Diese Aussage ist weder Durchsatz noch eine konkrete Allow/Deny/NAT-Regel: capacity und policy bleiben ohne andere Belege null. Ein Fortsetzungsauftrag macht eine vorherige Antwort nicht wieder unbeantwortet.",
+            },
+            {
               role: "user",
               content: JSON.stringify({
                 latestUserMessage: message,

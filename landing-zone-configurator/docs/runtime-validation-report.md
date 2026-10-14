@@ -32,6 +32,24 @@ human-login/organization-proof: PENDING - no hosted identity proof claimed
 customer-plan/apply/destroy: NOT_RUN - separate explicit authorization required
 ```
 
+Der erste Build (`1aabadb`, Run `38617853482`) wurde erfolgreich qualifiziert,
+sein Deployment aber waehrend der Migration-App-Stagingphase abgebrochen;
+Migrationen und Web-App-Push wurden nicht ausgefuehrt. Die anschliessende
+Hosted-Pruefung zeigte das fehlende Assistant-Opt-in in der Release-Kette.
+`LZC_ASSISTANT_ENABLED` wird nun aus dem geschuetzten Environment ueber Workflow,
+private CF-Variablen und Manifest weitergereicht. Authentifizierung bleibt Pflicht;
+Release-Tests pruefen den ausgeschalteten Standard, die authentifizierte Aktivierung
+und die Ablehnung ohne Authentifizierung. Der anonyme Template-Advice-Endpunkt
+muss nach Release mit HTTP 401 antworten statt als fehlende Route zu verschwinden.
+
+Die erneute reale Modellqualifikation des ersten Builds bestand den Gesamtdialog
+mit 12/12 Schritten, den Katalog jedoch nur mit 51/52 Faellen. Bei der
+Firewall-Fortsetzung wurde ein bereits bestaetigter Verkehrsweg erneut abgefragt.
+Eine explizite Klassifikationsklarstellung unterscheidet Verkehrswege von
+Allow/Deny/NAT und verlangt, bereits beantwortete Historie zu erhalten.
+Der gezielte reale Regressionstest bestand danach (1/1). Die vollstaendige
+Qualifikation des korrigierten Standes bleibt separat nachzuweisen.
+
 ## Ubuntu-MVP: Lesender Recovery-Abgleich (2026-10-09)
 
 Migration 052 erweitert den bestehenden Operator-Pruefkontext um gespeicherte
