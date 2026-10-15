@@ -52,6 +52,21 @@ try {
     );
     command(resolve(repository, "bin/detect"), [build]);
     command(resolve(repository, "bin/finalize"), [build, cache]);
+    const stagedImage = await lstat(
+      resolve(root, "accelerator/firewall-image.qcow2"),
+    );
+    const cachedImage = await lstat(
+      resolve(
+        cache,
+        `lzc-firewall-images/${platformFirewallImage.sha256}.qcow2`,
+      ),
+    );
+    assert.equal(stagedImage.dev, cachedImage.dev);
+    assert.equal(
+      stagedImage.ino,
+      cachedImage.ino,
+      "Staging must reuse the verified cache inode, not allocate a second image",
+    );
     command("diff", ["-qr", resolve(directory, "runner"), root]);
     const staged = await LocalPlanRunner.open(
       root,

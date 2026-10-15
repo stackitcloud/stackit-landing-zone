@@ -35,6 +35,13 @@ directly from STACKIT Object Storage and checks the full SHA-256. Its private,
 digest-keyed CF buildpack cache is verified on every use; bad bytes, links or
 capability mismatches fail staging. A cache miss downloads to a unique temporary
 file, verifies it and atomically publishes it. No tenant credentials are involved.
+Inside the staging container only, the destination is a hardlink to this verified
+cache file. This avoids allocating a second 948-MiB image while CF compresses the
+droplet and cache; an ordinary copy exhausted the staging filesystem during gzip.
+Cross-filesystem links fail explicitly rather than silently duplicating the image.
+CI verifies the shared device/inode for both hosted archives. Local packaging keeps
+independent image copies. Droplet and cache archives each serialize their own
+regular image bytes; no link to a cache or another job survives into runtime.
 
 The finalized droplet contains the ordinary image file at its original native
 path. Runtime entrypoints and jobs do not download images. CF stores the droplet

@@ -88,6 +88,7 @@ test("verified cache is reused without a network request and refuses corruption 
       cacheHit: true,
     });
     assert.deepEqual(await readFile(target), bytes);
+    assert.notEqual((await lstat(target)).ino, (await lstat(cached)).ino);
     assert.equal((await lstat(target)).mode & 0o777, 0o600);
     await writeFile(cached, "corrupt");
     await assert.rejects(
@@ -170,6 +171,16 @@ for (const kind of ["runner", "inspection"]) {
       assert.match(cold.stdout, /"cacheHit":false/);
       const target = resolve(root, "accelerator/firewall-image.qcow2");
       assert.deepEqual(await readFile(target), bytes);
+      const cached = await lstat(
+        resolve(cache, `lzc-firewall-images/${image.sha256}.qcow2`),
+      );
+      const staged = await lstat(target);
+      assert.equal(staged.dev, cached.dev);
+      assert.equal(
+        staged.ino,
+        cached.ino,
+        "Staging must not duplicate the large cache image",
+      );
       await rm(target);
       const warm = finalize();
       assert.equal(warm.status, 0, warm.stderr);

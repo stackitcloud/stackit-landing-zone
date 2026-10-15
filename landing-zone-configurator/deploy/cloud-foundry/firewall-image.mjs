@@ -1,10 +1,23 @@
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { chmod, copyFile, lstat, mkdir, rename, rm } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  link,
+  lstat,
+  mkdir,
+  rename,
+  rm,
+} from "node:fs/promises";
 import { resolve } from "node:path";
 
-export async function prepareFirewallImage(image, directory, target) {
+export async function prepareFirewallImage(
+  image,
+  directory,
+  target,
+  { hardlink = false } = {},
+) {
   const url = new URL(image.url);
   if (
     url.protocol !== "https:" ||
@@ -87,7 +100,8 @@ export async function prepareFirewallImage(image, directory, target) {
     );
     if (existing) await verified(target);
     else {
-      await copyFile(cached, target, constants.COPYFILE_FICLONE);
+      if (hardlink) await link(cached, target);
+      else await copyFile(cached, target, constants.COPYFILE_FICLONE);
       await chmod(target, 0o600);
       await verified(target);
     }
