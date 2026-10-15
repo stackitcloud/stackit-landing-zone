@@ -3,6 +3,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { buildpackTag } from "./buildpack-source.mjs";
 const mode=process.argv[2];
 if(!["backend","application","runner"].includes(mode)) throw new Error("Expected backend or application");
 const required=name=>{if(!process.env[name])throw new Error(`Missing ${name}`);return process.env[name];};
@@ -80,8 +81,7 @@ if(mode==="backend") {
     publish("LZC_RUNNER_CF_USERNAME",runner.username,true);publish("LZC_RUNNER_CF_PASSWORD",runner.password,true);publish("LZC_RUNNER_SPACE_ID",runnerSpace.id);publish("LZC_RUNNER_ORG_ID",runner.org_id);
   }
   const revision=required("LZC_RELEASE_REVISION");
-  if(!/^[a-f0-9]{40}$/.test(revision))throw new Error("Invalid buildpack source revision");
-  vars.LZC_IMAGE_BUILDPACK=`https://github.com/stackitcloud/stackit-landing-zone.git#${revision}`;
+  vars.LZC_IMAGE_BUILDPACK=`https://github.com/stackitcloud/stackit-landing-zone.git#${buildpackTag(revision)}`;
   writeFileSync(resolve(dir,"runner-vars.json"),JSON.stringify({LZC_IMAGE_BUILDPACK:vars.LZC_IMAGE_BUILDPACK}),{mode:0o600});
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);

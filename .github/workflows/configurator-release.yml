@@ -11,6 +11,7 @@ on:
       - 'landing-zone-configurator/infra/ci/prepare-release.mjs'
       - 'landing-zone-configurator/infra/ci/prepare-release.test.mjs'
       - 'landing-zone-configurator/infra/ci/image-staging.test.mjs'
+      - 'landing-zone-configurator/infra/ci/buildpack-source.mjs'
       - 'landing-zone-configurator/infra/ci/release-artifact.mjs'
       - '.github/workflows/configurator-release.yml'
   workflow_dispatch:
@@ -171,6 +172,16 @@ jobs:
         run: |
           head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/${GITHUB_REF#refs/heads/}" --jq '.object.sha')
           test "$head" = "$GITHUB_SHA"
+      - name: Verify protected buildpack source tag
+        run: |
+          if grep -q 'LZC_IMAGE_BUILDPACK' deploy/cloud-foundry/manifest.yml; then
+            node infra/ci/buildpack-source.mjs
+          else
+            echo "Qualified legacy binary-buildpack source; image tag gate is not applicable."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
       - name: Install pinned CF CLI
         run: |
           curl --fail --silent --show-error --location --retry 3 https://github.com/cloudfoundry/cli/releases/download/v8.17.0/cf8-cli_8.17.0_linux_x86-64.tgz -o "$RUNNER_TEMP/cf.tgz"

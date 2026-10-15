@@ -17,6 +17,7 @@ import { resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { prepareFirewallImage } from "../../deploy/cloud-foundry/firewall-image.mjs";
+import { buildpackTag, verifyBuildpackSource } from "./buildpack-source.mjs";
 
 const repository = fileURLToPath(new URL("../../../", import.meta.url));
 const bytes = Buffer.from("synthetic immutable firewall image");
@@ -24,6 +25,53 @@ const image = {
   url: "https://image.invalid/pinned.qcow2",
   sha256: createHash("sha256").update(bytes).digest("hex"),
 };
+
+test("CF-compatible tags bind to the exact source under active immutable-tag rules", () => {
+  const revision = "a".repeat(40);
+  const ref = {
+    ref: `refs/tags/${buildpackTag(revision)}`,
+    object: { type: "commit", sha: revision },
+  };
+  const policy = {
+    name: "Protect LZC buildpack tags",
+    target: "tag",
+    enforcement: "active",
+    conditions: {
+      ref_name: { include: ["refs/tags/lzc-image-buildpack-*"], exclude: [] },
+    },
+    rules: [{ type: "update" }, { type: "deletion" }],
+  };
+  assert.equal(
+    verifyBuildpackSource(revision, ref, policy),
+    buildpackTag(revision),
+  );
+  for (const changed of [
+    { ...ref, ref: "refs/tags/mutable" },
+    { ...ref, object: { type: "commit", sha: "b".repeat(40) } },
+    { ...ref, object: { type: "tag", sha: revision } },
+  ])
+    assert.throws(() => verifyBuildpackSource(revision, changed, policy));
+  for (const changed of [
+    { ...policy, enforcement: "disabled" },
+    { ...policy, rules: [{ type: "update" }] },
+    { ...policy, bypass_actors: [{ actor_id: 1 }] },
+    {
+      ...policy,
+      conditions: { ref_name: { include: ["refs/tags/*"], exclude: [] } },
+    },
+    {
+      ...policy,
+      conditions: {
+        ref_name: {
+          include: policy.conditions.ref_name.include,
+          exclude: [ref.ref],
+        },
+      },
+    },
+  ])
+    assert.throws(() => verifyBuildpackSource(revision, ref, changed));
+  assert.throws(() => buildpackTag("main"));
+});
 
 test("verified cache is reused without a network request and refuses corruption or links", async () => {
   const work = await mkdtemp(resolve(tmpdir(), "lzc-image-cache-"));

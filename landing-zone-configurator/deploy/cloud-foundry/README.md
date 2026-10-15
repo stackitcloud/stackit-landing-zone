@@ -19,8 +19,16 @@ then extracts both thin archives, restores the image through the actual buildpac
 entrypoint and verifies byte-for-byte Runner equality and the same package identity.
 Each compressed CF archive must be smaller than 384 MiB.
 
-`prepare-release.mjs` binds `LZC_IMAGE_BUILDPACK` to the approved artifact's source
-revision, including during promotion. The private app/runner variable files
+`prepare-release.mjs` binds `LZC_IMAGE_BUILDPACK` to
+`lzc-image-buildpack-<approved-source-sha>`, including during promotion.
+CF's Git buildpack loader uses `git clone -b`, so a bare commit SHA is not a
+supported reference. Before approving a new release, the operator creates the
+lightweight tag at the qualified commit (`git tag lzc-image-buildpack-<sha> <sha>`
+and pushes that exact tag). The active repository ruleset **Protect LZC buildpack
+tags** forbids updates and deletion in this namespace, with no bypass actors.
+The deployment's read-only gate verifies the exact resolved commit and active
+namespace/rule protection before reading deployment credentials. No GitHub write
+permission is added to CI. The private app/runner variable files
 provide that URI to their manifests. During staging, the final buildpack reads
 the compiled image pin and validated Runner metadata, fetches the public image
 directly from STACKIT Object Storage and checks the full SHA-256. Its private,

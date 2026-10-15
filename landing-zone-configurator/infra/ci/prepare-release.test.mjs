@@ -94,7 +94,7 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const vars=join(privateDir,"app-vars.json");assert.equal(statSync(vars).mode&0o777,0o600);
   const app=JSON.parse(readFileSync(vars));
     assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_ASSISTANT_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_STACKIT_AUTH_FLOW","LZC_STACKIT_CLIENT_ID","LZC_STACKIT_REDIRECT_URI","LZC_EXECUTION_ENABLED","LZC_APPLICATION_EXECUTION_ENABLED","LZC_DEPLOYMENT_ARTIFACT_KEY","LZC_RUNNER_DROPLET_ID","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID","LZC_IMAGE_BUILDPACK"]);
-  assert.equal(app.LZC_IMAGE_BUILDPACK,`https://github.com/stackitcloud/stackit-landing-zone.git#${env.LZC_RELEASE_REVISION}`);
+  assert.equal(app.LZC_IMAGE_BUILDPACK,`https://github.com/stackitcloud/stackit-landing-zone.git#lzc-image-buildpack-${env.LZC_RELEASE_REVISION}`);
   assert.deepEqual(JSON.parse(readFileSync(join(privateDir,"runner-vars.json"))),{LZC_IMAGE_BUILDPACK:app.LZC_IMAGE_BUILDPACK});
   assert.equal(app.LZC_AUTH_ENABLED,"false");
   assert.equal(app.LZC_ASSISTANT_ENABLED,"false");
