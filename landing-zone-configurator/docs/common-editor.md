@@ -1,6 +1,6 @@
 # Gemeinsamer Editor
 
-Stand: 2026-09-30. Veröffentlichung auf `lzc-dev` ausschließlich vom Feature-Branch.
+Stand: 2026-10-15. Veröffentlichung auf `lzc-dev` ausschließlich vom Feature-Branch.
 
 ## Bedienung
 
@@ -102,6 +102,13 @@ Netzwerkbereich ihrer Region; ein fehlendes Key-Override bedeutet weiterhin
 Fehlende SNA- oder Ordnerreferenzen bleiben ausdrücklich sichtbar. Templates
 bleiben Entwürfe für spätere Bestellungen, keine bereits angelegten Projekte.
 Auswählen und Bearbeiten speichern oder deployen nichts automatisch.
+
+Die Übersicht ist mit Nutzerfreigabe als Quelle `9c19327` über den erfolgreichen
+[Dev-Release 38720037784](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38720037784)
+veröffentlicht. Alle 296 Desktop-/Mobil-Browsertests bestanden, einschließlich
+Auswahl, gemeinsamer Strukturvorschau, Hinzufügen, Entfernen und leerem Zustand.
+Die ausgelieferten JavaScript- und CSS-Bundles wurden mit der exakt gebauten
+Quelle abgeglichen. Bestehende Kundenkonfigurationen wurden nicht verändert.
 
 ## Kompatibilität und Grenzen
 

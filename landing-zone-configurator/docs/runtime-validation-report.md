@@ -3,9 +3,60 @@
 Generated: 2026-10-02T10:14:20Z
 Target: `landing-zone-configurator/app`, lokale STACKIT-Login-Umstellung.
 
+## Dev-Release: Gemeinsame Template-Uebersicht und Detailansicht (2026-10-15)
+
+Aktuell laeuft Quelle `9c193274819d1f85b066cc3d8e1bcfeb13a0872d` aus dem
+erfolgreichen [Release 38720037784](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38720037784)
+auf https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud.
+Commit, Push und Veroeffentlichung wurden ausdruecklich freigegeben; die
+geschuetzte Environment-Freigabe erfolgte ueber den normalen Deployment-Ablauf.
+
+- Kompakte Karten zeigen Namen, stabile Kennung, Art, Region, Zielordner und
+  Netzzuordnung. Nur das ausgewaehlte Template hat ein Detailformular.
+- Editor, nach Art und Zielordner gruppierte Strukturvorschau und passende
+  Corporate-Netzwerkreferenzen verwenden dieselbe Auswahl und Metadaten.
+- Public-Templates sind keine zentralen Netzwerk-Spokes; Corporate-Referenzen
+  passen nur bei gleicher Region und effektivem SNA-Schluessel.
+- Fehlende Referenzen bleiben sichtbar. Hinzufuegen, Entfernen, leerer Zustand
+  und erneutes Anlegen sind auf Desktop und Mobil getestet.
+- Auswahl und Aenderungen bleiben lokal; Speichern und Deployment sind weiterhin
+  getrennte ausdrueckliche Schritte. Stabile IDs und nativer Export bleiben erhalten.
+
+Der erste [Releaseversuch 38718629065](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38718629065)
+wurde vor dem Deployment durch zwei Browsertests gestoppt, die noch die Anzahl
+gestapelter Formulare erwarteten. Der Testvertrag prueft jetzt Kartenanzahl,
+aktive Auswahl und genau einen Detailbereich. Danach bestanden lokal und im
+finalen Release alle 296 Desktop-/Mobil-Browsertests.
+
+Der finale Release bestand 695 Unit-Tests mit 53 vorgesehenen Skips, 51 reale
+PostgreSQL-Tests, Knowledge/Katalog, Lint, Typpruefung, Build, HCL-Katalog und
+Release-Guard. Die nativen OpenTofu-Vertraege bestanden ebenfalls:
+16 Application-, 7 Netzwerk- und 3 Governance-Tests.
+Migration, Runner-Roots, PostgreSQL/Vault, Runner-Isolation und Public-Route-Gates
+sind erfolgreich. Migration und Runner-Isolation meldeten jeweils `ok=true`.
+
+Acht sourcegebundene oeffentliche Hosted-Pruefungen bestanden nach dem
+vollstaendigen Deployment: Health und STACKIT-Authentifizierung, Web-UI,
+anonyme API-Ablehnung, Callback-Routen, Origin-Schutz sowie Production-PKCE/S256
+ohne Client Secret und Secure-Cookie. Die synthetische Login-Bindung wurde entfernt.
+Die ausgelieferten Assets stimmen bytegenau mit dem Build derselben Quelle ueberein:
+
+- `/assets/index-C6vo2Pxb.js`: 953207 Bytes,
+  SHA-256 `998f77a491d617d353a69c0bee51734e83d7de99cb6cdca41744251355c7548f`.
+- `/assets/index-FW3G6ipn.css`: 34646 Bytes,
+  SHA-256 `7f84efd38b686ffe7d6932316f2b22f662b687b407babe6cbb3c10c96934b389`.
+
+Ein neuer menschlicher Login-/Owner-Nachweis oder authentifizierter
+Kunden-Template-Test wurde nicht durchgefuehrt. Keine bestehende
+Kundenkonfiguration, Organisationsbindung oder Kunden-Cloud-Ressource wurde veraendert.
+Die separate [allgemeine Validierung 38720037695](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38720037695)
+bleibt bei den bereits bekannten `standalone`- und STACKIT-/GitHub-Guard-Befunden
+rot; sie wird nicht als erfolgreiche allgemeine CI-Abnahme ausgegeben.
+Die getrennte geschuetzte Release-Pipeline ist erfolgreich.
+
 ## Dev-Release: Audit-Anzeige und Application-Template-Vorschlaege (2026-10-15)
 
-Aktuell laeuft Quelle `a03127308d1c10826502c57bcc7c8e48ebc98dcf` aus dem
+Vor dem Template-UI-Release lief Quelle `a03127308d1c10826502c57bcc7c8e48ebc98dcf` aus dem
 erfolgreichen [Release 38710301311](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38710301311)
 auf https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud.
 Commit, Push und geschuetzte Dev-Veroeffentlichung wurden ausdruecklich freigegeben.
