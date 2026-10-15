@@ -46,7 +46,7 @@ dass die gesamte vorgeschlagene Einstellung übernommen wird, nicht nur einzelne
 Unterfelder. Auswahl, ausdrückliche Übernahme und separates Speichern bleiben
 unverändert; eine Vorschau ändert weder die Konfiguration noch Cloud-Ressourcen.
 
-### Lokaler Arbeitsstand: Assistant und Application-Templates (2026-10-15)
+### Assistant und Application-Templates (Dev-Release vom 2026-10-15)
 
 Neue Template-Vorschläge müssen Name, Art, Region und Einstellungen zusammen
 enthalten. Bestehende Templates bleiben partiell änderbar. Der Assistant erhält
@@ -72,8 +72,12 @@ zwei benannte Templates, gespeicherte Region, lokale Netze, keine Sandbox,
 keine zusätzlichen Dienste und keine Rückfragen. Corporate verwendet den
 vorhandenen `default`-Netzwerkbereich, auch ohne explizites Key-Override.
 Die Quellenprüfung für Produktpläne, Adressen und IDs bleibt unverändert.
-Diese Abnahme ist kein Kunden- oder Cloud-Deployment. Die Änderungen sind lokal
-und nicht auf Dev veröffentlicht.
+Die Modellabnahme ist synthetisch und verändert keine Kundenkonfiguration.
+Die Korrekturen sind mit Nutzerfreigabe als `a031273` committed, gepusht und
+über den erfolgreichen [Dev-Release 38710301311](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38710301311)
+veröffentlicht. Öffentliche Hosted-Prüfungen und der Abgleich des ausgelieferten
+UI-Bundles mit diesem Release sind bestanden; die Abnahme führt keine
+Kunden-Cloud-Ressourcen aus.
 
 Auswahlfelder gibt es für Regionen, regionale Netzwerkkennungen, vorhandene
 Netzwerkbereiche, Namespace-Projektkennungen sowie die durch den Accelerator

@@ -85,6 +85,19 @@ Build: https://github.com/stackitcloud/stackit-landing-zone/actions/runs/3792989
 
 Einziges Ziel: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
 
+Update 2026-10-15: Aktuelle Hosted-Quelle ist `a031273`, erfolgreicher
+[Release 38710301311](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38710301311).
+Audit-Wertanzeige, vollstaendige/scopierte Template-Vorschlaege und gemeinsame
+UI-/Backend-Template-Projektion sind committed, gepusht und auf Dev veroeffentlicht.
+Release: 693 Unit-Tests, 51 PostgreSQL-Tests und 294 Browsertests bestanden,
+ebenso native Vertraege, Migration, Service-Verbindungen und Runner-Isolation.
+Acht oeffentliche sourcegebundene Hosted-Pruefungen und UI-Bundle-Abgleich bestanden.
+Die Original-Template-Anfrage bestand drei synthetische echte Modelllaeufe;
+kein Kundenentwurf wurde geaendert und kein Kunden-Cloud-Auftrag ausgefuehrt.
+Die separate allgemeine Validierung bleibt mit zwei unveraenderten Testbefunden
+rot; Grenzen und Nachweise stehen im aktuellen Abschnitt des
+[Runtime-Berichts](runtime-validation-report.md).
+
 Update 2026-10-14: Das Client-Team hat die Registrierung in STACKIT Production
 bestaetigt; der Client war zunaechst irrtuemlich in QA eingerichtet. Bestaetigt sind
 Public Client ohne Secret, verpflichtendes PKCE, Response Type `code`,

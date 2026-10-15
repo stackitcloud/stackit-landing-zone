@@ -3,9 +3,63 @@
 Generated: 2026-10-02T10:14:20Z
 Target: `landing-zone-configurator/app`, lokale STACKIT-Login-Umstellung.
 
+## Dev-Release: Audit-Anzeige und Application-Template-Vorschlaege (2026-10-15)
+
+Aktuell laeuft Quelle `a03127308d1c10826502c57bcc7c8e48ebc98dcf` aus dem
+erfolgreichen [Release 38710301311](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38710301311)
+auf https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud.
+Commit, Push und geschuetzte Dev-Veroeffentlichung wurden ausdruecklich freigegeben.
+Build und Deployment sind erfolgreich; die Environment-Freigabe erfolgte ueber
+den normalen geschuetzten GitHub-Deployment-Ablauf.
+
+- Strukturierte Audit-Werte werden lesbar statt als `[object Object]` angezeigt.
+- Neue Templates benoetigen Name, Art, Region und Einstellungen; bestehende
+  Templates bleiben partiell aenderbar.
+- Der source-referenzierte Template-Auftrag begrenzt das geschlossene
+  Ausgabeschema auf angeforderte Einstellungen. Unangeforderte Dienste werden
+  nicht durch Erweitern der Produkt- oder Quellenfreigaben erlaubt.
+- UI und Backend verwenden dieselbe nach stabilen Schluesseln indizierte
+  Template-Projektion ohne IDs. Der Vorschlagsvergleich liest Templates nicht
+  mehr als unbekannte Terraform-Eingabe.
+- Uebernahme bleibt eine lokale Entwurfsaenderung; Speichern ist separat.
+  Ungueltige Modellstrukturen werden als Vorschlagsfehler eingeordnet,
+  nicht als Zugangsdaten im Benutzertext.
+
+Der geschuetzte Release bestand 693 Unit-Tests mit 53 vorgesehenen Skips,
+51 reale PostgreSQL-Tests und 294 Desktop-/Mobil-Browsertests. Knowledge/Katalog,
+Lint, Typpruefung, Build, HCL-Katalog, Release-Guard und die nativen OpenTofu-
+Vertraege bestanden (16 Application-, 7 Netzwerk- und 3 Governance-Tests).
+Migration, Runner-Roots, PostgreSQL/Vault, Runner-Isolation und Public-Route-
+Gates bestanden ebenfalls. Runner-Evidenz: `ok=true`, Dispatch 4576 ms,
+Abschluss 12950 ms; Migrationsevidenz `ok=true`.
+
+Die Originalanfrage fuer Corporate/Public mit lokalen Netzen bestand vor dem
+Release drei finale sourcegebundene echte Model-Serving-Laeufe auf synthetischen
+Entwuerfen: zwei benannte Templates, vorhandene Region und effektiver Corporate-
+Bereich `default`, keine Sandbox, keine Zusatzdienste und keine Rueckfragen.
+Das ist keine neue authentifizierte Hosted-Abnahme eines Kundenentwurfs.
+
+Nach Deployment bestanden acht sourcegebundene oeffentliche Hosted-Pruefungen,
+einschliesslich PKCE/S256 ohne Client Secret, Callback-Routen, Secure-Cookie,
+Origin-Schutz und anonymer API-Ablehnung. Die synthetische Login-Bindung wurde
+entfernt. Das ausgelieferte UI enthaelt das im Release gebaute Bundle
+`/assets/index-Ch6UYh5m.js` (948972 Bytes,
+SHA-256 `eb80542b7921cac67bf8b66ce25459724383333bf1842ac2bb539a1a4d7831bb`).
+Ein erneuter menschlicher Login-/Owner-Nachweis wurde bei diesem Release nicht
+wiederholt. Keine bestehende Kundenkonfiguration, Organisationsbindung oder
+Kunden-Cloud-Ressource wurde veraendert.
+
+Die separate [allgemeine Validierung 38710301281](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38710301281)
+ist nicht gruen: Der Common-Contract-Fall `standalone` erwartet weiterhin einen
+Fehler fuer `var.landing_zones`, der nicht eintritt; der Matrix-Operator-Guard
+scheitert bei der STACKIT-Login-Testassertion. Generator, Guard-Test und Workflow
+wurden gegenueber dem vorherigen Stand nicht geaendert. Diese Befunde werden
+nicht als erfolgreiche allgemeine CI-Abnahme ausgegeben; die getrennte,
+vollstaendige Release-Pipeline ist erfolgreich.
+
 ## Dev-Release: Gehosteter Betrieb und Sitzungsabnahme (2026-10-14)
 
-Aktuell laeuft Quelle `1b04566` aus dem erfolgreichen
+Am 2026-10-14 lief Quelle `1b04566` aus dem erfolgreichen
 [Release `38637449791`](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38637449791)
 auf https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud.
 Build und geschuetztes Deployment bestanden: Migrationen bis 058,
