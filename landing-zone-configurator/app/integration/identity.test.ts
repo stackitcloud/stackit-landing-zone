@@ -7509,8 +7509,8 @@ it.each([false, true])(
         ...manifest,
         configuration: editCommonInput(
           migrateCommonConfiguration(legacy),
-          "devops",
-          { git_flavor: "git-10" },
+          "firewall_bootstrap",
+          true,
         ),
       };
       await migration.query(
