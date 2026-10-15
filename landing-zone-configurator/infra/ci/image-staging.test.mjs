@@ -256,6 +256,26 @@ test("release pins the final buildpack to the approved source and excludes image
   );
   assert.ok(workflow.includes("jq '.resources[] | {guid, state, error}'"));
   assert.ok(pack.includes("--exclude='./accelerator/firewall-image.qcow2'"));
+  assert.match(
+    await readFile(
+      resolve(
+        repository,
+        "landing-zone-configurator/deploy/cloud-foundry/manifest.yml",
+      ),
+      "utf8",
+    ),
+    /disk_quota: 6144M/,
+  );
+  assert.match(
+    await readFile(
+      resolve(
+        repository,
+        "landing-zone-configurator/deploy/runner/manifest.yml",
+      ),
+      "utf8",
+    ),
+    /disk_quota: 4096M/,
+  );
   assert.ok(
     workflow.includes("if: failure() && steps.push.outcome == 'failure'"),
   );

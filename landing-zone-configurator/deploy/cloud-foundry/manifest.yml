@@ -3,7 +3,7 @@ applications:
   - name: landing-zone-configurator
     instances: 1
     memory: 1024M
-    disk_quota: 4096M
+    disk_quota: 6144M
     stack: cflinuxfs4
     buildpacks: [((LZC_IMAGE_BUILDPACK))]
     command: ./runtime/bin/node apps/api/dist/main.js

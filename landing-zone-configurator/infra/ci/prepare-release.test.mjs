@@ -11,7 +11,7 @@ test("migration task can unpack the full release and web routes match the regist
  const web=readFileSync(new URL("../../deploy/cloud-foundry/manifest.yml",import.meta.url),"utf8");
  const migration=readFileSync(new URL("../../deploy/cloud-foundry/migration-manifest.yml",import.meta.url),"utf8");
  const workflow=readFileSync(new URL("../../../.github/workflows/configurator-release.yml",import.meta.url),"utf8");
- assert.match(web,/\n    disk_quota: 4096M\n/);
+ assert.match(web,/\n    disk_quota: 6144M\n/);
  assert.match(migration,/\n    disk_quota: 4096M\n/);
  assert.match(workflow,/cf run-task landing-zone-configurator-migrate [^\n]+ -m 128M -k 4096M --wait/);
  const applicationTasks=workflow.split("\n").filter(line=>line.trim().startsWith("cf run-task landing-zone-configurator ")||line.trim().startsWith("run: cf run-task landing-zone-configurator "));
