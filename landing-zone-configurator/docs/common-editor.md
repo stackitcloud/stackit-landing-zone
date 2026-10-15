@@ -37,6 +37,44 @@ Observability ist ein eigener Dienst. Die Audit-Protokollierung erstellt einen T
 Router mit Zielen STACKIT Logs und S3-Archiv. Der Management-Archiv-Bucket existiert
 auch bei deaktivierter Audit-Protokollierung.
 
+Im Konfigurations-Chat zeigt der Änderungsvorschlag strukturierte Werte mit
+Fachbezeichnungen und ihren Werten, beispielsweise **Aufbewahrung (Tage): 90**
+für Audit-Protokollierung. Das gilt auch für Ausgangswerte, verschachtelte Objekte,
+Listen und den Konfliktdialog. Leere Listen (`[]`) und Objekte (`{}`) bleiben von
+**Nicht gesetzt** unterscheidbar. Der Hinweis **Vollständiger Ersatz** bedeutet,
+dass die gesamte vorgeschlagene Einstellung übernommen wird, nicht nur einzelne
+Unterfelder. Auswahl, ausdrückliche Übernahme und separates Speichern bleiben
+unverändert; eine Vorschau ändert weder die Konfiguration noch Cloud-Ressourcen.
+
+### Lokaler Arbeitsstand: Assistant und Application-Templates (2026-10-15)
+
+Neue Template-Vorschläge müssen Name, Art, Region und Einstellungen zusammen
+enthalten. Bestehende Templates bleiben partiell änderbar. Der Assistant erhält
+für Plattform-Entwürfe vorhandene Netzwerkbereichsschlüssel und Regionen, keine
+Cloud-Ressourcenkennungen. Template-Entscheidungen referenzieren eine vorhandene
+Benutzernachricht; deren Originaltext stellt der Server bereit.
+Der daraus abgeleitete Einstellungsumfang begrenzt das geschlossene
+Modell-Ausgabeschema: Eine reine Netzwerkanfrage bietet keine Observability-,
+Secrets-Manager-, Namespace-Service- oder Parameter-Policy-Einstellungen an.
+Explizit angeforderte zusätzliche Einstellungen bleiben unterstützt; der volle
+Import-, Speicher- und Runtime-Vertrag wird nicht eingeschränkt.
+Der Vorschlagsvergleich im Web-UI liest Templates aus derselben
+ID-freien, nach stabilen Schlüsseln indizierten Projektion wie das Backend,
+nicht als vermeintliche Terraform-Eingabe. Übernahme aktualisiert den lokalen
+Entwurf; erst ausdrückliches Speichern persistiert die Templates.
+Ungültige erzeugte Template-Strukturen werden als fehlgeschlagener
+Assistant-Vorschlag gemeldet, nicht als Zugangsdaten im Benutzertext.
+Gespeicherter Chat und Konfiguration bleiben bei einer Ablehnung unverändert.
+
+Die echte Modell-Abnahme der Originalanfrage nach Corporate-/Public-Templates
+mit lokalen Netzen ist in drei unabhängigen synthetischen Läufen bestanden:
+zwei benannte Templates, gespeicherte Region, lokale Netze, keine Sandbox,
+keine zusätzlichen Dienste und keine Rückfragen. Corporate verwendet den
+vorhandenen `default`-Netzwerkbereich, auch ohne explizites Key-Override.
+Die Quellenprüfung für Produktpläne, Adressen und IDs bleibt unverändert.
+Diese Abnahme ist kein Kunden- oder Cloud-Deployment. Die Änderungen sind lokal
+und nicht auf Dev veröffentlicht.
+
 Auswahlfelder gibt es für Regionen, regionale Netzwerkkennungen, vorhandene
 Netzwerkbereiche, Namespace-Projektkennungen sowie die durch den Accelerator
 festgelegten Audit-Scope-, VPN-Routing-, Secret-Enforcement- und Firewall-Werte.

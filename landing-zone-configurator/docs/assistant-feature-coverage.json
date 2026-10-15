@@ -6,7 +6,7 @@
     "packages/domain/src/features.ts": "6f99918f825b2891db70ba023284a8d1ae529965c56d06445a9108fb0d791138",
     "packages/domain/src/accelerator-inputs.json": "6c7c17d9fe550e4f9e1ee41db4463b6ed4840b63e4e01620b99626c8ff8737de",
     "packages/domain/src/catalogue.json": "0c9fc73cbfff4eb0ea2e9956165646e409fbff107cbf9ca1eb3b78a25dca2059",
-    "packages/domain/src/project-templates.ts": "f7732079e9dcdeccb090ded4a7946f533ec437c9373489e462a509a0a6f03f3b",
+    "packages/domain/src/project-templates.ts": "6629d6cf5e557682b181bc9aca99d496d493e9ae9070e875f72ff608f0642459",
     "packages/domain/src/template-parameters.ts": "ea2cb1e272f4f51da6bc68ea78895febe128b83f2b3022371a5aeeb666120e0a",
     "packages/domain/src/common-validation.ts": "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
     "packages/domain/src/common-document.ts": "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",

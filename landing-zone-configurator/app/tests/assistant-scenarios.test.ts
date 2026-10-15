@@ -86,6 +86,50 @@ it("assigns every editor field exactly once and keeps the reviewed catalogue fre
   );
 });
 
+it.each([false, true])(
+  "qualifies network-only templates without unrequested services (extra=%s)",
+  (extra) => {
+    const scenario = assistantScenarios.find(
+      (entry) => entry.id === "platform-public-corporate-networks",
+    );
+    if (!scenario) throw new Error("missing_fixture");
+    const settings = {
+      network_enabled: true,
+      ...(extra
+        ? { observability: { enabled: true, plan_name: "standard" } }
+        : {}),
+    };
+    const result = validateAssistantScenario(scenario, {
+      explanation: "Vorschlag, noch nichts gespeichert.",
+      questions: [],
+      references: [scenario.topic],
+      changes: [
+        {
+          path: "projectTemplates",
+          operation: "merge",
+          value: {
+            corporate: {
+              name: "Zentrales Netzwerk",
+              kind: "corporate",
+              region: "eu01",
+              settings,
+            },
+            public: {
+              name: "Internet ohne zentrales Netzwerk",
+              kind: "public",
+              region: "eu01",
+              settings,
+            },
+          },
+        },
+      ],
+    });
+    expect(result.failures).toEqual(
+      extra ? ["unrequested_template_settings"] : [],
+    );
+  },
+);
+
 it("includes dependency and protected field contracts without exposing their values or granting proposals", () => {
   const knowledge = buildAssistantKnowledge();
   const context = assistantKnowledgeContext({

@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "12693f9d18db481e57ae668b777bfd19715a96f121aa94efa984bc5cd8747bea",
+  "knowledgeSha256": "9920718f96a4d1d77bc5124c9a2830695f9dc17ea4e0a26c33dd28d2fcece9a3",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "c0b5ef83c102bb475a4495ab88342b5e17fd9bde0904dcd5443ea3a50c859f16",
+    "scripts/assistant-scenarios.ts": "b36128b9e79d08f0031d0e9bdafaca4b321744d96e57d35b4167bde31cab5940",
     "scripts/assistant-tests.ts": "032685c73a7995632009702c847bb395050f23b71ecc098067e31d73f19b7635"
   },
-  "suiteSha256": "57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498",
+  "suiteSha256": "356d29444c2b5259b89085c4609bb1c2d3bc99d348ef1888f30da151a321f20e",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5135,6 +5135,41 @@
         }
       ],
       "cases": [
+        {
+          "id": "platform-public-corporate-networks",
+          "topic": "project-templates",
+          "fixture": "firewall-metro",
+          "history": [
+            {
+              "role": "user",
+              "content": "Zentrale Audit-Protokollierung ist bereits konfiguriert."
+            },
+            {
+              "role": "assistant",
+              "content": "Editor-Vorschlag für audit_logs."
+            },
+            {
+              "role": "user",
+              "content": "Wir wollen des weiteren eine zentrale git Instanz haben. Somit braucht nicht jedes Projekte eine eigene."
+            },
+            {
+              "role": "assistant",
+              "content": "Editor-Vorschlag für devops."
+            }
+          ],
+          "message": "Nun kommen wir zu den Application Landing Zone Templates. Ich brauche natürlich passend zu unserem Vorhaben welche, die über das zentrale Netzwerk kommunizieren. Benenne das Template auch entsprechend. Es darf auch projekte geben, die direkt in das Internet gehen, dafür aber nicht mit dem zentralen Netz kommunizieren dürfen. Richte dort jeweils ein lokales Netz ein, so dass man danach leicht VMs etc darin erstellen kann. Sandboxes brauchen wir vorerst nicht.",
+          "templateExpected": [
+            "public",
+            "corporate"
+          ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "project-templates-advice",
           "topic": "project-templates",

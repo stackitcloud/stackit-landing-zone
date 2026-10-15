@@ -137,6 +137,90 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL session and tenant boundaries", () => {
+  it("reports incomplete model templates as proposal failures without losing successful history or saving a draft", async () => {
+    const configurations = new Configurations(pool);
+    const draft = createEditorConfiguration("standalone", randomUUID());
+    const stored = await configurations.create(alice, draft);
+    let proposal: Dialogue = {
+      explanation: "Vorheriger erfolgreicher Grundlagenvorschlag.",
+      references: ["configuration-contract"],
+      questions: [],
+      changes: [],
+    };
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => proposal),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    const previous = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Grundlagen prüfen",
+    );
+    proposal = {
+      explanation: "Application-Vorlagen vorgeschlagen.",
+      references: ["project-templates"],
+      questions: [],
+      changes: [
+        {
+          path: "projectTemplates",
+          operation: "merge",
+          value: { "new-corporate": { settings: { network_enabled: true } } },
+        },
+      ],
+    };
+    const app = await buildApp({
+      auth: {
+        origin: "https://configurator.example",
+        clientId: "test",
+        store,
+        github: { authorize: vi.fn() },
+        tokens: { put: vi.fn(), get: vi.fn(), remove: vi.fn() },
+      },
+      assistant,
+    });
+    try {
+      for (const accept of ["application/json", "application/x-ndjson"]) {
+        const response = await app.inject({
+          method: "POST",
+          url: `/api/v1/configurations/${stored.id}/assistant`,
+          headers: {
+            cookie: `__Host-lzc-session=${aliceToken}`,
+            origin: "https://configurator.example",
+            "x-lzc-csrf": alice.csrfToken,
+            accept,
+          },
+          payload: {
+            revision: 1,
+            message:
+              "Bitte Corporate- und Public-Vorlagen mit lokalen Netzen vorbereiten.",
+          },
+        });
+        const failure =
+          accept === "application/json"
+            ? response.json()
+            : response.body
+                .trim()
+                .split("\n")
+                .map((line) => JSON.parse(line))
+                .find((event) => event.type === "error");
+        expect(response.statusCode).toBe(
+          accept === "application/json" ? 503 : 200,
+        );
+        expect(failure).toMatchObject({
+          error: "assistant_inference_failed",
+          reason: "proposal_invalid",
+          requestId: expect.any(String),
+        });
+        expect(failure).not.toHaveProperty("issues");
+        expect(await assistant.get(alice, stored.id)).toEqual(previous);
+        expect(await configurations.get(alice, stored.id)).toEqual(stored);
+      }
+    } finally {
+      await app.close();
+      await configurations.remove(alice, stored.id, 1);
+    }
+  });
   it("keeps an eight-hour STACKIT session while expired human authority remains denied", async () => {
     const token = newSessionToken();
     const proof = {

@@ -34,6 +34,7 @@ import {
   assistantEditorPolicies,
   assistantEditorProposalPath,
   assistantEditorResponseSchema,
+  assistantTemplateFields,
   validateAssistantEditorSources,
 } from "./editor.js";
 import {
@@ -480,6 +481,10 @@ export class AssistantModelServing {
   ) {
     const context = assistantKnowledgeContext(selection);
     chatMessageSchema.parse(message);
+    const current =
+      publicValues && typeof publicValues === "object"
+        ? (publicValues as Record<string, unknown>)
+        : {};
     const namingSources = new Map<string, string>([
       ["current", message],
       ...history.flatMap((entry, index): [string, string][] =>
@@ -490,6 +495,24 @@ export class AssistantModelServing {
       ),
     ]);
     const intentSchema = z.strictObject({
+      templateSetup: z
+        .strictObject({
+          source: z.enum([...namingSources.keys()]),
+          kinds: z
+            .array(z.enum(["public", "corporate", "sandbox"]))
+            .min(1)
+            .max(3),
+          delegateNaming: z.boolean(),
+          localNetworks: z.boolean(),
+          fields: z
+            .array(z.enum(assistantTemplateFields))
+            .max(assistantTemplateFields.length),
+        })
+        .nullable()
+        .default(null)
+        .describe(
+          "Only a current request to prepare Application Landing Zone templates, never advice/publication/execution. Reference the actual USER task in namingSources; the server supplies its original text. Central-network variants are corporate, Internet-only variants are public; exclude negated/deferred Sandbox variants. 'Richte dort jeweils ein lokales Netz ein' resolves localNetworks=true for the requested variants. 'Benenne das Template entsprechend' explicitly resolves delegateNaming=true, not a missing name decision. A request for both central-network and separate Internet-only projects with networks includes both kinds. fields lists ONLY requested template settings: network_enabled for local networks, network_area_key for Corporate attachment. Include network_prefix_length, observability, secretsmanager_enabled, namespaceServices or parameterPolicy only if the USER requests those template settings. Prior platform Audit/Git/services do not request services inside templates.",
+        ),
       accessAssignment: z
         .strictObject({
           paths: z.array(z.enum(assistantAccessPaths)).min(1).max(4),
@@ -715,6 +738,9 @@ export class AssistantModelServing {
                 content,
               })),
               message,
+              platformDraft: current["assistant.platform_draft"] === true,
+              platformRegion: current.region ?? null,
+              availableNetworkAreas: current["assistant.network_areas"] ?? [],
               namingSources: Object.fromEntries(namingSources),
               currentFolders: assistantFolderNames(publicValues),
               currentNetwork:
@@ -734,7 +760,12 @@ export class AssistantModelServing {
           {
             role: "system",
             content:
-              "Return namingDelegation paths only when the USER explicitly delegates choosing suitable company names/codes or folder names. Choose the source reference from supplied namingSources (current/history/template), never rewrite or normalize a quote. No delegation means paths=[] and source=none. 'Nimm schlaue Namen für Grundsettings und Ordner' delegates company_name, company_code and rm_folders. Mentioning a company or asking how naming works is NOT delegation. Never delegate region, Cloud IDs, IAM, parent selection or access metadata. Broad setup requests spanning identity and folder naming use configuration-contract, mode=draft. Restoring previously discussed foundations with an explicitly supplied existing organization UUID uses identity-foundations or configuration-contract, mode=draft, NOT the preceding DNS topic. This only proposes draft inputs, never verifies or binds organization access. Internal keys remain unchanged; resource IDs arise only from separate native deployment.",
+              "Foundation namingDelegation paths only cover USER delegation for company names/codes or folder names. Choose the source reference from supplied namingSources (current/history/template), never rewrite or normalize a quote. No FOUNDATION delegation means paths=[] and source=none; it does NOT deny separate template naming. 'Nimm schlaue Namen für Grundsettings und Ordner' delegates company_name, company_code and rm_folders. Mentioning a company or asking how naming works is NOT delegation. Application template setup uses independent templateSetup: reference the actual USER task through source; the server supplies that original message, do not generate a quote. Central-network and separate Internet-only variants mean kinds=[corporate,public]; 'Benenne das Template entsprechend' means delegateNaming=true; 'Richte dort jeweils ein lokales Netz ein' means localNetworks=true. Do not negate these resolved template decisions because foundation namingDelegation is empty. Excluded/deferred Sandbox variants are not requested kinds. Never delegate region, Cloud IDs, IAM, parent selection or access metadata. Broad setup requests spanning identity and folder naming use configuration-contract, mode=draft. Restoring previously discussed foundations with an explicitly supplied existing organization UUID uses identity-foundations or configuration-contract, mode=draft, NOT the preceding DNS topic. This only proposes draft inputs, never verifies or binds organization access. Existing internal keys remain unchanged; new template keys are not Cloud resource IDs, which arise only from separate native deployment.",
+          },
+          {
+            role: "system",
+            content:
+              "templateSetup.fields limits the next template schema to USER-requested settings. A Corporate/Public request with local networks uses fields=[network_enabled,network_area_key]. Do not include observability, secretsmanager_enabled, namespaceServices or parameterPolicy because the platform already has Audit/Git/services. Only include those fields if the USER requests them for the templates. Explicit subnet size overrides use network_prefix_length. Requested template namespace services use namespaceServices; explicit owner parameter choices use parameterPolicy. This scope never grants publication, execution or IAM.",
           },
           {
             role: "system",
@@ -744,7 +775,7 @@ export class AssistantModelServing {
           {
             role: "system",
             content:
-              "Governance removals, replacements, default resets and new folders use editorContract=true, editorInputs containing only the targeted native roots, and accessAssignment=null. The specialized accessAssignment flow ONLY adds requested subjects to existing roles/folders. Labels and stable platform namespace changes also use editorContract with their exact targeted root. 'Bitte nur das Ressourcenlabel cost_center auf synthetic-team setzen' => topic=identity-foundations, mode=draft, editorContract=true, editorInputs=[labels]. Label editing is NOT configuration-lifecycle. Audit/Observability/Kubernetes setup uses editorContract=true and the corresponding single native root. For non-network topics requirements MUST be [].",
+              "Governance removals, replacements, default resets and new folders use editorContract=true, editorInputs containing only the targeted native roots, and accessAssignment=null. The specialized accessAssignment flow ONLY adds requested subjects to existing roles/folders. Labels and stable platform namespace changes also use editorContract with their exact targeted root. 'Bitte nur das Ressourcenlabel cost_center auf synthetic-team setzen' => topic=identity-foundations, mode=draft, editorContract=true, editorInputs=[labels]. Label editing is NOT configuration-lifecycle. Audit/Observability/Kubernetes setup uses editorContract=true and the corresponding single native root. Application Landing Zone template setup is supported: on a platformDraft, requests to prepare, name or configure Public/Corporate templates and their local networks use topic=project-templates, mode=draft, editorContract=true, editorInputs=[landing_zones]. A current template setup command overrides prior Audit/DevOps history. 'No sandboxes for now' excludes sandbox creation; it is not a sandbox setup topic. Template preparation is not publication or creation of application instances. For non-network topics requirements MUST be [].",
           },
           {
             role: "system",
@@ -884,10 +915,6 @@ export class AssistantModelServing {
       intent.firewallAreaKeys = [];
       intent.allFirewalls = false;
     }
-    const current =
-      publicValues && typeof publicValues === "object"
-        ? (publicValues as Record<string, unknown>)
-        : {};
     const regionalAreas = Object.values(
       z.record(z.string(), z.json()).parse(current.connectivity_regions ?? {}),
     ).flatMap((connectivity) =>
@@ -997,6 +1024,25 @@ export class AssistantModelServing {
         ["landing_zones", "sandboxes", "landing_zone_namespace_services"].some(
           (root) => intent.editorInputs.includes(root),
         ));
+    const templateSetup = intent.templateSetup
+      ? {
+          ...intent.templateSetup,
+          request: namingSources.get(intent.templateSetup.source),
+          fields: [
+            ...new Set([
+              ...intent.templateSetup.fields,
+              ...(intent.templateSetup.localNetworks
+                ? ["network_enabled"]
+                : []),
+              ...(intent.templateSetup.kinds.includes("corporate")
+                ? ["network_area_key"]
+                : []),
+            ]),
+          ],
+        }
+      : null;
+    if (templateSetup && !templateSetup.request?.trim())
+      throw new AssistantInferenceError("intent_evidence");
     if (templateTopic) {
       for (const root of [
         "landing_zones",
@@ -1022,7 +1068,16 @@ export class AssistantModelServing {
         ].includes(intent.topic) ||
         (current["assistant.firewall_form"] === "regional" && networkIntent));
     if (editorDraft) {
-      const fields = editorFields.map((field) => field.path);
+      const draftFields = editorFields.filter(
+        (field) =>
+          !templateTopic ||
+          ![
+            "landing_zones",
+            "sandboxes",
+            "landing_zone_namespace_services",
+          ].includes(assistantEditorProposalPath(field.path) ?? ""),
+      );
+      const fields = draftFields.map((field) => field.path);
       const paths = [
         ...[...editorRoots].flatMap((root) =>
           assistantEditorPaths(root, current[root], fields),
@@ -1032,7 +1087,7 @@ export class AssistantModelServing {
       const contracts = paths.map((path) =>
         assistantEditorChangeSchema(
           path,
-          fields,
+          path === "projectTemplates" ? templateSetup?.fields : fields,
           "serving",
           current[path.split(".")[0] ?? ""],
         ),
@@ -1092,8 +1147,10 @@ Choose at most three clear business questions when essential information is miss
 Operations: merge recursively changes only supplied object/map attributes; arrays and null are atomic replacements. replace replaces the COMPLETE value at that path, removes omitted entries/attributes and is reviewed atomically. default removes an explicit optional override/entry and restores the native default, value=null. Never use replace/default without the user's explicit removal/reset/replacement request. Never reorder lists unless requested. Each path appears only once; never emit overlapping parent/child paths. Do not repeat unchanged settings. Use an existing nested path to reset/delete just that setting, preserving unrelated components. New collection entries use their parent path and a complete native value with existing stable keys retained.
 Audit creation needs explicit retention_days, ACL CIDRs and s3_object_lock together; ask for missing decisions, do not activate a public ACL or irreversible Object Lock silently. Offer explained Object Lock yes/no options; native default is true but contradictory documentation is not consent. Retention with lock must be 1-365 days. For organizational/default scope OMIT link_scopes or use null: NEVER [], and never copy the saved organization UUID into a new scope override. Non-null link_scopes are only for explicitly requested custom per-resource scope overrides, never invented tenant/project scope IDs.
 Platform drafts use projectTemplates keyed by stable template key, not concrete landing_zones/sandboxes or personal instance fields. Never include template IDs: the server preserves/generates them. A new template needs name, kind, region and settings together. Corporate templates require an existing same-region network area; sandbox region is the platform region and has no namespace services. Namespace settings and parameterPolicy are template settings; no publication or application creation. For template removal/reset use an explicit atomic complete map replacement; omitted templates are removed. Template settings/parameter policies are validated against native types and the Editor's policy contract.
+When the user delegates template naming, choose descriptive names for the requested business variants instead of asking for names again. Central-network projects are corporate; Internet-only projects without central-network access are public. A requested local project network means settings.network_enabled=true for each requested variant. Use the saved platform region and an unambiguous existing same-region area for Corporate; ask for the area only when missing or ambiguous. Reuse existing subnet defaults unless the user specifies a prefix; omit network_prefix_length to inherit the native default. Create new entries with merge. For a network-only template request, settings contains only network_enabled and the Corporate network_area_key when needed; omit observability, secretsmanager_enabled, namespace services and other unrequested settings. Platform Audit/Git/services are NOT template namespace-service consent or defaults. Do not ask for personal instance ownership or create a Sandbox the user excludes. Preserve unrelated existing templates and their settings.
+templateSetup contains source-checked USER decisions: its kinds and localNetworks are answered requirements, not questions to repeat. Its fields is the allowed template setting scope; the schema excludes unrequested services and policies. delegateNaming=true authorizes descriptive template display names and valid stable template keys; they are not Cloud IDs. When saved region and the Corporate area are unambiguous, these decisions suffice for complete name/kind/region/settings template proposals. Optional parameter policies and subnet overrides are not mandatory setup questions.
 New component objects expose all their typed property slots: fill every explicitly requested value, use null only for unrequested native defaults. Never invent extra retention values. Required non-null creation decisions need actual user consent; otherwise ask questions with changes=[]. New map entries require all native mandatory fields, including Kubernetes region and node-pool name. Use existing nested paths for partial updates, preserving sibling values. All replies describe PROPOSALS, not completed setup. Field acceptance changes only the local draft, saving remains separate; no deployment, permissions granted, publication or Plan/Apply. Return the supplied JSON schema only.
-Reviewed knowledge: ${JSON.stringify({ fields: editorFields, topics: context.topics.filter((topic) => topicIds.has(topic.id)) })}`,
+Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topics.filter((topic) => topicIds.has(topic.id)) })}`,
           },
           {
             role: "user",
@@ -1101,6 +1158,7 @@ Reviewed knowledge: ${JSON.stringify({ fields: editorFields, topics: context.top
               message,
               history,
               templateHistory,
+              ...(templateTopic ? { templateSetup } : {}),
               currentValues: Object.fromEntries(
                 Object.entries(current).filter(
                   ([key]) =>
@@ -1111,6 +1169,8 @@ Reviewed knowledge: ${JSON.stringify({ fields: editorFields, topics: context.top
                       "company_name",
                       "company_code",
                       "region",
+                      "assistant.platform_draft",
+                      "assistant.network_areas",
                       "assistant.user_email",
                       "assistant.owner_email_is_template_default",
                       "projectTemplates",

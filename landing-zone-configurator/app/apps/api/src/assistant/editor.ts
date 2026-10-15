@@ -13,6 +13,7 @@ import {
   type JsonValue,
   objectValue,
   projectTemplateDraftSchema,
+  projectTemplateValues,
   readCommonConfiguration,
   regionalConnectivityType,
   templateParameterPolicySchema,
@@ -276,7 +277,9 @@ export function assistantEditorValueSchema(
   return z.strictObject(properties).nullable();
 }
 
-function templateSettingsType(root: "landing_zones" | "sandboxes"): InputType {
+function templateSettingsType(
+  root: "landing_zones" | "sandboxes",
+): ["object", Record<string, InputType>, string[]] {
   const type = inputDefinition(root).type;
   if (
     typeof type === "string" ||
@@ -300,6 +303,15 @@ function templateSettingsType(root: "landing_zones" | "sandboxes"): InputType {
     type[1][2]?.filter((key) => !instanceFields.has(key)) ?? [],
   ];
 }
+
+export const assistantTemplateFields = [
+  ...new Set([
+    ...Object.keys(templateSettingsType("landing_zones")[1]),
+    ...Object.keys(templateSettingsType("sandboxes")[1]),
+    "namespaceServices",
+    "parameterPolicy",
+  ]),
+];
 
 const namespaceType = inputDefinition("landing_zone_namespace_services").type;
 if (typeof namespaceType === "string" || namespaceType[0] !== "map")
@@ -345,18 +357,78 @@ const templatePatchSchema = z.record(
   templateValueSchema,
 );
 
+function templateProposalSchema(fields?: readonly string[]) {
+  if (!fields) return templateValueSchema;
+  return templateValueSchema
+    .omit({ namespaceServices: true, parameterPolicy: true })
+    .extend({
+      settings: z
+        .union(
+          (["landing_zones", "sandboxes"] as const).map((root) =>
+            assistantEditorValueSchema(
+              templateSettingsType(root),
+              `${root}[*]`,
+              true,
+              [
+                ...fields.map((field) => `${root}[*].${field}`),
+                ...featureFieldCatalogue().flatMap(({ path }) =>
+                  fields.some(
+                    (field) =>
+                      path.startsWith(`${root}[*].${field}.`) ||
+                      path.startsWith(`${root}[*].${field}[*]`),
+                  )
+                    ? [path]
+                    : [],
+                ),
+              ],
+            ),
+          ),
+        )
+        .optional(),
+      ...(fields.includes("namespaceServices")
+        ? { namespaceServices: templateValueSchema.shape.namespaceServices }
+        : {}),
+      ...(fields.includes("parameterPolicy")
+        ? { parameterPolicy: templateValueSchema.shape.parameterPolicy }
+        : {}),
+    });
+}
+
 export function assistantEditorChangeSchema(
   root: string,
   fields?: readonly string[],
   mode: "runtime" | "serving" = "runtime",
   current?: unknown,
 ): z.ZodType {
-  if (root === "projectTemplates")
+  if (root === "projectTemplates") {
+    const template = templateProposalSchema(
+      mode === "serving" ? fields : undefined,
+    );
     return z.strictObject({
       path: z.literal(root),
       operation: z.enum(["merge", "replace"]),
-      value: templatePatchSchema,
+      value:
+        mode === "serving"
+          ? z
+              .object(
+                Object.fromEntries(
+                  Object.keys(
+                    z.record(z.string(), z.unknown()).parse(current ?? {}),
+                  ).map((key) => [key, template.optional()]),
+                ),
+              )
+              .catchall(
+                z.strictObject({
+                  ...template.shape,
+                  name: projectTemplateDraftSchema.shape.name,
+                  kind: projectTemplateDraftSchema.shape.kind,
+                  region: projectTemplateDraftSchema.shape.region,
+                  settings: template.shape.settings.unwrap(),
+                }),
+              )
+          : templatePatchSchema,
     });
+  }
   const definition = editorPath(root);
   const scoped =
     fields &&
@@ -536,12 +608,7 @@ export function assistantEditorPublicValues(
     result[root] = structuredClone(value);
   }
   if (draft.projectTemplates !== undefined) {
-    const templates = Object.fromEntries(
-      draft.projectTemplates.map(({ id: _id, key, ...template }) => [
-        key,
-        template,
-      ]),
-    );
+    const templates = projectTemplateValues(draft);
     assertAssistantEditorValue(templates);
     result.projectTemplates = templates;
   }

@@ -36,7 +36,10 @@ import {
   validateAssistantEditorSources,
 } from "../apps/api/src/assistant/editor.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
-import { AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
+import {
+  AssistantInferenceError,
+  AssistantModelServing,
+} from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 
 function draft() {
@@ -494,6 +497,260 @@ describe("shared native Editor proposal contract", () => {
         }),
       ]),
     ).toThrow();
+  });
+
+  it("requires complete new templates while keeping existing template updates partial", () => {
+    const current = {
+      corporate: {
+        name: "Corporate",
+        kind: "corporate",
+        region: "eu01",
+        settings: { network_area_key: "default", network_enabled: true },
+      },
+    };
+    const schema = assistantEditorChangeSchema(
+      "projectTemplates",
+      undefined,
+      "serving",
+      current,
+    );
+    expect(
+      schema.safeParse(
+        patch("projectTemplates", { corporate: { name: "Zentrales Netz" } }),
+      ).success,
+    ).toBe(true);
+    const template = {
+      name: "Internet ohne zentrales Netz",
+      kind: "public",
+      region: "eu01",
+      settings: { network_enabled: true },
+    };
+    for (const missing of ["name", "kind", "region", "settings"]) {
+      const incomplete = Object.fromEntries(
+        Object.entries(template).filter(([key]) => key !== missing),
+      );
+      expect(
+        schema.safeParse(patch("projectTemplates", { public: incomplete }))
+          .success,
+        missing,
+      ).toBe(false);
+    }
+    expect(
+      schema.safeParse(patch("projectTemplates", { public: template })).success,
+    ).toBe(true);
+    const serving = assistantEditorResponseSchema(schema);
+    expect(JSON.stringify(serving)).not.toContain('"propertyNames"');
+    expect(serving.type).toBe("object");
+  });
+
+  it("scopes template proposals to requested settings without changing the runtime contract", () => {
+    const networkFields = ["network_enabled", "network_area_key"];
+    const scoped = assistantEditorChangeSchema(
+      "projectTemplates",
+      networkFields,
+      "serving",
+      {},
+    );
+    const template = {
+      name: "Internet",
+      kind: "public",
+      region: "eu01",
+      settings: { network_enabled: true },
+    };
+    expect(
+      scoped.safeParse(patch("projectTemplates", { public: template })).success,
+    ).toBe(true);
+    for (const extra of [
+      { settings: { ...template.settings, secretsmanager_enabled: true } },
+      {
+        settings: {
+          ...template.settings,
+          observability: { enabled: true, plan_name: "standard" },
+        },
+      },
+      { namespaceServices: {} },
+      { parameterPolicy: {} },
+    ]) {
+      const change = patch("projectTemplates", {
+        public: { ...template, ...extra },
+      });
+      expect(scoped.safeParse(change).success).toBe(false);
+      expect(
+        assistantEditorChangeSchema("projectTemplates").safeParse(change)
+          .success,
+      ).toBe(true);
+    }
+    const serviceSchema = assistantEditorChangeSchema(
+      "projectTemplates",
+      [...networkFields, "observability", "secretsmanager_enabled"],
+      "serving",
+      {},
+    );
+    expect(
+      serviceSchema.safeParse(
+        patch("projectTemplates", {
+          public: {
+            ...template,
+            settings: {
+              ...template.settings,
+              observability: { enabled: true, plan_name: "standard" },
+              secretsmanager_enabled: true,
+            },
+          },
+        }),
+      ).success,
+    ).toBe(true);
+    const schema = JSON.stringify(assistantEditorResponseSchema(scoped));
+    expect(schema).not.toContain('"observability"');
+    expect(schema).not.toContain('"namespaceServices"');
+    expect(schema).not.toContain('"parameterPolicy"');
+  });
+
+  it("carries source-checked template decisions and real network areas without instance questions", async () => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    original.projectTemplates = [];
+    const message =
+      "Erstelle Corporate- und Public-Vorlagen mit lokalen Netzen. Benenne sie entsprechend.";
+    let source = "current";
+    let unrequestedService = false;
+    const changes = [
+      patch("projectTemplates", {
+        central: {
+          name: "Corporate zentral",
+          kind: "corporate",
+          region: "eu01",
+          settings: { network_area_key: "default", network_enabled: true },
+        },
+        internet: {
+          name: "Public Internet",
+          kind: "public",
+          region: "eu01",
+          settings: { network_enabled: true },
+        },
+      }),
+    ];
+    const request = vi.fn<typeof fetch>(async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      const intent =
+        body.response_format.json_schema.name === "conversation_intent";
+      const user = JSON.parse(
+        body.messages.find((entry: { role: string }) => entry.role === "user")
+          .content,
+      );
+      if (intent) {
+        expect(user.platformDraft).toBe(true);
+        expect(user.availableNetworkAreas).toContainEqual({
+          key: "default",
+          region: "eu01",
+        });
+      } else {
+        expect(user.templateSetup.delegateNaming).toBe(true);
+        expect(user.templateSetup.request).toBe(message);
+        expect(
+          JSON.stringify(
+            body.response_format.json_schema.schema.properties.changes,
+          ),
+        ).not.toContain('"observability"');
+        expect(user.currentValues["assistant.network_areas"]).toContainEqual({
+          key: "default",
+          region: "eu01",
+        });
+        expect(
+          body.response_format.json_schema.schema.properties.questions.items
+            .properties.path.const,
+        ).toBe("projectTemplates");
+      }
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify(
+                  intent
+                    ? {
+                        topic: "project-templates",
+                        mode: "draft",
+                        editorContract: true,
+                        editorInputs: ["landing_zones"],
+                        requirements: [],
+                        templateSetup: {
+                          source,
+                          kinds: ["corporate", "public"],
+                          delegateNaming: true,
+                          localNetworks: true,
+                          fields: ["network_enabled", "network_area_key"],
+                        },
+                      }
+                    : {
+                        ...response(
+                          unrequestedService
+                            ? [
+                                patch("projectTemplates", {
+                                  internet: {
+                                    name: "Internet",
+                                    kind: "public",
+                                    region: "eu01",
+                                    settings: {
+                                      network_enabled: true,
+                                      secretsmanager_enabled: true,
+                                    },
+                                  },
+                                }),
+                              ]
+                            : changes,
+                        ),
+                        references: ["project-templates"],
+                      },
+                ),
+              },
+            },
+          ],
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    });
+    const model = new AssistantModelServing(
+      {
+        baseUrl:
+          "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+        model: "test-model",
+        token: "test-token",
+        timeoutMs: 1000,
+      },
+      request,
+    );
+    const knowledge = buildAssistantKnowledge();
+    const selection = {
+      engineRevision: knowledge.engineRevision,
+      knowledgeSha256: knowledge.sha256,
+      groups: knowledge.groups,
+    };
+    const result = await model.converse(
+      selection,
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    expect(result.changes).toEqual(changes);
+    expect(
+      applyAssistantChanges(original, result.changes).projectTemplates,
+    ).toHaveLength(2);
+    source = "unknown-user-source";
+    await expect(
+      model.converse(selection, assistantPublicValues(original), [], message),
+    ).rejects.toBeInstanceOf(AssistantInferenceError);
+    expect(request).toHaveBeenCalledTimes(3);
+    source = "current";
+    unrequestedService = true;
+    await expect(
+      model.converse(selection, assistantPublicValues(original), [], message),
+    ).rejects.toBeInstanceOf(AssistantInferenceError);
+    expect(request).toHaveBeenCalledTimes(5);
   });
 
   it("keeps template removals and policy resets atomic", () => {

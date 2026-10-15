@@ -91,6 +91,18 @@ export function projectTemplates(
 ): ProjectTemplateDraft[] {
   return readCommonConfiguration(document).projectTemplates ?? [];
 }
+
+export function projectTemplateValues(
+  document: CommonConfiguration,
+): Record<string, Omit<ProjectTemplateDraft, "id" | "key">> {
+  return Object.fromEntries(
+    projectTemplates(document).map(({ id: _id, key, ...template }) => [
+      key,
+      template,
+    ]),
+  );
+}
+
 export function projectTemplateIssues(
   document: CommonConfiguration,
 ): DraftIssue[] {

@@ -3,6 +3,7 @@ import {
   assistantAdditiveField,
   assistantMergeConfirmationSchema,
   assistantProposalFields,
+  assistantProposalValue,
   assistantValuesEqual,
 } from "@lzc/contracts";
 import {
@@ -10,7 +11,7 @@ import {
   type EditorDraft,
   effectiveInput,
   isCommonDraft,
-  objectValue,
+  projectTemplateValues,
   readEditorDraft,
 } from "@lzc/domain";
 import { Check, MessageSquare, Send, Trash2 } from "lucide-react";
@@ -200,11 +201,20 @@ export function AssistantChat({
 
   const changes = conversation?.proposal?.changes ?? [];
   const values = isCommonDraft(draft) ? compileCommonConfiguration(draft) : {};
+  const templates = isCommonDraft(draft) ? projectTemplateValues(draft) : {};
   const fields = assistantProposalFields(changes).filter((field) => {
     const [root, ...keys] = field.changePath.split(".");
-    const value = [...keys, ...field.keys].reduce(
-      (current, key) => objectValue(current)[key],
-      effectiveInput(values, root ?? field.changePath),
+    const value = [...keys, ...field.keys].reduce<unknown>(
+      (current, key) =>
+        assistantProposalValue(
+          current && typeof current === "object"
+            ? Object.fromEntries(Object.entries(current))
+            : null,
+          key,
+        ),
+      root === "projectTemplates"
+        ? templates
+        : effectiveInput(values, root ?? field.changePath),
     );
     if (
       assistantAdditiveField(field) &&
@@ -675,7 +685,14 @@ export function AssistantChat({
 
 function proposalValue(value: unknown): string {
   if (value == null) return t("Nicht gesetzt");
-  if (Array.isArray(value)) return value.map(proposalValue).join(", ");
+  if (Array.isArray(value))
+    return value.length ? value.map(proposalValue).join(", ") : "[]";
+  if (typeof value === "object") {
+    const entries = Object.entries(value);
+    return entries.length
+      ? `{ ${entries.map(([key, entry]) => `${labelFor(key)}: ${proposalValue(entry)}`).join("; ")} }`
+      : "{}";
+  }
   if (typeof value === "boolean") return t(value ? "Ja" : "Nein");
   return String(value);
 }

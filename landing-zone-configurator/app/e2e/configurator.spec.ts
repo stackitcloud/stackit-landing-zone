@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { assistantProposalFields } from "@lzc/contracts";
 import {
   catalogue,
   compileCommonConfiguration,
@@ -11,6 +12,7 @@ import {
   type Template,
   upgradeEditorDraft,
 } from "@lzc/domain";
+import { applyAssistantChanges } from "../apps/api/src/assistant/dialogue.js";
 import {
   assistantScenarioFixture,
   assistantScenarios,
@@ -646,6 +648,317 @@ test("configuration chat sends answers directly and requires explicit proposal a
   await expect(
     chat.getByText("Firmenname Example vorgeschlagen.", { exact: true }),
   ).toHaveCount(0);
+});
+
+for (const before of [
+  null,
+  { retention_days: 30, acl: [], s3_object_lock: true },
+]) {
+  test(`assistant renders structured audit proposals from ${before ? "configured" : "unset"} values`, async ({
+    page,
+  }) => {
+    const id = "11111111-2222-4333-8444-000000000001";
+    const draft = setCommonInput(
+      createEditorConfiguration("standalone", id),
+      "audit_logs",
+      before,
+    );
+    const value = {
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+      link_scopes: [
+        {
+          resource_type: "organization",
+          resource_id: "00000000-0000-4000-8000-000000000001",
+        },
+        {
+          resource_type: "folder",
+          resource_id: "00000000-0000-4000-8000-000000000002",
+        },
+      ],
+    };
+    const conversation = {
+      id,
+      revision: 2,
+      baseRevision: 1,
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      stale: false,
+      messages: [],
+      proposal: {
+        explanation: "90 Tage Audit-Protokollierung vorgeschlagen.",
+        references: ["audit-logs"],
+        questions: [],
+        changes: [{ path: "audit_logs", before, value, operation: "replace" }],
+      },
+    };
+    let accepted = 0;
+    let saved = 0;
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: "alice-id", login: "alice" },
+          csrfToken: "csrf-test",
+          tenant: { id: "personal", kind: "personal", roles: [] },
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/configurations", (route) =>
+      route.fulfill({
+        json: {
+          configurations: [
+            {
+              id,
+              name: draft.name,
+              revision: 1,
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        },
+      }),
+    );
+    await page.route(`**/api/v1/configurations/${id}`, (route) => {
+      if (route.request().method() === "PUT") saved++;
+      return route.fulfill({
+        json: {
+          configuration: { id, name: draft.name, revision: 1, draft },
+        },
+      });
+    });
+    await page.route(`**/api/v1/configurations/${id}/assistant`, (route) =>
+      route.fulfill({ json: { conversation } }),
+    );
+    await page.route(
+      `**/api/v1/configurations/${id}/assistant/accept`,
+      (route) => {
+        expect(route.request().postDataJSON()).toEqual({
+          revision: 2,
+          baseRevision: 1,
+          selectedFields: ["audit_logs"],
+          draft,
+          savedDraft: draft,
+        });
+        accepted++;
+        const candidate = setCommonInput(draft, "audit_logs", value);
+        expect(compileCommonConfiguration(candidate).audit_logs).toEqual(value);
+        return route.fulfill({
+          json: {
+            configuration: {
+              id,
+              revision: 1,
+              draft: candidate,
+              persisted: false,
+            },
+            savedConfiguration: draft,
+            conversation: { ...conversation, proposal: null },
+          },
+        });
+      },
+    );
+    await page.goto("/configurations");
+    await page
+      .getByRole("button", {
+        name: `Konfiguration öffnen: ${draft.name}`,
+        exact: true,
+      })
+      .click();
+    const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+    const row = chat.locator(".assistant-diff tbody tr");
+    await expect(row).toHaveCount(1);
+    await expect(row).not.toContainText("[object Object]");
+    const baseline = row.locator("td").nth(2);
+    await expect(baseline).toContainText(
+      before ? "Aufbewahrung (Tage): 30" : "Nicht gesetzt",
+    );
+    if (before) {
+      await expect(baseline).toContainText("[]");
+      await expect(baseline).toContainText("Ja");
+    }
+    const proposed = row.locator("td").nth(3);
+    await expect(proposed).toContainText("Aufbewahrung (Tage): 90");
+    await expect(proposed).toContainText("Nein");
+    await expect(proposed).toContainText("203.0.113.0/24");
+    for (const scope of value.link_scopes) {
+      await expect(proposed).toContainText(scope.resource_type);
+      await expect(proposed).toContainText(scope.resource_id);
+    }
+    await expect(proposed).toContainText(
+      "Vollständiger Ersatz; ausgelassene Einträge werden entfernt.",
+    );
+    expect(accepted).toBe(0);
+    expect(saved).toBe(0);
+    await page.locator(".language-switch").selectOption("en");
+    await expect(proposed).toContainText("Retention (days): 90");
+    await expect(proposed).toContainText("No");
+    await expect(baseline).toContainText(
+      before ? "Retention (days): 30" : "Not set",
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+    ).toBe(true);
+    await chat.getByRole("button", { name: "Accept entire proposal" }).click();
+    await expect(row).toHaveCount(0);
+    expect(accepted).toBe(1);
+    expect(saved).toBe(0);
+  });
+}
+
+test("network template proposals are reviewed, accepted locally and saved separately", async ({
+  page,
+}) => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "platform-public-corporate-networks",
+  );
+  if (!scenario) throw new Error("Missing synthetic template fixture");
+  const draft = assistantScenarioFixture(scenario).draft;
+  const id = draft.id;
+  const change = {
+    path: "projectTemplates",
+    operation: "merge" as const,
+    before: {},
+    value: {
+      corporate: {
+        name: "Corporate zentral",
+        kind: "corporate",
+        region: "eu01",
+        settings: { network_enabled: true },
+      },
+      public: {
+        name: "Public Internet",
+        kind: "public",
+        region: "eu01",
+        settings: { network_enabled: true },
+      },
+    },
+  };
+  const candidate = applyAssistantChanges(draft, [change]);
+  const conversation = {
+    id,
+    revision: 2,
+    baseRevision: 1,
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    stale: false,
+    messages: [],
+    proposal: {
+      explanation:
+        "Zwei Netzwerk-Templates vorgeschlagen, noch nichts gespeichert.",
+      questions: [],
+      references: ["project-templates"],
+      changes: [change],
+    },
+  };
+  let accepted = 0;
+  let saved = 0;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() === "PUT") {
+      expect(
+        readCommonConfiguration(route.request().postDataJSON().draft),
+      ).toEqual(candidate);
+      saved++;
+    }
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision: saved ? 2 : 1,
+          draft: saved ? candidate : draft,
+        },
+      },
+    });
+  });
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) =>
+    route.fulfill({ json: { conversation } }),
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      expect(route.request().postDataJSON()).toEqual({
+        revision: 2,
+        baseRevision: 1,
+        selectedFields: assistantProposalFields([change]).map(
+          (field) => field.id,
+        ),
+        draft,
+        savedDraft: draft,
+      });
+      accepted++;
+      return route.fulfill({
+        json: {
+          configuration: {
+            id,
+            revision: 1,
+            draft: candidate,
+            persisted: false,
+          },
+          savedConfiguration: draft,
+          conversation: { ...conversation, proposal: null },
+        },
+      });
+    },
+  );
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  const rows = chat.locator(".assistant-diff tbody tr");
+  await expect(rows).toHaveCount(8);
+  await expect(chat).toContainText("Corporate zentral");
+  await expect(chat).toContainText("Public Internet");
+  await expect(chat).not.toContainText("[object Object]");
+  expect(accepted).toBe(0);
+  expect(saved).toBe(0);
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  await expect(rows).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(saved).toBe(0);
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect.poll(() => saved).toBe(1);
 });
 
 test("firewall HA merges local edits, reviews conflicts and saves separately", async ({

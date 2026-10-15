@@ -11,6 +11,7 @@ import {
 } from "@lzc/contracts";
 import {
   catalogue,
+  commonNetworkAreas,
   compileCommonConfiguration,
   effectiveInput,
   isCommonDraft,
@@ -39,10 +40,11 @@ import {
 import { assistantEditorPublicValues } from "./editor.js";
 import { assistantPublicFirewall } from "./firewall.js";
 import { buildAssistantKnowledge } from "./knowledge.js";
-import type {
-  AssistantCatalogueContext,
-  AssistantModelServing,
-  AssistantStream,
+import {
+  type AssistantCatalogueContext,
+  AssistantInferenceError,
+  type AssistantModelServing,
+  type AssistantStream,
 } from "./model-serving.js";
 
 export class AssistantError extends Error {
@@ -87,6 +89,12 @@ export function assistantPublicValues(
       values.owner_email !== undefined &&
       values.owner_email === template?.values.owner_email,
     "assistant.platform_draft": draft.projectTemplates !== undefined,
+    "assistant.network_areas": commonNetworkAreas(draft).map(
+      ({ key, region }) => ({
+        key,
+        region,
+      }),
+    ),
     rm_folders: Object.fromEntries(
       Object.entries(objectValue(effectiveInput(values, "rm_folders"))).map(
         ([key, folder]) => [
@@ -666,7 +674,13 @@ export class AssistantConversations {
             409,
             "assistant_common_configuration_required",
           );
-        applyAssistantChanges(draft, proposal.changes);
+        try {
+          applyAssistantChanges(draft, proposal.changes);
+        } catch (error) {
+          if (error instanceof z.ZodError)
+            throw new AssistantInferenceError("invalid_scope");
+          throw error;
+        }
       });
       return await this.work(session, id, async (client, configuration) => {
         stream?.signal?.throwIfAborted();

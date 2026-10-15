@@ -13,12 +13,28 @@ import {
   objectValue,
   projectTemplateIssues,
   projectTemplates,
+  projectTemplateValues,
   readCommonConfiguration,
   removeCommonNetworkArea,
   removeProjectTemplate,
   updateProjectTemplate,
 } from "@lzc/domain";
 import { expect, it } from "vitest";
+
+it("projects template values by stable key without exposing IDs or changing the draft", () => {
+  const draft = createEditorConfiguration("hub-and-spoke", randomUUID());
+  const before = structuredClone(draft);
+  const values = projectTemplateValues(draft);
+  for (const template of projectTemplates(draft)) {
+    const { id: _id, key, ...expected } = template;
+    expect(values[key]).toEqual(expected);
+    expect(values[key]).not.toHaveProperty("id");
+    expect(values[key]).not.toHaveProperty("key");
+  }
+  expect(draft).toEqual(before);
+  const empty = { ...draft, projectTemplates: [] };
+  expect(projectTemplateValues(empty)).toEqual({});
+});
 
 it("retains a local network in a public template without creating a platform project", () => {
   const draft = addProjectTemplate(

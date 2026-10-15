@@ -6,10 +6,12 @@ import {
   commonConfigurationFromValues,
   compileCommonConfiguration,
   createCommonConfiguration,
+  createPlatformDraftCopy,
   effectiveInput,
   type JsonValue,
   objectValue,
   setCommonInput,
+  textValue,
 } from "@lzc/domain";
 import {
   applyAssistantChanges,
@@ -107,6 +109,7 @@ export type AssistantScenario = {
   acceptableReferences?: readonly string[];
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
+  templateExpected?: ("public" | "corporate")[];
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
 
@@ -144,6 +147,27 @@ const firewallDeferredCapacity =
   "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen.";
 
 export const assistantScenarios: readonly AssistantScenario[] = [
+  {
+    id: "platform-public-corporate-networks",
+    topic: "project-templates",
+    fixture: "firewall-metro",
+    history: [
+      {
+        role: "user",
+        content: "Zentrale Audit-Protokollierung ist bereits konfiguriert.",
+      },
+      { role: "assistant", content: "Editor-Vorschlag für audit_logs." },
+      {
+        role: "user",
+        content:
+          "Wir wollen des weiteren eine zentrale git Instanz haben. Somit braucht nicht jedes Projekte eine eigene.",
+      },
+      { role: "assistant", content: "Editor-Vorschlag für devops." },
+    ],
+    message:
+      "Nun kommen wir zu den Application Landing Zone Templates. Ich brauche natürlich passend zu unserem Vorhaben welche, die über das zentrale Netzwerk kommunizieren. Benenne das Template auch entsprechend. Es darf auch projekte geben, die direkt in das Internet gehen, dafür aber nicht mit dem zentralen Netz kommunizieren dürfen. Richte dort jeweils ein lokales Netz ein, so dass man danach leicht VMs etc darin erstellen kann. Sandboxes brauchen wir vorerst nicht.",
+    templateExpected: ["public", "corporate"],
+  },
   {
     id: "editor-audit-complete",
     topic: "audit-logs",
@@ -627,6 +651,10 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       },
     );
   }
+  if (scenario.templateExpected) {
+    draft = createPlatformDraftCopy(draft, crypto.randomUUID());
+    draft.projectTemplates = [];
+  }
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
@@ -690,6 +718,56 @@ export function validateAssistantScenario(
   )
     failures.push("missing_topic_reference");
   const fixture = assistantScenarioFixture(scenario);
+  if (scenario.templateExpected) {
+    if (
+      !dialogue.changes.length ||
+      dialogue.changes.some(
+        (change) =>
+          change.path !== "projectTemplates" || change.operation !== "merge",
+      ) ||
+      dialogue.questions.length
+    )
+      failures.push("missing_platform_template_proposal");
+    try {
+      const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
+      const templates = candidate.projectTemplates ?? [];
+      if (
+        !isDeepStrictEqual(
+          templates.map((template) => template.kind).sort(),
+          [...scenario.templateExpected].sort(),
+        ) ||
+        templates.some(
+          (template) =>
+            !template.name.trim() ||
+            template.region !== fixture.values.region ||
+            template.settings.network_enabled !== true ||
+            (template.kind === "corporate" &&
+              (textValue(template.settings.network_area_key) || "default") !==
+                "default"),
+        )
+      )
+        failures.push("platform_template_networks_incomplete");
+      if (
+        templates.some((template) =>
+          Object.keys(template.settings).some(
+            (key) => !["network_enabled", "network_area_key"].includes(key),
+          ),
+        )
+      )
+        failures.push("unrequested_template_settings");
+      if (
+        !isDeepStrictEqual(
+          compileCommonConfiguration(candidate),
+          compileCommonConfiguration(fixture.draft),
+        )
+      )
+        failures.push("unrelated_platform_features_changed");
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      failures.push("platform_template_proposal_not_applicable");
+    }
+    return { dialogue, failures };
+  }
   if (scenario.editorExpected) {
     if (
       !dialogue.changes.length ||

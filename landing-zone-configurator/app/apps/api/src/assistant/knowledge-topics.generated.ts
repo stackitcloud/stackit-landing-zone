@@ -41,7 +41,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [
@@ -99,7 +99,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [
@@ -186,7 +186,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -251,7 +251,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -331,7 +331,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -382,7 +382,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -438,7 +438,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -494,7 +494,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -560,7 +560,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [
@@ -646,7 +646,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -751,7 +751,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -928,7 +928,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -1047,7 +1047,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -1097,7 +1097,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -1161,7 +1161,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -1278,7 +1278,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/project-templates.ts",
           sha256:
-            "f7732079e9dcdeccb090ded4a7946f533ec437c9373489e462a509a0a6f03f3b",
+            "6629d6cf5e557682b181bc9aca99d496d493e9ae9070e875f72ff608f0642459",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -1288,7 +1288,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -1325,9 +1325,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/project-templates.md",
-      text: "# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nDefine repeatable public or corporate project foundations with ownership,\nnetwork allocation and supported per-project services; distinguish a template\ndraft from provisioning actual application projects.\n\n## Accelerator Contract\n\nNative landing_zones is keyed project configuration. Supported settings include\ncorporate, region, network_area_key, project_code/env, owner_email,\nnetwork_enabled/network_prefix_length, role_assignments, custom_roles,\nobservability and secretsmanager_enabled. Root corporate defaults must be\nrespected: public intent explicitly sets corporate=false. The common document's\nprojectTemplates and parameter policies are compiled through the existing\nnative contract; publication/order workflows are not invented Terraform fields.\n\n## Dependencies\n\nGovernance/identity, SNA in the same region for corporate projects and separate\ncredentials. Public projects are not automatically corporate spokes. DNS,\nSecrets Manager and observability options have independent contracts.\n\n## Dialogue\n\nAsk about public/corporate type, teams/environments, ownership, area/region,\nsubnet needs and which settings application owners may choose. \"100 projects\"\nis a capacity requirement, not permission to create 100 example entries or a\nsaved-template quota. Preserve stable keys/identities. A project's explicit\nnetwork_prefix_length overrides the SNA default; calculate capacity from the\neffective template prefix and reserve platform/firewall/future ranges.\n\n## Examples\n\nSynthetic public intent must include corporate = false in its landing_zones\nentry. A corporate entry with network_prefix_length = 24 uses /24 even when\nthe SNA default is /25. These are field fragments, not complete proposals or\nautomatic project creation requests.\n\n## Limits\n\nCurrent chat cannot patch complex project/template objects, publish or order.\nRegion, DNS/area and namespace references must match. Empty role/ACL settings\nare not blanket least-privilege proof. Resource quotas and usable addresses\nneed live/reservation checks; theoretical subnet counts are not guarantees.\n\n## Credentials\n\nProvisioning, delegated application-owner credentials, secret-service workload\naccess and runtime grants are separate. No secrets/profile IDs in model context\nor native exports; execution outside the Configurator needs explicit bindings.\n\n## Sources\n\nRoot/landing-zone variables and common project-template/compiler/validation\nsources bind the reviewed semantics. Re-review policy/identity/native export\nchanges before generation; full application lifecycle parity remains separate.",
+      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nReusable Public/Corporate project foundations, not application provisioning.\n\n## Accelerator Contract\n\nNative landing_zones supports corporate, region, network_area_key, project_code,\nenv, owner_email, network_enabled/network_prefix_length, role_assignments,\ncustom_roles, observability and secretsmanager_enabled. Public instances explicitly\nset corporate=false. Platform drafts use projectTemplates and parameter policies,\nnot personal instance fields or invented publication/order Terraform attributes.\n\n## Dependencies\n\nGovernance/identity, same-region SNA for Corporate and separate credentials.\nPublic is not a Corporate spoke. DNS, Secrets Manager and observability are separate.\n\n## Dialogue\n\nTemplate setup is draft, including a switch after Audit/Git. New entries require\nname, kind, region and settings; existing entries support partial updates with\nstable keys/identities retained. Delegated naming means choose business names,\nnot another naming question. Central-network versus Internet-only means Corporate\nversus Public; requested local networks set network_enabled=true for both.\nReuse saved region, unambiguous same-region area and native subnet defaults.\nMerge new templates; omit unrequested services, not inherited platform Audit/Git.\nAsk about missing/ambiguous choices and requested application-owner policies.\nNo sandboxes means no sandbox creation, not skipping Public/Corporate setup.\nDo not remove unrelated templates without consent. "100 projects" is capacity,\nnot 100 generated examples or a template quota. Compute from effective prefixes\nand reserve platform/firewall/future ranges.\n\n## Examples\n\nPublic instances use corporate=false. network_prefix_length=24 overrides an SNA\n/25 default. These are fragments, not automatic project creation requests.\n\n## Limits\n\nReviewed native settings/policies can be proposed, not published, ordered or\nprovisioned. Region, DNS/area and namespace references must match. Empty roles/ACLs\nare not least-privilege proof. Quotas/usable addresses need live checks; theoretical\nsubnet counts are not guarantees.\n\n## Credentials\n\nProvisioning, delegated-owner credentials, workload access and runtime grants are\nseparate. No secrets/profile IDs in model context or exports; external execution\nneeds explicit bindings.\n\n## Sources\n\nRoot/landing-zone variables and common template/compiler/validation contracts.\nRe-review policy/identity/export changes; application lifecycle remains separate.',
       sha256:
-        "a97c69fbd16b9eb3da6780212ad4d484aaee648bb236cff4453f81111ddd16fe",
+        "2cb67b09875f5acbde78dc62452e193868dbad48774172ee4b8271261a5cac71",
     },
     {
       id: "sandbox-projects",
@@ -1363,7 +1363,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -1421,7 +1421,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
@@ -1492,7 +1492,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "112f1efb60ad0c6194a54ede324dc3cc11cbbb2f411bad3dd276df57686cf324",
+            "5561e1e8f83673aa4528dd916df76e4cd97a95c10f788594bc6ea006a9f383d8",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
@@ -1512,7 +1512,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "3cf4697de31878158154559ec549ea18e9a4980e7c8812508793ee6f33fe13c0",
+            "84cb1f24d25e64063805218ec3b9d945564860f38adc3b214e4702fd4a1c4892",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
@@ -1527,7 +1527,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "a080bdd24fd5aadccd2963feb071cca6a426ed58b1ec47c770ac97e6080dba0b",
+            "fe86ad792def782a7b839718841d0decacacac30df6a99eac8d22296a0fab74f",
         },
       ],
       externalSources: [],
