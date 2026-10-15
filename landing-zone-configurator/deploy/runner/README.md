@@ -16,7 +16,15 @@ CF-Isolation vor der Abnahme; aktueller Status steht im Abnahmedokument. Der opn
 Provider wurde vom Registry-Download ohne GPG-Signatur angeboten; Checksummen sind
 gepinnt, dies ist kein Signaturnachweis dieses Providers.
 
-`package.sh` baut ein separates Binary-Buildpack-Paket mit Node, OpenTofu und
+`package.sh` baut ein separates Binary-Paket mit Node, OpenTofu und
 Provider-Mirror; `manifest.yml` staged ein task-only CF-Template ohne Bindings.
+Der finale Image-Buildpack wird über `LZC_IMAGE_BUILDPACK` auf den freigegebenen
+Release-Commit gepinnt; die geschützte Pipeline liefert die Runner-Variablendatei.
+Hosted-Archive enthalten die qualifizierte Image-SHA statt der großen QCOW2-Datei.
+Beim Staging wird diese aus STACKIT Object Storage geladen bzw. aus dem geprüften
+Buildpack-Cache übernommen und am ursprünglichen Pfad ins Droplet eingebaut.
+CI prüft dafür die bytegleiche Wiederherstellung und unveränderte Paketidentität.
+Lokale Archive bleiben vollständig. Es gibt keinen Download pro Nutzer oder Plan.
+Details und Grenzen: [CF-Staging und Cache](../cloud-foundry/README.md#image-staging-and-caching).
 Der Dispatcher kopiert dessen Droplet in eine neue App pro Auftrag. Direkte
 OpenTofu-Schritte stehen in `run-plan.sh`. Ablauf und Freigabegrenzen: [Plan-Ausführung](../../docs/plan-execution.md).

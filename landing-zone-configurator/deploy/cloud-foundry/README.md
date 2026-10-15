@@ -3,9 +3,42 @@
 `.github/workflows/configurator-release.yml` builds and tests the application,
 packages production dependencies and the checksum-pinned Node 24.21.0 Linux runtime,
 and deploys the same archive with explicit `cf` CLI commands. The CF node buildpack
-currently offers an older Node version, so this release uses `binary_buildpack`.
+currently offers an older Node version, so the application and runner use the
+repository's final binary/image buildpack, pinned to the exact approved release
+commit. Its CF entrypoints live in the repository's `bin` directory; finalization
+uses the already packaged Node runtime, not a platform-selected Node version.
+The migration-only application retains `binary_buildpack`.
 Update the version and checksum together when upgrading Node. The CF stack remains
 platform-maintained (`cflinuxfs4`).
+
+### Image staging and caching
+
+Hosted archives omit only the pinned `firewall-image.qcow2`; local Runner
+archives remain self-contained. CI first qualifies the full image-backed package,
+then extracts both thin archives, restores the image through the actual buildpack
+entrypoint and verifies byte-for-byte Runner equality and the same package identity.
+Each compressed CF archive must be smaller than 384 MiB.
+
+`prepare-release.mjs` binds `LZC_IMAGE_BUILDPACK` to the approved artifact's source
+revision, including during promotion. The private app/runner variable files
+provide that URI to their manifests. During staging, the final buildpack reads
+the compiled image pin and validated Runner metadata, fetches the public image
+directly from STACKIT Object Storage and checks the full SHA-256. Its private,
+digest-keyed CF buildpack cache is verified on every use; bad bytes, links or
+capability mismatches fail staging. A cache miss downloads to a unique temporary
+file, verifies it and atomically publishes it. No tenant credentials are involved.
+
+The finalized droplet contains the ordinary image file at its original native
+path. Runtime entrypoints and jobs do not download images. CF stores the droplet
+and manages its distribution/caching on execution cells; a cold cell may fetch
+that droplet internally. Buildpack caches are per application and best-effort,
+not a shared tenant workspace or a correctness prerequisite. The API's inspection
+copy is finalized identically. Migration does not inspect or execute the Runner
+and therefore does not restore its unused inspection image.
+
+This avoids the observed CF API upload failure: HTTP 502 after 900 seconds at
+601.91 of 926.12 MiB. It does not change disk quotas, weaken image verification,
+share mutable job files or claim that a larger upload limit was configured.
 
 `manifest.yml` owns the application, route, process size, health check and backend
 environment bindings. OpenTofu owns the CF org/space/roles and backing services;

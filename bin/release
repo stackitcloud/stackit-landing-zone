@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' '---' 'default_process_types:' '  web: "echo Explicit LZC start command required >&2; exit 1"'

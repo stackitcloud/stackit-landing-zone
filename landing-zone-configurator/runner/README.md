@@ -206,9 +206,16 @@ und Provider-Erreichbarkeit; diese Prüfung ersetzt keine Live-Abnahme.
   insgesamt 3008211861 Bytes (2,80 GiB) von 4294967296 Bytes.
   Die Release-Pipeline übernimmt weiterhin den vollständigen Root per
   `cp -R` nach `inspection` und vergleicht ihn vor Deployment bytegleich.
-  Die qualifizierten komprimierten Runner-Archive haben etwa 1,17 GB;
-  das betreiberspezifische CF-Paket-Uploadlimit ist vor einem separat
-  freizugebenden Rollout zusätzlich zu prüfen und ist kein Droplet-Disklimit.
+  Lokale, vollständige Archive haben etwa 1,17 GB. Hosted-Archive lassen nur
+  die QCOW2-Datei aus und müssen kleiner als 384 MiB bleiben. Der auf den
+  freigegebenen Release-Commit gepinnte finale Buildpack stellt die Datei
+  beim Staging aus dem regionalen Object Storage bzw. seinem SHA-geprüften
+  Cache wieder her. Danach enthält das gespeicherte Droplet die vollständige
+  Datei; es gibt keinen Laufzeit-Download pro Auftrag. Die API-Inspektionskopie
+  wird identisch behandelt. CI vergleicht beide wiederhergestellten Roots
+  bytegleich mit dem qualifizierten Paket und prüft dieselbe Paketidentität.
+  Damit bleibt das gemessene Laufzeit-Diskbudget unverändert. Cache und
+  Downloadfehler brechen Staging ab, bevor die Web-Anwendung ersetzt wird.
 - **HA ist nicht selbst ein Plan-Authentifizierungsblocker:** Die zwei
   `terraform_data.firewall_ha_*`-Provisioner in `5-firewall.tf` verwenden den
   Administrationszugang erst beim Apply; CARP-Zugänge entstehen nativ.

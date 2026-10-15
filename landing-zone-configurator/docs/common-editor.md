@@ -160,10 +160,14 @@ Browsertests sowie Typprüfung, Build und die zwölf Release-/Runner-Evidence-Te
 Weitere 51 PostgreSQL-Broker-Tests und 36 native Vertrags-/Offline-Provider-Fälle
 qualifizierten die Runner-Unterstützung für beide Accelerator-Quellstände.
 Es gab keine Kunden-Cloud-Plans, Applies oder Destroys.
-Diese Änderungen sind noch nicht auf Dev veröffentlicht. Die neuen
-Runner-Archive sind rund 1,17 GB groß; vor einer Veröffentlichung muss neben dem
-geprüften 4-GiB-Task-Diskbudget auch das Upload-Limit der konkreten CF-Foundation
-bestätigt werden. Eine Live-IAM-/Erreichbarkeitsabnahme wird durch die
+Diese Änderungen sind noch nicht auf Dev veröffentlicht. Der erste große
+CF-Upload scheiterte nach 15 Minuten mit HTTP 502, vor Migration und Web-Update.
+Der freigegebene Staging-Ausbau lässt das große Image deshalb nur im Hosted-Archiv
+aus und baut es beim Staging SHA-geprüft ins unveränderliche Droplet ein.
+Es gibt keinen Download pro Nutzer oder Plan; Cache, Paketidentität und
+unverändertes 4-GiB-Task-Diskbudget werden gesondert geprüft. Details stehen unter
+[CF-Staging und Cache](../deploy/cloud-foundry/README.md#image-staging-and-caching).
+Eine Live-IAM-/Erreichbarkeitsabnahme wird durch die
 Offline-Qualifikation nicht vorgetäuscht.
 
 ## Kompatibilität und Grenzen

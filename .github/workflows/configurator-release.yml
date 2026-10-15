@@ -4,11 +4,13 @@ on:
   push:
     branches: [feature/landing-zone-configurator]
     paths:
+      - 'bin/**'
       - 'landing-zone-configurator/app/**'
       - 'landing-zone-configurator/deploy/cloud-foundry/**'
       - 'landing-zone-configurator/deploy/runner/**'
       - 'landing-zone-configurator/infra/ci/prepare-release.mjs'
       - 'landing-zone-configurator/infra/ci/prepare-release.test.mjs'
+      - 'landing-zone-configurator/infra/ci/image-staging.test.mjs'
       - 'landing-zone-configurator/infra/ci/release-artifact.mjs'
       - '.github/workflows/configurator-release.yml'
   workflow_dispatch:
@@ -63,6 +65,7 @@ jobs:
           npm ci
           npm run check
           node --test ../infra/ci/prepare-release.test.mjs
+          node --test ../infra/ci/image-staging.test.mjs
       - name: Test database migrations and tenant isolation
         run: npm run test:database -- --maxWorkers=2 --testTimeout=30000
         env:
@@ -107,8 +110,9 @@ jobs:
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
           LZC_HOSTED_EXECUTION_PACKAGE=true LZC_PACKAGE_APPLICATION_ROOT=true LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true bash ../deploy/runner/package.sh
           cp -R ../.local/runner ../.local/release/inspection
-          tar -czf ../.local/release.tar.gz -C ../.local/release .
+          tar --exclude='./inspection/accelerator/firewall-image.qcow2' -czf ../.local/release.tar.gz -C ../.local/release .
           (cd ../.local && sha256sum release.tar.gz > release.sha256)
+          node scripts/check-staged-runner.mjs ../.local
       - name: Assemble immutable stage-neutral release
         run: |
           node ../infra/ci/release-artifact.mjs create ../.local
@@ -218,6 +222,7 @@ jobs:
       - name: Prepare private CF variables and mask runtime credentials
         run: node infra/ci/prepare-release.mjs application
         env:
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
           LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}
           LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
@@ -237,7 +242,7 @@ jobs:
           cf target -o lzc-dev-runners -s plans
           test "$(cf org lzc-dev-runners --guid)" = "$LZC_RUNNER_ORG_ID"
           test "$(cf space plans --guid)" = "$LZC_RUNNER_SPACE_ID"
-          cf push --task -f deploy/runner/manifest.yml -p .local/runner --redact-env
+          cf push --task -f deploy/runner/manifest.yml -p .local/runner --vars-file "$LZC_PRIVATE/runner-vars.json" --redact-env
           export LZC_RUNNER_TEMPLATE_ID="$(cf app lzc-plan-template --guid)"
           export LZC_RUNNER_DROPLET_ID="$(cf curl "/v3/apps/$LZC_RUNNER_TEMPLATE_ID/droplets/current" | jq -er '.guid')"
           node infra/ci/prepare-release.mjs runner

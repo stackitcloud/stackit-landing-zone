@@ -5,6 +5,6 @@ applications:
     memory: 1024M
     disk_quota: 4096M
     stack: cflinuxfs4
-    buildpacks: [binary_buildpack]
+    buildpacks: [((LZC_IMAGE_BUILDPACK))]
     no-route: true
     command: ./runtime/bin/node apps/worker/dist/main.js

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+buildpack_dir="$(cd "$(dirname "$0")/.." && pwd)"
+exec "$1/runtime/bin/node" "$buildpack_dir/landing-zone-configurator/deploy/cloud-foundry/stage-image.mjs" "$1" "$2"

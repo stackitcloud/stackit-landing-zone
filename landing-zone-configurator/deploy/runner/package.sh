@@ -81,6 +81,6 @@ if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true" ]]; then
 	tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .
 	shasum -a 256 "$runner_dir.tar.gz" > "$runner_dir.sha256"
 else
-	tar -czf ../.local/runner.tar.gz -C "$runner_dir" .
+	tar --exclude='./accelerator/firewall-image.qcow2' -czf ../.local/runner.tar.gz -C "$runner_dir" .
 	(cd ../.local && sha256sum runner.tar.gz > runner.sha256)
 fi

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+test -x "$1/runtime/bin/node"
+test -f "$1/platform-source.json" || test -f "$1/inspection/platform-source.json"
+echo "LZC pinned binary runtime and verified firewall image"
