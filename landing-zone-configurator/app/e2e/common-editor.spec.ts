@@ -84,11 +84,26 @@ test("platform editor defines project templates without concrete application pro
     .getByLabel("Art des Application Landing Zone Templates")
     .selectOption("sandbox");
   await page.getByLabel("Template-Kennung", { exact: true }).fill("experiment");
-  const before = await page.locator("section.project-card").count();
+  const overview = page.getByRole("region", {
+    name: "Template-Übersicht",
+    exact: true,
+  });
+  const before = await overview.getByRole("button").count();
   await page
     .getByRole("button", { name: "Template hinzufügen", exact: true })
     .click();
-  await expect(page.locator("section.project-card")).toHaveCount(before + 1);
+  await expect(overview.getByRole("button")).toHaveCount(before + 1);
+  await expect(
+    overview.getByRole("button", {
+      name: "Template auswählen: Neue Sandbox-Vorlage (experiment)",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  const details = page.locator("#project-template-details");
+  await expect(details).toHaveCount(1);
+  await expect(
+    details.getByRole("heading", { name: "Neue Sandbox-Vorlage", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("region", {
       name: "Application Landing Zone Template-Entwürfe",
