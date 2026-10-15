@@ -90,6 +90,10 @@ test("verified cache is reused without a network request and refuses corruption 
     assert.deepEqual(await readFile(target), bytes);
     assert.notEqual((await lstat(target)).ino, (await lstat(cached)).ino);
     assert.equal((await lstat(target)).mode & 0o777, 0o600);
+    await assert.rejects(
+      prepareFirewallImage(image, cache, target, { consume: true }),
+      /absent destination/,
+    );
     await writeFile(cached, "corrupt");
     await assert.rejects(
       prepareFirewallImage(image, cache),
@@ -116,7 +120,7 @@ test("verified cache is reused without a network request and refuses corruption 
 });
 
 for (const kind of ["runner", "inspection"]) {
-  test(`final buildpack stages ${kind} on a cold cache, reuses it and fails closed`, async () => {
+  test(`final buildpack stages ${kind}, consumes its temporary cache and fails closed`, async () => {
     const work = await mkdtemp(resolve(tmpdir(), "lzc-image-buildpack-"));
     try {
       const build = resolve(work, "build");
@@ -171,20 +175,21 @@ for (const kind of ["runner", "inspection"]) {
       assert.match(cold.stdout, /"cacheHit":false/);
       const target = resolve(root, "accelerator/firewall-image.qcow2");
       assert.deepEqual(await readFile(target), bytes);
-      const cached = await lstat(
-        resolve(cache, `lzc-firewall-images/${image.sha256}.qcow2`),
+      const cached = resolve(
+        cache,
+        `lzc-firewall-images/${image.sha256}.qcow2`,
       );
       const staged = await lstat(target);
-      assert.equal(staged.dev, cached.dev);
-      assert.equal(
-        staged.ino,
-        cached.ino,
-        "Staging must not duplicate the large cache image",
-      );
+      assert.equal(staged.nlink, 1);
+      await assert.rejects(lstat(cached), { code: "ENOENT" });
       await rm(target);
+      await writeFile(cached, bytes);
+      const cachedInfo = await lstat(cached);
       const warm = finalize();
       assert.equal(warm.status, 0, warm.stderr);
       assert.match(warm.stdout, /"cacheHit":true/);
+      assert.equal((await lstat(target)).ino, cachedInfo.ino);
+      await assert.rejects(lstat(cached), { code: "ENOENT" });
       assert.equal(await readFile(calls, "utf8"), "download\n");
       await writeFile(
         metadata,
@@ -200,7 +205,6 @@ for (const kind of ["runner", "inspection"]) {
         JSON.stringify({ firewallImageSha256: image.sha256 }),
       );
       await rm(target);
-      await rm(resolve(cache, `lzc-firewall-images/${image.sha256}.qcow2`));
       await writeFile(fixture, "corrupt");
       assert.notEqual(
         finalize().status,

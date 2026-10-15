@@ -39,8 +39,8 @@ const result = await prepareFirewallImage(
   platformFirewallImage,
   resolve(cache, "lzc-firewall-images"),
   resolve(roots[0], "firewall-image.qcow2"),
-  { hardlink: true },
+  { consume: true },
 );
 console.log(
-  `Verified staged firewall image: ${JSON.stringify({ ...result, materialization: "hardlink" })}`,
+  `Verified staged firewall image: ${JSON.stringify({ ...result, materialization: "move-to-droplet" })}`,
 );

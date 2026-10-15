@@ -32,22 +32,23 @@ permission is added to CI. The private app/runner variable files
 provide that URI to their manifests. During staging, the final buildpack reads
 the compiled image pin and validated Runner metadata, fetches the public image
 directly from STACKIT Object Storage and checks the full SHA-256. Its private,
-digest-keyed CF buildpack cache is verified on every use; bad bytes, links or
+digest-keyed staging download is verified on every use; bad bytes, links or
 capability mismatches fail staging. A cache miss downloads to a unique temporary
 file, verifies it and atomically publishes it. No tenant credentials are involved.
-Inside the staging container only, the destination is a hardlink to this verified
-cache file. This avoids allocating a second 948-MiB image while CF compresses the
-droplet and cache; an ordinary copy exhausted the staging filesystem during gzip.
-Cross-filesystem links fail explicitly rather than silently duplicating the image.
-CI verifies the shared device/inode for both hosted archives. Local packaging keeps
-independent image copies. Droplet and cache archives each serialize their own
-regular image bytes; no link to a cache or another job survives into runtime.
+The verified download is atomically moved into the application, not copied or
+retained as a second large build artifact. An ordinary copy exhausted the staging
+filesystem during droplet compression; a hardlink let that complete but CF's
+additional build-cache archive still exhausted it. The immutable droplet is the
+durable image cache. A new staging downloads the image once; jobs never do.
+Cross-filesystem moves fail explicitly rather than silently duplicating the image.
+CI verifies the same device/inode and removal of the temporary source for both
+hosted archives. Local packaging retains its digest cache and independent copies.
 
 The finalized droplet contains the ordinary image file at its original native
 path. Runtime entrypoints and jobs do not download images. CF stores the droplet
 and manages its distribution/caching on execution cells; a cold cell may fetch
-that droplet internally. Buildpack caches are per application and best-effort,
-not a shared tenant workspace or a correctness prerequisite. The API's inspection
+that droplet internally. No redundant large image is retained in the per-app
+buildpack cache, and no mutable tenant workspace is shared. The API's inspection
 copy is finalized identically. Migration does not inspect or execute the Runner
 and therefore does not restore its unused inspection image.
 

@@ -209,8 +209,10 @@ und Provider-Erreichbarkeit; diese Prüfung ersetzt keine Live-Abnahme.
   Lokale, vollständige Archive haben etwa 1,17 GB. Hosted-Archive lassen nur
   die QCOW2-Datei aus und müssen kleiner als 384 MiB bleiben. Der auf den
   freigegebenen Release-Commit gepinnte finale Buildpack stellt die Datei
-  beim Staging aus dem regionalen Object Storage bzw. seinem SHA-geprüften
-  Cache wieder her. Danach enthält das gespeicherte Droplet die vollständige
+  beim Staging aus dem regionalen Object Storage SHA-geprüft wieder her.
+  Der temporäre Download wird ohne zweite Dateikopie in die Anwendung verschoben;
+  eine zusätzliche große CF-Build-Cache-Kopie entfällt. Das gespeicherte Droplet
+  ist der dauerhafte Image-Cache und enthält die vollständige
   Datei; es gibt keinen Laufzeit-Download pro Auftrag. Die API-Inspektionskopie
   wird identisch behandelt. CI vergleicht beide wiederhergestellten Roots
   bytegleich mit dem qualifizierten Paket und prüft dieselbe Paketidentität.

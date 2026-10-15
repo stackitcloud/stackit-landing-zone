@@ -28,11 +28,6 @@ try {
     recursive: true,
     mode: 0o700,
   });
-  await copyFile(
-    resolve(directory, "runner/accelerator/firewall-image.qcow2"),
-    resolve(cache, `lzc-firewall-images/${platformFirewallImage.sha256}.qcow2`),
-    constants.COPYFILE_FICLONE,
-  );
   for (const [name, relative] of [
     ["runner", ""],
     ["release", "inspection"],
@@ -51,22 +46,27 @@ try {
       { code: "ENOENT" },
     );
     command(resolve(repository, "bin/detect"), [build]);
+    const cachedPath = resolve(
+      cache,
+      `lzc-firewall-images/${platformFirewallImage.sha256}.qcow2`,
+    );
+    await copyFile(
+      resolve(directory, "runner/accelerator/firewall-image.qcow2"),
+      cachedPath,
+      constants.COPYFILE_FICLONE,
+    );
+    const cachedImage = await lstat(cachedPath);
     command(resolve(repository, "bin/finalize"), [build, cache]);
     const stagedImage = await lstat(
       resolve(root, "accelerator/firewall-image.qcow2"),
-    );
-    const cachedImage = await lstat(
-      resolve(
-        cache,
-        `lzc-firewall-images/${platformFirewallImage.sha256}.qcow2`,
-      ),
     );
     assert.equal(stagedImage.dev, cachedImage.dev);
     assert.equal(
       stagedImage.ino,
       cachedImage.ino,
-      "Staging must reuse the verified cache inode, not allocate a second image",
+      "Staging must move the verified image, not allocate a second image",
     );
+    await assert.rejects(lstat(cachedPath), { code: "ENOENT" });
     command("diff", ["-qr", resolve(directory, "runner"), root]);
     const staged = await LocalPlanRunner.open(
       root,

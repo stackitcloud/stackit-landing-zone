@@ -1,22 +1,14 @@
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import {
-  chmod,
-  copyFile,
-  link,
-  lstat,
-  mkdir,
-  rename,
-  rm,
-} from "node:fs/promises";
+import { chmod, copyFile, lstat, mkdir, rename, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
 export async function prepareFirewallImage(
   image,
   directory,
   target,
-  { hardlink = false } = {},
+  { consume = false } = {},
 ) {
   const url = new URL(image.url);
   if (
@@ -98,9 +90,12 @@ export async function prepareFirewallImage(
         return false;
       },
     );
-    if (existing) await verified(target);
-    else {
-      if (hardlink) await link(cached, target);
+    if (existing) {
+      if (consume)
+        throw new Error("Image consumption requires an absent destination");
+      await verified(target);
+    } else {
+      if (consume) await rename(cached, target);
       else await copyFile(cached, target, constants.COPYFILE_FICLONE);
       await chmod(target, 0o600);
       await verified(target);
