@@ -93,13 +93,35 @@ zusammengesetzt. Bereits übernommene Einträge bleiben auch bei einer späteren
 Übernahme der verbliebenen Löschungen erhalten, sowohl im lokalen Vorschaupfad
 als auch beim direkten, revisionsgeprüften Speichern über die API.
 Keine dieser Änderungen speichert oder löscht automatisch Kundenkonfigurationen.
-Dieser Nachbesserungsstand ist noch nicht live veröffentlicht.
+Die Nachbesserungen sind als Quelle `045eeafb9813e542f59062139d386b819a3792df`
+committed, gepusht und über den erfolgreichen
+[Dev-Release 38782981970](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38782981970)
+veröffentlicht. Die Freigabe erfolgte nach den normalen geschützten Dev-Gates.
 Die lokale Regression besteht aus 718 bestandenen Unit-Tests (57 übersprungen),
 51 isolierten PostgreSQL-Plan-/Broker-Tests, 53 PostgreSQL-Integrationstests und
 302 Desktop-/Mobil-Browsertests.
 Typprüfung, Build und generierte Assistant-Verträge sind geprüft. Dies ersetzt
 keine erneute echte Modell- oder Kunden-Cloud-Abnahme; es wurde kein Kunden-Plan
 oder Apply gestartet.
+
+Der endgültige Release bestand auch in CI 718 Unit-, 53 Datenbank- und
+302 Browsertests sowie die native Runner-/Image-/Archiv-Qualifikation.
+Runner-Staging mit Image-/Engine-Prüfung, Migrationen, API-/Web-Deployment,
+Service-Verbindungen, separate Runner-Organisation und Broker-Isolation sowie
+öffentliche Routen sind erfolgreich. Nach dem Deployment entsprechen die tatsächlich
+ausgelieferten JavaScript-/CSS-Dateien bytegenau dem freigegebenen Stand.
+Acht öffentliche Auth-/PKCE-/Callback-/CSRF-Prüfungen sind bestanden. Echte anonyme
+Desktop-/Mobil-Browser zeigen jeweils zehn Name-/Typ-Komponenten, funktionierendes
+Auf-/Zuklappen per Tastatur und Maus sowie überlappungsfreie Vorschauen bei komplett
+geöffneten Projekten, ohne Browserfehler oder Server-Mutationen.
+Ein echter Benutzerlogin, Organisationsnachweis und Kunden-Plan wurden nicht
+automatisiert durchgeführt.
+
+Die separate
+[Validate-Configurator-Ausführung 38782981811](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38782981811)
+bleibt bei den bereits vor diesen Änderungen bekannten Standalone-Vertrags- und
+STACKIT-/GitHub-Operator-Guard-Assertions rot. Sie wird ausdrücklich nicht als
+bestanden gewertet; die oben genannte Release- und Live-Abnahme ist davon getrennt.
 
 Die echte Modell-Abnahme der Originalanfrage nach Corporate-/Public-Templates
 mit lokalen Netzen ist in drei unabhängigen synthetischen Läufen bestanden:
