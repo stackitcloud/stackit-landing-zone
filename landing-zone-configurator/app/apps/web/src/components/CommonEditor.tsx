@@ -27,6 +27,7 @@ import { FederatedIdentityEditor } from "./FederatedIdentityEditor";
 import { labelFor } from "./feature-labels";
 import { NetworkEditor } from "./NetworkEditor";
 import { ProjectTemplates } from "./ProjectTemplates";
+import { projectTemplateSummary } from "./project-template-summary";
 import { StructuredField } from "./StructuredField";
 import { Topology } from "./Topology";
 
@@ -102,7 +103,18 @@ export function CommonEditor({
     "public",
   );
   const [newKey, setNewKey] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
   const platformDraft = draft.projectTemplates !== undefined;
+  const selectedTemplate =
+    draft.projectTemplates?.find(
+      (template) => template.id === selectedTemplateId,
+    ) ?? draft.projectTemplates?.[0];
+  const selectTemplate = (id: string) => {
+    setSelectedTemplateId(id);
+    onStepChange("projects");
+  };
   const stepTitle = (id: EditorStep, title: string) =>
     id === "projects"
       ? platformDraft
@@ -271,7 +283,12 @@ export function CommonEditor({
               </p>
             )}
           {step === "projects" && platformDraft && (
-            <ProjectTemplates draft={draft} onChange={onChange} />
+            <ProjectTemplates
+              draft={draft}
+              onChange={onChange}
+              selectedTemplateId={selectedTemplate?.id ?? null}
+              onSelectTemplate={selectTemplate}
+            />
           )}
           {step === "projects" && !platformDraft && (
             <>
@@ -795,7 +812,12 @@ export function CommonEditor({
           </div>
         </section>
         <div>
-          <Topology values={values} projectTemplates={draft.projectTemplates} />
+          <Topology
+            values={values}
+            projectTemplates={draft.projectTemplates}
+            selectedTemplateId={selectedTemplate?.id}
+            onSelectTemplate={selectTemplate}
+          />
           {areas.length > 0 && (
             <figure className="topology network-topology">
               <figcaption>{t("Netzwerkzuordnung")}</figcaption>
@@ -820,6 +842,33 @@ export function CommonEditor({
                             .map((project) => (
                               <li key={project.id}>
                                 {textValue(project.settings.project_name)}
+                              </li>
+                            ))}
+                          {draft.projectTemplates
+                            ?.filter(
+                              (template) =>
+                                template.kind === "corporate" &&
+                                template.region === area.region &&
+                                (textValue(
+                                  template.settings.network_area_key,
+                                ) || "default") === area.key,
+                            )
+                            .map((template) => (
+                              <li key={template.id}>
+                                <button
+                                  type="button"
+                                  className="text-button"
+                                  aria-pressed={
+                                    selectedTemplate?.id === template.id
+                                  }
+                                  onClick={() => selectTemplate(template.id)}
+                                >
+                                  {t("Template ·")}{" "}
+                                  {
+                                    projectTemplateSummary(template, values)
+                                      .name
+                                  }
+                                </button>
                               </li>
                             ))}
                         </ul>

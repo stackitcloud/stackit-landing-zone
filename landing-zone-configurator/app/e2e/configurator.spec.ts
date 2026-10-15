@@ -1,10 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { assistantProposalFields } from "@lzc/contracts";
 import {
+  addProjectTemplate,
   catalogue,
   compileCommonConfiguration,
   createDraft,
   createEditorConfiguration,
+  editCommonInput,
+  effectiveInput,
   objectValue,
   readCommonConfiguration,
   savedDraft,
@@ -959,6 +962,275 @@ test("network template proposals are reviewed, accepted locally and saved separa
     .getByRole("button", { name: "Konfiguration speichern", exact: true })
     .click();
   await expect.poll(() => saved).toBe(1);
+});
+
+test("template overview and structure share selection, edits and network references", async ({
+  page,
+}, testInfo) => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "platform-public-corporate-networks",
+  );
+  if (!scenario) throw new Error("Missing synthetic template fixture");
+  let draft = applyAssistantChanges(assistantScenarioFixture(scenario).draft, [
+    {
+      path: "projectTemplates",
+      operation: "merge",
+      value: {
+        corporate: {
+          name: "Gemeinsames Template",
+          kind: "corporate",
+          region: "eu01",
+          settings: { network_enabled: true },
+        },
+        public: {
+          name: "Gemeinsames Template",
+          kind: "public",
+          region: "eu01",
+          settings: { network_enabled: true },
+        },
+      },
+    },
+  ]);
+  draft = addProjectTemplate(draft, "sandbox", "sandbox-example");
+  const folders = objectValue(
+    effectiveInput(compileCommonConfiguration(draft), "rm_folders"),
+  );
+  draft = editCommonInput(draft, "rm_folders", {
+    ...folders,
+    landing_zones_corporate: {
+      ...objectValue(folders.landing_zones_corporate),
+      name: "Vernetzte Anwendungen",
+    },
+  });
+  const id = draft.id;
+  const original = structuredClone(draft);
+  let saved = 0;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() === "PUT") {
+      draft = readCommonConfiguration(route.request().postDataJSON().draft);
+      saved++;
+    }
+    return route.fulfill({
+      json: {
+        configuration: { id, name: draft.name, revision: saved ? 2 : 1, draft },
+      },
+    });
+  });
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", { name: "5 Template-Entwürfe", exact: true })
+    .click();
+  const overview = page.getByRole("region", {
+    name: "Template-Übersicht",
+    exact: true,
+  });
+  const preview = page.locator(".template-preview");
+  const details = page.locator("#project-template-details");
+  const corporateCard = overview.getByRole("button", {
+    name: "Template auswählen: Gemeinsames Template (corporate)",
+    exact: true,
+  });
+  const publicCard = overview.getByRole("button", {
+    name: "Template auswählen: Gemeinsames Template (public)",
+    exact: true,
+  });
+  await expect(overview.getByRole("button")).toHaveCount(3);
+  await expect(corporateCard).toHaveAttribute("aria-pressed", "true");
+  await expect(corporateCard).toContainText("Vernetzte Anwendungen");
+  await expect(
+    preview.getByRole("heading", {
+      name: "Corporate · Vernetzte Anwendungen (1)",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Name des Templates", { exact: true }),
+  ).toHaveCount(1);
+  await publicCard.focus();
+  await publicCard.press("Enter");
+  await expect(publicCard).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    preview.getByRole("button", {
+      name: "Template bearbeiten: Gemeinsames Template (public)",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    details.getByLabel("STACKIT Network Area (SNA)", { exact: true }),
+  ).toHaveCount(0);
+  const publicName = `Internetprojekt ${"Netzwerk".repeat(20)}`;
+  await details
+    .getByLabel("Name des Templates", { exact: true })
+    .fill(publicName);
+  await details
+    .getByLabel("Lokales Projektnetz anlegen", { exact: true })
+    .uncheck();
+  await expect(
+    overview.getByRole("button", {
+      name: `Template auswählen: ${publicName} (public)`,
+      exact: true,
+    }),
+  ).toContainText("Keine zentrale Netzanbindung · Ohne lokales Netz");
+  await expect(
+    preview.getByRole("button", {
+      name: `Template bearbeiten: ${publicName} (public)`,
+      exact: true,
+    }),
+  ).toContainText("Keine zentrale Netzanbindung · Ohne lokales Netz");
+  const network = page.locator(".network-topology");
+  await expect(network).not.toContainText(publicName);
+  await network
+    .getByRole("button", {
+      name: "Template · Gemeinsames Template",
+      exact: true,
+    })
+    .click();
+  await expect(
+    details.getByLabel("Name des Templates", { exact: true }),
+  ).toHaveValue("Gemeinsames Template");
+  await details.getByLabel("Region", { exact: true }).selectOption("eu02");
+  await expect(corporateCard).toContainText("eu02");
+  await expect(corporateCard).toContainText("SNA nicht gefunden: default");
+  await expect(
+    preview.getByRole("button", {
+      name: "Template bearbeiten: Gemeinsames Template (corporate)",
+      exact: true,
+    }),
+  ).toContainText("SNA nicht gefunden: default");
+  await expect(network.getByRole("button")).toHaveCount(0);
+  await details.getByLabel("Region", { exact: true }).selectOption("eu01");
+  await expect(network.getByRole("button")).toHaveCount(1);
+  await page
+    .getByLabel("Template-Kennung", { exact: true })
+    .fill("extra-public");
+  await page
+    .getByRole("button", { name: "Template hinzufügen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(4);
+  await expect(
+    overview.getByRole("button", {
+      name: "Template auswählen: Neue Projektvorlage (extra-public)",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByLabel("Template-Kennung", { exact: true }),
+  ).toHaveValue("");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await details
+    .getByRole("button", { name: "Template entfernen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(4);
+  page.once("dialog", (dialog) => dialog.accept());
+  await details
+    .getByRole("button", { name: "Template entfernen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(3);
+  await expect(corporateCard).toHaveAttribute("aria-pressed", "true");
+  expect(saved).toBe(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("template-overview.png"),
+    fullPage: true,
+  });
+  await page.locator(".language-switch").selectOption("en");
+  await expect(
+    page.getByRole("region", { name: "Template overview", exact: true }),
+  ).toBeVisible();
+  await expect(
+    preview.getByRole("button", {
+      name: `Edit template: ${publicName} (public)`,
+      exact: true,
+    }),
+  ).toContainText("No central network connection · No local network");
+  await page.locator(".language-switch").selectOption("de");
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect.poll(() => saved).toBe(1);
+  expect(draft.projectTemplates).toHaveLength(3);
+  expect(draft.projectTemplates?.map((template) => template.id)).toEqual(
+    original.projectTemplates?.map((template) => template.id),
+  );
+  expect(
+    draft.projectTemplates?.find((template) => template.key === "public")
+      ?.settings.network_enabled,
+  ).toBe(false);
+  expect(
+    draft.projectTemplates?.find((template) => template.key === "public")?.name,
+  ).toBe(publicName);
+  expect(compileCommonConfiguration(draft)).toEqual(
+    compileCommonConfiguration(original),
+  );
+  for (const remaining of [2, 1, 0]) {
+    page.once("dialog", (dialog) => dialog.accept());
+    await details
+      .getByRole("button", { name: "Template entfernen", exact: true })
+      .click();
+    await expect(overview.getByRole("button")).toHaveCount(remaining);
+  }
+  await expect(details).toHaveCount(0);
+  await expect(overview).toContainText(
+    "Noch keine Application Landing Zone Templates definiert.",
+  );
+  await expect(preview).toContainText(
+    "Noch keine Application Landing Zone Templates definiert.",
+  );
+  await page
+    .getByLabel("Template-Kennung", { exact: true })
+    .fill("restored-public");
+  await page
+    .getByRole("button", { name: "Template hinzufügen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(1);
+  await expect(
+    overview.getByRole("button", {
+      name: "Template auswählen: Neue Projektvorlage (restored-public)",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    details.getByLabel("Name des Templates", { exact: true }),
+  ).toHaveValue("Neue Projektvorlage");
+  expect(saved).toBe(1);
 });
 
 test("firewall HA merges local edits, reviews conflicts and saves separately", async ({

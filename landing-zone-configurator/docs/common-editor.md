@@ -87,6 +87,22 @@ ersetzt. Freie Bezeichnungen bleiben Textfelder. Regionale Produktangebote wie
 Maschinentypen, Pläne und Versionen benötigen künftig API-basierte Kataloge; dafür
 werden keine vermeintlich vollständigen statischen Listen vorgetäuscht.
 
+### Template-Übersicht
+
+Application-Templates erscheinen als auswählbare Übersichtskarten mit Namen,
+stabiler Kennung, Art, Region, Zielordner und Netzzuordnung. Nur das ausgewählte
+Template zeigt sein vollständiges Bearbeitungsformular. Neue Templates werden
+direkt ausgewählt; nach Entfernen eines Templates bleibt ein vorhandenes Template
+bearbeitbar. Die Strukturansicht gruppiert dieselben Templates nach Art und
+Zielordner und öffnet beim Auswählen denselben Detailbereich.
+
+Die Netzwerkansicht zeigt Corporate-Templates nur unter dem referenzierten
+Netzwerkbereich ihrer Region; ein fehlendes Key-Override bedeutet weiterhin
+`default`. Public-Templates werden nicht als zentrale Netzwerk-Spokes dargestellt.
+Fehlende SNA- oder Ordnerreferenzen bleiben ausdrücklich sichtbar. Templates
+bleiben Entwürfe für spätere Bestellungen, keine bereits angelegten Projekte.
+Auswählen und Bearbeiten speichern oder deployen nichts automatisch.
+
 ## Kompatibilität und Grenzen
 
 - Bestehende v1/v2-Dokumente bleiben im bisherigen Editor nutzbar. **Zum gemeinsamen

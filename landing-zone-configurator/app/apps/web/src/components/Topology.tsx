@@ -8,6 +8,7 @@ import {
 } from "@lzc/domain";
 import type { ReactNode } from "react";
 import { t } from "../i18n";
+import { projectTemplateSummary } from "./project-template-summary";
 
 function Project({ name, detail }: { name: string; detail: string }) {
   return (
@@ -43,9 +44,13 @@ function Folder({ name, children }: { name: string; children: ReactNode }) {
 export function Topology({
   values,
   projectTemplates,
+  selectedTemplateId,
+  onSelectTemplate,
 }: {
   values: Values;
   projectTemplates?: ProjectTemplateDraft[] | undefined;
+  selectedTemplateId?: string | undefined;
+  onSelectTemplate?: (id: string) => void;
 }) {
   const projects = Object.entries(objectValue(values.landing_zones));
   const sandboxes = Array.isArray(values.sandboxes) ? values.sandboxes : [];
@@ -133,7 +138,14 @@ export function Topology({
               nodes
             ) : (
               <p className="muted empty-folder">
-                {t("Keine Projekte in dieser Konfiguration")}
+                {projectTemplates &&
+                [
+                  "landing_zones_corporate",
+                  "landing_zones_public",
+                  "sandboxes",
+                ].includes(key)
+                  ? t("Anwendungsprojekte entstehen erst durch Bestellungen.")
+                  : t("Keine Projekte in dieser Konfiguration")}
               </p>
             )}
           </Folder>
@@ -186,25 +198,59 @@ export function Topology({
             )}
           </p>
           {projectTemplates.length ? (
-            projectTemplates.map((template) => (
-              <div className="tree-node template-node" key={template.id}>
-                <span className="node-symbol" aria-hidden="true">
-                  ◇
-                </span>
-                <div>
-                  <small>
-                    {t("Template ·")}{" "}
-                    {template.kind === "public"
-                      ? t("Public")
-                      : template.kind === "corporate"
-                        ? t("Corporate")
-                        : t("Sandbox")}{" "}
-                    · {template.region}
-                  </small>
-                  <strong>{template.name || t("Unbenanntes Template")}</strong>
-                </div>
-              </div>
-            ))
+            (["corporate", "public", "sandbox"] as const).map((kind) => {
+              const templates = projectTemplates.filter(
+                (template) => template.kind === kind,
+              );
+              const first = templates[0];
+              if (!first) return null;
+              const group = projectTemplateSummary(first, values);
+              return (
+                <section className="template-preview-group" key={kind}>
+                  <h4>
+                    {group.kind} · {group.folder} ({templates.length})
+                  </h4>
+                  {templates.map((template) => {
+                    const summary = projectTemplateSummary(template, values);
+                    const content = (
+                      <>
+                        <span className="node-symbol" aria-hidden="true">
+                          ◇
+                        </span>
+                        <span className="template-node-content">
+                          <small>
+                            {summary.kind} · {template.region}
+                          </small>
+                          <strong>{summary.name}</strong>
+                          <code>{template.key}</code>
+                          <span className="node-detail">{summary.network}</span>
+                        </span>
+                      </>
+                    );
+                    return onSelectTemplate ? (
+                      <button
+                        type="button"
+                        key={template.id}
+                        className="tree-node template-node"
+                        aria-pressed={selectedTemplateId === template.id}
+                        aria-label={`${t("Template bearbeiten:")} ${summary.name} (${template.key})`}
+                        aria-controls="project-template-details"
+                        onClick={() => onSelectTemplate(template.id)}
+                      >
+                        {content}
+                      </button>
+                    ) : (
+                      <div
+                        className="tree-node template-node"
+                        key={template.id}
+                      >
+                        {content}
+                      </div>
+                    );
+                  })}
+                </section>
+              );
+            })
           ) : (
             <p className="muted">
               {t("Noch keine Application Landing Zone Templates definiert.")}
