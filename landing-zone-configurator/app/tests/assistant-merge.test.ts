@@ -3,8 +3,83 @@ import {
   assistantProposalFields,
   assistantValuesEqual,
   mergeAssistantDrafts,
+  selectAssistantProposalFields,
 } from "@lzc/contracts";
 import { expect, it } from "vitest";
+
+it.each([
+  "projectTemplates",
+  "connectivity.dns_zones",
+  "connectivity_regions.eu01.dns_zones",
+])(
+  "reviews additions and removals separately for %s without erasing unchecked or concurrent entries",
+  (path) => {
+    const changes = [
+      {
+        path,
+        operation: "replace" as const,
+        before: { keep: { name: "Original" }, remove: { name: "Example" } },
+        value: { keep: { name: "Updated" }, add: { name: "New" } },
+      },
+    ];
+    const fields = assistantProposalFields(changes);
+    expect(fields).toHaveLength(3);
+    const removal = fields.find((field) => field.removesEntry);
+    expect(removal).toMatchObject({
+      keys: ["remove"],
+      before: { name: "Example" },
+      value: null,
+    });
+    const current = {
+      [path]: {
+        keep: { name: "Original" },
+        remove: { name: "Locally edited" },
+        concurrent: { name: "Independent" },
+      },
+    };
+    const selected = fields
+      .filter((field) => !field.removesEntry)
+      .map((field) => field.id);
+    expect(selectAssistantProposalFields(changes, selected, current)).toEqual([
+      {
+        path,
+        operation: "replace",
+        value: {
+          keep: { name: "Updated" },
+          remove: { name: "Locally edited" },
+          concurrent: { name: "Independent" },
+          add: { name: "New" },
+        },
+      },
+    ]);
+    expect(
+      selectAssistantProposalFields(
+        changes,
+        fields.map((field) => field.id),
+        current,
+      )[0]?.value,
+    ).toEqual({
+      keep: { name: "Updated" },
+      concurrent: { name: "Independent" },
+      add: { name: "New" },
+    });
+    expect(
+      assistantProposalConflicts(
+        removal ? [removal] : [],
+        current,
+        () => false,
+      ),
+    ).toHaveLength(1);
+    expect(() => selectAssistantProposalFields(changes, [])).toThrow(
+      "assistant_invalid_selection",
+    );
+    expect(
+      assistantProposalFields(
+        changes.map((change) => ({ ...change, baselineAvailable: false })),
+      ),
+    ).toHaveLength(1);
+  },
+);
 
 it("compares JSON structurally without treating reordered object keys as edits", () => {
   expect(

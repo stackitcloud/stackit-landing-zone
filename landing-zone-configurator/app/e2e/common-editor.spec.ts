@@ -223,6 +223,17 @@ test("platform structure shows components with only name and type in their ownin
     })
     .click();
   const tree = page.locator(".topology").first();
+  const disclosures = tree.locator("details.project-disclosure");
+  await expect(disclosures.first()).toBeVisible();
+  await expect(tree.locator("details[open]")).toHaveCount(0);
+  const firstSummary = disclosures.first().locator("summary");
+  await firstSummary.focus();
+  await firstSummary.press("Enter");
+  await expect(disclosures.first()).toHaveAttribute("open", "");
+  await firstSummary.click();
+  await expect(disclosures.first()).not.toHaveAttribute("open");
+  for (const disclosure of await disclosures.all())
+    await disclosure.locator("summary").click();
   const management = tree
     .locator(".tree-project")
     .filter({ hasText: "acme-pltfm-mgmt-prod" });
@@ -275,6 +286,19 @@ test("platform structure shows components with only name and type in their ownin
   await expect(tree).toContainText("Object storage bucket");
   await expect(tree).toContainText("DNS zone");
   await expect(tree).toContainText("Corporate DNS");
+  const network = page.locator(".network-topology");
+  const assertPanelsDoNotOverlap = async () => {
+    const treeBox = await tree.boundingBox();
+    const networkBox = await network.boundingBox();
+    expect(treeBox).not.toBeNull();
+    expect(networkBox).not.toBeNull();
+    if (!treeBox || !networkBox)
+      throw new Error("Missing preview panel geometry");
+    expect(treeBox.y + treeBox.height).toBeLessThanOrEqual(networkBox.y);
+  };
+  await assertPanelsDoNotOverlap();
+  await network.scrollIntoViewIfNeeded();
+  await assertPanelsDoNotOverlap();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

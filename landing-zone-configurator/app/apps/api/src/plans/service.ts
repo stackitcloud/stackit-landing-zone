@@ -63,6 +63,9 @@ export class Plans {
     private readonly execution?: PlatformExecution,
     private readonly repositoryToken?: (session: Session) => Promise<string>,
   ) {}
+  get acceleratorCommit() {
+    return this.runner.acceleratorCommit ?? acceleratorCommit;
+  }
   async list(session: Session) {
     const rows = await withTenant(
       this.pool,
@@ -497,13 +500,14 @@ export class Plans {
             this.runner.supportsAccelerator?.(manifest.accelerator.commit) !==
               true)) ||
         (this.runner.supportsAccelerator !== undefined &&
-          !this.runner.supportsAccelerator(manifest.accelerator.commit)) ||
-        manifest.credential.id !== row.credential_id
+          !this.runner.supportsAccelerator(manifest.accelerator.commit))
       )
-        throw invalid("input_invalid");
+        throw invalid("preparation_accelerator_mismatch");
+      if (manifest.credential.id !== row.credential_id)
+        throw invalid("credential_changed");
       const configuration = readConfigurationRecord(manifest.configuration);
       if (recordOrganization(configuration) !== manifest.organization.id)
-        throw invalid("input_invalid");
+        throw invalid("preparation_organization_mismatch");
       if (initialPlanIssues(configuration).length)
         throw invalid("configuration_execution_not_supported");
       if (

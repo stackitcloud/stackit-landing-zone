@@ -195,7 +195,14 @@ export class Preparations {
       "verifyForPreparation"
     >,
     private readonly platformUpgradeEnabled = false,
+    private readonly runnerAcceleratorCommit = acceleratorCommit,
   ) {}
+  capabilities() {
+    return {
+      platformUpgradeEnabled: this.platformUpgradeEnabled,
+      runnerAcceleratorCommit: this.runnerAcceleratorCommit,
+    };
+  }
   async list(session: Session) {
     return withTenant(
       this.pool,

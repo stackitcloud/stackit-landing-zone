@@ -14,7 +14,10 @@ import type { Preparations } from "./preparations.js";
 export function registerPreparations(
   app: FastifyInstance,
   auth: AuthServices,
-  preparations: Pick<Preparations, "list" | "create" | "remove">,
+  preparations: Pick<
+    Preparations,
+    "list" | "create" | "remove" | "capabilities"
+  >,
 ) {
   app.register(async (routes) => {
     routes.addHook("preHandler", async (request, reply) => {
@@ -45,7 +48,10 @@ export function registerPreparations(
       const session = await authenticatedSession(request, auth);
       if (!session)
         return reply.code(401).send({ error: "authentication_required" });
-      return { preparations: await preparations.list(session) };
+      return {
+        preparations: await preparations.list(session),
+        capabilities: preparations.capabilities(),
+      };
     });
     routes.post("/api/v1/preparations", async (request, reply) => {
       const session = await authenticatedSession(request, auth);

@@ -41,6 +41,7 @@ export type AssistantProposalField = {
   baselineAvailable?: boolean;
   value: unknown;
   operation?: "merge" | "replace" | "default" | undefined;
+  removesEntry?: boolean;
 };
 
 export const assistantMergeConfirmationSchema = z.strictObject({
@@ -214,6 +215,27 @@ export function assistantProposalFields(
   changes: readonly AssistantProposalChange[],
 ): AssistantProposalField[] {
   return changes.flatMap((change) => {
+    if (collectionReplacement(change)) {
+      const before = new Map(entries(change.before));
+      const after = new Map(entries(change.value));
+      return [...new Set([...before.keys(), ...after.keys()])].flatMap((key) =>
+        before.has(key) === after.has(key) &&
+        assistantValuesEqual(before.get(key), after.get(key))
+          ? []
+          : [
+              {
+                id: `${change.path}/${encodeURIComponent(key)}`,
+                path: `${change.path}.${key}`,
+                changePath: change.path,
+                keys: [key],
+                before: before.get(key) ?? null,
+                value: after.get(key) ?? null,
+                operation: "replace" as const,
+                ...(!after.has(key) ? { removesEntry: true } : {}),
+              },
+            ],
+      );
+    }
     const depth = change.operation
       ? change.operation === "merge"
         ? Number.POSITIVE_INFINITY
@@ -274,9 +296,25 @@ export function assistantProposalFields(
   });
 }
 
+function collectionReplacement(change: AssistantProposalChange): boolean {
+  return (
+    change.operation === "replace" &&
+    change.baselineAvailable !== false &&
+    (change.path === "projectTemplates" ||
+      /^(?:connectivity|connectivity_regions\.[^.]+)\.dns_zones$/.test(
+        change.path,
+      )) &&
+    [change.before, change.value].every(
+      (value) =>
+        value !== null && typeof value === "object" && !Array.isArray(value),
+    )
+  );
+}
+
 export function selectAssistantProposalFields(
   changes: readonly AssistantProposalChange[],
   selected: readonly string[],
+  currentValues?: Record<string, unknown>,
 ): AssistantProposalChange[] {
   const fields = assistantProposalFields(changes);
   if (
@@ -287,6 +325,28 @@ export function selectAssistantProposalFields(
     throw new Error("assistant_invalid_selection");
   const result = new Map<string, AssistantProposalChange>();
   for (const field of fields.filter((entry) => selected.includes(entry.id))) {
+    const change = changes.find((entry) => entry.path === field.changePath);
+    if (change && collectionReplacement(change)) {
+      const previous = result.get(field.changePath);
+      const value = Object.fromEntries(
+        entries(
+          previous?.value ??
+            (currentValues
+              ? assistantProposalValue(currentValues, field.changePath)
+              : change.before),
+        ),
+      );
+      const key = field.keys[0];
+      if (key === undefined) throw new Error("assistant_invalid_selection");
+      if (field.removesEntry) delete value[key];
+      else value[key] = field.value;
+      result.set(field.changePath, {
+        path: field.changePath,
+        value,
+        operation: "replace",
+      });
+      continue;
+    }
     if (field.keys.length === 0) {
       result.set(field.changePath, {
         path: field.changePath,

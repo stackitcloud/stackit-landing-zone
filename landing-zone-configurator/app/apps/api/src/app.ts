@@ -99,7 +99,10 @@ export function buildApp(
       Backends,
       "list" | "register" | "configuration" | "configurationForSource"
     >;
-    preparations?: Pick<Preparations, "list" | "create" | "remove">;
+    preparations?: Pick<
+      Preparations,
+      "list" | "create" | "remove" | "capabilities"
+    >;
   } = {},
 ) {
   if (options.developmentLogin && !options.auth)

@@ -76,6 +76,26 @@ Ungültige erzeugte Template-Strukturen werden als fehlgeschlagener
 Assistant-Vorschlag gemeldet, nicht als Zugangsdaten im Benutzertext.
 Gespeicherter Chat und Konfiguration bleiben bei einer Ablehnung unverändert.
 
+Der Assistant unterscheidet anhand der referenzierten Benutzeranfrage zwischen
+Ergänzungen, Korrekturen und einem gewünschten vollständigen Satz von Templates
+oder DNS-Zonen. Eine Definition „Corporate und Public, keine Sandbox“ ist eine
+Satzdefinition, nicht automatisch eine Ergänzung neben den Startbeispielen.
+Ein ausdrücklich zusätzliches Template bzw. eine zusätzliche Zone bleibt additiv.
+DNS-Korrekturen verwenden vorhandene stabile Zonenschlüssel; bei mehrdeutigen
+Zielen ist eine Rückfrage erforderlich.
+Bei einem Satzersatz zeigt die Vorschlagsliste jeden entfernten Eintrag mit
+„Eintrag entfernen“ und eigenem Auswahlfeld. Abgewählte Einträge sowie unabhängige,
+zwischenzeitliche Ergänzungen bleiben erhalten. Zwischenzeitliche Änderungen
+an einem ausgewählten Eintrag benötigen weiterhin Konfliktbestätigung.
+Beibehaltene Templates behalten ihre IDs und nicht angeforderten Einstellungen.
+Keine dieser Änderungen speichert oder löscht automatisch Kundenkonfigurationen.
+Dieser Nachbesserungsstand ist noch nicht live veröffentlicht.
+Die lokale Regression besteht aus 718 bestandenen Unit-Tests (57 übersprungen),
+51 isolierten PostgreSQL-Plan-/Broker-Tests und 302 Desktop-/Mobil-Browsertests.
+Typprüfung, Build und generierte Assistant-Verträge sind geprüft. Dies ersetzt
+keine erneute echte Modell- oder Kunden-Cloud-Abnahme; es wurde kein Kunden-Plan
+oder Apply gestartet.
+
 Die echte Modell-Abnahme der Originalanfrage nach Corporate-/Public-Templates
 mit lokalen Netzen ist in drei unabhängigen synthetischen Läufen bestanden:
 zwei benannte Templates, gespeicherte Region, lokale Netze, keine Sandbox,
@@ -136,6 +156,11 @@ nicht als neu bereitzustellende Komponenten. Das Audit-Archiv bleibt entsprechen
 dem Accelerator auch ohne aktivierte Audit-Protokollierung sichtbar.
 Die Vorschau verwendet native Standardwerte ausschließlich zum Anzeigen; sie
 materialisiert diese nicht im Entwurf und liest keine bestehenden Cloud-Ressourcen.
+Projekte mit Komponenten sind zunächst eingeklappt und lassen sich über den Pfeil,
+die gesamte Überschriftszeile oder per Tastatur öffnen und schließen.
+Struktur- und Netzwerkvorschau bleiben im Editor untereinander im normalen
+Dokumentfluss, auch wenn alle Projekte geöffnet sind; kein zweiter Sticky-Bereich
+überdeckt die darunterliegenden Templates.
 
 ### Erstbereitstellungspläne
 
@@ -154,6 +179,23 @@ Audit-Ziele außerhalb des nachgewiesenen Organisationskontexts bleiben gesperrt
 Identitäts-/Owner-Nachweise, Mandantentrennung, Snapshot-Prüfung und explizite
 Freigaben bleiben unverändert erforderlich. Die konkreten Grenzen sind im
 [Runner-Vertrag](../runner/README.md) beschrieben.
+
+Vorbereitungen sind unveränderliche Nachweise einschließlich Accelerator-Revision.
+Gespeicherte Konfigurationen sind davon getrennt und bleiben nach einem
+Configurator-Release weiter bearbeitbar und als Quelle neuer Vorbereitungen
+nutzbar. Ein reiner Configurator-Versionswechsel verlangt keine neue Vorbereitung,
+solange deren Accelerator-Vertrag weiterhin zum installierten Runner passt.
+Der behobene Fehler betraf auch frisch erstellte Vorbereitungen: Die Oberfläche
+verwendete noch die Basisrevision, während der Runner bereits den
+Plattformvertrags-Root erwartete. Dafür ist keine Neuerstellung der Konfiguration
+und kein neuer State erforderlich.
+Die Oberfläche zeigt bei einem Runner mit Plattformvertrags-Root eine ausdrücklich
+zu bestätigende Vorbereitung für dessen aktuellen Stand an. Ohne Bestätigung
+bleibt deren Erstellung gesperrt. Passt die Revision einer älteren Vorbereitung
+nicht zum Runner, nennt der Plan-Fehler jetzt diesen Grund und fordert eine neue
+Vorbereitung an, statt nur eine ungültige Konfiguration zu melden. Bestehende
+Vorbereitungen, State-Bindungen und Plan-Nachweise werden dabei nicht umgeschrieben;
+Plan und Apply behalten ihre eigenen Freigaben.
 
 Die gemeinsame Release-Abnahme bestand 710 Unit-Tests (57 im Unit-Lauf
 übersprungen), 51 PostgreSQL-Broker-Tests und 300 Desktop-/Mobil-Browsertests

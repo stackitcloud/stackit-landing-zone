@@ -253,6 +253,7 @@ const app = buildApp({
           repositories,
           credentials,
           executionEnabled,
+          plans?.acceleratorCommit,
         ),
       }
     : {}),

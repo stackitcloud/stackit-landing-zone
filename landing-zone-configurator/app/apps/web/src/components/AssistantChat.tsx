@@ -511,19 +511,24 @@ export function AssistantChat({
                           <span className="assistant-diff-label">
                             Vorschlag
                           </span>
-                          <span>{proposalValue(field.value)}</span>
+                          <span>
+                            {field.removesEntry
+                              ? t("Eintrag entfernen")
+                              : proposalValue(field.value)}
+                          </span>
                           {field.operation === "default" && (
                             <small>
                               {t("Zurück auf den nativen Standard.")}
                             </small>
                           )}
-                          {field.operation === "replace" && (
-                            <small>
-                              {t(
-                                "Vollständiger Ersatz; ausgelassene Einträge werden entfernt.",
-                              )}
-                            </small>
-                          )}
+                          {field.operation === "replace" &&
+                            !field.removesEntry && (
+                              <small>
+                                {t(
+                                  "Vollständiger Ersatz; ausgelassene Einträge werden entfernt.",
+                                )}
+                              </small>
+                            )}
                         </td>
                       </tr>
                     ))}

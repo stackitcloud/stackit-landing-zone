@@ -1,5 +1,8 @@
 import { isDeepStrictEqual } from "node:util";
-import { assistantProposalFields } from "@lzc/contracts";
+import {
+  assistantProposalFields,
+  assistantProposalValue,
+} from "@lzc/contracts";
 import { objectValue } from "@lzc/domain";
 import { createParser } from "eventsource-parser";
 import { parse as parsePartialJson } from "partial-json";
@@ -35,6 +38,7 @@ import {
   assistantEditorProposalPath,
   assistantEditorResponseSchema,
   assistantTemplateFields,
+  mergeAssistantEditorValue,
   validateAssistantEditorSources,
 } from "./editor.js";
 import {
@@ -504,6 +508,12 @@ export class AssistantModelServing {
             .max(3),
           delegateNaming: z.boolean(),
           localNetworks: z.boolean(),
+          collectionMode: z
+            .enum(["add", "update", "replace"])
+            .default("add")
+            .describe(
+              "Infer the USER's intended collection, not keywords: replace when defining the desired complete set (for example Corporate and Public, no Sandbox), even without saying delete existing examples. add only for explicitly additional templates; update for existing templates. Replacement proposes visible, individually selectable removals, never automatic deletion. Preserve entries unrelated to an update/add request. Ask if the intended set is ambiguous.",
+            ),
           fields: z
             .array(z.enum(assistantTemplateFields))
             .max(assistantTemplateFields.length),
@@ -619,6 +629,16 @@ export class AssistantModelServing {
         .default("other")
         .describe(
           "remaining-settings when the user requests suitable additional DNS settings or completion of DNS configuration beyond the domain name, including unnamed follow-ups in an active DNS conversation. Such a proposal request uses topic=dns-zones and mode=draft. Otherwise other; a specific domain/contact/TTL change alone is not remaining-settings.",
+        ),
+      dnsCollection: z
+        .strictObject({
+          source: z.enum([...namingSources.keys()]),
+          mode: z.enum(["update", "add", "replace"]),
+        })
+        .nullable()
+        .default(null)
+        .describe(
+          "For a current DNS configuration task, reference its actual USER source. update corrects/specifies existing zones and must reuse stable keys (including seeded example zones); add means an explicitly additional zone; replace defines the desired complete set and proposes individually reviewable removals. A request to correct the DNS service/domain is update, not add. Ask which zone if several existing zones are ambiguous. Never infer an extra zone just because its desired name differs.",
         ),
       adviceTask: z
         .enum([
@@ -1043,6 +1063,9 @@ export class AssistantModelServing {
       : null;
     if (templateSetup && !templateSetup.request?.trim())
       throw new AssistantInferenceError("intent_evidence");
+    const dnsCollection = intent.dnsCollection;
+    if (dnsCollection && !namingSources.get(dnsCollection.source)?.trim())
+      throw new AssistantInferenceError("intent_evidence");
     if (templateTopic) {
       for (const root of [
         "landing_zones",
@@ -1058,6 +1081,7 @@ export class AssistantModelServing {
       (editorRoots.size > 0 || templateTopic) &&
       (intent.editorContract ||
         templateTopic ||
+        dnsCollection !== null ||
         ![
           "identity-foundations",
           "configuration-contract",
@@ -1078,18 +1102,43 @@ export class AssistantModelServing {
           ].includes(assistantEditorProposalPath(field.path) ?? ""),
       );
       const fields = draftFields.map((field) => field.path);
-      const paths = [
+      let paths = [
         ...[...editorRoots].flatMap((root) =>
           assistantEditorPaths(root, current[root], fields),
         ),
         ...(templateTopic ? ["projectTemplates"] : []),
       ];
+      if (dnsCollection) {
+        const zones = paths.filter((path) =>
+          /^(?:connectivity|connectivity_regions\.[^.]+)\.dns_zones$/.test(
+            path,
+          ),
+        );
+        const existing = paths.filter((path) =>
+          /^(?:connectivity|connectivity_regions\.[^.]+)\.dns_zones\.[^.]+(?:\.|$)/.test(
+            path,
+          ),
+        );
+        paths =
+          dnsCollection.mode === "update" && existing.length ? existing : zones;
+      }
+      const operationFor = (path: string) =>
+        path === "projectTemplates" && templateSetup
+          ? templateSetup.collectionMode === "replace"
+            ? ("replace" as const)
+            : ("merge" as const)
+          : dnsCollection
+            ? dnsCollection.mode === "replace"
+              ? ("replace" as const)
+              : ("merge" as const)
+            : undefined;
       const contracts = paths.map((path) =>
         assistantEditorChangeSchema(
           path,
           path === "projectTemplates" ? templateSetup?.fields : fields,
           "serving",
           current[path.split(".")[0] ?? ""],
+          operationFor(path),
         ),
       );
       const firstContract = contracts[0];
@@ -1144,10 +1193,11 @@ export class AssistantModelServing {
             role: "system",
             content: `Translate the CURRENT user task into reviewable native Editor settings using ONLY the supplied closed schemas. Reply in the user's language. This Editor contract supersedes historical assistant claims that audit/VPN/platform/projects are unsupported. Firewall policy, secrets, identity binding, publication and execution are excluded. Never generate arbitrary JSON/HCL, cloud IDs, credentials or verified identities. Actual user messages/current saved values/available catalogue entries are the only sources for addresses, emails, IDs and product selections. Never fabricate availability, performance, quotas, compliance or event delivery.
 Choose at most three clear business questions when essential information is missing, with up to six meaningful options. ACL questions use free text and no invented network examples or selectable CIDRs: ask the user for their actual access networks. A setup request without essential choices returns questions only and changes=[]; never propose an incomplete new component. Reuse actual user answers, not assistant suggestions; do not repeat old firewall questions after a topic switch. Explain concrete choices briefly, not a dump of every field. A reply containing only values continues the language of the latest natural-language USER turn; technical field names do not imply English.
-Operations: merge recursively changes only supplied object/map attributes; arrays and null are atomic replacements. replace replaces the COMPLETE value at that path, removes omitted entries/attributes and is reviewed atomically. default removes an explicit optional override/entry and restores the native default, value=null. Never use replace/default without the user's explicit removal/reset/replacement request. Never reorder lists unless requested. Each path appears only once; never emit overlapping parent/child paths. Do not repeat unchanged settings. Use an existing nested path to reset/delete just that setting, preserving unrelated components. New collection entries use their parent path and a complete native value with existing stable keys retained.
+Operations: merge recursively changes only supplied object/map attributes; arrays and null are atomic replacements. replace replaces the COMPLETE value at that path. For projectTemplates and DNS zone collections each changed/removed entry is separately reviewable. A USER-defined desired complete set is replacement intent even without the word delete; explicitly additional entries are merge, corrections update existing stable keys. Follow the source-grounded templateSetup.collectionMode and dnsCollection, never a blanket keep/delete-examples rule. Ask when intent is ambiguous. default removes an explicit optional override/entry and restores the native default, value=null. Never use replace/default without user intent. Never reorder lists unless requested. Each path appears only once; never emit overlapping parent/child paths. Do not repeat unchanged settings. Use an existing nested path to reset/delete just that setting, preserving unrelated components. New collection entries use their parent path and a complete native value with existing stable keys retained.
 Audit creation needs explicit retention_days, ACL CIDRs and s3_object_lock together; ask for missing decisions, do not activate a public ACL or irreversible Object Lock silently. Offer explained Object Lock yes/no options; native default is true but contradictory documentation is not consent. Retention with lock must be 1-365 days. For organizational/default scope OMIT link_scopes or use null: NEVER [], and never copy the saved organization UUID into a new scope override. Non-null link_scopes are only for explicitly requested custom per-resource scope overrides, never invented tenant/project scope IDs.
-Platform drafts use projectTemplates keyed by stable template key, not concrete landing_zones/sandboxes or personal instance fields. Never include template IDs: the server preserves/generates them. A new template needs name, kind, region and settings together. Corporate templates require an existing same-region network area; sandbox region is the platform region and has no namespace services. Namespace settings and parameterPolicy are template settings; no publication or application creation. For template removal/reset use an explicit atomic complete map replacement; omitted templates are removed. Template settings/parameter policies are validated against native types and the Editor's policy contract.
-When the user delegates template naming, choose descriptive names for the requested business variants instead of asking for names again. Central-network projects are corporate; Internet-only projects without central-network access are public. A requested local project network means settings.network_enabled=true for each requested variant. Use the saved platform region and an unambiguous existing same-region area for Corporate; ask for the area only when missing or ambiguous. Reuse existing subnet defaults unless the user specifies a prefix; omit network_prefix_length to inherit the native default. Create new entries with merge. For a network-only template request, settings contains only network_enabled and the Corporate network_area_key when needed; omit observability, secretsmanager_enabled, namespace services and other unrequested settings. Platform Audit/Git/services are NOT template namespace-service consent or defaults. Do not ask for personal instance ownership or create a Sandbox the user excludes. Preserve unrelated existing templates and their settings.
+Platform drafts use projectTemplates keyed by stable template key, not concrete landing_zones/sandboxes or personal instance fields. Never include template IDs: the server preserves/generates them. A new template needs name, kind, region and settings together. Corporate templates require an existing same-region network area; sandbox region is the platform region and has no namespace services. Namespace settings and parameterPolicy are template settings; no publication or application creation. For the desired complete set use replace, listing exactly the desired keys; omitted templates become explicit selectable removal proposals. Reuse suitable existing keys and preserve their unrequested attributes. Template settings/parameter policies are validated against native types and the Editor's policy contract.
+When the user delegates template naming, choose descriptive names for the requested business variants instead of asking for names again. Central-network projects are corporate; Internet-only projects without central-network access are public. A requested local project network means settings.network_enabled=true for each requested variant. Use the saved platform region and an unambiguous existing same-region area for Corporate; ask for the area only when missing or ambiguous. Reuse existing subnet defaults unless the user specifies a prefix; omit network_prefix_length to inherit the native default. Additional templates use merge; a desired complete set uses replace. For a network-only template request, settings contains only network_enabled and the Corporate network_area_key when needed; omit observability, secretsmanager_enabled, namespace services and other unrequested settings. Platform Audit/Git/services are NOT template namespace-service consent or defaults. Do not ask for personal instance ownership or create a Sandbox the user excludes. Preserve unrelated existing templates for add/update, not entries excluded from a requested complete set.
+DNS corrections use the existing zone key, never a new entry merely to change its domain/display name. With multiple ambiguous zones ask for the target. Explicitly additional zones use merge on the DNS collection; a complete set uses replace. Preserve unrelated network/firewall settings. dnsCollection is a source-grounded USER decision, not permission to invent domains.
 templateSetup contains source-checked USER decisions: its kinds and localNetworks are answered requirements, not questions to repeat. Its fields is the allowed template setting scope; the schema excludes unrequested services and policies. delegateNaming=true authorizes descriptive template display names and valid stable template keys; they are not Cloud IDs. When saved region and the Corporate area are unambiguous, these decisions suffice for complete name/kind/region/settings template proposals. Optional parameter policies and subnet overrides are not mandatory setup questions.
 New component objects expose all their typed property slots: fill every explicitly requested value, use null only for unrequested native defaults. Never invent extra retention values. Required non-null creation decisions need actual user consent; otherwise ask questions with changes=[]. New map entries require all native mandatory fields, including Kubernetes region and node-pool name. Use existing nested paths for partial updates, preserving sibling values. All replies describe PROPOSALS, not completed setup. Field acceptance changes only the local draft, saving remains separate; no deployment, permissions granted, publication or Plan/Apply. Return the supplied JSON schema only.
 Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topics.filter((topic) => topicIds.has(topic.id)) })}`,
@@ -1159,6 +1209,7 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topi
               history,
               templateHistory,
               ...(templateTopic ? { templateSetup } : {}),
+              ...(dnsCollection ? { dnsCollection } : {}),
               currentValues: Object.fromEntries(
                 Object.entries(current).filter(
                   ([key]) =>
@@ -1221,20 +1272,37 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topi
         questionListSchema.parse(dialogue.questions);
         dialogue.changes = dialogue.changes.map((change) => {
           assertAssistantEditorValue(change.value);
+          const before = assistantProposalValue(current, change.path) ?? null;
+          assertAssistantEditorValue(before);
+          const collection =
+            change.operation === "replace" &&
+            (change.path === "projectTemplates" ||
+              /^(?:connectivity|connectivity_regions\.[^.]+)\.dns_zones$/.test(
+                change.path,
+              ));
+          const value = collection
+            ? Object.fromEntries(
+                Object.entries(objectValue(change.value)).map(
+                  ([key, patch]) => [
+                    key,
+                    mergeAssistantEditorValue(objectValue(before)[key], patch),
+                  ],
+                ),
+              )
+            : change.value;
           return {
             ...change,
-            value: assistantEditorCreationValue(
-              change.path,
-              change.value,
-              current[change.path],
-            ),
+            value: assistantEditorCreationValue(change.path, value, before),
           };
         });
         for (const change of dialogue.changes) {
           if (!change.operation || !paths.includes(change.path))
             throw new Error("assistant_invalid_scope");
           assertAssistantEditorValue(change.value);
-          assistantEditorChangeSchema(change.path, fields).parse(change);
+          assistantEditorChangeSchema(
+            change.path,
+            operationFor(change.path) === "replace" ? undefined : fields,
+          ).parse(change);
           if (change.path === "connectivity_regions")
             for (const [region, value] of Object.entries(
               objectValue(change.value),

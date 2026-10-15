@@ -59,6 +59,10 @@ const failures: Record<string, string> = {
     "Der Zugang zur Zielorganisation konnte nicht bestätigt werden.",
   input_invalid:
     "Die festgehaltene Konfiguration konnte nicht bestätigt werden.",
+  preparation_accelerator_mismatch:
+    "Die Vorbereitung verwendet einen anderen Accelerator-Stand als der installierte Runner. Erstelle eine neue Vorbereitung und bestätige dort den aktuellen Accelerator-Stand. Bestehende States und Nachweise bleiben erhalten.",
+  preparation_organization_mismatch:
+    "Die Zielorganisation der Vorbereitung passt nicht zur gespeicherten Konfiguration. Prüfe die Organisationsauswahl und erstelle eine neue Vorbereitung.",
   init_failed: "OpenTofu konnte die Provider nicht initialisieren.",
   validate_failed: "OpenTofu hat die Konfiguration abgewiesen.",
   plan_failed:

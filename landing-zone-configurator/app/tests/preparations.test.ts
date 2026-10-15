@@ -302,6 +302,10 @@ it("requires session and CSRF, rejects caller-supplied organization/code and for
     },
   };
   const preparations = {
+    capabilities: vi.fn(() => ({
+      platformUpgradeEnabled: true,
+      runnerAcceleratorCommit: platformUpgradeAcceleratorCommit,
+    })),
     list: vi.fn(async () => []),
     create: vi.fn(async () => ({ id: randomUUID() })),
     remove: vi.fn(async () => {}),
@@ -320,6 +324,12 @@ it("requires session and CSRF, rejects caller-supplied organization/code and for
       credentialId: randomUUID(),
     };
     expect((await app.inject("/api/v1/preparations")).statusCode).toBe(401);
+    const available = await app.inject({
+      url: "/api/v1/preparations",
+      headers,
+    });
+    expect(available.statusCode).toBe(200);
+    expect(available.json().capabilities).toEqual(preparations.capabilities());
     expect(
       (
         await app.inject({
@@ -421,7 +431,7 @@ it("requires session and CSRF, rejects caller-supplied organization/code and for
     expect(result.body).not.toContain("ghu_");
     expect(
       (await app.inject({ url: "/api/v1/preparations", headers })).json(),
-    ).toEqual({ preparations: [] });
+    ).toEqual({ preparations: [], capabilities: preparations.capabilities() });
     expect(
       (
         await app.inject({

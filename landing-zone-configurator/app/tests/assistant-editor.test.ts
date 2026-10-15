@@ -64,6 +64,206 @@ function response(
     references: ["configuration-contract"],
   };
 }
+
+it.each(["add", "replace"] as const)(
+  "uses semantic template %s intent against the populated starter set",
+  async (mode) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const corporate = original.projectTemplates?.find(
+      (template) => template.kind === "corporate",
+    );
+    if (!corporate) throw new Error("Missing starter Corporate template");
+    corporate.settings.network_prefix_length = 26;
+    const beforeCount = original.projectTemplates?.length ?? 0;
+    expect(beforeCount).toBe(3);
+    const value = {
+      [corporate.key]: {
+        name: "Corporate zentral",
+        kind: "corporate",
+        region: "eu01",
+        settings: { network_area_key: "default", network_enabled: true },
+      },
+      internet: {
+        name: "Public Internet",
+        kind: "public",
+        region: "eu01",
+        settings: { network_enabled: true },
+      },
+    };
+    const intent = {
+      topic: "project-templates",
+      mode: "draft",
+      editorContract: true,
+      editorInputs: ["landing_zones"],
+      requirements: [],
+      templateSetup: {
+        source: "current",
+        collectionMode: mode,
+        kinds: ["corporate", "public"],
+        delegateNaming: true,
+        localNetworks: true,
+        fields: ["network_enabled", "network_area_key"],
+      },
+    };
+    const result = await collectionModel(
+      intent,
+      response([
+        patch(
+          "projectTemplates",
+          value,
+          mode === "replace" ? "replace" : "merge",
+        ),
+      ]),
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      mode === "replace"
+        ? "Ich brauche genau Corporate- und Public-Templates mit lokalen Netzen, keine Sandbox. Benenne sie passend."
+        : "Ergänze zusätzlich ein Public Internet Template mit lokalem Netz und aktualisiere das Corporate Template auf Corporate zentral.",
+    );
+    const candidate = applyAssistantChanges(original, result.changes);
+    expect(candidate.projectTemplates).toHaveLength(
+      mode === "replace" ? 2 : beforeCount + 1,
+    );
+    expect(
+      candidate.projectTemplates?.find(
+        (template) => template.key === corporate.key,
+      ),
+    ).toMatchObject({
+      id: corporate.id,
+      settings: { network_prefix_length: 26, network_enabled: true },
+    });
+    expect(original.projectTemplates).toHaveLength(beforeCount);
+  },
+);
+
+it.each(["update", "add", "replace"] as const)(
+  "uses semantic DNS %s intent without retaining unwanted example zones",
+  async (mode) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const values = assistantPublicValues(original);
+    const zones = objectValue(
+      objectValue(compileCommonConfiguration(original).connectivity).dns_zones,
+    );
+    expect(Object.keys(zones)).toContain("example-corp");
+    const dnsName = "acme.runs.onstackit.cloud";
+    const path =
+      mode === "update"
+        ? "connectivity.dns_zones.example-corp"
+        : "connectivity.dns_zones";
+    const value =
+      mode === "update"
+        ? { dns_name: dnsName }
+        : { acme: { dns_name: dnsName } };
+    const intent = {
+      topic: "dns-zones",
+      mode: "draft",
+      editorContract: true,
+      editorInputs: ["connectivity"],
+      requirements: [],
+      dnsCollection: { source: "current", mode },
+    };
+    const answer = {
+      ...response([
+        patch(path, value, mode === "replace" ? "replace" : "merge"),
+      ]),
+      references: ["dns-zones"],
+    };
+    const result = await collectionModel(intent, answer).converse(
+      knowledgeSelection(),
+      values,
+      [],
+      mode === "update"
+        ? `Korrigiere die bestehende DNS-Zone auf ${dnsName}.`
+        : mode === "add"
+          ? `Ergänze zusätzlich die DNS-Zone ${dnsName}.`
+          : `Ich möchte genau eine DNS-Zone: ${dnsName}.`,
+    );
+    const candidate = applyAssistantChanges(original, result.changes);
+    const after = objectValue(
+      objectValue(compileCommonConfiguration(candidate).connectivity).dns_zones,
+    );
+    expect(Object.keys(after)).toHaveLength(
+      mode === "add" ? Object.keys(zones).length + 1 : 1,
+    );
+    expect(Object.keys(after)).toContain(
+      mode === "update" ? "example-corp" : "acme",
+    );
+    expect(
+      objectValue(after[mode === "update" ? "example-corp" : "acme"]).dns_name,
+    ).toBe(dnsName);
+    if (mode === "update") {
+      expect(objectValue(after["example-corp"])).toEqual({
+        ...objectValue(zones["example-corp"]),
+        dns_name: dnsName,
+      });
+      await expect(
+        collectionModel(intent, {
+          ...answer,
+          changes: [
+            patch("connectivity.dns_zones", { acme: { dns_name: dnsName } }),
+          ],
+        }).converse(
+          knowledgeSelection(),
+          values,
+          [],
+          `Korrigiere die bestehende DNS-Zone auf ${dnsName}.`,
+        ),
+      ).rejects.toBeInstanceOf(AssistantInferenceError);
+    }
+  },
+);
+
+function knowledgeSelection() {
+  const knowledge = buildAssistantKnowledge();
+  return {
+    engineRevision: knowledge.engineRevision,
+    knowledgeSha256: knowledge.sha256,
+    groups: knowledge.groups,
+  };
+}
+
+function collectionModel(intent: unknown, answer: unknown) {
+  return new AssistantModelServing(
+    {
+      baseUrl:
+        "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+      model: "test-model",
+      token: "test-token",
+      timeoutMs: 1000,
+    },
+    vi.fn<typeof fetch>(async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify(
+                  body.response_format.json_schema.name ===
+                    "conversation_intent"
+                    ? intent
+                    : answer,
+                ),
+              },
+            },
+          ],
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    }),
+  );
+}
+
 function sample(
   type: InputType,
   segments: string[],

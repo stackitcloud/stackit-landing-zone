@@ -30,6 +30,7 @@ import {
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { Backends, contentHash } from "../apps/api/src/deployments/backends.js";
 import {
+  acceleratorCommit,
   Preparations,
   preparationManifest,
 } from "../apps/api/src/deployments/preparations.js";
@@ -641,10 +642,17 @@ describe.skipIf(!enabled)(
       ).toEqual(before);
       await expect(
         test.plans.start(test.owner, test.token, upgraded.id),
-      ).rejects.toMatchObject({ code: "input_invalid" });
+      ).rejects.toMatchObject({ code: "preparation_accelerator_mismatch" });
       test.runner.supportsAccelerator.mockImplementation(
         (commit) => commit === platformUpgradeAcceleratorCommit,
       );
+      await expect(
+        test.plans.start(test.owner, test.token, initial.id),
+      ).rejects.toMatchObject({ code: "preparation_accelerator_mismatch" });
+      expect(upgrades.capabilities()).toEqual({
+        platformUpgradeEnabled: true,
+        runnerAcceleratorCommit: acceleratorCommit,
+      });
       const run = await test.plans.start(test.owner, test.token, upgraded.id);
       const bindings = await withTenant(pool, test.owner, (client) =>
         client.query(

@@ -399,6 +399,7 @@ export function assistantEditorChangeSchema(
   fields?: readonly string[],
   mode: "runtime" | "serving" = "runtime",
   current?: unknown,
+  operation?: "merge" | "replace",
 ): z.ZodType {
   if (root === "projectTemplates") {
     const template = templateProposalSchema(
@@ -406,7 +407,9 @@ export function assistantEditorChangeSchema(
     );
     return z.strictObject({
       path: z.literal(root),
-      operation: z.enum(["merge", "replace"]),
+      operation: operation
+        ? z.literal(operation)
+        : z.enum(["merge", "replace"]),
       value:
         mode === "serving"
           ? z
@@ -490,11 +493,13 @@ export function assistantEditorChangeSchema(
   if (mode === "serving")
     return z.strictObject({
       path: z.literal(root),
-      operation: z.enum([
-        "merge",
-        ...(!scoped ? ["replace" as const] : []),
-        ...(!scoped && definition.optional ? ["default" as const] : []),
-      ]),
+      operation: operation
+        ? z.literal(operation)
+        : z.enum([
+            "merge",
+            ...(!scoped ? ["replace" as const] : []),
+            ...(!scoped && definition.optional ? ["default" as const] : []),
+          ]),
       value: mergeValue,
     });
   return z.union([

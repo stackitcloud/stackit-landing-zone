@@ -811,7 +811,7 @@ export function CommonEditor({
             )}
           </div>
         </section>
-        <div>
+        <div className="editor-previews">
           <Topology
             values={values}
             projectTemplates={draft.projectTemplates}

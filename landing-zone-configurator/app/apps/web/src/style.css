@@ -1103,6 +1103,32 @@ select[aria-invalid="true"] {
 .tree-project > .tree-node {
   margin-bottom: 0;
 }
+.project-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.project-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.project-disclosure > summary::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+.project-disclosure[open] > summary::after {
+  transform: rotate(45deg);
+}
+.editor-previews {
+  min-width: 0;
+}
+.editor-previews > .topology {
+  position: static;
+}
 .project-components {
   list-style: none;
   border-left: 1px solid var(--border);

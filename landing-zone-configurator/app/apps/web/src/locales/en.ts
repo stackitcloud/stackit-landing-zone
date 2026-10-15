@@ -1,4 +1,15 @@
 export const englishMessages: Record<string, string> = {
+  "Eintrag entfernen": "Remove entry",
+  "Die Vorbereitung verwendet einen anderen Accelerator-Stand als der installierte Runner. Erstelle eine neue Vorbereitung und bestätige dort den aktuellen Accelerator-Stand. Bestehende States und Nachweise bleiben erhalten.":
+    "The preparation uses a different Accelerator revision than the installed Runner. Create a new preparation and confirm the current Accelerator revision. Existing states and evidence are preserved.",
+  "Die Zielorganisation der Vorbereitung passt nicht zur gespeicherten Konfiguration. Prüfe die Organisationsauswahl und erstelle eine neue Vorbereitung.":
+    "The preparation's target organization does not match the saved configuration. Check the organization selection and create a new preparation.",
+  "Der aktuelle Accelerator-Stand ist für neue Vorbereitungen nicht freigegeben. Bitte die Runner-Konfiguration prüfen lassen.":
+    "The current Accelerator revision is not enabled for new preparations. Ask an operator to check the Runner configuration.",
+  "Ich bestätige: Diese Vorbereitung verwendet den aktuellen Accelerator-Stand für Plattformverträge. Plan und Apply bleiben getrennte Freigaben.":
+    "I confirm: this preparation uses the current Accelerator revision for platform contracts. Plan and Apply remain separate approvals.",
+  "Der installierte Runner benötigt diesen Accelerator-Stand. Ältere Vorbereitungen bleiben unverändert erhalten; erstelle dafür eine neue Vorbereitung.":
+    "The installed Runner requires this Accelerator revision. Older preparations remain unchanged; create a new preparation.",
   "Zurück auf den nativen Standard.": "Restore the native default.",
   "Vollständiger Ersatz; ausgelassene Einträge werden entfernt.":
     "Complete replacement; omitted entries are removed.",

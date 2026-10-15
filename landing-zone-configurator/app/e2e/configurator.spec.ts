@@ -1,5 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { assistantProposalFields } from "@lzc/contracts";
+import {
+  assistantProposalFields,
+  platformUpgradeAcceleratorCommit,
+  selectAssistantProposalFields,
+} from "@lzc/contracts";
 import {
   addProjectTemplate,
   catalogue,
@@ -12,10 +16,14 @@ import {
   readCommonConfiguration,
   savedDraft,
   setCommonInput,
+  supportedAcceleratorRevision,
   type Template,
   upgradeEditorDraft,
 } from "@lzc/domain";
-import { applyAssistantChanges } from "../apps/api/src/assistant/dialogue.js";
+import {
+  applyAssistantChanges,
+  validateDialogue,
+} from "../apps/api/src/assistant/dialogue.js";
 import {
   assistantScenarioFixture,
   assistantScenarios,
@@ -65,6 +73,152 @@ async function holdAssistantCompletion(page: Page, path: string) {
     };
   }, path);
 }
+
+test("DNS collection removals are explicit and can be excluded from local acceptance", async ({
+  page,
+}) => {
+  const id = "11111111-2222-4333-8444-555555555557";
+  const original = createEditorConfiguration("hub-and-spoke", id);
+  const before = objectValue(
+    objectValue(compileCommonConfiguration(original).connectivity).dns_zones,
+  );
+  const changes = [
+    {
+      path: "connectivity.dns_zones",
+      operation: "replace" as const,
+      before,
+      value: { acme: { dns_name: "acme.runs.onstackit.cloud" } },
+    },
+  ];
+  const conversation = {
+    id,
+    revision: 1,
+    baseRevision: 1,
+    stale: false,
+    expiresAt: "2027-01-10T09:00:00Z",
+    messages: [],
+    proposal: {
+      explanation:
+        "Genau die gewünschte DNS-Zone zur Prüfung, noch nichts gespeichert.",
+      references: ["dns-zones"],
+      questions: [],
+      changes,
+    },
+  };
+  let saves = 0;
+  let accepted = 0;
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: original.name,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() !== "GET") saves++;
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: original.name,
+          revision: 1,
+          draft: original,
+        },
+      },
+    });
+  });
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) =>
+    route.fulfill({ json: { conversation } }),
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      const input = route.request().postDataJSON();
+      expect(input.selectedFields).toEqual(["connectivity.dns_zones/acme"]);
+      const selected = selectAssistantProposalFields(
+        changes,
+        input.selectedFields,
+        compileCommonConfiguration(input.draft),
+      );
+      const candidate = applyAssistantChanges(
+        input.draft,
+        validateDialogue(
+          {
+            explanation: "Lokaler Vorschlag, noch nichts gespeichert.",
+            questions: [],
+            changes: selected,
+            references: ["dns-zones"],
+          },
+          ["dns-zones"],
+        ).changes,
+      );
+      const zones = objectValue(
+        objectValue(compileCommonConfiguration(candidate).connectivity)
+          .dns_zones,
+      );
+      expect(Object.keys(zones)).toHaveLength(Object.keys(before).length + 1);
+      expect(zones["example-corp"]).toEqual(before["example-corp"]);
+      accepted++;
+      return route.fulfill({
+        json: {
+          configuration: {
+            id,
+            revision: 1,
+            draft: candidate,
+            persisted: false,
+          },
+          savedConfiguration: original,
+          conversation,
+        },
+      });
+    },
+  );
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${original.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  const removal = chat.getByRole("checkbox", {
+    name: "connectivity.dns_zones.example-corp auswählen",
+    exact: true,
+  });
+  await expect(removal).toBeChecked();
+  await expect(
+    chat.getByText("Eintrag entfernen", { exact: true }),
+  ).toBeVisible();
+  await removal.uncheck();
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen", exact: true })
+    .click();
+  await expect.poll(() => accepted).toBe(1);
+  await expect(removal).toBeVisible();
+  expect(saves).toBe(0);
+});
 
 async function expectChatAtEnd(page: Page, name: string) {
   const log = page.getByRole("log", { name });
@@ -4230,13 +4384,29 @@ test.describe("explicit saved-plan approval", () => {
             revision: 7,
             credentialId,
             ...(useS3 ? { backendId } : {}),
+            ...(useS3
+              ? {
+                  platformUpgrade: {
+                    confirm: true,
+                    acceleratorCommit: platformUpgradeAcceleratorCommit,
+                  },
+                }
+              : {}),
           });
           expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
           stored = true;
           return route.fulfill({ status: 201, json: { id: preparationId } });
         }
         return route.fulfill({
-          json: { preparations: stored ? [preparation] : [] },
+          json: {
+            preparations: stored ? [preparation] : [],
+            capabilities: {
+              platformUpgradeEnabled: useS3,
+              runnerAcceleratorCommit: useS3
+                ? platformUpgradeAcceleratorCommit
+                : supportedAcceleratorRevision,
+            },
+          },
         });
       });
       let planned = false;
@@ -4313,6 +4483,20 @@ test.describe("explicit saved-plan approval", () => {
         ).toBeDisabled();
       }
       await page.getByLabel("Persönlicher Zugang").selectOption(credentialId);
+      if (useS3) {
+        await expect(
+          page.getByRole("button", {
+            name: "Zugang prüfen und Vorbereitung speichern",
+          }),
+        ).toBeDisabled();
+        expect(stored).toBe(false);
+        expect(planned).toBe(false);
+        await page
+          .getByRole("checkbox", {
+            name: /^Ich bestätige: Diese Vorbereitung verwendet/,
+          })
+          .check();
+      }
       await page
         .getByRole("button", {
           name: "Zugang prüfen und Vorbereitung speichern",

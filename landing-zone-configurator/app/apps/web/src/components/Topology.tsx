@@ -23,33 +23,40 @@ function Project({
   detail: string;
   components?: PlatformComponent[] | undefined;
 }) {
-  return (
-    <div className="tree-project">
-      <div className="tree-node">
-        <span className="node-symbol" aria-hidden="true">
-          □
-        </span>
-        <div>
-          <small>
-            {t("Projekt ·")} {detail}
-          </small>
-          <strong>{name}</strong>
-        </div>
+  const label = (
+    <>
+      <span className="node-symbol" aria-hidden="true">
+        □
+      </span>
+      <div>
+        <small>
+          {t("Projekt ·")} {detail}
+        </small>
+        <strong>{name}</strong>
       </div>
-      {components.length > 0 && (
-        <ul
-          className="project-components"
-          aria-label={t("Komponenten in {{value0}}", { value0: name })}
-        >
-          {components.map((component) => (
-            <li key={component.key}>
-              <small>{t(component.type)}</small>
-              <strong>{component.name || t("Unbenannte Komponente")}</strong>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    </>
+  );
+  if (components.length === 0)
+    return (
+      <div className="tree-project">
+        <div className="tree-node">{label}</div>
+      </div>
+    );
+  return (
+    <details className="tree-project project-disclosure">
+      <summary className="tree-node">{label}</summary>
+      <ul
+        className="project-components"
+        aria-label={t("Komponenten in {{value0}}", { value0: name })}
+      >
+        {components.map((component) => (
+          <li key={component.key}>
+            <small>{t(component.type)}</small>
+            <strong>{component.name || t("Unbenannte Komponente")}</strong>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 function Folder({ name, children }: { name: string; children: ReactNode }) {

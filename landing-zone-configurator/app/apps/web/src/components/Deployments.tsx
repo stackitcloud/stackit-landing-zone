@@ -1,3 +1,4 @@
+import { platformUpgradeAcceleratorCommit } from "@lzc/contracts";
 import { useEffect, useRef, useState } from "react";
 import { currentLanguage, t } from "../i18n";
 import type { DeploymentStep } from "../navigation";
@@ -71,6 +72,8 @@ const errors: Record<string, string> = {
     "Der Zugriff auf den Fork wurde abgelehnt. Prüfe die GitHub-App-Installation.",
   preparation_limit_reached:
     "Maximal 100 Vorbereitungen. Entferne zuerst nicht mehr benötigte Einträge.",
+  platform_upgrade_unavailable:
+    "Der aktuelle Accelerator-Stand ist für neue Vorbereitungen nicht freigegeben. Bitte die Runner-Konfiguration prüfen lassen.",
 };
 export function Deployments({
   session,
@@ -107,6 +110,12 @@ export function Deployments({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [chosenPreparation, setChosenPreparation] = useState("");
+  const [upgradeAvailable, setUpgradeAvailable] = useState(false);
+  const [upgradeRequired, setUpgradeRequired] = useState(false);
+  const [upgradeConfirmed, setUpgradeConfirmed] = useState(false);
+  useEffect(() => {
+    if (selection?.configurationId) setUpgradeConfirmed(false);
+  }, [selection?.configurationId]);
   const preparationScope = useRef(configurationId);
   useEffect(() => {
     if (preparationScope.current !== configurationId) {
@@ -140,6 +149,11 @@ export function Deployments({
     ]);
     if (signal?.aborted) return;
     setPreparations(records.preparations);
+    setUpgradeAvailable(records.capabilities?.platformUpgradeEnabled === true);
+    setUpgradeRequired(
+      records.capabilities?.runnerAcceleratorCommit ===
+        platformUpgradeAcceleratorCommit,
+    );
     setProfiles(credentials.profiles);
     setConfigurations(saved.configurations);
     const stored = credentials.profiles.filter(
@@ -388,10 +402,42 @@ export function Deployments({
                         ))}
                     </select>
                   </div>
+                  {upgradeAvailable && upgradeRequired && (
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={upgradeConfirmed}
+                        disabled={busy}
+                        onChange={(event) =>
+                          setUpgradeConfirmed(event.target.checked)
+                        }
+                      />
+                      {t(
+                        "Ich bestätige: Diese Vorbereitung verwendet den aktuellen Accelerator-Stand für Plattformverträge. Plan und Apply bleiben getrennte Freigaben.",
+                      )}
+                    </label>
+                  )}
+                  {upgradeRequired && (
+                    <p className="field-hint">
+                      {t(
+                        "Der installierte Runner benötigt diesen Accelerator-Stand. Ältere Vorbereitungen bleiben unverändert erhalten; erstelle dafür eine neue Vorbereitung.",
+                      )}
+                      {upgradeRequired && !upgradeAvailable && (
+                        <p role="alert">
+                          {t(errors.platform_upgrade_unavailable)}
+                        </p>
+                      )}
+                    </p>
+                  )}
                   <button
                     type="button"
                     className="button primary"
-                    disabled={busy || !credentialId || !backendReady}
+                    disabled={
+                      busy ||
+                      !credentialId ||
+                      !backendReady ||
+                      (upgradeRequired && !upgradeConfirmed)
+                    }
                     onClick={() =>
                       void perform(async () => {
                         const prepared = await api("/api/v1/preparations", {
@@ -410,6 +456,15 @@ export function Deployments({
                                 }),
                             credentialId,
                             ...(backendId ? { backendId } : {}),
+                            ...(upgradeConfirmed
+                              ? {
+                                  platformUpgrade: {
+                                    confirm: true,
+                                    acceleratorCommit:
+                                      platformUpgradeAcceleratorCommit,
+                                  },
+                                }
+                              : {}),
                           }),
                         });
                         setChosenPreparation(prepared.id);

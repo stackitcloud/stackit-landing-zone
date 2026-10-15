@@ -798,7 +798,7 @@ export class AssistantConversations {
           : null);
       const changes = proposal.changes.map((change) => ({
         ...change,
-        before: original?.[change.path] ?? null,
+        before: assistantProposalValue(original, change.path) ?? null,
       }));
       const fields = assistantProposalFields(changes);
       const selected = selectedFields ?? fields.map((field) => field.id);
@@ -806,7 +806,11 @@ export class AssistantConversations {
       try {
         selection = completeNetworkSelection(
           rebaseAccessSelections(
-            selectAssistantProposalFields(changes, selected),
+            selectAssistantProposalFields(
+              changes,
+              selected,
+              assistantPublicValues(draft),
+            ),
             original,
             assistantPublicValues(draft),
           ),
