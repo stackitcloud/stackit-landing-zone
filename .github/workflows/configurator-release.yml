@@ -247,6 +247,7 @@ jobs:
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
       - name: Stage isolated runner template in its own organisation
+        id: stage_runner
         run: |
           cf api "$CF_API_URL"
           CF_USERNAME="$LZC_RUNNER_CF_USERNAME" CF_PASSWORD="$LZC_RUNNER_CF_PASSWORD" cf auth
@@ -260,6 +261,12 @@ jobs:
           cf run-task lzc-plan-template --command "./runtime/bin/node --input-type=module -e 'import { platformFirewallImage } from \"@lzc/contracts\"; console.log(platformFirewallImage.sha256 + \"  accelerator/firewall-image.qcow2\");' | sha256sum --check" --name "image-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
           cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=accelerator init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=accelerator validate -no-color' --name "engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
           cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=application-src/application init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=application-src/application validate -no-color' --name "application-engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
+      - name: Runner staging failure diagnostics
+        if: failure() && steps.stage_runner.outcome == 'failure'
+        run: |
+          app_id="$(cf app lzc-plan-template --guid)"
+          cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq '.resources[] | {guid, state, error}'
+          cf logs lzc-plan-template --recent
       - name: CF login and target
         run: |
           cf version

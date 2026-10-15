@@ -47,6 +47,9 @@ and therefore does not restore its unused inspection image.
 This avoids the observed CF API upload failure: HTTP 502 after 900 seconds at
 601.91 of 926.12 MiB. It does not change disk quotas, weaken image verification,
 share mutable job files or claim that a larger upload limit was configured.
+If Runner staging fails, the release also reports the latest V3 build's state
+and error and recent Runner logs while still targeting the isolated Runner space.
+This keeps lifecycle/cache-upload errors distinct from buildpack image verification.
 
 `manifest.yml` owns the application, route, process size, health check and backend
 environment bindings. OpenTofu owns the CF org/space/roles and backing services;

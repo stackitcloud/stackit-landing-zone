@@ -229,6 +229,17 @@ test("release pins the final buildpack to the approved source and excludes image
   assert.ok(
     workflow.includes("node scripts/check-staged-runner.mjs ../.local"),
   );
+  assert.ok(
+    workflow.includes(
+      "if: failure() && steps.stage_runner.outcome == 'failure'",
+    ),
+  );
+  assert.ok(
+    workflow.includes(
+      "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1",
+    ),
+  );
+  assert.ok(workflow.includes("jq '.resources[] | {guid, state, error}'"));
   assert.ok(pack.includes("--exclude='./accelerator/firewall-image.qcow2'"));
   assert.ok(pack.includes('tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .'));
   for (const manifest of [
