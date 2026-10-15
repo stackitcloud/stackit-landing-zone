@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +10,7 @@ if (!process.argv[2]?.startsWith("/"))
   throw new Error("Absolute runner package required");
 const root = resolve(process.argv[2]);
 const work = await mkdtemp(resolve(repository, ".firewall-image-plan-"));
+const sockets = await mkdtemp("/tmp/lzc-ipc-");
 const image = resolve(root, "accelerator/firewall-image.qcow2");
 let requests = 0;
 const server = createServer((_request, response) => {
@@ -77,7 +78,6 @@ resource "stackit_image" "firewall" {
 }
 `,
   );
-  await mkdir(resolve(work, "sockets"));
   async function command(args) {
     return new Promise((done, reject) => {
       const child = spawn(resolve(root, "tools/tofu"), args, {
@@ -85,7 +85,7 @@ resource "stackit_image" "firewall" {
         env: {
           PATH: "/usr/bin:/bin",
           HOME: work,
-          TMPDIR: resolve(work, "sockets"),
+          TMPDIR: sockets,
           TF_CLI_CONFIG_FILE: resolve(work, "runner.tfrc"),
           TF_IN_AUTOMATION: "true",
           TF_INPUT: "0",
@@ -160,4 +160,5 @@ resource "stackit_image" "firewall" {
 } finally {
   await new Promise((done) => server.close(done));
   await rm(work, { recursive: true, force: true });
+  await rm(sockets, { recursive: true, force: true });
 }

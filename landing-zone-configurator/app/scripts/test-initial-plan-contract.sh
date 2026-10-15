@@ -10,8 +10,10 @@ tofu_bin="$runner_root/tools/tofu"
 "$tofu_bin" version -json | node --input-type=module -e 'let s=""; for await (const c of process.stdin) s+=c; if (JSON.parse(s).terraform_version !== "1.12.6") throw new Error("Pinned engine required");'
 work_dir="$repo_dir/.native-initial-plan-$$"
 mkdir -m 700 "$work_dir"
-trap 'rm -rf "$work_dir"' EXIT
-mkdir "$work_dir/root" "$work_dir/sockets"
+# Provider Unix sockets must stay short even under long CI checkout paths.
+socket_dir="$(mktemp -d /tmp/lzc-ipc.XXXXXX)"
+trap 'rm -rf "$work_dir" "$socket_dir"' EXIT
+mkdir "$work_dir/root"
 accelerator_commit="$(cd "$app_dir" && node --input-type=module - "$runner_root" <<'NODE'
 import { readFileSync } from "node:fs";
 import { platformRunnerSourceSchema } from "./packages/contracts/dist/index.js";
@@ -60,7 +62,7 @@ for phase in init validate test; do
     init) args+=(-backend=false -input=false -lockfile=readonly) ;;
     test) args+=(-json -verbose) ;;
   esac
-  env -i PATH="$PATH" TMPDIR="$work_dir/sockets" TF_CLI_CONFIG_FILE="$work_dir/runner.tfrc" TF_IN_AUTOMATION=true TF_INPUT=0 CHECKPOINT_DISABLE=1 \
+  env -i PATH="$PATH" TMPDIR="$socket_dir" TF_CLI_CONFIG_FILE="$work_dir/runner.tfrc" TF_IN_AUTOMATION=true TF_INPUT=0 CHECKPOINT_DISABLE=1 \
     "$tofu_bin" -chdir="$work_dir/root" "$phase" "${args[@]}" > "$work_dir/$phase.log" 2>&1 || {
       if [ "$phase" = test ]; then
         node --input-type=module -e 'import {readFileSync} from "node:fs"; for (const line of readFileSync(process.argv[1],"utf8").trim().split("\n")) { const e=JSON.parse(line); if (e.type !== "test_plan") console.log(JSON.stringify(e)); }' "$work_dir/$phase.log"

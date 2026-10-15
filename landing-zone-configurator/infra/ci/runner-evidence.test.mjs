@@ -72,6 +72,19 @@ test('verifies the staged runner image before migrating or replacing the web app
  assert.ok(workflow.slice(imageTask,workflow.indexOf('\n',imageTask)).includes('-k 4096M --wait'));
 });
 
+test('qualification provider sockets stay independent of long checkout paths',()=>{
+ const native=readFileSync(fileURLToPath(new URL('../../app/scripts/test-initial-plan-contract.sh',import.meta.url)),'utf8');
+ assert.ok(native.includes('mktemp -d /tmp/lzc-ipc.XXXXXX'));
+ assert.ok(native.includes('TMPDIR="$socket_dir"'));
+ assert.ok(native.includes('trap \'rm -rf "$work_dir" "$socket_dir"\' EXIT'));
+ for(const name of ['check-vault-bootstrap.mjs','check-firewall-image-plan.mjs']){
+  const source=readFileSync(fileURLToPath(new URL(`../../app/scripts/${name}`,import.meta.url)),'utf8');
+  assert.ok(source.includes('mkdtemp("/tmp/lzc-ipc-")'));
+  assert.ok(source.includes('TMPDIR: sockets'));
+  assert.ok(source.includes('rm(sockets, { recursive: true, force: true })'));
+ }
+});
+
 test('explicit platform apply uses only a private saved plan and never a fresh plan',()=>{
  const directory=mkdtempSync(join(tmpdir(),'lzc-saved-plan-contract-'));
  const marker=join(directory,'tofu-called');
