@@ -63,6 +63,18 @@ it.each([
       concurrent: { name: "Independent" },
       add: { name: "New" },
     });
+    const partial = selectAssistantProposalFields(changes, selected, current);
+    expect(
+      selectAssistantProposalFields(changes, [`${path}/remove`], {
+        [path]: partial[0]?.value,
+      }),
+    ).toEqual(
+      selectAssistantProposalFields(
+        changes,
+        fields.map((field) => field.id),
+        current,
+      ),
+    );
     expect(
       assistantProposalConflicts(
         removal ? [removal] : [],

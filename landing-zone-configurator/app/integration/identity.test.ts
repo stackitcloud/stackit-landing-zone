@@ -853,6 +853,126 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     await configurations.remove(alice, stored.id, 2);
   });
 
+  it.each(["preview", "persisted"] as const)(
+    "preserves accepted DNS entries in sequential collection replacement through %s",
+    async (mode) => {
+      const configurations = new Configurations(pool);
+      const original = createEditorConfiguration("hub-and-spoke", randomUUID());
+      const stored = await configurations.create(alice, original);
+      const value = { acme: { dns_name: "acme.runs.onstackit.cloud" } };
+      const proposal: Dialogue = {
+        explanation:
+          "Vollständigen DNS-Satz zur Prüfung vorgeschlagen, noch nichts gespeichert.",
+        questions: [],
+        changes: [
+          { path: "connectivity.dns_zones", operation: "replace", value },
+        ],
+        references: ["dns-zones"],
+      };
+      const assistant = new AssistantConversations(pool, {
+        converse: vi.fn<AssistantModelServing["converse"]>(
+          async () => proposal,
+        ),
+      });
+      const proposed = await assistant.send(
+        alice,
+        stored.id,
+        1,
+        "Ich möchte genau eine DNS-Zone: acme.runs.onstackit.cloud.",
+      );
+      if (mode === "preview") {
+        const first = await assistant.preview(
+          alice,
+          stored.id,
+          proposed.revision,
+          1,
+          ["connectivity.dns_zones/acme"],
+          original,
+          original,
+        );
+        const remaining = first.conversation.proposal?.changes[0];
+        const firstZones = objectValue(
+          objectValue(
+            compileCommonConfiguration(first.configuration.draft).connectivity,
+          ).dns_zones,
+        );
+        expect(Object.keys(firstZones)).toHaveLength(2);
+        const remainingValue = remaining?.value;
+        if (
+          !remainingValue ||
+          typeof remainingValue !== "object" ||
+          Array.isArray(remainingValue)
+        )
+          throw new Error("Missing remaining DNS collection");
+        expect(Object.keys(remainingValue)).toEqual(["acme"]);
+        expect(remainingValue).toMatchObject(value);
+        expect(
+          assistantProposalFields(
+            first.conversation.proposal?.changes ?? [],
+          ).map((field) => field.id),
+        ).toEqual(["connectivity.dns_zones/example-corp"]);
+        const second = await assistant.preview(
+          alice,
+          stored.id,
+          proposed.revision,
+          1,
+          ["connectivity.dns_zones/example-corp"],
+          first.configuration.draft,
+          original,
+        );
+        const finalZones = objectValue(
+          objectValue(
+            compileCommonConfiguration(second.configuration.draft).connectivity,
+          ).dns_zones,
+        );
+        expect(Object.keys(finalZones)).toEqual(["acme"]);
+        expect(objectValue(finalZones.acme).dns_name).toBe(value.acme.dns_name);
+        expect((await configurations.get(alice, stored.id)).draft).toEqual(
+          original,
+        );
+        await configurations.remove(alice, stored.id, 1);
+        return;
+      }
+      const first = await assistant.accept(
+        alice,
+        stored.id,
+        proposed.revision,
+        1,
+        ["connectivity.dns_zones/acme"],
+      );
+      expect(
+        Object.keys(
+          objectValue(
+            objectValue(compileCommonConfiguration(first.draft).connectivity)
+              .dns_zones,
+          ),
+        ),
+      ).toHaveLength(2);
+      const remaining = await assistant.get(alice, stored.id);
+      if (!remaining) throw new Error("Missing remaining DNS removal");
+      expect(
+        assistantProposalFields(remaining.proposal?.changes ?? []).map(
+          (field) => field.id,
+        ),
+      ).toEqual(["connectivity.dns_zones/example-corp"]);
+      const second = await assistant.accept(
+        alice,
+        stored.id,
+        remaining.revision,
+        first.revision,
+        ["connectivity.dns_zones/example-corp"],
+      );
+      const zones = objectValue(
+        objectValue(compileCommonConfiguration(second.draft).connectivity)
+          .dns_zones,
+      );
+      expect(Object.keys(zones)).toEqual(["acme"]);
+      expect(objectValue(zones.acme).dns_name).toBe(value.acme.dns_name);
+      expect((await assistant.get(alice, stored.id))?.proposal).toBeNull();
+      await configurations.remove(alice, stored.id, second.revision);
+    },
+  );
+
   it("persists DNS settings only after whole-proposal acceptance and preserves omitted zone metadata", async () => {
     const configurations = new Configurations(pool);
     const source = createEditorConfiguration(

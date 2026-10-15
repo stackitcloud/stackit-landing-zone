@@ -88,10 +88,15 @@ Bei einem Satzersatz zeigt die Vorschlagsliste jeden entfernten Eintrag mit
 zwischenzeitliche Ergänzungen bleiben erhalten. Zwischenzeitliche Änderungen
 an einem ausgewählten Eintrag benötigen weiterhin Konfliktbestätigung.
 Beibehaltene Templates behalten ihre IDs und nicht angeforderten Einstellungen.
+Restvorschläge werden nach einer Teilübernahme aus dem aktuellen Kandidaten
+zusammengesetzt. Bereits übernommene Einträge bleiben auch bei einer späteren
+Übernahme der verbliebenen Löschungen erhalten, sowohl im lokalen Vorschaupfad
+als auch beim direkten, revisionsgeprüften Speichern über die API.
 Keine dieser Änderungen speichert oder löscht automatisch Kundenkonfigurationen.
 Dieser Nachbesserungsstand ist noch nicht live veröffentlicht.
 Die lokale Regression besteht aus 718 bestandenen Unit-Tests (57 übersprungen),
-51 isolierten PostgreSQL-Plan-/Broker-Tests und 302 Desktop-/Mobil-Browsertests.
+51 isolierten PostgreSQL-Plan-/Broker-Tests, 53 PostgreSQL-Integrationstests und
+302 Desktop-/Mobil-Browsertests.
 Typprüfung, Build und generierte Assistant-Verträge sind geprüft. Dies ersetzt
 keine erneute echte Modell- oder Kunden-Cloud-Abnahme; es wurde kein Kunden-Plan
 oder Apply gestartet.

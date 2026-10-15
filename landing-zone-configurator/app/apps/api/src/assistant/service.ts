@@ -870,6 +870,14 @@ export class AssistantConversations {
       const remaining = fields
         .filter((field) => !selected.includes(field.id))
         .map((field) => field.id);
+      const candidateValues = assistantPublicValues(candidate);
+      const entryReplacements = new Set(
+        fields
+          .filter(
+            (field) => field.operation === "replace" && field.keys.length > 0,
+          )
+          .map((field) => field.changePath),
+      );
       return {
         configuration: {
           id,
@@ -883,19 +891,23 @@ export class AssistantConversations {
           proposal: remaining.length
             ? {
                 ...proposal,
-                changes: selectAssistantProposalFields(changes, remaining).map(
-                  (change) => ({
-                    ...change,
-                    before:
-                      assistantProposalValue(original, change.path) ?? null,
-                    ...(assistantProposalBaselineAvailable(
-                      original,
+                changes: selectAssistantProposalFields(
+                  changes,
+                  remaining,
+                  candidateValues,
+                ).map((change) => ({
+                  ...change,
+                  before:
+                    assistantProposalValue(
+                      entryReplacements.has(change.path)
+                        ? candidateValues
+                        : original,
                       change.path,
-                    )
-                      ? {}
-                      : { baselineAvailable: false }),
-                  }),
-                ),
+                    ) ?? null,
+                  ...(assistantProposalBaselineAvailable(original, change.path)
+                    ? {}
+                    : { baselineAvailable: false }),
+                })),
               }
             : null,
         },
@@ -954,7 +966,11 @@ export class AssistantConversations {
         selectedFields === undefined
           ? proposal.changes
           : completeNetworkSelection(
-              selectAssistantProposalFields(changesWithBaseline, selected),
+              selectAssistantProposalFields(
+                changesWithBaseline,
+                selected,
+                values,
+              ),
               values,
             );
       let candidate: ReturnType<typeof applyAssistantChanges>;
@@ -983,7 +999,11 @@ export class AssistantConversations {
         ? {
             ...proposal,
             changes: completeNetworkSelection(
-              selectAssistantProposalFields(changesWithBaseline, remainingIds),
+              selectAssistantProposalFields(
+                changesWithBaseline,
+                remainingIds,
+                assistantPublicValues(candidate),
+              ),
               assistantPublicValues(candidate),
             ),
           }
