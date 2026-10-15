@@ -201,9 +201,9 @@ und Provider-Erreichbarkeit; diese Prüfung ersetzt keine Live-Abnahme.
   plus unabhängige initialisierte Image-/Root-/Provider-Arbeitskopie und
   256 MiB Reserve gegen das unveränderte 4096-MiB-Droplet-Limit.
   Reflink-Einsparungen werden dabei nicht vorausgesetzt.
-  Gemessen inklusive Application-Root: maximal 1362223503 Bytes Paket,
+  Gemessen inklusive Application-Root: maximal 1362381112 Bytes Paket,
   1377552902 Bytes initialisierte Arbeitskopie und 268435456 Bytes Reserve,
-  insgesamt 3008211861 Bytes (2,80 GiB) von 4294967296 Bytes.
+  insgesamt 3008369470 Bytes (2,80 GiB) von 4294967296 Bytes.
   Die Release-Pipeline übernimmt weiterhin den vollständigen Root per
   `cp -R` nach `inspection` und vergleicht ihn vor Deployment bytegleich.
   Lokale, vollständige Archive haben etwa 1,17 GB. Hosted-Archive lassen nur

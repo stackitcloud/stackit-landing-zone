@@ -137,7 +137,7 @@ dem Accelerator auch ohne aktivierte Audit-Protokollierung sichtbar.
 Die Vorschau verwendet native Standardwerte ausschließlich zum Anzeigen; sie
 materialisiert diese nicht im Entwurf und liest keine bestehenden Cloud-Ressourcen.
 
-### Erstbereitstellungspläne (lokal qualifizierter Ausbau)
+### Erstbereitstellungspläne
 
 Die generelle Sperre für `audit_logs`, `observability`, `connectivity` und `devops`
 ist durch geprüfte Unterstützung ersetzt. Für Connectivity umfasst diese
@@ -155,20 +155,40 @@ Identitäts-/Owner-Nachweise, Mandantentrennung, Snapshot-Prüfung und explizite
 Freigaben bleiben unverändert erforderlich. Die konkreten Grenzen sind im
 [Runner-Vertrag](../runner/README.md) beschrieben.
 
-Die gemeinsame lokale Abnahme bestand 710 Unit-Tests, 298 Desktop-/Mobil-
-Browsertests sowie Typprüfung, Build und die zwölf Release-/Runner-Evidence-Tests.
-Weitere 51 PostgreSQL-Broker-Tests und 36 native Vertrags-/Offline-Provider-Fälle
-qualifizierten die Runner-Unterstützung für beide Accelerator-Quellstände.
+Die gemeinsame Release-Abnahme bestand 710 Unit-Tests (57 im Unit-Lauf
+übersprungen), 51 PostgreSQL-Broker-Tests und 300 Desktop-/Mobil-Browsertests
+sowie Typprüfung, Build und 19 gezielte Release-/Staging-/Runner-Evidence-Tests.
+Native Vertrags-, Offline-Provider- und echte Image-/Archiv-Prüfungen
+qualifizierten die Runner-Unterstützung zusätzlich.
 Es gab keine Kunden-Cloud-Plans, Applies oder Destroys.
-Diese Änderungen sind noch nicht auf Dev veröffentlicht. Der erste große
-CF-Upload scheiterte nach 15 Minuten mit HTTP 502, vor Migration und Web-Update.
-Der freigegebene Staging-Ausbau lässt das große Image deshalb nur im Hosted-Archiv
-aus und baut es beim Staging SHA-geprüft ins unveränderliche Droplet ein.
-Es gibt keinen Download pro Nutzer oder Plan; Cache, Paketidentität und
-unverändertes 4-GiB-Task-Diskbudget werden gesondert geprüft. Details stehen unter
+
+Komponenten-Vorschau, Plan-Unterstützung und die eindeutige STACKIT-Bestätigung
+sind mit Nutzerfreigabe als Quelle `0cee76f` über den erfolgreichen
+[Dev-Release 38769119929](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38769119929)
+veröffentlicht. Auf CF bestanden Image-SHA-Prüfung, native Runner-Checks,
+Migrationen, Dienstverbindungen, Runner-Isolation und die kanonischen Routenprüfungen.
+Die ausgelieferten JS-/CSS-Dateien stimmen bytegleich mit der gebauten Quelle
+überein. Acht zusätzliche Live-Auth-/PKCE-Prüfungen und zwei echte anonyme
+Desktop-/Mobil-Browserläufe bestanden; die Vorschau zeigte jeweils nur Name
+und Typ, ohne Browserfehler, horizontalen Überlauf oder Server-Mutationen.
+
+Das große Image fehlt nur im Hosted-Upload und wird beim Staging SHA-geprüft
+ohne zweite Dateikopie ins unveränderliche Droplet verschoben. Dieses ist der
+dauerhafte CF-Cache; ein redundantes großes Buildpack-Cache-Archiv entfällt.
+Es gibt keinen Download pro Nutzer oder Plan. Web/API verwenden 6 GiB Disk
+für die größere Inspektionskopie und Staging-Komprimierung; das qualifizierte
+4-GiB-Budget der isolierten Runner-Jobs und Tasks bleibt unverändert.
+Paketidentität und bytegleiche Wiederherstellung beider Archive sind geprüft.
+Details stehen unter
 [CF-Staging und Cache](../deploy/cloud-foundry/README.md#image-staging-and-caching).
-Eine Live-IAM-/Erreichbarkeitsabnahme wird durch die
-Offline-Qualifikation nicht vorgetäuscht.
+Ein persönlicher STACKIT-Login, Live-Owner-Nachweis und Kunden-Cloud-Plan wurden
+dadurch nicht ausgeführt oder vorgetäuscht.
+
+Der separate
+[Validate-Configurator-Lauf 38769119849](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38769119849)
+bleibt an den bereits bekannten Standalone-Template-Vertrags- und
+STACKIT/GitHub-Operator-Guard-Assertions rot. Der erfolgreiche Release-Lauf
+und die Live-Abnahme sind davon getrennt; nicht sämtliche Repository-CI ist grün.
 
 ## Kompatibilität und Grenzen
 
