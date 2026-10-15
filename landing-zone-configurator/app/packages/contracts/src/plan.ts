@@ -12,9 +12,17 @@ export const applicationRunnerSourceSchema = z.strictObject({
 });
 export const platformUpgradeAcceleratorCommit =
   "c4b43c36af198985980b17626c48d357795e3fbd";
+export const platformFirewallImage = {
+  url: "https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2",
+  sha256: "5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068",
+} as const;
 export const platformRunnerSourceSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  acceleratorCommit: z.literal(platformUpgradeAcceleratorCommit),
+  acceleratorCommit: z.enum([
+    "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+    platformUpgradeAcceleratorCommit,
+  ]),
+  firewallImageSha256: z.literal(platformFirewallImage.sha256).optional(),
 });
 /** Deliberately projects counts only: even addresses and diagnostics can contain secrets. */
 export type PlanAction =

@@ -2463,6 +2463,143 @@ for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
   });
 }
 
+test("session proof renewal is distinct from signing in and preserves authenticated access", async ({
+  page,
+}) => {
+  let authenticated = true;
+  let verified = false;
+  let approved = false;
+  let starts = 0;
+  const session = {
+    user: { id: "alice-id", login: "engineer-with-a-long-name@example.test" },
+    csrfToken: "csrf-test",
+    tenant: { id: "personal", kind: "personal", roles: [] },
+    expiresAt: new Date(Date.now() + 8 * 3600000).toISOString(),
+  };
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill(
+      authenticated
+        ? { json: { ...session, stackitVerified: verified } }
+        : { status: 401, json: { error: "authentication_required" } },
+    ),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({ json: { configurations: [] } }),
+  );
+  await page.route("**/api/v1/organisation", (route) =>
+    route.fulfill({
+      json: {
+        userId: session.user.id,
+        activeTenantId: "personal",
+        tenants: [],
+        members: [],
+      },
+    }),
+  );
+  await page.route("**/auth/stackit/start", (route) => {
+    expect(route.request().headers()["x-lzc-csrf"]).toBe(session.csrfToken);
+    starts++;
+    return route.fulfill({
+      json: {
+        verificationUri:
+          "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256",
+        expiresAt: new Date(Date.now() + 300000).toISOString(),
+        retryAfterMs: 50,
+      },
+    });
+  });
+  await page.route("**/auth/stackit/poll", (route) => {
+    if (approved) verified = true;
+    return route.fulfill({
+      json: approved
+        ? { status: "verified" }
+        : { status: "waiting", retryAfterMs: 50 },
+    });
+  });
+  await page.route("**/auth/stackit/cancel", (route) =>
+    route.fulfill({ json: { status: "cancelled" } }),
+  );
+  await page.goto("/configurations");
+  const account = page.locator(".account");
+  await expect(account).toContainText(session.user.login);
+  await expect(
+    account.getByRole("button", { name: "Abmelden", exact: true }),
+  ).toBeVisible();
+  await expect(
+    account.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
+  ).toHaveCount(0);
+  const confirmation = account.getByRole("button", {
+    name: "STACKIT bestätigen",
+    exact: true,
+  });
+  await expect(confirmation).toHaveAttribute(
+    "title",
+    /im Configurator angemeldet/,
+  );
+  await confirmation.click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", { name: "STACKIT bestätigen", exact: true }),
+  ).toBeVisible();
+  await expect(dialog).toContainText("Für geschützte STACKIT-Aktionen");
+  await dialog.getByRole("button", { name: "Abbrechen", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(confirmation).toBeEnabled();
+  await expect(account).toContainText(session.user.login);
+  await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  approved = true;
+  await account
+    .getByRole("button", { name: "Confirm STACKIT", exact: true })
+    .click();
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
+  await expect(account).toContainText(session.user.login);
+  expect(starts).toBe(2);
+  await page.reload();
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
+  verified = false;
+  await page.reload();
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toBeVisible();
+  await expect(
+    account.getByRole("button", { name: "Sign in with STACKIT", exact: true }),
+  ).toHaveCount(0);
+  authenticated = false;
+  await page.reload();
+  await expect(
+    account.getByRole("button", { name: "Sign in with STACKIT", exact: true }),
+  ).toBeVisible();
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toHaveCount(0);
+});
+
 test("GitHub connection is optional and starts only in the repository workspace", async ({
   page,
 }, testInfo) => {

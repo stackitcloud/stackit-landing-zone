@@ -4,6 +4,16 @@ Stand: 2026-10-15. Veröffentlichung auf `lzc-dev` ausschließlich vom Feature-B
 
 ## Bedienung
 
+Eine gültige App-Sitzung und ein aktueller STACKIT-Identitätsnachweis sind
+getrennt: Die App-Sitzung bleibt acht Stunden bestehen, während der
+STACKIT-Nachweis früher ablaufen kann. Name und **Abmelden** bedeuten weiterhin,
+dass du im Configurator angemeldet bist. Falls ein aktueller Nachweis fehlt,
+bietet die Kopfzeile **STACKIT bestätigen** an, nicht noch einmal **Mit STACKIT
+anmelden**. Der Dialog erklärt, dass diese Bestätigung für geschützte
+STACKIT-Aktionen nötig ist. Das Auslaufen des Nachweises meldet dich nicht aus
+der App ab; es verlängert aber auch keine Cloud-Berechtigung. Ohne App-Sitzung
+bleibt **Mit STACKIT anmelden** die eigentliche Anmeldung.
+
 1. Eine beliebige Vorlage öffnen und **Konfiguration erstellen** wählen.
 2. **Grundlagen → Ordner → Netzwerk → Plattform → Projekte → Betrieb → Prüfen**.
 3. Einstellungen nur bei Bedarf aufklappen. **Accelerator-Standard verwenden** entfernt die
@@ -109,6 +119,52 @@ veröffentlicht. Alle 296 Desktop-/Mobil-Browsertests bestanden, einschließlich
 Auswahl, gemeinsamer Strukturvorschau, Hinzufügen, Entfernen und leerem Zustand.
 Die ausgelieferten JavaScript- und CSS-Bundles wurden mit der exakt gebauten
 Quelle abgeglichen. Bestehende Kundenkonfigurationen wurden nicht verändert.
+
+### Komponenten in der Strukturvorschau
+
+Die Strukturvorschau zeigt unter den Plattformprojekten auch deren konfigurierte
+Komponenten, jeweils nur mit Name und Typ: Automatisierungs-Service-Account,
+Secrets Manager, Object-Storage-Buckets,
+Observability, Audit Logs und Telemetry Router, zugeordnete SNA, Netze,
+DNS-Zonen, Firewalls einschließlich eines konfigurierten HA-Partners, VPN-Gateways,
+Git-Service sowie Kubernetes-Cluster und ihre optionalen Dienste.
+Netzwerkkomponenten werden nach Region und Netzwerkbereich dem richtigen Hub
+zugeordnet. SNA erscheinen als logisch zugeordnete Netzwerkbereiche, nicht als
+Aussage über deren tatsächlichen Resource-Manager-Container.
+Deaktivierte Dienste und lediglich referenzierte bestehende DNS-Zonen erscheinen
+nicht als neu bereitzustellende Komponenten. Das Audit-Archiv bleibt entsprechend
+dem Accelerator auch ohne aktivierte Audit-Protokollierung sichtbar.
+Die Vorschau verwendet native Standardwerte ausschließlich zum Anzeigen; sie
+materialisiert diese nicht im Entwurf und liest keine bestehenden Cloud-Ressourcen.
+
+### Erstbereitstellungspläne (lokal qualifizierter Ausbau)
+
+Die generelle Sperre für `audit_logs`, `observability`, `connectivity` und `devops`
+ist durch geprüfte Unterstützung ersetzt. Für Connectivity umfasst diese
+Netzwerkbereiche, DNS, Firewall-/HA-Infrastruktur und VPN-Gateways.
+Das Firewall-Image ist die bereits im Accelerator verwendete, versions- und
+SHA-256-gebundene OPNsense-Datei; der Runner prüft die tatsächlichen Image-Dateien
+und ihre Paketierung. Ein alter Runner ohne passendes Image bleibt ausdrücklich
+gesperrt, statt einen vermeintlich ausführbaren Plan mit `/dev/null` zu erstellen.
+
+Das ist eine Plan-Freigabe, keine automatische Bereitstellung: Firewall-Policies,
+Bootstrap, Appliance-Apply und VPN-Verbindungen mit vorab geteilten Schlüsseln
+benötigen weiterhin ihre gesonderte Ausführungs- bzw. Secret-Binding-Unterstützung.
+Audit-Ziele außerhalb des nachgewiesenen Organisationskontexts bleiben gesperrt.
+Identitäts-/Owner-Nachweise, Mandantentrennung, Snapshot-Prüfung und explizite
+Freigaben bleiben unverändert erforderlich. Die konkreten Grenzen sind im
+[Runner-Vertrag](../runner/README.md) beschrieben.
+
+Die gemeinsame lokale Abnahme bestand 710 Unit-Tests, 298 Desktop-/Mobil-
+Browsertests sowie Typprüfung, Build und die zwölf Release-/Runner-Evidence-Tests.
+Weitere 51 PostgreSQL-Broker-Tests und 36 native Vertrags-/Offline-Provider-Fälle
+qualifizierten die Runner-Unterstützung für beide Accelerator-Quellstände.
+Es gab keine Kunden-Cloud-Plans, Applies oder Destroys.
+Diese Änderungen sind noch nicht auf Dev veröffentlicht. Die neuen
+Runner-Archive sind rund 1,17 GB groß; vor einer Veröffentlichung muss neben dem
+geprüften 4-GiB-Task-Diskbudget auch das Upload-Limit der konkreten CF-Foundation
+bestätigt werden. Eine Live-IAM-/Erreichbarkeitsabnahme wird durch die
+Offline-Qualifikation nicht vorgetäuscht.
 
 ## Kompatibilität und Grenzen
 

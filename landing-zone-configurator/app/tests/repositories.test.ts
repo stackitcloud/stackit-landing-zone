@@ -628,8 +628,20 @@ it("rejects unsupported common-format components before reading credentials", as
   const f = fixture();
   const document = editCommonInput(
     migrateCommonConfiguration(f.document),
-    "devops",
-    { git_flavor: "git-10" },
+    "federated_identity_providers",
+    [
+      {
+        name: "github",
+        issuer: "https://token.actions.githubusercontent.com",
+        assertions: [
+          {
+            item: "sub",
+            operator: "equals",
+            value: "repo:fixture/app:ref:refs/heads/main",
+          },
+        ],
+      },
+    ],
   );
   const request: typeof fetch = async (input, init) => {
     if (new URL(String(input)).pathname.endsWith(`/git/blobs/${blobSha}`))
@@ -644,6 +656,7 @@ it("rejects unsupported common-format components before reading credentials", as
   await expect(
     service.prepareSnapshot(token, target, id, original),
   ).rejects.toMatchObject({ code: "configuration_execution_not_supported" });
+  expect(f.writes).toHaveLength(0);
 });
 
 it("prepares an unchanged standalone common-format configuration with its exact export", async () => {

@@ -9,9 +9,37 @@ import {
 
 // This is an execution allowlist, independent of the editable/importable feature set.
 // Keep it bound to the reviewed Accelerator revision and expand only with runner tests.
-export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
-  if (record.schemaVersion !== 3) return [];
-  const issues = [...editorIssues(record)];
+export function initialPlanRequiresFirewallImage(
+  record: ConfigurationRecord,
+): boolean {
+  const connectivity = objectValue(recordValues(record).connectivity);
+  return (
+    connectivity.firewall != null ||
+    Object.keys(objectValue(connectivity.firewalls)).length > 0
+  );
+}
+
+export function initialPlanIssues(
+  record: ConfigurationRecord,
+  operation: "plan" | "apply" = "plan",
+): DraftIssue[] {
+  const applyIssues: DraftIssue[] = [];
+  const connectivity = objectValue(recordValues(record).connectivity);
+  for (const field of ["firewall", "firewalls"]) {
+    if (
+      operation === "apply" &&
+      (field === "firewall"
+        ? connectivity.firewall != null
+        : Object.keys(objectValue(connectivity.firewalls)).length > 0)
+    )
+      applyIssues.push({
+        field: `connectivity.${field}`,
+        message:
+          "Firewall-/HA-Infrastruktur ist nur für Plan freigegeben. Apply erfordert einen separat qualifizierten Administrations-/Bootstrap-Vertrag; Policy und VPN-PSKs bleiben gesondert gesperrt.",
+      });
+  }
+  if (record.schemaVersion !== 3) return applyIssues;
+  const issues = [...editorIssues(record), ...applyIssues];
   const values = recordValues(record);
   const blocked = (field: string, message: string) =>
     issues.push({ field, message });
@@ -28,12 +56,12 @@ export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
     "rm_folder_parent_id",
     "landing_zones",
     "sandboxes",
-  ]);
-  const disabledNull = new Set([
     "devops",
     "observability",
     "audit_logs",
     "connectivity",
+  ]);
+  const disabledNull = new Set([
     "connectivity_regions",
     "firewall_config",
     "firewall_api_credentials",
@@ -59,7 +87,14 @@ export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
       continue;
     blocked(
       key,
-      `„${key}“ ist noch nicht für Erstbereitstellungspläne freigegeben. Deaktiviere diese Komponente für einen reinen Plattform-/Governance-Plan oder warte auf die zugehörige Runner-Unterstützung. Die Konfiguration kann unverändert gespeichert bleiben.`,
+      [
+        "firewall_config",
+        "firewall_bootstrap",
+        "firewall_bootstrap_firewall_key",
+        "firewall_api_credentials",
+      ].includes(key)
+        ? `„${key}“ benötigt einen gesondert freigegebenen mehrstufigen Policy-/Bootstrap- und Credential-Vertrag. Firewall-/HA-Infrastruktur kann bereits ohne diese Einstellung geplant werden; Policy wird nicht stillschweigend ausgelassen. Die Konfiguration kann unverändert gespeichert bleiben.`
+        : `„${key}“ ist noch nicht für Erstbereitstellungspläne freigegeben. Deaktiviere diese Komponente für einen reinen Plattform-/Governance-Plan oder warte auf die zugehörige Runner-Unterstützung. Die Konfiguration kann unverändert gespeichert bleiben.`,
     );
   }
   if (
@@ -75,6 +110,26 @@ export function initialPlanIssues(record: ConfigurationRecord): DraftIssue[] {
       "region",
       "Erstbereitstellungspläne sind derzeit nur für eu01 freigegeben.",
     );
+  if (
+    Object.keys(objectValue(objectValue(connectivity.vpn).connections)).length
+  )
+    blocked(
+      "connectivity.vpn.connections",
+      "VPN-Verbindungen benötigen getrennte, auftragsgebundene Pre-Shared Keys für beide Tunnel. Der aktuelle Credential-Vertrag bindet nur den STACKIT-Service-Account, keine VPN-PSKs. Ein Gateway ohne Verbindungen kann bereits geplant werden; PSKs gehören weder in Konfiguration noch Chat.",
+    );
+  const scopes = objectValue(values.audit_logs).link_scopes;
+  if (Array.isArray(scopes))
+    scopes.forEach((raw, index) => {
+      const scope = objectValue(raw);
+      if (
+        scope.resource_type !== "organization" ||
+        scope.resource_id !== values.organization_id
+      )
+        blocked(
+          `audit_logs.link_scopes.${index}`,
+          "Erstbereitstellungspläne unterstützen Audit-Links nur für die nachgewiesene STACKIT-Organisation. Für Ordner-, Projekt- oder fremde Organisationsziele fehlt ein separater Zugehörigkeitsnachweis.",
+        );
+    });
   const projectFields = new Set([
     "project_name",
     "project_code",

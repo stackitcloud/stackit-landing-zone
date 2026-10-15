@@ -9,6 +9,7 @@ import {
 } from "@lzc/contracts";
 import {
   initialPlanIssues,
+  initialPlanRequiresFirewallImage,
   platformContractSchema,
   readConfigurationRecord,
   readEditorDraft,
@@ -84,6 +85,7 @@ export class Plans {
         continue;
       try {
         const manifest = await this.preparation(session, row.preparationId);
+        if (initialPlanIssues(manifest.configuration, "apply").length) continue;
         await this.verifySource(session, manifest);
         await this.verify(session, manifest);
         await withTenant(this.pool, session, async (client) => {
@@ -504,6 +506,11 @@ export class Plans {
         throw invalid("input_invalid");
       if (initialPlanIssues(configuration).length)
         throw invalid("configuration_execution_not_supported");
+      if (
+        initialPlanRequiresFirewallImage(configuration) &&
+        this.runner.firewallPlansEnabled !== true
+      )
+        throw invalid("runner_firewall_image_unavailable");
       return { ...manifest, configuration };
     });
   }
@@ -762,6 +769,8 @@ export class Plans {
     );
     if (!plan) throw invalid("plan_not_found", 404);
     const manifest = await this.preparation(session, plan.preparation_id);
+    if (initialPlanIssues(manifest.configuration, "apply").length)
+      throw invalid("configuration_apply_not_supported");
     if (request.organizationId !== manifest.organization.id)
       throw invalid("organization_mismatch", 403);
     await this.verifySource(session, manifest, token);
@@ -851,6 +860,11 @@ export class Plans {
       return row;
     });
     const manifest = await this.preparation(session, run.preparation_id);
+    if (
+      run.operation === "apply" &&
+      initialPlanIssues(manifest.configuration, "apply").length
+    )
+      throw invalid("configuration_apply_not_supported");
     await withTenant(this.pool, session, async (client) => {
       const grant = await client.query(
         "UPDATE lzc.plan_credential_grants SET consumed_at=now() WHERE run_id=$1 AND preparation_id=$2 AND organization_id=$3 AND credential_profile_id=$4 AND credential_version=$5 AND credential_key_id=$6 AND binding_sha256=$7 AND operation=$8 AND expires_at>now() AND revoked_at IS NULL AND consumed_at IS NULL RETURNING run_id",
@@ -979,6 +993,9 @@ export class Plans {
       lockHash,
       tfvars,
       tfvarsSha256: manifest.tfvarsSha256,
+      ...(initialPlanRequiresFirewallImage(manifest.configuration)
+        ? { firewallInfrastructure: true }
+        : {}),
       key: runnerKey,
       ...(backend ? { backend } : {}),
       ...(artifact ? { plan: artifact } : {}),

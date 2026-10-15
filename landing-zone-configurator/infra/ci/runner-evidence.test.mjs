@@ -28,13 +28,48 @@ test('rejects apply before invoking OpenTofu',()=>{
 });
 test('removes initialized provider cache and rejects Terraform state from the package',()=>{
  const source=readFileSync(packageRunner,'utf8');
- assert.match(source,/tofu -chdir="\$runner_dir\/accelerator" init -backend=false/);
+ assert.match(source,/"\$tofu_bin" -chdir="\$runner_dir\/accelerator" init -backend=false -input=false -lockfile=readonly/);
  assert.match(source,/rm -rf "\$runner_dir\/accelerator\/\.terraform"/);
  assert.match(source,/test ! -e "\$runner_dir\/accelerator\/terraform\.tfstate"/);
  assert.match(source,/test ! -e "\$runner_dir\/accelerator\/terraform\.auto\.tfvars"/);
  assert.ok(source.includes("-name '*.tfstate.*'"));
  assert.ok(source.includes("-name 'saved-plan.bin'"));
  assert.ok(source.includes("-name 'credential.json'"));
+});
+
+test('qualifies initial platform capabilities against source identity and lock before packaging',()=>{
+ const source=readFileSync(packageRunner,'utf8');
+ const qualification=source.indexOf('LZC_TEST_RUNNER_ROOT="$(cd "$runner_dir" && pwd)" bash scripts/test-initial-plan-contract.sh');
+ assert.ok(qualification>source.indexOf('a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888'));
+ assert.ok(source.indexOf('prepare-firewall-image.mjs')<qualification);
+ assert.ok(source.includes('firewallImageSha256:platformFirewallImage.sha256'));
+ assert.ok(qualification<source.indexOf('tar -czf'));
+ const native=readFileSync(fileURLToPath(new URL('../../app/scripts/test-initial-plan-contract.sh',import.meta.url)),'utf8');
+ assert.ok(native.includes('platformRunnerSourceSchema.parse'));
+ assert.ok(native.includes('git -C "$repo_dir" archive "$accelerator_commit"'));
+ assert.ok(native.includes('cmp "$app_dir/../deploy/runner/accelerator.lock.hcl" "$runner_root/accelerator/.terraform.lock.hcl"'));
+ assert.ok(native.includes('verify-initial-plan-contract.mjs'));
+ assert.ok(native.includes('check-vault-bootstrap.mjs'));
+ assert.ok(native.includes('check-firewall-image-plan.mjs'));
+ assert.ok(native.includes('verify-runner-budget.mjs'));
+ assert.ok(native.includes('LZC_FIREWALL_IMAGE_PACKAGE="$runner_root"'));
+ const contracts=readFileSync(fileURLToPath(new URL('../../app/packages/contracts/src/plan.ts',import.meta.url)),'utf8');
+ const distribution=readFileSync(fileURLToPath(new URL('../../../.github/workflows/verify-deployment.yml',import.meta.url)),'utf8');
+ for(const pin of ['https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2','5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068']){
+  assert.ok(contracts.includes(pin));assert.ok(distribution.includes(pin));
+ }
+});
+
+test('verifies the staged runner image before migrating or replacing the web application',()=>{
+ const workflow=readFileSync(fileURLToPath(new URL('../../../.github/workflows/configurator-release.yml',import.meta.url)),'utf8');
+ const imageTask=workflow.indexOf('--name "image-$GITHUB_RUN_ID"');
+ assert.ok(imageTask>workflow.indexOf('cf push --task -f deploy/runner/manifest.yml'));
+ assert.ok(imageTask<workflow.indexOf('name: Stage isolated database migration task'));
+ const command=workflow.slice(workflow.lastIndexOf('cf run-task',imageTask),imageTask);
+ assert.ok(command.includes('import { platformFirewallImage }'));
+ assert.ok(command.includes('accelerator/firewall-image.qcow2'));
+ assert.ok(command.includes('sha256sum --check'));
+ assert.ok(workflow.slice(imageTask,workflow.indexOf('\n',imageTask)).includes('-k 4096M --wait'));
 });
 
 test('explicit platform apply uses only a private saved plan and never a fresh plan',()=>{

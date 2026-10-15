@@ -41,7 +41,6 @@ cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
 platform_commit=a256f6896d11134fdc351786f1be5eba4e56b2e2
 if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
 	platform_commit=c4b43c36af198985980b17626c48d357795e3fbd
-	node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync(process.argv[1], JSON.stringify({schemaVersion:1,acceleratorCommit:process.argv[2]}), {flag:"wx",mode:0o600})' "$runner_dir/platform-source.json" "$platform_commit"
 else
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi
@@ -49,6 +48,8 @@ if [[ "${LZC_HOSTED_EXECUTION_PACKAGE:-false}" == "true" && "${LZC_PACKAGE_PLATF
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi
 git -C "$(git rev-parse --show-toplevel)" archive "$platform_commit" src | tar -x --strip-components=1 -C "$runner_dir/accelerator"
+node scripts/prepare-firewall-image.mjs "$(cd "$runner_dir/accelerator" && pwd)"
+node --input-type=module -e 'import {writeFileSync} from "node:fs"; import {platformFirewallImage,platformRunnerSourceSchema} from "./packages/contracts/dist/index.js"; writeFileSync(process.argv[1], JSON.stringify(platformRunnerSourceSchema.parse({schemaVersion:1,acceleratorCommit:process.argv[2],firewallImageSha256:platformFirewallImage.sha256})), {flag:"wx",mode:0o600})' "$runner_dir/platform-source.json" "$platform_commit"
 cp ../deploy/runner/accelerator.lock.hcl "$runner_dir/accelerator/.terraform.lock.hcl"
 node --input-type=module -e 'import {readFileSync} from "node:fs"; import {createHash} from "node:crypto"; if (createHash("sha256").update(readFileSync(process.argv[1])).digest("hex") !== "a52433c424472d6e618caa3a94579bbcd19b60b759d053cf0d5caf9ac6872888") process.exit(1)' "$runner_dir/accelerator/.terraform.lock.hcl"
 "$tofu_bin" -chdir="$runner_dir/accelerator" init -backend=false -input=false -lockfile=readonly -no-color
@@ -75,6 +76,7 @@ if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	rm -rf "$runner_dir/application-src/application/.terraform"
 	test -z "$(find "$runner_dir/application-src" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' -o -name 'terraform.auto.tfvars' -o -name 'terraform.auto.tfvars.json' \) -print -quit)"
 fi
+LZC_TEST_RUNNER_ROOT="$(cd "$runner_dir" && pwd)" bash scripts/test-initial-plan-contract.sh
 if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true" ]]; then
 	tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .
 	shasum -a 256 "$runner_dir.tar.gz" > "$runner_dir.sha256"

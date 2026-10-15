@@ -1,11 +1,14 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { platformUpgradeAcceleratorCommit } from "@lzc/contracts";
 import {
   catalogue,
   configurationValues,
   createDraft,
+  createEditorConfiguration,
   createPlatformDraftCopy,
+  editCommonInput,
   exportCommonTfvars,
+  type JsonValue,
   migrateCommonConfiguration,
   recordValues,
   savedDraft,
@@ -21,6 +24,77 @@ import {
   preparationManifest,
   preparationTfvars,
 } from "../apps/api/src/deployments/preparations.js";
+
+it("binds initial service plans to the exact saved inputs and organization proof", () => {
+  let document = createEditorConfiguration("standalone", randomUUID());
+  const organization = randomUUID();
+  document = editCommonInput(document, "organization_id", organization);
+  document = editCommonInput(document, "owner_email", "owner@stackit.cloud");
+  for (const [key, value] of [
+    ["audit_logs", { s3_object_lock: false }],
+    ["observability", { logs_retention_days: 14 }],
+    ["devops", { git_flavor: "git-10" }],
+    [
+      "connectivity",
+      {
+        network_area: {
+          ranges: ["10.0.0.0/16"],
+          transfer_network: "10.255.0.0/24",
+        },
+        vpn: { availability_zones: { tunnel1: "eu01-1", tunnel2: "eu01-2" } },
+      },
+    ],
+  ] satisfies [string, JsonValue][])
+    document = editCommonInput(document, key, value);
+  const input = {
+    source: "database",
+    configurationId: document.id,
+    revision: 7,
+    credentialId: randomUUID(),
+  } as const;
+  const tfvars = serializeTfvars(recordValues(document));
+  const snapshot = { document, head: "7", tfvars };
+  const checked = {
+    version: 2,
+    keyId: "service-plan-key",
+    check: {
+      status: "passed",
+      code: "organization_readable",
+      organizationId: organization,
+      organizationName: "Test organization",
+      checkedAt: new Date().toISOString(),
+    },
+  } as const;
+  const manifest = preparationManifest(input, snapshot, checked);
+  expect(preparationTfvars(manifest)).toBe(tfvars);
+  expect(manifest.tfvarsSha256).toBe(
+    createHash("sha256").update(tfvars).digest("hex"),
+  );
+  expect(manifest.credential).toEqual({
+    id: input.credentialId,
+    secretVersion: 2,
+    keyId: checked.keyId,
+  });
+  expect(manifest.limitations).toEqual(
+    expect.arrayContaining(["plan-not-created", "apply-not-approved"]),
+  );
+  expect(() =>
+    preparationManifest(
+      input,
+      { ...snapshot, document: editCommonInput(document, "devops", null) },
+      checked,
+    ),
+  ).toThrow("preparation_not_verified");
+  expect(() =>
+    preparationManifest(input, snapshot, {
+      ...checked,
+      check: { ...checked.check, organizationId: randomUUID() },
+    }),
+  ).toThrow("preparation_not_verified");
+  expect(() =>
+    preparationManifest(input, { ...snapshot, head: "8" }, checked),
+  ).toThrow("preparation_not_verified");
+});
 
 it("binds a preparation to the saved configuration, code revision, secret version and exact organization", () => {
   const template = catalogue.templates.find(

@@ -12,6 +12,7 @@ export class RunnerRequestError extends Error {
 }
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 export interface PlanRunner {
+  readonly firewallPlansEnabled?: boolean;
   readonly acceleratorCommit?: string;
   readonly applicationMaintenanceEnabled?: boolean;
   preview?(saved: {
@@ -35,6 +36,7 @@ export interface PlanRunner {
   remove(id: string, appId: string | null): Promise<void>;
 }
 export class CloudFoundryPlanRunner implements PlanRunner {
+  readonly firewallPlansEnabled: boolean;
   readonly acceleratorCommit?: string;
   readonly applicationMaintenanceEnabled?: boolean;
   readonly preview?: NonNullable<PlanRunner["preview"]>;
@@ -51,6 +53,8 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       inspection?: PlanRunner & { readonly packageId: string };
     },
   ) {
+    this.firewallPlansEnabled =
+      config.inspection?.firewallPlansEnabled === true;
     guid(config.spaceId);
     guid(config.templateId);
     z.enum(["platform", "application"]).parse(config.broker ?? "platform");

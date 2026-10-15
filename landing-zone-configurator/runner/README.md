@@ -88,7 +88,7 @@ Recovery und eine eventuelle Lock-Freigabe erfordern eine bewusste Prüfung.
 
 ## Lokale Entwicklung
 
-Die Tests verwenden ausschließlich ein ausführbares Fake-Tofu und einen
+Die gewöhnlichen Worker-Unit-Tests verwenden ein ausführbares Fake-Tofu und einen
 gemockten Broker. Keine echten Kunden-Credentials, kein Cloud-Apply und kein
 echter Runner-Dispatch für die lokale Validierung:
 
@@ -102,6 +102,149 @@ Vor einer echten Inbetriebnahme sind API-Freigabe, additive Stage-/Result-
 Schemas, verschlüsselter State-/Artefakt-Broker einschließlich Job-Bindung,
 State-Lock-Verhalten und das gepinnte staged Runner-Paket gemeinsam abzunehmen.
 Ein älterer Broker ohne diese Erweiterungen ist nicht apply-fähig.
+
+## Erstbereitstellung: qualifizierte Plattformdienste
+
+Die gemeinsame Ausführungsprüfung erlaubt zusätzlich zum bisherigen
+Governance-/Public-Projekt-Umfang in **eu01**:
+
+- `audit_logs`: Logs-Instanz, Lese-/Schreibtoken, Telemetry Router mit
+  Logs- und S3-Archivziel sowie sensibler Ablage im Secrets Manager.
+  Ohne `link_scopes` gilt die nachgewiesene Organisation; explizite Ziele
+  müssen dieselbe Organisation sein. Ordner-, Projekt- oder fremde
+  Organisationsziele bleiben ohne eigenen Zugehörigkeitsnachweis gesperrt.
+  Der native Object-Lock-Standard bleibt unverändert: `{}` aktiviert
+  GOVERNANCE-Retention, `s3_object_lock = false` deaktiviert sie ausdrücklich.
+- `observability`: Instanz, Aufbewahrung/ACL und generierte Zugangsdaten
+  einschließlich sensibler Ablage im Secrets Manager.
+- `connectivity`: Einzelbereich (`network_area`) oder mehrere
+  `network_areas`, bereichsgebundene DNS-Zonen sowie einzelne und
+  bereichsgebundene Firewall-Appliances einschließlich HA als
+  **Infrastruktur-Plan ohne Apply**. Ein VPN-Gateway ohne Verbindungen
+  benötigt keine PSKs und ist ebenfalls qualifiziert.
+- `devops`: DevOps-Projekt und optional STACKIT Git mit Flavor und ACL.
+  Dies benötigt weder ein GitHub-Repository noch ein GitHub-Token.
+
+Firewall-API-Policy/Bootstrap, Appliance-Apply, VPN-Verbindungen mit PSKs, regionale Connectivity,
+Kubernetes, Federation und zusätzliche Corporate-/Projektfunktionen bleiben
+gesondert gesperrt. Die Diagnose benennt bei Connectivity jetzt die konkrete
+Policy-/Bootstrap-/VPN-Abhängigkeit statt die gesamte Komponente zu sperren.
+Gespeicherte Konfigurationen und Exporte werden dabei nicht umgeschrieben.
+
+Es gibt keine neuen Ausführungs- oder Credential-Nebenwege: dieselben
+gespeicherten Eingaben und Hashes durchlaufen Vorbereitung, Organisations-/
+Identitätsprüfung, Credential-Versionierung, Mandantenprüfung, einmaliges
+Runner-Ticket und explizite Plan-/Apply-Freigaben. Der vorhandene native Root
+enthält diese Dienste bereits; es werden keine Ersatzressourcen generiert.
+
+`deploy/runner/package.sh` qualifiziert vor dem Archivieren den tatsächlich
+gepackten Root samt Provider-Lock. Zwölf freigegebene native **Mock-Provider-Planläufe**
+prüfen die Ressourcen einschließlich Audit-Routing/Archiv, sensibler
+Vault-Ablage, Git-ACL, mehrerer Netzwerkbereiche, Legacy-Einzelbereich und
+Governance-Baseline, VPN-Gateway sowie einzelne, HA- und gemischte
+bereichsgebundene Firewalls. Diese Appliance-Pläne verwenden den tatsächlichen,
+vorher SHA256-geprüften QCOW2-Pfad, niemals `/dev/null`.
+Zwei zusätzliche, weiterhin gesperrte Firewall-/HA-Policy-Planproben belegen
+die während Bootstrap fehlende Policy; eine erwartete native Validierungsverletzung belegt die
+PSK-Pflicht für VPN-Verbindungen. Root-Dateien müssen in beide Richtungen mit dem gepinnten
+Git-Commit übereinstimmen. Keine Kunden-Credentials, Cloud-Pläne oder Applies
+werden dafür verwendet; alle Provider sind gemockt, die Umgebung ist bereinigt.
+Ein weiterer **realer Vault-Provider-Test** verwendet dieselbe gepackte
+Userpass-Konfiguration mit erst nach Apply bekannten Login-Ausgaben, ersetzt
+aber ausschließlich die Adresse durch einen verweigernden Loopback-Server.
+Vault 5.11.0 kann neue Secret-Ressourcen dabei ohne Authentifizierungsversuch
+planen (null HTTP-Anfragen). Das widerlegt einen pauschalen
+Vault-Bootstrap-Planblocker, qualifiziert aber weder Live-Authentifizierung,
+Berechtigungen, Erreichbarkeit noch eine bestehende Vault-Secret-Abfrage.
+Die Provider-Version und Prüfsummen stammen aus dem gepackten Lock; für den
+isolierten Test bleibt nur dessen Vault-Eintrag erhalten.
+Ein zusätzlicher **realer STACKIT-Provider-Test** mit dem gepackten
+0.114.0-Lock plant das tatsächliche QCOW2 und weist einen fehlenden Image-Pfad
+nativ zurück. Er verwendet ausschließlich synthetische Test-Authentifizierung,
+einen verweigernden Loopback-IaaS-Endpunkt und Loopback-Proxies; alle
+API-/Proxy-Aufrufe müssen null bleiben. Die Image-ID bleibt berechnet, es wird
+keine vorhandene oder erfundene Cloud-Image-ID eingesetzt. Der Provider
+validiert die Datei im Plan; Image-Erzeugung und Upload erfolgen erst im
+weiterhin gesperrten Apply.
+Das sind je gepinnter Revision 15 native Vertragsfälle und drei reale
+Offline-Provider-Proben. Zusätzlich prüfen zwei artefaktgebundene Tests die
+positive Paketinspektion und den tatsächlich gepackten Worker mit dem echten
+Image in beiden Planmodi; nur dessen Engine/Broker sind dabei Fakes.
+Diese zwei Tests laufen automatisch beim Paketieren und sind in gewöhnlichen
+Unit-Läufen ohne `LZC_FIREWALL_IMAGE_PACKAGE` bewusst übersprungen.
+Dies ist kein Nachweis eines live provisionierten Dienstes oder eines Plans
+gegen einen echten STACKIT-Endpunkt. Ein realer Runner-Plan benötigt weiterhin
+die vorhandenen, organisations-/auftragsgebundenen STACKIT-Berechtigungen
+und Provider-Erreichbarkeit; diese Prüfung ersetzt keine Live-Abnahme.
+
+### Verifiziertes Appliance-Image und verbleibende Plan-/Apply-Grenzen
+
+- **Appliance-Image:** Beide freigegebenen nativen Revisionen verwenden in
+  `src/modules/connectivity/5-firewall.tf:6,47` ohne
+  `firewall-image.qcow2` tatsächlich `/dev/null` als Image-Quelle.
+  Deshalb übernimmt `package.sh` über `scripts/prepare-firewall-image.mjs`
+  genau das bereits in `.github/workflows/verify-deployment.yml` gepinnte
+  öffentliche Image:
+  `https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2`,
+  SHA256 `5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068`
+  (993525760 Bytes, rund 948 MiB).
+  Der private, ignorierte Cache liegt unter `.local/firewall-images/<sha256>.qcow2`.
+  Download, vorhandener Cache und jede immutable Root-Kopie werden
+  streaming-basiert geprüft; falsche Bytes oder Symlinks brechen ab.
+  `platform-source.json` bindet Commit und Image-SHA. Die lokale
+  Paketinspektion und der Worker prüfen die tatsächlichen Image-Bytes;
+  CF übernimmt die Capability nur aus dem inspizierten, an das Droplet
+  gebundenen Paket. Alte Pakete ohne qualifiziertes Image dürfen weiterhin
+  Governance-/Dienstpläne, aber keine Appliance-Pläne ausführen
+  (`runner_firewall_image_unavailable`).
+  Die automatische Qualifikation prüft außerdem das vollständige Paket
+  plus unabhängige initialisierte Image-/Root-/Provider-Arbeitskopie und
+  256 MiB Reserve gegen das unveränderte 4096-MiB-Droplet-Limit.
+  Reflink-Einsparungen werden dabei nicht vorausgesetzt.
+  Gemessen inklusive Application-Root: maximal 1362223503 Bytes Paket,
+  1377552902 Bytes initialisierte Arbeitskopie und 268435456 Bytes Reserve,
+  insgesamt 3008211861 Bytes (2,80 GiB) von 4294967296 Bytes.
+  Die Release-Pipeline übernimmt weiterhin den vollständigen Root per
+  `cp -R` nach `inspection` und vergleicht ihn vor Deployment bytegleich.
+  Die qualifizierten komprimierten Runner-Archive haben etwa 1,17 GB;
+  das betreiberspezifische CF-Paket-Uploadlimit ist vor einem separat
+  freizugebenden Rollout zusätzlich zu prüfen und ist kein Droplet-Disklimit.
+- **HA ist nicht selbst ein Plan-Authentifizierungsblocker:** Die zwei
+  `terraform_data.firewall_ha_*`-Provisioner in `5-firewall.tf` verwenden den
+  Administrationszugang erst beim Apply; CARP-Zugänge entstehen nativ.
+  Appliance-/HA-Infrastrukturpläne sind mit dem qualifizierten Image möglich.
+  Damit ist weder ein sicherer Administrationszugang beim Apply noch eine
+  vollständige Firewall-Policy bereitgestellt. Die API zeigt solche Pläne
+  nicht als apply-fähig an und weist selbst eine explizite Apply-Freigabe mit
+  `configuration_apply_not_supported` zurück. Der Worker akzeptiert den
+  gebundenen Appliance-Vertrag ausschließlich für Plattform-Planmodi.
+- **Konfigurierte Policy:** `_firewall-bootstrap.tf:30-34,41-61,88-96`
+  schaltet bei `firewall_bootstrap=true` die Policy im ersten Plan ab und
+  plant erst den Apply-Provisioner, der API-Zugänge erzeugt. Ohne Bootstrap
+  wird stattdessen ein vorhandenes Secrets-Manager-Secret gelesen. Deshalb
+  kann die unveränderte native Greenfield-Root-Konfiguration nicht sämtliche
+  konfigurierte Policy schon im ersten Plan abbilden. Kleinste erforderliche
+  Produktentscheidung ist ein sichtbar mehrstufiger, jeweils neu bestätigter
+  Infrastruktur-/Credential-/Policy-Workflow; alternativ wäre eine Änderung
+  des nativen Bootstrap-Vertrags nötig. Policy still auszulassen oder
+  `unset`-Zugänge als vollständig zu deklarieren ist keine Lösung.
+- **VPN-Verbindungen:** `modules/connectivity/variables.tf:274-285` verlangt
+  pro Connection beide PSKs; `7-vpn.tf` indiziert genau diese Schlüssel.
+  Öffentliche Konfigurationen schließen `vpn_pre_shared_keys` aus
+  (`features.ts`), und `credentials/key.ts` sowie der Worker binden derzeit
+  einen STACKIT-Service-Account-Key, keinen VPN-Secret-Satz. Die bereinigte
+  Child-Umgebung übernimmt keine geerbten `TF_VAR_*`. Kleinste Voraussetzung
+  ist daher ein eigener autorisierter, versionierter, mandanten-/auftrags-
+  und Connection-Key-gebundener PSK-Vertrag. Weder erfundene PSKs noch Werte
+  im Entwurf, Chat oder allgemeiner Umgebung dürfen diesen ersetzen.
+
+Manuell gegen ein bestehendes, unverändertes **image-qualifiziertes** Runner-Paket:
+
+```sh
+cd landing-zone-configurator/app
+npm run build:packages
+LZC_TEST_RUNNER_ROOT=/absolute/path/to/runner bash scripts/test-initial-plan-contract.sh
+```
 
 ## Nativer lokaler Runner
 

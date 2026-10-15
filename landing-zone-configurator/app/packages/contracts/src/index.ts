@@ -118,6 +118,7 @@ export {
   applicationPlanPreviewSchema,
   applicationRunnerSourceSchema,
   InvalidPlan,
+  platformFirewallImage,
   platformRunnerSourceSchema,
   platformUpgradeAcceleratorCommit,
   summarizePlan,

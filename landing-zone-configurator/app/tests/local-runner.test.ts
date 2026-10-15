@@ -15,7 +15,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { applicationMvpAcceleratorCommit } from "@lzc/contracts";
+import {
+  applicationMvpAcceleratorCommit,
+  platformFirewallImage,
+} from "@lzc/contracts";
 import { afterEach, expect, it, vi } from "vitest";
 import { approvableSummary } from "../apps/api/src/plans/execution.js";
 import { LocalPlanRunner } from "../apps/api/src/plans/local.js";
@@ -93,6 +96,41 @@ it("binds the explicit platform upgrade source into the package identity and rej
   );
   await expect(LocalPlanRunner.open(root, jobs)).rejects.toThrow();
 });
+
+it("does not advertise firewall plans without the actual checksum-verified packaged image", async () => {
+  const { root, jobs, runner } = await fixture();
+  expect(runner.firewallPlansEnabled).toBe(false);
+  await writeFile(
+    join(root, "platform-source.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      acceleratorCommit: "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+      firewallImageSha256: platformFirewallImage.sha256,
+    }),
+  );
+  await expect(LocalPlanRunner.open(root, jobs)).rejects.toThrow("ENOENT");
+  await writeFile(
+    join(root, "accelerator/firewall-image.qcow2"),
+    "not-the-verified-image",
+  );
+  await expect(LocalPlanRunner.open(root, jobs)).rejects.toThrow(
+    "checksum mismatch",
+  );
+});
+
+it.runIf(Boolean(process.env.LZC_FIREWALL_IMAGE_PACKAGE))(
+  "advertises firewall plans only from the actual immutable verified image package",
+  async () => {
+    const directory = await mkdtemp(join(tmpdir(), "lzc-firewall-package-"));
+    directories.push(directory);
+    const runner = await LocalPlanRunner.open(
+      process.env.LZC_FIREWALL_IMAGE_PACKAGE as string,
+      join(directory, "jobs"),
+    );
+    expect(runner.firewallPlansEnabled).toBe(true);
+  },
+  60000,
+);
 
 it.each(["platform", "application"] as const)(
   "records a stable $0 package identity before launching a private minimal-env worker",

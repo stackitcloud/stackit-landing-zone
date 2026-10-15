@@ -4,9 +4,14 @@ import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { platformUpgradeAcceleratorCommit } from "@lzc/contracts";
 import {
+  type ConfigurationRecord,
   catalogue,
   createDraft,
+  createEditorConfiguration,
+  editCommonInput,
+  type JsonValue,
   readSavedDraft,
+  recordDraft,
   recordValues,
   savedDraft,
   serializeTfvars,
@@ -160,7 +165,11 @@ describe.skipIf(!enabled)(
         expiresAt: new Date(Date.now() + 3600000),
       });
     }
-    async function fixture(applicationContracts = false) {
+    async function fixture(
+      applicationContracts = false,
+      services = false,
+      firewall = false,
+    ) {
       let owner = await session();
       const organizationId = randomUUID(),
         configurationId = randomUUID(),
@@ -197,7 +206,45 @@ describe.skipIf(!enabled)(
       draft.owner = "owner@stackit.cloud";
       for (const project of draft.projects) project.owner = draft.owner;
       for (const sandbox of draft.sandboxes) sandbox.owner = draft.owner;
-      const document = savedDraft(configurationId, draft);
+      let document: ConfigurationRecord = savedDraft(configurationId, draft);
+      if (services) {
+        document = createEditorConfiguration("standalone", configurationId);
+        for (const [key, value] of [
+          ["organization_id", organizationId],
+          ["owner_email", draft.owner],
+          ["audit_logs", { s3_object_lock: false }],
+          ["observability", {}],
+          ["devops", { git_flavor: "git-10" }],
+          [
+            "connectivity",
+            {
+              network_area: {
+                ranges: ["10.0.0.0/16"],
+                transfer_network: "10.255.0.0/24",
+              },
+              vpn: {
+                availability_zones: { tunnel1: "eu01-1", tunnel2: "eu01-2" },
+              },
+            },
+          ],
+        ] satisfies [string, JsonValue][])
+          document = editCommonInput(document, key, value);
+      }
+      if (firewall && document.schemaVersion === 3)
+        document = editCommonInput(document, "connectivity", {
+          network_area: {
+            ranges: ["10.0.0.0/16"],
+            transfer_network: "10.255.0.0/24",
+          },
+          firewall: {
+            name: "test-firewall",
+            flavor: "c1.2",
+            zone: "eu01-1",
+            lan_network_range: "10.0.0.0/24",
+            wan_network_range: "10.0.1.0/24",
+            ha: { backup_zone: "eu01-2" },
+          },
+        });
       const check = {
         status: "passed" as const,
         code: "organization_readable" as const,
@@ -217,7 +264,12 @@ describe.skipIf(!enabled)(
       );
       await migration!.query(
         "INSERT INTO lzc.configurations(id,tenant_id,created_by,name,document) VALUES($1,$2,$3,'Plan fixture',$4)",
-        [configurationId, owner.tenantId, owner.userId, JSON.stringify(draft)],
+        [
+          configurationId,
+          owner.tenantId,
+          owner.userId,
+          JSON.stringify(recordDraft(document)),
+        ],
       );
       await migration!.query(
         "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id,state) VALUES($1,$2,$3,'Plan fixture','test@sa.stackit.cloud',$4,'stored')",
@@ -263,6 +315,7 @@ describe.skipIf(!enabled)(
       const tickets = new Map<string, string>();
       const sourceDroplet = randomUUID();
       const runner = {
+        firewallPlansEnabled: firewall,
         supportsAccelerator: vi.fn(
           (commit: string) =>
             commit === "a256f6896d11134fdc351786f1be5eba4e56b2e2",
@@ -405,6 +458,114 @@ describe.skipIf(!enabled)(
         managementState,
       };
     }
+
+    it("prepares and dispatches saved initial service inputs without bypassing tenant, ticket or approval gates", async () => {
+      const test = await fixture(false, true);
+      const preparations = new Preparations(
+        pool,
+        test.repositories,
+        test.profiles,
+      );
+      const prepared = await preparations.create(test.owner, null, {
+        source: "database",
+        configurationId: test.configurationId,
+        revision: 1,
+        credentialId: test.credentialId,
+      });
+
+      const other = await session();
+      await expect(
+        test.plans.start(other, test.token, prepared.id),
+      ).rejects.toBeDefined();
+      expect(test.runner.start).not.toHaveBeenCalled();
+      const run = await test.plans.start(test.owner, test.token, prepared.id);
+      const ticket = test.tickets.get(run.id)!;
+      const input = await test.plans.input(ticket);
+      expect(input.tfvars).toBe(
+        serializeTfvars(recordValues(test.manifest.configuration)),
+      );
+      expect(input.tfvarsSha256).toBe(test.manifest.tfvarsSha256);
+      expect(input.mode).toBe("platform-plan");
+      expect(input.plan).toBeUndefined();
+      expect(input.key.credentials.kid).toBe(test.manifest.credential.keyId);
+      await expect(test.plans.input(ticket)).rejects.toMatchObject({
+        code: "invalid_runner_ticket",
+      });
+      await test.plans.stage(ticket, "validating");
+      await test.plans.stage(ticket, "planning");
+      const artifact = await test.plans.artifact(ticket, {
+        data: Buffer.from("service-plan-never-executed").toString("base64"),
+        summary,
+      });
+      await test.plans.result(ticket, {
+        status: "succeeded",
+        summary,
+        artifactSha256: artifact.sha256,
+      });
+      expect(test.runner.start).toHaveBeenCalledTimes(1);
+      await expect(
+        test.plans.apply(test.owner, test.token, run.id, {
+          ...test.approval(artifact.sha256),
+          confirmApply: false,
+        }),
+      ).rejects.toBeDefined();
+      expect(test.runner.start).toHaveBeenCalledTimes(1);
+      expect(test.repositories.prepareSnapshot).not.toHaveBeenCalled();
+      expect(test.token).not.toHaveBeenCalled();
+    });
+
+    it("requires verified image capability for HA plans and denies even explicitly approved appliance apply", async () => {
+      const test = await fixture(false, true, true);
+      const preparations = new Preparations(
+        pool,
+        test.repositories,
+        test.profiles,
+      );
+      const prepared = await preparations.create(test.owner, null, {
+        source: "database",
+        configurationId: test.configurationId,
+        revision: 1,
+        credentialId: test.credentialId,
+      });
+      test.runner.firewallPlansEnabled = false;
+      test.profiles.verifyForPreparation.mockClear();
+      await expect(
+        test.plans.start(test.owner, test.token, prepared.id),
+      ).rejects.toMatchObject({ code: "runner_firewall_image_unavailable" });
+      expect(test.profiles.verifyForPreparation).not.toHaveBeenCalled();
+      expect(test.secrets.get).not.toHaveBeenCalled();
+      expect(test.runner.start).not.toHaveBeenCalled();
+      test.runner.firewallPlansEnabled = true;
+      const run = await test.plans.start(test.owner, test.token, prepared.id);
+      const ticket = test.tickets.get(run.id)!;
+      const input = await test.plans.input(ticket);
+      expect(input.firewallInfrastructure).toBe(true);
+      expect(input.tfvarsSha256).toBe(test.manifest.tfvarsSha256);
+      await test.plans.stage(ticket, "validating");
+      await test.plans.stage(ticket, "planning");
+      const artifact = await test.plans.artifact(ticket, {
+        data: Buffer.from("mock-ha-plan-never-applied").toString("base64"),
+        summary,
+      });
+      await test.plans.result(ticket, {
+        status: "succeeded",
+        summary,
+        artifactSha256: artifact.sha256,
+      });
+      expect(
+        (await test.plans.list(test.owner)).find((item) => item.id === run.id)
+          ?.applyAllowed,
+      ).toBe(false);
+      await expect(
+        test.plans.apply(
+          test.owner,
+          test.token,
+          run.id,
+          test.approval(artifact.sha256),
+        ),
+      ).rejects.toMatchObject({ code: "configuration_apply_not_supported" });
+      expect(test.runner.start).toHaveBeenCalledTimes(1);
+    });
 
     it("prepares an explicitly selected platform upgrade on the exact existing state without rebinding the old preparation", async () => {
       const test = await fixture();

@@ -8,20 +8,47 @@ import {
 } from "@lzc/domain";
 import type { ReactNode } from "react";
 import { t } from "../i18n";
+import {
+  type PlatformComponent,
+  platformProjectComponents,
+} from "./platform-components";
 import { projectTemplateSummary } from "./project-template-summary";
 
-function Project({ name, detail }: { name: string; detail: string }) {
+function Project({
+  name,
+  detail,
+  components = [],
+}: {
+  name: string;
+  detail: string;
+  components?: PlatformComponent[] | undefined;
+}) {
   return (
-    <div className="tree-node">
-      <span className="node-symbol" aria-hidden="true">
-        □
-      </span>
-      <div>
-        <small>
-          {t("Projekt ·")} {detail}
-        </small>
-        <strong>{name}</strong>
+    <div className="tree-project">
+      <div className="tree-node">
+        <span className="node-symbol" aria-hidden="true">
+          □
+        </span>
+        <div>
+          <small>
+            {t("Projekt ·")} {detail}
+          </small>
+          <strong>{name}</strong>
+        </div>
       </div>
+      {components.length > 0 && (
+        <ul
+          className="project-components"
+          aria-label={t("Komponenten in {{value0}}", { value0: name })}
+        >
+          {components.map((component) => (
+            <li key={component.key}>
+              <small>{t(component.type)}</small>
+              <strong>{component.name || t("Unbenannte Komponente")}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -55,6 +82,7 @@ export function Topology({
   const projects = Object.entries(objectValue(values.landing_zones));
   const sandboxes = Array.isArray(values.sandboxes) ? values.sandboxes : [];
   const hubs = areaLocations(values);
+  const components = platformProjectComponents(values);
   // An explicitly supplied rm_folders map replaces the root default; it is not merged by OpenTofu.
   const folders =
     values.rm_folders == null
@@ -73,6 +101,7 @@ export function Topology({
               key="management"
               name={`${company}-pltfm-mgmt-prod`}
               detail="Management"
+              components={components.management}
             />,
           );
           for (const hub of hubs)
@@ -81,6 +110,7 @@ export function Topology({
                 key={hub.path}
                 name="Netzwerk-Hub"
                 detail={`Konnektivität · ${hub.region} · ${hub.key}`}
+                components={components[hub.path]}
               />,
             );
           if (values.devops != null)
@@ -89,6 +119,7 @@ export function Topology({
                 key="devops"
                 name={`${company}-pltfm-devops-prod`}
                 detail="DevOps"
+                components={components.devops}
               />,
             );
           for (const [id, cluster] of Object.entries(
@@ -99,6 +130,7 @@ export function Topology({
                 key={`k8s-${id}`}
                 name={`${company}-pltfm-k8s-${textValue(objectValue(cluster).region)}`}
                 detail="Plattform-Kubernetes"
+                components={components[`k8s-${id}`]}
               />,
             );
         }

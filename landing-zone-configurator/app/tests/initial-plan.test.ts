@@ -6,6 +6,8 @@ import {
   createEditorConfiguration,
   editCommonInput,
   initialPlanIssues,
+  initialPlanRequiresFirewallImage,
+  type JsonValue,
   migrateCommonConfiguration,
   objectValue,
   recordValues,
@@ -58,17 +60,14 @@ it("does not interpret omitted corporate as Public and blocks additional project
     ).some((i) => i.field.endsWith("observability")),
   ).toBe(true);
 });
-it("rejects network, Kubernetes and regional execution rather than trusting a Standalone label", () => {
+it("rejects Kubernetes and regional execution rather than trusting a Standalone label", () => {
   const document = fixture();
   for (const [key, value] of [
-    ["devops", { git_flavor: "git-10" }],
     [
       "platform_kubernetes",
       createCommonConfiguration("hub-and-spoke-multi-region", randomUUID())
         .features.platform.platform_kubernetes,
     ],
-    ["observability", {}],
-    ["audit_logs", {}],
     ["region", "eu02"],
   ] as const) {
     expect(
@@ -78,6 +77,123 @@ it("rejects network, Kubernetes and regional execution rather than trusting a St
       key,
     ).toBe(true);
   }
+});
+
+it("allows packaged management, Git and connectivity services without rewriting exports", () => {
+  let document = fixture();
+  for (const [key, value] of [
+    [
+      "devops",
+      { git_flavor: "git-10", allowed_network_ranges: ["192.0.2.0/24"] },
+    ],
+    ["observability", {}],
+    ["audit_logs", { s3_object_lock: false }],
+    [
+      "connectivity",
+      {
+        network_areas: {
+          default: {
+            ranges: ["10.0.0.0/16"],
+            transfer_network: "10.255.0.0/24",
+          },
+        },
+        dns_zones: { internal: { dns_name: "internal.stackit.run" } },
+      },
+    ],
+  ] satisfies [string, JsonValue][])
+    document = editCommonInput(document, key, value);
+  const before = serializeTfvars(recordValues(document));
+  expect(initialPlanIssues(document)).toEqual([]);
+  expect(serializeTfvars(recordValues(document))).toBe(before);
+  const scopes = [
+    {
+      resource_type: "organization",
+      resource_id: recordValues(document).organization_id ?? null,
+    },
+  ];
+  expect(
+    initialPlanIssues(
+      editCommonInput(document, "audit_logs", { link_scopes: scopes }),
+    ),
+  ).toEqual([]);
+  const noAppliances = editCommonInput(fixture(), "connectivity", {
+    network_area: {
+      ranges: ["10.0.0.0/16"],
+      transfer_network: "10.255.0.0/24",
+    },
+    firewalls: {},
+  });
+  expect(initialPlanIssues(noAppliances, "apply")).toEqual(
+    initialPlanIssues(noAppliances),
+  );
+  expect(initialPlanRequiresFirewallImage(noAppliances)).toBe(false);
+});
+
+it("allows appliance plans but gates apply, VPN connections and unproven audit scopes", () => {
+  let document = fixture();
+  const connectivity = createCommonConfiguration(
+    "hub-and-spoke-firewall",
+    randomUUID(),
+  ).features.network.connectivity;
+  document = editCommonInput(document, "connectivity", connectivity);
+  expect(initialPlanIssues(document)).toEqual([]);
+  expect(initialPlanRequiresFirewallImage(document)).toBe(true);
+  expect(initialPlanIssues(document, "apply")).toContainEqual(
+    expect.objectContaining({ field: "connectivity.firewall" }),
+  );
+  expect(
+    initialPlanIssues(editCommonInput(document, "firewall_bootstrap", true)),
+  ).toContainEqual(
+    expect.objectContaining({
+      field: "firewall_bootstrap",
+      message: expect.stringContaining("mehrstufigen"),
+    }),
+  );
+  const vpnDocument = editCommonInput(fixture(), "connectivity", {
+    network_area: {
+      ranges: ["10.0.0.0/16"],
+      transfer_network: "10.255.0.0/24",
+    },
+    vpn: {
+      availability_zones: { tunnel1: "eu01-1", tunnel2: "eu01-2" },
+      connections: {
+        office: {
+          static_routes: ["192.0.2.0/24"],
+          tunnel1: { remote_address: "192.0.2.1" },
+          tunnel2: { remote_address: "198.51.100.1" },
+        },
+      },
+    },
+  });
+  expect(initialPlanIssues(vpnDocument)).toContainEqual(
+    expect.objectContaining({
+      field: "connectivity.vpn.connections",
+      message: expect.stringContaining("Pre-Shared Keys"),
+    }),
+  );
+  expect(
+    initialPlanIssues(
+      editCommonInput(fixture(), "connectivity", {
+        network_area: {
+          ranges: ["10.0.0.0/16"],
+          transfer_network: "10.255.0.0/24",
+        },
+        vpn: { availability_zones: { tunnel1: "eu01-1", tunnel2: "eu01-2" } },
+      }),
+    ),
+  ).toEqual([]);
+  for (const scope of [
+    { resource_type: "organization", resource_id: randomUUID() },
+    { resource_type: "folder", resource_id: randomUUID() },
+    { resource_type: "project", resource_id: randomUUID() },
+  ])
+    expect(
+      initialPlanIssues(
+        editCommonInput(fixture(), "audit_logs", { link_scopes: [scope] }),
+      ),
+    ).toContainEqual(
+      expect.objectContaining({ field: "audit_logs.link_scopes.0" }),
+    );
 });
 
 it("accepts a new Standalone editor draft after filling identities and rejects ignored nested fields", () => {
@@ -150,7 +266,7 @@ it("plans reviewed governance subjects and parent folders without rewriting save
     }),
   );
 });
-it("explains ignored populated descriptions and keeps federation/network execution gated", () => {
+it("explains ignored populated descriptions and keeps federation execution gated", () => {
   const document = fixture();
   const updated = editCommonInput(document, "rm_folders", {
     platform: {

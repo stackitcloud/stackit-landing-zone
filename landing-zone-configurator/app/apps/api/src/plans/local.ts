@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   applicationRunnerSourceSchema,
+  platformFirewallImage,
   platformRunnerSourceSchema,
 } from "@lzc/contracts";
 import { z } from "zod";
@@ -115,6 +116,7 @@ export class LocalPlanRunner implements PlanRunner {
     private readonly broker: "platform" | "application",
     readonly acceleratorCommit: string,
     readonly applicationMaintenanceEnabled: boolean,
+    readonly firewallPlansEnabled: boolean,
   ) {}
 
   static async open(
@@ -139,15 +141,21 @@ export class LocalPlanRunner implements PlanRunner {
     if (JSON.parse(engine.stdout).terraform_version !== "1.12.6")
       throw new Error("Local runner requires OpenTofu 1.12.6");
     let maintenanceEnabled = false;
+    let firewallPlansEnabled = false;
     const source =
       broker === "platform"
         ? await readFile(
             join(packageRoot, "platform-source.json"),
             "utf8",
           ).then(
-            (value) =>
-              platformRunnerSourceSchema.parse(JSON.parse(value))
-                .acceleratorCommit,
+            (value) => {
+              const metadata = platformRunnerSourceSchema.parse(
+                JSON.parse(value),
+              );
+              firewallPlansEnabled =
+                metadata.firewallImageSha256 === platformFirewallImage.sha256;
+              return metadata.acceleratorCommit;
+            },
             (error: NodeJS.ErrnoException) => {
               if (error.code !== "ENOENT") throw error;
               return "a256f6896d11134fdc351786f1be5eba4e56b2e2";
@@ -169,6 +177,16 @@ export class LocalPlanRunner implements PlanRunner {
               return "c4b43c36af198985980b17626c48d357795e3fbd";
             },
           );
+    if (firewallPlansEnabled) {
+      const image = join(packageRoot, "accelerator/firewall-image.qcow2");
+      const info = await lstat(image);
+      if (!info.isFile() || info.isSymbolicLink())
+        throw new Error("Invalid packaged firewall image");
+      const hash = createHash("sha256");
+      for await (const chunk of createReadStream(image)) hash.update(chunk);
+      if (hash.digest("hex") !== platformFirewallImage.sha256)
+        throw new Error("Packaged firewall image checksum mismatch");
+    }
     const identity = await fingerprint(packageRoot, broker);
     await mkdir(jobs, { recursive: true, mode: 0o700 });
     await chmod(jobs, 0o700);
@@ -179,6 +197,7 @@ export class LocalPlanRunner implements PlanRunner {
       broker,
       source,
       maintenanceEnabled,
+      firewallPlansEnabled,
     );
   }
 

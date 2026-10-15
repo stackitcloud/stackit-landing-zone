@@ -304,10 +304,13 @@ export function Account({
           <button
             type="button"
             className="button secondary"
+            title={t(
+              "Du bist im Configurator angemeldet. Für geschützte STACKIT-Aktionen ist eine aktuelle Bestätigung erforderlich.",
+            )}
             disabled={busy || !!authorization}
             onClick={() => void start()}
           >
-            {t("Mit STACKIT anmelden")}
+            {t("STACKIT bestätigen")}
           </button>
         )}
       {authorization && (
@@ -319,7 +322,14 @@ export function Account({
             void cancel();
           }}
         >
-          <h2>{t("STACKIT-Anmeldung")}</h2>
+          <h2>{session ? t("STACKIT bestätigen") : t("STACKIT-Anmeldung")}</h2>
+          {session && (
+            <p>
+              {t(
+                "Du bist im Configurator angemeldet. Für geschützte STACKIT-Aktionen ist eine aktuelle Bestätigung erforderlich.",
+              )}
+            </p>
+          )}
           {authorization.userCode && (
             <output aria-label={t("Anmeldecode")}>
               {authorization.userCode}

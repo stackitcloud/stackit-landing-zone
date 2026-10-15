@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
+import { constants } from "node:fs";
 import {
   chmod,
   copyFile,
@@ -17,7 +18,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { platformRunnerSourceSchema } from "@lzc/contracts";
+import {
+  platformFirewallImage,
+  platformRunnerSourceSchema,
+} from "@lzc/contracts";
+import {
+  createEditorConfiguration,
+  editCommonInput,
+  initialPlanIssues,
+  type JsonValue,
+  recordValues,
+  serializeTfvars,
+} from "@lzc/domain";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   acceleratorCommit,
@@ -133,7 +145,11 @@ const http = Boolean(env.TF_HTTP_ADDRESS);
 const s3 = env.LZC_BACKEND_KIND === "s3";
 const backend = s3 ? JSON.parse(fs.readFileSync("backend.tf.json", "utf8")) : null;
 fs.appendFileSync(${JSON.stringify(callsPath)}, JSON.stringify({args, work: process.cwd(), http, s3, backend,
+  tfvarsSha256: fs.existsSync("landing-zone.tfvars") ? crypto.createHash("sha256").update(fs.readFileSync("landing-zone.tfvars")).digest("hex") : null,
+  keyMode: fs.statSync(env.STACKIT_SERVICE_ACCOUNT_KEY_PATH).mode & 0o777,
+  keyInWork: env.STACKIT_SERVICE_ACCOUNT_KEY_PATH === require("node:path").join(process.cwd(), "credential.json"),
   rootMarker: fs.readFileSync("root-marker", "utf8"),
+  firewallImageBytes: fs.existsSync("firewall-image.qcow2") ? fs.statSync("firewall-image.qcow2").size : 0,
   modulePresent: fs.existsSync("../modules/landing-zone/main.tf"),
   cliConfig: fs.readFileSync(env.TF_CLI_CONFIG_FILE, "utf8"),
   cliConfigMode: fs.statSync(env.TF_CLI_CONFIG_FILE).mode & 0o777,
@@ -269,6 +285,10 @@ LZC_FAKE_TOFU
       sourceBackendPresent: boolean;
       rootMarker: string;
       modulePresent: boolean;
+      firewallImageBytes: number;
+      tfvarsSha256: string | null;
+      keyMode: number;
+      keyInWork: boolean;
     }[]
   > =>
     readFile(callsPath, "utf8").then(
@@ -292,10 +312,163 @@ LZC_FAKE_TOFU
   };
 }
 
+it.each([undefined, "platform-plan"])(
+  "passes reviewed service inputs intact through the isolated %s runner",
+  async (mode) => {
+    const test = await fixture(mode);
+    if (mode === undefined) {
+      delete test.input.mode;
+      delete test.input.backend;
+    }
+    let document = createEditorConfiguration(
+      "standalone",
+      "11111111-1111-4111-8111-111111111111",
+    );
+    document = editCommonInput(
+      document,
+      "organization_id",
+      "22222222-2222-4222-8222-222222222222",
+    );
+    document = editCommonInput(document, "owner_email", "owner@stackit.cloud");
+    for (const [key, value] of [
+      ["audit_logs", {}],
+      ["observability", {}],
+      ["devops", { git_flavor: "git-10" }],
+      [
+        "connectivity",
+        {
+          network_area: {
+            ranges: ["10.0.0.0/16"],
+            transfer_network: "10.255.0.0/24",
+          },
+          vpn: { availability_zones: { tunnel1: "eu01-1", tunnel2: "eu01-2" } },
+        },
+      ],
+    ] satisfies [string, JsonValue][])
+      document = editCommonInput(document, key, value);
+    expect(initialPlanIssues(document)).toEqual([]);
+    const tfvars = serializeTfvars(recordValues(document));
+    test.input.tfvars = tfvars;
+    test.input.tfvarsSha256 = digest(tfvars);
+    expect(await test.execute()).toBe("succeeded");
+    const calls = await test.calls();
+    expect(calls.map((call) => call.args[0])).toEqual([
+      "init",
+      "validate",
+      "plan",
+      "show",
+    ]);
+    for (const call of calls) {
+      expect(call.tfvarsSha256).toBe(test.input.tfvarsSha256);
+      expect(call.keyMode).toBe(0o600);
+      expect(call.keyInWork).toBe(true);
+      expect(call.http).toBe(mode === "platform-plan");
+      await expect(stat(call.work)).rejects.toThrow("ENOENT");
+    }
+    expect(
+      test.reports.filter((report) => report.path === "artifact"),
+    ).toHaveLength(mode === "platform-plan" ? 1 : 0);
+    expect(test.reports.some((report) => report.path === "migration")).toBe(
+      false,
+    );
+    test.input.tfvars = `${tfvars}\ndevops = null\n`;
+    const count = calls.length;
+    expect(await test.execute()).toBe("failed");
+    expect(await test.calls()).toHaveLength(count);
+  },
+);
+
 const applicationBinding = {
   tenantId: "11111111-1111-4111-8111-111111111111",
   instanceId: "22222222-2222-4222-8222-222222222222",
 };
+
+it.each(["missing", "corrupt", "apply"] as const)(
+  "rejects %s firewall image capability before engine or provisioner access",
+  async (variant) => {
+    const test = await fixture(
+      variant === "apply" ? "platform-apply" : "platform-plan",
+    );
+    test.input.firewallInfrastructure = true;
+    if (variant !== "missing") {
+      await writeFile(
+        join(test.root, "platform-source.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          acceleratorCommit,
+          firewallImageSha256: platformFirewallImage.sha256,
+        }),
+      );
+      await writeFile(
+        join(test.root, "accelerator/firewall-image.qcow2"),
+        "not-the-verified-image",
+      );
+    }
+    expect(await test.execute()).toBe("failed");
+    expect(await test.calls()).toEqual([]);
+    expect(test.reports.some((report) => report.path === "artifact")).toBe(
+      false,
+    );
+  },
+);
+
+it.runIf(Boolean(process.env.LZC_FIREWALL_IMAGE_PACKAGE))(
+  "uses the verified packaged image for firewall infrastructure plans without any apply",
+  async () => {
+    const packageRoot = process.env.LZC_FIREWALL_IMAGE_PACKAGE as string;
+    const packaged: typeof import("../apps/worker/src/runner.js") =
+      await import(
+        pathToFileURL(join(packageRoot, "apps/worker/dist/runner.js")).href
+      );
+    const metadata = platformRunnerSourceSchema.parse(
+      JSON.parse(
+        await readFile(join(packageRoot, "platform-source.json"), "utf8"),
+      ),
+    );
+    const source = join(packageRoot, "accelerator/firewall-image.qcow2");
+    const bytes = (await stat(source)).size;
+    for (const mode of ["initial-plan-only", "platform-plan"]) {
+      const test = await fixture(mode);
+      await copyFile(
+        source,
+        join(test.root, "accelerator/firewall-image.qcow2"),
+        constants.COPYFILE_FICLONE,
+      );
+      await copyFile(
+        join(packageRoot, "platform-source.json"),
+        join(test.root, "platform-source.json"),
+      );
+      test.input.acceleratorCommit = metadata.acceleratorCommit;
+      test.input.firewallInfrastructure = true;
+      test.input.tfvars =
+        'connectivity = { network_area = { ranges = ["10.0.0.0/16"], transfer_network = "10.255.0.0/24" }, firewall = { name = "fixture", flavor = "c1.2", zone = "eu01-1", lan_network_range = "10.0.0.0/24", wan_network_range = "10.0.1.0/24", ha = { backup_zone = "eu01-2" } } }\n';
+      test.input.tfvarsSha256 = digest(String(test.input.tfvars));
+      expect(
+        await packaged.runWorker({
+          root: test.root,
+          id: "run-id",
+          ticket,
+          brokerOrigin,
+          ...test.options,
+        }),
+      ).toBe("succeeded");
+      const calls = await test.calls();
+      expect(calls.map((call) => call.args[0])).toEqual([
+        "init",
+        "validate",
+        "plan",
+        "show",
+      ]);
+      expect(calls.every((call) => call.firewallImageBytes === bytes)).toBe(
+        true,
+      );
+      expect(test.reports.some((report) => report.path === "migration")).toBe(
+        false,
+      );
+    }
+  },
+  60000,
+);
 function applicationInput(
   test: Awaited<ReturnType<typeof fixture>>,
   mode = "application-plan",

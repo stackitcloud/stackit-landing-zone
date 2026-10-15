@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import {
   copyFile,
   cp,
@@ -19,6 +20,7 @@ import {
   applicationMvpAcceleratorCommit,
   applicationRunnerBindingSchema,
   planResultSchema,
+  platformFirewallImage,
   platformRunnerSourceSchema,
   type S3RunnerBackend,
   s3BackendConfiguration,
@@ -202,6 +204,29 @@ export async function runWorker(
     )
       throw new Error("Runner input mismatch");
     const key = object(input.key);
+    if (
+      input.firewallInfrastructure !== undefined &&
+      input.firewallInfrastructure !== true
+    )
+      throw new Error("Invalid firewall capability");
+    if (input.firewallInfrastructure === true) {
+      if (
+        applicationJob ||
+        applying ||
+        platformSource?.firewallImageSha256 !== platformFirewallImage.sha256
+      )
+        throw new Error(
+          "Firewall infrastructure is plan-only and requires a verified image package",
+        );
+      const image = resolve(options.root, "accelerator/firewall-image.qcow2");
+      const info = await lstat(image);
+      if (!info.isFile() || info.isSymbolicLink())
+        throw new Error("Invalid packaged firewall image");
+      const hash = createHash("sha256");
+      for await (const chunk of createReadStream(image)) hash.update(chunk);
+      if (hash.digest("hex") !== platformFirewallImage.sha256)
+        throw new Error("Packaged firewall image checksum mismatch");
+    }
     if (
       mode === "initial-plan-only" &&
       (input.backend !== undefined || input.plan !== undefined)

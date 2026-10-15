@@ -2,6 +2,7 @@ import {
   type CommonConfiguration,
   catalogue,
   createCommonConfiguration,
+  createEditorConfiguration,
   editCommonInput,
   objectValue,
   readConfigurationRecord,
@@ -126,6 +127,163 @@ test("platform editor defines project templates without concrete application pro
     ),
   ).toBe(true);
   expect(errors).toEqual([]);
+});
+
+test("platform structure shows components with only name and type in their owning project", async ({
+  page,
+}, testInfo) => {
+  const id = "11111111-2222-4333-8444-555555555556";
+  let draft = createEditorConfiguration("hub-and-spoke", id);
+  draft = editCommonInput(draft, "company_code", "acme");
+  draft = editCommonInput(draft, "company_name", "Example Company");
+  draft = editCommonInput(draft, "observability", {});
+  draft = editCommonInput(draft, "audit_logs", { retention_days: 90 });
+  draft = editCommonInput(draft, "devops", { git_flavor: "synthetic-git" });
+  const area = { ranges: ["10.0.0.0/16"], transfer_network: "100.64.0.0/24" };
+  const firewall = {
+    name: "Corporate edge",
+    zone: "eu01-1",
+    flavor: "g2i.2",
+    lan_network_range: "10.0.1.0/24",
+    wan_network_range: "192.168.0.0/24",
+    ha: { backup_zone: "eu01-2", backup_name: "Corporate standby" },
+  };
+  draft = editCommonInput(draft, "connectivity_regions", {
+    eu01: {
+      network_areas: {
+        default: { ...area, name: "Corporate network" },
+        dmz: area,
+      },
+      firewalls: {
+        default: firewall,
+        dmz: { ...firewall, name: "DMZ edge", ha: null },
+      },
+      dns_zones: {
+        corporate: { dns_name: "corporate.example", name: "Corporate DNS" },
+        dmz: { dns_name: "dmz.example", network_area_key: "dmz" },
+      },
+      vpn: {
+        display_name: "Office VPN",
+        plan_id: "synthetic-vpn-plan",
+        availability_zones: { tunnel1: "eu01-1", tunnel2: "eu01-2" },
+      },
+    },
+    eu02: { network_areas: { default: area } },
+  });
+  draft = editCommonInput(draft, "platform_kubernetes", {
+    primary: {
+      region: "eu01",
+      cluster: { name: "platform-cluster" },
+      network: { sna_enabled: true },
+      dns: { zones: ["platform.example"] },
+      observability: { name: "Cluster monitoring" },
+    },
+  });
+  let saves = 0;
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() === "PUT") saves++;
+    return route.fulfill({
+      json: { configuration: { id, name: draft.name, revision: 1, draft } },
+    });
+  });
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const tree = page.locator(".topology").first();
+  const management = tree
+    .locator(".tree-project")
+    .filter({ hasText: "acme-pltfm-mgmt-prod" });
+  await expect(management.getByRole("listitem")).toHaveCount(8);
+  await expect(management).toContainText("Service Account");
+  await expect(management).toContainText("STACKIT Secrets Manager");
+  await expect(management).toContainText("STACKIT Logs");
+  await expect(management).toContainText("Telemetry Router");
+  const corporate = tree
+    .locator(".tree-project")
+    .filter({ hasText: "Konnektivität · eu01 · default" });
+  await expect(corporate).toContainText("Corporate network");
+  await expect(corporate).toContainText("Corporate edge");
+  await expect(corporate).toContainText("Corporate standby");
+  await expect(corporate).toContainText("Corporate DNS");
+  await expect(corporate).toContainText("Office VPN");
+  await expect(corporate).not.toContainText("dmz.example");
+  const dmz = tree
+    .locator(".tree-project")
+    .filter({ hasText: "Konnektivität · eu01 · dmz" });
+  await expect(dmz).toContainText("dmz.example");
+  await expect(dmz).not.toContainText("Corporate DNS");
+  const eu02 = tree
+    .locator(".tree-project")
+    .filter({ hasText: "Konnektivität · eu02 · default" });
+  await expect(eu02.getByRole("listitem")).toHaveCount(1);
+  const kubernetes = tree
+    .locator(".tree-project")
+    .filter({ hasText: "Plattform-Kubernetes" });
+  await expect(kubernetes).toContainText("platform-cluster");
+  await expect(kubernetes).toContainText("platform-cluster-sna");
+  await expect(kubernetes).toContainText("platform.example");
+  await expect(kubernetes).toContainText("Cluster monitoring");
+  await expect(
+    tree.locator(".tree-project").filter({ hasText: "DevOps" }),
+  ).toContainText("example-company");
+  for (const item of await tree.locator(".project-components li").all())
+    await expect(item.locator(":scope > *")).toHaveCount(2);
+  const components = (
+    await tree.locator(".project-components").allTextContents()
+  ).join(" ");
+  expect(components).not.toContain("10.0.0.0");
+  expect(components).not.toContain("synthetic-vpn-plan");
+  expect(components).not.toContain("retention_days");
+  await page.getByLabel("Unternehmenskürzel", { exact: true }).fill("changed");
+  await expect(tree).toContainText("changed-pltfm-mgmt-prod-default");
+  await expect(tree).not.toContainText("acme-pltfm-mgmt-prod-default");
+  await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+  await expect(tree).toContainText("Corporate network");
+  await expect(tree).toContainText("Object storage bucket");
+  await expect(tree).toContainText("DNS zone");
+  await expect(tree).toContainText("Corporate DNS");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await tree.screenshot({
+    path: testInfo.outputPath("platform-components.png"),
+  });
+  expect(saves).toBe(0);
 });
 
 test("shared configuration saves, reopens and restores in the account workspace", async ({
