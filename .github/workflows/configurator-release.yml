@@ -301,6 +301,12 @@ jobs:
       - name: CF push application
         id: push
         run: cf push -f deploy/cloud-foundry/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-vars.json" --redact-env
+      - name: Sanitized application staging failure diagnostics
+        if: failure() && steps.push.outcome == 'failure'
+        run: |
+          app_id="$(cf app landing-zone-configurator --guid)"
+          cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq '.resources[] | {guid, state, error, staging_disk_in_mb, staging_memory_in_mb}'
+          cf logs landing-zone-configurator --recent | awk '/\[STG\/[0-9]+\]/ { print }'
       - name: CF network diagnostics
         timeout-minutes: 3
         run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-network.js' --name "network-$GITHUB_RUN_ID" -m 128M -k 4096M --wait

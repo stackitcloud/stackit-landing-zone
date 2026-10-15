@@ -256,6 +256,10 @@ test("release pins the final buildpack to the approved source and excludes image
   );
   assert.ok(workflow.includes("jq '.resources[] | {guid, state, error}'"));
   assert.ok(pack.includes("--exclude='./accelerator/firewall-image.qcow2'"));
+  assert.ok(
+    workflow.includes("if: failure() && steps.push.outcome == 'failure'"),
+  );
+  assert.ok(workflow.includes("awk '/\\[STG\\/[0-9]+\\]/ { print }'"));
   assert.ok(pack.includes('tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .'));
   for (const manifest of [
     "deploy/runner/manifest.yml",

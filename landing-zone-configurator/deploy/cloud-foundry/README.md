@@ -58,6 +58,8 @@ share mutable job files or claim that a larger upload limit was configured.
 If Runner staging fails, the release also reports the latest V3 build's state
 and error and recent Runner logs while still targeting the isolated Runner space.
 This keeps lifecycle/cache-upload errors distinct from buildpack image verification.
+Failed web staging reports only staging (`STG`) log entries,
+never router/callback logs that could contain OAuth codes, plus V3 staging limits.
 
 `manifest.yml` owns the application, route, process size, health check and backend
 environment bindings. OpenTofu owns the CF org/space/roles and backing services;
