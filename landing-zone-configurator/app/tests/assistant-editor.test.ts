@@ -427,6 +427,23 @@ describe("topic knowledge delivery", () => {
             topic,
             ...extra,
           ]);
+          if (topic !== "firewall-infrastructure") {
+            expect(request.messages[0]).toMatchObject({
+              role: "system",
+              content: expect.stringContaining("ANSWER COMPLETENESS:"),
+            });
+            expect(request.messages[0]?.content).toContain(
+              "including null meaning no optional service instance",
+            );
+            expect(request.messages[0]?.content).toContain(
+              "Questions may ask only genuinely missing decisions after the factual answer",
+            );
+            expect(request.messages.at(-1)).toEqual({
+              role: "user",
+              content:
+                "Bitte erläutere die Bedeutung und Grenzen dieser Komponente.",
+            });
+          }
         },
       );
       const result = await model.converse(

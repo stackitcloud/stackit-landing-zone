@@ -2192,6 +2192,15 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
             .slice(-12)
             .map((entry) => ({ role: entry.role, content: entry.content })),
           { role: "user", content: message },
+          ...(!draftAllowed && !firewallAdvice
+            ? [
+                {
+                  role: "system" as const,
+                  content:
+                    "ANSWER COMPLETENESS: Put the complete factual answer in explanation itself, in the user's language. An introduction announcing rules or a list is not an answer: actually include the requested fields, supported values, limits and exclusions from the reviewed topic. Contract names, versions, dates and references are provenance, not substitutes for those facts. Explain native defaults, including null meaning no optional service instance, where relevant; do not promote illustrative enabled values to defaults. Questions may ask only genuinely missing decisions after the factual answer; never move the answer's facts into questions. Before finishing, check that explanation stands alone without an absent continuation or a promised list. Do not invent facts, propose changes or claim anything was saved or executed.",
+                },
+              ]
+            : []),
           ...(dnsSettingsDraft
             ? [
                 {
