@@ -254,7 +254,7 @@ test("release pins the final buildpack to the approved source and excludes image
       "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1",
     ),
   );
-  assert.ok(workflow.includes("jq '.resources[] | {guid, state, error}'"));
+  assert.ok(workflow.includes('cf curl "/v3/droplets/$droplet_id"'));
   assert.ok(pack.includes("--exclude='./accelerator/firewall-image.qcow2'"));
   assert.match(
     await readFile(
@@ -303,4 +303,85 @@ test("release pins the final buildpack to the approved source and excludes image
     ),
     /buildpacks: \[binary_buildpack\]/,
   );
+});
+
+test("actual staging diagnostics report the failed build's droplet, not the current healthy droplet", async () => {
+  const workflow = await readFile(
+    resolve(repository, ".github/workflows/configurator-release.yml"),
+    "utf8",
+  );
+  const work = await mkdtemp(resolve(tmpdir(), "lzc-staging-diagnostics-"));
+  try {
+    await writeFile(
+      resolve(work, "cf"),
+      `#!/usr/bin/env bash
+set -euo pipefail
+case "$1" in
+  app) printf '%s\\n' app-id ;;
+  curl)
+    case "$2" in
+      /v3/builds\\?*) printf '%s\\n' "$DIAGNOSTIC_BUILDS" ;;
+      /v3/droplets/failed-droplet)
+        if [ "\${DIAGNOSTIC_HTTP_FAILURE:-}" = true ]; then echo 'CF HTTP 403' >&2; exit 1; fi
+        printf '%s\\n' "$DIAGNOSTIC_DROPLET" ;;
+      *) echo 'Unexpected CF endpoint' >&2; exit 1 ;;
+    esac ;;
+  logs) printf '%s\\n' '[STG/0] OUT staging message' '[RTR/0] OUT private-router-code' ;;
+  *) exit 1 ;;
+esac
+`,
+    );
+    await chmod(resolve(work, "cf"), 0o700);
+    const failed = {
+      guid: "failed-build",
+      state: "FAILED",
+      error: "StagingError - Staging error: staging failed",
+      droplet: { guid: "failed-droplet" },
+      environment_variables: { SECRET: "private-build-value" },
+    };
+    for (const name of [
+      "Runner staging failure diagnostics",
+      "Sanitized application staging failure diagnostics",
+    ]) {
+      const block = workflow
+        .split(`- name: ${name}\n`)[1]
+        ?.split("\n      - ")[0];
+      const command = block
+        ?.split("        run: |\n")[1]
+        ?.replace(/^          /gm, "");
+      assert.ok(command);
+      const run = (builds, extra = {}) =>
+        spawnSync("bash", ["-e", "-o", "pipefail", "-c", command], {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            PATH: `${work}:${process.env.PATH}`,
+            DIAGNOSTIC_BUILDS: JSON.stringify({ resources: builds }),
+            DIAGNOSTIC_DROPLET: JSON.stringify({
+              guid: "failed-droplet",
+              state: "FAILED",
+              error: "StagingTimeExpired",
+              execution_metadata: "private-droplet-value",
+            }),
+            ...extra,
+          },
+        });
+      const result = run([failed]);
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /StagingTimeExpired/);
+      assert.doesNotMatch(result.stdout, /private-(build|droplet)-value/);
+      if (name.startsWith("Sanitized"))
+        assert.doesNotMatch(result.stdout, /private-router-code/);
+      const absent = run([{ ...failed, droplet: null }]);
+      assert.equal(absent.status, 0, absent.stderr);
+      assert.match(absent.stderr, /no associated droplet/);
+      assert.notEqual(run([]).status, 0);
+      assert.notEqual(
+        run([failed], { DIAGNOSTIC_HTTP_FAILURE: "true" }).status,
+        0,
+      );
+    }
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
 });

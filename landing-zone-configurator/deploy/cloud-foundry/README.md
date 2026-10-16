@@ -79,6 +79,18 @@ the redundant image cache. Runner template and isolated job/task budgets remain
 4096 MiB; the measured native Runner runtime budget is unchanged.
 If Runner staging fails, the release also reports the latest V3 build's state
 and error and recent Runner logs while still targeting the isolated Runner space.
+Both Runner and Web/API diagnostics read the droplet linked to that failed build,
+not the application's current (possibly still healthy) droplet, and report its
+state, error and timestamps. A generic build `StagingError` can hide the more
+specific droplet error `StagingTimeExpired`, even after the lifecycle exits zero
+and logs a completed droplet upload. A preceding missing buildpack `config.yml`
+message is not by itself proof of failure: the lifecycle reports it without
+failing, and successful releases have emitted it too. Inspect both build and
+droplet status before changing buildpack code or retrying. `CF_STAGING_TIMEOUT`
+only controls the CLI's wait; it does not extend a platform-side timeout.
+If the platform expires the staging result, retain the build/droplet identifiers
+and timestamps for operator/provider investigation. Do not weaken image
+verification, repoint protected source tags or add automatic deployment retries.
 This keeps lifecycle/cache-upload errors distinct from buildpack image verification.
 Failed web staging reports only staging (`STG`) log entries,
 never router/callback logs that could contain OAuth codes, plus V3 staging limits.
