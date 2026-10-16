@@ -312,7 +312,14 @@ jobs:
         if: failure() && steps.stage_runner.outcome == 'failure'
         run: |
           app_id="$(cf app lzc-plan-template --guid)"
-          cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq '.resources[] | {guid, state, error}'
+          build="$(cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq -ce '.resources | if length == 1 then .[0] else error("Expected one latest build") end')"
+          printf '%s\n' "$build" | jq '{guid, state, error, created_at, updated_at, staging_disk_in_mb, staging_memory_in_mb}'
+          droplet_id="$(printf '%s\n' "$build" | jq -r '.droplet.guid // empty')"
+          if [ -n "$droplet_id" ]; then
+            cf curl "/v3/droplets/$droplet_id" | jq '{guid, state, error, created_at, updated_at}'
+          else
+            echo "Latest build has no associated droplet; no droplet diagnostics available." >&2
+          fi
           cf logs lzc-plan-template --recent
       - name: CF login and target
         run: |
@@ -352,7 +359,14 @@ jobs:
         if: failure() && steps.push.outcome == 'failure'
         run: |
           app_id="$(cf app landing-zone-configurator --guid)"
-          cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq '.resources[] | {guid, state, error, staging_disk_in_mb, staging_memory_in_mb}'
+          build="$(cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq -ce '.resources | if length == 1 then .[0] else error("Expected one latest build") end')"
+          printf '%s\n' "$build" | jq '{guid, state, error, created_at, updated_at, staging_disk_in_mb, staging_memory_in_mb}'
+          droplet_id="$(printf '%s\n' "$build" | jq -r '.droplet.guid // empty')"
+          if [ -n "$droplet_id" ]; then
+            cf curl "/v3/droplets/$droplet_id" | jq '{guid, state, error, created_at, updated_at}'
+          else
+            echo "Latest build has no associated droplet; no droplet diagnostics available." >&2
+          fi
           cf logs landing-zone-configurator --recent | awk '/\[STG\/[0-9]+\]/ { print }'
       - name: CF network diagnostics
         timeout-minutes: 3
