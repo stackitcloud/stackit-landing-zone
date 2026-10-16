@@ -41,6 +41,7 @@ test("validation and release both execute native template and stateful platform 
  for(const file of ["validate-configurator.yml","configurator-release.yml"]){
   const workflow=readFileSync(new URL(`../../../.github/workflows/${file}`,import.meta.url),"utf8");
   assert.match(workflow,/run: npm run test:platform-database/);
+  assert.match(workflow,/run: npm run test:database -- --maxWorkers=2 --testTimeout=30000/);
   assert.match(workflow,/^\s+npm run test:common-contract$|run: npm run test:common-contract/m);
  }
 });

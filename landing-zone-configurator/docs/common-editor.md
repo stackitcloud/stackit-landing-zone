@@ -259,6 +259,10 @@ Validierung und Release führen beide `npm run test:common-contract` und
 PostgreSQL-Broker-Suite ausdrücklich, die im normalen Unit-Lauf übersprungen
 wird. Dadurch prüfen auch kommende Releases die Erstbereitstellung und die
 nativen Template-Verträge, nicht nur bereits vorhandenen Plattform-State.
+Die API-Datenbankintegration verwendet in beiden Workflows dieselben zwei
+Worker und 30 Sekunden Test-Timeout. Das bisherige 5-Sekunden-Limit im
+Validierungsworkflow brach den mehrstufigen Vertrags-/Identitätsnachweis ab,
+bevor dessen Aufräum- und Wiederherstellungsschritte abgeschlossen waren.
 
 Die gemeinsame Release-Abnahme bestand 710 Unit-Tests (57 im Unit-Lauf
 übersprungen), 51 PostgreSQL-Broker-Tests und 300 Desktop-/Mobil-Browsertests

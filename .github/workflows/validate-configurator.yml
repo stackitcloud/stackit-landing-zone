@@ -106,7 +106,7 @@ jobs:
       - name: Check all template exports against native Accelerator variable contracts
         run: npm run test:common-contract
       - name: Test database migrations and tenant isolation
-        run: npm run test:database
+        run: npm run test:database -- --maxWorkers=2 --testTimeout=30000
         env:
           LZC_TEST_DATABASE_URL: postgres://postgres:lzc-test-only@127.0.0.1:5432/configurator_test
       - name: Install isolated browser for UI acceptance
