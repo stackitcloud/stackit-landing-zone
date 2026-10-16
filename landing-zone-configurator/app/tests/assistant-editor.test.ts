@@ -436,7 +436,13 @@ describe("topic knowledge delivery", () => {
               "including null meaning no optional service instance",
             );
             expect(request.messages[0]?.content).toContain(
-              "Questions may ask only genuinely missing decisions after the factual answer",
+              "Otherwise questions may ask only genuinely missing business decisions after the factual answer",
+            );
+            expect(request.messages[0]?.content).toContain(
+              "at most 2400 characters",
+            );
+            expect(request.messages[0]?.content).toContain(
+              "For a pure fields/defaults/limits overview return questions=[]",
             );
             expect(request.messages.at(-1)).toEqual({
               role: "user",

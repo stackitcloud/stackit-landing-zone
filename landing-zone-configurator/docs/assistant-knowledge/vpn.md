@@ -14,6 +14,8 @@ IKE/IPsec settings defined by the root schema. vpn_pre_shared_keys is a separate
 protected input. Use actual gateway/connection/tunnel keys; do not flatten the
 contract or invent arbitrary VPN appliances. Regional root calls exist, but
 service availability and plan compatibility still need authorized live checks.
+Native defaults: `plan_id = "p100"` and `routing_type = "ROUTE_BASED"` (not
+`static`/`dynamic`). Both tunnels use native peering, phase1 and phase2 settings.
 
 ## Dependencies
 
@@ -49,6 +51,8 @@ prove packets traverse the connection; routing and overlap checks are separate.
 Provider access and tunnel PSKs use separate externally supplied bindings.
 Never request or export PSK values through the model. Key rotation and gateway
 creation need explicit authorized execution, not a conversational recommendation.
+Supply `vpn_pre_shared_keys` per connection/tunnel through
+`TF_VAR_vpn_pre_shared_keys` or gitignored tfvars, outside the Assistant.
 
 ## Sources
 

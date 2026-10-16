@@ -2336,6 +2336,7 @@ it.each([
   "identity-foundations",
   "governance-folders",
   "sandbox-projects",
+  "vpn",
   "firewall-policy",
   "firewall-access-bootstrap",
 ])(
@@ -2537,12 +2538,20 @@ it.each([
   "governance-folders",
   "firewall-policy",
   "sandbox-projects",
+  "vpn",
+  "devops-git",
 ])(
   "answers %s field overviews from reviewed native metadata, not incomplete model prose",
   async (topic) => {
     const request = vi.fn<typeof fetch>(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       expect(body.response_format.json_schema.name).toBe("conversation_intent");
+      expect(body.messages[0].content).toContain(
+        "Informational native-field questions use mode=advice, adviceTask=field-overview",
+      );
+      expect(body.messages[0].content).toContain(
+        '"reviewedFieldOverview":true',
+      );
       return answer({
         topic,
         mode: "advice",
@@ -2571,6 +2580,21 @@ it.each([
         ?.fieldOverview,
     );
     expect(result.explanation.length).toBeLessThanOrEqual(3000);
+    if (topic === "vpn" || topic === "devops-git")
+      expect(result.explanation.length).toBeLessThanOrEqual(2400);
+    if (topic === "vpn") {
+      for (const field of [
+        "routing_type=ROUTE_BASED",
+        "plan_id=p100",
+        "TF_VAR_vpn_pre_shared_keys",
+        "local_subnets",
+        "remote_subnets",
+        "static_routes",
+        "phase1",
+        "phase2",
+      ])
+        expect(result.explanation).toContain(field);
+    }
     expect(result.explanation).not.toContain("Untrusted private value");
     expect(result.explanation).not.toContain("private@example.test");
     expect(result.questions).toEqual([]);
