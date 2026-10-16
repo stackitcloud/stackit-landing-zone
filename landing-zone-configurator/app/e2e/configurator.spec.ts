@@ -21,6 +21,7 @@ import {
   type Template,
   upgradeEditorDraft,
 } from "@lzc/domain";
+import type { Route } from "@playwright/test";
 import {
   applyAssistantChanges,
   validateDialogue,
@@ -2051,16 +2052,23 @@ test("database configurations save, reopen, protect revisions and delete without
   page,
 }, testInfo) => {
   page.on("dialog", (dialog) => void dialog.accept());
-  await page.route("**/api/v1/session", (route) =>
-    route.fulfill({
-      json: {
-        user: { id: "alice-id", login: "alice" },
-        csrfToken: "csrf-test",
-        tenant: { id: "personal", kind: "personal", roles: [] },
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-      },
-    }),
-  );
+  let deferSession = true;
+  const sessionLookup: { route: Route | null } = { route: null };
+  const sessionBody = {
+    user: { id: "alice-id", login: "alice" },
+    csrfToken: "csrf-test",
+    tenant: { id: "personal", kind: "personal", roles: [] },
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+  };
+  await page.route("**/api/v1/session", (route) => {
+    if (deferSession) {
+      sessionLookup.route = route;
+      return;
+    }
+    return route.fulfill({
+      json: sessionBody,
+    });
+  });
   await page.route("**/auth/status", (route) =>
     route.fulfill({
       json: { github: false, stackit: true, primary: "stackit" },
@@ -2077,9 +2085,15 @@ test("database configurations save, reopen, protect revisions and delete without
     draft: ReturnType<typeof createDraft>;
   };
   const records: Stored[] = [];
+  const staleLists: Route[] = [];
+  let initialListsReleased = false;
   let conflict = false;
   await page.route("**/api/v1/configurations", async (route) => {
-    if (route.request().method() === "GET")
+    if (route.request().method() === "GET") {
+      if (!records.length && !initialListsReleased) {
+        staleLists.push(route);
+        return;
+      }
       return route.fulfill({
         json: {
           configurations: records.map(
@@ -2087,6 +2101,7 @@ test("database configurations save, reopen, protect revisions and delete without
           ),
         },
       });
+    }
     expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
     const { draft } = route.request().postDataJSON();
     const stored = {
@@ -2126,11 +2141,37 @@ test("database configurations save, reopen, protect revisions and delete without
     stored.revision++;
     return route.fulfill({ json: { configuration: stored } });
   });
+  const initialSessionRequested = page.waitForRequest("**/api/v1/session");
   await page.goto("/templates");
+  await initialSessionRequested;
+  const sessionRequested = page.waitForRequest("**/api/v1/session");
   await restoreLegacy(page);
+  await sessionRequested;
+  const name = page.getByRole("textbox", {
+    name: "Name der Konfiguration",
+    exact: true,
+  });
+  await name.focus();
+  const focusedInput = await name.elementHandle();
+  const catalogueStarted = page.waitForRequest(
+    "**/api/v1/cloud-catalogues/automatic",
+  );
+  deferSession = false;
+  if (!sessionLookup.route)
+    throw new Error("Session lookup was not intercepted");
+  await sessionLookup.route.fulfill({ json: sessionBody });
+  await catalogueStarted;
+  await expect(page.getByRole("button", { name: "Abmelden" })).toBeVisible();
+  expect(
+    await name.evaluate(
+      (element, original) => element === original,
+      focusedInput,
+    ),
+  ).toBe(true);
   await page
     .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
     .fill("Ohne GitHub gespeichert");
+  await expect(name).toHaveValue("Ohne GitHub gespeichert");
   await page
     .getByRole("button", { name: "Konfigurationen", exact: true })
     .click();
@@ -2142,6 +2183,24 @@ test("database configurations save, reopen, protect revisions and delete without
     .click();
   await expect(storage.getByRole("status")).toHaveText(
     "Konfiguration in der Datenbank gespeichert.",
+  );
+  await expect(
+    storage.getByRole("button", {
+      name: "Konfiguration öffnen: Ohne GitHub gespeichert",
+      exact: true,
+    }),
+  ).toBeVisible();
+  initialListsReleased = true;
+  const pending = staleLists.filter((route) => !route.request().failure());
+  expect(pending.length).toBeGreaterThan(0);
+  await Promise.all(
+    pending.map((route) => route.fulfill({ json: { configurations: [] } })),
+  );
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
   );
   await expect(
     storage.getByRole("button", {
