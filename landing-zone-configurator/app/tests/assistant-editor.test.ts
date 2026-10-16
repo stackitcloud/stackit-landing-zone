@@ -35,7 +35,11 @@ import {
   validateAssistantEditorChange,
   validateAssistantEditorSources,
 } from "../apps/api/src/assistant/editor.js";
-import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
+import {
+  assistantKnowledgeContext,
+  assistantKnowledgeForTopics,
+  buildAssistantKnowledge,
+} from "../apps/api/src/assistant/knowledge.js";
 import {
   AssistantInferenceError,
   AssistantModelServing,
@@ -168,7 +172,11 @@ it.each(["update", "add", "replace"] as const)(
       editorContract: true,
       editorInputs: ["connectivity"],
       requirements: [],
-      dnsCollection: { source: "current", mode },
+      dnsCollection: {
+        source: "current",
+        mode,
+        entries: mode === "add" ? [{ key: "acme", fields: ["dns_name"] }] : [],
+      },
     };
     const answer = {
       ...response([
@@ -221,6 +229,49 @@ it.each(["update", "add", "replace"] as const)(
   },
 );
 
+it("requires explicitly requested DNS fields in the intended new entry, not in every zone", () => {
+  const schema = assistantEditorChangeSchema(
+    "connectivity.dns_zones",
+    undefined,
+    "serving",
+    {},
+    "merge",
+    { company: ["dns_name", "contact_email", "type"] },
+  );
+  const company = {
+    dns_name: "company.stackit.gg",
+    contact_email: "owner@example.test",
+    type: "primary",
+  };
+  const change = {
+    path: "connectivity.dns_zones",
+    operation: "merge",
+    value: {
+      company,
+      other: { dns_name: "other.stackit.gg" },
+    },
+  };
+  expect(schema.safeParse(change).success).toBe(true);
+  expect(
+    schema.safeParse({
+      ...change,
+      value: {
+        ...change.value,
+        other: { ...change.value.other, contact_email: null },
+      },
+    }).success,
+  ).toBe(true);
+  for (const value of [
+    null,
+    { other: change.value.other },
+    { company: null },
+    { company: { dns_name: company.dns_name, type: company.type } },
+    { company: { ...company, contact_email: null } },
+    { company: { ...company, type: "public" } },
+  ])
+    expect(schema.safeParse({ ...change, value }).success).toBe(false);
+});
+
 function knowledgeSelection() {
   const knowledge = buildAssistantKnowledge();
   return {
@@ -230,7 +281,14 @@ function knowledgeSelection() {
   };
 }
 
-function collectionModel(intent: unknown, answer: unknown) {
+function collectionModel(
+  intent: unknown,
+  answer: unknown,
+  inspect?: (request: {
+    messages: { role: string; content: string }[];
+    response_format: { json_schema: { name: string } };
+  }) => void,
+) {
   return new AssistantModelServing(
     {
       baseUrl:
@@ -241,6 +299,7 @@ function collectionModel(intent: unknown, answer: unknown) {
     },
     vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
+      inspect?.(body);
       return new Response(
         JSON.stringify({
           choices: [
@@ -264,12 +323,197 @@ function collectionModel(intent: unknown, answer: unknown) {
   );
 }
 
+function expectTopicKnowledge(system: string, topics: readonly string[]) {
+  const knowledge = buildAssistantKnowledge();
+  const expected = new Set([
+    ...topics,
+    ...knowledge.topics
+      .filter((topic) => topic.mandatory)
+      .map((topic) => topic.id),
+  ]);
+  for (const id of expected) {
+    const topic = knowledge.topics.find((entry) => entry.id === id);
+    for (const dependency of topic?.dependencies ?? [])
+      expected.add(dependency);
+  }
+  const topicIds = new Set<string>(knowledge.topics.map((topic) => topic.id));
+  for (const rule of knowledge.rules) {
+    const text = JSON.stringify(rule.text);
+    if (!topicIds.has(rule.id) || expected.has(rule.id))
+      expect(system, rule.id).toContain(text);
+    else expect(system, rule.id).not.toContain(text);
+  }
+}
+
+describe("topic knowledge delivery", () => {
+  const knowledge = buildAssistantKnowledge();
+  const editorTopics = knowledge.topics.filter((topic) =>
+    knowledge.fields.some(
+      (field) =>
+        field.mode === "propose-validated-draft" &&
+        (topic.fieldPaths as readonly string[]).includes(field.path),
+    ),
+  );
+
+  it("rejects unknown or missing topic dependencies without mutating the selected context", () => {
+    const context = assistantKnowledgeContext(knowledgeSelection());
+    const before = structuredClone(context);
+    expect(() =>
+      assistantKnowledgeForTopics(context, ["unknown-topic"]),
+    ).toThrow("assistant_unknown_knowledge_dependency");
+    expect(() =>
+      assistantKnowledgeForTopics(
+        {
+          ...context,
+          topics: context.topics.filter(
+            (topic) => topic.id !== "identity-foundations",
+          ),
+        },
+        ["dns-zones"],
+      ),
+    ).toThrow("assistant_unknown_knowledge_dependency");
+    expect(
+      assistantKnowledgeForTopics(context, ["dns-zones"]).rules.map(
+        (rule) => rule.id,
+      ),
+    ).toContain("configuration-contract");
+    expect(context).toEqual(before);
+  });
+
+  it.each(editorTopics.map((topic) => topic.id))(
+    "supplies full %s knowledge, transitive dependencies and safety rules to the Editor model",
+    async (topic) => {
+      let received = false;
+      const model = collectionModel(
+        { topic, mode: "draft", editorContract: true, requirements: [] },
+        { ...response([]), references: [topic] },
+        (request) => {
+          if (request.response_format.json_schema.name !== "editor_dialogue")
+            return;
+          received = true;
+          expectTopicKnowledge(request.messages[0]?.content ?? "", [topic]);
+        },
+      );
+      await model.converse(
+        knowledgeSelection(),
+        {},
+        [],
+        "Bitte einen Vorschlag für dieses Thema vorbereiten.",
+      );
+      expect(received).toBe(true);
+    },
+  );
+
+  it.each(knowledge.topics.map((topic) => topic.id))(
+    "supplies scoped full %s knowledge to advice, or uses the deterministic policy boundary",
+    async (topic) => {
+      let received = false;
+      const model = collectionModel(
+        { topic, mode: "advice", requirements: [] },
+        { ...response([]), references: [topic] },
+        (request) => {
+          if (
+            request.response_format.json_schema.name === "conversation_intent"
+          )
+            return;
+          received = true;
+          const extra =
+            topic === "firewall-infrastructure"
+              ? ["firewall-policy", "firewall-access-bootstrap"]
+              : ["identity-foundations", "governance-folders"].includes(topic)
+                ? ["identity-foundations", "governance-folders"]
+                : [];
+          expectTopicKnowledge(request.messages[0]?.content ?? "", [
+            topic,
+            ...extra,
+          ]);
+        },
+      );
+      const result = await model.converse(
+        knowledgeSelection(),
+        {},
+        [],
+        "Bitte erläutere die Bedeutung und Grenzen dieser Komponente.",
+      );
+      expect(received).toBe(topic !== "firewall-policy");
+      expect(result.changes).toEqual([]);
+      expect(result.references).toContain(topic);
+    },
+  );
+
+  it("includes the knowledge of all exposed component fields for a cross-topic Editor proposal", async () => {
+    let received = false;
+    await collectionModel(
+      {
+        topic: "configuration-contract",
+        mode: "draft",
+        editorContract: true,
+        editorInputs: ["connectivity", "observability"],
+        requirements: [],
+      },
+      response([]),
+      (request) => {
+        if (request.response_format.json_schema.name !== "editor_dialogue")
+          return;
+        received = true;
+        expectTopicKnowledge(request.messages[0]?.content ?? "", [
+          "stackit-network-components",
+          "dns-zones",
+          "firewall-infrastructure",
+          "vpn",
+          "observability",
+        ]);
+      },
+    ).converse(
+      knowledgeSelection(),
+      {},
+      [],
+      "Bitte Netzwerk und Observability zusammen vorbereiten.",
+    );
+    expect(received).toBe(true);
+  });
+
+  it.each([
+    { topic: "identity-foundations", group: "identity" },
+    { topic: "firewall-infrastructure", group: "network" },
+  ])(
+    "respects a restricted $group knowledge selection in advice",
+    async ({ topic, group }) => {
+      let received = false;
+      await collectionModel(
+        { topic, mode: "advice", requirements: [] },
+        { ...response([]), references: [topic] },
+        (request) => {
+          if (
+            request.response_format.json_schema.name === "conversation_intent"
+          )
+            return;
+          received = true;
+          expectTopicKnowledge(request.messages[0]?.content ?? "", [topic]);
+        },
+      ).converse(
+        { ...knowledgeSelection(), groups: [group] },
+        {},
+        [],
+        "Bitte erläutere dieses Thema ohne Änderungen.",
+      );
+      expect(received).toBe(true);
+    },
+  );
+});
+
 function sample(
   type: InputType,
   segments: string[],
   path: string,
   required = false,
 ): JsonValue {
+  if (
+    /^(?:connectivity|connectivity_regions\[\*\])\.dns_zones\[\*\]\.type$/.test(
+      path,
+    )
+  )
+    return "primary";
   if (typeof type === "string")
     return type === "bool" ? true : type === "number" ? 1 : "reviewed-value";
   if (type[0] === "map")
@@ -302,6 +546,68 @@ function sample(
 }
 
 describe("shared native Editor proposal contract", () => {
+  it.each(["primary", "secondary", "public", "private"])(
+    "enforces DNS role %s for nested and direct Assistant proposals",
+    (type) => {
+      const valid = type === "primary" || type === "secondary";
+      const zone = { dns_name: "company.stackit.gg", type };
+      const network = {
+        network_areas: {
+          default: {
+            ranges: ["10.0.0.0/16"],
+            transfer_network: "10.255.0.0/24",
+          },
+        },
+        dns_zones: { company: zone },
+      };
+      const proposals: { path: string; value: JsonValue }[] = [
+        { path: "connectivity", value: network },
+        { path: "connectivity.dns_zones", value: { company: zone } },
+        { path: "connectivity.dns_zones.company", value: zone },
+        { path: "connectivity.dns_zones.company.type", value: type },
+        { path: "connectivity_regions", value: { eu01: network } },
+        { path: "connectivity_regions.eu01", value: network },
+        {
+          path: "connectivity_regions.eu01.dns_zones",
+          value: { company: zone },
+        },
+        { path: "connectivity_regions.eu01.dns_zones.company", value: zone },
+        {
+          path: "connectivity_regions.eu01.dns_zones.company.type",
+          value: type,
+        },
+      ];
+      for (const { path, value } of proposals) {
+        for (const operation of ["merge", "replace"] as const) {
+          const validate = () =>
+            validateAssistantEditorChange(patch(path, value, operation));
+          if (valid) expect(validate, `${path}: ${operation}`).not.toThrow();
+          else expect(validate, `${path}: ${operation}`).toThrow();
+          const serving = assistantEditorChangeSchema(
+            path,
+            undefined,
+            "serving",
+            value,
+          );
+          expect(
+            serving.safeParse(patch(path, value, operation)).success,
+            `serving ${path}: ${operation}`,
+          ).toBe(valid);
+        }
+      }
+      for (const path of [
+        "connectivity.dns_zones.company.type",
+        "connectivity_regions.eu01.dns_zones.company.type",
+      ]) {
+        const serving = assistantEditorChangeSchema(path, undefined, "serving");
+        for (const operation of ["merge", "replace"] as const)
+          expect(serving.safeParse(patch(path, type, operation)).success).toBe(
+            valid,
+          );
+      }
+    },
+  );
+
   it("keeps component decision policies tied to the reviewed native field inventory", () => {
     const fields = new Set(featureFieldCatalogue().map((field) => field.path));
     for (const [root, policy] of Object.entries(assistantEditorPolicies)) {

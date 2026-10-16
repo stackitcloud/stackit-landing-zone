@@ -1256,7 +1256,48 @@ describe.skipIf(!enabled)(
       ).toBe(0);
     });
 
-    it("persists encrypted immutable execution output under the runner ticket and reads it after completion without a live runner", async () => {
+    it("shows first-Plan output throughout initialization, validation and planning without a live runner read", async () => {
+      const test = await fixture();
+      const run = await test.plans.start(
+        test.owner,
+        test.token,
+        test.preparationId,
+      );
+      await vi.waitFor(() => expect(test.tickets.has(run.id)).toBe(true));
+      const ticket = test.tickets.get(run.id)!;
+      await test.plans.input(ticket);
+      let text = "$ tofu init\nInitializing backend...";
+      for (const stage of ["initializing", "validating", "planning"] as const) {
+        if (stage !== "initializing") {
+          await test.plans.stage(ticket, stage);
+          text += `\n${stage}`;
+        }
+        await test.plans.recordOutput(ticket, { text, truncated: false });
+        expect(await test.plans.output(test.owner, run.id)).toEqual({
+          text,
+          truncated: false,
+          kind: "live",
+        });
+      }
+      await test.plans.result(ticket, {
+        status: "failed",
+        errorCode: "plan_failed",
+      });
+      expect(await test.plans.output(test.owner, run.id)).toEqual({
+        text,
+        truncated: false,
+        kind: "execution",
+      });
+      expect(test.runner.output).not.toHaveBeenCalled();
+      await expect(
+        test.plans.recordOutput(ticket, {
+          text: "late replacement",
+          truncated: false,
+        }),
+      ).rejects.toBeDefined();
+    });
+
+    it("updates encrypted live output under the runner ticket and freezes it after completion without a live runner", async () => {
       const test = await fixture();
       const saved = await test.plan();
       const run = await test.plans.apply(
@@ -1289,19 +1330,28 @@ describe.skipIf(!enabled)(
           ).rows[0],
       );
       expect(row.output_ciphertext.toString()).not.toContain(text);
-      await expect(
-        test.plans.recordOutput(ticket, {
-          text: "replacement",
-          truncated: false,
-        }),
-      ).rejects.toMatchObject({ code: "invalid_runner_transition" });
+      expect(await test.plans.output(test.owner, run.id)).toEqual({
+        text,
+        truncated: false,
+        kind: "live",
+      });
+      const finalText = `${text}\n$ tofu init -migrate-state`;
+      await test.plans.recordOutput(ticket, {
+        text: finalText,
+        truncated: true,
+      });
+      expect(await test.plans.output(test.owner, run.id)).toEqual({
+        text: finalText,
+        truncated: true,
+        kind: "live",
+      });
       await test.plans.result(ticket, {
         status: "failed",
         errorCode: "apply_failed",
       });
       expect(await test.plans.output(test.owner, run.id)).toEqual({
-        text,
-        truncated: false,
+        text: finalText,
+        truncated: true,
         kind: "execution",
       });
       expect(test.runner.output).not.toHaveBeenCalled();

@@ -1,11 +1,15 @@
 # Platform Landing Zone und Application Landing Zones
 
-Stand: 2026-10-01. **Architektur in Abstimmung, noch nicht implementiert.** Unveränderliche veröffentlichte Template-Versionen und ausdrücklich angeforderte Upgrades wurden vom Benutzer bestätigt. Der Platform Engineer soll je Template direkte oder genehmigungspflichtige Bereitstellung einstellen können; bis zur Implementierung bleibt die bestehende Freigabepflicht wirksam.
+**Historische Designreferenz, kein aktueller Implementierungs- oder Abnahmenachweis.**
+Die folgenden Abschnitte bewahren den Entwurf und seine damaligen offenen Fragen.
+Fuer die aktuelle Implementierung gelten [Architektur](architecture.md),
+[MVP-Grenzen](mvp-scope.md), [Benutzeranleitung](user-guide.md) und die
+[technischen Vertraege](development.md).
 
 Der Erstellungsablauf ist inzwischen auf [Projekt-Template-Entwürfe](project-template-drafts.md)
 umgestellt: neue Plattformkonfigurationen erzeugen keine Anwendungsinstanzen.
-Veröffentlichung, verifizierte Tenant-Bindung und Application-Owner-Bestellung
-sind weiterhin offen.
+Die Implementierung der Veroeffentlichung, Tenant-Bindung und Bestellungen ist
+in den aktuellen Vertraegen und Tests beschrieben, nicht in diesem Entwurfsstand.
 
 Dieser Entwurf erweitert [Planung](planning.md), [gemeinsames Feature-Modell](common-feature-model.md) und [Editor-Designprinzipien](editor-design-principles.md). Er ersetzt keine bestehenden Konfigurationen, State-Adressen oder Berechtigungen. Kunden-Apply bleibt bis zu einer ausdrücklichen Freigabe gesperrt. Die laufende Arbeit an Regions-/SNA-Ansicht und VPN bleibt unabhängig davon nutzbar.
 

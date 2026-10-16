@@ -211,6 +211,13 @@ export function assistantEditorValueSchema(
   } = {},
 ): z.ZodType {
   if (typeof type === "string") {
+    if (
+      type === "string" &&
+      /^(?:connectivity|connectivity_regions\[\*\])\.dns_zones\[\*\]\.type$/.test(
+        path,
+      )
+    )
+      return z.enum(["primary", "secondary"]).nullable();
     if (type === "string") return z.string().max(4096).nullable();
     if (type === "bool") return z.boolean().nullable();
     if (type === "number") return z.number().finite().nullable();
@@ -400,6 +407,7 @@ export function assistantEditorChangeSchema(
   mode: "runtime" | "serving" = "runtime",
   current?: unknown,
   operation?: "merge" | "replace",
+  requiredFieldsByKey?: Readonly<Record<string, readonly string[]>>,
 ): z.ZodType {
   if (root === "projectTemplates") {
     const template = templateProposalSchema(
@@ -459,6 +467,44 @@ export function assistantEditorChangeSchema(
   );
   if (
     mode === "serving" &&
+    requiredFieldsByKey &&
+    Object.keys(requiredFieldsByKey).length &&
+    typeof definition.type !== "string" &&
+    definition.type[0] === "map"
+  ) {
+    const entryType = definition.type[1];
+    const entryPath = `${definition.canonical}[*]`;
+    mergeValue = z
+      .object(
+        Object.fromEntries(
+          Object.entries(requiredFieldsByKey).map(([key, requiredFields]) => {
+            const entry = assistantEditorValueSchema(
+              entryType,
+              entryPath,
+              false,
+              fields,
+              {
+                serving: true,
+                requiredFields: requiredFields.map(
+                  (field) => `${entryPath}.${field}`,
+                ),
+              },
+            );
+            return [
+              key,
+              entry instanceof z.ZodNullable ? entry.unwrap() : entry,
+            ];
+          }),
+        ),
+      )
+      .catchall(
+        assistantEditorValueSchema(entryType, entryPath, false, fields, {
+          serving: true,
+        }),
+      );
+  }
+  if (
+    mode === "serving" &&
     current == null &&
     mergeValue instanceof z.ZodNullable
   ) {
@@ -513,7 +559,11 @@ export function assistantEditorChangeSchema(
           z.strictObject({
             path: z.literal(root),
             operation: z.literal("replace"),
-            value: assistantEditorValueSchema(definition.type, root, false),
+            value: assistantEditorValueSchema(
+              definition.type,
+              definition.canonical,
+              false,
+            ),
           }),
           ...(definition.optional
             ? [

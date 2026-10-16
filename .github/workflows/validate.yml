@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,8 +20,43 @@ env:
   TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
 
 jobs:
+  changes:
+    name: Accelerator change scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      accelerator: ${{ steps.scope.outputs.accelerator }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Detect native infrastructure changes
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            echo "accelerator=true" >> "$GITHUB_OUTPUT"
+          elif [[ ! "$BASE_SHA" =~ ^[a-f0-9]{40}$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            echo "::notice::Comparison base unavailable; running all Accelerator checks."
+            echo "accelerator=true" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/accelerator-changes.txt"
+            if grep -Eq '^(src/|mise\.toml$|\.tflint\.hcl$|\.pre-commit-config\.yaml$|\.github/workflows/validate\.yml$)' "$RUNNER_TEMP/accelerator-changes.txt"; then
+              echo "accelerator=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "accelerator=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
   format:
     name: Format
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.accelerator == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -39,6 +75,8 @@ jobs:
 
   tflint:
     name: TFLint
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.accelerator == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -67,6 +105,8 @@ jobs:
 
   validate:
     name: Validate
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.accelerator == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -105,6 +145,8 @@ jobs:
 
   test:
     name: Configuration Tests
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.accelerator == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

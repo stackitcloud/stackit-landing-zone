@@ -1238,6 +1238,8 @@ export const englishMessages: Record<string, string> = {
     "This repository is not a writable accelerator fork.",
   "DNS-Name": "DNS name",
   "DNS-Zonen": "DNS zones",
+  "Der DNS-Zonentyp muss „primary“ oder „secondary“ sein. „public“ und „private“ sind hier keine gültigen Werte.":
+    "The DNS zone type must be primary or secondary. Public and private are not valid values here.",
   "DNS-Zonen erstellen": "Create DNS zones",
   "Download fehlgeschlagen.": "Download failed.",
   "Du bearbeitest eine bestehende Gesamtkonfiguration mit konkreten Projekten. Sie bleibt zur Bestandsverwaltung erhalten. Neue Plattformkonfigurationen enthalten stattdessen Application Landing Zone Templates.":

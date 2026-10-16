@@ -183,7 +183,14 @@ if (args.includes("-migrate-state") && ${JSON.stringify(behavior)} === "migratio
 if (phase === "plan") {
   fs.writeFileSync("plan.bin", ${JSON.stringify(plan.toString())});
   console.log(${JSON.stringify(secret)});
-  process.exit(2);
+  if (${JSON.stringify(behavior)} === "live-output") {
+    console.log("Refreshing state...");
+    process.stdout.write("unfinished-sensitive-line");
+    setTimeout(() => {
+      console.log("\\nRefresh complete");
+      process.exit(2);
+    }, 3500);
+  } else process.exit(2);
 }
 if (phase === "show") {
   console.log(JSON.stringify({format_version:"1.2", terraform_version:"1.12.6", errored:false, configuration:{secret:${JSON.stringify(secret)}}, planned_values:{}, resource_changes:[{mode:"managed", change:{actions:[${JSON.stringify(behavior === "destroy" ? "delete" : "create")}], after:{secret:${JSON.stringify(secret)}}}}]}));
@@ -904,6 +911,38 @@ it.runIf(process.env.LZC_NATIVE_APPLICATION_RUNNER_TEST === "true")(
   },
   120000,
 );
+
+it("publishes redacted progress before a long-running Plan finishes and stops polling after cleanup", async () => {
+  const test = await fixture("platform-plan", "live-output");
+  const execution = test.execute();
+  try {
+    await vi.waitFor(
+      () => {
+        const output = test.reports.find(({ path }) => path === "output");
+        expect(output?.body).toMatchObject({
+          text: expect.stringContaining("Refreshing state..."),
+          truncated: false,
+        });
+        expect(JSON.stringify(output?.body)).not.toContain(secret);
+        expect(JSON.stringify(output?.body)).not.toContain(ticket);
+        expect(JSON.stringify(output?.body)).not.toContain(
+          "unfinished-sensitive-line",
+        );
+        expect(test.reports.some(({ path }) => path === "result")).toBe(false);
+      },
+      { timeout: 3000 },
+    );
+  } finally {
+    expect(await execution).toBe("succeeded");
+  }
+  const output = test.reports.findLast(({ path }) => path === "output");
+  expect(output?.body).toMatchObject({
+    text: expect.stringContaining("Refresh complete"),
+  });
+  const count = test.reports.length;
+  await new Promise((resolve) => setTimeout(resolve, 2100));
+  expect(test.reports).toHaveLength(count);
+}, 10000);
 
 it.each(["success", "apply-failure", "migration-failure"])(
   "publishes redacted Apply output before the terminal result and cleanup: %s",

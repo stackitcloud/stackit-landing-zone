@@ -225,6 +225,48 @@ it("accepts a new Standalone editor draft after filling identities and rejects i
   ).toBe(true);
 });
 
+it.each(["public", "private"])(
+  "blocks DNS visibility %s as a zone role and allows explicit primary repair",
+  (type) => {
+    const network = {
+      network_area: {
+        ranges: ["10.0.0.0/16"],
+        transfer_network: "10.255.0.0/24",
+      },
+      dns_zones: {
+        company: {
+          dns_name: "company.stackit.gg",
+          name: "company-dns",
+          default_ttl: 3600,
+          type,
+        },
+        other: {
+          dns_name: "other.stackit.gg",
+          type: "secondary",
+        },
+      },
+    };
+    const invalid = editCommonInput(fixture(), "connectivity", network);
+    expect(initialPlanIssues(invalid)).toContainEqual(
+      expect.objectContaining({
+        field: "connectivity.dns_zones.company.type",
+        message: expect.stringContaining("primary"),
+      }),
+    );
+    const repairedNetwork = {
+      ...network,
+      dns_zones: {
+        ...network.dns_zones,
+        company: { ...network.dns_zones.company, type: "primary" },
+      },
+    };
+    const repaired = editCommonInput(invalid, "connectivity", repairedNetwork);
+    expect(initialPlanIssues(repaired)).toEqual([]);
+    expect(recordValues(repaired).connectivity).toEqual(repairedNetwork);
+    expect(recordValues(invalid).connectivity).toEqual(network);
+  },
+);
+
 it("plans reviewed governance subjects and parent folders without rewriting saved exports", () => {
   let document = fixture();
   document = editCommonInput(document, "organization_owners", [

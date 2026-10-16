@@ -1,10 +1,11 @@
 # STACKIT-Zielarchitektur des Landing Zone Configurators
 
-Stand: 2026-10-14. Geplante gehostete Architektur, kein Nachweis einer
-vollstaendig aktivierten oder produktiv qualifizierten Umgebung.
-Die zwischenzeitlich bewertete eigene Passwortverwaltung ist **keine**
-beschlossene Aenderung; diese Zeichnung verwendet weiterhin STACKIT OIDC.
-Clientregistrierung, Audience und gehosteter Login bleiben separat zu bestaetigen.
+Diese Referenz beschreibt die implementierten Komponenten und ihre
+Vertrauensgrenzen. Die Entwicklungsumgebung verwendet STACKIT OIDC; eine eigene
+Passwortverwaltung ist nicht vorgesehen. Der Betrieb in der Entwicklungsumgebung
+ist kein Nachweis einer produktiv qualifizierten Umgebung. Die getrennten
+[MVP-Grenzen](mvp-scope.md) und [Entwicklungsreferenzen](development.md) benennen
+verbleibende Aufgaben.
 
 ## Technische Praesentationssicht
 
@@ -106,7 +107,7 @@ physisch darin betriebene API-Server.
 
 ## Bereitstellung und Verantwortlichkeiten
 
-| Komponente | Geplante Bereitstellung | Aufgabe |
+| Komponente | Bereitstellungsmodell | Aufgabe |
 |---|---|---|
 | Web UI | React-SPA, vom CF-Webprozess ausgeliefert | Editor und Chat, Templates, Auftragsstatus und ausdrueckliche Freigaben |
 | Configurator API | Node.js/Fastify in derselben CF-App | Authentifizierung, Mandanten/Rollen, Validierung, Konfigurationscompiler, KI-Assistent, GitHub-Integration und Job-Broker |
@@ -163,6 +164,8 @@ sie in PostgreSQL. Die Cloud-Operationen verwenden den explizit autorisierten
 Service-Account, nicht das menschliche Login-Token. Plan und Apply sind
 unterschiedliche Operationen; Apply setzt den geprueften gespeicherten Plan
 und die passende Freigabe voraus.
+
+### Execution and state
 
 **State ist nicht gleich Konfigurationsdatenbank:** Der erste Plattform-Bootstrap
 verwendet temporaer das persistente, verschluesselte HTTP-State-Backend der API.

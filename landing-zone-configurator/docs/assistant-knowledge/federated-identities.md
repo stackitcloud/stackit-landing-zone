@@ -34,8 +34,8 @@ operator, wildcard subject or credentials copied from a pipeline.
 
 Source schema support is not issuer compatibility or successful token exchange.
 Operators, claims, audience and IAM privileges need independent verification.
-Complex federation changes and trust grants are not current chat patches;
-no automatic identity creation or scope escalation.
+Native Editor proposals support typed issuer/assertion configuration, not live
+trust grants, automatic identity creation or scope escalation.
 
 ## Credentials
 

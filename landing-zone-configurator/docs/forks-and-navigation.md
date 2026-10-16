@@ -189,4 +189,4 @@ Bei deaktiviertem/vollen Browserspeicher wird im Fork-Bereich ein Fehler angezei
 
 Ordneranpassungen verwenden Dokumentversion 2 mit vier stabilen Schlüsseln in
 `draft.folders`. Version 1 bleibt ohne Ordnerüberschreibung kompatibel und exportiert
-unverändert. [Ordner-Schritt und Vorschau](folder-editor-review.md).
+unverändert. Siehe [gemeinsamer Editor](common-editor.md).

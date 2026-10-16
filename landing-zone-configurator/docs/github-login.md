@@ -17,6 +17,13 @@ Logout widerruft die App-Sitzung, und Rollen-/Mandantenpruefungen bleiben aktiv.
 Bestehende Sitzungen werden nicht nachtraeglich verlaengert; die neue Laufzeit
 gilt nach erneuter Anmeldung.
 
+Der Web-Login mit Authorization Code und PKCE verwendet denselben Browser-Tab.
+Der vorhandene Callback setzt die Anmeldung im Configurator fort; unvollständige
+Entwürfe bleiben dabei über den bestehenden tabgebundenen Zwischenspeicher erhalten.
+Dies gilt auch für die erneute STACKIT-Bestätigung im Kontobereich. Nur der
+kompatible Device-Flow mit Anmeldecode öffnet weiterhin einen separaten Tab,
+weil der ursprüngliche Tab für das Polling geöffnet bleiben muss.
+
 Der Resource Manager liefert fuer die exakt angefragte Organisations-UUID einen
 IAM-Containerbezug. Die Pruefung verwendet ausschliesslich diesen Bezug fuer
 IAM-Rechte und Rollen; fremde Container bleiben gesperrt. Die reale Antwort mit
@@ -230,8 +237,9 @@ erhalten. Eine ungebundene, bereits abgemeldete GitHub-Identität wird bei einem
 STACKIT-Login nicht automatisch zusammengeführt. Der Rollout benötigt deshalb
 eine kontrollierte Bindung der Bestandskonten vor dem Wechsel.
 
-Lokale Prüfergebnisse und noch offene Live-Grenzen stehen im
-[Prüfbericht](runtime-validation-report.md).
+Aktuelle Betriebsgrenzen stehen in der [Architektur](architecture.md) und im
+[MVP-Umfang](mvp-scope.md). Laufbezogene Pruefergebnisse gehoeren zu den
+jeweiligen CI-Artefakten, nicht in einen fortgeschriebenen historischen Bericht.
 
 ## Legacy-Ablauf: GitHub als Login
 

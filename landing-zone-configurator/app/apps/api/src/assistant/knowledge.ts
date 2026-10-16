@@ -24,8 +24,7 @@ import { assistantKnowledgeTopics } from "./knowledge-topics.generated.js";
 const rules = [
   {
     id: "configuration-contract",
-    source:
-      "landing-zone-configurator/docs/planning.md#11-chatbot-mit-stackit-model-serving",
+    source: "landing-zone-configurator/docs/user-guide.md#assistant-proposals",
     text: "Propose changes to a configuration draft only. Ask for missing information. Template defaults are not user consent to configure, provision or enable optional components. Separate existing enabled settings from confirmed requirements; mention inconsistent inherited settings without silently changing them. 'Later' does not mean 'enable now'. A full native apply includes mandatory foundation resources and all enabled components, not just the current conversational step. Validate with the deterministic compiler; disclose validation gaps. Preserve omitted/null/configured values and unknown imported fields. Acceptance requires current authorization and an unchanged base revision. Never execute, publish, grant access or read secrets.",
   },
   {
@@ -40,7 +39,8 @@ const rules = [
   },
   {
     id: "execution-capability",
-    source: "landing-zone-configurator/docs/mvp-acceptance.md",
+    source:
+      "landing-zone-configurator/docs/architecture.md#execution-and-state",
     text: "A complete configuration is not proof of executable infrastructure. Private reachability, regional mappings, runner grants, locks and recovery need separate qualification. Unknown live facts stay unknown. A review receipt is not permission to execute or unlock.",
   },
   {
@@ -254,5 +254,34 @@ export function assistantKnowledgeContext(input: unknown) {
       (field) => selected.has(field.group) || componentPaths.has(field.path),
     ),
     templates: bundle.templates,
+  };
+}
+
+export function assistantKnowledgeForTopics(
+  context: Pick<
+    ReturnType<typeof assistantKnowledgeContext>,
+    "topics" | "rules"
+  >,
+  topicIds: readonly string[],
+) {
+  const selected = new Set<string>();
+  const include = (id: string) => {
+    if (selected.has(id)) return;
+    const topic = context.topics.find((entry) => entry.id === id);
+    if (!topic) {
+      if (rules.some((rule) => rule.id === id)) return;
+      throw new Error("assistant_unknown_knowledge_dependency");
+    }
+    selected.add(id);
+    for (const dependency of topic.dependencies) include(dependency);
+  };
+  for (const id of topicIds) include(id);
+  for (const topic of context.topics) if (topic.mandatory) include(topic.id);
+  const allTopicIds = new Set<string>(context.topics.map((topic) => topic.id));
+  return {
+    topics: context.topics.filter((topic) => selected.has(topic.id)),
+    rules: context.rules.filter(
+      (rule) => !allTopicIds.has(rule.id) || selected.has(rule.id),
+    ),
   };
 }

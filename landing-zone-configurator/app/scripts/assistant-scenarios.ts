@@ -49,7 +49,7 @@ const questions: Record<string, string> = {
   "firewall-access-bootstrap":
     "Wie funktionieren Firewall-Zugangsbootstrap, Admin-Konto und API-Zugang im geschuetzten Operator-Workflow? Nur erklaeren, keine Zugangsdaten abfragen.",
   "devops-git":
-    "Welche Konfigurationsfelder und Voraussetzungen gibt es fuer den zentralen DevOps-Git-Dienst? Nur beraten, nichts aktivieren.",
+    "Welche Konfigurationsfelder und Voraussetzungen gibt es fuer den zentralen DevOps-Git-Dienst? Welchen nativen Standard hat git_flavor, und wird damit eine Git-Instanz erstellt? Ist git-10 ein automatisch aktivierter Standard? Nur beraten, nichts aktivieren.",
   "platform-kubernetes":
     "Welche Einstellungen bietet platform_kubernetes fuer SKE, Node-Pools und Netzanbindung? Wie wird Kubeconfig separat behandelt? Nur beraten.",
   "project-templates":
@@ -98,6 +98,7 @@ export type AssistantScenario = {
     | "dns-owner"
     | "dns-login"
     | "dns-placeholder"
+    | "dns-role"
     | "governance"
     | "governance-missing-email"
     | "governance-verified-email"
@@ -109,6 +110,7 @@ export type AssistantScenario = {
   acceptableReferences?: readonly string[];
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
+  dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
@@ -147,6 +149,49 @@ const firewallDeferredCapacity =
   "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen.";
 
 export const assistantScenarios: readonly AssistantScenario[] = [
+  {
+    id: "dns-zone-role-advice",
+    topic: "dns-zones",
+    fixture: "baseline",
+    dnsRole: "roles",
+    message:
+      "Erkläre den DNS-Zonentyp fachlich: Was unterscheidet primary und secondary, sind beide autoritativ, und ist das die Auswahl public/private? Welchen Typ empfiehlst du für eine neue bei STACKIT verwaltete Firmenzone? Welche Secondary-Voraussetzung bildet der native Accelerator nicht ab? Nur beraten, nichts ändern.",
+  },
+  {
+    id: "dns-zone-role-correction",
+    topic: "dns-zones",
+    fixture: "baseline",
+    dnsRole: "roles",
+    history: [
+      {
+        role: "user",
+        content: "Ich brauche eine öffentliche Firmen-DNS-Zone.",
+      },
+      {
+        role: "assistant",
+        content:
+          "Dafür solltest du den DNS-Zonentyp public einstellen; secondary ist nicht autoritativ.",
+      },
+    ],
+    message:
+      "Das Dropdown bietet nur primary und secondary. Korrigiere deine vorherige Aussage: Erkläre beide Rollen und ihre Autoritativität, die Abgrenzung zu public/private, deine Empfehlung für eine neue bei STACKIT verwaltete Firmenzone und die Secondary-Grenze des nativen Accelerators. Nur beraten, nichts ändern.",
+  },
+  {
+    id: "dns-secondary-boundary",
+    topic: "dns-zones",
+    fixture: "baseline",
+    dnsRole: "secondary",
+    message:
+      "Ich möchte eine Secondary-DNS-Zone, die von einem externen Primary repliziert. Kann der native Accelerator die benötigten Primary-Server vollständig konfigurieren? Erkläre die Grenze und ob secondary autoritativ ist. Nur beraten, keine alternative Primary-Zone anlegen.",
+  },
+  {
+    id: "dns-zone-role-draft",
+    topic: "dns-zones",
+    fixture: "dns-role",
+    dnsRole: "draft",
+    message:
+      "Ergänze zusätzlich genau eine bei STACKIT verwaltete öffentliche DNS-Zone new-company.stackit.gg unter dem Schlüssel company. Die vorhandene Zone example und alle Netzwerke bleiben unverändert. Wähle den fachlich passenden Zonentyp und verwende die hinterlegte Owner-E-Mail als Kontakt. Nur einen überprüfbaren Entwurf vorschlagen, nichts deployen.",
+  },
   {
     id: "platform-public-corporate-networks",
     topic: "project-templates",
@@ -222,10 +267,13 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     topic: "devops-git",
     fixture: "baseline",
     message:
-      "Bitte den zentralen DevOps-Git-Dienst als Entwurf konfigurieren, allowed_network_ranges ausschließlich [203.0.113.0/24]. Nutze den nativen Git-Flavor-Standard, keine Verfügbarkeitszusage und kein Deployment.",
+      "Bitte den zentralen DevOps-Git-Dienst als Entwurf konfigurieren: git_flavor ausdrücklich git-10, allowed_network_ranges ausschließlich [203.0.113.0/24]. Der Flavor ist meine Auswahl, keine Verfügbarkeitszusage und kein Deployment.",
     editorExpected: {
-      path: "devops.allowed_network_ranges",
-      value: ["203.0.113.0/24"],
+      path: "devops",
+      value: {
+        git_flavor: "git-10",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
     },
   },
   {
@@ -711,6 +759,10 @@ export function validateAssistantScenario(
     knowledge.rules.map((rule) => rule.id),
   );
   const failures: string[] = [];
+  if (scenario.dnsRole && scenario.dnsRole !== "draft")
+    failures.push(
+      ...assistantDnsRoleFailures(dialogue.explanation, scenario.dnsRole),
+    );
   if (
     !(scenario.acceptableReferences ?? [scenario.topic]).some((reference) =>
       dialogue.references.includes(reference),
@@ -718,12 +770,15 @@ export function validateAssistantScenario(
   )
     failures.push("missing_topic_reference");
   const fixture = assistantScenarioFixture(scenario);
+  if (scenario.id === "devops-git-advice")
+    failures.push(...assistantDevOpsDefaultFailures(dialogue.explanation));
   if (scenario.templateExpected) {
     if (
       !dialogue.changes.length ||
       dialogue.changes.some(
         (change) =>
-          change.path !== "projectTemplates" || change.operation !== "merge",
+          change.path !== "projectTemplates" ||
+          !["merge", "replace"].includes(change.operation ?? ""),
       ) ||
       dialogue.questions.length
     )
@@ -850,18 +905,26 @@ export function validateAssistantScenario(
       failures.push("firewall_changed_unrelated_values_or_identity");
     if (
       dialogue.changes.some(
-        (change) => change.path !== `connectivity.${firewallKey}`,
+        (change) =>
+          change.path !== `connectivity.${firewallKey}` &&
+          !change.path.startsWith(`connectivity.${firewallKey}.`),
       )
     )
       failures.push("firewall_wrong_native_form");
     if (
-      !dialogue.explanation.includes("512 /25-Subnetze") ||
-      !dialogue.explanation.includes("128 Adressen")
+      scenario.id !== "firewall-metro-ha-only" &&
+      (!dialogue.explanation.includes("512 /25-Subnetze") ||
+        !dialogue.explanation.includes("128 Adressen"))
     )
       failures.push("firewall_incorrect_sna_capacity");
     if (scenario.fixture === "firewall-metro") {
       const appliance = objectValue(network.firewall);
       const ha = objectValue(appliance.ha);
+      if (
+        scenario.id === "firewall-metro-ha-only" &&
+        !isDeepStrictEqual(ha, { backup_zone: "eu01-2", vhid: 1 })
+      )
+        failures.push("firewall_requested_ha_not_applied");
       if (scenario.id.startsWith("firewall-metro-dialogue-")) {
         if (
           !isDeepStrictEqual(appliance, objectValue(previous.firewall)) ||
@@ -1082,36 +1145,55 @@ export function validateAssistantScenario(
     if (dialogue.questions.length)
       failures.push("answered_foundations_asked_again");
   }
-  if (scenario.fixture.startsWith("dns-")) {
+  if (scenario.dnsRole === "draft") {
+    const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
+    const before = compileCommonConfiguration(fixture.draft);
+    const after = compileCommonConfiguration(candidate);
+    const network = objectValue(after.connectivity);
+    const zones = objectValue(network.dns_zones);
+    const company = objectValue(zones.company);
+    if (
+      company.dns_name !== "new-company.stackit.gg" ||
+      (company.type ?? "primary") !== "primary" ||
+      company.contact_email !== "owner@example.test" ||
+      !isDeepStrictEqual(Object.keys(zones).sort(), ["company", "example"]) ||
+      dialogue.questions.length
+    )
+      failures.push("dns_company_primary_zone_missing");
+    const previousNetwork = objectValue(before.connectivity);
+    if (
+      !isDeepStrictEqual(
+        zones.example,
+        objectValue(previousNetwork.dns_zones).example,
+      ) ||
+      !isDeepStrictEqual(
+        { ...after, connectivity: { ...network, dns_zones: undefined } },
+        {
+          ...before,
+          connectivity: { ...previousNetwork, dns_zones: undefined },
+        },
+      )
+    )
+      failures.push("dns_unrelated_configuration_changed");
+  }
+  if (scenario.fixture.startsWith("dns-") && !scenario.dnsRole) {
     const contact =
       scenario.fixture === "dns-owner"
         ? "owner@example.test"
         : "login@example.test";
-    const zone = dialogue.changes.find(
-      (change) => change.path === "connectivity.dns_zones",
+    const candidate = compileCommonConfiguration(
+      applyAssistantChanges(fixture.draft, dialogue.changes),
     );
-    const expected = { contact_email: contact, default_ttl: 3600 };
-    const parsed =
-      zone?.value &&
-      typeof zone.value === "object" &&
-      !Array.isArray(zone.value)
-        ? zone.value
-        : {};
-    const proposal = "example" in parsed ? parsed.example : null;
+    const zone = objectValue(
+      objectValue(objectValue(candidate.connectivity).dns_zones).example,
+    );
     if (
-      !proposal ||
-      typeof proposal !== "object" ||
-      Array.isArray(proposal) ||
-      !("name" in proposal) ||
-      typeof proposal.name !== "string" ||
-      !proposal.name ||
-      !("description" in proposal) ||
-      typeof proposal.description !== "string" ||
-      !proposal.description ||
-      !Object.entries(expected).every(
-        ([key, value]) =>
-          key in proposal && proposal[key as keyof typeof proposal] === value,
-      )
+      typeof zone.name !== "string" ||
+      !zone.name ||
+      typeof zone.description !== "string" ||
+      !zone.description ||
+      zone.contact_email !== contact ||
+      zone.default_ttl !== 3600
     )
       failures.push("dns_settings_or_contact_missing");
     if (
@@ -1201,6 +1283,108 @@ export function validateAssistantScenario(
   return { dialogue, failures };
 }
 
+export function assistantDevOpsDefaultFailures(explanation: string) {
+  const sentences = explanation.toLowerCase().split(/\n+|(?<=[.!?])\s+/);
+  const failures: string[] = [];
+  if (
+    !/\bnull\b/.test(explanation.toLowerCase()) ||
+    !sentences.some(
+      (sentence) =>
+        /kein|nicht|no |not |deaktiv|disabled/.test(sentence) &&
+        /git|instan/.test(sentence),
+    )
+  )
+    failures.push("devops_null_default_no_instance_missing");
+  if (
+    sentences.some(
+      (sentence) =>
+        /\bgit-\d+\b/.test(sentence) &&
+        /standard|default/.test(sentence) &&
+        !/kein|nicht|not |no |beispiel|illustrat/.test(sentence),
+    )
+  )
+    failures.push("devops_enabled_flavor_default_invented");
+  return failures;
+}
+
+export function assistantDnsRoleFailures(
+  explanation: string,
+  mode: "roles" | "secondary",
+) {
+  const sentences = explanation
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .split(/\n+|(?<=[.!?])\s+/);
+  const authority = /autoritat|authoritat/;
+  const failures: string[] = [];
+  if (
+    sentences.some(
+      (sentence) =>
+        /secondary/.test(sentence) &&
+        /(?:nicht|kein|not|non)[^.!?]{0,30}(?:autoritat|authoritat)/.test(
+          sentence,
+        ),
+    )
+  )
+    failures.push("dns_secondary_authority_denied");
+  if (
+    !sentences.some(
+      (sentence) =>
+        /secondary/.test(sentence) &&
+        /repli[zk]|kopie|copy|replic|ubernehm|ubernimm/.test(sentence),
+    )
+  )
+    failures.push("dns_secondary_role_missing");
+  if (
+    !sentences.some(
+      (sentence) =>
+        /accelerator|modul|native/.test(sentence) &&
+        /secondary|primary|primar|server/.test(sentence) &&
+        /nicht|kein|fehl|unvollstandig|not |unsupported|absent/.test(sentence),
+    )
+  )
+    failures.push("dns_secondary_limit_missing");
+  if (mode === "secondary") return failures;
+  if (
+    !sentences.some(
+      (sentence) =>
+        /primary/.test(sentence) &&
+        /fuhrend|verwal|pfleg|original|bearbeit|manage|edit/.test(sentence),
+    )
+  )
+    failures.push("dns_primary_role_missing");
+  if (
+    !sentences.some(
+      (sentence) => /beide|both/.test(sentence) && authority.test(sentence),
+    ) &&
+    !["primary", "secondary"].every((role) =>
+      sentences.some(
+        (sentence) => sentence.includes(role) && authority.test(sentence),
+      ),
+    )
+  )
+    failures.push("dns_authority_explanation_missing");
+  if (
+    !sentences.some(
+      (sentence) =>
+        /public|private|offentlich|privat|sichtbarkeit|visibility/.test(
+          sentence,
+        ) && /nicht|kein|unabhangig|not |independent/.test(sentence),
+    )
+  )
+    failures.push("dns_visibility_role_confused");
+  if (
+    !sentences.some(
+      (sentence) =>
+        /primary/.test(sentence) &&
+        /empfehl|geeignet|wahl|recommend|neue|new /.test(sentence),
+    )
+  )
+    failures.push("dns_primary_recommendation_missing");
+  return failures;
+}
+
 export function buildAssistantScenarioInventory() {
   const knowledge = buildAssistantKnowledge();
   const topicIds = knowledge.topics.map((topic) => topic.id);
@@ -1245,6 +1429,13 @@ export function buildAssistantScenarioInventory() {
           assertions: [
             "valid_dialogue",
             "reviewed_topic_reference",
+            ...(scenario.dnsRole
+              ? [
+                  scenario.dnsRole === "draft"
+                    ? "primary_company_zone_preserves_existing_configuration"
+                    : "dns_role_meaning_and_native_secondary_limit",
+                ]
+              : []),
             ...(scenario.requiredOverviewFields
               ? ["complete_native_field_overview"]
               : []),

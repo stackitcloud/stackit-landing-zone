@@ -39,7 +39,8 @@ to promise 100 workloads, cluster quotas or per-namespace isolation.
 
 ## Limits
 
-Current chat cannot patch complex cluster/KMS/bastion objects. Validate region,
+Native Editor proposals support reviewed public cluster/KMS/bastion settings,
+not credentials or deployment. Validate region,
 prefix bounds, node min/max, system pools and area references. Template defaults
 may contain region-specific zones. In-cluster connectivity, provider access,
 KMS use and node health need separate real execution qualification.

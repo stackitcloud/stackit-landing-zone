@@ -11,6 +11,8 @@ import {
   configurationValues,
   createCommonConfiguration,
   createDraft,
+  createEditorConfiguration,
+  editCommonInput,
   effectiveInput,
   exportCommonTfvars,
   featureFieldCatalogue,
@@ -434,4 +436,56 @@ describe("combination and execution boundaries", () => {
     expect(codes).toContain("project-region-reference");
     expect(codes).toContain("project-area-reference");
   });
+  it.each([
+    [undefined, false],
+    [null, false],
+    ["primary", false],
+    ["secondary", false],
+    ["public", true],
+    ["private", true],
+    ["PRIMARY", true],
+    ["", true],
+  ] as const)(
+    "checks DNS role %s without changing saved values",
+    (type, invalid) => {
+      for (const region of [null, "eu01", "eu02"] as const) {
+        const network = {
+          network_areas: {
+            default: {
+              ranges: ["10.0.0.0/16"],
+              transfer_network: "10.255.0.0/24",
+            },
+          },
+          dns_zones: {
+            company: {
+              dns_name: "company.stackit.gg",
+              ...(type === undefined ? {} : { type }),
+            },
+          },
+        };
+        const document = editCommonInput(
+          createEditorConfiguration("standalone", id),
+          region ? "connectivity_regions" : "connectivity",
+          region ? { [region]: network } : network,
+        );
+        const original = exportCommonTfvars(document);
+        const restored = readCommonConfiguration(
+          JSON.parse(JSON.stringify(document)),
+        );
+        const findings = assessCommonConfiguration(restored).findings.filter(
+          (finding) => finding.code === "dns-zone-type",
+        );
+        expect(findings).toHaveLength(invalid ? 1 : 0);
+        if (invalid)
+          expect(findings[0]).toMatchObject({
+            path: `${region ? `connectivity_regions.${region}` : "connectivity"}.dns_zones.company.type`,
+            scope: "configuration",
+            severity: "error",
+            message: expect.stringContaining("primary"),
+          });
+        expect(restored).toEqual(document);
+        expect(exportCommonTfvars(restored)).toBe(original);
+      }
+    },
+  );
 });

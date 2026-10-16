@@ -2,50 +2,45 @@
 
 ## Purpose
 
-Collect operational logs, traces and metrics centrally or within a landing-zone
-project. Choose scope and retention from operating needs, not a template label.
+Logs, traces and metrics centrally or per project; scope and retention follow
+operating needs, not template labels.
 
 ## Accelerator Contract
 
-Native root observability configures management monitoring; null disables that
-instance. Landing-zone projects and platform_kubernetes have distinct nested
-observability settings. Management fields include plan_name, acl and separate
-logs/traces/metrics/downsampling retention periods. An enabled project instance
-is not automatically the same service or authorization as the central instance.
+observability=null disables central management monitoring. Project and
+platform_kubernetes observability have separate nested contracts. Central fields:
+plan_name, acl, logs/traces/metrics and downsampling retention periods. A project
+instance does not imply the same central service or authorization.
 
 ## Dependencies
 
-Management foundations and credential boundaries. Project/cluster existence,
-ingestion paths, access ACLs and the specific nested service contract must match.
-Audit logging is a separate function, not proven by ordinary telemetry alone.
+Management, credentials, project/cluster, ingestion paths and deliberate ACLs.
+Respect nested scope. Ordinary telemetry does not prove audit logging.
 
 ## Dialogue
 
-Ask which signals and projects need coverage, required retention, network
-access and who operates dashboards. Separate central versus per-project scope.
-Use verified live plans/catalogues when available; do not copy static prices,
-quotas or assert cross-region availability from a default plan name.
+Clarify signals/projects, retention needs, access and dashboard operation.
+Separate central/project scope. Reuse live plans/catalogues; a native default
+plan name does not prove availability, quotas, prices or cross-region support.
 
 ## Examples
 
-Synthetic management fragment: observability = { logs_retention_days = 30,
-traces_retention_days = 30 }. Other defaults are resolved by the native schema;
-this example is not permission to enable telemetry or select a production plan.
+metrics_retention_days=30: propose that choice and the user's plan/ACL. Omit other
+retention overrides to inherit native defaults; do not copy sample logs/traces
+values or ask for answered ACLs. Optional retentions are not mandatory decisions.
 
 ## Limits
 
-Storage/retention estimates require measured data volume and current service
-limits. Empty ACLs/defaults must be explained, not called private or secure by
-assumption. Dashboard examples and demo metrics are not production coverage.
-Complex monitoring chat patches are not introduced by this topic.
+Estimates need measured volume and current limits. Empty/default ACLs are not
+automatically private or secure. Demos do not prove production coverage.
+Typed native Editor proposals change only the local draft; execution is separate.
 
 ## Credentials
 
-Provider provisioning and ingestion/dashboard credentials are separate bindings.
-Never request Grafana passwords, service tokens, OTLP secrets or raw customer logs.
+Separate provisioning from ingestion/dashboard credentials. No Grafana
+passwords, service tokens, OTLP secrets or raw customer logs in chat.
 
 ## Sources
 
-Management, landing-zone and platform module variables define actual scope.
-Manifest sources and engine binding must be refreshed after review; live product
-facts stay outside the static topic. This topic is not operational qualification.
+Management/project/platform variables and manifest/engine binding. Refresh after
+review. Live product facts and operational qualification remain separate.

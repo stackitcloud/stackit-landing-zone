@@ -394,16 +394,7 @@ export class Plans {
         )
       ).rows[0];
       if (!run) throw invalid("plan_not_found", 404);
-      if (
-        run.output_ciphertext &&
-        ![
-          "starting",
-          "initializing",
-          "validating",
-          "planning",
-          "applying",
-        ].includes(run.status)
-      ) {
+      if (run.output_ciphertext) {
         if (!this.execution) throw invalid("plan_output_unavailable", 503);
         const bytes = this.execution.crypto.decrypt(
           run.output_ciphertext,
@@ -417,7 +408,15 @@ export class Plans {
             recorded: {
               text: bytes.toString("utf8"),
               truncated: Boolean(run.output_truncated),
-              kind: "execution" as const,
+              kind: [
+                "starting",
+                "initializing",
+                "validating",
+                "planning",
+                "applying",
+              ].includes(run.status)
+                ? ("live" as const)
+                : ("execution" as const),
             },
           };
         } finally {
@@ -472,7 +471,7 @@ export class Plans {
     );
     await withTenant(this.pool, session, async (client) => {
       const updated = await client.query(
-        `UPDATE lzc.plan_runs SET output_ciphertext=$2,output_truncated=$3 WHERE id=$1 AND status IN ${live} AND input_claimed AND expires_at>now() AND output_ciphertext IS NULL`,
+        `UPDATE lzc.plan_runs SET output_ciphertext=$2,output_truncated=$3 WHERE id=$1 AND status IN ${live} AND input_claimed AND expires_at>now()`,
         [id, ciphertext, output.truncated],
       );
       if (!updated.rowCount) throw invalid("invalid_runner_transition");

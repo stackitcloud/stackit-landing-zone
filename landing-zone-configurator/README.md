@@ -1,70 +1,49 @@
 # Landing Zone Configurator
 
-Zentral gehostete, mandantenfähige Anwendung zum Erstellen, Bearbeiten und Deployen von Konfigurationen des STACKIT Landing Zone Accelerators.
+The Configurator is an optional, hosted interface for the
+[STACKIT Landing Zone Accelerator](../README.md). It combines a configuration
+editor, an Assistant, versioned project templates and explicitly authorized
+infrastructure operations. The Accelerator remains independently usable with
+Terraform/OpenTofu.
 
-Status vom 2026-10-09: STACKIT-Login, Organisationsbindung sowie Platform- und
-Application-Plan/Apply sind lokal implementiert, ebenso Application-Destroy und
-read-only Drift Detection. Das gehostete Release ist qualifiziert, aber wegen der
-noch fehlenden öffentlichen ID des bereits angeforderten Web-Clients nicht aktiviert.
-Recovery-Abgleich, explizite Application-Upgrades, Quoten und Model-Serving-Chat
-bleiben offene MVP-Themen.
+## Start here
 
-**Rechnerwechsel und aktueller Arbeitsstand:**
-[Entwicklungsübergabe](docs/development-handoff-2026-10-09.md) und
-[bereinigter Chat-Export](docs/development-chat-2026-10-09.md).
+| Audience | Documentation |
+| --- | --- |
+| Users | [User guide](docs/user-guide.md) and [MVP scope and limits](docs/mvp-scope.md) |
+| Architects | [Components, diagrams and trust boundaries](docs/architecture.md) |
+| Contributors | [Development map](docs/development.md), [local setup](app/README.md) and [contributing](../CONTRIBUTING.md) |
+| Operators | [Infrastructure](infra/README.md), [manual CI operations](infra/ci/README.md) and [CF releases](deploy/cloud-foundry/README.md) |
 
-**Aktuelle Arbeitspakete und Abnahme: [MVP-Arbeitsliste](docs/mvp-readiness.md).**
-[Priorisierte Accelerator-Issues](docs/backlog-priorities.md).
+The [development environment](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud)
+is not a production service. Production provisioning and operational acceptance
+are a separate follow-up; merging source code does not deploy the application.
 
-Entwicklungsumgebung: [Configurator öffnen](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud).
-Start und Prüfungen: [Entwicklungsanleitung](app/README.md).
-[Betriebsstand](docs/platform-readiness.md), [IaC-Bedienung](infra/README.md),
-[CI-Betrieb](infra/ci/README.md).
+## How it fits together
 
-## Dokumentation
+![Configurator components](docs/architecture/stackit-overview.svg)
 
-- [STACKIT-Zielarchitektur und logische Landing-Zone-Sicht](docs/architecture.md)
-- [Architektur, Roadmap und Checklisten](docs/planning.md)
-- [Sprach- und Technologieempfehlung](docs/decisions/0001-application-stack.md)
+The browser talks to the API, which applies tenant authorization and deterministic
+configuration validation. Only the API calls Model Serving. Accepted Assistant
+proposals change a draft, not infrastructure. A separate, isolated Runner executes
+the pinned Accelerator only after the required Plan/Apply approvals.
 
-## Struktur
+![Platform and Application lifecycle](docs/architecture/landing-zone-logical.svg)
 
-```text
-landing-zone-configurator/
-  app/
-    apps/
-      web/                 # Browser-Oberfläche
-      api/                 # Backend/BFF
-      worker/              # Isolierter Plan-Worker und Ergebnisprojektion
-    packages/
-      domain/              # Fachmodell, Schema, Validierung, Compiler
-      contracts/           # API- und Job-Verträge ohne Secrets
-  tools/
-    hcl-adapter/           # Begrenzter Importadapter für bestehende tfvars
-  infra/
-    bootstrap/             # State-/Betriebsgrundlage vor Plattformaufbau
-    backend/               # S3-Versionierung nach dem State-Bootstrap
-    platform/              # Eigener OpenTofu-Root für Configurator-Dienste
-    runtime/               # CF-Space, Rollen und Laufzeitidentitäten
-    environments/          # Secretfreie Umgebungsparameter
-  deploy/
-    cloud-foundry/         # App-Manifeste und Release-Konfiguration
-    runner/                # Isolierte OpenTofu-Ausführung und Paketierung
-  docs/
-    decisions/             # Architekturentscheidungen
-```
+Platform configuration, published template versions and Application instances
+have separate lifecycles. STACKIT login, tenant membership, optional GitHub access
+and technical cloud execution credentials are different permissions.
 
-Die Accelerator-Quellen bleiben unter `../src/`. Der Configurator bekommt eigene Abhängigkeiten, Build-Konfigurationen, Tests, Toolversionen und IaC-States. Keine App-Dateien in `../src/` und keine Vermischung der Plattform-IaC mit Kunden-Landing-Zones. Laufende Deployments verwenden eine freigegebene Accelerator-Revision; der benachbarte Ordner ist keine unversionierte Produktionsabhängigkeit.
+## Repository layout
 
-Der App-Workspace verwendet npm mit gepinnten Abhängigkeiten und Lockfile. `validate-configurator.yml` prüft Configurator-Änderungen getrennt. Der HCL-Adapter prüft Template- und Root-Eingabekataloge gegen die Accelerator-Quellen; Änderungen am Ausführungsvertrag benötigen zusätzlich passende Runner-Tests.
+- [app/](app/): API, React frontend, worker, domain/compiler and shared contracts.
+- [tools/hcl-adapter/](tools/hcl-adapter/): native input catalogue and HCL round trips.
+- [deploy/](deploy/): Cloud Foundry packaging, migrations and isolated Runner.
+- [infra/](infra/): operator infrastructure with separate encrypted states.
+- [docs/](docs/): user, architecture and development references.
+- [../src/](../src/): independently consumable Accelerator infrastructure.
 
-## Lokale Plattform-Zugangsdaten
-
-Vom Benutzer bereitgestellt und am bisherigen Ort belassen:
-
-- `../landing-zone-configurator.env`: Angaben zum vorgesehenen Betreiberprojekt im `NAME=WERT`-Format; Variablen-Mapping für die IaC vor Nutzung festlegen.
-- `../landing-zone-configurator-credentials.json`: Service-Account-Datei für dieses Projekt.
-
-Beide Dateien sind im Root-`.gitignore` ausgeschlossen. Inhalte nicht in Git, Build-Kontexte, CF-Manifeste oder Planungsdokumente übernehmen. Künftige Deployment-Skripte lösen die Pfade explizit relativ zum Repository auf; sie laden die Dateien nicht implizit aus dem Arbeitsverzeichnis. Die vorhandene `.env` wird nicht als Shell-Skript ausgeführt.
-
-Diese Identität ist für die Configurator-Plattform vorgesehen, nicht als Ersatz für persönliche Kunden-Deployment-Credentials. Projekt-Lesezugriff und ausgewählte Metadatenabfragen wurden geprüft; Erstellrechte für Object Storage und S3-Versionierung sind durch den Seed-Apply nachgewiesen. Erst später, nach Definition der Eingaben, den absoluten Credential-Pfad im Plattform-Deployment-Prozess an `STACKIT_SERVICE_ACCOUNT_KEY_PATH` übergeben; die Accelerator-Konfiguration in `../mise.toml` bleibt davon unabhängig.
+Application dependencies and lockfiles are separate from the Accelerator.
+Builds pin their Accelerator revision and bind the API/UI and Runner artifacts
+to the same source. Customer infrastructure state is not the Configurator's
+configuration database or its operator infrastructure state.

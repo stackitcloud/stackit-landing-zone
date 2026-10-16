@@ -30,6 +30,95 @@ access to docs. The compiled API artifact contains the generated snapshot.
 Topic text is supplied once as trusted curated rules; provenance is separate.
 Customer input/history and PIM labels remain untrusted data, not instructions.
 
+### Topic delivery contract
+
+The generic Editor proposal path previously passed topic/field metadata without
+the curated rule texts. This affected all 14 topics with native Editor proposals,
+not just DNS. Editor proposals and conversational advice now share topic scoping:
+the current topic, transitive dependencies, mandatory topics and all global rules.
+Cross-topic Editor proposals also include the owners of every exposed field.
+Unrelated topic texts stay out of the scoped answer context. Missing dependencies
+fail explicitly; a restricted feature-group selection is preserved.
+
+Intent classification deliberately receives topic summaries, not the full
+advisory knowledge. Firewall evidence classification receives user statements
+only. Deterministic field overviews and the policy boundary use reviewed local
+contracts without a second model call. Starting-template advice and synthetic
+qualification retain their complete selected rule texts.
+
+Regression tests inspect the actual outgoing model requests for all 19 advice
+topics and all 14 Editor topics, including exact full texts, indirect dependencies,
+mandatory/global rules, unrelated-topic exclusion and cross-topic proposals.
+These mocked transport tests prove knowledge delivery, not the factual quality
+of a live model answer or execution qualification. DNS guidance distinguishes
+primary/secondary roles from visibility, explains that both are authoritative,
+and states the native module's incomplete secondary-server setup.
+
+### Real-model qualification
+
+Changes to service facts, prompts, knowledge selection or component contracts
+require targeted synthetic tests against the configured real STACKIT models,
+not just mocked responses. Run each affected case at least twice independently:
+
+```sh
+npm run test:assistant:live -- --topic dns-zones --repeat 2
+npm run test:assistant:journey
+```
+
+For workstation-only credentials, append `--local-credentials`; never paste a
+token into a command or test fixture. This reads the dedicated test token from
+the private authenticated-encrypted platform recovery snapshot, only in memory;
+it never falls back to the application token. Provisioning and the explicit
+CI transfer are described in the [infrastructure runbook](../../infra/ci/README.md).
+The harness rejects enabled execution,
+uses synthetic identities and configuration drafts, and never calls Plan/Apply.
+Proposals are locally applied, JSON-roundtripped and exported as native tfvars.
+Receipts bind results to model IDs, knowledge/suite hashes, iteration and export
+checksums. Every failed iteration remains a failure; repetitions are not retries.
+The harness permits one to three iterations and paces model requests.
+CI uses the application configuration defaults for both answer and intent models,
+without a CI-only classifier override. The effective model IDs are recorded in
+every receipt. Qualification of an alternative model does not qualify the
+application's configured model.
+
+Intent and evidence schema descriptions are also sent in the classifier's system
+context, not only as a structured-decoding constraint. Answer generation receives
+the reviewed field and topic knowledge, without a second full schema dump.
+For an explicitly named additional
+DNS zone, source-grounded requested fields are required in that zone's proposal
+schema. A requested contact cannot be mentioned only in the explanation or
+silently omitted; fields requested for one zone are not required in other zones.
+Runtime source, scope and native-configuration checks remain in place.
+
+DNS cases check role meanings, authoritative answers, visibility separation,
+the Primary recommendation, the incomplete native Secondary setup, correction
+of earlier false advice and preservation when adding a zone. Their semantic
+checks reject misleading answers and keyword-only replies, but remain bounded
+regression criteria rather than a proof of universal factual correctness.
+The continuous multi-topic journey also checks the DNS explanation after earlier
+configuration steps and verifies that advice does not mutate the draft.
+
+Release builds depend on the reusable live workflow: all topics run twice,
+followed by the continuous dialogue even if individual model cases fail.
+Raw synthetic receipts are retained as CI artifacts. Promotion requires the
+original build's successful live-qualification job as well as its build job;
+older builds without that proof cannot bypass qualification. A missing token,
+unavailable model or failed criterion blocks qualification, not a silent skip.
+CI needs `LZC_MODEL_SERVING_TOKEN` available to the protected `assistant-tests`
+environment. Local receipts do not certify that remote environment or authorize
+deployment. CI qualification jobs share a non-cancelling concurrency group to
+avoid competing model requests from manual and release runs. Review and extend the factual criteria whenever new capabilities
+are added; unresolved or ambiguous answers still need human review.
+
+### Evidence and release status
+
+Run-specific results belong to the source-bound receipts, CI artifacts and the
+corresponding pull request, not a permanent public acceptance ledger. Preserve
+failed experiments as evidence. A later passing run qualifies only its own
+source and does not erase an earlier failure or certify a different deployment.
+The protected release workflow repeats qualification for its exact build;
+local results alone never authorize promotion or deployment.
+
 ## Complete Topic Catalogue
 
 | Topic | Scope |

@@ -1,4 +1,12 @@
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
+import {
+  compileCommonConfiguration,
+  exportCommonTfvars,
+  readCommonConfiguration,
+} from "@lzc/domain";
+import { applyAssistantChanges } from "../apps/api/src/assistant/dialogue.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import {
   AssistantInferenceError,
@@ -25,8 +33,10 @@ async function run() {
   const args = process.argv.slice(2);
   const topicIndex = args.indexOf("--topic");
   const caseIndex = args.indexOf("--case");
+  const repeatIndex = args.indexOf("--repeat");
   const topic = topicIndex >= 0 ? args[topicIndex + 1] : undefined;
   const caseId = caseIndex >= 0 ? args[caseIndex + 1] : undefined;
+  const repetitions = repeatIndex >= 0 ? Number(args[repeatIndex + 1]) : 1;
   const expected = new Set([
     "--check",
     "--generate",
@@ -34,6 +44,7 @@ async function run() {
     "--local-credentials",
     "--topic",
     "--case",
+    "--repeat",
   ]);
   if (
     args.filter((arg) => ["--check", "--generate", "--list"].includes(arg))
@@ -44,11 +55,15 @@ async function run() {
     const arg = args[index];
     if (!arg || !expected.has(arg))
       throw new Error("assistant_test_arguments_invalid");
-    if (arg === "--topic" || arg === "--case") index++;
+    if (arg === "--topic" || arg === "--case" || arg === "--repeat") index++;
   }
   if (
     (topicIndex >= 0 && !topic) ||
     (caseIndex >= 0 && !caseId) ||
+    !Number.isInteger(repetitions) ||
+    repetitions < 1 ||
+    repetitions > 3 ||
+    args.filter((arg) => arg === "--repeat").length > 1 ||
     (topic &&
       topic !== "all" &&
       !assistantScenarios.some((scenario) => scenario.topic === topic)) ||
@@ -82,6 +97,7 @@ async function run() {
             0,
           ),
           topics: inventory.topics.length,
+          repetitions,
           cases: scenarios.map(({ id, topic, message }) => ({
             id,
             topic,
@@ -111,51 +127,85 @@ async function run() {
   const model = assistantTestModel(configuration);
   const knowledge = buildAssistantKnowledge();
   let failed = 0;
-  for (const scenario of scenarios) {
-    const started = Date.now();
-    let phase = "fixture";
-    try {
-      const fixture = assistantScenarioFixture(scenario);
-      phase = "model";
-      const result = await model.converse(
-        {
-          engineRevision: knowledge.engineRevision,
-          knowledgeSha256: knowledge.sha256,
-          groups: knowledge.groups,
-        },
-        fixture.values,
-        fixture.history,
-        scenario.message,
-        fixture.catalogues,
-      );
-      phase = "validation";
-      const checked = validateAssistantScenario(scenario, result);
-      if (checked.failures.length) failed++;
-      console.log(
-        JSON.stringify({
-          case: scenario.id,
-          topic: scenario.topic,
-          status: checked.failures.length ? "failed" : "passed",
-          elapsedMs: Date.now() - started,
-          failures: checked.failures,
-          result: checked.dialogue,
-        }),
-      );
-    } catch (error) {
-      failed++;
-      console.log(
-        JSON.stringify({
-          case: scenario.id,
-          topic: scenario.topic,
-          status: "failed",
-          phase,
-          elapsedMs: Date.now() - started,
-          reason:
-            error instanceof AssistantInferenceError
-              ? error.reason
-              : "scenario_validation_failed",
-        }),
-      );
+  console.log(
+    JSON.stringify({
+      status: "started",
+      model: configuration.model,
+      intentModel: configuration.intentModel ?? configuration.model,
+      knowledgeSha256: knowledge.sha256,
+      suiteSha256: inventory.suiteSha256,
+      repetitions,
+      total: scenarios.length * repetitions,
+      authorizesExecution: false,
+    }),
+  );
+  for (let iteration = 1; iteration <= repetitions; iteration++) {
+    for (const scenario of scenarios) {
+      const started = Date.now();
+      let phase = "fixture";
+      try {
+        const fixture = assistantScenarioFixture(scenario);
+        phase = "model";
+        const result = await model.converse(
+          {
+            engineRevision: knowledge.engineRevision,
+            knowledgeSha256: knowledge.sha256,
+            groups: knowledge.groups,
+          },
+          fixture.values,
+          fixture.history,
+          scenario.message,
+          fixture.catalogues,
+        );
+        phase = "validation";
+        const checked = validateAssistantScenario(scenario, result);
+        phase = "roundtrip";
+        const candidate = applyAssistantChanges(
+          fixture.draft,
+          checked.dialogue.changes,
+        );
+        const restored = readCommonConfiguration(
+          JSON.parse(JSON.stringify(candidate)),
+        );
+        if (
+          !isDeepStrictEqual(
+            compileCommonConfiguration(candidate),
+            compileCommonConfiguration(restored),
+          )
+        )
+          throw new Error("assistant_roundtrip_failed");
+        const exported = exportCommonTfvars(restored);
+        if (checked.failures.length) failed++;
+        console.log(
+          JSON.stringify({
+            case: scenario.id,
+            topic: scenario.topic,
+            iteration,
+            status: checked.failures.length ? "failed" : "passed",
+            elapsedMs: Date.now() - started,
+            failures: checked.failures,
+            result: checked.dialogue,
+            exportBytes: Buffer.byteLength(exported),
+            exportSha256: createHash("sha256").update(exported).digest("hex"),
+          }),
+        );
+      } catch (error) {
+        failed++;
+        console.log(
+          JSON.stringify({
+            case: scenario.id,
+            topic: scenario.topic,
+            iteration,
+            status: "failed",
+            phase,
+            elapsedMs: Date.now() - started,
+            reason:
+              error instanceof AssistantInferenceError
+                ? error.reason
+                : "scenario_validation_failed",
+          }),
+        );
+      }
     }
   }
   console.log(
@@ -168,8 +218,9 @@ async function run() {
       knowledgeSha256: knowledge.sha256,
       suiteSha256: inventory.suiteSha256,
       engineRevision: knowledge.engineRevision,
-      total: scenarios.length,
-      passed: scenarios.length - failed,
+      repetitions,
+      total: scenarios.length * repetitions,
+      passed: scenarios.length * repetitions - failed,
       failed,
       authorizesExecution: false,
     }),

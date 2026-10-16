@@ -1,8 +1,8 @@
 # Landing Zone Configurator – Architektur und Planung
 
 > Stand: 2026-10-01 · Architektur-Ausgangsstand: `2161871`
-> Status: Editor, GitHub, persönliche Zugänge, Plan-Grundlage und Organisationsentwürfe vorhanden; fachlicher MVP noch offen.
-> Aktuelle Umsetzung und Abnahme: **[MVP-Arbeitsliste](mvp-readiness.md)**. Reihenfolge der Accelerator-Issues: **[Backlog-Priorisierung](backlog-priorities.md)**.
+> Historisches Entscheidungsprotokoll, kein aktueller Betriebs- oder Abnahmestand.
+> Aktuelle Referenzen: [Architektur](architecture.md), [MVP-Grenzen](mvp-scope.md), [Entwicklung](development.md) und [GitHub-Issues](https://github.com/stackitcloud/stackit-landing-zone/issues).
 > Die folgenden Architekturabschnitte und datierten Fortschrittsnotizen sind das Entscheidungsprotokoll; ältere Statusangaben beschreiben den damaligen Stand.
 > `[x]` = je nach Abschnitt entschieden oder mit angegebenem Nachweis umgesetzt; eine Entscheidung allein ist keine Live-Abnahme.
 
@@ -808,12 +808,12 @@ exakte Apply-Artefakte bleiben offene Voraussetzungen. [Abnahme](plan-execution.
 - [x] Ordner-Editor und Strukturvorschau nach ausdrücklicher fachlicher Bestätigung umsetzen.
 
 Details: [Arbeitsstand](forks-and-navigation.md#arbeitsstand-beim-wiederkommen),
-[Ordnerprüfung und Umsetzung](folder-editor-review.md).
+[gemeinsamer Editor](common-editor.md).
 
 
 Abnahme Wiederaufnahme/Ordner: Code `21b5529`,
 [Release 36729582680](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36729582680)
-erfolgreich. Live-Prüfung und Grenzen siehe [Ordner-Abnahme](folder-editor-review.md#abnahme-auf-lzc-dev).
+erfolgreich. Aktuelle Grenzen siehe [MVP-Umfang](mvp-scope.md).
 Der Benutzer öffnet seine bestehende Konfiguration einmal, um den ersten lokalen
 Arbeitsstand zu speichern. Weitere Besuche im selben Browser stellen ihn wieder her.
 Nach Konfigurationsänderungen ist eine neue unveränderliche Deployment-Vorbereitung

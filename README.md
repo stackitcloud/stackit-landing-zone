@@ -26,7 +26,9 @@ filled manually and use a separate backend/state.
 - [Getting Started](docs/getting-started.md)
 - [Architecture/Modules](docs/architecture.md)
 - [Landing Zone Configurator](landing-zone-configurator/README.md)
-- [Configurator Architecture and Planning](landing-zone-configurator/docs/planning.md)
+- [Configurator Architecture](landing-zone-configurator/docs/architecture.md)
+- [Configurator User Guide](landing-zone-configurator/docs/user-guide.md)
+- [Configurator Development](landing-zone-configurator/docs/development.md)
 
 ## 🤝 Contributing
 

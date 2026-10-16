@@ -56,14 +56,26 @@ Bootstrap und Backend verwenden den Verwaltungs-Bucket. Der Plattform-Job initia
 | `lzc-dev-runtime-plan` / `lzc-dev-runtime-apply` | Space, Rollen und Laufzeitbenutzer |
 | `lzc-dev-release` | CF-Release; Workload-S3-Zugang und Plattform-/Runtime-State-Schlüssel, kein Projekt-Service-Account |
 | `lzc-dev-recovery` | Separat geschützte Seed-Recovery-Secrets, kein automatischer Recovery-Job |
+| `assistant-tests` | Nur der dedizierte Model-Serving-Testtoken; keine Cloud-, State- oder Ausführungs-Credentials |
 
 Die Konfiguration steht in `github-environments.json`, `github-platform-environments.json`, `github-runtime-environments.json` und `github-release-environments.json`. Änderungen an Secret-Zielen oder Schlüsselübertragungen benötigen die entsprechende Benutzerautorisierung. Das Operator-Werkzeug lautet `node infra/ci/configure-github.mjs` beziehungsweise mit `--platform`, `--runtime` oder `--release` für die jeweiligen Environments.
 
-## Serialisierung und Feature-Branch
+Für die Assistant-Qualifikation verwaltet `github-assistant-environments.json` ausschließlich `assistant-tests`, beschränkt auf `main` und `feature/landing-zone-configurator`. Nach dem freigegebenen Plattform-Apply liest `node infra/ci/configure-github.mjs --assistant` den neuen Testtoken aus der privaten, unverändert verschlüsselten Recovery-Datei `.local/assistant-test-platform-state.enc.json` und überträgt nur `LZC_MODEL_SERVING_TOKEN` über stdin an `gh secret set`. Dafür Node.js 24.21.0 verwenden; dieser Modus benötigt weder Seed-Zugriff noch einen OpenTofu-Unterprozess. Die Datei stammt aus der Recovery-Sicherung des erfolgreichen Applies und wird ausschließlich im Speicher entschlüsselt; vorhandene native State-Snapshots bleiben unverändert. Tokenwerte erscheinen weder im Terminal noch in Git; allgemeine STACKIT-Zugangsdaten und State-Schlüssel werden nicht an die Testumgebung übertragen. Das Environment benötigt keine manuelle Testfreigabe, erlaubt aber keine fremden Branches oder Tags.
+
+## Manuelle Ausloesung und Serialisierung
 
 Alle mutierenden Configurator-Workflows verwenden `concurrency.group: configurator-lzc-dev-mutation` und `cancel-in-progress: false`, einschließlich Plan und Freigabewartezeit. Native S3-Sperren haben den Integrationstest nicht bestanden; `backend-safety.json` hält diesen Befund fest. Lokale Remote-Applies und schreibende Parallelzugriffe außerhalb dieser CI-Gruppe bleiben im vereinbarten Betrieb ausgeschlossen. Direkte CLI-Aufrufe durch Credential-Inhaber lassen sich nicht durch einen lokalen Wrapper oder GitHub-Concurrency verhindern.
 
-Feature-Pushes auf `feature/landing-zone-configurator` erzeugen normalerweise nur Pläne. `LZC_PLATFORM_CI_ENABLED=true` aktiviert die Plattform-Pipeline. Ein Feature-Apply braucht zusätzlich eine passende vollständige Commit-SHA in `LZC_PLATFORM_APPLY_COMMIT` beziehungsweise `LZC_BOOTSTRAP_APPLY_COMMIT` oder `LZC_RUNTIME_APPLY_COMMIT` und die Environment-Freigabe. Für einen Backend-Lauf wird `LZC_BOOTSTRAP_ROOT=backend` gesetzt. Diese Einmalvariablen nach dem Lauf entfernen. Der manuelle Hauptbranch-Pfad ist für die spätere Übernahme vorbereitet; derzeit wird nichts nach main gemergt.
+Pushes und Pull Requests starten keine Infrastrukturplaene oder Deployments.
+Bootstrap, Platform und Runtime werden ausschliesslich per `workflow_dispatch`
+von `main` gestartet; Apply benoetigt zusaetzlich `apply=true` und die
+Environment-Freigabe. Fuer den Backend-Root `root=backend` auswaehlen.
+Die `LZC_PLATFORM_CI_ENABLED`-/`LZC_RUNTIME_CI_ENABLED`-Schalter bleiben zusaetzliche
+Betreibergates, ersetzen aber keine manuelle Ausloesung. Alte Commit-SHA-
+Freigabevariablen fuer Feature-Pushes werden nicht mehr ausgewertet.
+Auch der Application-Release ist ausschliesslich manuell; ein Merge loest ihn
+nicht aus. Die vorhandenen Workflows betreffen die Entwicklungsumgebung,
+nicht eine neue Produktionsumgebung.
 
 Die vorhandene Plan-Service-Account-Rolle ist nicht rein lesend. Deshalb dürfen diese Workflows ausschließlich vertrauenswürdigen Code ausführen; sie sind nicht für externe Pull Requests vorgesehen.
 
@@ -83,7 +95,11 @@ Nach einem gestarteten Apply versucht ein `always()`-Schritt ausdrücklich `tofu
 
 ## Betriebsnachweise
 
-Die bestehende Infrastruktur wurde durch diesen Umbau weder ersetzt noch migriert. Die erfolgreiche [Recovery und Plattform-Bereitstellung 36675347654](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675347654) und der [No-op-Plan 36675895279](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36675895279) sind dokumentiert. Das abgeschlossene Recovery-Inventar liegt ausschließlich unter [docs/incidents](../../docs/incidents/2026-09-30-recovery-inventory.json); es ist kein ausführbarer Bestandteil der Pipeline. Aktuelle Abnahmen: [Plattform-Betriebsstand](../../docs/platform-readiness.md).
+Die bestehende Infrastruktur wird durch diese CI-Anpassung weder ersetzt noch
+migriert. Historische Recovery-Inventare sind keine Pipeline-Eingaben und
+gehoeren in die private Betriebsdokumentation. Fuer die aktuellen State- und
+Recovery-Vertraege gelten [Architektur](../../docs/architecture.md) und
+[Plattform-Betriebsstand](../../docs/platform-readiness.md).
 
 ## Runtime und Release
 

@@ -9,12 +9,17 @@ import {
 } from "../apps/api/src/assistant/knowledge.js";
 import { buildAssistantTopicFieldPaths } from "../apps/api/src/assistant/topic-fields.js";
 import {
+  assistantDevOpsDefaultFailures,
+  assistantDnsRoleFailures,
   assistantScenarioFixture,
   assistantScenarios,
   buildAssistantScenarioInventory,
   syntheticOrganizationId,
   validateAssistantScenario,
 } from "../scripts/assistant-scenarios.js";
+
+const dnsRoleExplanation =
+  "Primary verwaltet die führenden DNS-Einträge bei STACKIT und wird für neue Firmenzonen empfohlen. Secondary repliziert eine Kopie vom externen Primary. Beide sind autoritativ. Der Zonentyp bezeichnet nicht public/private oder die Sichtbarkeit. Der native Accelerator kann die benötigten Primary-Server für Secondary nicht konfigurieren.";
 
 it.each([
   {
@@ -31,6 +36,16 @@ it.each([
     args: ["--local-credentials", "--case", "dns-owner"],
     execution: "true",
     reason: "execution_not_allowed",
+  },
+  ...["0", "4", "1.5", "invalid"].map((repeat) => ({
+    args: ["--repeat", repeat],
+    execution: "false",
+    reason: "assistant_test_arguments_invalid",
+  })),
+  {
+    args: ["--case", "dns-owner", "--repeat", "2"],
+    execution: "false",
+    reason: "assistant_test_token_required",
   },
 ])(
   "blocks $reason before any model, SSO or local credential access",
@@ -86,9 +101,13 @@ it("assigns every editor field exactly once and keeps the reviewed catalogue fre
   );
 });
 
-it.each([false, true])(
-  "qualifies network-only templates without unrequested services (extra=%s)",
-  (extra) => {
+it.each(
+  ["merge", "replace"].flatMap((operation) =>
+    [false, true].map((extra) => ({ operation, extra })),
+  ),
+)(
+  "qualifies network-only templates using $operation without unrequested services (extra=$extra)",
+  ({ operation, extra }) => {
     const scenario = assistantScenarios.find(
       (entry) => entry.id === "platform-public-corporate-networks",
     );
@@ -106,7 +125,7 @@ it.each([false, true])(
       changes: [
         {
           path: "projectTemplates",
-          operation: "merge",
+          operation,
           value: {
             corporate: {
               name: "Zentrales Netzwerk",
@@ -164,6 +183,38 @@ it("includes dependency and protected field contracts without exposing their val
   );
 });
 
+it.each([
+  "audit-logs",
+  "devops-git",
+  "observability",
+  "federated-identities",
+  "namespace-services",
+  "platform-kubernetes",
+  "sandbox-projects",
+  "stackit-network-components",
+  "vpn",
+])(
+  "keeps %s knowledge consistent with reviewed native Editor support",
+  (id) => {
+    const knowledge = buildAssistantKnowledge();
+    const topic = knowledge.topics.find((entry) => entry.id === id);
+    const rule = knowledge.rules.find((entry) => entry.id === id);
+    expect(topic).toBeDefined();
+    expect(rule).toBeDefined();
+    expect(
+      knowledge.fields.some(
+        (field) =>
+          field.mode === "propose-validated-draft" &&
+          topic?.fieldPaths.some((path) => path === field.path),
+      ),
+    ).toBe(true);
+    expect(rule?.text).toContain("Editor");
+    expect(rule?.text).not.toMatch(
+      /current chat cannot patch|not current chat patches|current chat cannot add\/remove/i,
+    );
+  },
+);
+
 it.each(assistantScenarios)(
   "builds isolated synthetic fixtures and validates the $id advice contract",
   (scenario) => {
@@ -180,7 +231,10 @@ it.each(assistantScenarios)(
           s3_object_lock: false,
         },
         observability: { metrics_retention_days: 30 },
-        devops: { allowed_network_ranges: ["203.0.113.0/24"] },
+        devops: {
+          git_flavor: "git-10",
+          allowed_network_ranges: ["203.0.113.0/24"],
+        },
         federated_identity_providers: [
           {
             name: "synthetic-federation",
@@ -206,7 +260,7 @@ it.each(assistantScenarios)(
     } else if (scenario.fixture === "baseline") {
       expect(
         validateAssistantScenario(scenario, {
-          explanation: `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung.`,
+          explanation: `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
           changes: [],
           references: [scenario.topic],
@@ -223,6 +277,121 @@ it.each(assistantScenarios)(
     }
   },
 );
+
+it("rejects an invented enabled Git flavor default and requires the null boundary", () => {
+  expect(
+    assistantDevOpsDefaultFailures(
+      "git_flavor=null erstellt keine Git-Instanz. git-10 ist kein Standard, sondern nur ein Syntaxbeispiel.",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDevOpsDefaultFailures("Der native Standard ist git-10."),
+  ).toEqual([
+    "devops_null_default_no_instance_missing",
+    "devops_enabled_flavor_default_invented",
+  ]);
+});
+
+it("checks DNS meaning rather than merely accepting correct keywords or references", () => {
+  expect(assistantDnsRoleFailures(dnsRoleExplanation, "roles")).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      "primary, secondary, public, private, autoritativ.",
+      "roles",
+    ),
+  ).toEqual(
+    expect.arrayContaining([
+      "dns_primary_role_missing",
+      "dns_secondary_role_missing",
+      "dns_visibility_role_confused",
+      "dns_secondary_limit_missing",
+    ]),
+  );
+  expect(
+    assistantDnsRoleFailures(
+      `${dnsRoleExplanation} Secondary ist nicht autoritativ.`,
+      "roles",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+  expect(
+    assistantDnsRoleFailures(
+      "Primary repliziert von externen Servern. Secondary verwaltet die führenden Einträge.",
+      "roles",
+    ),
+  ).toEqual(
+    expect.arrayContaining([
+      "dns_primary_role_missing",
+      "dns_secondary_role_missing",
+    ]),
+  );
+  expect(
+    assistantDnsRoleFailures(
+      "Secondary repliziert externe Daten. Der Accelerator unterstützt die Primary-Server vollständig.",
+      "secondary",
+    ),
+  ).toContain("dns_secondary_limit_missing");
+});
+
+it.each(["repliziert", "replizieren", "replizierte"])(
+  "recognizes the real-model German replication wording %s without requiring the synonym Kopie",
+  (word) => {
+    const explanation = dnsRoleExplanation.replace(
+      "repliziert eine Kopie",
+      word,
+    );
+    expect(assistantDnsRoleFailures(explanation, "roles")).toEqual([]);
+  },
+);
+
+it("checks a new primary DNS zone through native proposal application without rewriting existing zones", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "dns-zone-role-draft",
+  );
+  if (!scenario) throw new Error("missing_fixture");
+  const input = {
+    explanation: "Noch nichts gespeichert.",
+    references: ["dns-zones"],
+    questions: [],
+    changes: [
+      {
+        path: "connectivity.dns_zones",
+        operation: "merge",
+        value: {
+          company: {
+            dns_name: "new-company.stackit.gg",
+            type: "primary",
+            contact_email: "owner@example.test",
+          },
+        },
+      },
+    ],
+  };
+  expect(validateAssistantScenario(scenario, input).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      changes: [
+        {
+          ...input.changes[0],
+          operation: "replace",
+        },
+      ],
+    }).failures,
+  ).toContain("dns_unrelated_configuration_changed");
+  expect(() =>
+    validateAssistantScenario(scenario, {
+      ...input,
+      changes: [
+        {
+          ...input.changes[0],
+          value: {
+            company: { ...input.changes[0]?.value.company, type: "public" },
+          },
+        },
+      ],
+    }),
+  ).toThrow();
+});
 
 it.each([
   "identity-foundations-advice",
@@ -322,6 +491,36 @@ it.each(["dns-owner", "dns-login", "dns-placeholder"])(
           {
             path: "connectivity.dns_zones",
             value: {
+              example: {
+                name: zone.name,
+                description: zone.description,
+                contact_email: zone.contact_email,
+              },
+            },
+          },
+        ],
+      }).failures,
+    ).toEqual([]);
+    for (const overrides of [{ default_ttl: 7200 }, { contact_email: null }]) {
+      expect(
+        validateAssistantScenario(scenario, {
+          ...input,
+          changes: [
+            {
+              path: "connectivity.dns_zones",
+              value: { example: { ...zone, ...overrides } },
+            },
+          ],
+        }).failures,
+      ).toContain("dns_settings_or_contact_missing");
+    }
+    expect(
+      validateAssistantScenario(scenario, {
+        ...input,
+        changes: [
+          {
+            path: "connectivity.dns_zones",
+            value: {
               example: { ...zone, contact_email: "invented@example.test" },
             },
           },
@@ -339,6 +538,52 @@ it.each(["dns-owner", "dns-login", "dns-placeholder"])(
         ],
       }).failures,
     ).toContain("dns_domain_changed");
+  },
+);
+
+it.each(["connectivity.firewall", "connectivity.firewall.ha"])(
+  "qualifies a narrow HA proposal at %s by its exact effective state",
+  (path) => {
+    const scenario = assistantScenarios.find(
+      (entry) => entry.id === "firewall-metro-ha-only",
+    );
+    if (!scenario) throw new Error("missing_fixture");
+    const ha = { backup_zone: "eu01-2", vhid: 1 };
+    const value: JsonValue = path.endsWith(".ha") ? ha : { ha };
+    const input = {
+      explanation:
+        "Noch nichts gespeichert. Kein Deployment; Plan und Apply brauchen separate Freigaben.",
+      questions: [],
+      references: ["firewall-infrastructure"],
+      changes: [{ path, operation: "merge", value }],
+    };
+    expect(validateAssistantScenario(scenario, input).failures).toEqual([]);
+    expect(
+      validateAssistantScenario(scenario, {
+        ...input,
+        changes: [
+          {
+            path: "connectivity.firewall.ha",
+            operation: "merge",
+            value: { ...ha, vhid: 2 },
+          },
+        ],
+      }).failures,
+    ).toContain("firewall_requested_ha_not_applied");
+    expect(
+      validateAssistantScenario(scenario, {
+        ...input,
+        changes: [
+          {
+            path: "connectivity.firewall",
+            operation: "merge",
+            value: { ha, flavor: "g1.4" },
+          },
+        ],
+      }).failures,
+    ).toContain(
+      "firewall_metro_ha_changed_native_ip_defaults_or_saved_appliance",
+    );
   },
 );
 

@@ -45,6 +45,55 @@ test("validation and release both execute native template and stateful platform 
   assert.match(workflow,/^\s+npm run test:common-contract$|run: npm run test:common-contract/m);
  }
 });
+test("release builds require repeated live model qualification and retain multi-turn failures",()=>{
+ const release=readFileSync(new URL("../../../.github/workflows/configurator-release.yml",import.meta.url),"utf8");
+ const live=readFileSync(new URL("../../../.github/workflows/assistant-live.yml",import.meta.url),"utf8");
+ assert.match(release,/uses: \.\/\.github\/workflows\/assistant-live\.yml/);
+ assert.match(release,/topic: all\n\s+repetitions: 2/);
+ assert.match(release,/\n  build:\n    needs: assistant\n/);
+ assert.match(live,/workflow_call:/);
+ assert.match(live,/name: assistant-live-qualification/);
+ assert.match(live,/environment: assistant-tests/);
+ assert.match(live,/group: configurator-assistant-model-serving\n\s+cancel-in-progress: false/);
+ assert.match(live,/--repeat "\$LZC_ASSISTANT_TEST_REPETITIONS"/);
+ assert.match(live,/scripts\/assistant-journey\.ts \| tee assistant-journey-results\.jsonl/);
+ assert.match(live,/steps\.catalogue\.outcome == 'success'/);
+ assert.match(live,/if: always\(\)/);
+ assert.doesNotMatch(live,/continue-on-error:|retry/);
+ assert.doesNotMatch(live,/^\s+LZC_MODEL_SERVING_(?:MODEL|INTENT_MODEL):/m);
+ assert.equal((live.match(/LZC_EXECUTION_ENABLED: 'false'/g)||[]).length,2);
+ assert.equal((live.match(/LZC_APPLICATION_EXECUTION_ENABLED: 'false'/g)||[]).length,2);
+});
+test("Configurator provisioning and deployment remain exclusively manual",()=>{
+ for(const name of ["configurator-bootstrap.yml","configurator-platform.yml","configurator-runtime.yml","configurator-release.yml"]){
+  const workflow=readFileSync(new URL(`../../../.github/workflows/${name}`,import.meta.url),"utf8");
+  assert.match(workflow,/\n  workflow_dispatch:/);
+  assert.doesNotMatch(workflow,/\n  (?:push|pull_request|schedule|workflow_run):/);
+  assert.doesNotMatch(workflow,/github\.event_name == 'push'|LZC_(?:BOOTSTRAP|PLATFORM|RUNTIME)_APPLY_COMMIT/);
+ }
+});
+test("Assistant CI access is separate from platform execution credentials",()=>{
+ const spec=JSON.parse(readFileSync(new URL("./github-assistant-environments.json",import.meta.url),"utf8"));
+ assert.equal(spec.repository,"stackitcloud/stackit-landing-zone");
+ assert.deepEqual(spec.environments,[{name:"assistant-tests",review:false,branches:["main","feature/landing-zone-configurator"]}]);
+ const operator=readFileSync(new URL("./configure-github.mjs",import.meta.url),"utf8");
+ const assistant=operator.split("if(assistant) {")[1]?.split("const config=parseEnv")[0];
+ assert.ok(assistant);
+ assert.match(assistant,/const assistantSecrets=\{LZC_MODEL_SERVING_TOKEN:loadLocalModelServingToken\(\)\}/);
+ assert.match(assistant,/configureTargets\(\{\},\(\)=>assistantSecrets\)/);
+ assert.match(assistant,/process\.exit\(0\)/);
+ assert.doesNotMatch(assistant,/LZC_SERVICE_ACCOUNT_KEY|LZC_STATE_KEY_|LZC_MANAGEMENT_/);
+});
+test("required Accelerator checks remain visible and fail closed on change detection errors",()=>{
+ const workflow=readFileSync(new URL("../../../.github/workflows/validate.yml",import.meta.url),"utf8");
+ assert.doesNotMatch(workflow.slice(0,workflow.indexOf("\npermissions:")),/\n\s+paths:/);
+ for(const name of ["Format","Validate","Configuration Tests","TFLint"]){
+  assert.match(workflow,new RegExp(`\\n    name: ${name}\\n    needs: changes\\n`));
+ }
+ assert.equal(workflow.match(/needs\.changes\.result != 'success'/g)?.length,4);
+ assert.match(workflow,/git diff --name-only "\$BASE_SHA" "\$GITHUB_SHA"/);
+ assert.match(workflow,/Comparison base unavailable; running all Accelerator checks/);
+});
 test("migration diagnostics export only bounded evidence for the selected run",()=>{
  const parser=fileURLToPath(new URL("./migration-evidence.mjs",import.meta.url));
  const evidence={service:"database-migrations",runId:"123",ok:false,phase:"migrate",version:"053_assistant_conversations.sql",error:"42501",message:"synthetic-private-sql",password:"synthetic-private-password"};
@@ -82,12 +131,14 @@ test("one release manifest binds both packages to the same immutable build",()=>
 });
 test("promotion requires the successful build's exact repository, source and immutable artifact",()=>{
  const run={id:12345,run_attempt:1,path:".github/workflows/configurator-release.yml",head_sha:"a".repeat(40),head_repository:{full_name:"stackitcloud/stackit-landing-zone"},head_branch:"feature/landing-zone-configurator",event:"workflow_dispatch"};
- const jobs=[{name:"build",status:"completed",conclusion:"success"}];
+ const jobs=[{name:"build",status:"completed",conclusion:"success"},{name:"assistant / assistant-live-qualification",status:"completed",conclusion:"success"}];
  const artifact={id:67890,name:"configurator-release-12345",expired:false,workflow_run:{id:12345,head_sha:run.head_sha}};
  assert.deepEqual(approvedReleaseSource(run,jobs,[artifact],"12345"),{revision:run.head_sha,runId:"12345",artifactId:"67890"});
  for(const changed of [{...run,event:"pull_request"},{...run,head_repository:{full_name:"someone/fork"}},{...run,path:".github/workflows/other.yml"},{...run,head_branch:"unapproved"},{...run,run_attempt:2}])
   assert.throws(()=>approvedReleaseSource(changed,jobs,[artifact],"12345"));
  assert.throws(()=>approvedReleaseSource(run,[],[artifact],"12345"));
+ assert.throws(()=>approvedReleaseSource(run,[jobs[0]],[artifact],"12345"));
+ assert.throws(()=>approvedReleaseSource(run,[jobs[0],{...jobs[1],conclusion:"failure"}],[artifact],"12345"));
  assert.throws(()=>approvedReleaseSource(run,[{...jobs[0],conclusion:"failure"}],[artifact],"12345"));
  assert.throws(()=>approvedReleaseSource(run,jobs,[{...artifact,expired:true}],"12345"));
  assert.throws(()=>approvedReleaseSource(run,jobs,[{...artifact,workflow_run:{id:12345,head_sha:"b".repeat(40)}}],"12345"));

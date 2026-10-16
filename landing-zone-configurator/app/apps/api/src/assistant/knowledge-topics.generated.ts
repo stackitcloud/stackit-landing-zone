@@ -41,7 +41,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [
@@ -94,12 +94,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+            "12b1a51aef9055e0146f41fa30f9ba03de0e6e078f78597cc488da9884f0761f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [
@@ -145,9 +145,9 @@ export const assistantKnowledgeTopics = {
         "connectivity_regions[*].network_areas[*].transfer_network",
       ],
       source: "landing-zone-configurator/docs/assistant-knowledge/sna.md",
-      text: "# STACKIT Network Areas (SNA)\n\n## Purpose\n\nSNA is the STACKIT Network Area for central project networking, not AWS VPC,\nShared VPC or Direct Connect. Separate it from firewall, VPN and external sites.\n\n## Accelerator Contract\n\nNative single form: connectivity.network_area; map: connectivity.network_areas\nwith stable keys; regional form: connectivity_regions. Never mix forms.\nArea fields: ranges, transfer_network (IPv4 CIDRs), min_prefix_length,\nmax_prefix_length, default_prefix_length, optional name/default_nameservers.\nPrefix order: min <= default <= max, integers within 0..32. Backend patch schema\nand shared compiler decide editable capabilities, not knowledge text.\n\n## Dependencies\n\nCredential/governance foundations apply. Corporate projects need an area in\nthe same region; omitted corporate retains the Corporate default. Preserve\nreferenced area keys. Project count is no quota guarantee. OPNsense is the\nsupported central firewall, not Palo Alto/Fortinet/AWS Network Firewall; an SNA\nnever implies enabling it.\n\n## Dialogue\n\nReuse context/answers; ask at most three missing questions: unused pool, project\nsubnet size and free transfer subnet. Explain CIDRs and required communication,\nnot invented isolation switches. /16 contains 256 /24s before reservations:\narithmetic, not quota. /16 contains 512 /25s; /25 has128 addresses, not128\nproject subnets. Infrastructure reservations reduce usable capacity.\nAny suggested pool is an assumption until confirmed free.\nOnce inputs are known propose an SNA patch, not another questionnaire. Do not\nrepeat unchanged company/owner/region or ask about firewall/VPN/secret versions\nwhen those are later steps. Inherited firewall/DNS values are not consent:\nwarn about conflicting pools or enabled services without silently changing\nthem. Explicit combined SNA/firewall requests retain firewall/HA requirements:\nreuse a complete saved SNA and continue the firewall contract, not an artificial\nSNA-first restriction. Missing SNA inputs remain actual dependencies.\nProject-specific prefixes override SNA defaults.\n\n## Examples\n\nSynthetic confirmed pool10.64.0.0/16, transfer10.63.0.0/24, fixed /24,\neu01/key default, firewall later. network_areas.default holds these fields;\nretain network_area in existing single drafts. No implicit firewall/routes.\nExport native tfvars, not free Terraform.\n\n## Limits\n\nChat supports single/map area add/edit only: no deletion/rename, form conversion,\nregional/VPN patch or execution. Firewall uses its separate reviewed central\ninfrastructure/HA patch contract, not an implicit part of SNA. Preserve unknown imports outside model\ncontext. Validate before presentation/acceptance; only explicit authorized\nacceptance saves. Never claim deployed. Full overlap, quota, availability and\nfirewall-containment checks remain separate; clean compilation is not proof.\nOther complex mutations need their own reviewed patch contract.\n\n## Credentials\n\nExternal provider credentials/current permissions are required for provisioning,\nnot for mere draft advice. No keys, passwords, IDs, state, plans or profiles in\nmodel context; do not invent missing-permission errors.\n\n## Sources\n\nManifest hashes bind local connectivity/validation sources. External provider\nlinks are informational, not live/latest behavior. Re-review contract changes;\nAssistant, Common-Configuration and identity tests remain separate evidence.",
+      text: "# STACKIT Network Areas (SNA)\n\n## Purpose\n\nSNA is the STACKIT Network Area for central project networking, not AWS VPC,\nShared VPC or Direct Connect. Separate it from firewall, VPN and external sites.\n\n## Accelerator Contract\n\nNative single form: connectivity.network_area; map: connectivity.network_areas\nwith stable keys; regional form: connectivity_regions. Never mix forms.\nArea fields: ranges, transfer_network (IPv4 CIDRs), min_prefix_length,\nmax_prefix_length, default_prefix_length, optional name/default_nameservers.\nPrefix order: min <= default <= max, integers within 0..32. Backend patch schema\nand shared compiler decide editable capabilities, not knowledge text.\n\n## Dependencies\n\nCredential/governance foundations apply. Corporate projects need an area in\nthe same region; omitted corporate retains the Corporate default. Preserve\nreferenced area keys. Project count is no quota guarantee. OPNsense is the\nsupported central firewall, not Palo Alto/Fortinet/AWS Network Firewall; an SNA\nnever implies enabling it.\n\n## Dialogue\n\nReuse context/answers; ask at most three missing questions: unused pool, project\nsubnet size and free transfer subnet. Explain CIDRs and required communication,\nnot invented isolation switches. /16 contains 256 /24s before reservations:\narithmetic, not quota. /16 contains 512 /25s; /25 has128 addresses, not128\nproject subnets. Infrastructure reservations reduce usable capacity.\nAny suggested pool is an assumption until confirmed free.\nOnce inputs are known propose an SNA patch, not another questionnaire. Do not\nrepeat unchanged company/owner/region or ask about firewall/VPN/secret versions\nwhen those are later steps. Inherited firewall/DNS values are not consent:\nwarn about conflicting pools or enabled services without silently changing\nthem. Explicit combined SNA/firewall requests retain firewall/HA requirements:\nreuse a complete saved SNA and continue the firewall contract, not an artificial\nSNA-first restriction. Missing SNA inputs remain actual dependencies.\nProject-specific prefixes override SNA defaults.\n\n## Examples\n\nSynthetic confirmed pool10.64.0.0/16, transfer10.63.0.0/24, fixed /24,\neu01/key default, firewall later. network_areas.default holds these fields;\nretain network_area in existing single drafts. No implicit firewall/routes.\nExport native tfvars, not free Terraform.\n\n## Limits\n\nThe specialized SNA dialogue supports single/map add/edit. Other reviewed public\nsettings use typed native Editor proposals, never implicit migrations or\nexecution. Firewall uses its separate reviewed central\ninfrastructure/HA patch contract, not an implicit part of SNA. Preserve unknown imports outside model\ncontext. Validate before presentation/acceptance; only explicit authorized\nacceptance saves. Never claim deployed. Full overlap, quota, availability and\nfirewall-containment checks remain separate; clean compilation is not proof.\nOnly reviewed Editor paths may change; protected inputs remain excluded.\n\n## Credentials\n\nExternal provider credentials/current permissions are required for provisioning,\nnot for mere draft advice. No keys, passwords, IDs, state, plans or profiles in\nmodel context; do not invent missing-permission errors.\n\n## Sources\n\nManifest hashes bind local connectivity/validation sources. External provider\nlinks are informational, not live/latest behavior. Re-review contract changes;\nAssistant, Common-Configuration and identity tests remain separate evidence.",
       sha256:
-        "ec54a74ea7b0dba0941a711c980ef996f3f66b8f8f739737e25805a842ebc9ad",
+        "15ed1b421e4a280afd2e313521666d4a27b0df1e3a5de7f2072f7e1955252fc0",
     },
     {
       id: "identity-foundations",
@@ -186,7 +186,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -246,12 +246,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+            "12b1a51aef9055e0146f41fa30f9ba03de0e6e078f78597cc488da9884f0761f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -331,7 +331,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -382,7 +382,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -400,9 +400,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/observability.md",
-      text: "# Central and Project Observability\n\n## Purpose\n\nCollect operational logs, traces and metrics centrally or within a landing-zone\nproject. Choose scope and retention from operating needs, not a template label.\n\n## Accelerator Contract\n\nNative root observability configures management monitoring; null disables that\ninstance. Landing-zone projects and platform_kubernetes have distinct nested\nobservability settings. Management fields include plan_name, acl and separate\nlogs/traces/metrics/downsampling retention periods. An enabled project instance\nis not automatically the same service or authorization as the central instance.\n\n## Dependencies\n\nManagement foundations and credential boundaries. Project/cluster existence,\ningestion paths, access ACLs and the specific nested service contract must match.\nAudit logging is a separate function, not proven by ordinary telemetry alone.\n\n## Dialogue\n\nAsk which signals and projects need coverage, required retention, network\naccess and who operates dashboards. Separate central versus per-project scope.\nUse verified live plans/catalogues when available; do not copy static prices,\nquotas or assert cross-region availability from a default plan name.\n\n## Examples\n\nSynthetic management fragment: observability = { logs_retention_days = 30,\ntraces_retention_days = 30 }. Other defaults are resolved by the native schema;\nthis example is not permission to enable telemetry or select a production plan.\n\n## Limits\n\nStorage/retention estimates require measured data volume and current service\nlimits. Empty ACLs/defaults must be explained, not called private or secure by\nassumption. Dashboard examples and demo metrics are not production coverage.\nComplex monitoring chat patches are not introduced by this topic.\n\n## Credentials\n\nProvider provisioning and ingestion/dashboard credentials are separate bindings.\nNever request Grafana passwords, service tokens, OTLP secrets or raw customer logs.\n\n## Sources\n\nManagement, landing-zone and platform module variables define actual scope.\nManifest sources and engine binding must be refreshed after review; live product\nfacts stay outside the static topic. This topic is not operational qualification.",
+      text: "# Central and Project Observability\n\n## Purpose\n\nLogs, traces and metrics centrally or per project; scope and retention follow\noperating needs, not template labels.\n\n## Accelerator Contract\n\nobservability=null disables central management monitoring. Project and\nplatform_kubernetes observability have separate nested contracts. Central fields:\nplan_name, acl, logs/traces/metrics and downsampling retention periods. A project\ninstance does not imply the same central service or authorization.\n\n## Dependencies\n\nManagement, credentials, project/cluster, ingestion paths and deliberate ACLs.\nRespect nested scope. Ordinary telemetry does not prove audit logging.\n\n## Dialogue\n\nClarify signals/projects, retention needs, access and dashboard operation.\nSeparate central/project scope. Reuse live plans/catalogues; a native default\nplan name does not prove availability, quotas, prices or cross-region support.\n\n## Examples\n\nmetrics_retention_days=30: propose that choice and the user's plan/ACL. Omit other\nretention overrides to inherit native defaults; do not copy sample logs/traces\nvalues or ask for answered ACLs. Optional retentions are not mandatory decisions.\n\n## Limits\n\nEstimates need measured volume and current limits. Empty/default ACLs are not\nautomatically private or secure. Demos do not prove production coverage.\nTyped native Editor proposals change only the local draft; execution is separate.\n\n## Credentials\n\nSeparate provisioning from ingestion/dashboard credentials. No Grafana\npasswords, service tokens, OTLP secrets or raw customer logs in chat.\n\n## Sources\n\nManagement/project/platform variables and manifest/engine binding. Refresh after\nreview. Live product facts and operational qualification remain separate.",
       sha256:
-        "4cbc8b1f235c125570714475ddeedc306e4f348158cf50b80d3c7e9f77282135",
+        "73b9c3197c5a6f3c879d9869856ad520c81cccdc916b9a2a618827b0a3dbcc13",
     },
     {
       id: "audit-logs",
@@ -438,7 +438,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -456,9 +456,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/audit-logs.md",
-      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nCapture organizational control-plane audit events for investigation and archive\nthem with deliberately chosen access, scope and retention.\n\n## Accelerator Contract\n\nNative audit_logs is optional; null skips its management resources. The module\nroutes audit events to an OTLP Logs destination and an object-storage archive.\nFields include retention_days, acl, s3_object_lock and link_scopes containing\nresource_type/resource_id. Default scope is organization-wide; explicit scopes\nsupport organization, folder or project. With Object Lock enabled, the native\ncontract limits retention to 1..365 days. Query retention and archive policy\nmust be distinguished from backups or legal compliance certification.\n\n## Dependencies\n\nManagement foundations, organization access and externally supplied credentials.\nLink scope must belong to authorized resources. Central observability and audit\nlogging are distinct optional services.\n\n## Dialogue\n\nAsk about audit obligations, retention period, organizational versus selected\nscope, reader access and retention/deletion constraints. Describe Object Lock's\nconsequences before a proposal. Resolve resource selections through authorized\ninterfaces; never ask customers to paste internal scope IDs or raw audit logs.\n\n## Examples\n\nSynthetic fragment: audit_logs = { retention_days = 180,\ns3_object_lock = true }. It uses native defaults for other fields; it is not a\nlegal retention recommendation or an instruction to enable audit automatically.\n\n## Limits\n\nObject Lock can constrain deletion independently of Configurator conversation\nexpiry. Audit-router configuration does not prove delivered events or all scopes\ncovered. Scope, permissions, ingestion and archive retrieval require separate\ntests; current chat cannot patch the complex audit object.\n\n## Credentials\n\nArchive and ingestion credentials belong to secure execution bindings. Never\nsend S3 keys, OTLP tokens, archive contents or compliance evidence to the model.\n\n## Sources\n\nRoot and management contracts pin scope and retention behavior. Re-review\nservice limits and implementation changes rather than silently promoting source\nhashes. External compliance and provider freshness are not asserted here.",
+      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nCapture organizational control-plane audit events for investigation and archive\nthem with deliberately chosen access, scope and retention.\n\n## Accelerator Contract\n\nNative audit_logs is optional; null skips its management resources. The module\nroutes audit events to an OTLP Logs destination and an object-storage archive.\nFields include retention_days, acl, s3_object_lock and link_scopes containing\nresource_type/resource_id. Default scope is organization-wide; explicit scopes\nsupport organization, folder or project. With Object Lock enabled, the native\ncontract limits retention to 1..365 days. Query retention and archive policy\nmust be distinguished from backups or legal compliance certification.\n\n## Dependencies\n\nManagement foundations, organization access and externally supplied credentials.\nLink scope must belong to authorized resources. Central observability and audit\nlogging are distinct optional services.\n\n## Dialogue\n\nAsk about audit obligations, retention period, organizational versus selected\nscope, reader access and retention/deletion constraints. Describe Object Lock's\nconsequences before a proposal. Resolve resource selections through authorized\ninterfaces; never ask customers to paste internal scope IDs or raw audit logs.\n\n## Examples\n\nSynthetic fragment: audit_logs = { retention_days = 180,\ns3_object_lock = true }. It uses native defaults for other fields; it is not a\nlegal retention recommendation or an instruction to enable audit automatically.\n\n## Limits\n\nObject Lock can constrain deletion independently of Configurator conversation\nexpiry. Audit-router configuration does not prove delivered events or all scopes\ncovered. Scope, permissions, ingestion and archive retrieval require separate\ntests. Native Editor proposals support typed audit settings; new instances need\nexplicit retention, ACL and Object Lock decisions, not sample/default consent.\n\n## Credentials\n\nArchive and ingestion credentials belong to secure execution bindings. Never\nsend S3 keys, OTLP tokens, archive contents or compliance evidence to the model.\n\n## Sources\n\nRoot and management contracts pin scope and retention behavior. Re-review\nservice limits and implementation changes rather than silently promoting source\nhashes. External compliance and provider freshness are not asserted here.",
       sha256:
-        "460d95edf2a4ca2dc8e3b09b2f3bd87bc320effa9bbe976f33078bbacd3f6d59",
+        "57c4f4892647abaf053a53626d5ff54ad2e336d4b0c26e578bd15065f2f10396",
     },
     {
       id: "federated-identities",
@@ -494,7 +494,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -512,15 +512,15 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/federated-identities.md",
-      text: '# Federated Operating Identities\n\n## Purpose\n\nAllow narrowly scoped external workload identities to operate through the\nmanagement service account without treating federation as a general login switch.\n\n## Accelerator Contract\n\nNative federated_identity_providers is a list of name, issuer and assertions\nwith item/operator/value. The management module attaches this configuration to\nits service-account workflow. Federation does not create Configurator users,\nreplace their authorization or enable every external identity provider feature.\n\n## Dependencies\n\nManagement operating identity, provider/IAM permissions and a verified issuer\nand assertion contract. Governance rights remain independently scoped.\n\n## Dialogue\n\nAsk which CI/workload must act, who owns the issuer and which repository,\nenvironment or subject assertions limit trust. Do not infer "trust all" from\na vendor name. Verify issuer/assertions before advising; never request bearer\ntokens, signing keys or identity-provider secrets.\n\n## Examples\n\nSynthetic opt-out: federated_identity_providers = []. Enabling federation needs\nan explicit reviewed issuer and least-privilege assertions, not a guessed sample\noperator, wildcard subject or credentials copied from a pipeline.\n\n## Limits\n\nSource schema support is not issuer compatibility or successful token exchange.\nOperators, claims, audience and IAM privileges need independent verification.\nComplex federation changes and trust grants are not current chat patches;\nno automatic identity creation or scope escalation.\n\n## Credentials\n\nProvisioning credentials and exchanged workload tokens stay outside configuration\nhistory and model context. Bind credentials externally for native execution;\nfederation is not permission to rotate existing model/provider tokens.\n\n## Sources\n\nThe management variable and implementation contract is authoritative. Manifest\nfingerprints track the reviewed local revision, not external issuer freshness\nor a production security qualification.',
+      text: '# Federated Operating Identities\n\n## Purpose\n\nAllow narrowly scoped external workload identities to operate through the\nmanagement service account without treating federation as a general login switch.\n\n## Accelerator Contract\n\nNative federated_identity_providers is a list of name, issuer and assertions\nwith item/operator/value. The management module attaches this configuration to\nits service-account workflow. Federation does not create Configurator users,\nreplace their authorization or enable every external identity provider feature.\n\n## Dependencies\n\nManagement operating identity, provider/IAM permissions and a verified issuer\nand assertion contract. Governance rights remain independently scoped.\n\n## Dialogue\n\nAsk which CI/workload must act, who owns the issuer and which repository,\nenvironment or subject assertions limit trust. Do not infer "trust all" from\na vendor name. Verify issuer/assertions before advising; never request bearer\ntokens, signing keys or identity-provider secrets.\n\n## Examples\n\nSynthetic opt-out: federated_identity_providers = []. Enabling federation needs\nan explicit reviewed issuer and least-privilege assertions, not a guessed sample\noperator, wildcard subject or credentials copied from a pipeline.\n\n## Limits\n\nSource schema support is not issuer compatibility or successful token exchange.\nOperators, claims, audience and IAM privileges need independent verification.\nNative Editor proposals support typed issuer/assertion configuration, not live\ntrust grants, automatic identity creation or scope escalation.\n\n## Credentials\n\nProvisioning credentials and exchanged workload tokens stay outside configuration\nhistory and model context. Bind credentials externally for native execution;\nfederation is not permission to rotate existing model/provider tokens.\n\n## Sources\n\nThe management variable and implementation contract is authoritative. Manifest\nfingerprints track the reviewed local revision, not external issuer freshness\nor a production security qualification.',
       sha256:
-        "9e60408f1749a9fa1b35bd26dc1d1d775217d10b670aec157a43a3860c369165",
+        "47e2fff9ad48a4227672a20410bdd1cd8bb07a1b7807240868fad040f0876570",
     },
     {
       id: "dns-zones",
       file: "dns-zones.md",
-      version: 5,
-      checkedOn: "2026-10-12",
+      version: 6,
+      checkedOn: "2026-10-16",
       qualification: "local-draft-not-reviewed-release",
       groups: ["network"],
       mandatory: false,
@@ -555,12 +555,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+            "12b1a51aef9055e0146f41fa30f9ba03de0e6e078f78597cc488da9884f0761f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [
@@ -593,9 +593,9 @@ export const assistantKnowledgeTopics = {
         "connectivity_regions[*].dns_zones[*].type",
       ],
       source: "landing-zone-configurator/docs/assistant-knowledge/dns-zones.md",
-      text: "# DNS Zones and Resolver Assignment\n\n## Purpose\n\nSeparate authoritative DNS zones, records and SNA resolvers.\n\n## Accelerator Contract\n\nZone fields: dns_name, name, description, default_ttl, type, contact_email, acl,\nnetwork_area_key (existing SNA/project). Project zones use dns_zone_name;\nSNA default_nameservers sets resolvers, not zones.\n\n## Dependencies\n\nExisting SNA/project; Kubernetes/namespace DNS follows its own contracts.\n\n## Dialogue\n\nFree primary-zone suffixes:\nruns.onstackit.cloud, stackit.rocks, stackit.gg, stackit.zone, stackit.run.\nstackit.cloud is NOT a provided suffix. Add exactly ONE lowercase DNS label:\nletters/digits/hyphens, no leading/trailing hyphen, max63 characters.\nReuse confirmed domains. Requested remaining settings: propose name (lowercase/\nhyphens,max63), factual description(max1024), TTL3600s/native baseline;300s for\nexplicit frequent changes (range60..99999999). Explain caching/change tradeoff.\nPrimary is authoritative; secondary needs primaries absent from native module.\nContact: preserve an existing DNS contact; otherwise propose saved owner_email,\nthen the currently verified human login email as a reviewable default. Explain\nits source; never invent an address. Ask only if no contact is known. ACL currently\nhas NO enforcement in pinned provider, never promise restricted access; retain\nunless explicitly supplied. Preserve area unless explicit valid reassignment.\nAvailability unverified; free subdomain is NOT free DNS service.\n\n## Examples\n\nExample GmbH: example-gmbh.runs.onstackit.cloud; name example-gmbh-dns, TTL3600s.\ndev/prod/test below it are records, not additional free-zone labels.\n\n## Limits\n\nChat partial native-field patches of EXISTING central zone keys; preserve omitted\nfields, no creation/regional conversion. One zone unambiguous; ask for several.\nField-selection acceptance saves, never deploys; remaining suggestions stay available.\nNo SNA-only zones; empty map none.\nNo propagation/certificate/reachability/delegation proof.\n\n## Credentials\n\nSeparate provider/registrar access; no passwords, tokens or signing keys in chat.\n\n## Sources\n\nNative manifest and pinned provider0.114.0, reviewed2026-10-12.\nListed runs.onstackit.cloud controls over singular run.onstackit.cloud typo.",
+      text: "# DNS Zones and Resolver Assignment\n\n## Purpose\n\nSeparate authoritative DNS zones, records and SNA resolvers.\n\n## Accelerator Contract\n\nZone fields: dns_name, name, description, default_ttl, type, contact_email, acl,\nnetwork_area_key (existing SNA/project). Project zones use dns_zone_name;\nSNA default_nameservers sets resolvers, not zones.\n\n## Dependencies\n\nExisting SNA/project; Kubernetes/namespace DNS follows its own contracts.\n\n## Dialogue\n\nFree primary-zone suffixes:\nruns.onstackit.cloud, stackit.rocks, stackit.gg, stackit.zone, stackit.run.\nstackit.cloud is NOT a provided suffix. Add exactly ONE lowercase DNS label:\nletters/digits/hyphens, no leading/trailing hyphen, max63 characters.\nReuse confirmed domains. Requested remaining settings: propose name (lowercase/\nhyphens,max63), factual description(max1024), TTL3600s/native baseline;300s for\nexplicit frequent changes (range60..99999999). Explain caching/change tradeoff.\ntype: primary/secondary, never public/private visibility. Both are authoritative:\nprimary manages records at STACKIT (choose for new company zones); secondary\nreplicates external primaries. Their configuration is absent from this module:\nno complete secondary setup; never silently convert an existing secondary.\nContact: preserve an existing DNS contact; otherwise propose saved owner_email,\nthen the currently verified human login email as a reviewable default. Explain\nits source; never invent an address. Ask only if no contact is known. ACL currently\nhas NO enforcement in pinned provider, never promise restricted access; retain\nunless explicitly supplied. Preserve area unless explicit valid reassignment.\nAvailability unverified; free subdomain is NOT free DNS service.\n\n## Examples\n\nExample GmbH: example-gmbh.runs.onstackit.cloud; name example-gmbh-dns, TTL3600s.\ndev/prod/test below it are records, not additional free-zone labels.\n\n## Limits\n\nDedicated central-DNS dialogue: EXISTING-key patches only, no creation/regional\nconversion. Native Editor: explicit add/update/complete-set replacement,\nincluding regional zones. Corrections reuse zone keys; complete sets expose\nreviewable removals. Add only on explicit additional intent. Ask the target if\nseveral zones are ambiguous; preserve omitted fields.\nField-selection acceptance saves, never deploys; remaining suggestions stay available.\nNo SNA-only zones; empty map none.\nNo propagation/certificate/reachability/delegation proof.\n\n## Credentials\n\nSeparate provider/registrar access; no passwords, tokens or signing keys in chat.\n\n## Sources\n\nNative manifest and pinned provider0.114.0, reviewed2026-10-12.\nListed runs.onstackit.cloud controls over singular run.onstackit.cloud typo.",
       sha256:
-        "9b69ff263d6634a7ffcdc5d1e4d10fdc4fd34c39fae5c8bfc552e30d127bb49e",
+        "4a1f648d10e6adff0561a9e0a81a03c8e5bc10948563d352d2a626a56f76e895",
     },
     {
       id: "firewall-infrastructure",
@@ -646,7 +646,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -751,7 +751,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -885,9 +885,9 @@ export const assistantKnowledgeTopics = {
         "connectivity_regions[*].vpn.routing_type",
       ],
       source: "landing-zone-configurator/docs/assistant-knowledge/vpn.md",
-      text: "# Site-to-Site VPN\n\n## Purpose\n\nConnect explicitly requested external networks to the platform through supported\nsite-to-site VPN gateways and tunnels. VPN is not required for project-to-project\ncommunication inside an SNA and must not be introduced into an SNA-first task.\n\n## Accelerator Contract\n\nNative connectivity.vpn and supported connectivity_regions entries carry the\ngateway, plan, routing type, connections, tunnel peers, routes/subnets and\nIKE/IPsec settings defined by the root schema. vpn_pre_shared_keys is a separate\nprotected input. Use actual gateway/connection/tunnel keys; do not flatten the\ncontract or invent arbitrary VPN appliances. Regional root calls exist, but\nservice availability and plan compatibility still need authorized live checks.\n\n## Dependencies\n\nSNA routing, confirmed non-overlapping local/remote networks, reachable peers\nand separate credential bindings. Public PIM product facts are not proof of\navailability for the target project or region. A billing SKU is not a plan ID.\n\n## Dialogue\n\nFirst confirm that external connectivity is needed now. Ask about site count,\npeer capability, required throughput/connections, local/remote networks and\navailability. Use labels and business requirements, not requests for plan IDs.\nMatch live PIM attributes to authorized plan options when selecting; unavailable\neu02 data must not be substituted with eu01. Never ask for PSKs or private keys.\n\n## Examples\n\nSynthetic intent: one approved external site, two tunnels if the confirmed\nconnection contract calls for them, explicit peer subnets. connectivity.vpn =\nnull disables that optional configuration. This field fragment is not a full\ngateway proposal and never contains a preshared key.\n\n## Limits\n\nCurrent chat cannot patch the complex VPN object or its credentials. Do not\nassume compatible encryption, peer routes, performance or failover from a plan\nname. Plans, quotas and tunnel state are live facts. Configuration does not\nprove packets traverse the connection; routing and overlap checks are separate.\n\n## Credentials\n\nProvider access and tunnel PSKs use separate externally supplied bindings.\nNever request or export PSK values through the model. Key rotation and gateway\ncreation need explicit authorized execution, not a conversational recommendation.\n\n## Sources\n\nRoot variables, connectivity wiring and VPN implementation are manifest sources.\nRe-review regional/plan/tunnel contract changes before regeneration. Live\ncatalogues/PIM remain separately fetched facts, not a frozen Markdown SKU list.",
+      text: "# Site-to-Site VPN\n\n## Purpose\n\nConnect explicitly requested external networks to the platform through supported\nsite-to-site VPN gateways and tunnels. VPN is not required for project-to-project\ncommunication inside an SNA and must not be introduced into an SNA-first task.\n\n## Accelerator Contract\n\nNative connectivity.vpn and supported connectivity_regions entries carry the\ngateway, plan, routing type, connections, tunnel peers, routes/subnets and\nIKE/IPsec settings defined by the root schema. vpn_pre_shared_keys is a separate\nprotected input. Use actual gateway/connection/tunnel keys; do not flatten the\ncontract or invent arbitrary VPN appliances. Regional root calls exist, but\nservice availability and plan compatibility still need authorized live checks.\n\n## Dependencies\n\nSNA routing, confirmed non-overlapping local/remote networks, reachable peers\nand separate credential bindings. Public PIM product facts are not proof of\navailability for the target project or region. A billing SKU is not a plan ID.\n\n## Dialogue\n\nFirst confirm that external connectivity is needed now. Ask about site count,\npeer capability, required throughput/connections, local/remote networks and\navailability. Use labels and business requirements, not requests for plan IDs.\nMatch live PIM attributes to authorized plan options when selecting; unavailable\neu02 data must not be substituted with eu01. Never ask for PSKs or private keys.\n\n## Examples\n\nSynthetic intent: one approved external site, two tunnels if the confirmed\nconnection contract calls for them, explicit peer subnets. connectivity.vpn =\nnull disables that optional configuration. This field fragment is not a full\ngateway proposal and never contains a preshared key.\n\n## Limits\n\nNative Editor proposals support reviewed public VPN settings, not credentials.\nAcceptance changes only the draft. Do not\nassume compatible encryption, peer routes, performance or failover from a plan\nname. Plans, quotas and tunnel state are live facts. Configuration does not\nprove packets traverse the connection; routing and overlap checks are separate.\n\n## Credentials\n\nProvider access and tunnel PSKs use separate externally supplied bindings.\nNever request or export PSK values through the model. Key rotation and gateway\ncreation need explicit authorized execution, not a conversational recommendation.\n\n## Sources\n\nRoot variables, connectivity wiring and VPN implementation are manifest sources.\nRe-review regional/plan/tunnel contract changes before regeneration. Live\ncatalogues/PIM remain separately fetched facts, not a frozen Markdown SKU list.",
       sha256:
-        "2e7423ff5cf43a4ceb35ec2470ff7308e574d2750b4d77a61ce2b8c9bab9c6a2",
+        "68a7d3e7b7bc8d6ab7b601df29d6b55f48a283dcc99f3e195302462d194637e3",
     },
     {
       id: "firewall-policy",
@@ -928,7 +928,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -1047,7 +1047,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -1097,7 +1097,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -1110,9 +1110,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/devops-git.md",
-      text: "# DevOps Git Service\n\n## Purpose\n\nProvide an explicitly requested managed Git service for platform development,\nseparate from GitHub login, repository forks or Configurator deployment workflows.\n\n## Accelerator Contract\n\nNative devops is optional; null skips the module. Root wiring derives its\nplatform project, ownership and naming and passes git_flavor and\nallowed_network_ranges. A child-module parameter is not a root feature unless\nthe root passes it. No arbitrary CI service or free Terraform Git appliance is\nintroduced by this topic. Flavor syntax follows the contract; real selectable\nsizes and regional availability come from authorized catalogues.\n\n## Dependencies\n\nManagement/governance and identity foundations, provider rights and chosen\nnetwork ACLs. A GitHub repository fork does not prove a provisioned STACKIT Git\nservice or service-account authorization.\n\n## Dialogue\n\nAsk whether managed Git is needed, capacity, operating ownership and access\nnetworks. Reuse verified live flavor labels. Do not interpret an allow-all\ndefault or a template value as explicit public access approval. Do not infer\nCI/CD runners, integrations, migration or secrets from a Git-service request.\n\n## Examples\n\nSynthetic opt-out: devops = null. Enabling the native object requires a verified\ngit_flavor and deliberate allowed_network_ranges. A label such as git-10 is\nillustrative syntax, not a claim of current entitlement or capacity.\n\n## Limits\n\nCurrent chat cannot patch the complex devops object. ACL configuration is not\nbackup/restore, repository migration, SSO or CI execution qualification. Do not\npromise stock prices/performance or arbitrary regional support.\n\n## Credentials\n\nProvisioning credentials and Git workload/user access are separate. Never\nrequest PATs, SSH private keys, Git passwords or CI environment secrets. Native\nexecution bindings must not depend on hidden Configurator profile IDs.\n\n## Sources\n\nRoot calls, DevOps variables and provider configuration are local manifest\nsources. Review changes before generation; product selections remain separately\nauthorized live facts, not static copies in this topic.",
+      text: "# DevOps Git Service\n\n## Purpose\n\nExplicit managed Git, separate from GitHub login, forks and Configurator CI.\n\n## Accelerator Contract\n\ndevops=null skips the module. The root derives project, ownership and naming,\npassing git_flavor and allowed_network_ranges. git_flavor defaults to null,\nNOT git-10/git-100: null creates no Git instance. An ACL-only object does not\nenable Git. Root wiring, not child-module parameters alone, defines support.\nReal sizes and regional availability require authorized catalogues.\n\n## Dependencies\n\nManagement/governance, identity foundations, provider rights and deliberate ACLs.\nA repository fork proves neither provisioned Git nor service-account rights.\n\n## Dialogue\n\nClarify Git need, capacity, operator and access networks. The allow-all ACL\ndefault is NOT public-access consent. There is no enabled native flavor default:\nif Git is wanted without a chosen/verified flavor, explain null and ask instead\nof inventing git-10. Explicit user flavor choices are reviewable, not availability\nproof. Do not infer runners, integrations, migrations or secrets.\n\n## Examples\n\ndevops=null opts out. A chosen git_flavor plus deliberate allowed_network_ranges\ncan propose Git. git-10 illustrates syntax, not entitlement or capacity.\n\n## Limits\n\nTyped native Editor proposals change only the local draft on acceptance.\nACLs do not qualify backup/restore, migration, SSO or CI execution. No arbitrary\nGit appliances, availability, prices or performance promises.\n\n## Credentials\n\nProvisioning and Git-user access are separate. No PATs, private SSH keys, Git\npasswords or CI secrets in chat; no hidden Configurator profile-ID dependency.\n\n## Sources\n\nRoot calls, DevOps variables and provider configuration in the manifest.\nRefresh engine/source bindings after review; live product facts stay separate.",
       sha256:
-        "9cd8a1b6f405c6b8e3be7698d74e921082de27c377c6e5c77b4bdcd1637ea27b",
+        "272e93daa20f89e78ea5596daeae15a782626e036a7c5c2224468dac5e591666",
     },
     {
       id: "platform-kubernetes",
@@ -1156,12 +1156,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+            "12b1a51aef9055e0146f41fa30f9ba03de0e6e078f78597cc488da9884f0761f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -1236,9 +1236,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/platform-kubernetes.md",
-      text: '# Platform Kubernetes, KMS and Bastion\n\n## Purpose\n\nCreate shared STACKIT Kubernetes infrastructure with deliberate networking,\nnode pools and supported optional DNS, monitoring, encrypted storage and debug\naccess. These are separate choices, not implicit parts of an SNA request.\n\n## Accelerator Contract\n\nNative platform_kubernetes is a keyed map. Entries define region, cluster\n(name/version/node_pools/maintenance), network, dns, observability,\nencrypted_volumes, debug_bastion and role_assignments. Network settings include\nsna_enabled, network_area_key and prefix; root resolves native area references\nor an explicitly bound external area. Regional module calls select eu01/eu02.\nKMS-backed storage-class configuration differs from enabling all-volume\nencryption. Debug bastion is a separate VM/SSH access feature. Protected\nplatform_kubernetes_kube_config_override is not normal chat configuration.\n\n## Dependencies\n\nSNA/region for corporate mode, governance/platform ownership and credential\nfoundations. DNS and observability are independent nested options. KMS needs\nrights and compatible storage; namespaces consume the supported cluster/provider\npath. Public mode is not private reachability by assumption.\n\n## Dialogue\n\nAsk about workload scale, private/public connectivity, node-pool/system workload\nroles, availability, maintenance, storage encryption and operational access.\nUse live versions/machines/zones/volumes, not static default SKUs. Never create\na bastion, expose SSH to all networks or enable demos merely to "test SNA".\n\n## Examples\n\nSynthetic opt-out: platform_kubernetes = {}. An enabled entry needs confirmed\ncluster/node-pool settings; a /24 network prefix or key default is not enough\nto promise 100 workloads, cluster quotas or per-namespace isolation.\n\n## Limits\n\nCurrent chat cannot patch complex cluster/KMS/bastion objects. Validate region,\nprefix bounds, node min/max, system pools and area references. Template defaults\nmay contain region-specific zones. In-cluster connectivity, provider access,\nKMS use and node health need separate real execution qualification.\n\n## Credentials\n\nProvider/KMS rights, Kubernetes access and bastion SSH are distinct secure\nbindings. Never request kubeconfig contents, private SSH keys or KMS secret\nmaterial; externally supplied overrides must work with the native contract.\n\n## Sources\n\nRoot calls, cluster/bastion variables, providers and shared validation define\nthe reviewed scope. Re-review DNS/region/provider and encryption changes before\ngeneration; Markdown does not certify private-cluster execution.',
+      text: '# Platform Kubernetes, KMS and Bastion\n\n## Purpose\n\nCreate shared STACKIT Kubernetes infrastructure with deliberate networking,\nnode pools and supported optional DNS, monitoring, encrypted storage and debug\naccess. These are separate choices, not implicit parts of an SNA request.\n\n## Accelerator Contract\n\nNative platform_kubernetes is a keyed map. Entries define region, cluster\n(name/version/node_pools/maintenance), network, dns, observability,\nencrypted_volumes, debug_bastion and role_assignments. Network settings include\nsna_enabled, network_area_key and prefix; root resolves native area references\nor an explicitly bound external area. Regional module calls select eu01/eu02.\nKMS-backed storage-class configuration differs from enabling all-volume\nencryption. Debug bastion is a separate VM/SSH access feature. Protected\nplatform_kubernetes_kube_config_override is not normal chat configuration.\n\n## Dependencies\n\nSNA/region for corporate mode, governance/platform ownership and credential\nfoundations. DNS and observability are independent nested options. KMS needs\nrights and compatible storage; namespaces consume the supported cluster/provider\npath. Public mode is not private reachability by assumption.\n\n## Dialogue\n\nAsk about workload scale, private/public connectivity, node-pool/system workload\nroles, availability, maintenance, storage encryption and operational access.\nUse live versions/machines/zones/volumes, not static default SKUs. Never create\na bastion, expose SSH to all networks or enable demos merely to "test SNA".\n\n## Examples\n\nSynthetic opt-out: platform_kubernetes = {}. An enabled entry needs confirmed\ncluster/node-pool settings; a /24 network prefix or key default is not enough\nto promise 100 workloads, cluster quotas or per-namespace isolation.\n\n## Limits\n\nNative Editor proposals support reviewed public cluster/KMS/bastion settings,\nnot credentials or deployment. Validate region,\nprefix bounds, node min/max, system pools and area references. Template defaults\nmay contain region-specific zones. In-cluster connectivity, provider access,\nKMS use and node health need separate real execution qualification.\n\n## Credentials\n\nProvider/KMS rights, Kubernetes access and bastion SSH are distinct secure\nbindings. Never request kubeconfig contents, private SSH keys or KMS secret\nmaterial; externally supplied overrides must work with the native contract.\n\n## Sources\n\nRoot calls, cluster/bastion variables, providers and shared validation define\nthe reviewed scope. Re-review DNS/region/provider and encryption changes before\ngeneration; Markdown does not certify private-cluster execution.',
       sha256:
-        "903eeb7fbde14b6fa0a9ea73e82e5488e9222b027461e399eeee610c88a46758",
+        "8aa0a773059fb47a1f9fa46524fe3aeae2b4f94c23d8f1c46cedd4820f2f7557",
     },
     {
       id: "project-templates",
@@ -1283,12 +1283,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+            "12b1a51aef9055e0146f41fa30f9ba03de0e6e078f78597cc488da9884f0761f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -1363,7 +1363,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -1378,9 +1378,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/sandbox-projects.md",
-      text: "# Sandbox Projects\n\n## Purpose\n\nCreate explicitly requested experimental projects with clear ownership under\nthe sandbox hierarchy, without pretending they are corporate spokes or clusters.\n\n## Accelerator Contract\n\nNative sandboxes is a list of project_name, project_owner_email and optional\nowner_emails. The root creates the sandbox module only for a nonempty list and\nuses governance's sandbox folder and a derived naming prefix. Sandbox creation\ndoes not enable the landing-zone project's network/DNS/Secrets Manager options.\nThe common document maintains stable sandbox identities during editing/import.\n\n## Dependencies\n\nGovernance/identity foundations and provider authorization. An optional external\napplication workflow is separate from this native list; a knowledge dependency\nis not a request to create an SNA or firewall for sandbox entries.\n\n## Dialogue\n\nAsk who owns each sandbox, purpose and required isolation. Treat lifecycle,\nbudget controls and expiry as separate explicit requirements, not features\nautomatically implemented by a sandbox label. Do not invent 100 sandboxes from\nan organization's eventual project-count estimate.\n\n## Examples\n\nSynthetic opt-out: sandboxes = []. A new sandbox needs confirmed project_name\nand project_owner_email; optional additional owners require explicit choice.\nThis list fragment is not permission to remove existing deployed projects.\n\n## Limits\n\nCurrent chat cannot add/remove complex sandbox objects. No automatic expiry,\ncost cap, corporate routing or application publication is promised by this\nnative module. Deleting configuration entries needs a separate reviewed plan\nand authorization; it is not conversational cleanup.\n\n## Credentials\n\nProvider/Resource Manager permissions stay external; owner email is not a\ncredential or a grant receipt. Never request passwords, role secrets or tokens.\n\n## Sources\n\nRoot sandbox wiring, module variables and common document identities are\nmanifest authorities. Re-review list/identity/native export changes before\nregeneration; provider quota and lifecycle behavior need separate qualification.",
+      text: "# Sandbox Projects\n\n## Purpose\n\nCreate explicitly requested experimental projects with clear ownership under\nthe sandbox hierarchy, without pretending they are corporate spokes or clusters.\n\n## Accelerator Contract\n\nNative sandboxes is a list of project_name, project_owner_email and optional\nowner_emails. The root creates the sandbox module only for a nonempty list and\nuses governance's sandbox folder and a derived naming prefix. Sandbox creation\ndoes not enable the landing-zone project's network/DNS/Secrets Manager options.\nThe common document maintains stable sandbox identities during editing/import.\n\n## Dependencies\n\nGovernance/identity foundations and provider authorization. An optional external\napplication workflow is separate from this native list; a knowledge dependency\nis not a request to create an SNA or firewall for sandbox entries.\n\n## Dialogue\n\nAsk who owns each sandbox, purpose and required isolation. Treat lifecycle,\nbudget controls and expiry as separate explicit requirements, not features\nautomatically implemented by a sandbox label. Do not invent 100 sandboxes from\nan organization's eventual project-count estimate.\n\n## Examples\n\nSynthetic opt-out: sandboxes = []. A new sandbox needs confirmed project_name\nand project_owner_email; optional additional owners require explicit choice.\nThis list fragment is not permission to remove existing deployed projects.\n\n## Limits\n\nNative Editor proposals support reviewed sandbox configuration; platform\ntemplates are not deployed instances. No automatic expiry,\ncost cap, corporate routing or application publication is promised by this\nnative module. Deleting configuration entries needs a separate reviewed plan\nand authorization; it is not conversational cleanup.\n\n## Credentials\n\nProvider/Resource Manager permissions stay external; owner email is not a\ncredential or a grant receipt. Never request passwords, role secrets or tokens.\n\n## Sources\n\nRoot sandbox wiring, module variables and common document identities are\nmanifest authorities. Re-review list/identity/native export changes before\nregeneration; provider quota and lifecycle behavior need separate qualification.",
       sha256:
-        "17e421cc755fca4d766190192a1689d1b2a3808cea6a0af157bd1d439324bc64",
+        "afa529e5c7874f74c1eaf12a643294b738831041e3a3a1509f534030460a054f",
     },
     {
       id: "namespace-services",
@@ -1416,12 +1416,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "9cbc1df21ea686d13613827370f1f84505a7d1c2850603879aeb87e7d378899a",
+            "12b1a51aef9055e0146f41fa30f9ba03de0e6e078f78597cc488da9884f0761f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],
@@ -1464,9 +1464,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/namespace-services.md",
-      text: "# Kubernetes Namespace Services and Secret Enforcement\n\n## Purpose\n\nProvide supported per-landing-zone namespace slices, scoped Kubernetes access,\noptional Secrets Manager integration and explicitly chosen policy/demo services.\n\n## Accelerator Contract\n\nNative landing_zone_namespace_services is keyed by existing landing-zone keys.\nFields cover namespace/dns_subdomain, kubernetes_access, secretsmanager,\nsecrets_enforcement (mode and break_glass), labels/annotations, sample_load,\ndemo_enabled and demo_metrics_ingestion. Root derives names and references and\ncreates supported Kubernetes/Helm objects. Kyverno policy modes and exemptions\nfollow actual source behavior, not invented universal isolation guarantees.\nCurrent namespace root code references single-region platform/project module\npaths; do not infer multi-region namespace parity from regional SKE support.\n\n## Dependencies\n\nSupported platform Kubernetes/provider access and existing project templates.\nDNS/gateway, Secrets Manager, observability and demos have distinct prerequisites.\nA Kubernetes namespace is not a separate cloud project, VM network or firewall.\n\n## Dialogue\n\nAsk about namespace tenancy, service-account access, external secret flow,\naudit versus enforcement needs and narrowly scoped break-glass operations.\nDo not turn on sample workloads, public demo routes, ingestion or monitoring\njust to demonstrate a production feature. Confirm labels/policies separately.\n\n## Examples\n\nSynthetic opt-out: landing_zone_namespace_services = {}. An enabled entry must\nreference a real landing-zone key. Explicit demo/sample_load opt-in remains\nseparate from namespace and service-account requirements.\n\n## Limits\n\nCurrent chat cannot patch complex namespace objects or kubeconfig values.\nPolicy audit is not enforcement; supported strict/other modes must be checked\nagainst their actual match/exemption rules. Break-glass TTL settings are not\nproof of operational revocation. Kubernetes/Helm reachability, RBAC, secret flow\nand demo behavior need separate integration and runtime tests.\n\n## Credentials\n\nKubernetes provider access and secret-service bindings remain externally\nsupplyable and protected. Never expose kubeconfigs, service-account tokens,\nsecret values or dashboard passwords to the model or example fragments.\n\n## Sources\n\nNamespace root code, demo variables, providers and shared reference validation\nare manifest sources. Re-review policy modes, provider selection and regional\nconstraints before generation; demos do not qualify production tenant isolation.",
+      text: "# Kubernetes Namespace Services and Secret Enforcement\n\n## Purpose\n\nProvide supported per-landing-zone namespace slices, scoped Kubernetes access,\noptional Secrets Manager integration and explicitly chosen policy/demo services.\n\n## Accelerator Contract\n\nNative landing_zone_namespace_services is keyed by existing landing-zone keys.\nFields cover namespace/dns_subdomain, kubernetes_access, secretsmanager,\nsecrets_enforcement (mode and break_glass), labels/annotations, sample_load,\ndemo_enabled and demo_metrics_ingestion. Root derives names and references and\ncreates supported Kubernetes/Helm objects. Kyverno policy modes and exemptions\nfollow actual source behavior, not invented universal isolation guarantees.\nCurrent namespace root code references single-region platform/project module\npaths; do not infer multi-region namespace parity from regional SKE support.\n\n## Dependencies\n\nSupported platform Kubernetes/provider access and existing project templates.\nDNS/gateway, Secrets Manager, observability and demos have distinct prerequisites.\nA Kubernetes namespace is not a separate cloud project, VM network or firewall.\n\n## Dialogue\n\nAsk about namespace tenancy, service-account access, external secret flow,\naudit versus enforcement needs and narrowly scoped break-glass operations.\nDo not turn on sample workloads, public demo routes, ingestion or monitoring\njust to demonstrate a production feature. Confirm labels/policies separately.\n\n## Examples\n\nSynthetic opt-out: landing_zone_namespace_services = {}. An enabled entry must\nreference a real landing-zone key. Explicit demo/sample_load opt-in remains\nseparate from namespace and service-account requirements.\n\n## Limits\n\nNative Editor proposals support reviewed public namespace settings, not\nkubeconfig values or secret material. Acceptance is a local draft change.\nPolicy audit is not enforcement; supported strict/other modes must be checked\nagainst their actual match/exemption rules. Break-glass TTL settings are not\nproof of operational revocation. Kubernetes/Helm reachability, RBAC, secret flow\nand demo behavior need separate integration and runtime tests.\n\n## Credentials\n\nKubernetes provider access and secret-service bindings remain externally\nsupplyable and protected. Never expose kubeconfigs, service-account tokens,\nsecret values or dashboard passwords to the model or example fragments.\n\n## Sources\n\nNamespace root code, demo variables, providers and shared reference validation\nare manifest sources. Re-review policy modes, provider selection and regional\nconstraints before generation; demos do not qualify production tenant isolation.",
       sha256:
-        "4ddcdfa0c5121377cb24897550000307c62faf1e50d6f6936d659cbab08dcbd8",
+        "3173eafda0a2a51ec369c61e4e57e2a12ddc4c00551e88dbcc99fccfb39113c0",
     },
     {
       id: "configuration-lifecycle",
@@ -1512,12 +1512,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "e5e93f3bcd078ba59fd3de8e43c6890aaeca7ed930875a0d767fa218203d12ec",
+            "0454982ec262c9aaa646f4b8d3910ee92c5f19393979fa0f38cd5d36ad1021e9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "3a42191ddbbbafef20f9b4a7f1b8eeceeef6663df8bcded0957e56299d2f2c5b",
+            "697cbc491c4927b8935ae4564bb138419a67309140f55094b77954bc1d067acb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts",
@@ -1527,7 +1527,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "6c70b5111ac84b47727060afd3352de46d47affb60e77eb0a22916fa9dbd6330",
+            "b6c19e75d733b369016e33c911526aa1a163affd514e15e8d36c394965b0fcb1",
         },
       ],
       externalSources: [],

@@ -2433,7 +2433,7 @@ for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
     page: initialPage,
     context,
   }, testInfo) => {
-    let page = initialPage;
+    const page = initialPage;
     let loggedIn = false;
     let approved = false;
     let returnPolls = 0;
@@ -2544,6 +2544,9 @@ for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
         ? /^https:\/\/accounts\.stackit\.cloud\/oauth\/v2\/authorize/
         : /^https:\/\/accounts\.stackit\.cloud\/device/,
     );
+    await expect(
+      dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
+    ).toHaveAttribute("target", codeFlow ? "_self" : "_blank");
     expect(
       await dialog.evaluate((element) => {
         const box = element.getBoundingClientRect();
@@ -2560,12 +2563,22 @@ for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
       fullPage: true,
     });
     if (returning) {
-      await page.close();
-      page = await context.newPage();
-      await installLoginRoutes(page);
-      approved = true;
-      await page.goto("/#stackit-login");
+      const returnUrl = new URL("/#stackit-login", page.url()).toString();
+      await page.route(
+        "https://accounts.stackit.cloud/oauth/v2/authorize*",
+        (route) => {
+          approved = true;
+          return route.fulfill({
+            status: 302,
+            headers: { location: returnUrl },
+          });
+        },
+      );
+      await dialog
+        .getByRole("link", { name: "Bei STACKIT bestätigen" })
+        .click();
       await expect(page).not.toHaveURL(/#stackit-login/);
+      expect(context.pages()).toEqual([page]);
     } else approved = true;
     if (missingFlow) {
       await expect(page.locator(".account")).toContainText(
@@ -2987,58 +3000,112 @@ test("edit, validate and download an isolated standalone copy", async ({
   expect(errors).toEqual([]);
 });
 
-test("GitHub redirect preserves incomplete draft and logout sends CSRF", async ({
-  page,
-}) => {
-  await page.route("**/auth/status", (route) =>
-    route.fulfill({ json: { github: true } }),
-  );
-  let loggedIn = false;
-  await page.route("**/api/v1/session", (route) =>
-    route.fulfill(
-      loggedIn
-        ? {
-            json: {
-              user: { login: "alice" },
-              csrfToken: "test-csrf",
-              expiresAt: new Date(Date.now() + 3600000).toISOString(),
-            },
-          }
-        : { status: 401, json: { error: "authentication_required" } },
-    ),
-  );
-  await page.route("**/auth/github/start", (route) => {
-    loggedIn = true;
-    return route.fulfill({ status: 302, headers: { location: "/" } });
+for (const provider of ["GitHub", "STACKIT"] as const) {
+  test(`${provider} redirect preserves incomplete draft and logout sends CSRF`, async ({
+    page,
+    context,
+  }) => {
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json:
+          provider === "GitHub"
+            ? { github: true }
+            : { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    let loggedIn = false;
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill(
+        loggedIn
+          ? {
+              json: {
+                user: { login: "alice" },
+                csrfToken: "test-csrf",
+                expiresAt: new Date(Date.now() + 3600000).toISOString(),
+              },
+            }
+          : { status: 401, json: { error: "authentication_required" } },
+      ),
+    );
+    await page.route("**/auth/github/start", (route) => {
+      loggedIn = true;
+      return route.fulfill({ status: 302, headers: { location: "/" } });
+    });
+    await page.route("**/auth/stackit/start", (route) =>
+      route.fulfill({
+        json: {
+          verificationUri:
+            "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256",
+          expiresAt: new Date(Date.now() + 300000).toISOString(),
+          retryAfterMs: 50,
+        },
+      }),
+    );
+    await page.route("**/auth/stackit/poll", (route) =>
+      route.fulfill({
+        json: loggedIn
+          ? { status: "verified" }
+          : { status: "waiting", retryAfterMs: 50 },
+      }),
+    );
+    let csrf = "";
+    await page.route("**/auth/logout", (route) => {
+      csrf = route.request().headers()["x-lzc-csrf"] ?? "";
+      loggedIn = false;
+      return route.fulfill({ status: 204 });
+    });
+    await page.goto("/templates");
+    await page
+      .getByRole("button", {
+        name: "Template ansehen : Standalone",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+      .click();
+    await page
+      .getByLabel("Name der Konfiguration")
+      .fill("Entwurf vor Anmeldung");
+    await page
+      .getByRole("button", { name: `Mit ${provider} anmelden` })
+      .click();
+    if (provider === "STACKIT") {
+      const returnUrl = new URL("/#stackit-login", page.url()).toString();
+      await page.route(
+        "https://accounts.stackit.cloud/oauth/v2/authorize*",
+        (route) => {
+          loggedIn = true;
+          return route.fulfill({
+            status: 302,
+            headers: { location: returnUrl },
+          });
+        },
+      );
+      await page
+        .getByRole("dialog")
+        .getByRole("link", { name: "Bei STACKIT bestätigen" })
+        .click();
+    }
+    await expect(
+      page
+        .locator(".account")
+        .getByText(provider === "GitHub" ? "@alice" : "alice", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+      "Entwurf vor Anmeldung",
+    );
+    expect(
+      await page.evaluate(() => sessionStorage.getItem("lzc-oauth-draft")),
+    ).toBeNull();
+    expect(context.pages()).toEqual([page]);
+    await page.getByRole("button", { name: "Abmelden", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: `Mit ${provider} anmelden` }),
+    ).toBeVisible();
+    expect(csrf).toBe("test-csrf");
   });
-  let csrf = "";
-  await page.route("**/auth/logout", (route) => {
-    csrf = route.request().headers()["x-lzc-csrf"] ?? "";
-    loggedIn = false;
-    return route.fulfill({ status: 204 });
-  });
-  await page.goto("/templates");
-  await page
-    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
-    .click();
-  await page.getByLabel("Name der Konfiguration").fill("Entwurf vor Anmeldung");
-  await page.getByRole("button", { name: "Mit GitHub anmelden" }).click();
-  await expect(page.getByText("@alice", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
-    "Entwurf vor Anmeldung",
-  );
-  expect(
-    await page.evaluate(() => sessionStorage.getItem("lzc-oauth-draft")),
-  ).toBeNull();
-  await page.getByRole("button", { name: "Abmelden", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Mit GitHub anmelden" }),
-  ).toBeVisible();
-  expect(csrf).toBe("test-csrf");
-});
+}
 
 test("URLs and browser back/forward preserve an in-progress draft", async ({
   page,
@@ -4750,7 +4817,13 @@ test.describe("explicit saved-plan approval", () => {
           runs: [
             {
               ...savedPlan(),
-              status: finished ? "succeeded" : "planning",
+              status: finished
+                ? "succeeded"
+                : reads === 0
+                  ? "starting"
+                  : reads < 3
+                    ? "initializing"
+                    : "planning",
               summary: finished ? savedPlan().summary : null,
               applyAllowed: false,
             },
@@ -4760,13 +4833,17 @@ test.describe("explicit saved-plan approval", () => {
     });
     await page.route(`**/api/v1/plans/${planId}/output`, (route) => {
       reads++;
-      if (reads >= 2) finished = true;
+      if (reads >= 4) finished = true;
       return route.fulfill({
         json: {
           text:
             reads === 1
-              ? "module.management.stackit_project.example: Refreshing state..."
-              : "module.management.stackit_project.example: Refresh complete\nPlan: 1 to add, 0 to change, 0 to destroy.",
+              ? ""
+              : reads === 2
+                ? "$ tofu init\nInitializing backend..."
+                : reads === 3
+                  ? "$ tofu init\nInitializing backend...\nmodule.management.stackit_project.example: Refreshing state..."
+                  : "module.management.stackit_project.example: Refresh complete\nPlan: 1 to add, 0 to change, 0 to destroy.",
           kind: finished ? "saved-plan" : "live",
           truncated: false,
         },
@@ -4774,14 +4851,22 @@ test.describe("explicit saved-plan approval", () => {
     });
     await page.goto("/deployments/plan");
     const console = page.locator("textarea.plan-console");
-    await expect(console).toHaveValue(/Refreshing state\.\.\./);
+    await expect(
+      page.getByRole("checkbox", { name: "Ausgabe folgen" }),
+    ).toBeChecked();
+    await expect(console).toHaveValue(/Initializing backend/, {
+      timeout: 10000,
+    });
+    await expect(console).toHaveValue(/Refreshing state\.\.\./, {
+      timeout: 10000,
+    });
     await expect(console).toHaveValue(/Plan: 1 to add/, { timeout: 10000 });
     await expect(
       page
         .locator(".plan-runs > article")
         .getByText("Plan abgeschlossen", { exact: false }),
     ).toBeVisible({ timeout: 10000 });
-    expect(reads).toBeGreaterThanOrEqual(2);
+    expect(reads).toBeGreaterThanOrEqual(4);
     expect(mutations).toBe(0);
     expect(
       await page.evaluate(

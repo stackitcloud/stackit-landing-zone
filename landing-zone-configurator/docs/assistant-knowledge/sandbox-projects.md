@@ -34,7 +34,8 @@ This list fragment is not permission to remove existing deployed projects.
 
 ## Limits
 
-Current chat cannot add/remove complex sandbox objects. No automatic expiry,
+Native Editor proposals support reviewed sandbox configuration; platform
+templates are not deployed instances. No automatic expiry,
 cost cap, corporate routing or application publication is promised by this
 native module. Deleting configuration entries needs a separate reviewed plan
 and authorization; it is not conversational cleanup.

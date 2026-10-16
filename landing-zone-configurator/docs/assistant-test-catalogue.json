@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "dd3ca1750dc39bd5f15f79fff9a50f6745245f624ad98c4c9fb31223126f8030",
+  "knowledgeSha256": "ee51045fa0d249b535d9c449df1311af336ffd4daf44a1b67b1fc0852ee5c01b",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "b36128b9e79d08f0031d0e9bdafaca4b321744d96e57d35b4167bde31cab5940",
-    "scripts/assistant-tests.ts": "032685c73a7995632009702c847bb395050f23b71ecc098067e31d73f19b7635"
+    "scripts/assistant-scenarios.ts": "d2baa94ac001f35ed5c990aefbaaa72e754a35b9cb3740ab0dc7b041514d236a",
+    "scripts/assistant-tests.ts": "fb1ba4a3438fbcd6d12c0a87d9bc9beeae8066bb5b691a7e2901635a842bb5df"
   },
-  "suiteSha256": "356d29444c2b5259b89085c4609bb1c2d3bc99d348ef1888f30da151a321f20e",
+  "suiteSha256": "bba638db669752c98b826684f0456cead383c02d249aad1899e56b565d3632a4",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1479,6 +1479,74 @@
         }
       ],
       "cases": [
+        {
+          "id": "dns-zone-role-advice",
+          "topic": "dns-zones",
+          "fixture": "baseline",
+          "dnsRole": "roles",
+          "message": "Erkläre den DNS-Zonentyp fachlich: Was unterscheidet primary und secondary, sind beide autoritativ, und ist das die Auswahl public/private? Welchen Typ empfiehlst du für eine neue bei STACKIT verwaltete Firmenzone? Welche Secondary-Voraussetzung bildet der native Accelerator nicht ab? Nur beraten, nichts ändern.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "dns_role_meaning_and_native_secondary_limit",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "dns-zone-role-correction",
+          "topic": "dns-zones",
+          "fixture": "baseline",
+          "dnsRole": "roles",
+          "history": [
+            {
+              "role": "user",
+              "content": "Ich brauche eine öffentliche Firmen-DNS-Zone."
+            },
+            {
+              "role": "assistant",
+              "content": "Dafür solltest du den DNS-Zonentyp public einstellen; secondary ist nicht autoritativ."
+            }
+          ],
+          "message": "Das Dropdown bietet nur primary und secondary. Korrigiere deine vorherige Aussage: Erkläre beide Rollen und ihre Autoritativität, die Abgrenzung zu public/private, deine Empfehlung für eine neue bei STACKIT verwaltete Firmenzone und die Secondary-Grenze des nativen Accelerators. Nur beraten, nichts ändern.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "dns_role_meaning_and_native_secondary_limit",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "dns-secondary-boundary",
+          "topic": "dns-zones",
+          "fixture": "baseline",
+          "dnsRole": "secondary",
+          "message": "Ich möchte eine Secondary-DNS-Zone, die von einem externen Primary repliziert. Kann der native Accelerator die benötigten Primary-Server vollständig konfigurieren? Erkläre die Grenze und ob secondary autoritativ ist. Nur beraten, keine alternative Primary-Zone anlegen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "dns_role_meaning_and_native_secondary_limit",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "dns-zone-role-draft",
+          "topic": "dns-zones",
+          "fixture": "dns-role",
+          "dnsRole": "draft",
+          "message": "Ergänze zusätzlich genau eine bei STACKIT verwaltete öffentliche DNS-Zone new-company.stackit.gg unter dem Schlüssel company. Die vorhandene Zone example und alle Netzwerke bleiben unverändert. Wähle den fachlich passenden Zonentyp und verwende die hinterlegte Owner-E-Mail als Kontakt. Nur einen überprüfbaren Entwurf vorschlagen, nichts deployen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "primary_company_zone_preserves_existing_configuration",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim",
+            "name_description_ttl_contact",
+            "known_contact_priority",
+            "preserve_domain_and_network",
+            "no_unrelated_changes_or_questions"
+          ]
+        },
         {
           "id": "dns-zones-advice",
           "topic": "dns-zones",
@@ -4225,12 +4293,15 @@
           "id": "editor-devops",
           "topic": "devops-git",
           "fixture": "baseline",
-          "message": "Bitte den zentralen DevOps-Git-Dienst als Entwurf konfigurieren, allowed_network_ranges ausschließlich [203.0.113.0/24]. Nutze den nativen Git-Flavor-Standard, keine Verfügbarkeitszusage und kein Deployment.",
+          "message": "Bitte den zentralen DevOps-Git-Dienst als Entwurf konfigurieren: git_flavor ausdrücklich git-10, allowed_network_ranges ausschließlich [203.0.113.0/24]. Der Flavor ist meine Auswahl, keine Verfügbarkeitszusage und kein Deployment.",
           "editorExpected": {
-            "path": "devops.allowed_network_ranges",
-            "value": [
-              "203.0.113.0/24"
-            ]
+            "path": "devops",
+            "value": {
+              "git_flavor": "git-10",
+              "allowed_network_ranges": [
+                "203.0.113.0/24"
+              ]
+            }
           },
           "assertions": [
             "valid_dialogue",
@@ -4241,7 +4312,7 @@
         {
           "id": "devops-git-advice",
           "topic": "devops-git",
-          "message": "Welche Konfigurationsfelder und Voraussetzungen gibt es fuer den zentralen DevOps-Git-Dienst? Nur beraten, nichts aktivieren.",
+          "message": "Welche Konfigurationsfelder und Voraussetzungen gibt es fuer den zentralen DevOps-Git-Dienst? Welchen nativen Standard hat git_flavor, und wird damit eine Git-Instanz erstellt? Ist git-10 ein automatisch aktivierter Standard? Nur beraten, nichts aktivieren.",
           "fixture": "baseline",
           "assertions": [
             "valid_dialogue",

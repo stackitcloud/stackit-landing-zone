@@ -93,6 +93,37 @@ it("lists nested suggestions as individual changed fields and selects only the r
   expect(beforeDns.default.name).toBeNull();
 });
 
+it("does not materialize unchanged native folder defaults when restoring foundations", async () => {
+  const request = vi.fn<typeof fetch>(async () =>
+    answer({
+      explanation: "Vorschlag zur Prüfung, noch nichts gespeichert.",
+      questions: [],
+      changes: [
+        { path: "company_name", value: "Example GmbH" },
+        { path: "rm_folders", value: { platform: { name: "Platform" } } },
+      ],
+      references: ["identity-foundations"],
+    }),
+  );
+  const model = new AssistantModelServing(
+    configuration,
+    withIntent("identity-foundations", "draft", request),
+  );
+  const result = await model.converse(
+    selection(),
+    {
+      company_name: null,
+      rm_folders: { platform: { name: "Platform" } },
+    },
+    [],
+    "Bitte den Firmennamen Example GmbH vorschlagen. Den bestehenden Ordner Platform nicht verändern.",
+  );
+  expect(result.changes).toEqual([
+    { path: "company_name", value: "Example GmbH" },
+  ]);
+  expect(result.explanation).not.toContain("Ordnernamen:");
+});
+
 it.each([
   {
     owner: "owner@example.test",
@@ -1700,6 +1731,10 @@ it("advises before configuration creation with known templates and bounded quest
     ),
   ).toMatchObject(advice);
   const payload = JSON.parse(String(request.mock.calls[0]?.[1]?.body));
+  for (const rule of buildAssistantKnowledge().rules)
+    expect(payload.messages[0].content, rule.id).toContain(
+      JSON.stringify(rule.text),
+    );
   expect(payload.response_format).toMatchObject({
     type: "json_schema",
     json_schema: { name: "template_advice", strict: true },
@@ -2320,11 +2355,15 @@ it.each([
       expect(body.messages[0].role).toBe("system");
       expect(body.messages.at(-1)).toEqual({ role: "user", content: message });
       if (body.response_format.json_schema.name === "conversation_intent") {
+        expect(body.messages[0].content).toContain(
+          `Output contract: ${JSON.stringify(body.response_format.json_schema.schema)}`,
+        );
         expect(JSON.parse(body.messages[1].content).history).toEqual(history);
         expect(body.messages[0].content).toContain("Available topics:");
         expect(body.messages[0].content).toContain("Classification examples:");
         return answer({ topic, mode: "advice", requirements: [] });
       }
+      expect(body.messages[0].content).not.toContain("Output contract:");
       expect(
         body.messages.some(
           (entry: { content: string }) => entry.content === history[0]?.content,
@@ -2675,6 +2714,10 @@ it("performs one bounded synthetic call without transferring the token into cont
     expect(JSON.parse(String(init?.body)).messages[0].content).toContain(
       "Ask at most 8 prioritized questions",
     );
+    const context = JSON.parse(
+      JSON.parse(String(init?.body)).messages[1].content,
+    ).knowledge;
+    expect(context.rules).toEqual(assistantKnowledgeContext(selection()).rules);
     return answer(proposal);
   });
   const result = await new AssistantModelServing(

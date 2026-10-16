@@ -37,7 +37,8 @@ separate from namespace and service-account requirements.
 
 ## Limits
 
-Current chat cannot patch complex namespace objects or kubeconfig values.
+Native Editor proposals support reviewed public namespace settings, not
+kubeconfig values or secret material. Acceptance is a local draft change.
 Policy audit is not enforcement; supported strict/other modes must be checked
 against their actual match/exemption rules. Break-glass TTL settings are not
 proof of operational revocation. Kubernetes/Helm reachability, RBAC, secret flow

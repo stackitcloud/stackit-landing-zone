@@ -38,7 +38,8 @@ gateway proposal and never contains a preshared key.
 
 ## Limits
 
-Current chat cannot patch the complex VPN object or its credentials. Do not
+Native Editor proposals support reviewed public VPN settings, not credentials.
+Acceptance changes only the draft. Do not
 assume compatible encryption, peer routes, performance or failover from a plan
 name. Plans, quotas and tunnel state are live facts. Configuration does not
 prove packets traverse the connection; routing and overlap checks are separate.

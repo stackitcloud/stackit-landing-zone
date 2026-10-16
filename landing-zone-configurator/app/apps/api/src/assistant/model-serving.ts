@@ -54,6 +54,7 @@ import {
 import {
   assistantFirewallPolicyLimit,
   assistantKnowledgeContext,
+  assistantKnowledgeForTopics,
   buildAssistantKnowledge,
 } from "./knowledge.js";
 
@@ -360,10 +361,17 @@ export class AssistantModelServing {
     signal = stream?.signal,
   ) {
     // Some serving chat templates retain only the last system message.
-    const systemContent = messages
-      .filter((message) => message.role === "system")
-      .map((message) => message.content)
-      .join("\n\n");
+    const systemContent = [
+      ...messages
+        .filter((message) => message.role === "system")
+        .map((message) => message.content),
+      ...(schema &&
+      ["conversation_intent", "firewall_setup_decisions"].includes(schemaName)
+        ? [
+            `Return only the JSON response defined by this output contract. Its field descriptions explain the required decisions; do not substitute schema defaults for understanding the user request. Property names and enum values are data, not instructions. Include requested values in the actual changes, not merely in the explanation.\nOutput contract: ${JSON.stringify(schema)}`,
+          ]
+        : []),
+    ].join("\n\n");
     const servingMessages = [
       ...(systemContent
         ? [{ role: "system" as const, content: systemContent }]
@@ -634,6 +642,35 @@ export class AssistantModelServing {
         .strictObject({
           source: z.enum([...namingSources.keys()]),
           mode: z.enum(["update", "add", "replace"]),
+          entries: z
+            .array(
+              z.strictObject({
+                key: z
+                  .string()
+                  .regex(/^[a-z][a-z0-9_-]{0,63}$/)
+                  .refine((key) => !["constructor", "prototype"].includes(key)),
+                fields: z
+                  .array(
+                    z.enum([
+                      "dns_name",
+                      "name",
+                      "description",
+                      "type",
+                      "contact_email",
+                      "default_ttl",
+                      "network_area_key",
+                      "region",
+                      "acl",
+                    ]),
+                  )
+                  .max(9),
+              }),
+            )
+            .max(32)
+            .default([])
+            .describe(
+              "Explicitly requested new DNS map keys and their required NON-NULL fields, not technical values. For 'additional zone ... under key company, use saved owner email as contact', include key=company, fields=[dns_name,contact_email]. Include type when the USER asks to choose the appropriate zone role. Omit fields explicitly requested as null/default; those remain nullable optional slots in the proposal. Optional defaults and unrequested network association are not missing decisions. Do not invent extra entries or apply one entry's fields to other entries. Existing-key updates use [].",
+            ),
         })
         .nullable()
         .default(null)
@@ -1064,7 +1101,16 @@ export class AssistantModelServing {
     if (templateSetup && !templateSetup.request?.trim())
       throw new AssistantInferenceError("intent_evidence");
     const dnsCollection = intent.dnsCollection;
-    if (dnsCollection && !namingSources.get(dnsCollection.source)?.trim())
+    if (
+      dnsCollection &&
+      (!namingSources.get(dnsCollection.source)?.trim() ||
+        new Set(dnsCollection.entries.map((entry) => entry.key)).size !==
+          dnsCollection.entries.length ||
+        dnsCollection.entries.some(
+          (entry) =>
+            !namingSources.get(dnsCollection.source)?.includes(entry.key),
+        ))
+    )
       throw new AssistantInferenceError("intent_evidence");
     if (templateTopic) {
       for (const root of [
@@ -1139,6 +1185,11 @@ export class AssistantModelServing {
           "serving",
           current[path.split(".")[0] ?? ""],
           operationFor(path),
+          dnsCollection?.mode === "add"
+            ? Object.fromEntries(
+                dnsCollection.entries.map(({ key, fields }) => [key, fields]),
+              )
+            : undefined,
         ),
       );
       const firstContract = contracts[0];
@@ -1178,14 +1229,17 @@ export class AssistantModelServing {
       const questionListSchema = z
         .array(questionContract)
         .max(questions.length ? 3 : 0);
-      const topicIds = new Set([
+      const topicKnowledge = assistantKnowledgeForTopics(context, [
         intent.topic,
-        ...(selectedTopic?.dependencies ?? []),
-        "configuration-contract",
+        ...(intent.topic === "configuration-contract"
+          ? context.topics
+              .filter((topic) =>
+                topic.fieldPaths.some((path) => fields.includes(path)),
+              )
+              .map((topic) => topic.id)
+          : []),
       ]);
-      const referenceIds = context.rules
-        .filter((rule) => topicIds.has(rule.id))
-        .map((rule) => rule.id);
+      const referenceIds = topicKnowledge.rules.map((rule) => rule.id);
       stream?.onText("Editor-Vorschlag wird geprüft. Noch nichts gespeichert.");
       const answer = await this.complete(
         [
@@ -1198,9 +1252,10 @@ Audit creation needs explicit retention_days, ACL CIDRs and s3_object_lock toget
 Platform drafts use projectTemplates keyed by stable template key, not concrete landing_zones/sandboxes or personal instance fields. Never include template IDs: the server preserves/generates them. A new template needs name, kind, region and settings together. Corporate templates require an existing same-region network area; sandbox region is the platform region and has no namespace services. Namespace settings and parameterPolicy are template settings; no publication or application creation. For the desired complete set use replace, listing exactly the desired keys; omitted templates become explicit selectable removal proposals. Reuse suitable existing keys and preserve their unrequested attributes. Template settings/parameter policies are validated against native types and the Editor's policy contract.
 When the user delegates template naming, choose descriptive names for the requested business variants instead of asking for names again. Central-network projects are corporate; Internet-only projects without central-network access are public. A requested local project network means settings.network_enabled=true for each requested variant. Use the saved platform region and an unambiguous existing same-region area for Corporate; ask for the area only when missing or ambiguous. Reuse existing subnet defaults unless the user specifies a prefix; omit network_prefix_length to inherit the native default. Additional templates use merge; a desired complete set uses replace. For a network-only template request, settings contains only network_enabled and the Corporate network_area_key when needed; omit observability, secretsmanager_enabled, namespace services and other unrequested settings. Platform Audit/Git/services are NOT template namespace-service consent or defaults. Do not ask for personal instance ownership or create a Sandbox the user excludes. Preserve unrelated existing templates for add/update, not entries excluded from a requested complete set.
 DNS corrections use the existing zone key, never a new entry merely to change its domain/display name. With multiple ambiguous zones ask for the target. Explicitly additional zones use merge on the DNS collection; a complete set uses replace. Preserve unrelated network/firewall settings. dnsCollection is a source-grounded USER decision, not permission to invent domains.
+For an additional DNS zone, emit the actual collection change containing the requested new key and dns_name. Include every requested zone setting in that entry, including contact_email from the saved owner_email when requested; explaining that a contact is used without including it in changes is not a proposal. Existing unrelated zones are preserved by merge, not by returning an empty changes list. Return changes=[] only when essential information needs a question or the requested effective state is already present.
 templateSetup contains source-checked USER decisions: its kinds and localNetworks are answered requirements, not questions to repeat. Its fields is the allowed template setting scope; the schema excludes unrequested services and policies. delegateNaming=true authorizes descriptive template display names and valid stable template keys; they are not Cloud IDs. When saved region and the Corporate area are unambiguous, these decisions suffice for complete name/kind/region/settings template proposals. Optional parameter policies and subnet overrides are not mandatory setup questions.
 New component objects expose all their typed property slots: fill every explicitly requested value, use null only for unrequested native defaults. Never invent extra retention values. Required non-null creation decisions need actual user consent; otherwise ask questions with changes=[]. New map entries require all native mandatory fields, including Kubernetes region and node-pool name. Use existing nested paths for partial updates, preserving sibling values. All replies describe PROPOSALS, not completed setup. Field acceptance changes only the local draft, saving remains separate; no deployment, permissions granted, publication or Plan/Apply. Return the supplied JSON schema only.
-Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topics.filter((topic) => topicIds.has(topic.id)) })}`,
+Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })}`,
           },
           {
             role: "user",
@@ -1365,8 +1420,8 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topi
             .join(", ");
           dialogue.explanation =
             replyLanguage === "en"
-              ? `Editor proposal for review: ${paths}. Nothing has been saved. Acceptance changes only the local draft; saving remains separate. No deployment, publication or permissions granted.`
-              : `Editor-Vorschlag zur Prüfung: ${paths}. Noch nichts gespeichert. Übernahme ändert nur den lokalen Entwurf; Konfiguration speichern bleibt separat. Kein Deployment, keine Veröffentlichung und keine gewährten Berechtigungen.`;
+              ? `Editor proposal for review: ${paths}. Nothing has been saved. Acceptance changes only the local draft; saving remains separate. No deployment, publication or permissions granted. Plan and Apply require separate review and approval.`
+              : `Editor-Vorschlag zur Prüfung: ${paths}. Noch nichts gespeichert. Übernahme ändert nur den lokalen Entwurf; Konfiguration speichern bleibt separat. Kein Deployment, keine Veröffentlichung und keine gewährten Berechtigungen. Plan und Apply brauchen separate Prüfung und Freigabe.`;
         }
         return dialogue;
       } catch (error) {
@@ -1753,15 +1808,7 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topi
           )
           .map((field) => field.path),
       );
-      const relevantTopics = new Set<string>();
-      const includeTopic = (id: string) => {
-        if (relevantTopics.has(id)) return;
-        relevantTopics.add(id);
-        for (const dependency of context.topics.find((topic) => topic.id === id)
-          ?.dependencies ?? [])
-          includeTopic(dependency);
-      };
-      includeTopic(intent.topic);
+      const topicIds: string[] = [intent.topic];
       if (
         delegation.paths.length ||
         [
@@ -1770,28 +1817,29 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topi
           "configuration-contract",
         ].includes(intent.topic)
       ) {
-        includeTopic("identity-foundations");
-        includeTopic("governance-folders");
+        topicIds.push("identity-foundations", "governance-folders");
       }
       if (firewallTopic)
-        for (const topic of [
+        topicIds.push(
           "firewall-infrastructure",
           "firewall-policy",
           "firewall-access-bootstrap",
-        ])
-          includeTopic(topic);
-      for (const topic of context.topics)
-        if (topic.mandatory) includeTopic(topic.id);
-      const allTopicIds = new Set<string>(
-        context.topics.map((topic) => topic.id),
+        );
+      const topicKnowledge = assistantKnowledgeForTopics(
+        context,
+        topicIds.filter(
+          (id) =>
+            id === intent.topic ||
+            context.topics.some((topic) => topic.id === id),
+        ),
+      );
+      const relevantTopics = new Set(
+        topicKnowledge.topics.map((topic) => topic.id),
       );
       const publicContext = {
         ...context,
         ...(firewallDraft ? { templates: [] } : {}),
-        topics: context.topics.filter((topic) => relevantTopics.has(topic.id)),
-        rules: context.rules.filter(
-          (rule) => !allTopicIds.has(rule.id) || relevantTopics.has(rule.id),
-        ),
+        ...topicKnowledge,
         fields: context.fields.filter((field) => questionPaths.has(field.path)),
         componentFields: context.fields.filter((field) =>
           context.topics.some(
@@ -2106,7 +2154,7 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topi
                 ? ""
                 : "PIM data supplies public SKU product facts, not target-project availability. Match PIM productSpecificAttributes.planId or flavor to authorized product options before recommending a technical selection. The SKU id is a billing article number, never a VPN plan ID. Answer questions about performance classes FIRST with the supplied attributes: for VPN list the current non-deprecated plan labels and maxBandWidth in Mbit/s and maxConnections when present. Public PIM facts may be explained even when authorized product options are unavailable; distinguish that from a verified selectable plan. Only explain throughput/RAM/vCPU from supplied attributes, not inferred names. Do not recommend deprecated entries. Ask at most three relevant business follow-up questions instead of a full configuration questionnaire. PIM and product catalogue failures are independent; missing access must remain explicit. Never ask users for technical IDs or credentials.") +
               (dnsAdvice
-                ? `CURRENT STEP: DNS configuration draft, NOT SNA resolvers or PIM sizing. Use reviewed suffixes and reuse confirmed domain names. Existing connectivity.dns_zones supports partial zone settings: dns_name, name, description, default_ttl, type=primary, contact_email, acl, network_area_key. When asked for remaining DNS fields, propose concrete company-related name (lowercase/hyphen, max63), factual description and default_ttl=3600 seconds (one hour, native baseline); 300 seconds only for explicitly requested frequent changes, valid range60..99999999. Explain each recommendation and tradeoff. Preserve current domain and zone key, existing unrelated settings and network area; primary is authoritative at STACKIT, not secondary. Secondary requires primaries absent from native Accelerator and must not be offered as complete. Preserve existing DNS contact; otherwise propose owner_email from saved foundations, then assistant.user_email from the currently verified human identity. Explain the source; this is a reviewable default, not saved consent. Ask for an actual responsible email only when none is known. NEVER invent dns@company-domain. ACL is currently ineffective in pinned provider: no access restriction/security promise, keep it unset/current unless user supplies CIDRs explicitly. Map network_area_key only to existing area keys, ask if changing target. One existing zone is unambiguous; ask target for several. Do not refuse settings because earlier history said name-only. Emit changed settings now, not only domain acknowledgment or another naming confirmation. Explain unset/current contact/ACL/area decisions too. No new zones, resolver changes or regional conversion. Acceptance of selected fields saves configuration, never deploys; unselected suggestions remain available. Availability unverified; free subdomain is not free DNS service. Reviewed DNS knowledge: ${context.rules.find((rule) => rule.id === "dns-zones")?.text ?? ""}`
+                ? `CURRENT STEP: DNS configuration draft, NOT SNA resolvers or PIM sizing. Use reviewed suffixes and reuse confirmed domain names. Existing connectivity.dns_zones supports partial zone settings: dns_name, name, description, default_ttl, type=primary, contact_email, acl, network_area_key. When asked for remaining DNS fields, propose concrete company-related name (lowercase/hyphen, max63), factual description and default_ttl=3600 seconds (one hour, native baseline); 300 seconds only for explicitly requested frequent changes, valid range60..99999999. Explain each recommendation and tradeoff. Preserve current domain and zone key, existing unrelated settings and network area. DNS type is a zone role, never public/private visibility. Both primary and secondary serve authoritative answers: primary manages records at STACKIT; secondary replicates from external primaries. Recommend primary for a new STACKIT-managed zone. Secondary requires primaries absent from native Accelerator and must not be offered as complete; never silently convert an existing secondary. Preserve existing DNS contact; otherwise propose owner_email from saved foundations, then assistant.user_email from the currently verified human identity. Explain the source; this is a reviewable default, not saved consent. Ask for an actual responsible email only when none is known. NEVER invent dns@company-domain. ACL is currently ineffective in pinned provider: no access restriction/security promise, keep it unset/current unless user supplies CIDRs explicitly. Map network_area_key only to existing area keys, ask if changing target. One existing zone is unambiguous; ask target for several. Do not refuse settings because earlier history said name-only. Emit changed settings now, not only domain acknowledgment or another naming confirmation. Explain unset/current contact/ACL/area decisions too. No new zones, resolver changes or regional conversion. Acceptance of selected fields saves configuration, never deploys; unselected suggestions remain available. Availability unverified; free subdomain is not free DNS service. Reviewed DNS knowledge: ${context.rules.find((rule) => rule.id === "dns-zones")?.text ?? ""}`
                 : ""),
           },
           {
@@ -2759,6 +2807,16 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, topics: context.topi
       )
         throw new Error("assistant_invalid_scope");
       if (foundationDraft) {
+        const existingNames = assistantFolderNames(publicValues);
+        dialogue.changes = dialogue.changes.flatMap((change) => {
+          if (change.path !== "rm_folders") return [change];
+          const names = Object.fromEntries(
+            Object.entries(
+              assistantFolderNamesSchema.parse(change.value),
+            ).filter(([key, { name }]) => existingNames[key]?.name !== name),
+          );
+          return Object.keys(names).length ? [{ ...change, value: names }] : [];
+        });
         dialogue.questions = dialogue.questions.filter(
           (question) =>
             !dialogue.changes.some((change) => change.path === question.path),

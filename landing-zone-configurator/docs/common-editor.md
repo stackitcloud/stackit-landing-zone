@@ -238,6 +238,32 @@ Anfragen und abgelaufene Sicherheitsbestätigungen getrennt. Unbekannte
 Serverfehler zeigen HTTP-Status und Fehlercode statt einer endlosen
 Aufforderung zum Aktualisieren der Liste.
 
+Der DNS-Zonentyp bezeichnet die Rolle `primary` oder `secondary`, nicht eine
+Sichtbarkeit `public` oder `private`. Die gemeinsame Konfigurationsprüfung
+beanstandet ungültige Typen am konkreten Zonenfeld, auch in regionalen
+Connectivity-Konfigurationen. Der generische Assistant-Vertrag erlaubt dieselben
+DNS-Rollen im Modell-Ausgabeschema und in der serverseitigen Übernahmeprüfung.
+Das gilt auch für vollständige Netzwerkobjekte sowie direkte Feldvorschläge,
+jeweils als Ergänzung oder Ersatz und in beiden Netzwerkmodellen.
+Alte Entwürfe bleiben unverändert ladbar und
+exportierbar; sie werden nicht stillschweigend umgedeutet. Für eine selbst
+verwaltete neue Zone kann der Benutzer den Typ ausdrücklich auf `primary`
+korrigieren. Anschließend speichern und eine neue Vorbereitung für diese
+Revision erstellen; alte Vorbereitungen behalten ihren ursprünglichen Snapshot.
+Diese ergänzende DNS-Validierung ist noch nicht Teil der folgenden Dev-Abnahme.
+
+Bei Plattform-Plan und -Apply übermittelt der Runner während einer laufenden
+OpenTofu-Phase alle zwei Sekunden einen bereinigten Ausgabestand. Die API speichert
+ihn verschlüsselt und liefert ihn bereits während der Ausführung an die
+Ausgabeansicht. Die Übertragungen erfolgen nacheinander; vor Ergebnisbestätigung
+und Aufräumen werden ausstehende Übertragungen abgewartet. Unvollständige letzte
+Zeilen werden erst nach ihrem Abschluss übertragen, damit keine nur teilweise
+geschriebenen Zugangsdaten die Bereinigung umgehen. Nach dem Endstatus sind
+weitere Änderungen des Protokolls gesperrt. „Ausgabe folgen“ steuert weiterhin
+das automatische Scrollen, nicht die Übertragung. Der getrennte
+Application-Runner behält seinen bisherigen einmaligen Abschlussbericht.
+Diese Live-Ausgabekorrektur ist ebenfalls noch nicht veröffentlicht.
+
 Die zugehörige lokale Regression umfasst frische und zuvor fehlgeschlagene
 Erstpläne mit Standard- und S3-Backend bis zum erfolgreichen Plan-Nachweis,
 ohne Apply. Sie prüft unveränderte Konfigurationen, alte Vorbereitungen,

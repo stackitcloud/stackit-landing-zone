@@ -23,7 +23,10 @@ letters/digits/hyphens, no leading/trailing hyphen, max63 characters.
 Reuse confirmed domains. Requested remaining settings: propose name (lowercase/
 hyphens,max63), factual description(max1024), TTL3600s/native baseline;300s for
 explicit frequent changes (range60..99999999). Explain caching/change tradeoff.
-Primary is authoritative; secondary needs primaries absent from native module.
+type: primary/secondary, never public/private visibility. Both are authoritative:
+primary manages records at STACKIT (choose for new company zones); secondary
+replicates external primaries. Their configuration is absent from this module:
+no complete secondary setup; never silently convert an existing secondary.
 Contact: preserve an existing DNS contact; otherwise propose saved owner_email,
 then the currently verified human login email as a reviewable default. Explain
 its source; never invent an address. Ask only if no contact is known. ACL currently
@@ -38,8 +41,11 @@ dev/prod/test below it are records, not additional free-zone labels.
 
 ## Limits
 
-Chat partial native-field patches of EXISTING central zone keys; preserve omitted
-fields, no creation/regional conversion. One zone unambiguous; ask for several.
+Dedicated central-DNS dialogue: EXISTING-key patches only, no creation/regional
+conversion. Native Editor: explicit add/update/complete-set replacement,
+including regional zones. Corrections reuse zone keys; complete sets expose
+reviewable removals. Add only on explicit additional intent. Ask the target if
+several zones are ambiguous; preserve omitted fields.
 Field-selection acceptance saves, never deploys; remaining suggestions stay available.
 No SNA-only zones; empty map none.
 No propagation/certificate/reachability/delegation proof.

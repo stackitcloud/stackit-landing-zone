@@ -179,8 +179,8 @@
     {
       "id": "dns-zones",
       "file": "dns-zones.md",
-      "version": 5,
-      "checkedOn": "2026-10-12",
+      "version": 6,
+      "checkedOn": "2026-10-16",
       "qualification": "local-draft-not-reviewed-release",
       "groups": ["network"],
       "mandatory": false,

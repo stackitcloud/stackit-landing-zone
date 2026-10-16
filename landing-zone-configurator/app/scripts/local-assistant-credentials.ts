@@ -1,12 +1,11 @@
-import { execFileSync } from "node:child_process";
-import { lstatSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createDecipheriv, scryptSync } from "node:crypto";
+import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export function loadLocalModelServingToken() {
   const local = fileURLToPath(new URL("../../.local/", import.meta.url));
-  const state = join(local, "github-platform-applied.tfstate");
+  const state = join(local, "assistant-test-platform-state.enc.json");
   const keyPath = join(local, "platform/state.passphrase");
   for (const path of [state, keyPath]) {
     const file = lstatSync(path);
@@ -19,34 +18,62 @@ export function loadLocalModelServingToken() {
   }
   const passphrase = readFileSync(keyPath, "utf8").trim();
   if (passphrase.length < 32) throw new Error("original_key_required");
-  const directory = mkdtempSync(join(tmpdir(), "lzc-assistant-output-"));
-  try {
-    const environment: NodeJS.ProcessEnv = {
-      ...process.env,
-      TF_INPUT: "0",
-      TF_ENCRYPTION: `key_provider "pbkdf2" "state" {\npassphrase = ${JSON.stringify(passphrase)}\n}\nmethod "aes_gcm" "state" {\nkeys = key_provider.pbkdf2.state\n}\nstate {\nmethod = method.aes_gcm.state\nenforced = true\n}`,
-    };
-    for (const name of Object.keys(environment))
-      if (/^(TF_LOG|TF_CLI_ARGS|TF_DATA_DIR)/.test(name))
-        delete environment[name];
-    const token: unknown = JSON.parse(
-      execFileSync(
-        join(local, "ubuntu-release-37929894997/runner/tools/tofu"),
-        ["output", "-json", `-state=${state}`, "model_serving_token"],
-        {
-          cwd: directory,
-          env: environment,
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "pipe"],
-          timeout: 30000,
-          maxBuffer: 65536,
-        },
-      ),
-    );
-    if (typeof token !== "string" || !token.trim())
-      throw new Error("token_output_required");
-    return token;
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
+  return assistantTestTokenFromRecovery(
+    readFileSync(state, "utf8"),
+    passphrase,
+  );
+}
+
+export function assistantTestTokenFromRecovery(
+  encrypted: string,
+  passphrase: string,
+) {
+  const envelope: unknown = JSON.parse(encrypted);
+  if (
+    !record(envelope) ||
+    envelope.version !== 1 ||
+    envelope.kdf !== "scrypt" ||
+    envelope.cipher !== "aes-256-gcm" ||
+    typeof envelope.salt !== "string" ||
+    typeof envelope.nonce !== "string" ||
+    typeof envelope.tag !== "string" ||
+    typeof envelope.data !== "string" ||
+    passphrase.length < 32
+  )
+    throw new Error("encrypted_recovery_required");
+  const salt = Buffer.from(envelope.salt, "base64");
+  const nonce = Buffer.from(envelope.nonce, "base64");
+  const tag = Buffer.from(envelope.tag, "base64");
+  if (salt.length !== 16 || nonce.length !== 12 || tag.length !== 16)
+    throw new Error("encrypted_recovery_required");
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    scryptSync(passphrase, salt, 32),
+    nonce,
+  );
+  decipher.setAuthTag(tag);
+  const snapshot: unknown = JSON.parse(
+    Buffer.concat([
+      decipher.update(Buffer.from(envelope.data, "base64")),
+      decipher.final(),
+    ]).toString("utf8"),
+  );
+  if (
+    !record(snapshot) ||
+    !record(snapshot.outputs) ||
+    !record(snapshot.outputs.assistant_test_model_serving_token)
+  )
+    throw new Error("test_token_output_required");
+  const output = snapshot.outputs.assistant_test_model_serving_token;
+  if (
+    output.sensitive !== true ||
+    typeof output.value !== "string" ||
+    !output.value.trim()
+  )
+    throw new Error("sensitive_test_token_required");
+  return output.value;
+}
+
+function record(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

@@ -12,7 +12,7 @@ on:
       - '.github/workflows/configurator-runtime.yml'
       - '.github/workflows/configurator-release.yml'
   push:
-    branches: [main, feature/landing-zone-configurator]
+    branches: [main]
     paths:
       - 'landing-zone-configurator/**'
       - 'src/**'

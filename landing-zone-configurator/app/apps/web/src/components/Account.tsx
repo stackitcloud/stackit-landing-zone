@@ -338,7 +338,7 @@ export function Account({
           <a
             className="button"
             href={authorization.verificationUri}
-            target="_blank"
+            target={authorization.userCode ? "_blank" : "_self"}
             rel="noopener noreferrer"
           >
             {t("Bei STACKIT bestätigen")}

@@ -19,6 +19,7 @@ import {
 } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 import {
+  assistantDnsRoleFailures,
   assistantScenarioFixture,
   assistantScenarios,
   syntheticOrganizationId,
@@ -37,6 +38,7 @@ type Step = {
   expected?: Record<string, JsonValue>;
   questionsOnly?: boolean;
   boundary?: boolean;
+  dnsRoles?: boolean;
 };
 
 const steps: Step[] = [
@@ -144,10 +146,13 @@ const steps: Step[] = [
   {
     id: "devops",
     message:
-      "Bitte nun den zentralen DevOps-Git-Dienst als Entwurf konfigurieren: allowed_network_ranges ausschließlich [203.0.113.0/24], nativer Git-Flavor-Standard. Alle bisherigen Komponenten erhalten, nichts deployen.",
+      "Bitte nun den zentralen DevOps-Git-Dienst als Entwurf konfigurieren: git_flavor ausdrücklich git-10, allowed_network_ranges ausschließlich [203.0.113.0/24]. Der Flavor ist meine Auswahl, keine Verfügbarkeitszusage. Alle bisherigen Komponenten erhalten, nichts deployen.",
     reference: "devops-git",
     roots: ["devops"],
-    expected: { "devops.allowed_network_ranges": ["203.0.113.0/24"] },
+    expected: {
+      "devops.allowed_network_ranges": ["203.0.113.0/24"],
+      "devops.git_flavor": "git-10",
+    },
   },
   {
     id: "kubernetes",
@@ -156,6 +161,14 @@ const steps: Step[] = [
     reference: "platform-kubernetes",
     roots: ["platform_kubernetes"],
     expected: { "platform_kubernetes.eu01.cluster.name": "synthetic-k8s" },
+  },
+  {
+    id: "dns-role-advice",
+    message:
+      "Jetzt eine DNS-Frage, nur beraten: Was bedeuten primary und secondary, sind beide autoritativ und ist das die Auswahl public/private? Welchen Typ empfiehlst du für eine neue bei STACKIT verwaltete Firmenzone, und welche Secondary-Voraussetzung fehlt im nativen Accelerator?",
+    reference: "dns-zones",
+    roots: [],
+    dnsRoles: true,
   },
   {
     id: "labels",
@@ -238,6 +251,10 @@ async function run() {
       );
       if (!dialogue.references.includes(step.reference))
         failures.push("missing_topic_reference");
+      if (step.dnsRoles)
+        failures.push(
+          ...assistantDnsRoleFailures(dialogue.explanation, "roles"),
+        );
       if (
         step.questionsOnly &&
         (dialogue.changes.length ||

@@ -340,7 +340,9 @@ Die gehostete Assistant-Aktivierung wird ueber das geschuetzte
 `LZC_ASSISTANT_ENABLED`-Opt-in weitergereicht und verlangt Authentifizierung.
 Realer menschlicher Login, Organisationsnachweis und Kunden-Cloud-Ausfuehrung
 sind separate Nachweise; ihr aktueller Status steht im
-[Runtime-Bericht](runtime-validation-report.md).
+[MVP-Umfang](mvp-scope.md). Die oben genannten Zahlen sind historische,
+revisionsgebundene Ergebnisse; aktuelle Nachweise stehen in CI und im
+zugehoerigen Pull Request.
 
 ### Additive Organisations- und Folder-Rollenvorschlaege
 

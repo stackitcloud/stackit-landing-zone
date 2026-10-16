@@ -1,18 +1,6 @@
 name: Configurator Runtime
 
 on:
-  push:
-    branches: [feature/landing-zone-configurator]
-    paths:
-      - 'landing-zone-configurator/infra/runtime/**'
-      - 'landing-zone-configurator/infra/ci/prepare.mjs'
-      - 'landing-zone-configurator/infra/ci/context.mjs'
-      - 'landing-zone-configurator/infra/ci/review.mjs'
-      - 'landing-zone-configurator/infra/ci/protect-state.mjs'
-      - 'landing-zone-configurator/infra/ci/artifact.mjs'
-      - 'landing-zone-configurator/infra/ci/backend-safety.json'
-      - 'landing-zone-configurator/infra/plan-guard.mjs'
-      - '.github/workflows/configurator-runtime.yml'
   workflow_dispatch:
     inputs:
       root:
@@ -38,7 +26,7 @@ env:
 
 jobs:
   plan:
-    if: vars.LZC_RUNTIME_CI_ENABLED == 'true' && github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    if: vars.LZC_RUNTIME_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: lzc-dev-runtime-plan
@@ -131,7 +119,7 @@ jobs:
 
   apply:
     needs: plan
-    if: github.run_attempt == 1 && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator' && github.sha == vars.LZC_RUNTIME_APPLY_COMMIT))
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.apply
     runs-on: ubuntu-latest
     timeout-minutes: 100
     environment: lzc-dev-runtime-apply
@@ -206,9 +194,6 @@ jobs:
           path: landing-zone-configurator/.local/ci-plan
       - name: Verify reviewed plan and apply authorization
         run: node infra/ci/review.mjs verify
-        env:
-          LZC_APPROVED_APPLY_COMMIT: ${{ vars.LZC_RUNTIME_APPLY_COMMIT }}
-          LZC_APPROVED_APPLY_ROOT: runtime
       - name: OpenTofu apply reviewed plan
         id: apply
         # One SIGINT allows OpenTofu to save state before the outer job deadline.

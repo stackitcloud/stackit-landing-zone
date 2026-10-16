@@ -66,11 +66,13 @@ export function approvedReleaseSource(run, jobs, artifacts, runId) {
     run.head_repository?.full_name !== repository ||
     !["main", "feature/landing-zone-configurator"].includes(run.head_branch) ||
     !["push", "workflow_dispatch"].includes(run.event) ||
-    !jobs.some(
-      (job) =>
-        job.name === "build" &&
-        job.status === "completed" &&
-        job.conclusion === "success",
+    !["build", "assistant / assistant-live-qualification"].every(
+      (name) => jobs.some(
+        (job) =>
+          job.name === name &&
+          job.status === "completed" &&
+          job.conclusion === "success",
+      ),
     )
   )
     throw new Error("Only successful trusted release builds can be promoted");

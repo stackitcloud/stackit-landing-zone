@@ -39,7 +39,8 @@ legal retention recommendation or an instruction to enable audit automatically.
 Object Lock can constrain deletion independently of Configurator conversation
 expiry. Audit-router configuration does not prove delivered events or all scopes
 covered. Scope, permissions, ingestion and archive retrieval require separate
-tests; current chat cannot patch the complex audit object.
+tests. Native Editor proposals support typed audit settings; new instances need
+explicit retention, ACL and Object Lock decisions, not sample/default consent.
 
 ## Credentials
 

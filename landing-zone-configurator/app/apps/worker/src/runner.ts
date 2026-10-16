@@ -118,7 +118,7 @@ export async function runWorker(
   let outputReported = false;
   let executionSucceeded = false;
   let diagnostic: { text: string; truncated: boolean } | undefined;
-  let publishOutput = async () => {};
+  let publishOutput = async (_live = false) => {};
   const expectedOrigin = options.local ? localBrokerOrigin : brokerOrigin;
   const broker = options.broker ?? "platform";
   const brokerPath = broker === "application" ? "application-runner" : "runner";
@@ -407,7 +407,8 @@ export async function runWorker(
       LZC_PROVIDER_MIRROR: resolve(root, "providers"),
       ...backendEnv,
     };
-    publishOutput = async () => {
+    publishOutput = async (live = false) => {
+      outputReported = false;
       try {
         const values: unknown[] = [
           key,
@@ -436,7 +437,10 @@ export async function runWorker(
           const file = await open(
             resolve(work as string, `${fileName}.log`),
             "r",
-          ).catch(() => null);
+          ).catch((error: NodeJS.ErrnoException) => {
+            if (error.code === "ENOENT") return null;
+            throw error;
+          });
           if (!file) continue;
           try {
             const remaining = Math.max(
@@ -446,7 +450,10 @@ export async function runWorker(
             const size = (await file.stat()).size;
             const buffer = Buffer.alloc(Math.min(size, remaining + 32768));
             const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-            let chunk = `$ tofu ${commandName}\n${buffer.subarray(0, bytesRead).toString("utf8")}\n`;
+            let content = buffer.subarray(0, bytesRead).toString("utf8");
+            if (live && bytesRead === size)
+              content = content.slice(0, content.lastIndexOf("\n") + 1);
+            let chunk = `$ tofu ${commandName}\n${content}\n`;
             for (const secret of secrets)
               chunk = chunk.replaceAll(secret, "(sensitive value)");
             chunk = chunk.replace(
@@ -463,7 +470,9 @@ export async function runWorker(
         diagnostic = { text, truncated };
         await report("output", diagnostic);
         outputReported = true;
-      } catch {}
+      } catch {
+        console.error(JSON.stringify({ event: "runner_output_failed" }));
+      }
     };
     async function command(phase: string, reportStage = true) {
       if (Date.now() >= deadline) {
@@ -475,59 +484,74 @@ export async function runWorker(
         errorCode = "timed_out";
         throw new Error("Deadline exceeded");
       }
-      await new Promise<void>((done, fail) => {
-        const child = spawn(
-          "/bin/bash",
-          [
-            resolve(root, "run-plan.sh"),
-            phase,
-            applying
-              ? "platform-apply"
-              : applicationBinding?.purpose === "destroy"
-                ? "application-destroy-plan"
-                : applicationBinding?.purpose === "drift"
-                  ? "application-drift-plan"
-                  : mode === "initial-plan-only"
-                    ? mode
-                    : "platform-plan",
-          ],
-          {
-            cwd: work as string,
-            env,
-            stdio: ["ignore", "ignore", "ignore"],
-            detached: true,
-          },
-        );
-        let killTimer: ReturnType<typeof setTimeout> | undefined;
-        const stop = (signal: NodeJS.Signals) => {
-          try {
-            if (child.pid) process.kill(-child.pid, signal);
-          } catch {}
-        };
-        const timeout = setTimeout(
-          () => {
-            errorCode = "timed_out";
-            stop("SIGTERM");
-            killTimer = setTimeout(() => stop("SIGKILL"), 10000);
-          },
-          Math.max(1, deadline - Date.now()),
-        );
-        const clear = () => {
-          clearTimeout(timeout);
-          if (killTimer) clearTimeout(killTimer);
-        };
-        child.once("error", () => {
-          clear();
-          fail(new Error("Runner process failed"));
+      let outputTimer: ReturnType<typeof setTimeout> | undefined;
+      let pendingOutput: Promise<void> | undefined;
+      let outputStopped = false;
+      const pollOutput = () => {
+        pendingOutput = publishOutput(true).finally(() => {
+          if (!outputStopped) outputTimer = setTimeout(pollOutput, 2000);
         });
-        child.once("exit", (code) => {
-          if (errorCode === "timed_out") stop("SIGKILL");
-          clear();
-          code === 0 && errorCode !== "timed_out"
-            ? done()
-            : fail(new Error("Runner phase failed"));
+      };
+      if (broker === "platform") outputTimer = setTimeout(pollOutput, 2000);
+      try {
+        await new Promise<void>((done, fail) => {
+          const child = spawn(
+            "/bin/bash",
+            [
+              resolve(root, "run-plan.sh"),
+              phase,
+              applying
+                ? "platform-apply"
+                : applicationBinding?.purpose === "destroy"
+                  ? "application-destroy-plan"
+                  : applicationBinding?.purpose === "drift"
+                    ? "application-drift-plan"
+                    : mode === "initial-plan-only"
+                      ? mode
+                      : "platform-plan",
+            ],
+            {
+              cwd: work as string,
+              env,
+              stdio: ["ignore", "ignore", "ignore"],
+              detached: true,
+            },
+          );
+          let killTimer: ReturnType<typeof setTimeout> | undefined;
+          const stop = (signal: NodeJS.Signals) => {
+            try {
+              if (child.pid) process.kill(-child.pid, signal);
+            } catch {}
+          };
+          const timeout = setTimeout(
+            () => {
+              errorCode = "timed_out";
+              stop("SIGTERM");
+              killTimer = setTimeout(() => stop("SIGKILL"), 10000);
+            },
+            Math.max(1, deadline - Date.now()),
+          );
+          const clear = () => {
+            clearTimeout(timeout);
+            if (killTimer) clearTimeout(killTimer);
+          };
+          child.once("error", () => {
+            clear();
+            fail(new Error("Runner process failed"));
+          });
+          child.once("exit", (code) => {
+            if (errorCode === "timed_out") stop("SIGKILL");
+            clear();
+            code === 0 && errorCode !== "timed_out"
+              ? done()
+              : fail(new Error("Runner phase failed"));
+          });
         });
-      });
+      } finally {
+        outputStopped = true;
+        clearTimeout(outputTimer);
+        await pendingOutput;
+      }
     }
     errorCode = "init_failed";
     await command("initializing");

@@ -169,11 +169,15 @@ export function assessCommonConfiguration(
       }
     }
     for (const [key, raw] of Object.entries(objectValue(network.dns_zones))) {
-      if (
-        !keys.includes(
-          textValue(objectValue(raw).network_area_key) || "default",
-        )
-      )
+      const zone = objectValue(raw);
+      const type = zone.type ?? "primary";
+      if (type !== "primary" && type !== "secondary")
+        add(
+          `${path}.dns_zones.${key}.type`,
+          "dns-zone-type",
+          "Der DNS-Zonentyp muss „primary“ oder „secondary“ sein. „public“ und „private“ sind hier keine gültigen Werte.",
+        );
+      if (!keys.includes(textValue(zone.network_area_key) || "default"))
         add(
           `${path}.dns_zones.${key}`,
           "dns-area-reference",

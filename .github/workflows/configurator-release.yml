@@ -1,19 +1,6 @@
 name: Configurator Release
 
 on:
-  push:
-    branches: [feature/landing-zone-configurator]
-    paths:
-      - 'bin/**'
-      - 'landing-zone-configurator/app/**'
-      - 'landing-zone-configurator/deploy/cloud-foundry/**'
-      - 'landing-zone-configurator/deploy/runner/**'
-      - 'landing-zone-configurator/infra/ci/prepare-release.mjs'
-      - 'landing-zone-configurator/infra/ci/prepare-release.test.mjs'
-      - 'landing-zone-configurator/infra/ci/image-staging.test.mjs'
-      - 'landing-zone-configurator/infra/ci/buildpack-source.mjs'
-      - 'landing-zone-configurator/infra/ci/release-artifact.mjs'
-      - '.github/workflows/configurator-release.yml'
   workflow_dispatch:
     inputs:
       build_only:
@@ -34,8 +21,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  assistant:
+    name: assistant
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    uses: ./.github/workflows/assistant-live.yml
+    with:
+      topic: all
+      repetitions: 2
+    secrets: inherit
+
   build:
-    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && !inputs.release_run_id && ((github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/landing-zone-configurator'))
+    needs: assistant
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -134,7 +131,7 @@ jobs:
 
   deploy:
     needs: build
-    if: always() && !cancelled() && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && (needs.build.result == 'success' || (needs.build.result == 'skipped' && github.event_name == 'workflow_dispatch' && inputs.release_run_id != ''))
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.release_run_id != ''))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:

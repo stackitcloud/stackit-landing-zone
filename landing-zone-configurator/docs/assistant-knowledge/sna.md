@@ -48,13 +48,14 @@ Export native tfvars, not free Terraform.
 
 ## Limits
 
-Chat supports single/map area add/edit only: no deletion/rename, form conversion,
-regional/VPN patch or execution. Firewall uses its separate reviewed central
+The specialized SNA dialogue supports single/map add/edit. Other reviewed public
+settings use typed native Editor proposals, never implicit migrations or
+execution. Firewall uses its separate reviewed central
 infrastructure/HA patch contract, not an implicit part of SNA. Preserve unknown imports outside model
 context. Validate before presentation/acceptance; only explicit authorized
 acceptance saves. Never claim deployed. Full overlap, quota, availability and
 firewall-containment checks remain separate; clean compilation is not proof.
-Other complex mutations need their own reviewed patch contract.
+Only reviewed Editor paths may change; protected inputs remain excluded.
 
 ## Credentials
 
