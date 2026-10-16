@@ -117,11 +117,12 @@ geöffneten Projekten, ohne Browserfehler oder Server-Mutationen.
 Ein echter Benutzerlogin, Organisationsnachweis und Kunden-Plan wurden nicht
 automatisiert durchgeführt.
 
-Die separate
+Für den damaligen Release blieb die separate
 [Validate-Configurator-Ausführung 38782981811](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38782981811)
-bleibt bei den bereits vor diesen Änderungen bekannten Standalone-Vertrags- und
-STACKIT-/GitHub-Operator-Guard-Assertions rot. Sie wird ausdrücklich nicht als
-bestanden gewertet; die oben genannte Release- und Live-Abnahme ist davon getrennt.
+bei den Standalone-Vertrags- und STACKIT-/GitHub-Operator-Guard-Assertions rot.
+Dieser historische Lauf wird nicht als bestanden gewertet. Die unten dokumentierte
+Dev-Abnahme vom 2026-10-16 enthält die Korrekturen und einen vollständig grünen
+neuen Validierungslauf.
 
 Die echte Modell-Abnahme der Originalanfrage nach Corporate-/Public-Templates
 mit lokalen Netzen ist in drei unabhängigen synthetischen Läufen bestanden:
@@ -243,8 +244,29 @@ ohne Apply. Sie prüft unveränderte Konfigurationen, alte Vorbereitungen,
 State-Bindungen und weiterhin gesperrte Zustände. Desktop- und Mobiltests
 decken außerdem die ausdrückliche Auswahl des aktuellen Accelerator-Stands
 ohne vorhandenes S3-Backend sowie konkrete und unbekannte Fehlermeldungen ab.
-Diese Nachbesserung ist noch nicht Bestandteil des oben dokumentierten
-Dev-Releases.
+**Dev-Abnahme vom 2026-10-16:** Die Nachbesserung ist als unveränderliche Quelle
+`6a5014e7821586a60699bcd52d148f0d56718b8b` über den erfolgreichen
+[Dev-Release 38867967256](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38867967256)
+veröffentlicht. Auch die zugehörige
+[Validate-Configurator-Ausführung 38867967250](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38867967250)
+ist vollständig erfolgreich. Die normale geschützte Dev-Freigabe erfolgte erst
+nach erfolgreicher separater Validierung und erfolgreichem Release-Build.
+Beide Workflows bestanden 718 Unit-Tests (63 im normalen Unit-Lauf übersprungen),
+57 ausdrücklich aktivierte PostgreSQL-Plan-/Broker-Tests, 53 API-Datenbanktests,
+304 Desktop-/Mobiltests und 13 native Template-Vertragsprüfungen. Die separate
+Validierung bestand außerdem alle sechs Infrastruktur-Roots einschließlich
+Formatierung, Validierung und Mock-Plänen. Der Release bestand die native
+Runner-/Provider-/Image-/Archiv-Qualifikation und die tatsächliche
+Cloud-Foundry-Bereitstellung einschließlich Migrationen, Service-Verbindungen,
+separater Runner-Organisation, abgewiesenem Job-Ticket und öffentlichen Routen.
+
+Die ausgelieferten JavaScript-/CSS-Dateien entsprechen bytegenau dem freigegebenen
+Build. Acht öffentliche Auth-/PKCE-/Callback-/CSRF-Prüfungen sind bestanden.
+Echte anonyme Desktop-/Mobil-Browser zeigen jeweils zehn Name-/Typ-Komponenten,
+funktionierendes Auf-/Zuklappen und überlappungsfreie Vorschauen ohne
+Browserfehler oder Server-Mutationen. Die Anmeldung wurde nicht mit einem
+echten Benutzer durchlaufen; ein Organisationsnachweis oder Kunden-Plan/Apply
+wurde nicht ausgeführt. Gespeicherte Kundenkonfigurationen wurden nicht verändert.
 
 Der separate Validierungsworkflow prüft die reale Release-Konfiguration im
 Application-Job nach dem API-Build. Der Infrastruktur-Job benötigt weiterhin
