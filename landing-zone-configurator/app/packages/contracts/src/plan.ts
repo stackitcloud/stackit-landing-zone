@@ -46,6 +46,11 @@ export interface PlanSummary {
   completeness: "complete" | "incomplete" | "not-reported";
 }
 
+export interface PlatformApplyBlocker {
+  code: string;
+  issues?: { field: string; message: string }[];
+}
+
 export class InvalidPlan extends Error {
   constructor() {
     super(

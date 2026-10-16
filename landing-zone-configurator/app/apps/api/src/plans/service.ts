@@ -79,16 +79,26 @@ export class Plans {
     );
     for (const row of rows) {
       row.applyAllowed = false;
-      if (
-        !this.execution ||
-        row.operation !== "plan" ||
-        row.status !== "succeeded" ||
-        !row.artifactSha256
-      )
+      row.applyBlocker = null;
+      if (row.operation !== "plan" || row.status !== "succeeded") continue;
+      if (!this.execution) {
+        row.applyBlocker = { code: "execution_disabled" };
         continue;
+      }
+      if (!row.artifactSha256) {
+        row.applyBlocker = { code: "artifact_invalid" };
+        continue;
+      }
       try {
         const manifest = await this.preparation(session, row.preparationId);
-        if (initialPlanIssues(manifest.configuration, "apply").length) continue;
+        const issues = initialPlanIssues(manifest.configuration, "apply");
+        if (issues.length) {
+          row.applyBlocker = {
+            code: "configuration_apply_not_supported",
+            issues,
+          };
+          continue;
+        }
         await this.verifySource(session, manifest);
         await this.verify(session, manifest);
         await withTenant(this.pool, session, async (client) => {
@@ -114,8 +124,10 @@ export class Plans {
           this.execution!.bytes(session, artifact);
         });
         row.applyAllowed = true;
-      } catch {
+      } catch (error) {
+        if (!(error instanceof CredentialError)) throw error;
         row.applyAllowed = false;
+        row.applyBlocker = { code: error.code };
       }
     }
     return rows;

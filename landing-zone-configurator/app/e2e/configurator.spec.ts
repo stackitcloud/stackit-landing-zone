@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import {
   assistantProposalFields,
+  type PlatformApplyBlocker,
   platformUpgradeAcceleratorCommit,
   selectAssistantProposalFields,
 } from "@lzc/contracts";
@@ -5186,7 +5187,7 @@ test.describe("explicit saved-plan approval", () => {
       await expect(page.getByRole("alert")).toContainText(message as string);
       await expect(
         page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
-      ).toHaveCount(0);
+      ).toBeDisabled();
       await page
         .getByRole("navigation", { name: "Konfiguration", exact: true })
         .getByRole("button", { name: "Plan", exact: true })
@@ -5204,7 +5205,7 @@ test.describe("explicit saved-plan approval", () => {
         .click();
       await expect(
         page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
-      ).toHaveCount(0);
+      ).toBeDisabled();
       expect(calls).toBe(1);
       await expect(page.getByText(/Apply: Änderungen angewendet/)).toHaveCount(
         0,
@@ -5977,6 +5978,91 @@ test.describe("explicit saved-plan approval", () => {
     await expect(page.locator(".plan-runs > article")).toHaveCount(1);
   });
 
+  test("shows the server's Apply blocker on both phases and restores explicit approval only for an eligible plan", async ({
+    page,
+  }) => {
+    await setup(page);
+    const plan: ReturnType<typeof savedPlan> & {
+      applyBlocker: PlatformApplyBlocker | null;
+    } = {
+      ...savedPlan(),
+      applyAllowed: false,
+      applyBlocker: {
+        code: "configuration_apply_not_supported",
+        issues: [
+          {
+            field: "connectivity.firewalls",
+            message:
+              "Firewall-/HA-Infrastruktur ist nur für Plan freigegeben. Apply erfordert einen separat qualifizierten Administrations-/Bootstrap-Vertrag; Policy und VPN-PSKs bleiben gesondert gesperrt.",
+          },
+        ],
+      },
+    };
+    let mutations = 0;
+    await page.route("**/api/v1/plans", (route) => {
+      if (route.request().method() !== "GET") mutations++;
+      return route.fulfill({ json: { runs: [plan] } });
+    });
+    await page.route(`**/api/v1/plans/${planId}/apply`, (route) => {
+      mutations++;
+      return route.fulfill({
+        status: 409,
+        json: { error: "apply_not_allowed" },
+      });
+    });
+    await page.goto("/deployments/plan");
+    await expect(
+      page.getByText("Apply derzeit gesperrt", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("connectivity.firewalls", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(/nur für Plan freigegeben/)).toBeVisible();
+    await page
+      .getByRole("button", { name: "Weiter zu Apply", exact: true })
+      .click();
+    const apply = page.getByRole("button", {
+      name: "Freigegebenen Plan anwenden",
+      exact: true,
+    });
+    await expect(apply).toBeVisible();
+    await expect(apply).toBeDisabled();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Änderungen und Zielorganisation geprüft",
+      }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(apply).toBeDisabled();
+    await expect(page.getByText(/nur für Plan freigegeben/)).toBeVisible();
+    await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+    await expect(
+      page.getByText("Apply currently blocked", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Firewall\/HA infrastructure is approved for Plan only/),
+    ).toBeVisible();
+    await page.getByLabel("Language", { exact: true }).selectOption("de");
+    plan.applyAllowed = true;
+    plan.applyBlocker = null;
+    await page
+      .getByRole("button", { name: "Ausführungsstatus aktualisieren" })
+      .click();
+    await expect(
+      page.getByText("Apply derzeit gesperrt", { exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("checkbox", {
+        name: "Änderungen und Zielorganisation geprüft",
+      })
+      .check();
+    await page
+      .getByRole("textbox", { name: "Zielorganisation UUID bestätigen" })
+      .fill(organizationId);
+    await expect(apply).toBeEnabled();
+    expect(mutations).toBe(0);
+  });
+
   test("legacy summary cannot grant apply, expired plan and invalid export stay unavailable", async ({
     page,
   }) => {
@@ -5993,7 +6079,7 @@ test.describe("explicit saved-plan approval", () => {
     await expect(page.getByText(/nicht vom Server freigegeben/)).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
-    ).toHaveCount(0);
+    ).toBeDisabled();
     plan.applyAllowed = true;
     plan.expiresAt = new Date(Date.now() - 1000).toISOString();
     await page

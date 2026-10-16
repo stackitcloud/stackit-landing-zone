@@ -111,7 +111,12 @@ export const appliedPlatformSourceSchema = z.strictObject({
 });
 export type AppliedPlatformSource = z.infer<typeof appliedPlatformSourceSchema>;
 
-export type { ActionCounts, PlanAction, PlanSummary } from "./plan.js";
+export type {
+  ActionCounts,
+  PlanAction,
+  PlanSummary,
+  PlatformApplyBlocker,
+} from "./plan.js";
 export {
   applicationMvpAcceleratorCommit,
   applicationPlanPreview,
