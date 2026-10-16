@@ -63,6 +63,23 @@ const questions: Record<string, string> = {
 };
 
 const overviewFields: Record<string, readonly string[]> = {
+  "devops-git": ["devops", "git_flavor", "allowed_network_ranges"],
+  vpn: [
+    "connectivity.vpn",
+    "connectivity_regions",
+    "plan_id",
+    "routing_type",
+    "availability_zones",
+    "connections",
+    "local_subnets",
+    "remote_subnets",
+    "static_routes",
+    "tunnel1",
+    "tunnel2",
+    "phase1",
+    "phase2",
+    "vpn_pre_shared_keys",
+  ],
   "identity-foundations": [
     "organization_id",
     "owner_email",
@@ -1117,6 +1134,21 @@ export function validateAssistantScenario(
       /\b255\b|\b256\b|\b500\b/.test(dialogue.explanation))
   )
     failures.push("incorrect_folder_limits");
+  if (
+    scenario.id === "vpn-advice" &&
+    (!/\bnull\b/.test(dialogue.explanation) ||
+      !/\bROUTE_BASED\b/.test(dialogue.explanation) ||
+      !/\bp100\b/.test(dialogue.explanation) ||
+      !dialogue.explanation.includes("TF_VAR_vpn_pre_shared_keys"))
+  )
+    failures.push("incomplete_native_vpn_contract");
+  if (
+    scenario.id === "vpn-advice" &&
+    /routing_type[^.!?\n]*(?:static\s*(?:\/|oder|or|und|and)\s*dynamic|dynamic\s*(?:\/|oder|or|und|and)\s*static)/i.test(
+      dialogue.explanation,
+    )
+  )
+    failures.push("incorrect_vpn_routing_type");
   if (
     scenario.id === "firewall-policy-advice" &&
     (!["pass", "block", "reject"].every((action) =>

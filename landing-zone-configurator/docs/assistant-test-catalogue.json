@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "5db344a9009f2d3e3a519ac6dbef9f4f614611101866756d4e2ad6f142667a67",
+  "knowledgeSha256": "40c40462421ad8f292a21871ce9a82396c1300239c400de0f6de22e5d2bcef93",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "d2baa94ac001f35ed5c990aefbaaa72e754a35b9cb3740ab0dc7b041514d236a",
+    "scripts/assistant-scenarios.ts": "441273d9af541a14185062728a9f9a7044df0e8a7c51645a53eb970a341867d9",
     "scripts/assistant-tests.ts": "fb1ba4a3438fbcd6d12c0a87d9bc9beeae8066bb5b691a7e2901635a842bb5df"
   },
-  "suiteSha256": "bba638db669752c98b826684f0456cead383c02d249aad1899e56b565d3632a4",
+  "suiteSha256": "eff58501eae3dd3bdff61f858e9bb3d09fb5182fa3f5bc40de43aa360d1dfe91",
   "topics": [
     {
       "id": "credential-foundations",
@@ -3559,9 +3559,26 @@
           "topic": "vpn",
           "message": "Welche nativen VPN-Felder, Standort-Netze und Verbindungsparameter kann ich konfigurieren? Wie wird der PSK separat hinterlegt? Nur beraten.",
           "fixture": "baseline",
+          "requiredOverviewFields": [
+            "connectivity.vpn",
+            "connectivity_regions",
+            "plan_id",
+            "routing_type",
+            "availability_zones",
+            "connections",
+            "local_subnets",
+            "remote_subnets",
+            "static_routes",
+            "tunnel1",
+            "tunnel2",
+            "phase1",
+            "phase2",
+            "vpn_pre_shared_keys"
+          ],
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
+            "complete_native_field_overview",
             "no_changes"
           ]
         }
@@ -4314,9 +4331,15 @@
           "topic": "devops-git",
           "message": "Welche Konfigurationsfelder und Voraussetzungen gibt es fuer den zentralen DevOps-Git-Dienst? Welchen nativen Standard hat git_flavor, und wird damit eine Git-Instanz erstellt? Ist git-10 ein automatisch aktivierter Standard? Nur beraten, nichts aktivieren.",
           "fixture": "baseline",
+          "requiredOverviewFields": [
+            "devops",
+            "git_flavor",
+            "allowed_network_ranges"
+          ],
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
+            "complete_native_field_overview",
             "no_changes"
           ]
         }

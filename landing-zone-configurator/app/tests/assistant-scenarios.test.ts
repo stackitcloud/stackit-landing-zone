@@ -260,7 +260,12 @@ it.each(assistantScenarios)(
     } else if (scenario.fixture === "baseline") {
       expect(
         validateAssistantScenario(scenario, {
-          explanation: `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
+          explanation:
+            scenario.topic === "vpn"
+              ? buildAssistantKnowledge().topics.find(
+                  (topic) => topic.id === "vpn",
+                )?.fieldOverview
+              : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
           changes: [],
           references: [scenario.topic],
@@ -398,6 +403,8 @@ it.each([
   "governance-folders-advice",
   "firewall-policy-advice",
   "sandbox-projects-advice",
+  "vpn-advice",
+  "devops-git-advice",
 ])(
   "rejects a correct reference but empty or misleading native field overview for %s",
   (id) => {
@@ -428,6 +435,36 @@ it.each([
       ).toContain("incomplete_policy_contract");
   },
 );
+
+it("requires native VPN defaults and separate PSK binding, rejecting invented routing enums", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "vpn-advice",
+  );
+  if (!scenario) throw new Error("missing_fixture");
+  const explanation = buildAssistantKnowledge().topics.find(
+    (topic) => topic.id === "vpn",
+  )?.fieldOverview;
+  if (!explanation) throw new Error("missing_vpn_overview");
+  const input = {
+    explanation,
+    questions: [],
+    changes: [],
+    references: ["vpn"],
+  };
+  expect(validateAssistantScenario(scenario, input).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      explanation: scenario.requiredOverviewFields?.join(", "),
+    }).failures,
+  ).toContain("incomplete_native_vpn_contract");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      explanation: `${explanation}\nrouting_type unterstützt static oder dynamic.`,
+    }).failures,
+  ).toContain("incorrect_vpn_routing_type");
+});
 
 it("rejects superficially successful foundation answers and validates exact restoration", () => {
   const scenario = assistantScenarios.find(
