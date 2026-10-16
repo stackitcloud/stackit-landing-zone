@@ -80,13 +80,22 @@ nicht eine neue Produktionsumgebung.
 
 Nach erfolgreicher Assistant-Qualifikation und Build veroeffentlicht der
 isolierte Release-Job `publish_buildpack` den fehlenden Buildpack-Tag.
+Das gilt auch fuer `build_only=true`, solange der qualifizierte Commit noch
+Branch-HEAD ist; ein Build-only-Lauf fuehrt weiterhin kein Deployment aus.
 Nur dieser Job besitzt `contents: write`; er hat kein Cloud-Environment und
-keine Cloud-Credentials. Bei Artefakt-Promotion prueft er erneut die erfolgreichen
-Qualifikations-/Build-Jobs und verwendet deren exakten Commit, nicht den aktuellen
-Branch-Head. Bestehende Tags muessen bereits exakt stimmen und unveraenderlich
-geschuetzt sein. Der nachfolgende Deployment-Job bleibt lesend und prueft den
-Tag unabhaengig vor dem Lesen der Deployment-Credentials. `build_only=true`
-veroeffentlicht keinen Tag. Ein fehlgeschlagenes Deployment macht einen zuvor
+keine Cloud-Credentials. Bei Artefakt-Promotion wird dieser schreibfaehige Job
+uebersprungen. Der Deployment-Job prueft erneut die erfolgreichen
+Qualifikations-/Build-Jobs und verlangt den bereits vorhandenen, exakt
+SHA-gebundenen und unveraenderlich geschuetzten Tag.
+Er bleibt lesend und prueft den Tag vor dem Lesen der Deployment-Credentials.
+GitHub kann fuer das Taggen historischer Commits zusaetzlich `workflows: write`
+verlangen; diese Berechtigung ist fuer `GITHUB_TOKEN` nicht verfuegbar.
+Fehlt bei einem aelteren qualifizierten Build der Tag, ist ein ausdruecklich
+autorisierter Operator-Backfill erforderlich: Quelle zuerst mit
+`release-artifact.mjs source` validieren, dann `buildpack-source.mjs publish`
+mit genau dieser Revision und Operator-Authentifizierung ausfuehren.
+Den Operator-Token niemals in CI hinterlegen oder den Tag-Schutz lockern.
+Ein fehlgeschlagenes Deployment macht einen zuvor
 erfolgreich qualifizierten Build nicht ungueltig: Ein neuer manueller Run kann
 ihn mit `release_run_id` uebernehmen, solange das Artefakt nicht abgelaufen ist.
 

@@ -96,7 +96,7 @@ test("read-only verification reports a missing tag without creating it", async (
   const mock = api([...protection(), [`GET ${refPath}`, {}, 404]]);
   await assert.rejects(
     checkBuildpackSource(revision, { ...mock.options, publish: false }),
-    /missing \(HTTP 404\); run the release's publish_buildpack job/,
+    /missing \(HTTP 404\); publish it during the qualified build.*operator backfill/,
   );
   mock.done();
 });
@@ -261,6 +261,19 @@ test("invalid revisions or missing tokens fail before any network operation", as
   mock.done();
 });
 
+test("forbidden historical publication explains the token restriction without retrying or weakening protection", async () => {
+  const mock = api([
+    ...protection(),
+    [`GET ${refPath}`, {}, 404],
+    ["POST git/refs", {}, 403],
+  ]);
+  await assert.rejects(
+    checkBuildpackSource(revision, mock.options),
+    /POST git\/refs HTTP 403.*GITHUB_TOKEN may reject historical commits.*operator backfill; keep tag protection enabled/,
+  );
+  mock.done();
+});
+
 const workflow = readFileSync(
   new URL(
     "../../../.github/workflows/configurator-release.yml",
@@ -289,6 +302,16 @@ test("only the isolated publisher gets write access; deployment verifies indepen
   );
   assert.ok(
     publisher.indexOf("release-artifact.mjs source") <
+      publisher.indexOf("buildpack-source.mjs publish"),
+  );
+  assert.match(publisher, /LZC_RELEASE_RUN_ID: \$\{\{ github.run_id \}\}/);
+  assert.doesNotMatch(
+    publisher,
+    /LZC_RELEASE_RUN_ID: \$\{\{ inputs.release_run_id/,
+  );
+  assert.match(publisher, /test "\$head" = "\$GITHUB_SHA"/);
+  assert.ok(
+    publisher.indexOf('test "$head" = "$GITHUB_SHA"') <
       publisher.indexOf("buildpack-source.mjs publish"),
   );
   assert.match(publisher, /manifest.yml\?ref=\$LZC_RELEASE_REVISION/);
@@ -333,28 +356,54 @@ test("actual publication and deployment conditions enforce manual trusted qualif
     });
   for (const job of [publisher, deploy]) {
     assert.equal(allowed(job), true);
-    assert.equal(
-      allowed(job, {
-        inputs: { ...context.inputs, release_run_id: "123" },
-        needs: { ...context.needs, build: { result: "skipped" } },
-      }),
-      true,
-    );
     for (const overrides of [
       { cancelled: () => true },
       { github: { ...context.github, event_name: "push" } },
       { github: { ...context.github, run_attempt: 2 } },
       { github: { ...context.github, ref: "refs/heads/untrusted" } },
-      { inputs: { ...context.inputs, build_only: true } },
       { vars: { LZC_RELEASE_CI_ENABLED: "false" } },
       { needs: { ...context.needs, build: { result: "failure" } } },
       { needs: { ...context.needs, build: { result: "skipped" } } },
     ])
       assert.equal(allowed(job, overrides), false);
   }
+  const buildOnly = { inputs: { ...context.inputs, build_only: true } };
+  assert.equal(allowed(publisher, buildOnly), true);
+  assert.equal(allowed(deploy, buildOnly), false);
+  const promotion = {
+    inputs: { ...context.inputs, release_run_id: "123" },
+    needs: {
+      build: { result: "skipped" },
+      publish_buildpack: { result: "skipped" },
+    },
+  };
+  assert.equal(allowed(publisher, promotion), false);
+  assert.equal(allowed(deploy, promotion), true);
+  assert.equal(
+    allowed(publisher, {
+      inputs: { ...context.inputs, release_run_id: "123" },
+    }),
+    false,
+  );
   assert.equal(
     allowed(deploy, {
-      needs: { ...context.needs, publish_buildpack: { result: "failure" } },
+      ...promotion,
+      inputs: { ...promotion.inputs, build_only: true },
+    }),
+    false,
+  );
+  for (const result of ["failure", "cancelled", "skipped"]) {
+    assert.equal(
+      allowed(deploy, {
+        needs: { ...context.needs, publish_buildpack: { result } },
+      }),
+      false,
+    );
+  }
+  assert.equal(
+    allowed(deploy, {
+      ...promotion,
+      needs: { ...promotion.needs, publish_buildpack: { result: "failure" } },
     }),
     false,
   );

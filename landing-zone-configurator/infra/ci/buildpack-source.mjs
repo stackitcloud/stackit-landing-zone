@@ -62,7 +62,11 @@ export async function checkBuildpackSource(
     );
     if (!response.ok && !allow.includes(response.status))
       throw new Error(
-        `Buildpack source ${method} ${path} HTTP ${response.status}`,
+        `Buildpack source ${method} ${path} HTTP ${response.status}${
+          response.status === 403 && method === "POST" && path === "git/refs"
+            ? "; GITHUB_TOKEN may reject historical commits. Publish during the qualified build or use an explicitly authorized operator backfill; keep tag protection enabled."
+            : ""
+        }`,
       );
     return response;
   }
@@ -87,7 +91,7 @@ export async function checkBuildpackSource(
     return verifyBuildpackSource(revision, await response.json(), policy);
   if (!publish)
     throw new Error(
-      `Buildpack tag ${tag} is missing (HTTP 404); run the release's publish_buildpack job before deployment`,
+      `Buildpack tag ${tag} is missing (HTTP 404); publish it during the qualified build. Historical builds require explicit operator backfill before promotion.`,
     );
   const created = await request("git/refs", {
     method: "POST",

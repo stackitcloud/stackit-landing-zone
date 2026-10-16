@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build_only:
-        description: Build and publish the immutable release without deploying
+        description: Build and publish the immutable release and buildpack tag without deploying
         type: boolean
         default: false
       release_run_id:
@@ -132,7 +132,7 @@ jobs:
 
   publish_buildpack:
     needs: build
-    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.release_run_id != ''))
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.release_run_id && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && needs.build.result == 'success'
     permissions:
       actions: read
       contents: write
@@ -154,9 +154,8 @@ jobs:
         run: node infra/ci/release-artifact.mjs source
         env:
           GH_TOKEN: ${{ github.token }}
-          LZC_RELEASE_RUN_ID: ${{ inputs.release_run_id || github.run_id }}
+          LZC_RELEASE_RUN_ID: ${{ github.run_id }}
       - name: Reject a superseded branch revision
-        if: inputs.release_run_id == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -176,7 +175,7 @@ jobs:
 
   deploy:
     needs: [build, publish_buildpack]
-    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && needs.publish_buildpack.result == 'success' && (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.release_run_id != ''))
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && ((needs.build.result == 'success' && needs.publish_buildpack.result == 'success') || (needs.build.result == 'skipped' && needs.publish_buildpack.result == 'skipped' && inputs.release_run_id != ''))
     permissions:
       actions: read
       contents: read
