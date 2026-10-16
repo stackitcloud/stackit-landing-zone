@@ -23,6 +23,22 @@ einen gated Apply-Endpunkt: nur bei aktivierter Execution, passendem unveränder
 Planartefakt/Hash, bestätigter Zielorganisation und erneut geprüften Zugriffs-,
 Quell- und State-Bindungen. Ein Export ist keine Apply-Freigabe. Kein Destroy-Pfad.
 
+Ein erfolgreicher Plan ist nicht automatisch fuer Apply freigegeben. Der Server
+liefert zu einer gesperrten Freigabe einen Fehlercode und bei nicht unterstuetzten
+Komponenten die betroffenen Felder mit Begruendung. Plan- und Apply-Seite zeigen
+diese Sperre an; der Apply-Button bleibt sichtbar, aber deaktiviert. Ein
+freigabefaehiger Plan zeigt weiterhin die explizite Pruefbestaetigung und verlangt
+die exakte UUID der Zielorganisation. Alle Bedingungen werden vor Apply erneut
+serverseitig geprueft.
+
+Firewall-/HA-Infrastruktur bleibt derzeit nur fuer Plan qualifiziert. Ein neuer
+Plan allein hebt diese Komponentensperre nicht auf. Der Administrations- und
+Bootstrap-Vertrag muss separat fuer Apply qualifiziert werden; Firewall-Policy
+und VPN-PSKs werden dabei nicht stillschweigend ausgelassen. Konfiguration und
+Plan-Nachweise bleiben unveraendert erhalten. Die komponentenweise
+Ausfuehrungsqualifikation wird in
+[#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89) weitergefuehrt.
+
 ## Plattformentwürfe mit Projekt-Templates
 
 Neue Editor-Konfigurationen enthalten Projekt-Template-Entwürfe statt konkreter

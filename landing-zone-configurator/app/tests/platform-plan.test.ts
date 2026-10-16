@@ -27,7 +27,10 @@ import {
   type Session,
   tokenHash,
 } from "../apps/api/src/auth/store.js";
-import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
+import {
+  CredentialError,
+  PostgresCredentialProfiles,
+} from "../apps/api/src/credentials/profiles.js";
 import { Backends, contentHash } from "../apps/api/src/deployments/backends.js";
 import {
   acceleratorCommit,
@@ -557,6 +560,18 @@ describe.skipIf(!enabled)(
         (await test.plans.list(test.owner)).find((item) => item.id === run.id)
           ?.applyAllowed,
       ).toBe(false);
+      expect(
+        (await test.plans.list(test.owner)).find((item) => item.id === run.id)
+          ?.applyBlocker,
+      ).toEqual({
+        code: "configuration_apply_not_supported",
+        issues: [
+          {
+            field: "connectivity.firewall",
+            message: expect.stringContaining("nur für Plan freigegeben"),
+          },
+        ],
+      });
       await expect(
         test.plans.apply(
           test.owner,
@@ -1497,6 +1512,43 @@ describe.skipIf(!enabled)(
       expect(JSON.stringify(visible)).not.toContain(data.toString());
       expect(test.repositories.prepareSnapshot).not.toHaveBeenCalled();
       expect(test.token).not.toHaveBeenCalled();
+    });
+
+    it("explains expected Apply denials while preserving eligibility for a valid saved plan", async () => {
+      const test = await fixture();
+      const saved = await test.plan();
+      const visible = () => test.plans.list(test.owner);
+      expect((await visible())[0]).toMatchObject({
+        applyAllowed: true,
+        applyBlocker: null,
+      });
+      test.profiles.verifyForPreparation.mockRejectedValueOnce(
+        new CredentialError(422, "access_check_failed"),
+      );
+      expect((await visible())[0]).toMatchObject({
+        applyAllowed: false,
+        applyBlocker: { code: "access_check_failed" },
+      });
+      await migration!.query(
+        "UPDATE lzc.plan_artifacts SET expires_at=now()-interval '1 minute' WHERE run_id=$1",
+        [saved.id],
+      );
+      expect((await visible())[0]).toMatchObject({
+        applyAllowed: false,
+        applyBlocker: { code: "plan_not_approvable" },
+      });
+      expect(test.runner.start).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not silently turn unexpected eligibility-check failures into a normal Apply denial", async () => {
+      const test = await fixture();
+      await test.plan();
+      const error = new Error(
+        "synthetic private eligibility dependency failure",
+      );
+      test.profiles.verifyForPreparation.mockRejectedValueOnce(error);
+      await expect(test.plans.list(test.owner)).rejects.toBe(error);
+      expect(test.runner.start).toHaveBeenCalledTimes(1);
     });
 
     it("requires exact hash, organization, current revision, credential and unexpired complete artifact before any apply dispatch", async () => {

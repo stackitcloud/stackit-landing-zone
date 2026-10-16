@@ -715,6 +715,19 @@ export const englishMessages: Record<string, string> = {
     "Apply failed. Resources may already have changed. Check execution status before taking further action.",
   "Apply ist für diesen Plan nicht vom Server freigegeben oder die Plan-Nachweise sind unvollständig.":
     "The server has not authorized Apply for this plan, or the plan evidence is incomplete.",
+  "Apply derzeit gesperrt": "Apply currently blocked",
+  "Diese Konfiguration kann geplant, aber mit den enthaltenen Komponenten noch nicht angewendet werden. Die gesperrten Felder sind unten aufgeführt. Ein neuer Plan allein hebt diese Sperre nicht auf.":
+    "This configuration can be planned, but its components are not yet supported for Apply. The blocked fields are listed below. Creating another plan alone will not remove this restriction.",
+  "Die Konfiguration wurde seit der Vorbereitung geändert. Erstelle eine neue Vorbereitung und einen neuen Plan.":
+    "The configuration has changed since preparation. Create a new preparation and a new plan.",
+  "Die gespeicherte Konfiguration ist nicht mehr verfügbar.":
+    "The saved configuration is no longer available.",
+  "Verbinde GitHub erneut, damit die Quelle dieses Plans geprüft werden kann.":
+    "Reconnect GitHub so this plan's source can be verified.",
+  "Deine aktuelle Rolle erlaubt keine Apply-Freigabe.":
+    "Your current role does not allow Apply approval.",
+  "Firewall-/HA-Infrastruktur ist nur für Plan freigegeben. Apply erfordert einen separat qualifizierten Administrations-/Bootstrap-Vertrag; Policy und VPN-PSKs bleiben gesondert gesperrt.":
+    "Firewall/HA infrastructure is approved for Plan only. Apply requires a separately qualified administration/bootstrap contract; policy and VPN pre-shared keys remain separately blocked.",
   "Apply ist gesperrt: Der Plan enthält keinen bestätigten Vollständigkeitsnachweis der Engine.":
     "Apply is blocked: the plan has no engine-confirmed completeness evidence.",
   "Apply ist in dieser Umgebung nicht aktiviert.":

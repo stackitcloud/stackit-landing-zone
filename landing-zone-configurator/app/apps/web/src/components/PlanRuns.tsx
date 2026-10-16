@@ -1,5 +1,6 @@
 import {
   type PlanSummary,
+  type PlatformApplyBlocker,
   type PlatformCheckpoint,
   platformCheckpointSchema,
   type S3BackendDescriptor,
@@ -22,6 +23,7 @@ type Run = {
   planId?: string;
   artifactSha256?: string;
   applyAllowed?: boolean;
+  applyBlocker?: PlatformApplyBlocker | null;
   expiresAt?: string | null;
   stateBackend?: S3BackendDescriptor | null;
 };
@@ -52,6 +54,16 @@ const labels: Record<string, string> = {
 const failures: Record<string, string> = {
   configuration_execution_not_supported:
     "Diese Konfiguration enthält Komponenten, die der Erstbereitstellungsplan noch nicht unterstützt. Wähle eine unterstützte Standalone-Konfiguration.",
+  configuration_apply_not_supported:
+    "Diese Konfiguration kann geplant, aber mit den enthaltenen Komponenten noch nicht angewendet werden. Die gesperrten Felder sind unten aufgeführt. Ein neuer Plan allein hebt diese Sperre nicht auf.",
+  configuration_changed:
+    "Die Konfiguration wurde seit der Vorbereitung geändert. Erstelle eine neue Vorbereitung und einen neuen Plan.",
+  configuration_not_found:
+    "Die gespeicherte Konfiguration ist nicht mehr verfügbar.",
+  github_connection_required:
+    "Verbinde GitHub erneut, damit die Quelle dieses Plans geprüft werden kann.",
+  credential_role_required:
+    "Deine aktuelle Rolle erlaubt keine Apply-Freigabe.",
   runner_unavailable: "Der Runner konnte nicht gestartet werden.",
   credential_changed:
     "Der Zugang wurde geändert. Erstelle eine neue Vorbereitung.",
@@ -121,6 +133,31 @@ const failures: Record<string, string> = {
   recovery_required:
     "Die Ausführung benötigt Wiederherstellung. Ressourcen können bereits verändert worden sein. Kein erneutes Apply starten.",
 };
+
+function ApplyBlocker({ run }: { run: Run }) {
+  if (run.applyAllowed !== false || !run.applyBlocker) return null;
+  return (
+    <div className="validation-box" role="status">
+      <strong>{t("Apply derzeit gesperrt")}</strong>
+      <p>
+        {t(
+          Object.hasOwn(failures, run.applyBlocker.code)
+            ? failures[run.applyBlocker.code]
+            : failures.apply_not_allowed,
+        )}
+      </p>
+      {run.applyBlocker.issues && run.applyBlocker.issues.length > 0 && (
+        <ul>
+          {run.applyBlocker.issues.map((issue) => (
+            <li key={`${issue.field}:${issue.message}`}>
+              <code>{issue.field}</code>: {t(issue.message)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 type Preparation = {
   id: string;
   name: string;
@@ -587,27 +624,35 @@ function PlanReview({
         </p>
       )}
       {!allowed && (
-        <p className="field-hint">
-          {blocked
-            ? t(
-                "Freigabe gesperrt. Prüfe den Ausführungsstatus und erstelle bei Bedarf einen neuen Plan.",
-              )
-            : Date.parse(sessionExpiresAt) <= Date.now()
+        <>
+          <ApplyBlocker run={run} />
+          <p className="field-hint">
+            {blocked
               ? t(
-                  "Sitzung abgelaufen. Bitte erneut anmelden und den Plan prüfen.",
+                  "Freigabe gesperrt. Prüfe den Ausführungsstatus und erstelle bei Bedarf einen neuen Plan.",
                 )
-              : expired
+              : Date.parse(sessionExpiresAt) <= Date.now()
                 ? t(
-                    "Plan abgelaufen oder keine Gültigkeit bestätigt. Erstelle einen neuen Plan.",
+                    "Sitzung abgelaufen. Bitte erneut anmelden und den Plan prüfen.",
                   )
-                : run.summary?.completeness === "not-reported"
+                : expired
                   ? t(
-                      "Apply ist gesperrt: Der Plan enthält keinen bestätigten Vollständigkeitsnachweis der Engine.",
+                      "Plan abgelaufen oder keine Gültigkeit bestätigt. Erstelle einen neuen Plan.",
                     )
-                  : t(
-                      "Apply ist für diesen Plan nicht vom Server freigegeben oder die Plan-Nachweise sind unvollständig.",
-                    )}
-        </p>
+                  : run.summary?.completeness === "not-reported"
+                    ? t(
+                        "Apply ist gesperrt: Der Plan enthält keinen bestätigten Vollständigkeitsnachweis der Engine.",
+                      )
+                    : run.applyBlocker
+                      ? null
+                      : t(
+                          "Apply ist für diesen Plan nicht vom Server freigegeben oder die Plan-Nachweise sind unvollständig.",
+                        )}
+          </p>
+          <button type="button" className="button primary" disabled>
+            {t("Freigegebenen Plan anwenden")}
+          </button>
+        </>
       )}
       {allowed && (
         <>
@@ -1179,6 +1224,11 @@ export function PlanRuns({
                   )}
                 </p>
               )}
+              {!readOnly &&
+                phase === "plan" &&
+                !historical &&
+                run.operation !== "apply" &&
+                run.status === "succeeded" && <ApplyBlocker run={run} />}
               {!readOnly &&
                 phase === "apply" &&
                 !historical &&
