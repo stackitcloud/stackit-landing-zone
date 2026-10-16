@@ -24,7 +24,8 @@ Each compressed CF archive must be smaller than 384 MiB.
 CF's Git buildpack loader uses `git clone -b`, so a bare commit SHA is not a
 supported reference. After qualification/build, the manual release workflow's
 isolated `publish_buildpack` job creates the lightweight tag at the approved
-commit, including when promoting an existing qualified artifact. It first
+commit while it is still the selected branch's HEAD, including in
+`build_only=true` runs. It first
 verifies the active protection and reuses an existing tag only if it resolves
 to exactly that commit. It never updates or deletes a tag.
 The active repository ruleset **Protect LZC buildpack
@@ -34,7 +35,16 @@ namespace/rule protection before reading deployment credentials. Only the
 publication job has `contents: write`; it has no cloud environment or cloud
 credentials and executes helpers from the manually selected workflow source,
 not the promoted artifact's source. The deployment job retains `contents: read`
-and the protected `lzc-dev-release` approval. Build-only runs do not publish tags.
+and the protected `lzc-dev-release` approval.
+Promotion skips the write-capable publication job and requires the build's
+existing exact protected tag. The normal `GITHUB_TOKEN` cannot be granted
+`workflows: write`, which GitHub can require to create tags at historical commits;
+increasing repository-wide default permissions does not solve that restriction.
+Historical qualified artifacts missing their tag require explicitly authorized
+operator backfill: first validate their source with `release-artifact.mjs source`,
+then run `buildpack-source.mjs publish` with that exact returned revision and
+operator authentication. Never store the operator token in CI or disable tag
+protection. No deployment is performed by backfilling a tag.
 Legacy binary-buildpack artifacts skip tag publication and verification.
 The private app/runner variable files
 provide that URI to their manifests. During staging, the final buildpack reads
