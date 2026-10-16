@@ -1,0 +1,13 @@
+bucket = "replace-with-application-state-bucket"
+key    = "applications/11111111-2222-4333-8444-555555555555/33333333-2222-4333-8444-555555555555/terraform.tfstate"
+region = "eu01"
+
+endpoints = {
+  s3 = "https://object.storage.eu01.onstackit.cloud"
+}
+
+use_lockfile                = true
+skip_credentials_validation = true
+skip_region_validation      = true
+skip_requesting_account_id  = true
+skip_s3_checksum            = true

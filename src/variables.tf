@@ -41,6 +41,17 @@ variable "platform_kubernetes_kube_config_override" {
   sensitive   = true
 }
 
+variable "platform_contract_namespace" {
+  type        = string
+  description = "Optional stable UUID namespace for Application handoff; defaults to the organization ID for independent CLI use. This is metadata, not an authorization boundary."
+  default     = null
+
+  validation {
+    condition     = var.platform_contract_namespace == null ? true : can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.platform_contract_namespace))
+    error_message = "The platform contract namespace must be a UUID."
+  }
+}
+
 variable "labels" {
   type        = map(string)
   description = "Additional labels to apply to all resources."
@@ -219,7 +230,7 @@ variable "rm_folders" {
     owner_emails  = list(string)
     reader_emails = list(string)
   }))
-  description = "Map of resource manager folders to create under the root organization."
+  description = "Map of resource manager folders to create under the root organization. Folder descriptions are unsupported; omit description or leave it empty."
   default = {
     platform = {
       name          = "Platform"
@@ -246,6 +257,11 @@ variable "rm_folders" {
   validation {
     condition     = alltrue([for folder in values(var.rm_folders) : length(folder.name) >= 1 && length(folder.name) <= 40])
     error_message = "Every rm_folders[*].name must be between 1 and 40 characters, as required by the STACKIT Resource Manager API."
+  }
+
+  validation {
+    condition     = alltrue([for folder in values(var.rm_folders) : trimspace(coalesce(folder.description, " ")) == ""])
+    error_message = "Resource Manager folder descriptions are not supported by the reviewed STACKIT provider. Remove non-empty rm_folders[*].description values; they must not be silently discarded."
   }
 }
 
@@ -586,6 +602,7 @@ variable "landing_zones" {
       role    = string
       subject = string
     })), [])
+    network_enabled        = optional(bool, false)
     network_prefix_length  = optional(number, null)
     secretsmanager_enabled = optional(bool, true)
     custom_roles = optional(list(object({
@@ -600,7 +617,7 @@ variable "landing_zones" {
       name      = optional(string, null)
     }), {})
   }))
-  description = "Map of landing zones to create. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions."
+  description = "Map of landing zones to create. Public landing zones can create a local network with network_enabled. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions."
   default     = {}
 
   validation {

@@ -1,0 +1,6 @@
+[tools]
+node = "24.21.0"
+
+opentofu = "1.12.6"
+
+# Go is pinned when the HCL adapter is introduced.

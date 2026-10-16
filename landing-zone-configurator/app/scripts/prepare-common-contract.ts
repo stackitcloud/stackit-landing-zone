@@ -1,0 +1,98 @@
+// Prepare only local variable-contract fixtures. OpenTofu is invoked directly
+// by the caller, with no provider/backend configuration or cloud credentials.
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import {
+  catalogue,
+  createCommonConfiguration,
+  createEditorConfiguration,
+  exportCommonTfvars,
+} from "../packages/domain/dist/index.js";
+
+const root = new URL("../../.local/common-contract/", import.meta.url);
+mkdirSync(root, { recursive: true });
+copyFileSync(
+  new URL("../../../src/variables.tf", import.meta.url),
+  new URL("variables.tf", root),
+);
+const runs = catalogue.templates.map((template) => {
+  const document = createCommonConfiguration(
+    template.id,
+    "11111111-2222-4333-8444-555555555555",
+  );
+  return `run "${template.id.replaceAll("-", "_")}" {
+  command = plan
+  variables {
+${exportCommonTfvars(document)}
+  }
+${
+  template.id === "standalone"
+    ? `  assert {
+    condition = length(output.application_projects) > 0 && alltrue([for project in values(output.application_projects) : !project.corporate]) && var.connectivity == null && var.connectivity_regions == null
+    error_message = "The Standalone template must explicitly export Public projects without central connectivity."
+  }`
+    : ""
+}
+}`;
+});
+for (const explicit of [false, true]) {
+  runs.push(`run "corporate_${explicit ? "explicit" : "default"}_requires_connectivity" {
+  command = plan
+  variables {
+    owner_email = "owner@example.com"
+    company_name = "Contract test"
+    company_code = "test"
+    organization_id = "11111111-2222-4333-8444-555555555555"
+    landing_zones = {
+      application = {
+        project_name = "Contract application"
+        project_code = "app"
+        owner_email = "owner@example.com"
+        ${explicit ? "corporate = true" : ""}
+      }
+    }
+  }
+  expect_failures = [var.landing_zones]
+}`);
+}
+runs.push(`run "standalone_editor_preset" {
+  command = plan
+  variables {
+${exportCommonTfvars(createEditorConfiguration("standalone", "11111111-2222-4333-8444-555555555555"))}
+  }
+  assert {
+    condition = length(output.application_projects) == 0 && length(output.sandbox_projects) == 0 && length(output.namespace_services) == 0
+    error_message = "Platform editor drafts must not export application project instances."
+  }
+}`);
+writeFileSync(
+  new URL("outputs.tf", root),
+  `output "audit_object_lock" {
+  value = try(var.audit_logs.s3_object_lock, null)
+}
+output "application_projects" { value = var.landing_zones }
+output "sandbox_projects" { value = var.sandboxes }
+output "namespace_services" { value = var.landing_zone_namespace_services }
+
+`,
+);
+for (const explicit of [false, true]) {
+  runs.push(`run "audit_lock_${explicit ? "explicit_false" : "default"}" {
+  command = plan
+  variables {
+    owner_email = "owner@example.com"
+    company_name = "Contract test"
+    company_code = "test"
+    organization_id = "11111111-2222-4333-8444-555555555555"
+    audit_logs = { ${explicit ? "s3_object_lock = false" : ""} }
+  }
+  assert {
+    condition = output.audit_object_lock == ${explicit ? "false" : "true"}
+    error_message = "The native Object Lock default differs from the Configurator contract."
+  }
+}`);
+}
+writeFileSync(new URL("templates.tftest.hcl", root), `${runs.join("\n\n")}\n`);
+process.stdout.write(
+  `Prepared ${runs.length} variable-contract tests in ${fileURLToPath(root)}\n`,
+);

@@ -1,0 +1,52 @@
+{
+  "name": "landing-zone-configurator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=24.21.0 <25",
+    "npm": ">=11.19.0 <12"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build:packages && npm run dev --workspace=@lzc/api",
+    "dev:login": "npm run build:packages && node --use-system-ca --import tsx scripts/local-stackit-login.ts",
+    "dev:chat": "npm run build:packages && node --use-system-ca --import tsx scripts/local-assistant.ts",
+    "dev:workstation": "npm run build:packages && node --use-system-ca --import tsx scripts/local-workstation.ts",
+    "dev:execution": "npm run build:packages && node --use-system-ca --import tsx scripts/local-stackit-login.ts --execution",
+    "dev:web": "npm run dev --workspace=@lzc/web",
+    "build:packages": "tsc -b packages/contracts packages/domain",
+    "knowledge:generate": "npm run build:packages && node --import tsx scripts/assistant-knowledge.ts",
+    "knowledge:check": "npm run build:packages && node --import tsx scripts/assistant-knowledge.ts --check",
+    "assistant:generate": "npm run knowledge:generate && node --import tsx scripts/assistant-tests.ts --generate",
+    "assistant:check": "npm run knowledge:check && node --import tsx scripts/assistant-tests.ts --check",
+    "test:assistant:live": "npm run assistant:check && node --use-system-ca --import tsx scripts/assistant-tests.ts",
+    "test:assistant:journey": "npm run assistant:check && node --use-system-ca --import tsx scripts/assistant-journey.ts",
+    "typecheck": "tsc -b && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
+    "build": "npm run typecheck && npm run build --workspace=@lzc/web",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "npm run build:packages && vitest run tests",
+    "check": "npm run assistant:check && npm run lint && npm run build && npm test",
+    "start": "npm run start --workspace=@lzc/api",
+    "platform:check": "node --use-system-ca scripts/platform-check.mjs",
+    "test:e2e": "playwright test",
+    "test:database": "vitest run integration --no-file-parallelism",
+    "test:platform-database": "LZC_PLAN_DATABASE_TEST=true vitest run tests/platform-plan.test.ts --no-file-parallelism --testTimeout=30000",
+    "test:common-contract": "node scripts/prepare-common-contract.ts && tofu -chdir=../.local/common-contract fmt -recursive && tofu -chdir=../.local/common-contract init -backend=false -input=false -no-color && tofu -chdir=../.local/common-contract validate -no-color && tofu -chdir=../.local/common-contract test -no-color",
+    "test:plan": "npm run typecheck && bash scripts/test-plan-summary.sh && bash scripts/test-application-contract.sh && bash scripts/test-governance-contract.sh"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.19.0",
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.2"
+  }
+}

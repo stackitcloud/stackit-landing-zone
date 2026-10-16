@@ -82,6 +82,7 @@ landing_zones = {
     project_code = "api"
     owner_email  = "owner@example.com"
     env          = "prod"
+    corporate    = false
 
     # role_assignments = [
     #   {

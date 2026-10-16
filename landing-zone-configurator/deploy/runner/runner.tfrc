@@ -1,0 +1,6 @@
+provider_installation {
+  filesystem_mirror {
+    path = "/home/vcap/app/providers"
+  }
+}
+disable_checkpoint = true

@@ -18,7 +18,7 @@ resource "stackit_objectstorage_bucket" "tfstate" {
 
 resource "stackit_objectstorage_credentials_group" "this" {
   project_id = stackit_resourcemanager_project.this.project_id
-  name       = var.naming_pattern
+  name       = length(var.naming_pattern) <= 32 ? var.naming_pattern : "${substr(var.naming_pattern, 0, 23)}-${substr(sha256(var.naming_pattern), 0, 8)}"
 
   depends_on = [
     stackit_objectstorage_bucket.default,

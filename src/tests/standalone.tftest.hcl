@@ -1,3 +1,100 @@
+run "cli_platform_only_handoff" {
+  command = plan
+
+  variables {
+    landing_zones = {}
+    sandboxes     = []
+  }
+
+  assert {
+    condition     = length(module.landing_zone) == 0 && local.resource_labels.landing_zone_accelerator == "true" && !contains(keys(local.resource_labels), "landing_zone_configurator")
+    error_message = "CLI platform-only execution must not create application instances or claim Configurator provenance."
+  }
+
+  assert {
+    condition     = output.platform_contract.schema_version == 1 && output.platform_contract.tenant_id == var.organization_id && output.platform_contract.targets["public-eu01"].corporate == false && output.platform_contract.targets["public-eu01"].network_area_id == null
+    error_message = "The CLI handoff must export organization-scoped non-secret public target references."
+  }
+}
+
+run "regional_platform_handoff" {
+  command = plan
+
+  variables {
+    landing_zones = {}
+    sandboxes     = []
+    connectivity_regions = {
+      eu01 = {
+        network_areas = {
+          default = {
+            ranges           = ["10.10.0.0/16"]
+            transfer_network = "10.10.0.0/24"
+          }
+        }
+      }
+      eu02 = {
+        network_areas = {
+          default = {
+            ranges           = ["10.20.0.0/16"]
+            transfer_network = "10.20.0.0/24"
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = output.platform_contract.targets["corporate-eu01-${substr(sha256("default"), 0, 16)}"].region == "eu01" && output.platform_contract.targets["corporate-eu02-${substr(sha256("default"), 0, 16)}"].region == "eu02"
+    error_message = "Regional corporate handoff targets must retain their distinct SNA regions."
+  }
+}
+
+run "platform_configurator_labels" {
+  command = plan
+
+  variables {
+    landing_zones = {}
+    sandboxes     = []
+    labels = {
+      customer                  = "retained"
+      landing_zone_accelerator  = "false"
+      landing_zone_configurator = "true"
+    }
+  }
+
+  assert {
+    condition     = local.resource_labels.landing_zone_accelerator == "true" && local.resource_labels.landing_zone_configurator == "true" && local.resource_labels.customer == "retained"
+    error_message = "Configurator provenance must supplement mandatory Accelerator provenance without losing customer labels."
+  }
+}
+
+run "management_configurator_project_labels" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    labels = {
+      customer                  = "retained"
+      landing_zone_accelerator  = "true"
+      landing_zone_configurator = "true"
+    }
+  }
+
+  assert {
+    condition     = stackit_resourcemanager_project.this.labels.landing_zone_accelerator == "true" && stackit_resourcemanager_project.this.labels.landing_zone_configurator == "true" && stackit_resourcemanager_project.this.labels.customer == "retained"
+    error_message = "The planned management project must preserve customer labels and both Configurator provenance labels."
+  }
+}
+
+mock_provider "vault" {}
+
+mock_provider "time" {}
+
 mock_provider "stackit" {
   mock_resource "stackit_resourcemanager_project" {
     defaults = {
@@ -62,10 +159,26 @@ mock_provider "stackit" {
 
 mock_provider "stackit" {
   alias = "eu01"
+
+  mock_resource "stackit_network_area" {
+    defaults = { network_area_id = "22222222-2222-4222-8222-222222222222" }
+  }
+
+  mock_resource "stackit_routing_table" {
+    defaults = { routing_table_id = "99999999-9999-4999-8999-999999999999" }
+  }
 }
 
 mock_provider "stackit" {
   alias = "eu02"
+
+  mock_resource "stackit_network_area" {
+    defaults = { network_area_id = "33333333-3333-4333-8333-333333333333" }
+  }
+
+  mock_resource "stackit_routing_table" {
+    defaults = { routing_table_id = "88888888-8888-4888-8888-888888888888" }
+  }
 }
 
 variables {
@@ -155,5 +268,136 @@ run "standalone_plan" {
   assert {
     condition     = output.landing_zone_projects["test-public"].landing_zone_type == "public"
     error_message = "test-public must be a public landing zone."
+  }
+}
+
+run "implicit_corporate_requires_connectivity" {
+  command = plan
+
+  variables {
+    landing_zones = {
+      legacy = {
+        project_name = "Legacy project"
+        project_code = "legacy"
+        owner_email  = "example@digits.schwarz"
+        env          = "test"
+      }
+    }
+  }
+
+  expect_failures = [var.landing_zones]
+}
+
+run "reject_root_folder_description" {
+  command = plan
+
+  variables {
+    rm_folders = merge(var.rm_folders, {
+      landing_zones_public = {
+        name          = "Public"
+        description   = "Must not be ignored"
+        owner_emails  = []
+        reader_emails = []
+      }
+    })
+  }
+
+  expect_failures = [var.rm_folders]
+}
+
+run "reject_direct_governance_folder_description" {
+  command = plan
+
+  variables {
+    rm_folders = {
+      public = {
+        name        = "Public"
+        description = "Must not be ignored"
+      }
+    }
+  }
+
+  module {
+    source = "./modules/governance"
+  }
+
+  expect_failures = [var.rm_folders]
+}
+
+run "direct_governance_empty_description_compatibility" {
+  command = plan
+
+  variables {
+    rm_folders = {
+      null_description = {
+        name        = "Null description"
+        description = null
+      }
+      empty_description = {
+        name        = "Empty description"
+        description = ""
+      }
+      whitespace_description = {
+        name        = "Whitespace description"
+        description = " \t\n"
+      }
+    }
+  }
+
+  module {
+    source = "./modules/governance"
+  }
+
+  assert {
+    condition     = length(output.folder_container_ids) == 4
+    error_message = "Null, empty and whitespace-only descriptions must preserve all three folders and the root."
+  }
+}
+
+run "empty_folder_description_compatibility" {
+  command = plan
+
+  variables {
+    rm_folders = merge(var.rm_folders, {
+      landing_zones_public = {
+        name          = "Public"
+        description   = ""
+        owner_emails  = []
+        reader_emails = []
+      }
+    })
+  }
+
+  assert {
+    condition     = output.landing_zone_projects["test-public"].landing_zone_type == "public"
+    error_message = "Empty deprecated folder descriptions must preserve the Public project contract."
+  }
+}
+
+run "standalone_local_project_network" {
+  command = plan
+
+  variables {
+    landing_zones = {
+      "test-public" = {
+        project_name          = "Test Public VM Network"
+        project_code          = "tpub"
+        owner_email           = "example@digits.schwarz"
+        env                   = "test"
+        corporate             = false
+        network_enabled       = true
+        network_prefix_length = 24
+      }
+    }
+  }
+
+  assert {
+    condition     = module.landing_zone["test-public"].project_network != null && !module.landing_zone["test-public"].project_network.routed && module.landing_zone["test-public"].project_network.ipv4_prefix_length == 24
+    error_message = "Standalone public projects must support a local VM network."
+  }
+
+  assert {
+    condition     = output.connectivity_network_area_id == null && module.landing_zone["test-public"].connected_network_area_id == null
+    error_message = "A local project network must not require connectivity or an SNA."
   }
 }

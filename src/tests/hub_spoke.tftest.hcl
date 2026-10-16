@@ -194,6 +194,11 @@ run "hub_spoke_plan" {
   command = plan
 
   assert {
+    condition     = output.platform_contract.targets["corporate-eu01-${substr(sha256("default"), 0, 16)}"].corporate && output.platform_contract.targets["corporate-eu01-${substr(sha256("default"), 0, 16)}"].region == "eu01"
+    error_message = "Corporate handoff targets must retain their region and SNA classification."
+  }
+
+  assert {
     condition     = output.connectivity_firewall_public_ip == null
     error_message = "Firewall public IP must be null when no firewall is configured."
   }

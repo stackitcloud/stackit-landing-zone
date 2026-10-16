@@ -1,0 +1,23 @@
+{
+  "repository": "stackitcloud/stackit-landing-zone",
+  "branch": "main",
+  "reviewer": "lweberru",
+  "environments": [
+    {
+      "name": "lzc-dev-platform-plan",
+      "review": false,
+      "branches": [
+        "main",
+        "feature/landing-zone-configurator"
+      ]
+    },
+    {
+      "name": "lzc-dev-platform-apply",
+      "review": true,
+      "branches": [
+        "main",
+        "feature/landing-zone-configurator"
+      ]
+    }
+  ]
+}

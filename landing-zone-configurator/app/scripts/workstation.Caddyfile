@@ -1,0 +1,13 @@
+{
+	admin off
+}
+
+{$LZC_DEVELOPMENT_HOST:work.lukas.runs.onstackit.cloud}:4181 {
+	reverse_proxy 127.0.0.1:3000
+	tls {
+		issuer acme {
+			dir https://acme-v02.api.letsencrypt.org/directory
+			disable_tlsalpn_challenge
+		}
+	}
+}

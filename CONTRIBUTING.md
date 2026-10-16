@@ -34,9 +34,72 @@ tofu validate
 tofu test
 ```
 
-`tofu test` runs the three flavor test suites in `src/tests/` as plan-only runs. They reach the STACKIT API for validation but create nothing.
+`tofu test` runs the configuration suites in `src/tests/` as offline, plan-only
+runs with mocked providers. These tests create no cloud resources. Real cloud
+verification is a separate, manually initiated workflow, not an ordinary PR check.
 
 ## Conventions
+
+### Changes that cross the Accelerator and Configurator
+
+The Accelerator remains independently usable. Configurator features often span
+several components; update the complete contract, not only a visible UI field.
+Read the [development map](landing-zone-configurator/docs/development.md) and
+[architecture](landing-zone-configurator/docs/architecture.md) first.
+
+1. **Native infrastructure:** add or change the root/module inputs and outputs,
+   defaults, validation and module tests in `src/`. Preserve state addresses and
+   compatibility, or explicitly document the migration.
+2. **Input/catalogue adapter:** update HCL import/export and regenerate the
+   reviewed native input and template catalogues using the existing
+   [adapter commands](landing-zone-configurator/tools/hcl-adapter/README.md).
+3. **Domain/compiler:** wire native fields, optional/null/default semantics,
+   preservation and deterministic validation in `app/packages/domain`.
+4. **API/contracts:** update shared request/job contracts and server-side tenant,
+   authorization, revision and lifecycle checks. Do not trust browser-only guards.
+5. **Frontend:** expose the same contract, both locales, helpful validation and
+   explicit review/acceptance. Test desktop/mobile and preservation of drafts.
+6. **Runner/release:** carry changed inputs and outputs through broker, state,
+   migrations, pinned packages and job results. Keep API/UI and Runner source
+   provenance aligned; never execute an arbitrary repository head.
+7. **Assistant:** review topic ownership, curated facts, permissions and proposal
+   schemas. Regenerate knowledge/coverage, add factual positive and negative
+   oracle tests, then qualify affected real-model cases at least twice.
+   A new capability or broad contract change also needs the complete repeated
+   suite and continuous journey. Do not weaken an oracle to hide a real failure.
+8. **Documentation:** update user-visible behavior, architecture and contributor
+   guidance. Link follow-up issues for deliberate limits.
+
+For Configurator setup, use Node **24.21.0**, npm **11.19.0** and its own lockfile:
+
+```sh
+cd landing-zone-configurator/app
+npm ci
+npm run check
+```
+
+Use the smallest relevant tests while iterating, then the applicable integration
+checks before review:
+
+| Change | Required evidence |
+| --- | --- |
+| Native inputs/templates | Module tests; adapter `go test ./...` and catalogue checks; `npm run test:common-contract` |
+| Domain/API/UI | `npm run check`; relevant database and Playwright tests |
+| Broker, preparations, Runner or state | Relevant worker/broker tests; `npm run test:platform-database`; packaging and state regressions |
+| Assistant | `npm run assistant:generate`, generated-file formatting, `npm run assistant:check`, factual unit tests and source-bound live receipts |
+| Operator CI/IaC | Relevant `node --test` guards; workflow lint; format/init/validate and mock tests for affected IaC roots |
+
+The [application README](landing-zone-configurator/app/README.md) documents exact
+generation, database, browser and live-model commands. Database/browser tests use
+isolated test services. Normal PR checks must not provision customer infrastructure.
+Do not share execution credentials with the inference-only `assistant-tests`
+environment. Configurator provisioning and deployment remain manual; production
+setup is a separate task.
+
+### Terraform conventions
+
+Follow the full [Terraform style guide](docs/terraform-style.md) alongside the
+existing module conventions below.
 
 **Terraform layout.** Every module keeps its `terraform` block in `terraform.tf`, its variables in `variables.tf` and its outputs in `outputs.tf`. Resource files carry a numeric prefix when reading order matters, and each group of resources is introduced by a section header box.
 

@@ -1,0 +1,6098 @@
+import { readFile } from "node:fs/promises";
+import {
+  assistantProposalFields,
+  platformUpgradeAcceleratorCommit,
+  selectAssistantProposalFields,
+} from "@lzc/contracts";
+import {
+  addProjectTemplate,
+  catalogue,
+  compileCommonConfiguration,
+  createDraft,
+  createEditorConfiguration,
+  editCommonInput,
+  effectiveInput,
+  objectValue,
+  readCommonConfiguration,
+  savedDraft,
+  setCommonInput,
+  supportedAcceleratorRevision,
+  type Template,
+  upgradeEditorDraft,
+} from "@lzc/domain";
+import {
+  applyAssistantChanges,
+  validateDialogue,
+} from "../apps/api/src/assistant/dialogue.js";
+import {
+  assistantScenarioFixture,
+  assistantScenarios,
+} from "../scripts/assistant-scenarios.js";
+import { expect, type Page, test } from "./fixtures";
+
+async function holdAssistantCompletion(page: Page, path: string) {
+  await page.addInitScript((endpoint) => {
+    const original = window.fetch.bind(window);
+    let held = false;
+    window.fetch = async (input, options) => {
+      const response = await original(input, options);
+      if (
+        held ||
+        !response.ok ||
+        options?.method !== "POST" ||
+        new URL(String(input), location.href).pathname !== endpoint
+      )
+        return response;
+      held = true;
+      const data = await response.json();
+      const encoder = new TextEncoder();
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `${JSON.stringify({ type: "text", text: "Teilantwort ist sichtbar.\n".repeat(40) })}\n`,
+              ),
+            );
+            window.addEventListener(
+              "lzc-test-complete",
+              () => {
+                controller.enqueue(
+                  encoder.encode(
+                    `${JSON.stringify({ type: "complete", data })}\n`,
+                  ),
+                );
+                controller.close();
+              },
+              { once: true },
+            );
+          },
+        }),
+        { headers: { "Content-Type": "application/x-ndjson" } },
+      );
+    };
+  }, path);
+}
+
+test("DNS collection removals are explicit and can be excluded from local acceptance", async ({
+  page,
+}) => {
+  const id = "11111111-2222-4333-8444-555555555557";
+  const original = createEditorConfiguration("hub-and-spoke", id);
+  const before = objectValue(
+    objectValue(compileCommonConfiguration(original).connectivity).dns_zones,
+  );
+  const changes = [
+    {
+      path: "connectivity.dns_zones",
+      operation: "replace" as const,
+      before,
+      value: { acme: { dns_name: "acme.runs.onstackit.cloud" } },
+    },
+  ];
+  const conversation = {
+    id,
+    revision: 1,
+    baseRevision: 1,
+    stale: false,
+    expiresAt: "2027-01-10T09:00:00Z",
+    messages: [],
+    proposal: {
+      explanation:
+        "Genau die gewünschte DNS-Zone zur Prüfung, noch nichts gespeichert.",
+      references: ["dns-zones"],
+      questions: [],
+      changes,
+    },
+  };
+  let saves = 0;
+  let accepted = 0;
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: original.name,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() !== "GET") saves++;
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: original.name,
+          revision: 1,
+          draft: original,
+        },
+      },
+    });
+  });
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) =>
+    route.fulfill({ json: { conversation } }),
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      const input = route.request().postDataJSON();
+      expect(input.selectedFields).toEqual(["connectivity.dns_zones/acme"]);
+      const selected = selectAssistantProposalFields(
+        changes,
+        input.selectedFields,
+        compileCommonConfiguration(input.draft),
+      );
+      const candidate = applyAssistantChanges(
+        input.draft,
+        validateDialogue(
+          {
+            explanation: "Lokaler Vorschlag, noch nichts gespeichert.",
+            questions: [],
+            changes: selected,
+            references: ["dns-zones"],
+          },
+          ["dns-zones"],
+        ).changes,
+      );
+      const zones = objectValue(
+        objectValue(compileCommonConfiguration(candidate).connectivity)
+          .dns_zones,
+      );
+      expect(Object.keys(zones)).toHaveLength(Object.keys(before).length + 1);
+      expect(zones["example-corp"]).toEqual(before["example-corp"]);
+      accepted++;
+      return route.fulfill({
+        json: {
+          configuration: {
+            id,
+            revision: 1,
+            draft: candidate,
+            persisted: false,
+          },
+          savedConfiguration: original,
+          conversation,
+        },
+      });
+    },
+  );
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${original.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  const removal = chat.getByRole("checkbox", {
+    name: "connectivity.dns_zones.example-corp auswählen",
+    exact: true,
+  });
+  await expect(removal).toBeChecked();
+  await expect(
+    chat.getByText("Eintrag entfernen", { exact: true }),
+  ).toBeVisible();
+  await removal.uncheck();
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen", exact: true })
+    .click();
+  await expect.poll(() => accepted).toBe(1);
+  await expect(removal).toBeVisible();
+  expect(saves).toBe(0);
+});
+
+async function expectChatAtEnd(page: Page, name: string) {
+  const log = page.getByRole("log", { name });
+  await expect
+    .poll(() =>
+      log.evaluate(
+        (element) =>
+          element.scrollHeight - element.scrollTop - element.clientHeight,
+      ),
+    )
+    .toBeLessThan(2);
+}
+
+async function expectCompactOptions(page: Page) {
+  const dimensions = await page
+    .locator(".assistant-options label")
+    .evaluateAll((labels) =>
+      labels.map((label) => {
+        const input = label.querySelector("input")?.getBoundingClientRect();
+        const text = label.querySelector("span")?.getBoundingClientRect();
+        const bounds = label.getBoundingClientRect();
+        return Boolean(
+          input &&
+            text &&
+            input.width <= 24 &&
+            input.height <= 24 &&
+            text.width >=
+              Math.min(
+                35,
+                (label.querySelector("span")?.textContent?.length ?? 0) * 5,
+              ) &&
+            text.height < 100 &&
+            text.right <= bounds.right + 1,
+        );
+      }),
+    );
+  expect(dimensions.length).toBeGreaterThan(0);
+  expect(dimensions.every(Boolean)).toBe(true);
+}
+
+async function restoreLegacy(page: Page) {
+  const template = catalogue.templates.find(
+    (item) => item.id === "standalone",
+  ) as Template;
+  await page.evaluate(
+    ({ draft, sha256 }) =>
+      sessionStorage.setItem(
+        "lzc-oauth-draft",
+        JSON.stringify({ draft, sha256, expires: Date.now() + 600000 }),
+      ),
+    { draft: createDraft(template), sha256: template.sha256 },
+  );
+  await page.goto("/configurations/edit/basics");
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/backends*", (route) =>
+    new URL(route.request().url()).searchParams.has("configurationId")
+      ? route.fulfill({ status: 404, json: { error: "backend_not_found" } })
+      : route.fulfill({ json: { backends: [] } }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({ json: { configurations: [] } }),
+  );
+  await page.route("**/api/v1/github/forks?*", (route) =>
+    route.fulfill({ json: { forks: [], nextPage: null } }),
+  );
+  await page.route("**/api/v1/plans", (route) =>
+    route.fulfill({ status: 404, json: { error: "not_found" } }),
+  );
+  await page.route("**/api/v1/plans/*/output", (route) =>
+    route.fulfill({ json: { text: "", truncated: false, kind: "live" } }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: false } }),
+  );
+});
+
+test("template advice is available before any config and explicitly opens a recommended preview", async ({
+  page,
+}, testInfo) => {
+  await holdAssistantCompletion(page, "/api/v1/configurations/template-advice");
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  let advice: Record<string, unknown> | null = null;
+  let rounds = 0;
+  let rejectNext = true;
+  await page.route("**/api/v1/configurations/template-advice", (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: { advice } });
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+    if (route.request().method() === "DELETE") {
+      expect(route.request().headers()["content-type"]).toBeUndefined();
+      expect(route.request().postData()).toBeNull();
+      advice = null;
+      return route.fulfill({ status: 204 });
+    }
+    if (rejectNext) {
+      rejectNext = false;
+      return route.fulfill({
+        status: 503,
+        json: {
+          error: "assistant_inference_failed",
+          reason: "response_truncated",
+          requestId: "req-template-length",
+        },
+      });
+    }
+    rounds++;
+    if (rounds === 2)
+      expect(route.request().postDataJSON().message).toBe(
+        "Zusatz: Nur ein Standort.\n\nBenötigt ihr einen gemeinsamen Hub?\nMeine Antwort: Gemeinsamer Hub\n\nWie viele Teams nutzen die Umgebung?\nMeine Antwort: Zwei Teams",
+      );
+    advice = {
+      id: "advice",
+      expiresAt: "2027-01-10T09:00:00Z",
+      stale: false,
+      messages: [
+        {
+          id: `message-${rounds}`,
+          role: "assistant",
+          content:
+            rounds === 1
+              ? "Benötigt ihr einen gemeinsamen Hub?"
+              : "Hub & Spoke passt zu eurem gemeinsamen Netzwerk.",
+        },
+      ],
+      recommendation:
+        rounds === 1
+          ? {
+              templateId: null,
+              questions: [
+                {
+                  text: "Benötigt ihr einen gemeinsamen Hub?",
+                  options: ["Gemeinsamer Hub", "Getrennte Netze", "Noch offen"],
+                },
+                "Wie viele Teams nutzen die Umgebung?",
+              ],
+            }
+          : { templateId: "hub-and-spoke" },
+    };
+    return route.fulfill({ json: { advice } });
+  });
+  await page.goto("/repositories");
+  const panel = page.getByRole("region", { name: "Template-Beratung" });
+  await expect(panel).toBeVisible();
+  await panel
+    .getByRole("textbox", { name: "Welche Umgebung brauchst du?" })
+    .fill("Zwei Teams brauchen gemeinsame Vernetzung");
+  await panel.getByRole("button", { name: "Template-Anfrage senden" }).click();
+  await expect(panel.getByRole("alert")).toContainText(
+    "Die Modellantwort wurde wegen ihrer Länge abgeschnitten.",
+  );
+  await expect(panel.getByRole("alert")).toContainText("req-template-length");
+  await expect(
+    panel.getByRole("textbox", { name: "Welche Umgebung brauchst du?" }),
+  ).toHaveValue("Zwei Teams brauchen gemeinsame Vernetzung");
+  await panel.getByRole("button", { name: "Template-Anfrage senden" }).click();
+  await expect(
+    panel.getByText("Vorläufig · Antwort wird geprüft"),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "Vorlage ansehen" }),
+  ).toHaveCount(0);
+  await expectChatAtEnd(page, "Template-Gespräch");
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("lzc-test-complete")),
+  );
+  await expect(
+    panel.getByRole("log").getByText("Benötigt ihr einen gemeinsamen Hub?"),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "Vorlage ansehen" }),
+  ).toHaveCount(0);
+  const hubQuestion = panel.getByRole("group", {
+    name: "Benötigt ihr einen gemeinsamen Hub?",
+  });
+  await hubQuestion.getByRole("radio", { name: "Gemeinsamer Hub" }).check();
+  await hubQuestion
+    .getByRole("textbox", { name: "Eigene Antwort" })
+    .fill("Gemeinsamer Hub mit internen Diensten");
+  await expect(
+    hubQuestion.getByRole("radio", { name: "Gemeinsamer Hub" }),
+  ).not.toBeChecked();
+  await hubQuestion.getByRole("radio", { name: "Gemeinsamer Hub" }).check();
+  await panel
+    .getByRole("group", { name: "Wie viele Teams nutzen die Umgebung?" })
+    .getByRole("textbox", { name: "Eigene Antwort" })
+    .fill("Zwei Teams");
+  const compose = panel.getByRole("textbox", {
+    name: "Welche Umgebung brauchst du?",
+  });
+  await compose.fill("Zusatz: Nur ein Standort.");
+  expect(rounds).toBe(1);
+  await expectCompactOptions(page);
+  await page.screenshot({
+    path: testInfo.outputPath("template-questions.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await panel.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(
+    panel.getByRole("heading", { name: "Empfehlung: Hub & Spoke" }),
+  ).toBeVisible();
+  await expect(compose).toHaveValue("");
+  expect(rounds).toBe(2);
+  await page.reload();
+  await expect(
+    panel.getByRole("heading", { name: "Empfehlung: Hub & Spoke" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("template-advice.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await panel.getByRole("button", { name: "Vorlage ansehen" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Hub & Spoke", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Konfiguration erstellen" }),
+  ).toBeVisible();
+  await page.goto("/templates");
+  await expect(panel).toBeVisible();
+  await panel
+    .getByRole("button", { name: "Template-Beratung löschen" })
+    .click();
+  await expect(
+    panel.getByRole("button", { name: "Vorlage ansehen" }),
+  ).toHaveCount(0);
+});
+
+test("configuration chat sends answers directly and requires explicit proposal acceptance", async ({
+  page,
+}, testInfo) => {
+  const networkAreas = {
+    default: {
+      ranges: ["10.64.0.0/16"],
+      transfer_network: "10.63.0.0/24",
+      min_prefix_length: 24,
+      max_prefix_length: 24,
+      default_prefix_length: 24,
+    },
+  };
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  const id = "11111111-2222-4333-8444-000000000001";
+  await holdAssistantCompletion(page, `/api/v1/configurations/${id}/assistant`);
+  const draft = createEditorConfiguration("standalone", id);
+  const revision = 1;
+  const history = Array.from({ length: 20 }, (_, index) => ({
+    id: `old-${index}`,
+    role: index % 2 ? "assistant" : "user",
+    content: `Historie ${index}\n`.repeat(8),
+  }));
+  let conversation: Record<string, unknown> | null = {
+    id,
+    revision: 1,
+    baseRevision: 1,
+    expiresAt: "2027-01-10T09:00:00Z",
+    stale: false,
+    messages: history,
+    proposal: null,
+  };
+  let accepted = 0;
+  let requests = 0;
+  let replyRequests = 0;
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) =>
+    route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision,
+          updatedAt: new Date().toISOString(),
+          draft,
+        },
+      },
+    }),
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant`,
+    async (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({ json: { conversation } });
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+      if (route.request().method() === "DELETE") {
+        conversation = null;
+        return route.fulfill({ status: 204 });
+      }
+      const request = route.request().postDataJSON();
+      expect(request.revision).toBe(1);
+      expect(request.draft).toEqual(draft);
+      if (requests === 0) expect(request.message).toBe("Firma Example");
+      else {
+        expect(request.message).toBe(
+          "Ergänzung bleibt erhalten.\n\nWelches Firmenkürzel?\nMeine Antwort: EXG\n\nWelche Verkehrsarten?\nMeine Antwort: Interne Kommunikation; Internet-Ausgang; Weitere Anforderungen folgen",
+        );
+        replyRequests++;
+        if (replyRequests === 1)
+          return route.fulfill({
+            status: 503,
+            json: {
+              error: "assistant_inference_failed",
+              reason: "requirements_unconfirmed",
+              requestId: "req-unconfirmed-answer",
+            },
+          });
+      }
+      requests++;
+      conversation = {
+        id,
+        revision: requests + 1,
+        baseRevision: 1,
+        expiresAt: "2027-01-10T09:00:00Z",
+        stale: false,
+        messages: [
+          ...history,
+          { id: "message-user", role: "user", content: "Firma Example" },
+          {
+            id: "message-assistant",
+            role: "assistant",
+            content: "Firmenname Example vorgeschlagen.",
+          },
+        ],
+        proposal: {
+          explanation: "Firmenname",
+          references: ["configuration-contract"],
+          questions:
+            requests === 1
+              ? [
+                  {
+                    path: "company_code",
+                    text: "Welches Firmenkürzel?",
+                    options: ["EXG", "Noch offen"],
+                  },
+                  {
+                    path: "connectivity.firewall.lan_network_range",
+                    text: "Welche Verkehrsarten?",
+                    options: ["Internet-Ausgang", "Interne Kommunikation"],
+                    multiple: true,
+                  },
+                ]
+              : [],
+          changes: [
+            {
+              path: "company_name",
+              before: "Example company",
+              value: "Example",
+            },
+            ...(requests <= 2
+              ? [
+                  {
+                    path: "connectivity.network_areas",
+                    before: null,
+                    value: networkAreas,
+                  },
+                ]
+              : []),
+          ],
+        },
+      };
+      return route.fulfill({ json: { conversation } });
+    },
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      expect(route.request().postDataJSON()).toEqual({
+        revision: 3,
+        baseRevision: 1,
+        selectedFields: ["company_name"],
+        draft,
+        savedDraft: draft,
+      });
+      accepted++;
+      const candidate = setCommonInput(draft, "company_name", "Example");
+      if (conversation)
+        conversation = {
+          ...conversation,
+          revision: 3,
+          baseRevision: 1,
+          proposal: null,
+        };
+      return route.fulfill({
+        json: {
+          configuration: { id, revision, draft: candidate, persisted: false },
+          savedConfiguration: draft,
+          conversation,
+        },
+      });
+    },
+  );
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  await expect(chat).toBeVisible();
+  await expectChatAtEnd(page, "Gespräch");
+  await chat.getByRole("log", { name: "Gespräch" }).evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("Firma Example");
+  await chat.getByRole("button", { name: "Nachricht senden" }).click();
+  await expect(
+    chat.getByText("Vorläufig · Antwort wird geprüft"),
+  ).toBeVisible();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  await expectChatAtEnd(page, "Gespräch");
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("lzc-test-complete")),
+  );
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toBeVisible();
+  await expectChatAtEnd(page, "Gespräch");
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  await expect(
+    chat.getByText("connectivity.network_areas.default.ranges", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(chat.getByText(/10\.64\.0\.0\/16/)).toBeVisible();
+  await page.reload();
+  await expect(
+    chat.getByText("Firmenname Example vorgeschlagen.", { exact: true }),
+  ).toBeVisible();
+  const codeQuestion = chat.getByRole("group", {
+    name: "Welches Firmenkürzel?",
+  });
+  await codeQuestion.getByRole("radio", { name: "EXG" }).check();
+  const traffic = chat.getByRole("group", { name: "Welche Verkehrsarten?" });
+  await traffic.getByRole("checkbox", { name: "Internet-Ausgang" }).check();
+  await traffic
+    .getByRole("checkbox", { name: "Interne Kommunikation" })
+    .check();
+  await traffic.getByRole("checkbox", { name: "Internet-Ausgang" }).uncheck();
+  await traffic.getByRole("checkbox", { name: "Internet-Ausgang" }).check();
+  await traffic
+    .getByRole("textbox", { name: "Eigene Antwort" })
+    .fill("Weitere Anforderungen folgen");
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("x".repeat(4000));
+  await chat.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(chat.getByRole("alert")).toContainText(
+    "Die Antwort ist zu lang.",
+  );
+  expect(requests).toBe(1);
+  expect(replyRequests).toBe(0);
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("Ergänzung bleibt erhalten.");
+  await chat.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(chat.getByRole("alert")).toContainText("nicht bestätigt sind");
+  await expect(chat.getByRole("alert")).toContainText("req-unconfirmed-answer");
+  await expect(
+    chat.getByRole("textbox", { name: "Deine Nachricht" }),
+  ).toHaveValue("Ergänzung bleibt erhalten.");
+  await expect(codeQuestion.getByRole("radio", { name: "EXG" })).toBeChecked();
+  await expect(
+    traffic.getByRole("textbox", { name: "Eigene Antwort" }),
+  ).toHaveValue("Weitere Anforderungen folgen");
+  expect(requests).toBe(1);
+  await expectCompactOptions(page);
+  await chat.getByRole("button", { name: "Antwort senden" }).click();
+  await expect(
+    chat.getByRole("button", { name: "Antwort senden" }),
+  ).toBeDisabled();
+  await expect(
+    chat
+      .getByRole("log", { name: "Gespräch" })
+      .getByText(
+        "Ergänzung bleibt erhalten.\n\nWelches Firmenkürzel?\nMeine Antwort: EXG\n\nWelche Verkehrsarten?\nMeine Antwort: Interne Kommunikation; Internet-Ausgang; Weitere Anforderungen folgen",
+        { exact: true },
+      ),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("lzc-test-complete")),
+  );
+  await expect(
+    chat.getByRole("textbox", { name: "Deine Nachricht" }),
+  ).toHaveValue("");
+  expect(requests).toBe(2);
+  expect(replyRequests).toBe(2);
+  for (const checkbox of await chat
+    .locator('.assistant-diff input[aria-label^="connectivity.network_areas."]')
+    .all())
+    await checkbox.uncheck();
+  await expect(
+    chat.getByRole("button", { name: "Ausgewählte Felder übernehmen" }),
+  ).toBeEnabled();
+  await chat
+    .getByRole("checkbox", { name: "company_name auswählen" })
+    .uncheck();
+  await expect(
+    chat.getByRole("button", { name: "Ausgewählte Felder übernehmen" }),
+  ).toBeDisabled();
+  await chat.getByRole("checkbox", { name: "company_name auswählen" }).check();
+  await chat.getByRole("textbox", { name: "Deine Nachricht" }).fill("");
+  expect(requests).toBe(2);
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  await page.screenshot({
+    path: testInfo.outputPath("assistant-chat-diff.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  expect(requests).toBe(2);
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen" })
+    .click();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(revision).toBe(1);
+  await chat.getByRole("button", { name: "Gespräch löschen" }).click();
+  await expect(
+    chat.getByText("Firmenname Example vorgeschlagen.", { exact: true }),
+  ).toHaveCount(0);
+});
+
+for (const before of [
+  null,
+  { retention_days: 30, acl: [], s3_object_lock: true },
+]) {
+  test(`assistant renders structured audit proposals from ${before ? "configured" : "unset"} values`, async ({
+    page,
+  }) => {
+    const id = "11111111-2222-4333-8444-000000000001";
+    const draft = setCommonInput(
+      createEditorConfiguration("standalone", id),
+      "audit_logs",
+      before,
+    );
+    const value = {
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+      link_scopes: [
+        {
+          resource_type: "organization",
+          resource_id: "00000000-0000-4000-8000-000000000001",
+        },
+        {
+          resource_type: "folder",
+          resource_id: "00000000-0000-4000-8000-000000000002",
+        },
+      ],
+    };
+    const conversation = {
+      id,
+      revision: 2,
+      baseRevision: 1,
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      stale: false,
+      messages: [],
+      proposal: {
+        explanation: "90 Tage Audit-Protokollierung vorgeschlagen.",
+        references: ["audit-logs"],
+        questions: [],
+        changes: [{ path: "audit_logs", before, value, operation: "replace" }],
+      },
+    };
+    let accepted = 0;
+    let saved = 0;
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: "alice-id", login: "alice" },
+          csrfToken: "csrf-test",
+          tenant: { id: "personal", kind: "personal", roles: [] },
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/configurations", (route) =>
+      route.fulfill({
+        json: {
+          configurations: [
+            {
+              id,
+              name: draft.name,
+              revision: 1,
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        },
+      }),
+    );
+    await page.route(`**/api/v1/configurations/${id}`, (route) => {
+      if (route.request().method() === "PUT") saved++;
+      return route.fulfill({
+        json: {
+          configuration: { id, name: draft.name, revision: 1, draft },
+        },
+      });
+    });
+    await page.route(`**/api/v1/configurations/${id}/assistant`, (route) =>
+      route.fulfill({ json: { conversation } }),
+    );
+    await page.route(
+      `**/api/v1/configurations/${id}/assistant/accept`,
+      (route) => {
+        expect(route.request().postDataJSON()).toEqual({
+          revision: 2,
+          baseRevision: 1,
+          selectedFields: ["audit_logs"],
+          draft,
+          savedDraft: draft,
+        });
+        accepted++;
+        const candidate = setCommonInput(draft, "audit_logs", value);
+        expect(compileCommonConfiguration(candidate).audit_logs).toEqual(value);
+        return route.fulfill({
+          json: {
+            configuration: {
+              id,
+              revision: 1,
+              draft: candidate,
+              persisted: false,
+            },
+            savedConfiguration: draft,
+            conversation: { ...conversation, proposal: null },
+          },
+        });
+      },
+    );
+    await page.goto("/configurations");
+    await page
+      .getByRole("button", {
+        name: `Konfiguration öffnen: ${draft.name}`,
+        exact: true,
+      })
+      .click();
+    const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+    const row = chat.locator(".assistant-diff tbody tr");
+    await expect(row).toHaveCount(1);
+    await expect(row).not.toContainText("[object Object]");
+    const baseline = row.locator("td").nth(2);
+    await expect(baseline).toContainText(
+      before ? "Aufbewahrung (Tage): 30" : "Nicht gesetzt",
+    );
+    if (before) {
+      await expect(baseline).toContainText("[]");
+      await expect(baseline).toContainText("Ja");
+    }
+    const proposed = row.locator("td").nth(3);
+    await expect(proposed).toContainText("Aufbewahrung (Tage): 90");
+    await expect(proposed).toContainText("Nein");
+    await expect(proposed).toContainText("203.0.113.0/24");
+    for (const scope of value.link_scopes) {
+      await expect(proposed).toContainText(scope.resource_type);
+      await expect(proposed).toContainText(scope.resource_id);
+    }
+    await expect(proposed).toContainText(
+      "Vollständiger Ersatz; ausgelassene Einträge werden entfernt.",
+    );
+    expect(accepted).toBe(0);
+    expect(saved).toBe(0);
+    await page.locator(".language-switch").selectOption("en");
+    await expect(proposed).toContainText("Retention (days): 90");
+    await expect(proposed).toContainText("No");
+    await expect(baseline).toContainText(
+      before ? "Retention (days): 30" : "Not set",
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+    ).toBe(true);
+    await chat.getByRole("button", { name: "Accept entire proposal" }).click();
+    await expect(row).toHaveCount(0);
+    expect(accepted).toBe(1);
+    expect(saved).toBe(0);
+  });
+}
+
+test("network template proposals are reviewed, accepted locally and saved separately", async ({
+  page,
+}) => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "platform-public-corporate-networks",
+  );
+  if (!scenario) throw new Error("Missing synthetic template fixture");
+  const draft = assistantScenarioFixture(scenario).draft;
+  const id = draft.id;
+  const change = {
+    path: "projectTemplates",
+    operation: "merge" as const,
+    before: {},
+    value: {
+      corporate: {
+        name: "Corporate zentral",
+        kind: "corporate",
+        region: "eu01",
+        settings: { network_enabled: true },
+      },
+      public: {
+        name: "Public Internet",
+        kind: "public",
+        region: "eu01",
+        settings: { network_enabled: true },
+      },
+    },
+  };
+  const candidate = applyAssistantChanges(draft, [change]);
+  const conversation = {
+    id,
+    revision: 2,
+    baseRevision: 1,
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    stale: false,
+    messages: [],
+    proposal: {
+      explanation:
+        "Zwei Netzwerk-Templates vorgeschlagen, noch nichts gespeichert.",
+      questions: [],
+      references: ["project-templates"],
+      changes: [change],
+    },
+  };
+  let accepted = 0;
+  let saved = 0;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() === "PUT") {
+      expect(
+        readCommonConfiguration(route.request().postDataJSON().draft),
+      ).toEqual(candidate);
+      saved++;
+    }
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision: saved ? 2 : 1,
+          draft: saved ? candidate : draft,
+        },
+      },
+    });
+  });
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) =>
+    route.fulfill({ json: { conversation } }),
+  );
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      expect(route.request().postDataJSON()).toEqual({
+        revision: 2,
+        baseRevision: 1,
+        selectedFields: assistantProposalFields([change]).map(
+          (field) => field.id,
+        ),
+        draft,
+        savedDraft: draft,
+      });
+      accepted++;
+      return route.fulfill({
+        json: {
+          configuration: {
+            id,
+            revision: 1,
+            draft: candidate,
+            persisted: false,
+          },
+          savedConfiguration: draft,
+          conversation: { ...conversation, proposal: null },
+        },
+      });
+    },
+  );
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  const rows = chat.locator(".assistant-diff tbody tr");
+  await expect(rows).toHaveCount(8);
+  await expect(chat).toContainText("Corporate zentral");
+  await expect(chat).toContainText("Public Internet");
+  await expect(chat).not.toContainText("[object Object]");
+  expect(accepted).toBe(0);
+  expect(saved).toBe(0);
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  await expect(rows).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(saved).toBe(0);
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect.poll(() => saved).toBe(1);
+});
+
+test("template overview and structure share selection, edits and network references", async ({
+  page,
+}, testInfo) => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "platform-public-corporate-networks",
+  );
+  if (!scenario) throw new Error("Missing synthetic template fixture");
+  let draft = applyAssistantChanges(assistantScenarioFixture(scenario).draft, [
+    {
+      path: "projectTemplates",
+      operation: "merge",
+      value: {
+        corporate: {
+          name: "Gemeinsames Template",
+          kind: "corporate",
+          region: "eu01",
+          settings: { network_enabled: true },
+        },
+        public: {
+          name: "Gemeinsames Template",
+          kind: "public",
+          region: "eu01",
+          settings: { network_enabled: true },
+        },
+      },
+    },
+  ]);
+  draft = addProjectTemplate(draft, "sandbox", "sandbox-example");
+  const folders = objectValue(
+    effectiveInput(compileCommonConfiguration(draft), "rm_folders"),
+  );
+  draft = editCommonInput(draft, "rm_folders", {
+    ...folders,
+    landing_zones_corporate: {
+      ...objectValue(folders.landing_zones_corporate),
+      name: "Vernetzte Anwendungen",
+    },
+  });
+  const id = draft.id;
+  const original = structuredClone(draft);
+  let saved = 0;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() === "PUT") {
+      draft = readCommonConfiguration(route.request().postDataJSON().draft);
+      saved++;
+    }
+    return route.fulfill({
+      json: {
+        configuration: { id, name: draft.name, revision: saved ? 2 : 1, draft },
+      },
+    });
+  });
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", { name: "5 Template-Entwürfe", exact: true })
+    .click();
+  const overview = page.getByRole("region", {
+    name: "Template-Übersicht",
+    exact: true,
+  });
+  const preview = page.locator(".template-preview");
+  const details = page.locator("#project-template-details");
+  const corporateCard = overview.getByRole("button", {
+    name: "Template auswählen: Gemeinsames Template (corporate)",
+    exact: true,
+  });
+  const publicCard = overview.getByRole("button", {
+    name: "Template auswählen: Gemeinsames Template (public)",
+    exact: true,
+  });
+  await expect(overview.getByRole("button")).toHaveCount(3);
+  await expect(corporateCard).toHaveAttribute("aria-pressed", "true");
+  await expect(corporateCard).toContainText("Vernetzte Anwendungen");
+  await expect(
+    preview.getByRole("heading", {
+      name: "Corporate · Vernetzte Anwendungen (1)",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Name des Templates", { exact: true }),
+  ).toHaveCount(1);
+  await publicCard.focus();
+  await publicCard.press("Enter");
+  await expect(publicCard).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    preview.getByRole("button", {
+      name: "Template bearbeiten: Gemeinsames Template (public)",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    details.getByLabel("STACKIT Network Area (SNA)", { exact: true }),
+  ).toHaveCount(0);
+  const publicName = `Internetprojekt ${"Netzwerk".repeat(20)}`;
+  await details
+    .getByLabel("Name des Templates", { exact: true })
+    .fill(publicName);
+  await details
+    .getByLabel("Lokales Projektnetz anlegen", { exact: true })
+    .uncheck();
+  await expect(
+    overview.getByRole("button", {
+      name: `Template auswählen: ${publicName} (public)`,
+      exact: true,
+    }),
+  ).toContainText("Keine zentrale Netzanbindung · Ohne lokales Netz");
+  await expect(
+    preview.getByRole("button", {
+      name: `Template bearbeiten: ${publicName} (public)`,
+      exact: true,
+    }),
+  ).toContainText("Keine zentrale Netzanbindung · Ohne lokales Netz");
+  const network = page.locator(".network-topology");
+  await expect(network).not.toContainText(publicName);
+  await network
+    .getByRole("button", {
+      name: "Template · Gemeinsames Template",
+      exact: true,
+    })
+    .click();
+  await expect(
+    details.getByLabel("Name des Templates", { exact: true }),
+  ).toHaveValue("Gemeinsames Template");
+  await details.getByLabel("Region", { exact: true }).selectOption("eu02");
+  await expect(corporateCard).toContainText("eu02");
+  await expect(corporateCard).toContainText("SNA nicht gefunden: default");
+  await expect(
+    preview.getByRole("button", {
+      name: "Template bearbeiten: Gemeinsames Template (corporate)",
+      exact: true,
+    }),
+  ).toContainText("SNA nicht gefunden: default");
+  await expect(network.getByRole("button")).toHaveCount(0);
+  await details.getByLabel("Region", { exact: true }).selectOption("eu01");
+  await expect(network.getByRole("button")).toHaveCount(1);
+  await page
+    .getByLabel("Template-Kennung", { exact: true })
+    .fill("extra-public");
+  await page
+    .getByRole("button", { name: "Template hinzufügen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(4);
+  await expect(
+    overview.getByRole("button", {
+      name: "Template auswählen: Neue Projektvorlage (extra-public)",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByLabel("Template-Kennung", { exact: true }),
+  ).toHaveValue("");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await details
+    .getByRole("button", { name: "Template entfernen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(4);
+  page.once("dialog", (dialog) => dialog.accept());
+  await details
+    .getByRole("button", { name: "Template entfernen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(3);
+  await expect(corporateCard).toHaveAttribute("aria-pressed", "true");
+  expect(saved).toBe(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("template-overview.png"),
+    fullPage: true,
+  });
+  await page.locator(".language-switch").selectOption("en");
+  await expect(
+    page.getByRole("region", { name: "Template overview", exact: true }),
+  ).toBeVisible();
+  await expect(
+    preview.getByRole("button", {
+      name: `Edit template: ${publicName} (public)`,
+      exact: true,
+    }),
+  ).toContainText("No central network connection · No local network");
+  await page.locator(".language-switch").selectOption("de");
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect.poll(() => saved).toBe(1);
+  expect(draft.projectTemplates).toHaveLength(3);
+  expect(draft.projectTemplates?.map((template) => template.id)).toEqual(
+    original.projectTemplates?.map((template) => template.id),
+  );
+  expect(
+    draft.projectTemplates?.find((template) => template.key === "public")
+      ?.settings.network_enabled,
+  ).toBe(false);
+  expect(
+    draft.projectTemplates?.find((template) => template.key === "public")?.name,
+  ).toBe(publicName);
+  expect(compileCommonConfiguration(draft)).toEqual(
+    compileCommonConfiguration(original),
+  );
+  for (const remaining of [2, 1, 0]) {
+    page.once("dialog", (dialog) => dialog.accept());
+    await details
+      .getByRole("button", { name: "Template entfernen", exact: true })
+      .click();
+    await expect(overview.getByRole("button")).toHaveCount(remaining);
+  }
+  await expect(details).toHaveCount(0);
+  await expect(overview).toContainText(
+    "Noch keine Application Landing Zone Templates definiert.",
+  );
+  await expect(preview).toContainText(
+    "Noch keine Application Landing Zone Templates definiert.",
+  );
+  await page
+    .getByLabel("Template-Kennung", { exact: true })
+    .fill("restored-public");
+  await page
+    .getByRole("button", { name: "Template hinzufügen", exact: true })
+    .click();
+  await expect(overview.getByRole("button")).toHaveCount(1);
+  await expect(
+    overview.getByRole("button", {
+      name: "Template auswählen: Neue Projektvorlage (restored-public)",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    details.getByLabel("Name des Templates", { exact: true }),
+  ).toHaveValue("Neue Projektvorlage");
+  expect(saved).toBe(1);
+});
+
+test("firewall HA merges local edits, reviews conflicts and saves separately", async ({
+  page,
+}) => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "firewall-native-ha",
+  );
+  if (!scenario) throw new Error("Missing synthetic firewall fixture");
+  let draft = assistantScenarioFixture(scenario).draft;
+  const id = draft.id;
+  let revision = 1;
+  let proposalBaseRevision = 1;
+  let conversationRevision = 2;
+  let accepted = 0;
+  let localDraft = draft;
+  let mergeRequests = 0;
+  const conversation = () => ({
+    id,
+    revision: conversationRevision,
+    baseRevision: proposalBaseRevision,
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    stale: proposalBaseRevision !== revision,
+    authorizesExecution: false,
+    messages: [],
+    proposal: {
+      explanation:
+        "HA vorgeschlagen, noch nichts gespeichert. Plan/Apply separat.",
+      questions: [],
+      references: ["firewall-infrastructure"],
+      changes: [
+        {
+          path: "connectivity.firewalls",
+          before: {
+            default:
+              accepted === 0 ? { ha: null } : { ha: { backup_zone: "eu01-2" } },
+          },
+          value: {
+            default: {
+              ha:
+                accepted === 0
+                  ? { backup_zone: "eu01-2", vhid: 23 }
+                  : { vhid: 23 },
+            },
+          },
+        },
+      ],
+    },
+  });
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    if (route.request().method() === "PUT") {
+      expect(route.request().postDataJSON().revision).toBe(revision);
+      draft = readCommonConfiguration(route.request().postDataJSON().draft);
+      revision++;
+    }
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision,
+          updatedAt: new Date().toISOString(),
+          draft,
+        },
+      },
+    });
+  });
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().postDataJSON()).toEqual({
+        revision: 2,
+        message: "Bitte HA erneut vorschlagen.",
+        draft: localDraft,
+      });
+      proposalBaseRevision = revision;
+      conversationRevision++;
+    }
+    return route.fulfill({ json: { conversation: conversation() } });
+  });
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      const request = route.request().postDataJSON();
+      mergeRequests++;
+      expect(request.savedDraft).toBeDefined();
+      const field = accepted === 0 ? "backup_zone" : "vhid";
+      expect(request.selectedFields).toEqual([
+        `connectivity.firewalls/default/ha/${field}`,
+      ]);
+      if (accepted === 1 && request.confirmedRevision === undefined)
+        return route.fulfill({
+          status: 409,
+          json: {
+            error: "assistant_merge_confirmation_required",
+            configurationRevision: revision,
+            conflicts: [
+              {
+                kind: "proposal",
+                path: "connectivity.firewalls.default.ha.vhid",
+                before: null,
+                current: 55,
+                value: 23,
+                baselineAvailable: true,
+              },
+            ],
+          },
+        });
+      if (accepted === 1) expect(request.confirmedRevision).toBe(4);
+      const connectivity = objectValue(
+        compileCommonConfiguration(readCommonConfiguration(request.draft))
+          .connectivity,
+      );
+      const firewalls = objectValue(connectivity.firewalls);
+      localDraft = setCommonInput(
+        readCommonConfiguration(request.draft),
+        "connectivity",
+        {
+          ...connectivity,
+          firewalls: {
+            ...firewalls,
+            default: {
+              ...objectValue(firewalls.default),
+              ha: {
+                backup_zone: "eu01-2",
+                ...(accepted === 1 ? { vhid: 23 } : {}),
+              },
+            },
+          },
+        },
+      );
+      accepted++;
+      return route.fulfill({
+        json: {
+          configuration: { id, revision, draft: localDraft, persisted: false },
+          savedConfiguration: draft,
+          conversation:
+            accepted === 1
+              ? conversation()
+              : { ...conversation(), proposal: null },
+        },
+      });
+    },
+  );
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  const backup = chat.getByRole("checkbox", {
+    name: "connectivity.firewalls.default.ha.backup_zone auswählen",
+    exact: true,
+  });
+  const vhid = chat.getByRole("checkbox", {
+    name: "connectivity.firewalls.default.ha.vhid auswählen",
+    exact: true,
+  });
+  await expect(backup).toBeVisible();
+  await expect(vhid).toBeVisible();
+  expect(accepted).toBe(0);
+  const compose = chat.getByRole("textbox", { name: "Deine Nachricht" });
+  await expect(compose).toBeEnabled();
+  const details = page.locator("details.feature-section > summary").first();
+  await expect(details).toBeVisible();
+  await details.click();
+  await expect(page.getByText(/Revision 1 · Nicht gespeichert/)).toHaveCount(0);
+  await page
+    .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
+    .fill("Manuell geänderte Konfiguration");
+  await expect(compose).toBeEnabled();
+  await expect(backup).toBeEnabled();
+  await expect(vhid).toBeEnabled();
+  await expect(
+    chat.getByText(/Du hast ungespeicherte Editoränderungen/),
+  ).toBeVisible();
+  await chat.getByRole("link", { name: "Zum Speichern", exact: true }).click();
+  await expect(page.locator("#configuration-save")).toBeInViewport();
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(compose).toBeEnabled();
+  await expect(backup).toBeEnabled();
+  await expect(
+    chat.getByText(/Der Vorschlag basiert auf einem älteren/),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
+    .fill("Weitere lokale Änderung");
+  await expect(backup).toBeEnabled();
+  await expect(vhid).toBeEnabled();
+  await expect(compose).toBeEnabled();
+  await vhid.uncheck();
+  await backup.check();
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen" })
+    .click();
+  await expect(backup).toHaveCount(0);
+  await expect(vhid).toBeVisible();
+  await expect(vhid).toBeEnabled();
+  await expect(compose).toBeEnabled();
+  expect(accepted).toBe(1);
+  expect(revision).toBe(2);
+  expect(draft.name).toBe("Manuell geänderte Konfiguration");
+  expect(localDraft.name).toBe("Weitere lokale Änderung");
+  await expect(
+    chat.getByText(/Ausgewählte Vorschläge sind im lokalen Entwurf/),
+  ).toBeVisible();
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(localDraft).connectivity)
+          .firewalls,
+      ).default,
+    ).ha,
+  ).toEqual({ backup_zone: "eu01-2" });
+  await compose.fill("Bitte HA erneut vorschlagen.");
+  await chat
+    .getByRole("button", { name: "Nachricht senden", exact: true })
+    .click();
+  await expect(compose).toHaveValue("");
+  await expect(vhid).toBeEnabled();
+  expect(revision).toBe(2);
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(
+    chat.getByText(/Der Vorschlag basiert auf einem älteren/),
+  ).toBeVisible();
+  expect(revision).toBe(3);
+  const savedConnectivity = objectValue(
+    compileCommonConfiguration(draft).connectivity,
+  );
+  const savedFirewalls = objectValue(savedConnectivity.firewalls);
+  draft = setCommonInput(draft, "connectivity", {
+    ...savedConnectivity,
+    firewalls: {
+      ...savedFirewalls,
+      default: {
+        ...objectValue(savedFirewalls.default),
+        ha: { backup_zone: "eu01-2", vhid: 55 },
+      },
+    },
+  });
+  revision = 4;
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  const conflict = page.getByRole("dialog", {
+    name: "Zwischenzeitliche Änderungen prüfen",
+  });
+  await expect(conflict).toBeVisible();
+  await expect(conflict).toContainText("Aktuell: 55");
+  await expect(conflict).toContainText("Vorschlag: 23");
+  await conflict
+    .getByRole("button", { name: "Abbrechen", exact: true })
+    .click();
+  await expect(conflict).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(revision).toBe(4);
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  await conflict
+    .getByRole("button", { name: "Trotzdem in Entwurf übernehmen" })
+    .click();
+  await expect(conflict).toHaveCount(0);
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(2);
+  expect(mergeRequests).toBe(4);
+  expect(revision).toBe(4);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).firewalls,
+      ).default,
+    ).ha,
+  ).toEqual({ backup_zone: "eu01-2", vhid: 55 });
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(page.getByText(/Revision 5 · Nicht gespeichert/)).toHaveCount(0);
+  expect(revision).toBe(5);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).firewalls,
+      ).default,
+    ).ha,
+  ).toEqual({ backup_zone: "eu01-2", vhid: 23 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+});
+
+test("DNS settings present a multi-field diff and save only after explicit acceptance", async ({
+  page,
+}, testInfo) => {
+  const id = "11111111-2222-4333-8444-000000000002";
+  let draft = createEditorConfiguration("hub-and-spoke-firewall", id);
+  let storedDraft = draft;
+  let revision = 1;
+  let accepted = 0;
+  let conversation: Record<string, unknown> | null = null;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: {
+        github: false,
+        stackit: true,
+        primary: "stackit",
+      },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({
+      json: {
+        configurations: [
+          {
+            id,
+            name: draft.name,
+            revision,
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}`, (route) =>
+    route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: draft.name,
+          revision,
+          updatedAt: new Date().toISOString(),
+          draft,
+        },
+      },
+    }),
+  );
+  await page.route(`**/api/v1/configurations/${id}/assistant`, (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().postDataJSON().message).toBe(
+        "Ja, example-gmbh.runs.onstackit.cloud verwenden.",
+      );
+      conversation = {
+        id,
+        revision: 2,
+        baseRevision: 1,
+        expiresAt: "2027-01-10T09:00:00Z",
+        stale: false,
+        messages: [
+          { id: "user-dns", role: "user", content: "DNS bestätigt" },
+          {
+            id: "assistant-dns",
+            role: "assistant",
+            content:
+              "DNS-Namensänderung vorgeschlagen, noch nicht gespeichert.",
+          },
+        ],
+        proposal: {
+          explanation:
+            "DNS-Namensänderung vorgeschlagen, noch nicht gespeichert.",
+          references: ["dns-zones"],
+          questions: [],
+          changes: [
+            {
+              path: "connectivity.dns_zones",
+              before: {
+                "example-corp": {
+                  dns_name: "example-corp.stackit.run",
+                  default_ttl: 3600,
+                  type: "primary",
+                },
+              },
+              value: {
+                "example-corp": {
+                  dns_name: "example-gmbh.runs.onstackit.cloud",
+                  name: "example-gmbh-dns",
+                  description: "Zentrale DNS-Zone der Example GmbH",
+                  default_ttl: 7200,
+                  type: "primary",
+                },
+              },
+            },
+          ],
+        },
+      };
+    }
+    return route.fulfill({ json: { conversation } });
+  });
+  await page.route(
+    `**/api/v1/configurations/${id}/assistant/accept`,
+    (route) => {
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+      expect(route.request().postDataJSON()).toMatchObject({
+        revision: 2,
+        baseRevision: 1,
+        draft,
+        savedDraft: storedDraft,
+        selectedFields:
+          accepted === 0
+            ? ["connectivity.dns_zones/example-corp/name"]
+            : expect.arrayContaining([
+                "connectivity.dns_zones/example-corp/dns_name",
+                "connectivity.dns_zones/example-corp/description",
+                "connectivity.dns_zones/example-corp/default_ttl",
+              ]),
+      });
+      accepted++;
+      const connectivity = objectValue(
+        compileCommonConfiguration(draft).connectivity,
+      );
+      draft = setCommonInput(draft, "connectivity", {
+        ...connectivity,
+        dns_zones: {
+          ...objectValue(connectivity.dns_zones),
+          "example-corp": {
+            ...objectValue(objectValue(connectivity.dns_zones)["example-corp"]),
+            name: "example-gmbh-dns",
+            ...(accepted === 2
+              ? {
+                  dns_name: "example-gmbh.runs.onstackit.cloud",
+                  description: "Zentrale DNS-Zone der Example GmbH",
+                  default_ttl: 7200,
+                  type: "primary",
+                }
+              : {}),
+          },
+        },
+      });
+      if (conversation)
+        conversation = {
+          ...conversation,
+          revision: 2,
+          baseRevision: 1,
+          proposal:
+            accepted === 2
+              ? null
+              : {
+                  explanation: "Verbleibende DNS-Felder",
+                  references: ["dns-zones"],
+                  questions: [],
+                  changes: [
+                    {
+                      path: "connectivity.dns_zones",
+                      before: {
+                        "example-corp": {
+                          dns_name: "example-corp.stackit.run",
+                          name: "example-gmbh-dns",
+                          default_ttl: 3600,
+                          type: "primary",
+                        },
+                      },
+                      value: {
+                        "example-corp": {
+                          dns_name: "example-gmbh.runs.onstackit.cloud",
+                          description: "Zentrale DNS-Zone der Example GmbH",
+                          default_ttl: 7200,
+                          type: "primary",
+                        },
+                      },
+                    },
+                  ],
+                },
+        };
+      return route.fulfill({
+        json: {
+          configuration: { id, revision, draft, persisted: false },
+          savedConfiguration: storedDraft,
+          conversation,
+        },
+      });
+    },
+  );
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", {
+      name: `Konfiguration öffnen: ${draft.name}`,
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("Ja, example-gmbh.runs.onstackit.cloud verwenden.");
+  await chat.getByRole("button", { name: "Nachricht senden" }).click();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toBeVisible();
+  await expect(
+    chat.getByText("connectivity.dns_zones.example-corp.dns_name", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    chat.getByText(/example-gmbh\.runs\.onstackit\.cloud/).last(),
+  ).toBeVisible();
+  expect(accepted).toBe(0);
+  expect(revision).toBe(1);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-corp.stackit.run");
+  const diff = chat.locator(".assistant-diff");
+  await expect(diff).toContainText("example-gmbh-dns");
+  await expect(diff).toContainText("Zentrale DNS-Zone");
+  await expect(diff).toContainText("7200");
+  await expect(
+    chat.getByRole("checkbox", {
+      name: "connectivity.dns_zones.example-corp.type auswählen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(
+    await diff.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("dns-name-proposal.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  for (const checkbox of await diff.getByRole("checkbox").all())
+    await checkbox.uncheck();
+  await chat
+    .getByRole("checkbox", {
+      name: "connectivity.dns_zones.example-corp.name auswählen",
+      exact: true,
+    })
+    .check();
+  await chat
+    .getByRole("button", { name: "Ausgewählte Felder übernehmen" })
+    .click();
+  await expect(
+    chat.getByRole("checkbox", {
+      name: "connectivity.dns_zones.example-corp.name auswählen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(1);
+  expect(revision).toBe(1);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-corp.stackit.run");
+  await expect(diff).toContainText("Zentrale DNS-Zone");
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen" })
+    .click();
+  await expect(
+    chat.getByRole("heading", { name: "Änderungsvorschlag" }),
+  ).toHaveCount(0);
+  expect(accepted).toBe(2);
+  expect(revision).toBe(1);
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-gmbh.runs.onstackit.cloud");
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(draft).connectivity).dns_zones,
+      )["example-corp"],
+    ),
+  ).toMatchObject({
+    name: "example-gmbh-dns",
+    description: "Zentrale DNS-Zone der Example GmbH",
+    default_ttl: 7200,
+    type: "primary",
+  });
+  expect(
+    objectValue(
+      objectValue(
+        objectValue(compileCommonConfiguration(storedDraft).connectivity)
+          .dns_zones,
+      )["example-corp"],
+    ).dns_name,
+  ).toBe("example-corp.stackit.run");
+  await page.route(`**/api/v1/configurations/${id}`, (route) => {
+    expect(route.request().method()).toBe("PUT");
+    expect(route.request().postDataJSON()).toEqual({ revision: 1, draft });
+    storedDraft = readCommonConfiguration(route.request().postDataJSON().draft);
+    revision++;
+    return route.fulfill({
+      json: {
+        configuration: {
+          id,
+          name: storedDraft.name,
+          revision,
+          draft: storedDraft,
+        },
+      },
+    });
+  });
+  await page
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(page.getByText(/Revision 2 · Nicht gespeichert/)).toHaveCount(0);
+  expect(revision).toBe(2);
+  expect(storedDraft).toEqual(draft);
+});
+
+test("database configurations save, reopen, protect revisions and delete without GitHub", async ({
+  page,
+}, testInfo) => {
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/auth/github/status", (route) =>
+    route.fulfill({ json: { connected: false } }),
+  );
+  type Stored = {
+    id: string;
+    name: string;
+    revision: number;
+    updatedAt: string;
+    draft: ReturnType<typeof createDraft>;
+  };
+  const records: Stored[] = [];
+  let conflict = false;
+  await page.route("**/api/v1/configurations", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({
+        json: {
+          configurations: records.map(
+            ({ draft: _draft, ...summary }) => summary,
+          ),
+        },
+      });
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+    const { draft } = route.request().postDataJSON();
+    const stored = {
+      id: `11111111-2222-4333-8444-${String(records.length + 1).padStart(12, "0")}`,
+      name: draft.name,
+      revision: 1,
+      updatedAt: new Date().toISOString(),
+      draft,
+    };
+    records.push(stored);
+    return route.fulfill({ status: 201, json: { configuration: stored } });
+  });
+  await page.route("**/api/v1/configurations/*", async (route) => {
+    const id = new URL(route.request().url()).pathname.split("/").pop();
+    const index = records.findIndex((item) => item.id === id);
+    const stored = records[index];
+    if (!stored)
+      return route.fulfill({
+        status: 404,
+        json: { error: "configuration_not_found" },
+      });
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: { configuration: stored } });
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+    const body = route.request().postDataJSON();
+    if (conflict || body.revision !== stored.revision)
+      return route.fulfill({
+        status: 409,
+        json: { error: "configuration_changed" },
+      });
+    if (route.request().method() === "DELETE") {
+      records.splice(index, 1);
+      return route.fulfill({ status: 204 });
+    }
+    stored.draft = body.draft;
+    stored.name = body.draft.name;
+    stored.revision++;
+    return route.fulfill({ json: { configuration: stored } });
+  });
+  await page.goto("/templates");
+  await restoreLegacy(page);
+  await page
+    .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
+    .fill("Ohne GitHub gespeichert");
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  const storage = page.getByRole("region", {
+    name: "Gespeicherte Konfigurationen",
+  });
+  await storage
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(storage.getByRole("status")).toHaveText(
+    "Konfiguration in der Datenbank gespeichert.",
+  );
+  await expect(
+    storage.getByRole("button", {
+      name: "Konfiguration öffnen: Ohne GitHub gespeichert",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    storage.getByRole("button", {
+      name: "Konfiguration speichern",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await page.reload();
+  await expect(
+    storage.getByRole("button", {
+      name: "Konfiguration öffnen: Ohne GitHub gespeichert",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await storage
+    .getByRole("button", {
+      name: "Konfiguration öffnen: Ohne GitHub gespeichert",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "Name der Konfiguration", exact: true }),
+  ).toHaveValue("Ohne GitHub gespeichert");
+  await page
+    .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
+    .fill("Aktualisiert ohne GitHub");
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await storage
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(storage.getByText(/Revision 2/)).toBeVisible();
+  expect(records).toHaveLength(1);
+  conflict = true;
+  await storage
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect(storage.getByRole("alert")).toContainText("inzwischen geändert");
+  await storage
+    .getByRole("button", { name: "Als neue Kopie speichern", exact: true })
+    .click();
+  await expect(storage.getByRole("status")).toHaveText(
+    "Konfiguration in der Datenbank gespeichert.",
+  );
+  expect(records).toHaveLength(2);
+  conflict = false;
+  await storage
+    .getByRole("button", {
+      name: "Konfiguration löschen: Aktualisiert ohne GitHub",
+      exact: true,
+    })
+    .last()
+    .click();
+  await expect(storage.getByRole("status")).toContainText("gelöscht");
+  expect(records).toHaveLength(1);
+  await expect(
+    storage.getByRole("button", {
+      name: "Konfiguration speichern",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await page.screenshot({
+    path: testInfo.outputPath("database-configurations.png"),
+  });
+});
+
+for (const responseKind of ["unavailable", "html"] as const) {
+  test(`login status ${responseKind} displays a readable error`, async ({
+    page,
+  }, testInfo) => {
+    await page.route("**/auth/status", (route) =>
+      route.fulfill(
+        responseKind === "html"
+          ? {
+              contentType: "text/html",
+              body: "<!doctype html><title>UI preview</title>",
+            }
+          : { status: 503, json: { error: "service_unavailable" } },
+      ),
+    );
+    await page.goto("/");
+    const alert = page.locator(".account-error");
+    await expect(alert).toHaveText(
+      responseKind === "html"
+        ? "Anmeldung ist hier nicht eingerichtet."
+        : "Anmeldung derzeit nicht erreichbar.",
+    );
+    const colors = await alert.evaluate((element) => {
+      const style = getComputedStyle(element);
+      function luminance(color: string) {
+        const values = color.match(/[\d.]+/g);
+        if (!values || values.length < 3) throw new Error("Invalid RGB color");
+        const channels = values
+          .slice(0, 3)
+          .map(Number)
+          .map((channel) => {
+            const normalized = channel / 255;
+            return normalized <= 0.04045
+              ? normalized / 12.92
+              : ((normalized + 0.055) / 1.055) ** 2.4;
+          });
+        return channels.reduce(
+          (total, channel, index) =>
+            total + channel * ([0.2126, 0.7152, 0.0722][index] ?? 0),
+          0,
+        );
+      }
+      const text = luminance(style.color);
+      const background = luminance(style.backgroundColor);
+      const box = element.getBoundingClientRect();
+      return {
+        contrast:
+          (Math.max(text, background) + 0.05) /
+          (Math.min(text, background) + 0.05),
+        fits:
+          box.left >= 0 &&
+          box.right <= innerWidth &&
+          box.top >= 0 &&
+          box.bottom <= innerHeight,
+      };
+    });
+    expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
+    expect(colors.fits).toBe(true);
+    await expect(
+      page.getByRole("button", { name: /Mit (STACKIT|GitHub) anmelden/ }),
+    ).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath("login-status-error.png"),
+    });
+  });
+}
+
+for (const failedRequest of ["start", "poll"] as const) {
+  test(`STACKIT login recovers from a lost ${failedRequest} response without reloading`, async ({
+    page,
+  }) => {
+    let starts = 0;
+    let polls = 0;
+    let cancellations = 0;
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        status: 401,
+        json: { error: "authentication_required" },
+      }),
+    );
+    await page.route("**/auth/stackit/start", (route) => {
+      starts += 1;
+      if (starts === 1 && failedRequest === "start")
+        return route.abort("connectionreset");
+      if (starts === 2)
+        return route.fulfill({
+          status: 409,
+          json: { error: "flow_already_started" },
+        });
+      return route.fulfill({
+        json: {
+          verificationUri:
+            "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code",
+          expiresAt: new Date(Date.now() + 900000).toISOString(),
+          retryAfterMs: 10,
+        },
+      });
+    });
+    await page.route("**/auth/stackit/poll", (route) => {
+      polls += 1;
+      if (polls === 1 && failedRequest === "poll")
+        return route.abort("connectionreset");
+      return route.fulfill({ json: { status: "waiting", retryAfterMs: 5000 } });
+    });
+    await page.route("**/auth/stackit/cancel", (route) => {
+      cancellations += 1;
+      return route.fulfill({ json: { status: "cancelled" } });
+    });
+    await page.goto("/");
+    const login = page.getByRole("button", {
+      name: "Mit STACKIT anmelden",
+      exact: true,
+    });
+    await login.click();
+    await expect(page.locator(".account-error")).toHaveText(
+      failedRequest === "start"
+        ? "STACKIT-Anmeldung derzeit nicht erreichbar."
+        : "STACKIT-Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
+    );
+    await expect(login).toBeEnabled();
+    expect(cancellations).toBe(0);
+    await login.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.locator(".account-error")).toHaveCount(0);
+    expect(starts).toBe(3);
+    expect(cancellations).toBe(1);
+  });
+}
+
+for (const rejection of ["busy", "other-conflict", "unavailable"] as const) {
+  test(`STACKIT login does not restart a ${rejection} flow automatically`, async ({
+    page,
+  }) => {
+    let starts = 0;
+    let cancellations = 0;
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        status: 401,
+        json: { error: "authentication_required" },
+      }),
+    );
+    await page.route("**/auth/stackit/start", (route) => {
+      starts += 1;
+      return route.fulfill({
+        status: rejection === "unavailable" ? 503 : 409,
+        json: {
+          error:
+            rejection === "busy" ? "flow_already_started" : "unrelated_error",
+        },
+      });
+    });
+    await page.route("**/auth/stackit/cancel", (route) => {
+      cancellations += 1;
+      return route.fulfill({
+        status: 409,
+        json: { error: "stackit_flow_busy" },
+      });
+    });
+    await page.goto("/");
+    const login = page.getByRole("button", {
+      name: "Mit STACKIT anmelden",
+      exact: true,
+    });
+    await login.click();
+    await expect(page.locator(".account-error")).toHaveText(
+      "STACKIT-Anmeldung derzeit nicht erreichbar.",
+    );
+    await expect(login).toBeEnabled();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(starts).toBe(1);
+    expect(cancellations).toBe(rejection === "busy" ? 1 : 0);
+  });
+}
+
+for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
+  {
+    codeFlow: false,
+    returning: false,
+    completedElsewhere: false,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: false,
+    completedElsewhere: false,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: true,
+    completedElsewhere: false,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: true,
+    completedElsewhere: true,
+    missingFlow: false,
+  },
+  {
+    codeFlow: true,
+    returning: true,
+    completedElsewhere: false,
+    missingFlow: true,
+  },
+]) {
+  test(`STACKIT primary login, approval dialog and logout without GitHub ${codeFlow ? "PKCE" : "device"}${returning ? ` return${completedElsewhere ? " race" : missingFlow ? " missing" : ""}` : ""}`, async ({
+    page: initialPage,
+    context,
+  }, testInfo) => {
+    const page = initialPage;
+    let loggedIn = false;
+    let approved = false;
+    let returnPolls = 0;
+    const extraRequests: string[] = [];
+    context.on("request", (request) => {
+      if (
+        /\/api\/v1\/(github|credentials|cloud-catalogues)/.test(request.url())
+      )
+        extraRequests.push(request.url());
+    });
+    async function installLoginRoutes(targetPage: typeof initialPage) {
+      await targetPage.route("**/auth/status", (route) =>
+        route.fulfill({
+          json: { github: false, stackit: true, primary: "stackit" },
+        }),
+      );
+      await targetPage.route("**/api/v1/session", (route) =>
+        route.fulfill(
+          loggedIn
+            ? {
+                json: {
+                  user: {
+                    id: "11111111-1111-4111-8111-111111111111",
+                    login: "owner@example.test",
+                  },
+                  tenant: {
+                    id: "22222222-2222-4222-8222-222222222222",
+                    kind: "organisation",
+                    roles: ["application-owner"],
+                  },
+                  csrfToken: "c".repeat(43),
+                  expiresAt: new Date(Date.now() + 3600000).toISOString(),
+                },
+              }
+            : { status: 401, json: { error: "authentication_required" } },
+        ),
+      );
+      await targetPage.route("**/api/v1/applications/**", (route) =>
+        route.fulfill({ json: { versions: [], instances: [] } }),
+      );
+      await targetPage.route("**/api/v1/organisation", (route) =>
+        route.fulfill({
+          json: {
+            userId: "11111111-1111-4111-8111-111111111111",
+            activeTenantId: "22222222-2222-4222-8222-222222222222",
+            tenants: [
+              {
+                id: "22222222-2222-4222-8222-222222222222",
+                name: "Mein Arbeitsbereich",
+                kind: "organisation",
+                organizationId: "33333333-3333-4333-8333-333333333333",
+                organizationVerified: false,
+                roles: ["application-owner"],
+                manageMembers: false,
+              },
+            ],
+            members: [],
+          },
+        }),
+      );
+      await targetPage.route("**/auth/stackit/start", (route) =>
+        route.fulfill({
+          json: {
+            verificationUri: codeFlow
+              ? "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256"
+              : "https://accounts.stackit.cloud/device?user_code=TEST-CODE",
+            ...(codeFlow ? {} : { userCode: "TEST-CODE" }),
+            expiresAt: new Date(Date.now() + 300000).toISOString(),
+            retryAfterMs: 50,
+          },
+        }),
+      );
+      await targetPage.route("**/auth/stackit/poll", (route) => {
+        if (approved) {
+          if (returning && returnPolls++ === 0)
+            return route.fulfill({
+              json: { status: "waiting", retryAfterMs: 50 },
+            });
+          loggedIn = !missingFlow;
+          if (completedElsewhere || missingFlow)
+            return route.fulfill({
+              status: 409,
+              json: { error: "stackit_flow_missing" },
+            });
+          return route.fulfill({ json: { status: "verified" } });
+        }
+        return route.fulfill({ json: { status: "waiting", retryAfterMs: 50 } });
+      });
+      await targetPage.route("**/auth/logout", (route) => {
+        loggedIn = false;
+        return route.fulfill({ status: 204 });
+      });
+    }
+    await installLoginRoutes(page);
+    await page.goto("/organisation");
+    await page
+      .getByRole("button", { name: "Mit STACKIT anmelden", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    if (codeFlow) await expect(dialog.getByLabel("Anmeldecode")).toHaveCount(0);
+    else await expect(dialog.getByLabel("Anmeldecode")).toHaveText("TEST-CODE");
+    await expect(
+      dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
+    ).toHaveAttribute(
+      "href",
+      codeFlow
+        ? /^https:\/\/accounts\.stackit\.cloud\/oauth\/v2\/authorize/
+        : /^https:\/\/accounts\.stackit\.cloud\/device/,
+    );
+    await expect(
+      dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
+    ).toHaveAttribute("target", codeFlow ? "_self" : "_blank");
+    expect(
+      await dialog.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return (
+          box.left >= 0 &&
+          box.right <= innerWidth &&
+          box.top >= 0 &&
+          box.bottom <= innerHeight
+        );
+      }),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("stackit-login.png"),
+      fullPage: true,
+    });
+    if (returning) {
+      const returnUrl = new URL("/#stackit-login", page.url()).toString();
+      await page.route(
+        "https://accounts.stackit.cloud/oauth/v2/authorize*",
+        (route) => {
+          approved = true;
+          return route.fulfill({
+            status: 302,
+            headers: { location: returnUrl },
+          });
+        },
+      );
+      await dialog
+        .getByRole("link", { name: "Bei STACKIT bestätigen" })
+        .click();
+      await expect(page).not.toHaveURL(/#stackit-login/);
+      expect(context.pages()).toEqual([page]);
+    } else approved = true;
+    if (missingFlow) {
+      await expect(page.locator(".account")).toContainText(
+        "STACKIT-Anmeldung fehlgeschlagen",
+      );
+      await expect(
+        page.getByRole("button", { name: "Abmelden", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
+      ).toBeEnabled();
+      return;
+    }
+    await expect(
+      page.getByRole("button", { name: "Abmelden", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator(".account")).toContainText("owner@example.test");
+    if (returning)
+      await page.screenshot({
+        path: testInfo.outputPath("stackit-login-return.png"),
+        fullPage: true,
+      });
+    await expect(page).toHaveURL(/\/workspaces$/);
+    await expect(
+      page.getByRole("button", {
+        name: "Arbeitsbereich öffnen: Mein Arbeitsbereich",
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", {
+        name: "Arbeitsbereich öffnen: Mein Arbeitsbereich",
+      })
+      .click();
+    await expect(page).toHaveURL(/\/applications$/);
+    await expect(
+      page.getByRole("button", { name: "Mit GitHub anmelden" }),
+    ).toHaveCount(0);
+    expect(extraRequests).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.getByRole("button", { name: "Abmelden", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
+    ).toBeVisible();
+  });
+}
+
+test("session proof renewal is distinct from signing in and preserves authenticated access", async ({
+  page,
+}) => {
+  let authenticated = true;
+  let verified = false;
+  let approved = false;
+  let starts = 0;
+  const session = {
+    user: { id: "alice-id", login: "engineer-with-a-long-name@example.test" },
+    csrfToken: "csrf-test",
+    tenant: { id: "personal", kind: "personal", roles: [] },
+    expiresAt: new Date(Date.now() + 8 * 3600000).toISOString(),
+  };
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill(
+      authenticated
+        ? { json: { ...session, stackitVerified: verified } }
+        : { status: 401, json: { error: "authentication_required" } },
+    ),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({ json: { configurations: [] } }),
+  );
+  await page.route("**/api/v1/organisation", (route) =>
+    route.fulfill({
+      json: {
+        userId: session.user.id,
+        activeTenantId: "personal",
+        tenants: [],
+        members: [],
+      },
+    }),
+  );
+  await page.route("**/auth/stackit/start", (route) => {
+    expect(route.request().headers()["x-lzc-csrf"]).toBe(session.csrfToken);
+    starts++;
+    return route.fulfill({
+      json: {
+        verificationUri:
+          "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256",
+        expiresAt: new Date(Date.now() + 300000).toISOString(),
+        retryAfterMs: 50,
+      },
+    });
+  });
+  await page.route("**/auth/stackit/poll", (route) => {
+    if (approved) verified = true;
+    return route.fulfill({
+      json: approved
+        ? { status: "verified" }
+        : { status: "waiting", retryAfterMs: 50 },
+    });
+  });
+  await page.route("**/auth/stackit/cancel", (route) =>
+    route.fulfill({ json: { status: "cancelled" } }),
+  );
+  await page.goto("/configurations");
+  const account = page.locator(".account");
+  await expect(account).toContainText(session.user.login);
+  await expect(
+    account.getByRole("button", { name: "Abmelden", exact: true }),
+  ).toBeVisible();
+  await expect(
+    account.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
+  ).toHaveCount(0);
+  const confirmation = account.getByRole("button", {
+    name: "STACKIT bestätigen",
+    exact: true,
+  });
+  await expect(confirmation).toHaveAttribute(
+    "title",
+    /im Configurator angemeldet/,
+  );
+  await confirmation.click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", { name: "STACKIT bestätigen", exact: true }),
+  ).toBeVisible();
+  await expect(dialog).toContainText("Für geschützte STACKIT-Aktionen");
+  await dialog.getByRole("button", { name: "Abbrechen", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(confirmation).toBeEnabled();
+  await expect(account).toContainText(session.user.login);
+  await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  approved = true;
+  await account
+    .getByRole("button", { name: "Confirm STACKIT", exact: true })
+    .click();
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
+  await expect(account).toContainText(session.user.login);
+  expect(starts).toBe(2);
+  await page.reload();
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
+  verified = false;
+  await page.reload();
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toBeVisible();
+  await expect(
+    account.getByRole("button", { name: "Sign in with STACKIT", exact: true }),
+  ).toHaveCount(0);
+  authenticated = false;
+  await page.reload();
+  await expect(
+    account.getByRole("button", { name: "Sign in with STACKIT", exact: true }),
+  ).toBeVisible();
+  await expect(
+    account.getByRole("button", { name: "Sign out", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+  ).toHaveCount(0);
+});
+
+test("GitHub connection is optional and starts only in the repository workspace", async ({
+  page,
+}, testInfo) => {
+  let forksRequested = 0;
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: true, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/auth/github/status", (route) =>
+    route.fulfill({ json: { connected: false } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: {
+          id: "11111111-1111-4111-8111-111111111111",
+          login: "engineer@example.test",
+        },
+        tenant: {
+          id: "22222222-2222-4222-8222-222222222222",
+          kind: "personal",
+        },
+        csrfToken: "c".repeat(43),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        stackitVerified: true,
+      },
+    }),
+  );
+  await page.route("**/api/v1/github/forks?*", (route) => {
+    forksRequested++;
+    return route.fulfill({ json: { forks: [], nextPage: null } });
+  });
+  await page.route("**/auth/github/connect", (route) => {
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("c".repeat(43));
+    expect(route.request().method()).toBe("POST");
+    return route.fulfill({
+      json: {
+        authorizationUrl: "https://github.com/login/oauth/authorize?state=test",
+      },
+    });
+  });
+  await page.route("https://github.com/login/oauth/authorize*", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: "<h1>OAuth test boundary</h1>",
+    }),
+  );
+  await page.goto("/repositories");
+  const connect = page.getByRole("button", {
+    name: "GitHub verbinden",
+    exact: true,
+  });
+  await expect(connect).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Abmelden", exact: true }),
+  ).toBeVisible();
+  expect(forksRequested).toBe(0);
+  await page.screenshot({
+    path: testInfo.outputPath("optional-github.png"),
+    fullPage: true,
+  });
+  await connect.click();
+  await expect(page).toHaveURL(
+    /^https:\/\/github\.com\/login\/oauth\/authorize/,
+  );
+});
+
+test("template catalogue, search and network preview", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/templates");
+  await expect(
+    page.getByRole("heading", { name: "Neue Konfiguration" }),
+  ).toBeVisible();
+  await expect(page.locator(".template-card")).toHaveCount(8);
+  await page.evaluate(() => document.fonts.ready);
+  expect(
+    await page.evaluate(() => document.fonts.check('400 16px "DIN 2014"')),
+  ).toBe(true);
+  expect(
+    await page.evaluate(() => document.fonts.check('500 28px "Univia Pro"')),
+  ).toBe(true);
+  expect(
+    await page
+      .getByAltText("STACKIT", { exact: true })
+      .evaluate((img: HTMLImageElement) => img.naturalWidth > 0),
+  ).toBe(true);
+  await expect(
+    page.getByRole("navigation", { name: "Konfiguration", exact: true }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("templates.png"),
+    fullPage: true,
+  });
+  await page.getByRole("searchbox").fill("Firewall");
+  await expect(page.locator(".template-card")).toHaveCount(2);
+  await page
+    .getByRole("button", {
+      name: "Template ansehen : Hub & Spoke mit Firewall",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Hub & Spoke mit Firewall" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Konfiguration erstellen" }),
+  ).toHaveCount(1);
+  await expect(page.locator(".topology")).toContainText("Netzwerk-Hub");
+  expect(errors).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("edit, validate and download an isolated standalone copy", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/templates");
+  await page
+    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
+    .click();
+  await restoreLegacy(page);
+  await page.getByRole("button", { name: "4 Prüfen", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Angaben bitte prüfen");
+  await page.getByRole("button", { name: /Organisations-ID: Bitte/ }).click();
+  await expect(page.getByLabel("STACKIT Organisations-ID")).toBeFocused();
+  await page
+    .getByLabel("STACKIT Organisations-ID")
+    .fill("11111111-2222-3333-4444-555555555555");
+  await page.getByLabel("Name der Konfiguration").fill("Meine Testumgebung");
+  await page.getByLabel("Organisation / Unternehmen").fill("Team Configurator");
+  await page.getByLabel("Technisch verantwortlich").fill("owner@stackit.cloud");
+  await page.screenshot({
+    path: testInfo.outputPath("editor.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Weiter zu Ordnern" }).click();
+  await page
+    .getByRole("textbox", { name: "Platform", exact: true })
+    .fill("Meine Plattform");
+  await page
+    .getByRole("textbox", { name: "Landing Zones - Public", exact: true })
+    .fill("Meine Anwendungen");
+  await expect(page.locator(".topology")).toContainText("Meine Plattform");
+  await expect(page.locator(".topology")).toContainText("Meine Anwendungen");
+  await expect(page.locator(".topology")).toContainText("Management");
+  await page.screenshot({
+    path: testInfo.outputPath("folders.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Weiter zu Projekten" }).click();
+  await expect(
+    page.getByLabel("Eindeutige Kennung"),
+  ).toHaveAccessibleDescription(/Stabile ID/);
+  await expect(page.getByLabel("Projektkürzel")).toHaveAccessibleDescription(
+    /Ressourcen/,
+  );
+  await page.getByLabel("Projektname").fill("Kundenportal");
+  await page.getByLabel("Projektverantwortlich").fill("owner@stackit.cloud");
+  await page.getByLabel("Sandbox-Verantwortlich").fill("sandbox@stackit.cloud");
+  await page.getByLabel("Secrets Manager vorsehen").uncheck();
+  await page.getByRole("button", { name: "+ Landing Zone hinzufügen" }).click();
+  const extra = page.getByRole("group", {
+    name: "Neue Landing Zone",
+    exact: true,
+  });
+  await extra.getByLabel("Projektname").fill("Worker");
+  const worker = page.getByRole("group", { name: "Worker", exact: true });
+  await worker.getByLabel("Eindeutige Kennung").fill("worker");
+  await worker.getByLabel("Projektkürzel").fill("worker");
+  await page.getByRole("button", { name: "Entwurf prüfen" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "formal gültig" }),
+  ).toBeVisible();
+  await expect(page.locator(".topology")).toContainText("Kundenportal");
+  await expect(page.locator(".topology")).toContainText("Worker");
+  const downloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "tfvars herunterladen" }).click();
+  const download = await downloaded;
+  const path = await download.path();
+  if (!path) throw new Error("No download file");
+  expect(download.suggestedFilename()).toBe("landing-zone.tfvars");
+  const exported = await readFile(path, "utf8");
+  expect(exported).toContain('"project_name" = "Kundenportal"');
+  expect(exported).toContain('"secretsmanager_enabled" = false');
+  expect(exported).toContain('"worker" = {');
+  expect(exported).toContain('"name" = "Meine Plattform"');
+  expect(exported).toContain('"name" = "Meine Anwendungen"');
+  expect(exported).toContain('"managed_by" = "opentofu"');
+  await page.screenshot({
+    path: testInfo.outputPath("review.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Neue Konfiguration", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
+    .click();
+  await expect(page.locator(".topology")).toContainText(
+    "Public · public-exmpl",
+  );
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Meine Testumgebung weiterbearbeiten",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Meine Testumgebung" }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+for (const provider of ["GitHub", "STACKIT"] as const) {
+  test(`${provider} redirect preserves incomplete draft and logout sends CSRF`, async ({
+    page,
+    context,
+  }) => {
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json:
+          provider === "GitHub"
+            ? { github: true }
+            : { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    let loggedIn = false;
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill(
+        loggedIn
+          ? {
+              json: {
+                user: { login: "alice" },
+                csrfToken: "test-csrf",
+                expiresAt: new Date(Date.now() + 3600000).toISOString(),
+              },
+            }
+          : { status: 401, json: { error: "authentication_required" } },
+      ),
+    );
+    await page.route("**/auth/github/start", (route) => {
+      loggedIn = true;
+      return route.fulfill({ status: 302, headers: { location: "/" } });
+    });
+    await page.route("**/auth/stackit/start", (route) =>
+      route.fulfill({
+        json: {
+          verificationUri:
+            "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256",
+          expiresAt: new Date(Date.now() + 300000).toISOString(),
+          retryAfterMs: 50,
+        },
+      }),
+    );
+    await page.route("**/auth/stackit/poll", (route) =>
+      route.fulfill({
+        json: loggedIn
+          ? { status: "verified" }
+          : { status: "waiting", retryAfterMs: 50 },
+      }),
+    );
+    let csrf = "";
+    await page.route("**/auth/logout", (route) => {
+      csrf = route.request().headers()["x-lzc-csrf"] ?? "";
+      loggedIn = false;
+      return route.fulfill({ status: 204 });
+    });
+    await page.goto("/templates");
+    await page
+      .getByRole("button", {
+        name: "Template ansehen : Standalone",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+      .click();
+    await page
+      .getByLabel("Name der Konfiguration")
+      .fill("Entwurf vor Anmeldung");
+    await page
+      .getByRole("button", { name: `Mit ${provider} anmelden` })
+      .click();
+    if (provider === "STACKIT") {
+      const returnUrl = new URL("/#stackit-login", page.url()).toString();
+      await page.route(
+        "https://accounts.stackit.cloud/oauth/v2/authorize*",
+        (route) => {
+          loggedIn = true;
+          return route.fulfill({
+            status: 302,
+            headers: { location: returnUrl },
+          });
+        },
+      );
+      await page
+        .getByRole("dialog")
+        .getByRole("link", { name: "Bei STACKIT bestätigen" })
+        .click();
+    }
+    await expect(
+      page
+        .locator(".account")
+        .getByText(provider === "GitHub" ? "@alice" : "alice", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+      "Entwurf vor Anmeldung",
+    );
+    expect(
+      await page.evaluate(() => sessionStorage.getItem("lzc-oauth-draft")),
+    ).toBeNull();
+    expect(context.pages()).toEqual([page]);
+    await page.getByRole("button", { name: "Abmelden", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: `Mit ${provider} anmelden` }),
+    ).toBeVisible();
+    expect(csrf).toBe("test-csrf");
+  });
+}
+
+test("URLs and browser back/forward preserve an in-progress draft", async ({
+  page,
+}) => {
+  await page.goto("/templates");
+  await page
+    .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/templates\/standalone$/);
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await page.getByLabel("Name der Konfiguration").fill("Entwurf mit History");
+  await page.getByRole("button", { name: "2 Ordner", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "5 Template-Entwürfe",
+      exact: true,
+    })
+    .click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/configurations\/edit\/folders$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Entwurf mit History",
+  );
+  await page.goForward();
+  await expect(page).toHaveURL(/\/configurations\/edit\/folders$/);
+  await page.goForward();
+  await expect(
+    page.getByRole("heading", {
+      name: "Template-Entwürfe",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/configurations$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await page.goBack();
+  await page.goBack();
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Entwurf mit History",
+  );
+});
+
+test("template deep links survive reload; empty editor deep link offers recovery", async ({
+  page,
+}) => {
+  await page.goto("/templates/hub-and-spoke-firewall");
+  await expect(
+    page.getByRole("heading", {
+      name: "Hub & Spoke mit Firewall",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", {
+      name: "Hub & Spoke mit Firewall",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.goto("/configurations/edit/review");
+  await expect(
+    page.getByRole("heading", { name: "Kein Entwurf in diesem Tab" }),
+  ).toBeVisible();
+});
+
+test("select a fork, reopen a config and resolve a save conflict as a new copy", async ({
+  page,
+}, testInfo) => {
+  page.on("dialog", (dialog) => void dialog.accept());
+  const template = catalogue.templates.find(
+    (t) => t.id === "standalone",
+  ) as Template;
+  const draft = createDraft(template);
+  draft.name = "Gespeicherte Landing Zone";
+  draft.organization = "11111111-2222-4333-8444-555555555555";
+  draft.owner = "owner@stackit.cloud";
+  for (const item of [...draft.projects, ...draft.sandboxes])
+    item.owner = draft.owner;
+  let document = savedDraft("11111111-2222-4333-8444-555555555555", draft);
+  let head = "a".repeat(40);
+  const fork = {
+    owner: "alice",
+    name: "accelerator",
+    id: 123,
+    fullName: "alice/accelerator",
+    defaultBranch: "main",
+  };
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: true } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/api/v1/github/forks?*", (route) =>
+    route.fulfill({ json: { forks: [fork], nextPage: null } }),
+  );
+  await page.route("**/api/v1/github/repository?*", (route) =>
+    route.fulfill({
+      json: {
+        fork,
+        head,
+        branch: "lzc/configurations",
+        branchExists: true,
+        configurations: [{ id: document.id, name: document.draft.name }],
+        unsupported: 0,
+        truncated: false,
+      },
+    }),
+  );
+  await page.route("**/api/v1/github/configuration/*", (route) =>
+    route.fulfill({ json: { document, head } }),
+  );
+  let attempts = 0;
+  await page.route("**/api/v1/github/configuration", async (route) => {
+    const body = route.request().postDataJSON();
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-test");
+    attempts++;
+    if (attempts === 1) {
+      expect(body.mode).toBe("update");
+      expect(body.head).toBe("a".repeat(40));
+      head = "b".repeat(40);
+      await route.fulfill({
+        status: 409,
+        json: { error: "repository_changed" },
+      });
+    } else {
+      expect(body.mode).toBe("create");
+      expect(body.head).toBe(head);
+      expect(body.document.id).not.toBe(document.id);
+      expect(body.document.schemaVersion).toBe(2);
+      expect(body.document.draft.folders.platform).toBe("Plattform aus Fork");
+      document = body.document;
+      head = "c".repeat(40);
+      await route.fulfill({
+        json: {
+          id: document.id,
+          head,
+          commitUrl: `https://github.com/alice/accelerator/commit/${head}`,
+        },
+      });
+    }
+  });
+  await page.goto("/repositories");
+  await page.getByRole("button", { name: "Forks aktualisieren" }).click();
+  await page
+    .getByRole("button", { name: "alice/accelerator", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Gespeicherte Landing Zone öffnen" })
+    .click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await page.getByLabel("Name der Konfiguration").fill("Meine neue Kopie");
+  await page.getByRole("button", { name: "2 Ordner", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Platform", exact: true })
+    .fill("Plattform aus Fork");
+  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
+  // Fresh entry restores unsaved edits, the selected fork and the original base revision.
+  head = "b".repeat(40);
+  await page.goto("/configurations/edit/basics");
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Meine neue Kopie",
+  );
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Im Fork speichern", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("inzwischen verändert");
+  await page.getByRole("button", { name: "Entwurf bearbeiten" }).click();
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Meine neue Kopie",
+  );
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Neue Kopie vorbereiten" }).click();
+  await page
+    .getByRole("button", { name: "Im Fork speichern", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("im Fork gespeichert");
+  await page.screenshot({
+    path: testInfo.outputPath("fork-saved.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => window.document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.goto("/configurations");
+  await expect(page).toHaveURL(/\/configurations$/);
+  await expect(
+    page.getByRole("button", { name: "alice/accelerator", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Entwurf bearbeiten" }).click();
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Meine neue Kopie",
+  );
+
+  // Explicit links win over the remembered page, while the draft stays available.
+  await page.goto("/templates");
+  await expect(page.getByText("@alice", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/templates$/);
+  await page
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Meine neue Kopie weiterbearbeiten",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  const remembered = await page.evaluate(() =>
+    localStorage.getItem("lzc-workspace-v1:personal:alice-id"),
+  );
+  expect(remembered).not.toContain("csrf-test");
+
+  // Revoked access must not expose a restored draft or erase its local recovery copy.
+  await page.route("**/api/v1/github/repository?*", (route) =>
+    route.fulfill({ status: 403, json: { error: "repository_access_denied" } }),
+  );
+  await page.goto("/repositories");
+  await expect(page.getByRole("alert")).toContainText("keinen Zugriff");
+  await expect(
+    page.getByRole("navigation", { name: "Konfiguration", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem("lzc-workspace-v1:personal:alice-id"),
+    ),
+  ).toBe(remembered);
+
+  // A different account in this browser must not restore Alice's configuration.
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "bob-id", login: "bob" },
+        csrfToken: "bob-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.goto("/");
+  await expect(page.getByText("@bob", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Konfiguration", exact: true }),
+  ).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("personal credentials upload clears the file and supports deletion and history", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({ json: { github: true } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice", login: "alice" },
+        csrfToken: "a".repeat(43),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  let stored = false;
+  let lastCheck: {
+    status: string;
+    code: string;
+    organizationId: string;
+    organizationName: string;
+    checkedAt: string;
+  } | null = null;
+  const profile = {
+    id: "11111111-2222-4333-8444-555555555555",
+    name: "Team Plattform",
+    serviceAccount: "platform-team@sa.stackit.cloud",
+    keyId: "key-id",
+    state: "stored",
+  };
+  await page.route("**/api/v1/credentials", async (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+      expect(route.request().postDataJSON()).toEqual({
+        name: "Team Plattform",
+        serviceAccountKey: { credentials: { privateKey: "BROWSER-TEST-KEY" } },
+      });
+      stored = true;
+      await route.fulfill({ status: 201, json: { stored: true } });
+    } else
+      await route.fulfill({
+        json: { profiles: stored ? [{ ...profile, lastCheck }] : [] },
+      });
+  });
+  await page.route(`**/api/v1/credentials/${profile.id}`, (route) => {
+    expect(route.request().method()).toBe("DELETE");
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+    stored = false;
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/api/v1/credentials/${profile.id}/check`, (route) => {
+    expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+    const organizationId = route.request().postDataJSON().organizationId;
+    lastCheck = {
+      status: "passed",
+      code: "organization_readable",
+      organizationId,
+      organizationName: "Customer organization",
+      checkedAt: new Date().toISOString(),
+    };
+    return route.fulfill({ json: { check: lastCheck } });
+  });
+  await page.goto("/templates");
+  await page.getByRole("button", { name: "Zugänge", exact: true }).click();
+  await expect(page).toHaveURL(/\/credentials$/);
+  await page.getByLabel("Profilname").fill("Team Plattform");
+  await page.getByLabel("Service-Account-Schlüssel (JSON)").setInputFiles({
+    name: "test-key.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({ credentials: { privateKey: "BROWSER-TEST-KEY" } }),
+    ),
+  });
+  await page.getByRole("button", { name: "Zugang sicher speichern" }).click();
+  await expect(page.getByRole("status")).toContainText("noch nicht geprüft");
+  await expect(page.getByLabel("Service-Account-Schlüssel (JSON)")).toHaveValue(
+    "",
+  );
+  await expect(
+    page.getByText(profile.serviceAccount, { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      JSON.stringify({ ...localStorage, ...sessionStorage }),
+    ),
+  ).not.toContain("BROWSER-TEST-KEY");
+  expect(await page.locator("body").innerText()).not.toContain(
+    "BROWSER-TEST-KEY",
+  );
+  await page
+    .getByLabel("Zielorganisation (UUID)")
+    .fill("11111111-2222-4333-8444-555555555555");
+  await page
+    .getByRole("button", { name: "Zugang prüfen", exact: true })
+    .click();
+  await expect(
+    page.getByText("Anmeldung erfolgreich · Organisation lesbar", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    "Schreibrechte für ein Deployment sind damit noch nicht bestätigt",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("credentials.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/templates$/);
+  await page.goForward();
+  await page.reload();
+  await expect(
+    page.getByText(profile.serviceAccount, { exact: true }),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Zugang löschen" }).click();
+  await expect(page.getByRole("status")).toContainText("entfernt");
+  await expect(
+    page.getByText(profile.serviceAccount, { exact: true }),
+  ).toHaveCount(0);
+});
+
+for (const format of ["legacy", "common"] as const) {
+  test(`prepares an immutable ${format} configuration with a personal credential and survives reload`, async ({
+    page,
+  }, testInfo) => {
+    const template = catalogue.templates.find(
+      (item) => item.id === "standalone",
+    ) as Template;
+    const draft = createDraft(template);
+    draft.organization = "11111111-2222-4333-8444-555555555555";
+    draft.owner = "owner@stackit.cloud";
+    for (const project of draft.projects) project.owner = draft.owner;
+    for (const sandbox of draft.sandboxes) sandbox.owner = draft.owner;
+    const documentId = "22222222-2222-4333-8444-555555555555";
+    const document =
+      format === "common"
+        ? { ...upgradeEditorDraft(draft), id: documentId }
+        : savedDraft(documentId, draft);
+    const profileId = "33333333-2222-4333-8444-555555555555";
+    const head = "a".repeat(40);
+    const fork = {
+      id: 123,
+      owner: "alice",
+      name: "accelerator",
+      fullName: "alice/accelerator",
+      defaultBranch: "main",
+    };
+    const check = {
+      status: "passed",
+      code: "organization_readable",
+      organizationId: draft.organization,
+      organizationName: "Customer organization",
+      checkedAt: new Date().toISOString(),
+    };
+    const record = {
+      id: "44444444-2222-4333-8444-555555555555",
+      name: draft.name,
+      credentialId: profileId,
+      createdAt: new Date().toISOString(),
+      manifest: {
+        source: {
+          repository: fork,
+          commit: head,
+          configurationId: document.id,
+        },
+        organization: { id: draft.organization, name: "Customer organization" },
+        accelerator: { commit: "b".repeat(40) },
+        tfvarsSha256: "c".repeat(64),
+        check,
+      },
+    };
+    let stored = false;
+    let planStatus = "";
+    await page.route("**/api/v1/plans", (route) => {
+      if (route.request().method() === "POST") {
+        expect(route.request().postDataJSON()).toEqual({
+          preparationId: record.id,
+          confirmStateBinding: true,
+        });
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+        planStatus = "planning";
+        return route.fulfill({ status: 202, json: { id: "plan-one" } });
+      }
+      return route.fulfill({
+        json: {
+          runs: planStatus
+            ? [
+                {
+                  id: "plan-one",
+                  preparationId: record.id,
+                  status: planStatus,
+                  errorCode: null,
+                  createdAt: new Date().toISOString(),
+                  summary:
+                    planStatus === "succeeded"
+                      ? {
+                          schemaVersion: 1,
+                          execution: "plan-only",
+                          applyAllowed: false,
+                          result: "changes",
+                          resources: {
+                            unchanged: 0,
+                            create: 12,
+                            update: 0,
+                            delete: 0,
+                            replace: 0,
+                            read: 1,
+                          },
+                          drift: {
+                            unchanged: 0,
+                            create: 0,
+                            update: 0,
+                            delete: 0,
+                            replace: 0,
+                            read: 0,
+                          },
+                          changedOutputs: 3,
+                          checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
+                          destructive: false,
+                          completeness: "not-reported",
+                        }
+                      : null,
+                },
+              ]
+            : [],
+        },
+      });
+    });
+
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({ json: { github: true } }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: "alice", login: "alice" },
+          csrfToken: "a".repeat(43),
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    await page.route("**/api/v1/github/forks*", (route) =>
+      route.fulfill({ json: { forks: [fork], nextPage: null } }),
+    );
+    await page.route("**/api/v1/github/repository?*", (route) =>
+      route.fulfill({
+        json: {
+          fork,
+          head,
+          branch: "lzc/configurations",
+          branchExists: true,
+          configurations: [{ id: document.id, name: draft.name }],
+          unsupported: 0,
+          truncated: false,
+        },
+      }),
+    );
+    await page.route("**/api/v1/github/configuration/*", (route) =>
+      route.fulfill({ json: { document, head } }),
+    );
+    await page.route("**/api/v1/credentials", (route) =>
+      route.fulfill({
+        json: {
+          profiles: [{ id: profileId, name: "Team platform", state: "stored" }],
+        },
+      }),
+    );
+    await page.route("**/api/v1/preparations", (route) => {
+      if (route.request().method() === "POST") {
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+        expect(route.request().postDataJSON()).toEqual({
+          target: { id: 123, owner: "alice", name: "accelerator" },
+          configurationId: document.id,
+          head,
+          credentialId: profileId,
+        });
+        stored = true;
+        return route.fulfill({ status: 201, json: { id: record.id } });
+      }
+      return route.fulfill({ json: { preparations: stored ? [record] : [] } });
+    });
+    await page.route(`**/api/v1/preparations/${record.id}`, (route) => {
+      expect(route.request().method()).toBe("DELETE");
+      return route.fulfill({
+        status: 409,
+        json: { error: "preparation_has_plans" },
+      });
+    });
+    await page.goto("/repositories");
+    await page
+      .getByRole("button", { name: "Forks aktualisieren", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: fork.fullName, exact: true })
+      .click();
+    await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
+    await expect(page).toHaveURL(/\/deployments$/);
+    await expect(
+      page.getByText(draft.organization, { exact: true }),
+    ).toBeVisible();
+    await page.getByLabel("Persönlicher Zugang").selectOption(profileId);
+    await page
+      .getByRole("button", { name: "Zugang prüfen und Vorbereitung speichern" })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Es wurde kein Plan oder Apply ausgeführt",
+    );
+    await page.reload();
+    await page
+      .getByLabel("Vorbereitung auswählen", { exact: true })
+      .selectOption(record.id);
+    await expect(
+      page.getByText("Vorbereitet · Apply erst nach Planprüfung und Freigabe", {
+        exact: true,
+      }),
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "Weiter zu Plan", exact: true })
+      .click();
+    await page
+      .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+      .selectOption(record.id);
+    const startPlan = page.getByRole("button", {
+      name: "Plattform planen",
+      exact: true,
+      includeHidden: true,
+    });
+    await expect(startPlan).toBeDisabled();
+    await page
+      .getByRole("checkbox", {
+        name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
+      })
+      .check();
+    await startPlan.click();
+    await expect(
+      page.getByRole("status").filter({ hasText: /Plan wird berechnet/ }),
+    ).toBeVisible();
+    await expect(startPlan).toBeDisabled();
+    await expect(
+      page
+        .locator(".plan-runs")
+        .getByRole("button", { name: /Apply|Anwenden/ }),
+    ).toHaveCount(0);
+    planStatus = "succeeded";
+    await page.reload();
+    await expect(
+      page.getByText("Änderungen geplant – nichts angewendet."),
+    ).toBeVisible();
+    await expect(page.getByText("12", { exact: true })).toBeVisible();
+    await page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Vorbereitung", exact: true })
+      .click();
+    await page
+      .getByLabel("Vorbereitung auswählen", { exact: true })
+      .selectOption(record.id);
+    await page.getByText("Versionsnachweise", { exact: true }).click();
+    await expect(page.getByText(head, { exact: true })).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("preparation.png"),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => window.document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: /Vorbereitung entfernen/ }).click();
+    await expect(page.getByRole("alert")).toContainText(
+      "besitzt Plan-Nachweise",
+    );
+    await expect(
+      page.getByText("Vorbereitet · Apply erst nach Planprüfung und Freigabe", {
+        exact: true,
+      }),
+    ).toHaveCount(1);
+  });
+}
+
+test.describe("explicit saved-plan approval", () => {
+  const organizationId = "11111111-2222-4333-8444-555555555555";
+  const configurationId = "22222222-2222-4333-8444-555555555555";
+  const credentialId = "33333333-2222-4333-8444-555555555555";
+  const preparationId = "44444444-2222-4333-8444-555555555555";
+  const planId = "55555555-2222-4333-8444-555555555555";
+  const applyId = "66666666-2222-4333-8444-555555555555";
+  const artifactSha256 = "d".repeat(64);
+  const summary = {
+    schemaVersion: 1,
+    execution: "plan-only",
+    applyAllowed: false,
+    result: "changes",
+    resources: {
+      unchanged: 0,
+      create: 12,
+      update: 2,
+      delete: 0,
+      replace: 0,
+      read: 1,
+    },
+    drift: {
+      unchanged: 0,
+      create: 0,
+      update: 0,
+      delete: 0,
+      replace: 0,
+      read: 0,
+    },
+    changedOutputs: 1,
+    checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
+    destructive: false,
+    completeness: "complete",
+  };
+  const preparation = {
+    id: preparationId,
+    name: "Datenbank-Plattform",
+    credentialId,
+    createdAt: new Date().toISOString(),
+    manifest: {
+      source: {
+        kind: "database",
+        configurationId,
+        revision: 7,
+        documentSha256: "c".repeat(64),
+      },
+      organization: { id: organizationId, name: "Zielorganisation" },
+      accelerator: { commit: "b".repeat(40) },
+      tfvarsSha256: "c".repeat(64),
+      check: {
+        status: "passed",
+        code: "organization_readable",
+        organizationId,
+        organizationName: "Zielorganisation",
+        checkedAt: new Date().toISOString(),
+      },
+    },
+  };
+  function savedPlan() {
+    return {
+      id: planId,
+      preparationId,
+      operation: "plan",
+      status: "succeeded",
+      summary,
+      errorCode: null as string | null,
+      createdAt: new Date().toISOString(),
+      artifactSha256,
+      applyAllowed: true,
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    };
+  }
+  async function setup(page: Page) {
+    const githubRequests: string[] = [];
+    await page.route("**/api/v1/**", (route) =>
+      route.fulfill({ status: 404, json: { error: "not_found" } }),
+    );
+    await page.route("**/api/v1/backends*", (route) =>
+      new URL(route.request().url()).searchParams.has("configurationId")
+        ? route.fulfill({ status: 404, json: { error: "backend_not_found" } })
+        : route.fulfill({ json: { backends: [] } }),
+    );
+    await page.route("**/api/v1/github/**", (route) => {
+      githubRequests.push(route.request().url());
+      return route.fulfill({
+        status: 403,
+        json: { error: "github_not_connected" },
+      });
+    });
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { github: false, stackit: true, primary: "stackit" },
+      }),
+    );
+    await page.route("**/auth/github/status", (route) =>
+      route.fulfill({ json: { connected: false } }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: "alice", login: "alice" },
+          csrfToken: "csrf-apply",
+          tenant: { id: "personal", kind: "personal", roles: [] },
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    await page.route("**/api/v1/configurations", (route) =>
+      route.fulfill({ json: { configurations: [] } }),
+    );
+    await page.route("**/api/v1/credentials", (route) =>
+      route.fulfill({
+        json: {
+          profiles: [
+            { id: credentialId, name: "STACKIT Plattform", state: "stored" },
+          ],
+        },
+      }),
+    );
+    await page.route("**/api/v1/preparations", (route) =>
+      route.fulfill({ json: { preparations: [preparation] } }),
+    );
+    return githubRequests;
+  }
+  test("English workflow keeps separate phase histories and explicit saved-plan approval", async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, "languages", { value: ["en-US"] }),
+    );
+    await setup(page);
+    const template = catalogue.templates.find(
+      (item) => item.id === "standalone",
+    ) as Template;
+    const draft = createDraft(template);
+    draft.name = "Vorbereitung";
+    draft.organization = organizationId;
+    draft.owner = "pilot@customer.test";
+    draft.projects = draft.projects.map((project) => ({
+      ...project,
+      owner: draft.owner,
+    }));
+    draft.sandboxes = [];
+    const stored = {
+      id: configurationId,
+      name: draft.name,
+      revision: 7,
+      updatedAt: new Date().toISOString(),
+      draft,
+    };
+    await page.route("**/api/v1/configurations", (route) =>
+      route.fulfill({ json: { configurations: [stored] } }),
+    );
+    await page.route(`**/api/v1/configurations/${configurationId}`, (route) =>
+      route.fulfill({ json: { configuration: stored } }),
+    );
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({ json: { runs: [savedPlan()] } }),
+    );
+    const mutations: string[] = [];
+    page.on("request", (request) => {
+      if (
+        request.method() !== "GET" &&
+        /\/api\/v1\/(plans|preparations|backends|credentials|configurations)(\/|$)/.test(
+          new URL(request.url()).pathname,
+        )
+      )
+        mutations.push(request.url());
+    });
+    await page.goto("/configurations");
+    await page
+      .getByRole("button", {
+        name: "Open configuration: Vorbereitung",
+        exact: true,
+      })
+      .click();
+    const tabs = page.getByRole("navigation", {
+      name: "Configuration",
+      exact: true,
+    });
+    await tabs
+      .getByRole("button", { name: "Preparation", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Preparation", level: 1 }),
+    ).toBeVisible();
+    await page
+      .getByRole("combobox", { name: "Select preparation", exact: true })
+      .selectOption(preparationId);
+    await expect(
+      page.getByRole("heading", { name: preparation.name, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(/Plan history|Apply history/)).toHaveCount(0);
+    await tabs.getByRole("button", { name: "Plan", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Plan", level: 1 }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Changes planned. Nothing applied.", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Changes and target organization reviewed",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await tabs.getByRole("button", { name: "Apply", exact: true }).click();
+    const apply = page.getByRole("button", {
+      name: "Apply approved plan",
+      exact: true,
+    });
+    await expect(apply).toBeDisabled();
+    await expect(page.getByText(artifactSha256, { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Changes and target organization reviewed",
+        exact: true,
+      }),
+    ).not.toBeChecked();
+    await page
+      .getByRole("combobox", { name: "Language", exact: true })
+      .selectOption("de");
+    await expect(
+      page.getByRole("button", {
+        name: "Freigegebenen Plan anwenden",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Änderungen und Zielorganisation geprüft",
+        exact: true,
+      }),
+    ).not.toBeChecked();
+    await page
+      .getByRole("combobox", { name: "Sprache", exact: true })
+      .selectOption("en");
+    await tabs.getByRole("button", { name: "History", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "History", level: 1 }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Plan and Apply runs", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: /reviewed/ })).toHaveCount(
+      0,
+    );
+    expect(mutations).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("english-history.png"),
+      fullPage: true,
+    });
+  });
+
+  test("workspace-first configuration flow keeps revision, reload and readonly history without cloud mutations", async ({
+    page,
+  }, testInfo) => {
+    await setup(page);
+    const template = catalogue.templates.find(
+      (item) => item.id === "standalone",
+    ) as Template;
+    const draft = createDraft(template);
+    draft.name = "Meine Plattform";
+    draft.organization = organizationId;
+    draft.owner = "pilot@customer.test";
+    draft.projects = draft.projects.map((project) => ({
+      ...project,
+      owner: draft.owner,
+    }));
+    draft.sandboxes = [];
+    const stored = {
+      id: configurationId,
+      name: draft.name,
+      revision: 7,
+      updatedAt: new Date().toISOString(),
+      draft,
+    };
+    const cloudMutations: string[] = [];
+    let saves = 0;
+    let configurationReads = 0;
+    page.on("request", (request) => {
+      if (
+        request.method() !== "GET" &&
+        /\/api\/v1\/(plans|preparations|backends|credentials)(\/|$)/.test(
+          new URL(request.url()).pathname,
+        )
+      )
+        cloudMutations.push(request.url());
+    });
+    await page.route("**/api/v1/organisation", (route) =>
+      route.fulfill({
+        json: {
+          userId: "alice",
+          activeTenantId: "personal",
+          members: [],
+          tenants: [
+            {
+              id: "personal",
+              name: "Persönlich",
+              kind: "personal",
+              roles: [],
+              manageMembers: false,
+            },
+          ],
+        },
+      }),
+    );
+    await page.route("**/api/v1/configurations", (route) =>
+      route.fulfill({
+        json: {
+          configurations: [
+            stored,
+            {
+              ...stored,
+              id: "77777777-2222-4333-8444-555555555555",
+              name: "Andere Konfiguration",
+            },
+          ],
+        },
+      }),
+    );
+    await page.route(`**/api/v1/configurations/${configurationId}`, (route) => {
+      if (route.request().method() === "GET") configurationReads++;
+      if (route.request().method() === "PUT") {
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+        const body = route.request().postDataJSON();
+        expect(body.revision).toBe(stored.revision);
+        stored.draft = body.draft;
+        stored.name = body.draft.name;
+        stored.revision++;
+        saves++;
+      }
+      return route.fulfill({ json: { configuration: stored } });
+    });
+    await page.route("**/api/v1/applications/**", (route) => {
+      expect(route.request().method()).toBe("GET");
+      return route.fulfill({
+        json: { versions: [], instances: [], contracts: [] },
+      });
+    });
+    const otherPreparation = {
+      ...preparation,
+      id: "88888888-2222-4333-8444-555555555555",
+      name: "Andere Plattform",
+      manifest: {
+        ...preparation.manifest,
+        source: {
+          ...preparation.manifest.source,
+          configurationId: "77777777-2222-4333-8444-555555555555",
+        },
+      },
+    };
+    const previousPreparation = {
+      ...preparation,
+      id: "66666666-2222-4333-8444-555555555555",
+      manifest: {
+        ...preparation.manifest,
+        source: { ...preparation.manifest.source, revision: 6 },
+      },
+    };
+    const repeatedPreparation = {
+      ...preparation,
+      id: "55555555-2222-4333-8444-555555555555",
+    };
+    await page.route("**/api/v1/preparations", (route) =>
+      route.fulfill({
+        json: {
+          preparations: [
+            preparation,
+            previousPreparation,
+            repeatedPreparation,
+            otherPreparation,
+          ],
+        },
+      }),
+    );
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({
+        json: {
+          runs: [
+            { ...savedPlan(), applyAllowed: stored.revision === 7 },
+            {
+              ...savedPlan(),
+              id: "99999999-2222-4333-8444-555555555555",
+              preparationId: otherPreparation.id,
+            },
+          ],
+        },
+      }),
+    );
+    await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: "Arbeitsbereiche", level: 1 }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Templates/ })).toHaveCount(
+      0,
+    );
+    await page
+      .getByRole("button", { name: "Arbeitsbereich öffnen: Persönlich" })
+      .click();
+    await expect(page).toHaveURL(/\/configurations$/);
+    await expect(
+      page.getByRole("button", { name: "Neue Konfiguration", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Deployments", exact: true })
+      .click();
+    const initialConfigurationTab = page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Konfiguration", exact: true });
+    await expect(initialConfigurationTab).toBeEnabled();
+    await initialConfigurationTab.click();
+    await expect(page).toHaveURL(/\/configurations$/);
+    await page
+      .getByRole("button", { name: "Konfiguration öffnen: Meine Plattform" })
+      .click();
+    const tabs = page.getByRole("navigation", {
+      name: "Konfiguration",
+      exact: true,
+    });
+    await expect(tabs).toContainText("Revision 7");
+    await tabs
+      .getByRole("button", { name: "Vorbereitung", exact: true })
+      .click();
+    await expect(
+      page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
+    ).toHaveValue(configurationId);
+    await tabs.getByRole("button", { name: "Plan", exact: true }).click();
+    await page.getByText("Neuen Plan erstellen", { exact: true }).click();
+    const preparationSelection = page.getByLabel("Gespeicherte Vorbereitung", {
+      exact: true,
+    });
+    await expect(preparationSelection.locator("option")).toHaveText([
+      "Bitte auswählen",
+      "Revision 7 - 44444444 - Datenbank-Plattform",
+      "Revision 6 - 66666666 - Datenbank-Plattform",
+      "Revision 7 - 55555555 - Datenbank-Plattform",
+    ]);
+    await preparationSelection.selectOption(previousPreparation.id);
+    await expect(preparationSelection).toHaveValue(previousPreparation.id);
+    await preparationSelection.selectOption(repeatedPreparation.id);
+    await expect(preparationSelection).toHaveValue(repeatedPreparation.id);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("preparation-revisions.png"),
+      fullPage: true,
+    });
+    await tabs.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Änderungen und Zielorganisation geprüft",
+        exact: true,
+      }),
+    ).not.toBeChecked();
+    expect(saves).toBe(0);
+    await tabs.getByRole("button", { name: "Verlauf", exact: true }).click();
+    await expect(page).toHaveURL(/\/deployments\/history$/);
+    await page.locator(".plan-runs > details.project-form > summary").click();
+    await expect(
+      page
+        .locator(".plan-runs")
+        .getByRole("heading", { name: "Datenbank-Plattform", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".plan-runs")
+        .getByRole("heading", { name: "Andere Plattform", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Plattform planen", exact: true }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(tabs).toContainText("Revision 7");
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Application Landing Zones", exact: true })
+      .click();
+    const beforeApplicationReload = configurationReads;
+    await page.reload();
+    await expect
+      .poll(() => configurationReads)
+      .toBe(beforeApplicationReload + 1);
+    await expect(
+      page.getByRole("tab", { name: "Katalog", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(saves).toBe(0);
+    expect(cloudMutations).toEqual([]);
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Konfigurationen", exact: true })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Meine Plattform weiterbearbeiten",
+        exact: true,
+      })
+      .click();
+    const name = page.getByRole("textbox", {
+      name: "Name der Konfiguration",
+      exact: true,
+    });
+    await expect(name).toHaveValue("Meine Plattform");
+    await name.fill("Meine Plattform geändert");
+    await expect(
+      tabs.getByRole("button", { name: "Vorbereitung", exact: true }),
+    ).toBeEnabled();
+    await tabs
+      .getByRole("button", { name: "Vorbereitung", exact: true })
+      .click();
+    await expect(tabs).toContainText("Revision 7 · Nicht gespeichert");
+    await tabs
+      .getByRole("button", { name: "Konfiguration", exact: true })
+      .click();
+    await expect(name).toHaveValue("Meine Plattform geändert");
+    await page
+      .getByRole("button", { name: "Arbeitsbereich wechseln", exact: true })
+      .click();
+    page.once("dialog", (dialog) => dialog.dismiss());
+    await page
+      .getByRole("button", { name: "Arbeitsbereich öffnen: Persönlich" })
+      .click();
+    await expect(page).toHaveURL(/\/workspaces$/);
+    await page
+      .getByRole("button", { name: "Konfigurationen", exact: true })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Meine Plattform geändert weiterbearbeiten",
+        exact: true,
+      })
+      .click();
+    await expect(name).toHaveValue("Meine Plattform geändert");
+    await page
+      .getByRole("button", {
+        name: "Speichern und zur Bereitstellung",
+        exact: true,
+      })
+      .click();
+    await expect(page).toHaveURL(/\/deployments$/);
+    await expect(tabs).toContainText("Revision 8");
+    expect(saves).toBe(1);
+    expect(cloudMutations).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("configuration-flow.png"),
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", { name: "Konfigurationen", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Neue Konfiguration", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/templates$/);
+    await expect(
+      page.getByRole("heading", { name: "Neue Konfiguration", level: 1 }),
+    ).toBeVisible();
+  });
+
+  async function approve(page: Page) {
+    await page
+      .getByRole("checkbox", {
+        name: "Änderungen und Zielorganisation geprüft",
+        exact: true,
+      })
+      .check();
+    await page
+      .getByLabel("Zielorganisation UUID bestätigen", { exact: true })
+      .fill(organizationId);
+  }
+
+  for (const { useS3, currentSource } of [
+    { useS3: false, currentSource: false },
+    { useS3: false, currentSource: true },
+    { useS3: true, currentSource: true },
+  ]) {
+    test(`database preparation and plan preview without GitHub${useS3 ? " using bound S3 state" : ""}${currentSource ? " using current Accelerator" : ""}`, async ({
+      page,
+    }, testInfo) => {
+      const githubRequests = await setup(page);
+      const backendId = "77777777-2222-4333-8444-555555555555";
+      if (useS3) {
+        await page.route("**/api/v1/session", (route) =>
+          route.fulfill({
+            json: {
+              user: { id: "alice", login: "alice" },
+              csrfToken: "csrf-apply",
+              tenant: {
+                id: organizationId,
+                kind: "organisation",
+                roles: ["platform-engineer"],
+              },
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            },
+          }),
+        );
+        await page.route("**/api/v1/credentials", (route) =>
+          route.fulfill({
+            json: {
+              profiles: [
+                {
+                  id: credentialId,
+                  name: "STACKIT Plattform",
+                  state: "stored",
+                },
+                {
+                  id: "88888888-2222-4333-8444-555555555555",
+                  name: "Anderer Zugang",
+                  state: "stored",
+                },
+              ],
+            },
+          }),
+        );
+      }
+      const descriptor = {
+        bucket: "customer-tfstate",
+        endpoint: "https://object.storage.eu01.onstackit.cloud",
+        region: "eu01",
+        key: "terraform.tfstate",
+        useLockfile: true,
+      } as const;
+      if (useS3) {
+        await page.route("**/api/v1/backends", (route) =>
+          route.fulfill({
+            json: { backends: [{ id: backendId, descriptor }] },
+          }),
+        );
+        await page.route("**/api/v1/backends?*", (route) => {
+          expect(
+            new URL(route.request().url()).searchParams.get("configurationId"),
+          ).toBe(configurationId);
+          return route.fulfill({ json: { id: backendId, descriptor } });
+        });
+      }
+      const template = catalogue.templates.find(
+        (item) => item.id === "standalone",
+      ) as Template;
+      const draft = createDraft(template);
+      draft.organization = organizationId;
+      draft.owner = "owner@stackit.cloud";
+      for (const project of draft.projects) project.owner = draft.owner;
+      for (const sandbox of draft.sandboxes) sandbox.owner = draft.owner;
+      const configuration = {
+        id: configurationId,
+        name: preparation.name,
+        revision: 7,
+        updatedAt: new Date().toISOString(),
+        draft,
+      };
+      await page.route("**/api/v1/configurations", (route) =>
+        route.fulfill({
+          json: {
+            configurations: useS3
+              ? [
+                  configuration,
+                  {
+                    ...configuration,
+                    id: "99999999-2222-4333-8444-555555555555",
+                    name: "Andere Konfiguration",
+                  },
+                ]
+              : [configuration],
+          },
+        }),
+      );
+      await page.route(`**/api/v1/configurations/${configurationId}`, (route) =>
+        route.fulfill({ json: { configuration } }),
+      );
+      let stored = false;
+      let preparationError: string | null = null;
+      await page.route("**/api/v1/preparations", (route) => {
+        if (route.request().method() === "POST") {
+          expect(route.request().postDataJSON()).toEqual({
+            source: "database",
+            configurationId,
+            revision: 7,
+            credentialId,
+            ...(useS3 ? { backendId } : {}),
+            ...(currentSource
+              ? {
+                  platformUpgrade: {
+                    confirm: true,
+                    acceleratorCommit: platformUpgradeAcceleratorCommit,
+                  },
+                }
+              : {}),
+          });
+          expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+          if (preparationError)
+            return route.fulfill({
+              status: 409,
+              json: { error: preparationError },
+            });
+          stored = true;
+          return route.fulfill({ status: 201, json: { id: preparationId } });
+        }
+        return route.fulfill({
+          json: {
+            preparations: stored ? [preparation] : [],
+            capabilities: {
+              platformUpgradeEnabled: currentSource,
+              runnerAcceleratorCommit: currentSource
+                ? platformUpgradeAcceleratorCommit
+                : supportedAcceleratorRevision,
+            },
+          },
+        });
+      });
+      let planned = false;
+      await page.route("**/api/v1/plans", (route) => {
+        if (route.request().method() === "POST") {
+          expect(route.request().postDataJSON()).toEqual({
+            preparationId,
+            confirmStateBinding: true,
+          });
+          planned = true;
+          return route.fulfill({ status: 202, json: { id: planId } });
+        }
+        return route.fulfill({
+          json: {
+            runs: planned
+              ? [{ ...savedPlan(), stateBackend: useS3 ? descriptor : null }]
+              : [],
+          },
+        });
+      });
+      await page.goto("/deployments");
+      await expect(page).toHaveURL(/\/deployments$/);
+      for (const reload of [false, true]) {
+        if (reload) await page.reload();
+        if (useS3) {
+          await expect(
+            page.getByText(/Organisationsarbeitsbereichen sind noch nicht/),
+          ).toHaveCount(0);
+          await expect(
+            page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
+          ).toHaveValue(reload ? configurationId : "");
+          if (!reload) {
+            await page
+              .getByLabel("Gespeicherte Konfiguration", { exact: true })
+              .selectOption(configurationId);
+          }
+          await expect(page.getByLabel("Persönlicher Zugang")).toHaveValue("");
+          await page
+            .getByLabel("Persönlicher Zugang")
+            .selectOption(credentialId);
+        }
+        await expect(
+          page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
+        ).toHaveValue(configurationId);
+        await expect(page.getByLabel("Persönlicher Zugang")).toHaveValue(
+          credentialId,
+        );
+        expect(stored).toBe(false);
+        expect(planned).toBe(false);
+      }
+      await page.getByText(/^State-Backend ·/).click();
+      if (!useS3) {
+        await expect(
+          page.getByText("Accelerator-Standard", { exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByText("Management-State-Bucket · Anlage im ersten Apply", {
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(
+          page.getByText("terraform.tfstate", { exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByLabel("S3 Access Key", { exact: true }),
+        ).not.toBeVisible();
+      }
+      if (useS3) {
+        await expect(
+          page.getByLabel("Backend der Landing Zone", { exact: true }),
+        ).toHaveValue(backendId);
+        await expect(
+          page.getByLabel("Backend der Landing Zone", { exact: true }),
+        ).toBeDisabled();
+      }
+      await page.getByLabel("Persönlicher Zugang").selectOption(credentialId);
+      if (currentSource) {
+        await expect(
+          page.getByRole("button", {
+            name: "Zugang prüfen und Vorbereitung speichern",
+          }),
+        ).toBeDisabled();
+        expect(stored).toBe(false);
+        expect(planned).toBe(false);
+        await page
+          .getByRole("checkbox", {
+            name: /^Ich bestätige: Diese Vorbereitung verwendet/,
+          })
+          .check();
+      }
+      if (currentSource) {
+        for (const [code, message] of [
+          [
+            "platform_upgrade_state_unavailable",
+            "vorhandener State an ein S3-Backend gebunden",
+          ],
+          ["state_locked", "durch eine laufende Ausführung gesperrt"],
+          [
+            "invalid_request_origin_or_csrf",
+            "Sicherheitsbestätigung deiner Sitzung",
+          ],
+          [
+            "unexpected_preparation_failure",
+            "HTTP 409, Fehlercode: unexpected_preparation_failure",
+          ],
+        ] as const) {
+          preparationError = code;
+          await page
+            .getByRole("button", {
+              name: "Zugang prüfen und Vorbereitung speichern",
+            })
+            .click();
+          await expect(page.getByRole("alert")).toContainText(message);
+          expect(stored).toBe(false);
+          expect(planned).toBe(false);
+        }
+        preparationError = null;
+        await page
+          .getByRole("button", { name: "Vorbereitungen aktualisieren" })
+          .click();
+        await expect(
+          page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
+        ).toHaveValue(configurationId);
+        await expect(page.getByLabel("Persönlicher Zugang")).toHaveValue(
+          credentialId,
+        );
+        await expect(
+          page.getByRole("checkbox", {
+            name: /^Ich bestätige: Diese Vorbereitung verwendet/,
+          }),
+        ).toBeChecked();
+      }
+      await page
+        .getByRole("button", {
+          name: "Zugang prüfen und Vorbereitung speichern",
+        })
+        .click();
+      await expect(page.getByRole("status")).toContainText(
+        "Es wurde kein Plan oder Apply ausgeführt",
+      );
+      await page
+        .getByRole("button", { name: "Weiter zu Plan", exact: true })
+        .click();
+      await page
+        .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+        .selectOption(preparationId);
+      await page
+        .getByRole("checkbox", {
+          name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
+        })
+        .check();
+      await page
+        .getByRole("button", { name: "Plattform planen", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Weiter zu Apply", exact: true })
+        .click();
+      await expect(
+        page.getByText(artifactSha256, { exact: true }),
+      ).toBeVisible();
+      await expect(page.getByText("Gültig bis", { exact: true })).toBeVisible();
+      await expect(page.getByText("12", { exact: true })).toBeVisible();
+      if (useS3)
+        await expect(
+          page
+            .getByRole("region", { name: "Plan prüfen und freigeben" })
+            .getByText("customer-tfstate / terraform.tfstate", { exact: true }),
+        ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+      ).toBeDisabled();
+      expect(githubRequests).toEqual([]);
+      await page.screenshot({
+        path: testInfo.outputPath("database-plan-preview.png"),
+        fullPage: true,
+      });
+    });
+  }
+
+  test("registers an S3 backend and downloads only portable backend metadata", async ({
+    page,
+  }, testInfo) => {
+    const githubRequests = await setup(page);
+    const backendId = "77777777-2222-4333-8444-555555555555";
+    const descriptor = {
+      bucket: "customer-tfstate",
+      endpoint: "https://object.storage.eu01.onstackit.cloud",
+      region: "eu01",
+      key: "terraform.tfstate",
+      useLockfile: true,
+    };
+    const { s3BackendConfiguration } = await import("@lzc/contracts");
+    let registered = false;
+    await page.route("**/api/v1/backends", (route) => {
+      if (route.request().method() === "POST") {
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+        expect(route.request().postDataJSON()).toEqual({
+          descriptor,
+          credentials: {
+            accessKeyId: "test-access-id",
+            secretAccessKey: "test-secret-value",
+          },
+        });
+        registered = true;
+        return route.fulfill({
+          status: 201,
+          json: { id: backendId, descriptor },
+        });
+      }
+      return route.fulfill({
+        json: { backends: registered ? [{ id: backendId, descriptor }] : [] },
+      });
+    });
+    await page.route(`**/api/v1/backends/${backendId}/configuration`, (route) =>
+      route.fulfill({
+        json: {
+          descriptor,
+          configuration: s3BackendConfiguration(
+            descriptor as Parameters<typeof s3BackendConfiguration>[0],
+          ),
+        },
+      }),
+    );
+    await page.goto("/deployments");
+    await page.getByText(/^State-Backend ·/).click();
+    await page
+      .getByText("Bestehendes S3-Backend registrieren", { exact: true })
+      .click();
+    await page.getByLabel("Bucket", { exact: true }).fill(descriptor.bucket);
+    await page
+      .getByLabel("S3 Access Key", { exact: true })
+      .fill("test-access-id");
+    await page
+      .getByLabel("S3 Secret Access Key", { exact: true })
+      .fill("test-secret-value");
+    await page
+      .getByRole("button", { name: "Backend registrieren", exact: true })
+      .click();
+    await expect(
+      page.getByText("S3-Backend registriert.", { exact: false }),
+    ).toBeVisible();
+    await expect(page.getByLabel("S3 Access Key", { exact: true })).toHaveValue(
+      "",
+    );
+    await expect(
+      page.getByLabel("S3 Secret Access Key", { exact: true }),
+    ).toHaveValue("");
+    const download = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: /Backenddatei herunterladen/ })
+      .click();
+    const saved = await download;
+    expect(saved.suggestedFilename()).toBe("backend.tf.json");
+    const path = await saved.path();
+    expect(path).toBeTruthy();
+    const text = await readFile(path!, "utf8");
+    expect(JSON.parse(text).terraform.backend.s3).toMatchObject({
+      bucket: descriptor.bucket,
+      key: descriptor.key,
+      use_lockfile: true,
+    });
+    expect(text).not.toContain("test-secret-value");
+    expect(text).not.toContain("test-access-id");
+    await page.reload();
+    await page.getByText(/^State-Backend ·/).click();
+    await page
+      .getByText("Bestehendes S3-Backend registrieren", { exact: true })
+      .click();
+    await expect(
+      page.getByText("customer-tfstate / terraform.tfstate", { exact: true }),
+    ).toBeVisible();
+    expect(githubRequests).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("s3-backend.png"),
+      fullPage: true,
+    });
+  });
+
+  test("shows saved OpenTofu resource details without changing approval or interpreting output as HTML", async ({
+    page,
+  }, testInfo) => {
+    await setup(page);
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({ json: { runs: [savedPlan()] } }),
+    );
+    const text =
+      '# module.management.stackit_project.example will be created\n+ resource "stackit_project" "example" {\n  + name = "Customer management"\n  + password = (sensitive value)\n  + description = "<img src=x onerror=alert(1)>"\n}\nPlan: 1 to add, 0 to change, 0 to destroy.';
+    await page.route(`**/api/v1/plans/${planId}/output`, (route) => {
+      expect(route.request().method()).toBe("GET");
+      return route.fulfill({
+        json: { text, truncated: false, kind: "saved-plan" },
+      });
+    });
+    await page.goto("/deployments/apply");
+    await page.getByText("OpenTofu-Ausgabe", { exact: true }).click();
+    const console = page.locator("textarea.plan-console");
+    await expect(console).toHaveValue(text);
+    await expect(console.locator("img")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: "Freigegebenen Plan anwenden",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await console.screenshot({
+      path: testInfo.outputPath("opentofu-plan-details.png"),
+    });
+  });
+
+  test("follows live OpenTofu output and switches to saved plan details when it finishes", async ({
+    page,
+  }, testInfo) => {
+    await setup(page);
+    let finished = false;
+    let reads = 0;
+    let mutations = 0;
+    await page.route("**/api/v1/plans", (route) => {
+      if (route.request().method() !== "GET") mutations++;
+      return route.fulfill({
+        json: {
+          runs: [
+            {
+              ...savedPlan(),
+              status: finished
+                ? "succeeded"
+                : reads === 0
+                  ? "starting"
+                  : reads < 3
+                    ? "initializing"
+                    : "planning",
+              summary: finished ? savedPlan().summary : null,
+              applyAllowed: false,
+            },
+          ],
+        },
+      });
+    });
+    await page.route(`**/api/v1/plans/${planId}/output`, (route) => {
+      reads++;
+      if (reads >= 4) finished = true;
+      return route.fulfill({
+        json: {
+          text:
+            reads === 1
+              ? ""
+              : reads === 2
+                ? "$ tofu init\nInitializing backend..."
+                : reads === 3
+                  ? "$ tofu init\nInitializing backend...\nmodule.management.stackit_project.example: Refreshing state..."
+                  : "module.management.stackit_project.example: Refresh complete\nPlan: 1 to add, 0 to change, 0 to destroy.",
+          kind: finished ? "saved-plan" : "live",
+          truncated: false,
+        },
+      });
+    });
+    await page.goto("/deployments/plan");
+    const console = page.locator("textarea.plan-console");
+    await expect(
+      page.getByRole("checkbox", { name: "Ausgabe folgen" }),
+    ).toBeChecked();
+    await expect(console).toHaveValue(/Initializing backend/, {
+      timeout: 10000,
+    });
+    await expect(console).toHaveValue(/Refreshing state\.\.\./, {
+      timeout: 10000,
+    });
+    await expect(console).toHaveValue(/Plan: 1 to add/, { timeout: 10000 });
+    await expect(
+      page
+        .locator(".plan-runs > article")
+        .getByText("Plan abgeschlossen", { exact: false }),
+    ).toBeVisible({ timeout: 10000 });
+    expect(reads).toBeGreaterThanOrEqual(4);
+    expect(mutations).toBe(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await console.screenshot({
+      path: testInfo.outputPath("opentofu-live-output.png"),
+    });
+  });
+
+  test("follows Apply details through completion and reload without another Apply", async ({
+    page,
+  }, testInfo) => {
+    await setup(page);
+    let completed = false;
+    let reads = 0;
+    let applyCalls = 0;
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({
+        json: {
+          runs: [
+            {
+              ...savedPlan(),
+              id: applyId,
+              planId,
+              operation: "apply",
+              status: completed ? "succeeded" : "applying",
+              summary: null,
+              applyAllowed: false,
+              finishedAt: completed ? new Date().toISOString() : null,
+            },
+          ],
+        },
+      }),
+    );
+    await page.route(`**/api/v1/plans/${planId}/apply`, (route) => {
+      applyCalls++;
+      return route.fulfill({
+        status: 409,
+        json: { error: "apply_already_started" },
+      });
+    });
+    await page.route(`**/api/v1/plans/${applyId}/output`, (route) => {
+      reads++;
+      if (reads >= 2) completed = true;
+      return route.fulfill({
+        json: {
+          text: completed
+            ? "module.management.stackit_project.example: Creation complete\nApply complete! Resources: 1 added, 0 changed, 0 destroyed.\n$ tofu init -migrate-state\nSuccessfully configured the backend S3"
+            : "module.management.stackit_project.example: Creating...",
+          truncated: false,
+          kind: completed ? "execution" : "live",
+        },
+      });
+    });
+    await page.goto("/deployments/apply");
+    await expect(page.locator("textarea.plan-console")).toHaveValue(
+      /Creating\.\.\./,
+    );
+    await expect(page.locator("textarea.plan-console")).toHaveValue(
+      /Apply complete!/,
+      { timeout: 10000 },
+    );
+    await expect(
+      page.getByText("Apply: Änderungen angewendet", { exact: false }),
+    ).toBeVisible({ timeout: 10000 });
+    await page.reload();
+    await page.getByText("OpenTofu-Ausgabe", { exact: true }).click();
+    await expect(page.locator("textarea.plan-console")).toHaveValue(
+      /Successfully configured the backend S3/,
+    );
+    await page.getByText("Apply-Nachweise", { exact: true }).click();
+    await expect(page.getByText(planId, { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: "Freigegebenen Plan anwenden",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    expect(applyCalls).toBe(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("apply-details-reload.png"),
+      fullPage: true,
+    });
+  });
+
+  test("keeps failed Apply diagnostics after reload and blocks automatic retry", async ({
+    page,
+  }) => {
+    await setup(page);
+    let applyCalls = 0;
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({
+        json: {
+          runs: [
+            {
+              ...savedPlan(),
+              id: applyId,
+              planId,
+              operation: "apply",
+              status: "recovery_required",
+              errorCode: "state_failed",
+              summary: null,
+              applyAllowed: false,
+            },
+          ],
+        },
+      }),
+    );
+    await page.route(`**/api/v1/plans/${applyId}/output`, (route) =>
+      route.fulfill({
+        json: {
+          text: "Error: Backend migration failed after resources were created.\nNo automatic retry.",
+          kind: "execution",
+          truncated: false,
+        },
+      }),
+    );
+    await page.route(`**/api/v1/plans/${planId}/apply`, (route) => {
+      applyCalls++;
+      return route.fulfill({
+        status: 409,
+        json: { error: "recovery_required" },
+      });
+    });
+    await page.goto("/deployments/apply");
+    await page.getByText("OpenTofu-Ausgabe", { exact: true }).click();
+    await expect(page.locator("textarea.plan-console")).toHaveValue(
+      /Backend migration failed/,
+    );
+    await page.reload();
+    await page.getByText("OpenTofu-Ausgabe", { exact: true }).click();
+    await expect(page.locator("textarea.plan-console")).toHaveValue(
+      /No automatic retry/,
+    );
+    await expect(
+      page.getByRole("button", {
+        name: "Freigegebenen Plan anwenden",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    expect(applyCalls).toBe(0);
+  });
+
+  test("requires exact organization and unchecked approval, sends one explicit POST and exports contract", async ({
+    page,
+  }, testInfo) => {
+    await setup(page);
+    const plan = savedPlan();
+    let applied = false;
+    let calls = 0;
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({
+        json: {
+          runs: [
+            plan,
+            ...(applied
+              ? [
+                  {
+                    ...plan,
+                    id: applyId,
+                    planId,
+                    operation: "apply",
+                    status: "succeeded",
+                    applyAllowed: false,
+                  },
+                ]
+              : []),
+          ],
+        },
+      }),
+    );
+    await page.route(`**/api/v1/plans/${planId}/apply`, (route) => {
+      calls++;
+      expect(route.request().method()).toBe("POST");
+      expect(route.request().postDataJSON()).toEqual({
+        artifactSha256,
+        organizationId,
+        confirmApply: true,
+      });
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+      applied = true;
+      return route.fulfill({ status: 202, json: { id: applyId } });
+    });
+    const contract = {
+      schema_version: 1,
+      organization_id: organizationId,
+      targets: {
+        public: {
+          folder_id: "f-01J9D4KS8HZZ2NKBAQ6CNWE8NQ",
+          region: "eu01",
+          corporate: false,
+          network_area_id: null,
+          firewall_next_hop_ip: null,
+          ipv4_nameservers: null,
+        },
+      },
+    };
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({
+        json: {
+          applicationPlatformContract: {
+            ...contract,
+            tenant_id: "11111111-2222-4333-8444-555555555555",
+            revision: applyId,
+          },
+        },
+      }),
+    );
+    await page.goto("/deployments/apply");
+    const button = page.getByRole("button", {
+      name: "Freigegebenen Plan anwenden",
+    });
+    const approval = page.getByRole("checkbox", {
+      name: "Änderungen und Zielorganisation geprüft",
+      exact: true,
+    });
+    await expect(approval).not.toBeChecked();
+    await page
+      .getByLabel("Zielorganisation UUID bestätigen")
+      .fill(organizationId);
+    await expect(button).toBeDisabled();
+    await approval.check();
+    await page
+      .getByLabel("Zielorganisation UUID bestätigen")
+      .fill("99999999-2222-4333-8444-555555555555");
+    await expect(button).toBeDisabled();
+    await page
+      .getByLabel("Zielorganisation UUID bestätigen")
+      .fill(`${organizationId} `);
+    await expect(button).toBeDisabled();
+    expect(calls).toBe(0);
+    await page
+      .getByLabel("Zielorganisation UUID bestätigen")
+      .fill(organizationId);
+    await expect(button).toBeEnabled();
+    await page.screenshot({
+      path: testInfo.outputPath("explicit-plan-approval.png"),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await button.evaluate((element: HTMLButtonElement) => {
+      element.click();
+      element.click();
+    });
+    await expect(page.getByText(/Apply: Änderungen angewendet/)).toBeVisible();
+    expect(calls).toBe(1);
+    await expect(button).toHaveCount(0);
+    await expect(
+      page.getByText("Änderungen geplant – nichts angewendet.", {
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(button).toHaveCount(0);
+    const downloadPromise = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe(
+      `application-platform-contract-${applyId}.json`,
+    );
+    const downloadPath = await download.path();
+    expect(JSON.parse(await readFile(downloadPath as string, "utf8"))).toEqual(
+      contract,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath("apply-contract-export.png"),
+      fullPage: true,
+    });
+  });
+
+  for (const [code, message] of [
+    ["stale_plan", "nicht mehr aktuell"],
+    ["plan_expired", "abgelaufen"],
+    ["credential_changed", "Zugang wurde geändert"],
+    ["state_changed", "State wurde geändert"],
+    ["invalid_plan_request", "Freigabe wurde abgewiesen"],
+    ["apply_already_started", "bereits für Apply verwendet"],
+    ["recovery_required", "benötigt Wiederherstellung"],
+    ["not_found", "nicht verfügbar"],
+    ["execution_disabled", "nicht aktiviert"],
+    ["plan_not_approvable", "nicht mehr freigabefähig"],
+    ["organization_mismatch", "stimmt nicht"],
+    ["artifact_invalid", "Plan-Artefakt konnte nicht bestätigt"],
+    ["state_locked", "State ist durch eine andere Ausführung gesperrt"],
+  ]) {
+    test(`blocks replay after ${code}`, async ({ page }) => {
+      await setup(page);
+      await page.route("**/api/v1/plans", (route) =>
+        route.fulfill({ json: { runs: [savedPlan()] } }),
+      );
+      let calls = 0;
+      await page.route(`**/api/v1/plans/${planId}/apply`, (route) => {
+        calls++;
+        return route.fulfill({
+          status: code === "not_found" ? 404 : 409,
+          json: { error: code },
+        });
+      });
+      await page.goto("/deployments/apply");
+      await approve(page);
+      await page
+        .getByRole("button", { name: "Freigegebenen Plan anwenden" })
+        .click();
+      await expect(page.getByRole("alert")).toContainText(message as string);
+      await expect(
+        page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("navigation", { name: "Konfiguration", exact: true })
+        .getByRole("button", { name: "Plan", exact: true })
+        .click();
+      await page.getByText("Neuen Plan erstellen", { exact: true }).click();
+      await page
+        .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+        .selectOption(preparationId);
+      await page
+        .getByRole("navigation", { name: "Konfiguration", exact: true })
+        .getByRole("button", { name: "Apply", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Ausführungsstatus aktualisieren" })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+      ).toHaveCount(0);
+      expect(calls).toBe(1);
+      await expect(page.getByText(/Apply: Änderungen angewendet/)).toHaveCount(
+        0,
+      );
+    });
+  }
+
+  test("destructive plan needs extra approval and resets confirmations on hash and preparation changes", async ({
+    page,
+  }) => {
+    await setup(page);
+    const plan = {
+      ...savedPlan(),
+      summary: {
+        ...summary,
+        destructive: true,
+        resources: { ...summary.resources, delete: 1, replace: 2 },
+      },
+    };
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({ json: { runs: [plan] } }),
+    );
+    await page.goto("/deployments/apply");
+    await approve(page);
+    const button = page.getByRole("button", {
+      name: "Freigegebenen Plan anwenden",
+    });
+    await expect(button).toBeDisabled();
+    await expect(page.getByRole("alert")).toContainText("unwiederbringlich");
+    await page
+      .getByRole("checkbox", {
+        name: "Löschungen und Ersetzungen ausdrücklich freigegeben",
+      })
+      .check();
+    await expect(button).toBeEnabled();
+    plan.artifactSha256 = "e".repeat(64);
+    await page
+      .getByRole("button", { name: "Ausführungsstatus aktualisieren" })
+      .click();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Änderungen und Zielorganisation geprüft",
+        exact: true,
+      }),
+    ).not.toBeChecked();
+    await expect(
+      page.getByLabel("Zielorganisation UUID bestätigen"),
+    ).toHaveValue("");
+    await approve(page);
+    await page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Plan", exact: true })
+      .click();
+    await page.getByText("Neuen Plan erstellen", { exact: true }).click();
+    await page
+      .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+      .selectOption(preparationId);
+    await page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Änderungen und Zielorganisation geprüft",
+        exact: true,
+      }),
+    ).not.toBeChecked();
+  });
+
+  test("expiry closes an already approved review and idle polling stops", async ({
+    page,
+  }) => {
+    await setup(page);
+    await page.clock.install();
+    const plan = savedPlan();
+    plan.expiresAt = new Date(Date.now() + 60000).toISOString();
+    let reads = 0;
+    let writes = 0;
+    await page.route("**/api/v1/plans", (route) => {
+      reads++;
+      return route.fulfill({ json: { runs: [plan] } });
+    });
+    await page.route(`**/api/v1/plans/${planId}/apply`, (route) => {
+      writes++;
+      return route.fulfill({
+        status: 500,
+        json: { error: "unexpected_apply" },
+      });
+    });
+    await page.goto("/deployments/apply");
+    await approve(page);
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toBeEnabled();
+    const initialReads = reads;
+    await page.clock.fastForward(61000);
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Plan", exact: true })
+      .click();
+    await expect(
+      page.getByText("Plan-Historie (1)", { exact: true }),
+    ).toBeVisible();
+    await page.getByText("Plan-Historie (1)", { exact: true }).click();
+    await page.locator(".plan-runs > details > details > summary").click();
+    await expect(
+      page.getByText(/Plan abgelaufen oder keine Gültigkeit bestätigt/),
+    ).toBeVisible();
+    expect(reads).toBe(initialReads);
+    expect(writes).toBe(0);
+  });
+
+  test("active polling stops when apply fails and never reports success", async ({
+    page,
+  }) => {
+    await setup(page);
+    await page.clock.install();
+    let status = "applying";
+    let reads = 0;
+    await page.route("**/api/v1/plans", (route) => {
+      reads++;
+      return route.fulfill({
+        json: {
+          runs: [
+            {
+              ...savedPlan(),
+              id: applyId,
+              planId,
+              operation: "apply",
+              status,
+              errorCode: status === "failed" ? "apply_failed" : null,
+            },
+          ],
+        },
+      });
+    });
+    await page.goto("/deployments/apply");
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: /Änderungen werden angewendet/ }),
+    ).toBeVisible();
+    status = "failed";
+    await page.clock.fastForward(5000);
+    await expect(
+      page.getByText(/Apply: Ausführung fehlgeschlagen/),
+    ).toBeVisible();
+    const finishedReads = reads;
+    await page.clock.fastForward(30000);
+    expect(reads).toBe(finishedReads);
+    await expect(page.getByText(/Apply: Änderungen angewendet/)).toHaveCount(0);
+  });
+
+  for (const status of [
+    "starting",
+    "initializing",
+    "validating",
+    "applying",
+    "failed",
+    "recovery_required",
+  ]) {
+    test(`apply lifecycle ${status} is distinct and cannot cancel or export`, async ({
+      page,
+    }, testInfo) => {
+      await setup(page);
+      await page.route("**/api/v1/plans", (route) =>
+        route.fulfill({
+          json: {
+            runs: [
+              {
+                ...savedPlan(),
+                id: applyId,
+                planId,
+                operation: "apply",
+                status,
+                errorCode: status === "failed" ? "apply_failed" : null,
+              },
+            ],
+          },
+        }),
+      );
+      await page.goto("/deployments/apply");
+      await expect(
+        page.getByText(
+          "Diese Ausführung kann Cloud-Ressourcen bereits verändert haben. Prüfe den Status vor weiteren Aktionen.",
+        ),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: /Plan abbrechen|Freigegebenen Plan anwenden|Plattformvertrag exportieren/,
+        }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByText("Änderungen geplant – nichts angewendet.", {
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await expect(page.getByText(/Apply: Änderungen angewendet/)).toHaveCount(
+        0,
+      );
+      if (status === "failed")
+        await expect(page.getByText(/Apply ist fehlgeschlagen/)).toBeVisible();
+      if (status === "recovery_required") {
+        await expect(
+          page
+            .locator(".plan-runs > article")
+            .getByText(/Apply: Wiederherstellung erforderlich/),
+        ).toBeVisible();
+        const mutations: string[] = [];
+        page.on("request", (request) => {
+          if (
+            request.method() !== "GET" &&
+            new URL(request.url()).pathname.startsWith("/api/v1/plans")
+          )
+            mutations.push(request.url());
+        });
+        await page.goto("/deployments/plan");
+        await page
+          .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+          .selectOption(preparationId);
+        await page
+          .getByRole("checkbox", {
+            name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
+          })
+          .check();
+        const planButton = page.getByRole("button", {
+          name: "Plattform planen",
+          exact: true,
+        });
+        await expect(planButton).toBeDisabled();
+        await expect(planButton).toHaveAttribute(
+          "aria-describedby",
+          "plan-blocked-reason",
+        );
+        await expect(page.locator("#plan-blocked-reason")).toHaveText(
+          "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden.",
+        );
+        await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+        await expect(page.locator("#plan-blocked-reason")).toHaveText(
+          "New plans are blocked until the failed apply and its state have been reviewed and reconciled.",
+        );
+        await expect(
+          page.getByRole("button", { name: "Plan platform", exact: true }),
+        ).toBeDisabled();
+        expect(mutations).toEqual([]);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        await page.screenshot({
+          path: testInfo.outputPath("plan-recovery-blocked.png"),
+          fullPage: true,
+        });
+      }
+    });
+  }
+
+  for (const outcome of [
+    "success",
+    "changed",
+    "locked",
+    "migration",
+    "migration-changed",
+    "migration-mismatch",
+    "checkpoint-invalid",
+  ]) {
+    test(`user-controlled Bootstrap checkpoint recovery ${outcome}`, async ({
+      page,
+    }, testInfo) => {
+      await setup(page);
+      let reconciled = false;
+      const actions: string[] = [];
+      const migrating = outcome.startsWith("migration");
+      const releaseLabel = migrating
+        ? "Backend-Migration bestätigen"
+        : "Erneute Planung freigeben";
+      const checkpoint = {
+        stateVersion: "1",
+        checkpointSha256: "d".repeat(64),
+        serial: 1,
+        lockHeld: outcome === "locked",
+        pendingMigration: migrating,
+        recoveryAvailable: false,
+        canResume: !migrating && outcome !== "locked",
+        ...(migrating
+          ? {
+              migration: {
+                remoteIdentity: "e".repeat(64),
+                serial: 1,
+                lineagePreserved: false,
+              },
+            }
+          : {}),
+        resources: [
+          {
+            mode: "managed",
+            type: "time_rotating",
+            instances: 1,
+            deposedInstances: 0,
+          },
+        ],
+      };
+      await page.route("**/api/v1/plans", (route) => {
+        expect(route.request().method()).toBe("GET");
+        return route.fulfill({
+          json: {
+            runs: [
+              {
+                ...savedPlan(),
+                id: applyId,
+                operation: "apply",
+                planId,
+                status: reconciled
+                  ? migrating
+                    ? "succeeded"
+                    : "failed"
+                  : "recovery_required",
+                errorCode: migrating ? "state_failed" : "apply_failed",
+              },
+            ],
+          },
+        });
+      });
+      await page.route(`**/api/v1/plans/${applyId}/checkpoint`, (route) => {
+        actions.push("checkpoint");
+        expect(route.request().postDataJSON()).toEqual({});
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+        expect(route.request().headers()["x-lzc-tenant"]).toBe("personal");
+        if (
+          outcome === "migration-mismatch" ||
+          outcome === "checkpoint-invalid"
+        )
+          return route.fulfill({
+            status: 409,
+            json: {
+              error:
+                outcome === "migration-mismatch"
+                  ? "migration_verification_failed"
+                  : "state_invalid",
+              detail: "private-state-content-must-not-be-displayed",
+            },
+          });
+        return route.fulfill({ json: checkpoint });
+      });
+      await page.route(`**/api/v1/plans/${applyId}/reconcile`, (route) => {
+        actions.push("reconcile");
+        expect(route.request().postDataJSON()).toEqual({
+          ...(migrating
+            ? { confirmCompleteMigration: true, remoteIdentity: "e".repeat(64) }
+            : { confirmRetainState: true }),
+          stateVersion: "1",
+          checkpointSha256: "d".repeat(64),
+        });
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+        expect(route.request().headers()["x-lzc-tenant"]).toBe("personal");
+        if (outcome.endsWith("changed"))
+          return route.fulfill({
+            status: 409,
+            json: { error: "checkpoint_changed" },
+          });
+        reconciled = true;
+        return route.fulfill({ json: { id: applyId, reconciled: true } });
+      });
+      await page.goto("/deployments/apply");
+      const review = page.getByRole("region", {
+        name: "Recovery-Abgleich",
+        exact: true,
+      });
+      await expect(review).toBeVisible();
+      expect(actions).toEqual([]);
+      await expect(
+        review.getByRole("button", { name: releaseLabel }),
+      ).toHaveCount(0);
+      await review
+        .getByRole("button", { name: "Checkpoint prüfen", exact: true })
+        .click();
+      if (
+        outcome === "migration-mismatch" ||
+        outcome === "checkpoint-invalid"
+      ) {
+        await expect(review.getByRole("alert")).toHaveText(
+          outcome === "migration-mismatch"
+            ? "Der S3-State stimmt nicht mit dem Bootstrap-Checkpoint überein. Die Migration bleibt gesperrt; keinen erneuten Apply starten."
+            : "Der Bootstrap- oder S3-State konnte nicht als gültiger State gelesen werden. Die Migration bleibt gesperrt.",
+        );
+        await expect(review.getByRole("checkbox")).toHaveCount(0);
+        await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+        const englishReview = page.getByRole("region", {
+          name: "Recovery reconciliation",
+          exact: true,
+        });
+        await expect(englishReview.getByRole("alert")).toHaveText(
+          outcome === "migration-mismatch"
+            ? "The S3 state does not match the bootstrap checkpoint. Migration remains blocked; do not start another Apply."
+            : "The bootstrap or S3 state could not be read as a valid state. Migration remains blocked.",
+        );
+        await expect(
+          page.getByText("private-state-content-must-not-be-displayed"),
+        ).toHaveCount(0);
+        expect(actions).toEqual(["checkpoint"]);
+        expect(reconciled).toBe(false);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        return;
+      }
+      await expect(
+        review.getByText("time_rotating", { exact: true }),
+      ).toBeVisible();
+      expect(actions).toEqual(["checkpoint"]);
+      await expect(review.getByText(applyId, { exact: true })).toBeVisible();
+      await expect(
+        review.getByText("d".repeat(64), { exact: true }),
+      ).toBeVisible();
+      await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+      const englishReview = page.getByRole("region", {
+        name: "Recovery reconciliation",
+        exact: true,
+      });
+      await expect(
+        englishReview.getByRole("button", {
+          name: "Inspect checkpoint",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        englishReview.getByText("State version", { exact: true }),
+      ).toBeVisible();
+      if (migrating) {
+        await expect(
+          englishReview.getByText("Matching", { exact: true }),
+        ).toBeVisible();
+        await expect(
+          englishReview.getByText("e".repeat(64), { exact: true }),
+        ).toBeVisible();
+        await expect(
+          englishReview.getByRole("button", {
+            name: "Confirm backend migration",
+            exact: true,
+          }),
+        ).toBeDisabled();
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`checkpoint-${outcome}-reviewed-en.png`),
+        fullPage: true,
+      });
+      await page.getByLabel("Language", { exact: true }).selectOption("de");
+      expect(actions).toEqual(["checkpoint"]);
+      if (outcome === "locked") {
+        await expect(
+          review.getByRole("button", { name: "Erneute Planung freigeben" }),
+        ).toHaveCount(0);
+        await expect(
+          review.getByText(
+            "Dieser Recovery-Fall benötigt einen gesonderten State-Abgleich.",
+          ),
+        ).toBeVisible();
+      } else {
+        const confirm = review.getByRole("checkbox", {
+          name: migrating
+            ? /Ich habe den S3-Abgleich geprüft/
+            : /Ich habe den Checkpoint geprüft/,
+        });
+        const release = review.getByRole("button", {
+          name: releaseLabel,
+          exact: true,
+        });
+        await expect(release).toBeDisabled();
+        await confirm.check();
+        await expect(release).toBeEnabled();
+        await release.click();
+        if (outcome.endsWith("changed")) {
+          await expect(review.getByRole("alert")).toHaveText(
+            "Der Checkpoint wurde geändert. Prüfe ihn erneut.",
+          );
+          await expect(confirm).toHaveCount(0);
+          expect(reconciled).toBe(false);
+        } else {
+          await expect(page).toHaveURL(/\/deployments\/plan$/);
+          await page
+            .getByLabel("Gespeicherte Vorbereitung", { exact: true })
+            .selectOption(preparationId);
+          const planButton = page.getByRole("button", {
+            name: "Plattform planen",
+            exact: true,
+          });
+          await expect(planButton).toBeDisabled();
+          await page
+            .getByRole("checkbox", {
+              name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
+            })
+            .check();
+          await expect(planButton).toBeEnabled();
+        }
+        expect(actions).toEqual(["checkpoint", "reconcile"]);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`checkpoint-${outcome}.png`),
+        fullPage: true,
+      });
+    });
+  }
+
+  test("deployment steps isolate preparation, plan and apply without automatic execution or retained approval", async ({
+    page,
+  }, testInfo) => {
+    await setup(page);
+    let mutations = 0;
+    await page.route("**/api/v1/plans", (route) => {
+      if (route.request().method() !== "GET") mutations++;
+      return route.fulfill({ json: { runs: [savedPlan()] } });
+    });
+    await page.route(`**/api/v1/plans/${planId}/apply`, (route) => {
+      mutations++;
+      return route.fulfill({
+        status: 500,
+        json: { error: "unexpected_apply" },
+      });
+    });
+    await page.goto("/deployments");
+    const tabs = page.getByRole("navigation", {
+      name: "Konfiguration",
+      exact: true,
+    });
+    await expect(tabs.getByRole("button")).toHaveText([
+      "Konfiguration",
+      "Vorbereitung",
+      "Plan",
+      "Apply",
+      "Verlauf",
+    ]);
+    await expect(
+      page.getByRole("button", { name: "Plattform planen", exact: true }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    await page
+      .getByLabel("Vorbereitung auswählen", { exact: true })
+      .selectOption(preparationId);
+    await expect(
+      page.getByText("Anmeldung erfolgreich · Organisation lesbar", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("deployment-preparation.png"),
+    });
+    await page
+      .getByRole("button", { name: "Weiter zu Plan", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/deployments\/plan$/);
+    await expect(
+      page.getByLabel("Gespeicherte Vorbereitung", { exact: true }),
+    ).toHaveValue(preparationId);
+    await expect(
+      page.getByRole("button", {
+        name: "Gespeicherte Konfiguration auswählen",
+      }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("Änderungen geplant – nichts angewendet.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Weiter zu Apply", exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: testInfo.outputPath("deployment-plan.png") });
+    await page
+      .getByRole("button", { name: "Weiter zu Apply", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/deployments\/apply$/);
+    const approval = page.getByRole("checkbox", {
+      name: "Änderungen und Zielorganisation geprüft",
+      exact: true,
+    });
+    await expect(approval).not.toBeChecked();
+    await expect(
+      page.getByRole("button", { name: "Plattform planen", exact: true }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
+    ).not.toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("deployment-apply.png"),
+    });
+    await page
+      .getByLabel("Zielorganisation UUID bestätigen")
+      .fill(organizationId);
+    await approval.check();
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toBeEnabled();
+    await tabs.getByRole("button", { name: "Plan", exact: true }).click();
+    await tabs.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(approval).not.toBeChecked();
+    await tabs.getByRole("button", { name: "Verlauf", exact: true }).click();
+    await expect(page).toHaveURL(/\/deployments\/history$/);
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/deployments\/apply$/);
+    await expect(approval).not.toBeChecked();
+    await page.reload();
+    await expect(page).toHaveURL(/\/deployments\/apply$/);
+    await expect(approval).not.toBeChecked();
+    expect(mutations).toBe(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
+
+  test("old and expired plans stay collapsed while current and recovery runs remain visible", async ({
+    page,
+  }, testInfo) => {
+    await setup(page);
+    const now = Date.now();
+    await page.clock.install({ time: new Date(now) });
+    const newerPreparationId = "77777777-2222-4333-8444-555555555555";
+    const current = {
+      ...savedPlan(),
+      preparationId: newerPreparationId,
+      createdAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + 10000).toISOString(),
+    };
+    const previous = {
+      ...savedPlan(),
+      id: "88888888-2222-4333-8444-555555555555",
+      createdAt: new Date(now - 1000).toISOString(),
+    };
+    const expiredPlan = {
+      ...savedPlan(),
+      id: "99999999-2222-4333-8444-555555555555",
+      createdAt: new Date(now - 2000).toISOString(),
+      expiresAt: new Date(now - 1000).toISOString(),
+    };
+    const failed = {
+      ...savedPlan(),
+      id: "aaaaaaaa-2222-4333-8444-555555555555",
+      operation: "apply",
+      status: "failed",
+      summary: null,
+      errorCode: "apply_failed",
+      createdAt: new Date(now - 3000).toISOString(),
+    };
+    const recovery = {
+      ...savedPlan(),
+      id: applyId,
+      operation: "apply",
+      status: "recovery_required",
+      createdAt: new Date(now - 4000).toISOString(),
+    };
+    await page.route("**/api/v1/preparations", (route) =>
+      route.fulfill({
+        json: {
+          preparations: [
+            preparation,
+            {
+              ...preparation,
+              id: newerPreparationId,
+              name: "Aktuelle Vorbereitung",
+            },
+          ],
+        },
+      }),
+    );
+    await page.route("**/api/v1/plans", (route) => {
+      expect(route.request().method()).toBe("GET");
+      return route.fulfill({
+        json: { runs: [failed, previous, recovery, expiredPlan, current] },
+      });
+    });
+    await page.goto("/deployments/plan");
+    await page.getByText("Neuen Plan erstellen", { exact: true }).click();
+    await expect(page.locator(".plan-runs > article")).toHaveCount(2);
+    await expect(
+      page
+        .locator(".plan-runs > article")
+        .getByText(/Apply: Wiederherstellung erforderlich/),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Plattform planen", exact: true }),
+    ).toBeDisabled();
+    const history = page
+      .locator(".plan-runs > details")
+      .filter({ has: page.getByText(/^Plan-Historie \(\d+\)$/) });
+    await expect(history.locator(":scope > summary")).toHaveText(
+      "Plan-Historie (2)",
+    );
+    await expect(history).not.toHaveAttribute("open");
+    await expect(history.locator("article")).toHaveCount(0);
+    await history.locator(":scope > summary").click();
+    await expect(history.locator(":scope > details")).toHaveCount(2);
+    await expect(
+      history.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    const expiredEntry = history
+      .locator(":scope > details")
+      .filter({ hasText: "Abgelaufen" });
+    await expiredEntry.locator(":scope > summary").click();
+    await expect(
+      expiredEntry.getByText(/Plan abgelaufen oder keine Gültigkeit bestätigt/),
+    ).toBeVisible();
+    await expect(
+      expiredEntry.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    await page.clock.fastForward(10001);
+    await expect(page.locator(".plan-runs > article")).toHaveCount(1);
+    await expect(history.locator(":scope > summary")).toHaveText(
+      "Plan-Historie (3)",
+    );
+    await expect(
+      page
+        .locator(".plan-runs > article")
+        .getByText(/Apply: Wiederherstellung erforderlich/),
+    ).toBeVisible();
+    await history.locator(":scope > summary").click();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("collapsed-plan-history.png"),
+      fullPage: true,
+    });
+    const tabs = page.getByRole("navigation", {
+      name: "Konfiguration",
+      exact: true,
+    });
+    await tabs.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(
+      page.getByText("Plan-Historie (3)", { exact: true }),
+    ).toHaveCount(0);
+    await page.getByText("Apply-Historie (1)", { exact: true }).click();
+    await expect(
+      page
+        .locator(".plan-runs > details")
+        .filter({ has: page.getByText("Apply-Historie (1)", { exact: true }) })
+        .locator(":scope > details"),
+    ).toHaveCount(1);
+    await tabs.getByRole("button", { name: "Verlauf", exact: true }).click();
+    await expect(page.getByText(/^(Plan|Apply)-Historie \(/)).toHaveCount(0);
+    await expect(page.locator(".plan-runs > details.project-form")).toHaveCount(
+      4,
+    );
+    await expect(page.locator(".plan-runs > article")).toHaveCount(1);
+  });
+
+  test("legacy summary cannot grant apply, expired plan and invalid export stay unavailable", async ({
+    page,
+  }) => {
+    await setup(page);
+    const plan = {
+      ...savedPlan(),
+      applyAllowed: false,
+      summary: { ...summary, applyAllowed: true },
+    };
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({ json: { runs: [plan] } }),
+    );
+    await page.goto("/deployments/apply");
+    await expect(page.getByText(/nicht vom Server freigegeben/)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    plan.applyAllowed = true;
+    plan.expiresAt = new Date(Date.now() - 1000).toISOString();
+    await page
+      .getByRole("button", { name: "Ausführungsstatus aktualisieren" })
+      .click();
+    await page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Plan", exact: true })
+      .click();
+    await page.getByText("Plan-Historie (1)", { exact: true }).click();
+    await page.locator(".plan-runs > details > details > summary").click();
+    await expect(
+      page.getByText(/Plan abgelaufen oder keine Gültigkeit bestätigt/),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
+    ).toHaveCount(0);
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({
+        json: {
+          runs: [
+            { ...plan, id: applyId, operation: "apply", status: "succeeded" },
+          ],
+        },
+      }),
+    );
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({ status: 404, json: { error: "not_found" } }),
+    );
+    await page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Ausführungsstatus aktualisieren" })
+      .click();
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "keine State-Daten exportiert",
+    );
+    let downloads = 0;
+    page.on("download", () => downloads++);
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({
+        status: 400,
+        json: {
+          error: "platform_contract_unavailable",
+          state: "must-not-export",
+        },
+      }),
+    );
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Für die aktuelle State-Version ist kein gültiger Plattformvertrag eines erfolgreichen Apply verfügbar",
+    );
+    await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+    await expect(page.getByRole("alert")).toContainText(
+      "No valid platform contract from a successful apply is available for the current state version",
+    );
+    await page.getByLabel("Language", { exact: true }).selectOption("de");
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({ status: 400, json: { error: "state_failed" } }),
+    );
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Der aktuelle State konnte nicht sicher gelesen werden",
+    );
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({
+        status: 400,
+        json: { error: "__proto__", state: "must-not-export" },
+      }),
+    );
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Der Plattformvertrag ist nicht verfügbar",
+    );
+    await page.route(`**/api/v1/plans/${applyId}/outputs`, (route) =>
+      route.fulfill({
+        json: { resources: [], outputs: {}, credentials: "must-not-export" },
+      }),
+    );
+    await page
+      .getByRole("button", { name: "Plattformvertrag exportieren" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Plattformvertrag ist ungültig",
+    );
+    await expect(
+      page.getByText("must-not-export", { exact: false }),
+    ).toHaveCount(0);
+    expect(downloads).toBe(0);
+  });
+});

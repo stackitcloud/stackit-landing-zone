@@ -1,0 +1,366 @@
+name: Configurator Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_only:
+        description: Build and publish the immutable release without deploying
+        type: boolean
+        default: false
+      release_run_id:
+        description: Promote this existing successful build without rebuilding
+        type: string
+        required: false
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: configurator-lzc-dev-mutation
+  cancel-in-progress: false
+
+jobs:
+  assistant:
+    name: assistant
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    uses: ./.github/workflows/assistant-live.yml
+    with:
+      topic: all
+      repetitions: 2
+    secrets: inherit
+
+  build:
+    needs: assistant
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
+        env:
+          POSTGRES_PASSWORD: lzc-test-only
+          POSTGRES_DB: configurator_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d configurator_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+          cache: npm
+          cache-dependency-path: landing-zone-configurator/app/package-lock.json
+      - name: Install and verify application
+        run: |
+          npm install --global npm@11.19.0
+          npm ci
+          npm run check
+          node --test ../infra/ci/prepare-release.test.mjs
+          node --test ../infra/ci/image-staging.test.mjs
+      - name: Test first preparations and stateful platform Plan/Apply broker
+        run: npm run test:platform-database
+      - name: Test database migrations and tenant isolation
+        run: npm run test:database -- --maxWorkers=2 --testTimeout=30000
+        env:
+          LZC_TEST_DATABASE_URL: postgres://postgres:lzc-test-only@127.0.0.1:5432/configurator_test
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.1'
+          cache-dependency-path: landing-zone-configurator/tools/hcl-adapter/go.sum
+      - name: Verify source templates match the release catalogue
+        working-directory: landing-zone-configurator/tools/hcl-adapter
+        run: |
+          go test ./...
+          go run . -check
+          go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
+          go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json -check
+      - name: Verify browser flow before packaging
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+      - name: Package production application and pinned Node runtime
+        run: |
+          mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/packages/domain ../.local/release/public ../.local/release/runtime
+          cp package.json package-lock.json ../.local/release/
+          cp apps/api/package.json ../.local/release/apps/api/
+          cp -R apps/api/dist apps/api/db ../.local/release/apps/api/
+          cp packages/contracts/package.json ../.local/release/packages/contracts/
+          cp -R packages/contracts/dist ../.local/release/packages/contracts/
+          cp packages/domain/package.json ../.local/release/packages/domain/
+          cp -R packages/domain/dist ../.local/release/packages/domain/
+          cp -R apps/web/dist/. ../.local/release/public/
+          (cd ../.local/release && npm ci --omit=dev --ignore-scripts --workspace=@lzc/api --workspace=@lzc/contracts --workspace=@lzc/domain)
+          curl --fail --silent --show-error --location --retry 3 https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz -o "$RUNNER_TEMP/node.tar.xz"
+          echo "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  $RUNNER_TEMP/node.tar.xz" | sha256sum --check
+          tar -xJf "$RUNNER_TEMP/node.tar.xz" --strip-components=1 -C ../.local/release/runtime node-v24.21.0-linux-x64/bin/node node-v24.21.0-linux-x64/LICENSE
+          ../.local/release/runtime/bin/node --version
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Test real OpenTofu contract and package isolated runner
+        run: |
+          npm run test:common-contract
+          LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
+          LZC_HOSTED_EXECUTION_PACKAGE=true LZC_PACKAGE_APPLICATION_ROOT=true LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true bash ../deploy/runner/package.sh
+          cp -R ../.local/runner ../.local/release/inspection
+          tar --exclude='./inspection/accelerator/firewall-image.qcow2' -czf ../.local/release.tar.gz -C ../.local/release .
+          (cd ../.local && sha256sum release.tar.gz > release.sha256)
+          node scripts/check-staged-runner.mjs ../.local
+      - name: Assemble immutable stage-neutral release
+        run: |
+          node ../infra/ci/release-artifact.mjs create ../.local
+          tar -czf ../.local/configurator-release.tar.gz -C ../.local release.tar.gz release.sha256 runner.tar.gz runner.sha256 release-manifest.json
+          (cd ../.local && sha256sum configurator-release.tar.gz > configurator-release.sha256)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: configurator-release-${{ github.run_id }}
+          path: |
+            landing-zone-configurator/.local/configurator-release.tar.gz
+            landing-zone-configurator/.local/configurator-release.sha256
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    needs: build
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.release_run_id != ''))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: lzc-dev-release
+      url: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    env:
+      CF_STAGING_TIMEOUT: '15'
+      CF_STARTUP_TIMEOUT: '5'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Resolve successful immutable release build
+        id: source
+        run: node infra/ci/release-artifact.mjs source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LZC_RELEASE_RUN_ID: ${{ inputs.release_run_id || github.run_id }}
+      - name: Checkout the artifact's exact source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.source.outputs.release_revision }}
+          persist-credentials: false
+      - name: Reject a superseded branch revision
+        if: inputs.release_run_id == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/${GITHUB_REF#refs/heads/}" --jq '.object.sha')
+          test "$head" = "$GITHUB_SHA"
+      - name: Verify protected buildpack source tag
+        run: |
+          if grep -q 'LZC_IMAGE_BUILDPACK' deploy/cloud-foundry/manifest.yml; then
+            node infra/ci/buildpack-source.mjs
+          else
+            echo "Qualified legacy binary-buildpack source; image tag gate is not applicable."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
+      - name: Install pinned CF CLI
+        run: |
+          curl --fail --silent --show-error --location --retry 3 https://github.com/cloudfoundry/cli/releases/download/v8.17.0/cf8-cli_8.17.0_linux_x86-64.tgz -o "$RUNNER_TEMP/cf.tgz"
+          echo "922b91e5651d141ff8756e631adc613c820610c84dcae6cb59f57e22ae073112  $RUNNER_TEMP/cf.tgz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/cf-bin"
+          tar -xzf "$RUNNER_TEMP/cf.tgz" -C "$RUNNER_TEMP/cf-bin" cf8
+          ln -s cf8 "$RUNNER_TEMP/cf-bin/cf"
+          echo "$RUNNER_TEMP/cf-bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ steps.source.outputs.artifact_id }}
+          run-id: ${{ steps.source.outputs.release_run_id }}
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: landing-zone-configurator/.local
+      - name: Unpack application
+        env:
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
+          LZC_RELEASE_RUN_ID: ${{ steps.source.outputs.release_run_id }}
+        run: |
+          (cd .local && sha256sum --check configurator-release.sha256)
+          tar -xzf .local/configurator-release.tar.gz -C .local
+          node infra/ci/release-artifact.mjs verify .local
+          (cd .local && sha256sum --check release.sha256)
+          mkdir -p .local/release
+          tar -xzf .local/release.tar.gz -C .local/release
+          (cd .local && sha256sum --check runner.sha256)
+          mkdir -p .local/runner
+          tar -xzf .local/runner.tar.gz -C .local/runner
+          diff -qr .local/release/inspection .local/runner
+      - name: Prepare encrypted state read access
+        run: node infra/ci/prepare-release.mjs backend
+        env:
+          LZC_WORKLOAD_BUCKET: ${{ vars.LZC_WORKLOAD_BUCKET }}
+          LZC_WORKLOAD_ACCESS_KEY: ${{ secrets.LZC_WORKLOAD_ACCESS_KEY }}
+          LZC_WORKLOAD_SECRET_KEY: ${{ secrets.LZC_WORKLOAD_SECRET_KEY }}
+          LZC_STATE_KEY_PLATFORM: ${{ secrets.LZC_STATE_KEY_PLATFORM }}
+          LZC_STATE_KEY_RUNTIME: ${{ secrets.LZC_STATE_KEY_RUNTIME }}
+      - name: Read platform and runtime outputs (private files)
+        timeout-minutes: 5
+        run: |
+          umask 077
+          for root in platform runtime; do
+            export TF_DATA_DIR="$LZC_PRIVATE/$root-data"
+            export TF_ENCRYPTION="$(cat "$LZC_PRIVATE/$root.encryption.json")"
+            tofu -chdir="infra/$root" init -input=false -no-color -lockfile=readonly -backend-config="$LZC_PRIVATE/$root.backend.hcl"
+            tofu -chdir="infra/$root" output -json > "$LZC_PRIVATE/$root-outputs.json"
+          done
+      - name: Prepare private CF variables and mask runtime credentials
+        run: node infra/ci/prepare-release.mjs application
+        env:
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
+          LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
+          LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}
+          LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
+          LZC_STACKIT_CLI_CLIENT_APPROVED: ${{ vars.LZC_STACKIT_CLI_CLIENT_APPROVED }}
+          LZC_STACKIT_AUTH_FLOW: ${{ vars.LZC_STACKIT_AUTH_FLOW }}
+          LZC_STACKIT_CLIENT_ID: ${{ vars.LZC_STACKIT_CLIENT_ID }}
+          LZC_STACKIT_REDIRECT_URI: ${{ vars.LZC_STACKIT_REDIRECT_URI }}
+          LZC_EXECUTION_ENABLED: ${{ vars.LZC_EXECUTION_ENABLED }}
+          LZC_APPLICATION_EXECUTION_ENABLED: ${{ vars.LZC_APPLICATION_EXECUTION_ENABLED }}
+          LZC_DEPLOYMENT_ARTIFACT_KEY: ${{ secrets.LZC_DEPLOYMENT_ARTIFACT_KEY }}
+          LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
+          LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
+      - name: Stage isolated runner template in its own organisation
+        id: stage_runner
+        run: |
+          cf api "$CF_API_URL"
+          CF_USERNAME="$LZC_RUNNER_CF_USERNAME" CF_PASSWORD="$LZC_RUNNER_CF_PASSWORD" cf auth
+          cf target -o lzc-dev-runners -s plans
+          test "$(cf org lzc-dev-runners --guid)" = "$LZC_RUNNER_ORG_ID"
+          test "$(cf space plans --guid)" = "$LZC_RUNNER_SPACE_ID"
+          cf push --task -f deploy/runner/manifest.yml -p .local/runner --vars-file "$LZC_PRIVATE/runner-vars.json" --redact-env
+          export LZC_RUNNER_TEMPLATE_ID="$(cf app lzc-plan-template --guid)"
+          export LZC_RUNNER_DROPLET_ID="$(cf curl "/v3/apps/$LZC_RUNNER_TEMPLATE_ID/droplets/current" | jq -er '.guid')"
+          node infra/ci/prepare-release.mjs runner
+          cf run-task lzc-plan-template --command "./runtime/bin/node --input-type=module -e 'import { platformFirewallImage } from \"@lzc/contracts\"; console.log(platformFirewallImage.sha256 + \"  accelerator/firewall-image.qcow2\");' | sha256sum --check" --name "image-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+          cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=accelerator init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=accelerator validate -no-color' --name "engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
+          cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=application-src/application init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=application-src/application validate -no-color' --name "application-engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
+      - name: Runner staging failure diagnostics
+        if: failure() && steps.stage_runner.outcome == 'failure'
+        run: |
+          app_id="$(cf app lzc-plan-template --guid)"
+          cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq '.resources[] | {guid, state, error}'
+          cf logs lzc-plan-template --recent
+      - name: CF login and target
+        run: |
+          cf version
+          cf api "$CF_API_URL"
+          cf auth
+          cf target -o lzc-dev -s configurator
+          test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
+      - name: Stage isolated database migration task
+        id: migration
+        run: cf push --task -f deploy/cloud-foundry/migration-manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/migration-vars.json" --redact-env
+      - name: Apply versioned database migrations
+        id: database_migrations
+        timeout-minutes: 5
+        run: cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+      - name: Sanitized database migration diagnostics
+        if: always() && (steps.database_migrations.outcome == 'success' || steps.database_migrations.outcome == 'failure')
+        run: |
+          for attempt in 1 2 3; do
+            if cf logs landing-zone-configurator-migrate --recent | node infra/ci/migration-evidence.mjs "$GITHUB_RUN_ID" > "$LZC_PRIVATE/migration-evidence.json"; then
+              cat "$LZC_PRIVATE/migration-evidence.json"
+              exit 0
+            fi
+            if [ -s "$LZC_PRIVATE/migration-evidence.json" ]; then
+              cat "$LZC_PRIVATE/migration-evidence.json"
+              exit 1
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 5; fi
+          done
+          exit 1
+      - name: Remove privileged migration application
+        run: cf delete landing-zone-configurator-migrate -f
+      - name: CF push application
+        id: push
+        run: cf push -f deploy/cloud-foundry/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-vars.json" --redact-env
+      - name: Sanitized application staging failure diagnostics
+        if: failure() && steps.push.outcome == 'failure'
+        run: |
+          app_id="$(cf app landing-zone-configurator --guid)"
+          cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq '.resources[] | {guid, state, error, staging_disk_in_mb, staging_memory_in_mb}'
+          cf logs landing-zone-configurator --recent | awk '/\[STG\/[0-9]+\]/ { print }'
+      - name: CF network diagnostics
+        timeout-minutes: 3
+        run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-network.js' --name "network-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+      - name: CF service connection tests
+        id: connectivity
+        timeout-minutes: 5
+        run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+      - name: Verify separate runner app, bindings and rejected job ticket
+        timeout-minutes: 5
+        run: |
+          cf run-task landing-zone-configurator --command "./runtime/bin/node apps/api/dist/check-plan-runner.js $GITHUB_RUN_ID" --name "runner-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+          for attempt in 1 2 3; do
+            if cf logs landing-zone-configurator --recent | node infra/ci/runner-evidence.mjs "$GITHUB_RUN_ID"; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      # Router logs may contain OAuth callback codes. Do not export raw logs to CI.
+      - name: CF application status
+        if: always() && steps.push.outcome == 'success'
+        run: cf app landing-zone-configurator
+      - name: Public route checks
+        if: always() && steps.push.outcome == 'success'
+        env:
+          LZC_URL: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
+          LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
+          LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}
+          LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
+        run: |
+          expected=not-configured
+          if [ "$LZC_AUTH_ENABLED" = true ]; then expected=github; fi
+          if [ "$LZC_AUTH_ENABLED" = true ] && [ "$LZC_STACKIT_DEVICE_ENABLED" = true ]; then expected=stackit; fi
+          curl --fail --silent --show-error --retry 3 "$LZC_URL/healthz" | jq -e --arg expected "$expected" '.status == "ok" and .authentication == $expected'
+          curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e --arg expected "$expected" 'if $expected == "stackit" then .primary == "stackit" and .stackit == true and .stackitFlow == "authorization-code" else .github == ($expected == "github") end'
+          curl --fail --silent --show-error "$LZC_URL/" | grep -q 'Landing Zone Configurator'
+          test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/session")" = 401
+          if [ "$LZC_ASSISTANT_ENABLED" = true ]; then
+            test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/configurations/template-advice")" = 401
+          fi
+          curl --fail --silent --show-error "$LZC_URL/applications" | grep -q 'Landing Zone Configurator'
+          if [ "$LZC_AUTH_ENABLED" = true ]; then
+            for resource in templates instances; do
+              test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/applications/$resource")" = 401
+            done
+          fi
+      - name: Retire previous suffixed route after canonical checks
+        run: |
+          app_id="$(cf app landing-zone-configurator --guid)"
+          legacy_mapped="$(cf curl "/v3/apps/$app_id/routes" | jq -r 'if .pagination.next != null then error("Unexpected application route pagination") else any(.resources[]; .url == "lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud") end')"
+          if [ "$legacy_mapped" = true ]; then
+            cf unmap-route landing-zone-configurator apps.01.cf.eu01.stackit.cloud --hostname lzc-dev-configurator-7dbff805
+          fi
+      - name: Clean up migration application after failure or cancellation
+        if: (failure() || cancelled()) && (steps.migration.outcome == 'success' || steps.migration.outcome == 'failure' || steps.migration.outcome == 'cancelled')
+        run: cf delete landing-zone-configurator-migrate -f
+      - name: Remove private deployment inputs
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/lzc-release"

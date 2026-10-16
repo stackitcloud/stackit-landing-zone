@@ -36,14 +36,14 @@ resource "stackit_routing_table_route" "this" {
 ## NETWORK ##
 #############
 resource "stackit_network" "this" {
-  count = var.corporate ? 1 : 0
+  count = var.corporate || var.network_enabled ? 1 : 0
 
-  name               = "${var.naming_pattern}-routed"
+  name               = "${var.naming_pattern}-${var.corporate ? "routed" : "local"}"
   project_id         = stackit_resourcemanager_project.this.project_id
   ipv4_prefix_length = var.network_prefix_length
-  routed             = true
+  routed             = var.corporate
   ipv4_nameservers   = var.ipv4_nameservers
-  routing_table_id   = var.firewall_next_hop_ip != null ? stackit_routing_table.this[0].routing_table_id : null
+  routing_table_id   = var.corporate && var.firewall_next_hop_ip != null ? stackit_routing_table.this[0].routing_table_id : null
 
   labels = local.labels
 }

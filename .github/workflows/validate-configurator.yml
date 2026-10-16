@@ -1,0 +1,163 @@
+name: Validate Configurator
+
+on:
+  pull_request:
+    paths:
+      - 'landing-zone-configurator/**'
+      - 'src/**'
+      - '.github/workflows/validate-configurator.yml'
+      - '.github/workflows/assistant-live.yml'
+      - '.github/workflows/configurator-bootstrap.yml'
+      - '.github/workflows/configurator-platform.yml'
+      - '.github/workflows/configurator-runtime.yml'
+      - '.github/workflows/configurator-release.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'landing-zone-configurator/**'
+      - 'src/**'
+      - '.github/workflows/validate-configurator.yml'
+      - '.github/workflows/assistant-live.yml'
+      - '.github/workflows/configurator-bootstrap.yml'
+      - '.github/workflows/configurator-platform.yml'
+      - '.github/workflows/configurator-runtime.yml'
+      - '.github/workflows/configurator-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: configurator-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  template-catalogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/tools/hcl-adapter
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.1'
+          cache-dependency-path: landing-zone-configurator/tools/hcl-adapter/go.sum
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+      - name: Build shared model for native HCL round-trip tests
+        working-directory: landing-zone-configurator/app
+        run: |
+          npm install --global npm@11.19.0
+          npm ci
+          npm run build:packages
+      - name: Test HCL importer and exporter and verify catalogue freshness
+        run: |
+          go test ./...
+          go run . -check
+          go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
+          go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json -check
+
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
+        env:
+          POSTGRES_PASSWORD: lzc-test-only
+          POSTGRES_DB: configurator_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d configurator_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+          cache: npm
+          cache-dependency-path: landing-zone-configurator/app/package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@11.19.0
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint, typecheck, build and test
+        run: npm run check
+      - name: Check release configuration with the built API validators
+        run: node --test ../infra/ci/prepare-release.test.mjs
+      - name: Test first preparations and stateful platform Plan/Apply broker
+        run: npm run test:platform-database
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Check all template exports against native Accelerator variable contracts
+        run: npm run test:common-contract
+      - name: Test database migrations and tenant isolation
+        run: npm run test:database -- --maxWorkers=2 --testTimeout=30000
+        env:
+          LZC_TEST_DATABASE_URL: postgres://postgres:lzc-test-only@127.0.0.1:5432/configurator_test
+      - name: Install isolated browser for UI acceptance
+        run: npx playwright install --with-deps chromium
+      - name: Test template-to-draft flow on desktop and mobile
+        run: npm run test:e2e
+      - name: Upload UI evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: configurator-ui-evidence
+          path: landing-zone-configurator/.local/browser-tests
+          include-hidden-files: true
+          retention-days: 7
+
+
+  infrastructure:
+    name: OpenTofu (${{ matrix.root }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        root: [seed, seed-protection, bootstrap, backend, platform, runtime]
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Check operator plan guard
+        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs
+      - name: Check formatting
+        run: tofu -chdir=infra fmt -check -recursive
+      - name: Prepare disposable validation encryption
+        run: node infra/ci/prepare.mjs validation
+        env:
+          LZC_ROOT: ${{ matrix.root }}
+      - name: Initialize without backend
+        run: tofu -chdir=infra/${{ matrix.root }} init -backend=false -lockfile=readonly -input=false
+      - name: Validate
+        run: tofu -chdir=infra/${{ matrix.root }} validate -no-color
+      - name: Test plans with mock providers
+        run: tofu -chdir=infra/${{ matrix.root }} test -no-color

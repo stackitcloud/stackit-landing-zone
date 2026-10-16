@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "topics": [
+    {
+      "id": "credential-foundations",
+      "file": "credential-foundations.md",
+      "version": 2,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": [],
+      "mandatory": true,
+      "inputs": [
+        "platform_kubernetes_kube_config_override",
+        "vpn_pre_shared_keys",
+        "firewall_admin_password",
+        "firewall_api_credentials"
+      ],
+      "dependencies": [],
+      "sources": [
+        "landing-zone-configurator/docs/common-feature-model.md",
+        "landing-zone-configurator/docs/deployment-credentials.md",
+        "src/variables.tf",
+        "src/providers.tf"
+      ],
+      "externalSources": [
+        "https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/manage-service-account-keys/"
+      ],
+      "scenarios": ["A16", "A23"]
+    },
+    {
+      "id": "stackit-network-components",
+      "file": "sna.md",
+      "version": 3,
+      "checkedOn": "2026-10-12",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["network"],
+      "mandatory": false,
+      "inputs": ["connectivity", "connectivity_regions"],
+      "dependencies": ["identity-foundations", "governance-folders"],
+      "sources": [
+        "src/modules/connectivity/variables.tf",
+        "src/modules/connectivity/1-network-area.tf",
+        "src/variables.tf",
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+      ],
+      "externalSources": [
+        "https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_area"
+      ],
+      "scenarios": ["A04", "A05", "A15", "A24"]
+    },
+    {
+      "id": "identity-foundations",
+      "file": "identity-foundations.md",
+      "version": 3,
+      "checkedOn": "2026-10-12",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["identity"],
+      "mandatory": false,
+      "inputs": [
+        "organization_id",
+        "owner_email",
+        "company_name",
+        "company_code",
+        "region",
+        "labels",
+        "platform_contract_namespace"
+      ],
+      "dependencies": ["credential-foundations"],
+      "sources": ["src/variables.tf", "src/providers.tf", "src/main.tf"],
+      "externalSources": [],
+      "scenarios": ["A01", "A21", "A23"]
+    },
+    {
+      "id": "governance-folders",
+      "file": "governance-folders.md",
+      "version": 3,
+      "checkedOn": "2026-10-12",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["governance"],
+      "mandatory": false,
+      "inputs": [
+        "rm_folder_parent_id",
+        "rm_folders",
+        "organization_owners",
+        "organization_auditors"
+      ],
+      "dependencies": ["identity-foundations"],
+      "sources": [
+        "src/modules/governance/variables.tf",
+        "src/modules/governance/1-rm-folders.tf",
+        "src/modules/governance/3-organization-roles.tf",
+        "src/main.tf",
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+      ],
+      "externalSources": [],
+      "scenarios": ["A02", "A23"]
+    },
+    {
+      "id": "management-state",
+      "file": "management-state.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["management"],
+      "mandatory": false,
+      "inputs": [],
+      "dependencies": ["governance-folders"],
+      "sources": [
+        "src/main.tf",
+        "src/modules/management/variables.tf",
+        "src/modules/management/1-project.tf",
+        "src/modules/management/2-secrets-manager.tf",
+        "src/modules/management/3-object-storage.tf",
+        "src/modules/management/4-service-account.tf",
+        "landing-zone-configurator/docs/common-feature-model.md",
+        "landing-zone-configurator/docs/deployment-credentials.md"
+      ],
+      "externalSources": [],
+      "scenarios": ["A03", "A16", "A23"]
+    },
+    {
+      "id": "observability",
+      "file": "observability.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["management"],
+      "mandatory": false,
+      "inputs": ["observability"],
+      "dependencies": ["management-state"],
+      "sources": [
+        "src/variables.tf",
+        "src/modules/management/variables.tf",
+        "src/modules/management/5-observability.tf",
+        "src/modules/landing-zone/variables.tf",
+        "src/modules/platform-kubernetes/variables.tf"
+      ],
+      "externalSources": [],
+      "scenarios": ["A03", "A09", "A10", "A24"]
+    },
+    {
+      "id": "audit-logs",
+      "file": "audit-logs.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["management"],
+      "mandatory": false,
+      "inputs": ["audit_logs"],
+      "dependencies": ["management-state"],
+      "sources": [
+        "src/variables.tf",
+        "src/main.tf",
+        "src/modules/management/variables.tf",
+        "src/modules/management/6-audit-logs.tf"
+      ],
+      "externalSources": [],
+      "scenarios": ["A03", "A16", "A23", "A24"]
+    },
+    {
+      "id": "federated-identities",
+      "file": "federated-identities.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["management"],
+      "mandatory": false,
+      "inputs": ["federated_identity_providers"],
+      "dependencies": ["management-state"],
+      "sources": [
+        "src/variables.tf",
+        "src/main.tf",
+        "src/modules/management/variables.tf",
+        "src/modules/management/4-service-account.tf"
+      ],
+      "externalSources": [],
+      "scenarios": ["A03", "A16", "A23"]
+    },
+    {
+      "id": "dns-zones",
+      "file": "dns-zones.md",
+      "version": 6,
+      "checkedOn": "2026-10-16",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["network"],
+      "mandatory": false,
+      "inputs": ["connectivity", "connectivity_regions"],
+      "dependencies": ["stackit-network-components"],
+      "sources": [
+        "src/modules/connectivity/variables.tf",
+        "src/modules/connectivity/6-dns-zones.tf",
+        "src/modules/landing-zone/7-dns-zone.tf",
+        "src/modules/connectivity/1-network-area.tf",
+        "src/main.tf",
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+      ],
+      "externalSources": [
+        "https://docs.stackit.cloud/products/network/core-networking/dns/how-tos/manage-dns-zones/",
+        "https://raw.githubusercontent.com/stackitcloud/terraform-provider-stackit/v0.114.0/stackit/internal/services/dns/zone/resource.go"
+      ],
+      "scenarios": ["A04", "A05", "A09", "A12", "A15", "A24"]
+    },
+    {
+      "id": "firewall-infrastructure",
+      "file": "firewall-infrastructure.md",
+      "version": 5,
+      "checkedOn": "2026-10-13",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["network", "firewall"],
+      "mandatory": false,
+      "inputs": ["connectivity", "connectivity_regions"],
+      "dependencies": ["stackit-network-components"],
+      "sources": [
+        "src/modules/connectivity/variables.tf",
+        "src/modules/connectivity/5-firewall.tf",
+        "src/modules/connectivity/3-external-network.tf",
+        "src/modules/connectivity/4-internal-network.tf",
+        "src/modules/firewall-config/5-ha-sync.tf",
+        "src/modules/firewall-config/variables.tf",
+        "src/main.tf"
+      ],
+      "externalSources": [],
+      "scenarios": ["A04", "A06", "A15", "A24"]
+    },
+    {
+      "id": "vpn",
+      "file": "vpn.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["network"],
+      "mandatory": false,
+      "inputs": ["connectivity", "connectivity_regions", "vpn_pre_shared_keys"],
+      "dependencies": ["stackit-network-components"],
+      "sources": [
+        "src/variables.tf",
+        "src/main.tf",
+        "src/modules/connectivity/variables.tf",
+        "src/modules/connectivity/7-vpn.tf",
+        "landing-zone-configurator/docs/vpn-configuration-scope.md"
+      ],
+      "externalSources": [],
+      "scenarios": ["A07", "A16", "A24"]
+    },
+    {
+      "id": "firewall-policy",
+      "file": "firewall-policy.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["firewall"],
+      "mandatory": false,
+      "inputs": ["firewall_config"],
+      "dependencies": ["firewall-infrastructure", "firewall-access-bootstrap"],
+      "sources": [
+        "src/variables.tf",
+        "src/modules/firewall-config/variables.tf",
+        "src/main.tf",
+        "src/providers.tf",
+        "src/_firewall-bootstrap.tf"
+      ],
+      "externalSources": [],
+      "scenarios": ["A13", "A16", "A23", "A24"]
+    },
+    {
+      "id": "firewall-access-bootstrap",
+      "file": "firewall-access-bootstrap.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["firewall", "credentials"],
+      "mandatory": false,
+      "inputs": [
+        "firewall_admin_username",
+        "firewall_admin_password",
+        "firewall_api_credentials",
+        "firewall_bootstrap",
+        "firewall_api_secret_version"
+      ],
+      "dependencies": ["firewall-infrastructure", "management-state"],
+      "sources": [
+        "src/variables.tf",
+        "src/_firewall-bootstrap.tf",
+        "src/providers.tf",
+        "landing-zone-configurator/docs/deployment-credentials.md"
+      ],
+      "externalSources": [],
+      "scenarios": ["A13", "A16", "A23"]
+    },
+    {
+      "id": "devops-git",
+      "file": "devops-git.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["platform"],
+      "mandatory": false,
+      "inputs": ["devops"],
+      "dependencies": ["management-state"],
+      "sources": [
+        "src/variables.tf",
+        "src/modules/devops/variables.tf",
+        "src/main.tf",
+        "src/providers.tf"
+      ],
+      "externalSources": [],
+      "scenarios": ["A08", "A24"]
+    },
+    {
+      "id": "platform-kubernetes",
+      "file": "platform-kubernetes.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["platform"],
+      "mandatory": false,
+      "inputs": [
+        "platform_kubernetes",
+        "platform_kubernetes_kube_config_override"
+      ],
+      "dependencies": ["stackit-network-components", "observability"],
+      "sources": [
+        "src/variables.tf",
+        "src/modules/platform-kubernetes/variables.tf",
+        "src/modules/debug-bastion/variables.tf",
+        "src/main.tf",
+        "src/providers.tf",
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+      ],
+      "externalSources": [],
+      "scenarios": ["A05", "A09", "A15", "A16", "A24"]
+    },
+    {
+      "id": "project-templates",
+      "file": "project-templates.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["projects"],
+      "mandatory": false,
+      "inputs": ["landing_zones"],
+      "dependencies": [
+        "governance-folders",
+        "stackit-network-components",
+        "observability"
+      ],
+      "sources": [
+        "src/variables.tf",
+        "src/modules/landing-zone/variables.tf",
+        "src/main.tf",
+        "landing-zone-configurator/app/packages/domain/src/common-document.ts",
+        "landing-zone-configurator/app/packages/domain/src/project-templates.ts",
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+      ],
+      "externalSources": [],
+      "scenarios": ["A04", "A10", "A14", "A22", "A23", "A24"]
+    },
+    {
+      "id": "sandbox-projects",
+      "file": "sandbox-projects.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["projects"],
+      "mandatory": false,
+      "inputs": ["sandboxes"],
+      "dependencies": ["governance-folders"],
+      "sources": [
+        "src/variables.tf",
+        "src/modules/sandboxes/variables.tf",
+        "src/main.tf",
+        "landing-zone-configurator/app/packages/domain/src/common-document.ts"
+      ],
+      "externalSources": [],
+      "scenarios": ["A11", "A14", "A23"]
+    },
+    {
+      "id": "namespace-services",
+      "file": "namespace-services.md",
+      "version": 1,
+      "checkedOn": "2026-10-10",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": ["projects"],
+      "mandatory": false,
+      "inputs": ["landing_zone_namespace_services"],
+      "dependencies": ["platform-kubernetes", "project-templates"],
+      "sources": [
+        "src/variables.tf",
+        "src/_landing-zone-kubernetes.tf",
+        "src/modules/namespace-service-demo/variables.tf",
+        "src/providers.tf",
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+      ],
+      "externalSources": [],
+      "scenarios": ["A12", "A14", "A16", "A23", "A24"]
+    },
+    {
+      "id": "configuration-lifecycle",
+      "file": "configuration-lifecycle.md",
+      "version": 9,
+      "checkedOn": "2026-10-12",
+      "qualification": "local-draft-not-reviewed-release",
+      "groups": [],
+      "mandatory": true,
+      "inputs": [],
+      "dependencies": ["credential-foundations"],
+      "sources": [
+        "landing-zone-configurator/docs/common-feature-model.md",
+        "landing-zone-configurator/app/packages/domain/src/common-document.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/firewall.ts",
+        "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts"
+      ],
+      "externalSources": [],
+      "scenarios": [
+        "A15",
+        "A16",
+        "A17",
+        "A18",
+        "A19",
+        "A20",
+        "A21",
+        "A22",
+        "A23",
+        "A24"
+      ]
+    }
+  ]
+}

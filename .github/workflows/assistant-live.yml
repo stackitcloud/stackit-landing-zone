@@ -1,0 +1,87 @@
+name: Assistant live regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Knowledge topic ID, or all'
+        required: true
+        default: 'all'
+        type: string
+      repetitions:
+        description: 'Independent runs per case (1-3); every failure remains blocking'
+        required: true
+        default: 2
+        type: number
+  workflow_call:
+    inputs:
+      topic:
+        type: string
+        default: 'all'
+      repetitions:
+        type: number
+        default: 2
+    secrets:
+      LZC_MODEL_SERVING_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  assistant:
+    name: assistant-live-qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: assistant-tests
+    concurrency:
+      group: configurator-assistant-model-serving
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: landing-zone-configurator/app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: landing-zone-configurator/app/.node-version
+          cache: npm
+          cache-dependency-path: landing-zone-configurator/app/package-lock.json
+      - name: Install pinned test toolchain
+        id: install
+        run: |
+          npm install --global npm@11.19.0
+          npm ci
+      - name: Check source-bound scenario catalogue
+        id: catalogue
+        run: npm run assistant:check
+      - name: Run synthetic cases against real Model Serving
+        env:
+          LZC_MODEL_SERVING_TOKEN: ${{ secrets.LZC_MODEL_SERVING_TOKEN }}
+          LZC_ASSISTANT_TEST_TOPIC: ${{ inputs.topic }}
+          LZC_ASSISTANT_TEST_REPETITIONS: ${{ inputs.repetitions }}
+          LZC_EXECUTION_ENABLED: 'false'
+          LZC_APPLICATION_EXECUTION_ENABLED: 'false'
+        run: |
+          set -o pipefail
+          node --use-system-ca --import tsx scripts/assistant-tests.ts --topic "$LZC_ASSISTANT_TEST_TOPIC" --repeat "$LZC_ASSISTANT_TEST_REPETITIONS" | tee assistant-live-results.jsonl
+      - name: Verify a continuous multi-topic dialogue and native export
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.catalogue.outcome == 'success' }}
+        env:
+          LZC_MODEL_SERVING_TOKEN: ${{ secrets.LZC_MODEL_SERVING_TOKEN }}
+          LZC_EXECUTION_ENABLED: 'false'
+          LZC_APPLICATION_EXECUTION_ENABLED: 'false'
+        run: |
+          set -o pipefail
+          node --use-system-ca --import tsx scripts/assistant-journey.ts | tee assistant-journey-results.jsonl
+      - name: Upload synthetic results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: assistant-live-results
+          path: |
+            landing-zone-configurator/app/assistant-live-results.jsonl
+            landing-zone-configurator/app/assistant-journey-results.jsonl
+          retention-days: 7

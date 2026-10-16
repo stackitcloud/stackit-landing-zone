@@ -13,6 +13,24 @@ output "project_name" {
   value       = stackit_resourcemanager_project.this.name
 }
 
+output "project_network" {
+  description = "Non-secret reference to the managed project network, or null when no network is created."
+  value = try({
+    network_id         = stackit_network.this[0].network_id
+    name               = stackit_network.this[0].name
+    routed             = stackit_network.this[0].routed
+    ipv4_prefix_length = stackit_network.this[0].ipv4_prefix_length
+  }, null)
+}
+
+output "project_role_counts" {
+  description = "Counts of custom roles and explicit role assignments managed by this project module."
+  value = {
+    custom_roles     = length(stackit_authorization_project_custom_role.this)
+    role_assignments = length(stackit_authorization_project_role_assignment.this)
+  }
+}
+
 output "dns_zone_dns_name" {
   description = "The DNS name of the landing zone's child DNS zone."
   value       = try(stackit_dns_zone.this[0].dns_name, null)

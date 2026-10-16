@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">Landing Zone Configurator - Architektur auf STACKIT</title>
+  <desc id="description">Praesentationsuebersicht: Web UI mit Editor und Chat, Configurator API mit KI-Assistent und OpenTofu-Runner laufen auf STACKIT Cloud Foundry. STACKIT IDP, PostgreSQL Flex, Model Serving und die Landing Zone liegen ebenfalls auf STACKIT. Nur GitHub mit dem Accelerator-Repository liegt ausserhalb.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#667c95"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #19324e; }
+      .title { font-size: 38px; font-weight: 700; }
+      .subtitle { font-size: 23px; fill: #64788f; }
+      .heading { font-size: 26px; font-weight: 700; }
+      .caption { font-size: 20px; fill: #526b85; }
+      .group { font-size: 23px; font-weight: 700; fill: #2877b5; }
+      .card { stroke-width: 1.8; }
+      .core { fill: #ffffff; stroke: #70a4cf; }
+      .external { fill: #f8fafc; stroke: #c3cfdd; }
+      .service { fill: #f2effb; stroke: #b7a8d5; }
+      .data { fill: #fff7e9; stroke: #dfc390; }
+      .target { fill: #edf8f3; stroke: #89bcaa; }
+      .relation { fill: none; stroke: #a1afbe; stroke-width: 2.5; }
+      .flow { fill: none; stroke: #667c95; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="white"/>
+  <text x="65" y="70" class="title">Landing Zone Configurator</text>
+  <text x="65" y="110" class="subtitle">Architektur auf STACKIT</text>
+
+  <path d="M 65 145 H 900 Q 920 145 920 165 V 305 Q 920 325 940 325 H 1515 Q 1535 325 1535 345 V 825 Q 1535 845 1515 845 H 65 Q 45 845 45 825 V 165 Q 45 145 65 145 Z" fill="#f3f7fc"/>
+  <text x="70" y="180" class="group">STACKIT</text>
+  <rect x="70" y="380" width="1440" height="235" rx="22" fill="#e3effb"/>
+  <text x="100" y="417" class="group">Cloud Foundry</text>
+
+  <path d="M 245 305 V 345 H 640 V 440" class="relation"/>
+  <path d="M 730 305 V 440" class="relation"/>
+  <path d="M 870 440 V 345 H 950 V 260 H 985" class="relation"/>
+  <path d="M 380 495 H 600" class="flow"/>
+  <path d="M 960 495 H 1150" class="flow"/>
+  <path d="M 730 550 V 665 H 370 V 705" class="relation"/>
+  <path d="M 1315 550 V 705" class="flow"/>
+
+  <rect x="95" y="205" width="300" height="100" rx="15" class="card service"/>
+  <text x="120" y="247" class="heading">STACKIT IDP</text>
+  <text x="120" y="280" class="caption">Anmeldung</text>
+
+  <rect x="450" y="205" width="395" height="100" rx="15" class="card service"/>
+  <text x="475" y="247" class="heading">Model Serving</text>
+  <text x="475" y="280" class="caption">Antwort- &amp; Intent-Modell</text>
+
+  <rect x="985" y="145" width="550" height="165" rx="18" class="card external"/>
+  <text x="1010" y="181" class="heading">GitHub</text>
+  <text x="1180" y="181" class="caption">Code &amp; Zusammenarbeit</text>
+  <rect x="1010" y="210" width="500" height="80" rx="12" class="card external"/>
+  <text x="1035" y="245" class="heading">Landing Zone Accelerator</text>
+  <text x="1035" y="275" class="caption">Repository mit Infrastrukturvorlagen</text>
+
+  <rect x="100" y="440" width="280" height="110" rx="15" class="card core"/>
+  <text x="125" y="485" class="heading">Web UI</text>
+  <text x="125" y="520" class="caption">Editor + Chat</text>
+
+  <rect x="600" y="440" width="360" height="110" rx="15" class="card core"/>
+  <text x="625" y="485" class="heading">Configurator API</text>
+  <text x="625" y="520" class="caption">Backend &amp; KI-Assistent</text>
+
+  <rect x="1150" y="440" width="340" height="110" rx="15" class="card core"/>
+  <text x="1175" y="485" class="heading">Runner</text>
+  <text x="1175" y="520" class="caption">Bereitstellung mit OpenTofu</text>
+
+  <rect x="200" y="705" width="340" height="110" rx="15" class="card data"/>
+  <text x="225" y="750" class="heading">Datenbank</text>
+  <text x="225" y="785" class="caption">STACKIT PostgreSQL Flex</text>
+
+  <rect x="1080" y="705" width="410" height="110" rx="15" class="card target"/>
+  <text x="1105" y="750" class="heading">Landing Zone</text>
+  <text x="1105" y="785" class="caption">Bereitgestellte STACKIT-Umgebung</text>
+</svg>

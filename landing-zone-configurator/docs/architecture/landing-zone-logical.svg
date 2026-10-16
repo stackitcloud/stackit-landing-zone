@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">Von Vorlagen zu Landing Zones - logische Sicht</title>
+  <desc id="description">Der Platform Engineer erstellt die Plattformkonfiguration und Application-Templates mit KI-Unterstuetzung und berechtigt den Application Owner. Dieser bestellt Application Landing Zones auf der gemeinsamen Plattform. Das GitHub-Repository stellt die Versionsbasis des Configurators bereit. Ein autorisierter STACKIT Service Account ermoeglicht die technischen Cloud-Zugriffe fuer die Bereitstellung.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#667c95"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #19324e; }
+      .title { font-size: 38px; font-weight: 700; }
+      .subtitle { font-size: 23px; fill: #64788f; }
+      .heading { font-size: 24px; font-weight: 700; }
+      .caption { font-size: 20px; fill: #526b85; }
+      .label { font-size: 21px; fill: #526b85; }
+      .card { stroke-width: 1.8; }
+      .role { fill: #f2effb; stroke: #b7a8d5; }
+      .template { fill: #ffffff; stroke: #a5b8ce; }
+      .config { fill: #fff7e9; stroke: #dfc390; }
+      .platform { fill: #ffffff; stroke: #70a4cf; }
+      .application { fill: #ffffff; stroke: #89bcaa; }
+      .repository { fill: #f8fafc; stroke: #c3cfdd; }
+      .credential { fill: #fff7e9; stroke: #dfc390; }
+      .ai { fill: #eaf8f5; stroke: #008575; stroke-width: 3; }
+      .flow { fill: none; stroke: #667c95; stroke-width: 2.8; marker-end: url(#arrow); }
+      .basis { fill: none; stroke: #89aab7; stroke-width: 2.8; stroke-dasharray: 7 6; marker-end: url(#arrow); }
+      .relation { fill: none; stroke: #a1afbe; stroke-width: 2.5; }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="white"/>
+  <text x="65" y="70" class="title">Von Vorlagen zu Landing Zones</text>
+  <text x="65" y="110" class="subtitle">Logische Sicht | Plattform gestalten, Anwendungen bereitstellen</text>
+
+  <rect x="45" y="235" width="1510" height="165" rx="22" fill="#edf5fc"/>
+  <rect x="45" y="575" width="1510" height="165" rx="22" fill="#edf8f3"/>
+
+  <path d="M 360 315 H 435" class="flow"/>
+  <path d="M 770 315 H 825" class="flow"/>
+  <path d="M 1145 315 H 1190" class="flow"/>
+  <path d="M 985 370 V 470 H 600 V 600" class="flow"/>
+  <text x="690" y="451" class="label">Definieren &amp; freigeben</text>
+  <path d="M 1430 370 V 600" class="basis"/>
+  <text x="1210" y="495" class="label">Gemeinsame Basis</text>
+  <path d="M 360 655 H 435" class="flow"/>
+  <path d="M 770 655 H 825" class="flow"/>
+  <path d="M 1145 655 H 1190" class="flow"/>
+  <path d="M 210 370 V 600" class="flow"/>
+  <text x="90" y="495" class="label">berechtigt</text>
+  <path d="M 985 235 V 260" class="relation"/>
+  <path d="M 1165 825 H 1575 V 315 H 1535" class="flow"/>
+  <path d="M 1575 655 H 1535" class="flow"/>
+
+  <rect x="825" y="145" width="320" height="90" rx="15" class="card repository"/>
+  <text x="845" y="182" class="heading">GitHub Repository</text>
+  <text x="845" y="216" class="caption">Landing Zone Configurator</text>
+
+  <rect x="65" y="260" width="295" height="110" rx="15" class="card role"/>
+  <text x="85" y="305" class="heading">Platform Engineer</text>
+  <text x="85" y="340" class="caption">Plattform &amp; Vorlagen</text>
+
+  <rect x="435" y="260" width="335" height="110" rx="15" class="card template"/>
+  <text x="455" y="305" class="heading">Plattform-Templates</text>
+  <text x="455" y="340" class="caption">Vorgegebene Ausgangsbasis</text>
+
+  <rect x="825" y="260" width="320" height="110" rx="15" class="card config ai"/>
+  <text x="845" y="305" class="heading">Plattformkonfiguration</text>
+  <text x="845" y="340" class="caption">Erstellter Plattformentwurf</text>
+
+  <rect x="1190" y="260" width="345" height="110" rx="15" class="card platform"/>
+  <text x="1210" y="305" class="heading">Platform Landing Zone</text>
+  <text x="1210" y="340" class="caption">Gemeinsame Plattform</text>
+
+  <rect x="65" y="600" width="295" height="110" rx="15" class="card role"/>
+  <text x="85" y="645" class="heading">Application Owner</text>
+  <text x="85" y="680" class="caption">Anwendung bestellen</text>
+
+  <rect x="435" y="600" width="335" height="110" rx="15" class="card template ai"/>
+  <text x="455" y="645" class="heading">Application Templates</text>
+  <text x="455" y="680" class="caption">Freigegebene Projektvorlagen</text>
+
+  <rect x="825" y="600" width="320" height="110" rx="15" class="card config"/>
+  <text x="845" y="645" class="heading">Bestellung</text>
+  <text x="845" y="680" class="caption">Vorlage + Projektparameter</text>
+
+  <rect x="1190" y="600" width="345" height="110" rx="15" class="card application"/>
+  <text x="1210" y="645" class="heading">Application Landing Zones</text>
+  <text x="1210" y="680" class="caption">Instanzen fuer Anwendungen</text>
+
+  <rect x="825" y="780" width="340" height="90" rx="15" class="card credential"/>
+  <text x="845" y="817" class="heading">STACKIT Service Account</text>
+  <text x="845" y="851" class="caption">Technischer Cloud-Zugriff</text>
+
+  <rect x="65" y="794" width="28" height="28" rx="5" class="ai"/>
+  <text x="110" y="817" class="label">KI-Hilfe beim Entwurf</text>
+  <text x="65" y="854" class="caption">Freigabe und Bereitstellung bleiben bewusste Schritte.</text>
+</svg>

@@ -1,3 +1,8 @@
+Public projects can opt into a local project network with `network_enabled = true`.
+Corporate projects retain their routed network and SNA integration. Omitting the
+option preserves existing public projects without a network. The optional
+`network_prefix_length` applies to both kinds of project network.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -52,6 +57,7 @@ No modules.
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all resources. | `map(string)` | `{}` | no |
 | <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-hub-prod". | `string` | n/a | yes |
 | <a name="input_network_area_id"></a> [network\_area\_id](#input\_network\_area\_id) | Network Area ID to deploy resources into. Required if corporate is true. | `string` | `null` | no |
+| <a name="input_network_enabled"></a> [network\_enabled](#input\_network\_enabled) | Create a local project network without SNA when corporate is false. Corporate networks are always created. | `bool` | `false` | no |
 | <a name="input_network_prefix_length"></a> [network\_prefix\_length](#input\_network\_prefix\_length) | CIDR block prefix length for the project's network range. | `number` | `null` | no |
 | <a name="input_observability"></a> [observability](#input\_observability) | Optional observability instance configuration in the landing zone project. | <pre>object({<br/>    enabled   = optional(bool, false)<br/>    plan_name = optional(string, "Observability-Starter-EU01")<br/>    acl       = optional(list(string), [])<br/>    name      = optional(string, null)<br/>  })</pre> | `{}` | no |
 | <a name="input_organization_id"></a> [organization\_id](#input\_organization\_id) | Container ID of the root organization. | `string` | n/a | yes |
@@ -78,5 +84,6 @@ No modules.
 | <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |
 | <a name="output_project_id"></a> [project\_id](#output\_project\_id) | The project ID of the created STACKIT project. |
 | <a name="output_project_name"></a> [project\_name](#output\_project\_name) | The name of the created STACKIT project. |
+| <a name="output_project_network"></a> [project\_network](#output\_project\_network) | Non-secret reference to the managed project network, or null when no network is created. |
 | <a name="output_secretsmanager_instance_id"></a> [secretsmanager\_instance\_id](#output\_secretsmanager\_instance\_id) | The ID of the landing zone Secrets Manager instance. |
 <!-- END_TF_DOCS -->

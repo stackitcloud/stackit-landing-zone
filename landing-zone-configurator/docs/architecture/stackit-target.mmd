@@ -1,0 +1,105 @@
+---
+config:
+  theme: base
+  fontFamily: Arial, Helvetica, sans-serif
+  themeCSS: 'text { font-family: Arial, Helvetica, sans-serif; }'
+  layout: elk
+  htmlLabels: false
+  markdownAutoWrap: false
+  themeVariables:
+    fontFamily: Arial, Helvetica, sans-serif
+    fontSize: 18px
+    primaryTextColor: '#172b4d'
+    lineColor: '#52657d'
+    clusterBkg: '#f7faff'
+    clusterBorder: '#a4b5cb'
+  flowchart:
+    htmlLabels: false
+    padding: 22
+    nodeSpacing: 35
+    rankSpacing: 70
+---
+flowchart LR
+  accTitle: Landing Zone Configurator - STACKIT-Zielarchitektur
+  accDescr: UI und Backend in Cloud Foundry, isolierte Runner, PostgreSQL Flex, Secrets Manager, Model Serving, STACKIT IDP, GitHub und gepinnter Accelerator mit getrenntem Kunden-State.
+  USER["Benutzer / Browser<br/>Platform Engineer / Application Owner"]
+
+  subgraph GITHUB["GitHub | Repository-Zugriff und Software-Lieferkette"]
+    direction TB
+    GH["GitHub<br/>Optionale OAuth-Verbindung<br/>Benutzer-Forks / Konfiguration / Pull Requests"]
+    REPO["Landing Zone Accelerator Repo<br/>stackitcloud/stackit-landing-zone<br/>Freigegebene, gepinnte Revision"]
+    CI["GitHub Actions / CI-CD<br/>Build, Tests, Release-Artefakte<br/>Freigegebene Promotion"]
+    REPO -->|"Quellen + Versions-Pin"| CI
+  end
+
+  subgraph STACKIT["STACKIT | Geplante gehostete Zielarchitektur"]
+    direction TB
+    IDP["STACKIT IDP<br/>OIDC Authorization Code + PKCE S256<br/>Menschliche Identitaet"]
+
+    subgraph CFAPP["Cloud Foundry | Configurator-Organisation / App-Space"]
+      direction TB
+      ROUTER["CF Router / HTTPS<br/>Oeffentliche Route + TLS"]
+      subgraph APP["Eine CF-App | UI und Backend gemeinsam ausgeliefert"]
+        direction TB
+        UI["UI Service<br/>React SPA<br/>Editor, Assistant, Freigaben"]
+        API["Backend Services / API<br/>Auth, Mandanten, Konfiguration, Templates<br/>Assistant, GitHub, Jobs und Broker"]
+        UI <-->|"Session / CSRF / REST / Streaming"| API
+      end
+      MIG["Migration-App / CF Task<br/>Kurzlebig, ohne oeffentliche Route<br/>Nur fuer versionierte DB-Migrationen"]
+      ROUTER <-->|"Statische UI + API-Routing"| UI
+    end
+
+    CFAPI["Cloud Foundry Control Plane<br/>CF API / Task-Lebenszyklus"]
+    subgraph CFRUN["Cloud Foundry | Separate Runner-Organisation / Runner-Space"]
+      RUN["Isolierter Runner je Auftrag<br/>Kurzlebige App + CF Task<br/>OpenTofu + gepinnter Accelerator / Provider"]
+    end
+
+    subgraph SERVICES["STACKIT Managed Services | Configurator-Betrieb"]
+      direction TB
+      DB[("PostgreSQL Flex<br/>Sessions, Mandanten, Rollen, Entwuerfe<br/>Jobs, Audit, verschluesselte Planartefakte<br/>Temporaerer Bootstrap-State")]
+      VAULT["Secrets Manager<br/>Service-Account-Schluessel<br/>GitHub-Tokens / Backend-Zugangsdaten"]
+      MODEL["AI Model Serving<br/>Natuerliche Sprache zu Konfigurationsvorschlaegen<br/>Keine Ausfuehrungsberechtigung"]
+    end
+
+    subgraph CUSTOMER["STACKIT | Kundenorganisation / Zielprojekte"]
+      direction TB
+      CLOUD["STACKIT APIs / IAM<br/>Organisationen, Projekte, Rollen<br/>Netzwerke und Produktdienste"]
+      RES["Landing-Zone-Ressourcen<br/>Management, Plattform, Anwendungen"]
+      STATE[("Object Storage / S3 State-Backend<br/>Kunden-State + Lockfiles<br/>Separate Plattform- / Application-Keys")]
+      CLOUD -->|"Provisioniert / verwaltet"| RES
+    end
+  end
+
+  USER <-->|"HTTPS"| ROUTER
+  USER -->|"Browser-Redirect / Anmeldung"| IDP
+  API <-->|"Token-Austausch / Userinfo / JWKS"| IDP
+  API <-->|"SQL ueber TLS / eingeschraenkte Rolle + RLS"| DB
+  API <-->|"Autorisierte Secret-Nutzung"| VAULT
+  API <-->|"Konfigurationskontext / Vorschlag"| MODEL
+  API <-->|"OAuth / Repository-API"| GH
+  API -->|"Organisationsrechte / Kataloge pruefen"| CLOUD
+  API -->|"Explizit freigegebenen Auftrag dispatchen"| CFAPI
+  CFAPI -->|"Task starten / stoppen / bereinigen"| RUN
+  RUN <-->|"Job-Ticket: Inputs, Credentials, Status, Ergebnis"| API
+  RUN -->|"Service-Account: Plan / freigegebenes Apply"| CLOUD
+  RUN <-->|"State lesen / schreiben / sperren"| STATE
+  API -->|"Gebundenen Remote-State verifizieren"| STATE
+  CI -.->|"App-Release: UI + API"| API
+  CI -.->|"Gepinntes Runner-Template stagen"| CFAPI
+  CI -.->|"Vor dem App-Start ausfuehren"| MIG
+  MIG -.->|"SQL ueber TLS / separate Migration-Owner-Rolle"| DB
+
+  classDef client fill:#ffffff,stroke:#52657d,stroke-width:2px,color:#172b4d;
+  classDef app fill:#e8f2ff,stroke:#2772b8,stroke-width:2px,color:#172b4d;
+  classDef runner fill:#e5f6f4,stroke:#008575,stroke-width:2px,color:#123b36;
+  classDef managed fill:#f0ebff,stroke:#7962ad,stroke-width:2px,color:#30204d;
+  classDef external fill:#f0f3f7,stroke:#65738a,stroke-width:2px,color:#25364c;
+  classDef target fill:#edf7e8,stroke:#5c8547,stroke-width:2px,color:#284521;
+  classDef storage fill:#fff3df,stroke:#b88228,stroke-width:2px,color:#593d16;
+  class USER client;
+  class ROUTER,UI,API,MIG app;
+  class CFAPI,RUN runner;
+  class IDP,VAULT,MODEL managed;
+  class GH,REPO,CI external;
+  class CLOUD,RES target;
+  class DB,STATE storage;

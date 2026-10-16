@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
+  "include": [
+    "tests/**/*.ts",
+    "apps/api/src/**/*.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts",
+    "integration/**/*.ts",
+    "scripts/assistant-tests.ts",
+    "scripts/local-workstation.ts"
+  ]
+}

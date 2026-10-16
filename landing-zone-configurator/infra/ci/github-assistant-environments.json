@@ -1,0 +1,15 @@
+{
+  "repository": "stackitcloud/stackit-landing-zone",
+  "branch": "main",
+  "reviewer": "lweberru",
+  "environments": [
+    {
+      "name": "assistant-tests",
+      "review": false,
+      "branches": [
+        "main",
+        "feature/landing-zone-configurator"
+      ]
+    }
+  ]
+}
