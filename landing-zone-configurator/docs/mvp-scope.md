@@ -36,6 +36,9 @@ customer configuration or network topology.
   Helm endpoints in customer networks.
 - **DNS roles are not visibility controls.** Primary and Secondary are native
   authoritative roles; the Secondary server configuration is not complete.
+- **Managed Private DNS Resolver integration is deferred**
+  ([#100](https://github.com/stackitcloud/stackit-landing-zone/issues/100)).
+  Existing zone/area DNS settings do not implement that separate product.
 - **Cloud facts remain external.** Availability, entitlement, throughput, usable
   networks and effective permissions require current authoritative verification.
 - **Assistant qualification is bounded.** Passing synthetic scenarios does not

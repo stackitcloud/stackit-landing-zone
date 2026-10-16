@@ -94,6 +94,51 @@ test("required Accelerator checks remain visible and fail closed on change detec
  assert.match(workflow,/git diff --name-only "\$BASE_SHA" "\$GITHUB_SHA"/);
  assert.match(workflow,/Comparison base unavailable; running all Accelerator checks/);
 });
+test("actual workflow scope distinguishes docs, Configurator and native changes",()=>{
+ const workflow=readFileSync(new URL("../../../.github/workflows/validate.yml",import.meta.url),"utf8");
+ const block=workflow.match(/- name: Detect native infrastructure changes[\s\S]*?        run: \|\n([\s\S]*?)\n  format:/)?.[1];
+ assert.ok(block);
+ const command=block.replace(/^          /gm,"");
+ const dir=mkdtempSync(join(tmpdir(),"lzc-change-scope-")),repo=join(dir,"repo"),output=join(dir,"output");
+ mkdirSync(repo);
+ const git=(args)=>{
+  const result=spawnSync("git",args,{cwd:repo,encoding:"utf8"});
+  assert.equal(result.status,0,result.stderr);
+  return result.stdout.trim();
+ };
+ const commit=(file,content)=>{
+  mkdirSync(join(repo,file,".."),{recursive:true});
+  writeFileSync(join(repo,file),content);
+  git(["add","."]);git(["commit","-qm","Synthetic scope fixture"]);
+  return git(["rev-parse","HEAD"]);
+ };
+ const run=(base,head,event="pull_request")=>{
+  rmSync(output,{force:true});
+  return spawnSync("bash",["-c",command],{cwd:repo,encoding:"utf8",env:{...process.env,BASE_SHA:base,GITHUB_SHA:head,GITHUB_EVENT_NAME:event,GITHUB_OUTPUT:output,RUNNER_TEMP:dir}});
+ };
+ try{
+  git(["init","--quiet"]);git(["config","user.name","Scope Test"]);git(["config","user.email","scope@example.invalid"]);git(["config","commit.gpgsign","false"]);
+  let head=commit("README.md","base");
+  for(const [file,expected]of [
+   ["README.md",false],["landing-zone-configurator/app/example.ts",false],
+   ["src/example.tf",true],["mise.toml",true],[".tflint.hcl",true],
+   [".github/workflows/validate.yml",true],[".github/workflows/configurator-release.yml",false],
+  ]){
+   const base=head;head=commit(file,`synthetic ${file}`);
+   const result=run(base,head);
+   assert.equal(result.status,0,result.stderr);
+   assert.equal(readFileSync(output,"utf8"),`accelerator=${expected}\n`,file);
+  }
+  for(const event of ["pull_request","workflow_dispatch"]){
+   const result=run("",head,event);
+   assert.equal(result.status,0,result.stderr);
+   assert.equal(readFileSync(output,"utf8"),"accelerator=true\n");
+  }
+  const failed=run(head,"not-a-commit");
+  assert.notEqual(failed.status,0);
+  assert.equal(existsSync(output),false);
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
 test("migration diagnostics export only bounded evidence for the selected run",()=>{
  const parser=fileURLToPath(new URL("./migration-evidence.mjs",import.meta.url));
  const evidence={service:"database-migrations",runId:"123",ok:false,phase:"migrate",version:"053_assistant_conversations.sql",error:"42501",message:"synthetic-private-sql",password:"synthetic-private-password"};
