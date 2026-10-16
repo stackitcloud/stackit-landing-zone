@@ -568,6 +568,225 @@ describe.skipIf(!enabled)(
       expect(test.runner.start).toHaveBeenCalledTimes(1);
     });
 
+    it.each([
+      ["fresh", "default"],
+      ["fresh", "s3"],
+      ["failed-first-plan", "default"],
+      ["failed-first-plan", "s3"],
+    ] as const)(
+      "prepares the current Accelerator for an initial platform with %s state and %s backend",
+      async (stateKind, backendKind) => {
+        const test = await fixture(false, true);
+        const legacy = new Preparations(pool, test.repositories, test.profiles);
+        const backend =
+          backendKind === "s3"
+            ? await test.backends.register(test.owner, {
+                descriptor: {
+                  bucket: "initial-platform-state",
+                  endpoint: "https://object.storage.eu01.onstackit.cloud",
+                  region: "eu01",
+                  key: "terraform.tfstate",
+                  useLockfile: true,
+                },
+                credentials: {
+                  accessKeyId: "initial-test-access",
+                  secretAccessKey: "initial-test-secret",
+                },
+              })
+            : undefined;
+        const request = {
+          source: "database" as const,
+          configurationId: test.configurationId,
+          revision: 1,
+          credentialId: test.credentialId,
+          ...(backend ? { backendId: backend.id } : {}),
+        };
+        if (backend)
+          test.remote.set(
+            "terraform.tfstate",
+            Buffer.from(
+              JSON.stringify({
+                version: 4,
+                serial: 0,
+                lineage: randomUUID(),
+                outputs: {},
+                resources: [],
+              }),
+            ),
+          );
+        if (stateKind === "failed-first-plan") {
+          const previous = await legacy.create(test.owner, null, request);
+          const run = await test.plans.start(
+            test.owner,
+            test.token,
+            previous.id,
+          );
+          await test.plans.result(test.tickets.get(run.id)!, {
+            status: "failed",
+            errorCode: "input_invalid",
+          });
+        }
+        const readState = () =>
+          withTenant(pool, test.owner, async (client) => {
+            const configuration = await client.query(
+              "SELECT document,revision FROM lzc.configurations WHERE id=$1",
+              [test.configurationId],
+            );
+            const states = await client.query(
+              "SELECT state_key,version::text,backend_id FROM lzc.platform_states WHERE configuration_id=$1",
+              [test.configurationId],
+            );
+            return { configuration: configuration.rows, states: states.rows };
+          });
+        const before = await readState();
+        expect(before.states).toHaveLength(
+          stateKind === "failed-first-plan" ? 1 : 0,
+        );
+        const existing = await legacy.list(test.owner);
+        const preparations = new Preparations(
+          pool,
+          test.repositories,
+          test.profiles,
+          true,
+          platformUpgradeAcceleratorCommit,
+        );
+        const prepared = await preparations.create(test.owner, null, {
+          ...request,
+          platformUpgrade: {
+            confirm: true,
+            acceleratorCommit: platformUpgradeAcceleratorCommit,
+          },
+        });
+        expect(await readState()).toEqual(before);
+        const records = await preparations.list(test.owner);
+        for (const original of existing)
+          expect(records.find((record) => record.id === original.id)).toEqual(
+            original,
+          );
+        const manifest = records.find(
+          (record) => record.id === prepared.id,
+        )!.manifest;
+        expect(manifest.configuration).toEqual(test.manifest.configuration);
+        expect(manifest.platformContractNamespace).toBe(test.owner.tenantId);
+        expect(manifest.backend?.id).toBe(backend?.id);
+        test.runner.supportsAccelerator.mockImplementation(
+          (commit) => commit === platformUpgradeAcceleratorCommit,
+        );
+        const run = await test.plans.start(test.owner, test.token, prepared.id);
+        const ticket = test.tickets.get(run.id)!;
+        const input = await test.plans.input(ticket);
+        expect(input.acceleratorCommit).toBe(platformUpgradeAcceleratorCommit);
+        expect(input.tfvars).toBe(
+          serializeTfvars({
+            ...recordValues(test.manifest.configuration),
+            platform_contract_namespace: test.owner.tenantId,
+          }),
+        );
+        expect(input.tfvarsSha256).toBe(manifest.tfvarsSha256);
+        expect(sha256(Buffer.from(input.tfvars))).toBe(manifest.tfvarsSha256);
+        await test.plans.stage(ticket, "validating");
+        await test.plans.stage(ticket, "planning");
+        const artifact = await test.plans.artifact(ticket, {
+          data: Buffer.from(
+            "initial-platform-test-plan-never-applied",
+          ).toString("base64"),
+          summary,
+        });
+        await test.plans.result(ticket, {
+          status: "succeeded",
+          summary,
+          artifactSha256: artifact.sha256,
+        });
+        expect(
+          (await test.plans.list(test.owner)).find(
+            (record) => record.id === run.id,
+          )?.status,
+        ).toBe("succeeded");
+        const after = await readState();
+        expect(after.configuration).toEqual(before.configuration);
+        expect(after.states).toEqual([
+          {
+            state_key:
+              before.states[0]?.state_key ??
+              stableStateKey(test.owner, manifest),
+            version: backend ? "1" : "0",
+            backend_id: backend?.id ?? null,
+          },
+        ]);
+        expect(test.repositories.prepareSnapshot).not.toHaveBeenCalled();
+        expect(test.token).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(["locked", "persisted"] as const)(
+      "does not treat a %s platform state as a fresh Accelerator preparation",
+      async (stateKind) => {
+        const test = await fixture();
+        const run = await test.plans.start(
+          test.owner,
+          test.token,
+          test.preparationId,
+        );
+        const key = stableStateKey(test.owner, test.manifest);
+        await withTenant(pool, test.owner, async (client) => {
+          if (stateKind === "locked")
+            await client.query(
+              "UPDATE lzc.platform_states SET lock_run_id=$2,lock_id='initial-test-lock' WHERE state_key=$1",
+              [key, run.id],
+            );
+          else
+            await client.query(
+              "UPDATE lzc.platform_states SET version=$2,ciphertext=$3 WHERE state_key=$1",
+              [
+                key,
+                1,
+                test.execution.crypto.encrypt(
+                  Buffer.from(
+                    JSON.stringify({
+                      version: 4,
+                      serial: 1,
+                      lineage: randomUUID(),
+                      outputs: {},
+                      resources: [],
+                    }),
+                  ),
+                  test.owner.tenantId,
+                  key,
+                  `state:${key}`,
+                ),
+              ],
+            );
+        });
+        const preparations = new Preparations(
+          pool,
+          test.repositories,
+          test.profiles,
+          true,
+          platformUpgradeAcceleratorCommit,
+        );
+        const before = await preparations.list(test.owner);
+        await expect(
+          preparations.create(test.owner, null, {
+            source: "database",
+            configurationId: test.configurationId,
+            revision: 1,
+            credentialId: test.credentialId,
+            platformUpgrade: {
+              confirm: true,
+              acceleratorCommit: platformUpgradeAcceleratorCommit,
+            },
+          }),
+        ).rejects.toMatchObject({
+          code:
+            stateKind === "locked"
+              ? "state_locked"
+              : "platform_upgrade_state_unavailable",
+        });
+        expect(await preparations.list(test.owner)).toEqual(before);
+        expect(test.runner.start).toHaveBeenCalledTimes(1);
+      },
+    );
+
     it("prepares an explicitly selected platform upgrade on the exact existing state without rebinding the old preparation", async () => {
       const test = await fixture();
       const descriptor = {

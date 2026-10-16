@@ -74,6 +74,20 @@ const errors: Record<string, string> = {
     "Maximal 100 Vorbereitungen. Entferne zuerst nicht mehr benötigte Einträge.",
   platform_upgrade_unavailable:
     "Der aktuelle Accelerator-Stand ist für neue Vorbereitungen nicht freigegeben. Bitte die Runner-Konfiguration prüfen lassen.",
+  platform_upgrade_state_unavailable:
+    "Für den Accelerator-Wechsel einer bereits bereitgestellten Plattform muss deren vorhandener State an ein S3-Backend gebunden sein. Prüfe die State-Übernahme; deine Konfiguration bleibt unverändert.",
+  state_locked:
+    "Der Plattform-State ist durch eine laufende Ausführung gesperrt. Prüfe den Ausführungsstatus und warte auf deren Abschluss.",
+  backend_not_found:
+    "Das ausgewählte State-Backend ist nicht mehr verfügbar. Wähle das zur Landing Zone gehörende Backend erneut aus.",
+  backend_binding_changed:
+    "Das ausgewählte State-Backend passt nicht zur bestehenden Landing Zone. Verwende deren gebundenes Backend; es wird kein neuer State angelegt.",
+  invalid_request_origin_or_csrf:
+    "Die Sicherheitsbestätigung deiner Sitzung ist nicht mehr aktuell. Lade die Seite neu und melde dich gegebenenfalls erneut an.",
+  invalid_preparation_request:
+    "Die Vorbereitung enthält ungültige oder zur aktuellen API-Version unpassende Angaben. Lade die Seite neu und wähle die gespeicherte Konfiguration erneut aus.",
+  github_connection_required:
+    "Für eine im GitHub-Fork gespeicherte Konfiguration ist eine GitHub-Verbindung erforderlich. Verbinde GitHub oder wähle eine in der Datenbank gespeicherte Konfiguration.",
 };
 export function Deployments({
   session,
@@ -133,11 +147,17 @@ export function Deployments({
     });
     if (response.status === 204) return null;
     const data = await response.json();
-    if (!response.ok)
+    if (!response.ok) {
+      const code =
+        typeof data.error === "string" &&
+        /^[a-z][a-z0-9_]{0,79}$/.test(data.error)
+          ? data.error
+          : "unexpected_response";
       throw new Error(
-        errors[data.error] ??
-          "Die Aktion konnte nicht bestätigt werden. Aktualisiere die Liste, bevor du es erneut versuchst.",
+        errors[code] ??
+          `${t("Die Anfrage ist fehlgeschlagen.")} (HTTP ${response.status}, ${t("Fehlercode:")} ${code}).`,
       );
+    }
     return data;
   }
   async function refresh(signal = lifetime.current?.signal) {

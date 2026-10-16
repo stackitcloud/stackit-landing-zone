@@ -67,6 +67,8 @@ jobs:
           npm run check
           node --test ../infra/ci/prepare-release.test.mjs
           node --test ../infra/ci/image-staging.test.mjs
+      - name: Test first preparations and stateful platform Plan/Apply broker
+        run: npm run test:platform-database
       - name: Test database migrations and tenant isolation
         run: npm run test:database -- --maxWorkers=2 --testTimeout=30000
         env:
@@ -108,6 +110,7 @@ jobs:
           tofu_wrapper: false
       - name: Test real OpenTofu contract and package isolated runner
         run: |
+          npm run test:common-contract
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
           LZC_HOSTED_EXECUTION_PACKAGE=true LZC_PACKAGE_APPLICATION_ROOT=true LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true bash ../deploy/runner/package.sh
           cp -R ../.local/runner ../.local/release/inspection

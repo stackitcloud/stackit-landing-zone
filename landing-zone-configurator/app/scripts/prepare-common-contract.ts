@@ -25,9 +25,36 @@ const runs = catalogue.templates.map((template) => {
   variables {
 ${exportCommonTfvars(document)}
   }
-${template.id === "standalone" ? "  # Upstream #84: omitted corporate=false must remain observable.\n  expect_failures = [var.landing_zones]" : ""}
+${
+  template.id === "standalone"
+    ? `  assert {
+    condition = length(output.application_projects) > 0 && alltrue([for project in values(output.application_projects) : !project.corporate]) && var.connectivity == null && var.connectivity_regions == null
+    error_message = "The Standalone template must explicitly export Public projects without central connectivity."
+  }`
+    : ""
+}
 }`;
 });
+for (const explicit of [false, true]) {
+  runs.push(`run "corporate_${explicit ? "explicit" : "default"}_requires_connectivity" {
+  command = plan
+  variables {
+    owner_email = "owner@example.com"
+    company_name = "Contract test"
+    company_code = "test"
+    organization_id = "11111111-2222-4333-8444-555555555555"
+    landing_zones = {
+      application = {
+        project_name = "Contract application"
+        project_code = "app"
+        owner_email = "owner@example.com"
+        ${explicit ? "corporate = true" : ""}
+      }
+    }
+  }
+  expect_failures = [var.landing_zones]
+}`);
+}
 runs.push(`run "standalone_editor_preset" {
   command = plan
   variables {

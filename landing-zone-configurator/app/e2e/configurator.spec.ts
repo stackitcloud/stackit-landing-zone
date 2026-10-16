@@ -4281,8 +4281,12 @@ test.describe("explicit saved-plan approval", () => {
       .fill(organizationId);
   }
 
-  for (const useS3 of [false, true]) {
-    test(`database preparation and plan preview without GitHub${useS3 ? " using bound S3 state" : ""}`, async ({
+  for (const { useS3, currentSource } of [
+    { useS3: false, currentSource: false },
+    { useS3: false, currentSource: true },
+    { useS3: true, currentSource: true },
+  ]) {
+    test(`database preparation and plan preview without GitHub${useS3 ? " using bound S3 state" : ""}${currentSource ? " using current Accelerator" : ""}`, async ({
       page,
     }, testInfo) => {
       const githubRequests = await setup(page);
@@ -4376,6 +4380,7 @@ test.describe("explicit saved-plan approval", () => {
         route.fulfill({ json: { configuration } }),
       );
       let stored = false;
+      let preparationError: string | null = null;
       await page.route("**/api/v1/preparations", (route) => {
         if (route.request().method() === "POST") {
           expect(route.request().postDataJSON()).toEqual({
@@ -4384,7 +4389,7 @@ test.describe("explicit saved-plan approval", () => {
             revision: 7,
             credentialId,
             ...(useS3 ? { backendId } : {}),
-            ...(useS3
+            ...(currentSource
               ? {
                   platformUpgrade: {
                     confirm: true,
@@ -4394,6 +4399,11 @@ test.describe("explicit saved-plan approval", () => {
               : {}),
           });
           expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+          if (preparationError)
+            return route.fulfill({
+              status: 409,
+              json: { error: preparationError },
+            });
           stored = true;
           return route.fulfill({ status: 201, json: { id: preparationId } });
         }
@@ -4401,8 +4411,8 @@ test.describe("explicit saved-plan approval", () => {
           json: {
             preparations: stored ? [preparation] : [],
             capabilities: {
-              platformUpgradeEnabled: useS3,
-              runnerAcceleratorCommit: useS3
+              platformUpgradeEnabled: currentSource,
+              runnerAcceleratorCommit: currentSource
                 ? platformUpgradeAcceleratorCommit
                 : supportedAcceleratorRevision,
             },
@@ -4483,7 +4493,7 @@ test.describe("explicit saved-plan approval", () => {
         ).toBeDisabled();
       }
       await page.getByLabel("Persönlicher Zugang").selectOption(credentialId);
-      if (useS3) {
+      if (currentSource) {
         await expect(
           page.getByRole("button", {
             name: "Zugang prüfen und Vorbereitung speichern",
@@ -4496,6 +4506,48 @@ test.describe("explicit saved-plan approval", () => {
             name: /^Ich bestätige: Diese Vorbereitung verwendet/,
           })
           .check();
+      }
+      if (currentSource) {
+        for (const [code, message] of [
+          [
+            "platform_upgrade_state_unavailable",
+            "vorhandener State an ein S3-Backend gebunden",
+          ],
+          ["state_locked", "durch eine laufende Ausführung gesperrt"],
+          [
+            "invalid_request_origin_or_csrf",
+            "Sicherheitsbestätigung deiner Sitzung",
+          ],
+          [
+            "unexpected_preparation_failure",
+            "HTTP 409, Fehlercode: unexpected_preparation_failure",
+          ],
+        ] as const) {
+          preparationError = code;
+          await page
+            .getByRole("button", {
+              name: "Zugang prüfen und Vorbereitung speichern",
+            })
+            .click();
+          await expect(page.getByRole("alert")).toContainText(message);
+          expect(stored).toBe(false);
+          expect(planned).toBe(false);
+        }
+        preparationError = null;
+        await page
+          .getByRole("button", { name: "Vorbereitungen aktualisieren" })
+          .click();
+        await expect(
+          page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
+        ).toHaveValue(configurationId);
+        await expect(page.getByLabel("Persönlicher Zugang")).toHaveValue(
+          credentialId,
+        );
+        await expect(
+          page.getByRole("checkbox", {
+            name: /^Ich bestätige: Diese Vorbereitung verwendet/,
+          }),
+        ).toBeChecked();
       }
       await page
         .getByRole("button", {

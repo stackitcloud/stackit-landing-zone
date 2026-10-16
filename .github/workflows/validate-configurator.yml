@@ -95,15 +95,16 @@ jobs:
         run: npm ci
       - name: Lint, typecheck, build and test
         run: npm run check
+      - name: Check release configuration with the built API validators
+        run: node --test ../infra/ci/prepare-release.test.mjs
+      - name: Test first preparations and stateful platform Plan/Apply broker
+        run: npm run test:platform-database
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: '1.12.6'
           tofu_wrapper: false
       - name: Check all template exports against native Accelerator variable contracts
-        run: |
-          node scripts/prepare-common-contract.ts
-          tofu -chdir=../.local/common-contract init -backend=false -input=false -no-color
-          tofu -chdir=../.local/common-contract test -no-color
+        run: npm run test:common-contract
       - name: Test database migrations and tenant isolation
         run: npm run test:database
         env:
@@ -147,7 +148,7 @@ jobs:
           tofu_version: '1.12.6'
           tofu_wrapper: false
       - name: Check operator plan guard
-        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/prepare-release.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs
+        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs
       - name: Check formatting
         run: tofu -chdir=infra fmt -check -recursive
       - name: Prepare disposable validation encryption

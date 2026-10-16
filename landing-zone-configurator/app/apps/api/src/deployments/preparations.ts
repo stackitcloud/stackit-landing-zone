@@ -305,20 +305,16 @@ export class Preparations {
         `state-source:${session.tenantId}:${input.configurationId}`,
       ]);
       const bound = await stateForSource(c, input.configurationId);
-      if (input.platformUpgrade) {
-        const current = bound
-          ? (
-              await c.query(
-                "SELECT version,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE",
-                [bound.state_key],
-              )
-            ).rows[0]
-          : undefined;
-        if (
-          !current?.backend_id ||
-          current.lock_run_id ||
-          Number(current.version) < 1
-        )
+      if (input.platformUpgrade && bound) {
+        const current = (
+          await c.query(
+            "SELECT version,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE",
+            [bound.state_key],
+          )
+        ).rows[0];
+        if (current?.lock_run_id)
+          throw new CredentialError(423, "state_locked");
+        if (!current || (Number(current.version) > 0 && !current.backend_id))
           throw new CredentialError(409, "platform_upgrade_state_unavailable");
       }
       if (input.backendId && bound && input.backendId !== bound.backend_id)

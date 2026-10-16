@@ -22,6 +22,28 @@ test("migration task can unpack the full release and web routes match the regist
  assert.ok(workflow.indexOf("Retire previous suffixed route after canonical checks")>workflow.indexOf("Public route checks"));
  assert.match(workflow,/cf unmap-route landing-zone-configurator apps\.01\.cf\.eu01\.stackit\.cloud --hostname lzc-dev-configurator-7dbff805/);
 });
+test("release configuration guards run after the API build, not in infrastructure-only jobs",()=>{
+ const workflow=readFileSync(new URL("../../../.github/workflows/validate-configurator.yml",import.meta.url),"utf8");
+ const application=workflow.split("\n  application:\n")[1]?.split("\n  infrastructure:\n")[0];
+ const infrastructure=workflow.split("\n  infrastructure:\n")[1];
+ assert.ok(application,"Application validation job is required");
+ assert.ok(infrastructure,"Infrastructure validation job is required");
+ assert.match(application,/run: npm run check[\s\S]+run: node --test \.\.\/infra\/ci\/prepare-release\.test\.mjs/);
+ assert.doesNotMatch(infrastructure,/prepare-release\.test\.mjs/);
+});
+test("validation and release both execute native template and stateful platform regressions",()=>{
+ const scripts=JSON.parse(readFileSync(new URL("../../app/package.json",import.meta.url),"utf8")).scripts;
+ assert.match(scripts["test:platform-database"],/^LZC_PLAN_DATABASE_TEST=true vitest run tests\/platform-plan\.test\.ts --no-file-parallelism --testTimeout=30000$/);
+ assert.match(scripts["test:common-contract"],/^node scripts\/prepare-common-contract\.ts && /);
+ assert.match(scripts["test:common-contract"],/init -backend=false/);
+ assert.match(scripts["test:common-contract"],/validate -no-color/);
+ assert.match(scripts["test:common-contract"],/test -no-color$/);
+ for(const file of ["validate-configurator.yml","configurator-release.yml"]){
+  const workflow=readFileSync(new URL(`../../../.github/workflows/${file}`,import.meta.url),"utf8");
+  assert.match(workflow,/run: npm run test:platform-database/);
+  assert.match(workflow,/^\s+npm run test:common-contract$|run: npm run test:common-contract/m);
+ }
+});
 test("migration diagnostics export only bounded evidence for the selected run",()=>{
  const parser=fileURLToPath(new URL("./migration-evidence.mjs",import.meta.url));
  const evidence={service:"database-migrations",runId:"123",ok:false,phase:"migrate",version:"053_assistant_conversations.sql",error:"42501",message:"synthetic-private-sql",password:"synthetic-private-password"};
@@ -71,10 +93,12 @@ test("promotion requires the successful build's exact repository, source and imm
  assert.throws(()=>approvedReleaseSource(run,jobs,[artifact,artifact],"12345"));
 });
 test("release uses private inputs, rejects wrong destinations and omits privileged credentials",()=>{
+ const apiDist=fileURLToPath(new URL("../../app/apps/api/dist",import.meta.url));
+ assert.ok(existsSync(join(apiDist,"auth/stackit-device.js")),"Release configuration tests require the built API; run npm ci and npm run build in app first.");
  const dir=mkdtempSync(join(tmpdir(),"lzc-release-test-"));
  const env={...process.env,GITHUB_REPOSITORY:"stackitcloud/stackit-landing-zone",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",LZC_RELEASE_REVISION:"a".repeat(40),RUNNER_TEMP:dir,GITHUB_ENV:join(dir,"environment"),LZC_WORKLOAD_BUCKET:"lzc-dev-state-7dbff805",LZC_STATE_KEY_PLATFORM:"p".repeat(40),LZC_STATE_KEY_RUNTIME:"r".repeat(40),LZC_WORKLOAD_ACCESS_KEY:"test-access",LZC_WORKLOAD_SECRET_KEY:"test-secret"};
  const artifactApi=join(dir,".local/release/apps/api");mkdirSync(artifactApi,{recursive:true});
- symlinkSync(fileURLToPath(new URL("../../app/apps/api/dist",import.meta.url)),join(artifactApi,"dist"),"dir");
+ symlinkSync(apiDist,join(artifactApi,"dist"),"dir");
  const run=mode=>spawnSync(process.execPath,[script,mode],{env,cwd:dir,encoding:"utf8"});
  Object.assign(env,{LZC_AUTH_ENABLED:"false",LZC_ASSISTANT_ENABLED:"false",LZC_STACKIT_DEVICE_ENABLED:"false",LZC_STACKIT_CLI_CLIENT_APPROVED:"false",LZC_GITHUB_CLIENT_ID:"",LZC_GITHUB_CLIENT_SECRET:""});
  try {
@@ -149,7 +173,8 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
     env.LZC_STACKIT_REDIRECT_URI="https://lzc-dev-configurator-7dbff805.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback";
     assert.notEqual(run("application").status,0,"must reject the previous public origin callback");
     env.LZC_STACKIT_REDIRECT_URI="https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback";
-    assert.equal(run("application").status,0,"STACKIT login must not require GitHub");
+    const stackitRun=run("application");
+    assert.equal(stackitRun.status,0,`STACKIT login without GitHub failed: ${stackitRun.stderr}`);
     const stackit=JSON.parse(readFileSync(vars));
     assert.equal(stackit.LZC_STACKIT_DEVICE_ENABLED,"true");
     assert.equal(stackit.LZC_STACKIT_CLI_CLIENT_APPROVED,"false");

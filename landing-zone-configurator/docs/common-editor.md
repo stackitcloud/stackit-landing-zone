@@ -224,6 +224,42 @@ Vorbereitung an, statt nur eine ungültige Konfiguration zu melden. Bestehende
 Vorbereitungen, State-Bindungen und Plan-Nachweise werden dabei nicht umgeschrieben;
 Plan und Apply behalten ihre eigenen Freigaben.
 
+Die Auswahl des aktuellen Accelerator-Stands ist auch für eine Erstbereitstellung
+zulässig; sie setzt keine bereits bereitgestellte Plattform voraus. Ohne
+State-Bindung oder mit einem leeren Standard-State (Version 0) kann eine neue
+Vorbereitung entstehen. Das gilt auch nach einem fehlgeschlagenen ersten Plan.
+Vorhandene Bindungen bleiben erhalten. Ein gesperrter State verhindert den
+Wechsel weiterhin ausdrücklich; ein bereits gespeicherter Standard-State muss
+vor dem Wechsel an sein S3-Backend übernommen werden. Ein ausgewähltes
+S3-Backend ohne lesbaren State erlaubt weiterhin keinen Bootstrap.
+Vorbereitungsfehler benennen State-Sperren, Backend-Konflikte, ungültige
+Anfragen und abgelaufene Sicherheitsbestätigungen getrennt. Unbekannte
+Serverfehler zeigen HTTP-Status und Fehlercode statt einer endlosen
+Aufforderung zum Aktualisieren der Liste.
+
+Die zugehörige lokale Regression umfasst frische und zuvor fehlgeschlagene
+Erstpläne mit Standard- und S3-Backend bis zum erfolgreichen Plan-Nachweis,
+ohne Apply. Sie prüft unveränderte Konfigurationen, alte Vorbereitungen,
+State-Bindungen und weiterhin gesperrte Zustände. Desktop- und Mobiltests
+decken außerdem die ausdrückliche Auswahl des aktuellen Accelerator-Stands
+ohne vorhandenes S3-Backend sowie konkrete und unbekannte Fehlermeldungen ab.
+Diese Nachbesserung ist noch nicht Bestandteil des oben dokumentierten
+Dev-Releases.
+
+Der separate Validierungsworkflow prüft die reale Release-Konfiguration im
+Application-Job nach dem API-Build. Der Infrastruktur-Job benötigt weiterhin
+keine Anwendungs-Abhängigkeiten. Der vorherige STACKIT-Fehler entstand durch
+den dort fehlenden kompilierten Validator, nicht durch eine GitHub-Pflicht.
+Der native Standalone-Test erwartet für das inzwischen ausdrücklich als Public
+markierte Beispiel einen erfolgreichen Vertrag. Separate Negativtests prüfen
+weiterhin, dass fehlendes oder ausdrücklich wahres `corporate` ohne zentrale
+Connectivity abgewiesen wird; der native Standardwert bleibt unverändert.
+Validierung und Release führen beide `npm run test:common-contract` und
+`npm run test:platform-database` aus. Der zweite Befehl aktiviert die isolierte
+PostgreSQL-Broker-Suite ausdrücklich, die im normalen Unit-Lauf übersprungen
+wird. Dadurch prüfen auch kommende Releases die Erstbereitstellung und die
+nativen Template-Verträge, nicht nur bereits vorhandenen Plattform-State.
+
 Die gemeinsame Release-Abnahme bestand 710 Unit-Tests (57 im Unit-Lauf
 übersprungen), 51 PostgreSQL-Broker-Tests und 300 Desktop-/Mobil-Browsertests
 sowie Typprüfung, Build und 19 gezielte Release-/Staging-/Runner-Evidence-Tests.

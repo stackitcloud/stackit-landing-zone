@@ -1059,6 +1059,22 @@ export const englishMessages: Record<string, string> = {
     "Could not confirm the action. Refresh the list before retrying.",
   "Die Aktion konnte nicht bestätigt werden. Aktualisiere die Liste. Unvollständige Profile kannst du löschen und neu anlegen.":
     "Could not confirm the action. Refresh the list. Incomplete profiles can be deleted and recreated.",
+  "Für den Accelerator-Wechsel einer bereits bereitgestellten Plattform muss deren vorhandener State an ein S3-Backend gebunden sein. Prüfe die State-Übernahme; deine Konfiguration bleibt unverändert.":
+    "Changing the accelerator version of an already deployed platform requires its existing state to be bound to an S3 backend. Check the state migration; your configuration remains unchanged.",
+  "Der Plattform-State ist durch eine laufende Ausführung gesperrt. Prüfe den Ausführungsstatus und warte auf deren Abschluss.":
+    "The platform state is locked by a running execution. Check its status and wait for it to finish.",
+  "Das ausgewählte State-Backend ist nicht mehr verfügbar. Wähle das zur Landing Zone gehörende Backend erneut aus.":
+    "The selected state backend is no longer available. Select the backend belonging to the landing zone again.",
+  "Das ausgewählte State-Backend passt nicht zur bestehenden Landing Zone. Verwende deren gebundenes Backend; es wird kein neuer State angelegt.":
+    "The selected state backend does not match the existing landing zone. Use its bound backend; no new state will be created.",
+  "Die Sicherheitsbestätigung deiner Sitzung ist nicht mehr aktuell. Lade die Seite neu und melde dich gegebenenfalls erneut an.":
+    "Your session's security confirmation is no longer current. Reload the page and sign in again if necessary.",
+  "Die Vorbereitung enthält ungültige oder zur aktuellen API-Version unpassende Angaben. Lade die Seite neu und wähle die gespeicherte Konfiguration erneut aus.":
+    "The preparation contains invalid data or data incompatible with the current API version. Reload the page and select the saved configuration again.",
+  "Für eine im GitHub-Fork gespeicherte Konfiguration ist eine GitHub-Verbindung erforderlich. Verbinde GitHub oder wähle eine in der Datenbank gespeicherte Konfiguration.":
+    "A configuration saved in a GitHub fork requires a GitHub connection. Connect GitHub or select a configuration saved in the database.",
+  "Die Anfrage ist fehlgeschlagen.": "The request failed.",
+  "Fehlercode:": "Error code:",
   "Die aktuelle Policy-Anbindung unterstützt nur die einzelne nichtregionale Firewall. Issue #65 verfolgt mehrere Appliances.":
     "The current policy integration supports only the single non-regional firewall. Multiple appliances are tracked in issue #65.",
   "Die Änderung konnte nicht übernommen werden.": "Could not apply the change.",
