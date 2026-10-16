@@ -63,6 +63,7 @@ jobs:
           npm ci
           npm run check
           node --test ../infra/ci/prepare-release.test.mjs
+          node --test ../infra/ci/buildpack-source.test.mjs
           node --test ../infra/ci/image-staging.test.mjs
       - name: Test first preparations and stateful platform Plan/Apply broker
         run: npm run test:platform-database
@@ -129,9 +130,56 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  deploy:
+  publish_buildpack:
     needs: build
     if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.release_run_id != ''))
+    permissions:
+      actions: read
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash
+        working-directory: landing-zone-configurator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+      - name: Resolve successful immutable release build
+        id: source
+        run: node infra/ci/release-artifact.mjs source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LZC_RELEASE_RUN_ID: ${{ inputs.release_run_id || github.run_id }}
+      - name: Reject a superseded branch revision
+        if: inputs.release_run_id == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/${GITHUB_REF#refs/heads/}" --jq '.object.sha')
+          test "$head" = "$GITHUB_SHA"
+      - name: Publish protected buildpack source tag
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/contents/landing-zone-configurator/deploy/cloud-foundry/manifest.yml?ref=$LZC_RELEASE_REVISION" --jq '.content' | base64 --decode > "$RUNNER_TEMP/lzc-release-manifest.yml"
+          if grep -q 'LZC_IMAGE_BUILDPACK' "$RUNNER_TEMP/lzc-release-manifest.yml"; then
+            node infra/ci/buildpack-source.mjs publish
+          else
+            echo "Qualified legacy binary-buildpack source; image tag publication is not applicable."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
+
+  deploy:
+    needs: [build, publish_buildpack]
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && needs.publish_buildpack.result == 'success' && (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.release_run_id != ''))
+    permissions:
+      actions: read
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:

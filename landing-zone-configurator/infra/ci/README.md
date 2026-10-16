@@ -40,6 +40,7 @@ Quellen: [OpenTofu sensitive outputs](https://opentofu.org/docs/language/values/
 | --- | --- |
 | `prepare.mjs` | Private Credential-/Backend-Dateien und Umgebungsvariablen vorbereiten; vorhandene Workload-Outputs/Versionierung prüfen. Keine Prozessausführung. |
 | `prepare-release.mjs` | Private Backend-Konfiguration und erlaubte App-Variablen für CF vorbereiten. Keine Prozessausführung. |
+| `buildpack-source.mjs` | Im isolierten Release-Job den geschützten, SHA-gebundenen Buildpack-Tag anlegen; im Deployment nur lesend prüfen. Keine Tag-Updates oder -Löschungen. |
 | `review.mjs` | Verschlüsselten Plan mit Manifest versehen beziehungsweise vor Apply prüfen. Keine Prozessausführung. |
 | `protect-state.mjs`, `artifact.mjs` | Bereits erfasste State-Dateien für Recovery verschlüsseln. Keine Prozessausführung. |
 | `context.mjs` | Eingaben, Workflow-Identität und Planbindung prüfen. |
@@ -76,6 +77,18 @@ Freigabevariablen fuer Feature-Pushes werden nicht mehr ausgewertet.
 Auch der Application-Release ist ausschliesslich manuell; ein Merge loest ihn
 nicht aus. Die vorhandenen Workflows betreffen die Entwicklungsumgebung,
 nicht eine neue Produktionsumgebung.
+
+Nach erfolgreicher Assistant-Qualifikation und Build veroeffentlicht der
+isolierte Release-Job `publish_buildpack` den fehlenden Buildpack-Tag.
+Nur dieser Job besitzt `contents: write`; er hat kein Cloud-Environment und
+keine Cloud-Credentials. Bei Artefakt-Promotion prueft er erneut die erfolgreichen
+Qualifikations-/Build-Jobs und verwendet deren exakten Commit, nicht den aktuellen
+Branch-Head. Bestehende Tags muessen bereits exakt stimmen und unveraenderlich
+geschuetzt sein. Der nachfolgende Deployment-Job bleibt lesend und prueft den
+Tag unabhaengig vor dem Lesen der Deployment-Credentials. `build_only=true`
+veroeffentlicht keinen Tag. Ein fehlgeschlagenes Deployment macht einen zuvor
+erfolgreich qualifizierten Build nicht ungueltig: Ein neuer manueller Run kann
+ihn mit `release_run_id` uebernehmen, solange das Artefakt nicht abgelaufen ist.
 
 Die vorhandene Plan-Service-Account-Rolle ist nicht rein lesend. Deshalb dürfen diese Workflows ausschließlich vertrauenswürdigen Code ausführen; sie sind nicht für externe Pull Requests vorgesehen.
 

@@ -22,13 +22,21 @@ Each compressed CF archive must be smaller than 384 MiB.
 `prepare-release.mjs` binds `LZC_IMAGE_BUILDPACK` to
 `lzc-image-buildpack-<approved-source-sha>`, including during promotion.
 CF's Git buildpack loader uses `git clone -b`, so a bare commit SHA is not a
-supported reference. Before approving a new release, the operator creates the
-lightweight tag at the qualified commit (`git tag lzc-image-buildpack-<sha> <sha>`
-and pushes that exact tag). The active repository ruleset **Protect LZC buildpack
+supported reference. After qualification/build, the manual release workflow's
+isolated `publish_buildpack` job creates the lightweight tag at the approved
+commit, including when promoting an existing qualified artifact. It first
+verifies the active protection and reuses an existing tag only if it resolves
+to exactly that commit. It never updates or deletes a tag.
+The active repository ruleset **Protect LZC buildpack
 tags** forbids updates and deletion in this namespace, with no bypass actors.
 The deployment's read-only gate verifies the exact resolved commit and active
-namespace/rule protection before reading deployment credentials. No GitHub write
-permission is added to CI. The private app/runner variable files
+namespace/rule protection before reading deployment credentials. Only the
+publication job has `contents: write`; it has no cloud environment or cloud
+credentials and executes helpers from the manually selected workflow source,
+not the promoted artifact's source. The deployment job retains `contents: read`
+and the protected `lzc-dev-release` approval. Build-only runs do not publish tags.
+Legacy binary-buildpack artifacts skip tag publication and verification.
+The private app/runner variable files
 provide that URI to their manifests. During staging, the final buildpack reads
 the compiled image pin and validated Runner metadata, fetches the public image
 directly from STACKIT Object Storage and checks the full SHA-256. Its private,
