@@ -1,3 +1,9 @@
+output "assistant_test_model_serving_token" {
+  description = "Dedicated synthetic-test inference token; transfer only to the assistant-tests CI environment."
+  value       = stackit_modelserving_token.assistant_tests.token
+  sensitive   = true
+}
+
 output "cf_runtime" {
   description = "Sensitive credentials for the later CF runtime root; do not emit into logs."
   sensitive   = true

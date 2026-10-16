@@ -44,6 +44,14 @@ run "service_boundaries" {
     condition     = stackit_modelserving_token.configurator.ttl_duration == "2160h"
     error_message = "Model-serving tokens must have a bounded lifetime."
   }
+  assert {
+    condition     = stackit_modelserving_token.assistant_tests.ttl_duration == "2160h"
+    error_message = "The dedicated Assistant test token must also have a bounded lifetime."
+  }
+  assert {
+    condition     = stackit_modelserving_token.assistant_tests.name == "lzc-test-assistant-tests" && stackit_modelserving_token.configurator.name == "lzc-test-chat"
+    error_message = "Assistant qualification must have a separate token without renaming the application token."
+  }
 }
 
 run "reject_public_database_and_secrets" {

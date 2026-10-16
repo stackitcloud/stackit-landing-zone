@@ -17,6 +17,8 @@ Bootstrap, Backend, Plattform und Runtime sind in `lzc-dev/eu01` provisioniert. 
 
 Der STACKIT-Provider aktiviert Object Storage und Model Serving bei der ersten Ressourcenerstellung. Für Bucket-Versionierung spricht der AWS-Provider ausschließlich die STACKIT-S3-API an; es werden keine AWS-Ressourcen angelegt.
 
+Die Plattform verwaltet getrennte Model-Serving-Token für die Anwendung und die synthetischen Assistant-Tests. Der sensitive Output `assistant_test_model_serving_token` gehört ausschließlich in das GitHub Environment `assistant-tests`, nicht in die CF-Anwendungsbindung. Beide Token haben eine Laufzeit von 90 Tagen; eine bewusste Rotation über `credential_generation` erfordert danach die Aktualisierung der jeweiligen Bindung beziehungsweise des CI-Secrets. Das bestehende Anwendungstoken wird beim Hinzufügen des Testtokens nicht verändert.
+
 ## Deployment: direkte OpenTofu-Schritte in CI
 
 [Bootstrap-Workflow](../../.github/workflows/configurator-bootstrap.yml), [Plattform-Workflow](../../.github/workflows/configurator-platform.yml) und [Runtime-Workflow](../../.github/workflows/configurator-runtime.yml) führen `tofu init`, `validate`, `plan` und `apply` direkt aus. Normale CLI-Ausgaben sind live sichtbar. Kleine Hilfsprogramme bereiten Credentials vor, prüfen das gespeicherte Plan-Artefakt und verschlüsseln Recovery-Snapshots; sie führen keine Deployments aus.
