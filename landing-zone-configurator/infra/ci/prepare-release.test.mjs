@@ -91,7 +91,7 @@ test("required Accelerator checks remain visible and fail closed on change detec
   assert.match(workflow,new RegExp(`\\n    name: ${name}\\n    needs: changes\\n`));
  }
  assert.equal(workflow.match(/needs\.changes\.result != 'success'/g)?.length,4);
- assert.match(workflow,/git diff --name-only "\$BASE_SHA" "\$GITHUB_SHA"/);
+ assert.match(workflow,/git diff --quiet "\$BASE_SHA" "\$GITHUB_SHA" -- src/);
  assert.match(workflow,/Comparison base unavailable; running all Accelerator checks/);
 });
 test("actual workflow scope distinguishes docs, Configurator and native changes",()=>{
@@ -121,7 +121,8 @@ test("actual workflow scope distinguishes docs, Configurator and native changes"
   let head=commit("README.md","base");
   for(const [file,expected]of [
    ["README.md",false],["landing-zone-configurator/app/example.ts",false],
-   ["src/example.tf",true],["mise.toml",true],[".tflint.hcl",true],
+   ["src/example.tf",true],['src/quoted"name.tf',true],["src/newline\nname.tf",true],
+   ["mise.toml",true],[".tflint.hcl",true],
    [".github/workflows/validate.yml",true],[".github/workflows/configurator-release.yml",false],
   ]){
    const base=head;head=commit(file,`synthetic ${file}`);

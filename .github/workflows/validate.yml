@@ -45,11 +45,15 @@ jobs:
             echo "::notice::Comparison base unavailable; running all Accelerator checks."
             echo "accelerator=true" >> "$GITHUB_OUTPUT"
           else
-            git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/accelerator-changes.txt"
-            if grep -Eq '^(src/|mise\.toml$|\.tflint\.hcl$|\.pre-commit-config\.yaml$|\.github/workflows/validate\.yml$)' "$RUNNER_TEMP/accelerator-changes.txt"; then
-              echo "accelerator=true" >> "$GITHUB_OUTPUT"
-            else
+            if git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- src mise.toml .tflint.hcl .pre-commit-config.yaml .github/workflows/validate.yml; then
               echo "accelerator=false" >> "$GITHUB_OUTPUT"
+            else
+              status=$?
+              if [[ "$status" -ne 1 ]]; then
+                echo "::error::Unable to determine Accelerator change scope."
+                exit "$status"
+              fi
+              echo "accelerator=true" >> "$GITHUB_OUTPUT"
             fi
           fi
 
