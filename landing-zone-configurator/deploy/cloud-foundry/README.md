@@ -11,6 +11,42 @@ The migration-only application retains `binary_buildpack`.
 Update the version and checksum together when upgrading Node. The CF stack remains
 platform-maintained (`cflinuxfs4`).
 
+## Manual development release in GitHub
+
+No push or merge deploys the Configurator. Use the repository's **Actions**
+page and select **Configurator Release**, then **Run workflow**:
+
+1. Select branch **main**.
+2. Leave **build_only** unchecked (`false`).
+3. Leave **release_run_id** empty for a new release.
+4. Start the workflow. It qualifies the real Assistant, builds and tests both
+   packages, then creates the protected source-bound buildpack tag.
+5. When **deploy** waits for review, use **Review deployments** to approve
+   **lzc-dev-release** with an authorized reviewer account.
+6. Wait for the whole run to succeed, including Runner isolation, engine checks,
+   database migrations, service connections and public route checks.
+
+The target is the existing development application, not a production environment.
+Keep the selected `main` revision unchanged until tag publication completes:
+a superseded branch HEAD is rejected rather than silently deploying another
+revision. Do not add broader repository token permissions or manually create
+tags during an ordinary new release.
+
+For build now/deploy later, check **build_only**. Qualification, packaging and tag
+publication still run, but no cloud deployment occurs. Later start a **new**
+manual run on `main`, leave **build_only** unchecked and enter the original
+numeric build run ID in **release_run_id**. This promotes that exact qualified
+artifact without repeating qualification/build or tagging a historical commit;
+it does not select the newest application source. The original artifact must
+still exist and must not have expired.
+
+After a deployment-only failure, a new promotion can reuse the successful
+qualified build in the same way. Do not use **Re-run jobs**: release attempts
+after the first are rejected. Inspect the actual failure before starting another
+run; failures are retained and the workflow performs no automatic deployment
+retry. Historical artifacts missing their buildpack tag need the explicit
+operator backfill described below, not a protection bypass.
+
 ### Image staging and caching
 
 Hosted archives omit only the pinned `firewall-image.qcow2`; local Runner
