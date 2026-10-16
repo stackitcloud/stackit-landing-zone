@@ -25,6 +25,16 @@ Use code, current contracts, tests and issue discussions for implementation stat
 Historical workstation handoffs and run-specific acceptance logs are not part of
 the maintained documentation.
 
+Configuration-list reads must not overwrite a newer post-save refresh with an
+older initial response or error. Keep request ordering and the captured
+session-lifetime abort signal intact. The database-configuration browser flow
+delays initial reads until after a successful save to exercise this ordering on
+desktop and mobile, alongside reopen, revision-conflict and delete checks.
+The initial guest-to-authenticated session lookup preserves the editor DOM so
+it cannot detach a focused input. Actual identity/workspace changes still reset
+the draft and scoped catalogue provider; never retain private catalogues across
+those boundaries.
+
 ## Validation versus cloud operations
 
 | Workflow | Trigger and purpose |

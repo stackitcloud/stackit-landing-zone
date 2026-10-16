@@ -99,6 +99,7 @@ export function Configurations({
   > | null>(null);
   const active = useRef(false);
   const controller = useRef<AbortController | null>(null);
+  const listRequest = useRef(0);
 
   useEffect(() => {
     if (!session) return;
@@ -118,14 +119,16 @@ export function Configurations({
           );
       })
       .catch(() => {});
+    const request = ++listRequest.current;
     void fetch("/api/v1/configurations", { signal: lifetime.signal })
       .then(checked)
       .then((response) => response.json())
       .then((body) => {
-        if (!lifetime.signal.aborted) setConfigurations(body.configurations);
+        if (!lifetime.signal.aborted && request === listRequest.current)
+          setConfigurations(body.configurations);
       })
       .catch(() => {
-        if (!lifetime.signal.aborted)
+        if (!lifetime.signal.aborted && request === listRequest.current)
           setError(
             "Konfigurationen konnten nicht geladen werden. Bitte aktualisieren.",
           );
@@ -177,13 +180,15 @@ export function Configurations({
   }, [session, compact]);
 
   async function refresh() {
+    const request = ++listRequest.current;
+    const signal = controller.current?.signal ?? null;
     const response = await checked(
       await fetch("/api/v1/configurations", {
-        signal: controller.current?.signal ?? null,
+        signal,
       }),
     );
     const body = await response.json();
-    if (!controller.current?.signal.aborted)
+    if (!signal?.aborted && request === listRequest.current)
       setConfigurations(body.configurations);
   }
 

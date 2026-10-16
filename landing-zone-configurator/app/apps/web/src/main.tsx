@@ -88,6 +88,7 @@ function App() {
     setDeploymentSelection(null);
   }, [session?.user.id, session?.user.login, session?.tenant?.id]);
   const [draftEpoch, setDraftEpoch] = useState(0);
+  const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
   const [configurationBinding, setConfigurationBinding] =
     useState<ConfigurationBinding | null>(null);
   const [draft, setDraft] = useState<EditorDraft | null>(restoredDraft);
@@ -115,6 +116,7 @@ function App() {
       setDraft(null);
       setConfigurationBinding(null);
       setSavedDraft(null);
+      setWorkspaceEpoch((value) => value + 1);
     }
     activeAccount.current = key;
     setSession(next);
@@ -673,9 +675,7 @@ function App() {
             />
           )}
           {platformAccess && (
-            <CloudCatalogueProvider
-              key={`catalogues:${workspaceKey(session) ?? "guest"}`}
-            >
+            <CloudCatalogueProvider key={`catalogues:${workspaceEpoch}`}>
               <div hidden={view !== "editor"}>
                 <CloudCataloguePanel
                   session={session}
