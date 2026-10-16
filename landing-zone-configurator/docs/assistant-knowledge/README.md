@@ -104,6 +104,13 @@ Raw synthetic receipts are retained as CI artifacts. Promotion requires the
 original build's successful live-qualification job as well as its build job;
 older builds without that proof cannot bypass qualification. A missing token,
 unavailable model or failed criterion blocks qualification, not a silent skip.
+General advice ends its merged trusted system context with an explicit
+answer-completeness instruction: the explanation must contain the actual requested facts, native
+defaults, limits and exclusions, not just introduce a missing list or refer to
+contract metadata. Follow-up questions cannot replace the factual answer.
+The bounded firewall requirements dialogue retains its separate short-answer
+contract. Transport tests check this instruction's delivery; unchanged real-model
+factual criteria still decide whether the resulting answers qualify.
 CI needs `LZC_MODEL_SERVING_TOKEN` available to the protected `assistant-tests`
 environment. Local receipts do not certify that remote environment or authorize
 deployment. CI qualification jobs share a non-cancelling concurrency group to
