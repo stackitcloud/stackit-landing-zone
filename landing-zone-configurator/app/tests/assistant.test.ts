@@ -2540,6 +2540,7 @@ it.each([
   "sandbox-projects",
   "vpn",
   "devops-git",
+  "dns-zones",
 ])(
   "answers %s field overviews from reviewed native metadata, not incomplete model prose",
   async (topic) => {
@@ -2551,6 +2552,9 @@ it.each([
       );
       expect(body.messages[0].content).toContain(
         '"reviewedFieldOverview":true',
+      );
+      expect(body.messages[0].content).toContain(
+        "mode=draft, dnsTask=remaining-settings, adviceTask=other",
       );
       return answer({
         topic,
@@ -2580,7 +2584,7 @@ it.each([
         ?.fieldOverview,
     );
     expect(result.explanation.length).toBeLessThanOrEqual(3000);
-    if (topic === "vpn" || topic === "devops-git")
+    if (["vpn", "devops-git", "dns-zones"].includes(topic))
       expect(result.explanation.length).toBeLessThanOrEqual(2400);
     if (topic === "vpn") {
       for (const field of [

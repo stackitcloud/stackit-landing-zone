@@ -466,6 +466,26 @@ it("requires native VPN defaults and separate PSK binding, rejecting invented ro
   ).toContain("incorrect_vpn_routing_type");
 });
 
+it("qualifies reviewed DNS field semantics against the unchanged role and secondary-limit oracles", () => {
+  const explanation = buildAssistantKnowledge().topics.find(
+    (topic) => topic.id === "dns-zones",
+  )?.fieldOverview;
+  if (!explanation) throw new Error("missing_dns_overview");
+  expect(explanation.length).toBeLessThanOrEqual(2400);
+  expect(assistantDnsRoleFailures(explanation, "roles")).toEqual([]);
+  for (const scenario of assistantScenarios.filter(
+    (entry) => entry.dnsRole === "roles" || entry.dnsRole === "secondary",
+  ))
+    expect(
+      validateAssistantScenario(scenario, {
+        explanation,
+        questions: [],
+        changes: [],
+        references: ["dns-zones"],
+      }).failures,
+    ).toEqual([]);
+});
+
 it("rejects superficially successful foundation answers and validates exact restoration", () => {
   const scenario = assistantScenarios.find(
     (entry) => entry.id === "foundations-restoration",

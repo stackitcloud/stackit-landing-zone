@@ -118,13 +118,18 @@ contract. Transport tests check this instruction's delivery; real-model factual
 criteria still decide whether the resulting answers qualify.
 For native field overviews, semantic intent classification selects the existing
 reviewed-metadata response when available, rather than generating the same static
-contract again. VPN and DevOps Git use this path with a tested 2400-character bound, no questions
+contract again. VPN, DevOps Git and DNS field/role semantics use this path with a
+tested 2400-character bound, no questions
 or draft changes, native routing/plan defaults and the separate protected PSK
 binding. Its factual oracle requires these details and rejects invented
 static/dynamic routing types. DevOps requires its native fields and the
 `git_flavor=null` no-instance boundary, without implying an enabled default.
 This does not replace live availability checks or
 authorize configuration; unsupported overview topics retain the advice path.
+DNS role explanations retain the existing primary/secondary, authoritative-role,
+visibility and native Secondary-configuration-limit criteria, including correction
+of earlier misleading advice. Actual DNS setup continues through the existing
+reviewable proposal flow.
 CI needs `LZC_MODEL_SERVING_TOKEN` available to the protected `assistant-tests`
 environment. Local receipts do not certify that remote environment or authorize
 deployment. CI qualification jobs share a non-cancelling concurrency group to
