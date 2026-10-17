@@ -270,11 +270,16 @@ export function buildApp(
   if (options.webRoot) {
     // Explicit SPA routes only: API/auth errors and missing assets must remain errors.
     for (const path of [
+      "/workspaces",
       "/templates",
       "/repositories",
       "/configurations",
       "/credentials",
       "/deployments",
+      "/deployments/preparation",
+      "/deployments/plan",
+      "/deployments/apply",
+      "/deployments/history",
       "/organisation",
       "/applications",
       "/configurations/edit",
