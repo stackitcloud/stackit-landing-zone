@@ -35,6 +35,13 @@ it cannot detach a focused input. Actual identity/workspace changes still reset
 the draft and scoped catalogue provider; never retain private catalogues across
 those boundaries.
 
+Keep frontend navigation and the API's explicit SPA route allowlist aligned,
+including workspace and deployment-phase URLs. Direct loads and reloads must
+serve the compiled UI through the API, not just the development server's history
+fallback. The static-serving API regression covers these paths while retaining
+404 responses for unknown routes, API/auth paths and missing assets; do not
+replace the allowlist with a catch-all.
+
 ## Validation versus cloud operations
 
 | Workflow | Trigger and purpose |
