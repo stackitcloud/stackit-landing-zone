@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   applicationRunnerSourceSchema,
+  openTofuProgress,
   platformFirewallImage,
   platformRunnerSourceSchema,
 } from "@lzc/contracts";
@@ -291,7 +292,14 @@ export class LocalPlanRunner implements PlanRunner {
         (value) => JSON.parse(value) as Record<string, unknown>,
         () => ({}),
       );
-      for (const phase of ["init", "validate", "plan", "apply", "migration"]) {
+      for (const phase of [
+        "init",
+        "validate",
+        "plan-events",
+        "plan",
+        "apply",
+        "migration",
+      ]) {
         const file = await open(join(work, `${phase}.log`), "r").catch(
           () => null,
         );
@@ -303,6 +311,15 @@ export class LocalPlanRunner implements PlanRunner {
           );
           const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
           let chunk = buffer.subarray(0, bytesRead).toString("utf8");
+          chunk = chunk.slice(0, chunk.lastIndexOf("\n") + 1);
+          if (phase === "plan-events") {
+            const progress = openTofuProgress(chunk);
+            chunk = progress.text;
+            if (progress.invalid)
+              console.error(
+                JSON.stringify({ event: "runner_progress_invalid" }),
+              );
+          }
           const values: unknown[] = [credentials];
           while (values.length) {
             const value = values.pop();
@@ -320,11 +337,15 @@ export class LocalPlanRunner implements PlanRunner {
             /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?(?:-----END [^-]*PRIVATE KEY-----|$)/g,
             "(sensitive value)",
           );
+          chunk = `\n$ tofu ${phase === "plan-events" ? "plan (progress)" : phase}\n${chunk}`;
           if (Buffer.byteLength(chunk) > limit) {
-            chunk = Buffer.from(chunk).subarray(0, limit).toString("utf8");
+            chunk = new TextDecoder().decode(
+              Buffer.from(chunk).subarray(0, limit),
+              { stream: true },
+            );
             truncated = true;
           }
-          text += `\n$ tofu ${phase}\n${chunk}`;
+          text += chunk;
           truncated ||= bytesRead < (await file.stat()).size;
         } finally {
           await file.close();

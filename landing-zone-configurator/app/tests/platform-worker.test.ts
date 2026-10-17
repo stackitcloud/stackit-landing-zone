@@ -182,17 +182,23 @@ if (args.includes("-migrate-state") && ${JSON.stringify(behavior)} === "migratio
 }
 if (phase === "plan") {
   fs.writeFileSync("plan.bin", ${JSON.stringify(plan.toString())});
-  console.log(${JSON.stringify(secret)});
+  console.log(JSON.stringify({type:"version", ui:"1.2", "@message":"OpenTofu 1.12.6"}));
+  console.log(JSON.stringify({type:"diagnostic", "@message":${JSON.stringify(secret)}}));
   if (${JSON.stringify(behavior)} === "live-output") {
-    console.log("Refreshing state...");
-    process.stdout.write("unfinished-sensitive-line");
+    console.log(JSON.stringify({type:"refresh_start", "@message":"Refreshing state...", hook:{private:"private-event-metadata"}}));
+    process.stdout.write('{"type":"refresh_complete","@message":"unfinished-sensitive-line');
     setTimeout(() => {
-      console.log("\\nRefresh complete");
+      console.log('"}');
+      console.log(JSON.stringify({type:"refresh_complete", "@message":"Refresh complete"}));
       process.exit(2);
     }, 3500);
   } else process.exit(2);
 }
 if (phase === "show") {
+  if (!args.includes("-json")) {
+    console.log("Full saved plan: 1 to add, 0 to change, 0 to destroy.");
+    process.exit(0);
+  }
   console.log(JSON.stringify({format_version:"1.2", terraform_version:"1.12.6", errored:false, configuration:{secret:${JSON.stringify(secret)}}, planned_values:{}, resource_changes:[{mode:"managed", change:{actions:[${JSON.stringify(behavior === "destroy" ? "delete" : "create")}], after:{secret:${JSON.stringify(secret)}}}}]}));
   process.exit(0);
 }
@@ -364,6 +370,7 @@ it.each([undefined, "platform-plan"])(
       "validate",
       "plan",
       "show",
+      "show",
     ]);
     for (const call of calls) {
       expect(call.tfvarsSha256).toBe(test.input.tfvarsSha256);
@@ -465,6 +472,7 @@ it.runIf(Boolean(process.env.LZC_FIREWALL_IMAGE_PACKAGE))(
         "validate",
         "plan",
         "show",
+        "show",
       ]);
       expect(calls.every((call) => call.firewallImageBytes === bytes)).toBe(
         true,
@@ -544,6 +552,7 @@ it("plans the pinned application root with sibling modules and only its instance
     "validate",
     "plan",
     "show",
+    "show",
   ]);
   for (const call of calls) {
     expect(call.rootMarker).toBe("application");
@@ -581,6 +590,7 @@ it.each(["destroy", "drift"])(
       "init",
       "validate",
       "plan",
+      "show",
       "show",
     ]);
     const arguments_ = calls.find((call) => call.args[0] === "plan")?.args;
@@ -912,37 +922,86 @@ it.runIf(process.env.LZC_NATIVE_APPLICATION_RUNNER_TEST === "true")(
   120000,
 );
 
-it("publishes redacted progress before a long-running Plan finishes and stops polling after cleanup", async () => {
-  const test = await fixture("platform-plan", "live-output");
-  const execution = test.execute();
-  try {
-    await vi.waitFor(
-      () => {
-        const output = test.reports.find(({ path }) => path === "output");
-        expect(output?.body).toMatchObject({
-          text: expect.stringContaining("Refreshing state..."),
-          truncated: false,
-        });
-        expect(JSON.stringify(output?.body)).not.toContain(secret);
-        expect(JSON.stringify(output?.body)).not.toContain(ticket);
-        expect(JSON.stringify(output?.body)).not.toContain(
-          "unfinished-sensitive-line",
-        );
-        expect(test.reports.some(({ path }) => path === "result")).toBe(false);
-      },
-      { timeout: 3000 },
+it.each([false, true])(
+  "publishes progress within 1.5s before Plan completion, deduplicates acknowledged output and retries a failed publication: %s",
+  async (failFirst) => {
+    const test = await fixture("platform-plan", "live-output");
+    let planningAt = 0;
+    let firstProgressAt = 0;
+    let failed = false;
+    test.options.report = async (path, body) => {
+      if (
+        path === "stage" &&
+        body !== null &&
+        typeof body === "object" &&
+        "stage" in body &&
+        body.stage === "planning"
+      )
+        planningAt = Date.now();
+      const progress =
+        path === "output" &&
+        JSON.stringify(body).includes("Refreshing state...");
+      if (progress && !firstProgressAt) firstProgressAt = Date.now();
+      const result = await test.report(path, body);
+      if (failFirst && progress && !failed) {
+        failed = true;
+        throw new Error(secret);
+      }
+      return result;
+    };
+    const execution = test.execute();
+    try {
+      await vi.waitFor(
+        () => {
+          const output = test.reports.find(
+            ({ path, body }) =>
+              path === "output" &&
+              JSON.stringify(body).includes("Refreshing state..."),
+          );
+          expect(output?.body).toMatchObject({
+            text: expect.stringContaining("Refreshing state..."),
+            truncated: false,
+          });
+          expect(JSON.stringify(output?.body)).not.toContain(secret);
+          expect(JSON.stringify(output?.body)).not.toContain(ticket);
+          expect(JSON.stringify(output?.body)).not.toContain(
+            "unfinished-sensitive-line",
+          );
+          expect(test.reports.some(({ path }) => path === "result")).toBe(
+            false,
+          );
+          expect(planningAt).toBeGreaterThan(0);
+          expect(firstProgressAt - planningAt).toBeLessThan(1500);
+        },
+        { timeout: 3000 },
+      );
+    } finally {
+      expect(await execution).toBe("succeeded");
+    }
+    const output = test.reports.findLast(({ path }) => path === "output");
+    expect(output?.body).toMatchObject({
+      text: expect.stringContaining("Refresh complete"),
+    });
+    expect(output?.body).toMatchObject({
+      text: expect.stringContaining("Full saved plan: 1 to add"),
+    });
+    expect(JSON.stringify(output?.body)).not.toContain(
+      "private-event-metadata",
     );
-  } finally {
-    expect(await execution).toBe("succeeded");
-  }
-  const output = test.reports.findLast(({ path }) => path === "output");
-  expect(output?.body).toMatchObject({
-    text: expect.stringContaining("Refresh complete"),
-  });
-  const count = test.reports.length;
-  await new Promise((resolve) => setTimeout(resolve, 2100));
-  expect(test.reports).toHaveLength(count);
-}, 10000);
+    expect(
+      test.reports.filter(
+        ({ path, body }) =>
+          path === "output" &&
+          JSON.stringify(body).includes("Refreshing state...") &&
+          !JSON.stringify(body).includes("Refresh complete"),
+      ),
+    ).toHaveLength(failFirst ? 2 : 1);
+    const count = test.reports.length;
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    expect(test.reports).toHaveLength(count);
+  },
+  10000,
+);
 
 it.each(["success", "apply-failure", "migration-failure"])(
   "publishes redacted Apply output before the terminal result and cleanup: %s",
@@ -1061,6 +1120,7 @@ it("uploads only the saved artifact and sanitized counts before platform-plan su
     "validate",
     "plan",
     "show",
+    "show",
   ]);
   expect(calls[0]?.args).toContain("-lockfile=readonly");
   expect(calls.every((call) => call.http)).toBe(true);
@@ -1118,6 +1178,7 @@ it.each(["initial-plan-only", undefined])(
       "init",
       "validate",
       "plan",
+      "show",
       "show",
     ]);
     expect(calls[0]?.args).toContain("-backend=false");
@@ -1242,7 +1303,7 @@ it.each(["platform-plan", "platform-apply"])(
     const calls = await test.calls();
     expect(calls.map((call) => call.args[0])).toEqual(
       mode === "platform-plan"
-        ? ["init", "validate", "plan", "show"]
+        ? ["init", "validate", "plan", "show", "show"]
         : ["init", "validate", "apply"],
     );
     expect(calls[0]?.args).toEqual([

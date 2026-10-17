@@ -9,6 +9,7 @@ import { platformContractSchema } from "@lzc/domain";
 import { useEffect, useRef, useState } from "react";
 import { currentLanguage, t } from "../i18n";
 import type { DeploymentStep } from "../navigation";
+import { readPlanOutput } from "../plan-output";
 import type { Session } from "./Account";
 
 type Run = {
@@ -197,11 +198,15 @@ function PlanOutput({ run }: { run: Run }) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = Date.now() + 20 * 60 * 1000;
     async function load() {
+      let reconnectAfter = 2000;
       setLoading(true);
       try {
         const response = await fetch(`/api/v1/plans/${run.id}/output`, {
           credentials: "same-origin",
           cache: "no-store",
+          headers: {
+            Accept: running ? "application/x-ndjson" : "application/json",
+          },
           signal: controller.signal,
         });
         if (!response.ok)
@@ -212,24 +217,23 @@ function PlanOutput({ run }: { run: Run }) {
                 ? "Keine Berechtigung für diese Ausgabe."
                 : "Die OpenTofu-Ausgabe ist momentan nicht verfügbar.",
           );
-        const result = await response.json();
+        const kind = await readPlanOutput(response, (result) => {
+          if (controller.signal.aborted) return;
+          if (
+            result.text ||
+            result.kind === "saved-plan" ||
+            result.kind === "execution"
+          )
+            setText(result.text);
+          setTruncated(result.truncated);
+          setLoading(false);
+          setError("");
+        });
         if (
-          typeof result.text !== "string" ||
-          result.text.length > 3 * 1024 * 1024 ||
-          typeof result.truncated !== "boolean"
+          kind === "live" &&
+          response.headers.get("content-type")?.includes("application/x-ndjson")
         )
-          throw new Error(
-            "Die OpenTofu-Ausgabe konnte nicht bestätigt werden.",
-          );
-        if (controller.signal.aborted) return;
-        if (
-          result.text ||
-          result.kind === "saved-plan" ||
-          result.kind === "execution"
-        )
-          setText(result.text);
-        setTruncated(result.truncated);
-        setError("");
+          reconnectAfter = 100;
       } catch (cause) {
         if (!controller.signal.aborted)
           setError(
@@ -239,7 +243,7 @@ function PlanOutput({ run }: { run: Run }) {
         if (!controller.signal.aborted) {
           setLoading(false);
           if (running && Date.now() < deadline)
-            timer = setTimeout(() => void load(), 2000);
+            timer = setTimeout(() => void load(), reconnectAfter);
         }
       }
     }

@@ -128,6 +128,12 @@ export {
   platformUpgradeAcceleratorCommit,
   summarizePlan,
 } from "./plan.js";
+export type { PlanOutput } from "./plan-output.js";
+export {
+  openTofuProgress,
+  planOutputEventSchema,
+  planOutputSchema,
+} from "./plan-output.js";
 export const planStageSchema = z.enum([
   "initializing",
   "validating",

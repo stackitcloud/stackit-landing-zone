@@ -19,6 +19,7 @@ import { promisify } from "node:util";
 import {
   applicationMvpAcceleratorCommit,
   applicationRunnerBindingSchema,
+  openTofuProgress,
   planResultSchema,
   platformFirewallImage,
   platformRunnerSourceSchema,
@@ -407,8 +408,9 @@ export async function runWorker(
       LZC_PROVIDER_MIRROR: resolve(root, "providers"),
       ...backendEnv,
     };
+    let acknowledgedOutput: { text: string; truncated: boolean } | undefined;
+    let invalidProgressReported = false;
     publishOutput = async (live = false) => {
-      outputReported = false;
       try {
         const values: unknown[] = [
           key,
@@ -430,6 +432,7 @@ export async function runWorker(
         for (const [fileName, commandName] of [
           ["init", "init"],
           ["validate", "validate"],
+          ["plan-events", "plan (progress)"],
           ["plan", "plan"],
           ["apply", "apply saved-plan.bin"],
           ["migration", "init -migrate-state"],
@@ -453,6 +456,17 @@ export async function runWorker(
             let content = buffer.subarray(0, bytesRead).toString("utf8");
             if (live && bytesRead === size)
               content = content.slice(0, content.lastIndexOf("\n") + 1);
+            if (fileName === "plan-events") {
+              content = content.slice(0, content.lastIndexOf("\n") + 1);
+              const progress = openTofuProgress(content);
+              content = progress.text;
+              if (progress.invalid && !invalidProgressReported) {
+                console.error(
+                  JSON.stringify({ event: "runner_progress_invalid" }),
+                );
+                invalidProgressReported = true;
+              }
+            }
             let chunk = `$ tofu ${commandName}\n${content}\n`;
             for (const secret of secrets)
               chunk = chunk.replaceAll(secret, "(sensitive value)");
@@ -462,15 +476,28 @@ export async function runWorker(
             );
             truncated ||=
               bytesRead < size || Buffer.byteLength(chunk) > remaining;
-            text += Buffer.from(chunk).subarray(0, remaining).toString("utf8");
+            text += new TextDecoder().decode(
+              Buffer.from(chunk).subarray(0, remaining),
+              { stream: true },
+            );
           } finally {
             await file.close();
           }
         }
         diagnostic = { text, truncated };
+        if (
+          acknowledgedOutput?.text === text &&
+          acknowledgedOutput.truncated === truncated
+        ) {
+          outputReported = true;
+          return;
+        }
+        outputReported = false;
         await report("output", diagnostic);
+        acknowledgedOutput = diagnostic;
         outputReported = true;
       } catch {
+        outputReported = false;
         console.error(JSON.stringify({ event: "runner_output_failed" }));
       }
     };
@@ -489,10 +516,10 @@ export async function runWorker(
       let outputStopped = false;
       const pollOutput = () => {
         pendingOutput = publishOutput(true).finally(() => {
-          if (!outputStopped) outputTimer = setTimeout(pollOutput, 2000);
+          if (!outputStopped) outputTimer = setTimeout(pollOutput, 500);
         });
       };
-      if (broker === "platform") outputTimer = setTimeout(pollOutput, 2000);
+      if (broker === "platform") outputTimer = setTimeout(pollOutput, 500);
       try {
         await new Promise<void>((done, fail) => {
           const child = spawn(

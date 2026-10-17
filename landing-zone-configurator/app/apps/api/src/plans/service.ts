@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { EventEmitter, once } from "node:events";
 import { isIP } from "node:net";
 import {
   planResultSchema,
@@ -50,6 +51,18 @@ const lockHash = providerLockHash;
 const invalid = (code: string, status = 409) =>
   new CredentialError(status, code);
 export class Plans {
+  private readonly outputUpdates = new EventEmitter();
+
+  async waitForOutput(id: string, signal: AbortSignal) {
+    try {
+      await once(this.outputUpdates, id, {
+        signal: AbortSignal.any([signal, AbortSignal.timeout(1000)]),
+      });
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) throw error;
+    }
+  }
+
   constructor(
     private readonly pool: pg.Pool,
     private readonly profiles: Pick<
@@ -488,6 +501,7 @@ export class Plans {
       );
       if (!updated.rowCount) throw invalid("invalid_runner_transition");
     });
+    this.outputUpdates.emit(id);
   }
 
   private async preparation(session: Session, id: string) {

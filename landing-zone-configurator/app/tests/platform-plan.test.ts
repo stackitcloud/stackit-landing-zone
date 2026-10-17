@@ -1287,7 +1287,21 @@ describe.skipIf(!enabled)(
           await test.plans.stage(ticket, stage);
           text += `\n${stage}`;
         }
-        await test.plans.recordOutput(ticket, { text, truncated: false });
+        let notified = false;
+        const controller = new AbortController();
+        const update = test.plans
+          .waitForOutput(run.id, controller.signal)
+          .then(() => {
+            notified = true;
+          });
+        try {
+          await test.plans.recordOutput(ticket, { text, truncated: false });
+          await expect.poll(() => notified, { timeout: 500 }).toBe(true);
+          await update;
+        } finally {
+          controller.abort();
+          await update;
+        }
         expect(await test.plans.output(test.owner, run.id)).toEqual({
           text,
           truncated: false,

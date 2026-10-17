@@ -181,7 +181,7 @@ des bisherigen Standalone-Vertrags stehen im
 - Ergebnisprojektion enthält nur Zahlen, Status und feste Fehlercodes; keine
   Adressen, Attributwerte, Output-Namen, Rohdiagnosen oder Geheimnisse. Auch nicht
   als sensitive markierte Werte werden nicht in diese Summary exportiert.
-  Separat zeigt der native lokale Runner dem berechtigten Plan-Eigentümer unter
+  Separat zeigt der Runner dem berechtigten Plan-Eigentümer unter
   **OpenTofu-Ausgabe** die normale CLI-Textdarstellung: Live-Logs aus dem privaten
   aktiven Job oder `tofu show -no-color` des exakt hash-/paketgebundenen,
   verschlüsselt gespeicherten Planartefakts. Sitzung, Deployment-Rolle und
@@ -192,11 +192,34 @@ des bisherigen Standalone-Vertrags stehen im
   serverseitig. Es laufen kein neuer Cloud-Plan, kein Apply und kein Backend-Init;
   die Inspektion verwendet nur backendfreies Init und Show ohne geerbte Secrets.
   Die Apply-Ablauffrist bleibt unabhängig von der read-only Anzeige, solange das
-  verschlüsselte Artefakt vorhanden ist. CF-Live-Ausgabetransport bleibt offen.
-- Vor dem terminalen Ergebnis sichert der Worker den redigierten CLI-Mitschnitt
+  verschlüsselte Artefakt vorhanden ist.
+- Aktive Plattformaufträge öffnen einen NDJSON-Live-Kanal auf
+  `GET /api/v1/plans/:id/output` mit `Accept: application/x-ndjson`.
+  JSON-Snapshots bleiben für Historie und bestehende Clients erhalten. Der Worker
+  liest vollständige Log-Zeilen alle 500 ms und überträgt nur geänderte,
+  redigierte Mitschnitte. Nach dem verschlüsselten Commit benachrichtigt die API
+  ihre lokalen Abonnenten; andere API-Instanzen prüfen spätestens nach einer
+  Sekunde erneut. Unveränderte Ausgabe erzeugt nur ein Heartbeat, keinen neuen
+  Mitschnitt. Sitzung, Workspace, Deployment-Rolle und Eigentümerschaft werden
+  während der Verbindung erneut geprüft, nicht nur beim Öffnen.
+  Verbindungen enden nach spätestens 35 Sekunden und werden bei weiterhin
+  aktivem Auftrag erneut geöffnet. Collapse, Navigation und Abmeldung brechen
+  sie ab. Pro Eigentümer/Tenant sind je API-Instanz höchstens acht Verbindungen
+  erlaubt; langsame Leser erzeugen Backpressure statt unbegrenzter Warteschlangen.
+- Der Plan verwendet OpenTofus native `-json`-UI-Ereignisse für tatsächliche
+  Fortschrittsmeldungen, auch bevor der fertige Diff existiert. Nur menschliche
+  Meldungen des unterstützten UI-Protokolls werden projiziert; rohe Ereignisse,
+  Metadaten und Output-Werte werden nicht an den Browser gesendet.
+  Unvollständige Zeilen bleiben zurückgehalten, ungültige Ereignisse erhalten
+  einen sichtbaren festen Fehlerhinweis. Anschließend ergänzt
+  `tofu show -no-color plan.bin` den vollständigen normalen Plantext.
+  Init, Validate, Apply und Migration behalten ihre native CLI-Ausgabe.
+  Es gibt keine geschätzten Prozentwerte: wenn OpenTofu während einer Operation
+  keine Meldung erzeugt, bleiben Phase und Laufzeit sichtbar.
+- Während des Laufs und vor dem terminalen Ergebnis sichert der Worker den redigierten CLI-Mitschnitt
   von Init/Validate/Plan/Apply/Migration über `POST /api/runner/output`. Das
   auftragsspezifische Ticket muss gültig und die Eingabe bereits beansprucht sein;
-  der Text darf nur einmal vor Abschluss geschrieben werden. Migration 020 legt
+  der Text darf bis zum Abschluss aktualisiert werden, danach ist er eingefroren. Migration 020 legt
   dafür private Output-Spalten unter der bestehenden Eigentümer-/Tenant-RLS an.
   Der Broker verschlüsselt maximal 2 MiB mit AEAD und auftragsspezifischer AAD.
   Erfolgs- und Fehlerausgaben bleiben nach Cleanup und Reload lesbar, ohne laufenden

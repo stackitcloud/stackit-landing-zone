@@ -44,6 +44,15 @@ replace the allowlist with a catch-all.
 
 ## Validation versus cloud operations
 
+Runner output uses an authenticated NDJSON stream with unchanged JSON snapshot
+compatibility. Keep the shared output-event contract, worker redaction and UTF-8
+byte limits, native UI-event projection and final human-readable saved Plan in
+sync. Test output before process completion and before HTTP EOF, access
+revocation, disconnect cleanup and desktop/mobile collapse/reconnect. Do not
+replace native progress with invented percentages or expose raw machine UI,
+saved-plan JSON or state. Assistant acceptance and output viewing grant no
+execution permission.
+
 | Workflow | Trigger and purpose |
 | --- | --- |
 | Validate | Every PR and main push; required Accelerator check names remain present, with change-aware execution |
