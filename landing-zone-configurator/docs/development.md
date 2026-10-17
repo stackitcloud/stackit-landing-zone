@@ -53,14 +53,10 @@ replace native progress with invented percentages or expose raw machine UI,
 saved-plan JSON or state. Assistant acceptance and output viewing grant no
 execution permission.
 
-| Workflow | Trigger and purpose |
-| --- | --- |
-| Validate | Every PR and main push; required Accelerator check names remain present, with change-aware execution |
-| Validate Configurator | Relevant PRs/main pushes or manual dispatch; catalogue, app, browser, database and mock-IaC checks |
-| Assistant live qualification | Manual/reusable; synthetic inference with a dedicated test token, no execution credentials |
-| Verify Deployment / Publish Release | Manual Accelerator cloud verification/release; not ordinary PR validation |
-| Configurator Bootstrap / Platform / Runtime | Manual main-branch plan, optional separately approved Apply |
-| Configurator Release | Manual qualified build/promotion and optional development deployment |
+The repository-wide [workflow catalogue](../../docs/workflows.md) is the central
+table for all pipelines, automatic/manual triggers, reusable calls, inputs and
+GitHub UI start instructions. Update it alongside workflow changes rather than
+maintaining a second partial inventory here.
 
 Source merge does not dispatch deployment. Never put customer credentials,
 state, private inventories or raw Plan output in issues, chat or test artifacts.
