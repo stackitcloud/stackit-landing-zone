@@ -4,10 +4,12 @@ import { z } from "zod";
 import {
   type AuthServices,
   authenticatedSession,
+  cookie,
   validMutation,
 } from "../auth/routes.js";
 import { CredentialError } from "../credentials/profiles.js";
 import { RepositoryError } from "../github/repositories.js";
+import { sendPlanOutput } from "./output-stream.js";
 import type { Plans } from "./service.js";
 export type PlanRoutesServices = Pick<
   Plans,
@@ -21,6 +23,7 @@ export type PlanRoutesServices = Pick<
       | "state"
       | "outputs"
       | "output"
+      | "waitForOutput"
       | "recordOutput"
       | "migration"
       | "recovery"
@@ -34,6 +37,7 @@ export function registerPlans(
   auth: AuthServices,
   plans: PlanRoutesServices,
 ) {
+  const outputStreams = new Map<string, number>();
   app.register(async (routes) => {
     routes.setErrorHandler((error, _request, reply) => {
       if ((error as { statusCode?: number }).statusCode === 413)
@@ -78,7 +82,44 @@ export function registerPlans(
           if (!session) return reply.code(401).send();
           const { id } = z.object({ id: z.uuid() }).parse(request.params);
           reply.header("Cache-Control", "private, no-store");
-          return plans.output!(session, id);
+          const initial = await plans.output!(session, id);
+          if (!request.headers.accept?.includes("application/x-ndjson"))
+            return initial;
+          const owner = `${session.tenantId}:${session.userId}`;
+          const count = outputStreams.get(owner) ?? 0;
+          if (count >= 8)
+            return reply
+              .code(429)
+              .header("Retry-After", "2")
+              .send({ error: "plan_output_stream_limit" });
+          outputStreams.set(owner, count + 1);
+          reply.raw.once("close", () => {
+            const remaining = (outputStreams.get(owner) ?? 1) - 1;
+            if (remaining) outputStreams.set(owner, remaining);
+            else outputStreams.delete(owner);
+          });
+          sendPlanOutput(
+            reply,
+            initial,
+            async () => {
+              const token = cookie(request, "__Host-lzc-session");
+              const current = token
+                ? await auth.store.resolveSession(token)
+                : null;
+              if (
+                !current ||
+                current.id !== session.id ||
+                current.tenantId !== session.tenantId ||
+                current.userId !== session.userId
+              )
+                throw new CredentialError(401, "authentication_required");
+              return plans.output!(current, id);
+            },
+            plans.waitForOutput
+              ? (signal) => plans.waitForOutput!(id, signal)
+              : undefined,
+          );
+          return reply;
         });
       for (const action of ["checkpoint", "reconcile"] as const) {
         if (!plans[action]) continue;

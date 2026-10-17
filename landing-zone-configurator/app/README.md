@@ -419,9 +419,15 @@ und verwendet weder Kunden-Credentials noch Kunden-State:
 LZC_NATIVE_RUNNER_TEST=true LZC_RUNNER_PACKAGE_DIR=../.local/runner-local-20261003-mirror-init npm exec -- vitest run tests/platform-worker.test.ts -t 'real native providers'
 ```
 
-Unter **OpenTofu-Ausgabe** zeigt jeder lokale Auftrag die normale CLI-Ausgabe.
-Laufende Jobs werden alle zwei Sekunden aktualisiert; **Ausgabe folgen** laesst
-sich zum Pruefen aelterer Zeilen anhalten. Erfolgreiche Plattform-Plans werden
+Unter **OpenTofu-Ausgabe** zeigen Plattformauftraege auch in Cloud Foundry
+Live-Fortschritt ueber einen authentifizierten NDJSON-Kanal. Der Worker liest
+vollstaendige Zeilen alle 500 ms; nur geaenderter, redigierter Text wird
+verschluesselt gesichert und weitergegeben. Der Plan liefert native
+OpenTofu-UI-Ereignisse, bevor der fertige Diff verfuegbar ist; rohe Ereignisobjekte
+und deren Output-Daten werden nicht an den Browser gegeben. **Ausgabe folgen** laesst sich zum Pruefen aelterer
+Zeilen anhalten. Einklappen und Navigation trennen die Verbindung; erneutes
+Oeffnen setzt beim aktuellen Mitschnitt fort. JSON-Snapshots bleiben kompatibel.
+Erfolgreiche Plattform-Plans werden
 read-only mittels `tofu show -no-color` aus dem unveraenderten gespeicherten
 Artefakt dargestellt, einschliesslich Ressourcen und Attributaenderungen.
 OpenTofu maskiert sensitive Werte wie in der CLI. Die separate Ausgabe-Route
@@ -430,15 +436,19 @@ rohes Plan-Binary oder `show -json` werden nicht an den Browser geliefert.
 Jeder Plan bleibt an sein unveraenderliches Runner-Paket gebunden. Ein Paketwechsel
 erfordert einen neuen Plan und dessen ausdrueckliche Freigabe.
 Laufende Apply-Ausgaben werden ebenfalls aktualisiert. Vor dem terminalen Ergebnis
-sichert der Worker den redigierten CLI-Text einmalig und verschluesselt beim Broker;
+sichert der Worker den letzten redigierten CLI-Text verschluesselt beim Broker;
 er bleibt nach Cleanup und Reload unter derselben privaten Zugriffskontrolle lesbar.
 **Apply-Nachweise** zeigen Plan-ID, SHA-256, Zielorganisation, State-Backend des
 Auftrags und Abschlusszeit. Die bestehende exakte Organisationsbestaetigung und
 gegebenenfalls destruktive Freigabe bleiben erforderlich; kein automatischer Retry.
 Ausgaben sind auf 2 MiB begrenzt; eine Kuerzung wird angezeigt. Die Sicherung ist
 best-effort: bei hartem Prozessabbruch oder fehlgeschlagenem Upload ist ein
-vollstaendiger historischer Mitschnitt nicht garantiert. CF-Live-Ausgabetransport
-bleibt offen; bereits gesicherter Text benoetigt keinen laufenden nativen Runner.
+vollstaendiger historischer Mitschnitt nicht garantiert. Bereits gesicherter
+Text benoetigt keinen laufenden nativen Runner. Waehrend des Streams werden
+Sitzung, Tenant, Rolle und Eigentuemerschaft erneut geprueft. Verbindungen werden
+spaetestens nach 35 Sekunden beendet und bei aktivem Auftrag neu geoeffnet;
+Backpressure, Byte-Limit und hoechstens acht Streams pro Eigentuemer/Tenant und
+API-Instanz begrenzen die Ressourcen. Details: [Plan-Ausfuehrung](../docs/plan-execution.md).
 
 Für neue Plattformen ist **Accelerator-Standard · Management-S3** der Default.
 Der ausgewählte Service Account führt den freigegebenen Bootstrap-Apply aus;

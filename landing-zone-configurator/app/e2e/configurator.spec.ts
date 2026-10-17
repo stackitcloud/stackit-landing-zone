@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { createServer, type ServerResponse } from "node:http";
 import {
   assistantProposalFields,
   type PlatformApplyBlocker,
@@ -4861,6 +4862,111 @@ test.describe("explicit saved-plan approval", () => {
     await console.screenshot({
       path: testInfo.outputPath("opentofu-plan-details.png"),
     });
+  });
+
+  test("renders true live output before EOF and reconnects after collapse without duplicates", async ({
+    page,
+  }) => {
+    await setup(page);
+    let connection: ServerResponse | undefined;
+    let latest = "$ tofu plan (progress)\nRefreshing state...\n";
+    let reads = 0;
+    let disconnects = 0;
+    let finished = false;
+    const frame = (kind: "live" | "execution") =>
+      `${JSON.stringify({
+        type: "output",
+        data: { text: latest, truncated: false, kind },
+      })}\n`;
+    const server = createServer((_request, response) => {
+      reads++;
+      connection = response;
+      response.writeHead(200, {
+        "Content-Type": "application/x-ndjson",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store",
+      });
+      response.write(frame(finished ? "execution" : "live"));
+      if (finished) response.end('{"type":"complete"}\n');
+      response.once("close", () => disconnects++);
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string")
+        throw new Error("Missing output test server address");
+      await page.route("**/api/v1/plans", (route) =>
+        route.fulfill({
+          json: {
+            runs: [
+              {
+                ...savedPlan(),
+                status: finished ? "succeeded" : "planning",
+                summary: finished ? savedPlan().summary : null,
+                applyAllowed: false,
+              },
+            ],
+          },
+        }),
+      );
+      await page.route(`**/api/v1/plans/${planId}/output`, (route) =>
+        route.continue({
+          url: `http://127.0.0.1:${address.port}/output`,
+        }),
+      );
+      await page.goto("/deployments/plan");
+      const console = page.locator("textarea.plan-console");
+      await expect(console).toHaveValue(latest);
+      expect(connection?.writableEnded).toBe(false);
+      expect(finished).toBe(false);
+      expect(reads).toBe(1);
+      await page.getByText("OpenTofu-Ausgabe", { exact: true }).click();
+      await expect.poll(() => disconnects).toBe(1);
+      latest += "Refresh complete\n";
+      await page.getByText("OpenTofu-Ausgabe", { exact: true }).click();
+      await expect(console).toHaveValue(latest);
+      expect(reads).toBe(2);
+      connection?.end('{"type":"complete"}\n');
+      await expect.poll(() => reads, { timeout: 1500 }).toBe(3);
+      await expect(console).toHaveValue(latest);
+      latest += Array.from(
+        { length: 100 },
+        (_, index) => `Planning resource ${index}\n`,
+      ).join("");
+      connection?.write(frame("live"));
+      await expect(console).toHaveValue(latest);
+      await expect
+        .poll(() =>
+          console.evaluate(
+            (element: HTMLTextAreaElement) =>
+              element.scrollHeight - element.clientHeight - element.scrollTop,
+          ),
+        )
+        .toBeLessThanOrEqual(2);
+      await page.getByRole("checkbox", { name: "Ausgabe folgen" }).uncheck();
+      latest += "Plan: 1 to add, 0 to change, 0 to destroy.\n";
+      connection?.write(frame("execution"));
+      connection?.end('{"type":"complete"}\n');
+      finished = true;
+      await expect(console).toHaveValue(latest);
+      expect(reads).toBe(3);
+      await page
+        .getByRole("button", { name: "Weiter zu Apply", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", {
+          name: "Freigegebenen Plan anwenden",
+          exact: true,
+        }),
+      ).toBeDisabled();
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 
   test("follows live OpenTofu output and switches to saved plan details when it finishes", async ({

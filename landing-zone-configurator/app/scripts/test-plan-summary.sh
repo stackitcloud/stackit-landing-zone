@@ -16,22 +16,33 @@ unset TF_CLI_ARGS TF_CLI_ARGS_init TF_CLI_ARGS_validate TF_CLI_ARGS_plan TF_CLI_
 export TF_IN_AUTOMATION=true TF_INPUT=0
 "$tofu_bin" -chdir="$work_dir" init -input=false -no-color
 "$tofu_bin" -chdir="$work_dir" validate -no-color
-set +e
-"$tofu_bin" -chdir="$work_dir" plan -input=false -no-color -detailed-exitcode -out=plan.bin > "$work_dir/plan.log" 2>&1
-plan_exit=$?
-set -e
+touch "$work_dir/landing-zone.tfvars"
+(
+  cd "$work_dir"
+  PATH="$(dirname "$tofu_bin"):$PATH" bash "$app_dir/../deploy/runner/run-plan.sh" planning initial-plan-only
+)
+plan_exit="$(cat "$work_dir/plan.exit")"
 if [ "$plan_exit" -ne 2 ]; then echo "Plan test failed (exit $plan_exit); raw diagnostics withheld." >&2; exit 1; fi
-"$tofu_bin" -chdir="$work_dir" show -json plan.bin > "$work_dir/plan.json"
 node --input-type=module - "$app_dir" "$work_dir/plan.json" <<'JS'
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 const { summarizePlan } = await import(pathToFileURL(`${process.argv[2]}/apps/worker/dist/plans/summary.js`));
+const { openTofuProgress } = await import(pathToFileURL(`${process.argv[2]}/packages/contracts/dist/index.js`));
 const summary = summarizePlan(JSON.parse(readFileSync(process.argv[3], 'utf8')), 2);
 assert.equal(summary.resources.create, 1);
 assert.equal(summary.changedOutputs, 1);
 assert.equal(summary.applyAllowed, false);
 assert.equal(summary.result, 'changes');
 assert.ok(!JSON.stringify(summary).includes('private-spike-value'));
-console.log('Real OpenTofu plan summary passed; no apply executed.');
+const directory = new URL('.', pathToFileURL(process.argv[3]));
+const progress = openTofuProgress(readFileSync(new URL('plan-events.log', directory), 'utf8'));
+assert.equal(progress.invalid, false);
+assert.match(progress.text, /Plan: 1 to add/);
+assert.ok(!progress.text.includes('private-spike-value'));
+const human = readFileSync(new URL('plan.log', directory), 'utf8');
+assert.match(human, /Plan: 1 to add/);
+assert.ok(human.includes('private-spike-value'), 'Normal attribute values remain visible in the full plan');
+assert.match(human, /private_output\s*=\s*\(sensitive value\)/);
+console.log('Real OpenTofu native UI, full saved-plan text and summary passed; no apply executed.');
 JS

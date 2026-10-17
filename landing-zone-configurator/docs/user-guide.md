@@ -64,6 +64,14 @@ Choose the correct environment and target, bind the authorized technical
 credentials, then create a preparation and request a Plan. Follow the job output
 and review the resulting changes, source/configuration version and state binding.
 
+Active platform jobs stream **OpenTofu output** as it becomes available, including
+native Plan progress before the final diff. **Follow output** can be switched off
+to inspect earlier lines. Collapse the console to disconnect; reopening shows
+the latest captured output without restarting the job. The final normal Plan
+text remains available after completion and reload. Output is limited to 2 MiB;
+truncation and connection errors are shown. OpenTofu may remain quiet during a
+long operation: phase and elapsed time are not an estimated percentage.
+
 Apply uses the reviewed saved Plan and requires its own authorization.
 Changed inputs, source, state or an expired approval can require a new preparation.
 Do not start parallel infrastructure writes to the same state.
