@@ -1,5 +1,9 @@
 # OpenTofu in GitHub Actions
 
+Die zentrale [Workflow-Uebersicht](../../../docs/workflows.md) beschreibt alle
+Pipelines, automatische und manuelle Ausloeser, Eingaben und den Start im
+GitHub-UI. Diese Seite vertieft die Operator- und Freigabevertraege.
+
 Die ausführbaren Deployments stehen direkt in den Workflows:
 
 - [Configurator Bootstrap](../../../.github/workflows/configurator-bootstrap.yml): `bootstrap` oder `backend`.

@@ -29,6 +29,7 @@ filled manually and use a separate backend/state.
 - [Configurator Architecture](landing-zone-configurator/docs/architecture.md)
 - [Configurator User Guide](landing-zone-configurator/docs/user-guide.md)
 - [Configurator Development](landing-zone-configurator/docs/development.md)
+- [GitHub Actions Workflows](docs/workflows.md) - all pipelines, automatic/manual triggers, UI start instructions, inputs and deployment effects
 
 ## 🤝 Contributing
 

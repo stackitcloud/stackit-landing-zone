@@ -96,6 +96,11 @@ Do not share execution credentials with the inference-only `assistant-tests`
 environment. Configurator provisioning and deployment remain manual; production
 setup is a separate task.
 
+The [workflow catalogue](docs/workflows.md) lists all pipelines, automatic/manual
+triggers and UI start instructions. Update it when changing workflow names,
+triggers, inputs or operational gates; keep deployment authorization separate
+from PR approval.
+
 ### Terraform conventions
 
 Follow the full [Terraform style guide](docs/terraform-style.md) alongside the
