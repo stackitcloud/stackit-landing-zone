@@ -1,345 +1,161 @@
-# Plattformkonfiguration und Projekt-Template-Entwürfe
-
-Stand: 2026-10-09. Bestell-, Plan-, Apply-, Destroy- und Drift-Ablauf.
-
-## Application-Destroy und Drift
-
-Die Bestelldetails bieten **Destroy** und **Drift**, wenn das aktive, qualifizierte
-Application-Runner-Paket diese Operationen explizit unterstuetzt. Bestehende
-Template-Versionen, Bestellungen, Sources, Artefakte und State-Keys bleiben
-unveraendert. Beide Aktionen verwenden den S3-State derselben Application-Instanz.
-
-**Destroy-Plan erstellen** erzeugt mit `tofu plan -destroy` einen gespeicherten
-Loeschplan. Nach Pruefung der Ressourcen und separater Loeschbestaetigung wird
-genau dieses Binary angewendet, nicht ein neu berechneter Plan. Die API bindet
-die Bestaetigung an Instanz und Artefakt-Hash; ein Plan-/Reiterwechsel setzt die
-UI-Bestaetigung zurueck. Anlegen, Aendern, Ersetzen und Ordnerloeschung bleiben
-gesperrt. Abschlussstatus und redigierte Ausfuehrungslogs stehen im Destroy-Reiter.
-Nach erfolgreichem Destroy kann die Bestellung separat archiviert werden;
-State, Artefakte und Audit-Historie bleiben dabei erhalten. Provider-seitige
-Projektloeschung kann weiterhin eine nachgelagerte Purge-Phase haben.
-
-**Drift pruefen** erstellt einen lesenden Plan mit explizitem Refresh und zeigt
-zwei getrennte Vergleiche: gespeicherter State gegen Cloud sowie Cloud gegen die
-unveraenderlich bestellte Soll-Konfiguration. Sensible Attribute werden maskiert.
-Die Pruefung kann weder im UI noch ueber API/Worker angewendet werden. Erfasst
-werden nur Ressourcen dieses Application-States, nicht beliebige zusaetzliche
-Ressourcen im Projekt. Drift ist daher keine vollstaendige Cloud-Inventarisierung.
-
-Aktuelle Besteller-/IAM-/Gruppenrechte, technische Delegation, passendes
-Runner-Paket und State-Locking bleiben erforderlich. Aktive Ausfuehrungen und
-ungeklaerter Recovery-State sperren Maintenance. Ein abgeschlossenes
-`reconciliation_required` mit abgelaufenem Ticket und ohne Recovery-Beleg erlaubt
-gezielt Destroy/Drift, aber keinen normalen Apply-Neustart. Der alte Abschluss
-wird dabei weder veraendert noch als Erfolg interpretiert. Fuer archivierte
-Bestellungen besteht weiterhin keine Ausfuehrungsmoeglichkeit.
-
-## Observability ohne ACL-Parameter
-
-Die ACL-Einrichtung ist im MVP vollständig benutzerverwaltet und nicht Teil
-von Editor, Bestellung oder automatischer Ressourcenverknüpfung. Observability
-kann ohne ACL-Pflichteingaben und ohne ungeklärte Egress-Bindung aktiviert
-werden. Gespeicherte feste ACL-Werte werden nicht gelöscht. Die neue native
-Application-Revision schützt spätere ACL-Änderungen durch `ignore_changes`.
-Details und Provider-Grenzen stehen im
-[aktuellen Parametervertrag](template-parameters-and-bindings.md).
-
-Bereits veröffentlichte Versionen bleiben unverändert an ihre alte Quelle
-gebunden. Für den neuen Runner ist eine neue Veröffentlichung und Bestellung
-nötig; bestehende Aufträge und Plan-Artefakte werden nicht umgeschrieben.
-
-## Application-Bestellung, Vorschau und Apply
-
-Eine Bestellung ohne angeforderten Apply kann auch nach einem erfolgreichen
-oder fehlgeschlagenen, abgeschlossenen Plan gelöscht werden. Laufende oder
-ungeklärte Ausführungen und jede Apply-Anforderung sperren das Löschen weiterhin.
-Die Löschung entfernt die Bestellung aus dem Self-Service; Job-Historie und
-verschlüsselte Plan-Artefakte bleiben unverändert erhalten. Danach kann kein
-Apply mehr aus diesen Plans gestartet werden. Löschen ist kein Cloud-Destroy.
-
-Bei einer direkt freigegebenen Template-Version mit aktiver Execution-Delegation
-startet **Bestellen** unmittelbar den Cloud-Plan. Separate Bestätigungen für
-Plan-Vorbereitung und Plan-Start entfallen. Eine fachliche Bestellfreigabe bleibt
-nur bei `approval-required` notwendig; danach startet der Application Owner den
-Plan mit einem Klick. Die Bestellung bleibt auch bei einem fehlgeschlagenen
-Plan-Start erhalten und kann ohne erneute Bestellung weiterbearbeitet werden.
-
-Ein erfolgreicher Plan liefert eine Ressourcen-Vorschau aus dem verschlüsselten,
-gespeicherten Plan-Artefakt: Ressourcentyp, konkrete Änderung und zugelassene
-Eigenschaften wie Projektname, Region oder Netzwerk-CIDR. Sensible Werte werden
-maskiert; unbekannte Werte werden als erst nach Apply bekannt angezeigt. Rohes
-Plan-JSON, Secrets und dynamische Ressourcenadressen werden nicht ausgegeben.
-
-**Application Landing Zone erstellen** startet mit einem Klick den Apply genau
-dieses gespeicherten Plans, ohne weitere Checkbox oder Freigabeschleife. Hash,
-Runner-Paket, Bestellung, aktueller Plan und Execution-Delegation werden erneut
-geprüft. Der Plan muss innerhalb einer Stunde erstellt worden sein; derselbe
-Plan kann nur einmal angewendet werden. Für Apply wird eine neue, kurzlebige
-Runner-Berechtigung erzeugt, nicht die Plan-Berechtigung wiederverwendet.
-
-Apply läuft niemals automatisch. Ein möglicherweise teilweise ausgeführter
-Apply wird als `reconciliation_required` gesperrt und nicht automatisch erneut
-gestartet. Die Vorschau und damit Apply sind aktuell für den qualifizierten
-lokalen Runner verfügbar; ein Runner ohne sichere Saved-Plan-Inspektion meldet
-Apply als deaktiviert. Frühere Hinweise auf einen reinen Plan-Pfad oder einen
-noch fehlenden Application-Apply sind durch diesen Stand überholt.
-
-## Fachlicher Ablauf
-
-Der Platform Engineer definiert zentrale Plattformdienste und die dafür nötigen
-Infrastrukturprojekte. Im Schritt **Projekt-Templates** erstellt er Vorlagen für
-spätere Anwendungsprojekte. Die Plattformkonfiguration erzeugt diese Projekte
-nicht selbst. Der Application Owner bestellt später eine Instanz einer
-veröffentlichten Template-Version im separaten Application-Self-Service.
-
-Neue Entwürfe aus allen acht Accelerator-Vorlagen nutzen diesen Ablauf.
-`landing_zones`, `sandboxes` und `landing_zone_namespace_services` aus den
-Beispielen werden zu Template-Entwürfen. Plattform, Connectivity, Governance,
-zentrale Dienste und deren Projekte bleiben Teil der Plattformkonfiguration.
-Die Vorschau zeigt Plattformressourcen und Template-Entwürfe getrennt.
-
-Ein Template enthält eine eigene ID und Kennung, Anzeigenamen, Projektart
-(Public/Corporate/Sandbox), Region sowie die festen Modul-/Service-Einstellungen.
-Corporate-Templates referenzieren eine SNA ihrer Region. Die Projektart bestimmt
-die Ordnerrolle. Secrets Manager und Observability können als automatisch
-bereitzustellende Dienste vorgegeben werden; weitere unterstützte Modulwerte
-bleiben erhalten. Dies beschreibt ein Anwendungsprojekt mit Basisdiensten, noch
-kein eigenständiges VM- oder Kubernetes-Workload-Angebot.
-
-Konkreter Projektname und Projektkürzel gehören zur späteren Bestellung. Der
-Projektverantwortliche muss serverseitig aus einer verifizierten STACKIT-Identität
-kommen. Feste zusätzliche Administratorzuweisungen (z. B. Sandbox `owner_emails`)
-sind davon getrennte Plattformpolicy; Beispieladressen müssen vor Speicherung
-bereinigt werden. Namespace-Service-Einstellungen werden als Template-Metadaten
-erhalten. Das ist keine Freigabe ihrer späteren Clusteranbindung/Ausführung.
-
-## Template-Eingaben und Verknüpfungen
-
-Die bisherigen festen Einstellungen sind noch kein vollständiger Template-Vertrag.
-Stage soll normalerweise eine begrenzte Bestelleingabe sein; Dienstbeziehungen
-wie „Observability nur aus eigenem Projektnetz“ brauchen typisierte Bindungen.
-[Wertquellen, Instanziierung und Umsetzungsplan](template-parameters-and-bindings.md).
-Parameter-Policy, fünf freigegebene Felder und lokale Bestellvorschau sind implementiert. Veröffentlichung, weitere Feldbindungen und echte Bestellungen bleiben offen.
-
-## Speicherung und Export
-
-Das bisherige Dokumentformat v3 besitzt nun optional `projectTemplates`.
-
-- Ohne das Feld bleibt es eine bisherige Gesamtkonfiguration mit konkreten Projekten.
-- Mit dem Feld ist es ein Plattformentwurf; auch eine leere Liste kennzeichnet diesen Modus.
-- Plattformentwürfe dürfen keine konkreten `landing_zones`, `sandboxes` oder
-  `landing_zone_namespace_services` enthalten. Mischformen werden beim Einlesen,
-  Speichern und Exportieren abgewiesen.
-- Template-Einstellungen werden gegen den bestehenden Accelerator-Eingabevertrag
-  geprüft; konkrete Instanz-/Owner-Felder sind in den Template-Einstellungen verboten.
-- Das JSON im persönlichen Fork erhält die Template-Entwürfe. Der deterministische
-  tfvars-Export enthält nur die Plattform und explizit leere Anwendungssammlungen.
-- Erstbereitstellungspläne für erlaubte Plattform-Teilkonfigurationen planen daher
-  **nur die Plattform**, keine Template-Instanzen. Die übrigen Runner-Sperren bleiben wirksam.
-
-Das optionale Feld erhält die Lesbarkeit alter Dokumente ohne automatische
-Umdeutung. Die Veröffentlichung bekommt später einen eigenen tenantgebundenen,
-unveränderlichen Versionsvertrag; ein editierbarer Fork-Entwurf ist keine
-veröffentlichte Version und keine Bereitstellungsberechtigung.
-
-## Bestehende Konfigurationen
-
-Der bisherige Projekteditor ist für vorhandene Dokumente unter **Projekte (Bestand)**
-weiter verfügbar. Neue Konfigurationen werden nicht mehr über den alten
-Standalone-Erstellungsbutton angelegt.
-
-**Als neue Plattformkonfiguration übernehmen** erstellt nach ausdrücklicher
-Bestätigung eine Kopie mit neuer Konfigurations-ID. Die Fork-Verknüpfung wird auf
-Neuanlage zurückgesetzt; der bestehende Datensatz wird nicht überschrieben.
-Namespace-Einstellungen ohne zugehöriges Quellprojekt blockieren die Kopie,
-statt verloren zu gehen. SNA-Referenzen aus Templates verhindern das versehentliche
-Entfernen des referenzierten Bereichs.
-
-Das ist ausschließlich eine Konfigurationskopie. Es ist keine State-Migration,
-kein Import bestehender Ressourcen und keine Anweisung, die Plattform parallel
-neu auszurollen. Bereits bestehende Ressourcen benötigen den separat geplanten
-Migrations-/State-Lebenszyklus.
-
-## Bestellfreigabe (2026-10-07)
-
-Unter **Application Landing Zones > Bestellungen > Details anzeigen** kann ein
-Platform Engineer eine fremde Bestellung mit `approval-required` freigeben oder
-ablehnen. Die Entscheidung muss ausdruecklich bestaetigt werden; fuer eine
-Ablehnung ist eine Begruendung erforderlich. Selbstfreigaben sind gesperrt.
-
-Migration 040 speichert Entscheidung, Entscheider, Zeitpunkt und Begruendung als
-unveraenderlichen, tenantgebundenen Nachweis. Wiederholungen derselben Entscheidung
-liefern denselben Nachweis; eine widerspruechliche Entscheidung wird abgewiesen.
-Der Besteller sieht den Status und die Begruendung seiner eigenen Bestellung.
-Bestehende Bestellungen ohne Nachweis bleiben ausstehend; bei `direct` ist keine
-Bestellfreigabe erforderlich. Die veroeffentlichte Template-Version bleibt erhalten.
-
-Die fachliche Freigabe startet weder einen Runner noch einen Cloud-Plan oder Apply.
-Die Runner-Aktivierung erfolgt separat. Neue Jobs, Credential-Grants,
-Claims, Dispatches und Runner-Tickets fuer freigabepflichtige Bestellungen werden
-ohne positiven Entscheidungsnachweis auch in der Datenbank gesperrt. Bestehende
-Credential-, Backend-, Identitaets- und Ausfuehrungspruefungen bleiben erhalten.
-
-Qualifiziert mit echten PostgreSQL-Rollen-/Tenant-Tests und Desktop-/Mobil-
-Browserfaellen. Ein privater Restore des lokalen Schemas 039 wurde zweimal nach 040
-migriert; alle 37 bisherigen Fach-/Auth-Tabellen blieben unveraendert.
-
-## Application-Plan im UI (2026-10-07)
-
-Nach einer Bestellfreigabe kann der Besteller in den Bestelldetails die
-**Plan-Vorbereitung bestaetigen** und **Plan vorbereiten**. Das erzeugt einen
-kurzlebigen, idempotenten Plan-Job fuer die eigene Bestellung; es startet keinen
-Runner und fuehrt keinen Cloud-Plan aus.
-
-Der im Plattformvertrag gebundene technische Platform Engineer sieht diesen Job
-in denselben Bestelldetails. Er waehlt ein bereits registriertes **State-Backend**
-und bestaetigt dessen Freigabe. Der State-Key bleibt der unveraenderliche
-Application-Instanz-Key, nicht der Plattform-State-Key. Ein separater Klick nach
-**Cloud-Plan bestaetigen** startet den isolierten Application-Plan-Runner.
-Die technische Freigabe und der Start bleiben an dieselbe Sitzung gebunden.
-
-Die UI liest die wirkliche Server-Capability statt die bei Bestellung gespeicherten
-Sperrhinweise als aktuellen Runner-Status zu behandeln. Laufende Jobs werden
-aktualisiert. Reloads loesen keine Mutationen aus. Ein verlorener Prepare-Response
-oder ein Fehler beim anschliessenden Statusabruf verwendet beim Retry denselben
-Idempotenzschluessel. Abgelaufene Jobs koennen neu vorbereitet werden.
-
-Migration 041 ergaenzt ausschliesslich SELECT-Sichtbarkeit fuer den bereits
-gebundenen technischen Freigeber. Fremde Tenants und ungebundene Platform Engineers
-erhalten keine Jobs; die INSERT-, Credential-, Backend- und Dispatch-Gates bleiben
-erhalten. Die Job-Liste enthaelt keine Schluessel, rohen States, Planartefakte oder
-Runner-Ausgaben, sondern Status und die validierte Plan-Zusammenfassung.
-
-Lokal ist das separat qualifizierte Application-Paket ueber
-`LZC_APPLICATION_EXECUTION_ENABLED=true` und
-`LZC_APPLICATION_RUNNER_PACKAGE_DIR` angebunden. Das vorhandene Plattform-Paket
-bleibt unveraendert. **Application-Apply ist noch nicht implementiert**:
-`applyEnabled=false`, keine automatische Erstellung nach Bestellfreigabe oder
-erfolgreichem Plan. Ein echter Cloud-Plan wurde durch diesen Rollout nicht gestartet.
-
-Qualifikation: 31 echte PostgreSQL-Tests, 16 neue Desktop-/Mobile-Plan-Faelle,
-vollstaendiger Organisations-Browserlauf mit 60 Faellen vor dem zusaetzlichen
-GET-Ausfall-Test und 412 kanonische Unit-Tests bestanden. Ein privater Restore von
-040 wurde zweimal nach 041 migriert; alle 38 bestehenden Tabellen blieben dabei
-inhaltlich unveraendert. Im laufenden lokalen Rollout blieb die Bestellentscheidung
-erhalten; eine normale erneute Anmeldung ergaenzte eine Sitzung und erneuerte nur
-Verifikationszeit und Gueltigkeit der bestehenden STACKIT-Identitaet.
-
-## Aktueller Katalogstand (2026-10-06)
-
-Tenantgebundene Veroeffentlichung, unveraenderliche Versionen, freigegebene
-Anwendereingaben und forklose Application-Owner-Bestellungen sind implementiert.
-Platform Engineer waehlen beim Publizieren `approval-required` (Standard) oder
-`direct`. Die Policy gehoert zur unveraenderlichen Version und wird serverseitig
-in die Bestellung uebernommen; eine Policy-Aenderung erzeugt eine neue Version.
-Clients koennen sie bei Bestellung oder Plan-Input nicht ueberschreiben.
-
-Eine ausdruecklich bestaetigte Stilllegung erzeugt einen unveraenderlichen,
-idempotenten Nachweis. Stillgelegte Versionen verschwinden aus der AO-Auswahl;
-neue Bestellungen werden auch serverseitig gesperrt. Bestehende Instanzen und
-idempotente Bestellwiederholungen bleiben erhalten. Parallel laufende Bestellung
-und Stilllegung verwenden dieselbe transaktionale Sperre. Erneutes Publizieren
-stillgelegter Inhalte erzeugt eine neue Version statt die alte wiederzubeleben.
-
-Die zweisprachige Publisher-Oberflaeche nutzt explizite API-Capabilities. Die
-laufende Kunden-API verwendet Migrationen bis 034. Gruppenfreigaben aus
-Migration 035 sind auf einer isolierten Testdatenbank qualifiziert, aber noch
-nicht in der Kunden-API aktiviert. `direct` aktiviert weder Cloud-Ausfuehrung noch einen
-automatischen Apply; eine ausdrueckliche Kunden-Apply-Freigabe bleibt erforderlich.
-
-### Gruppenfreigaben
-
-Jeder Arbeitsbereich erhaelt automatisch die Default-Gruppe `Application Owners`.
-Application Owner werden beim Beitritt oder Rollenwechsel automatisch aufgenommen;
-bei Rollenentzug werden ihre Gruppenmitgliedschaften entfernt. Die Default-Gruppe
-kann nicht manuell bearbeitet werden. Bestehende Veroeffentlichungen werden bei
-Migration 035 dieser Gruppe zugeordnet; Versionsinhalte, Quellen und Instanzen
-bleiben unveraendert.
-
-Gruppenanlage und Mitgliedschaftsaenderungen erfordern die aktuelle
-Mitgliederverwaltungsberechtigung des Arbeitsbereichs. Custom-Gruppen nehmen nur
-Application Owner desselben Arbeitsbereichs auf. Platform Engineers waehlen die
-Freigabegruppen beim Veroeffentlichen oder bestaetigen eine separate Aenderung der
-Freigaben einer vorhandenen Version. Eine leere Freigabeliste sperrt die Version
-fuer Application Owner, ohne deren Instanzen oder State zu loeschen.
-
-Gruppenfreigaben sind auditierte Nutzungsrechte, kein Bestandteil der
-unveraenderlichen Versionsinhalte. AO-Katalog und neue Bestellungen werden
-serverseitig gefiltert. Aktuelle Rechte werden auch vor Jobvorbereitung,
-Backend-Freigabe, Grant-Claim und Runner-Ticket-Verbrauch sowie vor und nach dem
-Secret-/Backend-Zugriff geprueft. Gruppenentzug waehrend eines Credential-Zugriffs
-verhindert die Rueckgabe des Secrets. AO erhalten weder Gruppenverwaltung noch
-technische Credentials. API-Mutationen erfordern Tenantbindung, Origin und CSRF.
-
-Die UI aktiviert diese Controls nur mit `groupAccessEnabled`. Tests pruefen
-Default-Mitgliedschaft, eingeschraenkte Gruppen, fremde Nutzer, direkte
-SQL-Claims/Tickets, Entzug waehrend Secret-Zugriff und Desktop-/Mobil-Bedienung.
-Dies ist noch keine Abnahme von Application-Plan/Apply, Drift oder Upgrades.
-
-## Noch offen
-
-### Neue Runner-Bindung und Loeschung vor Ausfuehrung (2026-10-07)
-
-Neue Template-Versionen koennen die vom Application-Dienst angebotene
-qualifizierte Accelerator-Revision verwenden. Die Veroeffentlichung zeigt die
-Revision und erfordert eine ausdrueckliche Bestaetigung fuer jede neue Version.
-Bestehende Versionen und Bestellungen werden niemals automatisch umgebunden.
-Nicht unterstuetzte Bestandsrevisionen erhalten beim Planversuch eine konkrete
-Fehlermeldung statt eines scheinbaren Dienstausfalls.
-
-Besteller koennen eigene, Platform Engineers die sichtbaren Bestellungen ihres
-Arbeitsbereichs mit ausdruecklicher Bestaetigung loeschen. Voraussetzung ist,
-dass noch kein Dispatch, Runner-Ticket oder Credential-Claim existiert.
-Vorbereitete Jobs und Backend-Freigaben allein verhindern die Loeschung nicht;
-nach der Loeschung duerfen sie jedoch nicht mehr ausgefuehrt werden.
-
-Migration 042 ergaenzt einen unveraenderlichen, tenantgeschuetzten Loeschvermerk.
-Die Bestellung verschwindet aus der Liste; Versionsinhalte, Freigaben und
-Idempotenzhistorie bleiben erhalten. Replays erzeugen keine neue Bestellung.
-Gemeinsame Zeilensperren serialisieren Loeschung und Ausfuehrungsfreigaben.
-Es werden weder Cloud-Ressourcen noch Terraform-State geloescht. Der Umgang
-mit bereits ausgefuehrten Bestellungen und Application-Apply bleibt offen.
-
-[#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) bleibt fuer
-die produktive Veroeffentlichungsabnahme unter autoritativ verifizierter
-Tenantbindung offen. Private Entwuerfe werden nicht im AO-Katalog angezeigt.
-
-[#91](https://github.com/stackitcloud/stackit-landing-zone/issues/91) und
-[#93](https://github.com/stackitcloud/stackit-landing-zone/issues/93) liefern die
-verifizierte Organisations-/Benutzerbindung und Instanziierung mit eigenem State.
-Die bisherige Sperre für Kunden-Apply bleibt bestehen.
-
-### Delegierte Application-Plan-Ausfuehrung (2026-10-08)
-
-Der Platform Owner richtet im Publikationsbereich einmal pro freigegebenem
-Plattformvertrag die Ausfuehrung mit einem registrierten State Backend ein.
-Die Berechtigung bindet unveraenderlich den Service Account des Vertrags,
-Credential-Version und Key-ID sowie Backend-Identitaet und verschluesselte
-Backend-Credentials. Bestehende Vertraege erhalten keine automatische Delegation.
-
-Neue Plan-Jobs einer dazu gebundenen Template-Version uebernehmen diese
-Berechtigung und den instanzspezifischen State-Key. Der Application Owner startet
-den Plan explizit selbst, ohne zweite technische Backend-Freigabe und ohne aktive
-Platform-Owner-Sitzung. Bei `approval-required` bleibt zuvor die fachliche
-Bestellfreigabe erforderlich; `direct` benoetigt sie nicht. Alte Jobs und
-Template-Versionen werden nicht nachtraeglich umgebunden.
-
-Der Platform Owner kann die Berechtigung widerrufen. Vor weiteren Runner-Zugriffen
-werden aktuelle Rollen, Bestelleridentitaet, Gruppenfreigabe, Credential- und
-Backend-Bindung erneut geprueft. Eine neue Delegation reaktiviert keine alten Jobs.
-Secret und Backend-Credentials bleiben serverseitig und werden nur einmal an den
-gebundenen Runner ausgegeben. Neue Publikationen uebernehmen die angebotene,
-qualifizierte Runner-Revision ohne zusaetzliche Pflicht-Checkbox.
-
-Application-Apply bleibt unimplementiert. Ein erfolgreicher Plan erzeugt keine
-Cloud-Ressourcen und ist keine Apply-Freigabe.
-
-## Prüfungen
-
-- [x] Alle acht Quellvorlagen werden ohne Verlust von Plattform-/Projektpolicy konvertiert.
-- [x] Persönliche Instanzfelder gelangen nicht in Projektvorlagen.
-- [x] Legacy-Dokumente bleiben beim Einlesen unverändert; Kopien benötigen eine neue ID.
-- [x] Git-Speicherung erhält Metadaten; tfvars und Deployment-Vorbereitung enthalten keine daraus erzeugten Projekte.
-- [x] Gemischte Template-/Instanzdokumente werden abgewiesen.
-- [x] Native OpenTofu-Variablenprüfung bestätigt leere Anwendungs-, Sandbox- und Namespace-Sammlungen im Plattformexport.
-- [x] Browserprüfung einschließlich Bestandskopie/Speicherung erfolgreich; CI-Validierung und [Release 36855011827](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36855011827) für `0e62c5e` erfolgreich. Live-SPA liefert HTTP 200 mit dem erwarteten Bundle `index-bjLShEoG.js`.
+# Platform configuration and project template drafts
+
+[English](project-template-drafts.md) | [Deutsch](project-template-drafts.de.md)
+
+<a id="plattformkonfiguration-und-projekt-template-entwürfe"></a>
+
+As of: 2026-10-09. Order, Plan, Apply, Destroy and drift workflow.
+
+<a id="application-destroy-und-drift"></a>
+## Application Destroy and drift
+
+Order details offer **Destroy** and **Drift** when the active, qualified Application Runner package explicitly supports these operations. Existing template versions, orders, sources, artifacts and state keys remain unchanged. Both actions use the S3 state of the same Application instance.
+
+**Create Destroy plan** uses `tofu plan -destroy` to create a saved deletion plan. After resource review and separate deletion confirmation, exactly this binary is applied, not a newly calculated plan. The API binds confirmation to the instance and artifact hash; changing the plan/tab resets UI confirmation. Creation, modification, replacement and folder deletion remain blocked. Final status and redacted execution logs are available in the Destroy tab. After successful Destroy, the order can be archived separately; state, artifacts and audit history are retained. Provider-side project deletion may still have a subsequent purge phase.
+
+**Check drift** creates a read-only plan with explicit refresh and shows two separate comparisons: saved state versus cloud and cloud versus the immutably ordered desired configuration. Sensitive attributes are masked. The check cannot be applied through either UI or API/worker. Only resources of this Application state are covered, not arbitrary additional resources in the project. Drift is therefore not a complete cloud inventory.
+
+Current requester/IAM/group permissions, technical delegation, a matching Runner package and state locking remain required. Active executions and unresolved recovery state block maintenance. A completed `reconciliation_required` with an expired ticket and no recovery evidence specifically permits Destroy/drift, but not restarting a normal Apply. The old completion is neither changed nor interpreted as success. Archived orders still cannot be executed.
+
+<a id="observability-ohne-acl-parameter"></a>
+## Observability without ACL parameters
+
+In the MVP, ACL setup is entirely user-managed and not part of the editor, order or automatic resource binding. Observability can be enabled without mandatory ACL inputs or unresolved egress binding. Saved fixed ACL values are not deleted. The new native Application revision protects subsequent ACL changes through `ignore_changes`. Details and provider limitations are in the [current parameter contract](template-parameters-and-bindings.md).
+
+Already published versions remain bound unchanged to their old source. The new Runner requires a new publication and order; existing orders and plan artifacts are not rewritten.
+
+<a id="application-bestellung-vorschau-und-apply"></a>
+## Application ordering, preview and Apply
+
+An order without a requested Apply can be deleted even after a successful or failed, completed Plan. Running or unresolved executions and any Apply request continue to block deletion. Deletion removes the order from self-service; job history and encrypted plan artifacts remain unchanged. No Apply can then be started from these plans. Deletion is not cloud Destroy.
+
+For a directly approved template version with active execution delegation, **Order** starts the cloud Plan immediately. Separate confirmations for Plan preparation and Plan start are no longer needed. Business order approval remains necessary only for `approval-required`; afterwards, the Application Owner starts the Plan with one click. The order is retained even if Plan startup fails and can be continued without ordering again.
+
+A successful Plan provides a resource preview from the encrypted, saved plan artifact: resource type, specific change and permitted properties such as project name, region or network CIDR. Sensitive values are masked; unknown values are shown as known only after Apply. Raw plan JSON, secrets and dynamic resource addresses are not output.
+
+**Create Application Landing Zone** starts Apply of exactly this saved plan with one click, without another checkbox or approval loop. Hash, Runner package, order, current plan and execution delegation are checked again. The plan must have been created within the last hour; the same plan can be applied only once. A new short-lived Runner authorization is created for Apply, rather than reusing Plan authorization.
+
+Apply never runs automatically. A potentially partially executed Apply is blocked as `reconciliation_required` and is not automatically restarted. Preview, and therefore Apply, is currently available for the qualified local Runner; a Runner without secure saved-plan inspection reports Apply as disabled. Earlier notes about a Plan-only path or Application Apply not yet being available are superseded by this status.
+
+<a id="fachlicher-ablauf"></a>
+## Business workflow
+
+The Platform Engineer defines central platform services and the infrastructure projects required for them. In the **Project templates** step, they create templates for future application projects. Platform configuration does not create those projects itself. The Application Owner later orders an instance of a published template version in separate Application self-service.
+
+New drafts from all eight Accelerator templates use this workflow. `landing_zones`, `sandboxes` and `landing_zone_namespace_services` from the examples become template drafts. Platform, connectivity, governance, central services and their projects remain part of platform configuration. The preview shows platform resources and template drafts separately.
+
+A template contains its own ID and key, display name, project type (Public/Corporate/Sandbox), region and fixed module/service settings. Corporate templates reference an SNA in their region. Project type determines the folder role. Secrets Manager and Observability can be specified as automatically provisioned services; other supported module values are retained. This describes an application project with basic services, not yet an independent VM or Kubernetes workload offering.
+
+The specific project name and abbreviation belong to the later order. The project owner must come server-side from a verified STACKIT identity. Fixed additional administrator assignments (e.g. sandbox `owner_emails`) are separate platform policy; example addresses must be cleaned up before saving. Namespace service settings are retained as template metadata. This does not approve their later cluster binding/execution.
+
+<a id="template-eingaben-und-verknüpfungen"></a>
+## Template inputs and bindings
+
+The previous fixed settings do not yet constitute a complete template contract. Stage should normally be a bounded order input; service relationships such as “Observability only from the project's own network” need typed bindings. [Value sources, instantiation and implementation plan](template-parameters-and-bindings.md). Parameter policy, five approved fields and local order preview are implemented. Publication, further field bindings and real orders remain outstanding.
+
+<a id="speicherung-und-export"></a>
+## Storage and export
+
+The existing v3 document format now has optional `projectTemplates`.
+
+- Without the field, it remains an existing combined configuration with concrete projects.
+- With the field, it is a platform draft; even an empty list identifies this mode.
+- Platform drafts must not contain concrete `landing_zones`, `sandboxes` or `landing_zone_namespace_services`. Mixed forms are rejected during reading, saving and export.
+- Template settings are checked against the existing Accelerator input contract; concrete instance/owner fields are prohibited in template settings.
+- JSON in the personal fork retains template drafts. Deterministic tfvars export contains only the platform and explicitly empty application collections.
+- Initial-provisioning plans for permitted platform subsets therefore plan **only the platform**, not template instances. Other Runner guards remain effective.
+
+The optional field preserves readability of old documents without automatic reinterpretation. Publication will later receive its own tenant-bound, immutable version contract; an editable fork draft is not a published version or provisioning authorization.
+
+<a id="bestehende-konfigurationen"></a>
+## Existing configurations
+
+The previous project editor remains available for existing documents under **Projects (legacy)**. New configurations are no longer created through the old standalone creation button.
+
+**Adopt as new platform configuration** creates a copy with a new configuration ID after explicit confirmation. Fork binding is reset to new creation; the existing record is not overwritten. Namespace settings without an associated source project block the copy rather than being lost. SNA references from templates prevent accidental removal of the referenced area.
+
+This is exclusively a configuration copy. It is not a state migration, import of existing resources or instruction to roll out the platform again in parallel. Existing resources require the separately planned migration/state lifecycle.
+
+<a id="bestellfreigabe-2026-10-07"></a>
+## Order approval (2026-10-07)
+
+Under **Application Landing Zones > Orders > Show details**, a Platform Engineer can approve or reject another person's order with `approval-required`. The decision must be explicitly confirmed; rejection requires a reason. Self-approval is blocked.
+
+Migration 040 stores decision, decision-maker, time and reason as immutable, tenant-bound evidence. Repeating the same decision returns the same evidence; a contradictory decision is rejected. The requester sees the status and reason for their own order. Existing orders without evidence remain pending; `direct` requires no order approval. The published template version is retained.
+
+Business approval starts neither a Runner nor a cloud Plan or Apply. Runner activation is separate. New jobs, credential grants, claims, dispatches and Runner tickets for orders requiring approval are blocked in the database as well unless positive decision evidence exists. Existing credential, backend, identity and execution checks are retained.
+
+Qualified with real PostgreSQL role/tenant tests and desktop/mobile browser cases. A private restore of local schema 039 was migrated to 040 twice; all 37 previous business/auth tables remained unchanged.
+
+<a id="application-plan-im-ui-2026-10-07"></a>
+## Application Plan in the UI (2026-10-07)
+
+After order approval, the requester can **Confirm Plan preparation** and **Prepare Plan** in order details. This creates a short-lived, idempotent Plan job for their own order; it does not start a Runner or execute a cloud Plan.
+
+The technical Platform Engineer bound in the platform contract sees this job in the same order details. They select an already registered **State backend** and confirm its release. The state key remains the immutable Application instance key, not the platform state key. A separate click after **Confirm cloud Plan** starts the isolated Application Plan Runner. Technical release and startup remain bound to the same session.
+
+The UI reads the actual server capability rather than treating blocking notices stored at ordering as current Runner status. Running jobs are refreshed. Reloads trigger no mutations. A lost Prepare response or an error in the subsequent status request uses the same idempotency key on retry. Expired jobs can be prepared again.
+
+Migration 041 adds only SELECT visibility for the already bound technical approver. Foreign tenants and unbound Platform Engineers receive no jobs; INSERT, credential, backend and dispatch gates remain intact. The job list contains no keys, raw states, plan artifacts or Runner output, only status and the validated plan summary.
+
+Locally, the separately qualified Application package is connected through `LZC_APPLICATION_EXECUTION_ENABLED=true` and `LZC_APPLICATION_RUNNER_PACKAGE_DIR`. The existing platform package remains unchanged. **Application Apply is not yet implemented**: `applyEnabled=false`, no automatic creation after order approval or successful Plan. This rollout did not start a real cloud Plan.
+
+Qualification: 31 real PostgreSQL tests, 16 new desktop/mobile Plan cases, the full organization browser run with 60 cases before the additional GET-failure test, and 412 canonical unit tests passed. A private restore from 040 was migrated to 041 twice; the contents of all 38 existing tables remained unchanged. In the running local rollout, the order decision was retained; normal re-login added a session and renewed only verification time and validity of the existing STACKIT identity.
+
+<a id="aktueller-katalogstand-2026-10-06"></a>
+## Current catalogue status (2026-10-06)
+
+Tenant-bound publication, immutable versions, approved user inputs and forkless Application Owner orders are implemented. At publication, Platform Engineers select `approval-required` (default) or `direct`. Policy belongs to the immutable version and is copied into the order server-side; changing policy creates a new version. Clients cannot override it at ordering or in Plan input.
+
+Explicitly confirmed retirement creates immutable, idempotent evidence. Retired versions disappear from AO selection; new orders are blocked server-side as well. Existing instances and idempotent order repetitions are retained. Concurrent ordering and retirement use the same transactional lock. Republishing retired content creates a new version instead of reviving the old one.
+
+The bilingual publisher UI uses explicit API capabilities. The running customer API uses migrations through 034. Group access from migration 035 is qualified on an isolated test database but is not yet activated in the customer API. `direct` enables neither cloud execution nor automatic Apply; explicit customer Apply approval remains necessary.
+
+<a id="gruppenfreigaben"></a>
+### Group access
+
+Every workspace automatically receives the default group `Application Owners`. Application Owners are added automatically on joining or role change; their group memberships are removed on role revocation. The default group cannot be edited manually. Migration 035 assigns existing publications to this group; version content, sources and instances remain unchanged.
+
+Group creation and membership changes require current workspace member-management permission. Custom groups accept only Application Owners from the same workspace. Platform Engineers select access groups when publishing or confirm a separate change to access for an existing version. An empty access list blocks the version for Application Owners without deleting their instances or state.
+
+Group access is an audited usage permission, not part of immutable version content. AO catalogue and new orders are filtered server-side. Current permissions are also checked before job preparation, backend release, grant claim and Runner ticket consumption, and before and after secret/backend access. Revoking group access during credential access prevents returning the secret. AOs receive neither group management nor technical credentials. API mutations require tenant binding, Origin and CSRF.
+
+The UI enables these controls only with `groupAccessEnabled`. Tests cover default membership, restricted groups, foreign users, direct SQL claims/tickets, revocation during secret access and desktop/mobile operation. This is not yet acceptance of Application Plan/Apply, drift or upgrades.
+
+<a id="noch-offen"></a>
+## Still outstanding
+
+<a id="neue-runner-bindung-und-loeschung-vor-ausfuehrung-2026-10-07"></a>
+### New Runner binding and deletion before execution (2026-10-07)
+
+New template versions can use the qualified Accelerator revision offered by the Application service. Publication shows the revision and requires explicit confirmation for each new version. Existing versions and orders are never rebound automatically. Unsupported legacy revisions receive a specific error message when attempting a Plan instead of an apparent service outage.
+
+Requesters can delete their own orders, and Platform Engineers visible orders of their workspace, with explicit confirmation. This requires that no dispatch, Runner ticket or credential claim exists yet. Prepared jobs and backend releases alone do not prevent deletion; after deletion, however, they must no longer be executed.
+
+Migration 042 adds an immutable, tenant-protected deletion marker. The order disappears from the list; version content, approvals and idempotency history are retained. Replays do not create a new order. Shared row locks serialize deletion and execution releases. Neither cloud resources nor Terraform state are deleted. Handling already executed orders and Application Apply remains outstanding.
+
+[#92](https://github.com/stackitcloud/stackit-landing-zone/issues/92) remains open for production publication acceptance under authoritatively verified tenant binding. Private drafts are not shown in the AO catalogue.
+
+[#91](https://github.com/stackitcloud/stackit-landing-zone/issues/91) and [#93](https://github.com/stackitcloud/stackit-landing-zone/issues/93) provide verified organization/user binding and instantiation with separate state. The existing customer Apply block remains.
+
+<a id="delegierte-application-plan-ausfuehrung-2026-10-08"></a>
+### Delegated Application Plan execution (2026-10-08)
+
+In the publication area, the Platform Owner sets up execution with a registered state backend once per approved platform contract. Authorization immutably binds the contract's service account, credential version and key ID, as well as backend identity and encrypted backend credentials. Existing contracts receive no automatic delegation.
+
+New Plan jobs for a template version bound to this contract inherit this authorization and the instance-specific state key. The Application Owner explicitly starts the Plan themselves, without a second technical backend release and without an active Platform Owner session. For `approval-required`, prior business order approval remains required; `direct` does not need it. Old jobs and template versions are not rebound retroactively.
+
+The Platform Owner can revoke authorization. Before further Runner access, current roles, requester identity, group access, credential and backend binding are checked again. A new delegation does not reactivate old jobs. Secret and backend credentials stay server-side and are issued only once to the bound Runner. New publications adopt the offered, qualified Runner revision without an additional mandatory checkbox.
+
+Application Apply remains unimplemented. A successful Plan creates no cloud resources and is not Apply approval.
+
+<a id="prüfungen"></a>
+## Checks
+
+- [x] All eight source templates are converted without loss of platform/project policy.
+- [x] Personal instance fields do not enter project templates.
+- [x] Legacy documents remain unchanged on reading; copies require a new ID.
+- [x] Git storage retains metadata; tfvars and deployment preparation contain no projects generated from it.
+- [x] Mixed template/instance documents are rejected.
+- [x] Native OpenTofu variable checking confirms empty application, sandbox and namespace collections in platform export.
+- [x] Browser checks including legacy copy/save successful; CI validation and [release 36855011827](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36855011827) for `0e62c5e` successful. Live SPA serves HTTP 200 with the expected bundle `index-bjLShEoG.js`.

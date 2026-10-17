@@ -1,464 +1,175 @@
-# Assistent: Feature-Abdeckung und Dialogabnahme
+# Assistant: feature coverage and dialogue acceptance
 
-Stand: 2026-10-12. Lokaler Assistant mit automatischem Feldinventar und echten
-synthetischen Themen-Smokes; keine vollstaendige Komponenten-/Cloud-Qualifikation.
-Der bestehende Editor-/Compilervertrag bleibt massgeblich.
-Produktentscheidungen: [Planung](planning.md#11-chatbot-mit-stackit-model-serving).
+[English](assistant-feature-coverage.md) | [Deutsch](assistant-feature-coverage.de.md)
 
-## Aktuelles Feldinventar und automatisierte Themenfaelle
+<a id="assistent-feature-abdeckung-und-dialogabnahme"></a>
 
-Der [aktuelle Testkatalog](assistant-test-catalogue.json) ordnet alle 501
-Katalogfelder (einschliesslich Container und Listenelement-Vertraegen) genau einem
-der 19 Wissensthemen zu. Er fuehrt Typ, Optionalitaet, Verantwortlichkeit,
-tatsaechlichen Modus und erlaubten nativen Patch-Pfad auf. Unterschied zwischen
-bekanntem Feld und unterstuetztem Vorschlag bleibt sichtbar: beispielsweise
-regionale DNS-Felder und zentrale Dienste ueber den gemeinsamen nativen
-Editor-Vertrag vorschlagbar, geschuetzte Zugangswerte nur Operator-Voraussetzungen.
-Management-/Lifecycle-Themen ohne eigene Root-Eingaben haben eigene Chatfaelle.
+As of: 2026-10-12. Local Assistant with automatic field inventory and real synthetic topic smokes; no complete component/cloud qualification. The existing editor/compiler contract remains authoritative. Product decisions: [planning](planning.md#11-chatbot-mit-stackit-model-serving).
 
-Die Themenfelder einschliesslich Abhaengigkeiten werden als `componentFields`
-an das Antwortmodell uebergeben; erlaubte Rueckfragefelder bleiben separat
-eingeschraenkt. Antwortquellen sind auf die tatsaechlich gelieferte
-Themenauswahl begrenzt. Metadaten enthalten keine Secret-Werte.
+<a id="aktuelles-feldinventar-und-automatisierte-themenfaelle"></a>
+## Current field inventory and automated topic cases
 
-52 feste [Chatfaelle](../app/scripts/assistant-scenarios.ts) decken jedes Thema
-und exakte DNS-/Grundlagen-/SNA-/Rollen-/Firewall-Regressionen ab. Katalog und Live-Bericht sind an
-Wissens-, Engine- und Testquellhash gebunden. Normale PR-Checks pruefen offline
-Frische, Feldzuordnung und Regression-Pruefer; echte Modellaufrufe sind explizit.
-Start, Credentials, Einzelthemen und manueller CI-Lauf sind im
-[App-README](../app/README.md#automatisierte-assistant-themenpruefung) beschrieben.
-Live-Tests nutzen keine Benutzer-SSO-Sitzung und speichern keine Kundenentwuerfe.
+The [current test catalogue](assistant-test-catalogue.json) assigns each of the 501 catalogue fields (including containers and list-element contracts) to exactly one of the 19 knowledge topics. It lists type, optionality, ownership, actual mode and permitted native patch path. The distinction between known field and supported proposal remains visible: for example, regional DNS fields and central services are proposable through the common native editor contract, while protected access values are only operator prerequisites. Management/lifecycle topics without their own root inputs have their own chat cases.
 
-### Gemeinsamer Editor-Vorschlagsvertrag
+Topic fields including dependencies are passed to the response model as `componentFields`; permitted follow-up fields remain separately restricted. Response sources are limited to the topic selection actually supplied. Metadata contains no secret values.
 
-Der Assistant leitet seine geschlossenen Wertschemas aus demselben nativen
-`InputType`-Inventar wie der Editor ab. Alle effektiven, nicht geschuetzten
-Katalogpfade haben eine validierte Vorschlagsroute; Firewall-Policy bleibt
-gemaess #101 ausgeschlossen. Das ist Feld-/Entwurfsparitaet, keine Behauptung
-vollstaendiger Cloud-Ausfuehrungsqualifikation.
+52 fixed [chat cases](../app/scripts/assistant-scenarios.ts) cover every topic and exact DNS/foundations/SNA/role/firewall regressions. Catalogue and live report are bound to knowledge, engine and test source hashes. Normal PR checks verify freshness, field assignment and regression checkers offline; real model calls are explicit. Startup, credentials, individual topics and manual CI runs are described in the [app README](../app/README.md#automatisierte-assistant-themenpruefung). Live tests use no user SSO session and save no customer drafts.
 
-`merge` erhaelt ausgelassene Objektattribute und Map-Eintraege. Listen bleiben
-atomar. `replace` und `default` werden als vollstaendiger Ersatz bzw. Rueckkehr
-zum nativen Standard angezeigt, nicht in gefaehrliche Teilersetzungen zerlegt.
-Operationen bleiben durch Feldwahl, Konfliktpruefung, API und Speicherung erhalten.
-Projektvorlagen werden separat von konkreten Projektinstanzen behandelt;
-neue Kennungen werden serverseitig erzeugt. Publikation und Bestellungen sind
-keine Chat-Aktionen.
+<a id="gemeinsamer-editor-vorschlagsvertrag"></a>
+### Common editor proposal contract
 
-[Vertragstests](../app/tests/assistant-editor.test.ts) pruefen typisierte Werte
-fuer jeden effektiven nicht ausgeschlossenen Katalogpfad sowie echte
-Anwendung/Export, native Eingaben, Audit-Pflichtentscheidungen, Teilwahl,
-atomare Ersetzung/Standards, stabile Vorlagenkennungen und unbestaetigte
-IP-/ID-/Kontakt-/Produktwerte. Echte synthetische Modellfaelle pruefen die
-natuerliche Uebersetzung separat; reine Metadaten gelten nicht als Dialogabnahme.
+The Assistant derives its closed value schemas from the same native `InputType` inventory as the editor. All effective, unprotected catalogue paths have a validated proposal route; firewall policy remains excluded under #101. This is field/draft parity, not a claim of complete cloud execution qualification.
 
-Der Vertrag unterscheidet nun den Zustand des Zielobjekts. Bei Erstellung muessen
-einfache skalare/List-Slots im Serving vorhanden sein, statt vom Decoder
-ausgelassen zu werden. Nicht angefragte optionale Null-Slots werden vor der
-Vorschlagsausgabe als native Defaults ausgelassen; bei Updates bleiben explizite
-Null-Werte unveraendert. Komplexe optionale Collections werden nicht zwangsweise
-gefuellt: insbesondere sind leere Audit-Link-Scopes kein Organisationsdefault.
-Neue Map-Eintraege verlangen native Pflichtfelder wie Kubernetes-Region und
-Node-Pool-Name; bestehende Eintraege bleiben ueber bekannte Unterpfade partiell
-aenderbar.
+`merge` preserves omitted object attributes and map entries. Lists remain atomic. `replace` and `default` are shown as complete replacement or return to native default, not split into dangerous partial replacements. Operations survive field selection, conflict checking, API and storage. Project templates are treated separately from concrete project instances; new identifiers are generated server-side. Publication and orders are not chat actions.
 
-Komponentenspezifische Zusatzregeln liegen deklarativ in
-`assistantEditorPolicies`, nicht in einem zweiten Feldmodell:
-Audit-Erstellungsentscheidungen und ACL-Freitextfragen sind die ersten Regeln.
-Ihre Pfade werden gegen das native Inventar getestet. Angebotenes Serving-Schema
-und unveraenderte native Laufzeitpruefung werden beide durchlaufen; keine
-Reparatur doppelter, unvollstaendiger oder unbestaetigter Antworten.
-Topic-Korrektur verwendet eindeutige Besitzer der validierten nativen Roots,
-nicht frei erfundene Komponentennamen. Irrelevante Firewall-Anforderungen werden
-vor ihrer Quellenpruefung aus Nicht-Netzwerkthemen entfernt; Quellenpruefungen
-fuer tatsaechlich genutzte Netzwerkentscheidungen bleiben strikt.
-DE/EN-Vorschlagstexte mit Aenderungen werden serverseitig als lokale
-Entwurfsvorschlaege erzeugt und koennen keine Speicherung oder Live-Grants
-behaupten. Das [Erweiterungsvorgehen](../app/README.md#weitere-assistant-komponenten-ergaenzen)
-verbindet Inventar, Wissen, Zusatzregeln, Anwendungstests und serielle
-Modellqualifikation.
+[Contract tests](../app/tests/assistant-editor.test.ts) check typed values for every effective non-excluded catalogue path and actual application/export, native inputs, mandatory audit decisions, partial selection, atomic replacement/defaults, stable template identifiers and unconfirmed IP/ID/contact/product values. Real synthetic model cases check natural-language translation separately; metadata alone is not dialogue acceptance.
 
-### Vorheriger Nachweis: Themenwechsel von Firewall zu Audit Logging
+The contract now distinguishes target-object state. At creation, simple scalar/list slots must be present in serving rather than omitted by the decoder. Unrequested optional null slots are omitted as native defaults before proposal output; explicit null values remain unchanged in updates. Complex optional collections are not forcibly populated: empty audit-link scopes in particular are not an organization default. New map entries require native mandatory fields such as Kubernetes region and node-pool name; existing entries remain partially editable through known subpaths.
 
-Der erkannte aktuelle Topic darf nicht von geerbtem `networkScope` oder alten
-Firewall-Targets ueberschrieben werden. Solche Merkmale gelten ausschliesslich
-im aktiven Netzwerk-/Firewall-Thema; ihre belegten historischen Anforderungen
-werden nach der Belegpruefung aus einem anderen Topic entfernt, nicht geloescht
-oder als dessen aktuelle Anforderungen uebernommen. Ein aktueller Auftrag mit
-"als naechstes ... richte ein" ist keine Vertagung.
+Component-specific additional rules live declaratively in `assistantEditorPolicies`, not in a second field model: audit creation decisions and ACL free-text questions are the first rules. Their paths are tested against the native inventory. Both offered serving schema and unchanged native runtime checking are performed; no repair of duplicate, incomplete or unconfirmed responses. Topic correction uses unambiguous owners of validated native roots, not invented component names. Irrelevant firewall requirements are removed from non-network topics before source checking; source checks for network decisions actually used remain strict. DE/EN proposal texts containing changes are generated server-side as local draft proposals and cannot claim saving or live grants. The [extension procedure](../app/README.md#weitere-assistant-komponenten-ergaenzen) connects inventory, knowledge, additional rules, application tests and serial model qualification.
 
-Audit-Setup erhaelt eine gepruefte native Feldberatung zu Telemetry Link/Router,
-Logs und Archiv mit der ausdruecklichen Grenze: derzeit kein uebernehmbarer
-Audit-Patch im Chat. Der gemeinsame Editor hat generische Felder unter Plattform.
-Keine stille Aktivierung, Retention-/ACL-Wahl oder Object-Lock-Zusage; keine
-Fortsetzung der Firewall-Unterbrechungsfrage. Audit-Proposals sind damit nicht
-automatisch aus dem MVP genommen.
+<a id="vorheriger-nachweis-themenwechsel-von-firewall-zu-audit-logging"></a>
+### Previous evidence: topic switch from firewall to audit logging
 
-Nachweis: **209 gezielte Offline-Tests**, Typpruefung und **16/16 echte
-synthetische Modellfaelle** (2 Audit-Faelle einschliesslich des gemeldeten
-Wechsels, 14 Firewall-Regressionen) bestanden. Wissenshash:
-`8d8322d3c83f806d87ebbb7574443a8e06a9d8bcb98995e2557613c7216de906`;
-Testsuitehash:
-`5314926be9bd321415c1377b7433fcd74cf61428295c70200d23db32e4b51d4d`.
-Keine Kundenpolicy/-konfiguration oder Cloud-Ausfuehrung zur Qualifikation.
-Der Stand ist in der HTTPS-Entwicklungsumgebung aktiviert; API-Gesundheit und
-unveraenderte vollstaendige Konfigurations-/Gesprächszeilen sind nach Neustart
-geprueft. Bestehende Gespraeche bleiben fortsetzbar.
+The detected current topic must not be overridden by inherited `networkScope` or old firewall targets. Such properties apply exclusively in the active network/firewall topic; after evidence checking, their evidenced historical requirements are removed from another topic, not deleted or adopted as its current requirements. A current instruction with “next ... set up” is not deferral.
 
-### Aktueller MVP-Scope: keine Firewall-Policy-Vorschlaege
+Audit setup receives checked native field advice on telemetry link/router, logs and archive with the explicit boundary: currently no adoptable audit patch in chat. The common editor has generic fields under platform. No silent activation, retention/ACL selection or Object Lock promise; no continuation of the firewall interruption question. Audit proposals are therefore not automatically removed from the MVP.
 
-Benutzerentscheidung 2026-10-13:
-[Issue #101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)
-verschiebt gefuehrte Policy-Bearbeitung und uebernehmbare Assistant-Vorschlaege
-aus dem MVP. Generische native Felder im gemeinsamen Editor bleiben erhalten;
-die MVP-Alternative ist manuelle Policy-Pflege durch den Firewall-Admin in
-OPNsense. Infrastruktur und HA garantieren allein keine Isolation oder NAT.
+Evidence: **209 targeted offline tests**, type checking and **16/16 real synthetic model cases** (2 audit cases including the reported switch, 14 firewall regressions) passed. Knowledge hash: `8d8322d3c83f806d87ebbb7574443a8e06a9d8bcb98995e2557613c7216de906`; test-suite hash: `5314926be9bd321415c1377b7433fcd74cf61428295c70200d23db32e4b51d4d`. No customer policy/configuration or cloud execution for qualification. This status is activated in the HTTPS development environment; API health and unchanged complete configuration/conversation rows were checked after restart. Existing conversations remain continuable.
 
-Aktuelle Faehigkeits- und Definitionsanfragen fuer Regeln/NAT/Aliase/Routen/
-Port-Forwarding erhalten die explizite Chatgrenze, #101 und die Admin-Alternative,
-ohne Aenderungen oder einen Regelvorschlag versprechende Rueckfragen.
-Native Feldberatung bleibt moeglich. Historische Regelanforderungen verdrangen
-keine aktuelle Infrastruktur-/Kapazitaetsantwort; Infrastruktur/HA-Patches
-bleiben verfuegbar. Weitere MVP-Gates werden damit nicht aufgehoben.
+<a id="aktueller-mvp-scope-keine-firewall-policy-vorschlaege"></a>
+### Current MVP scope: no firewall-policy proposals
 
-Nachweis: **205 gezielte Offline-Tests**, Typpruefung, Wissens-/Katalogfrische
-und **16/16 echte synthetische Modellfaelle** (14 Infrastruktur-/Dialogfaelle,
-2 Policy-Faelle) bestanden. Die Tests pruefen keine Kundenpolicy und autorisieren
-keine Cloud-Ausfuehrung. Wissenshash:
-`b9892a0d275b920e3089c167157062ef66af29630374df0b8a6d03ba5d24c37b`;
-Testsuitehash:
-`f443f6633a4ffda7662f419d797a01ffe039c56f0ca5c4aaa187316036cc9c81`.
-Der qualifizierte Backend-Stand ist in der HTTPS-Entwicklungsumgebung aktiviert.
-API-Gesundheit und unveraenderte vollstaendige Konfigurations-/Gesprächszeilen
-wurden vor/nach Neustart geprueft; UI und Kundendaten wurden nicht umgebaut.
+User decision 2026-10-13: [issue #101](https://github.com/stackitcloud/stackit-landing-zone/issues/101) moves guided policy editing and adoptable Assistant proposals out of the MVP. Generic native fields in the common editor remain; the MVP alternative is manual policy maintenance by the firewall administrator in OPNsense. Infrastructure and HA alone guarantee neither isolation nor NAT.
 
-### Vorheriger Nachweis: Firewall-Faehigkeitsgrenze und handlungsfaehige Fehler
+Current capability and definition requests for rules/NAT/aliases/routes/port forwarding receive the explicit chat boundary, #101 and administrator alternative, without changes or follow-up questions promising a rule proposal. Native field advice remains possible. Historical rule requirements do not displace a current infrastructure/capacity response; infrastructure/HA patches remain available. No other MVP gates are lifted.
 
-Der native Accelerator verwaltet `firewall_config` mit Regeln, Aliasen, Routen,
-ausgehendem NAT und Port-Forwarding. Der aktuelle Chat kann nur Infrastruktur
-und HA als Vorschlag patchen, nicht den komplexen Policy-Vertrag. Eine aktuelle
-Frage nach dieser Faehigkeit hat Vorrang vor laufenden Infrastrukturfragen.
-Die Antwort nennt den Editorweg, offene Regelziele und API-Voraussetzungen;
-bisherige Verkehrs-/Policy-Antworten bleiben Anforderungen, keine Regeln.
-Historische Faehigkeitsfragen duerfen eine aktuelle Kapazitaetsantwort nicht
-verdraengen. Der Intent benennt dafuer ausdruecklich die aktuelle Quelle.
+Evidence: **205 targeted offline tests**, type checking, knowledge/catalogue freshness and **16/16 real synthetic model cases** (14 infrastructure/dialogue cases, 2 policy cases) passed. Tests check no customer policy and authorize no cloud execution. Knowledge hash: `b9892a0d275b920e3089c167157062ef66af29630374df0b8a6d03ba5d24c37b`; test-suite hash: `f443f6633a4ffda7662f419d797a01ffe039c56f0ca5c4aaa187316036cc9c81`. Qualified backend status is activated in the HTTPS development environment. API health and unchanged complete configuration/conversation rows were checked before/after restart; UI and customer data were not restructured.
 
-Abgelehnte Modellantworten werden nicht automatisch wiederholt oder teilweise
-angenommen. JSON und NDJSON liefern denselben redigierten Fehlervertrag:
-unbestaetigte Anforderungen, unpassender Vorschlag, ungueltige/abgeschnittene/
-unterbrochene Antwort, Timeout, Auslastung, Dienstanmeldung oder Verfuegbarkeit.
-Konfigurations-Chat und Template-Beratung zeigen lokalisierte Ursachen,
-konkrete naechste Schritte und eine Diagnosekennung; Eingaben bleiben erhalten.
-Modell-Rohantworten, Transportdetails und Zugangsdaten werden nicht angezeigt.
+<a id="vorheriger-nachweis-firewall-faehigkeitsgrenze-und-handlungsfaehige-fehler"></a>
+### Previous evidence: firewall capability boundary and actionable errors
 
-Nachweis am 2026-10-13: **196 gezielte Offline-Tests**, **6 PostgreSQL-Faelle**,
-**13/13 echte synthetische Firewall-Faelle** und
-**8 Desktop-/Mobil-Browserfaelle** bestanden, einschliesslich der gemeldeten
-Faehigkeitsfrage, unbekannter Kapazitaet, handlungsfaehiger Fehlermeldungen und
-Antwort-/Auswahlerhalt. Wissenshash:
-`53945a3b8988baf2b4096365496e01fa3a38beb83b2d7da3e43bb0fcab798181`;
-Testsuitehash:
-`2caf7ed586cda64bf151f3fa6bd4466b8504da63fb45666ed4ca77e1b2bc4e3d`.
-Dies ist keine Policy-/Paketpruefung und keine Cloud-Ausfuehrungsfreigabe.
-Typpruefung, Wissens-/Katalogfrische und gezieltes Lint bestanden (eine
-vorbestehende Browser-Testwarnung). Der Stand wurde in der HTTPS-
-Entwicklungsumgebung aktiviert; API-Gesundheit und neues UI-Bundle wurden
-geprueft. Vollstaendige Konfigurations-/Gesprächszeilen blieben unveraendert.
+The native Accelerator manages `firewall_config` with rules, aliases, routes, outbound NAT and port forwarding. Current chat can patch only infrastructure and HA as a proposal, not the complex policy contract. A current question about this capability takes precedence over ongoing infrastructure questions. The response names the editor path, open rule targets and API prerequisites; previous traffic/policy responses remain requirements, not rules. Historical capability questions must not displace a current capacity response. Intent explicitly identifies the current source for this.
 
-Vorheriger Nachweis vor dem Rollenpatch am 2026-10-12: **93 Offline-Tests**, Typpruefung, Wissens-/Katalogfrische
-und gezieltes Lint bestanden. Abschliessender echter Lauf: **24/24 bestanden,
-kein uebersprungener Fall**, mit Qwen3-VL als Antwortmodell und GPT-OSS-120B als
-Intentmodell. Die fuenf zuvor roten Faelle sind behoben; die Sollpruefungen wurden
-nicht gelockert, sondern um Feldnamen, Grenzen und falsche Speicherbehauptungen
-erweitert. Grundlagenwiederherstellung und alle drei DNS-Kontaktvarianten bleiben
-gruen. Keine automatische Wiederholung oder Annahme fehlgeschlagener Antworten.
+Rejected model responses are not automatically retried or partially accepted. JSON and NDJSON deliver the same redacted error contract: unconfirmed requirements, mismatching proposal, invalid/truncated/interrupted response, timeout, load, service authentication or availability. Configuration chat and template advice show localized causes, concrete next steps and a diagnostic identifier; inputs are retained. Raw model responses, transport details and credentials are not displayed.
 
-| Fall | Ursache und Korrektur | Live-Nachweis |
+Evidence on 2026-10-13: **196 targeted offline tests**, **6 PostgreSQL cases**, **13/13 real synthetic firewall cases** and **8 desktop/mobile browser cases** passed, including the reported capability question, unknown capacity, actionable error messages and response/selection preservation. Knowledge hash: `53945a3b8988baf2b4096365496e01fa3a38beb83b2d7da3e43bb0fcab798181`; test-suite hash: `2caf7ed586cda64bf151f3fa6bd4466b8504da63fb45666ed4ca77e1b2bc4e3d`. This is neither policy/package checking nor cloud execution approval. Type checking, knowledge/catalogue freshness and targeted lint passed (one pre-existing browser-test warning). Activated in the HTTPS development environment; API health and new UI bundle checked. Complete configuration/conversation rows remained unchanged.
+
+Previous evidence before the role patch on 2026-10-12: **93 offline tests**, type checking, knowledge/catalogue freshness and targeted lint passed. Final real run: **24/24 passed, no skipped case**, with Qwen3-VL as response model and GPT-OSS-120B as intent model. The five previously failing cases are fixed; oracles were not loosened but extended with field names, limitations and false saving claims. Foundations restoration and all three DNS contact variants remain green. No automatic retry or acceptance of failed responses.
+
+| Case | Cause and correction | Live evidence |
 |---|---|---|
-| `identity-foundations-advice` | Serving verlor fruehere Systemnachrichten; Ausgabe endete am Tokenlimit. Ein einziger Systemvertrag und eine gepruefte native Felduebersicht ersetzen die unvollstaendige Freiform-Aufzaehlung. | bestanden, 1659 ms |
-| `governance-folders-advice` | Namens-Patchgrenzen wurden mit Editor-Feldern verwechselt. Uebersicht nennt Elternordner, Rollen und Namen 1-40 Zeichen; meaningful descriptions werden explizit abgelehnt. | bestanden, 1391 ms |
-| `firewall-policy-advice` | Gemeinsamer Firewall-Infrastrukturdialog verdraengte den Policy-Vertrag. Getrennte Themenfragen und native Policy-Uebersicht mit aliases/routes/rules/NAT, pass/block/reject und expliziter Synchronisierung. | bestanden, 1929 ms |
-| `sandbox-projects-advice` | Verlorener Systemvertrag/Tokenlimit; erfundene Laufzeit-/Budgetoptionen. Native Uebersicht nennt nur project_name, project_owner_email und owner_emails sowie die separaten Lifecycle-Grenzen. | bestanden, 1583 ms |
-| `sna-complete-draft` | Modellprosa behauptete eine bereits erfolgte Konfiguration. Erklaerung wird aus validierten Patch-Werten erzeugt; Streaming zeigt keinen ungeprueften Speichertext. | bestanden, 3946 ms |
+| `identity-foundations-advice` | Serving lost earlier system messages; output ended at the token limit. One system contract and a checked native field overview replace the incomplete free-form enumeration. | passed, 1659 ms |
+| `governance-folders-advice` | Name-patch boundaries were confused with editor fields. Overview names parent folder, roles and names of 1–40 characters; meaningful descriptions are explicitly rejected. | passed, 1391 ms |
+| `firewall-policy-advice` | Shared firewall infrastructure dialogue displaced policy contract. Separate topic questions and native policy overview with aliases/routes/rules/NAT, pass/block/reject and explicit synchronization. | passed, 1929 ms |
+| `sandbox-projects-advice` | Lost system contract/token limit; invented runtime/budget options. Native overview names only project_name, project_owner_email and owner_emails plus separate lifecycle limitations. | passed, 1583 ms |
+| `sna-complete-draft` | Model prose claimed configuration had already occurred. Explanation is generated from validated patch values; streaming shows no unchecked saving text. | passed, 3946 ms |
 
-Der semantische Intent `adviceTask=field-overview` nutzt fuer diese vier
-Uebersichtsthemen den Backend-Wissensvertrag mit Feldinventar und geprueften
-Grenzen. Das ist ein expliziter Beratungspfad, kein Erfolg-Fallback nach einem
-Modellfehler. Andere Fragen und Vorschlaege verwenden weiterhin das Antwortmodell.
-Ein Tokenlimit-Abbruch wird als `completion_truncated` verworfen; der HTTP-Fehler
-bleibt redigiert. Alle vertrauenswuerdigen Systemanweisungen werden zusammen
-gesendet, Nutzer-/Historiennachrichten bleiben getrennte untrusted Daten.
-Native Editorfelder und schmalere Chat-Patchrechte bleiben unterscheidbar;
-Rueckfragen sind auf das aktive Thema beschraenkt.
-Der gepruefte Stand wurde lokal im Chatmodus ohne Cloud-Ausfuehrung neu gestartet.
-API und UI-Proxy melden gesund; UI HTTP200 und unauthentifizierte Chatroute HTTP401.
-Konfigurations-/Gesprächspruefsummen und Revisionen (6/19) blieben unveraendert.
+Semantic intent `adviceTask=field-overview` uses the backend knowledge contract with field inventory and checked limitations for these four overview topics. This is an explicit advice path, not a success fallback after a model error. Other questions and proposals still use the response model. Token-limit termination is rejected as `completion_truncated`; HTTP error remains redacted. All trusted system instructions are sent together; user/history messages remain separate untrusted data. Native editor fields and narrower chat patch rights remain distinguishable; follow-up questions are restricted to the active topic. The checked status was restarted locally in chat mode without cloud execution. API and UI proxy report healthy; UI HTTP200 and unauthenticated chat route HTTP401. Configuration/conversation checksums and revisions (6/19) remained unchanged.
 
-Die Themen-Smokes pruefen Antwortvertrag, Referenz und Beratungsmodus, nicht jede
-fachliche Textaussage oder jedes Feld einzeln. Fuer Vollqualifikation braucht es
-weitere spezifische Sollwerte, Negativfaelle und Komponentenbeziehungen. Ein
-vollstaendiges Inventar oder ein gruener Smoke ist keine Ausfuehrungsfreigabe.
+Topic smokes check response contract, reference and advice mode, not every factual text statement or every field individually. Full qualification needs further specific expected values, negative cases and component relationships. A complete inventory or green smoke is not execution approval.
 
-### Modellversuch GPT-OSS 120B und zusammenhaengender Dialog
+<a id="modellversuch-gpt-oss-120b-und-zusammenhaengender-dialog"></a>
+### GPT-OSS 120B model experiment and continuous dialogue
 
-Am 2026-10-13 wurden Antwortmodell und Intentmodell in isolierten Testprozessen
-auf `openai/gpt-oss-120b` gesetzt. Die laufende Anwendung, Kundenentwuerfe,
-Gespraeche und Cloud-Ausfuehrung wurden nicht umgestellt.
+On 2026-10-13, response and intent models were set to `openai/gpt-oss-120b` in isolated test processes. The running application, customer drafts, conversations and cloud execution were not switched.
 
-Der erste komplette 52-Faelle-Lauf bestand **29/52**. Von 23 Fehlern waren neun
-HTTP-429-Antworten; parallel laufende Diagnose-/Journey-Tests beeintraechtigten
-damit die Aussagekraft. Weitere Fehler waren sechs Tokenlimit-Abbrueche, vier
-Scope-Ablehnungen, eine unbestaetigte Intentquelle und drei fachliche
-Sollwertverletzungen. Diese Zahlen sind kein fairer Modellrangvergleich.
-Wissenshash dieses ersten Laufs:
-`c9bcfb0a1e8c3d2be7855a8db2a3a0ffc8ad392e0ed854d880ca876effad2ef2`;
-52-Faelle-Suite:
-`574375fd7a19aa775bba0bf766156660721454ae5db6a7013d69b2689dd6da32`.
+The first complete 52-case run passed **29/52**. Of 23 failures, nine were HTTP 429 responses; concurrent diagnostic/journey tests thus compromised interpretability. Further failures were six token-limit truncations, four scope rejections, one unconfirmed intent source and three factual oracle violations. These numbers are not a fair model ranking. Knowledge hash of this first run: `c9bcfb0a1e8c3d2be7855a8db2a3a0ffc8ad392e0ed854d880ca876effad2ef2`; 52-case suite: `574375fd7a19aa775bba0bf766156660721454ae5db6a7013d69b2689dd6da32`.
 
-Synthetische Rohantworten zeigten wiederholte merge/replace-Alternativen fuer
-denselben Pfad und ausgelassene Audit-ACLs trotz Nennung im Antworttext.
-Die Serving-Schemas verwenden deshalb nun ein einzelnes Operationsobjekt pro
-Pfad und begrenzen die Anzahl auf die angebotenen Pfade. Nicht unterstuetzte
-`propertyNames` werden nur aus dem Serving-Schema entfernt; die urspruengliche
-Zod-Pruefung von Map-Schluesseln, Operationswerten und vollstaendigen
-Ersetzungen bleibt unveraendert. Ein gekuerzter Label-Reply enthielt vor allem
-Whitespace statt Nutzdaten; ein hoeheres Tokenbudget oder automatischer Retry
-ist daher kein nachgewiesener Fix.
+Synthetic raw responses showed repeated merge/replace alternatives for the same path and omitted audit ACLs despite mentioning them in response text. Serving schemas therefore now use one operation object per path and limit the count to offered paths. Unsupported `propertyNames` are removed only from the serving schema; original Zod checking of map keys, operation values and complete replacements remains unchanged. A truncated label reply contained mainly whitespace instead of useful data; a higher token budget or automatic retry is therefore not a demonstrated fix.
 
-Der neue [Journey-Runner](../app/scripts/assistant-journey.ts) wurde danach fuer
-beide Modelle **seriell** mit identischem Skript, Wissensstand, Temperatur und
-Tokenlimit ausgefuehrt. Beide Modellrollen verwendeten jeweils dasselbe Modell.
-Er simuliert Grundlagen, Rollen, SNA, Firewall/HA, die Policy-MVP-Grenze,
-Audit-Themenwechsel/Rueckfragen/Aktualisierung, Observability, DevOps,
-Kubernetes und Labels. Nur gueltige, erwartungsgemaesse Vorschlaege werden im
-Speicher uebernommen. API-konforme Gespraechshistorie, JSON-Roundtrip und
-tfvars-Export bleiben Bestandteil des Laufs; kein Browser, DB-Speichern,
-Plan oder Apply wird dadurch qualifiziert.
+The new [journey runner](../app/scripts/assistant-journey.ts) was then executed **serially** for both models with identical script, knowledge status, temperature and token limit. Both model roles used the same model in each run. It simulates foundations, roles, SNA, firewall/HA, the policy MVP boundary, audit topic switching/follow-ups/update, Observability, DevOps, Kubernetes and labels. Only valid, expected proposals are adopted in memory. API-compliant conversation history, JSON roundtrip and tfvars export remain part of the run; this qualifies no browser, DB saving, Plan or Apply.
 
-| Serieller Journey-Schritt | GPT-OSS 120B | Qwen3-VL 235B A22B |
+| Serial journey step | GPT-OSS 120B | Qwen3-VL 235B A22B |
 |---|---|---|
-| Grundlagen | Scope-Ablehnung | bestanden |
-| Organisations-Owner | bestanden | bestanden |
-| SNA | bestanden | bestanden |
-| Firewall/HA | bestanden | bestanden |
-| Policy-MVP-Hinweis | bestanden | bestanden |
-| Audit-Themenwechsel / fehlende Entscheidungen | Pflichtwerte fehlen | bestanden |
-| Audit-Antwort | Pflichtwerte fehlen | Pflichtwerte fehlen |
-| Audit-Aktualisierung | Pflichtwerte fehlen | Pflichtwerte fehlen |
-| Observability | unbestaetigte Intentquelle | erwartete ACL/Retention fehlen |
-| DevOps | bestanden | bestanden |
-| Kubernetes | Vorschlag nicht anwendbar | Vorschlag nicht anwendbar |
-| Labels | Tokenlimit-Abbruch | falsches Thema / Label fehlt |
-| **Gesamtergebnis** | **5/12, nicht qualifiziert** | **7/12, nicht qualifiziert** |
+| Foundations | Scope rejection | passed |
+| Organization owner | passed | passed |
+| SNA | passed | passed |
+| Firewall/HA | passed | passed |
+| Policy MVP notice | passed | passed |
+| Audit topic switch / missing decisions | Required values missing | passed |
+| Audit response | Required values missing | Required values missing |
+| Audit update | Required values missing | Required values missing |
+| Observability | Unconfirmed intent source | Expected ACL/retention missing |
+| DevOps | passed | passed |
+| Kubernetes | Proposal not applicable | Proposal not applicable |
+| Labels | Token-limit truncation | Wrong topic / label missing |
+| **Overall result** | **5/12, not qualified** | **7/12, not qualified** |
 
-Die seriellen Laeufe enthielten keine HTTP-429/503-Ablehnungen. Beobachtete
-Turn-Dauern einschliesslich Intentklassifikation: GPT-OSS Median ca. 7,0 s,
-Maximum 22,5 s; Qwen Median ca. 5,7 s, Maximum 12,3 s. Dies sind einzelne
-synthetische Laeufe, keine allgemeine Latenz-, Kosten- oder Qualitaetsgarantie.
-Beide Laeufe verwenden Wissenshash
-`b21aac363a8f2d9110a4e21d4473b630bc193b0b02e9d04926f306f4c98af73d`
-und Journey-Hash
-`80ce96770cd172dbbfd37f73b5443cffd2e3f5e521627d2bf53aa2b20df1dd9e`.
-**228 gezielte Offline-Tests**, Typpruefung, gezieltes Lint und
-Wissens-/Katalogfrische bestanden.
+Serial runs contained no HTTP 429/503 rejections. Observed turn durations including intent classification: GPT-OSS median approx. 7.0 s, maximum 22.5 s; Qwen median approx. 5.7 s, maximum 12.3 s. These are individual synthetic runs, not a general latency, cost or quality guarantee. Both runs use knowledge hash `b21aac363a8f2d9110a4e21d4473b630bc193b0b02e9d04926f306f4c98af73d` and journey hash `80ce96770cd172dbbfd37f73b5443cffd2e3f5e521627d2bf53aa2b20df1dd9e`. **228 targeted offline tests**, type checking, targeted lint and knowledge/catalogue freshness passed.
 
-Ergebnis: Ein reiner Modellwechsel behebt die Editor-/Assistant-Probleme nicht.
-GPT-OSS wird auf dieser Basis nicht als neuer Standard aktiviert. Audit-Pflicht-
-und Rueckfragevertraege, Label-Intent, anwendbare Kubernetes-Vorschlaege sowie
-Scope-/Quellenkontinuitaet muessen vor einer erneuten Vollqualifikation
-bearbeitet werden. Auch die native Editor-Erweiterung bleibt unaktiviert.
+Result: a model switch alone does not fix the editor/Assistant problems. GPT-OSS is not activated as the new default on this basis. Mandatory audit and follow-up contracts, label intent, applicable Kubernetes proposals and scope/source continuity must be addressed before renewed full qualification. The native editor extension also remains unactivated.
 
-### Gemeinsame Komponentenvertraege: erneute Qualifikation
+<a id="gemeinsame-komponentenvertraege-erneute-qualifikation"></a>
+### Common component contracts: renewed qualification
 
-Die anschliessende Korrektur erfolgt im gemeinsamen nativen Vorschlagsvertrag,
-nicht ueber modellspezifische Sonderfaelle. Neue Audit-Konfigurationen brauchen
-Retention, ACL und die ausdrueckliche Object-Lock-Entscheidung zusammen.
-Bestehende Objekte bleiben partiell aenderbar. Kubernetes-Erstellung verlangt
-native Pflichtfelder einschliesslich Region und Node-Pool-Name; Labels verwenden
-den geprueften Besitzer ihrer nativen Pfade. Ein Themenwechsel verwirft
-irrelevante Firewall-Anforderungen, nicht aber Quellenpruefungen fuer weiterhin
-genutzte Netzwerkentscheidungen. ACL-Rueckfragen erfinden keine auswaehlbaren
-CIDRs. Vorschlagstexte behaupten weder Speicherung noch Deployment.
+Subsequent correction takes place in the common native proposal contract, not through model-specific exceptions. New audit configurations need retention, ACL and explicit Object Lock decision together. Existing objects remain partially editable. Kubernetes creation requires native mandatory fields including region and node-pool name; labels use the checked owner of their native paths. A topic switch discards irrelevant firewall requirements but not source checking for network decisions still used. ACL follow-ups invent no selectable CIDRs. Proposal texts claim neither saving nor deployment.
 
-Nach diesen Aenderungen bestanden am 2026-10-13:
+After these changes, on 2026-10-13:
 
-| Pruefung | Ergebnis |
+| Check | Result |
 |---|---|
-| Gezielt alle acht Assistant-Offline-Suites | **238/238** |
-| Typpruefung und Produktionsbuild | bestanden |
-| Repository-Lint | keine Fehler; bestehende Warnungen bleiben |
-| Wissens- und Szenarienkatalogfrische | bestanden |
-| Zusammenhaengender echter Qwen-Dialog | **12/12** |
-| Vollstaendiger echter Qwen-Szenarienlauf | **52/52** |
+| All eight targeted Assistant offline suites | **238/238** |
+| Type checking and production build | passed |
+| Repository lint | No errors; existing warnings remain |
+| Knowledge and scenario catalogue freshness | passed |
+| Continuous real Qwen dialogue | **12/12** |
+| Complete real Qwen scenario run | **52/52** |
 
-Beide Modellrollen verwendeten weiterhin
-`Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`. Die Modelltests liefen nacheinander und
-ohne automatische Wiederholung. Vorherige Laeufe mit denselben
-Komponentenvertraegen waren durch HTTP 429 unvollstaendig geblieben.
-Der [gemeinsame Testadapter](../app/scripts/assistant-test-model.ts) begrenzt
-jetzt jeden tatsaechlichen Request, einschliesslich Intentklassifikation, auf
-mindestens 2500 ms Abstand. Tests pruefen Abstand, fehlenden Retry und Abbruch
-waehrend der Wartezeit. Diese Begrenzung gilt nicht fuer den produktiven
-Assistant; die gemessenen Turn-Zeiten enthalten Testwartezeit.
-Die beiden abschliessenden Laeufe enthielten keine Quoten- oder Modellfehler.
+Both model roles still used `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`. Model tests ran consecutively without automatic retry. Previous runs with the same component contracts had remained incomplete because of HTTP 429. The [shared test adapter](../app/scripts/assistant-test-model.ts) now spaces every actual request, including intent classification, at least 2500 ms apart. Tests check spacing, no retry and cancellation during waiting. This limit does not apply to the production Assistant; measured turn times include test waiting time. The two final runs contained no quota or model errors.
 
-Nachweis-Hashes:
+Evidence hashes:
 
-- Wissen: `eb856918ecd71e3f380ea8da9be116d4578cedfc9977088c56311b9e65d44346`
+- Knowledge: `eb856918ecd71e3f380ea8da9be116d4578cedfc9977088c56311b9e65d44346`
 - Journey: `74b5d41782e20b9d720a63afa1d515e50c4197602f41789d1ce920f1598d64e2`
-- Szenariensuite: `57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498`
+- Scenario suite: `57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498`
 
-Der Journey uebernahm gueltige Vorschlaege in einen fortgeschriebenen
-synthetischen Entwurf, bewahrte 24 Gespraechsnachrichten, pruefte den
-JSON-Roundtrip und exportierte 2069 Bytes tfvars. Dies ist keine Qualifikation
-aller Browser-/Datenbank-Workflows oder von Plan/Apply. Kundenentwuerfe und
-Gespraeche wurden nicht veraendert; die laufende API wurde nicht neu gestartet.
-GPT-OSS ist nach diesen Vertragskorrekturen noch nicht erneut qualifiziert.
-Die Firewall-Policy bleibt als einzige hier ausdruecklich ausgeschlossene
-Komponentenbearbeitung unter #101; es wurden keine weiteren Themen aus dem
-MVP genommen. Weitere Komponenten folgen dem dokumentierten
-[Erweiterungsverfahren](../app/README.md#weitere-assistant-komponenten-ergaenzen).
+The journey adopted valid proposals into an evolving synthetic draft, preserved 24 conversation messages, checked JSON roundtrip and exported 2069 bytes of tfvars. This is not qualification of all browser/database workflows or Plan/Apply. Customer drafts and conversations were not changed; the running API was not restarted. GPT-OSS has not yet been requalified after these contract corrections. Firewall policy remains the only component editing explicitly excluded here under #101; no further topics were removed from the MVP. Further components follow the documented [extension procedure](../app/README.md#weitere-assistant-komponenten-ergaenzen).
 
-### Dev-Release-Qualifikation (2026-10-14)
+<a id="dev-release-qualifikation-2026-10-14"></a>
+### Dev release qualification (2026-10-14)
 
-Der korrigierte Release-Stand `927f20a` wurde erneut mit dem echten Qwen-Modell
-qualifiziert: **52/52** synthetische Katalogfaelle und **12/12** Schritte im
-fortgeschriebenen Gesamtdialog bestanden ohne automatische Wiederholung.
-Der vorangegangene Lauf auf `1aabadb` bestand nur 51/52 Faelle: Eine bestaetigte
-Firewall-Verkehrsentscheidung wurde erneut abgefragt. Die anschliessende
-Klassifikationsklarstellung und der gezielte Regressionstest wurden vor dem
-vollstaendigen Wiederholungslauf ausgefuehrt; der erste Fehlerbeleg bleibt erhalten.
+Corrected release source `927f20a` was qualified again with the real Qwen model: **52/52** synthetic catalogue cases and **12/12** steps in the evolving complete dialogue passed without automatic retry. The preceding run on `1aabadb` passed only 51/52 cases: a confirmed firewall traffic decision was asked again. Subsequent classification clarification and targeted regression test were performed before the complete repeat run; the first failure evidence is retained.
 
-- Wissen: `12693f9d18db481e57ae668b777bfd19715a96f121aa94efa984bc5cd8747bea`
+- Knowledge: `12693f9d18db481e57ae668b777bfd19715a96f121aa94efa984bc5cd8747bea`
 - Journey: `74b5d41782e20b9d720a63afa1d515e50c4197602f41789d1ce920f1598d64e2`
-- Szenariensuite: `57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498`
+- Scenario suite: `57888ab5cfccc1303ebfd01125a9c6ed185b82602eab83a75a7eb20b1e34d498`
 
-Der Journey bewahrte 24 Gespraechsnachrichten und exportierte 2069 Bytes tfvars.
-Zusaetzlich bestanden 685 Unit-, 49 PostgreSQL- und 288 Desktop-/Mobile-Tests
-sowie Typpruefung, Produktionsbuild, Katalogfrische und Release-Vorbereitung.
-Die gehostete Assistant-Aktivierung wird ueber das geschuetzte
-`LZC_ASSISTANT_ENABLED`-Opt-in weitergereicht und verlangt Authentifizierung.
-Realer menschlicher Login, Organisationsnachweis und Kunden-Cloud-Ausfuehrung
-sind separate Nachweise; ihr aktueller Status steht im
-[MVP-Umfang](mvp-scope.md). Die oben genannten Zahlen sind historische,
-revisionsgebundene Ergebnisse; aktuelle Nachweise stehen in CI und im
-zugehoerigen Pull Request.
+The journey preserved 24 conversation messages and exported 2069 bytes of tfvars. Additionally, 685 unit, 49 PostgreSQL and 288 desktop/mobile tests passed, alongside type checking, production build, catalogue freshness and release preparation. Hosted Assistant activation is passed through the protected `LZC_ASSISTANT_ENABLED` opt-in and requires authentication. Real human login, organization evidence and customer cloud execution are separate evidence; their current status is in [MVP scope](mvp-scope.md). The above counts are historical, revision-bound results; current evidence is in CI and the associated pull request.
 
-### Additive Organisations- und Folder-Rollenvorschlaege
+<a id="additive-organisations-und-folder-rollenvorschlaege"></a>
+<a id="additive-organisations--und-folder-rollenvorschlaege"></a>
+### Additive organization and folder role proposals
 
-Die gemeldete Bitte um Nutzung der hinterlegten E-Mail als
-Organisationsverantwortlicher wurde faelschlich als Grundlagenkontakt behandelt.
-Der bislang schmalere Namens-/Skalarvertrag liess Rollenfelder nicht zu.
-Explizite Rollenzuweisungswuensche werden jetzt semantisch als Governance-Entwurf
-klassifiziert. Ein gepruefter Backend-Pfad erstellt `organization_owners`,
-`organization_auditors` oder vorhandene Folder-Owner-/Reader-Listen aus der
-angefragten gespeicherten, verifiziert menschlichen oder explizit genannten
-E-Mail-Quelle, ohne freie Rollenwerte des Antwortmodells. Das ist kein Fallback
-nach Modellfehlern und kein menschlicher Identitaetsnachweis.
+The reported request to use the stored email as organization owner was incorrectly treated as a foundations contact. The previously narrower name/scalar contract did not allow role fields. Explicit role-assignment requests are now semantically classified as a governance draft. A checked backend path creates `organization_owners`, `organization_auditors` or existing folder owner/reader lists from the requested stored, verified human or explicitly named email source, without free-form role values from the response model. This is neither a fallback after model errors nor human identity evidence.
 
-Vorhandene Zuweisungen, Folder-Namen, Schluessel und uebrige Konfiguration bleiben
-erhalten. Neue Folder, entfernte Subjects, Elternordner-/Configurator-Rollen oder
-Live-Grants sind nicht erlaubt. Fehlende E-Mail oder unklare Folder-Auswahl werden
-gezielt erfragt. Organisations-Owner-Rechte decken Folder ab; die native
-Governance vermeidet doppelte Folder-Zuweisungen. Folder-Reader verwenden auditor.
-Selektive Uebernahme speichert weiterhin nur den Entwurf, unselektierte Felder
-bleiben offen; IAM-Auswirkungen benoetigen einen getrennten geprueften Plan/Apply.
+Existing assignments, folder names, keys and other configuration are retained. New folders, removed subjects, parent-folder/Configurator roles or live grants are not allowed. Missing email or ambiguous folder selection receive targeted questions. Organization owner rights cover folders; native governance avoids duplicate folder assignments. Folder readers use auditor. Selective adoption still saves only the draft; unselected fields remain open; IAM effects need a separate checked Plan/Apply.
 
-Zusatznachweis am 2026-10-12: **110 Offline-Tests**, Typpruefung und gezieltes Lint
-bestanden. **30/30 echte synthetische Faelle** bestanden, diesmal mit Qwen3-VL
-sowohl als Antwort- als auch als Intentmodell entsprechend dem laufenden
-Workstation-Modus. Die sechs neuen Governance-Faelle pruefen die gemeldete Frage,
-alle explizit ausgewaehlten Folder, einen konkreten Reader, fehlende Folder-Auswahl,
-fehlende E-Mail und die verifizierte Login-Quelle. Drei fokussierte echte
-PostgreSQL-Tests pruefen transaktionale Rollen-/DNS-/Netzwerk-Felduebernahme,
-Revisionsgrenzen und Tenant-Isolation. Keine Kundenkonfiguration, kein
-Kundengespraech und keine Cloud-Berechtigung wurde durch die Tests veraendert.
+Additional evidence on 2026-10-12: **110 offline tests**, type checking and targeted lint passed. **30/30 real synthetic cases** passed, this time with Qwen3-VL as both response and intent model, matching running workstation mode. Six new governance cases check the reported question, all explicitly selected folders, a specific reader, missing folder selection, missing email and verified login source. Three focused real PostgreSQL tests check transactional role/DNS/network field adoption, revision boundaries and tenant isolation. Tests changed no customer configuration, customer conversation or cloud permission.
 
-### Native Firewall-Infrastruktur und HA
+<a id="native-firewall-infrastruktur-und-ha"></a>
+### Native firewall infrastructure and HA
 
-Der bisherige SNA-Dialog nahm ohne Grundlage einen ausschliesslichen ersten
-Netzwerkschritt an; Firewall-Infrastruktur war nur beratend unterstuetzt.
-Explizite kombinierte Auftraege verwenden jetzt die gespeicherten SNA-Werte und
-setzen mit dem Firewall-Vertrag fort. Fehlende SNA-Eingaben bleiben echte
-Abhaengigkeiten, ein ausdrueckliches "Firewall spaeter" bleibt SNA-only.
-Die Kapazitaetsrechnung trennt Projekt-Subnetze und Adressen: /16 enthaelt512 /25,
-jeder /25 hat128 Adressen vor Infrastrukturreservierungen, ohne Quoten-/Durchsatz-
-oder Freibelegungszusage.
+The previous SNA dialogue assumed without basis an exclusively first network step; firewall infrastructure had advice-only support. Explicit combined requests now use saved SNA values and continue with the firewall contract. Missing SNA inputs remain real dependencies; explicit “firewall later” remains SNA-only. Capacity calculation separates project subnets and addresses: /16 contains 512 /25, each /25 has 128 addresses before infrastructure reservations, without a quota, throughput or free-capacity promise.
 
-Zentrale `connectivity.firewall`/`firewalls` akzeptieren gepruefte native
-Infrastrukturfelder einschliesslich des HA-Objekts mit anderer Backup-Zone,
-optionalen Node-/VIP-Adressen, Backup-Namen und vhid. Ein zusammenhaengender Patch
-enthaelt alle Pflichtfelder neuer Appliances; vorhandene Appliances sind partiell
-editierbar. Explizit angefragte Felder werden im Antwortschema verpflichtend.
-Fehlende bestaetigte Adressen/Produkte/Zonen fuehren zu geprueften Rueckfragen,
-nicht zu unvollstaendigen Patches oder erfundenen technischen Beispielwerten.
-Mehrere Bereiche erfordern explizite Zielauswahl; Neuanlage einer nativen Map
-muss alle Bereiche abdecken und braucht dafuer einen ausdruecklichen Auftrag.
+Central `connectivity.firewall`/`firewalls` accept checked native infrastructure fields including the HA object with a different backup zone, optional node/VIP addresses, backup names and vhid. A coherent patch contains all required fields of new appliances; existing appliances are partially editable. Explicitly requested fields become mandatory in the response schema. Missing confirmed addresses/products/zones lead to checked follow-ups, not incomplete patches or invented technical example values. Multiple areas require explicit target selection; creating a native map must cover all areas and requires an explicit instruction.
 
-Single-/Map-Form, Area-Keys, unbekannte Importmetadaten und nicht angefragte
-Konfiguration bleiben erhalten. Geprueft werden Pool-Containment, LAN-/WAN-/
-Transfer-Ueberlappungen, nutzbare unterschiedliche IPs, native cidrhost-Defaults
-4/5/6 und unterschiedliche HA-Zonen. Regional-Umwandlungen, Entfernung,
-Firewall-Policies, Operator-Zugaenge und Ausfuehrung bleiben ausgeschlossen.
-Nested-HA-Felder erscheinen einzeln im UI; unvollstaendige abhaengige Auswahl
-wird transaktional ohne Speicherung abgelehnt. Feldannahme ist kein Deployment,
-SLA-Nachweis oder automatisches Failover einer oeffentlichen IP.
+Single/map form, area keys, unknown import metadata and unrequested configuration are retained. Checks cover pool containment, LAN/WAN/transfer overlaps, usable distinct IPs, native cidrhost defaults 4/5/6 and distinct HA zones. Regional conversions, removal, firewall policies, operator access and execution remain excluded. Nested HA fields appear individually in the UI; incomplete dependent selection is transactionally rejected without saving. Field acceptance is neither deployment, SLA evidence nor automatic failover of a public IP.
 
-Nachweis nach der Einrichtungs-/UI-Sperrkorrektur: **160 Offline-Tests**, Typpruefung,
-Wissens-/Katalogfrische und gezieltes Lint bestanden. **10/10 gezielte Firewall-
-Live-Faelle** bestanden mit Qwen3-VL als Antwort- und Intentmodell, ohne
-uebersprungene Faelle oder automatische Wiederholung. Der vorherige vollstaendige
-Live-Lauf bestand mit **35/35 Faellen**; die neue Suite enthaelt 39 Faelle.
-Vier echte PostgreSQL-Tests pruefen HA-/Rollen-/DNS-/SNA-Feldauswahl, darunter
-Rollback unvollstaendiger HA-Auswahl, Revisionen und Tenant-Grenzen.
-Sechs Desktop-/Mobil-Browsertests pruefen HA-Einzelfelder sowie bestehenden
-DNS- und Chat-Workflow. Die neuen Live-Faelle testen den gemeldeten kombinierten
-Satz, HA-Ergaenzung, komplette Neuanlage, fehlende Voraussetzungen und gespeicherte
-HA ohne erneuten Vorschlag. Keine Cloud-Bereitstellung oder Kunden-Draft-Aenderung
-durch diese Tests.
-Die neue Regression verwendet die native Single-Form mit Metro-Zone, /28-LAN/WAN,
-vorhandenem Flavor und einem Produktkatalog. Unbestaetigte Node-/VIP-Adressen
-fehlen im Antwortschema; berechnete Defaults bleiben implizit. Gespeicherte oder
-benutzerbestaetigte IPs bleiben einzeln vorschlagbar, erfundene IPs werden weiterhin
-abgewiesen. Auch die genaue Benutzeranfrage mit gespeichertem oeffentlichem
-Konfigurationsstand und echten autorisierten Produktkatalogen wurde nur lesend
-erfolgreich reproduziert; es wurden keine Kunden-Vorschlaege uebernommen.
-Bei breiter Einrichtung folgt neben einem gueltigen HA-Patch eine einzelne offene
-Verkehrs-, Kapazitaets- oder Betriebsfrage. Ein begrenzter semantischer Aufruf mit
-dem Intentmodell prueft nur aktuelle/vorherige Benutzeraussagen und die enge oder
-breite Anfrage. Bestaetigungen brauchen woertliche Benutzerquellen; erfundene
-Bestaetigungen werden abgewiesen. Gezielte native Patches erhalten keinen
-zusaetzlichen Fragebogen. Vorhandene Appliance-Werte werden als Entwurfsstand,
-nicht als Leistungsnachweis, angezeigt.
-Die damaligen Desktop-/Mobiltests reproduzierten die pauschale Sperre bei
-ungespeicherten Aenderungen. Diese Sperre wird durch den unten beschriebenen
-konfliktbezogenen Entwurfsabgleich ersetzt.
-Der korrigierte Workstation-Prozess ist ueber HTTPS erreichbar; alle gespeicherten
-Konfigurations- und Gespraechszeilen blieben laut Pruefsummen beim kontrollierten
-API-Neustart unveraendert. Es wurde kein Plan/Apply gestartet.
+Evidence after the setup/UI-block correction: **160 offline tests**, type checking, knowledge/catalogue freshness and targeted lint passed. **10/10 targeted firewall live cases** passed with Qwen3-VL as response and intent model, without skipped cases or automatic retry. The previous complete live run passed **35/35 cases**; the new suite contains 39 cases. Four real PostgreSQL tests check HA/role/DNS/SNA field selection, including rollback of incomplete HA selection, revisions and tenant boundaries. Six desktop/mobile browser tests check individual HA fields and existing DNS/chat workflow. New live cases test the reported combined sentence, HA addition, complete creation, missing prerequisites and stored HA without another proposal. No cloud provisioning or customer draft changes through these tests.
 
-## Historische Konzeptmatrix (A01-A24)
+The new regression uses native single form with metro zone, /28 LAN/WAN, existing flavor and a product catalogue. Unconfirmed node/VIP addresses are absent from the response schema; computed defaults remain implicit. Stored or user-confirmed IPs remain individually proposable; invented IPs are still rejected. The exact user request with stored public configuration status and real authorized product catalogues was also successfully reproduced read-only; no customer proposals were adopted.
 
-Die [maschinenlesbare Matrix](assistant-feature-coverage.json) ordnet alle 29
-aktuellen Root-Eingaben und jeden verschachtelten Katalogeintrag Szenarien zu.
-Objekt-/Listencontainer sind enthalten, nicht nur Blaetter. Sie verwendet
-`featureGroups`, `acceleratorInputs` und `featureFieldCatalogue`; keine separate
-handgeschriebene Feldliste. Quellhashes erkennen Aenderungen am Feature-Katalog,
-Input-Inventar, aktuellen Vorlagen, Fachvalidierung, Dokument-/Compilervertraegen
-und Application-Template-Vertrag. Die
-Engine-Revision ist der vorhandene Domain-Pin, keine Behauptung, dass der lokale
-Root oder ein neues Runner-Paket bereits unter diesem Pin freigegeben ist.
+For broad setup, a valid HA patch is followed by one open traffic, capacity or operations question. A bounded semantic call with the intent model checks only current/previous user statements and the narrow or broad request. Confirmations need verbatim user sources; invented confirmations are rejected. Targeted native patches receive no additional questionnaire. Existing appliance values are shown as draft status, not performance evidence. Desktop/mobile tests at that time reproduced blanket blocking of unsaved changes. This block is replaced by conflict-aware draft reconciliation described below. The corrected workstation process is reachable through HTTPS; all saved configuration and conversation rows remained unchanged according to checksums during controlled API restart. No Plan/Apply was started.
 
-Jeder Feldeintrag beginnt mit `qualification = not-qualified`. Zuordnung und
-Frische beweisen nur Konzeptvollstaendigkeit, nicht KI-Verstaendnis. Pro Feld
-sind Analyse, fehlende Angaben und, soweit unterstuetzt, Erstellung/Aenderung
-mit validiertem Diff zu evaluieren. Sensible Felder erlauben ausschliesslich
-Erklaerung der Zugangsvoraussetzungen, keine Werte im Chat, Modellkontext oder
-Patch. Unwirksame Felder werden erklaert und abgewiesen, nicht angeboten.
-Komponentenbeziehungen brauchen zusaetzliche fachliche Faelle; Feldabdeckung
-allein reicht nicht. Die Matrix erweitert keine Ausfuehrungsrechte.
+<a id="historische-konzeptmatrix-a01-a24"></a>
+## Historical concept matrix (A01–A24)
 
-Aktualisieren und pruefen im App-Verzeichnis:
+The [machine-readable matrix](assistant-feature-coverage.json) assigns all 29 current root inputs and every nested catalogue entry to scenarios. Object/list containers are included, not just leaves. It uses `featureGroups`, `acceleratorInputs` and `featureFieldCatalogue`; no separate handwritten field list. Source hashes detect changes to feature catalogue, input inventory, current templates, domain validation, document/compiler contracts and Application template contract. Engine revision is the existing domain pin, not a claim that the local root or new Runner package is already approved under this pin.
+
+Every field entry starts with `qualification = not-qualified`. Mapping and freshness prove only conceptual completeness, not AI understanding. Analysis, missing information and, where supported, creation/modification with validated diff must be evaluated per field. Sensitive fields allow only explanation of access prerequisites, no values in chat, model context or patch. Ineffective fields are explained and rejected, not offered. Component relationships need additional business cases; field coverage alone is insufficient. The matrix extends no execution permissions.
+
+Update and check in the app directory:
 
 ```sh
 npm run build:packages
@@ -467,348 +178,149 @@ node --import tsx scripts/assistant-coverage.ts --check
 npx vitest run tests/common-configuration.test.ts
 ```
 
-Der bestehende Unit-Gate prueft Matrixfrische und Katalogvollstaendigkeit. Neue
-Root-Eingaben ohne Szenariozuordnung schlagen fehl. Neue Unterfelder machen die
-Matrix veraltet; Regeneration ersetzt keine fachliche Review oder Modellabnahme.
+The existing unit gate checks matrix freshness and catalogue completeness. New root inputs without scenario mapping fail. New subfields make the matrix stale; regeneration replaces neither domain review nor model acceptance.
 
-## Fachliche Szenarien
+<a id="fachliche-szenarien"></a>
+## Business scenarios
 
-Jeder Fall beginnt mit einem Benutzerziel, nicht mit einer vollstaendigen tfvars.
-Das Modell fragt gezielt fehlende Informationen, nennt keine erfundenen Defaults
-und zeigt seine Annahmen. Pflichtangaben/Fachregeln entscheidet das Backend.
+Every case starts with a user goal, not complete tfvars. The model asks specifically for missing information, names no invented defaults and shows its assumptions. Required information/domain rules are decided by the backend.
 
-| ID | Bereich und Beispielziel | Rueckfragen, Beziehungen und erwarteter Nachweis |
+| ID | Area and example goal | Follow-ups, relationships and expected evidence |
 | --- | --- | --- |
-| A01 | Standalone und Grundlagen: Public-Einstieg fuer ein API-Team | Vorlage begruenden; Organisation/Owner aus autorisiertem Kontext statt erneut abfragen; Region, Namen, Codes, Labels und Contract-Namespace klaeren; Public explizit; unveraenderte Defaults erhalten. |
-| A02 | Ordner und Rechte: bestehender Parent mit getrennten Teams | Parent, stabile Ordnerrollen, Anzeigenamen, Owner/Reader/Auditor-Zuordnungen; keine ownerlose Anlage; nichtleere Folder-Beschreibung ablehnen; Rechte nicht aus Freitext ableiten. |
-| A03 | Management: Audit, Aufbewahrung und foederierter Login | Zentrale Observability, Audit-Routing und Archivierung, Object-Lock-Default, IdP-Konfiguration und Projektbeziehungen erklaeren; keine stille Aufbewahrungsaenderung. |
-| A04 | Hub-and-Spoke/Multi-Area: Produktion und Forschung trennen | SNA-Adresspools, Transfernetze, Praefixe, DNS/Resolver, Corporate-Zuordnung und Bereichsidentitaeten; Ueberlappungen/Widersprueche nach Fachregeln erkennen; referenzierten Bereich nicht loeschen. |
-| A05 | Multi-Region: eu01/eu02 ohne implizite Verbindung | Regionale Eingabeform, Bereiche, DNS-Zonen/Zuordnungen und Projekt-/Clusterreferenzen; single/regional nicht gleichzeitig aktiv exportieren; kein automatisches Inter-Region-VPN (#64). |
-| A06 | Firewall-Infrastruktur: Appliances fuer Prod/Nonprod | Groesse, Zone, Netze, IPs und HA/CARP nach vorhandenem Root-Vertrag; Infrastruktur von Policy unterscheiden; keine Multi-Appliance-Policy zusagen (#65). |
-| A07 | VPN: Office-Gegenstelle mit zwei Tunneln | Gegenstellen, Routingart, Routen/Subnetze und IKE/IPsec-Abhaengigkeiten; keine PSKs erfragen; aktuelle SNA-Reichweite (#85), BGP-Grenze (#86) und Inter-Region-Grenze aus qualifizierter Capabilityquelle erklaeren. |
-| A08 | DevOps: Git-Service fuer private Teams | Erlaubte Netze, Plattformprojekt und Netzwerkbeziehungen; widerspruechliche Isolation gegen gemeinsam benoetigten Dienst aufloesen; keine unverdrahteten Dienste erfinden. |
-| A09 | Kubernetes: regionaler Cluster mit Monitoring/KMS/Bastion | Node-Pools und Autoscaling, Bereiche, DNS/Gateway, Volumes/KMS, SSH/Bastion und Rollen schrittweise konfigurieren; private Erreichbarkeit (#37), regionale Zuordnung (#80), gekoppelte Bastion (#87) und Observability-Ort (#88) getrennt behandeln. |
-| A10 | Projektarten und projektspezifische Dienste | Public/Corporate, Region/Bereich, stabile Kennung, Umgebung, Netzgroesse, Rollen/Custom Roles, Secrets Manager und Observability; Artwechsel mit Auswirkungen statt stiller Migration. Plattformentwurf bleibt von realen Application-Instanzen getrennt. |
-| A11 | Sandbox: temporaere Teamumgebung | Name, Verantwortliche und zusaetzliche Owner; nur unterstuetzte Sandbox-Felder, keine erfundene automatische Laufzeitloeschung. |
-| A12 | Namespace-Dienste: Policy und Demo im Plattformcluster | Cluster-/Projektbezug, DNS, Zugriff, Secrets-Integration, Policy-Modi, Break-glass, Labels/Annotations und optionale Demo-/Last-/Metrikfelder; Demo von Produktion trennen; regionale Grenzen erhalten. |
-| A13 | Firewall-Policy und Bootstrap | Aliase, Regeln, Routing, NAT und Portforwarding sowie Endpoint/TLS, Benutzer und Erst-/Folgephase; erforderliche Bindings erklaeren, keine API-Secrets lesen und kein TLS-Bypass. |
-| A14 | Application Landing Zone Templates | Autorisierte bestehende Versionen passend zum Bedarf auswaehlen oder neue Entwuerfe mit Parametern, Bindings, Regionen, Service-Einstellungen und Deployment-Policy erstellen; PE-Veroeffentlichung separat; bestehende Instanzen bleiben versioniert. |
-| A15 | Bestehende Konfiguration gezielt anpassen | Workspace/Config und Revision erkennen; Ziele gegen Ist-Entwurf analysieren, fehlende Angaben nachfragen; unbekannte Felder sowie nicht gesetzt/null/konfiguriert erhalten; Gesamt-Diff und Topologie; veralteten Patch blockieren. |
-| A16 | Geschuetzte Zugaenge und Injection | Geheimnisse weder erfragen noch an Modell senden; nur Anforderungen und autorisierte sichere Binding-Workflows; manipulierte Texte geben keine neuen Werkzeuge/Rechte; allgemeine Fremdaufgaben ablehnen. |
-| A17 | Gespraech fortsetzen und Rechte erneut pruefen | Nach Wiederanmeldung/Backend-Neustart korrekt fortsetzen; Tenant/Workspace/Config/Rechte jedes Mal pruefen; Session-Widerruf und fremde IDs abweisen; Konfigurationsaenderungen transparent abgleichen. |
-| A18 | Loeschung, Altersgrenze und Restore | Beide Elternloeschpfade samt Nachrichten/Zusammenfassungen/Vorschlaegen; laufende/spaete Inferenz darf Daten nicht wiederbeleben; drei Kalendermonate ab Erstellung, Monatsenden eingeschlossen; Aktivitaet verlaengert nicht; Cleanup/Restore ohne abgelaufene Daten. |
-| A19 | Fuenf parallele Sitzungen und Modellfehler | Keine Kontextvermischung oder Requestverluste; begrenzte Queue, Provider-429/Timeout/Abbruch, begrenzte Reparaturversuche; manuelles Editieren bleibt moeglich; keine Geldgrenze, trotzdem technischer Missbrauchsschutz. |
-| A20 | Wissen und Versionswechsel | Quellen und Modul-/Provider-/Config-Version binden; neue STACKIT-Funktionen nicht ungeprueft anbieten; Wissensupdate erkennen/geprueft promoten; unveraenderte Altversionen und kein automatisches Upgrade. |
-| A21 | Workspace und Konfigurationsverwaltung | Im autorisierten Workspace neue/gespeicherte/importierte Config binden; Herkunft, Fork-/Repository- und Export-/Speicherworkflow erklaeren; unbekannte Felder erhalten; Repository-Speichern/Loeschen bleibt ausdrueckliche regulaere UI-Aktion, kein Modell-Git-Zugriff. |
-| A22 | Application-Gruppen, Veroeffentlichung und Bestellungen | Sichtbare autorisierte Template-Versionen, Gruppenbeschraenkungen, Parameter/Bindings und Approval-Policy verwenden; Bestellungen/Instanzstatus erklaeren; keine Rechte vergeben, keine Instanz automatisch bestellen und keine Quoten-/Upgrade-Funktion erfinden. |
-| A23 | Organisation, Credentials, Backend, Plan und Recovery | Organisations-/Rollen-/Einladungsprozesse sowie erforderliche Profile/Backend-Bindings erklaeren; nur freigegebene bereinigte Statusmetadaten, keine State-/Plan-/Credential-Rohdaten; Freigabe/Dispatch/Recovery/Unlock bleiben separate autorisierte UI-Aktionen. |
-| A24 | Cloud-Kataloge, Topologie und Sprache | Autorisierte aktuelle Regions-/Service-Angebote mit Herkunft/Alter statt erfundener SKUs; bei fehlendem Angebot nachfragen; deterministische Topologie aus validiertem Entwurf; DE/EN-Dialog mit identischem Fachverhalten und stabilen technischen Kennungen. |
+| A01 | Standalone and foundations: Public entry for an API team | Justify template; organization/owner from authorized context instead of asking again; clarify region, names, codes, labels and contract namespace; explicit Public; preserve unchanged defaults. |
+| A02 | Folders and permissions: existing parent with separate teams | Parent, stable folder roles, display names, owner/reader/auditor assignments; no ownerless creation; reject nonempty folder description; do not derive permissions from free text. |
+| A03 | Management: audit, retention and federated login | Explain central Observability, audit routing and archiving, Object Lock default, IdP configuration and project relationships; no silent retention change. |
+| A04 | Hub-and-spoke/multi-area: separate production and research | SNA address pools, transfer networks, prefixes, DNS/resolver, Corporate assignment and area identities; detect overlaps/contradictions using domain rules; do not delete referenced area. |
+| A05 | Multi-region: eu01/eu02 without implicit connection | Regional input form, areas, DNS zones/assignments and project/cluster references; do not actively export single/regional simultaneously; no automatic inter-region VPN (#64). |
+| A06 | Firewall infrastructure: appliances for Prod/Nonprod | Size, zone, networks, IPs and HA/CARP under existing root contract; distinguish infrastructure from policy; promise no multi-appliance policy (#65). |
+| A07 | VPN: office peer with two tunnels | Peers, routing type, routes/subnets and IKE/IPsec dependencies; ask for no PSKs; explain current SNA scope (#85), BGP limit (#86) and inter-region limit from qualified capability source. |
+| A08 | DevOps: Git service for private teams | Permitted networks, platform project and network relationships; resolve contradictory isolation versus jointly required service; invent no unwired services. |
+| A09 | Kubernetes: regional cluster with monitoring/KMS/bastion | Configure node pools and autoscaling, areas, DNS/gateway, volumes/KMS, SSH/bastion and roles incrementally; treat private connectivity (#37), regional assignment (#80), coupled bastion (#87) and Observability location (#88) separately. |
+| A10 | Project types and project-specific services | Public/Corporate, region/area, stable key, environment, network size, roles/custom roles, Secrets Manager and Observability; type change with impacts instead of silent migration. Platform draft remains separate from real Application instances. |
+| A11 | Sandbox: temporary team environment | Name, responsible people and additional owners; only supported sandbox fields, no invented automatic lifetime deletion. |
+| A12 | Namespace services: policy and demo in platform cluster | Cluster/project reference, DNS, access, secrets integration, policy modes, break-glass, labels/annotations and optional demo/load/metrics fields; separate demo from production; preserve regional limits. |
+| A13 | Firewall policy and bootstrap | Aliases, rules, routing, NAT and port forwarding plus endpoint/TLS, user and initial/subsequent phase; explain required bindings, read no API secrets and no TLS bypass. |
+| A14 | Application Landing Zone templates | Select authorized existing versions fitting needs or create new drafts with parameters, bindings, regions, service settings and deployment policy; PE publication separate; existing instances remain versioned. |
+| A15 | Targeted changes to existing configuration | Recognize workspace/config and revision; analyze goals against current draft, ask for missing information; preserve unknown fields and unset/null/configured distinctions; overall diff and topology; block stale patch. |
+| A16 | Protected access and injection | Neither request secrets nor send them to model; only requirements and authorized secure binding workflows; manipulated texts grant no new tools/permissions; reject unrelated general tasks. |
+| A17 | Continue conversation and recheck permissions | Continue correctly after re-login/backend restart; check tenant/workspace/config/permissions every time; reject session revocation and foreign IDs; transparently reconcile configuration changes. |
+| A18 | Deletion, age limit and restore | Both parent deletion paths including messages/summaries/proposals; running/late inference must not resurrect data; three calendar months from creation, including month ends; activity does not extend; cleanup/restore without expired data. |
+| A19 | Five parallel sessions and model errors | No context mixing or lost requests; bounded queue, provider 429/timeout/cancellation, bounded repair attempts; manual editing remains possible; no monetary cap, but technical abuse protection. |
+| A20 | Knowledge and version changes | Bind sources and module/provider/config version; do not offer new STACKIT features unchecked; detect knowledge update/promote after review; unchanged old versions and no automatic upgrade. |
+| A21 | Workspace and configuration management | Bind new/saved/imported config in authorized workspace; explain provenance, fork/repository and export/save workflow; preserve unknown fields; repository saving/deletion remains explicit regular UI action, no model Git access. |
+| A22 | Application groups, publication and orders | Use visible authorized template versions, group restrictions, parameters/bindings and approval policy; explain orders/instance status; grant no permissions, order no instance automatically and invent no quota/upgrade feature. |
+| A23 | Organization, credentials, backend, Plan and recovery | Explain organization/role/invitation processes and required profiles/backend bindings; only approved sanitized status metadata, no raw state/plan/credential data; approval/dispatch/recovery/unlock remain separate authorized UI actions. |
+| A24 | Cloud catalogues, topology and language | Authorized current regional/service offerings with provenance/age instead of invented SKUs; ask if offering is missing; deterministic topology from validated draft; DE/EN dialogue with identical business behavior and stable technical identifiers. |
 
-## Dialogzustand und Fertigstellung
+<a id="dialogzustand-und-fertigstellung"></a>
+## Dialogue state and completion
 
-1. Autorisierten Workspace und Konfigurationsentwurf binden, gegebenenfalls
-   regulären neuen Entwurf vor Vorlagenauswahl anlegen. Keine ungebundenen Chats.
-2. Ziel, vorhandene Angaben, offene Fragen und widerspruechliche Anforderungen
-   als strukturierte Fakten mit Herkunft speichern; Aussagen sind keine Rechte.
-3. Vorlage/Komponenten begruendet vorschlagen, Fragen nach Abhaengigkeiten
-   priorisieren. Explizite Antworten haben Vorrang vor Annahmen; sichere Defaults
-   muessen aus dem jeweiligen Vertrag stammen. Nicht immer erneut Identitaet fragen.
-4. Plattform und Application-Template-Entwuerfe gemeinsam auf Konsistenz pruefen.
-   Mehrere Vorschlaege im Chat-Arbeitsentwurf sammeln, ohne Ausgangsconfig zu aendern.
-5. Backend bewertet `fehlende Angaben`, `Widersprueche`, `vollstaendiger Entwurf`
-   und separat `Ausfuehrungsblocker`. Ein nicht erreichbarer privater Runner macht
-   keine korrekte Konfiguration unvollstaendig, aber die Ausfuehrung gesperrt.
-6. Gesamt-Diff samt Auswirkungen/Topologie und Quellen anzeigen. Uebernahme
-   verlangt aktuelle Rechte, gleiche Basisrevision und ausdrueckliche Bestaetigung.
-   Git, Template-Veroeffentlichung, Plan und Apply bleiben getrennt.
+1. Bind authorized workspace and configuration draft; if needed, create a regular new draft before template selection. No unbound chats.
+2. Store goal, existing information, open questions and contradictory requirements as structured facts with provenance; statements are not permissions.
+3. Justify template/component proposals, prioritize questions by dependencies. Explicit answers take precedence over assumptions; safe defaults must come from the respective contract. Do not always ask for identity again.
+4. Check platform and Application template drafts jointly for consistency. Collect multiple proposals in the chat working draft without changing source config.
+5. Backend evaluates `missing information`, `contradictions`, `complete draft` and separately `execution blockers`. An unreachable private Runner does not make a correct configuration incomplete, but blocks execution.
+6. Show overall diff with impacts/topology and sources. Adoption requires current permissions, same base revision and explicit confirmation. Git, template publication, Plan and Apply remain separate.
 
-## Qualifikationsstufen
+<a id="qualifikationsstufen"></a>
+## Qualification stages
 
-### Lokaler Wissens- und Qwen-Spike (2026-10-10)
+<a id="lokaler-wissens-und-qwen-spike-2026-10-10"></a>
+<a id="lokaler-wissens--und-qwen-spike-2026-10-10"></a>
+### Local knowledge and Qwen spike (2026-10-10)
 
-`apps/api/src/assistant/knowledge.ts` erzeugt einen deterministischen lokalen
-Metadaten-/Regelentwurf: alle 501 Katalogpfade mit Modus, Typ und Optionalitaet,
-Vorlagen-ID/Quellhash ohne Vorlagenwerte sowie fuenf kuratierte Regeln mit
-Quellverweisen. Der Kontext verlangt passenden Engine-Pin und Wissenshash und
-eine begrenzte Auswahl bekannter Funktionsgruppen. Sensible Pfade enthalten
-keine Werte und sind ausschliesslich Zugangsvoraussetzungen.
+`apps/api/src/assistant/knowledge.ts` generates a deterministic local metadata/rule draft: all 501 catalogue paths with mode, type and optionality, template ID/source hash without template values and five curated rules with source references. Context requires matching engine pin and knowledge hash and a bounded selection of known feature groups. Sensitive paths contain no values and are exclusively access prerequisites.
 
-Dieser Entwurf ist `local-draft-not-reviewed-release`: Der Hash bindet genau
-diese Metadaten/Regeln, nicht den vollstaendigen Modulcode oder alle aktuellen
-STACKIT-Dokumentationen. Vollstaendige Quellenaufnahme, Review/Promotion,
-historische Wissenspakete und reale Dialogqualifikation stehen noch aus. Die
-Quellverweise selbst sind keine Retrieval- oder Aktualitaetsnachweise.
+This draft is `local-draft-not-reviewed-release`: the hash binds exactly this metadata/rules, not complete module code or all current STACKIT documentation. Complete source ingestion, review/promotion, historical knowledge packages and real dialogue qualification remain outstanding. Source references themselves are not retrieval or freshness evidence.
 
-`apps/api/src/assistant/model-serving.ts` implementiert nur einen synthetischen
-Public-Standalone-Spike, keinen allgemeinen Chat. Operator-Konfiguration:
+`apps/api/src/assistant/model-serving.ts` implements only a synthetic Public standalone spike, not general chat. Operator configuration:
 
-| Variable | Verhalten |
+| Variable | Behavior |
 | --- | --- |
-| `LZC_MODEL_SERVING_TOKEN` | Bestehendes Terraform-/Deployment-Binding; Pflicht, nur Prozessumgebung. |
-| `LZC_MODEL_SERVING_MODEL` | Default `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`; betreiberseitig anpassbar. |
-| `LZC_MODEL_SERVING_BASE_URL` | Default und derzeit einzig zugelassen `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1`; andere Endpoints brauchen ausdrueckliche Allowlist-/Sicherheitsqualifikation. |
-| `LZC_MODEL_SERVING_TIMEOUT_MS` | Default 60000, begrenzt auf 1000..120000. |
+| `LZC_MODEL_SERVING_TOKEN` | Existing Terraform/deployment binding; required, process environment only. |
+| `LZC_MODEL_SERVING_MODEL` | Default `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`; operator-configurable. |
+| `LZC_MODEL_SERVING_BASE_URL` | Default and currently only permitted `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1`; other endpoints need explicit allowlist/security qualification. |
+| `LZC_MODEL_SERVING_TIMEOUT_MS` | Default 60000, bounded to 1000..120000. |
 
-Im App-Verzeichnis mit gepinntem Node 24 und sicher bereitgestelltem Binding:
+In the app directory with pinned Node 24 and securely provided binding:
 
 ```sh
 npm run build:packages
 node --use-system-ca --import tsx scripts/assistant-spike.ts
 ```
 
-Kein Token im Kommandoargument, Chat, Git oder Frontend; keine Ausgabe roher
-Terraform-Outputs zum Beschaffen des Tokens. Der bestehende Token muss sicher
-in die lokale Prozessumgebung injiziert werden, nicht neu erzeugt oder rotiert.
-Der Mac-Transfer enthaelt `.local/github-platform-applied.tfstate` und den
-Originalschluessel `.local/platform/state.passphrase`, beide mit Modus `0600`.
-Read-only-Zugriff wurde mit dem gepinnten OpenTofu 1.12.6 qualifiziert: in einem
-leeren temporaeren Verzeichnis, vollstaendige Verschluesselungskonfiguration
-ueber `TF_ENCRYPTION`, `output -json -state=<lokaler Snapshot> model_serving_token`.
-Ein Operator-Prozess faengt stdout ausschliesslich im Speicher ab und uebergibt
-den JSON-dekodierten Token direkt als `LZC_MODEL_SERVING_TOKEN` an den Kindprozess.
-Kein Terminal-Output des Tokens, kein Klartextfile, kein Remote-State-Pull und
-keine Schluesselrotation. Der historische Snapshot wird dabei nicht veraendert;
-sein Vorhandensein allein beweist keine aktuelle Gueltigkeit des Tokens.
-Der Befehl prueft Matrixfrische und sendet ausschliesslich synthetische Daten.
-Ausgabe sind nur Modell-/Wissensbindung, Laufzeit, bekannte Template-ID und
-Anzahlen; keine Antworttexte oder Secrets.
+No token in command arguments, chat, Git or frontend; no raw Terraform output to obtain the token. The existing token must be securely injected into the local process environment, not recreated or rotated. The Mac transfer contains `.local/github-platform-applied.tfstate` and original key `.local/platform/state.passphrase`, both mode `0600`. Read-only access was qualified with pinned OpenTofu 1.12.6: in an empty temporary directory, complete encryption configuration through `TF_ENCRYPTION`, `output -json -state=<lokaler Snapshot> model_serving_token`. An operator process captures stdout exclusively in memory and passes the JSON-decoded token directly as `LZC_MODEL_SERVING_TOKEN` to the child process. No terminal token output, plaintext file, remote state pull or key rotation. The historical snapshot is not changed; its presence alone does not prove current token validity. The command checks matrix freshness and sends exclusively synthetic data. Output is only model/knowledge binding, runtime, known template ID and counts; no response texts or secrets.
 
-Der Client begrenzt Ausgabe und Responsegroesse, erlaubt keine Redirects oder
-automatischen Retries und prueft JSON, Abschlussgrund, Template-ID, editierbare
-Fragepfade und kuratierte Referenzen. Die synthetische Aufgabe verlangt
-Standalone und den Public-/Corporate-Regelbezug. Fehler werden redigiert.
-Das Ausgabebudget betraegt 4096 Tokens; die Schema-Grenzen stehen auch im Prompt,
-insbesondere maximal acht priorisierte Fragen. Abgeschnittene Antworten oder
-zu viele Fragen werden weiterhin abgewiesen, nicht stillschweigend gekuerzt.
-Diese Pruefungen beweisen noch keine allgemeine semantische Zuverlaessigkeit
-oder Prompt-Injection-Sicherheit fuer Kunden-Dialoge.
+The client bounds output and response size, permits no redirects or automatic retries, and checks JSON, finish reason, template ID, editable question paths and curated references. The synthetic task requires standalone and the Public/Corporate rule relationship. Errors are redacted. Output budget is 4096 tokens; schema limits are also in the prompt, particularly at most eight prioritized questions. Truncated responses or excessive questions are still rejected, not silently shortened. These checks do not yet prove general semantic reliability or prompt-injection safety for customer dialogues.
 
-Lokale Nachweise: sieben fokussierte Tests, einschliesslich Secret-Fragen,
-erfundener/falscher Templates, Zusatz-Toolgrants, falscher Revision/Hashes,
-429/JSON/Responsegroesse und Timeout ohne Retry. Kanonischer Gate: Lint, Typen,
-Build, 444 Unit-Tests bestanden, 53 umgebungsgebunden uebersprungen. Der echte
-CLI-Spike besteht nach sicherer Token-Uebergabe aus dem lokalen Snapshot:
-`Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`, 11983 ms, `standalone`, acht Fragen,
-fuenf Referenzen, `authorizesExecution=false`. Wissenshash:
-`6fbe9d02cdb514f9c36ce39150a1ebc1aaa84c0d67a5dcf02a6a4cc2c8a1d370`,
-Engine-Pin `a256f6896d11134fdc351786f1be5eba4e56b2e2`.
-Fuenf einzeln gestartete synthetische Aufrufe: vier abgewiesen, einer akzeptiert;
-keine automatischen Retries. Redigierte Diagnostik bestaetigte HTTP 200 und den
-passenden Modellnamen. Zunaechst `finish_reason=length` bei 1200 Tokens; nach
-Budgetkorrektur vollstaendiges JSON, aber 19 statt maximal acht Fragen. Die
-expliziten Prompt-Limits beheben den zuletzt nachgewiesenen Vertragsfehler.
-Die Einzelmessung ist keine Latenzzusage, Lastabnahme oder A01-A24-Qualifikation.
+Local evidence: seven focused tests, including secret questions, invented/incorrect templates, additional tool grants, wrong revision/hashes, 429/JSON/response size and timeout without retry. Canonical gate: lint, types, build, 444 unit tests passed, 53 environment-bound skipped. Real CLI spike passes after secure token handover from local snapshot: `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`, 11983 ms, `standalone`, eight questions, five references, `authorizesExecution=false`. Knowledge hash: `6fbe9d02cdb514f9c36ce39150a1ebc1aaa84c0d67a5dcf02a6a4cc2c8a1d370`, engine pin `a256f6896d11134fdc351786f1be5eba4e56b2e2`. Five individually started synthetic calls: four rejected, one accepted; no automatic retries. Redacted diagnostics confirmed HTTP 200 and matching model name. Initially `finish_reason=length` at 1200 tokens; after budget correction, complete JSON but 19 instead of at most eight questions. Explicit prompt limits fix the last demonstrated contract error. This single measurement is no latency promise, load acceptance or A01–A24 qualification.
 
-Der urspruengliche Spike hatte keinen HTTP-Endpunkt oder Browserintegration.
-Der folgende lokale Editor-Schritt ergaenzt einen begrenzten Dialog, ist aber
-weiterhin keine vollstaendige A01-A24- oder Betriebsqualifikation.
+The original spike had no HTTP endpoint or browser integration. The following local editor step adds bounded dialogue but is still not complete A01–A24 or operational qualification.
 
-### Vorgelagerte Template-Beratung (2026-10-10)
+<a id="vorgelagerte-template-beratung-2026-10-10"></a>
+### Upstream template advice (2026-10-10)
 
-Das authentifizierte Panel `Template-Beratung` steht bereits auf
-`Konfigurationen` und `Neue Konfiguration` bereit, ohne geoeffneten Entwurf.
-`AssistantModelServing.adviseTemplates` verwendet begrenzte Historie und
-backendgebundenen Wissensentwurf mit bekannten Template-IDs/Hashes und
-Netzwerkbereich-/Firewallmetadaten. Antworten enthalten eine bekannte ID oder
-`null`, maximal fuenf Rueckfragen, eine Erklaerung und bekannte Regelreferenzen.
-Keine Rechte, Werkzeuge, Geheimnisse oder automatische Konfigurationserstellung.
-Die Vorlagen sind unterschiedliche Startvorgaben derselben Engine; daraus folgt
-keine pauschale Zusage vollstaendiger Feature-Unterstuetzung.
+The authenticated `Template advice` panel is already available on `Configurations` and `New configuration`, without an open draft. `AssistantModelServing.adviseTemplates` uses bounded history and backend-bound knowledge draft with known template IDs/hashes and network-area/firewall metadata. Responses contain a known ID or `null`, at most five follow-up questions, explanation and known rule references. No permissions, tools, secrets or automatic configuration creation. Templates are different starting settings of the same engine; this does not imply a blanket promise of complete feature support.
 
-`/api/v1/configurations/template-advice`: GET/POST/DELETE unter den bestehenden
-Login-/Plattform-/Origin-/CSRF-Grenzen. Migration 054 persistiert ein persoenliches
-Tenant-Gespraech mit unverlaengerbarer Drei-Kalendermonats-Frist. Erneute
-Autorisierung und Revisionsvergleich nach Inferenz verhindern Wiederbelebung
-geloeschter/abgelaufener Gespraeche und konkurrierendes Ueberschreiben.
-`Vorlage ansehen` oeffnet ausschliesslich die vorhandene Vorschau. Keine
-automatische Uebernahme von Gespraechsanforderungen in Editorwerte; Auswahl-
-und Konfigurationsgespraech bleiben getrennt. Keine neuen Geld- oder
-Gespeicherte-Gespraeche-Quoten; vorhandene 40-Nachrichten-/fuenf-Aktivanfragen-
-Prozessgrenzen gelten. UI-Systemtexte bisher Deutsch; DE/EN-Paritaet offen.
+`/api/v1/configurations/template-advice`: GET/POST/DELETE under existing login/platform/Origin/CSRF boundaries. Migration 054 persists a personal tenant conversation with a non-extendable three-calendar-month lifetime. Renewed authorization and revision comparison after inference prevent resurrection of deleted/expired conversations and concurrent overwriting. `View template` opens only the existing preview. No automatic adoption of conversation requirements into editor values; selection and configuration conversations remain separate. No new monetary or saved-conversation quotas; existing 40-message/five-active-request process limits apply. UI system texts currently German; DE/EN parity outstanding.
 
-Nachweise: elf fokussierte Vertrags-/HTTP-/Modelltests, 448 Unit-Passes/53 Skips
-plus Lint/Typen/Build, 33 PostgreSQL-Faelle, vier fokussierte Desktop-/Mobil-
-Workflows mit Screenshots. Echter synthetischer HTTP-Dialog mit Standard-Qwen:
-6757 ms/vier Rueckfragen/`null`, dann 3146 ms/`hub-and-spoke`/keine Rueckfragen;
-vier persistierte Nachrichten, Reload 200, DELETE 204. Kein Benutzerentwurf
-fuer diese Inferenz verwendet. Lokale Benutzer-DB auf 054 migriert, beide
-vorhandenen Konfigurationen unveraendert. Matrix bleibt `not-qualified`:
-zwei echte Antworten sind kein A01-A24-, Injection-, DLP-, Quellen-,
-Restore-/Monatsend- oder Fuenf-Sitzungs-Lastnachweis.
+Evidence: eleven focused contract/HTTP/model tests, 448 unit passes/53 skips plus lint/types/build, 33 PostgreSQL cases, four focused desktop/mobile workflows with screenshots. Real synthetic HTTP dialogue with default Qwen: 6757 ms/four follow-ups/`null`, then 3146 ms/`hub-and-spoke`/no follow-ups; four persisted messages, reload 200, DELETE 204. No user draft used for this inference. Local user DB migrated to 054, both existing configurations unchanged. Matrix remains `not-qualified`: two real responses are no A01–A24, injection, DLP, source, restore/month-end or five-session load evidence.
 
-### Fortlaufender Firewall-Dialog (2026-10-13)
+<a id="fortlaufender-firewall-dialog-2026-10-13"></a>
+### Continuing firewall dialogue (2026-10-13)
 
-Antworten zu Verkehrsregeln und unbekannter Kapazitaet setzen den bestehenden
-Einrichtungsauftrag fort. Ein begrenzter Intent-Aufruf waehlt Belegkennungen
-tatsaechlicher Nutzeraussagen statt frei formulierter Zitate. Eingebettete
-Rueckfragen gelten nicht als Antworten. Unbekannter Durchsatz bleibt ein offener
-Sizing-/Benchmark-Punkt, blockiert aber nicht die naechste Betriebsentscheidung.
-Regelanforderungen und benannte Betreiber bleiben erhalten; bereits beantwortete
-Verkehrs-/Betreiberfragen werden nicht wiederholt. Setup-Rueckfragen werden aus
-geprueften deutschen Textbausteinen erzeugt, nicht aus internen Steuertexten.
-Vorhandene Entwurfswerte sind weder Deployment- noch Speichernachweise.
+Responses about traffic rules and unknown capacity continue the existing setup instruction. A bounded intent call selects evidence identifiers of actual user statements rather than freely phrased quotations. Embedded follow-ups do not count as answers. Unknown throughput remains an open sizing/benchmark point but does not block the next operating decision. Rule requirements and named operators are retained; answered traffic/operator questions are not repeated. Setup follow-ups are generated from checked German text modules, not internal control text. Existing draft values are evidence of neither deployment nor saving.
 
-Nachweise: 173 Offline-Tests einschliesslich eines zusammenhaengenden
-Fuenf-Schritt-Dialogs, 6 fokussierte PostgreSQL-Tests, Typpruefung und
-Wissens-/Katalogfrische erfolgreich. 12/12 echte synthetische Firewall-Modellfaelle
-mit Qwen als Antwort- und Intent-Modell erfolgreich, einschliesslich unbekannter
-Kapazitaet, Fortsetzung bis zur letzten Betriebsantwort und enger HA-Feldaenderung.
-Wissens-SHA256: `38f58c5895837f28583c834890698e567cae886da03210770b14fe7c9490c0e8`;
-Suite-SHA256: `db75e65e906c3c030d0dc02fa5367f566c2e3a912e4897d82eb445c3f6c3b010`.
-Dies ist eine synthetische Regression, kein Firewall-Leistungs-/SLA-Nachweis.
+Evidence: 173 offline tests including a continuous five-step dialogue, 6 focused PostgreSQL tests, type checking and knowledge/catalogue freshness successful. 12/12 real synthetic firewall model cases with Qwen as response and intent model successful, including unknown capacity, continuation to the final operating answer and narrow HA field change. Knowledge SHA256: `38f58c5895837f28583c834890698e567cae886da03210770b14fe7c9490c0e8`; suite SHA256: `db75e65e906c3c030d0dc02fa5367f566c2e3a912e4897d82eb445c3f6c3b010`. This is a synthetic regression, not firewall performance/SLA evidence.
 
-Backend aktiviert; HTTPS-Healthcheck erfolgreich. Vollstaendige gespeicherte
-Konfigurations- und Gespraechszeilen sind laut aggregierten Pruefsummen vor/nach
-Aktivierung unveraendert. Keine automatische Vorschlagsannahme, Speicherung von
-Kundenaenderungen oder Cloud-Ausfuehrung.
+Backend activated; HTTPS health check successful. Complete saved configuration and conversation rows are unchanged according to aggregate checksums before/after activation. No automatic proposal acceptance, saving customer changes or cloud execution.
 
-### Konfliktbezogene lokale Uebernahme (2026-10-13)
+<a id="konfliktbezogene-lokale-uebernahme-2026-10-13"></a>
+### Conflict-aware local adoption (2026-10-13)
 
-Die UI sendet beim Annahmepfad `draft`, `savedDraft` und die ausgewaehlten
-Feldkennungen. Das Backend fuehrt einen Drei-Wege-Abgleich mit der aktuellen
-gespeicherten Konfiguration durch: unabhaengige lokale und gespeicherte
-Aenderungen bleiben erhalten. Migration057 speichert bei neuen Vorschlaegen
-die freigegebenen Ausgangswerte. Eine andere Basis- oder Wissensrevision allein
-blockiert nicht; Vorschlaege werden gegen den aktuellen Vertrag erneut geprueft.
-Tatsaechliche Feldkonflikte liefern409 mit den pruefbaren Werten; manuelle
-Editor-Konflikte zeigen nur Feldpfade, niemals geschuetzte Inhalte. Bestaetigung
-ist an die exakt gepruefte gespeicherte Revision gebunden und muss bei erneuter
-Aenderung wiederholt werden. Historische Vorschlaege ohne rekonstruierbaren
-Ausgangswert verlangen ausdrueckliche Wertepruefung statt erfundener Baselines.
+On acceptance, UI sends `draft`, `savedDraft` and selected field identifiers. Backend performs a three-way comparison with current saved configuration: independent local and saved changes are retained. Migration 057 stores approved baseline values for new proposals. A different base or knowledge revision alone does not block; proposals are rechecked against current contract. Actual field conflicts return 409 with reviewable values; manual editor conflicts show only field paths, never protected content. Confirmation is bound to the exact checked saved revision and must be repeated on another change. Historical proposals without reconstructable baseline require explicit value review rather than invented baselines.
 
-Uebernahme aendert nur den Browserentwurf, nicht Konfigurations-/Gespraechszeilen;
-Speichern bleibt ein gesonderter Schritt mit optimistischer Revisionspruefung.
-Gespeicherte Vorschlaege bleiben bei Reload eines ungespeicherten Entwurfs erhalten.
-Additive Rollenauftraege bewahren zwischenzeitlich hinzugefuegte Berechtigungen
-und stellen bewusst manuell entfernte Altberechtigungen nicht ungefragt wieder her.
-Chat/Rueckfragen bleiben bei lokalen Aenderungen nutzbar: nur freigegebene Werte
-des lokalen Entwurfs werden als Modellkontext verwendet. Aufklappen reiner
-Detailbereiche veraendert keine Werte; Objekt-Schluesselreihenfolge verursacht
-keine falsche Dirty-Anzeige. Authentifizierung, Tenant-/Owner-RLS, Origin/CSRF,
-gueltige Netz-/HA-Abhaengigkeiten und separate Cloud-Freigabe bleiben unveraendert.
-Ohne die neuen Entwurfsparameter gilt der bisherige API-Speicherpfad unveraendert.
+Adoption changes only the browser draft, not configuration/conversation rows; saving remains a separate step with optimistic revision checking. Saved proposals remain after reloading an unsaved draft. Additive role requests preserve permissions added meanwhile and do not unasked restore old permissions deliberately removed manually. Chat/follow-ups remain usable during local changes: only approved local-draft values are used as model context. Expanding detail-only sections changes no values; object-key ordering causes no false dirty indication. Authentication, tenant/owner RLS, Origin/CSRF, valid network/HA dependencies and separate cloud approval remain unchanged. Without new draft parameters, previous API save path applies unchanged.
 
-Nachweis (2026-10-13):170 Offline-Assistententests,6 fokussierte PostgreSQL-Tests
-und6 Desktop-/Mobil-Browsertests erfolgreich; Build, Typpruefung und
-Wissens-/Katalogfrische erfolgreich. Die Browserpruefung deckt HA-Backup-Zone
-eu01-2, zwischenzeitliche Editor-/Speicheraenderungen, Konfliktabbruch und
-Bestaetigung sowie separates Speichern ab. DNS prueft eine echte TTL-Aenderung
-von3600 auf7200 und blendet bereits vorhandene Werte aus. Die vorherige
-10/10-Modellqualifikation betrifft die Firewall-Gespraechsfuehrung; der
-Uebernahmepfad fuehrt keine neue Modellanfrage aus.
+Evidence (2026-10-13): 170 offline Assistant tests, 6 focused PostgreSQL tests and 6 desktop/mobile browser tests successful; build, type checking and knowledge/catalogue freshness successful. Browser checking covers HA backup zone eu01-2, intervening editor/save changes, conflict cancellation and confirmation, and separate saving. DNS checks a real TTL change from 3600 to 7200 and hides already existing values. Previous 10/10 model qualification concerns firewall conversation management; adoption path makes no new model request.
 
-Aktivierung: API und HTTPS-Proxy mit zusammengehoerigem UI-/Backend-Stand
-gestartet; HTTPS-Healthcheck erfolgreich. Migration057 ist angewendet; die
-beiden historischen Vorschlagsbaselines bleiben NULL. Anzahl und vollstaendige
-Konfigurationszeilen sowie alle bisherigen Gespraechsspalten sind laut
-aggregierten Pruefsummen unveraendert. Keine Vorschlagsannahme, Cloud-Ausfuehrung
-oder automatische Speicherung echter Kundendaten bei der Aktivierung.
+Activation: API and HTTPS proxy started with matching UI/backend status; HTTPS health check successful. Migration 057 is applied; both historical proposal baselines remain NULL. Count and complete configuration rows and all previous conversation columns are unchanged according to aggregate checksums. No proposal acceptance, cloud execution or automatic saving of real customer data during activation.
 
-### Feldweise Editor-Vorschlaege (2026-10-12)
+<a id="feldweise-editor-vorschlaege-2026-10-12"></a>
+### Fieldwise editor proposals (2026-10-12)
 
-Ersetzt die nachfolgende historische Scalar-/Gesamtannahme-Grenze: DNS-, Ordner-
-und SNA-Patches werden als einzelne geaenderte Felder mit gespeichertem Wert und
-Vorschlag dargestellt, nicht als JSON-Block. Arrays wie Adressbereiche bleiben
-ein gemeinsames Feld. POST `/api/v1/configurations/:id/assistant/accept` akzeptiert
-optional `selectedFields` mit stabilen Feldkennungen aus dem bestehenden Vorschlag.
-Ohne Auswahl gilt weiterhin die bisherige Gesamtannahme. Unbekannte, doppelte,
-leere und veraltete Auswahlen werden abgewiesen. Die echte Annahme prueft Compiler,
-Rollen, RLS und Revisionen innerhalb derselben Transaktion. Zusammenhaengende
-Netzwerkpflichtfelder koennen nur als fachlich gueltige Kombination gespeichert
-werden. Nicht ausgewaehlte Vorschlaege bleiben auf die neue Basisrevision gebunden;
-keine erneute Modellanfrage erforderlich.
+Replaces the following historical scalar/whole-acceptance boundary: DNS, folder and SNA patches are displayed as individual changed fields with saved value and proposal, not a JSON block. Arrays such as address ranges remain one field. POST `/api/v1/configurations/:id/assistant/accept` optionally accepts `selectedFields` with stable field identifiers from the existing proposal. Without selection, previous whole acceptance still applies. Unknown, duplicate, empty and stale selections are rejected. Actual acceptance checks compiler, roles, RLS and revisions in the same transaction. Related mandatory network fields can be saved only as a domain-valid combination. Unselected proposals remain bound to the new base revision; no new model request needed.
 
-Modellkontext: owner_email und organization_id gehoeren jetzt zu den begrenzten
-Grundlagenwerten. Nur die aktuell verifizierte menschliche STACKIT-E-Mail des
-aktiven Benutzers wird zusaetzlich bereitgestellt, keine fremde Identitaet oder
-Anmeldecredentials. DNS-Kontakt: vorhandenen Kontakt erhalten, sonst Owner aus
-gespeicherten Grundlagen, dann verifizierte Login-E-Mail als pruefbares Default
-vorschlagen. Unbestaetigte Template-Platzhalter zaehlen nicht als bekannte Kontakte.
-Explizite Kontaktangaben haben Vorrang; keine automatische Speicherung.
-organization_id darf nur die vom Benutzer ausdruecklich angegebene bestehende UUID
-sein: keine Tenant-Bindung, Zugriffsverifikation oder Cloud-Ausfuehrung.
+Model context: owner_email and organization_id now belong to bounded foundations values. Only the active user's currently verified human STACKIT email is additionally provided, no foreign identity or login credentials. DNS contact: retain existing contact, otherwise suggest owner from saved foundations, then verified login email as reviewable default. Unconfirmed template placeholders do not count as known contacts. Explicit contact information takes precedence; no automatic saving. organization_id may only be the existing UUID explicitly supplied by the user: no tenant binding, access verification or cloud execution.
 
-Grundlagenauftraege verwenden keine DNS-Rueckfragen/Netzwerkquellen. DNS-Mehrfeld-
-und Grundlagenvorschlaege erhalten deterministische Abschluss-/Speicherhinweise
-aus den validierten Feldern. Ihr vorlaeufiger Stream zeigt nur einen Pruefstatus,
-keine ungeprueften Modellbehauptungen ueber angeblich gespeicherte Werte.
-Die alten Grenzen und Nachweise unten bleiben historisch; #94/A01-A24 weiterhin
-nicht vollstaendig qualifiziert.
+Foundations requests use no DNS follow-ups/network sources. DNS multi-field and foundations proposals receive deterministic completion/saving notices from validated fields. Their preliminary stream shows only checking status, no unchecked model claims about allegedly saved values. Old limits and evidence below remain historical; #94/A01–A24 are still not fully qualified.
 
-### Lokaler Editor-Chat (2026-10-10)
+<a id="lokaler-editor-chat-2026-10-10"></a>
+### Local editor chat (2026-10-10)
 
-Einstieg: anmelden, unter Konfigurationen eine gespeicherte aktuelle
-Konfiguration oeffnen. Das Panel `Konfigurations-Chat` steht oberhalb des
-Editors. Ungespeicherte Aenderungen sperren Sendung und Uebernahme. Antworten
-und Rueckfragen erscheinen im Verlauf; ein separater kompletter Scalar-Diff
-wird erst mit `Gesamten Vorschlag uebernehmen` zur neuen gespeicherten
-Konfigurationsrevision. Keine Veroeffentlichung oder Infrastruktur-Ausfuehrung.
+Entry: sign in and open a saved current configuration under Configurations. The `Configuration chat` panel is above the editor. Unsaved changes block sending and adoption. Responses and follow-ups appear in history; a separate complete scalar diff becomes the new saved configuration revision only through `Accept entire proposal`. No publication or infrastructure execution.
 
-Backend: GET/POST/DELETE `/api/v1/configurations/:id/assistant`, ausdrueckliche
-Uebernahme ueber POST `/api/v1/configurations/:id/assistant/accept`.
-Bestehende Plattformrechte, aktive Datenbank-Autorisierung, Tenant-/Owner-RLS,
-Origin/CSRF und `no-store` gelten. Neue Migration 053 speichert ein Gespraech
-je Benutzer und Konfiguration, maximal 40 Nachrichten. Ablauf ist UTC plus
-drei Kalendermonate ab Erstellung; Runtime darf die Frist nicht aendern.
-Elternloeschung kaskadiert; spaete Modellantworten pruefen Eltern-, Gespraechs-
-und Konfigurationsrevision erneut. Ablauf-Cleanup erfolgt bei Zugriff, beim
-API-Start und jede Minute; nach Offline-Zeiten vor neuem Zugriff bereinigen.
-Restore kompletter Eltern-/Chat-Snapshots und Monatsend-/Lastfaelle sind noch
-nicht als vollstaendige Betriebsabnahme qualifiziert.
+Backend: GET/POST/DELETE `/api/v1/configurations/:id/assistant`, explicit adoption through POST `/api/v1/configurations/:id/assistant/accept`. Existing platform permissions, active database authorization, tenant/owner RLS, Origin/CSRF and `no-store` apply. New migration 053 saves one conversation per user and configuration, at most 40 messages. Expiry is UTC plus three calendar months from creation; runtime may not change the deadline. Parent deletion cascades; late model responses recheck parent, conversation and configuration revisions. Expiry cleanup occurs on access, API startup and every minute; after offline periods, clean up before new access. Restore of complete parent/chat snapshots and month-end/load cases are not yet qualified as complete operational acceptance.
 
-Der Modellkontext umfasst Metadaten/Regeln, bekannte nicht sensible
-Root-Scalarwerte ohne ID-Felder und maximal zwoelf historische Nachrichten.
-Keine vollstaendige Konfiguration, Terraform-State oder Credential-Bindings.
-Erkennbare Secret-Zuweisungen werden vor Inferenz abgewiesen; diese Heuristik
-ist kein allgemeiner DLP- oder Prompt-Injection-Nachweis. Niemals Zugangsdaten
-im Chat eingeben. Maximal fuenf laufende Anfragen je API-Prozess, acht Fragen
-und acht typgepruefte Scalar-Aenderungen; Timeout/Responsegrenze unveraendert.
+Model context comprises metadata/rules, known non-sensitive root scalar values without ID fields and at most twelve historical messages. No full configuration, Terraform state or credential bindings. Recognizable secret assignments are rejected before inference; this heuristic is not general DLP or prompt-injection evidence. Never enter credentials in chat. At most five running requests per API process, eight questions and eight type-checked scalar changes; timeout/response limit unchanged.
 
-Bewusste Anfangsgrenze: keine Strukturmutation komplexer Komponenten, keine
-Chat-Auswahl neuer Plattformvorlagen, kein Erstellen/Bearbeiten von Application
-Template-Drafts und kein vollstaendiger Konfigurationsanalyse-Kontext. Diese
-Anforderungen und die komplette Quellenaufnahme bleiben #94 zugeordnet.
-Die bestehende Coverage-Matrix bleibt `not-qualified`, nicht aufgewertet.
+Deliberate initial boundary: no structural mutation of complex components, no chat selection of new platform templates, no creation/editing of Application template drafts and no complete configuration-analysis context. These requirements and complete source ingestion remain assigned to #94. Existing coverage matrix remains `not-qualified`, not upgraded.
 
-Reproduzierbarer lokaler Start mit vorhandenen privaten State-/Schluesseldateien:
+Reproducible local startup with existing private state/key files:
 
 ```sh
 LZC_STACKIT_CLI_CLIENT_APPROVED=true npm run dev:chat
 ```
 
-Gepinntes Node/npm verwenden. Dieser Start benutzt den vorhandenen lokalen
-Login-Starter: neue Migrationen und lokale DB-Rollenpasswortrotation beim
-Neustart; Benutzer hat diese lokalen Arbeiten dauerhaft freigegeben. Keine
-Modeltoken-/Artifact-Key-Rotation, keine Runner-Aktivierung. Produktionsstart
-bleibt opt-in mit `LZC_ASSISTANT_ENABLED=true` und geschuetztem Operator-Binding.
+Use pinned Node/npm. This startup uses the existing local login starter: new migrations and local DB role password rotation on restart; user has standing approval for this local work. No model-token/artifact-key rotation, no Runner activation. Production startup remains opt-in with `LZC_ASSISTANT_ENABLED=true` and protected operator binding.
 
-Nachweise: zehn fokussierte Unit-/HTTP-Faelle; kanonischer Gate Lint/Typen/Build,
-447 Unit-Passes und 53 umgebungsgebundene Skips; 32 echte PostgreSQL-Faelle.
-Vier fokussierte Desktop-/Mobilfaelle fuer Chat und benachbarte Speicherung
-bestanden mit `--workers=1 --timeout=60000` (je ca. 1-2 Sekunden). Parallel
-traten Desktop-Neulade-/Browser-Session-Timeouts auf; Last-/CI-Budget bleibt
-offen. Screenshots geprueft, kein Seitenoverflow; Diff auf Mobil intern scrollbar.
-Echter synthetischer autorisierter HTTP-Dialog auf isolierter Testdatenbank:
-HTTP 200 in 2649 ms, zwei gespeicherte Nachrichten, ein Vorschlag, null weitere
-Fragen; Fortsetzung und ausdrueckliche Uebernahme als Revision 2 bestaetigt.
-Keine Benutzerkonfiguration fuer diese Inferenz verwendet.
+Evidence: ten focused unit/HTTP cases; canonical gate lint/types/build, 447 unit passes and 53 environment-bound skips; 32 real PostgreSQL cases. Four focused desktop/mobile cases for chat and adjacent saving passed with `--workers=1 --timeout=60000` (approx. 1–2 seconds each). Desktop reload/browser-session timeouts occurred in parallel; load/CI budget remains open. Screenshots checked, no page overflow; diff internally scrollable on mobile. Real synthetic authorized HTTP dialogue on isolated test database: HTTP 200 in 2649 ms, two saved messages, one proposal, zero further questions; continuation and explicit adoption as revision 2 confirmed. No user configuration used for this inference.
 
-Lokale Benutzerumgebung danach freigegeben aktiviert: API 3000, Preview 4181,
-Callback 8000, Migrationen 051-053 angewendet. Anzahl und Inhalts-/Revisions-
-pruefsumme der vorhandenen Konfiguration vor/nach Start identisch. UI/Health
-200, anonymer Chat 401. Manuelle Dialogabnahme auf Benutzerkonfiguration offen;
-im geteilten Browser vorhandene Sitzung, aber Seite fuer Klick nicht sichtbar.
+Local user environment then activated with approval: API 3000, preview 4181, callback 8000, migrations 051–053 applied. Count and content/revision checksum of existing configuration identical before/after startup. UI/health 200, anonymous chat 401. Manual dialogue acceptance on user configuration outstanding; existing session in shared browser, but page not visible for clicking.
 
-- Katalog-/Matrixfrische: lokal automatisch pruefbar, kein Modellaufruf.
-- Deterministischer Vertrag: Schema, Compiler, Template-Policy, Rechte, Revision,
-  Lifecycle und Redaction mit isolierten Unit-/DB-/Browserfaellen pruefen.
-- Echte Modell-Evaluation: A01-A24 mit reproduzierbaren Aufgaben und pro Feld
-  belegter Abdeckung, einschliesslich realistischer komplexer Kombinationen.
-  Inferenz muss ueber den vorhandenen geschuetzten Dev-Zugang qualifiziert werden.
-- Betriebsabnahme: Loesch-/Restore-Grenzen und fuenf Sitzungen messen. Antwortzeit-
-  Ziele anhand des Spikes festlegen; keine erfundene Latenzzusage.
+- Catalogue/matrix freshness: automatically checkable locally, no model call.
+- Deterministic contract: check schema, compiler, template policy, permissions, revision, lifecycle and redaction with isolated unit/DB/browser cases.
+- Real model evaluation: A01–A24 with reproducible tasks and evidenced per-field coverage, including realistic complex combinations. Inference must be qualified through existing protected dev access.
+- Operational acceptance: measure deletion/restore boundaries and five sessions. Set response-time goals from the spike; no invented latency promise.
 
-Grenz-Referenzen sind bekannte Befunde, keine Garantie ihres heutigen Zustands.
-Vor Modellfreigabe sind sie gegen den jeweils qualifizierten Source-/Capability-
-Stand erneut zu pruefen. Nachweise und Messungen werden #94 zugeordnet; fehlende
-KI-Qualifikation blockiert die Behauptung vollstaendiger 1:1-Unterstuetzung.
+Limitation references are known findings, not a guarantee of their present state. Before model release, they must be rechecked against the qualified source/capability status. Evidence and measurements are assigned to #94; missing AI qualification blocks claiming complete 1:1 support.

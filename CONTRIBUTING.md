@@ -1,5 +1,7 @@
 # Contributing
 
+[English](CONTRIBUTING.md) | [Deutsch](CONTRIBUTING.de.md)
+
 Thanks for taking the time to contribute. This document describes the local setup, the conventions this repository follows, and what a pull request is expected to contain.
 
 ## Local setup
@@ -119,6 +121,20 @@ existing module conventions below.
 **Documentation.** Module READMEs are generated. Do not edit the block between the `BEGIN_TF_DOCS` and `END_TF_DOCS` markers by hand; run the pre-commit hook instead.
 
 **Example configuration.** The tfvars files in `src/config/` are documentation. Keep them on placeholder values such as `owner@example.com` and a zero UUID for the organization. Never commit an identifier from a real environment.
+
+### Bilingual documentation
+
+English `.md` files are canonical; human-facing documentation has complete German
+`.de.md` peers, not summaries. Put reciprocal `[English](name.md) | [Deutsch](name.de.md)`
+navigation immediately after each H1 and update both languages whenever prose
+changes. Preserve commands, examples, exact values and existing heading anchors.
+
+Keep generator-owned contracts unchanged: regenerate the English reference with
+the existing tooling and copy its technical blocks verbatim into the German peer,
+with a German introduction linking the canonical reference. Machine-ingested
+Assistant topics remain unchanged in English; index their separate human-readable
+German translations in the Assistant knowledge README rather than changing the
+ingested topics.
 
 ## Commits and pull requests
 

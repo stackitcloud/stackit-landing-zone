@@ -1,5 +1,7 @@
 # Getting Started
 
+[English](getting-started.md) | [Deutsch](getting-started.de.md)
+
 This guide walks you through deploying the STACKIT Landing Zone from scratch.
 
 > [!NOTE]

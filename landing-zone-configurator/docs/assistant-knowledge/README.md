@@ -1,5 +1,11 @@
 # Assistant Service Knowledge
 
+[English](README.md) | [Deutsch](README.de.md)
+
+English is the canonical machine-ingested topic language. German topic companions
+are human reading versions only; the manifest does not ingest them. Use the
+catalogue below to switch languages without changing curated prompt sources.
+
 ## Architecture Contract
 
 Approved architecture, 2026-10-10: curated Markdown per domain/service, with a
@@ -147,27 +153,27 @@ local results alone never authorize promotion or deployment.
 
 ## Complete Topic Catalogue
 
-| Topic | Scope |
-| --- | --- |
-| credential-foundations | Provider, workload and native execution bindings |
-| identity-foundations | Organization, owner, names/codes, region, labels, handoff namespace |
-| governance-folders | Parents, folder roles, ownership and audit rights |
-| management-state | Mandatory management project, state, Secrets Manager and operating identities |
-| observability | Central, project and cluster telemetry/retention |
-| audit-logs | Routing, archive, Object Lock and scope |
-| federated-identities | Issuers/assertions for management operating identity |
-| stackit-network-components | SNA, pools, transfer, prefixes and regional forms |
-| dns-zones | Area zones, resolver selection and DNS dependencies |
-| firewall-infrastructure | OPNsense appliance, LAN/WAN, zones, sizing and HA |
-| firewall-policy | Aliases, routes, rules, NAT and port forwards |
-| firewall-access-bootstrap | Administration, API bindings and bootstrap phases |
-| vpn | Gateway/plan, peer/tunnel, routing and IKE/IPsec boundaries |
-| devops-git | Managed Git service and ACLs |
-| platform-kubernetes | SKE/node pools, DNS, monitoring, KMS and bastion |
-| project-templates | Public/corporate projects, roles, services and application parameters |
-| sandbox-projects | Sandbox ownership and native project list |
-| namespace-services | Namespace/RBAC, secret policies, break-glass and explicit demos |
-| configuration-lifecycle | Workspace, advice handoff, revision/expiry, versions and execution gates |
+| Topic | Scope | Languages |
+| --- | --- | --- |
+| credential-foundations | Provider, workload and native execution bindings | [EN](credential-foundations.md) / [DE](credential-foundations.de.md) |
+| identity-foundations | Organization, owner, names/codes, region, labels, handoff namespace | [EN](identity-foundations.md) / [DE](identity-foundations.de.md) |
+| governance-folders | Parents, folder roles, ownership and audit rights | [EN](governance-folders.md) / [DE](governance-folders.de.md) |
+| management-state | Mandatory management project, state, Secrets Manager and operating identities | [EN](management-state.md) / [DE](management-state.de.md) |
+| observability | Central, project and cluster telemetry/retention | [EN](observability.md) / [DE](observability.de.md) |
+| audit-logs | Routing, archive, Object Lock and scope | [EN](audit-logs.md) / [DE](audit-logs.de.md) |
+| federated-identities | Issuers/assertions for management operating identity | [EN](federated-identities.md) / [DE](federated-identities.de.md) |
+| stackit-network-components | SNA, pools, transfer, prefixes and regional forms | [EN](sna.md) / [DE](sna.de.md) |
+| dns-zones | Area zones, resolver selection and DNS dependencies | [EN](dns-zones.md) / [DE](dns-zones.de.md) |
+| firewall-infrastructure | OPNsense appliance, LAN/WAN, zones, sizing and HA | [EN](firewall-infrastructure.md) / [DE](firewall-infrastructure.de.md) |
+| firewall-policy | Aliases, routes, rules, NAT and port forwards | [EN](firewall-policy.md) / [DE](firewall-policy.de.md) |
+| firewall-access-bootstrap | Administration, API bindings and bootstrap phases | [EN](firewall-access-bootstrap.md) / [DE](firewall-access-bootstrap.de.md) |
+| vpn | Gateway/plan, peer/tunnel, routing and IKE/IPsec boundaries | [EN](vpn.md) / [DE](vpn.de.md) |
+| devops-git | Managed Git service and ACLs | [EN](devops-git.md) / [DE](devops-git.de.md) |
+| platform-kubernetes | SKE/node pools, DNS, monitoring, KMS and bastion | [EN](platform-kubernetes.md) / [DE](platform-kubernetes.de.md) |
+| project-templates | Public/corporate projects, roles, services and application parameters | [EN](project-templates.md) / [DE](project-templates.de.md) |
+| sandbox-projects | Sandbox ownership and native project list | [EN](sandbox-projects.md) / [DE](sandbox-projects.de.md) |
+| namespace-services | Namespace/RBAC, secret policies, break-glass and explicit demos | [EN](namespace-services.md) / [DE](namespace-services.de.md) |
+| configuration-lifecycle | Workspace, advice handoff, revision/expiry, versions and execution gates | [EN](configuration-lifecycle.md) / [DE](configuration-lifecycle.de.md) |
 
 Every current root input has at least one manifest topic; the generator rejects
 missing/unknown inputs. The existing 501-path catalogue remains the field-level

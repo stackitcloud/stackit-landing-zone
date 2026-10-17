@@ -1,48 +1,56 @@
-# ADR 0001 – Sprache und Anwendungsstack
+<a id="adr-0001--sprache-und-anwendungsstack"></a>
+# ADR 0001 – Language and application stack
 
-Stand: 2026-09-29. **Status: angenommen im Planungsgespräch.**
+[English](0001-application-stack.md) | [Deutsch](0001-application-stack.de.md)
 
-## Entscheidung
+As of 2026-09-29. **Status: accepted in the planning discussion.**
 
-TypeScript als Hauptsprache für React-Oberfläche, Node.js-Backend und Worker. Gemeinsames Fachmodell, Laufzeitschemas, API-Verträge, Konfigurationscompiler und Graph-Modell als interne Pakete. Backend: Fastify; Frontend: React mit Vite. npm-Workspaces mit Lockfile. Runtime: Node.js 24.21.0 LTS und npm 11.19.0; konkrete Paketversionen in `app/package.json` und den Workspace-Manifests.
+<a id="entscheidung"></a>
+## Decision
 
-Go auf einen kleinen HCL-Importadapter begrenzen. OpenTofu wird als gepinnter externer Prozess in isolierten Runnern ausgeführt. Die App muss deshalb nicht in Go geschrieben sein. Für einen Runner-Supervisor erst dann zusätzlich Go wählen, wenn Packaging oder Prozesssteuerung einen konkreten Vorteil belegen.
+TypeScript as the primary language for the React interface, Node.js backend and worker. Shared domain model, runtime schemas, API contracts, configuration compiler and graph model as internal packages. Backend: Fastify; frontend: React with Vite. npm workspaces with lockfile. Runtime: Node.js 24.21.0 LTS and npm 11.19.0; concrete package versions in `app/package.json` and the workspace manifests.
 
-## Warum das zum Configurator passt
+Limit Go to a small HCL import adapter. OpenTofu runs as a pinned external process in isolated Runners. The app therefore does not need to be written in Go. Only choose additional Go for a Runner supervisor when packaging or process control demonstrates a concrete advantage.
 
-Die Hauptarbeit besteht aus Formularen, Validierung, GitHub-/Cloud-APIs, Chat-Streaming und asynchroner Jobkoordination. TypeScript ermöglicht gemeinsame Verträge und Fachlogik zwischen Browser und Backend. Ein Sprachwechsel für jede Schemaänderung entfällt. Externe Eingaben dennoch immer zur Laufzeit validieren: TypeScript-Typen sind keine Autorisierungs- oder Validierungsgrenze.
+<a id="warum-das-zum-configurator-passt"></a>
+## Why this suits the Configurator
 
-Die eigentliche Infrastrukturarbeit übernimmt OpenTofu. CPU-intensive Verarbeitung großer Plans und HCL-Import gehören in begrenzte Worker/Adapter-Prozesse, nicht in den HTTP-Event-Loop. Für die erwarteten API-/I/O-Aufgaben ist Backend-Rohleistung nicht das ausschlaggebende Kriterium.
+The main work consists of forms, validation, GitHub/cloud APIs, chat streaming and asynchronous job coordination. TypeScript enables shared contracts and domain logic between browser and backend. No language switch is required for each schema change. Still always validate external inputs at runtime: TypeScript types are not an authorization or validation boundary.
 
-Cloud Foundry dokumentiert sowohl [Node.js](https://docs.cloudfoundry.org/buildpacks/node/) als auch [Go](https://docs.cloudfoundry.org/buildpacks/go/index.html). STACKIT beschreibt das Deployment mit Buildpacks und anderen Artefaktformen; die im Ziel angebotenen Versionen sind beim Spike zu prüfen. [STACKIT-App-Deployment](https://docs.stackit.cloud/products/runtime/cloud-foundry/getting-started/push-your-app-to-cloud-foundry/)
+OpenTofu handles the actual infrastructure work. CPU-intensive processing of large Plans and HCL import belong in bounded worker/adapter processes, not in the HTTP event loop. Raw backend performance is not the deciding criterion for the expected API/I/O tasks.
 
-Für HCL stellt das Maintainer-Projekt einen Go-Parser und Go-APIs bereit. Daraus leitet sich der gezielte Go-Adapter ab, nicht die Notwendigkeit eines vollständigen Go-Backends. [HashiCorp HCL](https://github.com/hashicorp/hcl)
+Cloud Foundry documents both [Node.js](https://docs.cloudfoundry.org/buildpacks/node/) and [Go](https://docs.cloudfoundry.org/buildpacks/go/index.html). STACKIT describes deployment with buildpacks and other artifact formats; versions offered at the target must be checked during the spike. [STACKIT app deployment](https://docs.stackit.cloud/products/runtime/cloud-foundry/getting-started/push-your-app-to-cloud-foundry/)
 
-## Alternativen
+For HCL, the maintainer project provides a Go parser and Go APIs. This motivates the targeted Go adapter, not the need for an entire Go backend. [HashiCorp HCL](https://github.com/hashicorp/hcl)
 
-| Variante | Stärke für diese Aufgabe | Aufwand / Nachteil |
+<a id="alternativen"></a>
+## Alternatives
+
+| Option | Strength for this task | Effort / disadvantage |
 | --- | --- | --- |
-| TypeScript für Web/API/Worker plus kleiner Go-Adapter | Gemeinsame Fachlogik, kurze Wege zwischen Editor und API | Node-Abhängigkeiten pflegen; kleine zusätzliche Go-Toolchain |
-| React/TypeScript plus Go-Backend | Direkte HCL-Integration, kompakte Backend-Binaries, gute Prozesswerkzeuge | Zwei vollwertige Anwendungsstacks; Verträge generieren und Validierungsgrenzen abstimmen |
-| React/TypeScript plus Python-Backend | Sinnvoll bei ausgeprägter Python-Erfahrung oder eigener ML-Verarbeitung | Kein klarer Mehrwert für reine Model-Serving-API-Nutzung; ebenfalls zwei Stacks |
-| React/TypeScript plus Java/Kotlin-Backend | Sinnvoll bei vorhandenem JVM-Team und etablierten Betriebsstandards | Für dieses neue Projekt ohne solche Vorgaben mehr initiale Struktur |
+| TypeScript for web/API/worker plus small Go adapter | Shared domain logic, short paths between editor and API | Maintain Node dependencies; small additional Go toolchain |
+| React/TypeScript plus Go backend | Direct HCL integration, compact backend binaries, good process tools | Two full application stacks; generate contracts and align validation boundaries |
+| React/TypeScript plus Python backend | Useful with substantial Python experience or custom ML processing | No clear added value for pure Model Serving API usage; also two stacks |
+| React/TypeScript plus Java/Kotlin backend | Useful with an existing JVM team and established operational standards | More initial structure for this new project without such requirements |
 
-React plus Go wäre meine zweite Wahl, besonders bei einem überwiegend Go-erfahrenen Backend-Team. Python ist nicht erforderlich, nur weil ein Chatbot Bestandteil der App ist: Das Modell wird als Dienst angesprochen.
+React plus Go would be my second choice, especially with a backend team predominantly experienced in Go. Python is not required just because a chatbot is part of the app: the model is called as a service.
 
-## Bewusste Grenzen
+<a id="bewusste-grenzen"></a>
+## Deliberate boundaries
 
-- Eigene CF-Deployables für API und Worker; keine langen OpenTofu-Läufe in HTTP-Requests.
-- Gemeinsame Pakete enthalten keine Server-Secrets; Browser-Bundles werden darauf geprüft.
-- Sicherheit und Mandantenisolation ergeben sich aus Architektur, Autorisierung und Tests, nicht aus der Sprache.
-- Keine freie Ausführung von HCL oder Shell durch das Modell.
-- Team-Erfahrung kann die Empfehlung ändern. Vor Umsetzung vorhandene TypeScript-/Go-Erfahrung und Wartungsverantwortung festhalten.
+- Separate CF deployables for API and worker; no long OpenTofu runs in HTTP requests.
+- Shared packages contain no server secrets; browser bundles are checked for them.
+- Security and tenant isolation come from architecture, authorization and tests, not the language.
+- No unrestricted HCL or shell execution by the model.
+- Team experience can change the recommendation. Record existing TypeScript/Go experience and maintenance responsibilities before implementation.
 
-## Abschlusskriterien
+<a id="abschlusskriterien"></a>
+## Completion criteria
 
-- [x] Hauptsprache gemeinsam bestätigen.
-- [x] Frontend-/Backend-Framework, Paketmanager und unterstützte Runtime-Versionen festlegen.
-- [ ] Minimalen CF-Deploy von Web/API/Worker testen.
-- [ ] HCL-Import mit allen acht Templates prototypisch validieren.
-- [ ] Schema-Verträge, Build-Grenzen und Versionierung festlegen.
+- [x] Jointly confirm the primary language.
+- [x] Define frontend/backend framework, package manager and supported runtime versions.
+- [ ] Test a minimal CF deployment of web/API/worker.
+- [ ] Validate HCL import with all eight templates in a prototype.
+- [ ] Define schema contracts, build boundaries and versioning.
 
-Die lokale Basis ist implementiert und getestet. CF-Deploy und HCL-Adapter sind noch offen. Node.js 24 wurde als LTS-Linie gewählt; Aktualisierungen erfolgen bewusst über Runtime-Pin und Lockfile. [Node.js Release-Status](https://nodejs.org/en/about/previous-releases)
+The local foundation is implemented and tested. CF deployment and HCL adapter remain open. Node.js 24 was chosen as the LTS line; updates are made deliberately through the runtime pin and lockfile. [Node.js release status](https://nodejs.org/en/about/previous-releases)

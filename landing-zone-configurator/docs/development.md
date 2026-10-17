@@ -1,5 +1,7 @@
 # Configurator development map
 
+[English](development.md) | [Deutsch](development.de.md)
+
 Start with [CONTRIBUTING](../../CONTRIBUTING.md) and the
 [local application setup](../app/README.md). This page indexes technical
 references; the [user guide](user-guide.md) describes product usage.

@@ -1,5 +1,7 @@
 # Repository guidance
 
+[English](AGENTS.md) | [Deutsch](AGENTS.de.md)
+
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing code. For Terraform,
 also read and follow [the Terraform style guide](docs/terraform-style.md);
 preserve the documented root/child provider-version conventions.
@@ -31,3 +33,6 @@ preserve the documented root/child provider-version conventions.
   A source merge is not deployment approval; production is a separate follow-up.
 - Preserve unrelated worktree changes. Update directly related public and
   contributor documentation, not dated session notes or handoff files.
+- Maintain English-first documentation and German companions according to
+  [CONTRIBUTING.md](CONTRIBUTING.md); preserve generated and machine-ingested
+  source contracts.

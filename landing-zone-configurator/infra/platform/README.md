@@ -1,12 +1,16 @@
-# Configurator-Plattform
+# Configurator platform
 
-Dieser Root verwaltet CF-Organisation und technischen Org-Manager, PostgreSQL Flex samt Datenbank/Migrationsnutzer, Secrets Manager samt Provisionierungsnutzer, Artefakt-Bucket und AI Model Serving inklusive Auth-Token. Der STACKIT-Provider aktiviert Model Serving bei der Token-Erstellung.
+[English](README.md) | [Deutsch](README.de.md)
 
-Region, Foundation, Quota, DB-Plan und verifizierte Quell-CIDRs sind explizite Eingaben. Keine offene Standard-ACL. Der Datenbank-Owner ist für Migrationen vorgesehen, nicht als späterer App-Benutzer; App-Rollen/RLS und Secret-Policies werden in der Runtime-Schicht ergänzt.
+<a id="configurator-plattform"></a>
 
-Voraussetzung: erfolgreich angewendeter State-Bootstrap und Backend-Root mit aktivierter Versionierung. Die Pipeline übergibt dessen Backend-Zugang aus einer privaten temporären Output-Datei; normale OpenTofu-Ausgaben bleiben sichtbar. [IaC-Anleitung](../README.md).
+This root manages the CF organization and technical org manager, PostgreSQL Flex with database/migration user, Secrets Manager with provisioning user, artifact bucket and AI Model Serving including an auth token. The STACKIT provider enables Model Serving when creating the token.
 
-Ein `sensitive`-Output maskiert nur die Anzeige. Provider-erzeugte Credentials liegen im verschlüsselten State. Nachgelagerte IaC erhält nur die benötigten Outputs; keine Anbindung der unbeschränkten Provisionierungsidentitäten an Kunden-Runner.
+Region, foundation, quota, DB plan and verified source CIDRs are explicit inputs. No open default ACL. The database owner is intended for migrations, not as the future app user; app roles/RLS and secret policies are added in the runtime layer.
+
+Prerequisites: successfully applied state bootstrap and backend root with versioning enabled. The pipeline passes its backend access through a private temporary output file; normal OpenTofu output remains visible. [IaC instructions](../README.md).
+
+A `sensitive` output masks only the display. Provider-generated credentials reside in encrypted state. Downstream IaC receives only the required outputs; unrestricted provisioning identities are not bound to customer Runners.
 
 ## Isolated plan runners
 

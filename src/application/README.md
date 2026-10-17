@@ -1,5 +1,7 @@
 # Separate Application Landing Zone root
 
+[English](README.md) | [Deutsch](README.de.md)
+
 This root plans **one new application instance**, reusing `../modules/landing-zone`.
 It does not create platform folders, SNAs, platform services or other applications.
 It works with manually resolved CLI inputs or Configurator-generated inputs.

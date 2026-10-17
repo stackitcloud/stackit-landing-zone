@@ -1,100 +1,109 @@
-# Accelerator-Grenzen im Configurator
+<a id="accelerator-grenzen-im-configurator"></a>
+# Accelerator limitations in the Configurator
 
-Stand: 2026-09-30. Die unten genannten Quellbefunde wurden zusätzlich gegen
-Accelerator `main` unter Commit `2bb7c755692674ad619ffc46a0a17a781f019106`
-geprüft. Die neuen Issues enthalten Quell-Permalinks und Abnahmekriterien.
-Es handelt sich um Quellprüfung, nicht um einen Nachweis durch Kunden-Apply.
-Der Configurator verwendet weiterhin seine separat freigegebene Engine-Version.
+[English](accelerator-limitations.md) | [Deutsch](accelerator-limitations.de.md)
 
-## Erfasste Grenzen
+As of 2026-09-30. The source findings below were additionally checked against
+Accelerator `main` at commit `2bb7c755692674ad619ffc46a0a17a781f019106`.
+The new issues contain source permalinks and acceptance criteria.
+This is source review, not evidence from a customer Apply.
+The Configurator continues to use its separately approved engine version.
 
-| Issue | Grenze | Konsequenz für den Configurator |
+<a id="erfasste-grenzen"></a>
+## Recorded limitations
+
+| Issue | Limitation | Consequence for the Configurator |
 | --- | --- | --- |
-| [#37](https://github.com/stackitcloud/stackit-landing-zone/issues/37) | Private/SNA-SKE-API vom öffentlichen Runner nicht erreichbar; zweistufiges Runner-Modell offen. | Kubernetes-/Helm-Provider-Operationen benötigen nachgewiesene private Erreichbarkeit. Zugangsdaten allein reichen nicht. Umsetzung separat. |
-| [#65](https://github.com/stackitcloud/stackit-landing-zone/issues/65) | Policy-Automatisierung für mehrere Firewall-Appliances fehlt. | Mehrere Appliances im Infrastrukturmodell bedeuten nicht automatisch unterstützte Policies je Appliance. |
-| [#64](https://github.com/stackitcloud/stackit-landing-zone/issues/64) | Automatische Inter-Region-VPN-Verbindungen und Routing fehlen. | Mehrere Regionen dürfen keine implizite Verbindung suggerieren. |
-| [#22](https://github.com/stackitcloud/stackit-landing-zone/issues/22) | Ordnerlöschung bei zur Löschung vorgemerkten Projekten schlägt fehl. | Kein Destroy-Angebot; Kunden-Apply weiterhin nur nach gesonderter Freigabe. |
-| [#69](https://github.com/stackitcloud/stackit-landing-zone/issues/69) | Projekte ohne standardmäßige Owner-Zuweisung noch offen. | Keine nicht unterstützte ownerlose Projektanlage anbieten. |
-| [#80](https://github.com/stackitcloud/stackit-landing-zone/issues/80) | Namespace-Dienste referenzieren nichtregionale Cluster-/Projektmodule. | Regionale Cluster erfordern explizite passende Provider-/Projektzuordnung. Unabhängig von #37 auch bei öffentlicher API relevant. |
-| [#81](https://github.com/stackitcloud/stackit-landing-zone/issues/81) | Audit-Object-Lock: tatsächlicher optionaler Default ist `true`, Beschreibung sagt aus. | Wirksamen Wert sichtbar machen; keine stille Änderung des Defaults beim Import/Export. |
-| [#82](https://github.com/stackitcloud/stackit-landing-zone/issues/82) | `rm_folders.description` wird akzeptiert, aber nicht zur Ressource durchgereicht. | Kein wirksames Beschreibungsfeld versprechen, solange die Anbindung fehlt. |
-| [#83](https://github.com/stackitcloud/stackit-landing-zone/issues/83) | Governance-Custom-Roles und Landing-Zone-Secrets-Manager-ACLs sind nur auf Modulebene vorhanden. | Erst nach geklärtem Root-Vertrag als konfigurierbare Features anbieten. Bestehende projektbezogene Custom Roles sind davon zu unterscheiden. |
-| [#84](https://github.com/stackitcloud/stackit-landing-zone/issues/84) | Standalone lässt beim Public-Beispiel `corporate = false` aus; tatsächlich greift `true` ohne Connectivity. | Verlustfreier Import zeigt die fehlende Bereichsreferenz. Legacy-Editor exportiert bereits explizit Public und bleibt unverändert. |
+| [#37](https://github.com/stackitcloud/stackit-landing-zone/issues/37) | Private/SNA SKE API unreachable from the public Runner; two-stage Runner model open. | Kubernetes/Helm provider operations require proven private reachability. Credentials alone are insufficient. Separate implementation. |
+| [#65](https://github.com/stackitcloud/stackit-landing-zone/issues/65) | Policy automation for multiple firewall appliances missing. | Multiple appliances in the infrastructure model do not automatically mean supported policies per appliance. |
+| [#64](https://github.com/stackitcloud/stackit-landing-zone/issues/64) | Automatic inter-region VPN connections and routing missing. | Multiple regions must not suggest implicit connectivity. |
+| [#22](https://github.com/stackitcloud/stackit-landing-zone/issues/22) | Folder deletion fails when projects are marked for deletion. | No Destroy option; customer Apply still requires separate approval. |
+| [#69](https://github.com/stackitcloud/stackit-landing-zone/issues/69) | Projects without default owner assignment still open. | Do not offer unsupported ownerless project creation. |
+| [#80](https://github.com/stackitcloud/stackit-landing-zone/issues/80) | Namespace services reference nonregional cluster/project modules. | Regional clusters require explicit matching provider/project assignment. Relevant independently of #37, even with a public API. |
+| [#81](https://github.com/stackitcloud/stackit-landing-zone/issues/81) | Audit Object Lock: actual optional default is `true`, description says off. | Make effective value visible; no silent default change on import/export. |
+| [#82](https://github.com/stackitcloud/stackit-landing-zone/issues/82) | `rm_folders.description` is accepted but not passed through to the resource. | Do not promise an effective description field while the connection is missing. |
+| [#83](https://github.com/stackitcloud/stackit-landing-zone/issues/83) | Governance custom roles and Landing Zone Secrets Manager ACLs exist only at module level. | Offer as configurable features only after the root contract is clarified. Distinguish existing project-specific custom roles. |
+| [#84](https://github.com/stackitcloud/stackit-landing-zone/issues/84) | Standalone omits `corporate = false` in the Public example; `true` actually takes effect without connectivity. | Lossless import shows the missing area reference. Legacy editor already exports explicit Public and remains unchanged. |
 
-#80–#83 wurden im Rahmen dieser Prüfung neu angelegt. #37 und #65 werden
-weiterverwendet; dafür gibt es keine zusätzlichen Duplikate.
-Gültige Bereichsreferenzen, konsistente Firewall-Schlüssel und die aktuell
-unterstützten Regionen sind Validierungsregeln, nicht automatisch neue Defekte.
+#80–#83 were newly created during this review. #37 and #65 are
+reused; no additional duplicates were created.
+Valid area references, consistent firewall keys and the currently
+supported regions are validation rules, not automatically new defects.
 
-## Private Kubernetes-API: Ausführungsgrenze
+<a id="private-kubernetes-api-ausführungsgrenze"></a>
+## Private Kubernetes API: execution boundary
 
-Der aktuelle CF-Runner hat keinen nachgewiesenen Netzwerkpfad in die Kunden-SNA.
-Authentifizierung beim STACKIT-API und erfolgreicher Organisations-Zugriff beweisen
-weder Routing noch DNS, TLS oder Kubernetes-Berechtigungen für die Cluster-API.
-Auch ein Plan kann beim Provider-Refresh diesen Zugriff benötigen.
+The current CF Runner has no proven network path into the customer SNA.
+Authentication with the STACKIT API and successful organization access prove
+neither routing nor DNS, TLS or Kubernetes permissions for the cluster API.
+Even a Plan may require this access during provider refresh.
 
-Der aktuelle veröffentlichte Editor unterstützt nur den Standalone-Vertrag.
-Die folgenden Regeln sind Anforderungen an die Erweiterung des gemeinsamen Modells;
-sie sind **noch keine implementierte SNA-Erreichbarkeitsprüfung**:
+The currently published editor supports only the Standalone contract.
+The following rules are requirements for extending the common model;
+they are **not yet an implemented SNA reachability check**:
 
-- Konfigurationen dürfen bearbeitet und gespeichert werden, auch wenn eine
-  Ausführungsphase auf dem verfügbaren Runner noch nicht unterstützt wird.
-- Vor dem Dispatch muss das Backend die benötigten Provider und Ausführungsphasen
-  prüfen. Eine private Kubernetes-/Helm-Phase bleibt ohne geeigneten Runner gesperrt;
-  die UI erklärt den Grund und verweist auf #37.
-- Der heutige vollständige Root-Lauf ist kein bereits implementierter
-  Infrastruktur-only-Workaround. Die Trennung der Phasen gehört zu #37.
-- Kein automatisches Umschalten auf öffentliche Cluster-APIs, kein TLS-Bypass und
-  keine implizite Tunnel-Lösung als Ersatz für den fehlenden Netzwerkpfad.
-- Regionale Clusterzuordnung (#80) und Netzwerk-Erreichbarkeit (#37) werden getrennt
-  geprüft. Das Beheben einer Grenze beseitigt die andere nicht.
+- Configurations may be edited and saved even if an
+  execution phase is not yet supported on the available Runner.
+- Before dispatch, the backend must check the required providers and execution
+  phases. A private Kubernetes/Helm phase remains blocked without a suitable Runner;
+  the UI explains why and refers to #37.
+- Today's complete root run is not an already implemented
+  infrastructure-only workaround. Phase separation belongs to #37.
+- No automatic switch to public cluster APIs, no TLS bypass and
+  no implicit tunnel solution as a substitute for the missing network path.
+- Regional cluster assignment (#80) and network reachability (#37) are checked
+  separately. Resolving one limitation does not eliminate the other.
 
-## Abnahme und Pflege
+<a id="abnahme-und-pflege"></a>
+## Acceptance and maintenance
 
-- [x] Bestehende offene und geschlossene Issues auf Überschneidungen prüfen.
-- [x] Zusätzliche bestätigte Grenzen mit Quellbelegen als #80–#83 erfassen.
-- [x] Privaten Kubernetes-Zugriff als separat zu lösendes Thema dokumentieren.
-- [ ] Capability-Katalog mit Engine-Version, Issue-Bezug und Ausführungsphase implementieren.
-- [ ] Serverseitige Ausführungssperren und verständliche UI-Hinweise testen.
-- [ ] Nach Lösung von #37 privaten Runner-Pfad inklusive DNS, Routing, TLS und
-  Authentifizierung vor Plan/Apply abnehmen; Timeouts nicht als Drift behandeln.
-- [ ] Behobene Accelerator-Issues erst nach Engine-Upgrade und eigenen Vertragstests
-  als im Configurator unterstützt markieren.
+- [x] Check existing open and closed issues for overlap.
+- [x] Record additional confirmed limitations with source evidence as #80–#83.
+- [x] Document private Kubernetes access as a separately resolvable topic.
+- [ ] Implement a capability catalogue with engine version, issue reference and execution phase.
+- [ ] Test server-side execution blocks and understandable UI explanations.
+- [ ] After resolving #37, qualify the private Runner path including DNS, routing, TLS and
+  authentication before Plan/Apply; do not treat timeouts as drift.
+- [ ] Mark resolved Accelerator issues as supported in the Configurator only after an
+  engine upgrade and its own contract tests.
 
-Neue Grenzen zunächst gegen bestehende Issues und die aktuelle Accelerator-Version
-prüfen. Neue Issues enthalten betroffene Eingaben, Quellbelege, erwartetes und
-tatsächliches Verhalten sowie überprüfbare Abnahmekriterien. Zugangsdaten und
-kundenbezogene Konfigurationen gehören nicht in Issues.
+First check new limitations against existing issues and the current Accelerator version.
+New issues include affected inputs, source evidence, expected and
+actual behavior and verifiable acceptance criteria. Credentials and
+customer-specific configurations do not belong in issues.
 
-Ergänzung: #84 wurde beim gemeinsamen Import-/Export-Vertragstest entdeckt und
-auch auf `main` bestätigt. Ein nativer Variablen-Vertragstest erwartet diesen
-Validierungsfehler ausdrücklich, bis die Vorlage korrigiert und freigegeben ist.
-
-
-## VPN-Zuordnung bei mehreren SNAs
-
-[#85](https://github.com/stackitcloud/stackit-landing-zone/issues/85): VPN-Gateways
-und alle konfigurierten Verbindungen werden auf sämtliche SNAs eines Connectivity-
-Moduls repliziert. Eine selektive oder unterschiedliche Konfiguration je SNA fehlt.
-Gegen `main` unter `2bb7c755692674ad619ffc46a0a17a781f019106` geprüft; #64 betrifft
-einen anderen Sachverhalt (Inter-Region-Verbindungen). Der VPN-Assistent erklärt
-die tatsächliche Reichweite und bietet keinen unwirksamen SNA-Selektor an.
+Addition: #84 was discovered during the common import/export contract test and
+also confirmed on `main`. A native variable contract test explicitly expects this
+validation error until the template is corrected and approved.
 
 
-## BGP für STACKIT VPN
+<a id="vpn-zuordnung-bei-mehreren-snas"></a>
+## VPN assignment with multiple SNAs
 
-[#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) erfasst die
-fehlende Unterstützung von `BGP_ROUTE_BASED` im Accelerator. #23 ist geschlossen
-und behandelt die allgemeine VPN-Implementierung; #64/#85 sind andere Grenzen.
-Der Code nennt ein historisches Provider-Problem bis 0.104.0. Ob es unter dem
-inzwischen gepinnten Provider 0.114.0 noch besteht, muss reproduziert werden.
-Das Issue umfasst Gateway-/Tunnel-BGP-Einstellungen, Routingvalidierung,
-SNA-Routenpropagation und die spätere Configurator-Anbindung. Eine allgemeine
-Verwaltung zusätzlicher SNA-Routing-Tabellen ist davon zu unterscheiden.
+[#85](https://github.com/stackitcloud/stackit-landing-zone/issues/85): VPN gateways
+and all configured connections are replicated to every SNA of a connectivity
+module. Selective or different configuration per SNA is missing.
+Checked against `main` at `2bb7c755692674ad619ffc46a0a17a781f019106`; #64 concerns
+a different matter (inter-region connections). The VPN assistant explains
+the actual scope and does not offer an ineffective SNA selector.
 
-## Bastion und Observability: Komponentenbeziehungen
 
-- [#87](https://github.com/stackitcloud/stackit-landing-zone/issues/87): `debug-bastion` ist zwar ein eigenes Modul, wird vom Root aber ausschließlich über Plattform-Kubernetes mit dessen Projekt und SNA-Netz aufgerufen. Eine unabhängige Bastion-Komponente benötigt einen eigenen Root-Vertrag und eine explizite Bestandsmigration.
-- [#88](https://github.com/stackitcloud/stackit-landing-zone/issues/88): Das Kubernetes-Modul erzeugt derzeit bei aktiviertem Monitoring eine eigene Observability-Instanz. Die zentrale Instanz im Management-Projekt wird nicht referenziert. Die gewünschte Auswahl einer bestehenden/zentral definierten Instanz benötigt Referenzfelder, Outputs und die Prüfung der zulässigen Projekt-/Regionsbeziehungen. Keine stille Umstellung bestehender Ressourcen.
+<a id="bgp-für-stackit-vpn"></a>
+## BGP for STACKIT VPN
 
-Die [SKE-Dokumentation](https://docs.stackit.cloud/products/runtime/kubernetes-engine/how-tos/monitor-your-clusters/) beschreibt die Auswahl einer vorhandenen Observability-Instanz. Das beweist noch nicht, dass jede Instanz eines anderen Projekts verwendbar ist. SKE-Systemmonitoring, Anwendungsmetriken und Telemetry Router bleiben separate Aufgaben. Das UI kennzeichnet die tatsächlichen Deployment-Orte und die aktuellen Grenzen.
+[#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) records the
+missing support for `BGP_ROUTE_BASED` in the Accelerator. #23 is closed
+and covers the general VPN implementation; #64/#85 are different limitations.
+The code mentions a historical provider issue up to 0.104.0. Whether it still exists
+under the now-pinned provider 0.114.0 must be reproduced.
+The issue covers gateway/tunnel BGP settings, routing validation,
+SNA route propagation and later Configurator integration. General
+management of additional SNA routing tables is distinct from this.
+
+<a id="bastion-und-observability-komponentenbeziehungen"></a>
+## Bastion and Observability: component relationships
+
+- [#87](https://github.com/stackitcloud/stackit-landing-zone/issues/87): Although `debug-bastion` is a separate module, the root calls it exclusively through platform Kubernetes with its project and SNA network. An independent bastion component needs its own root contract and explicit migration of existing resources.
+- [#88](https://github.com/stackitcloud/stackit-landing-zone/issues/88): The Kubernetes module currently creates its own Observability instance when monitoring is enabled. It does not reference the central instance in the management project. The desired selection of an existing/centrally defined instance requires reference fields, outputs and checks of permitted project/region relationships. No silent conversion of existing resources.
+
+The [SKE documentation](https://docs.stackit.cloud/products/runtime/kubernetes-engine/how-tos/monitor-your-clusters/) describes selecting an existing Observability instance. This does not yet prove that every instance from another project is usable. SKE system monitoring, application metrics and Telemetry Router remain separate tasks. The UI identifies actual deployment locations and current limitations.

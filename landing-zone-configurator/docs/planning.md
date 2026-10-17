@@ -1,111 +1,104 @@
-# Landing Zone Configurator – Architektur und Planung
+# Landing Zone Configurator – architecture and planning
 
-> Stand: 2026-10-01 · Architektur-Ausgangsstand: `2161871`
-> Historisches Entscheidungsprotokoll, kein aktueller Betriebs- oder Abnahmestand.
-> Aktuelle Referenzen: [Architektur](architecture.md), [MVP-Grenzen](mvp-scope.md), [Entwicklung](development.md) und [GitHub-Issues](https://github.com/stackitcloud/stackit-landing-zone/issues).
-> Die folgenden Architekturabschnitte und datierten Fortschrittsnotizen sind das Entscheidungsprotokoll; ältere Statusangaben beschreiben den damaligen Stand.
-> `[x]` = je nach Abschnitt entschieden oder mit angegebenem Nachweis umgesetzt; eine Entscheidung allein ist keine Live-Abnahme.
+[English](planning.md) | [Deutsch](planning.de.md)
 
-## Aktueller Umsetzungsschritt
+<a id="landing-zone-configurator--architektur-und-planung"></a>
 
-**Aktueller Template-Schritt:** [Typisierte Bestelleingaben und Ressourcenverknüpfungen](template-parameters-and-bindings.md), einschließlich Stage-Auswahl und Observability-Zugriff aus dem eigenen Projektnetz. Der Parametervertrag mit fünf freigegebenen Feldern, Editor und lokaler Bestellvorschau ist implementiert. Die produktive Projektnetz-/Egress-Bindung bleibt in #96 offen; Veröffentlichung und Application-Owner-Bestellungen folgen gesondert.
+> As of: 2026-10-01 · Architecture baseline: `2161871`
+> Historical decision log, not current operational or acceptance status.
+> Current references: [architecture](architecture.md), [MVP boundaries](mvp-scope.md), [development](development.md) and [GitHub issues](https://github.com/stackitcloud/stackit-landing-zone/issues).
+> The following architecture sections and dated progress notes form the decision log; older status statements describe the state at that time.
+> `[x]` = decided or implemented with the stated evidence, depending on the section; a decision alone is not live acceptance.
 
+<a id="aktueller-umsetzungsschritt"></a>
+## Current implementation step
 
-**Korrektur des Rollenablaufs:** Neue Plattformkonfigurationen enthalten
-[Projekt-Template-Entwürfe](project-template-drafts.md) statt konkreter
-Anwendungsprojekte. Der Platform Engineer definiert sie; Instanzen entstehen
-später durch den Application Owner aus veröffentlichten Versionen. Alte
-Gesamtkonfigurationen bleiben unverändert, Übernahme nur als ausdrückliche Kopie.
+**Current template step:** [Typed order inputs and resource bindings](template-parameters-and-bindings.md), including stage selection and Observability access from the project's own network. The parameter contract with five approved fields, editor and local order preview is implemented. Production project-network/egress binding remains open in #96; publication and Application Owner orders follow separately.
 
+**Role-workflow correction:** New platform configurations contain [project template drafts](project-template-drafts.md) rather than concrete application projects. The Platform Engineer defines them; instances are later created by the Application Owner from published versions. Old combined configurations remain unchanged; adoption only as an explicit copy.
 
-Governance-Pläne umfassen auch Organisationsrollen und Ordnerberechtigungen;
-leere Ordnerbeschreibungen blockieren nicht mehr. Die optionale
-Service-Account-Föderation erhält einen eigenen erklärten CI/CD-Editor.
-[Umfang und Qualifikation](plan-execution.md).
+Governance Plans also cover organization roles and folder permissions; empty folder descriptions no longer block. Optional service-account federation receives its own explained CI/CD editor. [Scope and qualification](plan-execution.md).
 
-Die MVP-Bestandsaufnahme trennt Editorabdeckung von Ausführungsfreigabe. Zunächst
-wird die geprüfte Standalone-Teilmenge des gemeinsamen Editors an den vorhandenen
-Erstbereitstellungsplan angebunden. Anschließend folgen dauerhafter Bootstrap-State
-und freigegebener Apply. Parallel werden verifizierte Organisationstenants,
-veröffentlichte Application Templates und der Model-Serving-Assistent aufgebaut.
-Die Arbeitspakete #89–#95 enthalten konkrete Abnahmekriterien.
+The MVP inventory separates editor coverage from execution approval. First, the checked standalone subset of the common editor is connected to the existing initial-provisioning Plan. Durable bootstrap state and approved Apply follow. Verified organization tenants, published Application templates and the Model Serving Assistant are developed in parallel. Work packages #89–#95 contain specific acceptance criteria.
 
-Kunden-Apply benötigt weiterhin eine ausdrückliche Freigabe; Organisationen sind
-bis zum Berechtigungsnachweis unverifizierte Entwürfe. Der Featurebranch wird in
-diesem Schritt nicht nach main gemergt.
+Customer Apply still needs explicit approval; organizations remain unverified drafts until permission evidence exists. The feature branch is not merged to main in this step.
 
-## 1. Zielbild und bestätigte Entscheidungen
+<a id="1-zielbild-und-bestätigte-entscheidungen"></a>
+## 1. Target design and confirmed decisions
 
-Eine zentral auf STACKIT Cloud Foundry gehostete Anwendung begleitet Benutzer vom Landing-Zone-Template bis zum überprüfbaren Deployment. Die Oberfläche arbeitet mit Organisationen, Netzwerkbereichen, Plattformdiensten und Workloads. Ein deterministischer Compiler übersetzt diese fachlichen Angaben in die Konfiguration des Accelerators. Terraform bleibt im Hintergrund; technische Details sind bei Bedarf einsehbar.
+An application hosted centrally on STACKIT Cloud Foundry guides users from Landing Zone template to verifiable deployment. The UI works with organizations, network areas, platform services and workloads. A deterministic compiler translates this business information into Accelerator configuration. Terraform stays in the background; technical details can be inspected when needed.
 
-**Bestätigt im Planungsgespräch:**
+**Confirmed in the planning discussion:**
 
-- [x] Produktname: Landing Zone Configurator.
-- [x] Sämtliche Configurator-Dienste inklusive Aktivierung werden via IaC erstellt; keine manuelle Portal-Provisionierung.
-- [x] Erste Entwicklungsumgebung: lzc-dev in eu01.
-- [x] App, IaC und Dokumentation unter `landing-zone-configurator/` getrennt vom Accelerator organisieren.
-- [x] Betreiberprojekt und Service-Account-Datei sind lokal bereitgestellt; `NAME=WERT`-Format geprüft; Projektzugriff sowie Bereitstellung von Plattform und Runtime durch CI-Applies nachgewiesen.
+- [x] Product name: Landing Zone Configurator.
+- [x] All Configurator services, including activation, are created through IaC; no manual portal provisioning.
+- [x] First development environment: lzc-dev in eu01.
+- [x] Organize app, IaC and documentation under `landing-zone-configurator/`, separate from the Accelerator.
+- [x] Operator project and service-account file provided locally; `NAME=WERT` format checked; project access and platform/runtime provisioning demonstrated through CI Applies.
+- [x] Support multiple independent customer organizations from the start. Tenant separation is a prerequisite for first release, not a later extension.
+- [x] Initially change configurations only and execute them with approved Accelerator code. Custom Terraform modifications from forks follow later.
+- [x] GitHub access uses the user's identity and permissions, without central repository credentials.
+- [x] App hosting on STACKIT Cloud Foundry; build platform environment through IaC.
+- [x] STACKIT Model Serving as chat backend; provide its operator credentials server-side through CF variables.
 
-- [x] Von Beginn an mehrere unabhängige Kundenorganisationen unterstützen. Mandantentrennung ist Voraussetzung der ersten Freigabe, kein späterer Ausbau.
-- [x] Zunächst ausschließlich Konfigurationen verändern und mit freigegebenem Accelerator-Code ausführen. Eigene Terraform-Modifikationen aus Forks folgen später.
-- [x] GitHub-Zugriffe erfolgen im Namen und mit Berechtigungen des Benutzers, ohne zentrale Repository-Credentials.
-- [x] App-Hosting auf STACKIT Cloud Foundry; Plattformumgebung über IaC aufbauen.
-- [x] STACKIT Model Serving als Chat-Backend; dessen Betreiber-Credentials serverseitig über CF-Variablen bereitstellen.
+Operators need technical identities for CF, database, secret management and Runner. These must not have blanket permission for customer repositories or deployments. The requested central Model Serving credentials are an explicitly bounded operator function.
 
-Die Betreiber benötigen technische Identitäten für CF, Datenbank, Secret-Verwaltung und Runner. Diese dürfen keine pauschale Berechtigung für Kunden-Repositories oder Kunden-Deployments haben. Die gewünschten zentralen Model-Serving-Credentials sind eine ausdrücklich abgegrenzte Betreiberfunktion.
+<a id="anforderungskatalog"></a>
+### Requirements catalogue
 
-### Anforderungskatalog
-
-| ID | Fähigkeit | Einordnung |
+| ID | Capability | Classification |
 | --- | --- | --- |
-| F01 | GitHub-Login und benutzergebundene Repository-Zugriffe | Erste Version |
-| F02 | Fork erstellen und mehrere vorhandene Repository-Verbindungen auswählen | Erste Version; GitHub-Grenzen berücksichtigen |
-| F03 | Vorhandene `src/config/`-Beispiele als Templates anbieten und kopieren | Erste Version |
-| F04 | Fachlicher Editor passend zu Modulen und Features | Schrittweise Umsetzung; Abdeckung sichtbar machen |
-| F05 | Konfigurationen im ausgewählten eigenen Fork speichern | Erste Version |
-| F06 | Persönliche Credentials und Deployment-Profile sicher verwalten | Vor erstem Deployment |
-| F07 | Terraform/OpenTofu Plan und Apply visuell begleiten und ausführen | Kernumfang |
-| F08 | Optionale Drift Detection und optionale Drift Correction | Nach stabilem Apply |
-| F09 | Chat mit Rückfragen, vollständigem versionsbezogenem Feature-Wissen und Themenbegrenzung | Kernumfang |
-| F10 | Grafische Konfigurationsdarstellung, später Plan-Delta und bekanntes Ist | Kernumfang |
-| F11 | STACKIT-PaaS-Datenbank für Persistenz | Empfehlung: PostgreSQL Flex |
-| F12 | Optionaler STACKIT-IdP-Login | Machbarkeit prüfen; keine MVP-Abhängigkeit |
-| F13 | Model-Serving-Service als Voraussetzung und Plattformaufbau per IaC | Kernumfang |
+| F01 | GitHub login and user-bound repository access | First version |
+| F02 | Create fork and select multiple existing repository connections | First version; consider GitHub limits |
+| F03 | Offer and copy existing `src/config/` examples as templates | First version |
+| F04 | Business editor matching modules and features | Incremental implementation; make coverage visible |
+| F05 | Save configurations in the selected personal fork | First version |
+| F06 | Securely manage personal credentials and deployment profiles | Before first deployment |
+| F07 | Visually accompany and execute Terraform/OpenTofu Plan and Apply | Core scope |
+| F08 | Optional drift detection and optional drift correction | After stable Apply |
+| F09 | Chat with follow-ups, complete version-specific feature knowledge and topic restrictions | Core scope |
+| F10 | Graphical configuration display, later Plan delta and known actual state | Core scope |
+| F11 | STACKIT PaaS database for persistence | Recommendation: PostgreSQL Flex |
+| F12 | Optional STACKIT IdP login | Check feasibility; no MVP dependency |
+| F13 | Model Serving service as prerequisite and platform setup through IaC | Core scope |
 
-## 2. Ausgangslage dieses Repositories
+<a id="2-ausgangslage-dieses-repositories"></a>
+## 2. Repository baseline
 
-Grundlage sind [Root-Variablen](../../src/variables.tf), [Provider](../../src/providers.tf), [Engine-/Provider-Vorgaben](../../src/terraform.tf), [Backend-Beispiel](../../src/backend.tf), [Getting Started](../../docs/getting-started.md), [Architektur](../../docs/architecture.md), [mise.toml](../../mise.toml) und [Beitragsregeln](../../CONTRIBUTING.md).
+Based on [root variables](../../src/variables.tf), [providers](../../src/providers.tf), [engine/provider requirements](../../src/terraform.tf), [backend example](../../src/backend.tf), [Getting Started](../../docs/getting-started.md), [architecture](../../docs/architecture.md), [mise.toml](../../mise.toml) and [contribution rules](../../CONTRIBUTING.md).
 
-### Template-Katalog
+<a id="template-katalog"></a>
+### Template catalogue
 
-| Datei unter `src/config/` | Fachliche Darstellung |
+| File under `src/config/` | Business representation |
 | --- | --- |
-| `standalone.tfvars` | Unabhängige Landing Zones ohne zentralen Netzwerk-Hub |
-| `hub-and-spoke.tfvars` | Zentraler Netzwerk-Hub mit angebundenen Landing Zones |
-| `hub-and-spoke-firewall.tfvars` | Hub-Spoke mit OPNsense-Firewall |
-| `hub-and-spoke-multi-area.tfvars` | Getrennte Bereiche für regulierte und gemeinsame Workloads |
-| `hub-and-spoke-finance-research.tfvars` | Getrennte Bereiche für Fachorganisationen |
-| `hub-and-spoke-prod-nonprod-firewall.tfvars` | Getrennte Prod-/Nonprod-Bereiche mit Appliances |
-| `hub-and-spoke-tenant-isolation.tfvars` | Netzwerkisolation innerhalb einer STACKIT-Organisation |
-| `hub-and-spoke-multi-region.tfvars` | Regionale Hubs, Landing Zones und Plattformcluster in `eu01`/`eu02` |
+| `standalone.tfvars` | Independent Landing Zones without central network hub |
+| `hub-and-spoke.tfvars` | Central network hub with connected Landing Zones |
+| `hub-and-spoke-firewall.tfvars` | Hub-and-spoke with OPNsense firewall |
+| `hub-and-spoke-multi-area.tfvars` | Separate areas for regulated and shared workloads |
+| `hub-and-spoke-finance-research.tfvars` | Separate areas for business organizations |
+| `hub-and-spoke-prod-nonprod-firewall.tfvars` | Separate Prod/Nonprod areas with appliances |
+| `hub-and-spoke-tenant-isolation.tfvars` | Network isolation within a STACKIT organization |
+| `hub-and-spoke-multi-region.tfvars` | Regional hubs, Landing Zones and platform clusters in `eu01`/`eu02` |
 
-**Wichtige Grenzen und Konsequenzen:**
+**Important limitations and implications:**
 
-- Templates enthalten Platzhalter und auskommentierte optionale Features. Ein HCL-Parser allein entdeckt daher nicht den gesamten Funktionsumfang. Ein expliziter Feature-Katalog ist nötig.
-- `src/providers.tf` unterstützt statische regionale Aliasse für `eu01` und `eu02`. Die UI darf weitere Regionen nicht als automatisch unterstützt ausgeben.
-- `connectivity_regions` ist als `map(any)` modelliert. Fachliche UI-Validierung muss über die Terraform-Typprüfung hinausgehen.
-- Ein Projekt gehört gemäß Repo-Dokumentation zu genau einer SNA; mehrere SNAs oder Regionen sind nicht automatisch privat verbunden.
-- `firewall_config` konfiguriert derzeit eine Appliance. Mehrere Appliances bedeuten keine automatische Policy-Verteilung. Dies bleibt eine sichtbare Einschränkung.
-- Firewall-Bootstrap benötigt mehrere Schritte, ein Image und Shell-Werkzeuge. Die Anleitung beschreibt ein anfänglich öffentliches Admin-Interface mit gemeinsamem Initialpasswort. Automatisierte Freigabe erst nach sicherem Bootstrap und Passwortrotation.
-- Private Firewall-/Kubernetes-Endpunkte benötigen passende Runner-Konnektivität. Zentraler CF-Betrieb allein stellt diese nicht her.
-- Das Backend ist auskommentiert; die Anleitung migriert lokalen State erst nach der Erstbereitstellung in den erzeugten Management-Bucket. Kurzlebige Runner benötigen dagegen Remote State vor dem ersten Lauf.
-- `mise.toml` pinnt OpenTofu `1.12.6`; `src/terraform.tf` verlangt mindestens `1.11`. README/Getting Started nennen teils abweichende Mindestversionen. Empfehlung: zunächst die gepinnte OpenTofu-Version qualifizieren; Terraform als weitere Engine separat testen.
-- Das Repo verspricht keine pauschale Migrationskompatibilität. Upgrades brauchen explizite Migration, Versionsprüfung und neuen Plan.
-- Die Netzwerkisolation des Templates „Tenant Isolation“ ersetzt nicht die Mandantentrennung der zentralen Anwendung.
+- Templates contain placeholders and commented-out optional features. An HCL parser alone therefore does not discover all functionality. An explicit feature catalogue is needed.
+- `src/providers.tf` supports static regional aliases for `eu01` and `eu02`. The UI must not present further regions as automatically supported.
+- `connectivity_regions` is modeled as `map(any)`. Business-level UI validation must go beyond Terraform type checking.
+- According to repository documentation, a project belongs to exactly one SNA; multiple SNAs or regions are not automatically privately connected.
+- `firewall_config` currently configures one appliance. Multiple appliances do not imply automatic policy distribution. This remains a visible limitation.
+- Firewall bootstrap needs multiple steps, an image and shell tools. The guide describes an initially public admin interface with a shared initial password. Approve automation only after secure bootstrap and password rotation.
+- Private firewall/Kubernetes endpoints need suitable Runner connectivity. Central CF operation alone does not provide it.
+- Backend is commented out; the guide migrates local state into the created management bucket only after initial provisioning. Short-lived Runners, however, need remote state before the first run.
+- `mise.toml` pins OpenTofu `1.12.6`; `src/terraform.tf` requires at least `1.11`. README/Getting Started sometimes state different minimum versions. Recommendation: first qualify pinned OpenTofu; test Terraform separately as another engine.
+- Repository promises no blanket migration compatibility. Upgrades need explicit migration, version checking and a new Plan.
+- Network isolation of the “Tenant Isolation” template does not replace tenant separation in the central application.
 
-## 3. Zielarchitektur
+<a id="3-zielarchitektur"></a>
+## 3. Target architecture
 
-Empfehlung: modularer Backend-Dienst mit klaren internen Grenzen; Terraform-Ausführung als getrennte Laufzeit. Keine unnötige Aufteilung in viele Microservices zum Start.
+Recommendation: modular backend service with clear internal boundaries; Terraform execution as a separate runtime. No unnecessary division into many microservices at the start.
 
 ```mermaid
 flowchart TB
@@ -124,91 +117,100 @@ flowchart TB
     B --> SM
 ```
 
-| Baustein | Empfehlung | Verantwortung |
+| Component | Recommendation | Responsibility |
 | --- | --- | --- |
-| Frontend | React/TypeScript mit Vite; Graph-Bibliothek noch auswählen | Wizard, Fachformulare, Topologie, Chat und Run-Ansicht |
-| Backend/BFF | TypeScript mit Fastify auf Node.js 24 LTS | Sessions, Autorisierung, GitHub, Konfiguration, Chat-Orchestrierung |
-| HCL-Adapter | Kleiner Go-Adapter mit HCL-Parser | Bestehende `.tfvars` strukturiert lesen, keine Regex-Konvertierung |
-| Konfigurationskern | Versioniertes JSON Schema, Fachregeln und Compiler | Gemeinsamer Vertrag für Editor, Import, Chat und Ausgabe |
-| Datenbank | STACKIT PostgreSQL Flex | Mandanten, Entwürfe, Revisionen, Runs, Audit und Queue |
-| Scheduler/Queue | Durable PostgreSQL-Queue und separater CF-Prozess | Leases, Heartbeats, Wiederaufnahme, faire Mandantenquoten |
-| Secrets | STACKIT Secrets Manager, nach Prüfung der erforderlichen Policies | DB enthält Referenzen; keine Klartext-Credentials |
-| Artefakte | STACKIT Object Storage | Geschützte Plans, bereinigte Logs und Laufmanifest |
-| Runner | Unveränderliches Artefakt mit gepinnter Engine und Providern | Nur Credentials des konkreten Deployments |
-| Chat | STACKIT Model Serving über Backend | Beratung und validierte Vorschläge; keine Ausführungsrechte |
+| Frontend | React/TypeScript with Vite; graph library still to select | Wizard, business forms, topology, chat and run view |
+| Backend/BFF | TypeScript with Fastify on Node.js 24 LTS | Sessions, authorization, GitHub, configuration, chat orchestration |
+| HCL adapter | Small Go adapter with HCL parser | Read existing `.tfvars` structurally, no regex conversion |
+| Configuration core | Versioned JSON Schema, domain rules and compiler | Common contract for editor, import, chat and output |
+| Database | STACKIT PostgreSQL Flex | Tenants, drafts, revisions, runs, audit and queue |
+| Scheduler/queue | Durable PostgreSQL queue and separate CF process | Leases, heartbeats, recovery, fair tenant quotas |
+| Secrets | STACKIT Secrets Manager, after checking required policies | DB contains references; no plaintext credentials |
+| Artifacts | STACKIT Object Storage | Protected plans, sanitized logs and run manifest |
+| Runner | Immutable artifact with pinned engine and providers | Only credentials of the specific deployment |
+| Chat | STACKIT Model Serving through backend | Advice and validated proposals; no execution permissions |
 
-PostgreSQL Flex ist als verwalteter Dienst dokumentiert und unterstützt Verwaltung über Terraform und Cloud Foundry. Konkrete Region, Plan, HA, Backup, ACLs und CF-Anbindung sind vor Provisionierung festzulegen. [PostgreSQL Flex](https://docs.stackit.cloud/products/databases/postgresql-flex/)
+PostgreSQL Flex is documented as a managed service and supports management through Terraform and Cloud Foundry. Specific region, plan, HA, backup, ACLs and CF binding must be defined before provisioning. [PostgreSQL Flex](https://docs.stackit.cloud/products/databases/postgresql-flex/)
 
-### CF-Hosting und Runner
+<a id="cf-hosting-und-runner"></a>
+### CF hosting and Runner
 
-Web/API sowie Scheduler/Dispatcher laufen auf CF. Sessions und Jobs werden extern gespeichert. Mehrere Web-Instanzen, Health Checks, DB-Pooling und rückwärtskompatible DB-Migrationen vorsehen. SSE für Fortschritt/Chat, Polling als Rückfalloption; Proxy-Timeouts und Wiederverbindung testen.
+Web/API and scheduler/dispatcher run on CF. Sessions and jobs are stored externally. Plan for multiple web instances, health checks, DB pooling and backward-compatible DB migrations. SSE for progress/chat, polling as fallback; test proxy timeouts and reconnection.
 
-STACKIT dokumentiert für Prozesse/Tasks bis zu 32 GB RAM und 6 GB flüchtigen lokalen Speicher. Das lokale Dateisystem ist nicht persistent. Diese Grenzen sind besonders für Provider-Binaries, Firewall-Image und Plan-Artefakte zu prüfen. [Anwendungsanforderungen](https://docs.stackit.cloud/products/runtime/cloud-foundry/basics/requirements-for-applications/)
+STACKIT documents up to 32 GB RAM and 6 GB ephemeral local storage for processes/tasks. The local filesystem is not persistent. Check these limits especially for provider binaries, firewall image and plan artifacts. [Application requirements](https://docs.stackit.cloud/products/runtime/cloud-foundry/basics/requirements-for-applications/)
 
-CF Tasks laufen in eigenen Containern, erben aber Umgebungsvariablen, Bindings und Security Groups ihrer App. Deshalb **keine Terraform-Task der Backend-App** starten. Empfohlen ist eine eigene Runner-App ohne Backend-Bindings, bei Bedarf mit separaten Apps/Spaces pro Kunde. Ob dies die geforderte Isolation und private Erreichbarkeit bietet, ist durch Tests zu belegen. Logs von Tasks fließen in die App-Logs; Redaktion muss deshalb vor stdout/stderr erfolgen. [CF Tasks](https://docs.cloudfoundry.org/devguide/using-tasks.html)
+CF tasks run in their own containers but inherit their app's environment variables, bindings and security groups. Therefore **do not start a Terraform task of the backend app**. A dedicated Runner app without backend bindings is recommended, if necessary with separate apps/spaces per customer. Tests must demonstrate whether this provides required isolation and private connectivity. Task logs flow into app logs; redaction must therefore happen before stdout/stderr. [CF tasks](https://docs.cloudfoundry.org/devguide/using-tasks.html)
 
-Falls CF-Ressourcenlimits, Netzwerk oder Isolation nicht genügen: isolierte Jobs auf SKE oder kurzlebige Compute-Runner. Für private Ziele gegebenenfalls Runner im Kundennetz mit ausgehender Verbindung zur Steuerung. Die Webanwendung bleibt auf CF. Diese Erweiterung benötigt eine explizite Architekturentscheidung.
+If CF resource limits, network or isolation are insufficient: isolated jobs on SKE or short-lived compute Runners. For private targets, possibly Runners in customer networks with outbound control connection. Web application remains on CF. This extension needs an explicit architecture decision.
 
-**Freigabekriterium:** Ein Runner erreicht weder andere Kunden-Secrets/States noch Model-Serving-Credentials oder die App-Datenbank. Eigener Ordner allein genügt nicht. Auch freigegebener Terraform-Code führt Provider und teilweise Skripte aus.
+**Approval criterion:** A Runner can access neither other customers' secrets/states, Model Serving credentials nor app database. A separate directory alone is insufficient. Even approved Terraform code executes providers and sometimes scripts.
 
-## 4. Mandantenmodell und Berechtigungen
+<a id="4-mandantenmodell-und-berechtigungen"></a>
+## 4. Tenant model and permissions
 
-Ein Tenant repräsentiert eine Kundenorganisation. Darunter liegen Workspaces, Repository-Verbindungen, Konfigurationen und Deployments. Benutzer können Mitglied mehrerer Tenants sein; der aktuelle Kontext muss im UI jederzeit sichtbar sein. GitHub-Organisation, App-Tenant und STACKIT-Organisation sind unterschiedliche Objekte mit expliziter Zuordnung.
+A tenant represents a customer organization. Under it are workspaces, repository connections, configurations and deployments. Users can belong to multiple tenants; current context must always be visible in the UI. GitHub organization, app tenant and STACKIT organization are distinct objects with explicit mapping.
 
-Empfehlung für den Start: gemeinsame PostgreSQL-Instanz mit `tenant_id` auf allen Kundenobjekten und Row-Level Security als zusätzliche Schutzschicht. Rollen und DB-Zugänge so gestalten, dass der Anwendungspfad RLS nicht umgeht. Separate Datenbanken/Instanzen für erhöhte Isolationsanforderungen als spätere Betriebsoption. Secrets, State, Artefakte, Queue, Caches und Chat-Verlauf brauchen dieselbe Trennung; ein DB-Filter alleine reicht nicht.
+Initial recommendation: shared PostgreSQL instance with `tenant_id` on all customer objects and row-level security as an additional protection layer. Design roles and DB access so the application path does not bypass RLS. Separate databases/instances for heightened isolation requirements as a later operational option. Secrets, state, artifacts, queue, caches and chat history need the same separation; a DB filter alone is insufficient.
 
-- Tenant-Mitgliedschaft nur durch bestätigte Einladung/Administration oder verifizierte Organisationszuordnung; keine automatische Zuordnung anhand einer E-Mail-Domain.
-- Rollen: Viewer, Editor, Deployer, Tenant-Admin. Credential-Nutzung wird zusätzlich autorisiert.
-- GitHub-Rechte bei Repository-Aktionen weiterhin prüfen; eine App-Rolle erweitert keine GitHub-Berechtigung.
-- Persönliche Credentials sind standardmäßig privat. Freigabe an Workspace oder Hintergrundjob braucht eine explizite, widerrufbare Delegation.
-- Jeder Request und jeder Job wird serverseitig auf Tenant, Workspace und Objekt autorisiert. IDs im Request sind kein Berechtigungsnachweis.
-- Rate Limits, aktive Runner, Queue-Anteil, Artefaktspeicher und KI-Budget pro Tenant begrenzen; kein Kunde darf alle Kapazitäten belegen.
-- Betreiberzugriffe als nachvollziehbaren Notfallprozess gestalten. Keine normale Support-Oberfläche zur Anzeige von Kundensecrets.
-- Bereits vor erster externer Freigabe Negativtests für horizontale Zugriffe, fremde Job-IDs, Artefakt-URLs, Cache-Schlüssel, Secret-Referenzen und Chat-Sessions.
+- Tenant membership only through confirmed invitation/administration or verified organization assignment; no automatic mapping by email domain.
+- Roles: Viewer, Editor, Deployer, Tenant Admin. Credential use is additionally authorized.
+- Continue checking GitHub permissions for repository actions; an app role extends no GitHub permission.
+- Personal credentials are private by default. Sharing with workspace or background job needs explicit revocable delegation.
+- Every request and job is authorized server-side for tenant, workspace and object. Request IDs are not permission evidence.
+- Limit rate, active Runners, queue share, artifact storage and AI budget per tenant; no customer may consume all capacity.
+- Design operator access as a traceable emergency process. No normal support UI displaying customer secrets.
+- Before the first external release, negative tests for horizontal access, foreign job IDs, artifact URLs, cache keys, secret references and chat sessions.
 
-## 5. Benutzerablauf
+<a id="5-benutzerablauf"></a>
+## 5. User workflow
 
-1. **Anmelden und Tenant wählen:** GitHub verbinden, eigenen Kundenkontext erstellen oder Einladung annehmen.
-2. **Repository auswählen:** vorhandenen zugänglichen Fork auswählen oder einen neuen erstellen; Schreibrechte prüfen.
-3. **Template kopieren:** Zielbild, Features, Grenzen und Voraussetzungen sehen; eigene Konfigurations-ID und Name vergeben.
-4. **Gestalten:** Wizard oder Chat; beide arbeiten auf demselben fachlichen Modell. Topologie reagiert auf validierte Änderungen.
-5. **Überprüfen und speichern:** Diff zeigen; Repository, Branch und Pfad sichtbar machen; Git-Commit oder optional PR erstellen.
-6. **Deployment vorbereiten:** Zielorganisation, Region, Credential-Profil, Remote State und Runner-Netz prüfen.
-7. **Plan:** feste Revision verwenden; Create/Update/Delete/Replace fachlich erklären.
-8. **Apply:** konkreten Plan ausdrücklich freigeben; Fortschritt und Fehler verfolgen.
-9. **Betrieb:** zuletzt erfolgreich ausgerollte Revision, letzten bekannten Ist-Stand und optionale Drift-Prüfungen sehen.
+1. **Sign in and choose tenant:** Connect GitHub, create own customer context or accept invitation.
+2. **Select repository:** Choose an existing accessible fork or create a new one; check write permission.
+3. **Copy template:** See target design, features, limitations and prerequisites; assign own configuration ID and name.
+4. **Design:** Wizard or chat; both work on the same business model. Topology responds to validated changes.
+5. **Review and save:** Show diff; make repository, branch and path visible; create Git commit or optional PR.
+6. **Prepare deployment:** Check target organization, region, credential profile, remote state and Runner network.
+7. **Plan:** Use fixed revision; explain Create/Update/Delete/Replace in business terms.
+8. **Apply:** Explicitly approve the specific plan; follow progress and errors.
+9. **Operate:** See last successfully deployed revision, last known actual state and optional drift checks.
 
-Navigation: Dashboard, Templates, Konfigurationen, grafischer Editor mit Chat, Repository-Verbindungen, Deployment-Profile, persönliche Credentials, Runs/Drift und Tenant-Verwaltung. Begriffe wie „Netzwerkbereich“ ersetzen Terraform-Variablennamen im normalen Ablauf. Technische Details bleiben für Diagnose und Export verfügbar.
+Navigation: dashboard, templates, configurations, graphical editor with chat, repository connections, deployment profiles, personal credentials, runs/drift and tenant management. Terms such as “network area” replace Terraform variable names in normal use. Technical details remain available for diagnostics and export.
 
-## 6. GitHub und Login
+<a id="6-github-und-login"></a>
+## 6. GitHub and login
 
-### Benutzergebundener Zugriff
+<a id="benutzergebundener-zugriff"></a>
+### User-bound access
 
-Empfehlung: GitHub App mit User Authorization und User Access Tokens. Jeder Benutzer autorisiert die App selbst. Repository-Aktionen nutzen ausschließlich seinen Token, keine Installation Tokens und keinen zentralen PAT. Die Rechte sind durch Benutzerrechte, App-Berechtigungen und Installation begrenzt. [Benutzerbezogene GitHub-App-Authentisierung](https://docs.github.com/en/enterprise-cloud%40latest/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-with-a-github-app-on-behalf-of-a-user)
+Recommendation: GitHub App with user authorization and user access tokens. Every user authorizes the app themselves. Repository actions use exclusively their token, no installation tokens or central PAT. Rights are limited by user permissions, app permissions and installation. [User-based GitHub App authentication](https://docs.github.com/en/enterprise-cloud%40latest/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-with-a-github-app-on-behalf-of-a-user)
 
-OAuth-State, sichere Callback-Allowlist, unterstütztes PKCE, CSRF-Schutz und sichere HttpOnly-/Secure-/SameSite-Sessions vorsehen. Tokens nur serverseitig im Secret Store halten. Ablauf, Refresh, Widerruf, SSO und Organisationsrichtlinien testen. Repo-Zugriffe nach Rechteentzug blockieren. Repositories über stabile GitHub-IDs referenzieren.
+Provide OAuth state, secure callback allowlist, supported PKCE, CSRF protection and secure HttpOnly/Secure/SameSite sessions. Keep tokens only server-side in the secret store. Test expiry, refresh, revocation, SSO and organization policies. Block repository access after revocation. Reference repositories through stable GitHub IDs.
 
-**Wichtige Fork-Voraussetzung:** Laut GitHub benötigt das Fork-API bei GitHub Apps eine Installation am Zielaccount mit Zugriff auf alle Repositories sowie eine Installation am Quellaccount mit Zugriff auf das Quellrepo. Für diesen Endpunkt sind `Administration: write` und `Contents: read` angegeben. Die Erstellung läuft asynchron. Das ist ein zentraler Onboarding-Prüfpunkt, insbesondere für den Upstream `stackitcloud/stackit-landing-zone`. [Fork-API](https://docs.github.com/en/rest/repos/forks)
+**Important fork prerequisite:** According to GitHub, the fork API for GitHub Apps needs an installation on the target account with all-repository access and an installation on the source account with access to the source repository. `Administration: write` and `Contents: read` are stated for this endpoint. Creation is asynchronous. This is a central onboarding check, especially for upstream `stackitcloud/stackit-landing-zone`. [Fork API](https://docs.github.com/en/rest/repos/forks)
 
-Im Spike die vollständige Berechtigungsmatrix für Fork, Lesen, Branch/Commit und optional PR prüfen. Falls die nötige Quellinstallation oder Zielberechtigung nicht verfügbar ist: geführtes manuelles Forken in GitHub und anschließendes Verbinden; alternativ separat bewertete OAuth-App. Kein stiller Wechsel auf zentrale Credentials. Eine OAuth-App kann breitere Scopes benötigen; daher keine voreilige Festlegung nur aufgrund des einfacheren Fork-Ablaufs. [GitHub Apps und OAuth Apps](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps)
+In the spike, check the full permission matrix for fork, read, branch/commit and optional PR. If required source installation or target permission is unavailable: guided manual forking in GitHub followed by connecting; alternatively a separately assessed OAuth App. No silent switch to central credentials. An OAuth App may need broader scopes; do not decide prematurely solely because forking is easier. [GitHub Apps and OAuth Apps](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps)
 
-### Mehrere Forks und Speichern
+<a id="mehrere-forks-und-speichern"></a>
+### Multiple forks and saving
 
-Mehrere Repository-Verbindungen pro Benutzer/Tenant unterstützen, beispielsweise persönlicher Fork und Forks in berechtigten Organisationen. Nicht zusagen, dass beliebig viele echte Forks desselben Upstreams im selben Owner-Namespace möglich sind: die aktuelle Fork-Netzwerkgrenze im Spike prüfen. Mehrere Konfigurationen/Branches in einem Fork sind die bevorzugte Alternative; eine eigenständige Repository-Kopie wäre separat anzubieten und kein echter Fork.
+Support multiple repository connections per user/tenant, e.g. personal fork and forks in authorized organizations. Do not promise arbitrary numbers of real forks of the same upstream in one owner namespace: check current fork-network limit in the spike. Multiple configurations/branches in one fork are the preferred alternative; a standalone repository copy would be offered separately and is not a real fork.
 
-Fork-Erstellung idempotent behandeln, Bereitschaft pollen und Fehler verständlich anzeigen. Beim Speichern mehrere Dateien atomar committen und die erwartete Basisrevision prüfen. Konflikte nicht überschreiben. Geschützte Branches über Arbeitsbranch/PR bedienen. Webhooks signiert und idempotent verarbeiten; sie erlauben keinen automatischen Apply.
+Handle fork creation idempotently, poll readiness and display understandable errors. At saving, commit multiple files atomically and check expected base revision. Do not overwrite conflicts. Use working branch/PR for protected branches. Process webhooks with signature checks and idempotency; they permit no automatic Apply.
 
-### Optionaler STACKIT-IdP
+<a id="optionaler-stackit-idp"></a>
+### Optional STACKIT IdP
 
-Die gefundene STACKIT-Anleitung beschreibt Federation, bei der STACKIT als Relying Party einem externen IdP vertraut. Sie belegt **nicht**, dass Kunden eine eigene Web-App unkompliziert als OIDC-Client des STACKIT-IdP registrieren können. Daher Client-Registrierung, Discovery, Claims und Nutzungsfreigabe separat klären. GitHub bleibt der initiale Login. [STACKIT-IdP-Einstieg](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/getting-started/)
+The STACKIT guide found describes federation where STACKIT as relying party trusts an external IdP. It **does not** demonstrate that customers can easily register their own web app as an OIDC client of the STACKIT IdP. Clarify client registration, discovery, claims and usage approval separately. GitHub remains initial login. [STACKIT IdP introduction](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/getting-started/)
 
-Zusätzlicher IdP-Login erteilt weder GitHub- noch Cloud-API-Rechte. GitHub-Verbindung bleibt nötig. Identitäten nur nach Nachweis beider Konten verknüpfen, niemals allein über gleiche E-Mail-Adressen.
+Additional IdP login grants neither GitHub nor cloud API permissions. GitHub connection remains necessary. Link identities only after proof of both accounts, never solely through equal email addresses.
 
-## 7. Fachmodell, Templates und Compiler
+<a id="7-fachmodell-templates-und-compiler"></a>
+## 7. Business model, templates and compiler
 
-### Versionierte Ablage
+<a id="versionierte-ablage"></a>
+### Versioned storage
 
-Vorschlag für UI-Konfigurationen im ausgewählten Fork:
+Proposed UI configuration storage in the selected fork:
 
 ```text
 src/config/custom/<config-id>/
@@ -217,84 +219,90 @@ src/config/custom/<config-id>/
   manifest.json             # Schema-, Compiler-, Template-/Accelerator-Versionen
 ```
 
-Das Fachmodell ist die Quelle für UI-verwaltete Konfigurationen. Die generierte Datei ermöglicht weiterhin CLI-Nutzung. Vor Runs neu kompilieren und Hash vergleichen; manuelle Änderungen an generierten Dateien als Konflikt behandeln. Originale `.tfvars` bleiben erhalten. Importbericht für unbekannte Felder und Kommentarverlust; keine stillschweigende Löschung nicht unterstützter Einstellungen.
+The business model is the source for UI-managed configurations. Generated file continues to enable CLI use. Recompile and compare hashes before runs; treat manual changes to generated files as a conflict. Original `.tfvars` are retained. Import report for unknown fields and comment loss; no silent deletion of unsupported settings.
 
-Manifest: Template-Pfad/-Commit, Accelerator-Commit/Release, Schema-/Compiler-Version und Content-Hashes. Deployment-Bindings und Secret-Referenzen liegen außerhalb von Git. DB-Entwürfe sind nicht „gespeichert“, bevor der Git-Commit erfolgreich war. Runs verwenden ausschließlich unveränderliche Git-Revisionen.
+Manifest: template path/commit, Accelerator commit/release, schema/compiler version and content hashes. Deployment bindings and secret references live outside Git. DB drafts are not “saved” until the Git commit succeeds. Runs use exclusively immutable Git revisions.
 
-Der Template-Katalog startet mit den acht Upstream-Dateien einer freigegebenen Version. Fork-spezifische Konfigurationen sind eigene Konfigurationen und nicht automatisch vertrauenswürdige globale Templates. Upstream-Updates zunächst als explizites Upgrade mit Diff und Migration anbieten. Rollback einer Konfiguration bedeutet neue Revision und neuen Plan, nicht automatischen Infrastruktur-Rollback.
+Template catalogue starts with the eight upstream files of an approved version. Fork-specific configurations are own configurations, not automatically trusted global templates. Initially offer upstream updates as explicit upgrades with diff and migration. Configuration rollback means new revision and Plan, not automatic infrastructure rollback.
 
-### Feature-Katalog
+<a id="feature-katalog"></a>
+### Feature catalogue
 
-| Fachbereich | Repo-Bezug | UI-Verhalten und Regeln |
+| Business area | Repository reference | UI behavior and rules |
 | --- | --- | --- |
-| Organisation | Owner, Firma/-code, Organisations-ID, Labels, Parent-Folder | Pflichtwerte, Platzhalter ersetzen, gültige Referenzen |
-| Governance | `rm_folders`, Organisationseigentümer/-auditoren, Rollen | Hierarchie und Rollenmodell |
-| Management | State-Bucket, Secrets Manager, Service Accounts, Federation | Bootstrap- und Betriebsidentität unterscheiden |
-| Observability/Audit | `observability`, `audit_logs` | Retention, Zugriff, Folgen von Object Lock erklären |
-| Konnektivität | `connectivity`, `connectivity_regions` | SNA, CIDRs, DNS, regionale Zuordnungen |
-| Firewall/VPN | Firewall/HA, `firewall_config`, VPN | Erreichbarkeit, Bootstrap und Grenzen der Traffic-Inspektion |
-| Landing Zones | `landing_zones`, Modul `landing-zone` | Projekte, Owner, Umgebung, RBAC, Netz, DNS, Buckets, Secrets |
-| Kubernetes-Plattform | `platform_kubernetes` | Cluster, Node Pools, Netz, verschlüsselte Volumes, Bastion |
-| Kubernetes-Services | `landing_zone_namespace_services`, Namespace-Demo, Root-Kubernetes-Ressourcen | Plattformabhängigkeiten und erreichbarer API-Endpunkt |
-| DevOps | `devops` | Git-Service und zulässige Netzwerkbereiche |
-| Sandboxes | `sandboxes` | Projekt und Owner |
+| Organization | Owner, company/code, organization ID, labels, parent folder | Required values, replace placeholders, valid references |
+| Governance | `rm_folders`, organization owners/auditors, roles | Hierarchy and role model |
+| Management | State bucket, Secrets Manager, service accounts, federation | Distinguish bootstrap and operating identity |
+| Observability/audit | `observability`, `audit_logs` | Explain retention, access, Object Lock consequences |
+| Connectivity | `connectivity`, `connectivity_regions` | SNA, CIDRs, DNS, regional assignments |
+| Firewall/VPN | Firewall/HA, `firewall_config`, VPN | Connectivity, bootstrap and traffic-inspection limits |
+| Landing Zones | `landing_zones`, module `landing-zone` | Projects, owners, environment, RBAC, network, DNS, buckets, secrets |
+| Kubernetes platform | `platform_kubernetes` | Cluster, node pools, network, encrypted volumes, bastion |
+| Kubernetes services | `landing_zone_namespace_services`, namespace demo, root Kubernetes resources | Platform dependencies and reachable API endpoint |
+| DevOps | `devops` | Git service and permitted network areas |
+| Sandboxes | `sandboxes` | Project and owner |
 
-Jedes Feature erhält eine stabile ID, Fachtext, Mapping, Defaultwerte, Abhängigkeiten, Regionsgrenzen, Secret-Bedarf, Compiler-Regeln, Grafik-Semantik und Tests. Struktur teilweise aus HCL ableiten; Fachtexte/Abhängigkeiten explizit pflegen. CI meldet Änderungen an Variablen/Modulen ohne aktualisierten Katalog.
+Every feature receives a stable ID, business description, mapping, defaults, dependencies, regional limits, secret needs, compiler rules, graph semantics and tests. Derive structure partly from HCL; maintain business descriptions/dependencies explicitly. CI reports variable/module changes without updated catalogue.
 
-Validierung: Referenzen zwischen Bereichen/Landing Zones/Clustern, Namensregeln, unterstützte Regionen und Kombinationen, CIDR-Konflikte in verbundenen Netzen. Wiederverwendete Adressbereiche in tatsächlich isolierten Netzen gesondert bewerten. Stabile Terraform-Ressourcenschlüssel erhalten; eine Umbenennung darf kein unsichtbares Destroy/Create erzeugen.
+Validation: references between areas/Landing Zones/clusters, naming rules, supported regions and combinations, CIDR conflicts in connected networks. Assess reused address ranges in genuinely isolated networks separately. Preserve stable Terraform resource keys; renaming must not cause invisible Destroy/Create.
 
-Pro Feature getrennt kennzeichnen: **darstellbar, editierbar, planbar, ausführbar**. Ein importierbares Firewall-Template ist noch nicht vollständig automatisiert deploybar.
+Label each feature separately: **displayable, editable, plannable, executable**. An importable firewall template is not yet fully automatically deployable.
 
-### Grenze zum Terraform-Code
+<a id="grenze-zum-terraform-code"></a>
+### Boundary with Terraform code
 
-Der Compiler erzeugt nur Daten, keine frei eingegebenen HCL-Ausdrücke oder Shell-Kommandos. Im MVP wird Accelerator-Code anhand eines freigegebenen Commits materialisiert; aus dem Benutzer-Fork werden nur erlaubte Konfigurationsdateien gelesen. Abweichende Module klar melden. Keine beliebigen `.auto.tfvars`, Provider, Backend-Dateien oder Skripte aus Forks implizit mitladen.
+Compiler generates only data, no freely entered HCL expressions or shell commands. In MVP, Accelerator code is materialized at an approved commit; only permitted configuration files are read from the user fork. Clearly report divergent modules. Do not implicitly load arbitrary `.auto.tfvars`, providers, backend files or scripts from forks.
 
-Eigener Terraform-Code ist ein späterer Vertrauensmodus mit stärkerer Isolation und expliziten Provider-/Modul-/Netzrichtlinien. Die aktuelle Einschränkung sichtbar machen, weil das Repo grundsätzlich Modul-Anpassungen vorsieht.
+Custom Terraform code is a later trust mode with stronger isolation and explicit provider/module/network policies. Make current restriction visible because the repository generally permits module customization.
 
-## 8. Credentials und Persistenz
+<a id="8-credentials-und-persistenz"></a>
+## 8. Credentials and persistence
 
-| Kategorie | Ablage / Eigentümer | Verwendung |
+| Category | Storage / owner | Use |
 | --- | --- | --- |
-| GitHub User-/Refresh-Token | Secret Store, persönlicher Benutzer | Repository-Zugriff im Benutzerauftrag |
-| STACKIT Service Account Key bzw. unterstützte Federation | Persönliches oder explizit geteiltes Deployment-Profil | Zugeordnetes Kunden-Deployment |
-| S3-Backend-Zugang | Deployment-Profil | Genau zugehöriger State-Bereich |
-| VPN-PSKs, Firewall-Login/API-Key, ggf. Kubeconfig | Secret Store je Deployment | Nur benötigte Laufphase |
-| Model-Serving-Token | Betreiber, CF-Variablen des Backends | Chat-Service |
-| CF-/DB-/Secret-Betriebsidentität | Betreiber | Plattformbetrieb, keine Kunden-Cloud-Vollmacht |
+| GitHub user/refresh token | Secret store, personal user | Repository access on user's behalf |
+| STACKIT service-account key or supported federation | Personal or explicitly shared deployment profile | Assigned customer deployment |
+| S3 backend access | Deployment profile | Exactly associated state area |
+| VPN PSKs, firewall login/API key, possibly kubeconfig | Secret store per deployment | Only required run phase |
+| Model Serving token | Operator, backend CF variables | Chat service |
+| CF/DB/secret operating identity | Operator | Platform operation, no customer-cloud authority |
 
-„Credentials anlegen“ bedeutet zuerst Profil erstellen und vorhandene Credentials sicher hinterlegen. Neue STACKIT-Service-Accounts/Schlüssel kann die App nur mit explizit delegierten Cloud-Rechten erzeugen; GitHub-Login genügt nicht. Später kurzlebige Federation bevorzugen, sofern die benötigten Flows unterstützt sind.
+“Create credentials” initially means creating a profile and securely storing existing credentials. The app can create new STACKIT service accounts/keys only with explicitly delegated cloud permissions; GitHub login is insufficient. Later prefer short-lived federation if required flows are supported.
 
-STACKIT Secrets Manager auf Mandanten-Policies, Credential-Lifecycle und runbezogene Ausgabe prüfen. Keine Annahme, dass beliebige Vault-Features im Managed Service verfügbar sind. Bei fehlenden Fähigkeiten eine explizite Alternative entscheiden, z. B. tenantgetrennte Secret-Instanzen oder geprüfte Envelope-Verschlüsselung mit separat verwalteten Schlüsseln; kein unverschlüsselter DB-Fallback.
+Check STACKIT Secrets Manager for tenant policies, credential lifecycle and run-specific issuance. Do not assume arbitrary Vault features are available in the managed service. If capabilities are missing, decide an explicit alternative, e.g. tenant-separated secret instances or reviewed envelope encryption with separately managed keys; no unencrypted DB fallback.
 
-Runner erhalten nur ein kurzlebiges, auf Run und Secret-Version begrenztes Ausgabeticket. Kein allgemeines Secret-Store-Token. Persönliche Profile zeigen Status, Zweck, Ablauf und „Ersetzen/Widerrufen“, keine Rohwerte. Rotation, Backup, Wiederherstellung und Notfallzugriff planen.
+Runners receive only a short-lived issuance ticket limited to run and secret version. No general secret-store token. Personal profiles show status, purpose, expiry and “Replace/Revoke”, no raw values. Plan rotation, backup, restoration and emergency access.
 
-`Sensitive`-Markierungen verhindern nicht, dass Terraform-State oder gespeicherte Plans Secrets enthalten. Diese Artefakte wie Secrets schützen. Browser, Git, Chat, Audit und normale Logs erhalten keine Roh-Secrets. Frei angegebene Endpoints gegen SSRF absichern; Zielnetze per Profil freigeben statt beliebige interne Adressen vom Backend anzusprechen.
+`Sensitive` markings do not prevent Terraform state or saved plans from containing secrets. Protect these artifacts like secrets. Browser, Git, chat, audit and ordinary logs receive no raw secrets. Protect freely specified endpoints against SSRF; approve target networks per profile rather than addressing arbitrary internal addresses from the backend.
 
-### Datenmodell
+<a id="datenmodell"></a>
+### Data model
 
-Alle Kundenobjekte tragen `tenant_id`, gegebenenfalls `workspace_id`, serverseitig geprüft.
+All customer objects carry `tenant_id`, optionally `workspace_id`, checked server-side.
 
-| Entität | Inhalt |
+| Entity | Content |
 | --- | --- |
-| User / Identity / Session | Interne UUID, Provider-ID, verknüpfte Identitäten, Session-Lifecycle |
-| Tenant / Workspace / Membership | Kundenkontext, Mitgliedschaft, Rollen und Einladungen |
-| RepositoryConnection | GitHub-ID, Benutzerautorisierung, Branch, Zugriffsstatus |
-| TemplateVersion | Pfad/Commit, Metadaten, unterstützte Features |
-| Configuration / Revision | Fachmodell, Schema, Git-Ziel, Basis-SHA und Speicherstatus |
-| CredentialProfile / Delegation | Secret-Referenz/-Version, Besitzer, erlaubte Nutzung, Ablauf |
-| Deployment | Revision, Zielorganisation, Backend-/State-ID und Runner-Profil |
-| Run / Approval / Artifact | Status, Manifest, Plan-Hash, Freigabe, Ergebnis und Artefaktreferenzen |
-| DriftSchedule / DriftFinding | Opt-in, Referenzrevision, Prüfung und Korrekturpolicy |
-| ChatSession / Proposal | Versionskontext, Rückfragen, Patch und Übernahmezustand |
-| AuditEvent | Akteur, Aktion, Ressource, Zeit, Ergebnis; keine Secret-Werte |
+| User / Identity / Session | Internal UUID, provider ID, linked identities, session lifecycle |
+| Tenant / Workspace / Membership | Customer context, membership, roles and invitations |
+| RepositoryConnection | GitHub ID, user authorization, branch, access status |
+| TemplateVersion | Path/commit, metadata, supported features |
+| Configuration / Revision | Business model, schema, Git target, base SHA and save status |
+| CredentialProfile / Delegation | Secret reference/version, owner, permitted use, expiry |
+| Deployment | Revision, target organization, backend/state ID and Runner profile |
+| Run / Approval / Artifact | Status, manifest, plan hash, approval, result and artifact references |
+| DriftSchedule / DriftFinding | Opt-in, reference revision, check and correction policy |
+| ChatSession / Proposal | Version context, follow-ups, patch and adoption state |
+| AuditEvent | Actor, action, resource, time, result; no secret values |
 
-Retention getrennt für Chat, Logs, Plans, Audit und State festlegen. State niemals mit normaler Artefaktbereinigung löschen. Konto-/Konfigurationslöschung zerstört keine Infrastruktur; Offboarding umfasst Export von Konfiguration/State, Entzug von Zugängen und dokumentierte Löschung verbleibender Daten.
+Define retention separately for chat, logs, plans, audit and state. Never delete state through normal artifact cleanup. Account/configuration deletion destroys no infrastructure; offboarding includes configuration/state export, access revocation and documented deletion of remaining data.
 
-## 9. Plan, Apply und State
+<a id="9-plan-apply-und-state"></a>
+## 9. Plan, Apply and state
 
-### Unveränderlicher Laufvertrag
+<a id="unveränderlicher-laufvertrag"></a>
+### Immutable run contract
 
-Jeder Run bindet Tenant, Deployment, Git-Commit, Config-Hash, Accelerator-Commit, Schema-/Compiler-Version, Engine-Version, Provider-Lockfile, Runner-Artefakt-Digest, Backend-/State-ID und relevante Credential-Versionen.
+Every run binds tenant, deployment, Git commit, configuration hash, Accelerator commit, schema/compiler version, engine version, provider lockfile, Runner artifact digest, backend/state ID and relevant credential versions.
 
 ```mermaid
 stateDiagram-v2
@@ -314,122 +322,115 @@ stateDiagram-v2
     Applying --> ReconciliationRequired: Prozessstatus unklar
 ```
 
-1. Berechtigung, Profil, Kompatibilität, Quota, Backend und Erreichbarkeit prüfen.
-2. Geprüften Code und genau eine ausgewählte Konfiguration materialisieren; Backend-Einstellungen ohne Secrets im Git erzeugen.
-3. `init` mit festgelegtem Backend und gepinnten Providern; `validate` und Fach-/Policy-Prüfungen.
-4. `plan -out=<planfile> -detailed-exitcode`: 0 = keine Änderungen, 2 = Änderungen, 1 = Fehler. CLI-Vertrag mit gepinnter Engine testen.
-5. `show -json` auswerten, sensible Werte anhand der Sensitivitätsmarkierungen und zusätzlicher Regeln redigieren. Roh-JSON nie direkt an Browser oder Chat geben.
-6. Create/Update/Delete/Replace und unbekannte Werte zeigen; Auswirkungen auf Fachobjekte erklären. Kosten nur bei belastbarer Datenquelle als Schätzung kennzeichnen.
-7. Freigabe an Plan-Hash und Manifest binden; Genehmiger und Zeitpunkt protokollieren. Tenant-Policy kann Vier-Augen-Freigabe verlangen.
-8. Exakt den gespeicherten Binär-Plan mit gleicher Engine/Plattform anwenden. Geänderte Revision, State oder relevante Ausführungsbedingungen erfordern neuen Plan und neue Freigabe.
-9. Ergebnis, State-Version und bereinigte Outputs persistieren; temporäre Secrets/Dateien entfernen.
+1. Check permission, profile, compatibility, quota, backend and connectivity.
+2. Materialize checked code and exactly one selected configuration; generate backend settings without secrets in Git.
+3. `init` with defined backend and pinned providers; `validate` and domain/policy checks.
+4. `plan -out=<planfile> -detailed-exitcode`: 0 = no changes, 2 = changes, 1 = error. Test CLI contract with pinned engine.
+5. Evaluate `show -json`, redact sensitive values using sensitivity markings and additional rules. Never give raw JSON directly to browser or chat.
+6. Show Create/Update/Delete/Replace and unknown values; explain effects on business objects. Label costs as estimates only with a sound data source.
+7. Bind approval to plan hash and manifest; record approver and time. Tenant policy can require two-person approval.
+8. Apply exactly the saved binary plan with same engine/platform. Changed revision, state or relevant execution conditions require new Plan and approval.
+9. Persist result, state version and sanitized outputs; remove temporary secrets/files.
 
-Plan-Gültigkeit begrenzen. Cloud-Änderungen außerhalb des Systems können während der Freigabezeit stattfinden; State-Vergleich allein erkennt nicht alles. Bei erkanntem Risiko neu planen. Kein unbemerkter Re-Plan zwischen Freigabe und Apply.
+Limit plan validity. Cloud changes outside the system can occur during approval time; state comparison alone does not detect everything. Replan on detected risk. No unnoticed replan between approval and Apply.
 
-### Remote State und Sperren
+<a id="remote-state-und-sperren"></a>
+### Remote state and locks
 
-Entscheidung 2026-09-30: dem vorhandenen LZA-Bootstrap folgen. Der erste Plan einer
-expliziten Neuanlage verwendet lokalen leeren State und die bereits hinterlegten
-Bootstrap-Credentials. Beim separat freigegebenen ersten Apply erstellt das Management-
-Modul das spätere Kunden-Backend. Danach State exklusiv mit `tofu init -migrate-state`
-migrieren, überprüfen und auf den Management-Service-Account wechseln.
+Decision 2026-09-30: follow existing LZA bootstrap. The first Plan for explicitly new creation uses local empty state and already stored bootstrap credentials. At the separately approved first Apply, the management module creates the future customer backend. Then migrate state exclusively with `tofu init -migrate-state`, verify and switch to the management service account.
 
-Der Configurator muss den anfänglichen State dauerhaft und verschlüsselt sichern,
-auch bei Runner-Verlust und partiellem Apply. Diese Recovery ist Voraussetzung für
-Apply. Vorhandene Deployments dürfen nie als neue leere States geplant werden.
-Kein zusätzlicher dauerhafter zentraler Kunden-State-Bucket. Plattform-IaC und
-Kunden-Deployments teilen niemals einen State. [Details](plan-execution.md).
+Configurator must durably and encryptedly save initial state, including Runner loss and partial Apply. This recovery is a prerequisite for Apply. Existing deployments must never be planned as new empty states. No additional permanent central customer-state bucket. Platform IaC and customer deployments never share state. [Details](plan-execution.md).
 
-- Backend-Locking mit gewählter Engine und STACKIT Object Storage praktisch testen, einschließlich konkurrierendem CLI-Zugriff. S3-Kompatibilität ist kein Locking-Nachweis.
-- Zusätzlich DB-Lease pro kanonischer State-ID; doppelte Deployment-Registrierung desselben States verhindern. Lease ersetzt Backend-Lock nicht.
-- Versionierung, Verschlüsselung, Restore-Test und protokollierte manuelle Entsperrung vor Produktivfreigabe.
-- Bei Runner-Absturz nicht blind erneut Apply ausführen. Prozessstatus, Lock und State abgleichen; gegebenenfalls neuen Plan erstellen.
-- Apply kann teilweise erfolgreich sein. Kein automatischer Rollback; Wiederherstellung über neuen Plan. Abbruch ist best effort und kann Teiländerungen hinterlassen.
-- Ein Deployment entspricht zunächst einem Accelerator-Root. Größere State-Aufteilung benötigt gesonderte Migrations- und Abhängigkeitsplanung.
+- Practically test backend locking with selected engine and STACKIT Object Storage, including concurrent CLI access. S3 compatibility is not locking evidence.
+- Additionally, DB lease per canonical state ID; prevent duplicate deployment registration of the same state. Lease does not replace backend lock.
+- Versioning, encryption, restore test and logged manual unlock before production release.
+- Do not blindly repeat Apply after Runner crash. Reconcile process status, lock and state; create new Plan if needed.
+- Apply can succeed partially. No automatic rollback; recovery through new Plan. Cancellation is best effort and can leave partial changes.
+- Initially one deployment corresponds to one Accelerator root. Larger state splitting needs separate migration and dependency planning.
 
-### Spezielle Runbooks
+<a id="spezielle-runbooks"></a>
+### Special runbooks
 
-Firewall-Bootstrap, Policy-Konfiguration, Secret-Übergabe, HA und gegebenenfalls Kubernetes-Provider-Bootstrap als versionierte Abläufe implementieren. Jede schreibende Phase mit verändertem Plan benötigt eine passende Freigabe. Kein UI für beliebige `-target`-Argumente.
+Implement firewall bootstrap, policy configuration, secret handover, HA and possibly Kubernetes provider bootstrap as versioned workflows. Every writing phase with changed plan needs matching approval. No UI for arbitrary `-target` arguments.
 
-Für Firewall: Image-Herkunft/Prüfsumme, Speicherbedarf, Werkzeuge, private API-Erreichbarkeit, Passwortrotation und TLS-Verifikation testen. Abbruch während offenem Admin-Interface muss sichtbar sein und eine konkrete Absicherungs-/Wiederaufnahmeanleitung bieten. Ohne erfolgreichen Nachweis diese Variante nicht als automatisiert ausführbar freigeben.
+For firewall: test image provenance/checksum, storage needs, tools, private API connectivity, password rotation and TLS verification. An abort while the admin interface is open must be visible and provide concrete securing/resumption instructions. Without successful evidence, do not approve this variant as automatically executable.
 
-## 10. Drift Detection und Correction
+<a id="10-drift-detection-und-correction"></a>
+## 10. Drift detection and correction
 
-Pro Deployment: Aus, nur erkennen, nach Freigabe korrigieren, später eng begrenzte automatische Korrektur. Standard: Aus. Hintergrundnutzung von Credentials benötigt eine explizite widerrufbare Delegation, getrennt von einer interaktiven Session.
+Per deployment: off, detect only, correct after approval, later narrowly bounded automatic correction. Default: off. Background credential use needs explicit revocable delegation separate from an interactive session.
 
-- Referenz ist die zuletzt erfolgreich ausgerollte Git-/Accelerator-Revision, nicht der aktuelle Branch-Head.
-- Refresh-only-Plan kann Unterschiede zwischen Cloud und State zeigen. Normaler Plan gegen dieselbe Revision zeigt die zur Soll-Wiederherstellung nötigen Änderungen. Beide Aussagen unterscheiden.
-- Kein automatisches `apply -refresh-only`, um Befunde lediglich verschwinden zu lassen.
-- Zeitpläne mit Jitter, Backoff, Mandantenquoten und Lauf-Sperren; keine Prüfung parallel zu schreibendem Run desselben States.
-- API-Fehler oder abgelaufene Credentials bedeuten „Prüfung fehlgeschlagen“, nicht „keine Drift“.
-- Correction stellt den genehmigten Sollzustand her. „Ist als Soll übernehmen“ ist separate Konfigurationsänderung mit Git-Commit und Review.
-- Automatische Correction nur nach ausdrücklichem Opt-in mit testbarer Allowlist, Wartungsfenster, Ressourcenlimit, Audit und Not-Aus.
-- Delete/Replace, IAM, Firewall-/Routing-Änderungen, Secret-Rotation und unbekannte Aktionen zunächst immer freigabepflichtig.
-- Nach Fehlern pausieren statt Endlosschleife; neue Konfigurationsänderungen nie als Drift-Korrektur einschleusen.
+- Reference is last successfully deployed Git/Accelerator revision, not current branch head.
+- Refresh-only Plan can show cloud/state differences. Normal Plan against the same revision shows changes needed to restore desired state. Distinguish these statements.
+- No automatic `apply -refresh-only` merely to make findings disappear.
+- Schedules with jitter, backoff, tenant quotas and run locks; no checking parallel to a writing run on the same state.
+- API errors or expired credentials mean “check failed”, not “no drift”.
+- Correction restores approved desired state. “Adopt actual as desired” is a separate configuration change with Git commit and review.
+- Automatic correction only after explicit opt-in with testable allowlist, maintenance window, resource limit, audit and emergency stop.
+- Delete/Replace, IAM, firewall/routing changes, secret rotation and unknown actions initially always need approval.
+- Pause after errors instead of looping; never smuggle new configuration changes in as drift correction.
 
-## 11. Chatbot mit STACKIT Model Serving
+<a id="11-chatbot-mit-stackit-model-serving"></a>
+## 11. Chatbot with STACKIT Model Serving
 
-### Bestätigte Produktentscheidungen (2026-10-10)
+<a id="bestätigte-produktentscheidungen-2026-10-10"></a>
+### Confirmed product decisions (2026-10-10)
 
-- Umfang: alle tatsächlich implementierten Configurator-Features werden dauerhaft 1:1 von der KI-Komponente abgedeckt, einschließlich komplexer Komponenten und ihrer Abhängigkeiten; nicht sämtliche STACKIT-Services. Eine versionsgebundene Abdeckungsmatrix macht Unterstützung und Ausführungsgrenzen sichtbar. Neue oder geänderte Features benötigen entsprechende Wissens-, Dialog-, Validierungs- und Testabdeckung im selben qualifizierten Release; bestehende Ausführungssperren werden dadurch nicht aufgehoben.
-- Dialog: passende Konfigurationsvorlage auswählen, Wünsche schrittweise ergänzen und fehlende Details oder Widersprüche gezielt nachfragen. Vollständigkeit wird durch Schema und Fachregeln geprüft, nicht allein durch das Modell behauptet.
-- Templates: vorhandene autorisierte Application Landing Zone Templates auswählen und neue Template-Entwürfe erstellen. Veröffentlichung bleibt eine separate Aktion berechtigter Platform Engineers.
-- Bestandsänderungen: bestehende Konfiguration analysieren und revisionsgebundene Vorschläge im Chat-Arbeitsentwurf sammeln. Erst ein ausdrücklich bestätigter Gesamt-Diff ändert den Konfigurationsentwurf; keine automatische Änderung veröffentlichter Templates oder bestehender Instanzen.
-- Wissen: aktuelle offizielle STACKIT-Informationen kontrolliert einlesen, Änderungen automatisch erkennen und vor Nutzung geprüft freigeben. Modul-, Provider- und Configurator-Wissen bleibt an die jeweilige Konfigurationsversion gebunden. Keine automatischen Upgrades und kein beliebiger Webzugriff durch das Modell.
-- Modell: `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` als bevorzugter Startwert; Modell, Endpoint und technische Limits bleiben betreiberseitig konfigurierbar. Der vorhandene Terraform-provisionierte Dev-Token wird ausschließlich backendseitig verwendet.
-- Eingaben: Text und Konfigurationen; keine Bilder im MVP.
-- Scope-Entscheidung 2026-10-13: Geführte Firewall-Policy-Bearbeitung und
-  Assistant-Vorschläge für Regeln/NAT/Aliase/Routen sind Post-MVP
-  ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
-  Der Assistant benennt diese Grenze sofort; im MVP pflegt der Firewall-Admin
-  die Policy nach Bereitstellung manuell in OPNsense. Generische native
-  Editorfelder bleiben erhalten, sind aber kein Ausführungsnachweis.
-  Firewall-Infrastruktur/HA bleibt im Scope und garantiert allein keine
-  Isolation, Erreichbarkeit oder NAT.
-- Zugang und Zweck: ausschließlich angemeldete Benutzer mit aktuell gültiger Session und passenden Tenant-/Konfigurationsrechten. Beratung und Vorschläge sind auf die oben genannten Configurator-Aufgaben beschränkt; serverseitige Werkzeug-, Schema- und Rechteprüfungen erzwingen diese Grenze. Keine allgemeine Chat-, Shell-, Secret- oder Cloud-Ausführungsfunktion.
-- Budget: keine monetäre Budgetgrenze im MVP. Begrenzte Requestgrößen, Kontext-/Ausgabelängen, Parallelität, Anfrageraten, Timeouts und Reparaturversuche bleiben zum Missbrauchs- und Betriebsschutz erforderlich. Verbrauch wird secretfrei beobachtet.
-- Gespräche: serverseitig persistent und nach erneuter Anmeldung fortsetzbar, mit verpflichtendem Bezug zu Tenant, Workspace und Konfiguration. Zugriff wird bei jedem Lesen, Fortsetzen und Übernehmen erneut geprüft. Die gebundene Ausgangsrevision wird mit der aktuellen Konfiguration abgeglichen; veraltete Vorschläge werden nicht ungeprüft übernommen.
-- Löschung und Alter: Löschen einer Konfiguration oder ihres Workspaces löscht die zugehörigen Gespräche samt Nachrichten, Zusammenfassungen und Vorschlägen mit; keine verwaisten Gesprächsdaten. Maximales Gesprächsalter sind drei Kalendermonate ab Erstellung, nicht ab letzter Aktivität. Fortsetzen verlängert die Frist nicht. Nach Ablauf kann die weiterhin vorhandene Konfiguration in einem neuen Gespräch erneut analysiert werden.
-- Lastziel: höchstens fünf gleichzeitige Chat-Sitzungen für die MVP-Abnahme. Dies ist kein Limit für die Anzahl gespeicherter Gespräche. Inferenzparallelität, begrenzte Warteschlange und Timeouts berücksichtigen zusätzlich die tatsächlichen Model-Serving-Limits.
+- Scope: all actually implemented Configurator features are permanently covered 1:1 by the AI component, including complex components and dependencies; not all STACKIT services. A version-bound coverage matrix makes support and execution limitations visible. New or changed features need matching knowledge, dialogue, validation and test coverage in the same qualified release; this does not lift existing execution guards.
+- Dialogue: select a suitable configuration template, incrementally add wishes and ask specifically about missing details or contradictions. Completeness is checked by schema and domain rules, not claimed solely by the model.
+- Templates: select existing authorized Application Landing Zone templates and create new template drafts. Publication remains a separate action for authorized Platform Engineers.
+- Existing changes: analyze existing configuration and collect revision-bound proposals in the chat working draft. Only an explicitly confirmed overall diff changes the configuration draft; no automatic change to published templates or existing instances.
+- Knowledge: ingest current official STACKIT information in a controlled way, detect changes automatically and release after review before use. Module, provider and Configurator knowledge remains bound to the respective configuration version. No automatic upgrades or arbitrary model web access.
+- Model: `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` as preferred initial value; model, endpoint and technical limits remain operator-configurable. Existing Terraform-provisioned dev token is used exclusively backend-side.
+- Inputs: text and configurations; no images in MVP.
+- Scope decision 2026-10-13: guided firewall-policy editing and Assistant proposals for rules/NAT/aliases/routes are post-MVP ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)). Assistant states this boundary immediately; in MVP the firewall administrator maintains policy manually in OPNsense after provisioning. Generic native editor fields remain but are not execution evidence. Firewall infrastructure/HA remains in scope and alone guarantees neither isolation, connectivity nor NAT.
+- Access and purpose: only authenticated users with currently valid session and appropriate tenant/configuration permissions. Advice and proposals are limited to Configurator tasks above; server-side tool, schema and permission checks enforce this boundary. No general chat, shell, secret or cloud execution function.
+- Budget: no monetary budget limit in MVP. Bounded request sizes, context/output lengths, concurrency, request rates, timeouts and repair attempts remain necessary for abuse and operational protection. Usage is observed without secrets.
+- Conversations: persistent server-side and continuable after re-login, with mandatory tenant, workspace and configuration reference. Access is rechecked on every read, continuation and adoption. Bound initial revision is reconciled with current configuration; stale proposals are not adopted unchecked.
+- Deletion and age: deleting a configuration or its workspace also deletes associated conversations with messages, summaries and proposals; no orphaned conversation data. Maximum conversation age is three calendar months from creation, not last activity. Continuation does not extend the deadline. After expiry, an existing configuration can be analyzed again in a new conversation.
+- Load target: at most five concurrent chat sessions for MVP acceptance. This is not a limit on saved conversation count. Inference concurrency, bounded queue and timeouts additionally consider actual Model Serving limits.
 
-Die fachliche Abnahme umfasst jedes implementierte Feature 1:1, nicht nur ausgewählte Beispielvorlagen. Konkrete Referenzkonfigurationen und messbare Antwortzeitziele werden beim Modell-Spike und Aufbau der Feature-Matrix präzisiert. Eine vorläufige Schätzung für den Gesamtumfang beträgt 30–50 Engineering-Personentage einschließlich Tests und Dokumentation, ohne externe Wartezeiten oder zusätzliche fehlende Modul-/Compiler-Funktionen. Die Modell- und Komponentenqualifikation muss diese Spanne einschließlich vollständiger Feature-Abdeckung verfeinern. Der Konzeptbeschluss ist kein Implementierungs- oder Inferenznachweis.
+Business acceptance covers every implemented feature 1:1, not just selected example templates. Specific reference configurations and measurable response-time goals are refined during the model spike and feature matrix setup. A preliminary overall estimate is 30–50 engineering person-days including tests and documentation, excluding external waiting times or additional missing module/compiler capabilities. Model and component qualification must refine this range including complete feature coverage. Concept approval is neither implementation nor inference evidence.
 
-### Gesprächslebenszyklus und Abnahme
+<a id="gesprächslebenszyklus-und-abnahme"></a>
+### Conversation lifecycle and acceptance
 
-Die konkrete [Feature-Matrix und Dialogabnahme](assistant-feature-coverage.md) umfasst alle 29 aktuellen Root-Eingaben, 501 Feld-/Containerpfade, acht Funktionsgruppen, fünf übergreifende Workflow-Bereiche und 24 Szenarien. Die [generierte Matrix](assistant-feature-coverage.json) enthält neun geschützte Feld-/Containerpfade ohne Secret-Werte; jeder Eintrag bleibt bis zum tatsächlichen Modellnachweis `not-qualified`. Ihr Frischetest ist in die bestehende Unit-Suite integriert. Dies ist der erste qualifizierte Konzeptschritt, nicht die Implementierung des Assistenten.
+The specific [feature matrix and dialogue acceptance](assistant-feature-coverage.md) covers all 29 current root inputs, 501 field/container paths, eight feature groups, five cross-cutting workflow areas and 24 scenarios. The [generated matrix](assistant-feature-coverage.json) contains nine protected field/container paths without secret values; every entry remains `not-qualified` until actual model evidence. Its freshness test is integrated into existing unit suite. This is the first qualified concept step, not Assistant implementation.
 
-Persistierter Gesprächszustand ist von der kurzlebigen Login-Session und vom begrenzten Modellkontext getrennt. Nach Wiederanmeldung werden nur aktuell autorisierte, nicht gelöschte und nicht abgelaufene Gespräche geladen. Vor der Vorlagenauswahl wird bei Bedarf ein regulärer autorisierter Konfigurationsentwurf angelegt; auch ein neues Gespräch bleibt damit an einen Workspace und eine Konfiguration gebunden. Ohne gültiges Elternobjekt ist kein Chat-Zugriff möglich.
+Persisted conversation state is separate from short-lived login session and bounded model context. After re-login, only currently authorized, undeleted and unexpired conversations are loaded. Before template selection, create a regular authorized configuration draft if needed; even a new conversation is thereby bound to a workspace and configuration. No chat access without valid parent object.
 
-Der Löschpfad muss Nachrichten, Gesprächs-Arbeitsentwürfe, Zusammenfassungen und abgeleitete Cache-/Indexdaten berücksichtigen. Autorisierte Elternlöschung und die Löschung persistierter Gesprächsdaten sind atomar; verspätete Modellantworten dürfen gelöschte oder abgelaufene Gespräche nicht wiederherstellen. Ablauf wird vor jedem Zugriff geprüft und durch einen überwachten Bereinigungsprozess physisch umgesetzt. Logs enthalten keine Gesprächsinhalte. Backup-Aufbewahrung und Restore müssen die Lösch- und Altersgrenzen erhalten; vor erneutem Zugriff nach Restore werden gelöschte und abgelaufene Daten entfernt. Ein Datenbank-Cascade allein ist kein Nachweis der Löschung aller Kopien.
+Deletion path must consider messages, conversation working drafts, summaries and derived cache/index data. Authorized parent deletion and deletion of persisted conversation data are atomic; late model responses must not restore deleted or expired conversations. Expiry is checked before every access and physically implemented through monitored cleanup. Logs contain no conversation content. Backup retention and restore must preserve deletion and age limits; deleted and expired data are removed before renewed access after restore. A DB cascade alone is not evidence of deletion of all copies.
 
-Erforderliche Tests: Fortsetzung nach Wiederanmeldung oder Backend-Neustart, Workspace-/Konfigurations- und Tenant-Isolation, aktueller Rechteentzug, Konfigurationsrevision-Konflikte, beide Elternlöschpfade einschließlich laufender Inferenz, feste Drei-Monats-Grenze ohne Aktivitätsverlängerung und bereinigter Restore. Fünf parallele Sitzungen dürfen weder Kontexte vermischen noch stille Requestverluste oder unbegrenzte Warteschlangen verursachen.
+Required tests: continuation after re-login or backend restart, workspace/configuration and tenant isolation, current permission revocation, configuration revision conflicts, both parent deletion paths including running inference, fixed three-month limit without activity extension and sanitized restore. Five parallel sessions must neither mix contexts nor cause silent request loss or unbounded queues.
 
-Die Abdeckungsmatrix ordnet jedem implementierten Feature mindestens Analyse, Neuerstellung/Änderung soweit vom Editor unterstützt, fehlende Angaben, Abhängigkeiten, validierten Diff und passende Negativfälle zu. Gemeinsame Schema-/Compilerprüfungen bleiben maßgeblich. CI/Release prüfen fehlende Zuordnungen und Tests; reale Modell-Evaluationen qualifizieren zusätzlich die Dialogqualität, denn eine vollständige Matrix allein beweist keine zuverlässigen Antworten.
+Coverage matrix assigns every implemented feature at least analysis, creation/modification where editor-supported, missing information, dependencies, validated diff and matching negative cases. Common schema/compiler checks remain authoritative. CI/release check missing assignments and tests; real model evaluations additionally qualify dialogue quality because a complete matrix alone does not prove reliable answers.
 
-### Fachlicher Vertrag
+<a id="fachlicher-vertrag"></a>
+### Business contract
 
-Der Chat behandelt ausschließlich Planung und Konfiguration des versionsgebundenen Accelerators. Er erklärt Features und Grenzen, fragt aktiv fehlende Informationen ab und erzeugt überprüfbare Änderungen. Außerhalb dieses Bereichs führt er zum unterstützten Thema zurück.
+Chat handles exclusively planning and configuration of the version-bound Accelerator. It explains features and limits, actively asks for missing information and produces reviewable changes. Outside this scope, it redirects to supported topics.
 
-Wissen: Feature-Katalog, Schema, freigegebene Repo-/Moduldokumentation und Templates der gewählten Version. Kein beliebiger Web-/Repository-Zugriff. Dokumentverweise in Antworten; unbekannte Features nicht erfinden. Systemprompt alleine garantiert die Einschränkung nicht: Tool- und Datenzugriffe im Backend erzwingen.
+Knowledge: feature catalogue, schema, approved repository/module documentation and templates of the selected version. No arbitrary web/repository access. Document references in responses; do not invent unknown features. System prompt alone does not guarantee restriction: backend tool/data access enforces it.
 
-Ablauf:
+Workflow:
 
-1. Benutzer beschreibt sein Ziel.
-2. Backend liefert minimale secretfreie Konfiguration und relevante versionierte Wissensabschnitte.
-3. Chat fragt notwendige Angaben ab: Owner, Organisation, Regionen, Isolation, Netzplanung. Widersprüche erklären, etwa getrennte SNAs bei gleichzeitig gewünschtem gemeinsamen privaten Git-Service.
-4. Modell erzeugt `questions`, `assumptions`, `patch`, `explanation`, `references`.
-5. Backend prüft Schema/Fachregeln und Basisrevision des Patches.
-6. UI zeigt Diff und Topologie-Vorschau. Erst „Übernehmen“ ändert den Entwurf; Git-Speichern, Plan und Apply sind separate Aktionen.
+1. User describes their goal.
+2. Backend supplies minimal secret-free configuration and relevant versioned knowledge sections.
+3. Chat asks for required information: owner, organization, regions, isolation, network planning. Explain contradictions, e.g. separate SNAs alongside a desired shared private Git service.
+4. Model produces `questions`, `assumptions`, `patch`, `explanation`, `references`.
+5. Backend checks schema/domain rules and patch base revision.
+6. UI shows diff and topology preview. Only “Accept” changes the draft; Git saving, Plan and Apply are separate actions.
 
-Erlaubte interne Werkzeuge: Features nachschlagen, bereinigte Konfiguration lesen, Patch vorschlagen/validieren. Kein Secret-Lesen, Shell, Git-Schreiben oder Apply durch das Modell. Repo-Kommentare und Freitext gelten als untrusted input. Keine fremden Tenant-Daten, Credentials, States oder Roh-Plans im Modellkontext.
+Permitted internal tools: look up features, read sanitized configuration, propose/validate patch. No secret reads, shell, Git writes or Apply by the model. Repository comments and free text are untrusted input. No other tenants' data, credentials, states or raw plans in model context.
 
-### Anbindung und Betrieb
+<a id="anbindung-und-betrieb"></a>
+### Integration and operation
 
-STACKIT dokumentiert eine OpenAI-kompatible Inferenz-API mit Auth-Token. Die API hält keinen Gesprächszustand; das Backend verwaltet den nötigen Kontext selbst. [Modelle verwenden](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/how-tos/use-the-models/)
+STACKIT documents an OpenAI-compatible inference API with auth token. API keeps no conversation state; backend manages necessary context itself. [Use models](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/how-tos/use-the-models/)
 
-Voraussetzung: STACKIT-Projekt mit aktiviertem AI Model Serving, ausgewähltem Modell, Kapazität und Inferenz-Token. Token-Erzeugung benötigt eine separate STACKIT-Autorisierung; Inferenz-Token nicht mit allgemeinen STACKIT-Credentials verwechseln. [Auth-Tokens](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/how-tos/manage-auth-tokens/)
+Prerequisite: STACKIT project with enabled AI Model Serving, selected model, capacity and inference token. Token creation requires separate STACKIT authorization; do not confuse inference token with general STACKIT credentials. [Auth tokens](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/how-tos/manage-auth-tokens/)
 
-Vorgeschlagene app-eigene CF-Variablen:
+Proposed app-specific CF variables:
 
 ```text
 MODEL_SERVING_BASE_URL
@@ -438,30 +439,32 @@ MODEL_SERVING_API_KEY
 MODEL_SERVING_TIMEOUT_SECONDS
 ```
 
-Der dokumentierte Shared-Model-Einstieg verwendet `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1/chat/completions`. Endpoint/Modell aus der gewählten Service-Konfiguration übernehmen; nicht den Management-API-Endpoint für Inferenz nutzen. Modellfähigkeiten wie Tool Calling/strukturierte Ausgabe separat evaluieren. [Shared Models starten](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/getting-started/getting-started-with-shared-models/)
+Documented shared-model entry uses `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1/chat/completions`. Take endpoint/model from selected service configuration; do not use management API endpoint for inference. Evaluate model capabilities such as tool calling/structured output separately. [Getting started with shared models](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/getting-started/getting-started-with-shared-models/)
 
-Credentials ausschließlich auf Backend/Chat-App setzen, nie ins Frontend-Build oder Runner. CF-Umgebungsvariablen sind für entsprechend berechtigte Space-Developer lesbar; diese gehören damit zur Betreiber-Vertrauensgrenze. Über geschützte Deployment-Injektion setzen, nicht in Git-Manifeste schreiben; Rotation und Redaktion testen. [CF-Variablen und Secrets](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/manage-environment-variables-and-secrets/)
+Set credentials exclusively on backend/chat app, never frontend build or Runner. CF environment variables are readable by appropriately authorized space developers; these therefore belong to the operator trust boundary. Set through protected deployment injection, not Git manifests; test rotation and redaction. [CF variables and secrets](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/manage-environment-variables-and-secrets/)
 
-Technische Token-/Anfragelimits pro Tenant, Timeouts, begrenzte Reparaturversuche für ungültiges JSON und Circuit Breaker; keine monetäre Budgetgrenze im MVP. Bei KI-Ausfall bleibt der manuelle Editor nutzbar. Gesprächsaufbewahrung, Löschung und übermittelte Organisationsdaten transparent machen. Tenant-Chatdaten nicht in einen gemeinsamen Wissensindex übernehmen.
+Technical token/request limits per tenant, timeouts, bounded repair attempts for invalid JSON and circuit breaker; no monetary budget limit in MVP. Manual editor remains usable during AI outage. Make conversation retention, deletion and transmitted organization data transparent. Do not place tenant chat data in a shared knowledge index.
 
-Evaluationsfälle: fehlende Pflichtfelder, widersprüchliche Netze, unbekannte Features, Themenwechsel, Prompt Injection, Secret-Offenlegung, fremde Tenants, veraltete Revisionen und ungültige Ausgabe. Der Chat gilt erst mit gemessenen Akzeptanzkriterien als freigegeben.
+Evaluation cases: missing required fields, contradictory networks, unknown features, topic switch, prompt injection, secret disclosure, foreign tenants, stale revisions and invalid output. Chat is approved only with measured acceptance criteria.
 
-## 12. Grafische Darstellung
+<a id="12-grafische-darstellung"></a>
+## 12. Graphical representation
 
-Ein deterministischer Graph-Builder verwendet dasselbe validierte Fachmodell wie der Compiler. Kein frei vom Sprachmodell gezeichnetes Infrastrukturdiagramm.
+A deterministic graph builder uses the same validated business model as the compiler. No infrastructure diagram drawn freely by the language model.
 
-- Gruppierung: Organisation → Region → Netzwerkbereich → Projekte/Landing Zones → Dienste.
-- Knoten für Management, DevOps, Plattformcluster, Firewall, VPN, DNS und Sandboxes.
-- Kanten für echte Beziehungen: SNA-Anbindung, Default Route, Cluster-Zuordnung, explizite VPN-Verbindung. Keine impliziten Verbindungen zwischen SNAs/Regionen.
-- Getrennte Ansichten: Konfigurations-Soll, Plan-Delta und zuletzt bekannter Ist-/State-Stand mit Zeitstempel. State ist kein Echtzeit-Monitoring.
-- Create/Update/Delete/Replace sowie unbekannte Werte durch Symbol und Farbe markieren.
-- Plan-Ressourcen über versioniertes Mapping Features zuordnen; nicht zuordenbare Ressourcen bleiben technisch sichtbar.
-- Knoten öffnen Fachformulare. Freies Zeichnen von Beziehungen erst später mit denselben Validierungsregeln.
-- Tastaturbedienbare Listen-/Tabellenalternative; secretfreier Grafikexport als Ausbau.
+- Grouping: organization → region → network area → projects/Landing Zones → services.
+- Nodes for management, DevOps, platform cluster, firewall, VPN, DNS and sandboxes.
+- Edges for real relationships: SNA connection, default route, cluster assignment, explicit VPN connection. No implicit connections between SNAs/regions.
+- Separate views: desired configuration, Plan delta and last known actual/state status with timestamp. State is not real-time monitoring.
+- Mark Create/Update/Delete/Replace and unknown values with symbol and color.
+- Map Plan resources to features through versioned mapping; unmappable resources remain technically visible.
+- Nodes open business forms. Free drawing of relationships only later with the same validation rules.
+- Keyboard-operable list/table alternative; secret-free graph export as extension.
 
-## 13. IaC, Lieferung und Betrieb
+<a id="13-iac-lieferung-und-betrieb"></a>
+## 13. IaC, delivery and operation
 
-Das getrennte Verzeichnisgerüst und die lokale App-Entwicklungsbasis sind angelegt; Bootstrap-, Backend- und Plattform-IaC sind implementiert; noch kein Cloud-Apply. Details stehen in der [Configurator-README](../README.md). Die [Sprachentscheidung](decisions/0001-application-stack.md) ist als angenommen dokumentiert.
+The separate directory skeleton and local app development foundation are created; bootstrap, backend and platform IaC are implemented; no cloud Apply yet. Details are in the [Configurator README](../README.md). The [language decision](decisions/0001-application-stack.md) is documented as accepted.
 
 ```text
 landing-zone-configurator/
@@ -474,173 +477,185 @@ landing-zone-configurator/
   docs/decisions/
 ```
 
-Die lokal bereitgestellten Dateien `landing-zone-configurator.env` und `landing-zone-configurator-credentials.json` bleiben im Repository-Root und sind von Git ausgeschlossen. Sie betreffen die Betreiberplattform, nicht Kunden-Deployments. Werte nicht in Dokumentation, Manifeste oder Git übernehmen. Die `.env` verwendet nach Benutzerkorrektur das geprüfte `NAME=WERT`-Format. Erkannte Variablennamen: `PROJECT_ID`, `ORGANISATION_ID`. Vor IaC-Nutzung das Mapping zu den Plattformvariablen festlegen. Zielprojekt-Lesezugriff und ausgewählte Dienst-Metadaten wurden geprüft; Schreibrechte sind noch nicht nachgewiesen. Siehe [Plattformprüfung](platform-check.md).
+Locally provided files `landing-zone-configurator.env` and `landing-zone-configurator-credentials.json` remain in repository root and are excluded from Git. They concern the operator platform, not customer deployments. Do not copy values into documentation, manifests or Git. After user correction, `.env` uses checked `NAME=WERT` format. Detected variable names: `PROJECT_ID`, `ORGANISATION_ID`. Define mapping to platform variables before IaC use. Target-project read access and selected service metadata were checked; write permissions are not yet demonstrated. See [platform check](platform-check.md).
 
-App-Infrastruktur und Kunden-Landing-Zones haben getrennte States, Credentials und Release-Zyklen. Die App darf nicht von einer Landing Zone abhängen, die erst durch dieselbe App erzeugt werden müsste. STACKIT dokumentiert CF-Provisionierung via Terraform; die konkrete Ressourcenabdeckung ist dennoch im Spike nachzuweisen. [CF mit Terraform](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/provision-cloud-foundry-via-terraform/)
+App infrastructure and customer Landing Zones have separate states, credentials and release cycles. The app must not depend on a Landing Zone that would first need to be created by the same app. STACKIT documents CF provisioning through Terraform; specific resource coverage still needs demonstrating in the spike. [CF with Terraform](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/provision-cloud-foundry-via-terraform/)
 
-### Plattformaufbau
+<a id="plattformaufbau"></a>
+### Platform setup
 
-- [ ] Betreiberprojekt, Region, CF-Org/-Spaces, Quoten und Betriebsrollen festlegen.
-- [ ] Plattform-Remote-State und Bootstrap-Identität vorab provisionieren; anschließend eingeschränkte Betriebsidentität.
-- [ ] CF-Apps/Prozesse, Routes, Domain/TLS, Bindings, Health Checks und Skalierung deklarieren.
-- [ ] PostgreSQL Flex, Secret Store, Artefakt-Buckets, IAM, ACLs/Netzregeln und Monitoring provisionieren.
-- [ ] Model Serving aktivieren/provisionieren oder vorhandenen Service explizit anbinden; Provider-/API-Abdeckung prüfen.
-- [ ] Runner und gegebenenfalls kundenspezifische Netzverbindung über eigene Module bereitstellen.
-- [ ] GitHub App, Callback-/Webhook-URLs und Schlüssel verwalten; nicht automatisierbare Registrierungsschritte dokumentieren.
-- [ ] Provider-Versionen pinnen; fehlende Ressourcen nur über dokumentierte idempotente API-/CLI-Schritte ergänzen.
-- [ ] Secrets geschützt in CF injizieren. `sensitive = true` verhindert keine Aufnahme in Terraform-State; Secret-Werte möglichst nicht durch IaC-Ressourcenparameter schleusen.
-- [ ] Entwicklungs-, Staging- und Produktionsumgebung trennen; keine Kundensecrets in Entwicklung.
+- [ ] Define operator project, region, CF org/spaces, quotas and operating roles.
+- [ ] Provision platform remote state and bootstrap identity upfront; restricted operating identity afterwards.
+- [ ] Declare CF apps/processes, routes, domain/TLS, bindings, health checks and scaling.
+- [ ] Provision PostgreSQL Flex, secret store, artifact buckets, IAM, ACLs/network rules and monitoring.
+- [ ] Enable/provision Model Serving or explicitly connect existing service; check provider/API coverage.
+- [ ] Provide Runner and, if necessary, customer-specific network connection through dedicated modules.
+- [ ] Manage GitHub App, callback/webhook URLs and keys; document registration steps that cannot be automated.
+- [ ] Pin provider versions; supplement missing resources only through documented idempotent API/CLI steps.
+- [ ] Inject secrets into CF protectively. `sensitive = true` does not prevent inclusion in Terraform state; avoid passing secret values through IaC resource parameters where possible.
+- [ ] Separate development, staging and production; no customer secrets in development.
 
-### CI/CD und Betrieb
+<a id="cicd-und-betrieb"></a>
+### CI/CD and operation
 
-- [ ] Parser-/Compiler-Fixtures für alle acht Templates; semantischer Import-/Export-Vergleich.
-- [ ] Fachregeln, Versionsmigrationen und Feature-Abdeckung prüfen.
-- [ ] Autorisierungs-, RLS-, Runner-Isolations- und Secret-Redaktionstests.
-- [ ] Dependency-/Image-Scans, reproduzierbare Builds, IaC-Validate und Staging-Smoke-Test.
-- [ ] Gepinnte Engine/Provider mit realer Testorganisation qualifizieren; bestehende Repo-Tests benötigen teilweise STACKIT-API-Zugriff.
-- [ ] Blue/green oder getesteter CF-Rollout; rückwärtskompatible DB-Migrationen und App-Rollback.
-- [ ] Backup/Restore von DB, Secrets und State einschließlich benötigter Schlüssel praktisch üben.
-- [ ] CF-Restart, verlorenen Runner, DB-Ausfall, Token-Widerruf und teilweise fehlgeschlagenen Apply testen.
-- [ ] Metriken: Queue-Alter, Runner-Heartbeat, Fehlerquoten, Plan-/Apply-Dauer, Drift-Fehler, KI-Verbrauch und Mandantenquoten.
-- [ ] RPO/RTO, Verfügbarkeit, Retention, Budget, Supportwege und Notfallzugriffe vor erster Kundenfreigabe festlegen.
+- [ ] Parser/compiler fixtures for all eight templates; semantic import/export comparison.
+- [ ] Check domain rules, version migrations and feature coverage.
+- [ ] Authorization, RLS, Runner isolation and secret-redaction tests.
+- [ ] Dependency/image scans, reproducible builds, IaC validation and staging smoke test.
+- [ ] Qualify pinned engine/providers with real test organization; existing repository tests partly need STACKIT API access.
+- [ ] Blue/green or tested CF rollout; backward-compatible DB migrations and app rollback.
+- [ ] Practically rehearse DB, secrets and state backup/restore including required keys.
+- [ ] Test CF restart, lost Runner, DB outage, token revocation and partially failed Apply.
+- [ ] Metrics: queue age, Runner heartbeat, error rates, Plan/Apply duration, drift errors, AI usage and tenant quotas.
+- [ ] Define RPO/RTO, availability, retention, budget, support paths and emergency access before first customer release.
 
-## 14. Roadmap und Abnahme
+<a id="14-roadmap-und-abnahme"></a>
+## 14. Roadmap and acceptance
 
-Mehrmandantenfähigkeit ist Teil jeder Phase. Funktionsumfang kann schrittweise wachsen; Kundenisolation darf nicht auf eine spätere Phase verschoben werden. Aufwand und Termine erst nach Spikes und Teamzuschnitt schätzen.
+Multi-tenancy is part of every phase. Functionality can grow incrementally; customer isolation must not be deferred to a later phase. Estimate effort and dates only after spikes and team definition.
 
-### P0 – Machbarkeit und verbindliche Entscheidungen
+<a id="p0--machbarkeit-und-verbindliche-entscheidungen"></a>
+### P0 – feasibility and binding decisions
 
-#### Entwicklungsbasis – erster abgeschlossener Schritt
+<a id="entwicklungsbasis--erster-abgeschlossener-schritt"></a>
+#### Development foundation – first completed step
 
-- [x] Stack bestätigen und Runtime-/Paketversionen pinnen.
-- [x] Eigenen npm-Workspace mit Lockfile, React/Vite und Fastify anlegen.
-- [x] Gemeinsame Verträge und initiale Tenant-/Rollen-Policy anlegen.
-- [x] Lokales Linting, Typecheck, Build und fünf Tests erfolgreich ausführen.
-- [x] Separate Configurator-CI als Workflow anlegen (noch nicht auf GitHub ausgeführt).
-- [x] Plattform lesend prüfen und Grenzen/Ergebnisse dokumentieren.
-- [ ] Vollständige Sessions, DB/RLS und tenantgetrennte Persistenz implementieren.
+- [x] Confirm stack and pin runtime/package versions.
+- [x] Create dedicated npm workspace with lockfile, React/Vite and Fastify.
+- [x] Create shared contracts and initial tenant/role policy.
+- [x] Successfully run local lint, type checking, build and five tests.
+- [x] Create separate Configurator CI workflow (not yet run on GitHub).
+- [x] Check platform read-only and document limitations/results.
+- [ ] Implement full sessions, DB/RLS and tenant-separated persistence.
 
-Diese Basis ersetzt keinen der folgenden Architektur-Spikes. Details zum Start: [Entwicklungsanleitung](../app/README.md).
+This foundation replaces none of the following architecture spikes. Startup details: [development guide](../app/README.md).
 
-- [x] Anforderungen, Repo-Ausgangslage und Architekturentwurf dokumentieren.
-- [x] Mehrere unabhängige Kunden ab Beginn und zunächst nur Konfigurationsänderungen bestätigen.
-- [ ] GitHub-Spike: User Token, Upstream-/Zielinstallation, Fork, mehrere Owner, Commit/PR, Widerruf und Refresh.
-- [ ] CF-Runner-Spike: Isolation, Limits, Abbruch, Secret-Übergabe und private Ziele.
-- [ ] State-Spike: erster Run, echtes Locking, konkurrierender CLI-Zugriff, Restore.
-- [ ] Secret-Store-Spike: Policies, Mandantentrennung, Rotation und Delegation.
-- [ ] Service-Pläne, Regionen, IaC-Ressourcenabdeckung und optionalen IdP klären.
-- [ ] Model-Serving-Spike: Auth, Modell, strukturierte Vorschläge, Limits und Evaluation.
+- [x] Document requirements, repository baseline and architecture design.
+- [x] Confirm multiple independent customers from the start and initially configuration changes only.
+- [ ] GitHub spike: user token, upstream/target installation, fork, multiple owners, commit/PR, revocation and refresh.
+- [ ] CF Runner spike: isolation, limits, cancellation, secret handover and private targets.
+- [ ] State spike: first run, real locking, concurrent CLI access, restore.
+- [ ] Secret-store spike: policies, tenant separation, rotation and delegation.
+- [ ] Clarify service plans, regions, IaC resource coverage and optional IdP.
+- [ ] Model Serving spike: auth, model, structured proposals, limits and evaluation.
 
-**Abnahme:** Kritische Annahmen sind belegt oder durch beschlossene Alternativen ersetzt. Architekturentscheidungen mit Nachweisen erfassen.
+**Acceptance:** Critical assumptions are evidenced or replaced by agreed alternatives. Record architecture decisions with evidence.
 
-### P1 – Mandanten, GitHub, Templates und Editor
+<a id="p1--mandanten-github-templates-und-editor"></a>
+### P1 – tenants, GitHub, templates and editor
 
-- [ ] Tenant-Onboarding, Rollen, Einladungen, Sessions und serverseitige Objekt-Autorisierung.
-- [ ] Repository-Auswahl, Fork-Flow und konkurrierendes Speichern.
-- [ ] Alle acht Templates katalogisieren, importieren und Unterstützung kennzeichnen.
-- [ ] Fachmodell/Compiler und Editor zunächst für Standalone und einfaches Hub-Spoke vollständig umsetzen.
-- [ ] Soll-Topologie, Entwürfe, Git-Versionierung und Upgrade-Metadaten.
-- [ ] Negativtests gegen fremde Mandanten und Verlust von Feldern beim Import.
+- [ ] Tenant onboarding, roles, invitations, sessions and server-side object authorization.
+- [ ] Repository selection, fork flow and concurrent saving.
+- [ ] Catalogue/import all eight templates and label support.
+- [ ] Fully implement business model/compiler and editor initially for standalone and simple hub-and-spoke.
+- [ ] Desired topology, drafts, Git versioning and upgrade metadata.
+- [ ] Negative tests against foreign tenants and field loss during import.
 
-**Abnahme:** Template kopieren → fachlich ändern → Grafik prüfen → im ausgewählten Fork speichern → semantisch unverändert laden. Keine Secrets im Commit und kein Überschreiben fremder Änderungen.
+**Acceptance:** Copy template → change business settings → check graph → save in selected fork → load semantically unchanged. No secrets in commit or overwriting others' changes.
 
-### P2 – Sichere Deployments und Betriebsgrundlage
+<a id="p2--sichere-deployments-und-betriebsgrundlage"></a>
+### P2 – secure deployments and operational foundation
 
-- [ ] Staging-/Produktionsgrundlage per IaC, Backups und Observability.
-- [x] Persönliche Credential-Profile: Upload, Secrets-Manager-Ablage, eigene Metadaten und Löschung implementieren.
-- [x] STACKIT-Anmeldung und Organisations-Lesezugriff prüfen; Ergebnis pro Profil speichern.
-- [x] Gespeicherte Git-Konfiguration, Organisation, Code-Referenz und Secret-Version in einer Vorbereitung binden.
-- [ ] Weitergehende Deployment-Rechte, Delegationen und kundenbezogener Remote State.
-- [ ] Runner, Queue, Manifest, Plan-Redaktion, Freigabe und exakter Apply.
-- [ ] Standalone und einfaches Hub-Spoke in getrennten Testorganisationen ausführen.
-- [ ] Isolation, Quoten, Crash, Abbruch, Rechteentzug, Restore und partielle Fehler prüfen.
+- [ ] Staging/production foundation through IaC, backups and Observability.
+- [x] Implement personal credential profiles: upload, Secrets Manager storage, own metadata and deletion.
+- [x] Check STACKIT authentication and organization read access; save result per profile.
+- [x] Bind saved Git configuration, organization, code reference and secret version in a preparation.
+- [ ] Broader deployment permissions, delegations and customer-specific remote state.
+- [ ] Runner, queue, manifest, Plan redaction, approval and exact Apply.
+- [ ] Execute standalone and simple hub-and-spoke in separate test organizations.
+- [ ] Check isolation, quotas, crash, cancellation, permission revocation, restore and partial failures.
 
-**Abnahme:** Mindestens zwei unabhängige Testkunden können getrennt arbeiten. Fremde Daten/Secrets sind unerreichbar; veraltete Plans werden abgewiesen; Runner-Ausfall erzeugt keinen blinden zweiten Apply. Betriebsziele und Runbooks sind festgelegt.
+**Acceptance:** At least two independent test customers can work separately. Foreign data/secrets are inaccessible; stale plans are rejected; Runner failure causes no blind second Apply. Operational goals and runbooks are defined.
 
-### P3 – Chat und vollständige Feature-Abdeckung
+<a id="p3--chat-und-vollständige-feature-abdeckung"></a>
+### P3 – chat and complete feature coverage
 
-- [ ] Model Serving mit Rückfragen, Schema-Patches, Diff und Übernahme integrieren.
-- [ ] Versioniertes Wissen und Evaluationssuite.
-- [ ] Multi-Area, Multi-Region, Kubernetes, Firewall/HA/VPN und weitere Services abdecken.
-- [ ] Spezielle Bootstrap-Abläufe und Netzkonnektivität nachweisen.
-- [ ] Plan-Delta und bekannten Ist-Stand grafisch zeigen.
+- [ ] Integrate Model Serving with follow-ups, schema patches, diff and adoption.
+- [ ] Versioned knowledge and evaluation suite.
+- [ ] Cover multi-area, multi-region, Kubernetes, firewall/HA/VPN and further services.
+- [ ] Demonstrate special bootstrap workflows and network connectivity.
+- [ ] Graphically show Plan delta and known actual state.
 
-**Abnahme:** Chat und Formular erzeugen äquivalente validierte Konfigurationen. Alle Templates haben nachvollziehbaren Unterstützungsstatus. Repo-Grenzen bleiben sichtbar; keine frei erfundenen Features und kein Apply durch Chat.
+**Acceptance:** Chat and form produce equivalent validated configurations. All templates have traceable support status. Repository limitations remain visible; no invented features and no Apply through chat.
 
-### P4 – Optionaler Betriebsausbau
+<a id="p4--optionaler-betriebsausbau"></a>
+### P4 – optional operational expansion
 
-- [ ] Drift Detection mit expliziter Hintergrunddelegation und Statusmeldungen.
-- [ ] Correction nach Freigabe, später enge automatische Allowlist mit Not-Aus.
-- [ ] Optional STACKIT-IdP nach Machbarkeitsnachweis.
-- [ ] Eigener Terraform-Code erst nach gesonderter Sicherheits-/Runner-Entscheidung.
-- [ ] Erweiterte Teamprozesse, Audit-Export und kundenspezifische Isolationsoptionen.
+- [ ] Drift detection with explicit background delegation and status messages.
+- [ ] Correction after approval, later narrow automatic allowlist with emergency stop.
+- [ ] Optional STACKIT IdP after feasibility evidence.
+- [ ] Custom Terraform code only after separate security/Runner decision.
+- [ ] Extended team processes, audit export and customer-specific isolation options.
 
-**Abnahme:** Automatische Korrektur hält ihre Policy auch bei unbekannten oder destruktiven Plans ein. Ausfall/Widerruf führt zu kontrollierter Pause statt unkontrollierten Wiederholungen.
+**Acceptance:** Automatic correction respects its policy even for unknown or destructive plans. Failure/revocation leads to controlled pause rather than uncontrolled retries.
 
-## 15. Entscheidungsregister
+<a id="15-entscheidungsregister"></a>
+## 15. Decision register
 
-| ID | Entscheidung | Empfehlung / Ergebnis | Status | Owner |
+| ID | Decision | Recommendation / result | Status | Owner |
 | --- | --- | --- | --- | --- |
-| D01 | Zielgruppe | Mehrere unabhängige Kundenorganisationen ab Beginn | Bestätigt | Produkt |
-| D02 | Terraform-Modifikationen | V1 nur Konfigurationen, eigener Code später | Bestätigt | Produkt |
-| D03 | GitHub-Integration | GitHub App mit User Token; Fork-Voraussetzungen nachweisen | Offen | Backend |
-| D04 | Mehrere Forks | Mehrere Owner/Repos; Branches/Configs als zusätzliche Varianten | Spike | Produkt/Backend |
-| D05 | Persistenz | PostgreSQL Flex, Tenant-Isolation plus RLS | Vorschlag | Plattform |
-| D06 | Runner-Hosting | Separate CF-Runner, sonst explizit SKE/Compute | Kritischer Spike | Plattform/Security |
-| D07 | State-Eigentum | LZA-Bootstrap, anschließend Migration zum erzeugten Kunden-Backend | Entschieden; Recovery/Migration umzusetzen | Architektur |
-| D08 | Secret-Verwaltung | Secret Store mit Run-Delegation und Tenant-Policies | Kritischer Spike | Security |
-| D09 | Config-Format | Fach-JSON plus native landing-zone.tfvars | Standalone implementiert; versioniertes Deployment-Manifest offen | Architektur |
-| D10 | Engine | Gepinntes OpenTofu 1.12.6 zuerst; Terraform separat qualifizieren | Vorschlag | Maintainer |
-| D11 | STACKIT-IdP | Optional, Client-Registrierung nicht nachgewiesen | Offen | IAM |
-| D12 | Drift Correction | Freigabe zuerst, automatische Allowlist später | Vorschlag | Produkt/Betrieb |
-| D13 | KI-Modell | STACKIT-Service mit evaluiertem Modell und Tenant-Limits | Spike | KI/Produkt |
-| D14 | Betriebsziele | RPO/RTO, Retention, Verfügbarkeit und Budget vor Kundenfreigabe | Offen | Betrieb |
-| D15 | Produktname und Struktur | Landing Zone Configurator unter eigenem Top-Level-Verzeichnis | Bestätigt / Gerüst angelegt | Produkt |
-| D16 | Anwendungssprache | TypeScript für Web/API/Worker; Go für begrenzten HCL-Adapter | Bestätigt, siehe ADR 0001 | Entwicklung |
-| D17 | Dienstbereitstellung | Sämtliche Configurator-Dienste und Aktivierungen via IaC | Bestätigt | Plattform |
-| D18 | Erste Umgebung | lzc-dev in eu01; Backend-Zugang zunächst ca. 90 Tage | Umgebung bestätigt; Laufzeit als Betriebsdefault | Plattform |
+| D01 | Target audience | Multiple independent customer organizations from the start | Confirmed | Product |
+| D02 | Terraform modifications | V1 configurations only, custom code later | Confirmed | Product |
+| D03 | GitHub integration | GitHub App with user token; demonstrate fork prerequisites | Open | Backend |
+| D04 | Multiple forks | Multiple owners/repos; branches/configs as additional variants | Spike | Product/Backend |
+| D05 | Persistence | PostgreSQL Flex, tenant isolation plus RLS | Proposal | Platform |
+| D06 | Runner hosting | Separate CF Runners, otherwise explicitly SKE/compute | Critical spike | Platform/Security |
+| D07 | State ownership | LZA bootstrap, then migration to created customer backend | Decided; recovery/migration to implement | Architecture |
+| D08 | Secret management | Secret store with run delegation and tenant policies | Critical spike | Security |
+| D09 | Configuration format | Business JSON plus native landing-zone.tfvars | Standalone implemented; versioned deployment manifest outstanding | Architecture |
+| D10 | Engine | Pinned OpenTofu 1.12.6 first; qualify Terraform separately | Proposal | Maintainer |
+| D11 | STACKIT IdP | Optional, client registration not demonstrated | Open | IAM |
+| D12 | Drift correction | Approval first, automatic allowlist later | Proposal | Product/Operations |
+| D13 | AI model | STACKIT service with evaluated model and tenant limits | Spike | AI/Product |
+| D14 | Operational goals | RPO/RTO, retention, availability and budget before customer release | Open | Operations |
+| D15 | Product name and structure | Landing Zone Configurator under own top-level directory | Confirmed / skeleton created | Product |
+| D16 | Application language | TypeScript for web/API/worker; Go for bounded HCL adapter | Confirmed, see ADR 0001 | Development |
+| D17 | Service provisioning | All Configurator services and activations through IaC | Confirmed | Platform |
+| D18 | First environment | lzc-dev in eu01; backend access initially approx. 90 days | Environment confirmed; lifetime as operational default | Platform |
 
-## 16. Risiken und Definition of Done
+<a id="16-risiken-und-definition-of-done"></a>
+## 16. Risks and Definition of Done
 
-| Risiko | Gegenmaßnahme / Nachweis |
+| Risk | Countermeasure / evidence |
 | --- | --- |
-| Tenant-übergreifender Zugriff | RLS plus Objekt-Autorisierung, getrennte Secrets/States, Negativtests |
-| Runner liest Betreiber-Secrets | Keine Backend-Bindings; gezielter Isolationstest |
-| Fork-API passt nicht zum Onboarding | Früher GitHub-Spike; manueller Fork-/Connect-Flow als klare Alternative |
-| UI und Terraform divergieren | Versionierter Katalog, Compiler-Fixtures und Migrationsprüfungen |
-| Secret in Plan/State/Log/Chat | Geschützte Artefakte, Redaktion vor Logging, negative Tests |
-| Private API aus CF unerreichbar | Netz-Spike, dediziertes Runner-Profil im Zielnetz |
-| Zwei Prozesse schreiben denselben State | Backend-Lock plus kanonische State-ID und Plattform-Lease |
-| Initial offene Firewall | Sicherer Bootstrap, Passwortrotation und Fehler-Runbook vor Freigabe |
-| Unerwartetes Destroy/Create | Stabile Schlüssel, sichtbare Ersetzungen und konkrete Plan-Freigabe |
-| Kunden blockieren gegenseitig Kapazitäten | Tenant-Quoten, faire Queue, Rate Limits und Backoff |
-| KI missachtet Thema/Schema | Backend erzwingt Tools und Datenzugriffe; Evaluation und Fallback |
-| Backup nicht wiederherstellbar | Restore-Übungen einschließlich Schlüsselmaterial |
+| Cross-tenant access | RLS plus object authorization, separate secrets/states, negative tests |
+| Runner reads operator secrets | No backend bindings; targeted isolation test |
+| Fork API does not fit onboarding | Early GitHub spike; manual fork/connect flow as clear alternative |
+| UI and Terraform diverge | Versioned catalogue, compiler fixtures and migration checks |
+| Secret in plan/state/log/chat | Protected artifacts, redaction before logging, negative tests |
+| Private API unreachable from CF | Network spike, dedicated Runner profile in target network |
+| Two processes write the same state | Backend lock plus canonical state ID and platform lease |
+| Initially open firewall | Secure bootstrap, password rotation and error runbook before approval |
+| Unexpected Destroy/Create | Stable keys, visible replacements and specific Plan approval |
+| Customers block each other's capacity | Tenant quotas, fair queue, rate limits and backoff |
+| AI disregards topic/schema | Backend enforces tools/data access; evaluation and fallback |
+| Backup cannot be restored | Restore rehearsals including key material |
 
-Für jedes Feature:
+For each feature:
 
-- [ ] Fachliches Verhalten, Mapping und Grenzen dokumentiert.
-- [ ] Editor, Chat, Compiler und Grafik nutzen dieselbe Semantik.
-- [ ] Autorisierung, Mandantentrennung und relevante Fehlerfälle geprüft.
-- [ ] Keine Secrets in Git, Frontend oder ungeschützten Artefakten.
-- [ ] Migration und Betrieb dokumentiert, sofern erforderlich.
-- [ ] Akzeptanznachweis und Issue-/PR-Link hinterlegt.
+- [ ] Business behavior, mapping and limitations documented.
+- [ ] Editor, chat, compiler and graph use the same semantics.
+- [ ] Authorization, tenant separation and relevant error cases checked.
+- [ ] No secrets in Git, frontend or unprotected artifacts.
+- [ ] Migration and operation documented where required.
+- [ ] Acceptance evidence and issue/PR link recorded.
 
-## 17. Quellenstatus und laufende Planung
+<a id="17-quellenstatus-und-laufende-planung"></a>
+## 17. Source status and ongoing planning
 
-Lokale Analyse: Repo-Stand `2161871`. Externe Primärquellen wurden am 2026-09-29 nach Wiederherstellung des Netzwerkzugriffs geprüft und direkt an den relevanten Aussagen verlinkt. Dokumentation ersetzt keine Integrationstests. Offen bleiben insbesondere konkrete Service-Pläne/-Quoten, die GitHub-Fork-UX, Secret-Policies, S3-Locking, private Runner-Konnektivität und STACKIT-IdP-Client-Registrierung. Object Storage und Model Serving werden durch ihre Provider-Ressourcen automatisch aktiviert; der frühere 404 ist damit geklärt.
+Local analysis: repository source `2161871`. External primary sources were checked on 2026-09-29 after network access was restored and linked directly at relevant statements. Documentation replaces no integration tests. Specific service plans/quotas, GitHub fork UX, secret policies, S3 locking, private Runner connectivity and STACKIT IdP client registration remain particularly open. Object Storage and Model Serving are activated automatically by their provider resources; the earlier 404 is thus clarified.
 
-**Nächster Planungsschritt:** P0-Spikes für GitHub, Runner/Netz, State und Secrets priorisieren und Verantwortliche zuweisen. Danach D03/D06/D07/D08 entscheiden und den ersten vertikalen Ablauf von Login bis freigegebenem Apply schätzen.
+**Next planning step:** Prioritize P0 spikes for GitHub, Runner/network, state and secrets and assign owners. Then decide D03/D06/D07/D08 and estimate the first vertical workflow from login to approved Apply.
 
-| Datum | Ergebnis / Entscheidung | Verantwortlich | Nachweis |
+| Date | Result / decision | Responsible | Evidence |
 | --- | --- | --- | --- |
-| 2026-09-29 | Architekturentwurf und Repo-Feature-Mapping erstellt | Noch zuzuweisen | Dieses Dokument |
-| 2026-09-29 | Mehrere unabhängige Kunden ab Beginn; V1 nur Konfigurationen | Benutzerentscheidung | Planungsgespräch, D01/D02 |
-| 2026-09-29 | TypeScript/React/Fastify bestätigt; lokale Entwicklungsbasis und getrennte CI angelegt | Entwicklung | ADR 0001, App-Workspace |
-| 2026-09-29 | Object Storage 404 als nicht aktiviert geklärt; Provider aktiviert bei erstem Bucket | Entwicklung | platform-check.md |
-| 2026-09-29 | lzc-dev/eu01 bestätigt; erster echter Bootstrap-Plan mit 3 Create erfolgreich | Benutzer / Entwicklung | infra/README.md |
+| 2026-09-29 | Architecture design and repository feature mapping created | To be assigned | This document |
+| 2026-09-29 | Multiple independent customers from start; V1 configurations only | User decision | Planning discussion, D01/D02 |
+| 2026-09-29 | TypeScript/React/Fastify confirmed; local development foundation and separate CI created | Development | ADR 0001, app workspace |
+| 2026-09-29 | Object Storage 404 clarified as not enabled; provider enables at first bucket | Development | platform-check.md |
+| 2026-09-29 | lzc-dev/eu01 confirmed; first real bootstrap Plan with 3 Create successful | User / Development | infra/README.md |
 
-Vorlage für laufende Arbeitspakete:
+Template for ongoing work packages:
 
 ```markdown
 ### <ID>: <Arbeitspaket>
@@ -655,367 +670,281 @@ Vorlage für laufende Arbeitspakete:
 - [ ] Dokumentation und Betrieb
 ```
 
-## 18. CI/CD nach Lebenszyklus
+<a id="18-cicd-nach-lebenszyklus"></a>
+## 18. CI/CD by lifecycle
 
-Das [CI/CD-Konzept](cicd.md) definiert getrennte Workflows für seltenen Bootstrap, Plattformänderungen, häufige App-Releases und optionale Drift-Erkennung. Es enthält State-/Secret-Abhängigkeiten, Lifecycle-Ownership und eine abhakbare Umsetzungsreihenfolge. Deployment-Workflows sind geplant; die Validierungs-CI besteht bereits. Nächster technischer Schritt: unabhängiges Verwaltungs-Backend und sichere CI-Schlüsselhaltung vor dem ersten Cloud-Apply.
+The [CI/CD concept](cicd.md) defines separate workflows for rare bootstrap, platform changes, frequent app releases and optional drift detection. It includes state/secret dependencies, lifecycle ownership and a checkable implementation sequence. Deployment workflows are planned; validation CI already exists. Next technical step: independent management backend and secure CI key custody before first cloud Apply.
 
-Verwaltungs-Backend: separater Bucket im bestehenden Projekt durch `seed`/`seed-protection` angelegt. Bootstrap an S3 angebunden; CI-Schlüsselübergabe und Deployment-Workflows bleiben nächste Schritte.
+Management backend: separate bucket created in existing project by `seed`/`seed-protection`. Bootstrap connected to S3; CI key handover and deployment workflows remain next steps.
 
-CI-Stand: Bootstrap-Workflow und Environment-Einrichtung lokal implementiert; Secret-Upload wartet auf explizite Freigabe. S3-Locking-Abnahme fehlgeschlagen (zweiter Prozess trotz Lock nicht blockiert); Remote-Applies sind technisch gesperrt. Backend-/Sperrstrategie muss vor Deployment entschieden werden. Siehe [CI-Betrieb](../infra/ci/README.md).
+CI status: bootstrap workflow and environment setup implemented locally; secret upload awaits explicit approval. S3 locking acceptance failed (second process not blocked despite lock); remote Applies are technically blocked. Backend/locking strategy must be decided before deployment. See [CI operations](../infra/ci/README.md).
 
-Bestätigte Folgeentscheidung: S3 beibehalten, Deployments vorerst ausschließlich über serialisierte GitHub Actions. Lokale Remote-Applies bleiben gesperrt; alle mutierenden Workflows nutzen eine gemeinsame Concurrency-Gruppe. Benutzer hat den konkreten Secret-Transfer in die drei benannten GitHub Environments ausdrücklich genehmigt.
+Confirmed follow-up decision: keep S3, initially deploy exclusively through serialized GitHub Actions. Local remote Applies remain blocked; all mutating workflows use one shared concurrency group. User explicitly approved the specific secret transfer into the three named GitHub environments.
 
-## Feature-Branch und Code Ownership
+<a id="feature-branch-und-code-ownership"></a>
+## Feature branch and code ownership
 
-Die Entwicklung erfolgt auf `feature/landing-zone-configurator`; eine Übernahme nach `main` ist derzeit ausdrücklich nicht vorgesehen. Für `/landing-zone-configurator/` und Configurator-Workflows unter `/.github/workflows/` ist ausschließlich `@lweberru` als CODEOWNER eingetragen. Gemeinsame Repository-Dateien behalten ihre bestehenden Owner.
+Development is on `feature/landing-zone-configurator`; adoption into `main` is explicitly not currently planned. Only `@lweberru` is registered as CODEOWNER for `/landing-zone-configurator/` and Configurator workflows under `/.github/workflows/`. Shared repository files keep existing owners.
 
-Die GitHub-Environment-Regeln und der Deployment-Workflow erlauben weiterhin ausschließlich `main`. Feature-Branch-Entwicklung aktiviert daher keine Cloud-Deployments. Ein späterer Testbetrieb vom Feature-Branch braucht eine gezielte Anpassung dieser Regeln; der Branch wird dafür nicht automatisch nach main übernommen.
+GitHub environment rules and deployment workflow still allow only `main`. Feature-branch development therefore enables no cloud deployments. Later test operation from the feature branch needs targeted adaptation of these rules; the branch is not automatically merged to main for this.
 
-GitHub wertet CODEOWNERS für Pull Requests aus dem jeweiligen Zielbranch aus: Für einen späteren PR nach main gilt zunächst die dortige bisherige Regel. CODEOWNERS setzt außerdem keine Branch-Protection-Regeln außer Kraft; eigene PRs können nicht selbst freigegeben werden.
+GitHub evaluates CODEOWNERS for PRs from the respective target branch: a later PR to main initially uses its previous rule. CODEOWNERS also overrides no branch-protection rules; own PRs cannot be self-approved.
 
-Feature-Branch-Test freigegeben: Push-Trigger für Bootstrap-Plan auf `feature/landing-zone-configurator`, entsprechende zusätzliche Branch-Regel ausschließlich im Plan-Environment. Apply/Recovery bleiben main-only. Kein Merge nach main für den Test erforderlich.
+Feature-branch test approved: push trigger for bootstrap Plan on `feature/landing-zone-configurator`, matching additional branch rule exclusively in Plan environment. Apply/recovery remain main-only. No merge to main needed for the test.
 
-Bootstrap-Apply abgeschlossen: GitHub Run 36601941540 auf dem Feature-Branch, drei Ressourcen erstellt. Verschlüsselter Remote-State unabhängig geprüft; einmalige Commit-Freigabe entfernt. Nächster Schritt: separater Backend-Root zur Versionierung des Workload-State-Buckets. main bleibt unverändert.
+Bootstrap Apply completed: GitHub run 36601941540 on feature branch, three resources created. Encrypted remote state independently checked; one-time commit approval removed. Next step: separate backend root for versioning workload state bucket. main remains unchanged.
 
-Backend-Apply abgeschlossen: Run 36602706599, Versionierung für den Workload-State-Bucket aktiviert und direkt über S3 verifiziert. Verschlüsselter Backend-State geprüft; einmalige Freigaben entfernt. Die [Plattform-Vorbereitung](platform-readiness.md) dokumentiert die ausgewählten Katalogwerte und offenen Netzwerkparameter.
+Backend Apply completed: run 36602706599, workload state bucket versioning enabled and directly verified through S3. Encrypted backend state checked; one-time approvals removed. [Platform preparation](platform-readiness.md) documents selected catalogue values and open network parameters.
 
-Netzwerk-Korrektur: CF-Egress-Adressen sind nicht dokumentiert/stabil (Benutzerhinweis). Die bisherige Anforderung fester CF-CIDRs entfällt. Stattdessen dienstspezifische, unterstützte Zugangsmodelle prüfen: dokumentierte STACKIT-Netze für PostgreSQL mit Konnektivitätstest; Secrets Manager separat. Migrationen als CF-Task vorsehen. Service-Bindings nicht als Netzwerkfreigabe behandeln. Siehe [Plattform-Vorbereitung](platform-readiness.md).
+Network correction: CF egress addresses are undocumented/unstable (user note). Previous requirement for fixed CF CIDRs is dropped. Instead, check service-specific supported access models: documented STACKIT networks for PostgreSQL with connectivity test; Secrets Manager separately. Plan migrations as CF task. Do not treat service bindings as network approval. See [platform preparation](platform-readiness.md).
 
+Platform attempt 2026-09-30: Plan with nine Creates and validation successful; Apply run 36632950493 aborted after 45 minutes. Partial inventory exists (CF active, Secrets Manager Running, PostgreSQL last PROGRESSING), platform state missing. One-time approval removed and platform CI temporarily disabled. Next step is controlled state recovery and improved termination handling, not another original Apply. Details and checklist: [platform operational status](platform-readiness.md#vorfall-2026-09-30-erster-plattform-apply-unvollständig).
 
-Plattform-Versuch 2026-09-30: Plan mit neun Creates und Validierung erfolgreich; Apply-Run 36632950493 nach 45 Minuten abgebrochen. Teilbestand existiert (CF aktiv, Secrets Manager Running, PostgreSQL zuletzt PROGRESSING), Plattform-State fehlt. Einmalige Freigabe entfernt und Plattform-CI vorübergehend deaktiviert. Nächster Schritt ist die kontrollierte State-Recovery und verbesserte Abbruchbehandlung, nicht ein erneuter ursprünglicher Apply. Details und Checkliste: [Plattform-Betriebsstand](platform-readiness.md#vorfall-2026-09-30-erster-plattform-apply-unvollständig).
+Platform recovery completed (2026-09-30): run 36675347654 imported partial inventory and completed platform. Nine resources independently checked in encrypted remote state; PostgreSQL READY, CF active, Secrets Manager Running. Lost technical credentials replaced in a controlled way. Job timeout increased to 100 minutes, orderly OpenTofu termination and encrypted diagnostic/state artifacts added. One-time approvals removed. Next expansion after no-op acceptance: CF runtime/bindings and access tests from CF. [Current acceptance](platform-readiness.md#erfolgreiche-recovery-und-plattform-abnahme).
 
+No-op acceptance completed: platform run 36675895279 shows `no-op` for all nine resources; recovery/Apply correctly skipped. Validation 36675895374 successful. Platform is thus consistently under IaC management.
 
-Plattform-Recovery abgeschlossen (2026-09-30): Run 36675347654 importierte den Teilbestand und vervollständigte die Plattform. Neun Ressourcen im verschlüsselten Remote-State unabhängig geprüft; PostgreSQL READY, CF aktiv, Secrets Manager Running. Verlorene technische Credentials kontrolliert ersetzt. Job-Timeout auf 100 Minuten erhöht, geordneten OpenTofu-Abbruch und verschlüsselte Diagnose-/State-Artefakte ergänzt. Einmalfreigaben entfernt. Nächster Ausbauschritt nach No-op-Abnahme: CF-Runtime/Bindings und Zugriffstests aus CF. [Aktuelle Abnahme](platform-readiness.md#erfolgreiche-recovery-und-plattform-abnahme).
+CI decision 2026-09-30: at user request, replace custom JavaScript deployment Runner with direct visible OpenTofu steps in GitHub Actions. Small helpers exclusively prepare credentials, check plan integrity and protect state snapshots. Normal CLI logs are output live again; JSON credential/state output remains private. Separate completed recovery from regular workflow. Local validation and seed operation also use direct `tofu` commands. [Current operations guide](../infra/ci/README.md).
 
+CI simplification accepted: real direct OpenTofu Plans for bootstrap (36677111141), platform (36677111032) and backend (36677367229), each without changes; Apply skipped in each. Native logs visible and checked against known credentials. Validation including Linux timeout test successful. Temporary backend selection removed; feature branch remains separate from main.
 
-No-op-Abnahme abgeschlossen: Plattform-Run 36675895279 zeigt für alle neun Ressourcen `no-op`; Recovery/Apply korrekt übersprungen. Validierung 36675895374 erfolgreich. Die Plattform ist damit konsistent unter IaC-Verwaltung.
+<a id="aktueller-meilenstein-cf-hosting-und-service-verbindungen"></a>
+## Current milestone: CF hosting and service connections
 
+Owner: `@lweberru`. All changes remain on `feature/landing-zone-configurator`.
+User approval of 2026-09-30 covers necessary Configurator deployment Applies until MVP.
+Specific plans are still reviewed; this approval does not permit changing customer
+resources or other projects.
 
-CI-Entscheidung 2026-09-30: Auf Benutzerwunsch den eigenen JavaScript-Deployment-Runner durch direkte, sichtbare OpenTofu-Schritte in GitHub Actions ersetzen. Kleine Hilfsprogramme bereiten ausschließlich Credentials vor, prüfen Planintegrität und schützen State-Snapshots. Normale CLI-Logs werden wieder live ausgegeben; JSON-Credential-/State-Ausgaben bleiben privat. Abgeschlossene Recovery vom regulären Ablauf trennen. Auch lokale Validierung und Seed-Bedienung verwenden direkte `tofu`-Befehle. [Aktuelle Betriebsanleitung](../infra/ci/README.md).
+- [x] Separate runtime IaC for CF space and roles.
+- [x] Separate PostgreSQL/Secrets runtime identities; no migration or provisioning access in app.
+- [x] Declarative CF manifest under `deploy/cloud-foundry/`; OpenTofu and release have separate responsibilities.
+- [x] Independent release pipeline with direct `cf push`, versioned Node runtime package and connection test as CF task.
+- [x] Public HTTPS route, UI/JS delivery and protected API (401) checked.
+- [x] PostgreSQL: login, SELECT and verified TLS connection from CF successful.
+- [x] Secrets Manager: login, TLS, authenticated KV read endpoint and rejection without token checked from CF.
+- [x] Final [release run 36683898762](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898762) fully successful; [validation 36683898795](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898795) also green.
 
+Evidence and network correction: [platform operational status](platform-readiness.md).
+Skeleton is not yet a usable Configurator and processes no customer configurations
+or personal cloud credentials.
 
-CI-Vereinfachung abgenommen: echte direkte OpenTofu-Pläne für Bootstrap (36677111141), Plattform (36677111032) und Backend (36677367229) jeweils ohne Änderungen; Apply jeweils übersprungen. Native Logs sichtbar und gegen bekannte Credentials geprüft. Validierung einschließlich Linux-Timeout-Test erfolgreich. Temporäre Backend-Auswahl entfernt; Feature-Branch bleibt getrennt von main.
+Next business milestone:
 
+- [ ] Decide GitHub App/OAuth integration, register callback URL and implement user login.
+- [ ] Secure tenants, memberships and sessions with DB schema/migrations/RLS.
+- [ ] Import one existing Accelerator template as first vertical workflow, edit business settings and save in personal fork.
+- [ ] Personal deployment credentials: add tenant-specific access rules, secret-write identity and write/read/rotation test.
+- [ ] Then integrate Plan/Apply Runner, approvals, graphical configuration and bounded chat.
 
-## Aktueller Meilenstein: CF-Hosting und Service-Verbindungen
+Before production additionally: dedicated CF deployer with space-only permissions, narrower credential publication for releases, rotation, restore acceptance, rolling deployment and defined rollback. These are not marked complete by the first connectivity test.
 
-Owner: `@lweberru`. Alle Änderungen bleiben auf `feature/landing-zone-configurator`.
-Die Benutzerfreigabe vom 2026-09-30 umfasst notwendige Configurator-Deployment-
-Applies bis zum MVP. Konkrete Pläne werden weiterhin geprüft; die Freigabe ist
-keine Erlaubnis, Kundenressourcen oder fremde Projekte zu ändern.
+<a id="portal-design-und-beginn-des-login-meilensteins-2026-09-30"></a>
+## Portal design and start of login milestone (2026-09-30)
 
-- [x] Separate Runtime-IaC für CF-Space und Rollen.
-- [x] Separate PostgreSQL-/Secrets-Laufzeitidentitäten; kein Migrations- oder Provisionierungszugang in der App.
-- [x] Deklaratives CF-Manifest unter `deploy/cloud-foundry/`; OpenTofu und Release haben getrennte Zuständigkeiten.
-- [x] Unabhängige Release-Pipeline mit direktem `cf push`, versioniertem Node-Runtime-Paket und Verbindungstest als CF-Task.
-- [x] Öffentliche HTTPS-Route, UI-/JS-Auslieferung und gesperrte API (401) geprüft.
-- [x] PostgreSQL: Login, SELECT und geprüfte TLS-Verbindung aus CF erfolgreich.
-- [x] Secrets Manager: Login, TLS, authentifizierter KV-Lese-Endpunkt und Ablehnung ohne Token aus CF geprüft.
-- [x] Abschließender [Release-Run 36683898762](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898762) vollständig erfolgreich; [Validierung 36683898795](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36683898795) ebenfalls grün.
+New confirmed requirement: look and feel should be identical to official STACKIT Portal. Reference is the project start page opened by the user. [Design comparison and progress](design-reference.md) document acceptance. Public portal assets were subsequently successfully captured without login through `curl`. Original NDS tokens and font definitions are documented with their brand/theme selectors; [retrieval tool](../tools/portal-reference/README.md). Rendered project view and active brand/theme selection are not yet visually confirmed.
 
-Nachweise und Netzkorrektur: [Plattform-Betriebsstand](platform-readiness.md).
-Das Grundgerüst ist noch kein nutzbarer Configurator und verarbeitet keine
-Kundenkonfigurationen oder persönlichen Cloud-Zugangsdaten.
+[GitHub App draft](../deploy/github/README.md) and tested PKCE/state/session-token helpers are prepared. This enables no login yet and does not mean completed session, RLS or token-store integration.
 
-Nächster fachlicher Meilenstein:
+<a id="template-auswahl-und-erster-editor-2026-09-30"></a>
+## Template selection and first editor (2026-09-30)
 
-- [ ] GitHub-App/OAuth-Integration festlegen, Callback-URL registrieren und Benutzerlogin umsetzen.
-- [ ] Mandanten, Mitgliedschaften und Sessions mit Datenbankschema/Migrationen/RLS absichern.
-- [ ] Ein vorhandenes Accelerator-Template als ersten vertikalen Ablauf importieren, fachlich bearbeiten und im persönlichen Fork speichern.
-- [ ] Persönliche Deployment-Credentials: mandantenbezogene Zugriffsregeln, Secrets-Schreibidentität und Write/Read/Rotation-Test ergänzen.
-- [ ] Danach Plan/Apply-Runner, Freigaben, grafische Konfiguration und begrenzten Chat integrieren.
+- [x] Import eight real repository templates through pinned Go/HCL adapter.
+- [x] Template catalogue with SHA-256, search and graphical organization structure.
+- [x] Standalone copy: edit foundations, Landing Zones, sandboxes, environments and Secrets Manager selection.
+- [x] Check placeholders, missing information and duplicate project identifiers; preserve untouched attributes.
+- [x] Download versioned local draft; clearly label GitHub saving as follow-up.
+- [x] Document original Nebula tokens, STACKIT logo, DIN 2014 and Univia Pro with provenance.
+- [x] App tests, HCL tests and desktop/mobile browser workflow successful locally.
+- [x] Include catalogue freshness and browser workflow in validation/release pipeline.
+- [x] Accept feature-branch release on CF and connection tests.
+- [ ] Visually confirm portal parity and close remaining component/icon differences.
+- [ ] Implement GitHub login, RLS/tenant model and saving in selected fork.
 
-Vor Produktion zusätzlich: eigener CF-Deployer mit nur Space-Rechten, schmalere
-Credential-Veröffentlichung für Releases, Rotation, Restore-Abnahme, Rolling
-Deployment und definierter Rollback. Diese Punkte werden nicht durch den ersten
-Konnektivitätstest als erledigt markiert.
+Important limits: editor currently edits only standalone; complex templates are readable previews. At that time, drafts lived only in tab memory; resumption documented below now adds browser storage. Download initially was an `.lzc.json` draft. Current status adds native `.tfvars` and editable JSON storage in fork (see [forks and navigation](forks-and-navigation.md)). No customer deployment occurs.
 
+Existing standalone template contains no explicit Corporate assignment although `variables.tf` defaults to `true`. Edited copy sets `corporate: false`, matching its missing network hub; Accelerator itself stays unchanged. Later export additionally needs schema/Plan acceptance.
 
-## Portal-Design und Beginn des Login-Meilensteins (2026-09-30)
+Acceptance of this status: commit `76db252` on `feature/landing-zone-configurator`. [Validation 36689446249](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36689446249) and [release 36689446170](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36689446170) successful. Pipeline checks 16 app tests, HCL adapter and four browser cases (desktop/mobile). CF push, service connection tests and public smoke checks successful. Additionally checked on live URL: eight templates, standalone editor, health 200, session without login 401 and no JavaScript runtime errors. No infrastructure change or merge to main.
 
-Neue bestätigte Anforderung: Das Look & Feel soll identisch zum offiziellen
-STACKIT Portal werden. Referenz ist die vom Benutzer geöffnete Projektstartseite.
-[Design-Abgleich und Fortschritt](design-reference.md) dokumentieren die Abnahme.
-Die öffentlichen Portal-Assets wurden anschließend erfolgreich ohne Anmeldung per
-`curl` erfasst. Originale NDS-Tokens und Schriftdefinitionen sind mit ihren
-Marken-/Theme-Selektoren dokumentiert; [Abrufwerkzeug](../tools/portal-reference/README.md).
-Die gerenderte Projektansicht und ihre aktive Marken-/Theme-Auswahl sind noch
-nicht visuell bestätigt.
+<a id="kunden-plan-2026-09-30"></a>
+### Customer Plan, 2026-09-30
 
-Der [GitHub-App-Entwurf](../deploy/github/README.md) und die getesteten
-PKCE-/State-/Session-Token-Helfer sind vorbereitet. Dies aktiviert noch keinen
-Login und bedeutet keine abgeschlossene Session-, RLS- oder Token-Store-Integration.
+User confirms personal access test and complete deployment preparation. Customer Plan may be tested; **customer Apply only after fresh explicit approval**, no Destroy. Configurator infrastructure approval does not cover it. D07: adopt existing LZA bootstrap followed by customer backend. Value-free Plan analysis and local real OpenTofu contract test implemented; production customer Runner still outstanding. [Implementation and acceptance](plan-execution.md).
 
+<a id="plan-only-ausführung"></a>
+### Plan-only execution
 
-## Template-Auswahl und erster Editor (2026-09-30)
+Persisted personal Plan jobs and isolated CF tasks in a dedicated organization implemented; initial provisioning only after confirmation of empty state. Direct init/validate/plan/show commands, fixed engine/providers, sanitized action counts and cancellation. No Apply/Destroy endpoint. Durable bootstrap-state backup and exact Apply artifacts remain open prerequisites. [Acceptance](plan-execution.md).
 
-- [x] Acht echte Repository-Templates über einen gepinnten Go/HCL-Adapter importieren.
-- [x] Template-Katalog mit SHA-256, Suche und grafischer Organisationsstruktur.
-- [x] Standalone-Kopie: Grundlagen, Landing Zones, Sandboxes, Umgebungen und Secrets-Manager-Auswahl bearbeiten.
-- [x] Platzhalter, fehlende Angaben und doppelte Projektkennungen prüfen; unberührte Attribute erhalten.
-- [x] Versionierten lokalen Entwurf herunterladen; GitHub-Speicherung klar als Folgeschritt kennzeichnen.
-- [x] Originale Nebula-Tokens, STACKIT-Logo, DIN 2014 und Univia Pro mit Herkunft dokumentieren.
-- [x] App-Tests, HCL-Tests und Browserablauf für Desktop/Mobil lokal erfolgreich.
-- [x] Katalog-Aktualität und Browserablauf in Validierungs-/Release-Pipeline aufnehmen.
-- [x] Feature-Branch-Release auf CF und Verbindungstests abnehmen.
-- [ ] Portal-Parität visuell bestätigen und verbleibende Komponenten-/Icon-Abweichungen schließen.
-- [ ] GitHub-Login, RLS/Mandantenmodell und Speicherung im ausgewählten Fork umsetzen.
-
-Wichtige Grenzen: Der Editor bearbeitet bisher nur Standalone; komplexe Templates
-sind lesbare Vorschauen. Im damaligen Stand lagen Entwürfe nur im Tab-Arbeitsspeicher;
-die unten dokumentierte Wiederaufnahme ergänzt nun Browserspeicherung. Der Download
-war zunächst ein `.lzc.json`-Entwurf. Der aktuelle Stand ergänzt native `.tfvars`
-und bearbeitbare JSON-Ablage im Fork (siehe [Forks und Navigation](forks-and-navigation.md)). Es findet kein Kunden-Deployment statt.
-
-Die bestehende Standalone-Vorlage enthält keine explizite Corporate-Zuordnung,
-obwohl `variables.tf` standardmäßig `true` verwendet. Die bearbeitete Kopie setzt
-`corporate: false`, passend zu ihrem fehlenden Netzwerk-Hub; der Accelerator selbst
-bleibt unverändert. Ein späterer Export benötigt zusätzlich Schema-/Plan-Abnahme.
-
-
-Abnahme dieses Stands: Commit `76db252` auf `feature/landing-zone-configurator`.
-[Validierung 36689446249](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36689446249)
-und [Release 36689446170](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36689446170)
-sind erfolgreich. Die Pipeline prüft 16 App-Tests, den HCL-Adapter und vier
-Browserfälle (Desktop/Mobil). CF-Push, Service-Verbindungstests und öffentliche
-Smoke-Checks waren erfolgreich. Zusätzlich auf der Live-URL geprüft: acht
-Templates, Standalone-Editor, Health 200, Session ohne Login 401 und keine
-JavaScript-Laufzeitfehler. Keine Infrastrukturänderung und kein Merge nach main.
-
-### Kunden-Plan, 2026-09-30
-
-Benutzer bestätigt persönlichen Zugangstest und vollständige Deployment-Vorbereitung.
-Kunden-Plan darf getestet werden; **Kunden-Apply ausschließlich nach neuer ausdrücklicher
-Freigabe**, kein Destroy. Die Configurator-Infrastrukturfreigabe gilt dafür nicht.
-D07: bestehenden LZA-Bootstrap mit anschließendem Kunden-Backend übernehmen. Wertfreie Plan-Auswertung und lokaler echter
-OpenTofu-Vertragstest umgesetzt; produktiver Kunden-Runner noch offen.
-[Umsetzung und Abnahme](plan-execution.md).
-
-### Plan-only-Ausführung
-
-Persistierte persönliche Plan-Aufträge und isolierte CF-Tasks in eigener Organisation
-umgesetzt; Erstbereitstellung nur nach Bestätigung eines leeren States. Direkte
-init/validate/plan/show-Befehle, feste Engine/Provider, bereinigte Aktionszahlen und
-Abbruch. Kein Apply-/Destroy-Endpunkt. Dauerhafte Bootstrap-State-Sicherung und
-exakte Apply-Artefakte bleiben offene Voraussetzungen. [Abnahme](plan-execution.md).
-
-### Wiederaufnahme und Ordnerprüfung, 2026-09-30
-
-- [x] Automatische Fork-Liste und kontogebundene Wiederaufnahme im selben Browser
-  einschließlich lokalem Entwurf, letzter Seite und ursprünglicher Git-Schreibbasis.
-- [ ] Geräteübergreifende persönliche Arbeitsbereiche in PostgreSQL.
-- [x] Ordnerhierarchie des Accelerators prüfen und Empfehlung dokumentieren.
-- [x] Ordner-Editor und Strukturvorschau nach ausdrücklicher fachlicher Bestätigung umsetzen.
-
-Details: [Arbeitsstand](forks-and-navigation.md#arbeitsstand-beim-wiederkommen),
-[gemeinsamer Editor](common-editor.md).
-
-
-Abnahme Wiederaufnahme/Ordner: Code `21b5529`,
-[Release 36729582680](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36729582680)
-erfolgreich. Aktuelle Grenzen siehe [MVP-Umfang](mvp-scope.md).
-Der Benutzer öffnet seine bestehende Konfiguration einmal, um den ersten lokalen
-Arbeitsstand zu speichern. Weitere Besuche im selben Browser stellen ihn wieder her.
-Nach Konfigurationsänderungen ist eine neue unveränderliche Deployment-Vorbereitung
-nötig. Persönlicher Initial-Plan kann jetzt getestet werden; Apply bleibt gesperrt.
-
-### Architekturkorrektur: gemeinsames Feature-Modell, 2026-09-30
-
-Benutzer fordert alle Accelerator-Funktionen unabhängig vom gewählten Beispiel.
-Templates sind Presets; der Standalone-Editor ist keine tragfähige Grenze des
-Datenmodells. [Gemeinsames Funktionsmodell und Umsetzungsplan](common-feature-model.md)
-und [generiertes Eingabeinventar](accelerator-inputs.json) sind die Grundlage.
-
-Die feste Public-/Sandbox-Zuordnung im veröffentlichten Projekte-Schritt ist noch
-offen. Der unveröffentlichte Corporate-Einzelbereich-Prototyp wurde gesichert und
-nicht ausgeliefert. Die Korrektur erfolgt als gemeinsame Projekt-/Netzwerkstruktur
-mit mehreren Bereichen und Regionen, anschließend vollständiger Feature-Abdeckung.
-
-### Accelerator-Grenzen und Issue-Verfolgung, 2026-09-30
-
-[Grenzen- und Issue-Register](accelerator-limitations.md) ist Bestandteil des
-gemeinsamen Feature-Modells. #37 bleibt der separate Arbeitsstrang für private
-SNA-Kubernetes-APIs; #65 deckt Multi-Appliance-Firewall-Policies ab.
-Zusätzlich wurden #80 (regionale Namespace-Zuordnung), #81 (Object-Lock-Default),
-#82 (Ordnerbeschreibung) und #83 (fehlender Root-Vertrag für Moduloptionen) angelegt.
-
-Die Registrierung dieser Grenzen implementiert noch keine Laufzeitprüfung.
-Capability-Prüfungen im Backend und Hinweise im Editor sind vor Freigabe der
-betroffenen erweiterten Konfigurationen umzusetzen. Kein Kunden-Apply ausgeführt.
-
-### Gemeinsamer Konfigurationskern, 2026-09-30
-
-- [x] Templateunabhängiges v3-Dokument und Feldkatalog für alle 28 Root-Eingaben.
-- [x] Verlustfreier Import/Export aller acht Vorlagen; geprüfte Legacy-Migration.
-- [x] Gemeinsame Projekt-/Bereichsprojektionen und erste Referenz-/Capability-Regeln.
-- [x] Native HCL-Roundtrips und direkte OpenTofu-Variablenvertragstests in CI ergänzen.
-- [x] Neu entdeckten Standalone-Defaultfehler als Accelerator-Issue #84 erfassen.
-- [x] Gemeinsamen Editor, Arbeitsstand/Fork-Speicher und API auf den neuen Kern umstellen.
-- [ ] Übrige Feature-Editoren, Credential-Bindings und serverseitige Ausführungsprüfung.
-
-Die Produkt-API bleibt vorerst auf v1/v2 beschränkt. Keine Kunden-Ausführung und
-keine Änderungen an Accelerator-Modulen. Details im
-[Domain-README](../app/packages/domain/README.md).
-
-### Gemeinsamer Editor und Release
-
-- [x] Sieben Editor-Bereiche, deutsche Fachbezeichnungen, optionale Einstellungen.
-- [x] Projektarten und Corporate-Region-/Bereichsauswahl vereinheitlichen.
-- [x] v3-Speicherung, Wiederaufnahme, Legacy-Migration und serverseitige Ausführungssperre.
-- [x] Desktop-/Mobil-Browsertests für neue und bestehende Abläufe.
-- [x] Veröffentlichung mit CF-/Datenbank-/Secrets-Manager-Verbindungstests.
-
-Details und Benutzer-Prüfliste: [gemeinsamer Editor](common-editor.md).
-
-Live-Abnahme: Code `527bd95`, Release `36745965953`, Validate `36745965890` erfolgreich.
-Neue v3-Konfigurationen sind bearbeitbar und speicherbar; ihre Deployment-Ausführung
-bleibt serverseitig gesperrt. [Abnahme](common-editor.md#live-abnahme).
-
-
-### Editor-Nachbesserungen: Plattformdienste, Auswahlfelder und Standalone (#84)
-
-- [x] Plattform-Kubernetes ausdrücklich über leere Clusterliste deaktivierbar; bestehende Abhängigkeiten bleiben prüfbar.
-- [x] Zentrales Observability und Audit-Protokollierung im Plattform-Reiter; Telemetry Router von Observability unterschieden.
-- [x] Bekannte Enum-Werte und regionale/Projekt-/Netzwerkreferenzen als Auswahlfelder.
-- [x] Accelerator-Standard ausdrücklich von Vorlagenwerten unterschieden.
-- [x] Neue Standalone-Entwürfe mit explizitem Public-Projekt; unveränderte Imports und bestehende Exporte beibehalten.
-- [x] 96 Anwendungstests, 22 Desktop-/Mobilprüfungen und 11 native OpenTofu-Variablentests erfolgreich.
-- [ ] Regionale Live-Kataloge für Produktpläne, Maschinentypen und Versionen anbinden.
-- [x] Veröffentlichung `10a6ec8` und Live-Abnahme dieses Nachbesserungsstands; Release 36752620332 erfolgreich.
-
-### Verbindliche Bedienprinzipien und Komponentenansicht
-
-Entscheidung: [Designprinzipien und VPN-Umsetzungsplan](editor-design-principles.md).
-Produkt-/Modulnamen, aktive Komponenten mit Hinzufügen-Katalog, progressive
-Detailanzeige und dokumentationsnahe Produktabläufe sind verbindliche Leitlinien.
-Die vollständige Feature-Abdeckung darf nicht zu einem dauerhaft aufgeklappten
-Variablenformular führen. Umsetzung und Abnahme werden im verlinkten Plan verfolgt.
-
-### Platform Landing Zone und Application Self-Service (Architekturdiskussion)
-
-Zielbild und offene Entscheidungen: [Platform-/Application-Architektur](platform-application-architecture.md).
-
-- [x] Plattformressourcen, veröffentlichte Application Templates und Instanzen fachlich getrennt.
-- [x] Zwei mandantenbezogene Personas vorgesehen; Configurator-Rechte, STACKIT-IAM und Git-Zugriff getrennt behandelt.
-- [x] Separate Accelerator-Roots, getrennte States und versionierter Plattformvertrag als Ziel eingeplant.
-- [x] Benutzer bestätigt unveränderliche veröffentlichte Versionen, ausdrückliche Upgrades und je Template vom Platform Engineer wählbare direkte oder genehmigungspflichtige Bereitstellung.
-- [ ] STACKIT-Login/OIDC-Client und delegierten Bootstrap-Zugriff technisch verifizieren.
-- [ ] Application-Owner-Git-Ablage, Team-Zuordnung und Templateumfang entscheiden.
-- [ ] Accelerator-Verträge und Bestandsmigration entwerfen; keine automatische State-Aufteilung.
-- [ ] Serverseitige Autorisierung und Templateinstanziierung vor Einführung der Rollenansichten implementieren.
-
-Die laufende Regions-/SNA- und VPN-Oberfläche wird unabhängig davon weitergebaut.
-Sie gehört perspektivisch zur Platform-Engineer-Sicht. Bis zur Umsetzung bleiben
-heutige Berechtigungen und die ausdrückliche Freigabepflicht für Kunden-Apply bestehen.
-
-### Regions-/SNA-Ansicht und VPN-Konfiguration: lokaler Prüfstand 2026-10-01
-
-- [x] Connectivity nach Regionen mit SNAs und optionalen Diensten dargestellt; bisherige Engine-Eingabeformen bleiben erhalten.
-- [x] Neue Regionen für regionale Konfigurationen hinzufügbar; Bestandsumstellung auf regionale Module nicht automatisiert.
-- [x] VPN-Assistent für Gateway, Routing, Verbindungen/Tunnel und Zusammenfassung.
-- [x] Grundlegende VPN-Pflichtangaben auch im gemeinsamen Validierungsmodell geprüft; keine Aussage über vollständige Provider-/Produktvalidierung.
-- [x] Grenze der VPN-Replikation auf alle SNAs gegen main geprüft und als Issue #85 erfasst.
-- [x] Lint/TypeScript/Build, 97 Anwendungstests und 24 Desktop-/Mobil-Browserfälle erfolgreich; mobile VPN-Ansicht visuell geprüft.
-- [ ] Veröffentlichung und Live-Abnahme; dieser Stand ist noch nicht deployed.
-
-VPN-PSKs, dynamische Produktkataloge, tatsächliche VPN-Ausführung und die neue
-Self-Service-Rollenarchitektur bleiben gesonderte Arbeitspakete. Kein Kunden-Apply.
-
-
-### Veröffentlichung und Einstieg in Self-Service (2026-10-01)
-
-- [x] Editor-Release `78d8f7c` auf lzc-dev veröffentlicht; Release 36830339767 und Validate 36830339847 erfolgreich.
-- [x] Regionsansicht, Komponenten und VPN mit zwei Tunneln direkt live geprüft; Gesundheits-/Sitzungsprüfungen erfolgreich.
-- [x] Prototyp `src/application` für eine neue Anwendungsinstanz, getrennt vom kombinierten Root.
-- [x] Reiner Template-/Plattformvertrag-Compiler mit Owner aus Serverkontext und isoliertem State-Key.
-- [x] Vier Compiler-Tests (101 Anwendungstests insgesamt) und vier native Mock-Plan-Tests erfolgreich; `tofu validate` erfolgreich mit bestehenden Observability-Deprecation-Warnungen.
-- [ ] Separate Plattform-Veröffentlichung, unveränderliche Template-Persistenz und Identitäts-/Rollenverwaltung.
-- [ ] Server-API, Instanz-Idempotenz, eingeschränkte Credentials, Queue/Runner und tatsächlicher autorisierter Kunden-Plan.
-
-Der Prototyp aktiviert keine neue Berechtigung und keinen Apply. Der Application-
-Root erzeugt neben optionalen Diensten die bereits im Modul enthaltenen
-Automations- und Object-Storage-Ressourcen; dies ist Teil des zu veröffentlichenden
-Templateumfangs. Bestehende States werden nicht umgestellt.
-
-
-### VPN-BGP-Erweiterung erfasst
-
-- [x] Offene und geschlossene VPN-/BGP-Issues abgeglichen; kein dediziertes offenes BGP-Issue vorhanden.
-- [x] [#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) für BGP-Unterstützung angelegt, einschließlich Prüfung des historischen Provider-Blockers mit der aktuellen gepinnten Version.
-- [ ] Accelerator-Unterstützung und Tests umsetzen; anschließend Configurator-Schema, Assistent und Engine-Freigabe aktualisieren.
-
-BGP bleibt bis dahin im Configurator gesperrt. Keine Änderung am Live-Deployment.
-
-### Benutzerverwaltung und API-gestützte Produktoptionen
-
-- [x] Interne Benutzeridentität von externer GitHub-Identität getrennt (Migration 006).
-- [x] Entwurfs-Organisationstenants, Rollenmitgliedschaften und Verwaltung implementiert (Migration 007).
-- [x] Persönliche GitHub-Token beim Tenant-Wechsel getrennt halten; bestehende Benutzer nicht automatisch hochstufen.
-- [x] Aktuelle Produktoptionen über persönlichen STACKIT-Zugang abfragen: Git-Leistungsklassen, VPN-Pläne, SKE-Versionen, Node-Flavors, Zonen und Volume-Typen.
-- [x] Bestandswerte bei fehlenden Katalogeinträgen erhalten; Ausfall einzelner Produkt-APIs sichtbar machen.
-- [ ] Live-Abnahme der neuen Verwaltung und Produktkataloge mit Benutzerkonten und ausgewähltem persönlichem STACKIT-Zugang.
-- [ ] STACKIT-IDP-Ticket klären und Organisationsbindung verifizieren.
-- [ ] Serverseitige Produktverfügbarkeit unmittelbar vor Plan/Deployment erneut prüfen; Kataloge allein garantieren weder Quote noch Kapazität.
-- [ ] Weitere dynamische Felder nach Produkt-API-Verfügbarkeit ergänzen.
-
-Organisationstenants bleiben bis zur verifizierten STACKIT-Anbindung Verwaltungsentwürfe;
-Kunden-Apply bleibt unverändert freigabepflichtig. Details in der
-[Platform-/Application-Architektur](platform-application-architecture.md).
-
-Prüfstand für Commit `59b0a04`: Lint/TypeScript/Build, 114 Anwendungstests,
-17 PostgreSQL-Integrationstests und alle 30 Desktop-/Mobil-Browserfälle erfolgreich.
-Die Organisationsansicht wurde zusätzlich auf mobilen Überlauf geprüft und visuell
-kontrolliert. Validate-Workflow
-[36836376140](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36836376140)
-ist erfolgreich. Die Katalogtests verwenden kontrollierte API-Antworten; eine
-Live-Abfrage mit einem persönlichen Benutzerzugang steht noch aus.
-
-- [x] Commit `59b0a04` auf lzc-dev veröffentlicht: [Release 36836376110](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36836376110) erfolgreich, einschließlich Migrationen, CF-Deployment und Runner-Prüfungen.
-- [x] Live-Gesundheit, neue Organisationsseite und Netzwerk-Deep-Link geprüft; ausgeliefertes Bundle `index-DxHvyiWG.js`. Anonymer Zugriff auf die Organisations-API wird mit 401 abgewiesen.
-- [ ] Benutzerabnahme: persönliche Produktkatalog-Abfrage und Organisations-Mitgliederverwaltung mit zwei Benutzerkonten.
-
-### Rückmeldungen zu Komponenten, Katalogen und Arbeitsbereichen
-
-- [x] Diagnose-Bastion gegen Accelerator geprüft: VM im Cluster-Projekt/SNA-Netz; unabhängige Komponente als [#87](https://github.com/stackitcloud/stackit-landing-zone/issues/87) erfasst.
-- [x] Zentrale und clusterbezogene Observability getrennt erklärt; Referenz statt Neuanlage als [#88](https://github.com/stackitcloud/stackit-landing-zone/issues/88) erfasst. Zulässige Projekt-/Regionsbeziehungen vor Umsetzung prüfen.
-- [x] Löschen leerer unverifizierter Organisationsentwürfe als auditierbare Archivierung ergänzt; keine Cloud-Ressourcen werden gelöscht.
-- [x] Benutzerkennung mit UUID-Beispiel, Kopierfunktion und verständlicher Validierung erklärt; Leerzeichen beim Einfügen entfernt.
-- [x] Versehentliche doppelte Anlage gleichnamiger zugänglicher Arbeitsbereiche für dieselbe Organisations-ID serverseitig abgefangen.
-- [ ] Unabhängigen Bastion-Root-Vertrag und sichere Observability-Referenzen im Accelerator implementieren; keine Änderung bestehender Ressourcenadressen ohne Migrationskonzept.
-
-- [x] Observability-Plan-Auswahl für eu01 sowie Bastion-Maschinentypen, öffentliche Images und IaaS-Zonen ergänzt; eu02-Observability bleibt mangels verifizierter API-Quelle manuell.
-- [x] PIM-v2-Angebotskatalog geprüft und gegenüber technischen Produktkatalogen abgegrenzt; kein automatischer SKU-zu-Provider-ID-Adapter eingeführt.
-- [x] Lokale Prüfung dieser Erweiterung: 117 Anwendungstests, 18 PostgreSQL-Tests, 30 Desktop-/Mobil-Browserfälle sowie Lint/TypeScript/Build erfolgreich.
-
-Veröffentlicht auf lzc-dev mit Commit `3532645`:
-[Release 36840987284](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36840987284)
-und [Validierung 36840987238](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36840987238)
-erfolgreich. Migration 008, Cloud-Foundry-Deployment und Abschlussprüfungen erfolgreich;
-Live-Health und Organisationsseite liefern HTTP 200, Bundle `index-DqgRf507.js`.
-Keine realen Arbeitsbereiche während der Entwicklung/Veröffentlichung gelöscht;
-keine Kunden-Apply-Ausführung. Produkt-APIs mit kontrollierten Antworten getestet,
-persönliche Live-Abnahme der neu ergänzten Kataloge bleibt offen.
-
-### Einladungsbasierte Mitgliederverwaltung
-
-- [x] UUID-Eingabe durch Rollenwahl und einmaligen Einladungslink ersetzt.
-- [x] Sieben Tage Gültigkeit, offene Einladungen auflisten und widerrufen; keine E-Mail-Zustellung.
-- [x] Token nur gehasht speichern; Beitritt nach Anmeldung und ausdrücklicher Bestätigung.
-- [x] GitHub-Erstanmeldung legt den internen Benutzer an; Einladungsabsicht bleibt im selben Browser-Tab erhalten.
-- [x] Keine Rolleneskalation vorhandener Mitglieder über Einladungen; alte API fügt keine unbekannten Mitglieder mehr hinzu.
-- [x] Audit sowie Schutz vor paralleler Mehrfachannahme, Widerruf, Ablauf und archivierten Tenants.
-- [ ] Spätere optionale Zustellung per E-Mail / Auswahl verifizierter STACKIT-Organisationsmitglieder.
-
-Lokale Abnahme: Lint/TypeScript/Build, 118 Anwendungstests, 21 echte PostgreSQL-
-Tests und 32 Desktop-/Mobil-Browserfälle erfolgreich. Browserprüfung deckt das
-Erstellen/Widerrufen und die Einladungsfortsetzung nach dem Login ab; DB-Prüfung
-deckt insbesondere konkurrierende Annahme, Hashspeicherung, Ablauf, Widerruf,
-archivierte Tenants und entzogene Verwaltungsrechte ab.
-
-Einladungsablauf auf lzc-dev veröffentlicht mit Commit `dde3379`:
-[Release 36846494967](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36846494967)
-und [Validierung 36846494917](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36846494917)
-erfolgreich. Migration 009 und Abschlussprüfungen erfolgreich. Live-Health und
-Organisationsseite HTTP 200, Bundle `index-DFtM2hCS.js`; anonyme Einladungsabfrage
-HTTP 401. Keine realen Einladungen durch Entwicklung/Deployment erzeugt oder
-versendet. Benutzerabnahme mit zweitem Konto bleibt offen.
+<a id="wiederaufnahme-und-ordnerprüfung-2026-09-30"></a>
+### Resumption and folder checks, 2026-09-30
+
+- [x] Automatic fork list and account-bound resumption in same browser, including local draft, last page and original Git write baseline.
+- [ ] Cross-device personal workspaces in PostgreSQL.
+- [x] Check Accelerator folder hierarchy and document recommendation.
+- [x] Implement folder editor and structure preview after explicit business confirmation.
+
+Details: [working state](forks-and-navigation.md#arbeitsstand-beim-wiederkommen), [common editor](common-editor.md).
+
+Resumption/folder acceptance: code `21b5529`, [release 36729582680](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36729582680) successful. Current limits: [MVP scope](mvp-scope.md). User opens existing configuration once to save first local working state. Further visits in same browser restore it. Configuration changes require a new immutable deployment preparation. Personal initial Plan can now be tested; Apply stays blocked.
+
+<a id="architekturkorrektur-gemeinsames-feature-modell-2026-09-30"></a>
+### Architecture correction: common feature model, 2026-09-30
+
+User requires all Accelerator capabilities regardless of selected example. Templates are presets; standalone editor is not a sustainable data-model boundary. [Common feature model and implementation plan](common-feature-model.md) and [generated input inventory](accelerator-inputs.json) form the foundation.
+
+Fixed Public/sandbox assignment in the published project step remains open. Unpublished Corporate single-area prototype was saved and not delivered. Correction uses a common project/network structure with multiple areas and regions, then complete feature coverage.
+
+<a id="accelerator-grenzen-und-issue-verfolgung-2026-09-30"></a>
+### Accelerator limitations and issue tracking, 2026-09-30
+
+[Limitations and issue register](accelerator-limitations.md) is part of the common feature model. #37 remains separate workstream for private SNA Kubernetes APIs; #65 covers multi-appliance firewall policies. Additionally created: #80 (regional namespace assignment), #81 (Object Lock default), #82 (folder description) and #83 (missing root contract for module options).
+
+Registering these limitations implements no runtime check yet. Backend capability checks and editor notices must be implemented before approving affected extended configurations. No customer Apply executed.
+
+<a id="gemeinsamer-konfigurationskern-2026-09-30"></a>
+### Common configuration core, 2026-09-30
+
+- [x] Template-independent v3 document and field catalogue for all 28 root inputs.
+- [x] Lossless import/export of all eight templates; checked legacy migration.
+- [x] Common project/area projections and first reference/capability rules.
+- [x] Add native HCL roundtrips and direct OpenTofu variable contract tests in CI.
+- [x] Record newly discovered standalone default bug as Accelerator issue #84.
+- [x] Switch common editor, working-state/fork storage and API to new core.
+- [ ] Remaining feature editors, credential bindings and server-side execution checking.
+
+Product API initially remains restricted to v1/v2. No customer execution or changes to Accelerator modules. Details in [domain README](../app/packages/domain/README.md).
+
+<a id="gemeinsamer-editor-und-release"></a>
+### Common editor and release
+
+- [x] Seven editor areas, German business labels, optional settings.
+- [x] Unify project types and Corporate region/area selection.
+- [x] v3 saving, resumption, legacy migration and server-side execution block.
+- [x] Desktop/mobile browser tests for new and existing workflows.
+- [x] Publication with CF/database/Secrets Manager connection tests.
+
+Details and user checklist: [common editor](common-editor.md).
+
+Live acceptance: code `527bd95`, release `36745965953`, validation `36745965890` successful. New v3 configurations are editable and savable; their deployment execution remains blocked server-side. [Acceptance](common-editor.md#live-abnahme).
+
+<a id="editor-nachbesserungen-plattformdienste-auswahlfelder-und-standalone-84"></a>
+### Editor improvements: platform services, selection fields and standalone (#84)
+
+- [x] Platform Kubernetes explicitly disableable with empty cluster list; existing dependencies remain checkable.
+- [x] Central Observability and audit logging in platform tab; distinguish telemetry router from Observability.
+- [x] Known enum values and regional/project/network references as selection fields.
+- [x] Explicitly distinguish Accelerator default from template values.
+- [x] New standalone drafts with explicit Public project; retain unchanged imports and existing exports.
+- [x] 96 application tests, 22 desktop/mobile checks and 11 native OpenTofu variable tests successful.
+- [ ] Connect regional live catalogues for product plans, machine types and versions.
+- [x] Publication `10a6ec8` and live acceptance of this improvement status; release 36752620332 successful.
+
+<a id="verbindliche-bedienprinzipien-und-komponentenansicht"></a>
+### Binding interaction principles and component view
+
+Decision: [design principles and VPN implementation plan](editor-design-principles.md). Product/module names, active components with add catalogue, progressive detail disclosure and product workflows close to documentation are binding guidelines. Complete feature coverage must not become a permanently expanded variable form. Implementation and acceptance are tracked in the linked plan.
+
+<a id="platform-landing-zone-und-application-self-service-architekturdiskussion"></a>
+### Platform Landing Zone and Application self-service (architecture discussion)
+
+Target design and open decisions: [Platform/Application architecture](platform-application-architecture.md).
+
+- [x] Distinguish platform resources, published Application templates and instances in business terms.
+- [x] Plan two tenant-specific personas; treat Configurator permissions, STACKIT IAM and Git access separately.
+- [x] Plan separate Accelerator roots, separate states and versioned platform contract as target.
+- [x] User confirms immutable published versions, explicit upgrades and direct or approval-required provisioning selectable per template by Platform Engineer.
+- [ ] Technically verify STACKIT login/OIDC client and delegated bootstrap access.
+- [ ] Decide Application Owner Git storage, team assignment and template scope.
+- [ ] Design Accelerator contracts and legacy migration; no automatic state splitting.
+- [ ] Implement server-side authorization and template instantiation before introducing role views.
+
+Ongoing region/SNA and VPN UI work continues independently. It is intended for the future Platform Engineer view. Until implementation, today's permissions and explicit customer Apply approval requirement remain.
+
+<a id="regions-sna-ansicht-und-vpn-konfiguration-lokaler-prüfstand-2026-10-01"></a>
+### Region/SNA view and VPN configuration: local test status 2026-10-01
+
+- [x] Connectivity displayed by regions with SNAs and optional services; previous engine input forms retained.
+- [x] New regions addable for regional configurations; no automatic conversion of existing configurations to regional modules.
+- [x] VPN wizard for gateway, routing, connections/tunnels and summary.
+- [x] Basic mandatory VPN information also checked in common validation model; no claim of complete provider/product validation.
+- [x] VPN replication-to-all-SNAs limit checked against main and recorded as issue #85.
+- [x] Lint/TypeScript/build, 97 application tests and 24 desktop/mobile browser cases successful; mobile VPN view visually checked.
+- [ ] Publication and live acceptance; this status is not deployed yet.
+
+VPN PSKs, dynamic product catalogues, actual VPN execution and new self-service role architecture remain separate work packages. No customer Apply.
+
+<a id="veröffentlichung-und-einstieg-in-self-service-2026-10-01"></a>
+### Publication and entry into self-service (2026-10-01)
+
+- [x] Editor release `78d8f7c` published on lzc-dev; release 36830339767 and validation 36830339847 successful.
+- [x] Region view, components and VPN with two tunnels checked directly live; health/session checks successful.
+- [x] Prototype `src/application` for one new application instance, separate from combined root.
+- [x] Pure template/platform contract compiler with owner from server context and isolated state key.
+- [x] Four compiler tests (101 application tests overall) and four native mock Plan tests successful; `tofu validate` successful with existing Observability deprecation warnings.
+- [ ] Separate platform publication, immutable template persistence and identity/role management.
+- [ ] Server API, instance idempotency, restricted credentials, queue/Runner and actual authorized customer Plan.
+
+Prototype activates no new permission or Apply. Besides optional services, Application root creates automation and Object Storage resources already contained in the module; this is part of the template scope to publish. Existing states are not changed.
+
+<a id="vpn-bgp-erweiterung-erfasst"></a>
+### VPN BGP extension recorded
+
+- [x] Compare open and closed VPN/BGP issues; no dedicated open BGP issue exists.
+- [x] Create [#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) for BGP support, including checking historical provider blocker with current pinned version.
+- [ ] Implement Accelerator support and tests; then update Configurator schema, wizard and engine approval.
+
+BGP remains blocked in Configurator until then. No change to live deployment.
+
+<a id="benutzerverwaltung-und-api-gestützte-produktoptionen"></a>
+### User management and API-backed product options
+
+- [x] Separate internal user identity from external GitHub identity (migration 006).
+- [x] Implement draft organization tenants, role memberships and management (migration 007).
+- [x] Keep personal GitHub tokens separate during tenant switch; do not automatically promote existing users.
+- [x] Query current product options through personal STACKIT access: Git performance classes, VPN plans, SKE versions, node flavors, zones and volume types.
+- [x] Preserve existing values when catalogue entries are missing; make individual product API failures visible.
+- [ ] Live acceptance of new management and product catalogues with user accounts and selected personal STACKIT access.
+- [ ] Clarify STACKIT IDP ticket and verify organization binding.
+- [ ] Recheck product availability server-side immediately before Plan/deployment; catalogues alone guarantee neither quota nor capacity.
+- [ ] Add further dynamic fields as product APIs become available.
+
+Organization tenants remain management drafts until verified STACKIT binding; customer Apply still requires approval unchanged. Details in [Platform/Application architecture](platform-application-architecture.md).
+
+Test status for commit `59b0a04`: lint/TypeScript/build, 114 application tests, 17 PostgreSQL integration tests and all 30 desktop/mobile browser cases successful. Organization view additionally checked visually and for mobile overflow. Validation workflow [36836376140](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36836376140) successful. Catalogue tests use controlled API responses; a live query with personal user access remains outstanding.
+
+- [x] Commit `59b0a04` published on lzc-dev: [release 36836376110](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36836376110) successful, including migrations, CF deployment and Runner checks.
+- [x] Live health, new organization page and network deep link checked; delivered bundle `index-DxHvyiWG.js`. Anonymous organization API access rejected with 401.
+- [ ] User acceptance: personal product catalogue query and organization member management with two accounts.
+
+<a id="rückmeldungen-zu-komponenten-katalogen-und-arbeitsbereichen"></a>
+### Feedback on components, catalogues and workspaces
+
+- [x] Check diagnostic bastion against Accelerator: VM in cluster project/SNA network; independent component recorded as [#87](https://github.com/stackitcloud/stackit-landing-zone/issues/87).
+- [x] Explain central and cluster-specific Observability separately; reference instead of creation recorded as [#88](https://github.com/stackitcloud/stackit-landing-zone/issues/88). Check permitted project/region relationships before implementation.
+- [x] Add deletion of empty unverified organization drafts as auditable archiving; no cloud resources deleted.
+- [x] Explain user identifier with UUID example, copy function and understandable validation; remove whitespace on paste.
+- [x] Catch accidental duplicate creation of same-name accessible workspaces for same organization ID server-side.
+- [ ] Implement independent bastion root contract and secure Observability references in Accelerator; no changes to existing resource addresses without migration concept.
+
+- [x] Add Observability plan selection for eu01 and bastion machine types, public images and IaaS zones; eu02 Observability remains manual without verified API source.
+- [x] Check PIM v2 offering catalogue and distinguish from technical product catalogues; no automatic SKU-to-provider-ID adapter introduced.
+- [x] Local checks of this extension: 117 application tests, 18 PostgreSQL tests, 30 desktop/mobile browser cases and lint/TypeScript/build successful.
+
+Published on lzc-dev with commit `3532645`: [release 36840987284](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36840987284) and [validation 36840987238](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36840987238) successful. Migration 008, Cloud Foundry deployment and final checks successful; live health and organization page return HTTP 200, bundle `index-DqgRf507.js`. No real workspaces deleted during development/publication; no customer Apply execution. Product APIs tested with controlled responses; personal live acceptance of newly added catalogues remains outstanding.
+
+<a id="einladungsbasierte-mitgliederverwaltung"></a>
+### Invitation-based member management
+
+- [x] Replace UUID input with role selection and one-time invitation link.
+- [x] Seven-day validity, list and revoke open invitations; no email delivery.
+- [x] Store token only hashed; joining after login and explicit confirmation.
+- [x] First GitHub login creates internal user; invitation intent retained in same browser tab.
+- [x] No role escalation of existing members through invitations; old API no longer adds unknown members.
+- [x] Audit and protection against concurrent multiple acceptance, revocation, expiry and archived tenants.
+- [ ] Later optional email delivery / selection of verified STACKIT organization members.
+
+Local acceptance: lint/TypeScript/build, 118 application tests, 21 real PostgreSQL tests and 32 desktop/mobile browser cases successful. Browser checking covers creation/revocation and invitation continuation after login; DB checking particularly covers concurrent acceptance, hash storage, expiry, revocation, archived tenants and revoked management permissions.
+
+Invitation workflow published on lzc-dev with commit `dde3379`: [release 36846494967](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36846494967) and [validation 36846494917](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36846494917) successful. Migration 009 and final checks successful. Live health and organization page HTTP 200, bundle `index-DFtM2hCS.js`; anonymous invitation query HTTP 401. No real invitations created or sent by development/deployment. User acceptance with second account remains outstanding.

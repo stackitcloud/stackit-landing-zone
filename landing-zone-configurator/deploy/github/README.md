@@ -1,5 +1,7 @@
 # GitHub App
 
+[English](README.md) | [Deutsch](README.de.md)
+
 `app-manifest.json` is the reviewable registration draft for lzc-dev. It does not
 register an app, create credentials, install an app or activate login by itself.
 Registered on 2026-09-30 under `lweberru` as `lz-configurator-dev-7dbff805`; see [registration status](registration-plan.md).

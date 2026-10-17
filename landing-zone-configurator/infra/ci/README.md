@@ -1,24 +1,28 @@
 # OpenTofu in GitHub Actions
 
-Die zentrale [Workflow-Uebersicht](../../../docs/workflows.md) beschreibt alle
-Pipelines, automatische und manuelle Ausloeser, Eingaben und den Start im
-GitHub-UI. Diese Seite vertieft die Operator- und Freigabevertraege.
+[English](README.md) | [Deutsch](README.de.md)
 
-Die ausführbaren Deployments stehen direkt in den Workflows:
+The central [workflow overview](../../../docs/workflows.md) describes all
+pipelines, automatic and manual triggers, inputs and starting them in the
+GitHub UI. This page expands on operator and approval contracts.
 
-- [Configurator Bootstrap](../../../.github/workflows/configurator-bootstrap.yml): `bootstrap` oder `backend`.
+Executable deployments are defined directly in the workflows:
+
+- [Configurator Bootstrap](../../../.github/workflows/configurator-bootstrap.yml): `bootstrap` or `backend`.
 - [Configurator Platform](../../../.github/workflows/configurator-platform.yml): `platform`.
 - [Configurator Runtime](../../../.github/workflows/configurator-runtime.yml): `runtime`.
-- [Configurator Release](../../../.github/workflows/configurator-release.yml): gebautes Web/API-Paket mit direkten `cf`-Befehlen ausliefern.
-- [Validierung](../../../.github/workflows/validate-configurator.yml): Formatierung, Validierung und Mock-Tests aller sechs Roots ohne Cloud-Credentials.
+- [Configurator Release](../../../.github/workflows/configurator-release.yml): deliver the built Web/API package with direct `cf` commands.
+- [Validation](../../../.github/workflows/validate-configurator.yml): formatting, validation and mock tests for all six roots without cloud credentials.
 
-Jeder Deployment-Job zeigt die einzelnen Schritte: Credential-Vorbereitung, gegebenenfalls Lesen der vorherigen Backend-Outputs, `tofu init`, `tofu validate`, `tofu plan` beziehungsweise `tofu apply`. Es gibt keinen eigenen JavaScript-Deployment-Runner. Einmalige Recovery-Operationen gehören nicht in diesen normalen Ablauf.
+Each deployment job shows the individual steps: credential preparation, reading previous backend outputs if applicable, `tofu init`, `tofu validate`, `tofu plan` or `tofu apply`. There is no custom JavaScript deployment runner. One-time recovery operations do not belong in this normal process.
 
-## Plan und Apply
+<a id="plan-und-apply"></a>
 
-Plan und Apply sind getrennte Jobs. Der Plan wird mit `-out` gespeichert und durch die native OpenTofu-Konfiguration verschlüsselt. Der Apply lädt genau das Plan-Artefakt desselben Runs herunter. Nach Prüfung des Plans erfolgt die Freigabe im geschützten GitHub Environment. Eine kleine Integritätsprüfung bindet das Artefakt an Hash, Commit, Repository, Run, Root, Eingaben und IaC-Dateien; Pläne sind höchstens 24 Stunden gültig. OpenTofu prüft zusätzlich, ob der State seit der Planung verändert wurde. Re-runs sind gesperrt: einen neuen Run mit frischem Plan starten.
+## Plan and Apply
 
-Die zentralen Befehle stehen sichtbar im Workflow, beispielsweise:
+Plan and Apply are separate jobs. The Plan is saved with `-out` and encrypted by the native OpenTofu configuration. Apply downloads exactly the Plan artifact from the same run. After reviewing the Plan, approval is granted in the protected GitHub Environment. A small integrity check binds the artifact to its hash, commit, repository, run, root, inputs and IaC files; Plans are valid for at most 24 hours. OpenTofu additionally checks whether state has changed since planning. Re-runs are blocked: start a new run with a fresh Plan.
+
+The central commands are visible in the workflow, for example:
 
 ```sh
 tofu -chdir="infra/$LZC_ROOT" init -input=false -lockfile=readonly -backend-config="$LZC_PRIVATE/$LZC_ROOT.backend.hcl"
@@ -28,117 +32,131 @@ timeout --foreground --signal=INT --kill-after=10m 70m \
   tofu -chdir=infra/platform apply -input=false -no-color "$LZC_PLAN"
 ```
 
-Die Workflows enthalten alle benötigten Umgebungsvariablen, Vorbereitungsschritte und Optionen. Diese Ausschnitte sind keine Anleitung für einen parallelen lokalen Apply.
+The workflows contain all required environment variables, preparation steps and options. These excerpts are not instructions for a parallel local Apply.
 
-## Logs und Secrets
+<a id="logs-und-secrets"></a>
 
-Normale OpenTofu-Ausgaben erscheinen live im jeweiligen Schritt: Ressourcenänderungen, Fortschritt, Warnungen und Fehler. `sensitive`-Attribute/Outputs werden von OpenTofu maskiert; zusätzlich registriert die Vorbereitung die übergebenen Backend-Zugangsdaten und Verschlüsselungsschlüssel mit GitHubs `add-mask`. Kein `TF_LOG=DEBUG` und kein Shell-`set -x` für Deployment-Secrets.
+## Logs and secrets
 
-`tofu output -json` und State-Ausgaben können sensible Werte enthalten. Deshalb werden ausschließlich diese Ausgaben direkt in private Dateien unter `$RUNNER_TEMP/lzc-private` umgeleitet, mit `umask 077`. Sie werden nicht als Klartext-Artefakte hochgeladen. Die Credential-Vorbereitung führt selbst keine OpenTofu-Befehle aus. Zum Jobende werden die temporären Dateien entfernt.
+Normal OpenTofu output appears live in the respective step: resource changes, progress, warnings and errors. OpenTofu masks `sensitive` attributes/outputs; preparation additionally registers the supplied backend credentials and encryption keys with GitHub's `add-mask`. No `TF_LOG=DEBUG` or shell `set -x` for deployment secrets.
 
-Quellen: [OpenTofu sensitive outputs](https://opentofu.org/docs/language/values/outputs/#sensitive--suppressing-values-in-cli-output), [GNU timeout](https://www.gnu.org/software/coreutils/manual/html_node/timeout-invocation.html).
+`tofu output -json` and state output can contain sensitive values. Therefore, only these outputs are redirected directly into private files under `$RUNNER_TEMP/lzc-private`, with `umask 077`. They are not uploaded as plaintext artifacts. Credential preparation itself runs no OpenTofu commands. Temporary files are removed at the end of the job.
 
-## Kleine Hilfsprogramme
+Sources: [OpenTofu sensitive outputs](https://opentofu.org/docs/language/values/outputs/#sensitive--suppressing-values-in-cli-output), [GNU timeout](https://www.gnu.org/software/coreutils/manual/html_node/timeout-invocation.html).
 
-| Datei | Begrenzte Aufgabe |
+<a id="kleine-hilfsprogramme"></a>
+
+## Small utilities
+
+| File | Limited responsibility |
 | --- | --- |
-| `prepare.mjs` | Private Credential-/Backend-Dateien und Umgebungsvariablen vorbereiten; vorhandene Workload-Outputs/Versionierung prüfen. Keine Prozessausführung. |
-| `prepare-release.mjs` | Private Backend-Konfiguration und erlaubte App-Variablen für CF vorbereiten. Keine Prozessausführung. |
-| `buildpack-source.mjs` | Im isolierten Release-Job den geschützten, SHA-gebundenen Buildpack-Tag anlegen; im Deployment nur lesend prüfen. Keine Tag-Updates oder -Löschungen. |
-| `review.mjs` | Verschlüsselten Plan mit Manifest versehen beziehungsweise vor Apply prüfen. Keine Prozessausführung. |
-| `protect-state.mjs`, `artifact.mjs` | Bereits erfasste State-Dateien für Recovery verschlüsseln. Keine Prozessausführung. |
-| `context.mjs` | Eingaben, Workflow-Identität und Planbindung prüfen. |
-| `configure-github.mjs` | Separates Operator-Werkzeug für Environment-Regeln und ausdrücklich freigegebene Secret-Transfers. Kein Bestandteil eines Deployments. |
+| `prepare.mjs` | Prepare private credential/backend files and environment variables; check existing workload outputs/versioning. No process execution. |
+| `prepare-release.mjs` | Prepare private backend configuration and allowed app variables for CF. No process execution. |
+| `buildpack-source.mjs` | Create the protected, SHA-bound buildpack tag in the isolated release job; verify read-only during deployment. No tag updates or deletions. |
+| `review.mjs` | Add a manifest to the encrypted Plan or check it before Apply. No process execution. |
+| `protect-state.mjs`, `artifact.mjs` | Encrypt already captured state files for recovery. No process execution. |
+| `context.mjs` | Check inputs, workflow identity and Plan binding. |
+| `configure-github.mjs` | Separate operator tool for environment rules and explicitly authorized secret transfers. Not part of a deployment. |
 
-## Backend- und Schlüsseltrennung
+<a id="backend--und-schlüsseltrennung"></a>
 
-Bootstrap und Backend verwenden den Verwaltungs-Bucket. Der Plattform-Job initialisiert zunächst diese beiden Roots und liest ihre Outputs privat. Erst nach Prüfung der Bucket-Versionierung wechselt er für seinen eigenen State zu den Workload-S3-Credentials. Jeder Root behält seinen separaten State-Verschlüsselungsschlüssel. Seed-Schlüssel werden nicht an diese Deployment-Jobs übergeben.
+## Backend and key separation
 
-| Environment | Zweck |
+Bootstrap and backend use the management bucket. The platform job first initializes these two roots and reads their outputs privately. Only after checking bucket versioning does it switch to the workload S3 credentials for its own state. Each root retains its separate state encryption key. Seed keys are not passed to these deployment jobs.
+
+| Environment | Purpose |
 | --- | --- |
-| `lzc-dev-bootstrap-plan` / `lzc-dev-bootstrap-apply` | Bootstrap-/Backend-Plan und freizugebender Apply |
-| `lzc-dev-platform-plan` / `lzc-dev-platform-apply` | Plattform-Plan und freizugebender Apply |
-| `lzc-dev-runtime-plan` / `lzc-dev-runtime-apply` | Space, Rollen und Laufzeitbenutzer |
-| `lzc-dev-release` | CF-Release; Workload-S3-Zugang und Plattform-/Runtime-State-Schlüssel, kein Projekt-Service-Account |
-| `lzc-dev-recovery` | Separat geschützte Seed-Recovery-Secrets, kein automatischer Recovery-Job |
-| `assistant-tests` | Nur der dedizierte Model-Serving-Testtoken; keine Cloud-, State- oder Ausführungs-Credentials |
+| `lzc-dev-bootstrap-plan` / `lzc-dev-bootstrap-apply` | Bootstrap/backend Plan and Apply requiring approval |
+| `lzc-dev-platform-plan` / `lzc-dev-platform-apply` | Platform Plan and Apply requiring approval |
+| `lzc-dev-runtime-plan` / `lzc-dev-runtime-apply` | Space, roles and runtime users |
+| `lzc-dev-release` | CF release; workload S3 access and platform/runtime state keys, no project service account |
+| `lzc-dev-recovery` | Separately protected seed recovery secrets, no automatic recovery job |
+| `assistant-tests` | Only the dedicated Model Serving test token; no cloud, state or execution credentials |
 
-Die Konfiguration steht in `github-environments.json`, `github-platform-environments.json`, `github-runtime-environments.json` und `github-release-environments.json`. Änderungen an Secret-Zielen oder Schlüsselübertragungen benötigen die entsprechende Benutzerautorisierung. Das Operator-Werkzeug lautet `node infra/ci/configure-github.mjs` beziehungsweise mit `--platform`, `--runtime` oder `--release` für die jeweiligen Environments.
+Configuration is in `github-environments.json`, `github-platform-environments.json`, `github-runtime-environments.json` and `github-release-environments.json`. Changes to secret destinations or key transfers require the corresponding user authorization. The operator tool is `node infra/ci/configure-github.mjs`, or with `--platform`, `--runtime` or `--release` for the respective environments.
 
-Für die Assistant-Qualifikation verwaltet `github-assistant-environments.json` ausschließlich `assistant-tests`, beschränkt auf `main` und `feature/landing-zone-configurator`. Nach dem freigegebenen Plattform-Apply liest `node infra/ci/configure-github.mjs --assistant` den neuen Testtoken aus der privaten, unverändert verschlüsselten Recovery-Datei `.local/assistant-test-platform-state.enc.json` und überträgt nur `LZC_MODEL_SERVING_TOKEN` über stdin an `gh secret set`. Dafür Node.js 24.21.0 verwenden; dieser Modus benötigt weder Seed-Zugriff noch einen OpenTofu-Unterprozess. Die Datei stammt aus der Recovery-Sicherung des erfolgreichen Applies und wird ausschließlich im Speicher entschlüsselt; vorhandene native State-Snapshots bleiben unverändert. Tokenwerte erscheinen weder im Terminal noch in Git; allgemeine STACKIT-Zugangsdaten und State-Schlüssel werden nicht an die Testumgebung übertragen. Das Environment benötigt keine manuelle Testfreigabe, erlaubt aber keine fremden Branches oder Tags.
+For Assistant qualification, `github-assistant-environments.json` manages only `assistant-tests`, restricted to `main` and `feature/landing-zone-configurator`. After the approved platform Apply, `node infra/ci/configure-github.mjs --assistant` reads the new test token from the private, unchanged encrypted recovery file `.local/assistant-test-platform-state.enc.json` and transfers only `LZC_MODEL_SERVING_TOKEN` through stdin to `gh secret set`. Use Node.js 24.21.0; this mode requires neither seed access nor an OpenTofu subprocess. The file comes from the recovery backup of the successful Apply and is decrypted exclusively in memory; existing native state snapshots remain unchanged. Token values appear neither in the terminal nor in Git; general STACKIT credentials and state keys are not transferred to the test environment. The environment requires no manual test approval but allows no other branches or tags.
 
-## Manuelle Ausloesung und Serialisierung
+<a id="manuelle-ausloesung-und-serialisierung"></a>
 
-Alle mutierenden Configurator-Workflows verwenden `concurrency.group: configurator-lzc-dev-mutation` und `cancel-in-progress: false`, einschließlich Plan und Freigabewartezeit. Native S3-Sperren haben den Integrationstest nicht bestanden; `backend-safety.json` hält diesen Befund fest. Lokale Remote-Applies und schreibende Parallelzugriffe außerhalb dieser CI-Gruppe bleiben im vereinbarten Betrieb ausgeschlossen. Direkte CLI-Aufrufe durch Credential-Inhaber lassen sich nicht durch einen lokalen Wrapper oder GitHub-Concurrency verhindern.
+## Manual triggering and serialization
 
-Pushes und Pull Requests starten keine Infrastrukturplaene oder Deployments.
-Bootstrap, Platform und Runtime werden ausschliesslich per `workflow_dispatch`
-von `main` gestartet; Apply benoetigt zusaetzlich `apply=true` und die
-Environment-Freigabe. Fuer den Backend-Root `root=backend` auswaehlen.
-Die `LZC_PLATFORM_CI_ENABLED`-/`LZC_RUNTIME_CI_ENABLED`-Schalter bleiben zusaetzliche
-Betreibergates, ersetzen aber keine manuelle Ausloesung. Alte Commit-SHA-
-Freigabevariablen fuer Feature-Pushes werden nicht mehr ausgewertet.
-Auch der Application-Release ist ausschliesslich manuell; ein Merge loest ihn
-nicht aus. Die vorhandenen Workflows betreffen die Entwicklungsumgebung,
-nicht eine neue Produktionsumgebung.
+All mutating Configurator workflows use `concurrency.group: configurator-lzc-dev-mutation` and `cancel-in-progress: false`, including Plan and approval wait time. Native S3 locks failed the integration test; `backend-safety.json` records this finding. Local remote Applies and concurrent writes outside this CI group remain excluded under the agreed operating model. Direct CLI calls by credential holders cannot be prevented by a local wrapper or GitHub concurrency.
 
-Nach erfolgreicher Assistant-Qualifikation und Build veroeffentlicht der
-isolierte Release-Job `publish_buildpack` den fehlenden Buildpack-Tag.
-Das gilt auch fuer `build_only=true`, solange der qualifizierte Commit noch
-Branch-HEAD ist; ein Build-only-Lauf fuehrt weiterhin kein Deployment aus.
-Nur dieser Job besitzt `contents: write`; er hat kein Cloud-Environment und
-keine Cloud-Credentials. Bei Artefakt-Promotion wird dieser schreibfaehige Job
-uebersprungen. Der Deployment-Job prueft erneut die erfolgreichen
-Qualifikations-/Build-Jobs und verlangt den bereits vorhandenen, exakt
-SHA-gebundenen und unveraenderlich geschuetzten Tag.
-Er bleibt lesend und prueft den Tag vor dem Lesen der Deployment-Credentials.
-GitHub kann fuer das Taggen historischer Commits zusaetzlich `workflows: write`
-verlangen; diese Berechtigung ist fuer `GITHUB_TOKEN` nicht verfuegbar.
-Fehlt bei einem aelteren qualifizierten Build der Tag, ist ein ausdruecklich
-autorisierter Operator-Backfill erforderlich: Quelle zuerst mit
-`release-artifact.mjs source` validieren, dann `buildpack-source.mjs publish`
-mit genau dieser Revision und Operator-Authentifizierung ausfuehren.
-Den Operator-Token niemals in CI hinterlegen oder den Tag-Schutz lockern.
-Ein fehlgeschlagenes Deployment macht einen zuvor
-erfolgreich qualifizierten Build nicht ungueltig: Ein neuer manueller Run kann
-ihn mit `release_run_id` uebernehmen, solange das Artefakt nicht abgelaufen ist.
+Pushes and pull requests start no infrastructure Plans or deployments.
+Bootstrap, Platform and Runtime are started exclusively through `workflow_dispatch`
+from `main`; Apply additionally requires `apply=true` and
+environment approval. For the backend root, select `root=backend`.
+The `LZC_PLATFORM_CI_ENABLED`/`LZC_RUNTIME_CI_ENABLED` switches remain additional
+operator gates but do not replace manual triggering. Old commit SHA
+approval variables for feature pushes are no longer evaluated.
+Application release is also exclusively manual; a merge does not
+trigger it. The existing workflows concern the development environment,
+not a new production environment.
 
-Die vorhandene Plan-Service-Account-Rolle ist nicht rein lesend. Deshalb dürfen diese Workflows ausschließlich vertrauenswürdigen Code ausführen; sie sind nicht für externe Pull Requests vorgesehen.
+After successful Assistant qualification and build, the
+isolated release job `publish_buildpack` publishes the missing buildpack tag.
+This also applies to `build_only=true`, as long as the qualified commit is still
+branch HEAD; a build-only run still performs no deployment.
+Only this job has `contents: write`; it has no cloud environment and
+no cloud credentials. This write-capable job is skipped
+during artifact promotion. The deployment job rechecks the successful
+qualification/build jobs and requires the already existing, exactly
+SHA-bound and immutably protected tag.
+It remains read-only and checks the tag before reading deployment credentials.
+GitHub may additionally require `workflows: write` for tagging historical
+commits; this permission is unavailable for `GITHUB_TOKEN`.
+If an older qualified build lacks the tag, an explicitly
+authorized operator backfill is required: first validate the source with
+`release-artifact.mjs source`, then run `buildpack-source.mjs publish`
+with exactly that revision and operator authentication.
+Never store the operator token in CI or weaken tag protection.
+A failed deployment does not invalidate a previously
+successfully qualified build: a new manual run can
+adopt it using `release_run_id` as long as the artifact has not expired.
 
-## Timeouts und State-Sicherung
+The existing Plan service account role is not read-only. Therefore, these workflows may execute only trusted code; they are not intended for external pull requests.
 
-Die Grenze steht direkt am jeweiligen `tofu`-Befehl und verwendet GNU `timeout`:
+<a id="timeouts-und-state-sicherung"></a>
 
-| Schritt | Geordneter Abbruch nach | Zeit bis SIGKILL | Äußeres Joblimit |
+## Timeouts and state backup
+
+The limit is set directly on each `tofu` command and uses GNU `timeout`:
+
+| Step | Graceful termination after | Time until SIGKILL | Outer job limit |
 | --- | --- | --- | --- |
-| Plan | 15 Minuten | weitere 2 Minuten | 30 Minuten |
-| Bootstrap-/Backend-Apply | 20 Minuten | weitere 5 Minuten | 45 Minuten |
-| Plattform-Apply | 70 Minuten | weitere 10 Minuten | 100 Minuten |
+| Plan | 15 minutes | Another 2 minutes | 30 minutes |
+| Bootstrap/backend Apply | 20 minutes | Another 5 minutes | 45 minutes |
+| Platform Apply | 70 minutes | Another 10 minutes | 100 minutes |
 
-Ein Timeout sendet zunächst `SIGINT`, damit OpenTofu Provider beenden und State persistieren kann. Der Exit-Code bleibt ein Fehler, auch wenn der Prozess danach geordnet endet. Ein dauerhaft blockierter Prozess kann nach der zusätzlichen Wartezeit hart beendet werden. Die kurzen Init-Schritte haben eigene Grenzen; Snapshot und Upload liegen außerhalb des Apply-Kommandos und vor dem äußeren Joblimit.
+A timeout first sends `SIGINT` so OpenTofu can stop providers and persist state. The exit code remains an error even if the process subsequently ends gracefully. A permanently blocked process can be forcibly terminated after the additional wait. Short init steps have their own limits; snapshot and upload occur outside the Apply command and before the outer job limit.
 
-Nach einem gestarteten Apply versucht ein `always()`-Schritt ausdrücklich `tofu state pull`. `protect-state.mjs` verschlüsselt diesen Snapshot und einen gegebenenfalls vorhandenen `errored.tfstate` mit AES-256-GCM und einem per scrypt aus dem jeweiligen State-Schlüssel abgeleiteten Schlüssel. Das Format enthält `salt`, `nonce`, `tag` und `data` als Base64; der State kann zusätzlich OpenTofu-verschlüsselt sein. Nur diese geschützten Dateien werden sieben Tage als Recovery-Artefakt aufbewahrt. Plan-Artefakte bleiben einen Tag erhalten. Abrupte Runner-Verluste können weiterhin manuelle Recovery erfordern.
+After an Apply has started, an `always()` step explicitly attempts `tofu state pull`. `protect-state.mjs` encrypts this snapshot and any existing `errored.tfstate` using AES-256-GCM and a key derived through scrypt from the respective state key. The format contains `salt`, `nonce`, `tag` and `data` as Base64; state may additionally be OpenTofu-encrypted. Only these protected files are retained for seven days as recovery artifacts. Plan artifacts are retained for one day. Abrupt Runner loss may still require manual recovery.
 
-## Betriebsnachweise
+<a id="betriebsnachweise"></a>
 
-Die bestehende Infrastruktur wird durch diese CI-Anpassung weder ersetzt noch
-migriert. Historische Recovery-Inventare sind keine Pipeline-Eingaben und
-gehoeren in die private Betriebsdokumentation. Fuer die aktuellen State- und
-Recovery-Vertraege gelten [Architektur](../../docs/architecture.md) und
-[Plattform-Betriebsstand](../../docs/platform-readiness.md).
+## Operational evidence
 
-## Runtime und Release
+This CI adjustment neither replaces nor migrates existing infrastructure.
+Historical recovery inventories are not pipeline inputs and
+belong in private operations documentation. The current state and
+recovery contracts are defined in [architecture](../../docs/architecture.md) and
+[platform operational status](../../docs/platform-readiness.md).
 
-Der Runtime-Root liest vorhandene Plattform-Ausgaben und verwaltet den CF-Space,
-die ausdrücklich benötigte `organization_user`-Mitgliedschaft vor `space_developer`,
-sowie separate PostgreSQL-/Secrets-Laufzeitbenutzer. Sein verschlüsselter State
-liegt im Workload-Bucket. Der erste Teil-Apply wurde regulär gespeichert; ein
-frischer Plan ergänzte die fehlenden CF-Rollen ohne Duplikate oder Recovery-Import.
+<a id="runtime-und-release"></a>
 
-`LZC_RUNTIME_CI_ENABLED` und `LZC_RELEASE_CI_ENABLED` aktivieren die entsprechenden
-Workflows. Die Benutzerfreigabe vom 2026-09-30 umfasst notwendige Configurator-
-Deployment-Applies bis MVP; Scope-/Planprüfung und Environment-Freigaben bleiben.
-Der Release-Workflow baut ohne Cloud-Secrets, lädt ein Paket desselben Runs und
-prüft dessen SHA-256. Erst der geschützte Deploy-Job liest Zugangsdaten. Die normalen
-`cf push`-/Task-Logs bleiben sichtbar; Umgebungswerte sind maskiert. Der API-Zugang
-bleibt bis zur Login-Implementierung gesperrt. [Release-Details](../../deploy/cloud-foundry/README.md).
+## Runtime and release
+
+The runtime root reads existing platform outputs and manages the CF space,
+the explicitly required `organization_user` membership before `space_developer`,
+and separate PostgreSQL/Secrets runtime users. Its encrypted state
+resides in the workload bucket. The first partial Apply was saved normally; a
+fresh Plan added the missing CF roles without duplicates or recovery imports.
+
+`LZC_RUNTIME_CI_ENABLED` and `LZC_RELEASE_CI_ENABLED` enable the corresponding
+workflows. The user authorization of 2026-09-30 covers necessary Configurator
+deployment Applies until MVP; scope/Plan review and environment approvals remain.
+The release workflow builds without cloud secrets, downloads a package from the same run and
+checks its SHA-256. Only the protected deploy job reads credentials. Normal
+`cf push`/task logs remain visible; environment values are masked. API access
+remains blocked until login is implemented. [Release details](../../deploy/cloud-foundry/README.md).

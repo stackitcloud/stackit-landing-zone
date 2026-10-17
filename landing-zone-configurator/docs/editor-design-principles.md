@@ -1,144 +1,155 @@
-# Verbindliche Designprinzipien des Landing Zone Configurators
+<a id="verbindliche-designprinzipien-des-landing-zone-configurators"></a>
+# Binding design principles for the Landing Zone Configurator
 
-Status: vom Benutzer bestätigte Richtung; schrittweise Umsetzung auf dem Feature-Branch.
-Diese Prinzipien ergänzen [Designreferenz](design-reference.md) und
-[gemeinsames Funktionsmodell](common-feature-model.md).
+[English](editor-design-principles.md) | [Deutsch](editor-design-principles.de.md)
 
-## Begriffe und Orientierung
+Status: direction confirmed by the user; incremental implementation on the feature branch.
+These principles supplement the [design reference](design-reference.md) and
+[common feature model](common-feature-model.md).
 
-- Offizielle STACKIT-Produktnamen verwenden: STACKIT Network Area (SNA), STACKIT VPN,
-  STACKIT Observability, STACKIT Secrets Manager. Wo kein Produkt gemeint ist,
-  den Accelerator-Modulnamen verwenden, beispielsweise Connectivity.
-- Kubernetes-Namespace-Dienste ausdrücklich als Kubernetes-Funktion benennen.
-- Produkt, Modul, Ressource und Instanz unterscheiden. Observability und der
-  Telemetry Router der Audit-Protokollierung sind unterschiedliche Dienste.
-- Technische Feldnamen dienen intern der Zuordnung; sichtbare Begriffe, Hilfen und
-  Abläufe orientieren sich am Produkt und an seiner offiziellen Dokumentation.
-- Portalparität erst nach tatsächlichem Vergleich behaupten. Die öffentliche VPN-
-  Anleitung bezeichnet Portal-Integration noch als nicht verfügbar; das ist kein
-  Nachweis über den vom Benutzer beobachteten aktuellen Portalablauf.
+<a id="begriffe-und-orientierung"></a>
+## Terminology and orientation
 
-## Arbeitsbereich und Konfigurationskontext
+- Use official STACKIT product names: STACKIT Network Area (SNA), STACKIT VPN,
+  STACKIT Observability, STACKIT Secrets Manager. Where no product is meant,
+  use the Accelerator module name, for example Connectivity.
+- Explicitly identify Kubernetes namespace services as a Kubernetes feature.
+- Distinguish product, module, resource and instance. Observability and the
+  Telemetry Router for audit logging are different services.
+- Technical field names serve internal mapping; visible terms, help and
+  flows follow the product and its official documentation.
+- Claim portal parity only after actual comparison. The public VPN
+  guide still calls portal integration unavailable; this is not
+  evidence about the current portal flow observed by the user.
 
-Bestätigter Hauptablauf: **Login > Arbeitsbereich öffnen > Konfiguration öffnen
-oder erstellen > Bearbeiten > Plan > Apply**.
+<a id="arbeitsbereich-und-konfigurationskontext"></a>
+## Workspace and configuration context
 
-- Beim ersten Einstieg verfügbare Arbeitsbereiche einschließlich des persönlichen
-  anbieten; Erstellen und Öffnen sind eigene Aktionen.
-- Beim erneuten Einstieg den letzten noch zugänglichen Arbeitsbereich wieder
-  öffnen. Explizite Deep Links und gesicherte Login-Entwürfe nicht überschreiben.
-- Arbeitsbereichswechsel im Header auch auf Mobilgeräten erreichbar halten.
-- **Konfigurationen** ist die Plattformübersicht; **Neue Konfiguration** öffnet
-  die Vorlagen. Templates und „Mein Entwurf“ sind keine primären Sidebarziele.
-- Geöffnete Konfigurationen haben **Konfiguration · Bereitstellung · Verlauf**
-  als gemeinsamen Kontext mit Namen und gespeicherter Revision.
-- **Speichern und zur Bereitstellung** verwendet exakt die neue Serverrevision.
-  Ungespeicherte Änderungen sperren den direkten Bereitstellungstab; Wechsel
-  in andere Arbeitsbereiche dürfen sie nicht still verwerfen.
-- Verlauf bleibt ausschließlich lesbar und konfigurationsbezogen. Sichtbare
-  Ausführungen und Statusangaben unterliegen weiterhin den bestehenden Rollen,
-  Benutzer- und Tenant-Grenzen.
-- Navigation und Wiederaufnahme starten keine Vorbereitung, keinen Plan und
-  keinen Apply. Bestehende Planbindungen und Ablaufzeiten bleiben unverändert.
-- Application Owner behalten den getrennten Application-Landing-Zone-Ablauf.
+Confirmed main flow: **Login > Open workspace > Open
+or create configuration > Edit > Plan > Apply**.
 
-Lokal am 2026-10-04 umgesetzt: Gesamtcheck mit 305 Unit-Tests und vollständige
-Browser-Suite mit 134 Desktop-/Mobilfällen bestanden. Arbeitsbereichsauswahl und
-Konfigurations-/Bereitstellungskontext visuell geprüft. Browser-APIs simuliert;
-kein Kunden-Apply und keine Live-S3-Abnahme durch diese Umsetzung.
+- On first entry, offer available workspaces including the personal
+  workspace; create and open are separate actions.
+- On return, reopen the last still-accessible workspace.
+  Do not override explicit deep links or secured login drafts.
+- Keep workspace switching in the header accessible on mobile too.
+- **Configurations** is the platform overview; **New configuration** opens
+  templates. Templates and “My draft” are not primary sidebar destinations.
+- Open configurations share **Configuration · Deployment · History**
+  as a common context with name and saved revision.
+- **Save and continue to deployment** uses exactly the new server revision.
+  Unsaved changes block the direct deployment tab; switching
+  to other workspaces must not silently discard them.
+- History remains read-only and configuration-specific. Visible
+  executions and status remain subject to existing role,
+  user and tenant boundaries.
+- Navigation and resumption start no preparation, Plan or
+  Apply. Existing Plan bindings and expiry times remain unchanged.
+- Application Owners retain the separate Application Landing Zone flow.
 
-## Weniger sichtbare Komplexität
+Implemented locally on 2026-10-04: full check with 305 unit tests and complete
+browser suite with 134 desktop/mobile cases passed. Workspace selection and
+configuration/deployment context visually checked. Browser APIs simulated;
+no customer Apply or live S3 acceptance through this implementation.
 
-- Die Übersicht zeigt aktive Komponenten kompakt; Einstellungen erst beim Bearbeiten.
-- Optionale, inaktive Komponenten über **Komponente hinzufügen** erreichbar machen.
-- Aktivität anhand wirksamer Werte inklusive Engine-Defaults bestimmen, nicht allein
-  anhand vorhandener JSON-Felder. Standardmäßig aktive Projektdienste sichtbar halten.
-- Katalog öffnen, Karte schließen und Abschnitt einklappen verändern keine Konfiguration.
-- Deaktivieren, Entfernen und Zurücksetzen sind unterschiedliche Aktionen. Vorhandene
-  Einstellungen und Referenzen nicht durch bloßes Verbergen verlieren; geplante
-  Ressourcenlöschung bei späterem Apply ausdrücklich kenntlich machen.
-- Details in **Erweiterte Einstellungen**; notwendige Angaben und Fehler sichtbar halten.
-- Unvollständige Entwürfe dürfen bearbeitet werden. Konfiguriert, ausführbar,
-  bereitgestellt und technisch verbunden als verschiedene Zustände anzeigen.
-- Bekannte Auswahlwerte als Dropdowns; dynamische Produktangebote aus regionalen
-  Katalogen laden. Keine erfundenen oder vermeintlich vollständigen SKU-Listen.
-- Accelerator-Standard und Vorlagenwert klar unterscheiden. Bestehende Dokumente
-  nicht still normalisieren oder auf andere Terraform-Moduladressen umstellen.
+<a id="weniger-sichtbare-komplexität"></a>
+## Less visible complexity
 
-## Netzwerkmodell
+- The overview compactly shows active components; settings appear only while editing.
+- Make optional inactive components accessible through **Add component**.
+- Determine activity from effective values including engine defaults, not only
+  from existing JSON fields. Keep project services that are active by default visible.
+- Opening the catalogue, closing a card and collapsing a section change no configuration.
+- Disabling, removing and resetting are different actions. Do not lose existing
+  settings and references merely by hiding them; explicitly identify planned
+  resource deletion during a later Apply.
+- Details in **Advanced settings**; keep required inputs and errors visible.
+- Incomplete drafts may be edited. Show configured, executable,
+  deployed and technically connected as different states.
+- Known choices as dropdowns; load dynamic product offerings from regional
+  catalogues. No invented or supposedly complete SKU lists.
+- Clearly distinguish Accelerator defaults from template values. Do not silently
+  normalize existing documents or switch them to different Terraform module addresses.
 
-Zielansicht: **Region → SNAs → zugeordnete Projekte** mit DNS, Firewall und VPN im
-Connectivity-Kontext. Eine SNA ist eine Organisationsressource mit regionaler
-Konfiguration. Der aktuelle Accelerator erstellt getrennte SNAs je regionalem
-Moduleintrag; gleiche Kennungen erzeugen keine regionsübergreifende Verbindung.
+<a id="netzwerkmodell"></a>
+## Network model
 
-`connectivity` in der Standardregion und `connectivity_regions` sind alternative
-Engine-Eingaben, keine zwei unabhängigen Produkte. Eine einheitliche Oberfläche
-muss den bestehenden Export und die Ressourcenzuordnung erhalten. Vor einem
-Wechsel Namenspräfixe, Moduladressen und Einschränkungen (#65/#80) prüfen.
+Target view: **Region → SNAs → assigned projects**, with DNS, firewall and VPN in
+the Connectivity context. An SNA is an organization resource with regional
+configuration. The current Accelerator creates separate SNAs per regional
+module entry; identical identifiers do not create cross-region connectivity.
 
-Routing-Tabellen nicht als fehlend darstellen: WAN-Tabelle je SNA und
-Firewall-Standardrouten der Corporate-Projekte werden vom Accelerator erzeugt.
-Frei definierbare zusätzliche Tabellen sind im geprüften Root-Vertrag nicht
-vorgesehen. Statische VPN-Routen sind eine gesonderte Einstellung; automatische
-Inter-Region-Verbindungen bleiben Thema #64.
+`connectivity` in the default region and `connectivity_regions` are alternative
+engine inputs, not two independent products. A unified interface
+must preserve existing export and resource assignment. Before
+switching, check name prefixes, module addresses and limitations (#65/#80).
 
-## VPN als erste geführte Produktkomponente
+Do not portray routing tables as missing: the Accelerator creates a WAN table per SNA
+and firewall default routes for Corporate projects.
+Freely definable additional tables are not provided in the reviewed root contract.
+Static VPN routes are a separate setting; automatic
+inter-region connections remain issue #64.
 
-1. **Gateway:** Region, SNA, Name, Leistungsplan und Verfügbarkeitszonen.
-2. **Routing:** unterstütztes Routingverfahren erklären und auswählen; Folgen einer
-   nachträglichen Änderung vor Ausführung sichtbar machen.
-3. **Verbindungen:** Gegenstelle und passende Netze bzw. statische Routen je Verbindung.
-4. **Tunnel und Zugang:** beide Tunnel, Gegenstellenadressen, geschützte PSK-Referenzen.
-5. **Prüfen:** STACKIT-Ressourcen, noch fehlende Daten und Aufgaben an der Gegenstelle.
+<a id="vpn-als-erste-geführte-produktkomponente"></a>
+## VPN as the first guided product component
 
-Dokumentationslinks direkt am betreffenden Schritt:
-- [Gateway erstellen](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/getting-started/gateway-create/)
-- [Verbindung erstellen](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/getting-started/connection-create/)
-- [Gateway- und Verbindungsoptionen](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/basics/gateway-and-connection-options/)
+1. **Gateway:** region, SNA, name, performance plan and availability zones.
+2. **Routing:** explain and select the supported routing method; make the effects of
+   a later change visible before execution.
+3. **Connections:** peer and matching networks or static routes per connection.
+4. **Tunnel and access:** both tunnels, peer addresses, protected PSK references.
+5. **Review:** STACKIT resources, still-missing data and tasks on the peer.
 
-Der Accelerator kann Gateway und konfigurierte STACKIT-seitige Verbindungen
-anlegen, nicht das entfernte VPN-Gerät konfigurieren. BGP ist im geprüften Modul
-nicht unterstützt. Gemeinsamer Editor, geschützte VPN-Schlüsselanbindung und
-vollständige Deployment-Ausführung sind getrennte Ausbauschritte. Ein vollständiger
-Dialog allein darf deshalb nicht als betriebsbereites VPN dargestellt werden.
+Documentation links directly at the relevant step:
+- [Create gateway](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/getting-started/gateway-create/)
+- [Create connection](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/getting-started/connection-create/)
+- [Gateway and connection options](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/basics/gateway-and-connection-options/)
 
-## Umsetzung und Abnahme
+The Accelerator can create a gateway and configured STACKIT-side connections,
+not configure the remote VPN device. BGP is not supported in the reviewed module.
+Common editor, protected VPN key binding and
+complete deployment execution are separate extensions. A complete
+dialog alone must therefore not be portrayed as an operational VPN.
 
-- [x] Designprinzipien mit Benutzerentscheidung dokumentiert.
-- [x] Kubernetes-/Connectivity-/SNA-Bezeichnungen im begonnenen Editor angepasst.
-- [x] Projektschalter für Secrets Manager und Observability direkt zugänglich.
-- [x] Erste Komponentenübersicht für Plattform und Kubernetes-Namespace-Dienste implementiert.
-- [x] Komponentenübersicht auf optionale Connectivity-Dienste (DNS, Firewall, VPN) ausgeweitet.
-- [ ] Weitere verschachtelte optionale Dienste vereinfachen.
-- [x] Einheitliche Regions-/SNA-Ansicht mit beibehaltenen Engine-Eingabeformen und Referenzschutz implementiert.
-- [ ] VPN-Eingaben gegen Engine-Version, Produktdokumentation und aktuellen Portalablauf abgleichen.
-- [x] VPN-Konfigurationsassistent mit Gateway, Routing, Verbindungen/Tunneln, Zusammenfassung und Dokumentationslinks implementiert.
-- [ ] Vollständige produktseitige Validierung (u. a. regionale Kataloge/IPsec-Kompatibilität) ergänzen.
-- [ ] Regionale Produktkataloge und geschützte VPN-Schlüsselreferenzen anbinden.
-- [ ] Getrennte Gateway-/Verbindungsphasen und Ausführungsgrenzen im Backend abnehmen.
-- [ ] Fachliche Beschriftungen, Tastaturbedienung und Desktop-/Mobilansichten prüfen.
-- [ ] Speicherung/Wiederaufnahme, inaktive Konfigurationen und unveränderte Exporte regressionsprüfen.
-- [ ] Veröffentlichung und Live-Abnahme des überarbeiteten Bedienkonzepts.
+<a id="umsetzung-und-abnahme"></a>
+## Implementation and acceptance
 
-Kunden-Apply weiterhin nur nach ausdrücklicher Freigabe. Keine Main-Merge-Freigabe.
+- [x] Document design principles with user decision.
+- [x] Adjust Kubernetes/Connectivity/SNA terminology in the editor under development.
+- [x] Make project toggles for Secrets Manager and Observability directly accessible.
+- [x] Implement initial component overview for platform and Kubernetes namespace services.
+- [x] Extend component overview to optional Connectivity services (DNS, firewall, VPN).
+- [ ] Simplify further nested optional services.
+- [x] Implement unified region/SNA view preserving engine input forms and reference protection.
+- [ ] Compare VPN inputs against engine version, product documentation and current portal flow.
+- [x] Implement VPN configuration assistant with gateway, routing, connections/tunnels, summary and documentation links.
+- [ ] Add complete product-side validation (including regional catalogues/IPsec compatibility).
+- [ ] Connect regional product catalogues and protected VPN key references.
+- [ ] Qualify separate gateway/connection phases and execution boundaries in the backend.
+- [ ] Check domain labels, keyboard operation and desktop/mobile views.
+- [ ] Regression-test saving/resumption, inactive configurations and unchanged exports.
+- [ ] Publish and perform live acceptance of the revised interaction concept.
 
-## Lokaler Prüfstand der ersten Umsetzung
+Customer Apply still requires explicit approval. No main-merge approval.
 
-- Lint, TypeScript und Produktionsbuild erfolgreich; 96 Anwendungstests bestanden.
-- 22 Desktop-/Mobil-Browserfälle bestanden. Nach Ergänzung der Prüfung auf
-  unveränderte Werte beim Katalog-Öffnen/-Schließen die sechs betroffenen
-  Editor-Browserfälle erneut erfolgreich ausgeführt.
-- Geprüft: Projektschalter, Komponentenauswahl, unveränderte Speicherung,
-  Wiederaufnahme, Legacy-Abläufe und bestehende Deployment-Sperren.
-- Noch kein Deployment dieser Änderungen; letzte Live-Abnahme siehe
-  [gemeinsamer Editor](common-editor.md).
+<a id="lokaler-prüfstand-der-ersten-umsetzung"></a>
+## Local verification status of the first implementation
 
-### Weiterer Prüfstand 2026-10-01
+- Lint, TypeScript and production build successful; 96 application tests passed.
+- 22 desktop/mobile browser cases passed. After adding the check for
+  unchanged values on catalogue opening/closing, the six affected
+  editor browser cases ran successfully again.
+- Checked: project toggles, component selection, unchanged saving,
+  resumption, legacy flows and existing deployment blocks.
+- No deployment of these changes yet; last live acceptance in the
+  [common editor](common-editor.md).
 
-Regions-/SNA-Ansicht und VPN-Konfigurationsassistent implementiert; 97
-Anwendungstests und 24 Desktop-/Mobil-Browserfälle erfolgreich, mobile VPN-Ansicht
-visuell geprüft. Noch keine Veröffentlichung dieses Arbeitsstands. Die
-[Platform-/Application-Architektur](platform-application-architecture.md) trennt
-künftig die Rollenansichten, Vorlagen und Instanzen. Die aktuelle Oberfläche
-stellt diese noch nicht als vorhandene Berechtigungsfunktionen dar.
+<a id="weiterer-prüfstand-2026-10-01"></a>
+### Further verification status 2026-10-01
+
+Region/SNA view and VPN configuration assistant implemented; 97
+application tests and 24 desktop/mobile browser cases successful, mobile VPN view
+visually checked. No publication of this working state yet. The
+[Platform/Application architecture](platform-application-architecture.md) will separate
+role views, templates and instances. The current interface does not
+yet present these as existing authorization capabilities.

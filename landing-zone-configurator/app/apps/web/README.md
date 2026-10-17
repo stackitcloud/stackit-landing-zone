@@ -1,31 +1,37 @@
-# Web-Oberfläche
+# Web interface
 
-Geplant: React/TypeScript, Fachformulare, Topologie, Chat und Plan-/Run-Ansicht. Keine Cloud- oder GitHub-Tokens im Browser.
+[English](README.md) | [Deutsch](README.de.md)
 
-## Template-Editor (erster fachlicher Stand)
+<a id="web-oberfläche"></a>
 
-- Acht aus `src/config` generierte Templates mit Suche und Strukturvorschau.
-- Standalone-Kopie bearbeiten: Organisation, Region, Verantwortliche, Landing Zones,
-  Umgebungen, Secrets-Manager-Auswahl und Sandboxes.
-- Originale Portal-Design-Tokens (digits/light), lokal ausgelieferte Markenassets;
-  Herkunft und noch offene visuelle Abnahme in `docs/design-reference.md`.
-- Zustand nur im aktuellen Tab-Speicher; keine Cloud-/GitHub-Schreiboperationen.
-- Download `landing-zone.lzc.json`: versionierter Entwurf mit Template-Quellhash
-  und fachlich bearbeiteten Konfigurationswerten. Kein direkt ausführbarer
-  `.tfvars.json`-Export und noch kein Import dieses Entwurfformats.
-- Netzwerk-Templates bleiben vorerst schreibgeschützt. Der Standalone-Editor setzt
-  ausdrücklich `corporate: false`, weil das aktuelle Quelltemplate ohne Hub sonst
-  den Accelerator-Default `true` erben würde.
+Planned: React/TypeScript, domain-specific forms, topology, chat and Plan/Run view. No cloud or GitHub tokens in the browser.
 
-Lokale Abnahme aus `app/` nach `npm run build`:
+<a id="template-editor-erster-fachlicher-stand"></a>
+
+## Template editor (initial domain implementation)
+
+- Eight templates generated from `src/config`, with search and structure preview.
+- Edit a standalone copy: organization, region, owners, landing zones,
+  environments, Secrets Manager selection and sandboxes.
+- Original portal design tokens (digits/light), locally served brand assets;
+  provenance and outstanding visual acceptance in `docs/design-reference.md`.
+- State only in the current tab's memory; no cloud/GitHub write operations.
+- Download `landing-zone.lzc.json`: versioned draft with the template source hash
+  and configuration values edited through the domain model. Not a directly executable
+  `.tfvars.json` export, and no import of this draft format yet.
+- Network templates remain read-only for now. The standalone editor explicitly sets
+  `corporate: false`, because the current source template without a hub would
+  otherwise inherit the Accelerator default of `true`.
+
+Local acceptance from `app/` after `npm run build`:
 
 ```sh
 npx playwright install chromium
 npm run test:e2e
 ```
 
-Alternativ mit installiertem Chrome: `LZC_TEST_CHROME=true npm run test:e2e`.
-Tests verwenden isolierte Browser-Kontexte ohne vorhandene Benutzersitzung.
-Screenshots/Fehlertraces liegen ignoriert unter `.local/browser-tests` und werden
-in der Validierung als kurzlebige CI-Artefakte bereitgestellt. Desktop- und
-Mobilbreite prüfen Suche, Vorschau, Validierung, Download und Quellisolierung.
+Alternatively, with Chrome installed: `LZC_TEST_CHROME=true npm run test:e2e`.
+Tests use isolated browser contexts without an existing user session.
+Screenshots/error traces are ignored under `.local/browser-tests` and provided
+as short-lived CI artifacts during validation. Desktop and
+mobile widths check search, preview, validation, download and source isolation.

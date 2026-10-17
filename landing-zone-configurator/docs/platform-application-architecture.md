@@ -1,92 +1,100 @@
-# Platform Landing Zone und Application Landing Zones
+# Platform Landing Zone and Application Landing Zones
 
-**Historische Designreferenz, kein aktueller Implementierungs- oder Abnahmenachweis.**
-Die folgenden Abschnitte bewahren den Entwurf und seine damaligen offenen Fragen.
-Fuer die aktuelle Implementierung gelten [Architektur](architecture.md),
-[MVP-Grenzen](mvp-scope.md), [Benutzeranleitung](user-guide.md) und die
-[technischen Vertraege](development.md).
+[English](platform-application-architecture.md) | [Deutsch](platform-application-architecture.de.md)
 
-Der Erstellungsablauf ist inzwischen auf [Projekt-Template-Entwürfe](project-template-drafts.md)
-umgestellt: neue Plattformkonfigurationen erzeugen keine Anwendungsinstanzen.
-Die Implementierung der Veroeffentlichung, Tenant-Bindung und Bestellungen ist
-in den aktuellen Vertraegen und Tests beschrieben, nicht in diesem Entwurfsstand.
+<a id="platform-landing-zone-und-application-landing-zones"></a>
 
-Dieser Entwurf erweitert [Planung](planning.md), [gemeinsames Feature-Modell](common-feature-model.md) und [Editor-Designprinzipien](editor-design-principles.md). Er ersetzt keine bestehenden Konfigurationen, State-Adressen oder Berechtigungen. Kunden-Apply bleibt bis zu einer ausdrücklichen Freigabe gesperrt. Die laufende Arbeit an Regions-/SNA-Ansicht und VPN bleibt unabhängig davon nutzbar.
+**Historical design reference, not current implementation or acceptance evidence.**
+The following sections preserve the design and its questions open at that time.
+For the current implementation, see [architecture](architecture.md),
+[MVP boundaries](mvp-scope.md), [user guide](user-guide.md) and
+[technical contracts](development.md).
 
-## Ziel und Abgrenzung
+The creation workflow has since switched to [project template drafts](project-template-drafts.md):
+new platform configurations create no application instances.
+Implementation of publication, tenant binding and orders is described in the current
+contracts and tests, not in this design snapshot.
 
-Eine Platform Landing Zone stellt Governance, freigegebene Ordner, Connectivity einschließlich STACKIT Network Areas (SNAs), zentrale Plattformdienste und deren Infrastrukturprojekte bereit. Anwendungsprojekte gehören künftig zu eigenständigen Application Landing Zones. Ein Application Owner bestellt eine Instanz aus einem veröffentlichten Projekt-Template; er bearbeitet nicht die organisationsweite Plattformkonfiguration.
+This design extends [planning](planning.md), the [common feature model](common-feature-model.md) and [editor design principles](editor-design-principles.md). It replaces no existing configurations, state addresses or permissions. Customer Apply remains blocked until explicit approval. Ongoing work on region/SNA views and VPN remains independently usable.
 
-Der aktuelle Accelerator verbindet diese Lebenszyklen im Root `src/main.tf`: zentrale Module und Anwendungsprojekte (`landing_zones`, Sandboxes, Namespace-Dienste) teilen Konfiguration und Ausführung. Zwei Ansichten allein reichen deshalb nicht. Benötigt werden getrennte Accelerator-Einstiegspunkte, ein freigegebener Plattformvertrag und unabhängig verwaltete Anwendungsinstanzen.
+<a id="ziel-und-abgrenzung"></a>
+## Goal and boundaries
 
-## Rollen und Benutzerverwaltung
+A Platform Landing Zone provides governance, approved folders, connectivity including STACKIT Network Areas (SNAs), central platform services and their infrastructure projects. Application projects will belong to independent Application Landing Zones. An Application Owner orders an instance from a published project template; they do not edit organization-wide platform configuration.
 
-Zwei fachliche Rollen gelten **pro Tenant**, nicht global. Ein Benutzer kann beide Rollen haben und in verschiedenen Kundenorganisationen unterschiedlich berechtigt sein. Anmeldung, Configurator-Mitgliedschaft, STACKIT-Rechte und GitHub-Zugriff bleiben getrennte Nachweise.
+The current Accelerator combines these lifecycles in root `src/main.tf`: central modules and application projects (`landing_zones`, sandboxes, namespace services) share configuration and execution. Two views alone are therefore insufficient. Separate Accelerator entry points, an approved platform contract and independently managed application instances are needed.
 
-| Fähigkeit | Platform Engineer | Application Owner |
+<a id="rollen-und-benutzerverwaltung"></a>
+## Roles and user management
+
+Two business roles apply **per tenant**, not globally. A user can have both roles and different permissions in different customer organizations. Login, Configurator membership, STACKIT permissions and GitHub access remain separate evidence.
+
+| Capability | Platform Engineer | Application Owner |
 |---|---|---|
-| Plattform konfigurieren und deren Plan anfordern | Ja, im eigenen Tenant | Nein |
-| Projekt-Templates erstellen, prüfen, versionieren und veröffentlichen | Ja | Nein |
-| Veröffentlichte, für ihn zugelassene Templates sehen | Ja | Ja |
-| Eigene Anwendungsinstanz bestellen und deren Plan sehen | Ja | Ja |
-| Instanzen anderer Benutzer sehen/verändern | Nur nach Tenant-Policy | Nur durch explizite Teamfreigabe |
-| Plattform-Credentials lesen oder herunterladen | Nein; nur autorisierte Nutzung | Nein |
-| Kunden-Apply | Zusätzliche Run-Freigabe/Policy | Zusätzliche Run-Freigabe/Policy |
-| Tenant-Mitglieder/Rollen verwalten | Separat delegierte Verwaltungsfähigkeit | Nein |
+| Configure platform and request its Plan | Yes, in own tenant | No |
+| Create, review, version and publish project templates | Yes | No |
+| See published templates approved for them | Yes | Yes |
+| Order own application instance and see its Plan | Yes | Yes |
+| See/change other users' instances | Only under tenant policy | Only through explicit team sharing |
+| Read or download platform credentials | No; authorized use only | No |
+| Customer Apply | Additional run approval/policy | Additional run approval/policy |
+| Manage tenant members/roles | Separately delegated management capability | No |
 
-Die vorgeschlagenen bisherigen Rollen Viewer/Editor/Deployer/Tenant-Admin aus dem Hauptplan werden für dieses Zielbild nicht zusätzlich als vier sichtbare Produktrollen eingeführt. Feinere technische Fähigkeiten (Mitgliederverwaltung, Credential-Delegation, Apply-Freigabe) bleiben explizite Grants. Ein Platform Engineer erhält nicht automatisch alle Verwaltungsrechte. Mitgliederverwaltung wird als tenantgebundene Fähigkeit innerhalb der Platform-Engineer-Rolle delegiert, nicht als dritte fachliche Persona. Rollen-/Einladungsänderungen benötigen erneute serverseitige Prüfung und Audit-Eintrag; niemand darf sich selbst weitergehende Rechte erteilen.
+The previously proposed Viewer/Editor/Deployer/Tenant Admin roles from the main plan will not additionally be introduced as four visible product roles for this target design. Finer technical capabilities (member management, credential delegation, Apply approval) remain explicit grants. A Platform Engineer does not automatically receive all management permissions. Member management is delegated as a tenant-bound capability within the Platform Engineer role, not as a third business persona. Role/invitation changes require renewed server-side checking and an audit entry; nobody may grant themselves broader permissions.
 
-Die Umstellung von bisherigen Viewer-/Editor-/Deployer-/Admin-Modellen erfolgt schrittweise nach Inventarisierung der tatsächlich gespeicherten Mitgliedschaften. Es gibt keine pauschale Zuordnung „Editor wird Platform Engineer“ und keine automatische Rechteerweiterung. Neue Rollen werden ausdrücklich durch berechtigte Tenant-Verantwortliche bestätigt; bis dahin bleiben vorhandene Zugriffe unter ihrem bisherigen, höchstens gleichwertigen Umfang. Migrationstests müssen auch kombinierte Rollen, Widerruf und offene Jobs abdecken.
+Transition from previous Viewer/Editor/Deployer/Admin models proceeds incrementally after inventorying actually stored memberships. There is no blanket mapping of “Editor becomes Platform Engineer” and no automatic permission expansion. New roles are explicitly confirmed by authorized tenant representatives; until then, existing access remains within its previous, at most equivalent scope. Migration tests must also cover combined roles, revocation and open jobs.
 
-PostgreSQL speichert externe Identitätsverknüpfungen, Tenant-Mitgliedschaften, Rollen, Einladungen und Audit-Ereignisse. Keine eigene Passwortverwaltung. Jede API, Queue-Nachricht, Artefaktabfrage und Secret-Nutzung prüft den Tenant und die Objektberechtigung serverseitig. Ein Rollenwechsel im Browser ist kein Sicherheitsmechanismus.
+PostgreSQL stores external identity links, tenant memberships, roles, invitations and audit events. No custom password management. Every API, queue message, artifact query and secret use checks tenant and object authorization server-side. A role switch in the browser is not a security mechanism.
 
-## Identität, STACKIT-Onboarding und Bootstrap
+<a id="identität-stackit-onboarding-und-bootstrap"></a>
+## Identity, STACKIT onboarding and bootstrap
 
-**Verifiziert:** STACKIT verwendet rollenbasierte, additive Berechtigungen. Rollen auf Organisationen und Ordnern werden vererbt; eine schwächere Projektrolle hebt diese Rechte nicht auf. Ein Configurator-Login allein gewährt keine STACKIT-API-Berechtigung. [STACKIT Rollenmodell](https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/roles-permissions/)
+**Verified:** STACKIT uses role-based, additive permissions. Roles on organizations and folders are inherited; a weaker project role does not cancel these permissions. A Configurator login alone grants no STACKIT API permission. [STACKIT role model](https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/roles-permissions/)
 
-**Verifiziert:** Vor einer weiteren Rollenzuweisung muss der Benutzer laut Resource-Manager-Dokumentation bereits eine der genannten Organisationsrollen besitzen. STACKIT empfiehlt dafür `organization.viewer`; diese gewährt minimale Organisationssicht ohne geerbten Zugriff auf Ordner und Projekte. Daher nicht vorsorglich Reader oder Owner auf einen gesamten Anwendungsordner vergeben. Den vollständigen Onboarding- und Portalablauf mit realem Testbenutzer prüfen. [Resource Manager Access Control](https://docs.stackit.cloud/platform/resource-manager/basics/access-control/)
+**Verified:** According to Resource Manager documentation, before another role assignment the user must already possess one of the listed organization roles. STACKIT recommends `organization.viewer` for this; it provides minimal organization visibility without inherited access to folders and projects. Therefore do not preemptively assign Reader or Owner to an entire application folder. Test the complete onboarding and portal workflow with a real test user. [Resource Manager Access Control](https://docs.stackit.cloud/platform/resource-manager/basics/access-control/)
 
-**Noch offen:** Ein freigegebener STACKIT-IdP-Client für unsere eigene App einschließlich Discovery, Clientregistrierung, Claims, Logout und API-Delegation. Die öffentliche OIDC-Anleitung beschreibt einen externen IdP, dem STACKIT vertraut; sie belegt keinen beliebig registrierbaren Configurator-Client beim STACKIT-IdP. [STACKIT IdP](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/getting-started/), [OIDC-Federation](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/how-tos/generic-oidc-1_0-federation-guide/)
+**Still open:** An approved STACKIT IdP client for our own app, including discovery, client registration, claims, logout and API delegation. The public OIDC guide describes an external IdP trusted by STACKIT; it does not establish that a Configurator client can be freely registered at the STACKIT IdP. [STACKIT IdP](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/getting-started/), [OIDC federation](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/how-tos/generic-oidc-1_0-federation-guide/)
 
-Vorgeschlagener Ablauf:
+Proposed workflow:
 
-1. Benutzer authentifiziert sich über einen freigegebenen IdP; bis zur Klärung bleibt GitHub als bestehender Login erhalten.
-2. STACKIT-Benutzerkonto und konkrete Organisation werden gesondert verifiziert. Keine automatische Verknüpfung allein anhand übereinstimmender E-Mail-Adressen; stabile Issuer-/Subject-Kennung speichern.
-3. Ein berechtigter Organisationsadministrator bestätigt Tenant-Zuordnung und erste Platform-Engineer-Mitgliedschaft. Besitz eines Service-Account-Schlüssels beweist keine persönliche Organisationsmitgliedschaft.
-4. Fehlende Organisationsmitgliedschaft des Application Owners wird als expliziter Onboarding-Schritt behandelt. Er erhält nur die für das Onboarding nötige Rolle und später die freigegebene Projektrolle.
-5. Für Bootstrap werden temporär autorisierte Berechtigungen benötigt, um Projekt, initialen Service Account und Backend anzulegen. Eine Anmeldung allein erzeugt diese Rechte nicht. Unterstützte Benutzer-API-Delegation erst nachweisen; andernfalls bleibt ein dokumentierter einmaliger Administrator-/Service-Account-Bootstrap nötig.
-6. Nach Bootstrap temporäre Berechtigungen entfernen und Plattform-/Anwendungs-Provisionierung mit getrennten, eingeschränkten Ausführungsidentitäten betreiben.
+1. User authenticates through an approved IdP; GitHub remains the existing login until clarification.
+2. STACKIT user account and specific organization are verified separately. No automatic linking solely through matching email addresses; store stable issuer/subject identifier.
+3. An authorized organization administrator confirms tenant assignment and first Platform Engineer membership. Possessing a service-account key does not demonstrate personal organization membership.
+4. Missing organization membership of the Application Owner is treated as an explicit onboarding step. They receive only the role needed for onboarding and later the approved project role.
+5. Bootstrap needs temporarily authorized permissions to create project, initial service account and backend. Login alone does not create these permissions. First demonstrate supported user API delegation; otherwise a documented one-time administrator/service-account bootstrap remains necessary.
+6. After bootstrap, remove temporary permissions and operate platform/application provisioning with separate, restricted execution identities.
 
-Die konkrete Permission-Matrix für Projektanlage, Rollenzuweisung, Netzwerkzuordnung und Dienstanlage ist per API/Provider-Spike nachzuweisen. Keine pauschale Zusage, dass `organization.viewer` für Provisionierung reicht: Diese Rolle betrifft die Benutzeraufnahme, nicht die Provisionierungsidentität.
+The specific permission matrix for project creation, role assignment, network assignment and service creation must be demonstrated through an API/provider spike. No blanket promise that `organization.viewer` suffices for provisioning: this role concerns user admission, not the provisioning identity.
 
-## Projekt-Templates und Instanzen
+<a id="projekt-templates-und-instanzen"></a>
+## Project templates and instances
 
-Konkretisierung: [Template-Eingaben, feste Vorgaben und Ressourcenverknüpfungen](template-parameters-and-bindings.md). Der Entwurfseditor unterstützt fünf freigegebene Parameterfelder und eine lokale Bestellvorschau. Veröffentlichung und produktive Application-Instanziierung bleiben offen.
+Details: [template inputs, fixed settings and resource bindings](template-parameters-and-bindings.md). The draft editor supports five approved parameter fields and a local order preview. Publication and production Application instantiation remain outstanding.
 
+**Decided:** Published template versions remain immutable. Existing instances receive new versions only through an explicitly requested upgrade with its own Plan.
 
-**Entschieden:** Veröffentlichte Template-Versionen bleiben unveränderlich. Bestehende Instanzen erhalten neue Versionen nur durch ein ausdrücklich angefordertes Upgrade mit eigenem Plan.
+A published `ApplicationTemplateVersion` contains:
 
-Ein veröffentlichtes `ApplicationTemplateVersion` enthält:
+- Tenant, stable template ID, version, status (`draft`, `published`, `retired`), author and approval.
+- Pinned Accelerator version, compiler/schema version and compatibility with the platform contract.
+- Application profile, such as VM project, dedicated Kubernetes project or namespace on a central Kubernetes cluster. These three variants are distinct business concepts; a namespace is not an independent cluster.
+- Fixed settings: permitted target folders, regions and SNAs, Public/Corporate type, mandatory services, roles, naming rules and quotas.
+- Explicitly exposed inputs with type, selection values, explanation and default, e.g. name, environment and permitted size class.
+- Declarative service configuration, such as STACKIT Secrets Manager and STACKIT Observability, and secure credential references. No secret values or arbitrary Terraform scripts.
+- Documented results, prerequisites, technical limitations and responsibility for operation/deletion.
 
-- Tenant, stabile Template-ID, Version, Status (`draft`, `published`, `retired`), Autor und Freigabe.
-- Gepinnte Accelerator-Version, Compiler-/Schemasversion und Kompatibilität zum Plattformvertrag.
-- Anwendungsprofil, etwa VM-Projekt, eigenes Kubernetes-Projekt oder Namespace auf einem zentralen Kubernetes-Cluster. Diese drei Varianten sind fachlich verschieden; ein Namespace ist kein eigenständiger Cluster.
-- Feste Vorgaben: erlaubte Zielordner, Regionen und SNAs, Public-/Corporate-Typ, verpflichtende Dienste, Rollen, Namensregeln und Quoten.
-- Explizit freigegebene Eingaben mit Typ, Auswahlwerten, Erklärung und Default, beispielsweise Name, Umgebung und zulässige Größenklasse.
-- Deklarative Dienstkonfiguration, etwa STACKIT Secrets Manager und STACKIT Observability, sowie sichere Credential-Referenzen. Keine Secretwerte oder beliebigen Terraform-Skripte.
-- Dokumentierte Ergebnisse, Voraussetzungen, technische Grenzen und Zuständigkeit für Betrieb/Löschung.
+An `ApplicationInstance` binds a specific template version, permitted user inputs, verified requester/project owner, platform contract version, state identity and execution revision. Templates are copied/instantiated; later changes do not automatically update existing instances. Updates are separate Plans with a visible diff and approval.
 
-Eine `ApplicationInstance` bindet eine konkrete Template-Version, zulässige Benutzereingaben, verifizierten Antragsteller/Projektverantwortlichen, Plattformvertragsversion, State-Identität und Ausführungsrevision. Templates werden kopiert/instanziiert, spätere Änderungen aktualisieren bestehende Instanzen nicht automatisch. Updates sind eigene Pläne mit sichtbarem Diff und Freigabe.
+The server sets organization, folder, permitted region/SNA and owner from verified bindings. It does not adopt these values unchecked from form, chat or API. The STACKIT project owner must be a suitable human account; the Application Owner product role does not automatically mean unlimited STACKIT IAM owner permissions. The specific project role/owner assignment required for business purposes is defined per template and tested with the API.
 
-Der Server setzt Organisation, Ordner, zulässige Region/SNA und Verantwortlichen aus verifizierten Bindungen. Er übernimmt diese Werte nicht ungeprüft aus Formular, Chat oder API. Der STACKIT-Projektverantwortliche muss ein geeignetes menschliches Konto sein; die Produktrolle Application Owner bedeutet nicht automatisch unbegrenzte STACKIT-IAM-Owner-Rechte. Welche konkrete Projektrolle/Owner-Zuweisung fachlich nötig ist, wird je Template festgelegt und mit der API getestet.
+**Important open boundary:** The existing application-project module is not a complete VM/Kubernetes workload catalogue. Before naming a template “VM” or “Kubernetes”, it must be clear whether only project and basic services, or actual VMs/clusters/namespaces, are created. Missing Accelerator capabilities are separate extensions.
 
-**Wichtige offene Grenze:** Das bestehende Anwendungsprojektmodul ist kein vollständiger VM-/Kubernetes-Workload-Katalog. Vor Benennung eines Templates als „VM“ oder „Kubernetes“ muss klar sein, ob nur Projekt und Basisdienste oder tatsächlich VMs/Cluster/Namespaces erstellt werden. Nicht vorhandene Accelerator-Funktionen sind eigene Erweiterungen.
+<a id="accelerator-vertrag-state-und-ausführung"></a>
+## Accelerator contract, state and execution
 
-## Accelerator-Vertrag, State und Ausführung
+Proposed new roots (specific paths still to be decided): `platform` for central resources and `application` for exactly one application instance. Existing `src` remains compatible during migration. Reusable modules are shared; no copying of complete platform configurations for every order.
 
-Vorgeschlagene neue Roots (konkrete Pfade noch zu entscheiden): `platform` für zentrale Ressourcen und `application` für genau eine Anwendungsinstanz. Bestehendes `src` bleibt während der Migration kompatibel. Wiederverwendbare Module werden geteilt; kein Kopieren kompletter Plattformkonfigurationen pro Bestellung.
-
-Die Plattform veröffentlicht einen **nicht sensitiven, versionierten Vertrag**: Organisations-ID, freigegebene Ordner-IDs, Regionen, SNA-/Netzwerkreferenzen, erlaubte zentrale Cluster-/Dienstreferenzen, Fähigkeiten und Policy-Version. Anwendungen konsumieren nur diesen Vertrag, nicht den vollständigen Plattform-State. Server und Runner prüfen Freigabe, Aktualität und Zielorganisation vor jedem Plan und Apply. Es gibt keinen direkten `terraform_remote_state`-Zugriff der Anwendungsinstanzen auf den Plattform-State und keine Weitergabe seiner Backend-Credentials.
+The platform publishes a **non-sensitive, versioned contract**: organization ID, approved folder IDs, regions, SNA/network references, permitted central cluster/service references, capabilities and policy version. Applications consume only this contract, not the full platform state. Server and Runner check approval, currency and target organization before every Plan and Apply. Application instances have no direct `terraform_remote_state` access to platform state and do not receive its backend credentials.
 
 ```mermaid
 flowchart LR
@@ -104,187 +112,134 @@ flowchart LR
   APP --> AS[Eigener Anwendungs-State]
 ```
 
-Getrennte Backend-Keys und Berechtigungen für Bootstrap, Plattform und jede Anwendungsinstanz; Tenant-Trennung bleibt erforderlich. Der vorhandene Accelerator-Bootstrap bleibt Grundlage der Backend-Bereitstellung. Keine Umstellung auf einen neuen zentralen Kunden-State ohne gesonderte Entscheidung. State-Locks und Queue-Locks pro Instanz verhindern konkurrierende Mutationen; geteilte Quoten/Netzwerkänderungen brauchen zusätzliche tenantweite Koordination.
+Separate backend keys and permissions for bootstrap, platform and every application instance; tenant separation remains required. Existing Accelerator bootstrap remains the basis of backend provisioning. No switch to new centralized customer state without a separate decision. State locks and queue locks per instance prevent concurrent mutations; shared quotas/network changes need additional tenant-wide coordination.
 
-Eine zentrale Plattformressource hat genau einen State-Eigentümer. Anwendungs-States dürfen sie referenzieren, aber nicht erneut verwalten. Entfernen einer SNA/eines Clusters wird blockiert, solange Anwendungsinstanzen davon abhängen. Laufende Ausführungen müssen vor Vertragsänderungen berücksichtigt werden.
+A central platform resource has exactly one state owner. Application states may reference it but not manage it again. Removing an SNA/cluster is blocked while application instances depend on it. Running executions must be considered before contract changes.
 
-Anwendungsjobs bekommen eine eingeschränkte, tenantgebundene Ausführungsidentität und ausschließlich freigegebene Ressourcenreferenzen. Die Template-Instanziierung ist kein Weg, den organisationsweiten Bootstrap-Service-Account zu delegieren. Retry/Idempotenz über Instanz-ID und Bestellschlüssel, kein zweites Projekt bei erneutem Klick. Quoten werden atomar reserviert und nach Fehlern abgeglichen.
+Application jobs receive a restricted, tenant-bound execution identity and exclusively approved resource references. Template instantiation is not a way to delegate the organization-wide bootstrap service account. Retry/idempotency through instance ID and order key, no second project on another click. Quotas are reserved atomically and reconciled after errors.
 
-Ein Klick auf „Bereitstellen“ startet zunächst Validierung und Plan. Automatischer Apply ist eine spätere explizite Produkt-/Tenant-Policy; die derzeitige persönliche Freigabepflicht für Kunden-Apply gilt unverändert. **Bestätigte Entscheidung:** Der Platform Engineer kann je Template sowohl direkte Bereitstellung als auch einen Genehmigungsablauf erlauben. Diese Policy wird serverseitig vor Plan und Apply geprüft; eine Änderung hebt die heutige Kunden-Apply-Freigabepflicht nicht vorzeitig auf. Der sichere Initialwert für neue Templates (Genehmigung erforderlich) ist ein Umsetzungsvorschlag.
+Clicking “Deploy” initially starts validation and Plan. Automatic Apply is a later explicit product/tenant policy; the current personal approval requirement for customer Apply applies unchanged. **Confirmed decision:** The Platform Engineer can allow both direct deployment and an approval workflow per template. This policy is checked server-side before Plan and Apply; a change does not prematurely lift today's customer Apply approval requirement. The safe initial value for new templates (approval required) is an implementation proposal.
 
-## GitHub und Application-Owner-Erlebnis
+<a id="github-und-application-owner-erlebnis"></a>
+## GitHub and the Application Owner experience
 
-Der Application Owner sollte keinen Fork auswählen müssen, nur um ein freigegebenes Template zu bestellen. Veröffentlichung kann durch den Platform Engineer aus seiner benutzergebundenen GitHub-Verbindung einen signierten/gehashten, unveränderlichen Snapshot in den Tenant-Katalog übernehmen. Lesen dieses veröffentlichten Snapshots ist kein Repositoryzugriff unter fremden Credentials.
+The Application Owner should not need to select a fork merely to order an approved template. Through their user-bound GitHub connection, the Platform Engineer can publish a signed/hashed, immutable snapshot to the tenant catalogue. Reading this published snapshot is not repository access under another person's credentials.
 
-Offen bleibt, wie Instanzen im Git archiviert werden: persönliche GitHub-Verbindung des Application Owners oder vom Platform Engineer ausdrücklich ausgeführter Export/Review. Bis zur Entscheidung PostgreSQL plus unveränderliche Konfigurationsartefakte als vorgeschlagener Instanznachweis. Kein stiller Wechsel auf zentrale GitHub-Tokens und keine Hintergrundschreibzugriffe unter dem Token eines anderen Benutzers. Die ursprüngliche Vorgabe benutzergebundener Repositoryzugriffe bleibt erhalten.
+How instances are archived in Git remains open: the Application Owner's personal GitHub connection or export/review explicitly performed by the Platform Engineer. Until decided, PostgreSQL plus immutable configuration artifacts are proposed instance evidence. No silent switch to centralized GitHub tokens and no background writes under another user's token. The original requirement for user-bound repository access remains.
 
-## UI-Auswirkungen
+<a id="ui-auswirkungen"></a>
+## UI impact
 
-Platform Engineer: Plattform, Projekt-Templates, Veröffentlichungen, Anwendungsübersicht und getrennt berechtigte Tenant-Verwaltung. Application Owner: freigegebene Projekt-Templates, eigene/zugewiesene Anwendungen, Status, Pläne und Zugänge. Aktueller Tenant und aktuelle Rolle sind stets sichtbar.
+Platform Engineer: platform, project templates, publications, application overview and separately authorized tenant management. Application Owner: approved project templates, own/assigned applications, status, Plans and access. Current tenant and current role are always visible.
 
-Die aktuelle Komponentenansicht bleibt Grundlage des Plattformeditors. Der spätere Template-Editor nutzt dieselben Fachkomponenten, ergänzt jedoch „fest vorgeben“, „Application Owner auswählen lassen“ und „nicht verfügbar“. Ein unbekanntes Feld ist nicht automatisch eine freigegebene Variable. Der Chat verwendet dieselben Autorisierungs- und Templateschemas wie das Formular.
+The current component view remains the basis of the platform editor. The later template editor uses the same business components but adds “fix value”, “let Application Owner choose” and “unavailable”. An unknown field is not automatically an exposed variable. Chat uses the same authorization and template schemas as the form.
 
-## Migration ohne Ressourcenverlust
+<a id="migration-ohne-ressourcenverlust"></a>
+## Migration without resource loss
 
-- Bestehende Gesamtkonfigurationen, Hashes und State-Adressen bleiben unverändert lesbar.
-- Zunächst neue reine Plattformen und neue Anwendungsinstanzen unterstützen.
-- Bestehende Projekte und ihre gemeinsam verwalteten Ressourcen inventarisieren; eindeutigen zukünftigen State-Eigentümer festlegen.
-- Separaten, getesteten Migrationslauf mit Backup, Locks, Import-/State-Move-Plan, Abbruch- und Rückkehrstrategie entwickeln. Cross-State-Migration ist kein gewöhnlicher UI-Speichervorgang.
-- Vor und nach jeder Migration nachweisen, dass weder unerwartete Neuanlage noch Löschung geplant wird. Keine automatische Migration durch Login, Template-Auswahl oder Öffnen eines Dokuments.
-- Bekannte Grenzen #22 (Folder-Destroy), #37 (privates Kubernetes), #65 (Firewall), #80 (regionale Namespace-Verkabelung) gelten auch für die neuen Roots.
+- Existing combined configurations, hashes and state addresses remain readable unchanged.
+- Initially support new platform-only configurations and new application instances.
+- Inventory existing projects and their jointly managed resources; define a unique future state owner.
+- Develop a separate, tested migration run with backup, locks, import/state-move plan, abort and rollback strategy. Cross-state migration is not an ordinary UI save.
+- Before and after every migration, demonstrate that no unexpected creation or deletion is planned. No automatic migration through login, template selection or opening a document.
+- Known limitations #22 (folder destroy), #37 (private Kubernetes), #65 (firewall), #80 (regional namespace wiring) also apply to the new roots.
 
-## Diskussionsentscheidungen und Umsetzung
+<a id="diskussionsentscheidungen-und-umsetzung"></a>
+## Discussion decisions and implementation
 
-Empfehlungen für die nächste gemeinsame Entscheidung:
+Recommendations for the next joint decision:
 
-1. Zwei Rollen pro Tenant; beide gleichzeitig möglich. Mitgliedschaftsverwaltung separat delegieren.
-2. Application Owner benötigt zunächst ein bereits verifiziertes STACKIT-Konto; geführte Organisationsaufnahme, keine implizite Kontoerstellung.
-3. Zuerst ein Template „Anwendungsprojekt mit Basisdiensten“, danach eigene Cluster/VMs und zentrale Namespace-Angebote jeweils nach nachgewiesenem Accelerator-Support.
-4. Template-Veröffentlichung als unveränderlicher Tenant-Katalog-Snapshot; Git-Ablage der Instanzen gesondert entscheiden.
-5. Erst Plattform- und Anwendungs-Plan getrennt implementieren, dann kontrollierter Apply; Bestandsmigration zuletzt.
+1. Two roles per tenant; both possible simultaneously. Delegate membership management separately.
+2. Application Owner initially needs an already verified STACKIT account; guided organization admission, no implicit account creation.
+3. First a template “Application project with basic services”, then dedicated clusters/VMs and central namespace offerings, each after demonstrated Accelerator support.
+4. Template publication as immutable tenant catalogue snapshot; decide Git storage of instances separately.
+5. First implement platform and application Plan separately, then controlled Apply; legacy migration last.
 
-### Phase A – Verträge und IAM-Nachweis
+<a id="phase-a--verträge-und-iam-nachweis"></a>
+### Phase A – contracts and IAM evidence
 
-- [x] Zielbild, Rollentrennung und offene Annahmen dokumentieren.
-- [x] Unveränderliche veröffentlichte Template-Versionen und explizite Upgrades vom Benutzer bestätigt.
-- [x] Zukünftige Apply-Policy durch Platform Engineer je Template einstellbar: direkt oder genehmigungspflichtig.
-- [ ] Entscheidungen zu Verantwortlichem/Team, Git-Ablage und Freigabeweg treffen.
-- [ ] STACKIT-IdP-Client und delegierte Benutzer-API-Berechtigungen mit STACKIT klären.
-- [ ] Organisationsaufnahme und minimale Rechte mit eigenem Testbenutzer nachweisen.
-- [ ] Inventar bestehender Plattform-/Anwendungsressourcen und Capability-Matrix erstellen.
-- [ ] Plattformvertrag, Template-Schema und getrennte State-Eigentümerschaft reviewen.
+- [x] Document target design, role separation and open assumptions.
+- [x] Immutable published template versions and explicit upgrades confirmed by user.
+- [x] Future Apply policy configurable by Platform Engineer per template: direct or requiring approval.
+- [ ] Decide owner/team, Git storage and approval path.
+- [ ] Clarify STACKIT IdP client and delegated user API permissions with STACKIT.
+- [ ] Demonstrate organization admission and minimal permissions with a dedicated test user.
+- [ ] Create inventory of existing platform/application resources and capability matrix.
+- [ ] Review platform contract, template schema and separate state ownership.
 
-### Phase B – Accelerator und reine Plan-Unterstützung
+<a id="phase-b--accelerator-und-reine-plan-unterstützung"></a>
+### Phase B – Accelerator and Plan-only support
 
-- [ ] Neue Roots/Module und versionierten Plattformvertrag implementieren.
-- [ ] Template-Compiler mit erlaubten Eingaben und festen Policies implementieren.
-- [ ] Isolierte Anwendungs-States und eingeschränkte Runner-Credentials anbinden.
-- [ ] Native OpenTofu-Vertragstests und Plan-Negativtests für fremde Ordner/SNAs/Organisationen.
-- [ ] Separates Konzept für Bestandsmigration ausarbeiten; noch nicht ausführen.
+- [ ] Implement new roots/modules and versioned platform contract.
+- [ ] Implement template compiler with permitted inputs and fixed policies.
+- [ ] Connect isolated application states and restricted Runner credentials.
+- [ ] Native OpenTofu contract tests and negative Plan tests for foreign folders/SNAs/organizations.
+- [ ] Develop separate concept for legacy migration; do not execute yet.
 
-### Phase C – Configurator Self-Service
+<a id="phase-c--configurator-self-service"></a>
+### Phase C – Configurator self-service
 
-- [ ] Tenant-Rollen, Einladungen, Identitätsverknüpfung und Audit-Log implementieren.
-- [ ] Template-Entwurf, Veröffentlichung, Katalog und Stilllegung implementieren.
-- [ ] Rollenabhängige Ansichten, Bestellformular und eigene Instanzen implementieren.
-- [ ] API-/RLS-/Job-Negativtests gegen tenantfremde Zugriffe und Rolleneskalation.
-- [ ] Idempotenz, Quoten, Fehlerwiederaufnahme und Template-Updates testen.
-- [ ] Kunden-Apply erst nach konkreter Freigabe; bestätigte spätere Self-Service-Apply-Policy sicher implementieren.
+- [ ] Implement tenant roles, invitations, identity linking and audit log.
+- [ ] Implement template draft, publication, catalogue and retirement.
+- [ ] Implement role-dependent views, order form and own instances.
+- [ ] API/RLS/job negative tests against cross-tenant access and role escalation.
+- [ ] Test idempotency, quotas, error recovery and template updates.
+- [ ] Customer Apply only after specific approval; securely implement the confirmed later self-service Apply policy.
 
-## Erster technischer Prototyp (2026-10-01, noch nicht an API/Runner angebunden)
+<a id="erster-technischer-prototyp-2026-10-01-noch-nicht-an-apirunner-angebunden"></a>
+## First technical prototype (2026-10-01, not yet connected to API/Runner)
 
-- `src/application` ist ein separater Root für genau eine neue Anwendungsinstanz,
-  mit Verweis auf freigegebene Plattformressourcen und eigenem S3-Backend-Key.
-- `app/packages/domain/src/application-plan.ts` enthält einen reinen Compiler für
-  veröffentlichte Templates, verifizierten Serverkontext und streng begrenzte
-  Bestelleingaben. Tenant-, Organisations-, Revisions- und Zielbindung werden geprüft.
-- Der Compiler übernimmt den Owner aus dem Serverkontext und Dienste aus dem
-  Template. Er ersetzt weder serverseitige Mitgliedschaftsprüfung noch tatsächliche
-  STACKIT-Identitätsprüfung, Veröffentlichung/Persistierung oder Job-Autorisierung.
-- Vier native Mock-Plan-Tests prüfen Public/Corporate sowie Tenant-/Revisionsgrenzen;
-  vier Compiler-Tests prüfen isolierte State-Schlüssel, Bindungen und Eingabe-Injektion.
-- Ausführung bleibt ausdrücklich deaktiviert; `direct` ist nur gespeicherte
-  zukünftige Policy. Kein API-Endpunkt, keine Rollenumschaltung und kein Kunden-Plan
-  wurden damit bereits freigeschaltet.
+- `src/application` is a separate root for exactly one new application instance, referencing approved platform resources and having its own S3 backend key.
+- `app/packages/domain/src/application-plan.ts` contains a pure compiler for published templates, verified server context and strictly limited order inputs. Tenant, organization, revision and target binding are checked.
+- The compiler takes owner from server context and services from the template. It replaces neither server-side membership checking nor actual STACKIT identity verification, publication/persistence or job authorization.
+- Four native mock Plan tests check Public/Corporate and tenant/revision boundaries; four compiler tests check isolated state keys, bindings and input injection.
+- Execution remains explicitly disabled; `direct` is only stored future policy. This has not yet enabled any API endpoint, role switching or customer Plan.
 
-Das geteilte Modul erzeugt außer den auswählbaren Diensten auch einen Automations-
-Service-Account samt Schlüssel und Object-Storage-Buckets/Credentials. Dieser Umfang
-muss beim Veröffentlichen des Basis-Templates und im Plan sichtbar sein. Die
-Anwendungsinstanz verwendet für ihren ersten Lauf das vorhandene Bootstrap-Backend,
-nicht ihren erst später erzeugten eigenen Bucket.
+Besides selectable services, the shared module also creates an automation service account with key and Object Storage buckets/credentials. This scope must be visible when publishing the base template and in the Plan. For its first run, the application instance uses the existing bootstrap backend, not its own bucket created only later.
 
-## Umsetzungsschritt: unabhängige Benutzeridentität (2026-10-01)
+<a id="umsetzungsschritt-unabhängige-benutzeridentität-2026-10-01"></a>
+## Implementation step: independent user identity (2026-10-01)
 
-Die additive Migration `006_external_identities.sql` trennt externe Anmeldeidentitäten
-von der internen Benutzer-UUID. Bestehende GitHub-Zuordnungen werden übernommen;
-Benutzer-, Tenant-, Konfigurations- und Secret-Adressen bleiben unverändert.
-GitHub-Anmeldung löst Benutzer jetzt über Provider, Issuer und unveränderliche
-GitHub-ID auf. Die bisherigen GitHub-Spalten bleiben für bestehende Session-
-und Repository-Schnittstellen vorübergehend erhalten und sind nun optional.
-Es existiert noch kein OIDC-Login und keine öffentliche Account-Linking-API.
-Identitätsverknüpfungen haben keine direkten Runtime-Tabellenrechte.
+Additive migration `006_external_identities.sql` separates external login identities from the internal user UUID. Existing GitHub mappings are adopted; user, tenant, configuration and secret addresses remain unchanged. GitHub login now resolves users through provider, issuer and immutable GitHub ID. Previous GitHub columns are temporarily retained for existing session and repository interfaces and are now optional. There is no OIDC login or public account-linking API yet. Identity links have no direct runtime table permissions.
 
-STACKIT IDP bleibt der bevorzugte Hauptlogin. Das Ticket zur Registrierung eines
-eigenen OIDC-Clients wurde vom Benutzer gestellt; die Antwort steht aus.
-Die öffentliche [Federationsanleitung](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/how-tos/generic-oidc-1_0-federation-guide/)
-beschreibt STACKIT als Relying Party und bestätigt diesen Registrierungsweg nicht.
-Alternativ wird ein freigegebener Unternehmens-OIDC-Anbieter angebunden; ein
-Identity Broker ist erst bei entsprechendem Bedarf vorgesehen. GitHub bleibt
-bis zur Umstellung der Übergangslogin und später eine persönliche Verbindung.
-Kein Zusammenführen von Konten allein anhand gleicher E-Mail-Adressen.
+STACKIT IDP remains the preferred primary login. The user has submitted the ticket for registering a custom OIDC client; the response is pending. The public [federation guide](https://docs.stackit.cloud/platform/access-and-identity/stackit-idp/how-tos/generic-oidc-1_0-federation-guide/) describes STACKIT as relying party and does not confirm this registration path. Alternatively, an approved enterprise OIDC provider will be connected; an identity broker is planned only if needed. GitHub remains the transitional login until the switch and later a personal connection. No account merging solely on matching email addresses.
 
-### Nächste Implementierungsschritte
+<a id="nächste-implementierungsschritte"></a>
+### Next implementation steps
 
-- [x] Externe Identitäten separat speichern und bestehende UUIDs erhalten.
-- [x] PostgreSQL-Tests: Bestandsmigration, GitHub-Umbenennung, Runtime-Zugriffsverbot,
-      issuergebundene Subjects und Benutzer ohne GitHub.
-- [ ] Verifizierte OIDC-Anmeldung nach Client-Registrierung; Anbieter serverseitig
-      freigeben, Identität anhand von Issuer und Subject prüfen.
-- [ ] Sichere Verknüpfung bestehender Benutzer mit erneutem Nachweis beider Konten.
-- [ ] Organisationstenants von bisherigen persönlichen Arbeitsbereichen unterscheiden;
-      zunächst genau eine verifizierte STACKIT-Organisation je Organisationstenant.
-- [ ] Mitgliedschaften mit Platform Engineer / Application Owner und separater
-      Mitgliederverwaltungsfähigkeit, Widerruf und Audit implementieren.
-- [ ] Tenant-Wechsel mit unabhängiger persönlicher GitHub-Token-Bindung implementieren.
-- [ ] Bestehende API-Rechte auf neue Rollen umstellen, bevor Application Owner Zugang erhalten.
-- [ ] Oberfläche „Organisation & Mitglieder“ und Application-Katalog bereitstellen.
+- [x] Store external identities separately and preserve existing UUIDs.
+- [x] PostgreSQL tests: legacy migration, GitHub rename, prohibited runtime access, issuer-bound subjects and users without GitHub.
+- [ ] Verified OIDC login after client registration; approve provider server-side, check identity by issuer and subject.
+- [ ] Secure linking of existing users with renewed proof of both accounts.
+- [ ] Distinguish organization tenants from previous personal workspaces; initially exactly one verified STACKIT organization per organization tenant.
+- [ ] Implement memberships with Platform Engineer / Application Owner and separate member-management capability, revocation and audit.
+- [ ] Implement tenant switching with independent personal GitHub token binding.
+- [ ] Migrate existing API permissions to new roles before Application Owners receive access.
+- [ ] Provide “Organization & members” UI and Application catalogue.
 
-Dieser Schritt aktiviert keine neuen Rollen, erteilt keine STACKIT-Rechte und
-ändert weder die Kunden-Apply-Freigabe noch die bestehenden Tenant-Grenzen.
+This step activates no new roles, grants no STACKIT permissions and changes neither customer Apply approval nor existing tenant boundaries.
 
-## Organisation & Mitglieder: erster Verwaltungsstand
+<a id="organisation--mitglieder-erster-verwaltungsstand"></a>
+## Organization & members: first management status
 
-Organisationstenants können jetzt getrennt vom persönlichen Arbeitsbereich angelegt
-werden. Ihre STACKIT-Organisations-ID ist ausdrücklich **unverifiziert**. Ein Benutzer
-kann mehrere Arbeitsbereiche besitzen bzw. ihnen angehören; die Oberfläche bietet
-einen expliziten Wechsel mit vollständigem Neuladen. Die persönliche GitHub-Token-
-Bindung bleibt beim Wechsel auf den ursprünglichen Benutzer-/Session-Pfad gebunden.
+Organization tenants can now be created separately from the personal workspace. Their STACKIT organization ID is explicitly **unverified**. A user can own or belong to multiple workspaces; the UI offers an explicit switch with full reload. Personal GitHub token binding remains bound to the original user/session path during switching.
 
-Die Mitgliederverwaltung verwendet zunächst die interne UUID eines bereits
-registrierten Benutzers. Es gibt keinen globalen Benutzerkatalog und keine automatische
-Kontozusammenführung über E-Mail. Platform Engineer und Application Owner sind
-kombinierbar. Mitgliederverwaltung ist eine gesonderte Fähigkeit für Platform Engineers.
-Änderungen werden auditiert; der letzte Verwalter darf auch bei konkurrierenden
-Änderungen nicht verloren gehen. Bestehende persönliche Mitgliedschaften werden
-nicht auf die neuen Rollen hochgestuft.
+Member management initially uses the internal UUID of an already registered user. There is no global user catalogue or automatic account merging through email. Platform Engineer and Application Owner can be combined. Member management is a separate capability for Platform Engineers. Changes are audited; the last manager must not be lost even under concurrent changes. Existing personal memberships are not promoted to new roles.
 
-**Ausführungsgrenze dieses Stands:** Organisationstenants sind Verwaltungsentwürfe.
-Credentials, Produktkatalog-Abfragen und die alten Plan-/Deployment-Endpunkte sind
-dort serverseitig gesperrt. Application Owner erhalten auch keinen Zugriff auf die
-bisherigen Plattform-/Git-Endpunkte. Der persönliche Arbeitsbereich bleibt für die
-bisherige Konfiguration und autorisierte Plan-Nutzung verfügbar. Die neue Ansicht
-aktiviert noch keinen Application-Katalog und keine Kunden-Apply-Funktion.
+**Execution boundary of this status:** Organization tenants are management drafts. Credentials, product catalogue queries and old Plan/deployment endpoints are blocked there server-side. Application Owners also receive no access to previous platform/Git endpoints. The personal workspace remains available for previous configuration and authorized Plan use. The new view does not yet activate an Application catalogue or customer Apply.
 
-- [x] Entwurfs-Organisationstenants und expliziter Tenant-Wechsel.
-- [x] Rollenmitgliedschaften und separate Mitgliederverwaltung mit Audit.
-- [x] Oberfläche „Organisation & Mitglieder“ und serverseitige Abgrenzung der alten APIs.
-- [ ] STACKIT-Organisationsbindung und handelnde Benutzeridentität verifizieren.
-- [ ] Erst danach tenantgebundene Credentials und organisationsweite Ausführung freigeben.
-- [ ] Einladungen, STACKIT-Mitgliederabgleich und unveränderliche Application Templates.
+- [x] Draft organization tenants and explicit tenant switching.
+- [x] Role memberships and separate member management with audit.
+- [x] “Organization & members” UI and server-side separation of old APIs.
+- [ ] Verify STACKIT organization binding and acting user identity.
+- [ ] Only then enable tenant-bound credentials and organization-wide execution.
+- [ ] Invitations, STACKIT member reconciliation and immutable Application templates.
 
-## Mitgliedseinladungen ersetzen manuelle Benutzerkennungen
+<a id="mitgliedseinladungen-ersetzen-manuelle-benutzerkennungen"></a>
+## Member invitations replace manual user identifiers
 
-Neue Mitgliedschaften entstehen durch ausdrückliche Annahme eines Einladungslinks.
-Der Verwalter wählt Rollen und gegebenenfalls Mitgliederverwaltung. Der Link ist
-sieben Tage gültig, einmal verwendbar und bis zur Annahme widerrufbar. Er wird nur
-bei Erstellung vollständig angezeigt; PostgreSQL speichert ausschließlich seinen
-SHA-256-Hash. Der zufällige Token besitzt 256 Bit Entropie. Es wird keine E-Mail
-verschickt. Der Link ist eine übertragbare Berechtigung und muss gezielt an die
-gewünschte Person weitergegeben werden; er ist nicht an eine E-Mail-Adresse gebunden.
+New memberships arise through explicit acceptance of an invitation link. The manager chooses roles and, if applicable, member management. The link is valid for seven days, usable once and revocable until acceptance. It is displayed in full only at creation; PostgreSQL stores exclusively its SHA-256 hash. The random token has 256 bits of entropy. No email is sent. The link is a transferable authorization and must be deliberately passed to the intended person; it is not bound to an email address.
 
-Die Person meldet sich über den verfügbaren Login an; beim ersten GitHub-Login
-entsteht automatisch ihr interner Benutzer. Sie sieht Arbeitsbereich und Rollen
-und bestätigt den Beitritt. Der Token wird im URL-Fragment transportiert, sofort
-von der sichtbaren URL entfernt und nur im aktuellen Tab über den Login hinweg
-in Session Storage gehalten. Vorschau und Annahme erfordern Anmeldung, Annahme
-zusätzlich Origin-/CSRF-Prüfung. Tokens erscheinen nicht in URL-Pfaden, Querystrings,
-Audit-Ereignissen oder der Einladungsliste. Nach Annahme/Schließen wird der lokale
-Token entfernt. Ein unterbrochener Ablauf lässt sich mit dem Link erneut öffnen.
+The person signs in through the available login; their internal user is created automatically at first GitHub login. They see workspace and roles and confirm joining. The token is transported in the URL fragment, immediately removed from the visible URL and held only in the current tab's session storage across login. Preview and acceptance require login; acceptance additionally requires Origin/CSRF checking. Tokens do not appear in URL paths, query strings, audit events or the invitation list. After acceptance/closing, the local token is removed. An interrupted workflow can be reopened with the link.
 
-Der Server serialisiert Annahme, Widerruf und Mitgliedsverwaltung am Tenant.
-Abgelaufene/verwendete/widerrufene Einladungen, archivierte Arbeitsbereiche und
-Einladende ohne aktuelle Verwaltungsberechtigung werden abgewiesen. Bestehende
-Mitglieder erhalten über eine Einladung keine zusätzlichen Rollen. Der alte
-Mitglieds-Endpunkt darf nur noch existierende Mitgliedschaften bearbeiten.
-Die UI benötigt keine internen Benutzerkennungen mehr. Einladungen verwalten und
-annehmen erteilt keine STACKIT-IAM-Rechte und aktiviert kein Kunden-Apply.
+The server serializes acceptance, revocation and member management on the tenant. Expired/used/revoked invitations, archived workspaces and inviters without current management permission are rejected. Existing members receive no additional roles through an invitation. The old membership endpoint may only edit existing memberships. The UI no longer needs internal user identifiers. Managing and accepting invitations grants no STACKIT IAM permissions and activates no customer Apply.

@@ -1,9 +1,13 @@
-# Remote-State-Absicherung
+# Remote state protection
 
-Dieser Root verwaltet `aws_s3_bucket_versioning` am STACKIT-S3-Endpunkt. Es werden keine AWS-Ressourcen angelegt. Voraussetzung sind der Bucket und S3-Credentials aus dem bereits angewendeten Bootstrap-Root.
+[English](README.md) | [Deutsch](README.de.md)
 
-Der echte Erstplan hat gezeigt, dass der S3-Provider existierende Credentials bereits zur Planung benötigt. Deshalb ist diese Konfiguration ein eigener Root und kein `-target`-Sonderlauf innerhalb des Bootstrap-Roots.
+<a id="remote-state-absicherung"></a>
 
-Der Wrapper übergibt Credentials ausschließlich im Prozessumfeld. Dieser Root nutzt einen eigenen State-Key im Verwaltungs-Bucket. Provider-Zugang zum Workload-Bucket und Backend-Zugang zum Verwaltungs-Bucket werden getrennt übergeben. Der Plattform-Root darf erst nach angewendeter Versionierung sein Remote-Backend initialisieren. [Operator-Anleitung](../README.md).
+This root manages `aws_s3_bucket_versioning` at the STACKIT S3 endpoint. No AWS resources are created. The bucket and S3 credentials from the already applied bootstrap root are prerequisites.
 
-Dieser Root wurde noch nicht angewendet. Der gleichartige Seed-Protection-Root hat Versionierung am Verwaltungs-Bucket erfolgreich aktiviert; Versionswiederherstellung wurde dort geprüft. Konkurrierende OpenTofu-Zugriffe und vollständiges Disaster Recovery bleiben zu testen.
+The real initial Plan showed that the S3 provider already needs existing credentials during planning. This configuration is therefore a separate root, not a special `-target` run within the bootstrap root.
+
+The wrapper passes credentials only through the process environment. This root uses its own state key in the management bucket. Provider access to the workload bucket and backend access to the management bucket are passed separately. The platform root may initialize its remote backend only after versioning has been applied. [Operator instructions](../README.md).
+
+This root has not yet been applied. The equivalent seed-protection root successfully enabled versioning on the management bucket; version recovery was verified there. Concurrent OpenTofu access and complete disaster recovery remain to be tested.

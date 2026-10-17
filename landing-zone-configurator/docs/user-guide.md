@@ -1,5 +1,7 @@
 # Configurator user guide
 
+[English](user-guide.md) | [Deutsch](user-guide.de.md)
+
 ## Access and roles
 
 Sign in with STACKIT. Authentication does not by itself grant access to an

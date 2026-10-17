@@ -1,32 +1,36 @@
-# Gepinnter Accelerator für Kunden-Pläne
+# Pinned Accelerator for customer Plans
 
-Quelle: `stackitcloud/stackit-landing-zone`, Commit
-`a256f6896d11134fdc351786f1be5eba4e56b2e2` (derselbe Stand wie Vorbereitungen).
-Engine: OpenTofu **1.12.6**. `accelerator.lock.hcl` wurde aus einem sauberen
-`git archive` dieses Commits mit `tofu init -backend=false` und
-`tofu providers lock -platform=linux_amd64 -platform=darwin_arm64` erzeugt.
-Der Quellcommit enthält kein eingechecktes Root-Lockfile. Der Configurator besitzt
-deshalb einen separaten Lock für genau diese Code-Version; das Accelerator-Original
-wird nicht verändert. Provider-Updates verlangen eine neue gemeinsame Qualifizierung.
+[English](README.md) | [Deutsch](README.de.md)
 
-Im späteren Build wird die Datei als `src/.terraform.lock.hcl` in das isolierte
-Accelerator-Paket kopiert. Anschließend ausschließlich `tofu init -lockfile=readonly`.
-Linux-Checksummen sind erfasst. Die Release-Pipeline prüft init/validate und die
-CF-Isolation vor der Abnahme; aktueller Status steht im Abnahmedokument. Der opnsense-
-Provider wurde vom Registry-Download ohne GPG-Signatur angeboten; Checksummen sind
-gepinnt, dies ist kein Signaturnachweis dieses Providers.
+<a id="gepinnter-accelerator-für-kunden-pläne"></a>
 
-`package.sh` baut ein separates Binary-Paket mit Node, OpenTofu und
-Provider-Mirror; `manifest.yml` staged ein task-only CF-Template ohne Bindings.
-Der finale Image-Buildpack wird über `LZC_IMAGE_BUILDPACK` auf den freigegebenen
-Release-Commit gepinnt; die geschützte Pipeline liefert die Runner-Variablendatei.
-Hosted-Archive enthalten die qualifizierte Image-SHA statt der großen QCOW2-Datei.
-Beim Staging wird diese aus STACKIT Object Storage geladen, SHA-geprüft und
-ohne zusätzliche Dateikopie am ursprünglichen Pfad ins Droplet verschoben.
-Das unveränderliche CF-Droplet ist der dauerhafte Cache; ein redundantes großes
-Buildpack-Cache-Archiv wird vermieden.
-CI prüft dafür die bytegleiche Wiederherstellung und unveränderte Paketidentität.
-Lokale Archive bleiben vollständig. Es gibt keinen Download pro Nutzer oder Plan.
-Details und Grenzen: [CF-Staging und Cache](../cloud-foundry/README.md#image-staging-and-caching).
-Der Dispatcher kopiert dessen Droplet in eine neue App pro Auftrag. Direkte
-OpenTofu-Schritte stehen in `run-plan.sh`. Ablauf und Freigabegrenzen: [Plan-Ausführung](../../docs/plan-execution.md).
+Source: `stackitcloud/stackit-landing-zone`, commit
+`a256f6896d11134fdc351786f1be5eba4e56b2e2` (the same version as preparations).
+Engine: OpenTofu **1.12.6**. `accelerator.lock.hcl` was generated from a clean
+`git archive` of this commit using `tofu init -backend=false` and
+`tofu providers lock -platform=linux_amd64 -platform=darwin_arm64`.
+The source commit contains no checked-in root lockfile. The Configurator
+therefore owns a separate lock for exactly this code version; the original Accelerator
+is not modified. Provider updates require new joint qualification.
+
+In the later build, the file is copied into the isolated Accelerator package as
+`src/.terraform.lock.hcl`. Subsequently use only `tofu init -lockfile=readonly`.
+Linux checksums are recorded. The release pipeline checks init/validate and
+CF isolation before acceptance; the acceptance document records the current status.
+The opnsense provider was offered by the registry download without a GPG signature;
+checksums are pinned, but this is not proof of that provider's signature.
+
+`package.sh` builds a separate binary package with Node, OpenTofu and
+a provider mirror; `manifest.yml` stages a task-only CF template without bindings.
+The final image buildpack is pinned to the approved release commit through
+`LZC_IMAGE_BUILDPACK`; the protected pipeline supplies the Runner variables file.
+Hosted archives contain the qualified image SHA instead of the large QCOW2 file.
+During staging, it is downloaded from STACKIT Object Storage, SHA-verified and
+moved into the droplet at the original path without an additional file copy.
+The immutable CF droplet is the durable cache; a redundant large
+buildpack cache archive is avoided.
+CI checks byte-identical restoration and unchanged package identity.
+Local archives remain complete. There is no download per user or Plan.
+Details and limits: [CF staging and cache](../cloud-foundry/README.md#image-staging-and-caching).
+The dispatcher copies its droplet into a new app per job. Direct
+OpenTofu steps are in `run-plan.sh`. Process and approval boundaries: [Plan execution](../../docs/plan-execution.md).

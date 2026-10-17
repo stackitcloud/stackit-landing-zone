@@ -1,50 +1,56 @@
-# Öffentliche STACKIT-Portal-Designreferenz abrufen
+# Fetch the public STACKIT portal design reference
 
-Vom Repository-Verzeichnis aus (Python 3 und curl erforderlich):
+[English](README.md) | [Deutsch](README.de.md)
+
+<a id="öffentliche-stackit-portal-designreferenz-abrufen"></a>
+
+From the repository directory (requires Python 3 and curl):
 
 ```sh
 python3 landing-zone-configurator/tools/portal-reference/fetch.py
 ```
 
-Das Werkzeug lädt `https://portal.stackit.cloud/`, entdeckt die aktuellen
-Stylesheet- und Haupt-JavaScript-Dateinamen im HTML und lädt diese direkt per
-`curl`. Dadurch bleiben wechselnde Asset-Hashes ohne manuelles Nachführen nutzbar.
-Keine Anmeldung, Bearer-Tokens, Cookies oder Projekt-API-Aufrufe erforderlich.
+The tool downloads `https://portal.stackit.cloud/`, discovers the current
+stylesheet and main JavaScript filenames in the HTML and downloads them directly
+using `curl`. This accommodates changing asset hashes without manual updates.
+No login, bearer tokens, cookies or project API calls required.
 
-Der grundlegende Abruf lässt sich auch direkt ausführen:
+The basic fetch can also be run directly:
 
 ```sh
 curl -q --fail --silent --show-error --max-time 30 \
   https://portal.stackit.cloud/ --output /tmp/stackit-portal.html
 ```
 
-`-q` unterbindet persönliche curlrc-Vorgaben. Zertifikate werden normal geprüft;
-Redirects werden nicht verfolgt. Bei Zscaler-/Zertifikatsfehlern die Verbindung
-prüfen und erneut ausführen; TLS-Prüfung nicht deaktivieren.
+`-q` suppresses personal curlrc settings. Certificates are verified normally;
+redirects are not followed. For Zscaler/certificate errors, check the connection
+and run again; do not disable TLS verification.
 
-Ausgabe im ignorierten Verzeichnis `landing-zone-configurator/.local/portal-reference/`:
+Output in the ignored directory `landing-zone-configurator/.local/portal-reference/`:
 
-- `portal.html`, `stylesheet-*.css`, `main-*.js`: unveränderte öffentliche Quellen.
-- `sources.json`: Quellen-URLs, Abrufzeitpunkt, Dateigrößen und SHA-256.
-- `design-tokens.json`: NDS-Deklarationen nach Selektor und Font-Face-Definitionen.
+- `portal.html`, `stylesheet-*.css`, `main-*.js`: unchanged public sources.
+- `sources.json`: source URLs, fetch timestamp, file sizes and SHA-256.
+- `design-tokens.json`: NDS declarations by selector and font-face definitions.
 
-Das Verzeichnis enthält jeweils den letzten Abruf. Die Token-Extraktion ist eine
-Quellenanalyse, kein vollständiger CSS-Parser oder Browser. Marken, Themes und
-Media-Queries müssen getrennt ausgewertet werden. Ein HTTP-Erfolg bestätigt
-keine gerenderte Projektansicht. Fonts werden nicht heruntergeladen; vollständige
-Portal-Bundles werden nicht in die App übernommen oder eingecheckt.
+The directory contains the latest fetch. Token extraction is
+source analysis, not a complete CSS parser or browser. Brands, themes and
+media queries must be evaluated separately. HTTP success does not confirm
+a rendered project view. Fonts are not downloaded; complete
+portal bundles are not incorporated into the app or checked in.
 
-Erfasste Werte und offene visuelle Abnahme: [Designreferenz](../../docs/design-reference.md).
+Recorded values and outstanding visual acceptance: [design reference](../../docs/design-reference.md).
 
-## Semantische Tokens für die App
+<a id="semantische-tokens-für-die-app"></a>
 
-Nach dem Abruf erzeugt `python3 landing-zone-configurator/tools/portal-reference/export-tokens.py`
-den bewusst begrenzten Token-Snapshot `app/apps/web/src/nebula-tokens.css`.
-Er verwendet ausschließlich `brand--digits` / `theme--light` und erhält die
-Viewport-Regeln der ausgewählten Größen. Änderungen vor Übernahme prüfen;
-anschließend `npm run format` im App-Verzeichnis ausführen.
+## Semantic tokens for the app
 
-Die Token-Datei ist keine vollständige Nebula-Bibliothek. Die offizielle Referenz
-ist [Nebula](https://styleguide.stackit.schwarz/), insbesondere die
-[Token-Architektur](https://styleguide.stackit.schwarz/foundations/design-tokens/about-tokens/)
-und die [Formularregeln](https://styleguide.stackit.schwarz/patterns/forms/design/).
+After fetching, `python3 landing-zone-configurator/tools/portal-reference/export-tokens.py`
+generates the deliberately limited token snapshot `app/apps/web/src/nebula-tokens.css`.
+It uses only `brand--digits` / `theme--light` and preserves the
+viewport rules for the selected sizes. Review changes before adopting them;
+then run `npm run format` in the app directory.
+
+The token file is not a complete Nebula library. The official reference
+is [Nebula](https://styleguide.stackit.schwarz/), particularly the
+[token architecture](https://styleguide.stackit.schwarz/foundations/design-tokens/about-tokens/)
+and [form rules](https://styleguide.stackit.schwarz/patterns/forms/design/).

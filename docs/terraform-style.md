@@ -1,5 +1,7 @@
 # Terraform Style Guide
 
+[English](terraform-style.md) | [Deutsch](terraform-style.de.md)
+
 This file defines the Terraform style conventions for this repository, based on the [HashiCorp Terraform Style Guide](https://developer.hashicorp.com/terraform/language/style). All Terraform code in this workspace MUST conform to these rules. When reviewing or generating Terraform code, enforce every rule below.
 
 ---

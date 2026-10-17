@@ -1,156 +1,166 @@
-# Configurator-Entwicklung
+# Configurator development
 
-TypeScript-Workspace mit React/Vite, Fastify, Fachmodell und API-Verträgen. Abhängigkeiten sind exakt gepinnt, das npm-Lockfile wird versioniert. Voraussetzungen: Node.js **24.21.0**, npm **11.19.0**. `../mise.toml` und `.node-version` dokumentieren die Runtime unabhängig vom Accelerator.
+[English](README.md) | [Deutsch](README.de.md)
 
-## Installieren und prüfen
+<a id="configurator-entwicklung"></a>
 
-Im Verzeichnis `landing-zone-configurator/app`:
+TypeScript workspace with React/Vite, Fastify, a domain model and API contracts. Dependencies are pinned exactly, and the npm lockfile is versioned. Prerequisites: Node.js **24.21.0**, npm **11.19.0**. `../mise.toml` and `.node-version` document the runtime independently of the Accelerator.
+
+<a id="installieren-und-prüfen"></a>
+
+## Install and check
+
+In the `landing-zone-configurator/app` directory:
 
 ```sh
 npm ci
 npm run check
 ```
 
-`check` führt Biome, TypeScript-Prüfung einschließlich Tests, Produktionsbuild und Vitest aus. `npm run format` korrigiert Formatierung und Importreihenfolge.
+`check` runs Biome, TypeScript checking including tests, the production build and Vitest. `npm run format` corrects formatting and import order.
 
-Falls die passende Runtime lokal noch fehlt, funktioniert ohne globale Installation beispielsweise:
+If the matching runtime is not yet available locally, the following works without a global installation, for example:
 
 ```sh
 npm exec --yes --package=node@24.21.0 --package=npm@11.19.0 -- npm ci
 npm exec --yes --package=node@24.21.0 --package=npm@11.19.0 -- npm run check
 ```
 
-## Lokal starten
+<a id="lokal-starten"></a>
 
-### Automatisierte Assistant-Themenpruefung
+## Start locally
 
-Der [Testkatalog](../docs/assistant-test-catalogue.json) fuehrt jedes
-Editor-/Accelerator-Feld genau einem Wissensthema zu: Typ, Optionalitaet,
-Verantwortlichkeit, tatsaechlicher Vorschlagsmodus und erlaubter Patch-Pfad.
-Regionale DNS-Formen, geschuetzte Werte und nur beratend unterstuetzte Komponenten
-werden nicht als uebernehmbare Vorschlaege ausgegeben. Workflow-Themen ohne eigene
-Felder sind ebenfalls enthalten. Fehlende/doppelte Zuordnungen und Drift brechen
-`npm run assistant:check` sowie den normalen `npm run check` ab.
+<a id="automatisierte-assistant-themenpruefung"></a>
 
-Die [synthetischen Chatfaelle](scripts/assistant-scenarios.ts) enthalten fuer jedes
-Wissensthema eine feste Frage. Zusaetzliche Regressionen pruefen exakte
-Grundlagenwiederherstellung, DNS-Kontaktprioritaet inklusive Template-Platzhaltern,
-Domain-/Netzerhalt, vollstaendige SNA-Werte und additive Organisations-/Folder-Rollen
-mit gespeicherten oder verifizierten E-Mail-Quellen. Unit-Tests pruefen auch, dass die
-Pruefer fehlerhafte Antworten tatsaechlich ablehnen. Neue Felder/Themen erfordern
-Review der Zuordnung und Fragen, danach `npm run assistant:generate` und Formatierung
-des generierten Wissensbundles. Regenerieren allein ist kein fachlicher Nachweis.
+### Automated Assistant topic checks
 
-Die Uebersichtsfaelle fuer Grundlagen, Governance, Firewall-Policy und Sandboxes
-pruefen zusaetzlich konkrete native Feldnamen und wichtige Grenzen, nicht nur eine
-Themenreferenz. Der Intentklassifikator erkennt reine Felduebersichten semantisch;
-fuer diese vier Themen antwortet der Backend-Wissensvertrag direkt aus dem
-Feldinventar und geprueften Grenzen, ohne eine zweite freie Modellformulierung.
-Das ist ein eigener Beratungspfad, kein Ersatz fuer eine fehlgeschlagene
-Modellantwort. Ausdrueckliche Rollenwuensche haben ebenfalls einen geprueften
-Entwurfspfad: Der Intent bestimmt Rolle, E-Mail-Quelle und explizite Folder-Auswahl;
-der Backend-Vertrag bildet daraus additive Felder ohne zweite freie Modellantwort.
-Andere Anforderungen, Rueckfragen und Vorschlaege verwenden weiterhin das
-Antwortmodell. Alle vertrauenswuerdigen Systemanweisungen werden in einer einzigen
-Systemnachricht gesendet, damit Serving-Chatvorlagen keine frueheren Vertraege
-verlieren. Tokenlimit-Abbrueche bleiben explizite Fehler (`completion_truncated`),
-ohne automatische Wiederholung oder Teilannahme. SNA-Vorschlagstexte und deren
-Streaming zeigen nur gepruefte Werte und bestaetigen niemals eine bereits
-erfolgte Speicherung.
+The [test catalogue](../docs/assistant-test-catalogue.json) assigns each
+editor/Accelerator field to exactly one knowledge topic: type, optionality,
+ownership, actual proposal mode and allowed patch path.
+Regional DNS forms, protected values and components supported only in advisory mode
+are not presented as proposals that can be accepted. Workflow topics without their own
+fields are also included. Missing/duplicate assignments and drift fail
+`npm run assistant:check` and the normal `npm run check`.
 
-Firewall-Infrastruktur und HA unter `connectivity.firewall`/`firewalls` sind
-als einzelne Entwurfsfelder vorschlagbar. Native HA ist ein Objekt mit
-`backup_zone`, keine Checkbox/Boolean; weitere HA-Felder sind separat waehlbar.
-Bestehende Single-/Map-Formen, Area-Keys und nicht angefragte Werte bleiben erhalten.
-Neue Appliances brauchen Name, Zone, Flavor und beide bestaetigten freien Subnetze
-zusammen; eine neue HA-Konfiguration ihre Backup-Zone. Unvollstaendige Auswahl
-wird ohne Speicherung abgelehnt. Adresscontainment, Ueberlappungen, Node-/VIP-IPs
-und unterschiedliche Zonen werden validiert. Unbekannte Produkte oder freie
-Netze werden nicht aus Projektzahlen erfunden. Optionale Node-/VIP-IPs werden im
-Modellvertrag auf gespeicherte oder benutzerbestaetigte Adressen begrenzt;
-berechnete native Defaults bleiben ohne ungefragte explizite IP-Aenderungen erhalten.
-Bei kombinierten Netzwerk-/Firewall-
-Auftraegen wird ein vollstaendiges gespeichertes SNA wiederverwendet statt die
-Firewall pauschal aufzuschieben. /16 bietet rechnerisch512 /25-Subnetze mit je128
-Adressen vor Reservierungen, nicht128 Projektnetze. Regional-Patches, Policies,
-Operator-Zugaenge, Entfernung und Ausfuehrung bleiben ausserhalb dieses Vertrags.
-Feldannahme ist kein Deployment, Durchsatznachweis oder oeffentliches IP-Failover.
-Breite Firewall-Einrichtung zeigt vorhandene Entwurfswerte und fragt auch neben
-einem HA-Vorschlag nach der naechsten unbeantworteten Verkehrs-, Kapazitaets- oder
-Betriebsentscheidung. Gezielte Einzelfeldaenderungen bleiben ohne Fragebogen.
-Antworten zu Verkehrsregeln und Kapazitaet setzen einen laufenden Firewall-
-Einrichtungsauftrag fort, statt ihn in isolierte Beratung umzuwandeln.
-Explizit unbekannte Kapazitaet bleibt als offener Sizing-/Benchmark-Punkt erhalten;
-danach folgt die noch fehlende Unterbrechungs-/Betriebsentscheidung. Bereits
-benannte Betreiber und bestaetigte Verkehrswege werden nicht erneut abgefragt.
-Regelanforderungen werden zusammengefasst, nicht als konfigurierte Regeln
-ausgegeben. Bestaetigungen verweisen auf tatsaechliche Nutzeraussagen; interne
-Steuertexte werden nicht als Rueckfragen angezeigt.
-Der native Accelerator verwaltet Regeln, Aliase, Routen und NAT ueber
-`firewall_config`; der aktuelle Chat kann diese Policy weder definieren noch
-als Vorschlag uebernehmen. Gefuehrte Editor-Policy-Bearbeitung und
-Assistant-Regel-/NAT-Vorschlaege sind gemaess Benutzerentscheidung Post-MVP
+The [synthetic chat cases](scripts/assistant-scenarios.ts) contain a fixed question for each
+knowledge topic. Additional regressions check exact
+foundations restoration, DNS contact priority including template placeholders,
+domain/network preservation, complete SNA values and additive organization/folder roles
+with saved or verified email sources. Unit tests also check that the
+validators actually reject incorrect answers. New fields/topics require
+review of the mapping and questions, then `npm run assistant:generate` and formatting
+of the generated knowledge bundle. Regeneration alone is not domain evidence.
+
+The overview cases for foundations, governance, firewall policy and sandboxes
+additionally check concrete native field names and important boundaries, not just a
+topic reference. The intent classifier recognizes pure field overviews semantically;
+for these four topics, the backend knowledge contract answers directly from the
+field inventory and reviewed boundaries, without a second free-form model response.
+This is a separate advisory path, not a substitute for a failed
+model response. Explicit role requests also have a reviewed
+draft path: intent determines the role, email source and explicit folder selection;
+the backend contract maps these to additive fields without a second free-form model response.
+Other requests, follow-up questions and proposals continue to use the
+response model. All trusted system instructions are sent in a single
+system message so serving chat templates do not lose earlier contracts.
+Token-limit truncations remain explicit errors (`completion_truncated`),
+without automatic retries or partial acceptance. SNA proposal texts and their
+streaming show only checked values and never confirm that
+persistence has already occurred.
+
+Firewall infrastructure and HA under `connectivity.firewall`/`firewalls` can be
+proposed as individual draft fields. Native HA is an object with
+`backup_zone`, not a checkbox/Boolean; other HA fields are individually selectable.
+Existing single/map forms, area keys and unrequested values are preserved.
+New appliances need name, zone, flavor and both confirmed available subnets
+together; a new HA configuration needs its backup zone. Incomplete selection
+is rejected without saving. Address containment, overlaps, node/VIP IPs
+and distinct zones are validated. Unknown products or available
+networks are not invented from project counts. Optional node/VIP IPs are limited in the
+model contract to saved or user-confirmed addresses;
+computed native defaults are preserved without unsolicited explicit IP changes.
+For combined network/firewall
+requests, a complete saved SNA is reused instead of
+blanket deferral of the firewall. A /16 mathematically provides 512 /25 subnets with 128
+addresses each before reservations, not 128 project networks. Regional patches, policies,
+operator access, removal and execution remain outside this contract.
+Field acceptance is not deployment, throughput evidence or public IP failover.
+Broad firewall setup shows existing draft values and, alongside
+an HA proposal, asks about the next unanswered traffic, capacity or
+operational decision. Targeted individual field changes remain free of questionnaires.
+Answers about traffic rules and capacity continue an ongoing firewall
+setup request instead of turning it into isolated advice.
+Explicitly unknown capacity remains an open sizing/benchmark item;
+the still missing interruption/operational decision follows next. Already
+named operators and confirmed traffic paths are not asked about again.
+Rule requirements are summarized, not presented as configured rules.
+Confirmations refer to actual user statements; internal
+control texts are not displayed as follow-up questions.
+The native Accelerator manages rules, aliases, routes and NAT through
+`firewall_config`; the current chat can neither define this policy nor
+accept it as a proposal. Guided editor policy editing and
+Assistant rule/NAT proposals are post-MVP by user decision
 ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
-Im MVP pflegt der Firewall-Admin die Policy manuell in OPNsense.
-Der gemeinsame Editor hat unter Betrieb / Firewall-Regeln bereits generische
-native Felder, keine qualifizierte Policy-Verwaltung; sie bleiben erhalten.
-Faehigkeits- und Definitionsanfragen erhalten die Grenze ausdruecklich,
-ohne einen Regelvorschlag versprechende Rueckfragen. Infrastruktur/HA allein
-garantiert weder Isolation noch Internetzugriff oder NAT.
-Explizite Themenwechsel haben Vorrang vor alten Netzwerk-/Firewall-Merkmalen.
-"Als naechstes Audit-Protokollierung einrichten" ist ein aktueller Auftrag,
-keine Vertagung. Historische Netzwerkziele werden im anderen Thema nicht als
-aktive Anforderungen weitergereicht; Belegpruefungen bleiben erhalten.
-Audit Logging hat einen nativen Telemetry-Link/Router-/Logs-/Archiv-Vertrag
-und generische Editorfelder unter Plattform. Der Chat verwendet jetzt denselben
-nativen Eingabevertrag fuer uebernehmbare Audit-, Observability-, Federation-,
-VPN-, DevOps-, Kubernetes-, Projekt-/Vorlagen- und Namespace-Vorschlaege.
-Geschuetzte Bindings, Veroeffentlichung, Cloud-Ausfuehrung und Firewall-Policy
-bleiben separate Workflows. Neue Audit-Konfigurationen benoetigen Retention,
-ACL und die ausdrueckliche Object-Lock-Auswahl zusammen; mit Object Lock gilt
-der Bereich 1-365 Tage. Es wird keine Einrichtung oder Ereigniszustellung behauptet.
+In the MVP, the firewall administrator maintains policy manually in OPNsense.
+The common editor already has generic native fields under Operations / Firewall rules,
+not qualified policy management; these are preserved.
+Capability and definition requests receive the boundary explicitly,
+without follow-up questions promising a rule proposal. Infrastructure/HA alone
+guarantees neither isolation nor Internet access or NAT.
+Explicit topic changes take precedence over old network/firewall characteristics.
+"Set up audit logging next" is a current request,
+not a deferral. Historical network goals are not carried into another topic as
+active requirements; evidence checks remain.
+Audit logging has a native telemetry link/router/logs/archive contract
+and generic editor fields under Platform. Chat now uses the same
+native input contract for acceptable audit, observability, federation,
+VPN, DevOps, Kubernetes, project/template and namespace proposals.
+Protected bindings, publication, cloud execution and firewall policy
+remain separate workflows. New audit configurations require retention,
+ACL and explicit Object Lock selection together; with Object Lock, the
+range is 1–365 days. No setup or event delivery is claimed.
 
-Editor-Vorschlaege nutzen `merge` fuer partielle Objekt-/Map-Aenderungen,
-`replace` fuer einen atomar geprueften vollstaendigen Ersatz und `default`
-zum Entfernen eines optionalen Overrides. Listen bleiben atomar.
-Ausgelassene Merge-Felder und bestehende Ressourcenkennungen bleiben erhalten.
-Plattform-Entwuerfe bearbeiten Projektvorlagen nach stabilen Schluesseln;
-Vorlagenkennungen entstehen serverseitig, nicht im Modell. Neue/entfernte
-Vorlagen, Einstellungen und Parameterregeln bleiben lokale Entwurfsaenderungen.
-Feldabdeckung und echte Compiler-/Export-/Identitaetspruefungen liegen in
+Editor proposals use `merge` for partial object/map changes,
+`replace` for an atomically checked complete replacement and `default`
+to remove an optional override. Lists remain atomic.
+Omitted merge fields and existing resource identifiers are preserved.
+Platform drafts edit project templates by stable keys;
+template identifiers are created server-side, not in the model. New/removed
+templates, settings and parameter rules remain local draft changes.
+Field coverage and real compiler/export/identity checks are in
 [assistant-editor.test.ts](tests/assistant-editor.test.ts).
-Abgelehnte Modellantworten liefern eine sichere Fehlerkategorie und
-Diagnosekennung, keine Rohantworten oder Zugangsdaten. Konfigurations-Chat und
-Template-Beratung zeigen lokalisierte Ursachen und naechste Schritte; Nachricht
-und Antwortauswahl bleiben erhalten. HTTP und Antwortstreams nutzen denselben
-Fehlervertrag. Es gibt keine automatische Wiederholung oder Teiluebernahme.
-Chat und Feldannahme funktionieren auch mit ungespeicherten Editoraenderungen.
-Der Chat erhaelt nur die freigegebenen Werte des aktuellen lokalen Entwurfs.
-Rueckfragen im Konfigurations-Chat und in der Template-Beratung werden mit
-`Antwort senden` direkt abgeschickt, ohne einen separaten Vorbereitungsschritt.
-Vorhandener Text im Nachrichtenfeld wird mitgesendet. Bei einem Fehler bleiben
-Text und Antwortauswahl fuer einen erneuten Versuch erhalten.
-Vorschlaege werden ausschliesslich in den lokalen Entwurf uebernommen; Speichern
-bleibt separat. Ein Drei-Wege-Abgleich bewahrt unabhaengige lokale und gespeicherte
-Aenderungen. Nur echte Konflikte benoetigen eine ausdrueckliche Bestaetigung;
-eine andere Revision allein sperrt die Uebernahme nicht. Aeltere Vorschlaege ohne
-nachweisbaren Ausgangswert benoetigen eine Wertepruefung. Migration057 speichert
-nur freigegebene Vorschlags-Ausgangswerte, keine vollstaendigen Entwuerfe/Secrets.
-Die Vorschau veraendert weder die Konfiguration noch das gespeicherte Gespraech.
-Ohne `draft`/`savedDraft` behaelt der API-Annahmepfad sein bisheriges transaktionales
-Speicherverhalten und seine strikte Revisionspruefung.
+Rejected model responses provide a safe error category and
+diagnostic identifier, not raw responses or credentials. Configuration chat and
+template advice show localized causes and next steps; the message
+and answer selection are preserved. HTTP and response streams use the same
+error contract. There are no automatic retries or partial acceptance.
+Chat and field acceptance also work with unsaved editor changes.
+Chat receives only the approved values of the current local draft.
+Follow-up answers in configuration chat and template advice are sent directly with
+`Send answer`, without a separate preparation step.
+Existing text in the message field is sent along. On error,
+text and answer selection are preserved for another attempt.
+Proposals are accepted only into the local draft; saving
+remains separate. A three-way comparison preserves independent local and saved
+changes. Only real conflicts require explicit confirmation;
+a different revision alone does not block acceptance. Older proposals without
+a demonstrable original value require value review. Migration057 stores
+only approved proposal baseline values, not complete drafts/secrets.
+The preview changes neither configuration nor saved conversation.
+Without `draft`/`savedDraft`, the API acceptance path retains its previous transactional
+persistence behavior and strict revision check.
 
-`organization_owners` und `organization_auditors` sowie
-`rm_folders[*].owner_emails`/`reader_emails` sind bei explizitem Rollenauftrag
-einzeln uebernehmbare Vorschlagsfelder. Bekannte E-Mails werden nur aus der
-angefragten Quelle verwendet; Template-Platzhalter, Entwicklerlogin und
-Service Account ersetzen keine verifizierte menschliche Anmeldung. Unbekannte
-E-Mail oder nicht benannte Folder bleiben Rueckfragen. Bestehende Zuweisungen
-werden nicht entfernt und Namensdelegation erlaubt keine Rollenaenderung.
-Organisation-Owner deckt die Folder bereits ab; der native Accelerator vermeidet
-doppelte Folder-Zuweisungen. Reader werden nativ als `auditor` zugewiesen.
-Uebernahme speichert nur Konfiguration, nicht STACKIT-IAM oder Configurator-Rollen;
-IAM-Aenderungen bleiben an geprueften Plan und separate Apply-Freigabe gebunden.
+`organization_owners` and `organization_auditors`, as well as
+`rm_folders[*].owner_emails`/`reader_emails`, are individually acceptable proposal fields
+for explicit role requests. Known emails are used only from the
+requested source; template placeholders, developer login and
+service accounts do not replace verified human login. An unknown
+email or unspecified folders remain follow-up questions. Existing assignments
+are not removed, and name delegation does not permit role changes.
+Organization owner already covers the folders; the native Accelerator avoids
+duplicate folder assignments. Readers are assigned natively as `auditor`.
+Acceptance saves only configuration, not STACKIT IAM or Configurator roles;
+IAM changes remain bound to a reviewed Plan and separate Apply approval.
 
 ```sh
 # Ohne Credentials: Inventar, Wissensfrische und Testfragen pruefen
@@ -166,85 +176,87 @@ LZC_MODEL_SERVING_MODEL=openai/gpt-oss-120b \
   npm run test:assistant:journey -- --local-credentials
 ```
 
-Der Journey-Test durchlaeuft zwoelf Schritte von Grundlagen und Rollen ueber
-SNA/Firewall, den Policy-MVP-Hinweis und Audit-Rueckfragen bis Observability,
-DevOps, Kubernetes und Labels. Jeder Schritt nutzt denselben fortgeschriebenen
-Entwurf und die tatsaechliche Gespraechshistorie. Fachlich passende Vorschlaege
-werden im Speicher uebernommen, per JSON-Roundtrip geprueft und abschliessend als
-tfvars exportiert. Fehlerhafte Vorschlaege werden nicht uebernommen; abgelehnte
-Modell-/Anwendungsergebnisse werden wie im API-Service nicht als erfolgreiche
-Gespraechsantwort gespeichert. Modellnamen, Wissens-/Journey-Hashes,
-Einzelergebnisse und Antwortzeiten werden ausgegeben. Dies ersetzt keine
-Browser-, PostgreSQL- oder Cloud-Ausfuehrungspruefung. Beide Live-Runner sperren
-aktivierte Ausfuehrungsflags; sie aendern weder die laufende Modellauswahl noch
-Kundenkonfigurationen und verwenden keine automatischen Wiederholungen.
+The journey test goes through twelve steps from foundations and roles through
+SNA/firewall, the policy MVP notice and audit follow-up questions to observability,
+DevOps, Kubernetes and labels. Every step uses the same evolving
+draft and actual conversation history. Domain-appropriate proposals
+are accepted in memory, checked by JSON roundtrip and finally exported as
+tfvars. Incorrect proposals are not accepted; rejected
+model/application results, as in the API service, are not stored as successful
+conversation responses. Model names, knowledge/journey hashes,
+individual results and response times are output. This does not replace
+browser, PostgreSQL or cloud execution checks. Both live runners block
+enabled execution flags; they change neither the running model selection nor
+customer configurations and use no automatic retries.
 
-Beide Runner lassen zwischen tatsaechlichen Serving-Requests mindestens 2500 ms
-Abstand, auch zwischen Intent und Antwort desselben Schritts. Diese Begrenzung
-gilt nur fuer die Tests, nicht fuer den produktiven Assistant. Ausgegebene
-Antwortzeiten enthalten die Wartezeit und sind deshalb nicht direkt mit
-Messungen ohne diese Begrenzung vergleichbar. Quotenfehler bleiben sichtbare Fehler;
-sie werden nicht durch automatische Wiederholungen verdeckt.
+Both runners leave at least 2500 ms between actual serving requests,
+including between intent and response in the same step. This limit
+applies only to tests, not to the production Assistant. Reported
+response times include the wait and therefore are not directly comparable with
+measurements without this limit. Quota errors remain visible failures;
+they are not hidden by automatic retries.
 
-#### Weitere Assistant-Komponenten ergaenzen
+<a id="weitere-assistant-komponenten-ergaenzen"></a>
 
-1. Zuerst den nativen Input-Typ und den manuellen Editor-/Compiler-Pfad pruefen.
-   Der Assistant leitet Pfade, Werte und Pflichtfelder aus demselben Inventar ab;
-   keine zweite, handgeschriebene Komponentenstruktur oder freien HCL-Patches.
-2. Einen geprueften Wissenstopic mit nativen Inputs, Feldpfaden, Quellen und
-   Abhaengigkeiten hinterlegen. Intent und Rueckfragen werden darauf begrenzt.
-3. Nur fachliche Anforderungen ueber den nativen Typ hinaus in
-   `assistantEditorPolicies` ergaenzen, beispielsweise ausdrueckliche
-   Audit-Erstellungsentscheidungen und Freitext statt erfundener ACL-Auswahlwerte.
-   Policy-Feldpfade muessen im nativen Inventar existieren.
-4. Erstellung und Aktualisierung getrennt pruefen: neue Objekte verwenden
-   typisierte Konstruktor-Slots fuer einfache Skalare und Listen; optionale
-   Null-Slots bedeuten native Defaults und werden nur bei Erstellung ohne
-   vorherigen Wert ausgelassen. Komplexe optionale Collections bleiben optional;
-   etwa sind leere Audit-Link-Scopes kein Organisationsdefault.
-   Bestehende Objekte werden partiell geaendert, neue Map-Eintraege brauchen native
-   Pflichtfelder. Ersetzen und Default-Reset bleiben explizite, atomare Operationen.
-5. Tests fuer reale Uebernahme, Geschwistererhalt, Identitaeten, Quellenbindung,
-   fehlende Entscheidungen, Themenwechsel und DE/EN hinzufuegen. Auch eine vom
-   Serving akzeptierte Antwort wird gegen den angebotenen Schema-Vertrag und
-   anschliessend gegen die unveraenderte native Laufzeitvalidierung geprueft.
-6. Nach Wissensgenerierung erst gezielte Offline-/Modellfaelle, dann den seriellen
-   Journey- und vollstaendigen Szenarienlauf qualifizieren. Hashes und verbleibende
-   Fehler dokumentieren; kein Modell-/API-Rollout allein aufgrund gruener Mocks.
+#### Add further Assistant components
 
-Vorschlagstexte mit Aenderungen werden serverseitig als lokale Entwurfsvorschlaege
-formuliert, nicht als vom Modell behauptete Speicherung oder Berechtigungsvergabe.
-Firewall-Policy, Credentials, Organisationsbindung, Publikation und Ausfuehrung
-bleiben getrennte, geschuetzte Workflows.
+1. First check the native input type and the manual editor/compiler path.
+   The Assistant derives paths, values and required fields from the same inventory;
+   no second, handwritten component structure or free-form HCL patches.
+2. Add a reviewed knowledge topic with native inputs, field paths, sources and
+   dependencies. Intent and follow-up questions are restricted to it.
+3. Add only domain requirements beyond the native type to
+   `assistantEditorPolicies`, for example explicit
+   audit creation decisions and free text instead of invented ACL choices.
+   Policy field paths must exist in the native inventory.
+4. Check creation and updates separately: new objects use
+   typed constructor slots for simple scalars and lists; optional
+   null slots mean native defaults and are omitted only during creation without
+   a previous value. Complex optional collections remain optional;
+   for example, empty audit link scopes are not an organization default.
+   Existing objects are changed partially; new map entries need native
+   required fields. Replacement and default reset remain explicit, atomic operations.
+5. Add tests for real acceptance, sibling preservation, identities, source binding,
+   missing decisions, topic changes and DE/EN. Even a response accepted by
+   serving is checked against the offered schema contract and
+   then against unchanged native runtime validation.
+6. After knowledge generation, first qualify targeted offline/model cases, then the serial
+   journey and complete scenario run. Document hashes and remaining
+   failures; no model/API rollout based only on green mocks.
 
-Der Live-Test verwendet die echte Assistant-Orchestrierung, Intentklassifikation,
-Wissensauswahl, Antwortvalidierung und den lokalen Compiler, aber ausschliesslich
-synthetische Konfigurationen im Speicher. Kein Browser, Benutzer-SSO oder Zugriff
-auf Kundengespraeche/-datenbanken; keine automatische Annahme und kein Cloud-Auftrag.
-Die HTTP-/Session-/Transaktionspfade bleiben durch Unit-/Datenbanktests abgedeckt.
-Der Lauf meldet pro Fall Antwort, Fehlercodes, Laufzeit und abschliessend
-Modell-/Wissensversion und Zaehler; jeder Fehler ergibt Exitcode 1. Fehlende Zugriffe
-werden nicht uebersprungen. Live-Aufrufe verursachen Model-Serving-Kosten.
-Themen-Smokes pruefen Referenz, gueltigen Antwortvertrag und Beratungsmodus, nicht
-automatisch die fachliche Richtigkeit jeder Textaussage oder jedes einzelnen Feldes.
-Ein gruener Smoke ist keine vollstaendige Komponenten-/Cloud-Qualifikation.
+Proposal texts containing changes are formulated server-side as local draft proposals,
+not as model claims of persistence or permission assignment.
+Firewall policy, credentials, organization binding, publication and execution
+remain separate, protected workflows.
 
-Ohne `--local-credentials` wird `LZC_MODEL_SERVING_TOKEN` aus der Prozessumgebung
-erwartet. Lokal liest der gemeinsame sichere Loader den bereits vorhandenen
-verschluesselten State mit Originalschluessel; private Dateien muessen dem aktuellen
-Benutzer gehoeren und duerfen keine Gruppen-/Weltrechte haben. Token/Schluessel werden
-nicht ausgegeben oder in Tests/Reports geschrieben. Keine neuen Credentials im Git,
-keine Rotation bestehender Schluessel und keine SSO-Automatisierung.
+The live test uses real Assistant orchestration, intent classification,
+knowledge selection, response validation and the local compiler, but only
+synthetic configurations in memory. No browser, user SSO or access
+to customer conversations/databases; no automatic acceptance and no cloud job.
+The HTTP/session/transaction paths remain covered by unit/database tests.
+The run reports each case's response, error codes, duration and finally
+model/knowledge version and counts; every failure produces exit code 1. Missing access
+is not skipped. Live calls incur Model Serving costs.
+Topic smokes check reference, valid response contract and advisory mode, not
+automatically the factual correctness of every textual statement or individual field.
+A green smoke is not complete component/cloud qualification.
 
-Der manuell ausloesbare [GitHub-Workflow](../../.github/workflows/assistant-live.yml)
-verwendet die Umgebung `assistant-tests`. Dort `LZC_MODEL_SERVING_TOKEN` als
-Environment-Secret mit Freigabe-/Branchschutz hinterlegen; keine Tokens in Chat,
-Workflow-Dateien oder Kommandozeilen schreiben. Normale PR-Checks bleiben offline
-und benoetigen keine Cloud-Secrets. Ein Service-Account fuer spaetere lesende
-Produktkatalogtests muss separat mit minimalen Rechten und Testprojekt eingerichtet
-werden; er ersetzt keine menschliche Identitaet fuer Benutzer-/SSO-Rechtepruefungen.
+Without `--local-credentials`, `LZC_MODEL_SERVING_TOKEN` is expected from the process
+environment. Locally, the shared secure loader reads the existing
+encrypted state with the original key; private files must belong to the current
+user and have no group/world permissions. Tokens/keys are
+not output or written to tests/reports. No new credentials in Git,
+no rotation of existing keys and no SSO automation.
 
-Zwei Terminals im App-Verzeichnis:
+The manually triggerable [GitHub workflow](../../.github/workflows/assistant-live.yml)
+uses the `assistant-tests` environment. Store `LZC_MODEL_SERVING_TOKEN` there as an
+environment secret with approval/branch protection; write no tokens in chat,
+workflow files or command lines. Normal PR checks remain offline
+and need no cloud secrets. A service account for future read-only
+product catalogue tests must be set up separately with minimal permissions and a test project;
+it does not replace a human identity for user/SSO permission checks.
+
+Two terminals in the app directory:
 
 ```sh
 # Terminal 1: API auf http://127.0.0.1:3000
@@ -256,17 +268,19 @@ npm run dev
 npm run dev:web
 ```
 
-Auch diese Befehle können bei abweichender lokaler Node-Version mit dem oben gezeigten `npm exec`-Präfix ausgeführt werden. Der Vite-Entwicklungsserver leitet `/healthz`, `/auth` und `/api` an die lokale API weiter. Gemeinsame Pakete vor UI-Start bauen (`npm run build:packages`, bereits Teil von `npm run dev`). Nach Änderungen an gemeinsamen Paketen erneut bauen; automatischer Workspace-Watch folgt später.
+These commands can also be run with the `npm exec` prefix shown above if the local Node version differs. The Vite development server forwards `/healthz`, `/auth` and `/api` to the local API. Build shared packages before starting the UI (`npm run build:packages`, already part of `npm run dev`). Rebuild after changes to shared packages; automatic workspace watching will follow later.
 
-### Ubuntu-Workstation mit Entwicklerlogin und HTTPS
+<a id="ubuntu-workstation-mit-entwicklerlogin-und-https"></a>
 
-Dieser separate Starter ist fuer die persoenliche Ubuntu-Entwicklung ohne
-registrierten OIDC-Webclient gedacht, **nicht** fuer Cloud Foundry oder Produktion.
-Er akzeptiert ausschliesslich eine kanonische HTTPS-Origin, aktiviert keinen
-STACKIT-CLI-Callback und erstellt einen eigenen persoenlichen Arbeitsbereich.
-Er behauptet keine verifizierte STACKIT-Benutzeridentitaet und vergibt keine
-organisationsbezogenen Produktrollen. Bestehende Arbeitsbereiche, Entwuerfe und
-Chats werden weder uebernommen noch veraendert.
+### Ubuntu workstation with developer login and HTTPS
+
+This separate launcher is intended for personal Ubuntu development without
+a registered OIDC Web client, **not** for Cloud Foundry or production.
+It accepts only a canonical HTTPS origin, enables no
+STACKIT CLI callback and creates its own personal workspace.
+It claims no verified STACKIT user identity and grants no
+organization-related product roles. Existing workspaces, drafts and
+chats are neither adopted nor changed.
 
 ```sh
 npm run build
@@ -277,49 +291,49 @@ LZC_DEVELOPMENT_ORIGIN=https://work.lukas.runs.onstackit.cloud:4181 \
   --organization ORGANISATION_UUID
 ```
 
-Ohne `--execution` bleiben Plan/Apply deaktiviert. Mit dem Schalter ist der
-vorhandene native Plattform-Runner verfuegbar; es startet **kein** Cloud-Job.
-Preparation, Plan, State-Zuordnung und Apply-Freigabe behalten ihre bestehenden
-Pruefungen. Der separate Application-Runner bleibt unabhaengig deaktiviert.
-GitHub-Verknuepfung und SSO-abhaengige Organisation-Funktionen sind in diesem
-Modus nicht verfuegbar.
+Without `--execution`, Plan/Apply remain disabled. With the switch,
+the existing native platform Runner is available; **no** cloud job starts.
+Preparation, Plan, state mapping and Apply approval retain their existing
+checks. The separate application Runner remains independently disabled.
+GitHub linking and SSO-dependent organization functions are unavailable
+in this mode.
 
-Der einmalige Benutzername ist `developer`. Das zufaellige initiale Passwort
-steht ausschliesslich in der privaten lokalen Datei
-`../.local/development/initial-password` (0600), nicht in Logs oder Antworten.
-Nach sicherer Uebernahme in einen Passwortmanager kann diese Datei geloescht
-werden. `../.local/development/account.json` enthaelt den gesalzenen scrypt-Hash
-und die dauerhafte Dev-Principal-ID; diese Datei behalten und nicht einchecken.
-Login, Logout und API-Mutationen verwenden weiterhin Secure/HttpOnly-Cookies,
-die exakte HTTPS-Origin, CSRF-Token und bestehende Tenant/RLS-Pruefungen.
-Es gelten maximal zehn Login-Versuche pro 15 Minuten und API-Instanz.
+The initial username is `developer`. The random initial password
+is available only in the private local file
+`../.local/development/initial-password` (0600), not in logs or responses.
+After securely transferring it to a password manager, this file may be deleted.
+`../.local/development/account.json` contains the salted scrypt hash
+and durable Dev principal ID; keep this file and do not check it in.
+Login, logout and API mutations continue to use Secure/HttpOnly cookies,
+the exact HTTPS origin, CSRF tokens and existing tenant/RLS checks.
+A maximum of ten login attempts per 15 minutes and API instance applies.
 
-`--service-account-file` akzeptiert nur eine kleine, regulaere, nicht verlinkte
-Datei des aktuellen Benutzers ohne Gruppen-/Weltrechte. Der Schluessel wird
-idempotent als eigenes Credential-Profil im bestehenden verschluesselten
-Secret Store gespeichert; keine Zuordnung zu einem vorhandenen Benutzer.
-`--organization` prueft ausschliesslich den technischen Org-Lesezugriff; es
-ist **kein** menschlicher Organisationsnachweis. Dieser explizite Import kann
-bei spaeteren Starts entfallen. Keine Secrets in Shell-Argumenten uebergeben.
+`--service-account-file` accepts only a small, regular, non-linked
+file owned by the current user without group/world permissions. The key is
+stored idempotently as its own credential profile in the existing encrypted
+secret store; no mapping to an existing user.
+`--organization` checks only technical organization read access; it
+is **not** evidence of human organization membership. This explicit import may
+be omitted on later starts. Do not pass secrets in shell arguments.
 
-Fuer die TLS-Auslieferung Caddy installieren und separat starten:
+Install Caddy for TLS delivery and start it separately:
 
 ```sh
 sudo caddy run --config "$PWD/scripts/workstation.Caddyfile" --adapter caddyfile
 ```
 
-Die API samt gebautem UI bleibt auf `127.0.0.1:3000`; ein eigener Vite-Preview
-auf Port 4181 darf nicht parallel laufen. Caddy liefert die Anwendung unter
-`https://work.lukas.runs.onstackit.cloud:4181/` aus. TCP 4181 muss fuer den Browser,
-TCP 80 fuer oeffentliche ACME-HTTP-Pruefungen und spaetere Erneuerungen erreichbar
-sein. Port 80 liefert nur Challenge/HTTPS-Weiterleitung. Bei anderem Host
-`LZC_DEVELOPMENT_HOST` fuer Caddy und die dazu passende `LZC_DEVELOPMENT_ORIGIN`
-fuer die API setzen; der HTTPS-Port dieses Caddy-Beispiels ist 4181.
-Kein selbstsigniertes Zertifikat und kein unsicherer HTTP-Login-Fallback.
-Die Prozesse laufen nur waehrend ihrer gestarteten Sitzung; es wird kein
-Autostart-Service fuer diese Entwicklung eingerichtet.
+The API and built UI remain on `127.0.0.1:3000`; a separate Vite preview
+on port 4181 must not run in parallel. Caddy serves the application at
+`https://work.lukas.runs.onstackit.cloud:4181/`. TCP 4181 must be reachable by the browser,
+TCP 80 for public ACME HTTP checks and later renewals.
+Port 80 serves only challenges/HTTPS redirects. For another host,
+set `LZC_DEVELOPMENT_HOST` for Caddy and the corresponding `LZC_DEVELOPMENT_ORIGIN`
+for the API; the HTTPS port in this Caddy example is 4181.
+No self-signed certificate and no insecure HTTP login fallback.
+The processes run only during the session in which they were started; no
+autostart service is configured for this development setup.
 
-Gezielte Pruefungen:
+Targeted checks:
 
 ```sh
 npx vitest run tests/development-login.test.ts tests/auth-routes.test.ts
@@ -329,70 +343,76 @@ LZC_TEST_DATABASE_URL=postgres://.../configurator_test \
 npx playwright test e2e/development-login.spec.ts
 ```
 
-### Lokaler STACKIT-Login
+<a id="lokaler-stackit-login"></a>
 
-Nach ausdrücklicher Freigabe der CLI-Client-Nutzung kann der echte Login ohne
-Dev-Datenbank und Secrets-Manager-Zugang lokal gestartet werden. Docker muss laufen:
+### Local STACKIT login
+
+After explicit approval to use the CLI client, real login can be
+started locally without Dev database or Secrets Manager access. Docker must be running:
 
 ```sh
 LZC_STACKIT_CLI_CLIENT_APPROVED=true npm run dev:login
 ```
 
-Das Backend läuft ausschließlich auf `127.0.0.1:3000`; die zugehörige gebaute
-UI-Vorschau muss auf `http://127.0.0.1:4181` laufen. Der Starter legt den eigenen
-Docker-Container `lzc-local-stackit-login` mit PostgreSQL 17 an, bindet dessen Port
-nur an Loopback und wendet die bestehenden Migrationen an. Zufällige
-Datenbankpasswörter werden nicht ausgegeben; die Runtime verwendet weiterhin
-`configurator_app`, nicht die Migrationsidentität. Die lokale Datenbank bleibt
-bei einem API-Neustart erhalten; der Starter löscht keine Nutzer oder Entwürfe.
+The backend runs exclusively on `127.0.0.1:3000`; the associated built
+UI preview must run at `http://127.0.0.1:4181`. The launcher creates its own
+Docker container `lzc-local-stackit-login` with PostgreSQL 17, binds its port
+only to loopback and applies the existing migrations. Random
+database passwords are not output; the runtime continues to use
+`configurator_app`, not the migration identity. The local database survives
+an API restart; the launcher deletes no users or drafts.
 
-STACKIT-Identitätsprüfung, Sessions, Credential-Profile und Produktkataloge sind echt.
-Technische STACKIT-Abfragen verwenden den im aktiven Tenant gespeicherten Service
-Account. Platform Engineers können Zugänge auch in Organisationstenants verwalten;
-Profile bleiben an Tenant und Besitzer gebunden. Im persönlichen Tenant wird ein
-zugängliches aktives Referenzprojekt automatisch ermittelt, im Organisationstenant
-wird die Suche auf dessen Organisation begrenzt.
+STACKIT identity verification, sessions, credential profiles and product catalogues are real.
+Technical STACKIT queries use the service account stored in the active tenant.
+Platform Engineers can also manage credentials in organization tenants;
+profiles remain bound to tenant and owner. In the personal tenant, an
+accessible active reference project is determined automatically; in an organization tenant,
+the search is restricted to that organization.
 
-Nur im lokalen Starter ersetzt eine AES-256-GCM-Ablage den Secrets Manager.
-Schlüsseldateien sind unter `../.local/credential-secrets/` verschlüsselt; das
-separate lokale Verschlüsselungsgeheimnis `master.key` und der Ordner sind nur für
-den Betriebssystembenutzer zugänglich. Das ist kein Ersatz für einen produktiven
-Secrets Manager: Wer auf Ordner und Verschlüsselungsgeheimnis zugreifen kann,
-kann die Daten entschlüsseln. Den Ordner nicht teilen oder ins Repository aufnehmen.
-Er bleibt wie die Datenbank über Neustarts erhalten.
+Only in the local launcher does AES-256-GCM storage replace Secrets Manager.
+Key files are encrypted under `../.local/credential-secrets/`; the
+separate local encryption secret `master.key` and the directory are accessible only
+to the operating system user. This is no substitute for a production
+Secrets Manager: anyone with access to the directory and encryption secret
+can decrypt the data. Do not share the directory or add it to the repository.
+Like the database, it survives restarts.
 
-`dev:login` aktiviert keinen Runner und übernimmt keine Dev-Daten. Mit einem
-vorbereiteten nativen Paket aktiviert `dev:execution` lokale Plattform-Plans und
-den ausdrücklich freizugebenden Apply-Pfad. Organisations-Platform-Engineers
-verwenden weiterhin private, tenantgebundene Vorbereitungen und Zugänge.
-HTTP wird ausschließlich für ausdrücklich aktivierte, kanonische Loopback-
-Ursprünge erlaubt; Produktionskonfigurationen verlangen unverändert HTTPS.
-Ein bloßes `vite preview` ohne dieses Backend kann keine Anmeldung durchführen.
+`dev:login` enables no Runner and adopts no Dev data. With a
+prepared native package, `dev:execution` enables local platform Plans and
+the Apply path requiring explicit approval. Organization Platform Engineers
+continue to use private, tenant-bound preparations and credentials.
+HTTP is permitted only for explicitly enabled, canonical loopback
+origins; production configurations continue to require HTTPS.
+A mere `vite preview` without this backend cannot perform login.
 
-### Recovery-Pruefbelege
+<a id="recovery-pruefbelege"></a>
 
-Nach Anwendung der Migrationen 051 und 052 kann der separate Opt-in
-`LZC_APPLICATION_RECOVERY_REVIEWS_ENABLED=true` Recovery-Pruefbelege aktivieren.
-Default ist deaktiviert. Der lokale Login-Starter wendet beim naechsten Start
-die vorhandenen neuen Migrationen an; ein Neustart ist deshalb ein kontrollierter
-Migrationsschritt, auch wenn native Runner ausgeschaltet bleiben.
+### Recovery review evidence
 
-Die Aktion ist auf den urspruenglich freigebenden Platform Engineer mit aktueller
-Session und gueltiger menschlicher STACKIT-Identitaet beschraenkt. Sie protokolliert
-nur die ausdrueckliche Pruefung des gebundenen Diagnose-Stands. Sie aendert keinen
-Jobstatus und hebt keine State-/Recovery-Sperre auf. Ohne neue Migration muss der
-Opt-in ausgeschaltet bleiben. Der gehostete Start prueft bei Opt-in die Tabelle
-und die neue Abgleichsfunktion aus Migration 052. Der lesende Pruefkontext zeigt
-gespeicherte Runner-ID, Report-Hashes, Ticket-Fenster und Grant-/Delegationswiderruf.
-Startunsicherheit, fehlender Abschluss und gespeicherter Recovery-State bleiben
-unterschiedliche Feststellungen. Ticket-Ablauf oder Delegationswiderruf belegen
-weder Runner-Stillstand noch Widerruf bereits ausgegebener Cloud-Credentials.
-Cloud-Abgleich, Runner-Stillstand, State-Wiederherstellung und Ausfuehrungsfreigabe
-bleiben separate Vorgänge mit eigenen Nachweisen und Freigaben.
+After applying migrations 051 and 052, the separate opt-in
+`LZC_APPLICATION_RECOVERY_REVIEWS_ENABLED=true` can enable recovery review evidence.
+The default is disabled. On its next start, the local login launcher applies
+the existing new migrations; a restart is therefore a controlled
+migration step, even if native Runners remain switched off.
 
-### Lokale Plan-/Apply-Ausführung
+The action is restricted to the originally approving Platform Engineer with a current
+session and valid human STACKIT identity. It records
+only the explicit review of the bound diagnostic state. It changes no
+job status and lifts no state/recovery block. Without the new migration,
+the opt-in must remain off. When opted in, hosted startup checks the table
+and the new reconciliation function from migration 052. The read-only review context shows
+the stored Runner ID, report hashes, ticket window and grant/delegation revocation.
+Start uncertainty, missing completion and stored recovery state remain
+distinct findings. Ticket expiry or delegation revocation proves
+neither Runner termination nor revocation of cloud credentials already issued.
+Cloud reconciliation, Runner termination, state recovery and execution approval
+remain separate operations with their own evidence and approvals.
 
-Mit Node 24.21.0, npm 11.19.0 und checksum-geprüftem OpenTofu 1.12.6 im `PATH`:
+<a id="lokale-plan-apply-ausführung"></a>
+
+### Local Plan/Apply execution
+
+With Node 24.21.0, npm 11.19.0 and checksum-verified OpenTofu 1.12.6 in `PATH`:
 
 ```sh
 npm run build
@@ -400,193 +420,201 @@ LZC_LOCAL_RUNNER_PACKAGE=true bash ../deploy/runner/package.sh
 LZC_STACKIT_CLI_CLIENT_APPROVED=true npm run dev:execution
 ```
 
-Die Paketierung verlangt ein neues Zielverzeichnis und überschreibt kein
-bestehendes Paket. `LZC_RUNNER_PACKAGE_DIR` kann ein anderes geprüftes Paket
-angeben. Der native Modus ist ausschließlich für die lokale Entwicklung gedacht,
-nicht als Ersatz für die produktive CF-Isolation. Jobs laufen mit minimaler
-Umgebung unter `~/.local/share/landing-zone-configurator/runner-jobs`, außerhalb
-des Workspace; Paketinhalt und Laufzeit sind an den gespeicherten Plan gebunden.
-Nach einem API-Absturz werden unklar laufende Jobs nicht automatisch wiederholt
-oder über fremde Prozess-IDs beendet. Recovery-Dateien verhindern Cleanup.
+Packaging requires a new target directory and overwrites no
+existing package. `LZC_RUNNER_PACKAGE_DIR` may point to another checked package.
+Native mode is intended exclusively for local development,
+not as a replacement for production CF isolation. Jobs run with a minimal
+environment under `~/.local/share/landing-zone-configurator/runner-jobs`, outside
+the workspace; package contents and runtime are bound to the saved Plan.
+After an API crash, jobs with uncertain running status are not automatically retried
+or terminated through unrelated process IDs. Recovery files prevent cleanup.
 
-Der native Worker erzeugt seine CLI-Konfiguration mit dem Paket-Mirror-Pfad und
-verwendet fuer Provider-Sockets ein kurzes privates Temp-Verzeichnis, das beim
-Cleanup entfernt wird. Init erlaubt Provider-Dateien bis 256 MiB; andere Phasen
-behalten das Limit von 64 MiB. Der echte Paket-Init/Validate-Test stoppt vor Plan
-und verwendet weder Kunden-Credentials noch Kunden-State:
+The native worker creates its CLI configuration with the package mirror path and
+uses a short private temporary directory for provider sockets, removed during
+cleanup. Init permits provider files up to 256 MiB; other phases
+retain the 64 MiB limit. The real package init/validate test stops before Plan
+and uses neither customer credentials nor customer state:
 
 ```sh
 LZC_NATIVE_RUNNER_TEST=true LZC_RUNNER_PACKAGE_DIR=../.local/runner-local-20261003-mirror-init npm exec -- vitest run tests/platform-worker.test.ts -t 'real native providers'
 ```
 
-Unter **OpenTofu-Ausgabe** zeigen Plattformauftraege auch in Cloud Foundry
-Live-Fortschritt ueber einen authentifizierten NDJSON-Kanal. Der Worker liest
-vollstaendige Zeilen alle 500 ms; nur geaenderter, redigierter Text wird
-verschluesselt gesichert und weitergegeben. Der Plan liefert native
-OpenTofu-UI-Ereignisse, bevor der fertige Diff verfuegbar ist; rohe Ereignisobjekte
-und deren Output-Daten werden nicht an den Browser gegeben. **Ausgabe folgen** laesst sich zum Pruefen aelterer
-Zeilen anhalten. Einklappen und Navigation trennen die Verbindung; erneutes
-Oeffnen setzt beim aktuellen Mitschnitt fort. JSON-Snapshots bleiben kompatibel.
-Erfolgreiche Plattform-Plans werden
-read-only mittels `tofu show -no-color` aus dem unveraenderten gespeicherten
-Artefakt dargestellt, einschliesslich Ressourcen und Attributaenderungen.
-OpenTofu maskiert sensitive Werte wie in der CLI. Die separate Ausgabe-Route
-verlangt Sitzung, Deployment-Rolle und private Eigentuemer-/Tenant-Zuordnung;
-rohes Plan-Binary oder `show -json` werden nicht an den Browser geliefert.
-Jeder Plan bleibt an sein unveraenderliches Runner-Paket gebunden. Ein Paketwechsel
-erfordert einen neuen Plan und dessen ausdrueckliche Freigabe.
-Laufende Apply-Ausgaben werden ebenfalls aktualisiert. Vor dem terminalen Ergebnis
-sichert der Worker den letzten redigierten CLI-Text verschluesselt beim Broker;
-er bleibt nach Cleanup und Reload unter derselben privaten Zugriffskontrolle lesbar.
-**Apply-Nachweise** zeigen Plan-ID, SHA-256, Zielorganisation, State-Backend des
-Auftrags und Abschlusszeit. Die bestehende exakte Organisationsbestaetigung und
-gegebenenfalls destruktive Freigabe bleiben erforderlich; kein automatischer Retry.
-Ausgaben sind auf 2 MiB begrenzt; eine Kuerzung wird angezeigt. Die Sicherung ist
-best-effort: bei hartem Prozessabbruch oder fehlgeschlagenem Upload ist ein
-vollstaendiger historischer Mitschnitt nicht garantiert. Bereits gesicherter
-Text benoetigt keinen laufenden nativen Runner. Waehrend des Streams werden
-Sitzung, Tenant, Rolle und Eigentuemerschaft erneut geprueft. Verbindungen werden
-spaetestens nach 35 Sekunden beendet und bei aktivem Auftrag neu geoeffnet;
-Backpressure, Byte-Limit und hoechstens acht Streams pro Eigentuemer/Tenant und
-API-Instanz begrenzen die Ressourcen. Details: [Plan-Ausfuehrung](../docs/plan-execution.md).
+Under **OpenTofu output**, platform jobs also show live progress in Cloud Foundry
+through an authenticated NDJSON channel. The worker reads
+complete lines every 500 ms; only changed, redacted text is
+saved encrypted and forwarded. Plan provides native
+OpenTofu UI events before the finished diff is available; raw event objects
+and their output data are not sent to the browser. **Follow output** can be paused to review older
+lines. Collapsing and navigation disconnect the stream; reopening
+resumes at the current capture. JSON snapshots remain compatible.
+Successful platform Plans are displayed
+read-only through `tofu show -no-color` from the unchanged saved
+artifact, including resources and attribute changes.
+OpenTofu masks sensitive values as in the CLI. The separate output route
+requires a session, deployment role and private owner/tenant mapping;
+raw Plan binaries or `show -json` are not delivered to the browser.
+Each Plan remains bound to its immutable Runner package. A package change
+requires a new Plan and its explicit approval.
+Running Apply output is also updated. Before the terminal result,
+the worker saves the latest redacted CLI text encrypted at the broker;
+it remains readable after cleanup and reload under the same private access controls.
+**Apply evidence** shows Plan ID, SHA-256, target organization, the job's state backend
+and completion time. Existing exact organization confirmation and,
+if applicable, destructive approval remain required; no automatic retry.
+Output is limited to 2 MiB; truncation is indicated. Saving is
+best-effort: hard process termination or failed upload does not guarantee a
+complete historical capture. Already saved
+text needs no running native Runner. During streaming,
+session, tenant, role and ownership are rechecked. Connections are
+closed after at most 35 seconds and reopened for an active job;
+backpressure, byte limits and at most eight streams per owner/tenant and
+API instance limit resources. Details: [Plan execution](../docs/plan-execution.md).
 
-Für neue Plattformen ist **Accelerator-Standard · Management-S3** der Default.
-Der ausgewählte Service Account führt den freigegebenen Bootstrap-Apply aus;
-Terraform verwaltet Management-Projekt, `*-tfstate`-Bucket, S3-Zugang und dessen
-Management-Secrets-Manager-Eintrag. Anschließend verifiziert der Broker die
-Migration zu `terraform.tfstate` in eu01. Es sind keine manuellen S3-Keys nötig.
-**Bestehendes S3-Backend registrieren** bleibt die optionale Bestandsanbindung.
-Der Bucket wird nicht außerhalb des Terraform-State vorab angelegt. Plan und
-Apply starten nur über ihre jeweiligen ausdrücklichen Aktionen in der UI.
+For new platforms, **Accelerator standard · Management S3** is the default.
+The selected service account executes the approved bootstrap Apply;
+Terraform manages the management project, `*-tfstate` bucket, S3 access and its
+management Secrets Manager entry. The broker then verifies
+migration to `terraform.tfstate` in eu01. No manual S3 keys are needed.
+**Register existing S3 backend** remains the optional existing-infrastructure connection.
+The bucket is not created in advance outside Terraform state. Plan and
+Apply start only through their respective explicit UI actions.
 
-`npm run build` erzeugt API-/Paket-Artefakte und `apps/web/dist`. `npm start` startet die gebaute API. Mit `LZC_WEB_ROOT` liefert sie auch das gebaute UI aus. Das [CF-Manifest](../deploy/cloud-foundry/manifest.yml) setzt den Pfad, `HOST=0.0.0.0` und verwendet den von CF bereitgestellten `PORT`. `vite preview` ist kein Produktionsserver.
+`npm run build` produces API/package artifacts and `apps/web/dist`. `npm start` starts the built API. With `LZC_WEB_ROOT`, it also serves the built UI. The [CF manifest](../deploy/cloud-foundry/manifest.yml) sets the path and `HOST=0.0.0.0`, and uses the `PORT` provided by CF. `vite preview` is not a production server.
 
-## Arbeitsbereich und Konfiguration
+<a id="arbeitsbereich-und-konfiguration"></a>
 
-Der regulaere Einstieg ist **Anmelden > Arbeitsbereich oeffnen > Konfiguration
-oeffnen oder erstellen > Bearbeiten > Plan > Apply**. Beim ersten Einstieg lassen
-sich der persoenliche oder ein Organisationsarbeitsbereich oeffnen und neue
-Arbeitsbereiche erstellen. Bei spaeterem Einstieg ueber `/` wird der zuletzt
-geoeffnete, weiterhin zugaengliche Arbeitsbereich wieder aufgenommen. Explizite
-Seiten-URLs bleiben erhalten; der Arbeitsbereichswechsel steht im Header bereit.
+## Workspace and configuration
 
-**Arbeitsbereiche** steht an erster Stelle der Hauptnavigation. Oeffnen fuehrt zu
-den Konfigurationen des gewaehlten Bereichs, fuer Application Owner zur eigenen
-Application-Ansicht. **Benutzerverwaltung** verwaltet Mitglieder, Rollen und
-Gruppen des aktiven Bereichs. Berechtigte Platform Engineers koennen eigene
-Gruppen anlegen und loeschen sowie Mitglieder zuweisen und wieder entfernen.
-Gruppenmitglieder werden mit ihrer bestaetigten STACKIT-E-Mail angezeigt;
-Benutzer-IDs bleiben intern. Legacy-Konten ohne STACKIT-E-Mail behalten ihren
-Benutzernamen, unbekannte Namen werden nicht durch IDs ersetzt.
-Die automatische Gruppe **Application Owners** folgt den Rollen und ist nicht
-manuell aenderbar. Gruppen mit Template-Freigaben koennen erst nach deren
-Entfernung geloescht werden; Arbeitsbereichsmitglieder bleiben erhalten.
-Template-Gruppenfreigaben liegen weiterhin unter **Application Landing Zones >
-Veroeffentlichung**, nicht in einem zusaetzlichen Gruppen-Reiter. Auswahl und
-Erstellung anderer Arbeitsbereiche liegen nicht in der Benutzerverwaltung.
-Auch eine neue inline STACKIT-Anmeldung von einer zuvor offenen Verwaltungsseite
-fuehrt ohne offenen Entwurf zum Arbeitsbereichseinstieg. Bereits angemeldete
-Deep Links und gesicherte Login-Entwuerfe bleiben erhalten.
+The normal entry path is **Sign in > Open workspace > Open or create
+configuration > Edit > Plan > Apply**. On first entry, users can
+open their personal or an organization workspace and create new
+workspaces. On later entry through `/`, the last
+opened workspace is resumed if it remains accessible. Explicit
+page URLs are preserved; workspace switching is available in the header.
 
-**Konfigurationen** ist die Plattformuebersicht. **Neue Konfiguration** fuehrt zur
-Template-Auswahl. Eine geoeffnete Konfiguration hat den Kontext **Konfiguration >
-Bereitstellung > Verlauf** mit sichtbarer gespeicherter Revision.
-**Speichern und zur Bereitstellung** uebernimmt die vom Server neu gespeicherte
-Revision, nicht den alten Entwurfsstand. Ungespeicherte Aenderungen sperren den
-direkten Bereitstellungstab; ein Arbeitsbereichswechsel fragt vor ihrem Verlust.
-Der Verlauf ist nur lesbar und auf die betreffende Konfiguration begrenzt.
+**Workspaces** comes first in the main navigation. Opening one leads to
+the selected workspace's configurations, or to Application Owners' own
+application view. **User management** manages members, roles and
+groups in the active workspace. Authorized Platform Engineers can create
+and delete their own groups and assign and remove members.
+Group members are displayed with their confirmed STACKIT email;
+user IDs remain internal. Legacy accounts without STACKIT email keep their
+username; unknown names are not replaced with IDs.
+The automatic **Application Owners** group follows roles and cannot
+be changed manually. Groups with template grants can be deleted only after those
+grants are removed; workspace members are preserved.
+Template group grants remain under **Application Landing Zones >
+Publication**, not in an additional groups tab. Selecting and
+creating other workspaces is not part of user management.
+Even a new inline STACKIT login from a previously open administration page
+leads to workspace entry when there is no open draft. Already authenticated
+deep links and saved login drafts are preserved.
 
-Die Bereitstellung zeigt pro Konfiguration den neuesten Lauf, sofern er nicht
-abgelaufen oder bereits verwendet ist, sowie laufende Ausfuehrungen und
-erforderliche Wiederherstellungen. Aeltere,
-abgelaufene oder bereits fuer Apply verwendete Plaene liegen standardmaessig
-unter **Historie (Anzahl)**. Ihre Details sind einzeln aufklappbar und ohne
-Apply-Freigabe; CLI-Ausgaben und Nachweise bleiben lesbar. Ablauf verschiebt einen
-Plan auch ohne Reload in die Historie. Die Ansicht loescht oder erneuert keine
-Artefakte und hebt keine laufenden Ausfuehrungs-/Recovery-Sperren auf.
+**Configurations** is the platform overview. **New configuration** leads to
+template selection. An open configuration has the context **Configuration >
+Deployment > History** with its saved revision visible.
+**Save and go to deployment** adopts the newly saved server
+revision, not the old draft state. Unsaved changes block the
+direct deployment tab; switching workspaces asks before losing them.
+History is read-only and limited to the relevant configuration.
 
-Reload liest die gemerkte Konfigurations-ID innerhalb des Benutzer-/Arbeitsbereichs
-erneut vom Server. Zugaenge und Apply-Freigaben werden dadurch nicht gespeichert
-oder bestaetigt. Vorbereitung, Plan und Apply bleiben ausdrueckliche Aktionen;
-vorhandene Plan-Artefakte werden durch Navigation nicht erneuert oder umgebunden.
-Application Owner behalten ihren getrennten Application-Landing-Zone-Einstieg.
+Deployment shows each configuration's latest run, provided it is not
+expired or already used, together with running executions and
+required recoveries. Older,
+expired Plans or those already used for Apply are shown by default
+under **History (count)**. Their details can be expanded individually without
+Apply approval; CLI output and evidence remain readable. Expiry moves a
+Plan to history even without reload. The view neither deletes nor renews
+artifacts and lifts no ongoing execution/recovery blocks.
 
-## Aktueller Funktionsumfang
+Reload reads the remembered configuration ID again from the server within the
+user/workspace scope. This neither saves nor confirms credentials
+or Apply approvals. Preparation, Plan and Apply remain explicit actions;
+navigation neither refreshes nor rebinds existing Plan artifacts.
+Application Owners retain their separate Application Landing Zone entry.
 
-- Private Konfigurationen in PostgreSQL, pro Benutzer und aktivem Arbeitsbereich.
-	Unter **Konfigurationen** lassen sich auch unvollstaendige Entwuerfe speichern,
-	wieder oeffnen, als neue Kopie speichern und loeschen. Revisionen verhindern
-	das Ueberschreiben durch parallele Tabs; im Konflikt bleibt der Entwurf erhalten.
-	GitHub ist dafuer nicht erforderlich und bleibt als optionaler versionierter
-	Speicherort verfuegbar. Der Datenbankweg benoetigt Migration
-	`015_configuration_storage.sql`; vorhandene Konfigurationen sind nur fuer ihren
-	Ersteller sichtbar. In Organisationsarbeitsbereichen ist die Rolle Platform
-	Engineer erforderlich. Browser-Zwischenstaende ersetzen diese Speicherung nicht.
-- Template-Katalog, Standalone-Editor mit Feldhilfen und grafischer Struktur.
-- Nativer `.tfvars`-Download und atomarer GitHub-Export mit JSON, tfvars, CLI-Anleitung und optional verifiziertem S3-Backend.
-- GitHub-Login, PostgreSQL-Sessions/RLS und persönliche Tokens im Secrets Manager.
-- Persönliche Deployment-Zugänge: Service-Account-Key-Datei speichern/löschen; Anmeldung und Organisations-Lesezugriff prüfen. [Details](../docs/deployment-credentials.md).
-- Unveränderliche Deployment-Vorbereitungen aus Fork-Konfiguration, Ziel und persönlichem Zugang. [Details](../docs/deployment-preparation.md).
-- Browser-Zurück/Vorwärts und direkte Seiten-URLs.
-- Erstbereitstellungspläne und freigabegebundener Plattform-Apply-Pfad: RLS-Aufträge, isolierte CF-Tasks und wertfreie Ergebnisanzeige; siehe [Ablauf und Abnahme](../docs/plan-execution.md). Kein Kunden-Apply in dieser Abnahme; Chat bleibt offen.
-- Application-Testkatalog: unveränderliche tenantgebundene Projekt-Template-Versionen, Bestellungen ohne Fork, idempotente Instanzaufträge und ausdrückliche Planblocker. Keine Application-Cloud-Ausführung; siehe [Veröffentlichung und Bestellung](../docs/template-parameters-and-bindings.md#tenantgebundener-testkatalog-und-bestellungen).
+<a id="aktueller-funktionsumfang"></a>
 
-Der Application-Dienst ist standardmäßig deaktiviert. Nach Anwendung der Migration
-`010_application_catalogue.sql` mit der bestehenden Migrationsidentität aktiviert
-`LZC_APPLICATIONS_ENABLED=true` die API im authentifizierten Server. Fehlende Tabellen
-verhindern dessen Start. `/applications` ist die eigene SPA-Route; die API liegt unter
-`/api/v1/applications/templates` und `/api/v1/applications/instances`. Alle Anfragen
-benötigen den aktiven Tenant-Header, Mutationen zusätzlich Origin-/CSRF-Prüfung.
-Das Featureflag aktiviert ausschließlich den Testkatalog und Bestellaufträge, niemals
-einen Runner oder Apply. Die bestehende Plattform-Plan-Pipeline bleibt unverändert.
+## Current functionality
 
-Details und Grenzen: [Forks und Navigation](../docs/forks-and-navigation.md),
-[GitHub-Login](../docs/github-login.md). HCL-Export-Roundtrip prüfen mit Node 24 im PATH:
+- Private configurations in PostgreSQL, per user and active workspace.
+	Under **Configurations**, users can also save incomplete drafts,
+	reopen them, save as a new copy and delete them. Revisions prevent
+	overwrites by parallel tabs; on conflict, the draft is preserved.
+	GitHub is not required and remains available as optional versioned
+	storage. The database path requires migration
+	`015_configuration_storage.sql`; existing configurations are visible only to their
+	creator. Organization workspaces require the Platform
+	Engineer role. Intermediate browser state does not replace this persistence.
+- Template catalogue, standalone editor with field help and graphical structure.
+- Native `.tfvars` download and atomic GitHub export with JSON, tfvars, CLI instructions and an optionally verified S3 backend.
+- GitHub login, PostgreSQL sessions/RLS and personal tokens in Secrets Manager.
+- Personal deployment credentials: save/delete a service account key file; check authentication and organization read access. [Details](../docs/deployment-credentials.md).
+- Immutable deployment preparations from fork configuration, target and personal credentials. [Details](../docs/deployment-preparation.md).
+- Browser back/forward and direct page URLs.
+- Initial provisioning Plans and an approval-bound platform Apply path: RLS jobs, isolated CF tasks and value-free result display; see [process and acceptance](../docs/plan-execution.md). No customer Apply in this acceptance; chat remains open.
+- Application test catalogue: immutable tenant-bound project template versions, orders without a fork, idempotent instance jobs and explicit Plan blockers. No application cloud execution; see [publication and ordering](../docs/template-parameters-and-bindings.md#tenantgebundener-testkatalog-und-bestellungen).
+
+The application service is disabled by default. After applying migration
+`010_application_catalogue.sql` with the existing migration identity,
+`LZC_APPLICATIONS_ENABLED=true` enables the API in the authenticated server. Missing tables
+prevent startup. `/applications` is its own SPA route; the API lives under
+`/api/v1/applications/templates` and `/api/v1/applications/instances`. All requests
+need the active tenant header; mutations additionally require origin/CSRF checks.
+The feature flag enables only the test catalogue and order jobs, never
+a Runner or Apply. The existing platform Plan pipeline remains unchanged.
+
+Details and boundaries: [forks and navigation](../docs/forks-and-navigation.md),
+[GitHub login](../docs/github-login.md). Check the HCL export roundtrip with Node 24 in PATH:
 `cd ../tools/hcl-adapter && go test ./... && go run . -check`.
 
-## State-Backend und unabhängiger Export
+<a id="state-backend-und-unabhängiger-export"></a>
 
-Der Plattform-Bootstrap verwendet temporär einen dauerhaften verschlüsselten
-HTTP-State. Nach dem freigegebenen Bootstrap-Apply wird zum LZA-Management-Bucket
-migriert; erst nach serverseitigem Hash-/Versionsnachweis wird der HTTP-Primärstate
-entfernt. Native S3-States verwenden `use_lockfile = true`; Application-Instanzen
-haben jeweils eigene State-Keys. Legacy-State-Zuordnungen bleiben bis zur expliziten
-Migration gesperrt. Unbestätigte Migration/Recovery benötigt einen State-Export
-und operativen Abgleich; vollständige automatische Recovery bei hartem
-Runner-Verlust ist nicht garantiert. Cloud-Locking wurde nicht live getestet.
+## State backend and independent export
 
-GitHub speichert unter `src/config/custom/<id>/` JSON, tfvars und eine CLI-Anleitung,
-zusätzlich `backend.tf.json`, wenn die API die Quellbindung verifiziert hat.
-Die erste Speicherung eines DB-Entwurfs erhält dessen ID; vorhandene Git-Bindungen
-behalten ihre eigene ID. Der Browser kann keine Backend-Deskriptoren vorgeben.
-Exportiert werden weder AWS-/SA-Schlüssel noch State-Dateien. Backend-Servicefehler,
-manuell veränderte Backend-Dateien und verlorene Bindungen brechen den Export ab.
-Ein abweichender Quell-ID-Alias wird beim Export nicht neu registriert; für die
-Vorbereitung ist die ausdrückliche Auswahl des bestehenden Backend-ID nötig.
+Platform bootstrap temporarily uses durable encrypted
+HTTP state. After the approved bootstrap Apply, it migrates to the LZA management bucket;
+the primary HTTP state is removed only after server-side hash/version evidence.
+Native S3 states use `use_lockfile = true`; application instances
+each have their own state keys. Legacy state mappings remain blocked until explicit
+migration. Unconfirmed migration/recovery requires a state export
+and operational reconciliation; complete automatic recovery after hard
+Runner loss is not guaranteed. Cloud locking has not been tested live.
 
-CLI-Betrieb benötigt den geprüften Accelerator-Code und den Management-Zugang
-aus dem LZA Secrets Manager. Ursprünglichen Backend-Block in `src/backend.tf`
-deaktivieren, exportiertes `backend.tf.json` nach `src/` kopieren und genau einen
-aktiven Backend-Block behalten. AWS-Schlüssel als `AWS_ACCESS_KEY_ID` und
-`AWS_SECRET_ACCESS_KEY` setzen, dann in `src`:
+GitHub stores JSON, tfvars and CLI instructions under `src/config/custom/<id>/`,
+plus `backend.tf.json` if the API verified the source binding.
+The first save of a DB draft retains its ID; existing Git bindings
+retain their own ID. The browser cannot specify backend descriptors.
+Neither AWS/SA keys nor state files are exported. Backend service errors,
+manually changed backend files and lost bindings abort export.
+A differing source ID alias is not registered anew during export; preparation
+requires explicit selection of the existing backend ID.
+
+CLI operation requires the reviewed Accelerator code and management access
+from LZA Secrets Manager. Disable the original backend block in `src/backend.tf`,
+copy the exported `backend.tf.json` to `src/` and retain exactly one
+active backend block. Set AWS keys as `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY`, then in `src`:
 
 ```sh
 tofu init
 tofu plan -var-file=config/custom/<id>/landing-zone.tfvars
 ```
 
-Ohne verifizierte Bindung zuerst den LZA-Bootstrap mit gesichertem State und
-anschließender geprüfter S3-Migration durchführen. Export führt weder Apply noch
-Migration aus. [Lifecycle und Recovery-Grenzen](../docs/plan-execution.md#state-lebenszyklus-gemäß-lza).
+Without a verified binding, first perform LZA bootstrap with secured state and
+subsequent verified S3 migration. Export executes neither Apply nor
+migration. [Lifecycle and recovery boundaries](../docs/plan-execution.md#state-lebenszyklus-gemäß-lza).
 
-## Lesende Plattformprüfung
+<a id="lesende-plattformprüfung"></a>
+
+## Read-only platform check
 
 ```sh
 npm run platform:check
 ```
 
-Benötigt die STACKIT-CLI sowie die beiden ignorierten Dateien im Repository-Root. Liest `PROJECT_ID` und optional `REGION`; ohne Region wird ausschließlich für die Bestandsaufnahme `eu01` verwendet. `ORGANISATION_ID` bleibt für die spätere Organisationszuordnung reserviert.
+Requires the STACKIT CLI and the two ignored files in the repository root. Reads `PROJECT_ID` and optionally `REGION`; without a region, `eu01` is used exclusively for inventory. `ORGANISATION_ID` remains reserved for later organization mapping.
 
-Das Skript führt die `.env` nicht als Shellcode aus. Es bezieht einen kurzlebigen Token ohne CLI-Login-Persistierung und fragt ausschließlich Metadaten per GET ab. Ausgabe enthält Statuscodes/Anzahlen, keine Tokens oder Rohantworten. Unerwartete Fehler führen zu Exitcode 1; der bekannte Object-Storage-Status 404 wird als `enabled: false` und anstehende IaC-Provisionierung gemeldet. Der Check provisioniert oder aktiviert nichts. Betriebssystem-Zertifikate sind für Unternehmensproxys aktiviert; TLS-Prüfung bleibt eingeschaltet.
+The script does not execute `.env` as shell code. It obtains a short-lived token without persisting CLI login and queries only metadata through GET. Output contains status codes/counts, no tokens or raw responses. Unexpected errors produce exit code 1; the known Object Storage status 404 is reported as `enabled: false` and pending IaC provisioning. The check provisions or enables nothing. Operating system certificates are enabled for corporate proxies; TLS verification remains on.
 
-Der Modellkatalog beweist keine projektbezogene Inferenzaktivierung. Leserechte beweisen keine Erstell-/Änderungsrechte. CF-Plattformangebote ersetzen weder CF-Organisation noch Runtime-Zugang. Ergebnisse: [Plattformprüfung](../docs/platform-check.md).
+The model catalogue does not prove project-specific inference activation. Read permissions do not prove create/change permissions. CF platform offerings replace neither a CF organization nor runtime access. Results: [platform check](../docs/platform-check.md).

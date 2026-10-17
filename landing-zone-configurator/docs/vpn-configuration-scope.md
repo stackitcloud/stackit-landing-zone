@@ -1,32 +1,39 @@
-# STACKIT VPN: Umfang des geführten Editors
+<a id="stackit-vpn-umfang-des-geführten-editors"></a>
+# STACKIT VPN: scope of the guided editor
 
-Stand: 2026-10-01. Der Assistent beschreibt den vom Accelerator unterstützten Vertrag, keine vollständige Nachbildung des STACKIT Portals.
+[English](vpn-configuration-scope.md) | [Deutsch](vpn-configuration-scope.de.md)
 
-## Bedienung
+As of 2026-10-01. The assistant describes the contract supported by the Accelerator, not a complete replica of the STACKIT Portal.
 
-1. Gateway: Anzeigename, Leistungsplan und Verfügbarkeitszonen der beiden Tunnel.
-2. Routing: Route-based mit statischen Routen oder Policy-based mit lokalen/entfernten Netzen. BGP ist im aktuellen Modul nicht unterstützt; [#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) verfolgt die Erweiterung.
-3. Verbindungen: stabile Verbindungskennung, Gegenstellenadressen für zwei Tunnel, optional erweiterte Peering-/IPsec-Einstellungen.
-4. Zusammenfassung: erzeugte STACKIT-Ressourcen und verbleibende Arbeiten an der Gegenstelle.
+<a id="bedienung"></a>
+## Usage
 
-Navigation, Öffnen und Schließen verändern keine Konfiguration. Änderungen an einem Feld erhalten alle übrigen Werte, insbesondere Tunnel- und Routing-Einstellungen. Ein Wechsel des Routingverfahrens löscht bestehende Felder nicht; abweichende Routingfelder bleiben unter den weiteren Einstellungen zugänglich. Der Assistent ist keine semantische VPN-Verbindungsprüfung. Produktkataloge für Pläne und Verfügbarkeitszonen werden noch nicht abgefragt; dafür wird keine vermeintlich vollständige statische Auswahl vorgetäuscht.
+1. Gateway: display name, performance plan and availability zones of both tunnels.
+2. Routing: route-based with static routes or policy-based with local/remote networks. BGP is not supported by the current module; [#86](https://github.com/stackitcloud/stackit-landing-zone/issues/86) tracks the extension.
+3. Connections: stable connection identifier, peer addresses for two tunnels, optional advanced peering/IPsec settings.
+4. Summary: generated STACKIT resources and remaining work on the peer.
 
-## Bestätigte Accelerator-Grenze: identisches VPN pro SNA
+Navigation, opening and closing do not change any configuration. Changes to one field preserve all other values, especially tunnel and routing settings. Switching the routing method does not delete existing fields; fields for other routing methods remain accessible under additional settings. The assistant is not a semantic VPN connection check. Product catalogues for plans and availability zones are not yet queried; no supposedly complete static selection is presented instead.
 
-Die [VPN-Ressourcen](../../src/modules/connectivity/7-vpn.tf) erzeugen ein Gateway für **jeden** Eintrag von `var.network_areas`. Die Verbindungen werden über das kartesische Produkt der SNA-Schlüssel und der VPN-Verbindungsschlüssel erzeugt. Jede SNA erhält damit dieselben Gateway-Einstellungen und alle konfigurierten Verbindungen. `connectivity.vpn` enthält keinen `network_area_key` und keine Auswahl einzelner SNAs; dasselbe gilt innerhalb einer regionalen Connectivity-Konfiguration.
+<a id="bestätigte-accelerator-grenze-identisches-vpn-pro-sna"></a>
+## Confirmed Accelerator limitation: identical VPN per SNA
 
-Der Editor macht diese Vervielfachung sichtbar und bietet keinen irreführenden SNA-Auswahlschalter an. Für eine spätere gezielte Zuordnung muss zuerst der Accelerator-Vertrag erweitert werden. Das ist unabhängig von automatischem Inter-Region-Routing und von Firewall-Policy-Automation.
+The [VPN resources](../../src/modules/connectivity/7-vpn.tf) create a gateway for **every** entry in `var.network_areas`. Connections are created using the Cartesian product of SNA keys and VPN connection keys. Each SNA therefore receives the same gateway settings and all configured connections. `connectivity.vpn` contains no `network_area_key` and no selection of individual SNAs; the same applies within a regional connectivity configuration.
 
-## Zugangsdaten und Ausführung
+The editor makes this duplication visible and does not offer a misleading SNA selector. Future targeted assignment requires extending the Accelerator contract first. This is independent of automatic inter-region routing and firewall policy automation.
 
-Der [Root-Vertrag](../../src/variables.tf) hält Pre-Shared Keys getrennt unter `vpn_pre_shared_keys`; [das Modul](../../src/modules/connectivity/7-vpn.tf) liest pro Verbindungskennung zwei Schlüssel. Die Schlüssel werden nicht in den Topologieeditor oder die committierbare Konfiguration aufgenommen. Die geschützte Schlüsselanbindung ist noch offen.
+<a id="zugangsdaten-und-ausführung"></a>
+## Credentials and execution
 
-Der gemeinsame Editor kann diese Konfiguration speichern und exportieren. VPN-Deployments über diesen Editor sind weiterhin gesperrt. Ein späterer Deployment-Flow muss Schlüsselreferenzen, Routing-Plausibilität, verfügbare Produktparameter und die Auswirkungen der Vervielfachung pro SNA prüfen. Selbst nach einem erfolgreichen STACKIT-Deployment müssen das entfernte VPN-Gerät eingerichtet und die Verbindung geprüft werden. Ein Gateway ohne konfigurierte Verbindungen ist noch kein funktionsfähiges VPN.
+The [root contract](../../src/variables.tf) keeps pre-shared keys separately under `vpn_pre_shared_keys`; [the module](../../src/modules/connectivity/7-vpn.tf) reads two keys per connection identifier. Keys are not included in the topology editor or committable configuration. Protected key binding remains open.
 
-## Dokumentationsanschluss
+The common editor can save and export this configuration. VPN deployments through this editor remain blocked. A future deployment flow must check key references, routing plausibility, available product parameters and the effects of duplication per SNA. Even after a successful STACKIT deployment, the remote VPN device must be configured and the connection tested. A gateway without configured connections is not yet a functioning VPN.
 
-Der Assistent verlinkt die [STACKIT VPN-Dokumentation](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/), die [Gateway-/Verbindungsoptionen](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/basics/gateway-and-connection-options/) und die [Verbindungsanlage](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/getting-started/connection-create/). Fachliche Reihenfolge und Begriffe folgen Gateway → Routing → Verbindung → Tunnel. Eine Gleichheit mit dem jeweils aktuellen Portal wird nicht behauptet.
+<a id="dokumentationsanschluss"></a>
+## Documentation integration
+
+The assistant links to the [STACKIT VPN documentation](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/), [gateway/connection options](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/basics/gateway-and-connection-options/) and [connection creation](https://docs.stackit.cloud/products/network/connectivity-hybrid-multi-cloud/vpn/getting-started/connection-create/). The domain sequence and terminology follow gateway → routing → connection → tunnel. No equivalence with the current portal is claimed.
 
 
-Die fehlende selektive SNA-Zuordnung wurde nach Abgleich mit aktuellem `main` und
-bestehenden Issues als [#85](https://github.com/stackitcloud/stackit-landing-zone/issues/85) erfasst.
+The missing selective SNA assignment was recorded as [#85](https://github.com/stackitcloud/stackit-landing-zone/issues/85)
+after comparison with current `main` and existing issues.

@@ -1,111 +1,119 @@
-# Designreferenz: offizielles STACKIT Portal
+<a id="designreferenz-offizielles-stackit-portal"></a>
+# Design reference: official STACKIT Portal
 
-Benutzeranforderung vom 2026-09-30: Look & Feel des Landing Zone Configurators
-soll dem offiziellen STACKIT Portal entsprechen. Referenz ist die bereits vom
-Benutzer geöffnete Projektstartseite. Kein frei interpretiertes STACKIT-ähnliches
-Theme als Ersatz für diesen Abgleich.
+[English](design-reference.md) | [Deutsch](design-reference.de.md)
 
-## Design-Abnahme
+User requirement from 2026-09-30: the look and feel of the Landing Zone Configurator
+should match the official STACKIT Portal. The reference is the project home page
+already open in the user's browser. No freely interpreted STACKIT-like
+theme as a substitute for this comparison.
 
-- [ ] Geöffnete Projektstartseite im Benutzerbrowser ansehen und Referenz erfassen.
-- [ ] Portal-Shell: Header, Projekt-/Organisationsauswahl, Navigation, Breadcrumbs und Inhaltsbreite bestimmen.
-- [ ] Tatsächliche Farben, Typografie, Schriftgewichte, Abstände, Radien, Rahmen und Schatten dokumentieren.
-- [ ] Formulare, Buttons, Karten, Tabellen, Dialoge sowie Fokus-/Fehler-/Disabled-Zustände vergleichen.
-- [x] Offizielle Design-Tokens, Fonts und Komponentenquellen über Nebula prüfen.
-- [ ] Offizielle Icons und vollständige Komponentenparität integrieren.
-- [x] Gemeinsame Formular-/Strukturkomponenten und ausgewählte semantische Tokens im Configurator implementieren.
-- [ ] Login, Template-Auswahl, fachlichen Editor und Fork-Auswahl gegen die Referenz visuell abnehmen.
-- [ ] Tastaturbedienung, Fokus, Kontrast und schmale Ansichten prüfen.
+<a id="design-abnahme"></a>
+## Design acceptance
 
-## Öffentliche Designquellen erfasst (2026-09-30)
+- [ ] View the open project home page in the user's browser and capture the reference.
+- [ ] Determine portal shell: header, project/organization selection, navigation, breadcrumbs and content width.
+- [ ] Document actual colors, typography, font weights, spacing, radii, borders and shadows.
+- [ ] Compare forms, buttons, cards, tables, dialogs and focus/error/disabled states.
+- [x] Check official design tokens, fonts and component sources through Nebula.
+- [ ] Integrate official icons and full component parity.
+- [x] Implement shared form/structure components and selected semantic tokens in the Configurator.
+- [ ] Visually qualify login, template selection, domain editor and fork selection against the reference.
+- [ ] Check keyboard operation, focus, contrast and narrow views.
 
-- [x] Portal-HTML, referenzierte Stylesheets und Haupt-JavaScript ohne Login per `curl` abgerufen.
-- [x] Originale `--nds-*`-Deklarationen mit Marken-/Theme-Selektoren und Font-Face-Definitionen extrahiert.
-- [x] Wiederholbaren Abruf mit Quellen-URLs, UTC-Zeitpunkt und SHA-256 dokumentiert.
-- [ ] Aktive Marke, Theme und berechnete Styles der Projektansicht visuell bestätigen.
+<a id="öffentliche-designquellen-erfasst-2026-09-30"></a>
+## Public design sources captured (2026-09-30)
 
-Abruf: [Anleitung und Werkzeug](../tools/portal-reference/README.md).
-Die lokalen Quelldateien liegen unter `.local/portal-reference/` und werden nicht
-versioniert. Persönliche Tokens, Cookies oder Projektzugriffe sind dafür unnötig.
+- [x] Retrieve portal HTML, referenced stylesheets and main JavaScript without login using `curl`.
+- [x] Extract original `--nds-*` declarations with brand/theme selectors and font-face definitions.
+- [x] Document repeatable retrieval with source URLs, UTC timestamp and SHA-256.
+- [ ] Visually confirm active brand, theme and computed styles of the project view.
 
-Der erfasste öffentliche [Portal-Stylesheet](https://portal.stackit.cloud/styles-HOVMV7T5.css)
-enthält folgende Referenzwerte (Dateiname gilt für diesen Snapshot):
+Retrieval: [instructions and tool](../tools/portal-reference/README.md).
+Local source files are under `.local/portal-reference/` and are not
+versioned. Personal tokens, cookies or project access are unnecessary.
 
-| Geltungsbereich | Beobachtete Deklaration |
+The captured public [portal stylesheet](https://portal.stackit.cloud/styles-HOVMV7T5.css)
+contains these reference values (filename applies to this snapshot):
+
+| Scope | Observed declaration |
 | --- | --- |
-| `html.brand--digits` | Fließtext: DIN 2014; Überschriften: Univia Pro |
-| `html.brand--digits` | Heller Branding-Header: `#0a1e2dff` |
-| `html.brand--digits` | CTA: `#00c2ccff`, Hover `#00b2bcff`, aktiv `#00a2acff` |
-| `html.brand--neutral` | Fließtext und Überschriften: Inter |
-| `html.brand--schwarz` | Fließtext und Überschriften: Helvetica Now Var |
-| Theme-Selektoren | `theme--light`, `theme--dark`, `theme--a11y` |
-| Body-Regel | 16 px, Gewicht 400, Zeilenhöhe 1.56; Farben über Theme-Tokens |
+| `html.brand--digits` | Body text: DIN 2014; headings: Univia Pro |
+| `html.brand--digits` | Light branding header: `#0a1e2dff` |
+| `html.brand--digits` | CTA: `#00c2ccff`, hover `#00b2bcff`, active `#00a2acff` |
+| `html.brand--neutral` | Body text and headings: Inter |
+| `html.brand--schwarz` | Body text and headings: Helvetica Now Var |
+| Theme selectors | `theme--light`, `theme--dark`, `theme--a11y` |
+| Body rule | 16 px, weight 400, line height 1.56; colors through theme tokens |
 
-Die HTML-Antwort enthält zunächst nur `html lang="en"`, keine ausgewählte Marke
-oder Theme-Klasse. Die Tokens dürfen daher nicht über alle Selektoren hinweg
-zusammengeführt werden. Die Extraktion ist kein vollständiger CSS-Parser und
-berechnet weder Kaskade noch gerenderte Styles. Für die Anwendung wird ausdrücklich
-`digits/light` gewählt. Ein begrenzter semantischer Token-Snapshot erhält die
-Viewport-Regeln; Schriftdateien und Logo werden lokal ausgeliefert.
-[Asset-Herkunft und Prüfsummen](brand-assets.md). Portal-JavaScript wird nicht
-in die Anwendung übernommen.
+The HTML response initially contains only `html lang="en"`, no selected brand
+or theme class. Tokens must therefore not be merged across all selectors.
+Extraction is not a complete CSS parser and computes neither cascade nor rendered
+styles. The application explicitly selects
+`digits/light`. A limited semantic token snapshot preserves
+viewport rules; font files and logo are served locally.
+[Asset origin and checksums](brand-assets.md). Portal JavaScript is not
+incorporated into the application.
 
-`curl` liefert die SPA-Quelldateien, aber keine gerenderte, angemeldete
-Projektstartseite. Shell-Geometrie, konkrete Komponenten und Interaktionszustände
-bleiben deshalb offene Abnahmepunkte. Der frühere Browser-Verbindungsfehler
-(fehlende Plugin-Version `26.917.71314`) verhindert den öffentlichen Abruf nicht.
+`curl` delivers SPA source files, not a rendered, authenticated
+project home page. Shell geometry, concrete components and interaction states
+therefore remain open acceptance items. The earlier browser connection error
+(missing plugin version `26.917.71314`) does not prevent public retrieval.
 
-## Unabhängig vorbereitete Arbeit
+<a id="unabhängig-vorbereitete-arbeit"></a>
+## Independently prepared work
 
-- [x] GitHub-App-Registrierungsentwurf mit fester Callback-URL unter `deploy/github/`.
-- [x] Reine Auth-Bausteine für S256-PKCE, State-/Browserbindung und sichere Cookie-Ausgabe mit Negativtests.
-- [ ] GitHub App registrieren/zuordnen und Benutzerautorisierung konfigurieren.
-- [ ] Persistente, atomar konsumierte Login-Vorgänge und serverseitige Sessions implementieren.
-- [ ] Mandanten-/Mitgliedschaftsmodell, Migrationen und echte PostgreSQL-RLS-Negativtests.
-- [ ] Benutzergebundene GitHub-Tokens geschützt ablegen; ausschließlich damit Repository-Aktionen ausführen.
-- [ ] Erster vertikaler Template-bis-Fork-Ablauf mit tatsächlichem Benutzerlogin.
+- [x] GitHub App registration draft with fixed callback URL under `deploy/github/`.
+- [x] Pure auth building blocks for S256 PKCE, state/browser binding and secure cookie output with negative tests.
+- [ ] Register/assign GitHub App and configure user authorization.
+- [ ] Implement persistent, atomically consumed login transactions and server-side sessions.
+- [ ] Tenant/membership model, migrations and real PostgreSQL RLS negative tests.
+- [ ] Protect user-bound GitHub tokens; perform repository actions exclusively with them.
+- [ ] First vertical template-to-fork flow with actual user login.
 
-Die Auth-Helfer sind noch nicht an HTTP-Routen angebunden. Insbesondere ersetzt
-ein erfolgreicher State-Vergleich keine atomare Einmalverwendung in PostgreSQL.
-Die geschützte API bleibt bis zur vollständigen Integration geschlossen.
-Der öffentliche Template-Editor arbeitet ausschließlich mit Repository-Vorlagen
-und flüchtigen Entwürfen im aktuellen Browser-Tab.
+The auth helpers are not yet connected to HTTP routes. In particular,
+a successful state comparison does not replace atomic single use in PostgreSQL.
+The protected API remains closed until full integration.
+The public template editor works exclusively with repository templates
+and transient drafts in the current browser tab.
 
-## Nebula als bestätigte Referenz
+<a id="nebula-als-bestätigte-referenz"></a>
+## Nebula as the confirmed reference
 
-Der Benutzer hat am 2026-09-30 [styleguide.stackit.schwarz](https://styleguide.stackit.schwarz/)
-als Referenz angegeben. Die Seiten sind ohne Login abrufbar (Unterseiten mit
-abschließendem `/`). Relevante Vorgaben:
+On 2026-09-30 the user specified [styleguide.stackit.schwarz](https://styleguide.stackit.schwarz/)
+as the reference. Pages are accessible without login (subpages with
+a trailing `/`). Relevant requirements:
 
 - [Tokens](https://styleguide.stackit.schwarz/foundations/design-tokens/about-tokens/):
-  semantische Namen verwenden, Marken/Modi getrennt halten.
-- [Typografie](https://styleguide.stackit.schwarz/foundations/typography/):
-  16-px-Basiseinheit, abgestufte Textstile; lokale Originalschriften.
-- [Formulare](https://styleguide.stackit.schwarz/patterns/forms/design/):
-  ein-/zweispaltiger Wizard, Inline-Fehler und anklickbare Fehlerzusammenfassung.
-  Download bleibt klickbar und führt bei ungültigen Angaben zum betroffenen Feld.
+  use semantic names, keep brands/modes separate.
+- [Typography](https://styleguide.stackit.schwarz/foundations/typography/):
+  16-px base unit, graduated text styles; local original fonts.
+- [Forms](https://styleguide.stackit.schwarz/patterns/forms/design/):
+  one-/two-column wizard, inline errors and clickable error summary.
+  Download remains clickable and leads to the affected field when inputs are invalid.
 - [Buttons](https://styleguide.stackit.schwarz/components/buttons/design/):
-  eine hervorgehobene Hauptaktion pro Aktionsgruppe.
-- [Header](https://styleguide.stackit.schwarz/components/header/design/) und
-  [Navigation](https://styleguide.stackit.schwarz/patterns/side-navigation/design/):
-  Logo, Kontext und klar markierter aktiver Navigationspunkt.
+  one prominent primary action per action group.
+- [Header](https://styleguide.stackit.schwarz/components/header/design/) and
+  [navigation](https://styleguide.stackit.schwarz/patterns/side-navigation/design/):
+  logo, context and clearly marked active navigation item.
 
-Nebula verweist auf eine Angular-Komponentenbibliothek. Diese ist keine direkt
-nutzbare React-Abhängigkeit. Der bestätigte React-Stack bleibt für diesen Schritt
-bestehen; native semantische Komponenten verwenden den ausgewählten Token-Snapshot.
-Vollständige Komponenten- und Verhaltensparität ist damit nicht automatisch erreicht.
-Der Configurator zeigt nur seine tatsächlich verfügbaren Funktionen; eine
-Projekt-/Regionsauswahl für authentifizierte Benutzer folgt mit dem Login.
+Nebula refers to an Angular component library. This is not a directly
+usable React dependency. The confirmed React stack remains in place for this step;
+native semantic components use the selected token snapshot.
+Full component and behavior parity is not automatically achieved.
+The Configurator shows only its actually available features; project/region
+selection for authenticated users follows with login.
 
-Lokale Abnahme: Browserprüfungen auf 1440 und 390 px, inklusive Suche,
-Fehlerfokus, Entwurfsdownload und erfolgreichem Laden beider Originalschriften und
-des Logos. Screenshots liegen unter `.local/browser-tests`. Die integrierte
-Browser-Verbindung ist weiterhin defekt; deshalb wurden isolierte lokale
-Browser-Kontexte verwendet. Ein direkter visueller Vergleich mit der angemeldeten
-Portal-Projektstartseite und die vollständige Tastatur-/Kontrastprüfung stehen aus.
+Local acceptance: browser checks at 1440 and 390 px, including search,
+error focus, draft download and successful loading of both original fonts and
+the logo. Screenshots are under `.local/browser-tests`. The integrated
+browser connection remains broken; isolated local
+browser contexts were therefore used. Direct visual comparison with the authenticated
+portal project home page and complete keyboard/contrast checks remain outstanding.
 
-## Fachliches Bedienkonzept
+<a id="fachliches-bedienkonzept"></a>
+## Domain interaction concept
 
-Die [verbindlichen Editor-Designprinzipien](editor-design-principles.md) ergänzen
-die visuellen Portalreferenzen: offizielle Produktnamen, Komponentenübersicht,
-schrittweise Detailanzeige und dokumentationsnahe Abläufe, zunächst für STACKIT VPN.
+The [binding editor design principles](editor-design-principles.md) supplement
+the visual portal references: official product names, component overview,
+progressive detail disclosure and documentation-aligned flows, initially for STACKIT VPN.

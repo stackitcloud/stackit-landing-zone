@@ -1,5 +1,7 @@
 # Configurator runtime infrastructure
 
+[English](README.md) | [Deutsch](README.de.md)
+
 This root creates the `configurator` space in the existing `lzc-dev` CF organization,
 assigns the deployment identity organization membership and the space developer role, and creates separate
 PostgreSQL and read-only Secrets Manager application users. The platform's database

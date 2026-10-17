@@ -1,5 +1,7 @@
 # CF application release
 
+[English](README.md) | [Deutsch](README.de.md)
+
 `.github/workflows/configurator-release.yml` builds and tests the application,
 packages production dependencies and the checksum-pinned Node 24.21.0 Linux runtime,
 and deploys the same archive with explicit `cf` CLI commands. The CF node buildpack

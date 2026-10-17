@@ -1,74 +1,85 @@
-# Lesende Plattformprüfung
+# Read-only platform check
 
-Stand: 2026-09-29. Ziel: Betreiberprojekt aus der lokalen `landing-zone-configurator.env`, Authentisierung mit der zugehörigen Service-Account-Datei. IDs, Schlüssel und Tokens werden hier bewusst nicht wiederholt.
+[English](platform-check.md) | [Deutsch](platform-check.de.md)
 
-## Ergebnis
+<a id="lesende-plattformprüfung"></a>
 
-| Prüfung | Beobachtung | Aussage / Grenze |
+As of: 2026-09-29. Target: the operator project from the local `landing-zone-configurator.env`, authenticated with its associated service-account file. IDs, keys and tokens are deliberately not repeated here.
+
+<a id="ergebnis"></a>
+## Results
+
+| Check | Observation | Conclusion / limitation |
 | --- | --- | --- |
-| Service-Account-Authentisierung | Kurzlebiger Token erfolgreich bezogen | Kein persistenter CLI-Login geändert |
-| Projekt lesen | Erfolgreich; zurückgegebene Projekt-ID stimmt mit Eingabe überein | Projekt-Lesezugriff nachgewiesen; keine Prüfung von Schreibrechten oder Organisationszuordnung |
-| CF-Organisationen | HTTP 200; 0 Einträge | Im abgefragten Projekt/Region keine Organisation sichtbar |
-| CF-Plattformangebote | HTTP 200; 2 Einträge | Angebote erreichbar; konkrete Foundation/Quota noch auswählen |
-| PostgreSQL-Flex-Instanzen | HTTP 200; 0 Einträge | Keine Instanz sichtbar |
-| PostgreSQL-Flavors | HTTP 200; 10 Einträge | Angebot lesbar; HA, Größe, Backup und Kosten noch entscheiden |
-| Secrets-Manager-Instanzen | HTTP 200; 0 Einträge | Keine Instanz sichtbar; konkrete Policies/Isolation noch nicht prüfbar |
-| Model-Serving-Katalog | HTTP 200; 10 Modelle | Allgemeiner Katalog lesbar; kein Nachweis projektbezogener Aktivierung, Inferenzrechte oder gebuchter Kapazität |
-| Object-Storage-Service-Status | HTTP 404 | Nach Abgleich mit der offiziellen CLI: Dienst im Projekt/Region noch nicht aktiviert; der erste IaC-Bucket aktiviert ihn |
+| Service-account authentication | Short-lived token successfully obtained | No persistent CLI login changed |
+| Read project | Successful; returned project ID matches the input | Project read access demonstrated; no verification of write permissions or organization membership |
+| CF organizations | HTTP 200; 0 entries | No organization visible in the queried project/region |
+| CF platform offerings | HTTP 200; 2 entries | Offerings accessible; specific foundation/quota still to be selected |
+| PostgreSQL Flex instances | HTTP 200; 0 entries | No instance visible |
+| PostgreSQL flavors | HTTP 200; 10 entries | Offering readable; HA, size, backup and costs still to be decided |
+| Secrets Manager instances | HTTP 200; 0 entries | No instance visible; specific policies/isolation cannot yet be checked |
+| Model Serving catalogue | HTTP 200; 10 models | General catalogue readable; not evidence of project-specific activation, inference permissions or booked capacity |
+| Object Storage service status | HTTP 404 | Cross-checked against the official CLI: service not yet enabled in the project/region; the first IaC bucket enables it |
 
-Die erste Abfrage verwendete `eu01` als Probe-Region. Anschließend wurden **lzc-dev/eu01** als erste Entwicklungsumgebung bestätigt und lokal eingetragen. Leere Listen sind keine Zusage, dass Erstellen erlaubt ist. Listenantworten beschreiben die aktuelle Sicht des Service Accounts, nicht sämtliche eventuell anderswo vorhandenen Ressourcen.
+The first query used `eu01` as a probe region. Subsequently, **lzc-dev/eu01** was confirmed as the first development environment and recorded locally. Empty lists are not a promise that creation is permitted. List responses describe the service account's current view, not all resources that may exist elsewhere.
 
-Der Object-Storage-404 trat sowohl über die installierte STACKIT-CLI als auch direkt am dokumentierten v2-Service-Status-Endpunkt auf. Die offizielle CLI behandelt genau diesen Service-Status-404 in `ProjectEnabled` als nicht aktiviert. Der Provider aktiviert Object Storage beim Erstellen des ersten Buckets. Es wurde kein Bucket angelegt und es gab keinen fehlgeschlagenen Zugriff auf einen von uns erstellten Bucket.
+The Object Storage 404 occurred both through the installed STACKIT CLI and directly at the documented v2 service-status endpoint. The official CLI treats exactly this service-status 404 in `ProjectEnabled` as not enabled. The provider enables Object Storage when creating the first bucket. No bucket was created, and there was no failed attempt to access a bucket created by us.
 
-Quellen: [CLI-Auswertung](https://github.com/stackitcloud/stackit-cli/blob/main/internal/pkg/services/object-storage/utils/utils.go), [Bucket-Aktivierung im gepinnten Provider](https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/objectstorage/bucket/resource.go).
+Sources: [CLI handling](https://github.com/stackitcloud/stackit-cli/blob/main/internal/pkg/services/object-storage/utils/utils.go), [bucket activation in the pinned provider](https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/objectstorage/bucket/resource.go).
 
-## Wiederholen
+<a id="wiederholen"></a>
+## Repeating the check
 
-Siehe [Entwicklungsanleitung](../app/README.md): `npm run platform:check`. Das Skript nutzt Node.js-Systemzertifikate, begrenzte Timeouts, keine HTTP-Redirects mit Token und gibt nur aggregierte Metadaten aus. Es liefert Exitcode 1 bei unerwarteten Fehlern. Der bekannte Object-Storage-404 ist jetzt eine erfolgreiche Statusbestimmung mit `enabled: false`; das bedeutet noch keine Deployment-Bereitschaft.
+See the [development instructions](../app/README.md): `npm run platform:check`. The script uses Node.js system certificates, bounded timeouts, no HTTP redirects carrying tokens, and outputs only aggregated metadata. It returns exit code 1 for unexpected errors. The known Object Storage 404 is now a successful status determination with `enabled: false`; this does not yet mean deployment readiness.
 
-Installierte STACKIT-CLI beim Test: `0.61.0`. Deshalb wurden die Dienstlisten direkt über die bestätigten APIs nachgeprüft; die CLI bleibt für den Token-Austausch und Projekt-Lesezugriff im Skript. Eine ältere CLI-Ausgabe ohne JSON wurde nicht als leere Liste gewertet.
+Installed STACKIT CLI during the test: `0.61.0`. Service lists were therefore cross-checked directly through the confirmed APIs; the script still uses the CLI for token exchange and project read access. Older CLI output without JSON was not interpreted as an empty list.
 
-API-Verträge aus dem offiziellen SDK: [SCF](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/scf), [PostgreSQL Flex](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/postgresflex), [Secrets Manager](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/secretsmanager), [Model Serving](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/modelserving), [Object Storage](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/objectstorage).
+API contracts from the official SDK: [SCF](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/scf), [PostgreSQL Flex](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/postgresflex), [Secrets Manager](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/secretsmanager), [Model Serving](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/modelserving), [Object Storage](https://github.com/stackitcloud/stackit-sdk-go/tree/main/services/objectstorage).
 
-## Konsequenzen für den nächsten Schritt
+<a id="konsequenzen-für-den-nächsten-schritt"></a>
+## Implications for the next step
 
-- [x] Projekt-Lesezugriff mit bereitgestellter Identität bestätigen.
-- [x] CF-/DB-/Secret-Angebote beziehungsweise Bestandslisten und Modellkatalog lesen.
-- [x] Zielregion eu01 und Name lzc-dev für Entwicklung bestätigen.
-- [ ] CF-Foundation/Quota festlegen.
-- [x] Object-Storage-404 klären: noch nicht aktiviert; Aktivierung als Teil der Bucket-IaC.
-- [x] State-Bootstrap und separaten Versionierungs-Root implementieren; erster realer Bootstrap-Plan erfolgreich.
-- [ ] Bootstrap/Versionierung anwenden und S3-Locking sowie Restore praktisch testen.
-- [ ] Erforderliche Create-/Update-Rechte anhand der geplanten Ressourcen prüfen; aus den GETs nicht ableiten.
-- [ ] CF-Organisation und technischen CF-Zugang per IaC planen.
-- [ ] DB-Plan, Secret-Policies und Modell-/Kapazitätsauswahl entscheiden.
-- [ ] Runner-Isolation, private Erreichbarkeit und S3-Locking praktisch nachweisen.
+- [x] Confirm project read access with the provided identity.
+- [x] Read CF/DB/secret offerings or inventories and the model catalogue.
+- [x] Confirm target region eu01 and name lzc-dev for development.
+- [ ] Define CF foundation/quota.
+- [x] Clarify the Object Storage 404: not yet enabled; activation as part of bucket IaC.
+- [x] Implement state bootstrap and a separate versioning root; first real bootstrap plan successful.
+- [ ] Apply bootstrap/versioning and practically test S3 locking and restore.
+- [ ] Verify required create/update permissions against the planned resources; do not infer them from GETs.
+- [ ] Plan the CF organization and technical CF access through IaC.
+- [ ] Decide DB plan, secret policies and model/capacity selection.
+- [ ] Practically demonstrate Runner isolation, private connectivity and S3 locking.
 
-STACKIT-Projekt-Service-Account und CF-Runtime-Service-Account sind unterschiedliche Zugänge. Der offizielle IaC-Leitfaden provisioniert eine CF-Organisation und einen technischen Org-Manager über den STACKIT-Provider; anschließend verwaltet der CF-Provider die Runtime-Ressourcen. Die vorhandene JSON-Datei ist deshalb nicht automatisch ein funktionierender `cf login`-Zugang. Der Bootstrap und die sichere Ablage der erzeugten Zugangsdaten bleiben zu planen. [Offizieller CF-IaC-Leitfaden](https://github.com/stackitcloud/terraform-provider-stackit/blob/main/docs/guides/scf_cloudfoundry.md)
+The STACKIT project service account and CF runtime service account are different credentials. The official IaC guide provisions a CF organization and a technical org manager through the STACKIT provider; the CF provider then manages runtime resources. The existing JSON file is therefore not automatically a working `cf login` credential. Bootstrap and secure storage of the generated credentials still need to be planned. [Official CF IaC guide](https://github.com/stackitcloud/terraform-provider-stackit/blob/main/docs/guides/scf_cloudfoundry.md)
 
-## Lokale Entwicklungsprüfung
+<a id="lokale-entwicklungsprüfung"></a>
+## Local development checks
 
-- [x] Reproduzierbare Installation mit Node.js 24.21.0, npm 11.19.0 und `npm ci`.
-- [x] Biome-Lint/Format und strikte TypeScript-Prüfung einschließlich Testcode.
-- [x] Produktionsbuild von API, gemeinsamen Paketen und React-Oberfläche.
-- [x] Fünf Tests: Tenant-Grenze, Rollenabgrenzung, ungültige Identitäten, Health-Vertrag, abgewiesene gefälschte Login-Header.
-- [x] HTTP-Smoke-Test: gebaute API, Vite-UI-Dokument und Entwicklungsproxy; Prozesse danach beendet.
-- [ ] Visuelle Browser-Abnahme (noch keine funktionale Editoroberfläche).
-- [ ] GitHub-CI-Ausführung (Workflow angelegt, noch nicht gepusht/ausgeführt).
-- [ ] CF-Deployment (noch keine Cloud-Mutation).
+- [x] Reproducible installation with Node.js 24.21.0, npm 11.19.0 and `npm ci`.
+- [x] Biome lint/format and strict TypeScript checking, including test code.
+- [x] Production build of API, shared packages and React UI.
+- [x] Five tests: tenant boundary, role separation, invalid identities, health contract, rejected forged login headers.
+- [x] HTTP smoke test: built API, Vite UI document and development proxy; processes stopped afterwards.
+- [ ] Visual browser acceptance (no functional editor UI yet).
+- [ ] GitHub CI execution (workflow created, not yet pushed/executed).
+- [ ] CF deployment (no cloud mutation yet).
 
-## IaC-Fortschritt nach der Bestandsaufnahme
+<a id="iac-fortschritt-nach-der-bestandsaufnahme"></a>
+## IaC progress after the inventory
 
-Die bestätigte Umgebung ist lzc-dev/eu01. Ein echter Bootstrap-Plan wurde erfolgreich erstellt und anschließend aus der verschlüsselten Plan-Datei überprüft: **3 Create, 0 Update, 0 Delete**. Geplant sind Bucket, Credential-Gruppe und S3-Zugang bis 2026-12-28. Kein Apply wurde ausgeführt.
+The confirmed environment is lzc-dev/eu01. A real bootstrap plan was successfully created and then checked from the encrypted plan file: **3 Create, 0 Update, 0 Delete**. The plan includes a bucket, credential group and S3 access until 2026-12-28. No Apply was executed.
 
-Die erste gemeinsame Planung mit S3-Versionierung schlug fehl, weil der S3-Provider bereits zum Plan-Zeitpunkt gültige Credentials braucht. Die endgültige Struktur verwendet deshalb getrennte Roots `bootstrap`, `backend` (Versionierung) und `platform`. Alle drei sind validiert; sieben Mock-Plan-Tests und drei Tests für Plan-Hash/Kontext/Ablauf bestehen. Die IaC-CI ist entsprechend erweitert.
+The first combined plan with S3 versioning failed because the S3 provider already needs valid credentials at plan time. The final structure therefore uses separate roots `bootstrap`, `backend` (versioning) and `platform`. All three are validated; seven mock plan tests and three tests for plan hash/context/expiry pass. IaC CI has been extended accordingly.
 
-Der bereinigte Plattform-Check wurde erneut ausgeführt und endet jetzt erfolgreich: Object Storage meldet nachvollziehbar `enabled: false` mit anstehender IaC-Provisionierung. Dies ist kein Nachweis einer bereits angelegten Umgebung.
+The corrected platform check was run again and now completes successfully: Object Storage reports an understandable `enabled: false` with IaC provisioning pending. This is not evidence of an environment already having been created.
 
-## Erstes Verwaltungs-Backend angewendet
+<a id="erstes-verwaltungs-backend-angewendet"></a>
+## First management backend applied
 
-Seed: 3 Ressourcen erstellt, Seed-Protection: Versionierung aktiviert. Bootstrap-Remote-Backend initialisiert und Plan erfolgreich. S3-Versionierung, Auslesen einer früheren Testobjekt-Version und Hash-verifizierte Sicherung der verschlüsselten Seed-States erfolgreich. Schlüssel verbleiben separat lokal; unabhängige dauerhafte Schlüsselverwahrung und konkurrierender Lock-Test stehen aus.
+Seed: 3 resources created; seed protection: versioning enabled. Bootstrap remote backend initialized and plan successful. S3 versioning, reading a previous test-object version and hash-verified backup of encrypted seed states successful. Keys remain separately local; independent durable key custody and a concurrent lock test are outstanding.
 
-## S3-Locking: negatives Integrationsergebnis
+<a id="s3-locking-negatives-integrationsergebnis"></a>
+## S3 locking: negative integration result
 
-Zwei getrennte OpenTofu-Datenverzeichnisse, derselbe isolierte S3-State-Key: erster Apply hält eine sichtbare `.tflock`, zweiter Plan mit `-lock-timeout=0s` läuft dennoch erfolgreich. Separater Test mit AWS CLI: wiederholtes `put-object --if-none-match '*'` auf ein bestehendes Testobjekt wird nicht mit 412 abgewiesen. Native S3-Sperrwirkung ist damit am getesteten eu01-Endpunkt nicht gegeben. Testobjekte und Versionen wurden entfernt; produktive States wurden nicht verändert.
+Two separate OpenTofu data directories, the same isolated S3 state key: the first Apply holds a visible `.tflock`, yet the second Plan with `-lock-timeout=0s` succeeds. Separate test with AWS CLI: repeated `put-object --if-none-match '*'` on an existing test object is not rejected with 412. Native S3 locking is therefore ineffective at the tested eu01 endpoint. Test objects and versions were removed; production states were not changed.

@@ -1,3 +1,5 @@
 # seed-protection
 
-Lokale IaC-Seed-Stufe für den unabhängigen Verwaltungs-Bucket. Ablauf und Recovery stehen in [der IaC-Anleitung](../README.md). State ist verschlüsselt; Schlüssel niemals in Git oder den Bucket hochladen.
+[English](README.md) | [Deutsch](README.de.md)
+
+Local IaC seed stage for the independent management bucket. Process and recovery are described in the [IaC instructions](../README.md). State is encrypted; never upload keys to Git or the bucket.

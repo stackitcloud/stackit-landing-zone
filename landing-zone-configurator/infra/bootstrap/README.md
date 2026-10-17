@@ -1,17 +1,21 @@
-# State-Bootstrap
+# State bootstrap
 
-Dieser Root erstellt drei Ressourcen: State-Bucket, Credential-Gruppe und befristeten S3-Zugang. Die erste Bucket-Erstellung aktiviert Object Storage automatisch im vorhandenen Projekt.
+[English](README.md) | [Deutsch](README.de.md)
 
-Dieser Root nutzt den separaten, bereits per Seed-IaC erstellten Verwaltungs-Bucket als verschlüsseltes S3-Backend. Der nachgelagerte [Backend-Root](../backend/README.md) aktiviert die Versionierung mit den dann verfügbaren S3-Credentials. Der Plattform-Root nutzt anschließend den geschützten Bucket.
+This root creates three resources: a state bucket, a credential group and time-limited S3 access. Initial bucket creation automatically enables Object Storage in the existing project.
 
-Erster echter Plan am 2026-09-29 für lzc-dev/eu01 erfolgreich: **3 anlegen, 0 ändern, 0 löschen**. Geplantes Credential-Ablaufdatum: 2026-12-28. Kein Apply ausgeführt. Der gespeicherte Plan liegt verschlüsselt und Git-ignoriert unter `.local/bootstrap/review.tfplan` und ist nur 24 Stunden verwendbar.
+This root uses the separate management bucket, already created through seed IaC, as an encrypted S3 backend. The downstream [backend root](../backend/README.md) enables versioning using the S3 credentials then available. The platform root subsequently uses the protected bucket.
 
-[Operator-Anleitung](../README.md). Mock-Tests weisen die Struktur nach; Aktivierung, S3-Kompatibilität und Berechtigungen zum Schreiben sind erst durch den anschließenden Integrationstest belegt.
+First real Plan on 2026-09-29 for lzc-dev/eu01 succeeded: **3 to create, 0 to change, 0 to delete**. Planned credential expiry: 2026-12-28. No Apply executed. The saved Plan is encrypted and Git-ignored under `.local/bootstrap/review.tfplan` and usable for only 24 hours.
 
-Aktuell: Remote-Backend initialisiert, echter Plan mit 3 Create erfolgreich; für diesen Root weiterhin kein Apply.
+[Operator instructions](../README.md). Mock tests demonstrate the structure; activation, S3 compatibility and write permissions are demonstrated only by the subsequent integration test.
 
-## Erster CI-Apply erfolgreich
+Current: remote backend initialized, real Plan with 3 creates successful; still no Apply for this root.
 
-Am 2026-09-29 wurde Bootstrap auf dem Feature-Branch über [Run 36601941540](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36601941540) angewendet: drei Ressourcen erstellt, keine Änderungen oder Löschungen. Der verschlüsselte State im Verwaltungs-Bucket enthält alle drei Ressourcen. Die einmalige Commit-Freigabe wurde anschließend entfernt. Die zuvor genannten Angaben „kein Apply“ beschreiben den früheren Planungsstand.
+<a id="erster-ci-apply-erfolgreich"></a>
 
-Der nächste Infrastruktur-Schritt ist der separate Backend-Root zur Versionierung des neu erstellten Workload-State-Buckets. Dieser Root wurde noch nicht angewendet.
+## First CI Apply succeeded
+
+On 2026-09-29, bootstrap was applied on the feature branch through [run 36601941540](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36601941540): three resources created, no changes or deletions. The encrypted state in the management bucket contains all three resources. The one-time commit approval was subsequently removed. The preceding “no Apply” statements describe the earlier planning status.
+
+The next infrastructure step is the separate backend root to enable versioning on the newly created workload state bucket. This root has not yet been applied.

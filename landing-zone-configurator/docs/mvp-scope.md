@@ -1,5 +1,7 @@
 # MVP scope and limits
 
+[English](mvp-scope.md) | [Deutsch](mvp-scope.de.md)
+
 The MVP connects the independently usable Accelerator to a tenant-aware editor,
 reviewed Assistant proposals and explicitly authorized execution. It does not
 turn a configuration draft into an autonomous deployment agent.
