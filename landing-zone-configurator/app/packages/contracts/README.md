@@ -1,3 +1,7 @@
-# Schnittstellenverträge
+# Interface contracts
 
-Versionierte API- und Job-Verträge mit Laufzeitvalidierung. Keine Browser-Exporte interner Credential-Strukturen. Mit dem Fachmodell abgestimmte, nicht doppelt gepflegte Schemas.
+[English](README.md) | [Deutsch](README.de.md)
+
+<a id="schnittstellenverträge"></a>
+
+Versioned API and job contracts with runtime validation. No browser exports of internal credential structures. Schemas aligned with the domain model, not maintained in duplicate.

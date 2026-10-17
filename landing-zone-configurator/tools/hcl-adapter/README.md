@@ -1,12 +1,16 @@
-# HCL-Importadapter
+# HCL import adapter
 
-Kleiner Go-Adapter mit [HashiCorp HCL v2](https://pkg.go.dev/github.com/hashicorp/hcl/v2/hclparse).
-Er liest die eingecheckten `.tfvars` aus `src/config`, wertet ausschließlich
-Ausdrücke ohne Variablen-/Funktionskontext aus und erzeugt den versionierten
-JSON-Katalog für die Web-App. Kein Terraform/OpenTofu-Aufruf, kein Netzwerkdienst
-und keine Secret-Auflösung. Fachregeln bleiben im TypeScript-Domain-Paket.
+[English](README.md) | [Deutsch](README.de.md)
 
-Aus diesem Verzeichnis:
+<a id="hcl-importadapter"></a>
+
+Small Go adapter using [HashiCorp HCL v2](https://pkg.go.dev/github.com/hashicorp/hcl/v2/hclparse).
+It reads the checked-in `.tfvars` from `src/config`, evaluates only
+expressions without a variable/function context and generates the versioned
+JSON catalogue for the web app. No Terraform/OpenTofu invocation, network service
+or secret resolution. Domain rules remain in the TypeScript domain package.
+
+From this directory:
 
 ```sh
 # Einmal vor den Roundtrip-Tests: in ../../app npm ci und npm run build:packages
@@ -15,25 +19,27 @@ go run .          # Katalog aktualisieren
 go run . -check   # CI: veralteten Katalog erkennen, keine Dateien ändern
 ```
 
-`go.mod`/`go.sum` pinnen die Abhängigkeiten. CI verwendet Go 1.27.1.
-Der Katalog enthält `schemaVersion: 1` und pro Template ID, Repository-Pfad,
-SHA-256 der unveränderten Quelldatei sowie alle aktiven Attributwerte.
-Kommentare sind keine Konfiguration und werden nicht importiert. Nicht unterstützte
-Referenzen, Funktionen, HCL-Blöcke und Syntaxfehler brechen die Generierung ab.
+`go.mod`/`go.sum` pin dependencies. CI uses Go 1.27.1.
+The catalogue contains `schemaVersion: 1` and, per template, its ID, repository path,
+SHA-256 of the unchanged source file and all active attribute values.
+Comments are not configuration and are not imported. Unsupported
+references, functions, HCL blocks and syntax errors abort generation.
 
-Der derzeitige Adapter verarbeitet nur vertrauenswürdige Repository-Vorlagen
-beim Entwickeln/Build. Er ist keine API zum Ausführen beliebiger Benutzerdateien.
-Es werden keine Defaultwerte aus `variables.tf` automatisch materialisiert.
-Unberührte Attribute bleiben bei der Erstellung eines Standalone-Entwurfs erhalten.
+The current adapter processes only trusted repository templates
+during development/build. It is not an API for executing arbitrary user files.
+No default values from `variables.tf` are materialized automatically.
+Untouched attributes are preserved when creating a standalone draft.
 
-Bei Änderungen an `src/config` den Katalog neu erzeugen und gemeinsam committen.
-Validierung und Release prüfen den Katalog gegen die Quellen; ein veralteter Stand
-wird nicht veröffentlicht. Die Accelerator-Dateien selbst werden nicht verändert.
+When changing `src/config`, regenerate the catalogue and commit it together with the changes.
+Validation and release check the catalogue against the sources; an outdated version
+is not published. The Accelerator files themselves are not changed.
 
-## Accelerator-Eingabeinventar
+<a id="accelerator-eingabeinventar"></a>
 
-Alle Root-Variablen einschließlich verschachtelter Typen, optionaler Defaults und
-Validierungsblöcke lassen sich aus dem vertrauenswürdigen Accelerator extrahieren:
+## Accelerator input inventory
+
+All root variables, including nested types, optional defaults and
+validation blocks, can be extracted from the trusted Accelerator:
 
 ```sh
 go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json
@@ -41,11 +47,11 @@ go run . -variables-source ../../../src/variables.tf -output ../../app/packages/
 go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
 ```
 
-Sensible Defaults werden ausgelassen. Der Typ `dynamic` bleibt ausdrücklich
-unaufgelöst und benötigt ein fachliches Schema aus der Modulverdrahtung.
-`nestedDefaults.children[""]` bezeichnet den Elementtyp einer Map/Liste. Das Inventar
-ersetzt keine fachlichen Abhängigkeiten und erzeugt kein Terraform-Variablen-UI.
+Sensitive defaults are omitted. The `dynamic` type explicitly remains
+unresolved and requires a domain schema from the module wiring.
+`nestedDefaults.children[""]` denotes a map/list element type. The inventory
+does not replace domain dependencies or generate a Terraform variable UI.
 
-Die zweite Inventardatei ist das Build-Artefakt im Domain-Paket. CI prüft beide
-Dateien gegen dieselbe Quelle. Gemeinsamer Compiler und Legacy-Migration sind in
-[Domain-README](../../app/packages/domain/README.md) beschrieben.
+The second inventory file is the build artifact in the domain package. CI checks both
+files against the same source. The common compiler and legacy migration are described in
+the [domain README](../../app/packages/domain/README.md).

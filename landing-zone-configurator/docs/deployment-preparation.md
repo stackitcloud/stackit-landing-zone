@@ -1,111 +1,118 @@
-# Zugang prüfen und Deployment vorbereiten
+<a id="zugang-prüfen-und-deployment-vorbereiten"></a>
+# Check credentials and prepare deployment
 
-Stand: 2026-09-30. Drei zusammenhängende Schritte: persönliche Anmeldung prüfen,
-Zielorganisation lesend prüfen und eine unveränderliche Vorbereitung speichern.
+[English](deployment-preparation.md) | [Deutsch](deployment-preparation.de.md)
 
-## Prüfliste für die Benutzerabnahme
+As of 2026-09-30. Three connected steps: check personal authentication,
+check the target organization read-only and save an immutable preparation.
 
-- [ ] **Deployment-Zugänge:** Beim gespeicherten Profil die UUID der Zielorganisation
-  eintragen und **Zugang prüfen** wählen. Ergebnis und Prüfzeit bleiben nach Reload
-  sichtbar. Die Datei muss dafür nicht erneut hochgeladen werden.
-- [ ] Bei fehlender Berechtigung erscheint ein klarer Organisationszugriffsfehler;
-  ein abgelehnter/abgelaufener Schlüssel erhält einen anderen Fehler. Ein Fehler
-  ersetzt einen früheren erfolgreichen Profil-Prüfstatus.
-- [ ] In **GitHub-Forks** den Fork auswählen und bei einer gespeicherten Konfiguration
-  **Deployment vorbereiten** wählen. Name, Git-Version und Zielorganisation prüfen.
-  Ein ungespeicherter lokaler Entwurf wird nicht verwendet.
-- [ ] Persönlichen Zugang auswählen und **Zugang prüfen und Vorbereitung speichern**
-  wählen. Nach erfolgreichem frischem Organisationstest erscheint die Vorbereitung
-  unter **Deployments**, auch nach Reload.
-- [ ] Unter **Versionsnachweise** Konfigurations-Commit, Accelerator-Referenz und
-  tfvars-Prüfsumme ansehen. Ein späterer Fork-Commit ändert diesen Stand nicht.
-- [ ] Eine Test-Vorbereitung entfernen. Das löscht weder Konfiguration noch Ressourcen.
-  Optional einen ausschließlich zum Testen angelegten Zugang löschen: vorhandene
-  Vorbereitungen müssen danach „Zugang gelöscht“ anzeigen.
+<a id="prüfliste-für-die-benutzerabnahme"></a>
+## User acceptance checklist
 
-## Was der Zugangstest nachweist
+- [ ] **Deployment credentials:** enter the target organization UUID for the saved
+  profile and select **Check credentials**. Result and check time remain visible after
+  reload. The file does not need to be uploaded again.
+- [ ] Missing permission produces a clear organization-access error;
+  a rejected/expired key receives a different error. An error
+  replaces an earlier successful profile check status.
+- [ ] In **GitHub forks**, select the fork and choose **Prepare deployment**
+  for a saved configuration. Check name, Git version and target organization.
+  An unsaved local draft is not used.
+- [ ] Select personal credentials and choose **Check credentials and save preparation**.
+  After a successful fresh organization check, the preparation appears
+  under **Deployments**, including after reload.
+- [ ] Under **Version evidence**, inspect configuration commit, Accelerator reference and
+  tfvars checksum. A later fork commit does not change this snapshot.
+- [ ] Remove a test preparation. This deletes neither configuration nor resources.
+  Optionally delete credentials created solely for testing: existing
+  preparations must then display “Credentials deleted”.
 
-Das Backend liest nur das eigene, vollständig gespeicherte Credential-Profil unter
-RLS und Zeilensperre. Es verlangt die Rolle `admin` oder `deployer`, liest das Secret
-und vergleicht Mandant, Eigentümer, Profil, Typ, Key-ID und Service-Account. Die
-Secret-Version wird mitgeführt. Es gibt weiterhin keinen Schlüssel-Leseendpunkt für
-Browser oder Benutzer-API.
+<a id="was-der-zugangstest-nachweist"></a>
+## What the credential check proves
 
-Ein RS512-signierter JWT mit `kid`, `iss`, `sub`, `aud`, zufälligem `jti` und maximal
-zehn Minuten Gültigkeit wird an einen explizit zugelassenen STACKIT-Token-Endpunkt
-gesendet. Feste HTTPS-Ziele, keine Redirects, jeweils 15 Sekunden Timeout. Access Token
-und Assertion bleiben im Backend-Speicher; sie werden nicht in DB, Logs, Browser,
-Git oder Manifest geschrieben. Es erfolgt kein Refresh-/Token-Cache.
+The backend reads only the user's own fully stored credential profile under
+RLS and row lock. It requires the `admin` or `deployer` role, reads the secret
+and compares tenant, owner, profile, type, key ID and service account. The
+secret version is carried along. There is still no key read endpoint for
+the browser or user API.
 
-Danach liest das Backend ausschließlich
+An RS512-signed JWT with `kid`, `iss`, `sub`, `aud`, random `jti` and at most
+ten minutes validity is sent to an explicitly allowlisted STACKIT token endpoint.
+Fixed HTTPS targets, no redirects, 15-second timeout each. Access token
+and assertion remain in backend memory; they are not written to DB, logs, browser,
+Git or manifest. No refresh/token cache.
+
+Then the backend reads only
 `GET https://resource-manager.api.stackit.cloud/v2/organizations/<uuid>`.
-Die Antwort muss die angefragte Organisations-ID und den Status `ACTIVE` enthalten.
-Ein erfolgreicher Test bestätigt Anmeldung und `resource-manager.organization.get`;
-**keine** Schreibrechte, Projekt-Erstellung, Dienstaktivierung, Plan- oder Apply-Rechte.
-Auch `stored` oder ein älteres positives Prüfergebnis sind keine Deployment-Freigabe.
+The response must contain the requested organization ID and `ACTIVE` status.
+A successful check confirms authentication and `resource-manager.organization.get`;
+**not** write permissions, project creation, service activation, Plan or Apply rights.
+Neither `stored` nor an older positive check result is deployment approval.
 
-Quellen: [STACKIT Token-Abruf](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/get-access-token/),
-[offizieller Resource-Manager-Client](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/resourcemanager/api_default.go),
-[Organisationsantwort](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/resourcemanager/model_organization_response.go).
+Sources: [STACKIT token retrieval](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/get-access-token/),
+[official Resource Manager client](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/resourcemanager/api_default.go),
+[organization response](https://github.com/stackitcloud/stackit-sdk-go/blob/main/services/resourcemanager/model_organization_response.go).
 
-Lesender Protokolltest mit dem vorhandenen **Betreiber-/Projekt-Service-Account**:
-Token-Abruf HTTP 200, Lesen der konfigurierten Organisation HTTP 403. Dafür werden
-Rechte auf der Zielorganisation benötigt; Projektzugriff allein reicht für diese
-Prüfung nicht. Keine automatische Rechteausweitung und kein Import dieses Schlüssels
-als Kundenprofil. Dieser Test ist kein Nachweis für die Rechte eines anderen, vom
-Benutzer hochgeladenen Profils.
+Read-only protocol test with the existing **operator/project service account**:
+token retrieval HTTP 200, reading the configured organization HTTP 403. This requires
+permissions on the target organization; project access alone is insufficient
+for this check. No automatic permission expansion and no import of this key
+as a customer profile. This test does not prove permissions for another profile
+uploaded by the user.
 
-## Unveränderliche Vorbereitung
+<a id="unveränderliche-vorbereitung"></a>
+## Immutable preparation
 
-1. Berechtigung und Eigentum am Credential-Profil serverseitig prüfen.
-2. GitHub-Benutzertoken aus der Session verwenden; Repository-ID, Herkunft und
-   aktuellen Fork-Zugriff erneut prüfen. Kein Betreiber- oder Installation-Token.
-3. Den gewählten Head von `lzc/configurations` bestätigen und Git-Tree sowie
-   `landing-zone.json` über unveränderliche Objekt-IDs lesen. Andere Revisionen
-   werden nicht still übernommen.
-4. Fachmodell und Template-Hash validieren. Vorhandene `landing-zone.tfvars` muss
-   ein regulärer Blob sein und exakt dem deterministischen Export entsprechen.
-   Fehlende oder manuell veränderte Exporte blockieren die Vorbereitung.
-5. Zielorganisation ausschließlich aus dem validierten Git-Dokument übernehmen;
-   die API akzeptiert kein separates Ziel und keinen frei gewählten Accelerator-Code.
-6. Den persönlichen STACKIT-Zugang erneut prüfen. Nur bei Erfolg Manifest speichern.
-   Nach den externen Anfragen Profilbestand und Rechte nochmals überprüfen.
+1. Check permission and ownership of the credential profile server-side.
+2. Use the GitHub user token from the session; recheck repository ID, origin and
+   current fork access. No operator or installation token.
+3. Confirm the selected head of `lzc/configurations` and read Git tree and
+   `landing-zone.json` through immutable object IDs. Other revisions
+   are not silently adopted.
+4. Validate domain model and template hash. Existing `landing-zone.tfvars` must
+   be a regular blob and exactly match deterministic export.
+   Missing or manually changed exports block preparation.
+5. Take the target organization exclusively from the validated Git document;
+   the API accepts neither a separate target nor freely selected Accelerator code.
+6. Check personal STACKIT credentials again. Save the manifest only on success.
+   After external requests, recheck profile existence and permissions.
 
-`lzc.deployment_preparations` enthält Eigentümer/Mandant und einen unveränderlichen
-Snapshot aus Fachkonfiguration, Repository/Branch/Commit, SHA-256 der tfvars,
-Export-/Schema-Version, festem Accelerator-Referenzcommit, Credential-ID/Secret-Version,
-Key-ID, Organisation und Prüfergebnis. Maximal 100 Vorbereitungen pro Eigentümer und
-Mandant. Keine Update-Berechtigung für die Runtime; Entfernen ist möglich. Forced RLS
-verhindert Zugriff fremder Benutzer auch im selben Mandanten und die Verknüpfung
-fremder Credential-Profile.
+`lzc.deployment_preparations` contains owner/tenant and an immutable
+snapshot of domain configuration, repository/branch/commit, SHA-256 of tfvars,
+export/schema version, fixed Accelerator reference commit, credential ID/secret version,
+key ID, organization and check result. Maximum 100 preparations per owner and
+tenant. No update permission for runtime; removal is possible. Forced RLS
+prevents access by other users even within the same tenant and linking
+others' credential profiles.
 
-Accelerator-Referenz ist explizit `a256f6896d11134fdc351786f1be5eba4e56b2e2` aus
-`stackitcloud/stackit-landing-zone`. Dies friert den Codebezug ein; es ist noch keine
-Cloud-/Plan-Qualifizierung dieses Stands. Der Benutzer-Fork liefert nur Konfigurationsdaten.
-Ein späterer Runner benötigt einen weitergehenden freigegebenen Laufvertrag.
+The Accelerator reference is explicitly `a256f6896d11134fdc351786f1be5eba4e56b2e2` from
+`stackitcloud/stackit-landing-zone`. This freezes the code reference; it is not yet
+cloud/Plan qualification of this revision. The user's fork supplies configuration data only.
+A later Runner requires a more comprehensive approved execution contract.
 
-Wird ein Credential gelöscht, setzt der Fremdschlüssel die aktive Profilbindung
-auf `NULL`; der historische Manifestnachweis bleibt erhalten. Die UI zeigt die
-Vorbereitung als nicht verwendbar. Rechte können sich ebenfalls ändern: Vor jedem
-künftigen Plan/Apply müssen Zugriff, Secret-Version und Ziel erneut geprüft werden.
+When a credential is deleted, the foreign key sets the active profile binding
+to `NULL`; historical manifest evidence remains. The UI shows the
+preparation as unusable. Permissions can also change: before every
+future Plan/Apply, access, secret version and target must be checked again.
 
-## Lokaler Platform-Upgrade-Plan
+<a id="lokaler-platform-upgrade-plan"></a>
+## Local platform upgrade Plan
 
-Ergänzung vom 2026-10-06: Die gewöhnliche Vorbereitung bleibt auf `a256f68`
-gebunden. Für den Contract-Output kann eine zusätzliche Vorbereitung ausdrücklich
-den fest qualifizierten Commit `c4b43c36af198985980b17626c48d357795e3fbd` wählen.
-Das ist derzeit ein lokaler, opt-in Laufpfad, keine allgemeine Source-Auswahl und
-keine Produktionsfreigabe.
+Addition from 2026-10-06: ordinary preparation remains bound to `a256f68`.
+For contract output, an additional preparation can explicitly
+select the fixed qualified commit `c4b43c36af198985980b17626c48d357795e3fbd`.
+This is currently a local opt-in execution path, not general source selection or
+production approval.
 
-Das neue Paket wird mit `LZC_LOCAL_RUNNER_PACKAGE=true`,
-`LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true` und einem neuen
-`LZC_RUNNER_PACKAGE_DIR` erstellt. Bestehende Verzeichnisse werden nicht überschrieben.
-Die Source-Metadatei `platform-source.json` wird strikt validiert und gehört zum
-Paket-Fingerprint. Der Runner akzeptiert nur den dazu passenden Quellcommit;
-gespeicherte Plans eines anderen Pakets bleiben ungültig für diesen Runner.
+The new package is built with `LZC_LOCAL_RUNNER_PACKAGE=true`,
+`LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true` and a new
+`LZC_RUNNER_PACKAGE_DIR`. Existing directories are not overwritten.
+The source metadata file `platform-source.json` is strictly validated and part of
+the package fingerprint. The Runner accepts only the matching source commit;
+saved Plans from another package remain invalid for this Runner.
 
-`POST /api/v1/preparations` verwendet die vorhandene gespeicherte Konfiguration,
-Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
+`POST /api/v1/preparations` uses the existing saved configuration,
+revision and own credential profile. The additional selection is:
 
 ```json
 {
@@ -116,62 +123,66 @@ Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
 }
 ```
 
-Der Server verlangt ein passendes qualifiziertes Paket sowie einen bestehenden,
-entsperrten S3-State. Fremde Revisionen, zusätzliche Namespace-/Tenant-Felder und
-abweichende Backend-Bindungen werden abgelehnt. Die neue Vorbereitung verwendet
-denselben State und dieselbe Konfiguration. Alte Manifeste, Artefakte, Revisionen
-und Freigaben werden nicht umgeschrieben.
+The server requires a matching qualified package and an existing,
+unlocked S3 state. Other revisions, extra namespace/tenant fields and
+different backend bindings are rejected. The new preparation uses
+the same state and configuration. Old manifests, artifacts, revisions
+and approvals are not rewritten.
 
-Der Contract-Namensraum stammt aus der authentifizierten Serversitzung und ist Teil
-des exakten neuen tfvars-Hashes. Die API lockert ihre Tenant-/Organisationsprüfung
-nicht. Im unabhängigen Accelerator bleibt der optionale CLI-Namensraum erhalten;
-es entsteht keine Configurator-Laufzeitabhängigkeit.
+The contract namespace comes from the authenticated server session and is part of
+the exact new tfvars hash. The API does not relax its tenant/organization check.
+The optional CLI namespace remains in the independent Accelerator;
+no Configurator runtime dependency is introduced.
 
-Erst ein neuer vollständiger, gespeicherter echter Plan zeigt die tatsächlichen
-Ressourcen-/Output-Änderungen. Auch ein reiner Output-Plan benötigt eine ausdrückliche
-Freigabe seines konkreten SHA-256. Abgelaufene Plans werden weder verlängert noch
-angewendet; ein neuer Plan braucht eine eigene Freigabe. Ein Apply wird nicht
-automatisch wiederholt.
+Only a new complete saved real Plan shows actual
+resource/output changes. Even an output-only Plan requires explicit
+approval of its specific SHA-256. Expired Plans are neither extended nor
+applied; a new Plan needs its own approval. An Apply is not
+automatically retried.
 
-## Bewusste Grenze und nächste Schritte
+<a id="bewusste-grenze-und-nächste-schritte"></a>
+## Deliberate boundary and next steps
 
-Diese Vorbereitung ist **kein OpenTofu-Plan**, kein genehmigtes Deployment und kein
-fertiger Runner-Auftrag. Es werden keine Kundenressourcen angelegt. Offene Aufgaben:
+This preparation is **not an OpenTofu Plan**, an approved deployment or a
+complete Runner job. No customer resources are created. Open tasks:
 
-- [ ] Kundenbezogenen Remote State und Backend-Zugänge konfigurieren.
-- [ ] Isolierte Runner, Queue, Abbruch und Wiederanlauf ohne doppelten Apply.
-- [ ] Vollständiger Laufvertrag mit Engine/Provider-Lockfile und Artefakt-Digests.
-- [ ] `init`, `validate`, `plan`, redigierte Plan-Darstellung und exakte Apply-Freigabe.
-- [ ] Mehrmandanten-/Quoten-, Audit-, Ablauf- und Rotationserweiterungen.
+- [ ] Configure customer-specific remote state and backend credentials.
+- [ ] Isolated Runners, queue, cancellation and restart without duplicate Apply.
+- [ ] Complete execution contract with engine/provider lockfile and artifact digests.
+- [ ] `init`, `validate`, `plan`, redacted Plan presentation and exact Apply approval.
+- [ ] Multi-tenant/quota, audit, expiry and rotation extensions.
 
-## Technische Abnahme
+<a id="technische-abnahme"></a>
+## Technical acceptance
 
-- [x] JWT-Signatur, Claims, neue `jti`, feste Endpunkte und negative Cloud-Antworten getestet.
-- [x] Secret-Identität und Version geprüft, keine Roh-Secrets in Ergebnis oder Manifest.
-- [x] Veralteter Git-Head sowie fehlende/manuell geänderte tfvars werden abgewiesen.
-- [x] Echtes PostgreSQL: RLS, Rollen, unveränderliche Vorbereitung und Löschinvalidierung.
-- [x] Browserablauf auf Desktop und Mobil abgenommen; mobile Darstellung visuell geprüft.
-- [x] Feature-Branch-Release inklusive Migration und CF-Verbindungstests.
-- [x] Persönlicher Erfolgsfall mit einem auf der Zielorganisation berechtigten Profil (Benutzer bestätigt, 2026-09-30).
+- [x] Test JWT signature, claims, new `jti`, fixed endpoints and negative cloud responses.
+- [x] Check secret identity and version, no raw secrets in result or manifest.
+- [x] Reject stale Git head and missing/manually changed tfvars.
+- [x] Real PostgreSQL: RLS, roles, immutable preparation and deletion invalidation.
+- [x] Browser flow qualified on desktop and mobile; mobile presentation visually checked.
+- [x] Feature-branch release including migration and CF connection tests.
+- [x] Personal success case with a profile authorized on the target organization (user confirmed, 2026-09-30).
 
-### Release-Abnahme
+<a id="release-abnahme"></a>
+### Release acceptance
 
-Code-Commit `366cc3c`, [Validierung 36716027326](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36716027326)
-und [Release 36716027274](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36716027274)
-erfolgreich. 47 Anwendungstests, zehn PostgreSQL-Tests und 16 Browserfälle grün.
-Migration und CF-Verbindungstests zu PostgreSQL und Secrets Manager erfolgreich.
-Live geprüft: `/deployments`, Reload, mobile Breite, keine Browserfehler sowie 401
-für anonyme Vorbereitungsliste, Anlegen, Entfernen und Credential-Prüfung. Dabei keine
-persönlichen Credentials verwendet und keine Vorbereitung angelegt. Bekannte lokale
-Credential-Werte wurden in den Release-Logs nicht gefunden. Der Benutzer hat anschließend die vollständige Vorbereitung und den Zugangstest mit
-einer passenden Kombination aus Organisation und persönlichem Service Account bestätigt.
-Die zuvor beobachtete Ablehnung war auf eine nicht passende Kombination zurückzuführen.
-Die übrigen einzelnen Prüfpunkte gelten dadurch nicht automatisch als abgenommen.
+Code commit `366cc3c`, [validation 36716027326](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36716027326)
+and [release 36716027274](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36716027274)
+successful. 47 application tests, ten PostgreSQL tests and 16 browser cases green.
+Migration and CF connection tests to PostgreSQL and Secrets Manager successful.
+Live checked: `/deployments`, reload, mobile width, no browser errors and 401
+for anonymous preparation listing, creation, removal and credential checking. No
+personal credentials used and no preparation created. Known local
+credential values were not found in release logs. The user subsequently confirmed full preparation and credential checking with
+a suitable combination of organization and personal service account.
+The earlier rejection resulted from a mismatched combination.
+The remaining individual checklist items are not automatically accepted thereby.
 
-## Freigabegrenze für die nächste Phase
+<a id="freigabegrenze-für-die-nächste-phase"></a>
+## Approval boundary for the next phase
 
-Benutzerentscheidung vom 2026-09-30: Kunden-Plan darf getestet werden. Jeder
-Kunden-Apply benötigt eine neue ausdrückliche Freigabe des Benutzers. Die bestehende
-Freigabe für Configurator-Infrastruktur gilt nicht für Kundenressourcen. Kein Destroy;
-der Benutzer weist auf die derzeit fehlende Möglichkeit zum Folder-Destroy hin.
-Weiterarbeit und offene Voraussetzungen: [Plan-Ausführung](plan-execution.md).
+User decision from 2026-09-30: customer Plan may be tested. Every
+customer Apply needs new explicit user approval. Existing
+Configurator infrastructure approval does not apply to customer resources. No Destroy;
+the user points out the currently missing folder Destroy option.
+Further work and open prerequisites: [Plan execution](plan-execution.md).

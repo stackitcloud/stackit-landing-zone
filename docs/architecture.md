@@ -1,5 +1,7 @@
 # Architecture
 
+[English](architecture.md) | [Deutsch](architecture.de.md)
+
 This repository is a production-ready OpenTofu/Terraform framework for deploying a STACKIT Landing Zone. It provisions the complete cloud foundation, covering governance hierarchy, identity and access management, shared networking, optional firewall, DNS, secrets management, observability, and repeatable per-workload project templates.
 
 Everything is composed from six modules under `src/modules/` and wired together in `src/main.tf`. A single `terraform apply` with one of the complete reference configurations in `src/config/` stands up the full platform.

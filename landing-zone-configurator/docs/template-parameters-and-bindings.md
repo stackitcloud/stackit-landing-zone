@@ -1,422 +1,187 @@
-# Projekt-Templates: Eingaben, feste Vorgaben und Ressourcenverknüpfungen
+# Project templates: inputs, fixed settings and resource bindings
 
-## Aktueller MVP: ACL-Einrichtung durch den Benutzer
+[English](template-parameters-and-bindings.md) | [Deutsch](template-parameters-and-bindings.de.md)
 
-Stand: 2026-10-08. Die Observability-ACL ist kein Configurator-Parameter mehr.
-Editor, Bestellformular und Vorschau bieten weder CIDR-Auswahl noch
-Projektnetz-Bindung an. Eine aktivierte Observability-Instanz erzeugt keinen
-ACL-Pflichtfeld- oder Egress-Qualifikationsblocker. Der Benutzer richtet die
-Zugriffsquellen selbst direkt in STACKIT ein; der Configurator ermittelt oder
-konfiguriert keinen automatischen Zugangsweg.
+<a id="projekt-templates-eingaben-feste-vorgaben-und-ressourcenverknüpfungen"></a>
 
-Gespeicherte ACL-Werte und alte Policies bleiben in ihren Vorlagen erhalten.
-Alte ACL-Bestelleingaben und Policies werden bei neuer Auflösung ignoriert;
-vorhandene feste Werte bleiben als Kompatibilitätswerte erhalten. Es wird kein
-privates Projektnetz in Internet-Quelladressen übersetzt.
+<a id="aktueller-mvp-acl-einrichtung-durch-den-benutzer"></a>
+## Current MVP: user-managed ACL setup
 
-Die neue native Application-Revision `88149782bf8e91dcdbb43a203b54337886023f7f`
-verwendet `ignore_changes = [acl]`, damit spätere manuelle ACL-Änderungen keinen
-Terraform-Änderungsplan auslösen. Der STACKIT-Provider setzt beim Erstellen
-weiterhin den anfänglichen ACL-Wert und überträgt bei anderen Instance-Updates
-den eingelesenen Wert erneut. Eine gleichzeitige manuelle Änderung zwischen
-Plan und Apply ist dadurch nicht gegen Überschreiben geschützt.
+As of: 2026-10-08. The Observability ACL is no longer a Configurator parameter. Editor, order form and preview offer neither CIDR selection nor project-network binding. An enabled Observability instance produces no mandatory-ACL-field or egress-qualification blocker. Users configure access sources themselves directly in STACKIT; the Configurator neither determines nor configures an automatic access path.
 
-Neue Veröffentlichungen nutzen die aktiv angebotene Runner-Revision.
-Bestehende veröffentlichte Versionen, Bestellungen und Saved Plans werden nicht
-umgebunden. Für sie ist eine neue Veröffentlichung mit anschließender neuer
-Bestellung erforderlich; alte Pakete und Historie bleiben erhalten. Die
-folgenden ACL-Bindungsbeschreibungen dokumentieren den früheren Entwurfsstand,
-nicht den aktuellen MVP.
+Saved ACL values and old policies remain in their templates. Old ACL order inputs and policies are ignored during new resolution; existing fixed values remain as compatibility values. No private project network is translated into Internet source addresses.
 
-Stand: 2026-10-06. Parametervertrag, Template-Editor, tenantgebundener Testkatalog, persistente Bestellaufträge und serverbasierte Applied-Platform-Bindung implementiert. Live-Aktivierung und menschliche Abnahme, Application-Cloud-Plan und produktive Instanziierung bleiben offen. Dieser Stand ist lokal, noch nicht veröffentlicht.
-Ergänzt [Projekt-Template-Entwürfe](project-template-drafts.md) und die
-[Plattform-/Application-Architektur](platform-application-architecture.md).
+The new native Application revision `88149782bf8e91dcdbb43a203b54337886023f7f` uses `ignore_changes = [acl]` so subsequent manual ACL changes do not trigger a Terraform change plan. The STACKIT provider still sets the initial ACL value at creation and resends the value it read during other instance updates. A concurrent manual change between Plan and Apply is therefore not protected against overwriting.
 
-## Serverbasierte Plattformbindung
+New publications use the actively offered Runner revision. Existing published versions, orders and saved plans are not rebound. They require a new publication followed by a new order; old packages and history are retained. The following ACL binding descriptions document the earlier design, not the current MVP.
 
-Bei aktivierter Capability `appliedPlatformsEnabled` waehlt der Platform Engineer
-eine erfolgreich angewendete Plattform seines aktiven Tenants und laesst den
-Server die nicht geheimen Plattformziele vorpruefen. Nur abgeschlossene Applies
-mit weiterhin passender, unverriegelter State-Version und aktuellem menschlichen
-Nachweis fuer die verifizierte Organisation stehen zur Auswahl.
-Der normale Weg verlangt keinen JSON-Transfer; der Datei-Import bleibt lediglich
-als Kompatibilitaetsweg fuer aeltere APIs erhalten.
+As of: 2026-10-06. Parameter contract, template editor, tenant-bound test catalogue, persistent orders and server-based applied-platform binding implemented. Live activation and human acceptance, Application cloud Plan and production instantiation remain outstanding. This status is local, not yet published. Supplements [project template drafts](project-template-drafts.md) and the [Platform/Application architecture](platform-application-architecture.md).
 
-Die Vorschau liefert Ziele und einen Source-Beleg aus Apply-ID, State-Key und
-Version, urspruenglicher Vertragsrevision und SHA-256 des validierten Dokuments.
-Zur ausdruecklichen Freigabe sendet der Browser nur diesen Beleg, Zustimmung und
-die gewaehlte technische Profil-ID. Ziele und Organisation kommen erneut vom
-Server, nicht aus kopierten Browserdaten. Menschlicher Nachweis, aktueller State
-und technischer Zugriff werden erneut geprueft. Aenderungen waehrend der Pruefung
-verhindern die Uebernahme. Die Quelle bleibt append-only und tenantgebunden;
-konkurrierende Wiederholungen mit demselben geprueften Zugang sind idempotent.
+<a id="serverbasierte-plattformbindung"></a>
+## Server-based platform binding
 
-Die Freigabe reserviert keine neue Cloud-Ausfuehrung und aendert keine vorhandene
-Application-Instanz. Alte Bestellungen behalten ihre Vertragsrevision; ein neuer
-Plattform-Apply bindet sie nicht automatisch um. Die API-Erweiterung und Migration
-036 sind lokal qualifiziert, aber nicht Teil des laufenden Login-only-Standes 034.
-Gruppenmigration 035 und Source-Migration 036 benoetigen eine separate Aktivierung.
-Echte Application-Plans, explizite Applies, Drift und Upgrades bleiben eigenstaendige
-Folgeschritte in #93. Der eigenstaendige Accelerator bleibt unabhaengig nutzbar.
+With capability `appliedPlatformsEnabled` enabled, the Platform Engineer selects a successfully applied platform of their active tenant and has the server precheck its non-secret platform targets. Only completed Applies with a still-matching, unlocked state version and current human evidence for the verified organization are available. The normal path requires no JSON transfer; file import remains only as a compatibility path for older APIs.
 
-## Aufgaben in der Oberflaeche
+The preview provides targets and source evidence comprising Apply ID, state key and version, original contract revision and SHA-256 of the validated document. For explicit approval, the browser sends only this evidence, consent and the selected technical profile ID. Targets and organization come from the server again, not copied browser data. Human evidence, current state and technical access are checked again. Changes during checking prevent adoption. The source remains append-only and tenant-bound; concurrent repetitions with the same checked access are idempotent.
 
-Der Editor-Schritt **Template-Entwürfe** bearbeitet unveröffentlichte Vorlagen.
-Die Seite **Application Landing Zones** trennt die weiteren Aufgaben in Reiter:
-**Katalog** für veröffentlichte Versionen und Bestellformulare sowie
-**Bestellungen** für gespeicherte Instanzen und deren Details.
-Platform Engineers sehen zusätzlich **Veröffentlichung** und
-**Plattformanbindung**; berechtigte Gruppenmanager sehen **Gruppen**.
-Application Owner erhalten keine Verwaltungsreiter. Nach erfolgreicher
-Veröffentlichung öffnet sich der Katalog, nach einer Bestellung deren Auftragsbereich.
+Approval reserves no new cloud execution and changes no existing Application instance. Old orders retain their contract revision; a new platform Apply does not rebind them automatically. The API extension and migration 036 are locally qualified but not part of the running login-only status 034. Group migration 035 and source migration 036 need separate activation. Real Application Plans, explicit Applies, drift and upgrades remain independent follow-up steps in #93. The standalone Accelerator remains independently usable.
 
-Die Plattformanbindung ist keine Veröffentlichung eines Templates und keine
-Cloud-Ausführung. Der normale, serverbasierte Weg benötigt keinen Datei-Upload.
-Bei älteren APIs liegt der bisherige Upload eingeklappt unter
-**Kompatibilitätsimport**. Hier gehört ausschließlich der exportierte JSON-Vertrag
-einer tatsächlich angewendeten Platform Landing Zone hinein, nicht ein beliebiges
-JSON, Terraform-State, tfvars oder Zugangsdaten. Der Vertrag enthält die
-Organisations-ID und freigegebene Zielordner mit ihren Plattformreferenzen;
-der Server prüft ihn vor einer ausdrücklichen Freigabe.
+<a id="aufgaben-in-der-oberflaeche"></a>
+## Tasks in the UI
 
-Diese UI-Trennung ist lokal qualifiziert. Sie aktiviert weder die Migrationen
-035/036 noch ein Backend-Feature oder eine Application-Cloud-Ausführung.
+The editor step **Template drafts** edits unpublished templates. The **Application Landing Zones** page separates further tasks into tabs: **Catalogue** for published versions and order forms and **Orders** for saved instances and their details. Platform Engineers additionally see **Publication** and **Platform binding**; authorized group managers see **Groups**. Application Owners receive no management tabs. Successful publication opens the catalogue; ordering opens its order area.
 
-## Implementierter Umfang
+Platform binding is neither template publication nor cloud execution. The normal, server-based path needs no file upload. For older APIs, the previous upload is collapsed under **Compatibility import**. This accepts exclusively the exported JSON contract of an actually applied Platform Landing Zone, not arbitrary JSON, Terraform state, tfvars or credentials. The contract contains the organization ID and approved target folders with their platform references; the server checks it before explicit approval.
 
-`ProjectTemplateDraft.parameterPolicy` (Version 1) definiert die Wertquelle je
-freigegebenem Feld. Die fünf ersten Felder sind Stage, Secrets-Manager-Aktivierung,
-Observability-Aktivierung, Observability-Leistungsklasse und Observability-ACL.
-Zusätzlich können Projektrollen über `source: context` und die typisierte Variable
-`verified-project-owner` bei der Instanziierung zugeordnet werden. Alle anderen
-Einstellungen bleiben fest; Sandbox-Parameter sind noch nicht qualifiziert.
-String-Eingaben benötigen eine explizite Auswahlliste, ACL-Eingaben eine Auswahl
-zulässiger CIDRs; eine leere ACL-Bestellung ist gesperrt. Eine noch leere, erforderliche
-ACL-Auswahlliste ohne Vorauswahl darf als Entwurf bearbeitet werden; die Vorschau
-und Auflösung bleiben bis zur gültigen Bestelleingabe gesperrt. Feste ältere Einstellungen
-werden nicht automatisch umgedeutet. Defaults, Pflichtfelder, Herkunft und
-unzulässige Overrides werden durch denselben Domain-Resolver geprüft, den der
-Application-Compiler verwendet. Dies gilt auch beim Speichern der Template-Policy.
+This UI separation is locally qualified. It activates neither migrations 035/036 nor a backend feature or Application cloud execution.
 
-Neue Vorlagen erlauben Stage-Auswahl; neue Preset-Entwürfe behalten die Stage des
-Beispiels als Vorauswahl, neu hinzugefügte Vorlagen verwenden `dev`. Die
-explizite Übernahme einer bestehenden Konfiguration als Plattformkopie behält
-hingegen feste Vorgaben. Das JSON im Fork speichert die Policy; der Plattform-
-tfvars-Export enthält weiterhin keine Template-Instanzen.
+<a id="implementierter-umfang"></a>
+## Implemented scope
 
-Unter **Bestellung testen** erzeugt der Editor aus der Policy ein lokales Formular
-mit wirksamen Werten und Herkunft. Das ist keine öffentliche Application-Owner-
-Bestellung und führt keine Cloudzugriffe aus. Der veröffentlichte Application-
-Vertragsprototyp Version 2 akzeptiert diese Policy und prüft Bestelleingaben,
-Tenant-/Plattformbindung und konkrete Dienstwerte erneut. Version 1 bleibt
-kompatibel. Ausführung bleibt ausdrücklich deaktiviert.
+`ProjectTemplateDraft.parameterPolicy` (version 1) defines the value source for each approved field. The first five fields are stage, Secrets Manager activation, Observability activation, Observability performance class and Observability ACL. Additionally, project roles can be assigned at instantiation through `source: context` and the typed variable `verified-project-owner`. All other settings remain fixed; sandbox parameters are not yet qualified. String inputs need an explicit selection list, ACL inputs a selection of permitted CIDRs; an empty ACL order is blocked. A still-empty required ACL selection list without a preselection may be edited as a draft; preview and resolution remain blocked until valid order input exists. Older fixed settings are not automatically reinterpreted. Defaults, required fields, provenance and prohibited overrides are checked by the same domain resolver used by the Application compiler. This also applies when saving template policy.
 
-Die Projektnetz-Bindung wird symbolisch gespeichert und ist sowohl in der
-Vorschau als auch nativ im Application-Root gesperrt. Ihre produktive Egress-
-Auflösung wird in [#96](https://github.com/stackitcloud/stackit-landing-zone/issues/96)
-verfolgt. Der Runner-Pin bleibt unverändert; diese Ergänzungen geben keine
-produktive Ausführung frei.
+New templates allow stage selection; new preset drafts keep the example's stage as preselection, newly added templates use `dev`. Explicit adoption of an existing configuration as a platform copy instead retains fixed settings. JSON in the fork saves the policy; platform tfvars export still contains no template instances.
 
-## Tenantgebundener Testkatalog und Bestellungen
+Under **Test order**, the editor creates a local form from the policy, showing effective values and provenance. This is not a public Application Owner order and performs no cloud access. Published Application contract prototype version 2 accepts this policy and rechecks order inputs, tenant/platform binding and concrete service values. Version 1 remains compatible. Execution remains explicitly disabled.
 
-Die Seite `/applications` trennt veröffentlichte Versionen von bearbeitbaren
-Projekt-Template-Entwürfen. Der Server speichert den vollständigen validierten
-Snapshot samt Policy, Tenant, Template-ID, fortlaufender Version, Veröffentlichendem,
-Zeitpunkt und festem Accelerator-Pin. Gleicher Snapshot mit gleichem Pin liefert
-dieselbe letzte Version; Änderungen erzeugen eine neue. Frühere Versionen werden
-weder verändert noch automatisch auf Bestellungen übertragen. Sandbox-Veröffentlichungen
-und leere Bestell-Auswahllisten bleiben gesperrt.
+The project-network binding is stored symbolically and blocked both in preview and natively in the Application root. Its production egress resolution is tracked in [#96](https://github.com/stackitcloud/stackit-landing-zone/issues/96). The Runner pin remains unchanged; these additions do not approve production execution.
 
-Platform Engineers veröffentlichen aus dem aktuellen Entwurf. Application Owner
-sehen nur Versionen ihres aktiven Tenants und benötigen keinen persönlichen Fork.
-Der persönliche Arbeitsbereich erlaubt seinem bisherigen Admin die Vorbereitung
-dieses Testkatalogs. Unverifizierte Organisationsarbeitsbereiche dürfen damit Daten
-vorbereiten, erhalten aber keine STACKIT-Ausführungsrechte. Eine Katalogversion ist
-noch keine für reale Kunden verifiziert freigegebene Ressourcenvorlage.
+<a id="tenantgebundener-testkatalog-und-bestellungen"></a>
+## Tenant-bound test catalogue and orders
 
-Die Bestellung enthält nur Versions-ID, Projektname, erlaubte Parameter und einen
-UUID-Idempotenzschlüssel. Tenant und Antragsteller stammen aus der serverseitig
-aufgelösten Session; Owner-E-Mail, Plattform-ID und feste Einstellungen sind nicht
-überschreibbar. Derselbe Schlüssel desselben Antragstellers im selben Tenant mit
-identischen Eingaben liefert dieselbe Instanz. Abweichende Eingaben ergeben HTTP 409.
-Der Browser behält den Schlüssel für Wiederholung und Netzwerk-Retry des laufenden
-Bestellformulars. Ein neu geöffnetes oder geändertes Formular ist ein neuer Auftrag;
-es besteht keine automatische Zusammenführung nach Projektnamen.
+The `/applications` page separates published versions from editable project template drafts. The server stores the complete validated snapshot with policy, tenant, template ID, sequential version, publisher, timestamp and fixed Accelerator pin. The same snapshot with the same pin returns the same latest version; changes create a new one. Earlier versions are neither changed nor automatically transferred to orders. Sandbox publications and empty order selection lists remain blocked.
 
-Jede Bestellung erhält eine eigene serverseitige Instanz-ID und reserviert
-`applications/<tenant-id>/<instance-id>/terraform.tfstate` als State-Key. Die Bestellung
-erzeugt **noch keine State-Datei und kein STACKIT-Projekt**. Feste Einstellungen,
-aufgelöste Eingaben und Qualifizierungsblocker werden dauerhaft gespeichert.
-Application Owner sehen nur eigene Aufträge, Platform Engineers die Aufträge ihres
-Tenants. PostgreSQL erzwingt RLS, aktuelle Produktrollen und unveränderliche Versionen;
-ein Wechsel des aktiven Tenants während der Anfrage wird abgewiesen. Ein Arbeitsbereich
-mit veröffentlichten Versionen oder Bestellungen kann nicht als leerer Entwurf
-archiviert werden.
+Platform Engineers publish from the current draft. Application Owners see only versions of their active tenant and need no personal fork. The personal workspace allows its previous admin to prepare this test catalogue. Unverified organization workspaces may prepare data this way but receive no STACKIT execution permissions. A catalogue version is not yet a resource template verifiably approved for real customers.
 
-Der Planstatus ist stets `blocked` und `executionEnabled=false`. Die Oberfläche
-weist fehlende verifizierte STACKIT-Benutzeridentität, fehlenden freigegebenen
-Plattformvertrag und den noch nicht freigegebenen Application-Runner aus. Ein
-GitHub-Login oder ein Service-Account-Key wird nicht als menschlicher STACKIT-Nachweis
-umgedeutet. Es gibt keine erfundenen Ressourcenanzahlen und keine Apply-Aktion.
-Unaufgelöste Projektrollen und Egress-Bindungen bleiben zusätzliche Blocker.
-Der vorhandene Application-Compiler wird dadurch nicht als Ausführungsbroker ausgegeben.
+The order contains only version ID, project name, permitted parameters and a UUID idempotency key. Tenant and requester come from the server-resolved session; owner email, platform ID and fixed settings cannot be overridden. The same key for the same requester in the same tenant with identical inputs returns the same instance. Different inputs return HTTP 409. The browser retains the key for repetition and network retry of the running order form. A newly opened or modified form is a new order; there is no automatic merging by project name.
 
-Migration `010_application_catalogue.sql` und `LZC_APPLICATIONS_ENABLED=true` sind
-für den Backend-Betrieb erforderlich; das Flag ist standardmäßig aus. Die neue
-Migration wurde ausschließlich in der wegwerfbaren lokalen PostgreSQL-Testdatenbank
-angewendet, nicht auf der CF-Datenbank. Bestehender Runner-Pin, Plattformvertrag und
-Deployment-Pipeline werden nicht automatisch erweitert.
+Each order receives its own server-side instance ID and reserves `applications/<tenant-id>/<instance-id>/terraform.tfstate` as its state key. Ordering creates **neither a state file nor a STACKIT project yet**. Fixed settings, resolved inputs and qualification blockers are stored persistently. Application Owners see only their own orders; Platform Engineers see orders of their tenant. PostgreSQL enforces RLS, current product roles and immutable versions; switching the active tenant during a request is rejected. A workspace with published versions or orders cannot be archived as an empty draft.
 
-Nachweise: Domain-/API-Tests, echte PostgreSQL-Session/RLS samt HTTP-Durchstich,
-parallele Idempotenzprüfung, Rollenentzug und Desktop-/Mobil-Browserfälle.
-Die Browserfälle verwenden simulierte API-Antworten; sie ersetzen keine Live-Abnahme
-mit verifizierten STACKIT-Identitäten und keinen echten Cloud-Plan.
+Plan status is always `blocked` and `executionEnabled=false`. The UI identifies missing verified STACKIT user identity, missing approved platform contract and the Application Runner not yet being approved. A GitHub login or service-account key is not reinterpreted as human STACKIT evidence. There are no invented resource counts or Apply action. Unresolved project roles and egress bindings remain additional blockers. This does not present the existing Application compiler as an execution broker.
 
-## Lokales Projektnetz als Template-Vorgabe
+Migration `010_application_catalogue.sql` and `LZC_APPLICATIONS_ENABLED=true` are required for backend operation; the flag is off by default. The new migration was applied exclusively in the disposable local PostgreSQL test database, not in the CF database. Existing Runner pin, platform contract and deployment pipeline are not automatically extended.
 
-Ein Projektnetz ist Teil der Landing Zone, nicht erst der späteren VM-Anwendung.
-Public-Projekt-Templates können deshalb mit `settings.network_enabled: true`
-ein lokales, nicht SNA-geroutetes Netz anlegen. `network_prefix_length` legt
-optional die Präfixlänge fest; ohne Vorgabe wird sie vom Dienst bestimmt.
-Die Präfixlänge beschreibt die Netzgröße: `/24` umfasst 256 IPv4-Adressen,
-`/25` 128 und `/26` 64. Größere Präfixzahlen bedeuten kleinere Netze; nicht alle
-Adressen sind für VMs verfügbar.
-Die Oberfläche bietet diese Einstellungen direkt im Projekt-Template an.
-Netzanlage und Größe bleiben zunächst feste Vorgaben, keine Bestelleingaben.
+Evidence: domain/API tests, real PostgreSQL session/RLS with an HTTP end-to-end path, concurrent idempotency checks, role revocation and desktop/mobile browser cases. Browser cases use simulated API responses; they replace neither live acceptance with verified STACKIT identities nor a real cloud Plan.
 
-Bestehende Public-Templates ohne Netzoption bleiben unverändert. Corporate-
-Templates behalten ihr automatisch erzeugtes geroutetes Netz und ihre SNA-
-Zuordnung. Sandbox-Netze sind von dieser Erweiterung nicht erfasst. Eine Vorlage
-für ein VM-Netz erstellt damit das Projekt und sein Netz, nicht bereits die VM.
+<a id="lokales-projektnetz-als-template-vorgabe"></a>
+## Local project network as a template setting
 
-Die Einstellungen werden mit dem Template-Dokument im Fork gespeichert und
-erzeugen beim Plattform-Export keine Projekte oder Netze. Der Application-Vertrag
-Version 2 übernimmt sie als feste Vorgaben in den nativen Application-Root;
-Version 1 bleibt unverändert. Das Modul gibt eine nicht geheime Netzreferenz aus.
-Modul-, Application- und Standalone-Mockpläne prüfen lokale Netzanlage ohne SNA
-sowie den Erhalt bisheriger Konfigurationen. Produktive Instanziierung und ein
-realer Cloud-Apply sind weiterhin nicht freigegeben.
+A project network is part of the Landing Zone, not just the later VM application. Public project templates can therefore create a local, non-SNA-routed network with `settings.network_enabled: true`. `network_prefix_length` optionally sets the prefix length; without a setting, the service determines it. Prefix length describes network size: `/24` comprises 256 IPv4 addresses, `/25` 128 and `/26` 64. Larger prefix numbers mean smaller networks; not all addresses are available for VMs. The UI offers these settings directly in the project template. Network creation and size initially remain fixed settings, not order inputs.
 
-Das lokale Netz ist keine automatische Observability-ACL-Quelle. Die
-[Instanz-ACL](https://docs.stackit.cloud/products/logging-and-monitoring/observability/how-tos/control-instance-access/)
-filtert die am Internet-Endpunkt sichtbaren Quelladressen gemeinsam für Grafana,
-Metrics, Logs und Traces. Eine leere ACL stellt uneingeschränkten Netzwerkzugriff
-wieder her. Private Netz-CIDRs dürfen daher nicht ohne nachgewiesene Egress-
-Semantik als Quelladressen übernommen werden.
+Existing Public templates without a network option remain unchanged. Corporate templates retain their automatically created routed network and SNA assignment. Sandbox networks are not covered by this extension. A template for a VM network therefore creates the project and its network, not yet the VM.
 
-## Kataloge und verifizierte Instanziierungsvariablen
+Settings are saved with the template document in the fork and create no projects or networks during platform export. Application contract version 2 passes them as fixed settings to the native Application root; version 1 remains unchanged. The module outputs a non-secret network reference. Module, Application and standalone mock plans check local network creation without SNA and preservation of existing configurations. Production instantiation and a real cloud Apply are still not approved.
 
-Die geladenen STACKIT-Produktkataloge gelten auch für die erlaubten Bestellwerte.
-Bei der Freigabe der Observability-Leistungsklasse werden die aktuellen Optionen
-angeboten und können über Checkboxen eingeschränkt werden. Nicht mehr im Katalog
-enthaltene Bestandswerte bleiben erkennbar erhalten. Ohne verfügbaren Katalog bleibt
-die manuelle Eingabe möglich; sie ist kein Nachweis der Cloud-Verfügbarkeit.
-Dieselbe Katalogzuordnung wird im strukturierten Editor für Git, VPN, SKE,
-Observability, Bastion und die neuen IAM-Felder verwendet. Nicht alle diese
-Plattformfelder sind bereits als Projekt-Bestellparameter qualifiziert.
+The local network is not an automatic Observability ACL source. The [instance ACL](https://docs.stackit.cloud/products/logging-and-monitoring/observability/how-tos/control-instance-access/) filters source addresses visible at the Internet endpoint jointly for Grafana, metrics, logs and traces. An empty ACL restores unrestricted network access. Private network CIDRs must therefore not be adopted as source addresses without demonstrated egress semantics.
 
-Für Projektrollen definiert die Policy `source: context`,
-`variable: verified-project-owner` und eine Rollenliste. Es werden keine persönlichen
-E-Mail-Adressen oder frei interpretierbaren Platzhalter im Template gespeichert.
-Die lokale Vorschau zeigt die unaufgelöste Identität und einen Blocker. Der Compiler
-bindet ausschließlich `context.verified_stackit_email`, niemals GitHub-Login oder
-eine vom Besteller übergebene Benutzerkennung. Bestehende feste Zuweisungen bleiben
-erhalten. Doppelte Zuweisungen derselben Rolle an dieselbe Identität werden vermieden.
-Die zusätzlichen Rollenzuweisungen und festen `custom_roles` werden im Application-
-Vertrag Version 2 bis zum nativen Root weitergegeben; Version 1 bleibt unverändert.
-Das ist weiterhin ein nicht zur produktiven Ausführung freigegebener Prototyp.
+<a id="kataloge-und-verifizierte-instanziierungsvariablen"></a>
+## Catalogues and verified instantiation variables
 
-Bei fest ausgeschaltetem Observability blendet der Template-Editor Leistungsklasse,
-Zugriffsquellen, Instanzname und die entsprechenden Vorschauwerte aus. Gespeicherte
-Werte und Policies bleiben erhalten und erscheinen beim Wiedereinschalten wieder.
-Ist die Aktivierung erst bei der Bestellung wählbar, bleiben die benötigten
-Template-Vorgaben konfigurierbar. Strukturierte Template-Dienste mit explizit
-ausgeschaltetem `enabled`- oder benanntem `*_enabled`-Schalter blenden ihre
-zugehörigen Details ebenfalls aus, ohne diese zu löschen.
+Loaded STACKIT product catalogues also apply to permitted order values. When exposing the Observability performance class, current options are offered and can be restricted through checkboxes. Existing values no longer in the catalogue remain visibly retained. Without an available catalogue, manual input remains possible; it is not evidence of cloud availability. The same catalogue mapping is used in the structured editor for Git, VPN, SKE, Observability, bastion and the new IAM fields. Not all these platform fields are already qualified as project order parameters.
 
-STACKIT-Rollenvorlagen übernehmen Name, Beschreibung und Permissions als bearbeitbare
-eigene Rolle mit einem `application-`-Namenspräfix. Keine projektgebundene Rollen-ID
-des Referenzprojekts wird übertragen. Eine angezeigte Rolle ist keine Zusicherung,
-dass dieselbe Definition im späteren Zielprojekt existiert; sie muss dort als eigene
-Rolle definiert oder als verfügbare Zielrolle vor Veröffentlichung qualifiziert werden.
+For project roles, policy defines `source: context`, `variable: verified-project-owner` and a role list. No personal email addresses or freely interpretable placeholders are stored in the template. Local preview shows the unresolved identity and a blocker. The compiler binds exclusively `context.verified_stackit_email`, never GitHub login or a user identifier supplied by the requester. Existing fixed assignments are retained. Duplicate assignments of the same role to the same identity are avoided. Additional role assignments and fixed `custom_roles` are passed through Application contract version 2 to the native root; version 1 remains unchanged. This is still a prototype not approved for production execution.
 
-Public-Projektvorlagen mit aktiviertem lokalem Netz können die Observability-
-Bindung ebenso wie Corporate-Vorlagen als symbolischen Entwurf auswählen.
-Ohne Projektnetz ist die Auswahl gesperrt. Die ACL-Bindung wird nur bei aktiviertem
-Observability ausgewertet. Wird Observability bei der Bestellung ausgeschaltet,
-bleibt das Projektnetz erhalten; die inaktive ACL-Bindung erzeugt weder eine
-Ressourcenbindung noch einen Qualifikationsblocker. Die Template-Policy bleibt
-unverändert. Ein symbolischer Snapshot darf im Testkatalog gespeichert werden;
-produktive Freigabe und Ausführung der aktiven ACL-Bindung bleiben für beide
-Netzarten ohne nachgewiesene öffentliche Egress-Adresse gesperrt.
+When Observability is fixed off, the template editor hides performance class, access sources, instance name and corresponding preview values. Saved values and policies are retained and reappear when re-enabled. If activation is selectable only at ordering, required template settings remain configurable. Structured template services with an explicitly disabled `enabled` or named `*_enabled` switch likewise hide their associated details without deleting them.
 
-## Ausgangsproblem und überprüfte Accelerator-Grenzen
+STACKIT role templates copy name, description and permissions into an editable custom role with an `application-` name prefix. No project-bound role ID from the reference project is transferred. A displayed role is no assurance that the same definition exists in the later target project; it must be defined there as a custom role or qualified as an available target role before publication.
 
-Die jetzigen `ProjectTemplateDraft.settings` bewahren hauptsächlich konkrete
-Accelerator-Einstellungen. Sie unterscheiden weder feste Policy von überschreibbaren
-Defaults noch Ressourcenbindungen von literalen Werten. Der vorhandene
-Application-Vertrag ist ein nicht freigegebener Prototyp und muss entsprechend
-weiterentwickelt werden. Die Oberfläche darf keine vollständige Parametrisierung suggerieren.
+Public project templates with a local network enabled can select the Observability binding as a symbolic draft just like Corporate templates. Without a project network, selection is blocked. The ACL binding is evaluated only when Observability is enabled. If Observability is disabled at ordering, the project network remains; the inactive ACL binding produces neither a resource binding nor a qualification blocker. Template policy remains unchanged. A symbolic snapshot may be stored in the test catalogue; production approval and execution of the active ACL binding remain blocked for both network types without a demonstrated public egress address.
 
-- `env` ist derzeit eine feste Einstellung, für neue Public-/Corporate-Entwürfe `dev`.
-  In `src/main.tf` fließt der Wert in Naming und DNS ein.
-- `src/modules/landing-zone/8-observability.tf` übergibt `var.observability.acl`
-  unverändert. Eine Bindung an ein erzeugtes Netzwerk fehlt.
-- `src/modules/landing-zone/3-network.tf` erzeugt weiterhin ein geroutetes Netzwerk
-  bei `corporate=true`, zusätzlich jetzt ein lokales Netz für Public-Projekte bei
-  `network_enabled=true`. Beide sind Modulressourcen; Sandbox gesondert qualifizieren.
-- Die spätere ACL muss die am Dienst wirksame Quelladresse berücksichtigen:
-  Ein Projekt-CIDR ist bei NAT oder anderen Zugriffswegen möglicherweise nicht
-  die tatsächlich sichtbare Quelladresse. Die Produkt-/Netzwerksemantik ist vor
-  Ausführungsfreigabe mit Provider und realem Verbindungstest nachzuweisen.
+<a id="ausgangsproblem-und-überprüfte-accelerator-grenzen"></a>
+## Initial problem and verified Accelerator limitations
 
-## Wertquellen statt frei interpretierbarer Platzhalter
+Current `ProjectTemplateDraft.settings` mainly preserve concrete Accelerator settings. They distinguish neither fixed policy from overridable defaults nor resource bindings from literal values. The existing Application contract is an unapproved prototype and must be developed accordingly. The UI must not suggest complete parameterization.
 
-Jede freigegebene fachliche Eigenschaft erhält genau eine Wertquelle:
+- `env` is currently a fixed setting, `dev` for new Public/Corporate drafts. In `src/main.tf`, the value flows into naming and DNS.
+- `src/modules/landing-zone/8-observability.tf` passes `var.observability.acl` unchanged. Binding to a created network is missing.
+- `src/modules/landing-zone/3-network.tf` still creates a routed network when `corporate=true`, now additionally a local network for Public projects when `network_enabled=true`. Both are module resources; qualify sandbox separately.
+- The later ACL must consider the source address effective at the service: a project CIDR may not be the actual visible source address with NAT or other access paths. Product/network semantics must be demonstrated with the provider and a real connection test before execution approval.
 
-| Quelle | Platform Engineer definiert | Application Owner sieht |
+<a id="wertquellen-statt-frei-interpretierbarer-platzhalter"></a>
+## Value sources instead of freely interpretable placeholders
+
+Each approved business property receives exactly one value source:
+
+| Source | Platform Engineer defines | Application Owner sees |
 | --- | --- | --- |
-| Fest vorgegeben | Konkreten typisierten Wert, z. B. Secrets Manager verpflichtend | Erklärte, schreibgeschützte Vorgabe |
-| Bei Bestellung ausfüllen | Typ, Pflichtfeld, zulässige Werte/Grenzen, Erklärung, optionalen Default | Eingabe oder Dropdown innerhalb dieser Grenzen |
-| Automatisch verknüpft | Freigegebene typisierte Ressourcenreferenz, z. B. eigenes Projektnetz | Beziehung und später aufgelösten Wert, kein Freitextfeld |
-| Aus verifiziertem Kontext | Serverseitige Identitäts-/Tenant-/Plattformbindung | Herkunft und wirksamen Wert, keine überschreibbare ID |
+| Fixed | Concrete typed value, e.g. mandatory Secrets Manager | Explained, read-only setting |
+| Fill in at ordering | Type, required field, permitted values/limits, explanation, optional default | Input or dropdown within these limits |
+| Automatically bound | Approved typed resource reference, e.g. own project network | Relationship and later resolved value, no free-text field |
+| From verified context | Server-side identity/tenant/platform binding | Provenance and effective value, no overridable ID |
 
-Das sind keine vier Optionen für jedes Feld: Organisation/Antragsteller dürfen
-beispielsweise nur aus verifiziertem Kontext stammen; eine Dienstleistungsklasse
-kann nur zugelassene Werte anbieten. Ein serverseitiges Feldregister bestimmt,
-welche Quellen und Referenztypen je Ziel zulässig sind. Unbekannte Felder sind
-nicht automatisch veränderbar. Keine beliebigen HCL-/JavaScript-Ausdrücke,
-String-Interpolation oder ausführbaren Template-Skripte.
+These are not four options for every field: organization/requester, for example, may come only from verified context; a service performance class can offer only approved values. A server-side field registry determines permitted sources and reference types per target. Unknown fields are not automatically mutable. No arbitrary HCL/JavaScript expressions, string interpolation or executable template scripts.
 
-Ein Default ist ein Vorschlag für eine erlaubte Bestelleingabe und keine feste
-Policy. Pflicht, Zulässigkeit und Änderbarkeit sind getrennte Eigenschaften.
-Secrets werden ausschließlich über autorisierte Secret-Referenzen eingebunden;
-sie sind keine normalen Template-Parameter oder Vorschauwerte.
+A default is a suggestion for a permitted order input, not fixed policy. Requirement, admissibility and mutability are separate properties. Secrets are incorporated exclusively through authorized secret references; they are not ordinary template parameters or preview values.
 
-## Umgebung / Stage
+<a id="umgebung--stage"></a>
+## Environment / stage
 
-Die **Auswahl einer konkreten Stage gehört normalerweise zur Bestellung**.
-Das Template legt fest, welche Stages erlaubt sind und welche vorausgewählt ist,
-beispielsweise `dev`, `test`, `prod` mit Default `dev`. Ein bewusstes
-„Nur Produktion“-Angebot darf `prod` fest vorgeben. Die Auswahlwerte sind
-Template-Policy, keine behauptete abschließende Accelerator-Enumeration.
+**Selecting a specific stage normally belongs to ordering**. The template defines permitted stages and the preselected one, for example `dev`, `test`, `prod` with default `dev`. A deliberate “production only” offering may fix `prod`. Selection values are template policy, not a claimed exhaustive Accelerator enumeration.
 
-Stage ist zunächst nur bei Anlage wählbar. Da sie im heutigen Accelerator Namen
-und DNS beeinflusst, wird eine spätere Änderung erst mit qualifiziertem
-Updatevertrag, sichtbarem Ressourcen-Diff und möglicher Ersatzwirkung angeboten.
-Keine automatische Umbenennung bestehender Ressourcen. Der Application-Compiler
-muss ihre konkrete Wirkung in Naming/Labels/DNS ausdrücklich abbilden; der aktuelle
-Application-Prototyp erfüllt diesen Vertrag noch nicht.
+Stage is initially selectable only at creation. Since it affects names and DNS in today's Accelerator, later changes will only be offered with a qualified update contract, visible resource diff and potential replacement impact. No automatic renaming of existing resources. The Application compiler must explicitly represent its concrete effect on naming/labels/DNS; the current Application prototype does not yet fulfill this contract.
 
-## Beispiel: STACKIT Observability und eigenes Projektnetz
+<a id="beispiel-stackit-observability-und-eigenes-projektnetz"></a>
+## Example: STACKIT Observability and own project network
 
-Der Platform Engineer definiert:
+The Platform Engineer defines:
 
-- STACKIT Observability wird erstellt (oder ist innerhalb definierter Policy optional).
-- Leistungsklasse fest oder Auswahl aus freigegebenen, für das Ziel gültigen Klassen.
-- Zugriffsregel: **Eigenes Projektnetz** statt einer vorab ausgedachten CIDR.
-- Referenz auf das konkrete, von dieser Instanz verwaltete Netzwerk. Bei mehreren
-  Netzen ist ein explizites Netz oder eine ausdrücklich definierte Menge erforderlich.
+- STACKIT Observability is created (or optional within defined policy).
+- Performance class fixed or selected from approved classes valid for the target.
+- Access rule: **Own project network** instead of an invented advance CIDR.
+- Reference to the concrete network managed by this instance. With multiple networks, an explicit network or explicitly defined set is required.
 
-Das gespeicherte Template enthält eine typisierte Referenz, sinngemäß
-`Observability → Zugriffsquellen → Projektnetz dieser Instanz`. Es enthält noch
-keine vom Besteller einzutragende CIDR. Der Compiler übersetzt diese Beziehung
-innerhalb eines States in eine echte OpenTofu-Ressourcenreferenz. Ist die Adresse
-beim Plan unbekannt, zeigt die Vorschau „wird bei Bereitstellung ermittelt“ mit
-Herkunft an; der Abhängigkeitsgraph löst sie beim Apply auf. Keine Vorabauflösung
-per API auf ein noch nicht existierendes Netz und keine CIDR-Platzhalter in tfvars.
+The saved template contains a typed reference, conceptually `Observability → Zugriffsquellen → Projektnetz dieser Instanz`. It does not yet contain a CIDR for the requester to enter. Within one state, the compiler translates this relationship into a real OpenTofu resource reference. If the address is unknown during Plan, preview shows “determined at provisioning” with provenance; the dependency graph resolves it at Apply. No advance API resolution against a network that does not yet exist and no CIDR placeholders in tfvars.
 
-Fehlt das Netz oder passt sein Adresstyp/Zugriffsweg nicht, ist die Kombination
-nicht veröffentlichbar bzw. nicht instanziierbar. **Kein stiller Rückfall auf
-leere ACL oder `0.0.0.0/0`.** Bei Observability bedeutet eine leere ACL Vollzugriff
-auf Netzwerkebene. Auch eine Public-Vorlage mit lokalem Netz benötigt eine
-qualifizierte Egress-Strategie, bevor sie „eigenes Projektnetz“ als ausführbare
-ACL-Quelle anbieten kann. Als symbolischer Entwurf ist die Bindung auswählbar.
+If the network is missing or its address type/access path does not match, the combination cannot be published or instantiated. **No silent fallback to empty ACL or `0.0.0.0/0`.** For Observability, an empty ACL means full network-level access. Even a Public template with a local network needs a qualified egress strategy before it can offer “own project network” as an executable ACL source. The binding is selectable as a symbolic draft.
 
-## Allgemeine Verknüpfungen und State-Eigentum
+<a id="allgemeine-verknüpfungen-und-state-eigentum"></a>
+## General bindings and state ownership
 
-Referenzen benötigen Ressourcentyp, erlaubtes Ausgabeattribut, Tenant/Instanz-
-oder Plattformbezug und Kardinalität. Beispiele sind Cluster für Namespace,
-SNA für Corporate-Netz, Zielordner für Projekt, Observability-Anbindung und
-verifizierter Antragsteller für eine genehmigte IAM-Zuweisung. Nicht alle diese
-Verknüpfungen werden bereits vom Accelerator unterstützt.
+References need resource type, permitted output attribute, tenant/instance or platform scope, and cardinality. Examples include cluster for namespace, SNA for Corporate network, target folder for project, Observability connection and verified requester for an approved IAM assignment. Not all these bindings are already supported by the Accelerator.
 
-Referenzen innerhalb einer Instanz werden im OpenTofu-Graph verbunden.
-Plattformreferenzen kommen aus einer geprüften Vertragsversion, niemals aus
-beliebigen fremden State-Dateien oder Benutzer-UUIDs. Auflösung prüft Tenant,
-Region, Typ, Berechtigung, Existenz und Lebenszyklus; Zyklen werden abgewiesen.
-Ein Template darf nicht über einen Parameter auf fremde Tenants zugreifen.
+References within an instance are connected in the OpenTofu graph. Platform references come from a checked contract version, never arbitrary foreign state files or user UUIDs. Resolution checks tenant, region, type, permission, existence and lifecycle; cycles are rejected. A template must not access foreign tenants through a parameter.
 
-Eine gemeinsam genutzte Plattforminstanz bleibt im Plattform-State. Wenn eine
-Application deren ACL erweitern müsste, darf ihr State diese ACL nicht ebenfalls
-verwalten. Dafür ist ein eigener, autorisierter Registrierungs-/Abmeldeablauf beim
-Plattformeigentümer nötig, einschließlich Parallelität und Rücknahme bei Löschung.
-Bis dieser existiert, wird die Kombination nicht zur Ausführung freigegeben.
+A shared platform instance remains in platform state. If an Application would need to extend its ACL, its state must not also manage that ACL. This requires a separate authorized registration/deregistration workflow with the platform owner, including concurrency and rollback on deletion. Until that exists, the combination is not approved for execution.
 
-## Veröffentlichung, Bestellung und Änderungen
+<a id="veröffentlichung-bestellung-und-änderungen"></a>
+## Publication, ordering and changes
 
-1. Editor: Pro freigegebenem Feld sichtbare Quelle und bei Bestelleingaben Constraints.
-2. Veröffentlichung: Typen, Defaults, Bindungsgraph, Pflichtabhängigkeiten und
-   Compiler-/Accelerator-Fähigkeiten prüfen; unveränderliche Version erzeugen.
-3. Bestellung: Formular ausschließlich aus freigegebenem Eingabeschema erzeugen.
-4. Server: unbekannte/gesperrte Inputs ablehnen, erlaubte Werte erneut prüfen,
-   Kontext binden und deterministisch kompilieren. Gleiches gilt für Chat/API.
-5. Plan: konkrete Werte und noch unbekannte Ressourcenwerte samt Herkunft zeigen.
-   Plan/Freigabe an Template-Version, Eingaben, Plattformvertrag und Compiler binden.
-6. Update: nur ausdrücklich als veränderbar qualifizierte Eingaben zulassen;
-   Template-Upgrade bleibt explizit. Vorlagenänderungen verändern keine Instanzen.
+1. Editor: visible source per approved field and constraints for order inputs.
+2. Publication: check types, defaults, binding graph, mandatory dependencies and compiler/Accelerator capabilities; create immutable version.
+3. Ordering: generate form exclusively from the approved input schema.
+4. Server: reject unknown/blocked inputs, recheck permitted values, bind context and compile deterministically. The same applies to chat/API.
+5. Plan: show concrete values and still-unknown resource values with provenance. Bind Plan/approval to template version, inputs, platform contract and compiler.
+6. Update: allow only inputs explicitly qualified as mutable; template upgrades remain explicit. Template changes do not change instances.
 
-Persistiert werden Template-Policy, Bestelleingaben und Auflösungsnachweis getrennt.
-Jedes wirksame Feld hat eine Herkunft. Bestehende Entwürfe behalten ihre Werte
-zunächst als feste Vorgaben; der Platform Engineer macht sie ausdrücklich zu
-Bestelleingaben oder Bindungen. Keine automatische Freigabe bisher gesperrter Werte.
+Template policy, order inputs and resolution evidence are persisted separately. Every effective field has provenance. Existing drafts initially retain their values as fixed settings; the Platform Engineer explicitly makes them order inputs or bindings. No automatic release of previously blocked values.
 
-## Umsetzungsreihenfolge / Abnahme
+<a id="umsetzungsreihenfolge--abnahme"></a>
+## Implementation sequence / acceptance
 
-- [x] Lücke und konkrete Accelerator-Grenzen im Code geprüft.
-- [x] Versionierten Parameter-/Binding-Vertrag mit fünf freigegebenen Feldern implementieren (#92); weitere Felder bleiben fest.
-- [x] Stage als erste vollständige Bestelleingabe mit Default, Auswahl und festen Werten;
-      unverändertes Lesen alter Entwürfe, explizite Konvertierung.
-- [x] Template-Editor und lokale Bestellvorschau aus demselben Vertrag erzeugen.
-- [x] Veröffentlichten Tenant-Katalog anbinden (#92/#93); reale unveraenderliche Version 1 lokal abgenommen.
-- [ ] Echte Application-Owner-Bestellung mit anschliessendem Plan/Apply abnehmen (#93).
-- [x] Compiler prüft Policy unabhängig vom Formular bei manipulierten Eingaben; Tests für
-      unbekannte Felder, unzulässige Defaults, Tenantwechsel und Versionsbindung.
-- [ ] Accelerator-Modul um typisierte Projekt-Netz-/Observability-Bindung erweitern;
-      erst Provider-/ACL-/Egress-Semantik nachweisen, dann native Graph-/Plan-Tests.
-- [ ] Fehlendes Netz, deaktivierter Quelldienst, mehrere Netze und zyklische oder
-      regionsfremde Bindungen verhindern Veröffentlichung/Instanziierung.
-- [ ] Plan mit unbekannten Ressourcenwerten und später korrekter ACL qualifizieren;
-      echter Kunden-Apply ausschließlich nach ausdrücklicher Freigabe.
-- [ ] Weitere Dienstverknüpfungen nach demselben Muster ergänzen; gemeinsame
-      Plattform-ACLs erst nach Umsetzung des einzelnen State-Eigentümers freigeben.
+- [x] Gap and concrete Accelerator limitations checked in code.
+- [x] Implement versioned parameter/binding contract with five approved fields (#92); other fields remain fixed.
+- [x] Stage as the first complete order input with default, selection and fixed values; unchanged reading of old drafts, explicit conversion.
+- [x] Generate template editor and local order preview from the same contract.
+- [x] Connect published tenant catalogue (#92/#93); real immutable version 1 accepted locally.
+- [ ] Accept a real Application Owner order followed by Plan/Apply (#93).
+- [x] Compiler checks policy independently of the form for manipulated inputs; tests for unknown fields, invalid defaults, tenant switches and version binding.
+- [ ] Extend Accelerator module with typed project-network/Observability binding; first demonstrate provider/ACL/egress semantics, then native graph/plan tests.
+- [ ] Missing network, disabled source service, multiple networks and cyclic or cross-region bindings prevent publication/instantiation.
+- [ ] Qualify Plan with unknown resource values and later correct ACL; real customer Apply exclusively after explicit approval.
+- [ ] Add further service bindings following the same pattern; release shared platform ACLs only after implementing single-state ownership.
 
-Diese Arbeiten sind Voraussetzung eines nutzbaren Application-Self-Service,
-kein nachträglicher Komfortausbau eines bereits vollständigen MVP.
+This work is a prerequisite for usable Application self-service, not a later convenience enhancement to an already complete MVP.
 
-## Validierung und Bereitstellung
+<a id="validierung-und-bereitstellung"></a>
+## Validation and deployment
 
-- Lokale Domain-/App-Tests und native Application-Mockpläne prüfen die neue Policy
-  sowie Stage-Naming, Legacy-Erhalt und die harte Netzwerkbindungs-Sperre.
-- Browserprüfung und Release-Nachweis werden nach erfolgreicher Bereitstellung ergänzt.
-- Kein Kunden-Apply und keine automatische Änderung vorhandener Projekte.
+- Local domain/app tests and native Application mock plans check the new policy and stage naming, legacy preservation and the hard network-binding block.
+- Browser checking and release evidence will be added after successful deployment.
+- No customer Apply or automatic change to existing projects.
 
-### Reale Template-Veroeffentlichung (2026-10-06)
+<a id="reale-template-veroeffentlichung-2026-10-06"></a>
+### Real template publication (2026-10-06)
 
-Das bestehende Public-Template wurde als Version 1 aus dem gespeicherten Entwurf
-veroeffentlicht: Region eu01, lokales Projektnetz, freigegebener serverbasierter
-Plattformvertrag, Ziel `public-eu01`, automatische Gruppe **Application Owners**
-und **Bereitstellung mit Freigabe**. Der Vertrag stammt aus dem erfolgreichen
-aktuellen Plattform-Apply mit State-Version 6; alte Applies und rohe States sind
-keine frei waehlbaren Quellen. Der Katalog zeigt dieselbe Version nach Reload.
-Veroeffentlichung erzeugt keine Cloud-Ressourcen, Application-Ausfuehrung bleibt
-deaktiviert. Eine echte Application-Owner-Bestellung und Cloud-Ausfuehrung sind
-damit noch nicht abgenommen.
+The existing Public template was published as version 1 from the saved draft: region eu01, local project network, approved server-based platform contract, target `public-eu01`, automatic group **Application Owners** and **Deployment with approval**. The contract comes from the successful current platform Apply with state version 6; old Applies and raw states are not freely selectable sources. The catalogue shows the same version after reload. Publication creates no cloud resources; Application execution remains disabled. A real Application Owner order and cloud execution have therefore not yet been accepted.
 
-Eigene Gruppen werden in **Benutzerverwaltung** angelegt, mit Mitgliedern
-besetzt und geloescht; die Veroeffentlichung verwaltet nur deren Template-Freigaben.
-**Erfolgreicher Plattform-Apply** zeigt Konfigurationsname und Abschlussdatum
-statt eines State-Key-Hashes. Auswaehlbar sind nur erfolgreiche, aktuelle,
-unverriegelte Applies im verifizierten Arbeitsbereich mit gueltigem menschlichem
-Organisationsnachweis. Dessen Erneuerung bleibt auch nach Organisationsbindung
-in der Benutzerverwaltung erreichbar.
+Custom groups are created, populated with members and deleted in **User management**; publication manages only their template access. **Successful platform Apply** shows configuration name and completion date instead of a state-key hash. Only successful, current, unlocked Applies in the verified workspace with valid human organization evidence are selectable. Renewing this evidence remains accessible in user management even after organization binding.

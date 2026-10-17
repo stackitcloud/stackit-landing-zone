@@ -1,5 +1,7 @@
 # firewall-config
 
+[English](README.md) | [Deutsch](README.de.md)
+
 Pushes firewall rules, NAT and internet-facing hardening to an OPNsense appliance through
 its API, using the [`browningluke/opnsense`](https://registry.terraform.io/providers/browningluke/opnsense/latest/docs)
 provider.

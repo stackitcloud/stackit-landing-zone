@@ -1,3 +1,9 @@
+# Accelerator root module
+
+[English](README.md) | [Deutsch](README.de.md)
+
+The generated technical reference below documents this root module.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 

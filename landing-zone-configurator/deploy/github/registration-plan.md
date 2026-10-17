@@ -1,47 +1,55 @@
-# Einmalige GitHub-App-Registrierung
+# One-time GitHub App registration
 
-Registrierung am 2026-09-30 durch den Benutzer abgeschlossen. Die App gehört zum Configurator-Projekt;
-sie ist kein Benutzer-Token und kein zentrales Repository-Servicekonto.
+[English](registration-plan.md) | [Deutsch](registration-plan.de.md)
 
-## Konkrete Registrierung
+<a id="einmalige-github-app-registrierung"></a>
 
-- Name: `LZ Configurator Dev 7dbff805` (Verfügbarkeit wird von GitHub geprüft).
-- Bestätigter Owner für Entwicklung: `lweberru`; später an `stackitcloud` übertragbar.
-- Alternative: `stackitcloud`, sofern der angemeldete Benutzer Apps für die Organisation anlegen darf.
-  Die geprüfte Organisationsmitgliedschaft von `lweberru` ist `member`, nicht `admin`.
-- Sichtbarkeit: öffentlich installierbare App für mehrere unabhängige Benutzer/Kunden.
-- Homepage und OAuth-Callback: siehe `app-manifest.json`.
-- Repository-Rechte: Metadata read, Contents write, Administration write.
-  GitHub verlangt Administration write für die Fork-API. Diese Berechtigung ist
-  umfassender als der vom Configurator angebotene Fork-Vorgang; Installationen
-  deshalb auf die benötigten Repositories begrenzen. Für automatische Forks gelten
-  zusätzliche GitHub-Installationsvoraussetzungen, siehe README.
-- Keine Operator-PATs oder Installation-Tokens für Benutzer-Repository-Aktionen.
-- Expiring User Tokens aktiviert lassen; initial erneute Anmeldung nach höchstens 8 Stunden.
+Registration completed by the user on 2026-09-30. The App belongs to the Configurator project;
+it is neither a user token nor a central repository service account.
 
-## Registrierung und Credential-Ablage
+<a id="konkrete-registrierung"></a>
 
-Nach ausdrücklicher Freigabe einen nur an `127.0.0.1` gebundenen, kurzlebigen
-Registrierungshelfer starten. Die lokale Seite enthält das versionierte Manifest
-und führt den Benutzer zur GitHub-Bestätigung. State und Browserbindung absichern;
-den Code einmalig gegen Client-ID/Client-Secret tauschen. Kein Auslesen bestehender
-Browser-Credentials, kein Secret im Chat oder Log.
+## Registration details
 
-Client-ID/Client-Secret ausschließlich unter `.local/github/app-registration.json`
-mit Dateimodus 0600 ablegen. Einen erzeugten GitHub-App-Private-Key nicht für
-Repository-Zugriffe verwenden. Backend-Bindung und Environment-Secrets folgen als
-getrennter, prüfbarer Deployment-Schritt; keine Secrets im Manifest oder Frontend.
+- Name: `LZ Configurator Dev 7dbff805` (availability is checked by GitHub).
+- Confirmed development owner: `lweberru`; transferable to `stackitcloud` later.
+- Alternative: `stackitcloud`, provided the signed-in user may create Apps for the organization.
+  The verified organization membership of `lweberru` is `member`, not `admin`.
+- Visibility: publicly installable App for multiple independent users/customers.
+- Homepage and OAuth callback: see `app-manifest.json`.
+- Repository permissions: Metadata read, Contents write, Administration write.
+  GitHub requires Administration write for the fork API. This permission is
+  broader than the fork operation offered by the Configurator; therefore limit
+  installations to the required repositories. Automatic forks have
+  additional GitHub installation prerequisites; see README.
+- No operator PATs or installation tokens for user repository actions.
+- Keep Expiring User Tokens enabled; initially sign in again after at most 8 hours.
+
+<a id="registrierung-und-credential-ablage"></a>
+
+## Registration and credential storage
+
+After explicit approval, start a short-lived registration helper bound
+only to `127.0.0.1`. The local page contains the versioned manifest
+and takes the user to GitHub confirmation. Secure state and browser binding;
+exchange the code once for client ID/client secret. Do not read existing
+browser credentials; no secret in chat or logs.
+
+Store client ID/client secret exclusively under `.local/github/app-registration.json`
+with file mode 0600. Do not use a generated GitHub App private key for
+repository access. Backend binding and environment secrets follow as a
+separate, reviewable deployment step; no secrets in the manifest or frontend.
 
 ## Status
 
-- [x] Owner und Rechte ausdrücklich freigegeben.
-- [x] App registriert: https://github.com/apps/lz-configurator-dev-7dbff805
-- [x] Client-Zugangsdaten lokal mit Modus 0600 gespeichert; keine Secrets versioniert.
-- [x] Manifest korrigiert: `hook_attributes.url` ist auch bei `active: false` erforderlich.
-- [ ] Installation auf ausgewählten Benutzer-Repositories bestätigen.
-- [x] Geschützte Backend-Bindung und OAuth-Weiterleitung live geprüft (Release 36695423593).
-- [x] Persönliche Anmeldung und Abmeldung vom Benutzer bestätigt.
+- [x] Owner and permissions explicitly approved.
+- [x] App registered: https://github.com/apps/lz-configurator-dev-7dbff805
+- [x] Client credentials stored locally with mode 0600; no secrets versioned.
+- [x] Manifest corrected: `hook_attributes.url` is required even with `active: false`.
+- [ ] Confirm installation on selected user repositories.
+- [x] Protected backend binding and OAuth redirect verified live (release 36695423593).
+- [x] Personal login and logout confirmed by the user.
 
 Installation: https://github.com/apps/lz-configurator-dev-7dbff805/installations/new
 
-Quelle: https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest
+Source: https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest

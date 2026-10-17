@@ -1,237 +1,250 @@
-# STACKIT-Zielarchitektur des Landing Zone Configurators
+<a id="stackit-zielarchitektur-des-landing-zone-configurators"></a>
+# STACKIT target architecture of the Landing Zone Configurator
 
-Diese Referenz beschreibt die implementierten Komponenten und ihre
-Vertrauensgrenzen. Die Entwicklungsumgebung verwendet STACKIT OIDC; eine eigene
-Passwortverwaltung ist nicht vorgesehen. Der Betrieb in der Entwicklungsumgebung
-ist kein Nachweis einer produktiv qualifizierten Umgebung. Die getrennten
-[MVP-Grenzen](mvp-scope.md) und [Entwicklungsreferenzen](development.md) benennen
-verbleibende Aufgaben.
+[English](architecture.md) | [Deutsch](architecture.de.md)
 
-## Technische Praesentationssicht
+This reference describes the implemented components and their
+trust boundaries. The development environment uses STACKIT OIDC; custom
+password management is not planned. Operation in development
+is not evidence of a production-qualified environment. The separate
+[MVP limitations](mvp-scope.md) and [development references](development.md) identify
+remaining tasks.
 
-![STACKIT-Zielarchitektur des Landing Zone Configurators](architecture/stackit-overview.svg)
+<a id="technische-praesentationssicht"></a>
+## Technical presentation view
 
-[Uebersicht als SVG in voller Groesse](architecture/stackit-overview.svg) ·
-[PNG fuer Praesentationen](architecture/stackit-overview.png)
+![STACKIT target architecture of the Landing Zone Configurator](architecture/stackit-overview.svg)
 
-Die Uebersicht ist eine bewusst vereinfachte 16:9-Praesentationsgrafik:
-Kernkomponenten mit jeweils einem Titel und Untertitel. Sie zeigt den
-Hauptablauf UI -> Backend -> Runner -> Landing Zone und die angebundenen
-Identitaets-, Repository-, Datenbank- und KI-Dienste. Linien zeigen grundlegende
-Beziehungen, keine einzelnen Protokolle oder Datenfluesse. Die blaue
-Hinterlegung kennzeichnet die STACKIT-Infrastruktur; nur GitHub mit dem
-Accelerator-Repository liegt ausserhalb. Die dunklere CF-Flaeche umfasst
-Web UI, Configurator API und Runner.
+[Full-size SVG overview](architecture/stackit-overview.svg) ·
+[PNG for presentations](architecture/stackit-overview.png)
 
-Editor und Chat sind Teile derselben Web UI. Die Configurator API beherbergt
-die Assistant-Logik, Wissen, Validierung und Orchestrierung. Model Serving stellt
-die beiden Modellrollen fuer Antworten und Intent-Erkennung bereit; es betreibt
-nicht den eigentlichen Configurator-Assistenten. Zwei Modellrollen muessen nicht
-zwei verschiedene Modelle sein: ohne separaten Intent-Override verwenden beide
-Rollen das konfigurierte Antwortmodell.
+The overview is a deliberately simplified 16:9 presentation graphic:
+core components each have a title and subtitle. It shows the
+main flow UI -> backend -> Runner -> Landing Zone and connected
+identity, repository, database and AI services. Lines show basic
+relationships, not individual protocols or data flows. The blue
+background identifies STACKIT infrastructure; only GitHub with the
+Accelerator repository is outside it. The darker CF area contains
+Web UI, Configurator API and Runner.
 
-GitHub und das darin liegende Accelerator-Repository sind an die API angebunden:
-die API arbeitet mit den daraus abgeleiteten Templates und Eingabevertraegen.
-Diese werden versioniert im Build uebernommen; die Grafik behauptet keinen
-Live-Download beliebiger Repository-Staende. Der Runner fuehrt den dazu passenden
-gepinnten Accelerator-/Provider-Stand mit OpenTofu aus.
+Editor and chat are parts of the same Web UI. The Configurator API hosts
+Assistant logic, knowledge, validation and orchestration. Model Serving provides
+the two model roles for responses and intent detection; it does not run
+the actual Configurator Assistant. Two model roles do not have to be
+two different models: without a separate intent override, both
+roles use the configured response model.
 
-Die CF-Gruppierung zeigt die Hosting-Plattform, keine gemeinsame CF-Organisation
-oder Service-Bindings aller Komponenten. Web UI und API werden gemeinsam
-ausgeliefert; Runner bleiben isoliert. Router, Secrets-/State-Verwaltung,
-CI/CD und Migrationen sind in der Praesentationsansicht bewusst ausgeblendet.
-Die SVG ist direkt editierbar.
+GitHub and its Accelerator repository connect to the API:
+the API works with templates and input contracts derived from them.
+These are incorporated as versioned build inputs; the graphic does not claim
+live downloads of arbitrary repository revisions. The Runner executes the matching
+pinned Accelerator/provider revision with OpenTofu.
 
-## Logische Praesentationssicht
+The CF grouping shows the hosting platform, not a shared CF organization
+or service bindings for all components. Web UI and API are
+delivered together; Runners remain isolated. Router, secrets/state management,
+CI/CD and migrations are deliberately omitted from the presentation view.
+The SVG is directly editable.
 
-![Von Vorlagen zu Landing Zones](architecture/landing-zone-logical.svg)
+<a id="logische-praesentationssicht"></a>
+## Logical presentation view
 
-[Logische Sicht als SVG](architecture/landing-zone-logical.svg) ·
-[PNG fuer Praesentationen](architecture/landing-zone-logical.png)
+![From templates to Landing Zones](architecture/landing-zone-logical.svg)
 
-Die zweite Zeichnung zeigt den fachlichen Zusammenhang ohne Laufzeitdienste:
+[Logical view as SVG](architecture/landing-zone-logical.svg) ·
+[PNG for presentations](architecture/landing-zone-logical.png)
 
-- Der **Platform Engineer** nutzt Plattform-Templates als Ausgangsbasis,
-  erstellt die Plattformkonfiguration und stellt die **Platform Landing Zone**
-  bereit.
-- In diesem Entwurf definiert er auch **Application-Templates** und gibt
-  gepruefte Versionen fuer den Katalog frei.
-- Der **Application Owner** waehlt eine freigegebene Vorlage und ergaenzt die
-  konkreten Projektparameter in einer Bestellung. Daraus entstehen
-  **Application Landing Zones** auf Basis der gemeinsamen Plattform.
+The second drawing shows the domain relationships without runtime services:
 
-Ergaenzungen in der logischen Sicht:
+- The **Platform Engineer** uses platform templates as a starting point,
+  creates the platform configuration and provisions the **Platform Landing Zone**.
+- In this draft, they also define **Application templates** and release
+  reviewed versions to the catalogue.
+- The **Application Owner** selects an approved template and adds the
+  concrete project parameters in an order. This produces
+  **Application Landing Zones** based on the common platform.
 
-- **GitHub Repository / Landing Zone Configurator:** Versionsbasis der
-  Anwendung und ihrer Konfigurationsvertraege. Der Configurator-Code liegt
-  derzeit im Unterverzeichnis `landing-zone-configurator` des gemeinsamen
-  `stackitcloud/stackit-landing-zone`-Repos; die Zeichnung behauptet kein
-  zusaetzliches eigenstaendiges Repository. Kundenkonfigurationen koennen
-  separat in persoenlichen Accelerator-Forks versioniert werden. Die Linie
-  bedeutet nicht, dass Kundendokumente im Configurator-Quellrepo landen.
-- **Gruene KI-Markierung:** Unterstuetzung bei der Plattformkonfiguration und
-  den Application-Template-Entwuerfen. Sie bezeichnet Vorschlaege und
-  Rueckfragen, nicht automatische Veroeffentlichung, Rollenvergabe oder
-  Cloud-Ausfuehrung. Bei bereits freigegebenen Templates bezieht sich die
-  Markierung auf deren vorgelagerten Entwurf, nicht auf eine stille Aenderung
-  veroeffentlichter Versionen.
-- **Platform Engineer -> Application Owner / berechtigt:** Vergabe der
-  tenantgebundenen Mitgliedschaft beziehungsweise Katalogberechtigung.
-  Mitgliederverwaltung setzt die separat delegierte Verwaltungsfaehigkeit
-  voraus; die Platform-Engineer-Rolle allein verleiht sie nicht automatisch.
-- **STACKIT Service Account:** Autorisierter technischer Cloud-Zugang fuer
-  die Bereitstellung von Plattform und Anwendungen. Er ist kein Benutzerlogin
-  und ersetzt weder die Configurator-Rollen noch eine erforderliche Freigabe.
-  Zugangsdaten werden nicht an den Application Owner herausgegeben; die
-  Nutzung erfolgt serverseitig und auftragsgebunden.
+Additions in the logical view:
 
-Die Pfeile verdichten bewusste Arbeitsschritte, keine automatische
-Veroeffentlichung oder Apply-Freigabe. Die Plattformkonfiguration erzeugt nicht
-bereits die Anwendungsinstanzen. Template-Versionen und konkrete Bestellungen
-bleiben getrennte Objekte; Rollen gelten pro Arbeitsumgebung.
+- **GitHub Repository / Landing Zone Configurator:** version foundation of the
+  application and its configuration contracts. Configurator code currently resides
+  in the `landing-zone-configurator` subdirectory of the shared
+  `stackitcloud/stackit-landing-zone` repo; the drawing does not claim an
+  additional independent repository. Customer configurations can
+  be versioned separately in personal Accelerator forks. The line
+  does not mean customer documents end up in the Configurator source repo.
+- **Green AI marking:** assistance with platform configuration and
+  Application template drafts. It represents proposals and
+  questions, not automatic publication, role assignment or
+  cloud execution. For already published templates, the
+  marking refers to their preceding draft, not a silent change
+  to published versions.
+- **Platform Engineer -> Application Owner / authorized:** granting
+  tenant-bound membership or catalogue authorization.
+  Membership management requires the separately delegated administrative capability;
+  the Platform Engineer role alone does not automatically grant it.
+- **STACKIT Service Account:** authorized technical cloud access for
+  provisioning platform and applications. It is not a user login
+  and replaces neither Configurator roles nor required approval.
+  Credentials are not handed out to the Application Owner; usage
+  is server-side and job-bound.
 
-## Technische Detailreferenz
+The arrows condense deliberate work steps, not automatic
+publication or Apply approval. Platform configuration does not
+already create Application instances. Template versions and concrete orders
+remain separate objects; roles apply per working environment.
 
-Fuer die vollstaendigen Beziehungen, die separate CF Control Plane,
-die Migration-App und die Remote-State-Pruefung gibt es zusaetzlich die
-[Detailzeichnung als SVG](architecture/stackit-target.svg) und ihre
-[editierbare Mermaid-Quelle](architecture/stackit-target.mmd).
+<a id="technische-detailreferenz"></a>
+## Technical detail reference
 
-**Leserichtung der Detailzeichnung:** Pfeile zeigen Aufrufe beziehungsweise den bezeichneten
-Datenfluss. Doppelpfeile fassen Anfrage und Antwort zusammen. Gestrichelte
-Pfeile beschreiben den Release-/Migrationspfad, nicht Kunden-Provisionierung.
-Die Boxen unterscheiden Betreiber-Laufzeit, Runner-Isolation, Managed Services,
-GitHub und Kundenressourcen; sie sind keine Zusage privater Netzwerkverbindungen.
-Die STACKIT-API-Box steht fuer die adressierte Zielorganisation, nicht fuer
-physisch darin betriebene API-Server.
+For complete relationships, the separate CF Control Plane,
+the migration app and remote-state verification, see also the
+[detailed SVG drawing](architecture/stackit-target.svg) and its
+[editable Mermaid source](architecture/stackit-target.mmd).
 
-## Bereitstellung und Verantwortlichkeiten
+**Reading the detailed drawing:** arrows show calls or the labeled
+data flow. Double arrows combine request and response. Dashed
+arrows describe the release/migration path, not customer provisioning.
+Boxes distinguish operator runtime, Runner isolation, managed services,
+GitHub and customer resources; they do not promise private network connections.
+The STACKIT API box represents the addressed target organization, not
+API servers physically running within it.
 
-| Komponente | Bereitstellungsmodell | Aufgabe |
+<a id="bereitstellung-und-verantwortlichkeiten"></a>
+## Deployment and responsibilities
+
+| Component | Deployment model | Purpose |
 |---|---|---|
-| Web UI | React-SPA, vom CF-Webprozess ausgeliefert | Editor und Chat, Templates, Auftragsstatus und ausdrueckliche Freigaben |
-| Configurator API | Node.js/Fastify in derselben CF-App | Authentifizierung, Mandanten/Rollen, Validierung, Konfigurationscompiler, KI-Assistent, GitHub-Integration und Job-Broker |
-| CF Router | Cloud-Foundry-Routing und HTTPS-Route | Browserzugang zur UI und API; keine direkte Browserverbindung zu DB oder Secrets Manager |
-| Runner | Eigene CF-Organisation und Space; kurzlebige App/Task je Auftrag | Gepinnte OpenTofu-/Provider-/Accelerator-Ausfuehrung; danach Cleanup |
-| PostgreSQL Flex | STACKIT Managed Database | Sessions, Mitgliedschaften, Entwuerfe, Templates, Jobs, Audit sowie verschluesselte Plan-/Recovery-Artefakte |
-| Secrets Manager | STACKIT Managed Service | Geschuetzte Service-Account-Schluessel, GitHub-Tokens und Backend-Zugangsdaten |
-| Model Serving | STACKIT AI Model Serving | Vom Backend genutzte Modelle fuer Antworten und Intent-Erkennung |
-| STACKIT IDP | STACKIT Production; eigener Client je Anwendungsumgebung | OIDC Authorization Code Flow mit PKCE S256; Dev-CF-App bedeutet nicht Dev-IDP |
-| GitHub | Externe Plattform | Optionale Benutzerverbindung fuer Forks, Konfigurationen und Pull Requests; getrennt vom STACKIT-Login |
-| Landing Zone Accelerator Repo | `stackitcloud/stackit-landing-zone` auf GitHub | Versionierte Infrastrukturquelle; freigegebene Revision wird im Build gepinnt und paketiert |
-| GitHub Actions | Geschuetzte CI/CD-Pipeline | Tests, Release-Artefakte, Promotion, Runner-Staging und Migrationen |
-| Object Storage / S3 | State-Backend der Kunden-Landing-Zone | Dauerhafter OpenTofu-State, Lockfiles und getrennte State-Keys |
-| STACKIT APIs / Zielressourcen | Ausgewaehlte Kundenorganisation und Projekte | Technischer Berechtigungsnachweis, Kataloge und freigegebene Provisionierung |
-| Migration-App | Kurzlebige CF-App ohne Route | Versionierte DB-Migrationen mit separater Owner-Rolle; keine Owner-Credentials im Webprozess |
+| Web UI | React SPA, served by the CF web process | Editor and chat, templates, job status and explicit approvals |
+| Configurator API | Node.js/Fastify in the same CF app | Authentication, tenants/roles, validation, configuration compiler, AI Assistant, GitHub integration and job broker |
+| CF Router | Cloud Foundry routing and HTTPS route | Browser access to UI and API; no direct browser connection to DB or Secrets Manager |
+| Runner | Separate CF organization and space; short-lived app/task per job | Pinned OpenTofu/provider/Accelerator execution; cleanup afterwards |
+| PostgreSQL Flex | STACKIT Managed Database | Sessions, memberships, drafts, templates, jobs, audit and encrypted Plan/recovery artifacts |
+| Secrets Manager | STACKIT Managed Service | Protected service-account keys, GitHub tokens and backend credentials |
+| Model Serving | STACKIT AI Model Serving | Models used by the backend for responses and intent detection |
+| STACKIT IDP | STACKIT Production; separate client per application environment | OIDC Authorization Code Flow with PKCE S256; dev CF app does not mean dev IDP |
+| GitHub | External platform | Optional user connection for forks, configurations and pull requests; separate from STACKIT login |
+| Landing Zone Accelerator Repo | `stackitcloud/stackit-landing-zone` on GitHub | Versioned infrastructure source; approved revision pinned and packaged in the build |
+| GitHub Actions | Protected CI/CD pipeline | Tests, release artifacts, promotion, Runner staging and migrations |
+| Object Storage / S3 | State backend of the customer's Landing Zone | Durable OpenTofu state, lockfiles and separate state keys |
+| STACKIT APIs / target resources | Selected customer organization and projects | Technical permission verification, catalogues and approved provisioning |
+| Migration app | Short-lived CF app without a route | Versioned DB migrations with separate owner role; no owner credentials in the web process |
 
-**UI und Backend sind logische Dienste, keine bereits beschlossenen getrennten
-CF-Microservices.** Das aktuelle Release liefert beide in einer CF-App aus.
-Eine spaetere physische Trennung ist moeglich, aber nicht Teil dieser Zeichnung.
-Auch die Backend-Funktionen sind momentan Module eines API-Prozesses.
+**UI and backend are logical services, not already-decided separate
+CF microservices.** The current release delivers both in one CF app.
+Later physical separation is possible, but not part of this drawing.
+Backend functions are currently also modules of one API process.
 
-## Die vier wesentlichen Ablaeufe
+<a id="die-vier-wesentlichen-ablaeufe"></a>
+## The four key flows
 
-### 1. Anmeldung und Organisationszugriff
+<a id="1-anmeldung-und-organisationszugriff"></a>
+### 1. Login and organization access
 
-Der Browser wird zum STACKIT IDP umgeleitet. Der Backend-Callback tauscht den
-Authorization Code mit PKCE aus, prueft die Identitaet und erzeugt eine opaque
-Configurator-Session. Organisationszugriff und Bindungsautoritaet werden separat
-ueber die vorgesehenen STACKIT-APIs geprueft. Login, Mandantenmitgliedschaft und
-Cloud-Berechtigungen sind unterschiedliche Nachweise.
+The browser redirects to the STACKIT IDP. The backend callback exchanges the
+authorization code with PKCE, checks identity and creates an opaque
+Configurator session. Organization access and binding authority are separately
+checked through the designated STACKIT APIs. Login, tenant membership and
+cloud permissions are different evidence.
 
-GitHub bleibt eine optionale zweite Verbindung **fuer Repository-Funktionen**,
-nicht der Ersatz fuer STACKIT-Login oder Organisationsrechte.
+GitHub remains an optional second connection **for repository features**,
+not a replacement for STACKIT login or organization permissions.
 
-### 2. Entwurf und Assistant
+<a id="2-entwurf-und-assistant"></a>
+### 2. Draft and Assistant
 
-UI-Eingaben und Assistant-Vorschlaege durchlaufen dieselben nativen
-Konfigurationsvertraege. Nur das Backend ruft Model Serving auf. Es uebergibt
-den begrenzten Konfigurationskontext, keine Service-Account-Schluessel oder
-GitHub-Tokens. Der Modellaufruf startet weder einen Runner noch einen Apply.
-Vorschlagsuebernahme, Speicherung, Plan und Apply bleiben getrennte Schritte.
+UI inputs and Assistant proposals pass through the same native
+configuration contracts. Only the backend calls Model Serving. It passes
+the bounded configuration context, no service-account keys or
+GitHub tokens. A model call starts neither a Runner nor an Apply.
+Proposal acceptance, saving, Plan and Apply remain separate steps.
 
-### 3. Freigegebene Ausfuehrung
+<a id="3-freigegebene-ausfuehrung"></a>
+### 3. Approved execution
 
-Das Backend prueft Rolle, Mandant, Ziel, Konfigurations-/Quellversion,
-State-Bindung und die erforderliche Freigabe. Es dispatcht den Auftrag ueber
-die CF API in die **separate Runner-Organisation**. Der Runner erhaelt nur
-auftragsspezifische Inputs und Credentials ueber ein begrenztes Job-Ticket.
-Er besitzt keine Configurator-DB-/Secrets-Manager-Service-Bindings und keine
-CF-Dispatcher-Zugangsdaten.
+The backend checks role, tenant, target, configuration/source version,
+state binding and required approval. It dispatches the job through
+the CF API into the **separate Runner organization**. The Runner receives only
+job-specific inputs and credentials through a limited job ticket.
+It has no Configurator DB/Secrets Manager service bindings and no
+CF dispatcher credentials.
 
-Der Runner meldet Status und Ergebnisse an den Broker zurueck; dieser persistiert
-sie in PostgreSQL. Die Cloud-Operationen verwenden den explizit autorisierten
-Service-Account, nicht das menschliche Login-Token. Plan und Apply sind
-unterschiedliche Operationen; Apply setzt den geprueften gespeicherten Plan
-und die passende Freigabe voraus.
+The Runner reports status and results to the broker, which persists
+them in PostgreSQL. Cloud operations use the explicitly authorized
+service account, not the human login token. Plan and Apply are
+different operations; Apply requires the reviewed saved Plan
+and matching approval.
 
 ### Execution and state
 
-**State ist nicht gleich Konfigurationsdatenbank:** Der erste Plattform-Bootstrap
-verwendet temporaer das persistente, verschluesselte HTTP-State-Backend der API.
-Erst nach dem freigegebenen Bootstrap-Apply wird der State in den vom Accelerator
-erzeugten Kunden-S3-Bucket migriert und verifiziert. Plattform- und
-Application-States erhalten getrennte Keys mit Lockfiles. Der
-Configurator-eigene Infrastruktur-State ist wiederum davon getrennt.
+**State is not the configuration database:** the first platform bootstrap
+temporarily uses the API's persistent encrypted HTTP state backend.
+Only after the approved bootstrap Apply is state migrated to the customer
+S3 bucket created by the Accelerator and verified. Platform and
+Application states receive separate keys with lockfiles. The
+Configurator's own infrastructure state is separate again.
 
-Planartefakte werden vom Backend verschluesselt in PostgreSQL gespeichert.
-CI-Release-Artefakte liegen in GitHub Actions. Der zusaetzlich in der Betreiber-IaC
-definierte Artifacts-Bucket ist **kein** Beleg dafuer, dass diese Artefakte bereits
-dorthin ausgelagert werden; er wird deshalb nicht als aktiver Datenpfad gezeichnet.
+The backend stores Plan artifacts encrypted in PostgreSQL.
+CI release artifacts reside in GitHub Actions. The artifacts bucket
+additionally defined in operator IaC is **not** evidence that these artifacts
+are already offloaded there; it is therefore not drawn as an active data path.
 
-### 4. Software-Lieferkette
+<a id="4-software-lieferkette"></a>
+### 4. Software supply chain
 
-CI baut und testet eine festgelegte Accelerator-Revision, den API-/UI-Release
-und das Runner-Paket. Das qualifizierte Artefakt wird ueber eine geschuetzte
-Promotion ausgeliefert; Runner-Jobs laden nicht beliebig den aktuellen
-Repository-Head. Versionierte DB-Migrationen laufen vorher in einer separaten
-kurzlebigen Migration-App. Application-Release und Kunden-Plan/Apply sind
-unabhaengige Freigaben.
+CI builds and tests a fixed Accelerator revision, the API/UI release
+and Runner package. The qualified artifact is delivered through protected
+promotion; Runner jobs do not arbitrarily load the current
+repository head. Versioned DB migrations run beforehand in a separate
+short-lived migration app. Application release and customer Plan/Apply are
+independent approvals.
 
-## Wesentliche Ergaenzungen zur urspruenglichen Komponentenliste
+<a id="wesentliche-ergaenzungen-zur-urspruenglichen-komponentenliste"></a>
+## Key additions to the original component list
 
-1. **Secrets Manager:** notwendig fuer die technische Credential-Verwaltung.
-2. **Object Storage / State-Backend inklusive Locking:** notwendig fuer
-   reproduzierbare und konfliktfreie Infrastrukturverwaltung.
-3. **STACKIT APIs und Kundenressourcen:** machen sichtbar, was der Runner
-   tatsaechlich verwaltet und mit welchen technischen Credentials.
-4. **CF Router und Control Plane:** trennen Benutzerzugang von Task-Dispatch.
-5. **CI/CD, Release-Artefakte und Migration-App:** zeigen Quelle, Lieferkette und
-   die Trennung von DB-Owner- und Runtime-Berechtigungen.
+1. **Secrets Manager:** necessary for technical credential management.
+2. **Object Storage / state backend including locking:** necessary for
+   reproducible and conflict-free infrastructure management.
+3. **STACKIT APIs and customer resources:** make visible what the Runner
+   actually manages and with which technical credentials.
+4. **CF Router and Control Plane:** separate user access from task dispatch.
+5. **CI/CD, release artifacts and migration app:** show source, supply chain and
+   separation of DB owner and runtime permissions.
 
-Fuer eine produktionsreife Betriebsarchitektur sind ausserdem festzulegen:
+A production-ready operational architecture must also define:
 
-- Zentrale Logs, Metriken, Alarmierung und deren Aufbewahrung. CF-Logs und
-  Datenbank-Audit ersetzen kein vollstaendiges Monitoring-/Alerting-Konzept.
-  Eine konkrete Observability-/Telemetry-Router-Anbindung des **Configurators**
-  wird hier nicht als bereits eingerichtet dargestellt.
-- Verifizierte DB-Backups, Secret-/Artefaktschluessel-Recovery, S3-Versionierung
-  und Wiederherstellungstests. Der Verlust des bestehenden Artefaktschluessels
-  darf nicht durch spontane Rotation verdeckt werden.
-- Skalierung/HA sowie gemeinsame Ablage oder Sticky Routing fuer laufende
-  OIDC-Flows. Die aktuelle Ein-Instanz-Anwendung ist kein HA-Nachweis.
-- Netzwerkpfade, ACLs und Egress-Regeln. Ein CF-Runner hat nicht automatisch
-  Zugriff auf private Kubernetes-/Helm-/Firewall-Endpunkte in Kunden-SNAs.
-  Diese Ausfuehrungsgrenze bleibt separat zu loesen (#37).
-- Eng begrenzte Betriebs-/Deployment-Identitaeten, kontrollierte CF-Space-Rechte
-  und eine Least-Privilege-Qualifikation des OIDC-Clients.
+- Central logs, metrics, alerting and retention. CF logs and
+  database audit do not replace a complete monitoring/alerting concept.
+  A concrete Observability/Telemetry Router integration for the **Configurator**
+  is not presented here as already configured.
+- Verified DB backups, secret/artifact key recovery, S3 versioning
+  and restore tests. Loss of the existing artifact key
+  must not be concealed by spontaneous rotation.
+- Scaling/HA and shared storage or sticky routing for ongoing
+  OIDC flows. The current single-instance application is not HA evidence.
+- Network paths, ACLs and egress rules. A CF Runner does not automatically
+  have access to private Kubernetes/Helm/firewall endpoints in customer SNAs.
+  This execution boundary remains separately resolvable (#37).
+- Narrowly scoped operational/deployment identities, controlled CF space rights
+  and least-privilege qualification of the OIDC client.
 
-Es wird **kein** zusaetzlicher Queue-Service vorausgesetzt: Auftragsmetadaten
-liegen in PostgreSQL, der Broker dispatcht CF-Tasks. Ein allgemeiner Scheduler
-waere eine eigene spaetere Architekturentscheidung.
+**No** additional queue service is assumed: job metadata
+resides in PostgreSQL, and the broker dispatches CF tasks. A general scheduler
+would be a separate later architecture decision.
 
-## Grundlagen und Weiterfuehrung
+<a id="grundlagen-und-weiterfuehrung"></a>
+## Background and further reading
 
-- [CF-Release und Service-Bindings](../deploy/cloud-foundry/README.md)
-- [Runner-Paket und Accelerator-Pin](../deploy/runner/README.md)
-- [Plan-Ausfuehrung, Broker und State-Lebenszyklus](plan-execution.md)
-- [Login und Organisationsnachweis](github-login.md)
-- [Plattform-/Application-Vertraege](platform-application-architecture.md)
+- [CF release and service bindings](../deploy/cloud-foundry/README.md)
+- [Runner package and Accelerator pin](../deploy/runner/README.md)
+- [Plan execution, broker and state lifecycle](plan-execution.md)
+- [Login and organization proof](github-login.md)
+- [Platform/Application contracts](platform-application-architecture.md)
 - [PostgreSQL Flex](../infra/platform/2-database.tf),
-  [Secrets Manager](../infra/platform/3-secrets.tf) und
+  [Secrets Manager](../infra/platform/3-secrets.tf) and
   [Model Serving](../infra/platform/5-model-serving.tf)
 
-Die Detail-SVG wird lokal mit Mermaid CLI 11.12.0 aus der Mermaid-Quelle gerendert.
-Die Uebersicht verwendet ausschliesslich lokale SVG-Formen und Systemschriften.
-Keine Zugangsdaten, Konfigurationen oder Diagrammquellen werden an einen
-Online-Renderer gesendet.
+The detail SVG is rendered locally with Mermaid CLI 11.12.0 from the Mermaid source.
+The overview uses exclusively local SVG shapes and system fonts.
+No credentials, configurations or diagram sources are sent to an
+online renderer.

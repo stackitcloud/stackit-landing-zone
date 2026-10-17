@@ -1,0 +1,96 @@
+# landing-zone
+
+[English](README.md) | [Deutsch](README.de.md)
+
+Öffentliche Projekte können mit `network_enabled = true` ein lokales Projektnetzwerk aktivieren.
+Corporate-Projekte behalten ihr geroutetes Netzwerk und ihre SNA-Integration. Wird die
+Option weggelassen, bleiben bestehende öffentliche Projekte ohne Netzwerk unverändert.
+Das optionale `network_prefix_length` gilt für beide Arten von Projektnetzwerken.
+
+Der folgende generatorverwaltete technische Block bleibt unverändert auf Englisch;
+maßgeblich ist die [kanonische englische Referenz](README.de.md).
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11 |
+| <a name="requirement_stackit"></a> [stackit](#requirement\_stackit) | >= 0.114.0 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | >= 0.14.1 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | >= 0.14.1 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [stackit_authorization_project_custom_role.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_custom_role) | resource |
+| [stackit_authorization_project_role_assignment.sa_owner](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
+| [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
+| [stackit_dns_zone.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/dns_zone) | resource |
+| [stackit_network.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
+| [stackit_objectstorage_bucket.default](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/objectstorage_bucket) | resource |
+| [stackit_objectstorage_bucket.tfstate](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/objectstorage_bucket) | resource |
+| [stackit_objectstorage_credential.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/objectstorage_credential) | resource |
+| [stackit_objectstorage_credentials_group.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/objectstorage_credentials_group) | resource |
+| [stackit_observability_instance.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/observability_instance) | resource |
+| [stackit_resourcemanager_project.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/resourcemanager_project) | resource |
+| [stackit_routing_table.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/routing_table) | resource |
+| [stackit_routing_table_route.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/routing_table_route) | resource |
+| [stackit_secretsmanager_instance.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/secretsmanager_instance) | resource |
+| [stackit_service_account.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account) | resource |
+| [stackit_service_account_key.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account_key) | resource |
+| [time_rotating.key_rotate](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/rotating) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_corporate"></a> [corporate](#input\_corporate) | Whether this landing zone uses corporate networking (network area + routing). Set to false for public internet. | `bool` | `false` | no |
+| <a name="input_custom_roles"></a> [custom\_roles](#input\_custom\_roles) | List of custom roles to create for the project. | <pre>list(object({<br/>    name        = string<br/>    description = string<br/>    permissions = list(string)<br/>  }))</pre> | n/a | yes |
+| <a name="input_dns_zone_name"></a> [dns\_zone\_name](#input\_dns\_zone\_name) | Full DNS zone domain name for this landing zone. Set to null to skip DNS zone creation. | `string` | `null` | no |
+| <a name="input_firewall_next_hop_ip"></a> [firewall\_next\_hop\_ip](#input\_firewall\_next\_hop\_ip) | IP address of the firewall next hop. | `string` | `null` | no |
+| <a name="input_ipv4_nameservers"></a> [ipv4\_nameservers](#input\_ipv4\_nameservers) | List of IPv4 nameservers for the network. Null takes the network area defaults on creation and leaves an existing network untouched. | `list(string)` | `null` | no |
+| <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all resources. | `map(string)` | `{}` | no |
+| <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-hub-prod". | `string` | n/a | yes |
+| <a name="input_network_area_id"></a> [network\_area\_id](#input\_network\_area\_id) | Network Area ID to deploy resources into. Required if corporate is true. | `string` | `null` | no |
+| <a name="input_network_enabled"></a> [network\_enabled](#input\_network\_enabled) | Create a local project network without SNA when corporate is false. Corporate networks are always created. | `bool` | `false` | no |
+| <a name="input_network_prefix_length"></a> [network\_prefix\_length](#input\_network\_prefix\_length) | CIDR block prefix length for the project's network range. | `number` | `null` | no |
+| <a name="input_observability"></a> [observability](#input\_observability) | Optional observability instance configuration in the landing zone project. | <pre>object({<br/>    enabled   = optional(bool, false)<br/>    plan_name = optional(string, "Observability-Starter-EU01")<br/>    acl       = optional(list(string), [])<br/>    name      = optional(string, null)<br/>  })</pre> | `{}` | no |
+| <a name="input_organization_id"></a> [organization\_id](#input\_organization\_id) | Container ID of the root organization. | `string` | n/a | yes |
+| <a name="input_owner_email"></a> [owner\_email](#input\_owner\_email) | Email address of the project owner. Required for project creation. | `string` | n/a | yes |
+| <a name="input_parent_container_id"></a> [parent\_container\_id](#input\_parent\_container\_id) | Parent container ID (folder or organization) where the project will be created. | `string` | n/a | yes |
+| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name of the STACKIT project to create. | `string` | `null` | no |
+| <a name="input_role_assignments"></a> [role\_assignments](#input\_role\_assignments) | List of role assignments for the project. Subject can be a user email or service account email. | <pre>list(object({<br/>    role    = string<br/>    subject = string<br/>  }))</pre> | `[]` | no |
+| <a name="input_secretsmanager_acls"></a> [secretsmanager\_acls](#input\_secretsmanager\_acls) | List of ACL rules for the Secrets Manager instance. Set to empty list for no ACLs or null to skip Secrets Manager creation. | `list(string)` | `[]` | no |
+| <a name="input_secretsmanager_enabled"></a> [secretsmanager\_enabled](#input\_secretsmanager\_enabled) | Whether to create a Secrets Manager instance in the landing zone project. | `bool` | `true` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_connected_network_area_id"></a> [connected\_network\_area\_id](#output\_connected\_network\_area\_id) | The ID of the connected network area. |
+| <a name="output_dns_zone_dns_name"></a> [dns\_zone\_dns\_name](#output\_dns\_zone\_dns\_name) | The DNS name of the landing zone's child DNS zone. |
+| <a name="output_dns_zone_id"></a> [dns\_zone\_id](#output\_dns\_zone\_id) | The ID of the landing zone's child DNS zone. |
+| <a name="output_landing_zone_type"></a> [landing\_zone\_type](#output\_landing\_zone\_type) | The type of the landing zone, either 'corporate' or 'public'. |
+| <a name="output_observability_grafana_admin_password"></a> [observability\_grafana\_admin\_password](#output\_observability\_grafana\_admin\_password) | The Grafana admin password of the optional landing zone observability instance. |
+| <a name="output_observability_grafana_admin_user"></a> [observability\_grafana\_admin\_user](#output\_observability\_grafana\_admin\_user) | The Grafana admin username of the optional landing zone observability instance. |
+| <a name="output_observability_grafana_url"></a> [observability\_grafana\_url](#output\_observability\_grafana\_url) | The Grafana URL of the optional landing zone observability instance. |
+| <a name="output_observability_instance_id"></a> [observability\_instance\_id](#output\_observability\_instance\_id) | The optional observability instance ID in the landing zone project. |
+| <a name="output_observability_metrics_push_url"></a> [observability\_metrics\_push\_url](#output\_observability\_metrics\_push\_url) | The Prometheus remote-write URL of the optional landing zone observability instance. |
+| <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |
+| <a name="output_project_id"></a> [project\_id](#output\_project\_id) | The project ID of the created STACKIT project. |
+| <a name="output_project_name"></a> [project\_name](#output\_project\_name) | The name of the created STACKIT project. |
+| <a name="output_project_network"></a> [project\_network](#output\_project\_network) | Non-secret reference to the managed project network, or null when no network is created. |
+| <a name="output_secretsmanager_instance_id"></a> [secretsmanager\_instance\_id](#output\_secretsmanager\_instance\_id) | The ID of the landing zone Secrets Manager instance. |
+<!-- END_TF_DOCS -->

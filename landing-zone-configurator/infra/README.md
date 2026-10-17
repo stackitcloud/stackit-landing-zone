@@ -1,33 +1,43 @@
-# Configurator-Infrastruktur
+# Configurator infrastructure
 
-Alle Configurator-Dienste werden per OpenTofu verwaltet. Die Infrastruktur bleibt vom eigentlichen Landing Zone Accelerator getrennt. OpenTofu **1.12.6** und Provider-Versionen sind gepinnt; jeder ausführbare Root hat ein versioniertes Lockfile.
+[English](README.md) | [Deutsch](README.de.md)
 
-## Roots und Reihenfolge
+<a id="configurator-infrastruktur"></a>
 
-| Root | Aufgabe | State |
+All Configurator services are managed through OpenTofu. The infrastructure remains separate from the actual Landing Zone Accelerator. OpenTofu **1.12.6** and provider versions are pinned; each executable root has a versioned lockfile.
+
+<a id="roots-und-reihenfolge"></a>
+
+## Roots and order
+
+| Root | Purpose | State |
 | --- | --- | --- |
-| `seed` | Verwaltungs-Bucket und dessen S3-Zugang | lokal verschlüsselt, mit verschlüsselter Remote-Sicherung |
-| `seed-protection` | Versionierung des Verwaltungs-Buckets | lokal verschlüsselt, mit verschlüsselter Remote-Sicherung |
-| `bootstrap` | Workload-State-Bucket und dessen S3-Zugang | Verwaltungs-Bucket |
-| `backend` | Versionierung des Workload-State-Buckets | Verwaltungs-Bucket |
-| `platform` | CF-Organisation/Manager, PostgreSQL/Datenbank/Migrationsnutzer, Secrets Manager/Provisionierungsnutzer, Artefakt-Bucket und Model-Serving-Token | Workload-Bucket |
-| `runtime` | CF-Space, Organisations-/Space-Rollen, PostgreSQL-/Secrets-Laufzeitbenutzer | Workload-Bucket, eigener Schlüssel |
+| `seed` | Management bucket and its S3 access | Locally encrypted, with encrypted remote backup |
+| `seed-protection` | Management bucket versioning | Locally encrypted, with encrypted remote backup |
+| `bootstrap` | Workload state bucket and its S3 access | Management bucket |
+| `backend` | Workload state bucket versioning | Management bucket |
+| `platform` | CF organization/manager, PostgreSQL/database/migration user, Secrets Manager/provisioning user, artifact bucket and Model Serving token | Workload bucket |
+| `runtime` | CF space, organization/space roles, PostgreSQL/Secrets runtime users | Workload bucket, separate key |
 
-Bootstrap, Backend, Plattform und Runtime sind in `lzc-dev/eu01` provisioniert. Die Plattform enthält neun verwaltete Ressourcen; der [Betriebsstand](../docs/platform-readiness.md) dokumentiert Abnahme und offene Konnektivitätsarbeiten.
+Bootstrap, backend, platform and runtime are provisioned in `lzc-dev/eu01`. The platform contains nine managed resources; the [operational status](../docs/platform-readiness.md) documents acceptance and outstanding connectivity work.
 
-Der STACKIT-Provider aktiviert Object Storage und Model Serving bei der ersten Ressourcenerstellung. Für Bucket-Versionierung spricht der AWS-Provider ausschließlich die STACKIT-S3-API an; es werden keine AWS-Ressourcen angelegt.
+The STACKIT provider enables Object Storage and Model Serving when the first resource is created. For bucket versioning, the AWS provider addresses only the STACKIT S3 API; no AWS resources are created.
 
-Die Plattform verwaltet getrennte Model-Serving-Token für die Anwendung und die synthetischen Assistant-Tests. Der sensitive Output `assistant_test_model_serving_token` gehört ausschließlich in das GitHub Environment `assistant-tests`, nicht in die CF-Anwendungsbindung. Beide Token haben eine Laufzeit von 90 Tagen; eine bewusste Rotation über `credential_generation` erfordert danach die Aktualisierung der jeweiligen Bindung beziehungsweise des CI-Secrets. Das bestehende Anwendungstoken wird beim Hinzufügen des Testtokens nicht verändert.
+The platform manages separate Model Serving tokens for the application and synthetic Assistant tests. The sensitive output `assistant_test_model_serving_token` belongs exclusively in the GitHub Environment `assistant-tests`, not in the CF application binding. Both tokens have a lifetime of 90 days; deliberate rotation through `credential_generation` then requires updating the respective binding or CI secret. Adding the test token does not change the existing application token.
 
-## Deployment: direkte OpenTofu-Schritte in CI
+<a id="deployment-direkte-opentofu-schritte-in-ci"></a>
 
-[Bootstrap-Workflow](../../.github/workflows/configurator-bootstrap.yml), [Plattform-Workflow](../../.github/workflows/configurator-platform.yml) und [Runtime-Workflow](../../.github/workflows/configurator-runtime.yml) führen `tofu init`, `validate`, `plan` und `apply` direkt aus. Normale CLI-Ausgaben sind live sichtbar. Kleine Hilfsprogramme bereiten Credentials vor, prüfen das gespeicherte Plan-Artefakt und verschlüsseln Recovery-Snapshots; sie führen keine Deployments aus.
+## Deployment: direct OpenTofu steps in CI
 
-[CI-Betriebsanleitung](ci/README.md): Environments, Planfreigabe, Timeouts, State-Sicherung und Feature-Branch-Tests. Remote-Applies ausschließlich über die gemeinsam serialisierte CI; keine parallelen lokalen Applies. S3-Locking hat den Integrationstest nicht bestanden und wird nicht als funktionierender Schutz behauptet.
+The [bootstrap workflow](../../.github/workflows/configurator-bootstrap.yml), [platform workflow](../../.github/workflows/configurator-platform.yml) and [runtime workflow](../../.github/workflows/configurator-runtime.yml) execute `tofu init`, `validate`, `plan` and `apply` directly. Normal CLI output is visible live. Small utilities prepare credentials, check the saved Plan artifact and encrypt recovery snapshots; they do not execute deployments.
 
-## Lokal validieren, ohne Cloud-Zugriff
+[CI operations guide](ci/README.md): environments, Plan approval, timeouts, state backup and feature-branch tests. Remote Applies exclusively through jointly serialized CI; no parallel local Applies. S3 locking failed the integration test and is not claimed as working protection.
 
-Benötigt werden OpenTofu 1.12.6 und Node.js 24.21.0 für die reine Umgebungs-Vorbereitung. Aus `landing-zone-configurator/`, beispielhaft für `platform`:
+<a id="lokal-validieren-ohne-cloud-zugriff"></a>
+
+## Validate locally without cloud access
+
+OpenTofu 1.12.6 and Node.js 24.21.0 are required for environment preparation only. From `landing-zone-configurator/`, using `platform` as an example:
 
 ```sh
 node infra/prepare-local.mjs platform --validation
@@ -41,13 +51,15 @@ tofu -chdir=infra fmt -check -recursive
 node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/*.test.mjs
 ```
 
-Die Vorbereitung erzeugt nur eine private Umgebungsdatei und einen lokalen Testschlüssel. Sie führt keinen OpenTofu-Befehl aus. Die Testumgebung liegt separat unter `.local/validation/<root>` und verwendet keine produktiven Backend-Schlüssel. Für andere Roots `platform` durch den jeweiligen Namen ersetzen. Die Tests verwenden Mock-Provider. CI macht dieselben OpenTofu-Aufrufe direkt mit temporären Testschlüsseln.
+Preparation creates only a private environment file and a local test key. It runs no OpenTofu command. The test environment resides separately under `.local/validation/<root>` and uses no production backend keys. For other roots, replace `platform` with the respective name. Tests use mock providers. CI makes the same OpenTofu calls directly with temporary test keys.
 
-## Seltene lokale Seed-Operationen
+<a id="seltene-lokale-seed-operationen"></a>
 
-Der Verwaltungs-Seed existiert bereits. Folgende Befehle sind der dokumentierte Bedienweg für bewusst geplante Seed-Änderungen, kein notwendiger Schritt vor einem App-Deployment. Nur ein Operator arbeitet am Seed. Vor Änderungen unabhängige Schlüsselsicherung prüfen.
+## Rare local seed operations
 
-Eingaben bleiben in den ignorierten Dateien `landing-zone-configurator.env` und `landing-zone-configurator-credentials.json` im Repository-Root. Die env-Datei verwendet `NAME=WERT`: `PROJECT_ID`, `REGION`, `NAME_PREFIX`, `STATE_CREDENTIAL_EXPIRATION`. Credentials und State-Schlüssel niemals in Git übernehmen.
+The management seed already exists. The following commands are the documented operating procedure for deliberately planned seed changes, not a necessary step before an app deployment. Only one operator works on the seed. Check independent key backups before making changes.
+
+Inputs remain in the ignored files `landing-zone-configurator.env` and `landing-zone-configurator-credentials.json` in the repository root. The env file uses `NAME=WERT`: `PROJECT_ID`, `REGION`, `NAME_PREFIX`, `STATE_CREDENTIAL_EXPIRATION`. Never add credentials and state keys to Git.
 
 ```sh
 node infra/prepare-local.mjs seed
@@ -71,15 +83,17 @@ node infra/prepare-local.mjs seed-protection
 rm -f .local/seed/outputs.json .local/seed/environment.sh .local/seed-protection/environment.sh
 ```
 
-Die Shell-Dateien enthalten sensible Werte, sind mit Modus 0600 angelegt und von Git ausgeschlossen. Die Umgebungen gelten nur in den gezeigten Subshells. Bereits vorhandene Schlüssel werden wiederverwendet; bei verlorenem Schlüssel eines bestehenden Workspace wird kein neuer erzeugt. Die Vorbereitung erlaubt Cloud-Konfiguration lokal ausschließlich für die beiden Seed-Roots.
+The shell files contain sensitive values, are created with mode 0600 and are excluded from Git. The environments apply only within the subshells shown. Existing keys are reused; no new key is generated when an existing workspace's key is lost. Preparation allows local cloud configuration only for the two seed roots.
 
-## Recovery und verbleibende Arbeiten
+<a id="recovery-und-verbleibende-arbeiten"></a>
 
-Verschlüsselte Seed-Sicherungen liegen im Verwaltungs-Bucket unter `recovery/seed/terraform.tfstate` und `recovery/seed-protection/terraform.tfstate`; nach Seed-Änderungen erneuern. State-Schlüssel separat und unabhängig vom Bucket verwahren. Die Kopie im selben Bucket schützt nicht vor Verlust des gesamten Buckets.
+## Recovery and remaining work
 
-Bei einem fehlgeschlagenen Apply zuerst CI-Logs, verschlüsselte Recovery-Artefakte und tatsächlichen Ressourcenbestand prüfen. Keinen alten Plan blind wiederholen, keinen existierenden State überschreiben. Imports und Credential-Rotation müssen zum konkreten Vorfall passen und unter derselben Single-Writer-Regel erfolgen. Der frühere automatische Einmal-Recovery-Pfad wurde nach Abschluss entfernt.
+Encrypted seed backups reside in the management bucket under `recovery/seed/terraform.tfstate` and `recovery/seed-protection/terraform.tfstate`; refresh them after seed changes. Keep state keys separate and independent of the bucket. A copy in the same bucket does not protect against loss of the entire bucket.
 
-Die App und ihre CF-Umgebungsvariablen werden im separaten [Release-Workflow](../../.github/workflows/configurator-release.yml) durch das deklarative [CF-Manifest](../deploy/cloud-foundry/manifest.yml) verwaltet. Verbindungstests aus CF sind erfolgreich. Offen sind Anwendungsschema/RLS, automatisierte Credential-Rotation sowie ein vollständiger getesteter Betriebs-/Restore-Prozess. [Planung](../docs/planning.md).
+After a failed Apply, first check CI logs, encrypted recovery artifacts and the actual resource inventory. Do not blindly repeat an old Plan or overwrite existing state. Imports and credential rotation must fit the specific incident and follow the same single-writer rule. The former automatic one-time recovery path was removed after completion.
+
+The app and its CF environment variables are managed in the separate [release workflow](../../.github/workflows/configurator-release.yml) through the declarative [CF manifest](../deploy/cloud-foundry/manifest.yml). Connection tests from CF succeeded. Outstanding work includes the application schema/RLS, automated credential rotation and a complete, tested operations/restore process. [Planning](../docs/planning.md).
 
 
-Direkte CLI-Pipelines geprüft (2026-09-30): [Bootstrap 36677111141](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111141) und [Plattform 36677111032](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111032) zeigen jeweils `No changes`, mit sichtbaren nativen Init-/Plan-Logs und übersprungenem Apply. [Validierung 36677111055](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111055) bestätigt auch den GNU-Timeout-Test auf Linux. Aktuelle weitere Abnahmen stehen im [Plattform-Betriebsstand](../docs/platform-readiness.md).
+Direct CLI pipelines verified (2026-09-30): [bootstrap 36677111141](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111141) and [platform 36677111032](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111032) each show `No changes`, with visible native init/Plan logs and Apply skipped. [Validation 36677111055](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36677111055) also confirms the GNU timeout test on Linux. Further current acceptance results are in the [platform operational status](../docs/platform-readiness.md).

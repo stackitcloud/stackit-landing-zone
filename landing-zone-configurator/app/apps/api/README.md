@@ -1,3 +1,5 @@
 # Backend / BFF
 
-Geplant: Node.js/TypeScript mit Fastify als Framework-Kandidat. Sessions, Tenant-Autorisierung, GitHub, Konfigurationen und Model-Serving-Anbindung. Keine OpenTofu-Prozesse im Web-Request.
+[English](README.md) | [Deutsch](README.de.md)
+
+Planned: Node.js/TypeScript with Fastify as a framework candidate. Sessions, tenant authorization, GitHub, configurations and Model Serving integration. No OpenTofu processes in web requests.

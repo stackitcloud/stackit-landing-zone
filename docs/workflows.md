@@ -1,5 +1,7 @@
 # GitHub Actions workflows
 
+[English](workflows.md) | [Deutsch](workflows.de.md)
+
 This is the entry point for choosing and starting a pipeline. Workflow names link
 directly to their **Actions** pages; **source** links show the executable definition.
 The ten current repository workflows are listed below. Historical entries and

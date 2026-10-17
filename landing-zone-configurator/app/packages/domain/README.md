@@ -1,59 +1,67 @@
-# Fachmodell
+# Domain model
 
-Gemeinsame Logik für UI, API und Chat-Vorschläge. Keine Secret-Auflösung in diesem
-Paket. Der gemeinsame Editor und die Fork-Speicherung verwenden das Modell v3. Bestehende
-v1/v2-Entwürfe bleiben im bisherigen Editor bearbeitbar und können ausdrücklich
-auf den gemeinsamen Editor umgestellt werden.
+[English](README.md) | [Deutsch](README.de.md)
 
-## Gemeinsames Modell (v3)
+<a id="fachmodell"></a>
 
-- `features.ts`: alle 28 Root-Eingaben in fachlichen Gruppen; Feldkatalog inklusive
-  verschachtelter Typen und separat ausgewiesener geschützter Eingaben.
-- `common-document.ts`: alle acht Templates importieren, Version 1/2 migrieren,
-  stabile Objektidentitäten, gemeinsame Projekt-/Bereichsprojektionen und Export.
-- `common-validation.ts`: Referenzen, Konfigurationskombinationen und bekannte
-  Ausführungsgrenzen getrennt beurteilen. Kein Ersatz für Provider-Prüfung oder Plan.
-- `accelerator-inputs.json`: generierter Typvertrag, keine handgepflegte zweite
-  Terraform-Typdefinition. Aktualitätsprüfung in CI; siehe HCL-Adapter-README.
+Shared logic for UI, API and chat proposals. No secret resolution in this
+package. The common editor and fork persistence use model v3. Existing
+v1/v2 drafts remain editable in the previous editor and can explicitly
+be switched to the common editor.
 
-`createCommonConfiguration(templateId, id)` kopiert eine vertrauenswürdige Vorlage.
-`migrateCommonConfiguration(legacy)` kompiliert zunächst mit dem alten Vertrag;
-anschließender Export bleibt bytegleich, auch für Ordneränderungen in v2.
-`readCommonConfiguration` prüft Form, Herkunft, Eingaben und Objektidentitäten.
-Unvollständige fachliche Angaben dürfen für die weitere Bearbeitung bestehen bleiben.
+<a id="gemeinsames-modell-v3"></a>
 
-Intern enthalten die Feature-Gruppen die expliziten Engine-Eingaben. Die Oberfläche
-soll darauf fachliche Editoren aufsetzen, kein generisches Terraform-Variablenformular.
-`commonProjects` liefert Public, Corporate und Sandbox in derselben Sicht mit
-Zielordner und Bereichsbezug. `commonNetworkAreas` liefert einzelne und regionale
-Bereiche ohne deren Quellen beim Lesen umzuschreiben.
+## Common model (v3)
 
-`setCommonInput` ändert Werte, **nicht** die Identitätsliste von Sammlungen.
-Sammlungsänderungen brauchen explizite Operationen mit konsistenter Identitätsliste.
-`renameCommonProject` erhält die UI-Identität und passt Namespace-Referenzen an;
-Terraform-Adressen ändern sich dabei trotzdem. Die spätere UI muss das bestätigen
-lassen. `removeCommonNetworkArea` blockiert bestehende Projekt-/Dienstreferenzen.
-`editor-document.ts` ergänzt Projektanlage/-entfernung, sichere Sammlungsänderungen
-und die kompatible Speicher-/Editor-Brücke.
+- `features.ts`: all 28 root inputs in domain groups; field catalogue including
+  nested types and separately identified protected inputs.
+- `common-document.ts`: import all eight templates, migrate versions 1/2,
+  stable object identities, shared project/area projections and export.
+- `common-validation.ts`: assess references, configuration combinations and known
+  execution limits separately. No substitute for provider validation or Plan.
+- `accelerator-inputs.json`: generated type contract, not a second manually maintained
+  Terraform type definition. Freshness checks in CI; see the HCL adapter README.
 
-`compileCommonConfiguration` / `exportCommonTfvars` erhalten ausgelassene Werte,
-explizites `null` und explizite Konfiguration. `effectiveInput` liefert ausschließlich
-Anzeige-/Validierungswerte mit Defaults; diese Projektion darf nicht zurückexportiert
-werden. Regionale `map(any)`-Eingaben werden nur für tatsächlich im Root verdrahtete
-Felder akzeptiert; ihre Defaults werden nicht pauschal aus dem Einzelregionsmodell
-übernommen. Unbekannte Attribute und deklarierte Secret-Eingaben werden abgelehnt,
-nicht still entfernt. Ein freies Textfeld ist dadurch kein Secret-Scanner.
+`createCommonConfiguration(templateId, id)` copies a trusted template.
+`migrateCommonConfiguration(legacy)` first compiles using the old contract;
+subsequent export remains byte-identical, including folder changes in v2.
+`readCommonConfiguration` checks structure, provenance, inputs and object identities.
+Incomplete domain information may remain for further editing.
 
-`assessCommonConfiguration` liefert Konfigurationsfehler, Warnungen, bekannte
-Ausführungsgrenzen und benötigte Phasen. Ein leeres Ergebnis ist **keine**
-Deployment-Freigabe. Vor produktiver v3-Ausführung fehlen noch die Runner-Anbindung,
-Credential-Bindings, vollständige fachliche Prüfungen, Provider-/Modultests und
-serverseitig durchgesetzte Runner-Capabilities. Der bestehende Plan-Endpunkt nimmt
-weiterhin ausschließlich v1/v2 an. Kunden-Apply bleibt separat freigabepflichtig.
+Internally, the feature groups contain the explicit engine inputs. The interface
+should build domain-specific editors on top, not a generic Terraform variable form.
+`commonProjects` provides Public, Corporate and Sandbox in the same view with
+target folder and area reference. `commonNetworkAreas` provides single and regional
+areas without rewriting their sources when reading.
 
-## Prüfungen
+`setCommonInput` changes values, **not** a collection's identity list.
+Collection changes require explicit operations with a consistent identity list.
+`renameCommonProject` preserves the UI identity and updates namespace references;
+Terraform addresses still change. The future UI must request confirmation
+for this. `removeCommonNetworkArea` blocks existing project/service references.
+`editor-document.ts` adds project creation/removal, safe collection changes
+and the compatible persistence/editor bridge.
 
-Aus `landing-zone-configurator/app` mit Node 24 und installiertem `node_modules`:
+`compileCommonConfiguration` / `exportCommonTfvars` preserve omitted values,
+explicit `null` and explicit configuration. `effectiveInput` supplies only
+display/validation values with defaults; this projection must not be exported back.
+Regional `map(any)` inputs are accepted only for fields actually wired in the root;
+their defaults are not indiscriminately taken from the single-region model.
+Unknown attributes and declared secret inputs are rejected,
+not silently removed. This does not make a free-text field a secret scanner.
+
+`assessCommonConfiguration` returns configuration errors, warnings, known
+execution limits and required phases. An empty result is **not**
+deployment approval. Production v3 execution still lacks Runner integration,
+credential bindings, complete domain checks, provider/module tests and
+server-enforced Runner capabilities. The existing Plan endpoint
+continues to accept v1/v2 only. Customer Apply remains subject to separate approval.
+
+<a id="prüfungen"></a>
+
+## Checks
+
+From `landing-zone-configurator/app` with Node 24 and `node_modules` installed:
 
 ```sh
 npm run check
@@ -62,21 +70,23 @@ tofu -chdir=../.local/common-contract init -backend=false -input=false -no-color
 tofu -chdir=../.local/common-contract test -no-color
 ```
 
-Die zehn nativen Tests prüfen den unveränderten Root-Variablenvertrag ohne Provider,
-Backend oder Cloud-Zugriff: acht Vorlagen plus zwei Object-Lock-Defaultfälle.
-Standalone erwartet gezielt den bekannten Validierungsfehler aus Issue #84.
-Dies sind keine vollständigen Modul-/Ressourcenpläne. Der native HCL-Roundtrip in
-`tools/hcl-adapter` vergleicht zusätzlich alle exportierten Werte semantisch.
+The ten native tests check the unchanged root variable contract without providers,
+backend or cloud access: eight templates plus two Object Lock default cases.
+Standalone specifically expects the known validation error from issue #84.
+These are not complete module/resource plans. The native HCL roundtrip in
+`tools/hcl-adapter` additionally compares all exported values semantically.
 
-## Gemeinsamer Editor und Speicherung
+<a id="gemeinsamer-editor-und-speicherung"></a>
 
-`readConfigurationRecord` akzeptiert v1/v2/v3; `saveEditorDraft` prüft den jeweiligen
-Vertrag. Die GitHub-API speichert JSON und tfvars atomar und behält die vorhandenen
-Konflikt-/Pfadprüfungen bei. `prepareSnapshot` lehnt v3 vor der Verwendung von
-Deployment-Credentials serverseitig mit `configuration_execution_not_supported` ab.
-Dies begrenzt die Ausführung, nicht die Bearbeitung und Speicherung.
+## Common editor and persistence
 
-Der Feldkatalog kennzeichnet Formularfelder, noch fehlende geschützte Bindings und
-die wirkungslose Ordnerbeschreibung getrennt. Deutsche Fachbezeichnungen sind
-für alle nicht-sensiblen Schemafelder per Test vorgeschrieben. UI-Anleitungen und
-Abnahme: [gemeinsamer Editor](../../../docs/common-editor.md).
+`readConfigurationRecord` accepts v1/v2/v3; `saveEditorDraft` checks the respective
+contract. The GitHub API stores JSON and tfvars atomically and retains the existing
+conflict/path checks. Before using deployment credentials, `prepareSnapshot`
+rejects v3 server-side with `configuration_execution_not_supported`.
+This limits execution, not editing and persistence.
+
+The field catalogue distinguishes form fields, missing protected bindings and
+the ineffective folder description. Tests require German domain labels
+for all non-sensitive schema fields. UI instructions and
+acceptance: [common editor](../../../docs/common-editor.md).

@@ -1,3 +1,7 @@
+# landing-zone
+
+[English](README.md) | [Deutsch](README.de.md)
+
 Public projects can opt into a local project network with `network_enabled = true`.
 Corporate projects retain their routed network and SNA integration. Omitting the
 option preserves existing public projects without a network. The optional

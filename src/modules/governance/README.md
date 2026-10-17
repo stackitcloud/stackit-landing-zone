@@ -1,3 +1,9 @@
+# governance
+
+[English](README.md) | [Deutsch](README.de.md)
+
+The generated technical reference below documents this module.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 

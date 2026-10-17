@@ -1,467 +1,483 @@
-# Gemeinsamer Editor
-
-Stand: 2026-10-15. Veröffentlichung auf `lzc-dev` ausschließlich vom Feature-Branch.
-
-## Bedienung
-
-Eine gültige App-Sitzung und ein aktueller STACKIT-Identitätsnachweis sind
-getrennt: Die App-Sitzung bleibt acht Stunden bestehen, während der
-STACKIT-Nachweis früher ablaufen kann. Name und **Abmelden** bedeuten weiterhin,
-dass du im Configurator angemeldet bist. Falls ein aktueller Nachweis fehlt,
-bietet die Kopfzeile **STACKIT bestätigen** an, nicht noch einmal **Mit STACKIT
-anmelden**. Der Dialog erklärt, dass diese Bestätigung für geschützte
-STACKIT-Aktionen nötig ist. Das Auslaufen des Nachweises meldet dich nicht aus
-der App ab; es verlängert aber auch keine Cloud-Berechtigung. Ohne App-Sitzung
-bleibt **Mit STACKIT anmelden** die eigentliche Anmeldung.
-
-1. Eine beliebige Vorlage öffnen und **Konfiguration erstellen** wählen.
-2. **Grundlagen → Ordner → Netzwerk → Plattform → Projekte → Betrieb → Prüfen**.
-3. Einstellungen nur bei Bedarf aufklappen. **Accelerator-Standard verwenden** entfernt die
-   eigene Einstellung und nutzt den Engine-Standard, nicht den Vorlagenwert. Der Export enthält weiterhin nur explizite Angaben;
-   angezeigte Standardwerte werden nicht beim bloßen Öffnen materialisiert.
-4. In **Projekte** Public, Corporate oder Sandbox hinzufügen. Public/Corporate
-   können nach Bestätigung gewechselt werden. Der Zielordner wird angezeigt.
-   Corporate benötigt eine passende Region und einen vorhandenen Bereich.
-   Sandboxes haben einen eigenen Accelerator-Vertrag; ein Wechsel zu einer
-   Landing Zone erfolgt durch bewusstes Neuanlegen und Entfernen.
-5. **Prüfen** zeigt bekannte Konfigurationsfehler und getrennte Ausführungsgrenzen.
-   Anschließend tfvars herunterladen oder JSON und tfvars gemeinsam im Fork speichern.
-
-Einzelbereiche aus alten Hub-&-Spoke-Vorlagen können mit **Mehrere Netzwerkbereiche
-verwalten** ohne Änderung der `default`-Referenz in eine Bereichsliste überführt
-werden. Bereiche mit Projekt-, DNS-, Firewall-, VPN- oder Clusterreferenzen lassen
-sich nicht versehentlich entfernen. Organisationsbaum und Netzwerkzuordnung
-verwenden dieselben Daten; ein Hub-Projekt wird je Netzwerkbereich gezeigt.
-
-Neue Standalone-Entwürfe markieren das Beispielprojekt ausdrücklich als Public
-(Korrektur für #84). Der verlustfreie Import und bestehende Dokumente bleiben
-unverändert; in einem älteren betroffenen Entwurf die Projektart ausdrücklich auf
-**Public** setzen. Eigene Organisations-ID und Verantwortlichen-E-Mail-Adressen
-ersetzen weiterhin die Platzhalter der Vorlage.
-
-Unter **Plattform** stehen Git-Service, Plattform-Kubernetes, zentrales Observability
-und Audit-Protokollierung. Kubernetes wird mit einer leeren Clusterliste deaktiviert,
-Git-Service mit `null`. Das Entfernen konfigurierter Dienste verlangt eine Bestätigung;
-verbleibende Namespace-Abhängigkeiten werden bei der Konfigurationsprüfung gemeldet.
-Observability ist ein eigener Dienst. Die Audit-Protokollierung erstellt einen Telemetry
-Router mit Zielen STACKIT Logs und S3-Archiv. Der Management-Archiv-Bucket existiert
-auch bei deaktivierter Audit-Protokollierung.
-
-Im Konfigurations-Chat zeigt der Änderungsvorschlag strukturierte Werte mit
-Fachbezeichnungen und ihren Werten, beispielsweise **Aufbewahrung (Tage): 90**
-für Audit-Protokollierung. Das gilt auch für Ausgangswerte, verschachtelte Objekte,
-Listen und den Konfliktdialog. Leere Listen (`[]`) und Objekte (`{}`) bleiben von
-**Nicht gesetzt** unterscheidbar. Der Hinweis **Vollständiger Ersatz** bedeutet,
-dass die gesamte vorgeschlagene Einstellung übernommen wird, nicht nur einzelne
-Unterfelder. Auswahl, ausdrückliche Übernahme und separates Speichern bleiben
-unverändert; eine Vorschau ändert weder die Konfiguration noch Cloud-Ressourcen.
-
-### Assistant und Application-Templates (Dev-Release vom 2026-10-15)
-
-Neue Template-Vorschläge müssen Name, Art, Region und Einstellungen zusammen
-enthalten. Bestehende Templates bleiben partiell änderbar. Der Assistant erhält
-für Plattform-Entwürfe vorhandene Netzwerkbereichsschlüssel und Regionen, keine
-Cloud-Ressourcenkennungen. Template-Entscheidungen referenzieren eine vorhandene
-Benutzernachricht; deren Originaltext stellt der Server bereit.
-Der daraus abgeleitete Einstellungsumfang begrenzt das geschlossene
-Modell-Ausgabeschema: Eine reine Netzwerkanfrage bietet keine Observability-,
-Secrets-Manager-, Namespace-Service- oder Parameter-Policy-Einstellungen an.
-Explizit angeforderte zusätzliche Einstellungen bleiben unterstützt; der volle
-Import-, Speicher- und Runtime-Vertrag wird nicht eingeschränkt.
-Der Vorschlagsvergleich im Web-UI liest Templates aus derselben
-ID-freien, nach stabilen Schlüsseln indizierten Projektion wie das Backend,
-nicht als vermeintliche Terraform-Eingabe. Übernahme aktualisiert den lokalen
-Entwurf; erst ausdrückliches Speichern persistiert die Templates.
-Ungültige erzeugte Template-Strukturen werden als fehlgeschlagener
-Assistant-Vorschlag gemeldet, nicht als Zugangsdaten im Benutzertext.
-Gespeicherter Chat und Konfiguration bleiben bei einer Ablehnung unverändert.
-
-Der Assistant unterscheidet anhand der referenzierten Benutzeranfrage zwischen
-Ergänzungen, Korrekturen und einem gewünschten vollständigen Satz von Templates
-oder DNS-Zonen. Eine Definition „Corporate und Public, keine Sandbox“ ist eine
-Satzdefinition, nicht automatisch eine Ergänzung neben den Startbeispielen.
-Ein ausdrücklich zusätzliches Template bzw. eine zusätzliche Zone bleibt additiv.
-DNS-Korrekturen verwenden vorhandene stabile Zonenschlüssel; bei mehrdeutigen
-Zielen ist eine Rückfrage erforderlich.
-Bei einem Satzersatz zeigt die Vorschlagsliste jeden entfernten Eintrag mit
-„Eintrag entfernen“ und eigenem Auswahlfeld. Abgewählte Einträge sowie unabhängige,
-zwischenzeitliche Ergänzungen bleiben erhalten. Zwischenzeitliche Änderungen
-an einem ausgewählten Eintrag benötigen weiterhin Konfliktbestätigung.
-Beibehaltene Templates behalten ihre IDs und nicht angeforderten Einstellungen.
-Restvorschläge werden nach einer Teilübernahme aus dem aktuellen Kandidaten
-zusammengesetzt. Bereits übernommene Einträge bleiben auch bei einer späteren
-Übernahme der verbliebenen Löschungen erhalten, sowohl im lokalen Vorschaupfad
-als auch beim direkten, revisionsgeprüften Speichern über die API.
-Keine dieser Änderungen speichert oder löscht automatisch Kundenkonfigurationen.
-Die Nachbesserungen sind als Quelle `045eeafb9813e542f59062139d386b819a3792df`
-committed, gepusht und über den erfolgreichen
-[Dev-Release 38782981970](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38782981970)
-veröffentlicht. Die Freigabe erfolgte nach den normalen geschützten Dev-Gates.
-Die lokale Regression besteht aus 718 bestandenen Unit-Tests (57 übersprungen),
-51 isolierten PostgreSQL-Plan-/Broker-Tests, 53 PostgreSQL-Integrationstests und
-302 Desktop-/Mobil-Browsertests.
-Typprüfung, Build und generierte Assistant-Verträge sind geprüft. Dies ersetzt
-keine erneute echte Modell- oder Kunden-Cloud-Abnahme; es wurde kein Kunden-Plan
-oder Apply gestartet.
-
-Der endgültige Release bestand auch in CI 718 Unit-, 53 Datenbank- und
-302 Browsertests sowie die native Runner-/Image-/Archiv-Qualifikation.
-Runner-Staging mit Image-/Engine-Prüfung, Migrationen, API-/Web-Deployment,
-Service-Verbindungen, separate Runner-Organisation und Broker-Isolation sowie
-öffentliche Routen sind erfolgreich. Nach dem Deployment entsprechen die tatsächlich
-ausgelieferten JavaScript-/CSS-Dateien bytegenau dem freigegebenen Stand.
-Acht öffentliche Auth-/PKCE-/Callback-/CSRF-Prüfungen sind bestanden. Echte anonyme
-Desktop-/Mobil-Browser zeigen jeweils zehn Name-/Typ-Komponenten, funktionierendes
-Auf-/Zuklappen per Tastatur und Maus sowie überlappungsfreie Vorschauen bei komplett
-geöffneten Projekten, ohne Browserfehler oder Server-Mutationen.
-Ein echter Benutzerlogin, Organisationsnachweis und Kunden-Plan wurden nicht
-automatisiert durchgeführt.
-
-Für den damaligen Release blieb die separate
-[Validate-Configurator-Ausführung 38782981811](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38782981811)
-bei den Standalone-Vertrags- und STACKIT-/GitHub-Operator-Guard-Assertions rot.
-Dieser historische Lauf wird nicht als bestanden gewertet. Die unten dokumentierte
-Dev-Abnahme vom 2026-10-16 enthält die Korrekturen und einen vollständig grünen
-neuen Validierungslauf.
-
-Die echte Modell-Abnahme der Originalanfrage nach Corporate-/Public-Templates
-mit lokalen Netzen ist in drei unabhängigen synthetischen Läufen bestanden:
-zwei benannte Templates, gespeicherte Region, lokale Netze, keine Sandbox,
-keine zusätzlichen Dienste und keine Rückfragen. Corporate verwendet den
-vorhandenen `default`-Netzwerkbereich, auch ohne explizites Key-Override.
-Die Quellenprüfung für Produktpläne, Adressen und IDs bleibt unverändert.
-Die Modellabnahme ist synthetisch und verändert keine Kundenkonfiguration.
-Die Korrekturen sind mit Nutzerfreigabe als `a031273` committed, gepusht und
-über den erfolgreichen [Dev-Release 38710301311](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38710301311)
-veröffentlicht. Öffentliche Hosted-Prüfungen und der Abgleich des ausgelieferten
-UI-Bundles mit diesem Release sind bestanden; die Abnahme führt keine
-Kunden-Cloud-Ressourcen aus.
-
-Auswahlfelder gibt es für Regionen, regionale Netzwerkkennungen, vorhandene
-Netzwerkbereiche, Namespace-Projektkennungen sowie die durch den Accelerator
-festgelegten Audit-Scope-, VPN-Routing-, Secret-Enforcement- und Firewall-Werte.
-Nicht mehr passende importierte Werte bleiben sichtbar und werden nicht automatisch
-ersetzt. Freie Bezeichnungen bleiben Textfelder. Regionale Produktangebote wie
-Maschinentypen, Pläne und Versionen benötigen künftig API-basierte Kataloge; dafür
-werden keine vermeintlich vollständigen statischen Listen vorgetäuscht.
-
-### Template-Übersicht
-
-Application-Templates erscheinen als auswählbare Übersichtskarten mit Namen,
-stabiler Kennung, Art, Region, Zielordner und Netzzuordnung. Nur das ausgewählte
-Template zeigt sein vollständiges Bearbeitungsformular. Neue Templates werden
-direkt ausgewählt; nach Entfernen eines Templates bleibt ein vorhandenes Template
-bearbeitbar. Die Strukturansicht gruppiert dieselben Templates nach Art und
-Zielordner und öffnet beim Auswählen denselben Detailbereich.
-
-Die Netzwerkansicht zeigt Corporate-Templates nur unter dem referenzierten
-Netzwerkbereich ihrer Region; ein fehlendes Key-Override bedeutet weiterhin
-`default`. Public-Templates werden nicht als zentrale Netzwerk-Spokes dargestellt.
-Fehlende SNA- oder Ordnerreferenzen bleiben ausdrücklich sichtbar. Templates
-bleiben Entwürfe für spätere Bestellungen, keine bereits angelegten Projekte.
-Auswählen und Bearbeiten speichern oder deployen nichts automatisch.
-
-Die Übersicht ist mit Nutzerfreigabe als Quelle `9c19327` über den erfolgreichen
-[Dev-Release 38720037784](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38720037784)
-veröffentlicht. Alle 296 Desktop-/Mobil-Browsertests bestanden, einschließlich
-Auswahl, gemeinsamer Strukturvorschau, Hinzufügen, Entfernen und leerem Zustand.
-Die ausgelieferten JavaScript- und CSS-Bundles wurden mit der exakt gebauten
-Quelle abgeglichen. Bestehende Kundenkonfigurationen wurden nicht verändert.
-
-### Komponenten in der Strukturvorschau
-
-Die Strukturvorschau zeigt unter den Plattformprojekten auch deren konfigurierte
-Komponenten, jeweils nur mit Name und Typ: Automatisierungs-Service-Account,
-Secrets Manager, Object-Storage-Buckets,
-Observability, Audit Logs und Telemetry Router, zugeordnete SNA, Netze,
-DNS-Zonen, Firewalls einschließlich eines konfigurierten HA-Partners, VPN-Gateways,
-Git-Service sowie Kubernetes-Cluster und ihre optionalen Dienste.
-Netzwerkkomponenten werden nach Region und Netzwerkbereich dem richtigen Hub
-zugeordnet. SNA erscheinen als logisch zugeordnete Netzwerkbereiche, nicht als
-Aussage über deren tatsächlichen Resource-Manager-Container.
-Deaktivierte Dienste und lediglich referenzierte bestehende DNS-Zonen erscheinen
-nicht als neu bereitzustellende Komponenten. Das Audit-Archiv bleibt entsprechend
-dem Accelerator auch ohne aktivierte Audit-Protokollierung sichtbar.
-Die Vorschau verwendet native Standardwerte ausschließlich zum Anzeigen; sie
-materialisiert diese nicht im Entwurf und liest keine bestehenden Cloud-Ressourcen.
-Projekte mit Komponenten sind zunächst eingeklappt und lassen sich über den Pfeil,
-die gesamte Überschriftszeile oder per Tastatur öffnen und schließen.
-Struktur- und Netzwerkvorschau bleiben im Editor untereinander im normalen
-Dokumentfluss, auch wenn alle Projekte geöffnet sind; kein zweiter Sticky-Bereich
-überdeckt die darunterliegenden Templates.
-
-### Erstbereitstellungspläne
-
-Die generelle Sperre für `audit_logs`, `observability`, `connectivity` und `devops`
-ist durch geprüfte Unterstützung ersetzt. Für Connectivity umfasst diese
-Netzwerkbereiche, DNS, Firewall-/HA-Infrastruktur und VPN-Gateways.
-Das Firewall-Image ist die bereits im Accelerator verwendete, versions- und
-SHA-256-gebundene OPNsense-Datei; der Runner prüft die tatsächlichen Image-Dateien
-und ihre Paketierung. Ein alter Runner ohne passendes Image bleibt ausdrücklich
-gesperrt, statt einen vermeintlich ausführbaren Plan mit `/dev/null` zu erstellen.
-
-Das ist eine Plan-Freigabe, keine automatische Bereitstellung: Firewall-Policies,
-Bootstrap, Appliance-Apply und VPN-Verbindungen mit vorab geteilten Schlüsseln
-benötigen weiterhin ihre gesonderte Ausführungs- bzw. Secret-Binding-Unterstützung.
-Audit-Ziele außerhalb des nachgewiesenen Organisationskontexts bleiben gesperrt.
-Identitäts-/Owner-Nachweise, Mandantentrennung, Snapshot-Prüfung und explizite
-Freigaben bleiben unverändert erforderlich. Die konkreten Grenzen sind im
-[Runner-Vertrag](../runner/README.md) beschrieben.
-
-Vorbereitungen sind unveränderliche Nachweise einschließlich Accelerator-Revision.
-Gespeicherte Konfigurationen sind davon getrennt und bleiben nach einem
-Configurator-Release weiter bearbeitbar und als Quelle neuer Vorbereitungen
-nutzbar. Ein reiner Configurator-Versionswechsel verlangt keine neue Vorbereitung,
-solange deren Accelerator-Vertrag weiterhin zum installierten Runner passt.
-Der behobene Fehler betraf auch frisch erstellte Vorbereitungen: Die Oberfläche
-verwendete noch die Basisrevision, während der Runner bereits den
-Plattformvertrags-Root erwartete. Dafür ist keine Neuerstellung der Konfiguration
-und kein neuer State erforderlich.
-Die Oberfläche zeigt bei einem Runner mit Plattformvertrags-Root eine ausdrücklich
-zu bestätigende Vorbereitung für dessen aktuellen Stand an. Ohne Bestätigung
-bleibt deren Erstellung gesperrt. Passt die Revision einer älteren Vorbereitung
-nicht zum Runner, nennt der Plan-Fehler jetzt diesen Grund und fordert eine neue
-Vorbereitung an, statt nur eine ungültige Konfiguration zu melden. Bestehende
-Vorbereitungen, State-Bindungen und Plan-Nachweise werden dabei nicht umgeschrieben;
-Plan und Apply behalten ihre eigenen Freigaben.
-
-Die Auswahl des aktuellen Accelerator-Stands ist auch für eine Erstbereitstellung
-zulässig; sie setzt keine bereits bereitgestellte Plattform voraus. Ohne
-State-Bindung oder mit einem leeren Standard-State (Version 0) kann eine neue
-Vorbereitung entstehen. Das gilt auch nach einem fehlgeschlagenen ersten Plan.
-Vorhandene Bindungen bleiben erhalten. Ein gesperrter State verhindert den
-Wechsel weiterhin ausdrücklich; ein bereits gespeicherter Standard-State muss
-vor dem Wechsel an sein S3-Backend übernommen werden. Ein ausgewähltes
-S3-Backend ohne lesbaren State erlaubt weiterhin keinen Bootstrap.
-Vorbereitungsfehler benennen State-Sperren, Backend-Konflikte, ungültige
-Anfragen und abgelaufene Sicherheitsbestätigungen getrennt. Unbekannte
-Serverfehler zeigen HTTP-Status und Fehlercode statt einer endlosen
-Aufforderung zum Aktualisieren der Liste.
-
-Der DNS-Zonentyp bezeichnet die Rolle `primary` oder `secondary`, nicht eine
-Sichtbarkeit `public` oder `private`. Die gemeinsame Konfigurationsprüfung
-beanstandet ungültige Typen am konkreten Zonenfeld, auch in regionalen
-Connectivity-Konfigurationen. Der generische Assistant-Vertrag erlaubt dieselben
-DNS-Rollen im Modell-Ausgabeschema und in der serverseitigen Übernahmeprüfung.
-Das gilt auch für vollständige Netzwerkobjekte sowie direkte Feldvorschläge,
-jeweils als Ergänzung oder Ersatz und in beiden Netzwerkmodellen.
-Alte Entwürfe bleiben unverändert ladbar und
-exportierbar; sie werden nicht stillschweigend umgedeutet. Für eine selbst
-verwaltete neue Zone kann der Benutzer den Typ ausdrücklich auf `primary`
-korrigieren. Anschließend speichern und eine neue Vorbereitung für diese
-Revision erstellen; alte Vorbereitungen behalten ihren ursprünglichen Snapshot.
-Diese ergänzende DNS-Validierung ist noch nicht Teil der folgenden Dev-Abnahme.
-
-Bei Plattform-Plan und -Apply übermittelt der Runner während einer laufenden
-OpenTofu-Phase alle zwei Sekunden einen bereinigten Ausgabestand. Die API speichert
-ihn verschlüsselt und liefert ihn bereits während der Ausführung an die
-Ausgabeansicht. Die Übertragungen erfolgen nacheinander; vor Ergebnisbestätigung
-und Aufräumen werden ausstehende Übertragungen abgewartet. Unvollständige letzte
-Zeilen werden erst nach ihrem Abschluss übertragen, damit keine nur teilweise
-geschriebenen Zugangsdaten die Bereinigung umgehen. Nach dem Endstatus sind
-weitere Änderungen des Protokolls gesperrt. „Ausgabe folgen“ steuert weiterhin
-das automatische Scrollen, nicht die Übertragung. Der getrennte
-Application-Runner behält seinen bisherigen einmaligen Abschlussbericht.
-Diese Live-Ausgabekorrektur ist ebenfalls noch nicht veröffentlicht.
-
-Die zugehörige lokale Regression umfasst frische und zuvor fehlgeschlagene
-Erstpläne mit Standard- und S3-Backend bis zum erfolgreichen Plan-Nachweis,
-ohne Apply. Sie prüft unveränderte Konfigurationen, alte Vorbereitungen,
-State-Bindungen und weiterhin gesperrte Zustände. Desktop- und Mobiltests
-decken außerdem die ausdrückliche Auswahl des aktuellen Accelerator-Stands
-ohne vorhandenes S3-Backend sowie konkrete und unbekannte Fehlermeldungen ab.
-**Dev-Abnahme vom 2026-10-16:** Die Nachbesserung ist als unveränderliche Quelle
-`6a5014e7821586a60699bcd52d148f0d56718b8b` über den erfolgreichen
-[Dev-Release 38867967256](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38867967256)
-veröffentlicht. Auch die zugehörige
-[Validate-Configurator-Ausführung 38867967250](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38867967250)
-ist vollständig erfolgreich. Die normale geschützte Dev-Freigabe erfolgte erst
-nach erfolgreicher separater Validierung und erfolgreichem Release-Build.
-Beide Workflows bestanden 718 Unit-Tests (63 im normalen Unit-Lauf übersprungen),
-57 ausdrücklich aktivierte PostgreSQL-Plan-/Broker-Tests, 53 API-Datenbanktests,
-304 Desktop-/Mobiltests und 13 native Template-Vertragsprüfungen. Die separate
-Validierung bestand außerdem alle sechs Infrastruktur-Roots einschließlich
-Formatierung, Validierung und Mock-Plänen. Der Release bestand die native
-Runner-/Provider-/Image-/Archiv-Qualifikation und die tatsächliche
-Cloud-Foundry-Bereitstellung einschließlich Migrationen, Service-Verbindungen,
-separater Runner-Organisation, abgewiesenem Job-Ticket und öffentlichen Routen.
-
-Die ausgelieferten JavaScript-/CSS-Dateien entsprechen bytegenau dem freigegebenen
-Build. Acht öffentliche Auth-/PKCE-/Callback-/CSRF-Prüfungen sind bestanden.
-Echte anonyme Desktop-/Mobil-Browser zeigen jeweils zehn Name-/Typ-Komponenten,
-funktionierendes Auf-/Zuklappen und überlappungsfreie Vorschauen ohne
-Browserfehler oder Server-Mutationen. Die Anmeldung wurde nicht mit einem
-echten Benutzer durchlaufen; ein Organisationsnachweis oder Kunden-Plan/Apply
-wurde nicht ausgeführt. Gespeicherte Kundenkonfigurationen wurden nicht verändert.
-
-Der separate Validierungsworkflow prüft die reale Release-Konfiguration im
-Application-Job nach dem API-Build. Der Infrastruktur-Job benötigt weiterhin
-keine Anwendungs-Abhängigkeiten. Der vorherige STACKIT-Fehler entstand durch
-den dort fehlenden kompilierten Validator, nicht durch eine GitHub-Pflicht.
-Der native Standalone-Test erwartet für das inzwischen ausdrücklich als Public
-markierte Beispiel einen erfolgreichen Vertrag. Separate Negativtests prüfen
-weiterhin, dass fehlendes oder ausdrücklich wahres `corporate` ohne zentrale
-Connectivity abgewiesen wird; der native Standardwert bleibt unverändert.
-Validierung und Release führen beide `npm run test:common-contract` und
-`npm run test:platform-database` aus. Der zweite Befehl aktiviert die isolierte
-PostgreSQL-Broker-Suite ausdrücklich, die im normalen Unit-Lauf übersprungen
-wird. Dadurch prüfen auch kommende Releases die Erstbereitstellung und die
-nativen Template-Verträge, nicht nur bereits vorhandenen Plattform-State.
-Die API-Datenbankintegration verwendet in beiden Workflows dieselben zwei
-Worker und 30 Sekunden Test-Timeout. Das bisherige 5-Sekunden-Limit im
-Validierungsworkflow brach den mehrstufigen Vertrags-/Identitätsnachweis ab,
-bevor dessen Aufräum- und Wiederherstellungsschritte abgeschlossen waren.
-
-Die gemeinsame Release-Abnahme bestand 710 Unit-Tests (57 im Unit-Lauf
-übersprungen), 51 PostgreSQL-Broker-Tests und 300 Desktop-/Mobil-Browsertests
-sowie Typprüfung, Build und 19 gezielte Release-/Staging-/Runner-Evidence-Tests.
-Native Vertrags-, Offline-Provider- und echte Image-/Archiv-Prüfungen
-qualifizierten die Runner-Unterstützung zusätzlich.
-Es gab keine Kunden-Cloud-Plans, Applies oder Destroys.
-
-Komponenten-Vorschau, Plan-Unterstützung und die eindeutige STACKIT-Bestätigung
-sind mit Nutzerfreigabe als Quelle `0cee76f` über den erfolgreichen
-[Dev-Release 38769119929](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38769119929)
-veröffentlicht. Auf CF bestanden Image-SHA-Prüfung, native Runner-Checks,
-Migrationen, Dienstverbindungen, Runner-Isolation und die kanonischen Routenprüfungen.
-Die ausgelieferten JS-/CSS-Dateien stimmen bytegleich mit der gebauten Quelle
-überein. Acht zusätzliche Live-Auth-/PKCE-Prüfungen und zwei echte anonyme
-Desktop-/Mobil-Browserläufe bestanden; die Vorschau zeigte jeweils nur Name
-und Typ, ohne Browserfehler, horizontalen Überlauf oder Server-Mutationen.
-
-Das große Image fehlt nur im Hosted-Upload und wird beim Staging SHA-geprüft
-ohne zweite Dateikopie ins unveränderliche Droplet verschoben. Dieses ist der
-dauerhafte CF-Cache; ein redundantes großes Buildpack-Cache-Archiv entfällt.
-Es gibt keinen Download pro Nutzer oder Plan. Web/API verwenden 6 GiB Disk
-für die größere Inspektionskopie und Staging-Komprimierung; das qualifizierte
-4-GiB-Budget der isolierten Runner-Jobs und Tasks bleibt unverändert.
-Paketidentität und bytegleiche Wiederherstellung beider Archive sind geprüft.
-Details stehen unter
-[CF-Staging und Cache](../deploy/cloud-foundry/README.md#image-staging-and-caching).
-Ein persönlicher STACKIT-Login, Live-Owner-Nachweis und Kunden-Cloud-Plan wurden
-dadurch nicht ausgeführt oder vorgetäuscht.
-
-Der separate
-[Validate-Configurator-Lauf 38769119849](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38769119849)
-bleibt an den bereits bekannten Standalone-Template-Vertrags- und
-STACKIT/GitHub-Operator-Guard-Assertions rot. Der erfolgreiche Release-Lauf
-und die Live-Abnahme sind davon getrennt; nicht sämtliche Repository-CI ist grün.
-
-## Kompatibilität und Grenzen
-
-- Bestehende v1/v2-Dokumente bleiben im bisherigen Editor nutzbar. **Zum gemeinsamen
-  Editor wechseln** ist eine ausdrückliche Migration; beim Wechsel werden die
-  bisherigen Engine-Werte erhalten. Bestehende Deployment-Vorbereitungen bleiben unverändert.
-- Der bisherige Standalone-Editor kann auf der Standalone-Vorschauseite weiterhin
-  ausgewählt werden, einschließlich des bisherigen persönlichen Plan-Ablaufs.
-- v3 wird im Fork und Browser-Arbeitsstand unterstützt. Vorlagen-Hashes,
-  Mandanten-/Kontotrennung, Schreibbasis, Konfliktprüfung und atomarer Export bleiben erhalten.
-- v3-Deployment-Vorbereitungen sind **serverseitig gesperrt**. Runner-Anbindung und
-  geschützte zusätzliche Credential-Bindings werden separat abgenommen.
-- Keine Secret-Felder in den Konfigurationsformularen. VPN-Schlüssel, Firewall-
-  Passwörter/API-Secrets und Kubeconfigs dürfen nicht in Freitextfelder eingefügt werden.
-- Die wirkungslose Ordnerbeschreibung wird nicht als bearbeitbares Feature angeboten.
-- Formular- und Typabdeckung sind keine Provider-Validierung. Plan/Refresh,
-  Dienstverfügbarkeit, Berechtigungen und jede Modul-Kombination benötigen weitere
-  Ausführungsabnahme. Grenzen #37/#65/#80 bleiben sichtbar.
-- Kein Kunden-Apply ohne ausdrückliche neue Freigabe, kein Destroy.
-
-## Prüfung
-
-- [x] Fachbezeichnungen für sämtliche nicht-sensiblen Schemafelder geprüft.
-- [x] Projektarten, Referenzen und Bereichsnormalisierung als Domain-Tests.
-- [x] v3-JSON/tfvars atomar gespeichert; Deployment-Guard im Backend getestet.
-- [x] Neuer Editor, Typwechsel, Navigation und Bereichsreferenzen im Browser getestet.
-- [x] v3-Fork speichern, Export, Wiederaufnahme und gesperrte Vorbereitung getestet.
-- [x] Legacy-Editor, GitHub-Anmeldung, Fork-Konflikte, Credentials und Plan-Ablauf regressionsgeprüft.
-- [x] Release auf lzc-dev und Live-Verbindungstests abgenommen.
-
-Manuelle Prüfung nach Veröffentlichung: Hub-&-Spoke und Multi-Region öffnen,
-Projektart/Bereich wechseln, Entwurf im eigenen Fork speichern, erneut öffnen und
-Browser neu laden. Zusätzliche optionale Dienste unter Plattform/Betrieb prüfen.
-
-## Live-Abnahme
-
-Code `527bd9582f95d3cf845cfaf242f9022e1495fad8` veröffentlicht:
-
-- [Validate Configurator 36745965890](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36745965890): erfolgreich.
-- [Configurator Release 36745965953](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36745965953): erfolgreich.
-- 95 Anwendungstests und 20 Desktop-/Mobil-Browserprüfungen, einschließlich v3-Speicherung und Legacy-Kompatibilität.
-- Native HCL-/OpenTofu-Vertragstests und Infrastrukturprüfung erfolgreich.
-- CF-Netzwerk, PostgreSQL/Secrets-Manager-Verbindungen, isolierter Runner und öffentliche Routen erfolgreich geprüft.
-- Direkter Live-Browsercheck: Multi-Region-Vorlage öffnen, neuen Editor starten, Projektliste/Netzwerkansicht auf Desktop und Mobilgerät prüfen; keine Seitenfehler oder horizontales Überlaufen.
-- Öffentliche JavaScript-/CSS-Dateien per SHA-256 mit dem getesteten Build abgeglichen; `/healthz` liefert `ok`, Sitzung ohne Anmeldung `401`.
-
-[Live-Anwendung](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud).
-Keine Kunden-Konfiguration angewendet und keine Änderung nach `main` übernommen.
-
-
-### Live-Nachbesserung: Plattformdienste und Voreinstellungen
-
-Code `10a6ec87f0d0fc9d32d4b9699bd8579fb651683c` veröffentlicht:
-
-- [Validate Configurator 36752620342](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36752620342): erfolgreich.
-- [Configurator Release 36752620332](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36752620332): erfolgreich.
-- 96 Anwendungstests, 22 Desktop-/Mobil-Browserfälle und 11 native OpenTofu-Variablentests erfolgreich.
-- Live-Build entspricht dem lokal geprüften Bundle; Gesundheitsprüfung `ok`, anonyme Sitzung `401`, keine Browserfehler.
-- Live geprüft: neue Standalone-Konfiguration ist Public; Region ist eine Auswahl; Plattformdienste und Kubernetes-Deaktivierung vorhanden. Desktop-/Mobilansicht ohne horizontales Überlaufen, mobile Plattformansicht visuell geprüft.
-- Verbindungstests zu PostgreSQL/Secrets Manager und Runner-Trennung erfolgreich.
-
-Manuell: App neu laden, einen **neuen** Standalone-Entwurf öffnen, Organisations-ID
-und eigene Verantwortlichen-E-Mail-Adressen setzen, unter Projekte Public prüfen
-und speichern/exportieren. In einem vorhandenen betroffenen Entwurf Public einmal
-ausdrücklich wählen. Unter Plattform Kubernetes konfigurieren/deaktivieren; unter
-Netzwerk regionale Kennungen und Bereichsverweise auswählen.
-
-
-## Nächster Bedienstand: Komponenten statt vollständiger Feldliste
-
-Die [verbindlichen Designprinzipien](editor-design-principles.md) steuern die weitere
-Entwicklung. Die erste Umsetzung betrifft Plattform- und Kubernetes-Namespace-Dienste:
-Inaktive Komponenten sind über **Komponente hinzufügen** zugänglich, aktive
-Komponenten bleiben sichtbar. Das Öffnen und Schließen des Katalogs verändert den
-Export nicht. Eine leere Clusterliste ist inaktiv; ein nicht-null gesetzter
-Observability-Konfigurationsblock aktiviert dagegen den Dienst auch mit Defaults.
-
-Public-/Corporate-Projektkarten enthalten direkte Schalter für Secrets Manager und
-Observability. Sandboxes besitzen diese Root-Optionen nicht. Netzwerkbezeichnungen
-benennen Connectivity und SNA ausdrücklich; ein Hinweis erläutert automatisch
-erzeugte Routing-Tabellen. Ein vereinheitlichter Regions-/SNA-Editor und der geführte
-VPN-Ablauf sind noch offen und im Designplan separat aufgeführt.
-
-Dieser Abschnitt beschreibt den Arbeitsstand; die oben protokollierten Live-Abnahmen
-beziehen sich auf ihre ausdrücklich genannten Commits.
-
-
-## Regions-/SNA-Ansicht und VPN-Assistent (Arbeitsstand 2026-10-01)
-
-Netzwerk zeigt Connectivity als Regionskarten mit SNAs und optionalen DNS-,
-Firewall- und VPN-Komponenten. Bestehendes `connectivity` bleibt im bisherigen
-Engine-Format; neue leere Konfigurationen können explizite Regionen hinzufügen.
-Für bestehende Standardregion-Konfigurationen gibt es keine automatische Migration
-auf regionale Module. Beim Öffnen bleibt der Export unverändert.
-
-Der [VPN-Assistent](vpn-configuration-scope.md) bildet den Accelerator-Vertrag ab
-und prüft grundlegende Pflichtangaben. Geschützte Schlüssel, Live-Kataloge und
-Deployment-Ausführung fehlen weiterhin. Die neue [Self-Service-Architektur](platform-application-architecture.md)
-ist geplant; Rollen und Berechtigungen wurden dadurch noch nicht geändert.
-
-
-## Live-Abnahme 2026-10-01: Regionen, SNAs und VPN
-
-Code `78d8f7c6debeba29330fa2699d617da17c3ba3be` auf lzc-dev veröffentlicht.
-
-- [Release 36830339767](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36830339767): erfolgreich, einschließlich PostgreSQL-/Secrets-Manager-Verbindungstests und Runner-Prüfung.
-- [Validate 36830339847](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36830339847): erfolgreich.
-- Release umfasst 97 Anwendungstests und 24 Desktop-/Mobil-Browserfälle.
-- Live-Bundle `/assets/index-BjLAVHUk.js` entspricht dem geprüften Editor-Release.
-- Direkter Gast-Browsercheck: bestehende Vorlagen/Projektansicht, Komponenten hinzufügen, Region eu01 hinzufügen, STACKIT VPN öffnen, Verbindung mit zwei Tunnelfeldern konfigurieren.
-- Gesundheit `ok`, anonyme Sitzung `401`, keine Browserfehler und kein horizontales Überlaufen auf Mobilgerät. Keine Kundenressourcen angelegt.
-
-Manuelle Abnahme: vorhandene Konfiguration öffnen und unverändert speichern; neue
-Connectivity-Region/SNA konfigurieren; optionales VPN hinzufügen und dessen Umfang,
-Pflichtangaben und Tunnel-Einstellungen prüfen. VPN-Ausführung bleibt gesperrt.
-
-Der anschließend entstandene separate Application-Root und sein Compiler sind
-ein lokaler bzw. im Feature-Branch prüfbarer Prototyp, kein Bestandteil der
-aktivierten Self-Service-Oberfläche.
+<a id="gemeinsamer-editor"></a>
+# Common editor
+
+[English](common-editor.md) | [Deutsch](common-editor.de.md)
+
+As of 2026-10-15. Publication on `lzc-dev` exclusively from the feature branch.
+
+<a id="bedienung"></a>
+## Usage
+
+A valid app session and current STACKIT identity proof are
+separate: the app session lasts eight hours, while
+STACKIT proof can expire earlier. Name and **Sign out** still mean
+you are signed in to the Configurator. If current proof is missing,
+the header offers **Confirm STACKIT**, not another **Sign in with STACKIT**.
+The dialog explains that confirmation is needed for protected
+STACKIT actions. Proof expiry does not sign you out of the app;
+it also does not extend any cloud permission. Without an app session,
+**Sign in with STACKIT** remains the actual login.
+
+1. Open any template and choose **Create configuration**.
+2. **Foundations → Folders → Network → Platform → Projects → Operations → Review**.
+3. Expand settings only when needed. **Use Accelerator default** removes the
+   custom setting and uses the engine default, not the template value. Export still contains only explicit inputs;
+   displayed defaults are not materialized merely on opening.
+4. Under **Projects**, add Public, Corporate or Sandbox. Public/Corporate
+   can be switched after confirmation. The target folder is shown.
+   Corporate needs a matching region and an existing area.
+   Sandboxes have their own Accelerator contract; switching to a
+   Landing Zone requires deliberate recreation and removal.
+5. **Review** shows known configuration errors and separate execution limitations.
+   Then download tfvars or save JSON and tfvars together to a fork.
+
+Single areas from old Hub & Spoke templates can be converted to an area list
+with **Manage multiple network areas** without changing the `default` reference.
+Areas with project, DNS, firewall, VPN or cluster references cannot
+be removed accidentally. Organization tree and network assignment
+use the same data; one hub project is shown per network area.
+
+New Standalone drafts explicitly mark the example project as Public
+(correction for #84). Lossless import and existing documents remain
+unchanged; explicitly set the project kind to **Public** in an older affected draft.
+Replace template placeholders with your own organization ID and owner email addresses
+as before.
+
+**Platform** contains Git service, platform Kubernetes, central Observability
+and audit logging. Kubernetes is disabled with an empty cluster list,
+Git service with `null`. Removing configured services requires confirmation;
+remaining namespace dependencies are reported during configuration validation.
+Observability is a separate service. Audit logging creates a Telemetry
+Router targeting STACKIT Logs and an S3 archive. The management archive bucket exists
+even with audit logging disabled.
+
+In configuration chat, the change proposal shows structured values with
+domain labels and their values, for example **Retention (days): 90**
+for audit logging. This also applies to original values, nested objects,
+lists and the conflict dialog. Empty lists (`[]`) and objects (`{}`) remain
+distinguishable from **Unset**. The **Complete replacement** notice means
+the entire proposed setting is adopted, not just individual
+subfields. Selection, explicit acceptance and separate saving remain
+unchanged; a preview changes neither configuration nor cloud resources.
+
+<a id="assistant-und-application-templates-dev-release-vom-2026-10-15"></a>
+### Assistant and Application templates (dev release of 2026-10-15)
+
+New template proposals must contain name, kind, region and settings
+together. Existing templates remain partially editable. For platform drafts,
+the Assistant receives existing network-area keys and regions, not
+cloud resource identifiers. Template decisions reference an existing
+user message; the server supplies its original text.
+The resulting settings scope bounds the closed
+model output schema: a network-only request offers no Observability,
+Secrets Manager, namespace-service or parameter-policy settings.
+Explicitly requested additional settings remain supported; the full
+import, storage and runtime contract is not restricted.
+The proposal comparison in the web UI reads templates from the same
+ID-free projection indexed by stable keys as the backend,
+not as supposed Terraform input. Acceptance updates the local
+draft; only explicit saving persists templates.
+Invalid generated template structures are reported as failed
+Assistant proposals, not credentials in user text.
+Saved chat and configuration remain unchanged on rejection.
+
+Using the referenced user request, the Assistant distinguishes
+additions, corrections and a desired complete set of templates
+or DNS zones. A definition “Corporate and Public, no Sandbox” defines a set,
+not automatically an addition alongside initial examples.
+An explicitly additional template or zone remains additive.
+DNS corrections use existing stable zone keys; ambiguous
+targets require clarification.
+On set replacement, the proposal list shows every removed entry with
+“Remove entry” and its own checkbox. Deselected entries and independent
+intervening additions remain. Intervening changes
+to a selected entry still require conflict confirmation.
+Retained templates keep their IDs and unrequested settings.
+Remaining proposals after partial acceptance are assembled from the current candidate.
+Already accepted entries survive later
+acceptance of remaining deletions, both in the local preview path
+and direct revision-checked saving through the API.
+None of these changes automatically saves or deletes customer configurations.
+The improvements were committed and pushed as source `045eeafb9813e542f59062139d386b819a3792df`
+and published through successful
+[dev release 38782981970](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38782981970).
+Approval followed normal protected dev gates.
+Local regression consists of 718 passing unit tests (57 skipped),
+51 isolated PostgreSQL Plan/broker tests, 53 PostgreSQL integration tests and
+302 desktop/mobile browser tests.
+Type checking, build and generated Assistant contracts are checked. This replaces
+no fresh real-model or customer-cloud acceptance; no customer Plan
+or Apply was started.
+
+The final release also passed 718 unit, 53 database and
+302 browser tests in CI and native Runner/image/archive qualification.
+Runner staging with image/engine checks, migrations, API/web deployment,
+service connections, separate Runner organization and broker isolation, and
+public routes are successful. After deployment, actually served
+JavaScript/CSS files match the approved revision byte-for-byte.
+Eight public auth/PKCE/callback/CSRF checks passed. Real anonymous
+desktop/mobile browsers each show ten name/type components, working
+keyboard/mouse expand/collapse and overlap-free previews with all
+projects open, without browser errors or server mutations.
+A real user login, organization proof and customer Plan were not
+performed automatically.
+
+For that release, the separate
+[Validate Configurator run 38782981811](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38782981811)
+remained red on Standalone contract and STACKIT/GitHub operator-guard assertions.
+This historical run is not counted as passing. The dev acceptance of
+2026-10-16 documented below includes corrections and a fully green
+new validation run.
+
+Real-model acceptance of the original request for Corporate/Public templates
+with local networks passed in three independent synthetic runs:
+two named templates, saved region, local networks, no Sandbox,
+no extra services and no follow-up questions. Corporate uses the
+existing `default` network area, even without an explicit key override.
+Source verification for product plans, addresses and IDs remains unchanged.
+Model acceptance is synthetic and changes no customer configuration.
+With user approval, corrections were committed and pushed as `a031273` and
+published through successful [dev release 38710301311](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38710301311).
+Public hosted checks and comparison of the served
+UI bundle with this release passed; acceptance executes no
+customer cloud resources.
+
+Selection fields exist for regions, regional network identifiers, existing
+network areas, namespace project identifiers and the Accelerator-defined
+audit-scope, VPN-routing, secret-enforcement and firewall values.
+Imported values that no longer match remain visible and are not automatically
+replaced. Free-form labels remain text fields. Regional product offerings such as
+machine types, plans and versions need API-based catalogues in future;
+no supposedly complete static lists are presented.
+
+<a id="template-übersicht"></a>
+### Template overview
+
+Application templates appear as selectable overview cards with name,
+stable identifier, kind, region, target folder and network assignment. Only the selected
+template shows its complete edit form. New templates are
+selected immediately; after removing a template, an existing template remains
+editable. The structure view groups the same templates by kind and
+target folder and opens the same detail area on selection.
+
+The network view shows Corporate templates only under the referenced
+network area of their region; a missing key override still means
+`default`. Public templates are not shown as central network spokes.
+Missing SNA or folder references remain explicit. Templates
+remain drafts for later orders, not already created projects.
+Selection and editing save or deploy nothing automatically.
+
+With user approval, the overview was published as source `9c19327` through successful
+[dev release 38720037784](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38720037784).
+All 296 desktop/mobile browser tests passed, including
+selection, shared structure preview, adding, removing and empty state.
+Served JavaScript and CSS bundles were compared with the exact built
+source. Existing customer configurations were not changed.
+
+<a id="komponenten-in-der-strukturvorschau"></a>
+### Components in the structure preview
+
+The structure preview also shows configured components under platform projects,
+each with name and type only: automation service account,
+Secrets Manager, Object Storage buckets,
+Observability, Audit Logs and Telemetry Router, assigned SNA, networks,
+DNS zones, firewalls including a configured HA partner, VPN gateways,
+Git service, Kubernetes clusters and their optional services.
+Network components are assigned to the correct hub by region and network area.
+SNAs appear as logically assigned network areas, not as
+a statement about their actual Resource Manager container.
+Disabled services and merely referenced existing DNS zones do not appear
+as components to be newly provisioned. The audit archive remains visible,
+as in the Accelerator, even without enabled audit logging.
+The preview uses native defaults only for display; it
+does not materialize them in the draft or read existing cloud resources.
+Projects with components are initially collapsed and can be opened and closed through the arrow,
+the entire heading row or the keyboard.
+Structure and network previews remain one below the other in normal
+document flow in the editor, even with all projects open; no second sticky area
+covers templates below.
+
+<a id="erstbereitstellungspläne"></a>
+### Initial deployment Plans
+
+The blanket block for `audit_logs`, `observability`, `connectivity` and `devops`
+has been replaced by tested support. For Connectivity, this covers
+network areas, DNS, firewall/HA infrastructure and VPN gateways.
+The firewall image is the version- and SHA-256-bound OPNsense file
+already used in the Accelerator; the Runner checks actual image files
+and their packaging. An old Runner without a matching image remains explicitly
+blocked rather than creating a supposedly executable Plan with `/dev/null`.
+
+This is Plan approval, not automatic provisioning: firewall policies,
+bootstrap, appliance Apply and VPN connections with pre-shared keys
+still need their separate execution or secret-binding support.
+Audit targets outside the verified organization context remain blocked.
+Identity/owner proofs, tenant separation, snapshot checks and explicit
+approvals remain required unchanged. Specific limitations are described in the
+[Runner contract](../runner/README.md).
+
+Preparations are immutable evidence including Accelerator revision.
+Saved configurations are separate and remain editable after a
+Configurator release and usable as sources for new preparations.
+A Configurator-only version change requires no new preparation
+as long as its Accelerator contract still matches the installed Runner.
+The fixed defect also affected freshly created preparations: the interface
+still used the base revision while the Runner already expected the
+platform-contract root. No recreation of the configuration
+or new state is needed for this.
+For a Runner with the platform-contract root, the interface displays preparation
+for its current revision requiring explicit confirmation. Without confirmation,
+creation remains blocked. If an older preparation's revision
+does not match the Runner, the Plan error now names this reason and requests a new
+preparation instead of merely reporting invalid configuration. Existing
+preparations, state bindings and Plan evidence are not rewritten;
+Plan and Apply retain their own approvals.
+
+Selecting the current Accelerator revision is also allowed for an initial deployment;
+it does not require an already provisioned platform. Without
+a state binding or with an empty default state (version 0), a new
+preparation can be created. This also applies after a failed first Plan.
+Existing bindings remain. Locked state still explicitly prevents
+switching; already saved default state must
+be adopted into its S3 backend before switching. A selected
+S3 backend without readable state still permits no bootstrap.
+
+Preparation errors distinguish state locks, backend conflicts, invalid
+requests and expired security confirmations. Unknown
+server errors show HTTP status and error code instead of an endless
+request to refresh the list.
+
+The DNS zone type denotes the role `primary` or `secondary`, not
+visibility `public` or `private`. Common configuration validation
+reports invalid types at the specific zone field, including regional
+Connectivity configurations. The generic Assistant contract allows the same
+DNS roles in the model output schema and server-side acceptance check.
+This also applies to complete network objects and direct field proposals,
+as additions or replacements and in both network models.
+Old drafts remain loadable and
+exportable unchanged; they are not silently reinterpreted. For a self-managed
+new zone, the user can explicitly correct the type to `primary`.
+Then save and create a new preparation for this
+revision; old preparations keep their original snapshot.
+This supplementary DNS validation is not yet part of the following dev acceptance.
+
+During platform Plan and Apply, the Runner sends a sanitized output snapshot
+every two seconds while an OpenTofu phase runs. The API stores
+it encrypted and delivers it to the
+output view during execution. Transfers occur sequentially; pending transfers
+are awaited before result acknowledgment
+and cleanup. Incomplete final lines are transferred only after completion
+so partially written credentials cannot bypass sanitization.
+After final status, further log changes are
+blocked. “Follow output” still controls
+automatic scrolling, not transmission. The separate
+Application Runner retains its previous one-off completion report.
+This live-output correction is also not yet published.
+
+The related local regression includes fresh and previously failed
+initial Plans with default and S3 backends through successful Plan evidence,
+without Apply. It checks unchanged configurations, old preparations,
+state bindings and still-blocked states. Desktop and mobile tests
+also cover explicit selection of the current Accelerator revision
+without an existing S3 backend, and specific and unknown error messages.
+**Dev acceptance of 2026-10-16:** the improvement was published as immutable source
+`6a5014e7821586a60699bcd52d148f0d56718b8b` through successful
+[dev release 38867967256](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38867967256).
+The related
+[Validate Configurator run 38867967250](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38867967250)
+is also fully successful. Normal protected dev approval followed only
+after successful separate validation and release build.
+Both workflows passed 718 unit tests (63 skipped in normal unit execution),
+57 explicitly enabled PostgreSQL Plan/broker tests, 53 API database tests,
+304 desktop/mobile tests and 13 native template-contract checks. Separate
+validation also passed all six infrastructure roots including
+formatting, validation and mock Plans. The release passed native
+Runner/provider/image/archive qualification and actual
+Cloud Foundry deployment including migrations, service connections,
+separate Runner organization, rejected job ticket and public routes.
+
+Served JavaScript/CSS files match the approved
+build byte-for-byte. Eight public auth/PKCE/callback/CSRF checks passed.
+Real anonymous desktop/mobile browsers each show ten name/type components,
+working expand/collapse and overlap-free previews without
+browser errors or server mutations. Login was not completed with a
+real user; organization proof or customer Plan/Apply
+was not executed. Saved customer configurations were not changed.
+
+The separate validation workflow checks the real release configuration in the
+application job after the API build. The infrastructure job still needs
+no application dependencies. The earlier STACKIT error came from
+the missing compiled validator there, not a GitHub requirement.
+The native Standalone test expects a successful contract for the example
+now explicitly marked Public. Separate negative tests
+still check that missing or explicitly true `corporate` without central
+Connectivity is rejected; the native default remains unchanged.
+Validation and release both run `npm run test:common-contract` and
+`npm run test:platform-database`. The second command explicitly enables the isolated
+PostgreSQL broker suite skipped in normal unit execution.
+Future releases thereby also test initial deployment and
+native template contracts, not only already existing platform state.
+API database integration uses the same two
+workers and 30-second test timeout in both workflows. The former 5-second limit in
+the validation workflow interrupted multistage contract/identity proof
+before its cleanup and restoration steps completed.
+
+Joint release acceptance passed 710 unit tests (57 skipped in unit execution),
+51 PostgreSQL broker tests and 300 desktop/mobile browser tests,
+type checking, build and 19 targeted release/staging/Runner-evidence tests.
+Native contract, offline provider and real image/archive checks
+additionally qualified Runner support.
+There were no customer cloud Plans, Applies or Destroys.
+
+Component preview, Plan support and unambiguous STACKIT confirmation
+were published with user approval as source `0cee76f` through successful
+[dev release 38769119929](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38769119929).
+On CF, image SHA checking, native Runner checks,
+migrations, service connections, Runner isolation and canonical route checks passed.
+Served JS/CSS files match the built source byte-for-byte.
+Eight additional live auth/PKCE checks and two real anonymous
+desktop/mobile browser runs passed; the preview showed only name
+and type, without browser errors, horizontal overflow or server mutations.
+
+The large image is omitted only from the hosted upload and moved after SHA checking
+into the immutable droplet during staging without a second file copy. This is the
+durable CF cache; a redundant large buildpack cache archive is unnecessary.
+There is no download per user or Plan. Web/API use 6 GiB disk
+for the larger inspection copy and staging compression; the qualified
+4-GiB budget of isolated Runner jobs and tasks remains unchanged.
+Package identity and byte-identical restoration of both archives are checked.
+Details:
+[CF staging and cache](../deploy/cloud-foundry/README.md#image-staging-and-caching).
+A personal STACKIT login, live owner proof and customer cloud Plan were
+neither executed nor pretended by this.
+
+The separate
+[Validate Configurator run 38769119849](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/38769119849)
+remains red on already known Standalone template-contract and
+STACKIT/GitHub operator-guard assertions. Successful release run
+and live acceptance are separate; not all repository CI is green.
+
+<a id="kompatibilität-und-grenzen"></a>
+## Compatibility and limitations
+
+- Existing v1/v2 documents remain usable in the previous editor. **Switch to common
+  editor** is an explicit migration; existing engine values
+  are preserved when switching. Existing deployment preparations remain unchanged.
+- The previous Standalone editor can still be selected on the Standalone preview page,
+  including the previous personal Plan flow.
+- v3 is supported in forks and browser working state. Template hashes,
+  tenant/account isolation, write base, conflict checks and atomic export are preserved.
+- v3 deployment preparations are **blocked server-side**. Runner integration and
+  protected additional credential bindings undergo separate acceptance.
+- No secret fields in configuration forms. VPN keys, firewall
+  passwords/API secrets and kubeconfigs must not be pasted into free-text fields.
+- The ineffective folder description is not offered as an editable feature.
+- Form and type coverage are not provider validation. Plan/refresh,
+  service availability, permissions and every module combination need further
+  execution acceptance. Limitations #37/#65/#80 remain visible.
+- No customer Apply without explicit new approval, no Destroy.
+
+<a id="prüfung"></a>
+## Verification
+
+- [x] Domain labels for all nonsensitive schema fields checked.
+- [x] Project kinds, references and area normalization as domain tests.
+- [x] v3 JSON/tfvars saved atomically; deployment guard tested in the backend.
+- [x] New editor, kind switching, navigation and area references tested in browser.
+- [x] v3 fork saving, export, resumption and blocked preparation tested.
+- [x] Legacy editor, GitHub login, fork conflicts, credentials and Plan flow regression-tested.
+- [x] Release on lzc-dev and live connection tests accepted.
+
+Manual check after publication: open Hub & Spoke and Multi-Region,
+switch project kind/area, save draft to own fork, reopen and
+reload browser. Check additional optional services under Platform/Operations.
+
+<a id="live-abnahme"></a>
+## Live acceptance
+
+Code `527bd9582f95d3cf845cfaf242f9022e1495fad8` published:
+
+- [Validate Configurator 36745965890](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36745965890): successful.
+- [Configurator Release 36745965953](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36745965953): successful.
+- 95 application tests and 20 desktop/mobile browser checks, including v3 storage and legacy compatibility.
+- Native HCL/OpenTofu contract tests and infrastructure checks successful.
+- CF network, PostgreSQL/Secrets Manager connections, isolated Runner and public routes checked successfully.
+- Direct live browser check: open Multi-Region template, start new editor, check project list/network view on desktop and mobile; no page errors or horizontal overflow.
+- Public JavaScript/CSS files compared by SHA-256 with the tested build; `/healthz` returns `ok`, session without login `401`.
+
+[Live application](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud).
+No customer configuration applied and no change merged to `main`.
+
+
+<a id="live-nachbesserung-plattformdienste-und-voreinstellungen"></a>
+### Live improvement: platform services and defaults
+
+Code `10a6ec87f0d0fc9d32d4b9699bd8579fb651683c` published:
+
+- [Validate Configurator 36752620342](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36752620342): successful.
+- [Configurator Release 36752620332](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36752620332): successful.
+- 96 application tests, 22 desktop/mobile browser cases and 11 native OpenTofu variable tests successful.
+- Live build matches locally checked bundle; health check `ok`, anonymous session `401`, no browser errors.
+- Live checked: new Standalone configuration is Public; region is a selection; platform services and Kubernetes deactivation available. Desktop/mobile view without horizontal overflow, mobile platform view visually checked.
+- Connection tests to PostgreSQL/Secrets Manager and Runner separation successful.
+
+Manual: reload app, open a **new** Standalone draft, set organization ID
+and own owner email addresses, check Public under Projects
+and save/export. In an existing affected draft, explicitly select Public
+once. Configure/disable Kubernetes under Platform;
+select regional identifiers and area references under Network.
+
+<a id="nächster-bedienstand-komponenten-statt-vollständiger-feldliste"></a>
+## Next interaction state: components instead of a full field list
+
+The [binding design principles](editor-design-principles.md) guide further
+development. Initial implementation covers platform and Kubernetes namespace services:
+inactive components are accessible through **Add component**; active
+components remain visible. Opening and closing the catalogue does not change
+export. An empty cluster list is inactive; a non-null
+Observability configuration block, by contrast, enables the service even with defaults.
+
+Public/Corporate project cards contain direct toggles for Secrets Manager and
+Observability. Sandboxes do not have these root options. Network labels
+explicitly name Connectivity and SNA; a notice explains automatically
+created routing tables. A unified region/SNA editor and guided
+VPN flow remain open and are listed separately in the design plan.
+
+This section describes working state; live acceptances recorded above
+refer to their explicitly named commits.
+
+
+<a id="regions-sna-ansicht-und-vpn-assistent-arbeitsstand-2026-10-01"></a>
+## Region/SNA view and VPN assistant (working state 2026-10-01)
+
+Network shows Connectivity as region cards with SNAs and optional DNS,
+firewall and VPN components. Existing `connectivity` remains in its previous
+engine format; new empty configurations can add explicit regions.
+Existing default-region configurations are not automatically migrated
+to regional modules. Export remains unchanged on opening.
+
+The [VPN assistant](vpn-configuration-scope.md) maps the Accelerator contract
+and checks basic required inputs. Protected keys, live catalogues and
+deployment execution remain missing. The new [self-service architecture](platform-application-architecture.md)
+is planned; this has not yet changed roles or permissions.
+
+
+<a id="live-abnahme-2026-10-01-regionen-snas-und-vpn"></a>
+## Live acceptance 2026-10-01: regions, SNAs and VPN
+
+Code `78d8f7c6debeba29330fa2699d617da17c3ba3be` published on lzc-dev.
+
+- [Release 36830339767](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36830339767): successful, including PostgreSQL/Secrets Manager connection tests and Runner check.
+- [Validate 36830339847](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36830339847): successful.
+- Release includes 97 application tests and 24 desktop/mobile browser cases.
+- Live bundle `/assets/index-BjLAVHUk.js` matches the checked editor release.
+- Direct guest browser check: existing templates/project view, add components, add region eu01, open STACKIT VPN, configure connection with two tunnel fields.
+- Health `ok`, anonymous session `401`, no browser errors or horizontal overflow on mobile. No customer resources created.
+
+Manual acceptance: open an existing configuration and save unchanged; configure new
+Connectivity region/SNA; add optional VPN and check its scope,
+required inputs and tunnel settings. VPN execution remains blocked.
+
+The subsequently created separate Application root and its compiler are
+a prototype testable locally or on the feature branch, not part of
+the activated self-service interface.

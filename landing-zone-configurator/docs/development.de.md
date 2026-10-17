@@ -1,0 +1,72 @@
+<a id="configurator-development-map"></a>
+# Configurator-Entwicklungsübersicht
+
+[English](development.md) | [Deutsch](development.de.md)
+
+Beginne mit [CONTRIBUTING](../../CONTRIBUTING.de.md) und der
+[lokalen Anwendungseinrichtung](../app/README.de.md). Diese Seite verzeichnet technische
+Referenzen; das [Benutzerhandbuch](user-guide.de.md) beschreibt die Produktnutzung.
+
+<a id="component-contracts"></a>
+## Komponentenverträge
+
+| Bereich | Referenz |
+| --- | --- |
+| Komponenten, Vertrauensgrenzen und Diagramme | [Architektur](architecture.de.md) |
+| Native Schemas und Compiler | [Gemeinsames Funktionsmodell](common-feature-model.de.md), [gemeinsamer Editor](common-editor.de.md) |
+| Vorlagenentwürfe und Parameter | [Projektvorlagenentwürfe](project-template-drafts.de.md), [Parameter und Bindungen](template-parameters-and-bindings.de.md) |
+| Authentifizierung und Organisationsbindung | [Anmeldung](github-login.de.md) |
+| Runner, Jobs und State | [Plan-Ausführung](plan-execution.de.md), [Runner-Paketierung](../deploy/runner/README.de.md) |
+| Assistant-Fakten, Generierung und Qualifikation | [Wissensvertrag](assistant-knowledge/README.de.md) |
+| Betreiber-IaC und verschlüsselter State | [Infrastruktur](../infra/README.de.md) |
+| CI-Berechtigungen und manuelle Operationen | [CI-Betriebshandbuch](../infra/ci/README.de.md) |
+| Paketierung, Migrationen und Promotion | [CF-Release](../deploy/cloud-foundry/README.de.md) |
+
+Die älteren [Planungsnotizen](planning.de.md) und
+die [Platform-/Application-Designbegründung](platform-application-architecture.de.md)
+bewahren Designentscheidungen, nicht den aktuellen Abnahmestand oder Betreiberbefehle.
+Nutze Code, aktuelle Verträge, Tests und Issue-Diskussionen für den Implementierungsstand.
+Historische Arbeitsplatzübergaben und laufbezogene Abnahmeprotokolle gehören nicht
+zur gepflegten Dokumentation.
+
+Lesen der Konfigurationsliste darf eine neuere Aktualisierung nach dem Speichern
+nicht mit einer älteren initialen Antwort oder einem Fehler überschreiben.
+Erhalte die Reihenfolge der Anfragen und das erfasste Abort-Signal für die
+Sitzungslebensdauer. Der Datenbank-Konfigurations-Browserablauf verzögert initiale
+Lesezugriffe bis nach erfolgreichem Speichern, um diese Reihenfolge auf Desktop
+und Mobilgeräten neben erneutem Öffnen, Revisionskonflikt und Löschen zu prüfen.
+Die initiale Sitzungsabfrage beim Übergang von Gast zu authentifiziert erhält den
+Editor-DOM, damit ein fokussiertes Eingabefeld nicht entfernt wird. Tatsächliche
+Identitäts-/Arbeitsumgebungswechsel setzen weiterhin den Entwurf und den
+bereichsgebundenen Katalogprovider zurück; private Kataloge dürfen nie über
+diese Grenzen hinweg erhalten bleiben.
+
+Halte Frontend-Navigation und die explizite SPA-Routen-Allowlist der API synchron,
+einschließlich Arbeitsumgebungs- und Deployment-Phasen-URLs. Direkte Aufrufe und
+Neuladen müssen die kompilierte UI über die API ausliefern, nicht nur über den
+History-Fallback des Entwicklungsservers. Die Static-Serving-API-Regression deckt
+diese Pfade ab und erhält 404-Antworten für unbekannte Routen, API-/Auth-Pfade und
+fehlende Assets; ersetze die Allowlist nicht durch einen Catch-all.
+
+<a id="validation-versus-cloud-operations"></a>
+## Validierung gegenüber Cloud-Operationen
+
+Runner-Ausgabe verwendet einen authentifizierten NDJSON-Stream mit unveränderter
+JSON-Snapshot-Kompatibilität. Halte den gemeinsamen Ausgabeereignisvertrag,
+Worker-Redaktion und UTF-8-Bytegrenzen, die native UI-Ereignisprojektion und den
+abschließenden menschenlesbaren gespeicherten Plan synchron. Teste Ausgabe vor
+Prozessabschluss und vor HTTP-EOF, Zugriffsentzug, Verbindungsabbau und
+Desktop-/Mobil-Einklappen/Wiederverbinden. Ersetze nativen Fortschritt nicht durch
+erfundene Prozentangaben und lege weder rohe Maschinen-UI noch gespeichertes
+Plan-JSON oder State offen. Assistant-Übernahme und Ausgabeansicht erteilen keine
+Ausführungsberechtigung.
+
+Der repositoryweite [Workflow-Katalog](../../docs/workflows.de.md) ist die zentrale
+Tabelle für alle Pipelines, automatische/manuelle Auslöser, wiederverwendbare
+Aufrufe, Eingaben und Startanweisungen für die GitHub-UI. Aktualisiere ihn bei
+Workflow-Änderungen, statt hier ein zweites unvollständiges Inventar zu pflegen.
+
+Ein Quellmerge löst kein Deployment aus. Kunden-Zugangsdaten, State, private
+Inventare oder rohe Plan-Ausgabe gehören niemals in Issues, Chat oder Testartefakte.
+Lokale Modellbelege qualifizieren nur ihre exakte Quelle und konfigurierten Modelle;
+sie ersetzen nicht die Qualifikation des geschützten Release-Workflows.

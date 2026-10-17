@@ -1,3 +1,7 @@
-# Umgebungen
+# Environments
 
-Hier später secretfreie Parameter für getrennte Entwicklungs-, Staging- und Produktionsumgebungen ablegen. Ein genanntes Betreiberprojekt bedeutet noch nicht, dass alle Umgebungen darin gemeinsam betrieben werden sollen. Zuordnung offen.
+[English](README.md) | [Deutsch](README.de.md)
+
+<a id="umgebungen"></a>
+
+Store secret-free parameters for separate development, staging and production environments here later. Naming an operator project does not yet mean that all environments should be operated together in it. Assignment remains open.

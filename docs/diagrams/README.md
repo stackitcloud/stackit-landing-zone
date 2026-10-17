@@ -1,5 +1,7 @@
 # Architecture Diagrams
 
+[English](README.md) | [Deutsch](README.de.md)
+
 ## Customer topology diagrams
 
 The customer-facing topology diagrams are maintained directly as SVG files. They intentionally show the defining network boundaries, projects, and traffic paths of each complete configuration rather than every Terraform resource.

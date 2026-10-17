@@ -1,5 +1,7 @@
 # Landing Zone Configurator
 
+[English](README.md) | [Deutsch](README.de.md)
+
 The Configurator is an optional, hosted interface for the
 [STACKIT Landing Zone Accelerator](../README.md). It combines a configuration
 editor, an Assistant, versioned project templates and explicitly authorized
