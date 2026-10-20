@@ -48,6 +48,16 @@ A template contains its own ID and key, display name, project type (Public/Corpo
 
 The specific project name and abbreviation belong to the later order. The project owner must come server-side from a verified STACKIT identity. Fixed additional administrator assignments (e.g. sandbox `owner_emails`) are separate platform policy; example addresses must be cleaned up before saving. Namespace service settings are retained as template metadata. This does not approve their later cluster binding/execution.
 
+For an Assistant request limited to local-network templates with delegated naming,
+the saved platform region and exactly one same-region Corporate network area
+resolve the essential choices. The server supplies those existing defaults and
+the answer schema permits no redundant questions about technical keys or optional
+subnet settings. Public-only templates do not need a Corporate area. Missing or
+ambiguous areas, an unset region, undelegated naming and additional service choices
+retain the normal question flow. A model response that violates the closed
+question contract is rejected, not silently trimmed. Proposals still require
+explicit acceptance and saving; they grant no publication or execution.
+
 <a id="template-eingaben-und-verknüpfungen"></a>
 ## Template inputs and bindings
 

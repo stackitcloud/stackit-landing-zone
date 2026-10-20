@@ -3,7 +3,7 @@ import {
   assistantProposalFields,
   assistantProposalValue,
 } from "@lzc/contracts";
-import { objectValue } from "@lzc/domain";
+import { objectValue, projectTemplateDraftSchema } from "@lzc/domain";
 import { createParser } from "eventsource-parser";
 import { parse as parsePartialJson } from "partial-json";
 import { z } from "zod";
@@ -1106,6 +1106,40 @@ export class AssistantModelServing {
       : null;
     if (templateSetup && !templateSetup.request?.trim())
       throw new AssistantInferenceError("intent_evidence");
+    const templateRegion = projectTemplateDraftSchema.shape.region.safeParse(
+      current.region,
+    );
+    const templateAreas = templateTopic
+      ? z
+          .array(
+            z.object({
+              key: z.string().min(1),
+              region: projectTemplateDraftSchema.shape.region,
+            }),
+          )
+          .parse(current["assistant.network_areas"] ?? [])
+          .filter((area) => area.region === current.region)
+      : [];
+    const corporateArea =
+      templateAreas.length === 1 ? templateAreas[0] : undefined;
+    const corporateRequested =
+      templateSetup?.kinds.includes("corporate") ?? false;
+    const resolvedTemplateDefaults =
+      templateTopic &&
+      templateSetup?.delegateNaming &&
+      templateSetup.localNetworks &&
+      templateSetup.fields.every((field) =>
+        ["network_enabled", "network_area_key"].includes(field),
+      ) &&
+      templateRegion.success &&
+      (!corporateRequested || corporateArea)
+        ? {
+            region: templateRegion.data,
+            ...(corporateRequested && corporateArea
+              ? { networkAreaKey: corporateArea.key }
+              : {}),
+          }
+        : null;
     const dnsCollection = intent.dnsCollection;
     if (
       dnsCollection &&
@@ -1234,7 +1268,7 @@ export class AssistantModelServing {
           });
       const questionListSchema = z
         .array(questionContract)
-        .max(questions.length ? 3 : 0);
+        .max(questions.length && !resolvedTemplateDefaults ? 3 : 0);
       const topicKnowledge = assistantKnowledgeForTopics(context, [
         intent.topic,
         ...(intent.topic === "configuration-contract"
@@ -1260,6 +1294,7 @@ When the user delegates template naming, choose descriptive names for the reques
 DNS corrections use the existing zone key, never a new entry merely to change its domain/display name. With multiple ambiguous zones ask for the target. Explicitly additional zones use merge on the DNS collection; a complete set uses replace. Preserve unrelated network/firewall settings. dnsCollection is a source-grounded USER decision, not permission to invent domains.
 For an additional DNS zone, emit the actual collection change containing the requested new key and dns_name. Include every requested zone setting in that entry, including contact_email from the saved owner_email when requested; explaining that a contact is used without including it in changes is not a proposal. Existing unrelated zones are preserved by merge, not by returning an empty changes list. Return changes=[] only when essential information needs a question or the requested effective state is already present.
 templateSetup contains source-checked USER decisions: its kinds and localNetworks are answered requirements, not questions to repeat. Its fields is the allowed template setting scope; the schema excludes unrequested services and policies. delegateNaming=true authorizes descriptive template display names and valid stable template keys; they are not Cloud IDs. When saved region and the Corporate area are unambiguous, these decisions suffice for complete name/kind/region/settings template proposals. Optional parameter policies and subnet overrides are not mandatory setup questions.
+When templateSetup.resolvedDefaults is non-null, the server has resolved every essential choice for this network-only request: use its region, and its networkAreaKey as settings.network_area_key for Corporate. Template kinds, local networks and delegated naming are already answered. Return questions=[] as required by the schema; do not ask the user to repeat native keys, naming, subnet defaults or other unrequested optional settings. Missing or ambiguous Corporate areas, missing region/naming and additional service choices retain the normal question contract.
 New component objects expose all their typed property slots: fill every explicitly requested value, use null only for unrequested native defaults. Never invent extra retention values. Required non-null creation decisions need actual user consent; otherwise ask questions with changes=[]. New map entries require all native mandatory fields, including Kubernetes region and node-pool name. Use existing nested paths for partial updates, preserving sibling values. All replies describe PROPOSALS, not completed setup. Field acceptance changes only the local draft, saving remains separate; no deployment, permissions granted, publication or Plan/Apply. Return the supplied JSON schema only.
 Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })}`,
           },
@@ -1269,7 +1304,16 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
               message,
               history,
               templateHistory,
-              ...(templateTopic ? { templateSetup } : {}),
+              ...(templateTopic
+                ? {
+                    templateSetup: templateSetup
+                      ? {
+                          ...templateSetup,
+                          resolvedDefaults: resolvedTemplateDefaults,
+                        }
+                      : null,
+                  }
+                : {}),
               ...(dnsCollection ? { dnsCollection } : {}),
               currentValues: Object.fromEntries(
                 Object.entries(current).filter(

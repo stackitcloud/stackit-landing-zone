@@ -125,6 +125,18 @@ sind davon getrennte Plattformpolicy; Beispieladressen müssen vor Speicherung
 bereinigt werden. Namespace-Service-Einstellungen werden als Template-Metadaten
 erhalten. Das ist keine Freigabe ihrer späteren Clusteranbindung/Ausführung.
 
+Bei einer Assistant-Anfrage nur nach Templates mit lokalen Netzen und delegierter
+Benennung klären die gespeicherte Plattformregion und genau ein Corporate-
+Netzwerkbereich derselben Region alle wesentlichen Entscheidungen. Der Server
+liefert diese bestehenden Vorgaben; das Antwortschema erlaubt keine erneuten
+Fragen nach technischen Schlüsseln oder optionalen Subnetzeinstellungen.
+Reine Public-Templates benötigen keinen Corporate-Bereich. Fehlende oder
+mehrdeutige Bereiche, eine fehlende Region, nicht delegierte Benennung und weitere
+Dienste behalten den normalen Frageablauf. Eine Modellantwort, die diesen
+geschlossenen Fragevertrag verletzt, wird abgewiesen und nicht still gekürzt.
+Vorschläge benötigen weiterhin ausdrückliche Übernahme und Speicherung; sie
+erteilen keine Veröffentlichungs- oder Ausführungsberechtigung.
+
 <a id="template-inputs-and-bindings"></a>
 
 ## Template-Eingaben und Verknüpfungen
