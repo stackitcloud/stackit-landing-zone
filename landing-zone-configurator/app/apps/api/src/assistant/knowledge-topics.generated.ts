@@ -1512,7 +1512,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "73905189ef8a4d15b84ce4ea9dc187033dbab4095df5cb5b4090e87deb591c37",
+            "ec656cdafd46eb21a4664d5c6281f07cbb313fa8772ffdc59f55de850a6e9ce7",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
