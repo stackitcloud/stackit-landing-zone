@@ -286,7 +286,7 @@ function collectionModel(
   answer: unknown,
   inspect?: (request: {
     messages: { role: string; content: string }[];
-    response_format: { json_schema: { name: string } };
+    response_format: { json_schema: { name: string; schema: unknown } };
   }) => void,
 ) {
   return new AssistantModelServing(
@@ -322,6 +322,217 @@ function collectionModel(
     }),
   );
 }
+
+it.each([
+  {
+    name: "one same-region area",
+    areas: [{ key: "default", region: "eu01" }],
+    complete: true,
+  },
+  {
+    name: "one non-default area",
+    areas: [{ key: "central", region: "eu01" }],
+    complete: true,
+  },
+  {
+    name: "unrelated region",
+    areas: [
+      { key: "default", region: "eu01" },
+      { key: "other", region: "eu02" },
+    ],
+    complete: true,
+  },
+  {
+    name: "ambiguous areas",
+    areas: [
+      { key: "default", region: "eu01" },
+      { key: "other", region: "eu01" },
+    ],
+    complete: false,
+  },
+  { name: "missing area", areas: [], complete: false },
+  {
+    name: "only another region",
+    areas: [{ key: "other", region: "eu02" }],
+    complete: false,
+  },
+  {
+    name: "missing region",
+    areas: [{ key: "default", region: "eu01" }],
+    region: null,
+    complete: false,
+  },
+  {
+    name: "unresolved naming",
+    areas: [{ key: "default", region: "eu01" }],
+    delegateNaming: false,
+    complete: false,
+  },
+  {
+    name: "additional service choices",
+    areas: [{ key: "default", region: "eu01" }],
+    extraField: "observability",
+    complete: false,
+  },
+  {
+    name: "another component still needs business choices",
+    areas: [{ key: "default", region: "eu01" }],
+    extraRoot: "audit_logs",
+    complete: false,
+  },
+  { name: "public without SNA", areas: [], kinds: ["public"], complete: true },
+])("asks only unresolved template business choices: $name", async (fixture) => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const current = {
+    ...assistantPublicValues(original),
+    region: fixture.region === null ? null : "eu01",
+    "assistant.network_areas": fixture.areas,
+  };
+  const kinds = fixture.kinds ?? ["corporate", "public"];
+  const intent = {
+    topic: fixture.extraRoot ? "configuration-contract" : "project-templates",
+    mode: "draft",
+    editorContract: true,
+    editorInputs: [
+      "landing_zones",
+      ...(fixture.extraRoot ? [fixture.extraRoot] : []),
+    ],
+    requirements: [],
+    templateSetup: {
+      source: "current",
+      collectionMode: "replace",
+      kinds,
+      delegateNaming: fixture.delegateNaming ?? true,
+      localNetworks: true,
+      fields: [
+        "network_enabled",
+        ...(fixture.extraField ? [fixture.extraField] : []),
+      ],
+    },
+  };
+  const corporateKey = fixture.areas.find(
+    (area) => area.region === "eu01",
+  )?.key;
+  const changes = [
+    patch(
+      "projectTemplates",
+      {
+        ...(kinds.includes("corporate") && corporateKey
+          ? {
+              central: {
+                name: "Corporate",
+                kind: "corporate",
+                region: "eu01",
+                settings: {
+                  network_enabled: true,
+                  network_area_key: corporateKey,
+                },
+              },
+            }
+          : {}),
+        internet: {
+          name: "Internet",
+          kind: "public",
+          region: "eu01",
+          settings: { network_enabled: true },
+        },
+      },
+      "replace",
+    ),
+  ];
+  const question = {
+    path: fixture.extraRoot ? "audit_logs.acl" : "projectTemplates",
+    text: "Welche fachliche Auswahl soll verwendet werden?",
+  };
+  let questionLimit: number | undefined;
+  let defaults: unknown;
+  const model = collectionModel(
+    intent,
+    response(
+      fixture.complete ? changes : [],
+      fixture.complete ? [] : [question],
+    ),
+    (request) => {
+      if (request.response_format.json_schema.name !== "editor_dialogue")
+        return;
+      questionLimit = z
+        .object({
+          properties: z.object({
+            questions: z.object({ maxItems: z.number() }),
+          }),
+        })
+        .parse(request.response_format.json_schema.schema).properties
+        .questions.maxItems;
+      const task = JSON.parse(
+        request.messages.find((entry) => entry.role === "user")?.content ??
+          "{}",
+      );
+      defaults = task.templateSetup?.resolvedDefaults;
+    },
+  );
+  const result = await model.converse(
+    knowledgeSelection(),
+    current,
+    [],
+    "Erstelle die gewünschten Vorlagen mit lokalen Netzen und benenne sie passend.",
+  );
+  expect(questionLimit).toBe(fixture.complete ? 0 : 3);
+  expect(result.questions).toEqual(fixture.complete ? [] : [question]);
+  expect(result.changes).toEqual(fixture.complete ? changes : []);
+  expect(defaults).toEqual(
+    fixture.complete
+      ? {
+          region: "eu01",
+          ...(kinds.includes("corporate")
+            ? { networkAreaKey: fixture.areas[0]?.key }
+            : {}),
+        }
+      : null,
+  );
+});
+
+it("rejects an unnecessary technical template question instead of silently stripping it", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const model = collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      editorContract: true,
+      editorInputs: ["landing_zones"],
+      requirements: [],
+      templateSetup: {
+        source: "current",
+        kinds: ["corporate", "public"],
+        delegateNaming: true,
+        localNetworks: true,
+        fields: ["network_enabled", "network_area_key"],
+      },
+    },
+    response(
+      [],
+      [
+        {
+          path: "projectTemplates",
+          text: "Welcher technische network_area_key soll verwendet werden?",
+        },
+      ],
+    ),
+  );
+  await expect(
+    model.converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      "Corporate- und Public-Vorlagen mit lokalen Netzen, bitte passend benennen.",
+    ),
+  ).rejects.toBeInstanceOf(AssistantInferenceError);
+});
 
 function expectTopicKnowledge(system: string, topics: readonly string[]) {
   const knowledge = buildAssistantKnowledge();
