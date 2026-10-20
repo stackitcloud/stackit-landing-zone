@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import {
   assistantTestModel,
@@ -12,6 +12,8 @@ const configuration = {
   token: "test-only-token",
   timeoutMs: 10000,
 };
+
+afterEach(() => vi.restoreAllMocks());
 
 function selection() {
   const knowledge = buildAssistantKnowledge();
@@ -79,4 +81,32 @@ it("does not send a request that times out while waiting for its slot", async ()
     "assistant_inference_failed",
   );
   expect(request).toHaveBeenCalledTimes(1);
+});
+
+it("retains safe retry diagnostics and fails when CI pacing exhausts the same deadline", async () => {
+  const output = vi.spyOn(console, "log").mockImplementation(() => {});
+  const request = vi
+    .fn<typeof fetch>()
+    .mockRejectedValue(
+      new Error("must-not-expose", { cause: { code: "ECONNRESET" } }),
+    );
+  const model = assistantTestModel(
+    { ...configuration, timeoutMs: 1000 },
+    request,
+  );
+  await expect(model.qualifyKnowledge(selection())).rejects.toThrow(
+    "assistant_inference_failed",
+  );
+  expect(request).toHaveBeenCalledOnce();
+  expect(output).toHaveBeenCalledOnce();
+  expect(JSON.parse(String(output.mock.calls[0]?.[0]))).toEqual({
+    event: "assistant_transport_failure",
+    code: "ECONNRESET",
+    attempt: 1,
+    retrying: true,
+    receivedResponse: false,
+  });
+  expect(String(output.mock.calls[0]?.[0])).not.toMatch(
+    /must-not-expose|token|Bearer/,
+  );
 });

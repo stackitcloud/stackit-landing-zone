@@ -40,7 +40,11 @@ function inferenceFailure(
   request: FastifyRequest,
 ) {
   request.log.warn(
-    { event: "assistant_inference_failed", reason: error.reason },
+    {
+      event: "assistant_inference_failed",
+      reason: error.reason,
+      ...(error.transportCode ? { transportCode: error.transportCode } : {}),
+    },
     "Assistant inference rejected",
   );
   return assistantInferenceFailureSchema.parse({

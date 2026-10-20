@@ -242,7 +242,13 @@ const app = buildApp({
     ? {
         assistant: new AssistantConversations(
           pool,
-          new AssistantModelServing(modelServingConfiguration(process.env)),
+          new AssistantModelServing(
+            modelServingConfiguration(process.env),
+            fetch,
+            (diagnostic): void => {
+              app.log.warn(diagnostic, "Assistant transport failure");
+            },
+          ),
           catalogues,
         ),
       }
