@@ -1,5 +1,5 @@
 // File preparation only; tofu and cf remain explicit commands in the workflow.
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -67,10 +67,13 @@ if(mode==="backend") {
   const executionEnabled=process.env.LZC_EXECUTION_ENABLED==="true";
   const applicationExecutionEnabled=process.env.LZC_APPLICATION_EXECUTION_ENABLED==="true";
   if((executionEnabled&&!enabled)||(applicationExecutionEnabled&&!executionEnabled))throw new Error("Execution requires authentication and platform execution");
+  const runnerPoolSize=process.env.LZC_RUNNER_POOL_SIZE??"0";
+  if(!/^[0-4]$/.test(runnerPoolSize))throw new Error("Runner pool size invalid");
+  if(runnerPoolSize!=="0"&&(!executionEnabled||!existsSync(resolve(".local/release/apps/api/dist/plans/runner-pool.js"))))throw new Error("Runner pool requires execution and a compatible release");
   const artifactKey=executionEnabled?required("LZC_DEPLOYMENT_ARTIFACT_KEY"):"";
   if(executionEnabled&&(Buffer.from(artifactKey,"base64").length!==32||Buffer.from(artifactKey,"base64").toString("base64")!==artifactKey))throw new Error("Artifact key invalid");
   if(artifactKey)mask(artifactKey);
-  Object.assign(vars,{LZC_EXECUTION_ENABLED:String(executionEnabled),LZC_APPLICATION_EXECUTION_ENABLED:String(applicationExecutionEnabled),LZC_DEPLOYMENT_ARTIFACT_KEY:artifactKey,LZC_RUNNER_DROPLET_ID:""});
+  Object.assign(vars,{LZC_EXECUTION_ENABLED:String(executionEnabled),LZC_APPLICATION_EXECUTION_ENABLED:String(applicationExecutionEnabled),LZC_DEPLOYMENT_ARTIFACT_KEY:artifactKey,LZC_RUNNER_DROPLET_ID:"",LZC_RUNNER_POOL_SIZE:runnerPoolSize});
   if(clientSecret)mask(clientSecret);
   Object.assign(vars,{LZC_PLANS_ENABLED:"false",LZC_RUNNER_CF_USERNAME:"",LZC_RUNNER_CF_PASSWORD:"",LZC_RUNNER_SPACE_ID:"",LZC_RUNNER_TEMPLATE_ID:""});
   const runner=platform.plan_runner_cf?.value, runnerSpace=runtime.runner_space?.value;
@@ -80,6 +83,7 @@ if(mode==="backend") {
     mask(runner.username);mask(runner.password);
     publish("LZC_RUNNER_CF_USERNAME",runner.username,true);publish("LZC_RUNNER_CF_PASSWORD",runner.password,true);publish("LZC_RUNNER_SPACE_ID",runnerSpace.id);publish("LZC_RUNNER_ORG_ID",runner.org_id);
   }
+  if(runnerPoolSize!=="0"&&!vars.LZC_RUNNER_CF_PASSWORD)throw new Error("Runner pool requires an isolated runner");
   const revision=required("LZC_RELEASE_REVISION");
   vars.LZC_IMAGE_BUILDPACK=`https://github.com/stackitcloud/stackit-landing-zone.git#${buildpackTag(revision)}`;
   writeFileSync(resolve(dir,"runner-vars.json"),JSON.stringify({LZC_IMAGE_BUILDPACK:vars.LZC_IMAGE_BUILDPACK}),{mode:0o600});

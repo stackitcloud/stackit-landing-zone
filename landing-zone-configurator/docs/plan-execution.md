@@ -15,6 +15,15 @@ As of: 2026-10-02. Implementation on `feature/landing-zone-configurator`.
 4. Reload the page: job and result are retained. Creation, modification, replacement, deletion, data reads and changed outputs are counted separately.
 5. Optionally cancel another Plan. Cancellation immediately revokes broker access; cleanup stops the CF task after a delay.
 
+An operator can enable prepared, one-shot Runners through the manual release's
+`runner_pool_size` input. A ready Runner takes one authorized job without creating
+another CF container; when no fresh reserve is available, dispatch uses the cold
+path. The Runner is removed after that job, never shared between tenants. This
+shortens preparation, not OpenTofu's per-job backend initialization, state locking,
+validation or planning. It changes neither the saved preparation nor Apply
+approval. Pool capacity defaults to zero; see
+[the deployment controls](../deploy/cloud-foundry/README.md).
+
 **No customer execution in this acceptance.** The user explicitly requires fresh approval before every customer Apply; infrastructure approvals do not cover this. The older initial-provisioning plan remains Plan-only. The new platform path has a gated Apply endpoint: only with execution enabled, matching immutable plan artifact/hash, confirmed target organization and rechecked access, source and state bindings. Export is not Apply approval. No Destroy path.
 
 A successful Plan is not automatically eligible for Apply. For blocked approval, the server returns an error code and, for unsupported components, the affected fields with reasons. Plan and Apply pages show this block; the Apply button remains visible but disabled. An eligible Plan still shows explicit review confirmation and requires the exact UUID of the target organization. All conditions are checked again server-side before Apply.

@@ -44,6 +44,8 @@ import {
 import { registerOrganisations } from "./organisation/routes.js";
 import type { OrganisationService } from "./organisation/service.js";
 import { type PlanRoutesServices, registerPlans } from "./plans/routes.js";
+import type { RunnerPool } from "./plans/runner-pool.js";
+import { registerRunnerPool } from "./plans/runner-pool-routes.js";
 
 export function buildApp(
   options: {
@@ -91,6 +93,7 @@ export function buildApp(
     repositories?: Repositories;
     credentials?: CredentialProfiles;
     plans?: PlanRoutesServices;
+    runnerPool?: Pick<RunnerPool, "claim">;
     applicationRunner?: {
       applications: ApplicationRunnerServices;
       binding: unknown;
@@ -117,6 +120,7 @@ export function buildApp(
     },
     bodyLimit: 1024 * 1024,
   });
+  if (options.runnerPool) registerRunnerPool(app, options.runnerPool);
 
   app.addHook("onSend", async (request, reply) => {
     reply.header("Referrer-Policy", "no-referrer");

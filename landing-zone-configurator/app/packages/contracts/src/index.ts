@@ -24,6 +24,13 @@ export type FirewallAdministration = z.infer<
   typeof firewallAdministrationSchema
 >;
 
+export const runnerPoolAssignmentSchema = z.strictObject({
+  id: z.uuid(),
+  ticket: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  broker: z.enum(["platform", "application"]),
+});
+export type RunnerPoolAssignment = z.infer<typeof runnerPoolAssignmentSchema>;
+
 export const platformCheckpointSchema = z.strictObject({
   stateVersion: z.string().regex(/^[1-9][0-9]*$/),
   checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),

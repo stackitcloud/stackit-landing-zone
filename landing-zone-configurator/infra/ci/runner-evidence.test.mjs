@@ -16,6 +16,21 @@ test('emits only bounded timing values from this run, never raw log data',()=>{
  assert.deepEqual(JSON.parse(result.stdout),{service:'plan-runner-isolation',runId:'12',ok:true,dispatchMilliseconds:1234,completionMilliseconds:4321});
  const invalid=spawnSync(process.execPath,[script,'13'],{input,encoding:'utf8'});assert.equal(invalid.status,1);assert.ok(!invalid.stdout.includes(secret));
 });
+test('requires warm handoff and replacement evidence when the manual release enables reserves',()=>{
+ const value={service:'plan-runner-isolation',runId:'12',ok:true,dispatchMilliseconds:1234,completionMilliseconds:4321};
+ const run=input=>spawnSync(process.execPath,[script,'12','1'],{input:JSON.stringify(input),encoding:'utf8'});
+ assert.equal(run(value).status,1);
+ const warm={readyWaitMilliseconds:12,dispatchMilliseconds:3,assignmentMilliseconds:500,replenishMilliseconds:20000};
+ const valid=run({...value,warm:{...warm,secret:'must-not-appear'}});
+ assert.equal(valid.status,0);
+ assert.deepEqual(JSON.parse(valid.stdout).warm,warm);
+ assert.ok(!valid.stdout.includes('must-not-appear'));
+ assert.equal(run({...value,warm:{...warm,assignmentMilliseconds:-1}}).status,1);
+ const workflow=readFileSync(fileURLToPath(new URL('../../../.github/workflows/configurator-release.yml',import.meta.url)),'utf8');
+ assert.ok(workflow.includes('runner_pool_size:'));
+ assert.ok(workflow.includes('LZC_RUNNER_POOL_SIZE: ${{ inputs.runner_pool_size }}'));
+ assert.ok(workflow.includes('"${{ inputs.runner_pool_size }}"'));
+});
 test('rejects apply before invoking OpenTofu',()=>{
  const directory=mkdtempSync(join(tmpdir(),'lzc-run-plan-contract-'));
  const marker=join(directory,'tofu-called');

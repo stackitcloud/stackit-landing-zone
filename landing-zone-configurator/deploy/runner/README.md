@@ -35,6 +35,34 @@ Details and limits: [CF staging and cache](../cloud-foundry/README.md#image-stag
 The dispatcher copies its droplet into a new app per job. Direct
 OpenTofu steps are in `run-plan.sh`. Process and approval boundaries: [Plan execution](../../docs/plan-execution.md).
 
+## Optional one-shot warm pool
+
+The warm pool is default-off (`LZC_RUNNER_POOL_SIZE=0`; the planned operator
+setting accepts 0..4). A warm Runner keeps an idle Node process in the same CF
+container, with only immutable packaged assets available. It creates no job
+credentials, configuration or workspace before assignment. There is no shared
+mutable workspace or reuse between jobs.
+
+Pool bootstrap requires both `LZC_POOL_RUNNER_ID` (UUID) and `LZC_POOL_TICKET`
+(43-character base64url opaque bootstrap token), plus the existing trusted
+`LZC_BROKER_ORIGIN`. Pool mode rejects `LZC_RUN_ID`, `LZC_RUN_TICKET` and local
+Runner mode. The bootstrap ticket authenticates only
+`POST /api/internal/runner-pool/{id}/claim`; it is not a job ticket.
+Only an unassigned `204` repeats, approximately once per second. A strict `200`
+assignment supplies one job ID, job ticket and platform/application broker
+profile, never a new origin, source or package root. Requests (including body
+reads) time out after at most 10 seconds; redirects, malformed assignments,
+authorization/conflict errors and network failures terminate without retrying,
+because a lost response might already have consumed the assignment.
+
+Idle Runners expire after 15 minutes and cancel idle polling/sleep on SIGTERM or
+SIGINT. After one assignment the process invokes the existing worker once and
+exits, including job or result-callback failure; it never accepts a second job.
+Cold and local `main.js` entry behavior remains unchanged when pool bootstrap
+variables are absent. These bootstrap semantics do not deploy infrastructure:
+API/CF lifecycle integration and hosted qualification are separate operator
+work, and no cloud deployment is authorized by enabling this source capability.
+
 The worker omits the 993,525,760-byte image from non-firewall working directories.
 Firewall Plan and saved-plan Apply verify the packaged regular, non-symlink file
 against its pinned SHA-256 and retain `firewall-image.qcow2` at the original

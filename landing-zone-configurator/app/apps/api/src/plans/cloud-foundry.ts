@@ -35,6 +35,16 @@ export interface PlanRunner {
   ): Promise<void>;
   remove(id: string, appId: string | null): Promise<void>;
 }
+export interface WarmRunnerDispatch {
+  start(
+    id: string,
+    ticket: string,
+    origin: string,
+    broker: "platform" | "application",
+    record: (appId: string, sourceDropletId: string) => Promise<void>,
+  ): Promise<boolean>;
+  remove(id: string, appId: string | null): Promise<boolean>;
+}
 export class CloudFoundryPlanRunner implements PlanRunner {
   readonly firewallPlansEnabled: boolean;
   readonly acceleratorCommit?: string;
@@ -51,6 +61,7 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       broker?: "platform" | "application";
       dropletId?: string;
       inspection?: PlanRunner & { readonly packageId: string };
+      warm?: WarmRunnerDispatch;
     },
   ) {
     this.firewallPlansEnabled =
@@ -164,6 +175,74 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     record: (appId: string, sourceDropletId: string) => Promise<void>,
   ) {
     guid(id);
+    if (
+      await this.config.warm?.start(
+        id,
+        ticket,
+        origin,
+        this.config.broker ?? "platform",
+        record,
+      )
+    )
+      return;
+    const { call, appId } = await this.prepare(
+      `lzc-plan-${id}`,
+      {
+        LZC_RUN_TICKET: ticket,
+        LZC_BROKER_ORIGIN: origin,
+        LZC_RUN_ID: id,
+        ...(this.config.broker === "application"
+          ? { LZC_RUNNER_BROKER: "application" }
+          : {}),
+      },
+      record,
+    );
+    await call(`apps/${appId}/tasks`, "POST", {
+      name: "initial-plan",
+      command: "./runtime/bin/node apps/worker/dist/main.js",
+      memory_in_mb: 1024,
+      disk_in_mb: 4096,
+    });
+  }
+
+  async prepareWarm(
+    id: string,
+    ticket: string,
+    origin: string,
+    record: (appId: string, sourceDropletId: string) => Promise<void>,
+  ) {
+    guid(id);
+    if (!this.config.dropletId || !/^[A-Za-z0-9_-]{43}$/.test(ticket))
+      throw new Error("Warm runner configuration incomplete");
+    const { call, appId } = await this.prepare(
+      `lzc-warm-${id}`,
+      {
+        LZC_POOL_RUNNER_ID: id,
+        LZC_POOL_TICKET: ticket,
+        LZC_BROKER_ORIGIN: origin,
+      },
+      record,
+    );
+    const process = z
+      .object({ guid: z.uuid() })
+      .parse(await call(`apps/${appId}/processes/web`));
+    await call(`processes/${process.guid}`, "PATCH", {
+      command: "./runtime/bin/node apps/worker/dist/main.js",
+      health_check: { type: "process" },
+    });
+    await call(`processes/${process.guid}/actions/scale`, "POST", {
+      instances: 1,
+      memory_in_mb: 1024,
+      disk_in_mb: 4096,
+    });
+    await call(`apps/${appId}/actions/start`, "POST", {});
+  }
+
+  private async prepare(
+    name: string,
+    variables: Record<string, string>,
+    record: (appId: string, sourceDropletId: string) => Promise<void>,
+  ) {
     const call = await this.authorized();
     const template = await call(`apps/${this.config.templateId}`);
     const templateSchema = z.object({
@@ -183,20 +262,13 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     if (this.config.dropletId && droplet.guid !== this.config.dropletId)
       throw new Error("Runner package changed");
     const app = await call("apps", "POST", {
-      name: `lzc-plan-${id}`,
+      name,
       lifecycle: {
         type: "buildpack",
         data: { buildpacks: ["binary_buildpack"], stack: "cflinuxfs4" },
       },
       relationships: { space: { data: { guid: this.config.spaceId } } },
-      environment_variables: {
-        LZC_RUN_TICKET: ticket,
-        LZC_BROKER_ORIGIN: origin,
-        LZC_RUN_ID: id,
-        ...(this.config.broker === "application"
-          ? { LZC_RUNNER_BROKER: "application" }
-          : {}),
-      },
+      environment_variables: variables,
     });
     const appId = guid(app.guid);
     await record(appId, guid(droplet.guid));
@@ -216,12 +288,7 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     await call(`apps/${appId}/relationships/current_droplet`, "PATCH", {
       data: { guid: dropletId },
     });
-    await call(`apps/${appId}/tasks`, "POST", {
-      name: "initial-plan",
-      command: "./runtime/bin/node apps/worker/dist/main.js",
-      memory_in_mb: 1024,
-      disk_in_mb: 4096,
-    });
+    return { call, appId };
   }
   async probe(origin: string, forbiddenAppId: string) {
     guid(forbiddenAppId);
@@ -294,18 +361,22 @@ export class CloudFoundryPlanRunner implements PlanRunner {
   }
   async remove(id: string, appId: string | null) {
     guid(id);
+    if (await this.config.warm?.remove(id, appId)) return;
+    await this.removeNamed(`lzc-plan-${id}`, appId);
+  }
+  async removeWarm(id: string, appId: string | null) {
+    guid(id);
+    await this.removeNamed(`lzc-warm-${id}`, appId);
+  }
+  private async removeNamed(name: string, appId: string | null) {
     const call = await this.authorized();
     // Look up the deterministic name too: handles a crash before persisting the CF GUID.
     const found = z
       .object({
-        resources: z.array(
-          z.object({ guid: z.uuid(), name: z.literal(`lzc-plan-${id}`) }),
-        ),
+        resources: z.array(z.object({ guid: z.uuid(), name: z.literal(name) })),
       })
       .parse(
-        await call(
-          `apps?space_guids=${this.config.spaceId}&names=lzc-plan-${id}`,
-        ),
+        await call(`apps?space_guids=${this.config.spaceId}&names=${name}`),
       );
     for (const app of found.resources) {
       if (appId && appId !== app.guid)

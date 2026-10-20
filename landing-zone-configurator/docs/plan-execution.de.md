@@ -22,6 +22,16 @@ Stand: 2026-10-02. Umsetzung auf `feature/landing-zone-configurator`.
 5. Optional einen weiteren Plan abbrechen. Abbruch entzieht sofort den Broker-
    Zugriff; das Stoppen des CF-Tasks durch Cleanup erfolgt zeitversetzt.
 
+Betreiber können vorbereitete Einmal-Runner über die Eingabe `runner_pool_size`
+des manuellen Releases aktivieren. Ein bereiter Runner übernimmt einen
+autorisierten Auftrag ohne weiteren CF-Containerstart; ohne frische Reserve wird
+der bestehende Kaltstart verwendet. Der Runner wird nach diesem Auftrag entfernt
+und niemals zwischen Mandanten geteilt. Dies verkürzt die Vorbereitung, nicht
+OpenTofus auftragsbezogene Backend-Initialisierung, State-Lock, Validierung oder
+Planberechnung. Gespeicherte Vorbereitung und Apply-Freigabe bleiben unverändert.
+Standard ist Kapazität null; siehe
+[Deployment-Steuerung](../deploy/cloud-foundry/README.de.md).
+
 **Keine Kunden-Ausführung in dieser Abnahme.** Der Benutzer verlangt ausdrücklich
 eine neue Freigabe vor jedem Kunden-Apply; Infrastrukturfreigaben gelten nicht dafür.
 Der ältere Erstbereitstellungsplan bleibt plan-only. Der neue Plattformpfad besitzt

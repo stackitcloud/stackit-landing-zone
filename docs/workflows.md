@@ -79,6 +79,8 @@ it reports a result for every relevant PR.
 | Configurator Release | `build_only=false` by default; `release_run_id` empty means fresh qualification/build. Set `build_only=true` to build without CF deployment; real-model calls and protected tag publication still occur. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
 
 For the normal Configurator deployment: select **Configurator Release**, `main`,
+choose **runner_pool_size=1** to maintain one prepared one-shot Dev Runner
+(`0` disables/drains the pool; default `0`, maximum `4`, 1 GiB RAM per reserve),
 leave **build_only unchecked** and **release_run_id empty**, then approve
 `lzc-dev-release` when prompted. This deploys development, not a new production
 environment. See the [release runbook](../landing-zone-configurator/deploy/cloud-foundry/README.md#manual-development-release-in-github)

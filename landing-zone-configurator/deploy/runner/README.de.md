@@ -35,6 +35,38 @@ Details und Grenzen: [CF-Staging und Cache](../cloud-foundry/README.de.md#image-
 Der Dispatcher kopiert dessen Droplet in eine neue App pro Auftrag. Direkte
 OpenTofu-Schritte stehen in `run-plan.sh`. Ablauf und Freigabegrenzen: [Plan-Ausführung](../../docs/plan-execution.de.md).
 
+## Optionaler einmaliger Warm-Pool
+
+Der Warm-Pool ist standardmäßig deaktiviert (`LZC_RUNNER_POOL_SIZE=0`; die geplante
+Betreibereinstellung akzeptiert 0..4). Ein warmer Runner hält einen wartenden
+Node-Prozess im selben CF-Container bereit, mit ausschließlich unveränderlichen
+Paketdateien. Vor der Zuweisung entstehen weder Auftragszugangsdaten noch
+Konfiguration oder Arbeitsverzeichnis. Veränderliche Arbeitsverzeichnisse werden
+weder geteilt noch zwischen Aufträgen wiederverwendet.
+
+Der Pool-Bootstrap benötigt gemeinsam `LZC_POOL_RUNNER_ID` (UUID) und
+`LZC_POOL_TICKET` (opakes Bootstrap-Token mit 43 Base64url-Zeichen) sowie den
+bestehenden vertrauenswürdigen `LZC_BROKER_ORIGIN`. Der Pool-Modus lehnt
+`LZC_RUN_ID`, `LZC_RUN_TICKET` und den lokalen Runner-Modus ab. Das Bootstrap-Ticket
+authentifiziert ausschließlich `POST /api/internal/runner-pool/{id}/claim`;
+es ist kein Auftragsticket. Nur ein unzugewiesener Status `204` wird ungefähr
+sekündlich wiederholt. Eine strikt validierte `200`-Zuweisung liefert genau eine
+Auftrags-ID, ein Auftragsticket und das Broker-Profil platform/application,
+niemals einen neuen Origin, Quellcode oder Paketpfad. Anfragen einschließlich
+Antwortinhalt laufen nach höchstens 10 Sekunden ab. Weiterleitungen, ungültige
+Zuweisungen, Autorisierungs-/Konfliktfehler und Netzwerkfehler beenden den Prozess
+ohne Wiederholung, weil eine verlorene Antwort die Zuweisung bereits verbraucht
+haben könnte.
+
+Wartende Runner laufen nach 15 Minuten ab; SIGTERM oder SIGINT brechen wartende
+Anfragen und Pausen ab. Nach einer Zuweisung ruft der Prozess den bestehenden
+Worker genau einmal auf und endet, auch bei Auftrags- oder Ergebnis-Callback-Fehlern.
+Er akzeptiert niemals einen zweiten Auftrag. Ohne Pool-Bootstrap-Variablen bleibt
+das Verhalten des kalten und lokalen `main.js`-Einstiegspunkts unverändert. Diese
+Bootstrap-Semantik stellt keine Infrastruktur bereit: API-/CF-Lifecycle-Integration
+und Hosted-Qualifizierung bleiben separate Betreiberaufgaben. Die Quellcode-
+Fähigkeit erteilt keine Freigabe für ein Cloud-Deployment.
+
 Der Worker lässt das 993.525.760 Byte große Image in Arbeitsverzeichnissen ohne
 Firewall weg. Firewall-Plan und Apply des gespeicherten Plans prüfen die reguläre,
 nicht symbolisch verknüpfte Paketdatei gegen ihre gepinnte SHA-256 und behalten

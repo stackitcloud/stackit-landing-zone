@@ -26,6 +26,7 @@ import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
 import { ArtifactCrypto } from "./plans/crypto.js";
 import { PlatformExecution } from "./plans/execution.js";
 import { LocalPlanRunner } from "./plans/local.js";
+import { RunnerPool, runnerPoolSize } from "./plans/runner-pool.js";
 import { Plans } from "./plans/service.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
@@ -45,6 +46,8 @@ let applications: Applications | undefined;
 let stackit: StackitServices | undefined;
 let applicationRunner: CloudFoundryPlanRunner | undefined;
 let applicationRunnerPackageId: string | undefined;
+let runnerPool: RunnerPool | undefined;
+const warmRunnerCount = runnerPoolSize(process.env.LZC_RUNNER_POOL_SIZE);
 const executionEnabled = process.env.LZC_EXECUTION_ENABLED === "true";
 const applicationExecutionEnabled =
   process.env.LZC_APPLICATION_EXECUTION_ENABLED === "true";
@@ -58,6 +61,8 @@ if (
 const artifactCrypto = executionEnabled
   ? new ArtifactCrypto(process.env.LZC_DEPLOYMENT_ARTIFACT_KEY ?? "")
   : undefined;
+if (warmRunnerCount > 0 && !executionEnabled)
+  throw new Error("runner_pool_execution_required");
 if (
   executionEnabled &&
   (process.env.LZC_AUTH_ENABLED !== "true" ||
@@ -123,6 +128,24 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
         "platform",
       )
     : undefined;
+  if (process.env.LZC_PLANS_ENABLED === "true") {
+    runnerPool = new RunnerPool(
+      pool,
+      artifactCrypto,
+      new CloudFoundryPlanRunner({
+        ...runnerConfiguration(),
+        ...(dropletId ? { dropletId } : {}),
+      }),
+      {
+        size: warmRunnerCount,
+        origin,
+        spaceId: runnerConfiguration().spaceId,
+        templateId: runnerConfiguration().templateId,
+        ...(dropletId ? { dropletId } : {}),
+      },
+    );
+    await pool.query("SELECT id FROM lzc.runner_pool_slots LIMIT 0");
+  }
   if (applicationExecutionEnabled && inspectionRoot && dropletId) {
     const inspection = await LocalPlanRunner.open(
       inspectionRoot,
@@ -137,6 +160,7 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       broker: "application",
       dropletId,
       inspection,
+      ...(runnerPool ? { warm: runnerPool } : {}),
     });
   }
   if (process.env.LZC_PLANS_ENABLED === "true") {
@@ -150,6 +174,7 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
         ...(platformInspection && dropletId
           ? { inspection: platformInspection, dropletId }
           : {}),
+        ...(runnerPool ? { warm: runnerPool } : {}),
       }),
       origin,
       artifactCrypto
@@ -245,6 +270,7 @@ const app = buildApp({
       }
     : {}),
   ...(plans ? { plans } : {}),
+  ...(runnerPool ? { runnerPool } : {}),
   ...(backends ? { backends } : {}),
   ...(pool && credentials
     ? {
@@ -278,8 +304,29 @@ const maintenance = plans
     }, 30000)
   : undefined;
 maintenance?.unref();
+let runnerMaintenance: Promise<void> | undefined;
+const maintainRunners = () => {
+  if (runnerMaintenance) return runnerMaintenance;
+  runnerMaintenance = (runnerPool?.maintain() ?? Promise.resolve())
+    .catch(() => {
+      app.log.warn(
+        { event: "runner_pool_maintenance_failed" },
+        "Runner pool maintenance failed",
+      );
+    })
+    .finally(() => {
+      runnerMaintenance = undefined;
+    });
+  return runnerMaintenance;
+};
+const poolMaintenance = runnerPool
+  ? setInterval(() => void maintainRunners(), 5000)
+  : undefined;
+poolMaintenance?.unref();
 app.addHook("onClose", async () => {
   clearInterval(maintenance);
+  clearInterval(poolMaintenance);
+  await runnerMaintenance;
   await pool?.end();
 });
 const port = Number(process.env.PORT ?? "3000");
@@ -295,6 +342,7 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
 }
 try {
   await app.listen({ port, host: process.env.HOST ?? "127.0.0.1" });
+  void maintainRunners();
 } catch (error) {
   app.log.error(error);
   process.exitCode = 1;

@@ -124,7 +124,7 @@ physisch darin betriebene API-Server.
 | Web UI | React-SPA, vom CF-Webprozess ausgeliefert | Editor und Chat, Templates, Auftragsstatus und ausdrueckliche Freigaben |
 | Configurator API | Node.js/Fastify in derselben CF-App | Authentifizierung, Mandanten/Rollen, Validierung, Konfigurationscompiler, KI-Assistent, GitHub-Integration und Job-Broker |
 | CF Router | Cloud-Foundry-Routing und HTTPS-Route | Browserzugang zur UI und API; keine direkte Browserverbindung zu DB oder Secrets Manager |
-| Runner | Eigene CF-Organisation und Space; kurzlebige App/Task je Auftrag | Gepinnte OpenTofu-/Provider-/Accelerator-Ausfuehrung; danach Cleanup |
+| Runner | Eigene CF-Organisation und Space; warmer Einmal-Prozess oder kalte App/Task je Auftrag | Gepinnte OpenTofu-/Provider-/Accelerator-Ausfuehrung; danach Cleanup |
 | PostgreSQL Flex | STACKIT Managed Database | Sessions, Mitgliedschaften, Entwuerfe, Templates, Jobs, Audit sowie verschluesselte Plan-/Recovery-Artefakte |
 | Secrets Manager | STACKIT Managed Service | Geschuetzte Service-Account-Schluessel, GitHub-Tokens und Backend-Zugangsdaten |
 | Model Serving | STACKIT AI Model Serving | Vom Backend genutzte Modelle fuer Antworten und Intent-Erkennung |
@@ -140,6 +140,42 @@ physisch darin betriebene API-Server.
 CF-Microservices.** Das aktuelle Release liefert beide in einer CF-App aus.
 Eine spaetere physische Trennung ist moeglich, aber nicht Teil dieser Zeichnung.
 Auch die Backend-Funktionen sind momentan Module eines API-Prozesses.
+
+<a id="optional-one-shot-warm-runner-pool"></a>
+
+## Optionaler Pool vorbereiteter Einmal-Runner
+
+`LZC_RUNNER_POOL_SIZE=0` behält den Kaltstart bei. Die Werte `1`–`4` halten diese
+Anzahl wartender CF-Prozesse ohne Route mit bereits geladenem, gepinntem Paket vor.
+Der manuelle Entwicklungsrelease bietet dieselbe Auswahl `runner_pool_size`.
+Jede Reserve benötigt 1 GiB RAM und ein Disk-Budget von 4 GiB; laufende Aufträge
+und Ersatz-Runner benötigen zusätzliche Quota. Dies ist kein Dienst zur Ausführung
+beliebigen Terraform-Codes.
+
+Die API speichert betreiberseitige Slot-Metadaten in PostgreSQL, unabhängig von
+Mandantenkonfigurationen. Eine frische Bootstrap-Berechtigung kann nur den eigenen
+Slot abfragen. Wartende Runner halten keine Kundenzugänge, keinen State und kein
+Arbeitsverzeichnis. Die Zuweisung reserviert atomar einen frischen Heartbeat samt
+passender Origin-/Template-/Droplet-Bindung, erfasst die Ausführungsidentität des
+Auftrags und veröffentlicht erst dann eine verschlüsselte, auftragsgebundene
+Berechtigung. Beim Abruf werden der verschlüsselte Inhalt gelöscht und das
+Bootstrap-Token entzogen. Der Worker übernimmt genau einen Auftrag und verwendet
+den unveränderten autorisierten Job-Broker. Er übernimmt niemals einen weiteren
+Mandantenauftrag in derselben Umgebung.
+
+Bei bereiter Kapazität entfallen CF-App-Erstellung, Droplet-Kopie und Prozessstart
+je Auftrag. Backend-Initialisierung, State-Lock, Quellprüfung und ausdrückliche
+Freigabe des gespeicherten Plans bleiben erforderlich. Ein leerer Pool verwendet
+den bestehenden Kaltstart; Zuweisungs-/Erfassungsfehler führen nicht unbemerkt zu
+einer Wiederholung auf einem anderen Runner. Die Reserve wird aufgefüllt;
+abgelaufene oder nicht mehr erreichbare Slots werden entfernt. Kapazität null
+baut wartende Reserve ab, ohne aktive Aufträge zu beenden. Alte Paketidentitäten
+können nicht von einem neuen Release vergeben werden.
+
+Die Release-Prüfung belegt einen warmen Slot mit einem absichtlich unbekannten
+Auftrag, der keine Ausführungszugänge abrufen kann, und prüft Übernahme, Bereinigung
+und Ersatzbereitschaft. Exportiert werden nur begrenzte Zeitmesswerte. Dies ist
+weder ein Kunden-Plan/-Apply noch eine Firewall-Failover-Abnahme.
 
 <a id="the-four-key-flows"></a>
 
