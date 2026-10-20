@@ -199,7 +199,7 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
  const apiDist=fileURLToPath(new URL("../../app/apps/api/dist",import.meta.url));
  assert.ok(existsSync(join(apiDist,"auth/stackit-device.js")),"Release configuration tests require the built API; run npm ci and npm run build in app first.");
  const dir=mkdtempSync(join(tmpdir(),"lzc-release-test-"));
- const env={...process.env,GITHUB_REPOSITORY:"stackitcloud/stackit-landing-zone",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",LZC_RELEASE_REVISION:"a".repeat(40),RUNNER_TEMP:dir,GITHUB_ENV:join(dir,"environment"),LZC_WORKLOAD_BUCKET:"lzc-dev-state-7dbff805",LZC_STATE_KEY_PLATFORM:"p".repeat(40),LZC_STATE_KEY_RUNTIME:"r".repeat(40),LZC_WORKLOAD_ACCESS_KEY:"test-access",LZC_WORKLOAD_SECRET_KEY:"test-secret"};
+ const env={...process.env,LZC_RELEASE_MODE:"qualified",GITHUB_REPOSITORY:"stackitcloud/stackit-landing-zone",GITHUB_REF:"refs/heads/feature/landing-zone-configurator",LZC_RELEASE_REVISION:"a".repeat(40),RUNNER_TEMP:dir,GITHUB_ENV:join(dir,"environment"),LZC_WORKLOAD_BUCKET:"lzc-dev-state-7dbff805",LZC_STATE_KEY_PLATFORM:"p".repeat(40),LZC_STATE_KEY_RUNTIME:"r".repeat(40),LZC_WORKLOAD_ACCESS_KEY:"test-access",LZC_WORKLOAD_SECRET_KEY:"test-secret"};
  const artifactApi=join(dir,".local/release/apps/api");mkdirSync(artifactApi,{recursive:true});
  symlinkSync(apiDist,join(artifactApi,"dist"),"dir");
  const run=mode=>spawnSync(process.execPath,[script,mode],{env,cwd:dir,encoding:"utf8"});
