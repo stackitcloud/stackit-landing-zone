@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
-# Provider extraction needs 256 MiB; other phases retain the 64 MiB file cap.
+# Retain compatibility with packed mirrors; new packages use unpacked providers.
 if [[ "${1:-}" == initializing ]]; then
   ulimit -f 262144
 else

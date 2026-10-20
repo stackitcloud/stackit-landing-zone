@@ -25,12 +25,21 @@ des Repositorys **Configurator Release** und dann **Run workflow** auswählen:
 1. Branch **main** auswählen.
 2. **build_only** nicht anhaken (`false`).
 3. **release_run_id** für einen neuen Release leer lassen.
-4. Workflow starten. Er qualifiziert den echten Assistant, baut und testet beide
+4. **runner_pool_size** auf `1` für einen vorbereiteten Einmal-Runner in Dev oder
+   auf `0` zum Deaktivieren/Abbauen des Pools setzen. Standard ist `0`; zulässig
+   sind `0`–`4`. Jede Reserve benötigt zusätzlich zu aktiven Aufträgen 1 GiB RAM
+   und ein Disk-Budget von 4 GiB.
+5. Workflow starten. Er qualifiziert den echten Assistant, baut und testet beide
    Pakete und erstellt anschließend den geschützten, quellgebundenen Buildpack-Tag.
-5. Wenn **deploy** auf Prüfung wartet, über **Review deployments** das
+6. Wenn **deploy** auf Prüfung wartet, über **Review deployments** das
    Environment **lzc-dev-release** mit einem autorisierten Prüferkonto freigeben.
-6. Auf den Erfolg des gesamten Laufs warten, einschließlich Runner-Isolation, Engine-Prüfungen,
+7. Auf den Erfolg des gesamten Laufs warten, einschließlich Runner-Isolation, Engine-Prüfungen,
    Datenbankmigrationen, Dienstverbindungen und Prüfungen der öffentlichen Route.
+   Bei warmem Pool prüft der Release außerdem die einmalige Übernahme eines
+   absichtlich nicht berechtigten Auftrags, entfernt diesen Runner und wartet auf
+   dessen bereiten Ersatz. Es wird kein Kunden-Plan/-Apply ausgeführt. Eine
+   fehlgeschlagene Pool-Prüfung lässt das Deployment scheitern; erhalten bleiben
+   begrenzte Zeitmesswerte für Zuweisung, Übernahme und Ersatz, keine Rohlogs.
 
 Ziel ist die bestehende Entwicklungsanwendung, keine Produktionsumgebung.
 Die ausgewählte `main`-Revision bis zum Abschluss der Tag-Veröffentlichung unverändert lassen:

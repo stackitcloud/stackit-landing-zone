@@ -10,6 +10,7 @@ type Profile = {
   serviceAccount: string;
   keyId: string;
   state: "pending" | "stored";
+  firewallAdministrationConfigured?: boolean;
   lastCheck?: AccessCheck | null;
 };
 const messages: Record<string, string> = {
@@ -18,7 +19,7 @@ const messages: Record<string, string> = {
   invalid_service_account_key:
     "Die Datei muss einen gültigen STACKIT-Service-Account-Schlüssel mit privatem RSA-Schlüssel enthalten. Prüfe Format und Ablaufdatum.",
   invalid_credential_request:
-    "Bitte prüfe Profilname, Organisations-ID und Schlüsseldatei.",
+    "Bitte prüfe Profilname, Organisations-ID, Schlüsseldatei und gegebenenfalls den OPNsense-Administrationszugang.",
   credential_role_required:
     "Im Organisationstenant benötigst du die Rolle Platform Engineer; im persönlichen Arbeitsbereich Administrator oder Deployer.",
   credential_limit_reached:
@@ -40,6 +41,9 @@ export function Credentials({
     {},
   );
   const [name, setName] = useState("");
+  const [firewallAdministration, setFirewallAdministration] = useState(false);
+  const [firewallUsername, setFirewallUsername] = useState("");
+  const [firewallPassword, setFirewallPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -118,16 +122,30 @@ export function Credentials({
               "Content-Type": "application/json",
               "X-LZC-CSRF": session.csrfToken,
             },
-            body: JSON.stringify({ name: name.trim(), serviceAccountKey: key }),
+            body: JSON.stringify({
+              name: name.trim(),
+              serviceAccountKey: key,
+              ...(firewallAdministration
+                ? {
+                    firewallAdministration: {
+                      username: firewallUsername,
+                      password: firewallPassword,
+                    },
+                  }
+                : {}),
+            }),
           }),
         );
         setName("");
+        setFirewallAdministration(false);
+        setFirewallUsername("");
         setNotice(
           "Der Zugang ist gespeichert. STACKIT-Berechtigungen wurden noch nicht geprüft.",
         );
         await refresh();
       } finally {
         if (file.current) file.current.value = "";
+        setFirewallPassword("");
       }
     });
   }
@@ -182,6 +200,61 @@ export function Credentials({
                 )}
               </p>
             </div>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={firewallAdministration}
+                disabled={busy}
+                onChange={(event) => {
+                  setFirewallAdministration(event.target.checked);
+                  setFirewallPassword("");
+                }}
+              />
+              {t("OPNsense-Administrationszugang für Firewall-HA hinterlegen")}
+            </label>
+            {firewallAdministration && (
+              <>
+                <p className="field-hint">
+                  {t(
+                    "Für die HA-Einrichtung benötigt der Runner den gültigen Administrationszugang beider Appliances. Dieser Zugang wird gemeinsam mit dem Service-Account geschützt gespeichert, nie wieder angezeigt und weder an den Assistant noch in Konfigurationsexporte übergeben. Das Hinterlegen ändert kein Appliance-Passwort.",
+                  )}
+                </p>
+                <div className="field">
+                  <label htmlFor="credential-firewall-username">
+                    {t("OPNsense-Benutzername")}
+                  </label>
+                  <input
+                    id="credential-firewall-username"
+                    autoComplete="off"
+                    value={firewallUsername}
+                    onChange={(event) =>
+                      setFirewallUsername(event.target.value)
+                    }
+                    required
+                    maxLength={64}
+                    pattern="[a-zA-Z0-9_.@-]+"
+                    disabled={busy}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="credential-firewall-password">
+                    {t("OPNsense-Passwort")}
+                  </label>
+                  <input
+                    id="credential-firewall-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={firewallPassword}
+                    onChange={(event) =>
+                      setFirewallPassword(event.target.value)
+                    }
+                    required
+                    maxLength={1024}
+                    disabled={busy}
+                  />
+                </div>
+              </>
+            )}
             <button
               type="submit"
               className="button primary"
@@ -206,6 +279,10 @@ export function Credentials({
             <article className="project-form" key={profile.id}>
               <h3>{profile.name}</h3>
               <p className="credential-account">{profile.serviceAccount}</p>
+              {profile.state === "stored" &&
+                profile.firewallAdministrationConfigured && (
+                  <p>{t("OPNsense-Administrationszugang sicher hinterlegt")}</p>
+                )}
               <p>
                 {profile.state === "stored"
                   ? profile.lastCheck

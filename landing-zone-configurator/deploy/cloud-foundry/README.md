@@ -21,12 +21,19 @@ page and select **Configurator Release**, then **Run workflow**:
 1. Select branch **main**.
 2. Leave **build_only** unchecked (`false`).
 3. Leave **release_run_id** empty for a new release.
-4. Start the workflow. It qualifies the real Assistant, builds and tests both
+4. Set **runner_pool_size** to `1` for one prepared, one-shot Dev Runner, or `0`
+   to disable/drain the pool. The default is `0`; valid values are `0`–`4`.
+   Each reserve uses 1 GiB RAM and a 4 GiB disk budget, in addition to active jobs.
+5. Start the workflow. It qualifies the real Assistant, builds and tests both
    packages, then creates the protected source-bound buildpack tag.
-5. When **deploy** waits for review, use **Review deployments** to approve
+6. When **deploy** waits for review, use **Review deployments** to approve
    **lzc-dev-release** with an authorized reviewer account.
-6. Wait for the whole run to succeed, including Runner isolation, engine checks,
+7. Wait for the whole run to succeed, including Runner isolation, engine checks,
    database migrations, service connections and public route checks.
+   With a warm pool, the release also checks one-shot handoff of a deliberately
+   unauthorized job, removes that Runner and waits for its replacement to be ready.
+   No customer Plan/Apply is performed. A failed pool check fails deployment;
+   bounded warm dispatch/claim/replacement timings are retained, not raw logs.
 
 The target is the existing development application, not a production environment.
 Keep the selected `main` revision unchanged until tag publication completes:

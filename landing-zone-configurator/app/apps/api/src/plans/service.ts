@@ -10,6 +10,7 @@ import {
 } from "@lzc/contracts";
 import {
   initialPlanIssues,
+  initialPlanRequiresFirewallAdministration,
   initialPlanRequiresFirewallImage,
   platformContractSchema,
   readConfigurationRecord,
@@ -544,6 +545,14 @@ export class Plans {
     });
   }
   private async verify(session: Session, manifest: PreparationManifest) {
+    const requiresAdministration = initialPlanRequiresFirewallAdministration(
+      manifest.configuration,
+    );
+    if (
+      requiresAdministration &&
+      manifest.credential.firewallAdministration !== true
+    )
+      throw invalid("firewall_administration_required");
     const checked = await this.profiles.verifyForPreparation(
       session,
       manifest.credential.id,
@@ -559,6 +568,11 @@ export class Plans {
       checked.keyId !== manifest.credential.keyId
     )
       throw invalid("credential_changed");
+    if (
+      requiresAdministration &&
+      checked.firewallAdministrationConfigured !== true
+    )
+      throw invalid("firewall_administration_required");
   }
   private async verifyDatabaseSource(
     session: Session,
@@ -920,6 +934,12 @@ export class Plans {
       secret.key.credentials.kid !== manifest.credential.keyId
     )
       throw invalid("credential_changed");
+    if (
+      initialPlanRequiresFirewallAdministration(manifest.configuration) &&
+      (manifest.credential.firewallAdministration !== true ||
+        !secret.firewallAdministration)
+    )
+      throw invalid("firewall_administration_required");
     const tfvars = preparationTfvars(manifest);
     if (
       createHash("sha256").update(tfvars).digest("hex") !==
@@ -1024,6 +1044,10 @@ export class Plans {
       tfvarsSha256: manifest.tfvarsSha256,
       ...(initialPlanRequiresFirewallImage(manifest.configuration)
         ? { firewallInfrastructure: true }
+        : {}),
+      ...(initialPlanRequiresFirewallAdministration(manifest.configuration) &&
+      secret.firewallAdministration
+        ? { firewallAdministration: secret.firewallAdministration }
         : {}),
       key: runnerKey,
       ...(backend ? { backend } : {}),

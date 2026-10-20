@@ -16,6 +16,21 @@ test('emits only bounded timing values from this run, never raw log data',()=>{
  assert.deepEqual(JSON.parse(result.stdout),{service:'plan-runner-isolation',runId:'12',ok:true,dispatchMilliseconds:1234,completionMilliseconds:4321});
  const invalid=spawnSync(process.execPath,[script,'13'],{input,encoding:'utf8'});assert.equal(invalid.status,1);assert.ok(!invalid.stdout.includes(secret));
 });
+test('requires warm handoff and replacement evidence when the manual release enables reserves',()=>{
+ const value={service:'plan-runner-isolation',runId:'12',ok:true,dispatchMilliseconds:1234,completionMilliseconds:4321};
+ const run=input=>spawnSync(process.execPath,[script,'12','1'],{input:JSON.stringify(input),encoding:'utf8'});
+ assert.equal(run(value).status,1);
+ const warm={readyWaitMilliseconds:12,dispatchMilliseconds:3,assignmentMilliseconds:500,replenishMilliseconds:20000};
+ const valid=run({...value,warm:{...warm,secret:'must-not-appear'}});
+ assert.equal(valid.status,0);
+ assert.deepEqual(JSON.parse(valid.stdout).warm,warm);
+ assert.ok(!valid.stdout.includes('must-not-appear'));
+ assert.equal(run({...value,warm:{...warm,assignmentMilliseconds:-1}}).status,1);
+ const workflow=readFileSync(fileURLToPath(new URL('../../../.github/workflows/configurator-release.yml',import.meta.url)),'utf8');
+ assert.ok(workflow.includes('runner_pool_size:'));
+ assert.ok(workflow.includes('LZC_RUNNER_POOL_SIZE: ${{ inputs.runner_pool_size }}'));
+ assert.ok(workflow.includes('"${{ inputs.runner_pool_size }}"'));
+});
 test('rejects apply before invoking OpenTofu',()=>{
  const directory=mkdtempSync(join(tmpdir(),'lzc-run-plan-contract-'));
  const marker=join(directory,'tofu-called');
@@ -53,6 +68,11 @@ test('qualifies initial platform capabilities against source identity and lock b
  assert.ok(native.includes('check-firewall-image-plan.mjs'));
  assert.ok(native.includes('verify-runner-budget.mjs'));
  assert.ok(native.includes('LZC_FIREWALL_IMAGE_PACKAGE="$runner_root"'));
+ assert.ok(native.includes('LZC_MIRROR_TEST_PACKAGE="$runner_root"'));
+ assert.ok(native.includes('tests/runner-packaging.test.ts'));
+ assert.ok(native.includes('|proves unpacked native provider checksums'));
+ const mirrorPreparation=source.indexOf('prepare-provider-mirror.sh');
+ assert.ok(mirrorPreparation>0&&mirrorPreparation<qualification);
  const contracts=readFileSync(fileURLToPath(new URL('../../app/packages/contracts/src/plan.ts',import.meta.url)),'utf8');
  const distribution=readFileSync(fileURLToPath(new URL('../../../.github/workflows/verify-deployment.yml',import.meta.url)),'utf8');
  for(const pin of ['https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2','5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068']){

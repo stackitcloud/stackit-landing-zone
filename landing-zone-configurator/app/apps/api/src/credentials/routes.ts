@@ -55,6 +55,7 @@ export function registerCredentials(
           .object({
             name: z.string().trim().min(1).max(64),
             serviceAccountKey: z.unknown(),
+            firewallAdministration: firewallAdministrationSchema.optional(),
           })
           .strict()
           .parse(request.body);
@@ -64,7 +65,14 @@ export function registerCredentials(
         } catch {
           return reply.code(400).send({ error: "invalid_service_account_key" });
         }
-        await profiles.create(session, input.name, key);
+        if (input.firewallAdministration)
+          await profiles.create(
+            session,
+            input.name,
+            key,
+            input.firewallAdministration,
+          );
+        else await profiles.create(session, input.name, key);
         return reply.code(201).send({ stored: true });
       },
     );
@@ -89,3 +97,5 @@ export function registerCredentials(
     });
   });
 }
+
+import { firewallAdministrationSchema } from "@lzc/contracts";

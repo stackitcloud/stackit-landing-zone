@@ -115,6 +115,87 @@ it("accepts generated RSA keys but rejects malformed, inactive, expired and mism
   ])
     expect(() => parseServiceAccountKey(invalid)).toThrow();
 });
+it("encrypts and restores appliance administration with the same immutable owner-bound profile", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lzc-firewall-secrets-"));
+  const administration = {
+    username: "fixture-admin",
+    password: "fixture-only-private-password",
+  };
+  const id = randomUUID();
+  try {
+    const secrets = await LocalCredentialSecrets.open(directory);
+    await secrets.put(session, id, parseServiceAccountKey(key), administration);
+    const filename = (await readdir(directory)).find((name) =>
+      name.endsWith(".sealed"),
+    );
+    if (!filename) throw new Error("Encrypted profile missing");
+    const sealed = await readFile(join(directory, filename));
+    for (const value of [administration.username, administration.password])
+      expect(sealed.includes(Buffer.from(value))).toBe(false);
+    const reopened = await LocalCredentialSecrets.open(directory);
+    expect(await reopened.get(session, id)).toEqual({
+      key,
+      version: 1,
+      firewallAdministration: administration,
+    });
+    await expect(
+      reopened.get({ ...session, tenantId: randomUUID() }, id),
+    ).rejects.toThrow();
+    await expect(
+      secrets.put(session, randomUUID(), parseServiceAccountKey(key), {
+        ...administration,
+        password: "invalid\npassword",
+      }),
+    ).rejects.toThrow();
+    await reopened.remove(session, id);
+    await expect(reopened.get(session, id)).rejects.toThrow();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("stores appliance administration only in the owner-bound Vault secret and validates it on read", async () => {
+  const id = randomUUID();
+  const administration = {
+    username: "fixture-admin",
+    password: "fixture-only-private-password",
+  };
+  let stored: object | undefined;
+  const request = vi.fn<typeof fetch>(async (url, init) => {
+    if (String(url).includes("auth/userpass"))
+      return Response.json({ auth: { client_token: "fixture-vault-token" } });
+    if (String(url).includes("/data/")) {
+      if (init?.method === "POST") {
+        stored = JSON.parse(String(init.body)).data;
+        return new Response(null, { status: 204 });
+      }
+      return Response.json({
+        data: { metadata: { version: 1 }, data: stored },
+      });
+    }
+    return new Response(null, { status: 204 });
+  });
+  const secrets = new VaultCredentialSecrets(
+    new VaultConnection(settings, request),
+  );
+  await secrets.put(session, id, parseServiceAccountKey(key), administration);
+  expect(stored).toMatchObject({
+    tenantId: session.tenantId,
+    userId: session.userId,
+    profileId: id,
+    firewallAdministration: administration,
+  });
+  expect(await secrets.get(session, id)).toEqual({
+    key,
+    version: 1,
+    firewallAdministration: administration,
+  });
+  stored = {
+    ...stored,
+    firewallAdministration: { ...administration, extra: "not-allowed" },
+  };
+  await expect(secrets.get(session, id)).rejects.toThrow();
+});
 it("uses owner-scoped secret paths, create-only CAS and permanent deletion of all versions", async () => {
   const request = vi.fn<typeof fetch>(async (url, init) => {
     expect(String(url).startsWith(`${settings.address}/v1/`)).toBe(true);
@@ -220,6 +301,39 @@ it("protects credential routes with the session and CSRF, rejects identity injec
     "My profile",
     key,
   );
+  const administration = {
+    username: "fixture-admin",
+    password: "fixture-only-private-password",
+  };
+  const withAdministration = await app.inject({
+    method: "POST",
+    url: "/api/v1/credentials",
+    headers,
+    payload: { ...payload, firewallAdministration: administration },
+  });
+  expect(withAdministration.statusCode).toBe(201);
+  expect(withAdministration.body).not.toContain(administration.password);
+  expect(withAdministration.body).not.toContain(administration.username);
+  expect(profiles.create).toHaveBeenLastCalledWith(
+    session,
+    "My profile",
+    key,
+    administration,
+  );
+  for (const invalid of [
+    { ...administration, password: "" },
+    { ...administration, username: "not a username" },
+    { ...administration, endpoint: "https://untrusted.example" },
+  ]) {
+    const result = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials",
+      headers,
+      payload: { ...payload, firewallAdministration: invalid },
+    });
+    expect(result.statusCode).toBe(400);
+    expect(result.body).not.toContain(administration.password);
+  }
   const organizationId = randomUUID();
   profiles.check.mockResolvedValueOnce({
     status: "passed",

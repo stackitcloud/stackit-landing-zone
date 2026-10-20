@@ -88,6 +88,8 @@ Pflichtprüfung, ohne sicherzustellen, dass er für jeden relevanten PR ein Erge
 | Configurator Release | Standardmäßig `build_only=false`; leere `release_run_id` bedeutet neue Qualifikation/neuer Build. Setzen Sie `build_only=true` für einen Build ohne CF-Bereitstellung; echte Modellaufrufe und Veröffentlichung des geschützten Tags erfolgen trotzdem. Um einen bestehenden qualifizierten Build zu übernehmen, lassen Sie Build-only deaktiviert und geben Sie dessen numerische Run-ID an; das aufbewahrte Artefakt/Tag muss weiterhin gültig sein. |
 
 Für die normale Configurator-Bereitstellung: Wählen Sie **Configurator Release**,
+**runner_pool_size=1** für einen vorbereiteten Einmal-Runner in Dev
+(`0` deaktiviert/baut den Pool ab; Standard `0`, Maximum `4`, 1 GiB RAM je Reserve),
 `main`, lassen Sie **build_only deaktiviert** und **release_run_id leer**, und geben
 Sie bei Aufforderung `lzc-dev-release` frei. Dies stellt die Entwicklungsumgebung
 bereit, keine neue Produktionsumgebung. Siehe das

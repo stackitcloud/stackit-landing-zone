@@ -1,6 +1,10 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  type FirewallAdministration,
+  firewallAdministrationSchema,
+} from "@lzc/contracts";
 import { z } from "zod";
 import type { Session } from "../auth/store.js";
 import { parseServiceAccountKey, type ServiceAccountKey } from "./key.js";
@@ -50,14 +54,29 @@ export class LocalCredentialSecrets implements CredentialSecrets {
     };
   }
 
-  async put(session: Session, id: string, rawKey: ServiceAccountKey) {
+  async put(
+    session: Session,
+    id: string,
+    rawKey: ServiceAccountKey,
+    firewallAdministration?: FirewallAdministration,
+  ) {
     const key = parseServiceAccountKey(rawKey);
+    const administration = firewallAdministration
+      ? firewallAdministrationSchema.parse(firewallAdministration)
+      : undefined;
     const { path, binding } = this.location(session, id);
     const nonce = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", this.masterKey, nonce);
     cipher.setAAD(binding);
     const ciphertext = Buffer.concat([
-      cipher.update(JSON.stringify(key), "utf8"),
+      cipher.update(
+        JSON.stringify(
+          administration
+            ? { key, firewallAdministration: administration }
+            : key,
+        ),
+        "utf8",
+      ),
       cipher.final(),
     ]);
     await writeFile(
@@ -83,9 +102,22 @@ export class LocalCredentialSecrets implements CredentialSecrets {
       decipher.update(sealed.subarray(28)),
       decipher.final(),
     ]);
+    const raw: unknown = JSON.parse(plaintext.toString("utf8"));
+    const stored =
+      typeof raw === "object" && raw !== null && "key" in raw
+        ? z
+            .strictObject({
+              key: z.unknown(),
+              firewallAdministration: firewallAdministrationSchema,
+            })
+            .parse(raw)
+        : undefined;
     return {
-      key: parseServiceAccountKey(JSON.parse(plaintext.toString("utf8"))),
+      key: parseServiceAccountKey(stored ? stored.key : raw),
       version: 1,
+      ...(stored
+        ? { firewallAdministration: stored.firewallAdministration }
+        : {}),
     };
   }
 

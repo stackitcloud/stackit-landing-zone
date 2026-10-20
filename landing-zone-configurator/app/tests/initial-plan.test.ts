@@ -6,6 +6,7 @@ import {
   createEditorConfiguration,
   editCommonInput,
   initialPlanIssues,
+  initialPlanRequiresFirewallAdministration,
   initialPlanRequiresFirewallImage,
   type JsonValue,
   migrateCommonConfiguration,
@@ -129,7 +130,7 @@ it("allows packaged management, Git and connectivity services without rewriting 
   expect(initialPlanRequiresFirewallImage(noAppliances)).toBe(false);
 });
 
-it("allows appliance plans but gates apply, VPN connections and unproven audit scopes", () => {
+it("allows appliance Plan and Apply while retaining policy, VPN and audit exclusions", () => {
   let document = fixture();
   const connectivity = createCommonConfiguration(
     "hub-and-spoke-firewall",
@@ -138,9 +139,7 @@ it("allows appliance plans but gates apply, VPN connections and unproven audit s
   document = editCommonInput(document, "connectivity", connectivity);
   expect(initialPlanIssues(document)).toEqual([]);
   expect(initialPlanRequiresFirewallImage(document)).toBe(true);
-  expect(initialPlanIssues(document, "apply")).toContainEqual(
-    expect.objectContaining({ field: "connectivity.firewall" }),
-  );
+  expect(initialPlanIssues(document, "apply")).toEqual([]);
   expect(
     initialPlanIssues(editCommonInput(document, "firewall_bootstrap", true)),
   ).toContainEqual(
@@ -194,6 +193,47 @@ it("allows appliance plans but gates apply, VPN connections and unproven audit s
     ).toContainEqual(
       expect.objectContaining({ field: "audit_logs.link_scopes.0" }),
     );
+});
+
+it("requires appliance administration only for effective single or mapped HA entries", () => {
+  const document = fixture();
+  const network = {
+    network_area: {
+      ranges: ["10.0.0.0/16"],
+      transfer_network: "10.255.0.0/24",
+    },
+    firewall: {
+      name: "firewall",
+      flavor: "c1.2",
+      zone: "eu01-1",
+      lan_network_range: "10.0.0.0/24",
+      wan_network_range: "10.0.1.0/24",
+    },
+  };
+  expect(initialPlanRequiresFirewallAdministration(document)).toBe(false);
+  expect(
+    initialPlanRequiresFirewallAdministration(
+      editCommonInput(document, "connectivity", network),
+    ),
+  ).toBe(false);
+  const appliance = {
+    ...network.firewall,
+    ha: { backup_zone: "eu01-2" },
+  };
+  for (const connectivity of [
+    { ...network, firewall: appliance },
+    {
+      network_areas: { default: network.network_area },
+      firewalls: { default: appliance },
+    },
+  ]) {
+    const configured = editCommonInput(document, "connectivity", connectivity);
+    expect(initialPlanRequiresFirewallAdministration(configured)).toBe(true);
+    expect(initialPlanIssues(configured, "apply")).toEqual(
+      initialPlanIssues(configured, "plan"),
+    );
+    expect(initialPlanIssues(configured, "apply")).toEqual([]);
+  }
 });
 
 it("accepts a new Standalone editor draft after filling identities and rejects ignored nested fields", () => {

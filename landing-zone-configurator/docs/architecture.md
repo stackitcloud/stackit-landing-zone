@@ -118,7 +118,7 @@ API servers physically running within it.
 | Web UI | React SPA, served by the CF web process | Editor and chat, templates, job status and explicit approvals |
 | Configurator API | Node.js/Fastify in the same CF app | Authentication, tenants/roles, validation, configuration compiler, AI Assistant, GitHub integration and job broker |
 | CF Router | Cloud Foundry routing and HTTPS route | Browser access to UI and API; no direct browser connection to DB or Secrets Manager |
-| Runner | Separate CF organization and space; short-lived app/task per job | Pinned OpenTofu/provider/Accelerator execution; cleanup afterwards |
+| Runner | Separate CF organization and space; one-shot warm process or cold app/task per job | Pinned OpenTofu/provider/Accelerator execution; cleanup afterwards |
 | PostgreSQL Flex | STACKIT Managed Database | Sessions, memberships, drafts, templates, jobs, audit and encrypted Plan/recovery artifacts |
 | Secrets Manager | STACKIT Managed Service | Protected service-account keys, GitHub tokens and backend credentials |
 | Model Serving | STACKIT AI Model Serving | Models used by the backend for responses and intent detection |
@@ -134,6 +134,36 @@ API servers physically running within it.
 CF microservices.** The current release delivers both in one CF app.
 Later physical separation is possible, but not part of this drawing.
 Backend functions are currently also modules of one API process.
+
+## Optional one-shot warm Runner pool
+
+`LZC_RUNNER_POOL_SIZE=0` preserves cold dispatch. Values `1`–`4` maintain that many
+idle, route-free CF processes with the pinned package already loaded. The manual
+development release exposes the same `runner_pool_size` choice. Each reserve
+uses 1 GiB RAM and a 4 GiB disk budget; active jobs and replacements need additional
+quota. This is not an arbitrary Terraform execution service.
+
+The API stores operator-owned slot metadata in PostgreSQL, independently of tenant
+configuration. A fresh bootstrap capability can poll only its own slot. The pool
+holds no customer credentials, state or working directory while idle. Assignment
+atomically reserves a fresh heartbeat and matching origin/template/droplet,
+records the job's execution identity, then publishes an encrypted, job-bound
+capability. Consumption clears the ciphertext and revokes the bootstrap token.
+The worker accepts exactly one assignment and runs the unchanged authorized job
+broker flow. It never accepts another tenant's job in the same environment.
+
+Warm dispatch avoids per-job CF app creation, droplet copying and process startup
+when capacity is ready. Backend initialization, state locking, source verification
+and explicit saved-plan Apply approval remain required. An empty pool uses the
+existing cold path; assignment/recording failures do not silently retry on another
+Runner. Standbys are replenished, expired or unhealthy slots are removed, and
+setting capacity to zero drains idle capacity without terminating active jobs.
+Old package identities cannot be leased by a new release.
+
+Release qualification claims a warm slot using an intentionally unknown job,
+which cannot retrieve execution credentials, and checks consumption, cleanup and
+replacement readiness. Only bounded timing values are exported. The probe is not
+a customer Plan/Apply or a Firewall failover qualification.
 
 <a id="die-vier-wesentlichen-ablaeufe"></a>
 ## The four key flows

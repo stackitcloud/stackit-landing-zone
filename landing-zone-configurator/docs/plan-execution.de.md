@@ -22,6 +22,16 @@ Stand: 2026-10-02. Umsetzung auf `feature/landing-zone-configurator`.
 5. Optional einen weiteren Plan abbrechen. Abbruch entzieht sofort den Broker-
    Zugriff; das Stoppen des CF-Tasks durch Cleanup erfolgt zeitversetzt.
 
+Betreiber können vorbereitete Einmal-Runner über die Eingabe `runner_pool_size`
+des manuellen Releases aktivieren. Ein bereiter Runner übernimmt einen
+autorisierten Auftrag ohne weiteren CF-Containerstart; ohne frische Reserve wird
+der bestehende Kaltstart verwendet. Der Runner wird nach diesem Auftrag entfernt
+und niemals zwischen Mandanten geteilt. Dies verkürzt die Vorbereitung, nicht
+OpenTofus auftragsbezogene Backend-Initialisierung, State-Lock, Validierung oder
+Planberechnung. Gespeicherte Vorbereitung und Apply-Freigabe bleiben unverändert.
+Standard ist Kapazität null; siehe
+[Deployment-Steuerung](../deploy/cloud-foundry/README.de.md).
+
 **Keine Kunden-Ausführung in dieser Abnahme.** Der Benutzer verlangt ausdrücklich
 eine neue Freigabe vor jedem Kunden-Apply; Infrastrukturfreigaben gelten nicht dafür.
 Der ältere Erstbereitstellungsplan bleibt plan-only. Der neue Plattformpfad besitzt
@@ -37,13 +47,19 @@ freigabefaehiger Plan zeigt weiterhin die explizite Pruefbestaetigung und verlan
 die exakte UUID der Zielorganisation. Alle Bedingungen werden vor Apply erneut
 serverseitig geprueft.
 
-Firewall-/HA-Infrastruktur bleibt derzeit nur fuer Plan qualifiziert. Ein neuer
-Plan allein hebt diese Komponentensperre nicht auf. Der Administrations- und
-Bootstrap-Vertrag muss separat fuer Apply qualifiziert werden; Firewall-Policy
-und VPN-PSKs werden dabei nicht stillschweigend ausgelassen. Konfiguration und
-Plan-Nachweise bleiben unveraendert erhalten. Die komponentenweise
-Ausfuehrungsqualifikation wird in
-[#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89) weitergefuehrt.
+Firewall-Infrastruktur und natives HA können den gespeicherten Plattformplan
+anwenden. HA benötigt zusätzlich einen ausdrücklich angegebenen
+OPNsense-Administrationszugang, gebunden an Profil und Secret-Version der
+Vorbereitung. Ohne diese Bindung wird die Vorbereitung mit
+`firewall_administration_required` abgewiesen; alte HA-Pläne benötigen ein neues
+Zugangsprofil, eine neue Vorbereitung und einen neuen Plan. Einzelne
+Firewall-Instanzen benötigen keinen Appliance-Administrationszugang.
+Policy-/API-Key-Bootstrap und VPN-PSKs bleiben separat gesperrt und werden niemals
+stillschweigend ausgelassen. Siehe
+[Zugang einrichten](deployment-credentials.de.md#optional-firewall-ha-administration).
+Broker und nativer HA-Administrationsvertrag werden lokal getestet; echte
+Appliance-Erreichbarkeit und HA-Failover benötigen weiterhin eine separat
+genehmigte Cloud-Qualifikation. Ein erfolgreicher Plan allein beweist beides nicht.
 
 <a id="platform-drafts-with-project-templates"></a>
 
@@ -130,8 +146,11 @@ optional ein übergeordneter Ordner (UUID), explizit Public-Projekte in bestehen
 Gesamtkonfigurationen, Sandbox-Projekte, Grundeinstellungen und die bisherige
 Secrets-Manager-Option. Leere oder nicht gesetzte Ordnerbeschreibungen sind zulässig;
 gefüllte Beschreibungen werden bis zur Behebung von #82 gezielt abgewiesen, weil der
-Accelerator sie nicht übernimmt. Netzwerk, Kubernetes, Firewall und zusätzliche Plattform-
-oder Projektdienste bleiben für diesen Runner gesperrt. Die Prüfung erfolgt anhand
+Accelerator sie nicht übernimmt. Unterstützte Konnektivität umfasst SNA und
+Firewall-/HA-Infrastruktur unter dem oben beschriebenen geschützten
+Ausführungsvertrag. Kubernetes, regionale Konnektivität, Firewall-Policy/-Bootstrap,
+VPN-Verbindungen mit PSKs und andere nicht unterstützte Dienste bleiben für diesen
+Runner gesperrt. Die Prüfung erfolgt anhand
 der effektiven Konfiguration, nicht anhand des Template-Namens. UI, Vorbereitung
 und Broker verwenden `initialPlanIssues`; vor Übergabe der Zugangsdaten an den
 Runner wird erneut geprüft. JSON und tfvars bleiben an dieselbe Git-Revision und

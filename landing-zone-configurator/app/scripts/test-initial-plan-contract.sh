@@ -77,6 +77,6 @@ node "$app_dir/scripts/verify-initial-plan-contract.mjs" "$work_dir/test.log"
 node "$app_dir/scripts/check-vault-bootstrap.mjs" "$runner_root"
 node "$app_dir/scripts/check-firewall-image-plan.mjs" "$runner_root"
 mkdir "$work_dir/worker"
-(cd "$app_dir" && TMPDIR="$work_dir/worker" LZC_FIREWALL_IMAGE_PACKAGE="$runner_root" \
-  node node_modules/vitest/vitest.mjs run tests/platform-worker.test.ts tests/local-runner.test.ts \
-  -t 'uses the verified packaged image|advertises firewall plans only')
+(cd "$app_dir" && TMPDIR="$work_dir/worker" LZC_FIREWALL_IMAGE_PACKAGE="$runner_root" LZC_MIRROR_TEST_PACKAGE="$runner_root" \
+  node node_modules/vitest/vitest.mjs run tests/platform-worker.test.ts tests/local-runner.test.ts tests/runner-packaging.test.ts \
+  -t 'uses the verified packaged image|advertises firewall plans only|proves unpacked native provider checksums')

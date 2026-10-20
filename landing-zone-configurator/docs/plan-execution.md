@@ -15,11 +15,30 @@ As of: 2026-10-02. Implementation on `feature/landing-zone-configurator`.
 4. Reload the page: job and result are retained. Creation, modification, replacement, deletion, data reads and changed outputs are counted separately.
 5. Optionally cancel another Plan. Cancellation immediately revokes broker access; cleanup stops the CF task after a delay.
 
+An operator can enable prepared, one-shot Runners through the manual release's
+`runner_pool_size` input. A ready Runner takes one authorized job without creating
+another CF container; when no fresh reserve is available, dispatch uses the cold
+path. The Runner is removed after that job, never shared between tenants. This
+shortens preparation, not OpenTofu's per-job backend initialization, state locking,
+validation or planning. It changes neither the saved preparation nor Apply
+approval. Pool capacity defaults to zero; see
+[the deployment controls](../deploy/cloud-foundry/README.md).
+
 **No customer execution in this acceptance.** The user explicitly requires fresh approval before every customer Apply; infrastructure approvals do not cover this. The older initial-provisioning plan remains Plan-only. The new platform path has a gated Apply endpoint: only with execution enabled, matching immutable plan artifact/hash, confirmed target organization and rechecked access, source and state bindings. Export is not Apply approval. No Destroy path.
 
 A successful Plan is not automatically eligible for Apply. For blocked approval, the server returns an error code and, for unsupported components, the affected fields with reasons. Plan and Apply pages show this block; the Apply button remains visible but disabled. An eligible Plan still shows explicit review confirmation and requires the exact UUID of the target organization. All conditions are checked again server-side before Apply.
 
-Firewall/HA infrastructure is currently qualified only for Plan. A new Plan alone does not lift this component block. The administration and bootstrap contract must be qualified separately for Apply; firewall policy and VPN PSKs are not silently omitted. Configuration and Plan evidence remain unchanged. Component-specific execution qualification continues in [#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89).
+Firewall infrastructure and native HA can use the platform saved-plan Apply path.
+HA additionally requires an explicitly supplied OPNsense administration credential
+bound to the preparation's credential profile and secret version. Without this
+binding, preparation is rejected with `firewall_administration_required`; old HA
+Plans require a new credential profile, preparation and Plan. Single-node Firewall
+infrastructure does not need appliance administration credentials. Policy/API-key
+bootstrap and VPN PSKs remain separately blocked and are never silently omitted.
+See [credential setup](deployment-credentials.md#optional-firewall-ha-administration).
+The broker and native HA administration contract have local execution tests; real
+appliance reachability and HA failover still require separately authorized cloud
+qualification. A successful Plan alone proves neither.
 
 <a id="plattformentwürfe-mit-projekt-templates"></a>
 ## Platform drafts with project templates
@@ -63,7 +82,7 @@ An actual independent cloud Plan still needs an immutably approved Application R
 <a id="gemeinsamer-editor-und-ausführungsumfang"></a>
 ## Common editor and execution scope
 
-Schema v3 is supported for a conservative standalone subset: eu01, organization owner/auditor, folders with names and owner/read permissions, optional parent folder (UUID), explicit Public projects in existing combined configurations, sandbox projects, basic settings and the previous Secrets Manager option. Empty or unset folder descriptions are permitted; populated descriptions are specifically rejected until #82 is fixed because the Accelerator does not adopt them. Network, Kubernetes, firewall and additional platform or project services remain blocked for this Runner. Checking uses the effective configuration, not the template name. UI, preparation and broker use `initialPlanIssues`; checking is repeated before handing credentials to the Runner. JSON and tfvars remain bound to the same Git revision and unchanged export hash. Legacy documents remain supported.
+Schema v3 is supported for a conservative standalone subset: eu01, organization owner/auditor, folders with names and owner/read permissions, optional parent folder (UUID), explicit Public projects in existing combined configurations, sandbox projects, basic settings and the previous Secrets Manager option. Empty or unset folder descriptions are permitted; populated descriptions are specifically rejected until #82 is fixed because the Accelerator does not adopt them. Supported connectivity includes SNA and Firewall/HA infrastructure under the protected execution contract above. Kubernetes, regional connectivity, firewall policy/bootstrap, VPN connections requiring PSKs and other unsupported services remain blocked for this Runner. Checking uses the effective configuration, not the template name. UI, preparation and broker use `initialPlanIssues`; checking is repeated before handing credentials to the Runner. JSON and tfvars remain bound to the same Git revision and unchanged export hash. Legacy documents remain supported.
 
 Organization-tenant blocks still apply. The older initial-provisioning plan uses empty state. In the new platform path, existing state is used exclusively through the checked backend binding; missing or contradictory bindings must not trigger a silent restart with empty state. Extended execution: [#89](https://github.com/stackitcloud/stackit-landing-zone/issues/89).
 

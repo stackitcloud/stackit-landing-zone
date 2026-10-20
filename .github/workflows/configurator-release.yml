@@ -11,6 +11,11 @@ on:
         description: Promote this existing successful build without rebuilding
         type: string
         required: false
+      runner_pool_size:
+        description: Ready one-shot Dev runners (0 disables the pool; each reserve uses 1 GiB)
+        type: choice
+        default: '0'
+        options: ['0', '1', '2', '3', '4']
 
 permissions:
   actions: read
@@ -290,6 +295,7 @@ jobs:
           LZC_STACKIT_REDIRECT_URI: ${{ vars.LZC_STACKIT_REDIRECT_URI }}
           LZC_EXECUTION_ENABLED: ${{ vars.LZC_EXECUTION_ENABLED }}
           LZC_APPLICATION_EXECUTION_ENABLED: ${{ vars.LZC_APPLICATION_EXECUTION_ENABLED }}
+          LZC_RUNNER_POOL_SIZE: ${{ inputs.runner_pool_size }}
           LZC_DEPLOYMENT_ARTIFACT_KEY: ${{ secrets.LZC_DEPLOYMENT_ARTIFACT_KEY }}
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
@@ -376,11 +382,11 @@ jobs:
         timeout-minutes: 5
         run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
       - name: Verify separate runner app, bindings and rejected job ticket
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: |
           cf run-task landing-zone-configurator --command "./runtime/bin/node apps/api/dist/check-plan-runner.js $GITHUB_RUN_ID" --name "runner-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
           for attempt in 1 2 3; do
-            if cf logs landing-zone-configurator --recent | node infra/ci/runner-evidence.mjs "$GITHUB_RUN_ID"; then exit 0; fi
+            if cf logs landing-zone-configurator --recent | node infra/ci/runner-evidence.mjs "$GITHUB_RUN_ID" "${{ inputs.runner_pool_size }}"; then exit 0; fi
             sleep 5
           done
           exit 1

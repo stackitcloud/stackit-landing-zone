@@ -66,6 +66,15 @@ Choose the correct environment and target, bind the authorized technical
 credentials, then create a preparation and request a Plan. Follow the job output
 and review the resulting changes, source/configuration version and state binding.
 
+For Firewall HA, create a credential profile with the optional OPNsense
+administration username and password for both appliances before preparing the
+deployment. These credentials are protected separately from configuration and
+must match the appliances; saving them does not change their passwords. Existing
+HA Plans without this credential binding need a new preparation and Plan.
+Single-node Firewall infrastructure does not require this additional credential.
+Firewall policy/bootstrap and VPN PSKs remain outside this execution contract.
+See [deployment credentials](deployment-credentials.md#optional-firewall-ha-administration).
+
 Active platform jobs stream **OpenTofu output** as it becomes available, including
 native Plan progress before the final diff. **Follow output** can be switched off
 to inspect earlier lines. Collapse the console to disconnect; reopening shows

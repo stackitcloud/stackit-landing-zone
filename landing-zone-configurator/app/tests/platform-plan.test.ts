@@ -264,7 +264,12 @@ describe.skipIf(!enabled)(
           head: "1",
           tfvars: serializeTfvars(recordValues(document)),
         },
-        { check, version: 1, keyId },
+        {
+          check,
+          version: 1,
+          keyId,
+          ...(firewall ? { firewallAdministrationConfigured: true } : {}),
+        },
       );
       await migration!.query(
         "INSERT INTO lzc.configurations(id,tenant_id,created_by,name,document) VALUES($1,$2,$3,'Plan fixture',$4)",
@@ -290,11 +295,24 @@ describe.skipIf(!enabled)(
         ],
       );
       const profiles = {
-        verifyForPreparation: vi.fn(async () => ({ check, version: 1, keyId })),
+        verifyForPreparation: vi.fn(async () => ({
+          check,
+          version: 1,
+          keyId,
+          ...(firewall ? { firewallAdministrationConfigured: true } : {}),
+        })),
       };
       const secrets = {
         get: vi.fn(async () => ({
           version: 1,
+          ...(firewall
+            ? {
+                firewallAdministration: {
+                  username: "fixture-admin",
+                  password: "fixture-only-private-password",
+                },
+              }
+            : {}),
           key: {
             credentials: {
               kid: keyId,
@@ -518,7 +536,7 @@ describe.skipIf(!enabled)(
       expect(test.token).not.toHaveBeenCalled();
     });
 
-    it("requires verified image capability for HA plans and denies even explicitly approved appliance apply", async () => {
+    it("binds HA Plan and approved saved Apply to the verified image and protected administration", async () => {
       const test = await fixture(false, true, true);
       const preparations = new Preparations(
         pool,
@@ -544,6 +562,14 @@ describe.skipIf(!enabled)(
       const ticket = test.tickets.get(run.id)!;
       const input = await test.plans.input(ticket);
       expect(input.firewallInfrastructure).toBe(true);
+      expect(input.firewallAdministration).toEqual({
+        username: "fixture-admin",
+        password: "fixture-only-private-password",
+      });
+      expect(JSON.stringify(test.manifest)).not.toContain(
+        "fixture-only-private-password",
+      );
+      expect(input.tfvars).not.toContain("firewall_admin_password");
       expect(input.tfvarsSha256).toBe(test.manifest.tfvarsSha256);
       await test.plans.stage(ticket, "validating");
       await test.plans.stage(ticket, "planning");
@@ -559,18 +585,63 @@ describe.skipIf(!enabled)(
       expect(
         (await test.plans.list(test.owner)).find((item) => item.id === run.id)
           ?.applyAllowed,
-      ).toBe(false);
+      ).toBe(true);
       expect(
         (await test.plans.list(test.owner)).find((item) => item.id === run.id)
           ?.applyBlocker,
-      ).toEqual({
-        code: "configuration_apply_not_supported",
-        issues: [
-          {
-            field: "connectivity.firewall",
-            message: expect.stringContaining("nur für Plan freigegeben"),
-          },
-        ],
+      ).toBeNull();
+      const apply = await test.plans.apply(
+        test.owner,
+        test.token,
+        run.id,
+        test.approval(artifact.sha256),
+      );
+      const applyInput = await test.plans.input(test.tickets.get(apply.id)!);
+      expect(applyInput.mode).toBe("platform-apply");
+      expect(applyInput.firewallInfrastructure).toBe(true);
+      expect(applyInput.firewallAdministration).toEqual(
+        input.firewallAdministration,
+      );
+      expect(applyInput.plan?.sha256).toBe(artifact.sha256);
+      expect(test.runner.start).toHaveBeenCalledTimes(2);
+    });
+
+    it("rejects old HA preparations lacking administration binding without invalidating their saved evidence", async () => {
+      const test = await fixture(false, true, true);
+      const preparations = new Preparations(
+        pool,
+        test.repositories,
+        test.profiles,
+      );
+      const prepared = await preparations.create(test.owner, null, {
+        source: "database",
+        configurationId: test.configurationId,
+        revision: 1,
+        credentialId: test.credentialId,
+      });
+      const run = await test.plans.start(test.owner, test.token, prepared.id);
+      const ticket = test.tickets.get(run.id)!;
+      await test.plans.input(ticket);
+      await test.plans.stage(ticket, "validating");
+      await test.plans.stage(ticket, "planning");
+      const artifact = await test.plans.artifact(ticket, {
+        data: Buffer.from("mock-ha-plan-never-applied").toString("base64"),
+        summary,
+      });
+      await test.plans.result(ticket, {
+        status: "succeeded",
+        summary,
+        artifactSha256: artifact.sha256,
+      });
+      await migration!.query(
+        "UPDATE lzc.deployment_preparations SET manifest=manifest #- '{credential,firewallAdministration}' WHERE id=$1",
+        [prepared.id],
+      );
+      expect(
+        (await test.plans.list(test.owner)).find((item) => item.id === run.id),
+      ).toMatchObject({
+        applyAllowed: false,
+        applyBlocker: { code: "firewall_administration_required" },
       });
       await expect(
         test.plans.apply(
@@ -579,7 +650,7 @@ describe.skipIf(!enabled)(
           run.id,
           test.approval(artifact.sha256),
         ),
-      ).rejects.toMatchObject({ code: "configuration_apply_not_supported" });
+      ).rejects.toMatchObject({ code: "firewall_administration_required" });
       expect(test.runner.start).toHaveBeenCalledTimes(1);
     });
 

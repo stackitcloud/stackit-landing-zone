@@ -76,6 +76,7 @@ if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	rm -rf "$runner_dir/application-src/application/.terraform"
 	test -z "$(find "$runner_dir/application-src" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' -o -name 'terraform.auto.tfvars' -o -name 'terraform.auto.tfvars.json' \) -print -quit)"
 fi
+bash ../deploy/runner/prepare-provider-mirror.sh "$tofu_bin" "$runner_dir/providers" "$runner_dir/accelerator" "$runner_dir/application-src/application"
 LZC_TEST_RUNNER_ROOT="$(cd "$runner_dir" && pwd)" bash scripts/test-initial-plan-contract.sh
 if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true" ]]; then
 	tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .
