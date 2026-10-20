@@ -36,6 +36,36 @@ Die Workflows enthalten alle benötigten Umgebungsvariablen, Vorbereitungsschrit
 
 <a id="logs-and-secrets"></a>
 
+### Dev-Release ohne Live-Qualifikation des Assistant
+
+Bei Model-Serving-Ausfällen unter
+**Actions > Configurator Release > Run workflow** auf Branch **main** ausdrücklich
+**release_mode=dev-skip-assistant-qualification** wählen. **build_only** nicht
+anhaken, **release_run_id** leer lassen und **runner_pool_size=1** setzen.
+Den genauen Quellstand/Lauf prüfen und nach allen anwendbaren Build-/
+Veröffentlichungsprüfungen die bestehende Umgebung **lzc-dev-release** freigeben.
+Diese ausdrückliche Dev-Ausnahme überspringt nur den Live-Qualifikationsjob des
+Assistant. `LZC_ASSISTANT_ENABLED` übernimmt weiterhin die bestehende
+Umgebungseinstellung; ein konfigurierter Assistant bleibt aktiviert, ohne neuen
+Live-Qualifikationsnachweis für diesen Release. Ob Inferenz funktioniert, hängt
+weiterhin von der Modellverfügbarkeit ab. Dies gilt nicht als erfolgreiche
+Qualifikation und löscht keine früheren fehlgeschlagenen Nachweise. Alle übrigen
+Prüfungen, Migrationen, geschützten Tags und Dev-Zielprüfungen bleiben erhalten.
+Gespräche und Vorschläge bleiben gespeichert; bestehende Laufzeitvalidierung,
+Autorisierung und Revisionsprüfungen bleiben unverändert. Der Modus autorisiert
+weder Produktion noch Kunden-Infrastruktur-Apply.
+
+Das Manifest vermerkt die Beschränkung auf Dev und `assistantQualified=false`;
+der Build-Job heißt `build-dev-skip-assistant-qualification`. Diese Artefakte
+können nicht mit `release_run_id` übernommen werden, auch nicht als qualifizierter
+Release. Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller
+Lauf nötig. `build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt
+anschließend nicht übernommen werden kann. Ein qualifizierter Release erfordert
+weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
+quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
+Übernahmebedingungen bleiben unverändert.
+
+
 ## Logs und Secrets
 
 Normale OpenTofu-Ausgaben erscheinen live im jeweiligen Schritt: Ressourcenänderungen, Fortschritt, Warnungen und Fehler. `sensitive`-Attribute/Outputs werden von OpenTofu maskiert; zusätzlich registriert die Vorbereitung die übergebenen Backend-Zugangsdaten und Verschlüsselungsschlüssel mit GitHubs `add-mask`. Kein `TF_LOG=DEBUG` und kein Shell-`set -x` für Deployment-Secrets.
@@ -94,7 +124,7 @@ Auch der Application-Release ist ausschliesslich manuell; ein Merge loest ihn
 nicht aus. Die vorhandenen Workflows betreffen die Entwicklungsumgebung,
 nicht eine neue Produktionsumgebung.
 
-Nach erfolgreicher Assistant-Qualifikation und Build veroeffentlicht der
+Im Modus `qualified` veroeffentlicht nach erfolgreicher Assistant-Qualifikation und Build der
 isolierte Release-Job `publish_buildpack` den fehlenden Buildpack-Tag.
 Das gilt auch fuer `build_only=true`, solange der qualifizierte Commit noch
 Branch-HEAD ist; ein Build-only-Lauf fuehrt weiterhin kein Deployment aus.

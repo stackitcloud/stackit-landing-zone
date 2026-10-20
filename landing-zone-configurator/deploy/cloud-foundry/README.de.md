@@ -29,7 +29,8 @@ des Repositorys **Configurator Release** und dann **Run workflow** auswählen:
    auf `0` zum Deaktivieren/Abbauen des Pools setzen. Standard ist `0`; zulässig
    sind `0`–`4`. Jede Reserve benötigt zusätzlich zu aktiven Aufträgen 1 GiB RAM
    und ein Disk-Budget von 4 GiB.
-5. Workflow starten. Er qualifiziert den echten Assistant, baut und testet beide
+5. Für normale Releases **release_mode=qualified** beibehalten und den Workflow
+   starten. Er qualifiziert den echten Assistant, baut und testet beide
    Pakete und erstellt anschließend den geschützten, quellgebundenen Buildpack-Tag.
 6. Wenn **deploy** auf Prüfung wartet, über **Review deployments** das
    Environment **lzc-dev-release** mit einem autorisierten Prüferkonto freigeben.
@@ -47,7 +48,7 @@ Ein überholter Branch-HEAD wird abgelehnt, statt stillschweigend eine andere
 Revision zu deployen. Bei einem gewöhnlichen neuen Release weder Repository-Token-Rechte
 erweitern noch Tags manuell erstellen.
 
-Für „jetzt bauen, später deployen“ **build_only** anhaken. Qualifizierung, Paketierung und Tag-
+Für qualifiziertes „jetzt bauen, später deployen“ **release_mode=qualified** beibehalten und **build_only** anhaken. Qualifizierung, Paketierung und Tag-
 Veröffentlichung laufen weiterhin, aber es findet kein Cloud-Deployment statt. Später einen **neuen**
 manuellen Lauf auf `main` starten, **build_only** nicht anhaken und die ursprüngliche
 numerische Build-Run-ID unter **release_run_id** eintragen. Damit wird exakt das qualifizierte
@@ -299,6 +300,36 @@ Rohe CF-Logs werden nicht nach CI exportiert, da Router-URLs OAuth-Codes enthalt
 Task-Status, bereinigte Diagnosen und öffentliche Health Checks liefern Release-Nachweise.
 
 <a id="immutable-release-and-promotion"></a>
+
+### Dev-Release ohne Live-Qualifikation des Assistant
+
+Bei Model-Serving-Ausfällen unter
+**Actions > Configurator Release > Run workflow** auf Branch **main** ausdrücklich
+**release_mode=dev-skip-assistant-qualification** wählen. **build_only** nicht
+anhaken, **release_run_id** leer lassen und **runner_pool_size=1** setzen.
+Den genauen Quellstand/Lauf prüfen und nach allen anwendbaren Build-/
+Veröffentlichungsprüfungen die bestehende Umgebung **lzc-dev-release** freigeben.
+Diese ausdrückliche Dev-Ausnahme überspringt nur den Live-Qualifikationsjob des
+Assistant. `LZC_ASSISTANT_ENABLED` übernimmt weiterhin die bestehende
+Umgebungseinstellung; ein konfigurierter Assistant bleibt aktiviert, ohne neuen
+Live-Qualifikationsnachweis für diesen Release. Ob Inferenz funktioniert, hängt
+weiterhin von der Modellverfügbarkeit ab. Dies gilt nicht als erfolgreiche
+Qualifikation und löscht keine früheren fehlgeschlagenen Nachweise. Alle übrigen
+Prüfungen, Migrationen, geschützten Tags und Dev-Zielprüfungen bleiben erhalten.
+Gespräche und Vorschläge bleiben gespeichert; bestehende Laufzeitvalidierung,
+Autorisierung und Revisionsprüfungen bleiben unverändert. Der Modus autorisiert
+weder Produktion noch Kunden-Infrastruktur-Apply.
+
+Das Manifest vermerkt die Beschränkung auf Dev und `assistantQualified=false`;
+der Build-Job heißt `build-dev-skip-assistant-qualification`. Diese Artefakte
+können nicht mit `release_run_id` übernommen werden, auch nicht als qualifizierter
+Release. Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller
+Lauf nötig. `build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt
+anschließend nicht übernommen werden kann. Ein qualifizierter Release erfordert
+weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
+quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
+Übernahmebedingungen bleiben unverändert.
+
 
 ## Unveränderlicher Release und Promotion
 

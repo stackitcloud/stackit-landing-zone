@@ -36,6 +36,34 @@ The workflows contain all required environment variables, preparation steps and 
 
 <a id="logs-und-secrets"></a>
 
+### Dev release without live Assistant qualification
+
+During Model Serving outages, select
+**release_mode=dev-skip-assistant-qualification** in
+**Actions > Configurator Release > Run workflow**, branch **main**.
+Leave **build_only** unchecked and **release_run_id** empty; set
+**runner_pool_size=1**. Review the exact source/run and approve the existing
+**lzc-dev-release** environment after all applicable build/publication checks.
+This explicit Dev exception skips only the live Assistant qualification job.
+`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
+the Assistant remains enabled when configured, without a new live qualification
+receipt for this release. Model availability still determines whether inference
+works. This is not a successful qualification and does not erase earlier failed
+receipts. All non-Assistant checks, migrations, protected tags and Dev destination
+guards remain in force. Conversations and proposals are preserved; existing
+runtime validation, authorization and revision checks remain unchanged. No
+production deployment or customer infrastructure Apply is authorized by this mode.
+
+The manifest records Dev-only scope and `assistantQualified=false`; the build
+job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
+promoted using `release_run_id`, including as a qualified release. A deployment
+failure requires inspection and a fresh manual run. `build_only=true` may build
+this mode for inspection, but its artifact cannot subsequently be promoted.
+A qualified release still requires a fresh **release_mode=qualified** run with
+the complete source-bound live qualification. The default **qualified** path
+and its promotion requirements are unchanged.
+
+
 ## Logs and secrets
 
 Normal OpenTofu output appears live in the respective step: resource changes, progress, warnings and errors. OpenTofu masks `sensitive` attributes/outputs; preparation additionally registers the supplied backend credentials and encryption keys with GitHub's `add-mask`. No `TF_LOG=DEBUG` or shell `set -x` for deployment secrets.
@@ -94,7 +122,7 @@ Application release is also exclusively manual; a merge does not
 trigger it. The existing workflows concern the development environment,
 not a new production environment.
 
-After successful Assistant qualification and build, the
+In `qualified` mode, after successful Assistant qualification and build, the
 isolated release job `publish_buildpack` publishes the missing buildpack tag.
 This also applies to `build_only=true`, as long as the qualified commit is still
 branch HEAD; a build-only run still performs no deployment.

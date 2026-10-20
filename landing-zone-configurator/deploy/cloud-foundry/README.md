@@ -24,7 +24,8 @@ page and select **Configurator Release**, then **Run workflow**:
 4. Set **runner_pool_size** to `1` for one prepared, one-shot Dev Runner, or `0`
    to disable/drain the pool. The default is `0`; valid values are `0`–`4`.
    Each reserve uses 1 GiB RAM and a 4 GiB disk budget, in addition to active jobs.
-5. Start the workflow. It qualifies the real Assistant, builds and tests both
+5. Keep **release_mode=qualified** for a normal release. Start the workflow.
+   It qualifies the real Assistant, builds and tests both
    packages, then creates the protected source-bound buildpack tag.
 6. When **deploy** waits for review, use **Review deployments** to approve
    **lzc-dev-release** with an authorized reviewer account.
@@ -41,7 +42,7 @@ a superseded branch HEAD is rejected rather than silently deploying another
 revision. Do not add broader repository token permissions or manually create
 tags during an ordinary new release.
 
-For build now/deploy later, check **build_only**. Qualification, packaging and tag
+For qualified build now/deploy later, keep **release_mode=qualified** and check **build_only**. Qualification, packaging and tag
 publication still run, but no cloud deployment occurs. Later start a **new**
 manual run on `main`, leave **build_only** unchecked and enter the original
 numeric build run ID in **release_run_id**. This promotes that exact qualified
@@ -287,6 +288,34 @@ separate explicit operations, not part of application release validation.
 
 Raw CF logs are not exported to CI, since router URLs may contain OAuth codes.
 Task status, sanitized diagnostics and public health checks provide release evidence.
+
+### Dev release without live Assistant qualification
+
+During Model Serving outages, select
+**release_mode=dev-skip-assistant-qualification** in
+**Actions > Configurator Release > Run workflow**, branch **main**.
+Leave **build_only** unchecked and **release_run_id** empty; set
+**runner_pool_size=1**. Review the exact source/run and approve the existing
+**lzc-dev-release** environment after all applicable build/publication checks.
+This explicit Dev exception skips only the live Assistant qualification job.
+`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
+the Assistant remains enabled when configured, without a new live qualification
+receipt for this release. Model availability still determines whether inference
+works. This is not a successful qualification and does not erase earlier failed
+receipts. All non-Assistant checks, migrations, protected tags and Dev destination
+guards remain in force. Conversations and proposals are preserved; existing
+runtime validation, authorization and revision checks remain unchanged. No
+production deployment or customer infrastructure Apply is authorized by this mode.
+
+The manifest records Dev-only scope and `assistantQualified=false`; the build
+job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
+promoted using `release_run_id`, including as a qualified release. A deployment
+failure requires inspection and a fresh manual run. `build_only=true` may build
+this mode for inspection, but its artifact cannot subsequently be promoted.
+A qualified release still requires a fresh **release_mode=qualified** run with
+the complete source-bound live qualification. The default **qualified** path
+and its promotion requirements are unchanged.
+
 
 ## Immutable release and promotion
 

@@ -24,6 +24,34 @@ Starting a workflow is not the same as approving its protected deployment job.
 | Publish an Accelerator GitHub release after real deployment verification | **Publish Release** |
 | Compare configured machine flavors with the live STACKIT catalogue | **Validate STACKIT Flavors** |
 
+### Dev release without live Assistant qualification
+
+During Model Serving outages, select
+**release_mode=dev-skip-assistant-qualification** in
+**Actions > Configurator Release > Run workflow**, branch **main**.
+Leave **build_only** unchecked and **release_run_id** empty; set
+**runner_pool_size=1**. Review the exact source/run and approve the existing
+**lzc-dev-release** environment after all applicable build/publication checks.
+This explicit Dev exception skips only the live Assistant qualification job.
+`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
+the Assistant remains enabled when configured, without a new live qualification
+receipt for this release. Model availability still determines whether inference
+works. This is not a successful qualification and does not erase earlier failed
+receipts. All non-Assistant checks, migrations, protected tags and Dev destination
+guards remain in force. Conversations and proposals are preserved; existing
+runtime validation, authorization and revision checks remain unchanged. No
+production deployment or customer infrastructure Apply is authorized by this mode.
+
+The manifest records Dev-only scope and `assistantQualified=false`; the build
+job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
+promoted using `release_run_id`, including as a qualified release. A deployment
+failure requires inspection and a fresh manual run. `build_only=true` may build
+this mode for inspection, but its artifact cannot subsequently be promoted.
+A qualified release still requires a fresh **release_mode=qualified** run with
+the complete source-bound live qualification. The default **qualified** path
+and its promotion requirements are unchanged.
+
+
 ## Current repository workflows
 
 **Automatic** describes repository events, not a manual click. **Reusable** means
@@ -42,7 +70,7 @@ branch restrictions, operator switches and environment protection still apply.
 | [Configurator Bootstrap](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-bootstrap.yml) · [source](../.github/workflows/configurator-bootstrap.yml) | Plan the workload-state bucket/access (`bootstrap`) or its versioning (`backend`) | None | **Run workflow** on `main`; choose root and optionally Apply | Real backend/credential access for Plan; `apply=true` enables cloud changes after protected environment approval |
 | [Configurator Platform](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-platform.yml) · [source](../.github/workflows/configurator-platform.yml) | Plan shared Configurator services: CF organization, database, Secrets Manager, artifact storage and model token | None | **Run workflow** on `main`; optionally Apply; requires `LZC_PLATFORM_CI_ENABLED=true` | Real backend/credential access for Plan; optional approved cloud Apply |
 | [Configurator Runtime](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-runtime.yml) · [source](../.github/workflows/configurator-runtime.yml) | Plan CF space/roles and database/Secrets runtime users | None | **Run workflow** on `main`; optionally Apply; requires `LZC_RUNTIME_CI_ENABLED=true` | Real backend/credential access for Plan; optional approved cloud Apply. Does not publish application code. |
-| [Configurator Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-release.yml) · [source](../.github/workflows/configurator-release.yml) | Qualify, build and package API/UI and Runner together, or promote an existing qualified build | None; a merge does not start it | **Run workflow** on `main`; choose build-only, new release or promotion; requires `LZC_RELEASE_CI_ENABLED=true` | Fresh builds call **Assistant live regression** and publish a protected buildpack tag. Unless build-only, deploys development after `lzc-dev-release` approval, including migrations and runtime checks. |
+| [Configurator Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-release.yml) · [source](../.github/workflows/configurator-release.yml) | Qualify, build and package API/UI and Runner together, or promote an existing qualified build | None; a merge does not start it | **Run workflow** on `main`; choose build-only, new release or promotion; requires `LZC_RELEASE_CI_ENABLED=true` | Fresh `qualified` builds call **Assistant live regression** and publish a protected buildpack tag. Unless build-only, deploys development after `lzc-dev-release` approval, including migrations and runtime checks. |
 
 The exact Configurator path filter is in the linked YAML. A skipped
 Accelerator-only job on a Configurator PR is intentional, not a deployment.
@@ -76,7 +104,7 @@ it reports a result for every relevant PR.
 | Configurator Bootstrap | `root=bootstrap` by default, or `backend`; `apply=false` by default. Apply uses `lzc-dev-bootstrap-apply`. |
 | Configurator Platform | `root=platform`; `apply=false` by default. Requires the platform operator switch above; Apply uses `lzc-dev-platform-apply`. |
 | Configurator Runtime | `root=runtime`; `apply=false` by default. Requires the runtime operator switch above; Apply uses `lzc-dev-runtime-apply`. |
-| Configurator Release | `build_only=false` by default; `release_run_id` empty means fresh qualification/build. Set `build_only=true` to build without CF deployment; real-model calls and protected tag publication still occur. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
+| Configurator Release | `release_mode=qualified` and `build_only=false` by default; `release_run_id` empty means a fresh build under the selected mode. Set `build_only=true` to build without CF deployment; protected tag publication still occurs; live-model calls run in `qualified` mode. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
 
 For the normal Configurator deployment: select **Configurator Release**, `main`,
 choose **runner_pool_size=1** to maintain one prepared one-shot Dev Runner

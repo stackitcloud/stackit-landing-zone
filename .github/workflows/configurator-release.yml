@@ -3,6 +3,11 @@ name: Configurator Release
 on:
   workflow_dispatch:
     inputs:
+      release_mode:
+        description: Qualified release (default) or Dev only without live Assistant qualification
+        type: choice
+        default: qualified
+        options: ['qualified', 'dev-skip-assistant-qualification']
       build_only:
         description: Build and publish the immutable release and buildpack tag without deploying
         type: boolean
@@ -21,6 +26,9 @@ permissions:
   actions: read
   contents: read
 
+env:
+  LZC_RELEASE_MODE: ${{ inputs.release_mode || 'qualified' }}
+
 concurrency:
   group: configurator-lzc-dev-mutation
   cancel-in-progress: false
@@ -28,7 +36,7 @@ concurrency:
 jobs:
   assistant:
     name: assistant
-    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.release_mode != 'dev-skip-assistant-qualification' && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
     uses: ./.github/workflows/assistant-live.yml
     with:
       topic: all
@@ -36,8 +44,9 @@ jobs:
     secrets: inherit
 
   build:
+    name: ${{ inputs.release_mode == 'dev-skip-assistant-qualification' && 'build-dev-skip-assistant-qualification' || 'build' }}
     needs: assistant
-    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    if: always() && !cancelled() && ((inputs.release_mode == 'dev-skip-assistant-qualification' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped') || (inputs.release_mode != 'dev-skip-assistant-qualification' && needs.assistant.result == 'success')) && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -123,6 +132,10 @@ jobs:
       - name: Assemble immutable stage-neutral release
         run: |
           node ../infra/ci/release-artifact.mjs create ../.local
+          echo "Release mode: $LZC_RELEASE_MODE" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$LZC_RELEASE_MODE" = dev-skip-assistant-qualification ]; then
+            echo 'Dev only; live Assistant qualification NOT performed; runtime Assistant setting unchanged. Promotion is prohibited.' >> "$GITHUB_STEP_SUMMARY"
+          fi
           tar -czf ../.local/configurator-release.tar.gz -C ../.local release.tar.gz release.sha256 runner.tar.gz runner.sha256 release-manifest.json
           (cd ../.local && sha256sum configurator-release.tar.gz > configurator-release.sha256)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

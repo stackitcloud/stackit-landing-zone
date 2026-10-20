@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { approvedReleaseSource, createReleaseManifest, verifyReleaseManifest } from "./release-artifact.mjs";
+import { approvedReleaseSource, createReleaseManifest, verifyReleaseManifest, releaseMode } from "./release-artifact.mjs";
 const script=fileURLToPath(new URL("./prepare-release.mjs",import.meta.url));
 test("migration task can unpack the full release and web routes match the registered callback origin",()=>{
  const web=readFileSync(new URL("../../deploy/cloud-foundry/manifest.yml",import.meta.url),"utf8");
@@ -50,7 +50,12 @@ test("release builds require repeated live model qualification and retain multi-
  const live=readFileSync(new URL("../../../.github/workflows/assistant-live.yml",import.meta.url),"utf8");
  assert.match(release,/uses: \.\/\.github\/workflows\/assistant-live\.yml/);
  assert.match(release,/topic: all\n\s+repetitions: 2/);
- assert.match(release,/\n  build:\n    needs: assistant\n/);
+ assert.match(release,/needs: assistant/);
+ assert.ok(release.includes("inputs.release_mode != 'dev-skip-assistant-qualification' && needs.assistant.result == 'success'"));
+ assert.ok(release.includes("inputs.release_mode == 'dev-skip-assistant-qualification' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped'"));
+ assert.match(release,/default: qualified/);
+ assert.equal(release.split("LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}").length,3);
+ assert.doesNotMatch(release,/continue-on-error:/);
  assert.match(live,/workflow_call:/);
  assert.match(live,/name: assistant-live-qualification/);
  assert.match(live,/environment: assistant-tests/);
@@ -252,6 +257,19 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   assert.equal(run("application").status,0,"Authenticated release must forward Assistant opt-in");
   assert.equal(JSON.parse(readFileSync(vars)).LZC_ASSISTANT_ENABLED,"true");
   assert.ok(!readFileSync(migration,"utf8").includes("LZC_ASSISTANT_ENABLED"));
+  env.LZC_RELEASE_MODE="dev-skip-assistant-qualification";
+  assert.notEqual(run("application").status,0,"Unqualified mode requires main");
+  env.GITHUB_REF="refs/heads/main";
+  assert.equal(run("application").status,0);
+  assert.equal(JSON.parse(readFileSync(vars)).LZC_ASSISTANT_ENABLED,"true","Skipping qualification preserves Assistant opt-in");
+  env.LZC_ASSISTANT_ENABLED="false";
+  assert.equal(run("application").status,0);
+  assert.equal(JSON.parse(readFileSync(vars)).LZC_ASSISTANT_ENABLED,"false","Skipping qualification also preserves opt-out");
+  env.LZC_ASSISTANT_ENABLED="true";
+  env.LZC_RELEASE_MODE="qualified";
+  assert.equal(run("application").status,0);
+  assert.equal(JSON.parse(readFileSync(vars)).LZC_ASSISTANT_ENABLED,"true");
+
   env.LZC_APPLICATION_EXECUTION_ENABLED="true";
   assert.notEqual(run("application").status,0,"Application execution requires platform execution");
   env.LZC_EXECUTION_ENABLED="true";
@@ -329,4 +347,40 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   assert.equal(JSON.parse(readFileSync(vars)).LZC_RUNNER_POOL_SIZE,"1");
 
  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test("Unqualified Assistant provenance cannot qualify or promote an Assistant release",()=>{
+ const run={id:12345,run_attempt:1,path:".github/workflows/configurator-release.yml",head_sha:"a".repeat(40),head_repository:{full_name:"stackitcloud/stackit-landing-zone"},head_branch:"main",event:"workflow_dispatch"};
+ const jobs=[{name:"build-dev-skip-assistant-qualification",status:"completed",conclusion:"success"}];
+ const artifact={id:67890,name:"configurator-release-12345",expired:false,workflow_run:{id:12345,head_sha:run.head_sha}};
+ const approve=(r=run,j=jobs,mode="dev-skip-assistant-qualification",current="12345")=>approvedReleaseSource(r,j,[artifact],"12345",mode,current);
+ assert.equal(approve().revision,run.head_sha);
+ assert.throws(()=>approve(run,jobs,"qualified"));
+ assert.throws(()=>approve(run,jobs,"dev-skip-assistant-qualification","54321"),/never promotions/);
+ assert.throws(()=>approve({...run,head_branch:"feature/landing-zone-configurator"}));
+ assert.throws(()=>approve({...run,run_attempt:2}));
+ assert.throws(()=>approve(run,[{...jobs[0],conclusion:"failure"}]));
+ for(const conclusion of ["failure","success","cancelled"])
+  assert.throws(()=>approve(run,[...jobs,{name:"assistant / assistant-live-qualification",conclusion}]));
+ assert.equal(releaseMode(),"qualified");
+ assert.throws(()=>releaseMode("unknown"));
+ assert.throws(()=>releaseMode("dev-assistant-disabled"));
+ const directory=mkdtempSync(join(tmpdir(),"lzc-unqualified-release-"));
+ const source={revision:run.head_sha,runId:"12345",mode:"dev-skip-assistant-qualification"};
+ try{
+  for(const name of ["release.tar.gz","runner.tar.gz"])writeFileSync(join(directory,name),"synthetic package");
+  const manifest=createReleaseManifest(directory,source);
+  assert.equal(manifest.assistantQualified,false);
+  assert.equal(manifest.releaseMode,"dev-skip-assistant-qualification");
+  assert.equal(manifest.target,"lzc-dev");
+  assert.deepEqual(verifyReleaseManifest(directory,source),manifest);
+  assert.throws(()=>verifyReleaseManifest(directory,{...source,mode:"qualified"}));
+  for(const change of [{schemaVersion:1},{assistantQualified:true},{target:"production"},{releaseMode:"qualified"}]){
+   writeFileSync(join(directory,"release-manifest.json"),JSON.stringify({...manifest,...change}));
+   assert.throws(()=>verifyReleaseManifest(directory,source));
+  }
+  rmSync(join(directory,"release-manifest.json"));
+  createReleaseManifest(directory,{...source,mode:"qualified"});
+  assert.throws(()=>verifyReleaseManifest(directory,source));
+ }finally{rmSync(directory,{recursive:true,force:true});}
 });

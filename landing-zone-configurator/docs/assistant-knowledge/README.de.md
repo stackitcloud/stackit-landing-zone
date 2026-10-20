@@ -171,7 +171,7 @@ Die kontinuierliche themenuebergreifende Reise prueft auch die
 DNS-Erklaerung nach frueheren Konfigurationsschritten und dass Beratung
 den Entwurf nicht veraendert.
 
-Release-Builds haengen vom wiederverwendbaren Live-Workflow ab:
+Standardmaessige `qualified`-Release-Builds haengen vom wiederverwendbaren Live-Workflow ab:
 Alle Themen laufen zweimal, danach folgt der kontinuierliche Dialog,
 auch wenn einzelne Modellfaelle scheitern.
 Rohe synthetische Nachweise bleiben CI-Artefakte.
@@ -238,11 +238,41 @@ oeffentliches Abnahmeverzeichnis.
 Fehlgeschlagene Experimente als Evidenz erhalten.
 Ein spaeterer erfolgreicher Lauf qualifiziert nur seine eigene Quelle,
 loescht keinen frueheren Fehler und zertifiziert kein anderes Deployment.
-Der geschuetzte Release-Workflow wiederholt Qualifikation fuer seinen
+Der geschuetzte `qualified`-Release-Workflow wiederholt Qualifikation fuer seinen
 exakten Build; lokale Ergebnisse allein autorisieren niemals Promotion
 oder Deployment.
 
 <a id="complete-topic-catalogue"></a>
+
+### Dev-Release ohne Live-Qualifikation des Assistant
+
+Bei Model-Serving-Ausfällen unter
+**Actions > Configurator Release > Run workflow** auf Branch **main** ausdrücklich
+**release_mode=dev-skip-assistant-qualification** wählen. **build_only** nicht
+anhaken, **release_run_id** leer lassen und **runner_pool_size=1** setzen.
+Den genauen Quellstand/Lauf prüfen und nach allen anwendbaren Build-/
+Veröffentlichungsprüfungen die bestehende Umgebung **lzc-dev-release** freigeben.
+Diese ausdrückliche Dev-Ausnahme überspringt nur den Live-Qualifikationsjob des
+Assistant. `LZC_ASSISTANT_ENABLED` übernimmt weiterhin die bestehende
+Umgebungseinstellung; ein konfigurierter Assistant bleibt aktiviert, ohne neuen
+Live-Qualifikationsnachweis für diesen Release. Ob Inferenz funktioniert, hängt
+weiterhin von der Modellverfügbarkeit ab. Dies gilt nicht als erfolgreiche
+Qualifikation und löscht keine früheren fehlgeschlagenen Nachweise. Alle übrigen
+Prüfungen, Migrationen, geschützten Tags und Dev-Zielprüfungen bleiben erhalten.
+Gespräche und Vorschläge bleiben gespeichert; bestehende Laufzeitvalidierung,
+Autorisierung und Revisionsprüfungen bleiben unverändert. Der Modus autorisiert
+weder Produktion noch Kunden-Infrastruktur-Apply.
+
+Das Manifest vermerkt die Beschränkung auf Dev und `assistantQualified=false`;
+der Build-Job heißt `build-dev-skip-assistant-qualification`. Diese Artefakte
+können nicht mit `release_run_id` übernommen werden, auch nicht als qualifizierter
+Release. Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller
+Lauf nötig. `build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt
+anschließend nicht übernommen werden kann. Ein qualifizierter Release erfordert
+weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
+quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
+Übernahmebedingungen bleiben unverändert.
+
 
 ## Vollstaendiger Themenkatalog
 
