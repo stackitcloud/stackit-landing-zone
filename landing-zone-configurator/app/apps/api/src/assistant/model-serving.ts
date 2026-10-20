@@ -1,3 +1,4 @@
+import { setTimeout } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
 import {
   assistantProposalFields,
@@ -192,8 +193,47 @@ const proposalSchema = z.strictObject({
   references: z.array(z.string().min(1).max(300)).min(1).max(8),
 });
 
+const transportCodeSchema = z.enum([
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_SOCKET",
+]);
+
+type TransportCode = z.infer<typeof transportCodeSchema>;
+
+const retryableTransportCodes = new Set<TransportCode>([
+  "EAI_AGAIN",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_SOCKET",
+]);
+
+function transportCode(error: unknown) {
+  const result = z
+    .object({ cause: z.object({ code: transportCodeSchema }) })
+    .safeParse(error);
+  return result.success ? result.data.cause.code : undefined;
+}
+
+export type AssistantTransportFailure = {
+  event: "assistant_transport_failure";
+  code: TransportCode;
+  attempt: 1 | 2;
+  retrying: boolean;
+  receivedResponse: boolean;
+};
+
 export class AssistantInferenceError extends Error {
-  constructor(readonly reason: string) {
+  constructor(
+    readonly reason: string,
+    readonly transportCode?: TransportCode,
+  ) {
     super("assistant_inference_failed");
   }
 }
@@ -346,6 +386,9 @@ export class AssistantModelServing {
   constructor(
     input: unknown,
     private readonly request: typeof fetch = fetch,
+    private readonly onTransportFailure: (
+      diagnostic: AssistantTransportFailure,
+    ) => void = (diagnostic) => console.warn(JSON.stringify(diagnostic)),
   ) {
     const result = configurationSchema.safeParse(input);
     if (!result.success)
@@ -384,62 +427,73 @@ export class AssistantModelServing {
         ? (this.configuration.intentModel ?? this.configuration.model)
         : this.configuration.model;
     const deadline = AbortSignal.timeout(this.configuration.timeoutMs);
+    const requestSignal = signal
+      ? AbortSignal.any([signal, deadline])
+      : deadline;
     let receivedResponse = false;
+    let attempt: 1 | 2 = 1;
+    const reportTransportFailure = (code: TransportCode, retrying: boolean) =>
+      this.onTransportFailure({
+        event: "assistant_transport_failure",
+        code,
+        attempt,
+        retrying,
+        receivedResponse,
+      });
     const transportFailure = (error: unknown): never => {
       if (error instanceof AssistantInferenceError) throw error;
       if (deadline.aborted && !signal?.aborted)
         throw new AssistantInferenceError("service_timeout");
-      const cause = z
-        .object({ cause: z.object({ code: z.string() }) })
-        .safeParse(error);
-      if (
-        cause.success &&
-        [
-          "ENOTFOUND",
-          "ECONNREFUSED",
-          "ECONNRESET",
-          "ETIMEDOUT",
-          "UND_ERR_CONNECT_TIMEOUT",
-          "UND_ERR_HEADERS_TIMEOUT",
-          "UND_ERR_SOCKET",
-        ].includes(cause.data.cause.code)
-      )
+      const code = transportCode(error);
+      if (code) {
+        reportTransportFailure(code, false);
         throw new AssistantInferenceError(
           receivedResponse ? "connection_interrupted" : "connection_failed",
+          code,
         );
+      }
       throw error;
     };
-    const response = await this.request(
-      `${this.configuration.baseUrl}/chat/completions`,
-      {
-        method: "POST",
-        redirect: "error",
-        signal: signal ? AbortSignal.any([signal, deadline]) : deadline,
-        headers: {
-          Authorization: `Bearer ${this.configuration.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          temperature: 0.1,
-          max_completion_tokens: 4096,
-          messages: servingMessages,
-          ...(stream ? { stream: true } : {}),
-          ...(schema
-            ? {
-                response_format: {
-                  type: "json_schema",
-                  json_schema: {
-                    name: schemaName,
-                    strict: true,
-                    schema,
-                  },
-                },
-              }
-            : {}),
-        }),
+    const url = `${this.configuration.baseUrl}/chat/completions`;
+    const options: RequestInit = {
+      method: "POST",
+      redirect: "error",
+      signal: requestSignal,
+      headers: {
+        Authorization: `Bearer ${this.configuration.token}`,
+        "Content-Type": "application/json",
       },
-    ).catch(transportFailure);
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        max_completion_tokens: 4096,
+        messages: servingMessages,
+        ...(stream ? { stream: true } : {}),
+        ...(schema
+          ? {
+              response_format: {
+                type: "json_schema",
+                json_schema: {
+                  name: schemaName,
+                  strict: true,
+                  schema,
+                },
+              },
+            }
+          : {}),
+      }),
+    };
+    const response = await this.request(url, options).catch(async (error) => {
+      const code = transportCode(error);
+      if (!code || !retryableTransportCodes.has(code) || requestSignal.aborted)
+        return transportFailure(error);
+      reportTransportFailure(code, true);
+      await setTimeout(250 + Math.floor(Math.random() * 251), undefined, {
+        signal: requestSignal,
+      }).catch(transportFailure);
+      attempt = 2;
+      return this.request(url, options).catch(transportFailure);
+    });
     receivedResponse = true;
     const responseBody = stream
       ? await streamedResponse(response, model, stream).catch(transportFailure)

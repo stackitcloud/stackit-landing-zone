@@ -203,6 +203,9 @@ async function run() {
               error instanceof AssistantInferenceError
                 ? error.reason
                 : "scenario_validation_failed",
+            ...(error instanceof AssistantInferenceError && error.transportCode
+              ? { transportCode: error.transportCode }
+              : {}),
           }),
         );
       }

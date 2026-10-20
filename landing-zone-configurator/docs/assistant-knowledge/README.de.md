@@ -116,6 +116,22 @@ Iteration und Export-Pruefsummen.
 Jede fehlgeschlagene Iteration bleibt ein Fehler; Wiederholungen sind keine
 Retries. Der Harness erlaubt eine bis drei Iterationen und taktet
 Modellanfragen.
+Der produktive Client erlaubt genau einen zusaetzlichen Versuch nur fuer
+freigegebene temporaere Netzwerkfehler vor Empfang der HTTP-Antwortheader.
+Eine zufaellig variierte Wartezeit von 250-500 ms und beide Versuche teilen das
+urspruengliche Anfragelimit (standardmaessig 60 Sekunden); ein Abbruch beendet
+Wartezeit oder Anfrage. Unterbrochene Antwortinhalte, HTTP-Fehler,
+Authentifizierungsfehler und ungueltige Modellantworten werden nicht wiederholt.
+Dies wiederholt ausschliesslich Inferenz, niemals Plan/Apply oder das Speichern
+einer Konfiguration; bei verlorener Antwort kann die erste Inferenz trotzdem
+bereits upstream verarbeitet worden sein.
+Jeder erkannte Transportfehler protokolliert seinen freigegebenen Fehlercode,
+die Versuchsnummer und die Wiederholungsentscheidung in Anwendungslogs und
+synthetischen Nachweisen, niemals rohe Fehler, Tokens oder Anfrageinhalte.
+Eine endgueltig gescheiterte Anfrage laesst ihre Iteration weiterhin fehlschlagen.
+Der Harness verwendet dieselbe produktive Wiederholungsregel, keinen
+CI-Sonderweg; diese Versuche ersetzen weder die geforderten unabhaengigen
+Wiederholungen noch loeschen sie fruehere fehlgeschlagene Nachweise.
 CI verwendet fuer Antwort- und Intent-Modell die Anwendungsdefaults,
 ohne CI-exklusiven Klassifikator-Override.
 Effektive Modell-IDs stehen in jedem Nachweis.

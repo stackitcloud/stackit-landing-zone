@@ -82,6 +82,19 @@ Proposals are locally applied, JSON-roundtripped and exported as native tfvars.
 Receipts bind results to model IDs, knowledge/suite hashes, iteration and export
 checksums. Every failed iteration remains a failure; repetitions are not retries.
 The harness permits one to three iterations and paces model requests.
+The production client permits one additional request only for allowlisted
+temporary network failures before HTTP response headers arrive. A 250-500 ms
+jittered delay and both attempts share the original request deadline (60 seconds
+by default); cancellation stops the wait or request. Response-body interruptions,
+HTTP errors, authentication failures and invalid model answers are not retried.
+This reissues inference only, never Plan/Apply or configuration persistence;
+a lost response can still mean the upstream processed the first inference.
+Every recognized transport failure records its allowlisted code, attempt number
+and retry decision in application logs and synthetic receipts, never raw errors,
+tokens or request content. An exhausted request still fails its iteration.
+The harness uses the same production retry policy, not a CI-only recovery path;
+these attempts do not replace the required independent repetitions or erase
+earlier failed receipts.
 CI uses the application configuration defaults for both answer and intent models,
 without a CI-only classifier override. The effective model IDs are recorded in
 every receipt. Qualification of an alternative model does not qualify the

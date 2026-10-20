@@ -331,6 +331,9 @@ async function run() {
                   /^[a-z][a-z0-9_]{1,100}$/.test(error.message)
                 ? error.message
                 : "journey_validation_failed",
+          ...(error instanceof AssistantInferenceError && error.transportCode
+            ? { transportCode: error.transportCode }
+            : {}),
         }),
       );
     }
