@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release_mode:
-        description: Qualified release (default) or Dev only with Assistant forcibly disabled
+        description: Qualified release (default) or Dev only without live Assistant qualification
         type: choice
         default: qualified
-        options: ['qualified', 'dev-assistant-disabled']
+        options: ['qualified', 'dev-skip-assistant-qualification']
       build_only:
         description: Build and publish the immutable release and buildpack tag without deploying
         type: boolean
@@ -36,7 +36,7 @@ concurrency:
 jobs:
   assistant:
     name: assistant
-    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.release_mode != 'dev-assistant-disabled' && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.release_mode != 'dev-skip-assistant-qualification' && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
     uses: ./.github/workflows/assistant-live.yml
     with:
       topic: all
@@ -44,9 +44,9 @@ jobs:
     secrets: inherit
 
   build:
-    name: ${{ inputs.release_mode == 'dev-assistant-disabled' && 'build-dev-assistant-disabled' || 'build' }}
+    name: ${{ inputs.release_mode == 'dev-skip-assistant-qualification' && 'build-dev-skip-assistant-qualification' || 'build' }}
     needs: assistant
-    if: always() && !cancelled() && ((inputs.release_mode == 'dev-assistant-disabled' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped') || (inputs.release_mode != 'dev-assistant-disabled' && needs.assistant.result == 'success')) && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    if: always() && !cancelled() && ((inputs.release_mode == 'dev-skip-assistant-qualification' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped') || (inputs.release_mode != 'dev-skip-assistant-qualification' && needs.assistant.result == 'success')) && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -133,8 +133,8 @@ jobs:
         run: |
           node ../infra/ci/release-artifact.mjs create ../.local
           echo "Release mode: $LZC_RELEASE_MODE" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$LZC_RELEASE_MODE" = dev-assistant-disabled ]; then
-            echo 'Dev only; Assistant disabled; live Assistant qualification NOT performed. Promotion is prohibited.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "$LZC_RELEASE_MODE" = dev-skip-assistant-qualification ]; then
+            echo 'Dev only; live Assistant qualification NOT performed; runtime Assistant setting unchanged. Promotion is prohibited.' >> "$GITHUB_STEP_SUMMARY"
           fi
           tar -czf ../.local/configurator-release.tar.gz -C ../.local release.tar.gz release.sha256 runner.tar.gz runner.sha256 release-manifest.json
           (cd ../.local && sha256sum configurator-release.tar.gz > configurator-release.sha256)
@@ -300,7 +300,7 @@ jobs:
         env:
           LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
-          LZC_ASSISTANT_ENABLED: ${{ inputs.release_mode == 'dev-assistant-disabled' && 'false' || vars.LZC_ASSISTANT_ENABLED }}
+          LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}
           LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
           LZC_STACKIT_CLI_CLIENT_APPROVED: ${{ vars.LZC_STACKIT_CLI_CLIENT_APPROVED }}
           LZC_STACKIT_AUTH_FLOW: ${{ vars.LZC_STACKIT_AUTH_FLOW }}
@@ -412,7 +412,7 @@ jobs:
         env:
           LZC_URL: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
           LZC_AUTH_ENABLED: ${{ vars.LZC_AUTH_ENABLED }}
-          LZC_ASSISTANT_ENABLED: ${{ inputs.release_mode == 'dev-assistant-disabled' && 'false' || vars.LZC_ASSISTANT_ENABLED }}
+          LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}
           LZC_STACKIT_DEVICE_ENABLED: ${{ vars.LZC_STACKIT_DEVICE_ENABLED }}
         run: |
           expected=not-configured
@@ -424,9 +424,6 @@ jobs:
           test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/session")" = 401
           if [ "$LZC_ASSISTANT_ENABLED" = true ]; then
             test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$LZC_URL/api/v1/configurations/template-advice")" = 401
-          fi
-          if [ "$LZC_RELEASE_MODE" = dev-assistant-disabled ]; then
-            curl --fail --silent --show-error "$LZC_URL/auth/status" | jq -e '.assistant == false'
           fi
           curl --fail --silent --show-error "$LZC_URL/applications" | grep -q 'Landing Zone Configurator'
           if [ "$LZC_AUTH_ENABLED" = true ]; then

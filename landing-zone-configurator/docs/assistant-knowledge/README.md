@@ -172,30 +172,32 @@ source and does not erase an earlier failure or certify a different deployment.
 The protected `qualified` release workflow repeats qualification for its exact build;
 local results alone never authorize promotion or deployment.
 
-### Dev release with Assistant disabled
+### Dev release without live Assistant qualification
 
-During Model Serving outages, select **release_mode=dev-assistant-disabled**
-in **Actions > Configurator Release > Run workflow**, branch **main**.
+During Model Serving outages, select
+**release_mode=dev-skip-assistant-qualification** in
+**Actions > Configurator Release > Run workflow**, branch **main**.
 Leave **build_only** unchecked and **release_run_id** empty; set
 **runner_pool_size=1**. Review the exact source/run and approve the existing
 **lzc-dev-release** environment after all applicable build/publication checks.
-This explicit mode skips live Assistant qualification and forcibly sets
-`LZC_ASSISTANT_ENABLED=false`, even if the environment variable enables it.
-All non-Assistant checks, migrations, protected tags and Dev destination guards
-remain in force. API Assistant routes are unregistered; the UI shows a disabled
-notice while templates and the editor remain usable. Stored conversations and
-proposals are preserved. This mode does not authorize production or customer
-infrastructure Apply.
+This explicit Dev exception skips only the live Assistant qualification job.
+`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
+the Assistant remains enabled when configured, without a new live qualification
+receipt for this release. Model availability still determines whether inference
+works. This is not a successful qualification and does not erase earlier failed
+receipts. All non-Assistant checks, migrations, protected tags and Dev destination
+guards remain in force. Conversations and proposals are preserved; existing
+runtime validation, authorization and revision checks remain unchanged. No
+production deployment or customer infrastructure Apply is authorized by this mode.
 
-The manifest records Dev-only scope, disabled Assistant and absent Assistant
-qualification; the build job is named `build-dev-assistant-disabled`.
-These artifacts cannot be promoted using `release_run_id`, either as a normal
-release or as another disabled release. A deployment failure requires inspection
-and a fresh manual run. `build_only=true` may build this mode for inspection,
-but its artifact cannot subsequently be promoted. Re-enabling Assistant requires
-a fresh **release_mode=qualified** release with the complete source-bound live
-qualification; changing the environment variable cannot enable it in this mode.
-The default **qualified** path and its promotion requirements are unchanged.
+The manifest records Dev-only scope and `assistantQualified=false`; the build
+job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
+promoted using `release_run_id`, including as a qualified release. A deployment
+failure requires inspection and a fresh manual run. `build_only=true` may build
+this mode for inspection, but its artifact cannot subsequently be promoted.
+A qualified release still requires a fresh **release_mode=qualified** run with
+the complete source-bound live qualification. The default **qualified** path
+and its promotion requirements are unchanged.
 
 
 ## Complete Topic Catalogue

@@ -1,6 +1,4 @@
 export const englishMessages: Record<string, string> = {
-  "Der Assistant ist in dieser Umgebung deaktiviert. Du kannst Vorlagen und den Editor weiterhin verwenden. Gespeicherte Gespräche und Vorschläge bleiben erhalten.":
-    "The Assistant is disabled in this environment. You can continue using templates and the editor. Saved conversations and proposals are preserved.",
   "OPNsense-Administrationszugang für Firewall-HA hinterlegen":
     "Store OPNsense administration credentials for firewall HA",
   "OPNsense-Benutzername": "OPNsense username",

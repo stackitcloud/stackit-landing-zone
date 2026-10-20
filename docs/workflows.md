@@ -24,30 +24,32 @@ Starting a workflow is not the same as approving its protected deployment job.
 | Publish an Accelerator GitHub release after real deployment verification | **Publish Release** |
 | Compare configured machine flavors with the live STACKIT catalogue | **Validate STACKIT Flavors** |
 
-### Dev release with Assistant disabled
+### Dev release without live Assistant qualification
 
-During Model Serving outages, select **release_mode=dev-assistant-disabled**
-in **Actions > Configurator Release > Run workflow**, branch **main**.
+During Model Serving outages, select
+**release_mode=dev-skip-assistant-qualification** in
+**Actions > Configurator Release > Run workflow**, branch **main**.
 Leave **build_only** unchecked and **release_run_id** empty; set
 **runner_pool_size=1**. Review the exact source/run and approve the existing
 **lzc-dev-release** environment after all applicable build/publication checks.
-This explicit mode skips live Assistant qualification and forcibly sets
-`LZC_ASSISTANT_ENABLED=false`, even if the environment variable enables it.
-All non-Assistant checks, migrations, protected tags and Dev destination guards
-remain in force. API Assistant routes are unregistered; the UI shows a disabled
-notice while templates and the editor remain usable. Stored conversations and
-proposals are preserved. This mode does not authorize production or customer
-infrastructure Apply.
+This explicit Dev exception skips only the live Assistant qualification job.
+`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
+the Assistant remains enabled when configured, without a new live qualification
+receipt for this release. Model availability still determines whether inference
+works. This is not a successful qualification and does not erase earlier failed
+receipts. All non-Assistant checks, migrations, protected tags and Dev destination
+guards remain in force. Conversations and proposals are preserved; existing
+runtime validation, authorization and revision checks remain unchanged. No
+production deployment or customer infrastructure Apply is authorized by this mode.
 
-The manifest records Dev-only scope, disabled Assistant and absent Assistant
-qualification; the build job is named `build-dev-assistant-disabled`.
-These artifacts cannot be promoted using `release_run_id`, either as a normal
-release or as another disabled release. A deployment failure requires inspection
-and a fresh manual run. `build_only=true` may build this mode for inspection,
-but its artifact cannot subsequently be promoted. Re-enabling Assistant requires
-a fresh **release_mode=qualified** release with the complete source-bound live
-qualification; changing the environment variable cannot enable it in this mode.
-The default **qualified** path and its promotion requirements are unchanged.
+The manifest records Dev-only scope and `assistantQualified=false`; the build
+job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
+promoted using `release_run_id`, including as a qualified release. A deployment
+failure requires inspection and a fresh manual run. `build_only=true` may build
+this mode for inspection, but its artifact cannot subsequently be promoted.
+A qualified release still requires a fresh **release_mode=qualified** run with
+the complete source-bound live qualification. The default **qualified** path
+and its promotion requirements are unchanged.
 
 
 ## Current repository workflows
@@ -102,7 +104,7 @@ it reports a result for every relevant PR.
 | Configurator Bootstrap | `root=bootstrap` by default, or `backend`; `apply=false` by default. Apply uses `lzc-dev-bootstrap-apply`. |
 | Configurator Platform | `root=platform`; `apply=false` by default. Requires the platform operator switch above; Apply uses `lzc-dev-platform-apply`. |
 | Configurator Runtime | `root=runtime`; `apply=false` by default. Requires the runtime operator switch above; Apply uses `lzc-dev-runtime-apply`. |
-| Configurator Release | `release_mode=qualified` and `build_only=false` by default; `release_run_id` empty means a fresh build under the selected mode. Set `build_only=true` to build without CF deployment; real-model calls and protected tag publication still occur. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
+| Configurator Release | `release_mode=qualified` and `build_only=false` by default; `release_run_id` empty means a fresh build under the selected mode. Set `build_only=true` to build without CF deployment; protected tag publication still occurs; live-model calls run in `qualified` mode. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
 
 For the normal Configurator deployment: select **Configurator Release**, `main`,
 choose **runner_pool_size=1** to maintain one prepared one-shot Dev Runner

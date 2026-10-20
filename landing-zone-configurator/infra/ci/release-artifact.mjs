@@ -11,7 +11,7 @@ function checksum(path) {
 }
 
 export function releaseMode(value = "qualified") {
-  if (!["qualified", "dev-assistant-disabled"].includes(value))
+  if (!["qualified", "dev-skip-assistant-qualification"].includes(value))
     throw new Error("Unknown release mode");
   return value;
 }
@@ -29,12 +29,11 @@ function validSource(source) {
 export function createReleaseManifest(directory, source) {
   validSource(source);
   const manifest = {
-    schemaVersion: source.mode === "dev-assistant-disabled" ? 2 : 1,
-    ...(source.mode === "dev-assistant-disabled"
+    schemaVersion: source.mode === "dev-skip-assistant-qualification" ? 2 : 1,
+    ...(source.mode === "dev-skip-assistant-qualification"
       ? {
           releaseMode: source.mode,
           target: "lzc-dev",
-          assistantEnabled: false,
           assistantQualified: false,
         }
       : {}),
@@ -58,11 +57,10 @@ export function verifyReleaseManifest(directory, source) {
     readFileSync(resolve(directory, "release-manifest.json"), "utf8"),
   );
   if (
-    (source.mode === "dev-assistant-disabled"
+    (source.mode === "dev-skip-assistant-qualification"
       ? manifest.schemaVersion !== 2 ||
         manifest.releaseMode !== source.mode ||
         manifest.target !== "lzc-dev" ||
-        manifest.assistantEnabled !== false ||
         manifest.assistantQualified !== false
       : manifest.schemaVersion !== 1 || manifest.releaseMode !== undefined) ||
     manifest.sourceRevision !== source.revision ||
@@ -87,9 +85,9 @@ export function approvedReleaseSource(
   currentRunId,
 ) {
   releaseMode(mode);
-  const disabled = mode === "dev-assistant-disabled";
+  const unqualified = mode === "dev-skip-assistant-qualification";
   if (
-    disabled &&
+    unqualified &&
     (String(runId) !== String(currentRunId) ||
       run.head_branch !== "main" ||
       run.event !== "workflow_dispatch" ||
@@ -99,7 +97,7 @@ export function approvedReleaseSource(
       ))
   )
     throw new Error(
-      "Assistant-disabled builds are Dev-only fresh releases, never promotions",
+      "Unqualified Assistant builds are Dev-only fresh releases, never promotions",
     );
   validSource({ revision: run.head_sha, runId });
   if (
@@ -110,8 +108,8 @@ export function approvedReleaseSource(
     !["main", "feature/landing-zone-configurator"].includes(run.head_branch) ||
     !["push", "workflow_dispatch"].includes(run.event) ||
     !(
-      disabled
-        ? ["build-dev-assistant-disabled"]
+      unqualified
+        ? ["build-dev-skip-assistant-qualification"]
         : ["build", "assistant / assistant-live-qualification"]
     ).every((name) =>
       jobs.some(
