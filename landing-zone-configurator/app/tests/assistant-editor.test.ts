@@ -374,6 +374,12 @@ it.each([
     extraField: "observability",
     complete: false,
   },
+  {
+    name: "another component still needs business choices",
+    areas: [{ key: "default", region: "eu01" }],
+    extraRoot: "audit_logs",
+    complete: false,
+  },
   { name: "public without SNA", areas: [], kinds: ["public"], complete: true },
 ])("asks only unresolved template business choices: $name", async (fixture) => {
   const original = createEditorConfiguration(
@@ -387,10 +393,13 @@ it.each([
   };
   const kinds = fixture.kinds ?? ["corporate", "public"];
   const intent = {
-    topic: "project-templates",
+    topic: fixture.extraRoot ? "configuration-contract" : "project-templates",
     mode: "draft",
     editorContract: true,
-    editorInputs: ["landing_zones"],
+    editorInputs: [
+      "landing_zones",
+      ...(fixture.extraRoot ? [fixture.extraRoot] : []),
+    ],
     requirements: [],
     templateSetup: {
       source: "current",
@@ -435,7 +444,7 @@ it.each([
     ),
   ];
   const question = {
-    path: "projectTemplates",
+    path: fixture.extraRoot ? "audit_logs.acl" : "projectTemplates",
     text: "Welche fachliche Auswahl soll verwendet werden?",
   };
   let questionLimit: number | undefined;

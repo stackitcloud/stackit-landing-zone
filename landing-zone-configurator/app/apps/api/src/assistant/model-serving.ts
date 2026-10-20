@@ -1126,6 +1126,13 @@ export class AssistantModelServing {
       templateSetup?.kinds.includes("corporate") ?? false;
     const resolvedTemplateDefaults =
       templateTopic &&
+      [...editorRoots].every((root) =>
+        [
+          "landing_zones",
+          "sandboxes",
+          "landing_zone_namespace_services",
+        ].includes(root),
+      ) &&
       templateSetup?.delegateNaming &&
       templateSetup.localNetworks &&
       templateSetup.fields.every((field) =>
