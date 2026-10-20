@@ -6386,3 +6386,68 @@ test.describe("explicit saved-plan approval", () => {
     expect(downloads).toBe(0);
   });
 });
+
+test("disabled Assistant leaves templates and editor usable without conversation mutations", async ({
+  page,
+}) => {
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: {
+        github: false,
+        stackit: true,
+        primary: "stackit",
+        assistant: false,
+      },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: { id: "personal", kind: "personal", roles: [] },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  const assistantRequests: string[] = [];
+  page.on("request", (request) => {
+    if (
+      /\/api\/v1\/configurations\/(?:template-advice|[^/]+\/assistant)/.test(
+        request.url(),
+      )
+    )
+      assistantRequests.push(request.method());
+  });
+  await page.goto("/repositories");
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Assistant ist in dieser Umgebung deaktiviert" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Deine Anforderungen" }),
+  ).toHaveCount(0);
+  await page.goto("/templates/hub-and-spoke");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await page
+    .getByLabel("Name der Konfiguration")
+    .fill("Manual draft without Assistant");
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Manual draft without Assistant",
+  );
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Assistant ist in dieser Umgebung deaktiviert" }),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Sprache" }).selectOption("en");
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "The Assistant is disabled in this environment" }),
+  ).toBeVisible();
+  expect(assistantRequests.filter((method) => method !== "GET")).toEqual([]);
+});

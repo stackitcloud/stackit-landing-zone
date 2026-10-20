@@ -4,6 +4,9 @@ import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { buildpackTag } from "./buildpack-source.mjs";
+import { releaseMode } from "./release-artifact.mjs";
+const disabledAssistantRelease=releaseMode(process.env.LZC_RELEASE_MODE)==="dev-assistant-disabled";
+if(disabledAssistantRelease && process.env.GITHUB_REF!=="refs/heads/main")throw new Error("Assistant-disabled release requires Dev main source");
 const mode=process.argv[2];
 if(!["backend","application","runner"].includes(mode)) throw new Error("Expected backend or application");
 const required=name=>{if(!process.env[name])throw new Error(`Missing ${name}`);return process.env[name];};
@@ -49,7 +52,7 @@ if(mode==="backend") {
   mask(migration.password);
   writeFileSync(resolve(dir,"migration-vars.json"),JSON.stringify(migrationVars),{mode:0o600});
   const enabled=process.env.LZC_AUTH_ENABLED==="true";
-  const assistantEnabled=process.env.LZC_ASSISTANT_ENABLED==="true";
+  const assistantEnabled=!disabledAssistantRelease && process.env.LZC_ASSISTANT_ENABLED==="true";
   if(assistantEnabled&&!enabled)throw new Error("Assistant requires authentication");
   const stackitEnabled=process.env.LZC_STACKIT_DEVICE_ENABLED==="true";
   const clientApproved=process.env.LZC_STACKIT_CLI_CLIENT_APPROVED==="true";

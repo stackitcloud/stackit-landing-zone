@@ -24,7 +24,8 @@ page and select **Configurator Release**, then **Run workflow**:
 4. Set **runner_pool_size** to `1` for one prepared, one-shot Dev Runner, or `0`
    to disable/drain the pool. The default is `0`; valid values are `0`–`4`.
    Each reserve uses 1 GiB RAM and a 4 GiB disk budget, in addition to active jobs.
-5. Start the workflow. It qualifies the real Assistant, builds and tests both
+5. Keep **release_mode=qualified** for a normal release. Start the workflow.
+   It qualifies the real Assistant, builds and tests both
    packages, then creates the protected source-bound buildpack tag.
 6. When **deploy** waits for review, use **Review deployments** to approve
    **lzc-dev-release** with an authorized reviewer account.
@@ -287,6 +288,32 @@ separate explicit operations, not part of application release validation.
 
 Raw CF logs are not exported to CI, since router URLs may contain OAuth codes.
 Task status, sanitized diagnostics and public health checks provide release evidence.
+
+### Dev release with Assistant disabled
+
+During Model Serving outages, select **release_mode=dev-assistant-disabled**
+in **Actions > Configurator Release > Run workflow**, branch **main**.
+Leave **build_only** unchecked and **release_run_id** empty; set
+**runner_pool_size=1**. Review the exact source/run and approve the existing
+**lzc-dev-release** environment after all applicable build/publication checks.
+This explicit mode skips live Assistant qualification and forcibly sets
+`LZC_ASSISTANT_ENABLED=false`, even if the environment variable enables it.
+All non-Assistant checks, migrations, protected tags and Dev destination guards
+remain in force. API Assistant routes are unregistered; the UI shows a disabled
+notice while templates and the editor remain usable. Stored conversations and
+proposals are preserved. This mode does not authorize production or customer
+infrastructure Apply.
+
+The manifest records Dev-only scope, disabled Assistant and absent Assistant
+qualification; the build job is named `build-dev-assistant-disabled`.
+These artifacts cannot be promoted using `release_run_id`, either as a normal
+release or as another disabled release. A deployment failure requires inspection
+and a fresh manual run. `build_only=true` may build this mode for inspection,
+but its artifact cannot subsequently be promoted. Re-enabling Assistant requires
+a fresh **release_mode=qualified** release with the complete source-bound live
+qualification; changing the environment variable cannot enable it in this mode.
+The default **qualified** path and its promotion requirements are unchanged.
+
 
 ## Immutable release and promotion
 

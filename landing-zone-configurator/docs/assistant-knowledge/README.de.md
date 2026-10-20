@@ -171,7 +171,7 @@ Die kontinuierliche themenuebergreifende Reise prueft auch die
 DNS-Erklaerung nach frueheren Konfigurationsschritten und dass Beratung
 den Entwurf nicht veraendert.
 
-Release-Builds haengen vom wiederverwendbaren Live-Workflow ab:
+Standardmaessige `qualified`-Release-Builds haengen vom wiederverwendbaren Live-Workflow ab:
 Alle Themen laufen zweimal, danach folgt der kontinuierliche Dialog,
 auch wenn einzelne Modellfaelle scheitern.
 Rohe synthetische Nachweise bleiben CI-Artefakte.
@@ -238,11 +238,39 @@ oeffentliches Abnahmeverzeichnis.
 Fehlgeschlagene Experimente als Evidenz erhalten.
 Ein spaeterer erfolgreicher Lauf qualifiziert nur seine eigene Quelle,
 loescht keinen frueheren Fehler und zertifiziert kein anderes Deployment.
-Der geschuetzte Release-Workflow wiederholt Qualifikation fuer seinen
+Der geschuetzte `qualified`-Release-Workflow wiederholt Qualifikation fuer seinen
 exakten Build; lokale Ergebnisse allein autorisieren niemals Promotion
 oder Deployment.
 
 <a id="complete-topic-catalogue"></a>
+
+### Dev-Release mit deaktiviertem Assistant
+
+Bei Model-Serving-Ausfällen unter **Actions > Configurator Release > Run workflow**
+auf Branch **main** ausdrücklich **release_mode=dev-assistant-disabled** wählen.
+**build_only** nicht anhaken, **release_run_id** leer lassen und
+**runner_pool_size=1** setzen. Den genauen Quellstand/Lauf prüfen und nach allen
+anwendbaren Build-/Veröffentlichungsprüfungen die bestehende Umgebung
+**lzc-dev-release** freigeben. Dieser Modus überspringt die Live-Qualifikation
+des Assistant und erzwingt `LZC_ASSISTANT_ENABLED=false`, auch wenn die
+Umgebungsvariable ihn aktiviert. Alle übrigen Prüfungen, Migrationen, geschützten
+Tags und Dev-Zielprüfungen bleiben erhalten. Die Assistant-API-Routen sind nicht
+registriert; die Oberfläche zeigt einen Deaktivierungshinweis. Vorlagen und Editor
+bleiben nutzbar. Gespeicherte Gespräche und Vorschläge bleiben erhalten.
+Der Modus autorisiert weder Produktion noch Kunden-Infrastruktur-Apply.
+
+Das Manifest vermerkt die Beschränkung auf Dev, den deaktivierten Assistant und
+die fehlende Assistant-Qualifikation; der Build-Job heißt
+`build-dev-assistant-disabled`. Diese Artefakte können nicht mit `release_run_id`
+übernommen werden, weder als normaler noch als weiterer deaktivierter Release.
+Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller Lauf nötig.
+`build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt anschließend
+nicht übernommen werden kann. Zum Reaktivieren ist ein neuer Release mit
+**release_mode=qualified** und vollständiger quellstandsgebundener
+Live-Qualifikation erforderlich; eine Umgebungsvariablenänderung aktiviert den
+Assistant in diesem Modus nicht. Der Standardpfad **qualified** und dessen
+Übernahmebedingungen bleiben unverändert.
+
 
 ## Vollstaendiger Themenkatalog
 

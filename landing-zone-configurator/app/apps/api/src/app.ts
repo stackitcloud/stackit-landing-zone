@@ -148,6 +148,7 @@ export function buildApp(
     return reply.code(503).send({ error: "service_unavailable" });
   });
   app.get("/auth/status", async () => ({
+    assistant: !!options.auth && !!options.assistant,
     github: !!options.auth && options.auth.githubEnabled !== false,
     stackit: !!options.stackit,
     stackitFlow: options.stackit?.authFlow,

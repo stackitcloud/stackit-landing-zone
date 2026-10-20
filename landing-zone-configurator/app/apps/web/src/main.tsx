@@ -20,6 +20,7 @@ import {
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { Applications } from "./components/Applications";
+import { AssistantAvailability } from "./components/AssistantAvailability";
 import { AssistantChat } from "./components/AssistantChat";
 import {
   CloudCataloguePanel,
@@ -711,14 +712,16 @@ function App() {
                 />
               )}
               {(view === "repositories" || view === "templates") && session && (
-                <TemplateAdvice
-                  key={`template-advice:${workspaceKey(session)}`}
-                  session={session}
-                  onChoose={(id) => {
-                    if (templates.some((item) => item.id === id))
-                      setView("preview", id);
-                  }}
-                />
+                <AssistantAvailability>
+                  <TemplateAdvice
+                    key={`template-advice:${workspaceKey(session)}`}
+                    session={session}
+                    onChoose={(id) => {
+                      if (templates.some((item) => item.id === id))
+                        setView("preview", id);
+                    }}
+                  />
+                </AssistantAvailability>
               )}
               {view === "templates" && (
                 <>
@@ -927,23 +930,27 @@ function App() {
                 </div>
               </div>
               {view === "editor" && draft && session && (
-                <AssistantChat
-                  key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
-                  session={session}
-                  binding={configurationBinding}
-                  dirty={draftDirty}
-                  draft={draft}
-                  savedDraft={
-                    savedDraft ? readEditorDraft(JSON.parse(savedDraft)) : null
-                  }
-                  onAccepted={(loaded, binding, persisted) => {
-                    setDraft(loaded);
-                    setDraftEpoch((value) => value + 1);
-                    setConfigurationBinding(binding);
-                    setSavedDraft(JSON.stringify(persisted));
-                    setDeploymentSelection(null);
-                  }}
-                />
+                <AssistantAvailability>
+                  <AssistantChat
+                    key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
+                    session={session}
+                    binding={configurationBinding}
+                    dirty={draftDirty}
+                    draft={draft}
+                    savedDraft={
+                      savedDraft
+                        ? readEditorDraft(JSON.parse(savedDraft))
+                        : null
+                    }
+                    onAccepted={(loaded, binding, persisted) => {
+                      setDraft(loaded);
+                      setDraftEpoch((value) => value + 1);
+                      setConfigurationBinding(binding);
+                      setSavedDraft(JSON.stringify(persisted));
+                      setDeploymentSelection(null);
+                    }}
+                  />
+                </AssistantAvailability>
               )}
               {view === "editor" && !draft && (
                 <section className="panel">

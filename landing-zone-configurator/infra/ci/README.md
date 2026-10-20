@@ -36,6 +36,32 @@ The workflows contain all required environment variables, preparation steps and 
 
 <a id="logs-und-secrets"></a>
 
+### Dev release with Assistant disabled
+
+During Model Serving outages, select **release_mode=dev-assistant-disabled**
+in **Actions > Configurator Release > Run workflow**, branch **main**.
+Leave **build_only** unchecked and **release_run_id** empty; set
+**runner_pool_size=1**. Review the exact source/run and approve the existing
+**lzc-dev-release** environment after all applicable build/publication checks.
+This explicit mode skips live Assistant qualification and forcibly sets
+`LZC_ASSISTANT_ENABLED=false`, even if the environment variable enables it.
+All non-Assistant checks, migrations, protected tags and Dev destination guards
+remain in force. API Assistant routes are unregistered; the UI shows a disabled
+notice while templates and the editor remain usable. Stored conversations and
+proposals are preserved. This mode does not authorize production or customer
+infrastructure Apply.
+
+The manifest records Dev-only scope, disabled Assistant and absent Assistant
+qualification; the build job is named `build-dev-assistant-disabled`.
+These artifacts cannot be promoted using `release_run_id`, either as a normal
+release or as another disabled release. A deployment failure requires inspection
+and a fresh manual run. `build_only=true` may build this mode for inspection,
+but its artifact cannot subsequently be promoted. Re-enabling Assistant requires
+a fresh **release_mode=qualified** release with the complete source-bound live
+qualification; changing the environment variable cannot enable it in this mode.
+The default **qualified** path and its promotion requirements are unchanged.
+
+
 ## Logs and secrets
 
 Normal OpenTofu output appears live in the respective step: resource changes, progress, warnings and errors. OpenTofu masks `sensitive` attributes/outputs; preparation additionally registers the supplied backend credentials and encryption keys with GitHub's `add-mask`. No `TF_LOG=DEBUG` or shell `set -x` for deployment secrets.

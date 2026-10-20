@@ -10,7 +10,14 @@ function checksum(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+export function releaseMode(value = "qualified") {
+  if (!["qualified", "dev-assistant-disabled"].includes(value))
+    throw new Error("Unknown release mode");
+  return value;
+}
+
 function validSource(source) {
+  releaseMode(source.mode);
   if (
     !/^[a-f0-9]{40}$/.test(source.revision) ||
     !/^[1-9][0-9]*$/.test(String(source.runId)) ||
@@ -22,7 +29,15 @@ function validSource(source) {
 export function createReleaseManifest(directory, source) {
   validSource(source);
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: source.mode === "dev-assistant-disabled" ? 2 : 1,
+    ...(source.mode === "dev-assistant-disabled"
+      ? {
+          releaseMode: source.mode,
+          target: "lzc-dev",
+          assistantEnabled: false,
+          assistantQualified: false,
+        }
+      : {}),
     sourceRevision: source.revision,
     releaseRunId: String(source.runId),
     artifacts: Object.fromEntries(
@@ -43,7 +58,13 @@ export function verifyReleaseManifest(directory, source) {
     readFileSync(resolve(directory, "release-manifest.json"), "utf8"),
   );
   if (
-    manifest.schemaVersion !== 1 ||
+    (source.mode === "dev-assistant-disabled"
+      ? manifest.schemaVersion !== 2 ||
+        manifest.releaseMode !== source.mode ||
+        manifest.target !== "lzc-dev" ||
+        manifest.assistantEnabled !== false ||
+        manifest.assistantQualified !== false
+      : manifest.schemaVersion !== 1 || manifest.releaseMode !== undefined) ||
     manifest.sourceRevision !== source.revision ||
     manifest.releaseRunId !== String(source.runId) ||
     !manifest.artifacts ||
@@ -57,7 +78,29 @@ export function verifyReleaseManifest(directory, source) {
   return manifest;
 }
 
-export function approvedReleaseSource(run, jobs, artifacts, runId) {
+export function approvedReleaseSource(
+  run,
+  jobs,
+  artifacts,
+  runId,
+  mode = "qualified",
+  currentRunId,
+) {
+  releaseMode(mode);
+  const disabled = mode === "dev-assistant-disabled";
+  if (
+    disabled &&
+    (String(runId) !== String(currentRunId) ||
+      run.head_branch !== "main" ||
+      run.event !== "workflow_dispatch" ||
+      jobs.some(
+        (job) =>
+          job.name.startsWith("assistant") && job.conclusion !== "skipped",
+      ))
+  )
+    throw new Error(
+      "Assistant-disabled builds are Dev-only fresh releases, never promotions",
+    );
   validSource({ revision: run.head_sha, runId });
   if (
     run.id !== Number(runId) ||
@@ -66,8 +109,12 @@ export function approvedReleaseSource(run, jobs, artifacts, runId) {
     run.head_repository?.full_name !== repository ||
     !["main", "feature/landing-zone-configurator"].includes(run.head_branch) ||
     !["push", "workflow_dispatch"].includes(run.event) ||
-    !["build", "assistant / assistant-live-qualification"].every(
-      (name) => jobs.some(
+    !(
+      disabled
+        ? ["build-dev-assistant-disabled"]
+        : ["build", "assistant / assistant-live-qualification"]
+    ).every((name) =>
+      jobs.some(
         (job) =>
           job.name === name &&
           job.status === "completed" &&
@@ -101,16 +148,20 @@ async function resolveSource() {
   if (!/^[1-9][0-9]*$/.test(runId ?? ""))
     throw new Error("A numeric release build run ID is required");
   const request = async (path) => {
-    const response = await fetch(`https://api.github.com/repos/${repository}/${path}`, {
-      headers: {
-        Authorization: `Bearer ${process.env.GH_TOKEN ?? ""}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
+    const response = await fetch(
+      `https://api.github.com/repos/${repository}/${path}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GH_TOKEN ?? ""}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        redirect: "error",
+        signal: AbortSignal.timeout(15000),
       },
-      redirect: "error",
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) throw new Error(`Release metadata HTTP ${response.status}`);
+    );
+    if (!response.ok)
+      throw new Error(`Release metadata HTTP ${response.status}`);
     return response.json();
   };
   const [run, jobs, artifacts] = await Promise.all([
@@ -118,15 +169,26 @@ async function resolveSource() {
     request(`actions/runs/${runId}/jobs?per_page=100`),
     request(`actions/runs/${runId}/artifacts?per_page=100`),
   ]);
-  const source = approvedReleaseSource(run, jobs.jobs, artifacts.artifacts, runId);
+  const source = approvedReleaseSource(
+    run,
+    jobs.jobs,
+    artifacts.artifacts,
+    runId,
+    releaseMode(process.env.LZC_RELEASE_MODE),
+    process.env.GITHUB_RUN_ID,
+  );
   appendFileSync(
     process.env.GITHUB_OUTPUT,
     `release_revision=${source.revision}\nrelease_run_id=${source.runId}\nartifact_id=${source.artifactId}\n`,
   );
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   const source = {
+    mode: releaseMode(process.env.LZC_RELEASE_MODE),
     revision: process.env.LZC_RELEASE_REVISION ?? process.env.GITHUB_SHA,
     runId: process.env.LZC_RELEASE_RUN_ID ?? process.env.GITHUB_RUN_ID,
   };

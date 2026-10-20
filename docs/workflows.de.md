@@ -29,6 +29,34 @@ Bereitstellungsjob freizugeben.
 | Konfigurierte Maschinen-Flavors mit dem aktuellen STACKIT-Katalog vergleichen | **Validate STACKIT Flavors** |
 
 <a id="current-repository-workflows"></a>
+### Dev-Release mit deaktiviertem Assistant
+
+Bei Model-Serving-Ausfällen unter **Actions > Configurator Release > Run workflow**
+auf Branch **main** ausdrücklich **release_mode=dev-assistant-disabled** wählen.
+**build_only** nicht anhaken, **release_run_id** leer lassen und
+**runner_pool_size=1** setzen. Den genauen Quellstand/Lauf prüfen und nach allen
+anwendbaren Build-/Veröffentlichungsprüfungen die bestehende Umgebung
+**lzc-dev-release** freigeben. Dieser Modus überspringt die Live-Qualifikation
+des Assistant und erzwingt `LZC_ASSISTANT_ENABLED=false`, auch wenn die
+Umgebungsvariable ihn aktiviert. Alle übrigen Prüfungen, Migrationen, geschützten
+Tags und Dev-Zielprüfungen bleiben erhalten. Die Assistant-API-Routen sind nicht
+registriert; die Oberfläche zeigt einen Deaktivierungshinweis. Vorlagen und Editor
+bleiben nutzbar. Gespeicherte Gespräche und Vorschläge bleiben erhalten.
+Der Modus autorisiert weder Produktion noch Kunden-Infrastruktur-Apply.
+
+Das Manifest vermerkt die Beschränkung auf Dev, den deaktivierten Assistant und
+die fehlende Assistant-Qualifikation; der Build-Job heißt
+`build-dev-assistant-disabled`. Diese Artefakte können nicht mit `release_run_id`
+übernommen werden, weder als normaler noch als weiterer deaktivierter Release.
+Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller Lauf nötig.
+`build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt anschließend
+nicht übernommen werden kann. Zum Reaktivieren ist ein neuer Release mit
+**release_mode=qualified** und vollständiger quellstandsgebundener
+Live-Qualifikation erforderlich; eine Umgebungsvariablenänderung aktiviert den
+Assistant in diesem Modus nicht. Der Standardpfad **qualified** und dessen
+Übernahmebedingungen bleiben unverändert.
+
+
 ## Aktuelle Repository-Workflows
 
 **Automatisch** beschreibt Repository-Ereignisse, keinen manuellen Klick.
@@ -85,7 +113,7 @@ Pflichtprüfung, ohne sicherzustellen, dass er für jeden relevanten PR ein Erge
 | Configurator Bootstrap | Standardmäßig `root=bootstrap` oder `backend`; standardmäßig `apply=false`. Apply verwendet `lzc-dev-bootstrap-apply`. |
 | Configurator Platform | `root=platform`; standardmäßig `apply=false`. Benötigt den obigen Plattform-Operatorschalter; Apply verwendet `lzc-dev-platform-apply`. |
 | Configurator Runtime | `root=runtime`; standardmäßig `apply=false`. Benötigt den obigen Laufzeit-Operatorschalter; Apply verwendet `lzc-dev-runtime-apply`. |
-| Configurator Release | Standardmäßig `build_only=false`; leere `release_run_id` bedeutet neue Qualifikation/neuer Build. Setzen Sie `build_only=true` für einen Build ohne CF-Bereitstellung; echte Modellaufrufe und Veröffentlichung des geschützten Tags erfolgen trotzdem. Um einen bestehenden qualifizierten Build zu übernehmen, lassen Sie Build-only deaktiviert und geben Sie dessen numerische Run-ID an; das aufbewahrte Artefakt/Tag muss weiterhin gültig sein. |
+| Configurator Release | Standardmäßig `release_mode=qualified` und `build_only=false`; leere `release_run_id` bedeutet einen neuen Build im gewählten Modus. Setzen Sie `build_only=true` für einen Build ohne CF-Bereitstellung; echte Modellaufrufe und Veröffentlichung des geschützten Tags erfolgen trotzdem. Um einen bestehenden qualifizierten Build zu übernehmen, lassen Sie Build-only deaktiviert und geben Sie dessen numerische Run-ID an; das aufbewahrte Artefakt/Tag muss weiterhin gültig sein. |
 
 Für die normale Configurator-Bereitstellung: Wählen Sie **Configurator Release**,
 **runner_pool_size=1** für einen vorbereiteten Einmal-Runner in Dev
