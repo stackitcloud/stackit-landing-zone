@@ -138,6 +138,16 @@ Effektive Modell-IDs stehen in jedem Nachweis.
 Qualifikation eines alternativen Modells qualifiziert nicht das
 konfigurierte Anwendungsmodell.
 
+Aktive Firewall-Entwuerfe und mehrstufige Firewall-Dialoge verwenden immer
+den spezialisierten Klassifikator fuer Einrichtungsumfang und Belege.
+Ein allgemeiner Feldhinweis wie `ha` darf ihn nicht umgehen: Eine breite
+Einrichtungsfortsetzung mit HA behaelt die noch offenen Entscheidungen zu
+Verkehr, Kapazitaet und Unterbrechung bei. Eine ausdrueckliche gezielte native
+Aenderung bleibt auch nach einem frueheren breiten Einrichtungsdialog eine
+Feldaenderung und erzeugt keine fremden Einrichtungsfragen.
+Gibt es keine begrenzten Nutzerbeleg-Fragmente, erlauben Belegfelder nur null
+statt einer leeren Aufzaehlung.
+
 Beschreibungen von Intent- und Evidenzschemas werden auch im Systemkontext
 des Klassifikators gesendet, nicht nur als Structured-Decoding-Beschraenkung.
 Antwortgenerierung erhaelt geprueftes Feld-/Themenwissen ohne zweiten

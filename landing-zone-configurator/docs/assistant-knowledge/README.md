@@ -100,6 +100,14 @@ without a CI-only classifier override. The effective model IDs are recorded in
 every receipt. Qualification of an alternative model does not qualify the
 application's configured model.
 
+Active Firewall drafts and multi-turn Firewall conversations always use the
+dedicated setup-scope/evidence classifier. A general field hint such as `ha`
+must not bypass it: continuing broad setup with HA retains the remaining
+traffic, capacity and interruption decisions. An explicit narrow native update
+remains a field update, even after an earlier broad setup conversation, and does
+not add unrelated setup questions. If no bounded user-evidence fragments exist,
+evidence fields permit only null rather than an empty enumeration.
+
 Intent and evidence schema descriptions are also sent in the classifier's system
 context, not only as a structured-decoding constraint. Answer generation receives
 the reviewed field and topic knowledge, without a second full schema dump.
