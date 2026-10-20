@@ -3,6 +3,27 @@ export * from "./backend.js";
 
 import { z } from "zod";
 
+export const firewallAdministrationSchema = z.strictObject({
+  username: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-zA-Z0-9_.@-]+$/),
+  password: z
+    .string()
+    .min(1)
+    .max(1024)
+    .refine((value) =>
+      [...value].every(
+        (character) =>
+          character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
+      ),
+    ),
+});
+export type FirewallAdministration = z.infer<
+  typeof firewallAdministrationSchema
+>;
+
 export const platformCheckpointSchema = z.strictObject({
   stateVersion: z.string().regex(/^[1-9][0-9]*$/),
   checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),

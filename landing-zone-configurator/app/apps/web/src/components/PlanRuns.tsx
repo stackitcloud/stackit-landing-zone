@@ -53,6 +53,8 @@ const labels: Record<string, string> = {
   recovery_required: "Wiederherstellung erforderlich",
 };
 const failures: Record<string, string> = {
+  firewall_administration_required:
+    "Für Firewall-HA fehlt ein gebundener OPNsense-Administrationszugang. Erstelle unter Zugänge ein Profil mit Service-Account und OPNsense-Zugang und danach eine neue Vorbereitung und einen neuen Plan. Bestehende Nachweise bleiben erhalten.",
   configuration_execution_not_supported:
     "Diese Konfiguration enthält Komponenten, die der Erstbereitstellungsplan noch nicht unterstützt. Wähle eine unterstützte Standalone-Konfiguration.",
   configuration_apply_not_supported:

@@ -19,6 +19,40 @@ Stand: 2026-09-30. Nächster Baustein nach Fork-Speicherung und tfvars-Export.
    widerruft den Schlüssel bei STACKIT nicht. Ein Widerruf erfolgt separat in der
    STACKIT-Service-Account-Verwaltung.
 
+<a id="optional-firewall-ha-administration"></a>
+
+## Optionaler Administrationszugang für Firewall-HA
+
+Aktiviere beim Anlegen des Profils **OPNsense-Administrationszugang für Firewall-HA
+hinterlegen** und trage den bestehenden GUI-Administrator samt Passwort für beide
+Appliances ein. Einzelne Firewall-Instanzen benötigen diesen zusätzlichen Zugang
+nicht. Das Speichern setzt oder rotiert **kein** Appliance-Passwort; die Angaben
+müssen zum gepinnten Image beziehungsweise zu den separat administrierten
+Appliances passen.
+
+Der Administrationszugang wird zusammen mit dem Service-Account-Schlüssel im
+gleichen eigentümer-/mandantengebundenen Secret gespeichert, niemals in
+Konfiguration, tfvars, Assistant-Vorschlägen, Browser-Storage oder Profilantworten.
+PostgreSQL enthält nur das durch Migration `059_firewall_administration.sql`
+ergänzte Merkmal `firewall_administration_configured`. Benutzername und Passwort
+werden nicht wieder an die UI ausgeliefert. Das Passwortfeld wird nach jedem
+Speicherversuch geleert.
+
+Erstelle mit diesem Profil eine **neue Vorbereitung und einen neuen Plan**.
+Die unveränderliche Vorbereitung bindet Profil, Secret-Version, Schlüsselidentität
+und Administrationsmerkmal; der Runner erhält die Werte nur für einen autorisierten
+HA-Auftrag. Alte HA-Vorbereitungen und Pläne erhalten diese Bindung nicht nachträglich.
+`firewall_administration_required` verlangt daher ein neues Profil, eine neue
+Vorbereitung und einen neuen Plan, nicht bloß einen weiteren Apply-Versuch.
+Bestehende Konfigurationen und Plan-Nachweise bleiben erhalten.
+
+Dies ermöglicht native Firewall-/HA-Infrastruktur, nicht Firewall-Policy,
+API-Key-Bootstrap oder VPN-PSKs. Apply benötigt weiterhin eine ausdrückliche
+Freigabe des gespeicherten Plans und alle Quell-, State-, Organisations- und
+Berechtigungsprüfungen. Lokale Vertragstests qualifizieren weder echte
+Appliance-Erreichbarkeit noch HA-Failover; dafür ist ein separat genehmigter
+Umgebungstest erforderlich. Siehe [Plan-Ausführung](plan-execution.de.md).
+
 Unterstützt wird zunächst der Key Flow mit eingebettetem RSA-Schlüssel ab 2048 Bit.
 Dateien mit deaktiviertem oder bereits abgelaufenem Schlüssel, widersprüchlichen IDs,
 fehlendem privaten Schlüssel oder unbekannter Audience werden abgewiesen. Diese
@@ -77,9 +111,11 @@ nicht verwendbar; UI bietet Löschen und Neuanlegen, keine blinde Wiederholung.
 Löschen sperrt die autorisierte Zeile, entfernt zuerst Vault-Metadaten einschließlich
 aller Secret-Versionen und danach den DB-Datensatz. 404 beim Secret-Löschen gilt als
 bereits entfernt. Bei Abbruch kann ein Metadatensatz verbleiben, dessen Secret schon
-fehlt; Löschen ist wiederholbar. Ein späterer Runner darf sich deshalb niemals allein
+fehlt; Löschen ist wiederholbar. Der Runner darf sich deshalb niemals allein
 auf `stored` verlassen, sondern muss Existenz, Secret-Identität und Berechtigung vor
-jeder Verwendung erneut prüfen. Es gibt noch keinen Runner-Zugriff auf diese Profile.
+jeder Verwendung erneut prüfen. Der authentifizierte Job-Broker prüft dies vor der
+Übergabe an einen autorisierten Auftrag; einen allgemeinen Secret-Leseendpunkt gibt
+es nicht.
 Vault-Login-Tokens werden nach jeder Operation widerrufen, auch bei Fehlern.
 
 <a id="acceptance-and-further-work"></a>

@@ -7,11 +7,13 @@ import {
   cp,
   mkdir,
   mkdtemp,
+  open,
   readdir,
   readFile,
   realpath,
   rm,
   stat,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -45,6 +47,10 @@ import {
 const runner = fileURLToPath(new URL("../../deploy/runner/", import.meta.url));
 const ticket = "t".repeat(43);
 const secret = "private-provider-value";
+const firewallAdministration = {
+  username: "fw",
+  password: 'fw-firewall-"quoted\\password',
+};
 const plan = Buffer.from("reviewed-saved-plan");
 const s3Backend = {
   kind: "s3",
@@ -150,6 +156,9 @@ fs.appendFileSync(${JSON.stringify(callsPath)}, JSON.stringify({args, work: proc
   keyInWork: env.STACKIT_SERVICE_ACCOUNT_KEY_PATH === require("node:path").join(process.cwd(), "credential.json"),
   rootMarker: fs.readFileSync("root-marker", "utf8"),
   firewallImageBytes: fs.existsSync("firewall-image.qcow2") ? fs.statSync("firewall-image.qcow2").size : 0,
+  firewallAdminVariables: Object.keys(env).filter(name => name.startsWith("TF_VAR_firewall_admin_")),
+  firewallUsernameMatches: env.TF_VAR_firewall_admin_username === ${JSON.stringify(firewallAdministration.username)},
+  firewallPasswordMatches: env.TF_VAR_firewall_admin_password === ${JSON.stringify(firewallAdministration.password)},
   modulePresent: fs.existsSync("../modules/landing-zone/main.tf"),
   cliConfig: fs.readFileSync(env.TF_CLI_CONFIG_FILE, "utf8"),
   cliConfigMode: fs.statSync(env.TF_CLI_CONFIG_FILE).mode & 0o777,
@@ -159,6 +168,13 @@ fs.appendFileSync(${JSON.stringify(callsPath)}, JSON.stringify({args, work: proc
   httpVariables: Object.keys(env).filter(name => name.startsWith("TF_HTTP_")),
   backendMode: s3 ? fs.statSync("backend.tf.json").mode & 0o777 : null,
   sourceBackendPresent: fs.existsSync("backend.tf")}) + "\\n");
+if (${JSON.stringify(behavior)}.startsWith("firewall-output")) {
+  for (const value of [env.TF_VAR_firewall_admin_username, env.TF_VAR_firewall_admin_password]) {
+    console.error(value);
+    console.error(JSON.stringify(value));
+  }
+  if (${JSON.stringify(behavior)} === "firewall-output-failure" && phase === "validate") process.exit(95);
+}
 if (env.LZC_RUN_TICKET || env.LZC_BROKER_ORIGIN || env.CF_SECRET || env.TF_CLI_ARGS || env.TF_HTTP_PASSWORD && !http) process.exit(88);
 if (s3) {
   if (env.AWS_ACCESS_KEY_ID !== ${JSON.stringify(s3Backend.credentials.accessKeyId)} ||
@@ -214,7 +230,7 @@ if (phase === "apply") {
   if (${JSON.stringify(behavior)} === "recovery-oversized") fs.truncateSync("errored.tfstate", 16 * 1024 * 1024 + 1);
   if (${JSON.stringify(behavior)} === "state-failure") fs.writeFileSync("errored.tfstate", "private-recovery-state", {mode:0o600});
   if (${JSON.stringify(behavior)} === "timeout" || ${JSON.stringify(behavior)} === "recovery-timeout") { setInterval(() => {}, 1000); }
-  else { console.log(${JSON.stringify(secret)}); console.error(${JSON.stringify(secret)}); process.exit(${behavior === "apply-failure" || behavior === "state-failure" || (behavior.startsWith("recovery-") && behavior !== "recovery-success-exit") ? 1 : 0}); }
+  else { console.log(${JSON.stringify(secret)}); console.error(${JSON.stringify(secret)}); process.exit(${behavior === "apply-failure" || behavior === "firewall-output-apply-failure" || behavior === "state-failure" || (behavior.startsWith("recovery-") && behavior !== "recovery-success-exit") ? 1 : 0}); }
 }
 LZC_FAKE_TOFU
 `,
@@ -299,6 +315,9 @@ LZC_FAKE_TOFU
       rootMarker: string;
       modulePresent: boolean;
       firewallImageBytes: number;
+      firewallAdminVariables: string[];
+      firewallUsernameMatches: boolean;
+      firewallPasswordMatches: boolean;
       tfvarsSha256: string | null;
       keyMode: number;
       keyInWork: boolean;
@@ -397,7 +416,71 @@ const applicationBinding = {
   instanceId: "22222222-2222-4222-8222-222222222222",
 };
 
-it.each(["missing", "corrupt", "apply"] as const)(
+it("omits the large immutable image from non-firewall jobs without changing the package", async () => {
+  const test = await fixture();
+  const image = join(test.root, "accelerator/firewall-image.qcow2");
+  const file = await open(image, "wx");
+  await file.truncate(993525760);
+  await file.close();
+  vi.stubEnv("TF_VAR_firewall_admin_username", "ambient-admin");
+  vi.stubEnv("TF_VAR_firewall_admin_password", "ambient-password");
+  expect(await test.execute()).toBe("succeeded");
+  expect((await stat(image)).size).toBe(993525760);
+  for (const call of await test.calls()) {
+    expect(call.firewallImageBytes).toBe(0);
+    expect(call.firewallAdminVariables).toEqual([]);
+  }
+  const outputs = test.reports
+    .filter((entry) => entry.path === "output")
+    .map((entry) => (entry.body as { text: string }).text);
+  expect(outputs[0]).toContain("[runner startup] package verified:");
+  expect(outputs.at(-1)).toContain(
+    "[runner startup] providers and backend initialized:",
+  );
+  const timings = Array.from(
+    (outputs.at(-1) as string).matchAll(/elapsed (\d+) ms/g),
+    (match) => Number(match[1]),
+  );
+  expect(timings).toHaveLength(4);
+  expect(timings).toEqual([...timings].sort((a, b) => a - b));
+});
+
+it.each([
+  undefined,
+  null,
+  {},
+  { username: "fw" },
+  { password: "secret" },
+  { username: "fw", password: "secret", extra: true },
+  { username: "bad user", password: "secret" },
+  { username: "fw", password: "bad\npassword" },
+])(
+  "rejects invalid or unbound firewall administration (%j) before any engine command",
+  async (administration) => {
+    const test = await fixture();
+    test.input.firewallAdministration =
+      administration ??
+      (administration === null ? null : firewallAdministration);
+    if (administration !== undefined) test.input.firewallInfrastructure = true;
+    expect(await test.execute()).toBe("failed");
+    expect(await test.calls()).toEqual([]);
+    expect(test.reports.some((entry) => entry.path === "output")).toBe(false);
+  },
+);
+
+it.each(["application-plan", "application-apply"])(
+  "rejects firewall infrastructure/admin on %s",
+  async (mode) => {
+    const test = await fixture();
+    applicationInput(test, mode);
+    test.input.firewallInfrastructure = true;
+    test.input.firewallAdministration = firewallAdministration;
+    expect(await test.execute()).toBe("failed");
+    expect(await test.calls()).toEqual([]);
+  },
+);
+
+it.each(["missing", "corrupt", "apply", "symlink", "directory"] as const)(
   "rejects %s firewall image capability before engine or provisioner access",
   async (variant) => {
     const test = await fixture(
@@ -417,6 +500,13 @@ it.each(["missing", "corrupt", "apply"] as const)(
         join(test.root, "accelerator/firewall-image.qcow2"),
         "not-the-verified-image",
       );
+      if (variant === "symlink" || variant === "directory") {
+        const path = join(test.root, "accelerator/firewall-image.qcow2");
+        await rm(path);
+        if (variant === "symlink")
+          await symlink(join(test.root, "accelerator/root-marker"), path);
+        else await mkdir(path);
+      }
     }
     expect(await test.execute()).toBe("failed");
     expect(await test.calls()).toEqual([]);
@@ -424,6 +514,97 @@ it.each(["missing", "corrupt", "apply"] as const)(
       false,
     );
   },
+);
+
+it.runIf(Boolean(process.env.LZC_FIREWALL_IMAGE_PATH))(
+  "delivers protected firewall credentials through Plan and exact saved Apply, with redacted failure output",
+  async () => {
+    for (const behavior of [
+      "firewall-output",
+      "firewall-output-failure",
+      "firewall-output-apply-failure",
+      "single-node",
+    ]) {
+      const test = await fixture("platform-plan", behavior);
+      await copyFile(
+        process.env.LZC_FIREWALL_IMAGE_PATH as string,
+        join(test.root, "accelerator/firewall-image.qcow2"),
+        constants.COPYFILE_FICLONE,
+      );
+      await writeFile(
+        join(test.root, "platform-source.json"),
+        JSON.stringify(
+          platformRunnerSourceSchema.parse({
+            schemaVersion: 1,
+            acceleratorCommit,
+            firewallImageSha256: platformFirewallImage.sha256,
+          }),
+        ),
+      );
+      test.input.firewallInfrastructure = true;
+      if (behavior !== "single-node")
+        test.input.firewallAdministration = firewallAdministration;
+      test.input.backend = structuredClone(s3Backend);
+      expect(await test.execute()).toBe(
+        behavior === "firewall-output-failure" ? "failed" : "succeeded",
+      );
+      if (behavior !== "firewall-output-failure") {
+        const uploaded = test.reports.find((entry) => entry.path === "artifact")
+          ?.body as { data: string };
+        test.input.mode = "platform-apply";
+        test.input.plan = {
+          data: uploaded.data,
+          sha256: digest(Buffer.from(uploaded.data, "base64")),
+        };
+        expect(await test.execute()).toBe(
+          behavior === "firewall-output-apply-failure" ? "failed" : "succeeded",
+        );
+        expect((await test.calls()).map((call) => call.args[0])).toEqual([
+          "init",
+          "validate",
+          "plan",
+          "show",
+          "show",
+          "init",
+          "validate",
+          "apply",
+        ]);
+      }
+      for (const call of await test.calls()) {
+        expect(call.firewallUsernameMatches).toBe(behavior !== "single-node");
+        expect(call.firewallPasswordMatches).toBe(behavior !== "single-node");
+        expect(call.firewallAdminVariables.sort()).toEqual(
+          behavior === "single-node"
+            ? []
+            : [
+                "TF_VAR_firewall_admin_password",
+                "TF_VAR_firewall_admin_username",
+              ],
+        );
+        expect(call.firewallImageBytes).toBe(993525760);
+        if (call.tfvarsSha256 !== null)
+          expect(call.tfvarsSha256).toBe(test.input.tfvarsSha256);
+        expect(call.s3).toBe(true);
+        expect(call.http).toBe(false);
+      }
+      const publicOutput = test.reports
+        .filter((entry) => entry.path === "output")
+        .map((entry) => (entry.body as { text: string }).text)
+        .join("\n");
+      expect(publicOutput).not.toContain(firewallAdministration.username);
+      expect(publicOutput).not.toContain(firewallAdministration.password);
+      expect(publicOutput).not.toContain(
+        JSON.stringify(firewallAdministration.password).slice(1, -1),
+      );
+      expect(publicOutput).not.toContain("quoted");
+      if (behavior !== "single-node")
+        expect(publicOutput).toContain("(sensitive value)");
+      expect(test.reports.some((entry) => entry.path === "migration")).toBe(
+        false,
+      );
+    }
+  },
+  120000,
 );
 
 it.runIf(Boolean(process.env.LZC_FIREWALL_IMAGE_PACKAGE))(
@@ -748,7 +929,11 @@ it("allows the fixed local broker only explicitly and keeps work in the private 
     );
     expect(call.cliConfig).not.toContain("/home/vcap/app/providers");
     expect(call.cliConfigMode).toBe(0o600);
-    expect(call.temp.startsWith("/tmp/lzc-sock-")).toBe(true);
+    expect(
+      call.temp.startsWith(
+        join(tmpdir().length <= 60 ? tmpdir() : "/tmp", "lzc-sock-"),
+      ),
+    ).toBe(true);
     expect(call.tempMode).toBe(0o700);
     await expect(stat(call.temp)).rejects.toThrow("ENOENT");
   }
@@ -1008,7 +1193,7 @@ it.each(["success", "apply-failure", "migration-failure"])(
   async (behavior) => {
     const test = await fixture("platform-apply", behavior);
     await test.execute();
-    const published = test.reports.find(({ path }) => path === "output");
+    const published = test.reports.findLast(({ path }) => path === "output");
     expect(published).toBeDefined();
     expect(published?.body).toMatchObject({
       text: expect.stringContaining("$ tofu apply saved-plan.bin"),
@@ -1086,15 +1271,11 @@ it("rejects loopback brokers in production mode and foreign brokers in local mod
 it("uploads only the saved artifact and sanitized counts before platform-plan success", async () => {
   const test = await fixture();
   expect(await test.execute()).toBe("succeeded");
-  expect(test.reports.map((report) => report.path)).toEqual([
-    "input",
-    "stage",
-    "stage",
-    "stage",
-    "artifact",
-    "output",
-    "result",
-  ]);
+  expect(
+    test.reports
+      .filter((report) => report.path !== "output")
+      .map((report) => report.path),
+  ).toEqual(["input", "stage", "stage", "stage", "artifact", "result"]);
   expect(
     test.reports
       .filter((report) => report.path === "stage")
@@ -1698,7 +1879,7 @@ it("authenticates broker requests without forwarding credentials in bodies or ac
   expect(
     await runWorker({ root: test.root, id: "run-id", ticket, brokerOrigin }),
   ).toBe("succeeded");
-  expect(fetchMock).toHaveBeenCalledTimes(8);
+  expect(fetchMock).toHaveBeenCalledTimes(12);
 });
 
 it("refuses an untrusted broker origin before any network or engine execution", async () => {

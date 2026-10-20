@@ -1,4 +1,14 @@
 export const englishMessages: Record<string, string> = {
+  "OPNsense-Administrationszugang für Firewall-HA hinterlegen":
+    "Store OPNsense administration credentials for firewall HA",
+  "OPNsense-Benutzername": "OPNsense username",
+  "OPNsense-Passwort": "OPNsense password",
+  "OPNsense-Administrationszugang sicher hinterlegt":
+    "OPNsense administration credentials stored securely",
+  "Für die HA-Einrichtung benötigt der Runner den gültigen Administrationszugang beider Appliances. Dieser Zugang wird gemeinsam mit dem Service-Account geschützt gespeichert, nie wieder angezeigt und weder an den Assistant noch in Konfigurationsexporte übergeben. Das Hinterlegen ändert kein Appliance-Passwort.":
+    "HA setup requires valid administration credentials for both appliances. These credentials are stored securely with the service account, never displayed again, and never passed to the Assistant or configuration exports. Storing them does not change an appliance password.",
+  "Für Firewall-HA fehlt ein gebundener OPNsense-Administrationszugang. Erstelle unter Zugänge ein Profil mit Service-Account und OPNsense-Zugang und danach eine neue Vorbereitung und einen neuen Plan. Bestehende Nachweise bleiben erhalten.":
+    "Firewall HA requires bound OPNsense administration credentials. Under Credentials, create a profile with the service account and OPNsense credentials, then create a new preparation and plan. Existing evidence is preserved.",
   "Eintrag entfernen": "Remove entry",
   "Die Vorbereitung verwendet einen anderen Accelerator-Stand als der installierte Runner. Erstelle eine neue Vorbereitung und bestätige dort den aktuellen Accelerator-Stand. Bestehende States und Nachweise bleiben erhalten.":
     "The preparation uses a different Accelerator revision than the installed Runner. Create a new preparation and confirm the current Accelerator revision. Existing states and evidence are preserved.",
@@ -866,8 +876,10 @@ export const englishMessages: Record<string, string> = {
     "Please sign in above to connect your forks.",
   "Bitte prüfe Benutzerkennung, Rollen und Organisations-ID.":
     "Please check the user identifier, roles and organization ID.",
-  "Bitte prüfe Profilname, Organisations-ID und Schlüsseldatei.":
-    "Please check the profile name, organization ID and key file.",
+  "Bitte prüfe Profilname, Organisations-ID, Schlüsseldatei und gegebenenfalls den OPNsense-Administrationszugang.":
+    "Please check the profile name, organization ID, key file and, if enabled, OPNsense administration credentials.",
+  "VPN-Verbindungen benötigen getrennte, auftragsgebundene Pre-Shared Keys für beide Tunnel. Der aktuelle Credential-Vertrag bindet keine VPN-PSKs. Ein Gateway ohne Verbindungen kann bereits geplant werden; PSKs gehören weder in Konfiguration noch Chat.":
+    "VPN connections require separate, job-bound pre-shared keys for both tunnels. The current credential contract does not bind VPN PSKs. A gateway without connections can already be planned; PSKs belong in neither configuration nor chat.",
   "Bitte verbinde GitHub für diese Repository-Funktion.":
     "Please connect GitHub to use this repository feature.",
   "Bitte vervollständige die Konfiguration und speichere sie erneut.":

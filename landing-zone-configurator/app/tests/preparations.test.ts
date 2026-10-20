@@ -25,6 +25,66 @@ import {
   preparationTfvars,
 } from "../apps/api/src/deployments/preparations.js";
 
+it("requires a version-bound administration capability before preparing HA without exporting secrets", () => {
+  const id = randomUUID();
+  let document = createEditorConfiguration("hub-and-spoke-firewall", id);
+  const organizationId = randomUUID();
+  document = editCommonInput(document, "organization_id", organizationId);
+  document = editCommonInput(document, "owner_email", "owner@stackit.cloud");
+  document = editCommonInput(document, "connectivity", {
+    network_area: {
+      ranges: ["10.0.0.0/16"],
+      transfer_network: "10.255.0.0/24",
+    },
+    firewall: {
+      name: "firewall",
+      flavor: "c1.2",
+      zone: "eu01-1",
+      lan_network_range: "10.0.0.0/24",
+      wan_network_range: "10.0.1.0/24",
+      ha: { backup_zone: "eu01-2" },
+    },
+  });
+  const input = {
+    source: "database" as const,
+    configurationId: id,
+    revision: 1,
+    credentialId: randomUUID(),
+  };
+  const snapshot = {
+    document,
+    head: "1",
+    tfvars: serializeTfvars(recordValues(document)),
+  };
+  const checked = {
+    version: 3,
+    keyId: "ha-key",
+    check: {
+      status: "passed" as const,
+      code: "organization_readable" as const,
+      organizationId,
+      organizationName: "HA test",
+      checkedAt: new Date().toISOString(),
+    },
+  };
+  expect(() => preparationManifest(input, snapshot, checked)).toThrow(
+    "firewall_administration_required",
+  );
+  const manifest = preparationManifest(input, snapshot, {
+    ...checked,
+    firewallAdministrationConfigured: true,
+  });
+  expect(manifest.credential).toEqual({
+    id: input.credentialId,
+    secretVersion: 3,
+    keyId: "ha-key",
+    firewallAdministration: true,
+  });
+  expect(preparationTfvars(manifest)).toBe(snapshot.tfvars);
+  expect(preparationTfvars(manifest)).not.toContain("firewall_admin_");
+  expect(JSON.stringify(manifest)).not.toContain("password");
+});
+
 it("binds initial service plans to the exact saved inputs and organization proof", () => {
   let document = createEditorConfiguration("standalone", randomUUID());
   const organization = randomUUID();

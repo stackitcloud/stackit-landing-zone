@@ -47,6 +47,8 @@ type Preparation = {
   };
 };
 const errors: Record<string, string> = {
+  firewall_administration_required:
+    "Für Firewall-HA fehlt ein gebundener OPNsense-Administrationszugang. Erstelle unter Zugänge ein Profil mit Service-Account und OPNsense-Zugang und danach eine neue Vorbereitung und einen neuen Plan. Bestehende Nachweise bleiben erhalten.",
   configuration_execution_not_supported:
     "Diese Konfiguration enthält Komponenten, die der Erstbereitstellungsplan noch nicht unterstützt. Prüfe die Ausführungshinweise bei der Konfigurationsauswahl.",
   preparation_has_plans:

@@ -21,25 +21,11 @@ export function initialPlanRequiresFirewallImage(
 
 export function initialPlanIssues(
   record: ConfigurationRecord,
-  operation: "plan" | "apply" = "plan",
+  _operation: "plan" | "apply" = "plan",
 ): DraftIssue[] {
-  const applyIssues: DraftIssue[] = [];
   const connectivity = objectValue(recordValues(record).connectivity);
-  for (const field of ["firewall", "firewalls"]) {
-    if (
-      operation === "apply" &&
-      (field === "firewall"
-        ? connectivity.firewall != null
-        : Object.keys(objectValue(connectivity.firewalls)).length > 0)
-    )
-      applyIssues.push({
-        field: `connectivity.${field}`,
-        message:
-          "Firewall-/HA-Infrastruktur ist nur für Plan freigegeben. Apply erfordert einen separat qualifizierten Administrations-/Bootstrap-Vertrag; Policy und VPN-PSKs bleiben gesondert gesperrt.",
-      });
-  }
-  if (record.schemaVersion !== 3) return applyIssues;
-  const issues = [...editorIssues(record), ...applyIssues];
+  if (record.schemaVersion !== 3) return [];
+  const issues = [...editorIssues(record)];
   const values = recordValues(record);
   const blocked = (field: string, message: string) =>
     issues.push({ field, message });
@@ -115,7 +101,7 @@ export function initialPlanIssues(
   )
     blocked(
       "connectivity.vpn.connections",
-      "VPN-Verbindungen benötigen getrennte, auftragsgebundene Pre-Shared Keys für beide Tunnel. Der aktuelle Credential-Vertrag bindet nur den STACKIT-Service-Account, keine VPN-PSKs. Ein Gateway ohne Verbindungen kann bereits geplant werden; PSKs gehören weder in Konfiguration noch Chat.",
+      "VPN-Verbindungen benötigen getrennte, auftragsgebundene Pre-Shared Keys für beide Tunnel. Der aktuelle Credential-Vertrag bindet keine VPN-PSKs. Ein Gateway ohne Verbindungen kann bereits geplant werden; PSKs gehören weder in Konfiguration noch Chat.",
     );
   const scopes = objectValue(values.audit_logs).link_scopes;
   if (Array.isArray(scopes))
@@ -196,4 +182,14 @@ export function initialPlanIssues(
       ]);
     });
   return issues;
+}
+
+export function initialPlanRequiresFirewallAdministration(
+  record: ConfigurationRecord,
+): boolean {
+  const connectivity = objectValue(recordValues(record).connectivity);
+  return [
+    connectivity.firewall,
+    ...Object.values(objectValue(connectivity.firewalls)),
+  ].some((firewall) => objectValue(firewall).ha != null);
 }

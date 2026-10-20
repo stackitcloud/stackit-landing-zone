@@ -6,6 +6,7 @@ import {
 import {
   type ConfigurationRecord,
   initialPlanIssues,
+  initialPlanRequiresFirewallAdministration,
   recordName,
   recordOrganization,
   recordValues,
@@ -78,7 +79,12 @@ export type PreparationManifest = {
   configuration: ConfigurationRecord;
   tfvarsSha256: string;
   exportVersion: 1;
-  credential: { id: string; secretVersion: number; keyId: string };
+  credential: {
+    id: string;
+    secretVersion: number;
+    keyId: string;
+    firewallAdministration?: true;
+  };
   organization: { id: string; name: string };
   platformContractNamespace?: string;
   check: CredentialCheck;
@@ -110,11 +116,21 @@ export function preparationTfvars(
 export function preparationManifest(
   input: PreparationInput,
   snapshot: { document: ConfigurationRecord; head: string; tfvars: string },
-  checked: { check: CredentialCheck; version: number; keyId: string },
+  checked: {
+    check: CredentialCheck;
+    version: number;
+    keyId: string;
+    firewallAdministrationConfigured?: boolean;
+  },
   tenantId?: string,
 ): PreparationManifest {
   if (initialPlanIssues(snapshot.document).length)
     throw new CredentialError(409, "configuration_execution_not_supported");
+  const requiresAdministration = initialPlanRequiresFirewallAdministration(
+    snapshot.document,
+  );
+  if (requiresAdministration && !checked.firewallAdministrationConfigured)
+    throw new CredentialError(409, "firewall_administration_required");
   if (
     snapshot.head !==
       ("target" in input ? input.head : String(input.revision)) ||
@@ -156,6 +172,9 @@ export function preparationManifest(
       id: input.credentialId,
       secretVersion: checked.version,
       keyId: checked.keyId,
+      ...(requiresAdministration
+        ? { firewallAdministration: true as const }
+        : {}),
     },
     organization: {
       id: checked.check.organizationId,

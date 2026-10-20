@@ -7,8 +7,17 @@ export interface CredentialSecrets {
   get(
     session: Pick<Session, "tenantId" | "userId">,
     id: string,
-  ): Promise<{ key: ServiceAccountKey; version: number }>;
-  put(session: Session, id: string, key: ServiceAccountKey): Promise<void>;
+  ): Promise<{
+    key: ServiceAccountKey;
+    version: number;
+    firewallAdministration?: FirewallAdministration;
+  }>;
+  put(
+    session: Session,
+    id: string,
+    key: ServiceAccountKey,
+    firewallAdministration?: FirewallAdministration,
+  ): Promise<void>;
   remove(session: Session, id: string): Promise<void>;
 }
 export class VaultCredentialSecrets implements CredentialSecrets {
@@ -23,7 +32,15 @@ export class VaultCredentialSecrets implements CredentialSecrets {
     );
     return `${this.vault.config.instance}/${metadata ? "metadata" : "data"}/configurator/tenants/${ids[0]}/users/${ids[1]}/credentials/${ids[2]}`;
   }
-  async put(session: Session, id: string, key: ServiceAccountKey) {
+  async put(
+    session: Session,
+    id: string,
+    key: ServiceAccountKey,
+    firewallAdministration?: FirewallAdministration,
+  ) {
+    const administration = firewallAdministration
+      ? firewallAdministrationSchema.parse(firewallAdministration)
+      : undefined;
     const path = this.path(session, id);
     await this.vault.authorized(async (headers) => {
       const response = await this.vault.call(path, {
@@ -37,6 +54,9 @@ export class VaultCredentialSecrets implements CredentialSecrets {
             profileId: id,
             kind: "stackit-service-account",
             key,
+            ...(administration
+              ? { firewallAdministration: administration }
+              : {}),
           },
         }),
       });
@@ -59,6 +79,7 @@ export class VaultCredentialSecrets implements CredentialSecrets {
               profileId: z.literal(id),
               kind: z.literal("stackit-service-account"),
               key: z.unknown(),
+              firewallAdministration: firewallAdministrationSchema.optional(),
             }),
           }),
         })
@@ -66,6 +87,9 @@ export class VaultCredentialSecrets implements CredentialSecrets {
       return {
         key: parseServiceAccountKey(value.data.data.key),
         version: value.data.metadata.version,
+        ...(value.data.data.firewallAdministration
+          ? { firewallAdministration: value.data.data.firewallAdministration }
+          : {}),
       };
     });
   }
@@ -82,3 +106,8 @@ export class VaultCredentialSecrets implements CredentialSecrets {
     });
   }
 }
+
+import {
+  type FirewallAdministration,
+  firewallAdministrationSchema,
+} from "@lzc/contracts";

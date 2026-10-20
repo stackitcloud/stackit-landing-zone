@@ -75,6 +75,15 @@ Zugangsdaten, erstelle eine Vorbereitung und fordere anschließend einen Plan an
 die Job-Ausgabe und prüfe die resultierenden Änderungen, Quell-/Konfigurationsversion
 und State-Bindung.
 
+Lege für Firewall-HA vor der Vorbereitung ein Zugangsprofil mit optionalem
+OPNsense-Administrator und Passwort für beide Appliances an. Diese Angaben werden
+getrennt von der Konfiguration geschützt gespeichert und müssen zu den Appliances
+passen; das Speichern ändert deren Passwörter nicht. Bestehende HA-Pläne ohne diese
+Zugangsbindung benötigen eine neue Vorbereitung und einen neuen Plan. Einzelne
+Firewall-Instanzen benötigen diesen zusätzlichen Zugang nicht. Firewall-Policy/
+-Bootstrap und VPN-PSKs bleiben außerhalb dieses Ausführungsvertrags.
+Siehe [Deployment-Zugänge](deployment-credentials.de.md#optional-firewall-ha-administration).
+
 Aktive Plattformjobs streamen **OpenTofu-Ausgabe**, sobald sie verfügbar ist, einschließlich
 nativen Plan-Fortschritts vor dem abschließenden Diff. **Ausgabe folgen** kann ausgeschaltet
 werden, um frühere Zeilen zu prüfen. Klappe die Konsole ein, um die Verbindung zu trennen;

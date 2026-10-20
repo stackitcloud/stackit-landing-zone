@@ -34,3 +34,51 @@ Lokale Archive bleiben vollständig. Es gibt keinen Download pro Nutzer oder Pla
 Details und Grenzen: [CF-Staging und Cache](../cloud-foundry/README.de.md#image-staging-and-caching).
 Der Dispatcher kopiert dessen Droplet in eine neue App pro Auftrag. Direkte
 OpenTofu-Schritte stehen in `run-plan.sh`. Ablauf und Freigabegrenzen: [Plan-Ausführung](../../docs/plan-execution.de.md).
+
+Der Worker lässt das 993.525.760 Byte große Image in Arbeitsverzeichnissen ohne
+Firewall weg. Firewall-Plan und Apply des gespeicherten Plans prüfen die reguläre,
+nicht symbolisch verknüpfte Paketdatei gegen ihre gepinnte SHA-256 und behalten
+`firewall-image.qcow2` am ursprünglichen relativen Pfad. Für Quelldateien werden
+Dateisystem-Reflinks angefordert; andernfalls entsteht eine unabhängige Kopie.
+Veränderliche Auftragsdateien erhalten niemals Hardlinks. Die Image-Prüfsumme und
+die plattformseitige Droplet-Kopie pro Auftrag entfallen dadurch nicht.
+
+Die Paketierung entpackt gepinnte Provider-Archive einmalig in das entpackte
+Layout des Dateisystem-Mirrors, entfernt die Archive und setzt den Mirror auf
+schreibgeschützt. Anschließend belegt sie Offline-Init/Validate mit unveränderten
+Lockdateien und `-lockfile=readonly`. Aufträge können diese Provider symbolisch
+verknüpfen, statt sie erneut zu entpacken. Es gibt keinen direkten Registry- oder
+Netzwerk-Fallback; fehlende Provider oder abweichende Prüfsummen verhindern
+weiterhin die Initialisierung.
+Die bestehende Paketqualifizierung führt diesen Test mit dem echten Mirror neben
+den Worker-Tests für das verifizierte Image gegen das vollständige Runner-Paket aus.
+
+Lokale Linux-Messungen mit OpenTofu **1.12.6** und allen acht gepinnten Providern
+verwendeten je Mirror-Layout drei frische Arbeitsverzeichnisse für ein
+Offline-`init -backend=false -input=false -lockfile=readonly`. Der Dateisystem-Cache
+war warm und wurde nicht geleert; Quellkopien und Mirror-Vorbereitung lagen
+außerhalb der Zeitmessung, während parallel weitere Prüfungen liefen. Die mediane
+Init-Dauer betrug **2,391 s** für gepackte Archive gegenüber **0,286 s** für den
+entpackten Mirror. Alle acht Provider-Verzeichnisse wurden symbolisch verknüpft;
+der durch Init erzeugte reguläre Dateiinhalt sank von 383.566.252 auf 1.745 Byte.
+Die Bytes der ursprünglichen Lockdatei blieben unverändert.
+Der Kompromiss sind **263.440.768 zusätzliche logische Bytes** im entpackten Mirror
+(120.125.808 → 383.566.576 Byte).
+Dies sind ausschließlich lokale Offline-Init-Beobachtungen mit warmem Cache und
+deaktiviertem Backend: Sie messen keine Kaltstarts im Hosting und belegen nicht,
+dass eine minutenlange Startverzögerung im Hosting behoben ist. Droplet-Aufbau und
+-Kopien, Firewall-Image-Prüfsummen, unabhängige Image-Kopien ohne Reflink-Unterstützung,
+Provider-Prüfsummen und Backend-Initialisierung bleiben separate Kosten, die
+Messungen im Hosting erfordern.
+
+Die authentifizierte Runner-Ausgabe enthält feste Bezeichnungen für Startphasen,
+deren Dauer und kumulierte verstrichene Millisekunden aus einer monotonen Uhr.
+Dies sind Beobachtungen, keine Fortschrittsprozente und kein Nachweis einer
+gemessenen Beschleunigung im Hosting.
+Für Firewall-Infrastruktur übermittelte Administrationsdaten werden strikt
+validiert und ausschließlich über die Unterprozess-Umgebung
+`TF_VAR_firewall_admin_username` / `TF_VAR_firewall_admin_password` bereitgestellt.
+Keiner der Werte wird öffentlichen tfvars, Hashes oder Befehlsargumenten
+hinzugefügt; beide werden auch bei fehlgeschlagenen Befehlen aus Ausgaben
+entfernt. Apply verwendet den exakt geprüften gespeicherten Plan ohne Neuplanung;
+Application-Aufträge lehnen diese Fähigkeiten ab.

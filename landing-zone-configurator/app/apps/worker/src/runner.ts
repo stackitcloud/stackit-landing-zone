@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { constants, createReadStream } from "node:fs";
 import {
   copyFile,
   cp,
@@ -19,6 +19,7 @@ import { promisify } from "node:util";
 import {
   applicationMvpAcceleratorCommit,
   applicationRunnerBindingSchema,
+  firewallAdministrationSchema,
   openTofuProgress,
   planResultSchema,
   platformFirewallImage,
@@ -119,7 +120,29 @@ export async function runWorker(
   let outputReported = false;
   let executionSucceeded = false;
   let diagnostic: { text: string; truncated: boolean } | undefined;
-  let publishOutput = async (_live = false) => {};
+  const startupStarted = process.hrtime.bigint();
+  let phaseStarted = startupStarted;
+  let startupOutput = "";
+  let publishOutput = async (_live = false) => {
+    if (startupOutput) {
+      diagnostic = { text: startupOutput, truncated: false };
+      try {
+        await report("output", diagnostic);
+        outputReported = true;
+      } catch {
+        outputReported = false;
+        console.error(JSON.stringify({ event: "runner_output_failed" }));
+      }
+    }
+  };
+  const startupPhase = async (phase: string) => {
+    const now = process.hrtime.bigint();
+    startupOutput += `[runner startup] ${phase}: ${Number(
+      (now - phaseStarted) / 1_000_000n,
+    )} ms (elapsed ${Number((now - startupStarted) / 1_000_000n)} ms)\n`;
+    phaseStarted = now;
+    await publishOutput();
+  };
   const expectedOrigin = options.local ? localBrokerOrigin : brokerOrigin;
   const broker = options.broker ?? "platform";
   const brokerPath = broker === "application" ? "application-runner" : "runner";
@@ -210,15 +233,24 @@ export async function runWorker(
       input.firewallInfrastructure !== true
     )
       throw new Error("Invalid firewall capability");
+    if (
+      input.firewallAdministration !== undefined &&
+      input.firewallInfrastructure !== true
+    )
+      throw new Error("Unexpected firewall administration");
+    const firewallAdministration =
+      input.firewallAdministration === undefined
+        ? undefined
+        : firewallAdministrationSchema.parse(input.firewallAdministration);
     if (input.firewallInfrastructure === true) {
       if (
         applicationJob ||
-        applying ||
         platformSource?.firewallImageSha256 !== platformFirewallImage.sha256
       )
         throw new Error(
-          "Firewall infrastructure is plan-only and requires a verified image package",
+          "Firewall infrastructure requires a verified platform image package",
         );
+      await startupPhase("input validated");
       const image = resolve(options.root, "accelerator/firewall-image.qcow2");
       const info = await lstat(image);
       if (!info.isFile() || info.isSymbolicLink())
@@ -227,6 +259,7 @@ export async function runWorker(
       for await (const chunk of createReadStream(image)) hash.update(chunk);
       if (hash.digest("hex") !== platformFirewallImage.sha256)
         throw new Error("Packaged firewall image checksum mismatch");
+      await startupPhase("firewall image verified");
     }
     if (
       mode === "initial-plan-only" &&
@@ -336,6 +369,7 @@ export async function runWorker(
       (applicationJob ? applicationBackendSourceHash : backendSourceHash)
     )
       throw new Error("Backend source mismatch");
+    await startupPhase("package verified");
     workContainer = await mkdtemp(
       resolve(
         options.local ? (options.workRoot ?? tmpdir()) : tmpdir(),
@@ -345,8 +379,18 @@ export async function runWorker(
     work = applicationJob
       ? resolve(workContainer, "application")
       : workContainer;
-    if (options.local) pluginTemp = await mkdtemp("/tmp/lzc-sock-");
-    await cp(packageSource, workContainer, { recursive: true });
+    if (options.local)
+      pluginTemp = await mkdtemp(
+        resolve(tmpdir().length <= 60 ? tmpdir() : "/tmp", "lzc-sock-"),
+      );
+    await cp(packageSource, workContainer, {
+      recursive: true,
+      mode: constants.COPYFILE_FICLONE,
+      filter: (path) =>
+        input.firewallInfrastructure === true ||
+        path !== resolve(packageSource, "firewall-image.qcow2"),
+    });
+    await startupPhase("source materialized");
     async function configureS3(backend: S3RunnerBackend) {
       await rm(resolve(work as string, "backend.tf"), { force: true });
       await writeFile(
@@ -407,6 +451,12 @@ export async function runWorker(
       STACKIT_SERVICE_ACCOUNT_KEY_PATH: resolve(work, "credential.json"),
       LZC_PROVIDER_MIRROR: resolve(root, "providers"),
       ...backendEnv,
+      ...(firewallAdministration
+        ? {
+            TF_VAR_firewall_admin_username: firewallAdministration.username,
+            TF_VAR_firewall_admin_password: firewallAdministration.password,
+          }
+        : {}),
     };
     let acknowledgedOutput: { text: string; truncated: boolean } | undefined;
     let invalidProgressReported = false;
@@ -419,7 +469,12 @@ export async function runWorker(
           env.AWS_SECRET_ACCESS_KEY,
           env.TF_HTTP_PASSWORD,
         ];
-        const secrets: string[] = [];
+        const secrets: string[] = firewallAdministration
+          ? Object.values(firewallAdministration).flatMap((value) => [
+              value,
+              JSON.stringify(value).slice(1, -1),
+            ])
+          : [];
         while (values.length) {
           const value = values.pop();
           if (typeof value === "string" && value.length >= 8)
@@ -427,7 +482,10 @@ export async function runWorker(
           else if (value && typeof value === "object")
             values.push(...Object.values(value));
         }
-        let text = "";
+        const redactions = [...new Set(secrets)].sort(
+          (a, b) => b.length - a.length,
+        );
+        let text = startupOutput;
         let truncated = false;
         for (const [fileName, commandName] of [
           ["init", "init"],
@@ -468,7 +526,7 @@ export async function runWorker(
               }
             }
             let chunk = `$ tofu ${commandName}\n${content}\n`;
-            for (const secret of secrets)
+            for (const secret of redactions)
               chunk = chunk.replaceAll(secret, "(sensitive value)");
             chunk = chunk.replace(
               /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?(?:-----END [^-]*PRIVATE KEY-----|$)/g,
@@ -501,6 +559,7 @@ export async function runWorker(
         console.error(JSON.stringify({ event: "runner_output_failed" }));
       }
     };
+    await startupPhase("execution environment prepared");
     async function command(phase: string, reportStage = true) {
       if (Date.now() >= deadline) {
         errorCode = "timed_out";
@@ -582,6 +641,7 @@ export async function runWorker(
     }
     errorCode = "init_failed";
     await command("initializing");
+    await startupPhase("providers and backend initialized");
     errorCode = "validate_failed";
     await command("validating");
     if (applying) {

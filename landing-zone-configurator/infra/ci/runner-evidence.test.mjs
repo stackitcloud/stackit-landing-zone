@@ -53,6 +53,11 @@ test('qualifies initial platform capabilities against source identity and lock b
  assert.ok(native.includes('check-firewall-image-plan.mjs'));
  assert.ok(native.includes('verify-runner-budget.mjs'));
  assert.ok(native.includes('LZC_FIREWALL_IMAGE_PACKAGE="$runner_root"'));
+ assert.ok(native.includes('LZC_MIRROR_TEST_PACKAGE="$runner_root"'));
+ assert.ok(native.includes('tests/runner-packaging.test.ts'));
+ assert.ok(native.includes('|proves unpacked native provider checksums'));
+ const mirrorPreparation=source.indexOf('prepare-provider-mirror.sh');
+ assert.ok(mirrorPreparation>0&&mirrorPreparation<qualification);
  const contracts=readFileSync(fileURLToPath(new URL('../../app/packages/contracts/src/plan.ts',import.meta.url)),'utf8');
  const distribution=readFileSync(fileURLToPath(new URL('../../../.github/workflows/verify-deployment.yml',import.meta.url)),'utf8');
  for(const pin of ['https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2','5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068']){

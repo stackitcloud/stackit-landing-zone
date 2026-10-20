@@ -17,6 +17,36 @@ As of 2026-09-30. Next building block after fork storage and tfvars export.
    does not revoke the key at STACKIT. Revoke it separately in
    STACKIT service-account management.
 
+## Optional Firewall HA administration
+
+For Firewall HA, enable **Store OPNsense administration credentials for Firewall
+HA** when creating the profile and enter the existing GUI administrator username
+and password for both appliances. Single-node Firewall infrastructure does not
+require this additional credential. Saving a profile does **not** set or rotate
+an appliance password; the supplied credentials must match the pinned image or
+the independently administered appliances.
+
+The administration credentials are stored with the service-account key in the
+same owner-/tenant-bound secret, never in configuration, tfvars, Assistant
+proposals, browser storage or profile responses. PostgreSQL holds only the
+`firewall_administration_configured` capability flag, added by migration
+`059_firewall_administration.sql`. The username and password are never read back
+to the UI. The password input is cleared after every save attempt.
+
+Create a **new preparation and Plan** with this profile. The immutable preparation
+binds the profile, secret version, key identity and administration capability;
+the Runner receives the administration values only for an authorized HA job.
+Older HA preparations and Plans cannot acquire this binding retroactively.
+The error `firewall_administration_required` therefore requires a new profile,
+preparation and Plan, not merely another Apply attempt. Existing configurations
+and Plan evidence remain intact.
+
+This enables native Firewall/HA infrastructure execution, not firewall policy,
+API-key bootstrap or VPN PSKs. Apply still requires explicit saved-plan approval
+and all source, state, organization and authorization checks. Local contract tests
+do not qualify real appliance reachability or HA failover; these require a
+separately authorized environment test. See [Plan execution](plan-execution.md).
+
 Initially supported: Key Flow with an embedded RSA key of at least 2048 bits.
 Files with a disabled or already expired key, conflicting IDs,
 missing private key or unknown audience are rejected. This
@@ -73,9 +103,10 @@ unusable; the UI offers deletion and recreation, not blind retry.
 Deletion locks the authorized row, first removes Vault metadata including
 all secret versions, then the DB record. A 404 during secret deletion counts as
 already removed. An interruption may leave a metadata record whose secret is already
-missing; deletion is repeatable. A future Runner must therefore never rely solely
+missing; deletion is repeatable. The Runner must therefore never rely solely
 on `stored`, but must recheck existence, secret identity and authorization before
-every use. There is not yet Runner access to these profiles.
+every use. The authenticated job broker performs these checks before handing
+credentials to an authorized job; there is no general-purpose secret read endpoint.
 Vault login tokens are revoked after every operation, including failures.
 
 <a id="abnahme-und-weitere-arbeit"></a>

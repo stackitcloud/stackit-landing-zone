@@ -3435,132 +3435,177 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
   await expect(page).toHaveURL(/\/$/);
 });
 
-test("personal credentials upload clears the file and supports deletion and history", async ({
-  page,
-}, testInfo) => {
-  await page.route("**/auth/status", (route) =>
-    route.fulfill({ json: { github: true } }),
-  );
-  await page.route("**/api/v1/session", (route) =>
-    route.fulfill({
-      json: {
-        user: { id: "alice", login: "alice" },
-        csrfToken: "a".repeat(43),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-      },
-    }),
-  );
-  let stored = false;
-  let lastCheck: {
-    status: string;
-    code: string;
-    organizationId: string;
-    organizationName: string;
-    checkedAt: string;
-  } | null = null;
-  const profile = {
-    id: "11111111-2222-4333-8444-555555555555",
-    name: "Team Plattform",
-    serviceAccount: "platform-team@sa.stackit.cloud",
-    keyId: "key-id",
-    state: "stored",
-  };
-  await page.route("**/api/v1/credentials", async (route) => {
-    if (route.request().method() === "POST") {
-      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
-      expect(route.request().postDataJSON()).toEqual({
-        name: "Team Plattform",
-        serviceAccountKey: { credentials: { privateKey: "BROWSER-TEST-KEY" } },
-      });
-      stored = true;
-      await route.fulfill({ status: 201, json: { stored: true } });
-    } else
-      await route.fulfill({
-        json: { profiles: stored ? [{ ...profile, lastCheck }] : [] },
-      });
-  });
-  await page.route(`**/api/v1/credentials/${profile.id}`, (route) => {
-    expect(route.request().method()).toBe("DELETE");
-    expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
-    stored = false;
-    return route.fulfill({ status: 204 });
-  });
-  await page.route(`**/api/v1/credentials/${profile.id}/check`, (route) => {
-    expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
-    const organizationId = route.request().postDataJSON().organizationId;
-    lastCheck = {
-      status: "passed",
-      code: "organization_readable",
-      organizationId,
-      organizationName: "Customer organization",
-      checkedAt: new Date().toISOString(),
+for (const withAdministration of [false, true])
+  test(`personal credentials upload clears secrets and supports deletion and history${withAdministration ? " with firewall administration" : ""}`, async ({
+    page,
+  }, testInfo) => {
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({ json: { github: true } }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: "alice", login: "alice" },
+          csrfToken: "a".repeat(43),
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    let stored = false;
+    let lastCheck: {
+      status: string;
+      code: string;
+      organizationId: string;
+      organizationName: string;
+      checkedAt: string;
+    } | null = null;
+    const profile = {
+      id: "11111111-2222-4333-8444-555555555555",
+      name: "Team Plattform",
+      serviceAccount: "platform-team@sa.stackit.cloud",
+      keyId: "key-id",
+      state: "stored",
+      firewallAdministrationConfigured: withAdministration,
     };
-    return route.fulfill({ json: { check: lastCheck } });
+    await page.route("**/api/v1/credentials", async (route) => {
+      if (route.request().method() === "POST") {
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+        expect(route.request().postDataJSON()).toEqual({
+          name: "Team Plattform",
+          serviceAccountKey: {
+            credentials: { privateKey: "BROWSER-TEST-KEY" },
+          },
+          ...(withAdministration
+            ? {
+                firewallAdministration: {
+                  username: "fixture-admin",
+                  password: "BROWSER-TEST-FIREWALL-PASSWORD",
+                },
+              }
+            : {}),
+        });
+        stored = true;
+        await route.fulfill({ status: 201, json: { stored: true } });
+      } else
+        await route.fulfill({
+          json: { profiles: stored ? [{ ...profile, lastCheck }] : [] },
+        });
+    });
+    await page.route(`**/api/v1/credentials/${profile.id}`, (route) => {
+      expect(route.request().method()).toBe("DELETE");
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+      stored = false;
+      return route.fulfill({ status: 204 });
+    });
+    await page.route(`**/api/v1/credentials/${profile.id}/check`, (route) => {
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("a".repeat(43));
+      const organizationId = route.request().postDataJSON().organizationId;
+      lastCheck = {
+        status: "passed",
+        code: "organization_readable",
+        organizationId,
+        organizationName: "Customer organization",
+        checkedAt: new Date().toISOString(),
+      };
+      return route.fulfill({ json: { check: lastCheck } });
+    });
+    await page.goto("/templates");
+    await page.getByRole("button", { name: "Zugänge", exact: true }).click();
+    await expect(page).toHaveURL(/\/credentials$/);
+    await page.getByLabel("Profilname").fill("Team Plattform");
+    await page.getByLabel("Service-Account-Schlüssel (JSON)").setInputFiles({
+      name: "test-key.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(
+        JSON.stringify({ credentials: { privateKey: "BROWSER-TEST-KEY" } }),
+      ),
+    });
+    if (withAdministration) {
+      await page
+        .getByRole("checkbox", {
+          name: "OPNsense-Administrationszugang für Firewall-HA hinterlegen",
+        })
+        .check();
+      await page
+        .getByLabel("OPNsense-Benutzername", { exact: true })
+        .fill("fixture-admin");
+      await page
+        .getByLabel("OPNsense-Passwort", { exact: true })
+        .fill("BROWSER-TEST-FIREWALL-PASSWORD");
+      await expect(
+        page.getByLabel("OPNsense-Passwort", { exact: true }),
+      ).toHaveAttribute("type", "password");
+    }
+    await page.getByRole("button", { name: "Zugang sicher speichern" }).click();
+    await expect(page.getByRole("status")).toContainText("noch nicht geprüft");
+    await expect(
+      page.getByLabel("Service-Account-Schlüssel (JSON)"),
+    ).toHaveValue("");
+    await expect(
+      page.getByText(profile.serviceAccount, { exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() =>
+        JSON.stringify({ ...localStorage, ...sessionStorage }),
+      ),
+    ).not.toContain("BROWSER-TEST-KEY");
+    expect(await page.locator("body").innerText()).not.toContain(
+      "BROWSER-TEST-KEY",
+    );
+    expect(await page.locator("body").innerText()).not.toContain(
+      "BROWSER-TEST-FIREWALL-PASSWORD",
+    );
+    expect(
+      await page.evaluate(() =>
+        JSON.stringify({ ...localStorage, ...sessionStorage }),
+      ),
+    ).not.toContain("BROWSER-TEST-FIREWALL-PASSWORD");
+    await expect(
+      page.getByLabel("OPNsense-Passwort", { exact: true }),
+    ).toHaveCount(0);
+    if (withAdministration)
+      await expect(
+        page.getByText("OPNsense-Administrationszugang sicher hinterlegt", {
+          exact: true,
+        }),
+      ).toBeVisible();
+    await page
+      .getByLabel("Zielorganisation (UUID)")
+      .fill("11111111-2222-4333-8444-555555555555");
+    await page
+      .getByRole("button", { name: "Zugang prüfen", exact: true })
+      .click();
+    await expect(
+      page.getByText("Anmeldung erfolgreich · Organisation lesbar", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(
+      "Schreibrechte für ein Deployment sind damit noch nicht bestätigt",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath("credentials.png"),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/templates$/);
+    await page.goForward();
+    await page.reload();
+    await expect(
+      page.getByText(profile.serviceAccount, { exact: true }),
+    ).toBeVisible();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Zugang löschen" }).click();
+    await expect(page.getByRole("status")).toContainText("entfernt");
+    await expect(
+      page.getByText(profile.serviceAccount, { exact: true }),
+    ).toHaveCount(0);
   });
-  await page.goto("/templates");
-  await page.getByRole("button", { name: "Zugänge", exact: true }).click();
-  await expect(page).toHaveURL(/\/credentials$/);
-  await page.getByLabel("Profilname").fill("Team Plattform");
-  await page.getByLabel("Service-Account-Schlüssel (JSON)").setInputFiles({
-    name: "test-key.json",
-    mimeType: "application/json",
-    buffer: Buffer.from(
-      JSON.stringify({ credentials: { privateKey: "BROWSER-TEST-KEY" } }),
-    ),
-  });
-  await page.getByRole("button", { name: "Zugang sicher speichern" }).click();
-  await expect(page.getByRole("status")).toContainText("noch nicht geprüft");
-  await expect(page.getByLabel("Service-Account-Schlüssel (JSON)")).toHaveValue(
-    "",
-  );
-  await expect(
-    page.getByText(profile.serviceAccount, { exact: true }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(() =>
-      JSON.stringify({ ...localStorage, ...sessionStorage }),
-    ),
-  ).not.toContain("BROWSER-TEST-KEY");
-  expect(await page.locator("body").innerText()).not.toContain(
-    "BROWSER-TEST-KEY",
-  );
-  await page
-    .getByLabel("Zielorganisation (UUID)")
-    .fill("11111111-2222-4333-8444-555555555555");
-  await page
-    .getByRole("button", { name: "Zugang prüfen", exact: true })
-    .click();
-  await expect(
-    page.getByText("Anmeldung erfolgreich · Organisation lesbar", {
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expect(page.getByRole("status")).toContainText(
-    "Schreibrechte für ein Deployment sind damit noch nicht bestätigt",
-  );
-  await page.screenshot({
-    path: testInfo.outputPath("credentials.png"),
-    fullPage: true,
-  });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await page.goBack();
-  await expect(page).toHaveURL(/\/templates$/);
-  await page.goForward();
-  await page.reload();
-  await expect(
-    page.getByText(profile.serviceAccount, { exact: true }),
-  ).toBeVisible();
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Zugang löschen" }).click();
-  await expect(page.getByRole("status")).toContainText("entfernt");
-  await expect(
-    page.getByText(profile.serviceAccount, { exact: true }),
-  ).toHaveCount(0);
-});
 
 for (const format of ["legacy", "common"] as const) {
   test(`prepares an immutable ${format} configuration with a personal credential and survives reload`, async ({
@@ -6153,14 +6198,7 @@ test.describe("explicit saved-plan approval", () => {
       ...savedPlan(),
       applyAllowed: false,
       applyBlocker: {
-        code: "configuration_apply_not_supported",
-        issues: [
-          {
-            field: "connectivity.firewalls",
-            message:
-              "Firewall-/HA-Infrastruktur ist nur für Plan freigegeben. Apply erfordert einen separat qualifizierten Administrations-/Bootstrap-Vertrag; Policy und VPN-PSKs bleiben gesondert gesperrt.",
-          },
-        ],
+        code: "firewall_administration_required",
       },
     };
     let mutations = 0;
@@ -6180,9 +6218,8 @@ test.describe("explicit saved-plan approval", () => {
       page.getByText("Apply derzeit gesperrt", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText("connectivity.firewalls", { exact: true }),
+      page.getByText(/Für Firewall-HA fehlt ein gebundener/),
     ).toBeVisible();
-    await expect(page.getByText(/nur für Plan freigegeben/)).toBeVisible();
     await page
       .getByRole("button", { name: "Weiter zu Apply", exact: true })
       .click();
@@ -6199,13 +6236,15 @@ test.describe("explicit saved-plan approval", () => {
     ).toHaveCount(0);
     await page.reload();
     await expect(apply).toBeDisabled();
-    await expect(page.getByText(/nur für Plan freigegeben/)).toBeVisible();
+    await expect(
+      page.getByText(/Für Firewall-HA fehlt ein gebundener/),
+    ).toBeVisible();
     await page.getByLabel("Sprache", { exact: true }).selectOption("en");
     await expect(
       page.getByText("Apply currently blocked", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText(/Firewall\/HA infrastructure is approved for Plan only/),
+      page.getByText(/Firewall HA requires bound OPNsense administration/),
     ).toBeVisible();
     await page.getByLabel("Language", { exact: true }).selectOption("de");
     plan.applyAllowed = true;

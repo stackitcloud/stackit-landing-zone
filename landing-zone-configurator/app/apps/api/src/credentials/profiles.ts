@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import {
+  type FirewallAdministration,
+  firewallAdministrationSchema,
+} from "@lzc/contracts";
 import type pg from "pg";
 import type { Session } from "../auth/store.js";
 import { withTenant } from "../storage/database.js";
@@ -13,10 +17,11 @@ export type Profile = {
   keyId: string;
   state: "pending" | "stored";
   createdAt: Date;
+  firewallAdministrationConfigured?: boolean;
   lastCheck?: CredentialCheck | null;
 };
 const columns =
-  'id, name, service_account AS "serviceAccount", key_id AS "keyId", state, created_at AS "createdAt", last_check AS "lastCheck"';
+  'id, name, service_account AS "serviceAccount", key_id AS "keyId", state, created_at AS "createdAt", last_check AS "lastCheck", firewall_administration_configured AS "firewallAdministrationConfigured"';
 export class CredentialError extends Error {
   constructor(
     public readonly status: number,
@@ -32,7 +37,12 @@ export interface CredentialProfiles {
     id: string,
     organizationId: string,
   ): Promise<CredentialCheck>;
-  create(session: Session, name: string, key: ServiceAccountKey): Promise<void>;
+  create(
+    session: Session,
+    name: string,
+    key: ServiceAccountKey,
+    firewallAdministration?: FirewallAdministration,
+  ): Promise<void>;
   remove(session: Session, id: string): Promise<void>;
 }
 export class PostgresCredentialProfiles implements CredentialProfiles {
@@ -56,7 +66,15 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
         ).rows,
     );
   }
-  async create(session: Session, name: string, key: ServiceAccountKey) {
+  async create(
+    session: Session,
+    name: string,
+    key: ServiceAccountKey,
+    firewallAdministration?: FirewallAdministration,
+  ) {
+    const administration = firewallAdministration
+      ? firewallAdministrationSchema.parse(firewallAdministration)
+      : undefined;
     const id = randomUUID();
     // Persist recovery metadata first: a crash can never leave an untracked secret.
     await withTenant(this.pool, session, async (c) => {
@@ -75,7 +93,7 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
       if (count.rows[0].count >= 20)
         throw new CredentialError(409, "credential_limit_reached");
       await c.query(
-        "INSERT INTO lzc.credential_profiles(id, tenant_id, owner_user_id, name, service_account, key_id) VALUES($1,$2,$3,$4,$5,$6)",
+        "INSERT INTO lzc.credential_profiles(id, tenant_id, owner_user_id, name, service_account, key_id, firewall_administration_configured) VALUES($1,$2,$3,$4,$5,$6,$7)",
         [
           id,
           session.tenantId,
@@ -83,6 +101,7 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
           name,
           key.credentials.iss,
           key.credentials.kid,
+          administration !== undefined,
         ],
       );
     });
@@ -94,7 +113,7 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
       );
       if (row.rows[0]?.state !== "pending")
         throw new CredentialError(409, "credential_changed");
-      await this.secrets.put(session, id, key);
+      await this.secrets.put(session, id, key, administration);
       await c.query(
         "UPDATE lzc.credential_profiles SET state='stored' WHERE id=$1",
         [id],
@@ -108,7 +127,12 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
     session: Session,
     id: string,
     organizationId: string,
-  ) {
+  ): Promise<{
+    check: CredentialCheck;
+    version: number;
+    keyId: string;
+    firewallAdministrationConfigured?: boolean;
+  }> {
     return withTenant(this.pool, session, async (c) => {
       const role = await c.query(
         "SELECT (t.kind='personal' AND m.role IN ('admin','deployer')) OR (t.kind='organisation' AND 'platform-engineer'=ANY(m.product_roles)) AS allowed FROM lzc.memberships m JOIN lzc.tenants t ON t.id=m.tenant_id WHERE m.tenant_id=$1 AND m.user_id=$2",
@@ -126,6 +150,7 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
         throw new CredentialError(409, "credential_not_stored");
       let check: CredentialCheck;
       let version = 0;
+      let firewallAdministrationConfigured = false;
       try {
         const secret = await this.secrets.get(session, id);
         if (
@@ -134,6 +159,13 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
         )
           throw new Error("Credential identity mismatch");
         version = secret.version;
+        firewallAdministrationConfigured =
+          secret.firewallAdministration !== undefined;
+        if (
+          firewallAdministrationConfigured !==
+          (profile.firewallAdministrationConfigured === true)
+        )
+          throw new Error("Credential capability mismatch");
         check = await this.cloud.check(secret.key, organizationId);
       } catch {
         check = {
@@ -148,7 +180,14 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
         "UPDATE lzc.credential_profiles SET last_check=$2::jsonb WHERE id=$1",
         [id, JSON.stringify(check)],
       );
-      return { check, version, keyId: profile.keyId };
+      return {
+        check,
+        version,
+        keyId: profile.keyId,
+        ...(firewallAdministrationConfigured
+          ? { firewallAdministrationConfigured }
+          : {}),
+      };
     });
   }
 

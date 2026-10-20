@@ -7262,6 +7262,87 @@ describe("personal credential metadata with real PostgreSQL RLS", () => {
       privateKey: "INTEGRATION-SECRET-ONLY-IN-VAULT-MOCK",
     },
   };
+  it("binds optional HA administration to owner-scoped profile metadata without exposing secrets", async () => {
+    const administration = {
+      username: "fixture-admin",
+      password: "fixture-only-private-password",
+    };
+    const organizationId = randomUUID();
+    const check = {
+      status: "passed" as const,
+      code: "organization_readable" as const,
+      organizationId,
+      organizationName: "HA fixture",
+      checkedAt: new Date().toISOString(),
+    };
+    let administrationPresent = true;
+    const secrets = {
+      get: vi.fn(async () => ({
+        key,
+        version: 1,
+        ...(administrationPresent
+          ? { firewallAdministration: administration }
+          : {}),
+      })),
+      put: vi.fn(async () => {}),
+      remove: vi.fn(async () => {}),
+    };
+    const cloud = { check: vi.fn(async () => check) };
+    const profiles = new PostgresCredentialProfiles(pool, secrets, cloud);
+    await profiles.create(alice, "HA fixture", key, administration);
+    const profile = (await profiles.list(alice))[0];
+    if (!profile) throw new Error("Missing HA profile");
+    expect(profile.firewallAdministrationConfigured).toBe(true);
+    expect(secrets.put).toHaveBeenCalledExactlyOnceWith(
+      alice,
+      profile.id,
+      key,
+      administration,
+    );
+    expect(await profiles.list(bob)).toEqual([]);
+    await expect(
+      profiles.verifyForPreparation(bob, profile.id, organizationId),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(secrets.get).not.toHaveBeenCalled();
+    const verified = await profiles.verifyForPreparation(
+      alice,
+      profile.id,
+      organizationId,
+    );
+    expect(verified).toMatchObject({
+      version: 1,
+      keyId: key.credentials.kid,
+      firewallAdministrationConfigured: true,
+    });
+    const rows = await withTenant(pool, alice, (client) =>
+      client.query("SELECT * FROM lzc.credential_profiles WHERE id=$1", [
+        profile.id,
+      ]),
+    );
+    expect(JSON.stringify(rows.rows)).not.toContain(administration.password);
+    expect(JSON.stringify(rows.rows)).not.toContain(administration.username);
+    await expect(
+      withTenant(pool, alice, (client) =>
+        client.query(
+          "UPDATE lzc.credential_profiles SET firewall_administration_configured=false WHERE id=$1",
+          [profile.id],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    administrationPresent = false;
+    const missingSecret = await profiles.verifyForPreparation(
+      alice,
+      profile.id,
+      organizationId,
+    );
+    expect(missingSecret.check).toMatchObject({
+      status: "failed",
+      code: "secret_unavailable",
+    });
+    expect(cloud.check).toHaveBeenCalledTimes(1);
+    await profiles.remove(alice, profile.id);
+    expect(await profiles.list(alice)).toEqual([]);
+  });
   it("isolates owners even within the same tenant and never stores key material in PostgreSQL", async () => {
     const secrets = {
       get: vi.fn(),
