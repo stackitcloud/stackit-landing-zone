@@ -1551,9 +1551,7 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
     let setupDecisions: z.infer<typeof requirementQuotesSchema> | null = null;
     if (
       ["firewall-infrastructure", "firewall-policy"].includes(intent.topic) &&
-      (intent.mode === "draft" || requirementSources.length > 1) &&
-      (intent.firewallFields.length === 0 ||
-        intent.networkScope === "sna-and-firewall")
+      (intent.mode === "draft" || requirementSources.length > 1)
     ) {
       const quoteSources = [
         ...new Set(
@@ -1574,9 +1572,9 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
             .filter((quote) => quote.length > 0 && quote.length <= 600),
         ),
       ].map((text, index) => ({ id: `user-evidence-${index}`, text }));
-      const evidence = z
-        .enum(quoteSources.map((source) => source.id))
-        .nullable();
+      const evidence = quoteSources.length
+        ? z.enum(quoteSources.map((source) => source.id)).nullable()
+        : z.null();
       const selection = (
         field:
           | "setupRequest"

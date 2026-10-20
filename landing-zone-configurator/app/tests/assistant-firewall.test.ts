@@ -118,6 +118,13 @@ function model(
             entry.text.includes(quote),
           )?.id ??
           quote);
+    const setupScope =
+      targets.setupScope ??
+      (mode === "advice"
+        ? "advice"
+        : targets.fields?.length
+          ? "field-update"
+          : "setup");
     return Response.json({
       choices: [
         {
@@ -127,13 +134,13 @@ function model(
             content: JSON.stringify(
               schemaName === "firewall_setup_decisions"
                 ? {
-                    scope:
-                      targets.setupScope ??
-                      (mode === "advice" ? "advice" : "setup"),
+                    scope: setupScope,
                     setupRequest: source(
                       targets.setupRequest ??
-                        JSON.parse(body.messages.at(-1).content)
-                          .latestUserMessage,
+                        (setupScope === "setup"
+                          ? JSON.parse(body.messages.at(-1).content)
+                              .latestUserMessage
+                          : null),
                     ),
                     capacityDeferred: source(
                       targets.capacityDeferred
@@ -859,6 +866,173 @@ it("keeps a narrow native patch free of setup questions even when the general cl
   expect(result.questions).toEqual([]);
 });
 
+it.each([
+  {
+    traffic: false,
+    capacity: false,
+    operations: false,
+    path: "connectivity.firewall.lan_network_range",
+  },
+  {
+    traffic: true,
+    capacity: false,
+    operations: false,
+    path: "connectivity.firewall.flavor",
+  },
+  {
+    traffic: true,
+    capacity: true,
+    operations: false,
+    path: "connectivity.firewall.ha",
+  },
+  { traffic: true, capacity: true, operations: true, path: null },
+])(
+  "classifies broad HA setup independently of general field hints: $path",
+  async (answered) => {
+    const f = fixture();
+    f.values["connectivity.firewall"] = {
+      ...firewall,
+      zone: "eu01-m",
+      flavor: "c1.2",
+      lan_network_range: "10.0.2.0/28",
+      wan_network_range: "10.0.2.16/28",
+    };
+    const message =
+      "Bitte die restliche zentrale Firewall-Einrichtung mit HA fortsetzen. Vorhandene Netz- und VM-Werte behalten, keine Ausführung.";
+    const quotes = {
+      traffic: answered.traffic
+        ? "Über die zentrale Firewall sollen Internet-Verkehr und Verkehr zwischen Projekten laufen."
+        : null,
+      capacity: answered.capacity
+        ? "Wir erwarten 500 Mbit/s Spitzendurchsatz und 10000 parallele Verbindungen."
+        : null,
+      operations: answered.operations
+        ? "Maximal zwei Minuten Unterbrechung sind tolerierbar."
+        : null,
+    };
+    const history = Object.values(quotes).flatMap((content) =>
+      content ? [{ role: "user" as const, content }] : [],
+    );
+    const { engine, request } = model(
+      proposal,
+      "other",
+      "draft",
+      "firewall-infrastructure",
+      "ha",
+      {
+        fields: ["ha"],
+        setupScope: "setup",
+        setupRequest: message,
+        haRequest: message,
+        setupQuotes: quotes,
+      },
+    );
+    const result = await engine.converse(
+      f.selection,
+      f.values,
+      history,
+      message,
+      {
+        regions: [
+          {
+            region: "eu01",
+            fetchedAt: null,
+            products: {
+              availabilityZones: {
+                status: "available",
+                totalOptions: 3,
+                truncated: false,
+                options: ["eu01-m", "eu01-1", "eu01-2"].map((value) => ({
+                  value,
+                  label: value,
+                })),
+              },
+            },
+          },
+        ],
+      },
+    );
+    expect(result.changes).toEqual(proposal.changes);
+    expect(result.questions.map((question) => question.path)).toEqual(
+      answered.path ? [answered.path] : [],
+    );
+    expect(
+      request.mock.calls.filter(
+        ([, options]) =>
+          JSON.parse(String(options?.body)).response_format.json_schema.name ===
+          "firewall_setup_decisions",
+      ),
+    ).toHaveLength(1);
+  },
+);
+
+it("retains an explicit narrow HA update after broad setup despite general field hints", async () => {
+  const f = fixture();
+  const { engine, request } = model(
+    proposal,
+    "other",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+    { fields: ["ha"], setupScope: "field-update" },
+  );
+  const result = await engine.converse(
+    f.selection,
+    f.values,
+    [
+      {
+        role: "user",
+        content: "Bitte die zentrale Firewall vollständig einrichten.",
+      },
+    ],
+    "Nur HA mit Backup-Zone eu01-2 und vhid 23 ergänzen, keine weiteren Einrichtungsfragen.",
+  );
+  expect(result.changes).toEqual(proposal.changes);
+  expect(result.questions).toEqual([]);
+  expect(
+    request.mock.calls.filter(
+      ([, options]) =>
+        JSON.parse(String(options?.body)).response_format.json_schema.name ===
+        "firewall_setup_decisions",
+    ),
+  ).toHaveLength(1);
+});
+
+it("uses null-only evidence for a long narrow request without bounded quote fragments", async () => {
+  const f = fixture();
+  const { engine, request } = model(
+    proposal,
+    "other",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+    { fields: ["ha"], setupScope: "field-update" },
+  );
+  const result = await engine.converse(
+    f.selection,
+    f.values,
+    [],
+    `Nur HA mit Backup-Zone eu01-2 und vhid 23 ergänzen; alle anderen Werte erhalten ${"Zusatz ".repeat(100)}`,
+  );
+  expect(result.changes).toEqual(proposal.changes);
+  expect(result.questions).toEqual([]);
+  const classification = request.mock.calls
+    .map(([, options]) => JSON.parse(String(options?.body)))
+    .find(
+      (body) =>
+        body.response_format.json_schema.name === "firewall_setup_decisions",
+    );
+  expect(
+    JSON.parse(classification.messages.at(-1).content).userEvidence,
+  ).toEqual([]);
+  expect(
+    classification.response_format.json_schema.schema.properties.traffic,
+  ).toMatchObject({ type: "null" });
+  expect(
+    JSON.stringify(classification.response_format.json_schema.schema),
+  ).not.toContain('"enum":[]');
+});
+
 it("rejects invented confirmations from the bounded setup decision classifier", async () => {
   const f = fixture();
   const { request } = model(
@@ -922,7 +1096,7 @@ it("restricts explicitly requested IP response values to saved or user-supplied 
     [],
     "LAN-IP 10.0.252.8 und HA-VIP 10.0.252.9, Backup-Zone eu01-2, vhid 23 vorschlagen.",
   );
-  const schema = JSON.parse(String(request.mock.calls[1]?.[1]?.body))
+  const schema = JSON.parse(String(request.mock.calls.at(-1)?.[1]?.body))
     .response_format.json_schema.schema;
   const value = schema.properties.changes.items.properties.value;
   expect(value.required).toContain("lan_ip");
@@ -957,7 +1131,12 @@ it("asks for an explicitly requested missing node IP instead of proposing a comp
   expect(response.questions.map((entry) => entry.path)).toEqual([
     "connectivity.firewall.lan_ip",
   ]);
-  expect(request).toHaveBeenCalledTimes(1);
+  expect(
+    request.mock.calls.map(
+      ([, options]) =>
+        JSON.parse(String(options?.body)).response_format.json_schema.name,
+    ),
+  ).toEqual(["conversation_intent", "firewall_setup_decisions"]);
 });
 
 it("still rejects invented computed primary and HA IP defaults after schema narrowing", async () => {
@@ -1365,7 +1544,7 @@ it("requires explicitly requested existing native fields in the answer contract"
     "Name reviewed-fw und Flavor g1.8 vorschlagen.",
   );
   expect(response.changes).toEqual(patch.changes);
-  const schema = JSON.parse(String(request.mock.calls[1]?.[1]?.body))
+  const schema = JSON.parse(String(request.mock.calls.at(-1)?.[1]?.body))
     .response_format.json_schema.schema;
   expect(schema.properties.changes.items.properties.value.required).toEqual([
     "flavor",
