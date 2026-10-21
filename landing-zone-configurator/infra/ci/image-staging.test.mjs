@@ -17,6 +17,7 @@ import { resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { prepareFirewallImage } from "../../deploy/cloud-foundry/firewall-image.mjs";
+import { removeStagingWork } from "../../app/scripts/remove-staging-work.mjs";
 import { buildpackTag, verifyBuildpackSource } from "./buildpack-source.mjs";
 
 const repository = fileURLToPath(new URL("../../../", import.meta.url));
@@ -383,5 +384,47 @@ esac
     }
   } finally {
     await rm(work, { recursive: true, force: true });
+  }
+});
+
+test("staging cleanup removes immutable provider directories without following links into the original package", async () => {
+  const work = await mkdtemp(resolve(tmpdir(), "lzc-staging-cleanup-"));
+  const staged = resolve(work, "staging-check");
+  const original = resolve(work, "original-providers");
+  const mirror = resolve(staged, "runner/providers/registry.opentofu.org");
+  try {
+    await mkdir(mirror, { recursive: true });
+    await mkdir(original);
+    const provider = resolve(original, "verified-provider");
+    await writeFile(provider, "immutable provider");
+    await chmod(provider, 0o444);
+    await chmod(original, 0o555);
+    await writeFile(resolve(mirror, "staged-provider"), "immutable provider", {
+      mode: 0o444,
+    });
+    await symlink(original, resolve(staged, "original-mirror"));
+    await chmod(mirror, 0o555);
+    await chmod(resolve(mirror, ".."), 0o555);
+    const before = await lstat(provider);
+    if (process.getuid?.() !== 0)
+      await assert.rejects(rm(mirror, { recursive: true, force: true }), {
+        code: "EACCES",
+      });
+    await removeStagingWork(staged);
+    await assert.rejects(lstat(staged), { code: "ENOENT" });
+    assert.equal((await lstat(original)).mode & 0o777, 0o555);
+    assert.equal((await lstat(provider)).mode, before.mode);
+    assert.equal((await lstat(provider)).ino, before.ino);
+    assert.equal(await readFile(provider, "utf8"), "immutable provider");
+    const check = await readFile(
+      resolve(
+        repository,
+        "landing-zone-configurator/app/scripts/check-staged-runner.mjs",
+      ),
+      "utf8",
+    );
+    assert.match(check, /finally \{\s*await removeStagingWork\(work\);\s*\}/);
+  } finally {
+    await removeStagingWork(work);
   }
 });
