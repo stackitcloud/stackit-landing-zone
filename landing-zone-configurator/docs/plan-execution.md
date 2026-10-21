@@ -238,7 +238,14 @@ Commit `9aa3322`, [release 36849188406](https://github.com/stackitcloud/stackit-
 <a id="governance-qualifikation-und-service-account-föderation-2026-10-01"></a>
 ## Governance qualification and service-account federation (2026-10-01)
 
-Governance input approval is additionally checked with the actually used governance module: `npm run test:plan` calls separate `test-governance-contract.sh`. Source hashes bind checking to the Accelerator pin. OpenTofu 1.12.6 plans with mock providers in a cleaned environment, without cloud credentials or Apply. Checks cover organization roles `owner`/`organization.auditor`, folder roles `owner`/`auditor`, omission of duplicate folder assignments for organization owners and both parent variants. This local qualification does not replace a Plan against the specific customer organization.
+Governance input approval is additionally checked with the actually used governance module: `npm run test:plan` calls separate `test-governance-contract.sh`. Source hashes bind checking to the Accelerator pin. OpenTofu 1.12.6 plans with mock providers in a cleaned environment, without cloud credentials or Apply. Checks cover organization roles `owner`/`organization.auditor`, folder roles `owner`/`auditor`, omission of duplicate folder assignments for organization owners, both parent variants and rejection of non-empty folder descriptions. This local qualification does not replace a Plan against the specific customer organization.
+
+The reviewed source receipt is `app/integration/fixtures/governance/source.json`.
+When updating the platform Runner pin, review the root and governance file hashes
+against that exact commit and rerun all existing governance plans. Preserve the
+strict revision/hash checks and role/ownership assertions. PR validation runs the
+complete `npm run test:plan` flow, including this qualification; release builds
+repeat it before packaging the isolated Runner.
 
 **Service-account federation for CI/CD** is an optional editor component. It controls which external pipeline OIDC tokens may use the management service account; it is not user login to the Configurator. `issuer` is the trusted issuer, `aud` the token audience and `sub`, for example, the specific GitHub repository with branch. Conditions use comparison `equals` supported by the pinned provider; `aud` is required. The GitHub template limits `sub` to a specified branch and does not apply unchanged to jobs with GitHub environments.
 

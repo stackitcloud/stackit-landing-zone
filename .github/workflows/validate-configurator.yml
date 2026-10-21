@@ -109,6 +109,8 @@ jobs:
           tofu_wrapper: false
       - name: Check all template exports against native Accelerator variable contracts
         run: npm run test:common-contract
+      - name: Test native Plan, Application and governance contracts
+        run: LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
       - name: Test database migrations and tenant isolation
         run: npm run test:database -- --maxWorkers=2 --testTimeout=30000
         env:

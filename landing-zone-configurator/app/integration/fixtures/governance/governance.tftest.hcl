@@ -72,3 +72,13 @@ run "empty_description" {
     error_message = "Empty description must remain harmless; populated descriptions remain blocked by the Configurator (#82)."
   }
 }
+
+run "non_empty_description_rejected" {
+  command = plan
+  variables {
+    rm_folders = {
+      platform = { name = "Platform", description = "Must not be silently discarded" }
+    }
+  }
+  expect_failures = [var.rm_folders]
+}
