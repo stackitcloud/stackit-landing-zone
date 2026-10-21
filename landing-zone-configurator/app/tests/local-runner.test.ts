@@ -24,6 +24,11 @@ import { approvableSummary } from "../apps/api/src/plans/execution.js";
 import { LocalPlanRunner } from "../apps/api/src/plans/local.js";
 import { summarizePlan } from "../apps/worker/src/plans/summary.js";
 
+// Package inspection copies/hashes the real Node runtime and invokes several
+// engine probes. Budget the complete test above each unchanged 10s probe limit,
+// including filesystem/process contention in the parallel hosted unit suite.
+vi.setConfig({ testTimeout: 30_000 });
+
 const id = "11111111-2222-4333-8444-555555555555";
 const ticket = "t".repeat(43);
 const origin = "http://127.0.0.1:3000";
