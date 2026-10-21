@@ -212,6 +212,7 @@ it.each(["platform", "application"] as const)(
       expect(JSON.stringify(body)).not.toContain("operator-");
       expect(calls.some((c) => c.url.includes("routes"))).toBe(false);
       const task = JSON.parse(String(calls.at(-1)?.init?.body));
+      expect(task).toMatchObject({ memory_in_mb: 1024, disk_in_mb: 4096 });
       expect(task.command).toBe("./runtime/bin/node apps/worker/dist/main.js");
       expect(task.command).not.toContain("job-ticket");
       expect(calls.every((c) => c.init?.redirect === "error")).toBe(true);

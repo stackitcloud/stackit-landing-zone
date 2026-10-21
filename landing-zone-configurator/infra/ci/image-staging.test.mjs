@@ -267,16 +267,12 @@ test("release pins the final buildpack to the approved source and excludes image
     ),
     /disk_quota: 6144M/,
   );
-  assert.match(
-    await readFile(
-      resolve(
-        repository,
-        "landing-zone-configurator/deploy/runner/manifest.yml",
-      ),
-      "utf8",
-    ),
-    /disk_quota: 4096M/,
+  const runnerManifest = await readFile(
+    resolve(repository, "landing-zone-configurator/deploy/runner/manifest.yml"),
+    "utf8",
   );
+  assert.match(runnerManifest, /disk_quota: 6144M/);
+  assert.match(runnerManifest, /instances: 0/);
   assert.ok(
     workflow.includes("if: failure() && steps.push.outcome == 'failure'"),
   );
