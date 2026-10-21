@@ -123,8 +123,11 @@ This avoids the observed CF API upload failure: HTTP 502 after 900 seconds at
 files or claiming that a larger upload limit was configured.
 The Web/API app uses 6144 MiB of disk: its additional inspection copy exhausted
 the former 4096-MiB staging disk during droplet compression even after removing
-the redundant image cache. Runner template and isolated job/task budgets remain
-4096 MiB; the measured native Runner runtime budget is unchanged.
+the redundant image cache. The zero-instance Runner template also uses 6144 MiB:
+its 4096-MiB staging filesystem exhausted disk during gzip droplet compression.
+This is staging capacity; isolated jobs, validation tasks and warm Runner
+processes explicitly retain their 4096-MiB runtime disk budget. The template
+runs no permanent instances, and the measured native runtime budget is unchanged.
 If Runner staging fails, the release also reports the latest V3 build's state
 and error and recent Runner logs while still targeting the isolated Runner space.
 Both Runner and Web/API diagnostics read the droplet linked to that failed build,

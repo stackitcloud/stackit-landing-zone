@@ -22,6 +22,8 @@ checksums are pinned, but this is not proof of that provider's signature.
 
 `package.sh` builds a separate binary package with Node, OpenTofu and
 a provider mirror; `manifest.yml` stages a task-only CF template without bindings.
+The zero-instance template uses 6144 MiB disk for staging and droplet compression.
+Per-job tasks and warm processes retain an explicit 4096-MiB runtime disk limit.
 The final image buildpack is pinned to the approved release commit through
 `LZC_IMAGE_BUILDPACK`; the protected pipeline supplies the Runner variables file.
 Hosted archives contain the qualified image SHA instead of the large QCOW2 file.

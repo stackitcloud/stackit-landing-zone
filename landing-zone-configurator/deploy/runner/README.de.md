@@ -22,6 +22,9 @@ gepinnt, dies ist kein Signaturnachweis dieses Providers.
 
 `package.sh` baut ein separates Binary-Paket mit Node, OpenTofu und
 Provider-Mirror; `manifest.yml` staged ein task-only CF-Template ohne Bindings.
+Das Template mit null Instanzen verwendet 6144 MiB Festplatte für Staging und
+Droplet-Komprimierung. Tasks pro Auftrag und warme Prozesse behalten ihr explizites
+4096-MiB-Laufzeitlimit.
 Der finale Image-Buildpack wird über `LZC_IMAGE_BUILDPACK` auf den freigegebenen
 Release-Commit gepinnt; die geschützte Pipeline liefert die Runner-Variablendatei.
 Hosted-Archive enthalten die qualifizierte Image-SHA statt der großen QCOW2-Datei.

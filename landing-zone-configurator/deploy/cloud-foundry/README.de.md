@@ -132,8 +132,11 @@ Dies vermeidet den beobachteten CF-API-Uploadfehler: HTTP 502 nach 900 Sekunden 
 zu teilen oder ein konfiguriertes höheres Uploadlimit zu behaupten.
 Die Web-/API-App verwendet 6144 MiB Festplatte: Ihre zusätzliche Inspektionskopie erschöpfte
 bei der Droplet-Komprimierung die vorherigen 4096 MiB Staging-Festplatte selbst nach Entfernung
-des redundanten Image-Caches. Runner-Template und isolierte Job-/Task-Budgets bleiben bei
-4096 MiB; das gemessene native Runner-Runtime-Budget bleibt unverändert.
+des redundanten Image-Caches. Auch das Runner-Template mit null Instanzen verwendet
+6144 MiB: Sein 4096-MiB-Staging-Dateisystem lief bei der gzip-Droplet-Komprimierung voll.
+Dies ist Staging-Kapazität; isolierte Jobs, Validierungstasks und warme Runner-Prozesse
+behalten ausdrücklich ihr 4096-MiB-Laufzeitbudget. Das Template betreibt keine dauerhaften
+Instanzen; das gemessene native Laufzeitbudget bleibt unverändert.
 Scheitert Runner-Staging, meldet der Release zusätzlich Status und Fehler des neuesten V3-Builds
 sowie aktuelle Runner-Logs, weiterhin auf den isolierten Runner-Space begrenzt.
 Runner- und Web-/API-Diagnosen lesen beide das mit dem fehlgeschlagenen Build verknüpfte Droplet,
