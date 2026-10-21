@@ -83,8 +83,13 @@ Application-Owner-Gruppen auswählen. Eine neue unveränderliche Version veröff
 bestehende Versionen und Bestellungen werden nicht umgebunden. Der eingeladene Owner
 wählt diese Version im selben Arbeitsbereich. Public-Projekte unterstützen ein optionales
 lokales Netz; Corporate-Projekte verwenden das freigegebene SNA-Ziel. Beide unterstützen
-optional Secrets Manager und Observability. Namespace-Dienste benötigen weiterhin einen
-eigenen Kubernetes-Ausführungspfad. Symbolische Observability-Netz-ACL-Bindungen bleiben
+optional Secrets Manager und Observability. Namespace-Dienste des Accelerators richten
+sich ausschließlich an **Platform Kubernetes** und sind von aktuellen
+Application-Projektbestellungen ausgeschlossen. Namespaces in einem Cluster innerhalb
+einer Application Landing Zone gehören zum Workload. Mögliche spätere Building Blocks auf Application Landing Zones
+sind eine getrennte, deutlich spätere Produktentscheidung. Die private/SNA-Anbindung
+von Platform Kubernetes bleibt in [#37](https://github.com/stackitcloud/stackit-landing-zone/issues/37).
+Symbolische Observability-Netz-ACL-Bindungen bleiben
 bis zur Qualifikation ihrer tatsächlichen Egress-Quelle gesperrt. Bestehende Versionen
 mit älteren Runner-Quellen behalten ihren früheren Ausführungsumfang. Jede Bestellung
 verwendet einen eigenen State-Schlüssel; Veröffentlichung und Bestellung geben keinen

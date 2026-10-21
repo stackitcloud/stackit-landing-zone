@@ -74,8 +74,13 @@ Under **Publication**, select the template, approved contract, matching target a
 permitted Application Owner groups. Publish a new immutable version; existing versions
 and orders are not rebound. The invited owner selects that version in the same workspace.
 Public projects support optional local networking; Corporate projects use the approved
-SNA target. Both support optional Secrets Manager and Observability. Namespace services
-still need a separate Kubernetes execution path. Symbolic Observability network ACL
+SNA target. Both support optional Secrets Manager and Observability. Accelerator Namespace
+services target **Platform Kubernetes only** and are excluded from current Application
+project orders. Namespaces in a cluster within an Application Landing Zone belong to the workload.
+Possible future Building Blocks built on Application Landing Zones are a separate,
+later product decision. Private/SNA access to Platform Kubernetes remains tracked in
+[#37](https://github.com/stackitcloud/stackit-landing-zone/issues/37).
+Symbolic Observability network ACL
 bindings remain blocked until their effective egress source is qualified. Existing
 versions on older Runner sources retain their previous execution scope. Each order uses
 its own State key; publication and ordering do not approve an infrastructure Apply.

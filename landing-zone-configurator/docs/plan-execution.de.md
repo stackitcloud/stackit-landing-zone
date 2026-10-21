@@ -124,8 +124,11 @@ Diese Ressourcenprüfung bleibt vor einer zukünftigen Job-/Credential-Freigabe 
   feste Parameterregeln und den eigenen Instanz-State-Key. Der aktuelle geprüfte
   Application-Quellstand unterstützt Public-Projekte mit oder ohne lokales Netz
   und Corporate-Projekte am ausgewählten Plattformziel, optional mit Secrets Manager
-  und Observability. Namespace-Dienste bleiben bis zum eigenen Kubernetes-Ausführungspfad
-  gesperrt. Ältere unveränderliche Quellversionen behalten die frühere Einschränkung
+  und Observability. Namespace-Dienste des Accelerators gehören ausschließlich zu
+  Platform Kubernetes und bleiben von Application-Projektbestellungen ausgeschlossen.
+  Namespaces in Clustern innerhalb einer Application Landing Zone sind Teil des Workloads;
+  mögliche spätere Building Blocks gehören nicht zu diesem Ausführungsvertrag. Die private/SNA-Ausführung
+  für Platform Kubernetes bleibt unter #37 vertagt. Ältere unveränderliche Quellversionen behalten die frühere Einschränkung
   auf Public-Projekte mit lokalem Netz.
   Die Antwort meldet ausdrücklich `cloudPlanExecuted: false` und
   `executionEnabled: false`; keine Schlüssel werden an den Browser geliefert.
