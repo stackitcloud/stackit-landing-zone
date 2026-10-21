@@ -1,5 +1,5 @@
 locals {
-  # Keep legacy names stable; opt-in project UUID names fit S3's 63-character limit.
+  # Preserve the complete project UUID and purpose within S3's 63-character limit.
   bucket_names = {
     for purpose in ["default", "tfstate"] : purpose => (
       var.bucket_naming == "project-id"
