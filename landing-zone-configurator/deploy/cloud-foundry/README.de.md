@@ -307,6 +307,13 @@ Task-Status, bereinigte Diagnosen und öffentliche Health Checks liefern Release
 
 <a id="immutable-release-and-promotion"></a>
 
+Der Dev-Deployment-Job hat insgesamt 45 Minuten für Runner-Staging,
+Datenbankmigrationen, App-Staging und die Prüfung kalter und vorgehaltener Runner.
+Die Fristen einzelner Schritte gelten weiterhin. Die native Eingabeabdeckung
+läuft bei PR-Prüfungen und Release-Builds mit `go test -count=1 ./...`, damit sie
+den aktuellen Accelerator-Quellstand prüft und kein zwischengespeichertes
+Testergebnis übernimmt.
+
 ### Dev-Release ohne Live-Qualifikation des Assistant
 
 Bei Model-Serving-Ausfällen unter
