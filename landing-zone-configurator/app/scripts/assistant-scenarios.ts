@@ -280,6 +280,22 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     editorExpected: { path: "observability.metrics_retention_days", value: 30 },
   },
   {
+    id: "editor-monitoring-retention",
+    topic: "observability",
+    fixture: "baseline",
+    message:
+      "Bitte zentrale Observability als lokalen Entwurf einrichten: plan_name Observability-Monitoring-Medium-EU01, ACL 203.0.113.0/24, metrics_retention_days 30. Logs und Traces sind im Monitoring-Tarif nicht unterstützt, dafür keine Retention setzen. Keine Ausführung.",
+    editorExpected: { path: "observability.metrics_retention_days", value: 30 },
+  },
+  {
+    id: "editor-project-unique-buckets",
+    topic: "management-state",
+    fixture: "baseline",
+    message:
+      "Bitte Bucket-Namensschema im lokalen Entwurf ausdrücklich auf bucket_naming=project-id setzen, damit die vollständige jeweilige Projekt-ID enthalten ist. Keine sonstigen Änderungen, kein Plan oder Apply.",
+    editorExpected: { path: "bucket_naming", value: "project-id" },
+  },
+  {
     id: "editor-devops",
     topic: "devops-git",
     fixture: "baseline",
@@ -720,6 +736,8 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     draft = createPlatformDraftCopy(draft, crypto.randomUUID());
     draft.projectTemplates = [];
   }
+  if (scenario.id === "editor-project-unique-buckets")
+    draft = setCommonInput(draft, "bucket_naming", "legacy");
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
@@ -856,6 +874,21 @@ export function validateAssistantScenario(
         );
       if (!isDeepStrictEqual(value, scenario.editorExpected.value))
         failures.push("editor_expected_value_not_applied");
+      if (scenario.topic === "observability") {
+        const settings = objectValue(
+          compileCommonConfiguration(candidate).observability,
+        );
+        if (
+          settings.logs_retention_days != null ||
+          settings.traces_retention_days != null
+        )
+          failures.push("unrequested_logs_or_traces_retention");
+        if (
+          scenario.id === "editor-monitoring-retention" &&
+          settings.plan_name !== "Observability-Monitoring-Medium-EU01"
+        )
+          failures.push("monitoring_plan_changed");
+      }
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       failures.push("editor_proposal_not_applicable");

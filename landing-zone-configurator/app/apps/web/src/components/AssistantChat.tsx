@@ -68,6 +68,8 @@ class MergeConfirmation extends Error {
 const errors: Record<string, string> = {
   assistant_inference_failed:
     "Die Modellantwort konnte nicht sicher verarbeitet werden. Bitte erneut versuchen; deine Anfrage bleibt erhalten und es wurde nichts geändert.",
+  assistant_observability_plan_incompatible:
+    "Der Observability-Vorschlag passt nicht zu den geprüften Tariffähigkeiten. Tarif und Aufbewahrung prüfen; vorhandene Werte bleiben erhalten.",
   assistant_invalid_request:
     "Bitte keine Zugangsdaten senden. Nachricht und Vorschlag müssen innerhalb der erlaubten Grenzen bleiben.",
   assistant_invalid_selection:

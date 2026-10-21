@@ -45,6 +45,7 @@ export * from "./document.js";
 export * from "./editor-document.js";
 export * from "./features.js";
 export * from "./initial-plan.js";
+export * from "./observability-plans.js";
 export * from "./project-templates.js";
 export * from "./template-parameters.js";
 export * from "./tfvars.js";

@@ -44,7 +44,7 @@ export const assistantTopicFields: Record<
       "organization_auditors",
     ],
   },
-  "management-state": { paths: [], prefixes: [] },
+  "management-state": { paths: [], prefixes: ["bucket_naming"] },
   observability: { paths: [], prefixes: ["observability"] },
   "audit-logs": { paths: [], prefixes: ["audit_logs"] },
   "federated-identities": {

@@ -6,6 +6,7 @@ export const labels: Record<string, string> = {
   company_code: "Unternehmenskürzel",
   organization_id: "STACKIT Organisations-ID",
   region: "Region",
+  bucket_naming: "Bucket-Namensschema",
   platform_contract_namespace: "Namespace des Plattformvertrags",
   labels: "Kennzeichnungen",
   rm_folder_parent_id: "Vorhandener übergeordneter Ordner",

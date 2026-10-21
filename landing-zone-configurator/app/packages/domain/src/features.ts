@@ -29,7 +29,12 @@ export const featureGroups = {
   },
   management: {
     title: "Zentrale Betriebsdienste",
-    inputs: ["observability", "audit_logs", "federated_identity_providers"],
+    inputs: [
+      "bucket_naming",
+      "observability",
+      "audit_logs",
+      "federated_identity_providers",
+    ],
   },
   network: {
     title: "Netzwerkbereiche, DNS und VPN",

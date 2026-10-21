@@ -230,7 +230,13 @@ it.each(assistantScenarios)(
           acl: ["203.0.113.0/24"],
           s3_object_lock: false,
         },
-        observability: { metrics_retention_days: 30 },
+        observability: {
+          metrics_retention_days: 30,
+          ...(scenario.id === "editor-monitoring-retention"
+            ? { plan_name: "Observability-Monitoring-Medium-EU01" }
+            : {}),
+        },
+        bucket_naming: "project-id",
         devops: {
           git_flavor: "git-10",
           allowed_network_ranges: ["203.0.113.0/24"],

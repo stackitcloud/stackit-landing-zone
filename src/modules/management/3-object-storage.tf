@@ -1,14 +1,25 @@
+locals {
+  # Preserve the complete project UUID and purpose within S3's 63-character limit.
+  bucket_names = {
+    for purpose in ["default", "tfstate", "audit-logs"] : purpose => (
+      var.bucket_naming == "project-id"
+      ? "${substr(var.naming_pattern, 0, 63 - length(purpose) - 38)}-${stackit_resourcemanager_project.this.project_id}-${purpose}"
+      : "${var.naming_pattern}-${purpose}"
+    )
+  }
+}
+
 #############
 ## BUCKETS ##
 #############
 
 resource "stackit_objectstorage_bucket" "default" {
-  name       = "${var.naming_pattern}-default"
+  name       = local.bucket_names["default"]
   project_id = stackit_resourcemanager_project.this.project_id
 }
 
 resource "stackit_objectstorage_bucket" "tfstate" {
-  name       = "${var.naming_pattern}-tfstate"
+  name       = local.bucket_names["tfstate"]
   project_id = stackit_resourcemanager_project.this.project_id
 
   depends_on = [
@@ -28,7 +39,7 @@ resource "stackit_objectstorage_compliance_lock" "this" {
 }
 
 resource "stackit_objectstorage_bucket" "audit_logs" {
-  name       = "${var.naming_pattern}-audit-logs"
+  name       = local.bucket_names["audit-logs"]
   project_id = stackit_resourcemanager_project.this.project_id
 
   object_lock = try(var.audit_logs.s3_object_lock, false) ? true : null

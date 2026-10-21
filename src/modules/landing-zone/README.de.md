@@ -23,8 +23,8 @@ maßgeblich ist die [kanonische englische Referenz](README.de.md).
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | >= 0.14.1 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
 
 ## Modules
 
@@ -56,6 +56,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_bucket_naming"></a> [bucket\_naming](#input\_bucket\_naming) | Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration. | `string` | `"project-id"` | no |
 | <a name="input_corporate"></a> [corporate](#input\_corporate) | Whether this landing zone uses corporate networking (network area + routing). Set to false for public internet. | `bool` | `false` | no |
 | <a name="input_custom_roles"></a> [custom\_roles](#input\_custom\_roles) | List of custom roles to create for the project. | <pre>list(object({<br/>    name        = string<br/>    description = string<br/>    permissions = list(string)<br/>  }))</pre> | n/a | yes |
 | <a name="input_dns_zone_name"></a> [dns\_zone\_name](#input\_dns\_zone\_name) | Full DNS zone domain name for this landing zone. Set to null to skip DNS zone creation. | `string` | `null` | no |
@@ -92,5 +93,6 @@ No modules.
 | <a name="output_project_id"></a> [project\_id](#output\_project\_id) | The project ID of the created STACKIT project. |
 | <a name="output_project_name"></a> [project\_name](#output\_project\_name) | The name of the created STACKIT project. |
 | <a name="output_project_network"></a> [project\_network](#output\_project\_network) | Non-secret reference to the managed project network, or null when no network is created. |
+| <a name="output_project_role_counts"></a> [project\_role\_counts](#output\_project\_role\_counts) | Counts of custom roles and explicit role assignments managed by this project module. |
 | <a name="output_secretsmanager_instance_id"></a> [secretsmanager\_instance\_id](#output\_secretsmanager\_instance\_id) | The ID of the landing zone Secrets Manager instance. |
 <!-- END_TF_DOCS -->

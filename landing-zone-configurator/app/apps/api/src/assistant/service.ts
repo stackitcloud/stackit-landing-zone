@@ -15,7 +15,9 @@ import {
   compileCommonConfiguration,
   effectiveInput,
   isCommonDraft,
+  type ObservabilityPlanCatalogue,
   objectValue,
+  observabilityRetentionFindings,
   readEditorDraft,
 } from "@lzc/domain";
 import type pg from "pg";
@@ -314,6 +316,76 @@ export class AssistantConversations {
       Partial<Pick<PostgresCloudCatalogues, "pim">>,
   ) {}
 
+  private async loadObservabilityCatalogue(
+    session: Session,
+    id: string,
+    localDocument?: unknown,
+    changes?: { path: string }[],
+  ): Promise<ObservabilityPlanCatalogue | undefined> {
+    const affectsObservability = (items: { path: string }[]) =>
+      items.some(
+        (change) =>
+          change.path === "observability" ||
+          change.path.startsWith("observability."),
+      );
+    if (!this.catalogues || (changes && !affectsObservability(changes)))
+      return undefined;
+    const region = await this.work(
+      session,
+      id,
+      async (client, configuration) => {
+        if (!changes) {
+          const row = (
+            await client.query(
+              "SELECT proposal FROM lzc.assistant_conversations WHERE configuration_id=$1",
+              [id],
+            )
+          ).rows[0];
+          const proposal = z
+            .object({ changes: z.array(z.object({ path: z.string() })) })
+            .safeParse(row?.proposal);
+          if (!proposal.success || !affectsObservability(proposal.data.changes))
+            return undefined;
+        }
+        const draft = readEditorDraft(localDocument ?? configuration.document);
+        if (!isCommonDraft(draft)) return undefined;
+        return compileCommonConfiguration(draft).region === "eu02"
+          ? ("eu02" as const)
+          : ("eu01" as const);
+      },
+    );
+    if (!region) return undefined;
+    // Credential/network reads finish before opening the proposal write transaction.
+    return this.catalogues.automatic(session, region).catch(() => undefined);
+  }
+
+  private checkObservabilitySelection(
+    draft: Parameters<typeof compileCommonConfiguration>[0],
+    changes: { path: string }[],
+    catalogue?: ObservabilityPlanCatalogue,
+  ) {
+    if (
+      !changes.some(
+        (change) =>
+          change.path === "observability" ||
+          change.path.startsWith("observability."),
+      )
+    )
+      return;
+    const values = compileCommonConfiguration(draft);
+    if (values.observability == null) return;
+    const region = values.region === "eu02" ? "eu02" : "eu01";
+    const report = observabilityRetentionFindings(
+      objectValue(values.observability),
+      catalogue?.region === region ? catalogue : undefined,
+    );
+    if (report.findings.length)
+      throw new AssistantError(
+        422,
+        "assistant_observability_plan_incompatible",
+      );
+  }
+
   private async productCatalogues(
     session: Session,
     regions: ("eu01" | "eu02")[],
@@ -378,7 +450,11 @@ export class AssistantConversations {
                       part?.status === "available"
                         ? part.options
                             .slice(0, 50)
-                            .map(({ value, label }) => ({ value, label }))
+                            .map(({ value, label, capabilities }) => ({
+                              value,
+                              label,
+                              ...(capabilities ? { capabilities } : {}),
+                            }))
                         : [],
                     totalOptions: part?.options.length ?? 0,
                     truncated: (part?.options.length ?? 0) > 50,
@@ -665,6 +741,13 @@ export class AssistantConversations {
         knowledge.rules.map((rule) => rule.id),
       );
       stream?.signal?.throwIfAborted();
+      const catalogue = await this.loadObservabilityCatalogue(
+        session,
+        id,
+        undefined,
+        proposal.changes,
+      );
+      stream?.signal?.throwIfAborted();
       await this.work(session, id, async (_client, configuration) => {
         if (configuration.revision !== revision)
           throw new AssistantError(409, "configuration_changed");
@@ -675,7 +758,13 @@ export class AssistantConversations {
             "assistant_common_configuration_required",
           );
         try {
-          applyAssistantChanges(draft, proposal.changes);
+          const candidate = applyAssistantChanges(draft, proposal.changes);
+          if (isCommonDraft(candidate))
+            this.checkObservabilitySelection(
+              candidate,
+              proposal.changes,
+              catalogue,
+            );
         } catch (error) {
           if (error instanceof z.ZodError)
             throw new AssistantInferenceError("invalid_scope");
@@ -728,7 +817,7 @@ export class AssistantConversations {
     }
   }
 
-  preview(
+  async preview(
     session: Session,
     id: string,
     conversationRevision: number,
@@ -738,6 +827,11 @@ export class AssistantConversations {
     baselineDocument: unknown,
     confirmedRevision?: number,
   ) {
+    const catalogue = await this.loadObservabilityCatalogue(
+      session,
+      id,
+      localDocument,
+    );
     return this.work(session, id, async (client, configuration) => {
       const row = (
         await client.query<Conversation>(
@@ -845,6 +939,8 @@ export class AssistantConversations {
       let candidate: ReturnType<typeof applyAssistantChanges>;
       try {
         candidate = applyAssistantChanges(draft, selection);
+        if (isCommonDraft(candidate))
+          this.checkObservabilitySelection(candidate, selection, catalogue);
       } catch (error) {
         if (
           error instanceof z.ZodError ||
@@ -915,13 +1011,14 @@ export class AssistantConversations {
     });
   }
 
-  accept(
+  async accept(
     session: Session,
     id: string,
     conversationRevision: number,
     baseRevision: number,
     selectedFields?: string[],
   ) {
+    const catalogue = await this.loadObservabilityCatalogue(session, id);
     return this.work(session, id, async (client, configuration) => {
       const row = (
         await client.query<Conversation>(
@@ -976,6 +1073,8 @@ export class AssistantConversations {
       let candidate: ReturnType<typeof applyAssistantChanges>;
       try {
         candidate = applyAssistantChanges(draft, changes);
+        if (isCommonDraft(candidate))
+          this.checkObservabilitySelection(candidate, changes, catalogue);
       } catch (error) {
         if (
           selectedFields !== undefined &&

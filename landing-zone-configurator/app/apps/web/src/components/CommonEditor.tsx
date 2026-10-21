@@ -22,6 +22,7 @@ import {
 import { useState } from "react";
 import { t } from "../i18n";
 import type { EditorStep } from "../navigation";
+import { useObservabilityCatalogue } from "./CloudCatalogues";
 import { ComponentPicker } from "./ComponentPicker";
 import { FederatedIdentityEditor } from "./FederatedIdentityEditor";
 import { labelFor } from "./feature-labels";
@@ -125,8 +126,32 @@ export function CommonEditor({
   const projects = commonProjects(draft);
   const areas = commonNetworkAreas(draft);
   const folders = folderNames(values);
-  const issues = editorIssues(draft);
-  const assessment = assessCommonConfiguration(draft);
+  const liveCatalogue = useObservabilityCatalogue(
+    String(values.region ?? "eu01"),
+  );
+  const assessment = assessCommonConfiguration(draft, liveCatalogue);
+  const replacedMessages = new Set(
+    assessCommonConfiguration(draft)
+      .findings.filter(
+        (finding) =>
+          finding.path.startsWith("observability.") &&
+          finding.code.includes("observability"),
+      )
+      .map((finding) => JSON.stringify([finding.path, finding.message])),
+  );
+  const issues = [
+    ...editorIssues(draft).filter(
+      (issue) =>
+        !replacedMessages.has(JSON.stringify([issue.field, issue.message])),
+    ),
+    ...assessment.findings
+      .filter(
+        (finding) =>
+          finding.path.startsWith("observability.") &&
+          finding.severity === "error",
+      )
+      .map((finding) => ({ field: finding.path, message: finding.message })),
+  ];
   const active = steps.find((item) => item.id === step) ?? steps[0];
   const perform = (action: () => CommonConfiguration) => {
     try {

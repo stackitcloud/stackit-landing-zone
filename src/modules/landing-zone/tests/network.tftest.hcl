@@ -111,6 +111,7 @@ run "objectstorage_credentials_group_name_bounded" {
 
   variables {
     naming_pattern = "app-116aee67-9384-4b50-a683-f392b6367e0d-dev"
+    bucket_naming  = "legacy"
   }
 
   assert {
@@ -134,5 +135,33 @@ run "objectstorage_credentials_group_name_distinct" {
   assert {
     condition     = length(stackit_objectstorage_credentials_group.this.name) == 32 && stackit_objectstorage_credentials_group.this.name != "${substr("app-116aee67-9384-4b50-a683-f392b6367e0d-dev", 0, 23)}-${substr(sha256("app-116aee67-9384-4b50-a683-f392b6367e0d-dev"), 0, 8)}"
     error_message = "Credentials group names with a shared truncated prefix must remain distinct."
+  }
+}
+run "project_qualified_bucket_defaults" {
+  command = plan
+
+  variables {
+    naming_pattern = "a-very-long-but-valid-application-resource-name-prefix"
+  }
+
+  assert {
+    condition = alltrue([
+      for name in [stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name] :
+      length(name) <= 63 && strcontains(name, stackit_resourcemanager_project.this.project_id)
+    ]) && stackit_objectstorage_bucket.default.name != stackit_objectstorage_bucket.tfstate.name
+    error_message = "Workload buckets must include their full owning project UUID with distinct purposes within 63 characters."
+  }
+}
+
+run "explicit_legacy_bucket_compatibility" {
+  command = plan
+
+  variables {
+    bucket_naming = "legacy"
+  }
+
+  assert {
+    condition     = stackit_objectstorage_bucket.default.name == "application-dev-default" && stackit_objectstorage_bucket.tfstate.name == "application-dev-tfstate"
+    error_message = "Explicit legacy mode must preserve existing workload bucket names."
   }
 }

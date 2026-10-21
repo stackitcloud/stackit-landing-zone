@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "0fd2c183ebdf903b2e7d10e50dac5e4b3abd08e9f665fcc15bbab01b95669299",
+  "knowledgeSha256": "436435106841a476ec0c7cf7a948f0f94e9ac99566ebfdb98838980fe45f3738",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "441273d9af541a14185062728a9f9a7044df0e8a7c51645a53eb970a341867d9",
+    "scripts/assistant-scenarios.ts": "d9d361ddc0da9d928abeedfa85e6da189f3fed25aa581ca7264723ac85ac24a9",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "8c60fd19e7e5a6e8903ccea7987f834112c948b4de8cb60487a1694bc64fe2ee",
+  "suiteSha256": "a186d02cfe1f3c0aa0b82d058006dbb1029b2e4b07020e0e934db478354f19b9",
   "topics": [
     {
       "id": "credential-foundations",
@@ -823,8 +823,33 @@
     },
     {
       "id": "management-state",
-      "fields": [],
+      "fields": [
+        {
+          "path": "bucket_naming",
+          "group": "management",
+          "type": "string",
+          "optional": true,
+          "proposalPath": "bucket_naming",
+          "responsibility": "user",
+          "mode": "propose-validated-draft"
+        }
+      ],
       "cases": [
+        {
+          "id": "editor-project-unique-buckets",
+          "topic": "management-state",
+          "fixture": "baseline",
+          "message": "Bitte Bucket-Namensschema im lokalen Entwurf ausdrücklich auf bucket_naming=project-id setzen, damit die vollständige jeweilige Projekt-ID enthalten ist. Keine sonstigen Änderungen, kein Plan oder Apply.",
+          "editorExpected": {
+            "path": "bucket_naming",
+            "value": "project-id"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "management-state-advice",
           "topic": "management-state",
@@ -929,6 +954,21 @@
           "topic": "observability",
           "fixture": "baseline",
           "message": "Bitte zentrale Observability als Entwurf einrichten: plan_name Observability-Starter-EU01, ACL 203.0.113.0/24, metrics_retention_days 30.",
+          "editorExpected": {
+            "path": "observability.metrics_retention_days",
+            "value": 30
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-monitoring-retention",
+          "topic": "observability",
+          "fixture": "baseline",
+          "message": "Bitte zentrale Observability als lokalen Entwurf einrichten: plan_name Observability-Monitoring-Medium-EU01, ACL 203.0.113.0/24, metrics_retention_days 30. Logs und Traces sind im Monitoring-Tarif nicht unterstützt, dafür keine Retention setzen. Keine Ausführung.",
           "editorExpected": {
             "path": "observability.metrics_retention_days",
             "value": 30

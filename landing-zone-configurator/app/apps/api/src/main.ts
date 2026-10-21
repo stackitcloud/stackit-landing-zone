@@ -286,6 +286,7 @@ const app = buildApp({
           credentials,
           executionEnabled,
           plans?.acceleratorCommit,
+          catalogues,
         ),
       }
     : {}),

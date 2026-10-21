@@ -1,6 +1,8 @@
+import type { ObservabilityPlanOption } from "@lzc/domain";
+
 type Part = {
   status: "available" | "unavailable";
-  options: { value: string; label: string }[];
+  options: ObservabilityPlanOption[];
 };
 export type CloudCatalogue = {
   region: string;

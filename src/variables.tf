@@ -1,3 +1,14 @@
+variable "bucket_naming" {
+  type        = string
+  description = "Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration."
+  default     = "project-id"
+
+  validation {
+    condition     = contains(["legacy", "project-id"], var.bucket_naming)
+    error_message = "Bucket naming must be legacy or project-id."
+  }
+}
+
 #############
 ## GENERAL ##
 #############
@@ -185,14 +196,44 @@ variable "observability" {
   type = object({
     plan_name                              = optional(string, "Observability-Starter-EU01")
     acl                                    = optional(list(string), [])
-    logs_retention_days                    = optional(number, 30)
-    traces_retention_days                  = optional(number, 30)
-    metrics_retention_days                 = optional(number, 90)
-    metrics_retention_days_5m_downsampling = optional(number, 90)
-    metrics_retention_days_1h_downsampling = optional(number, 90)
+    logs_retention_days                    = optional(number)
+    traces_retention_days                  = optional(number)
+    metrics_retention_days                 = optional(number)
+    metrics_retention_days_5m_downsampling = optional(number)
+    metrics_retention_days_1h_downsampling = optional(number)
   })
-  description = "Observability instance configuration for the management module. Set to null to skip observability deployment."
+  description = "Observability instance configuration for the management module. Omitted or null retention uses the service plan defaults. Monitoring plans require both retention fields to be omitted or null. Set to null to skip observability deployment."
   default     = null
+
+  validation {
+    condition = var.observability == null ? true : (
+      !startswith(var.observability.plan_name, "Observability-Monitoring-") ||
+      (var.observability.logs_retention_days == null && var.observability.traces_retention_days == null)
+    )
+    error_message = "Monitoring plans do not support logs or traces retention. Omit logs_retention_days and traces_retention_days or set them to null."
+  }
+
+  validation {
+    condition = var.observability == null ? true : (
+      !can(regex("^Observability-(Frontend|Metrics-?Endpoint)", var.observability.plan_name)) ||
+      alltrue([for value in [var.observability.logs_retention_days, var.observability.traces_retention_days, var.observability.metrics_retention_days, var.observability.metrics_retention_days_5m_downsampling, var.observability.metrics_retention_days_1h_downsampling] : value == null])
+    )
+    error_message = "Frontend and MetricsEndpoint plans do not support retention overrides. Omit all retention fields or set them to null."
+  }
+
+  validation {
+    condition = var.observability == null ? true : alltrue([
+      for value in [var.observability.logs_retention_days, var.observability.traces_retention_days] : value == null ? true : value >= 1 && value <= 30 && floor(value) == value
+    ])
+    error_message = "Logs and traces retention must be omitted, null or a whole number from 1 to 30 days."
+  }
+
+  validation {
+    condition = var.observability == null ? true : alltrue([
+      for value in [var.observability.metrics_retention_days, var.observability.metrics_retention_days_5m_downsampling, var.observability.metrics_retention_days_1h_downsampling] : value == null ? true : value >= 1 && value <= 780 && floor(value) == value
+    ])
+    error_message = "Metrics retention must be omitted, null or a whole number from 1 to 780 days."
+  }
 }
 
 variable "audit_logs" {

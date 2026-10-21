@@ -47,6 +47,8 @@ type Preparation = {
   };
 };
 const errors: Record<string, string> = {
+  observability_plan_incompatible:
+    "Der gewählte Observability-Tarif und seine Einstellungen passen nicht zusammen oder konnten nicht verifiziert werden. Prüfe Tarif und Aufbewahrung im Editor. Gespeicherte Werte bleiben erhalten.",
   firewall_administration_required:
     "Für Firewall-HA fehlt ein gebundener OPNsense-Administrationszugang. Erstelle unter Zugänge ein Profil mit Service-Account und OPNsense-Zugang und danach eine neue Vorbereitung und einen neuen Plan. Bestehende Nachweise bleiben erhalten.",
   configuration_execution_not_supported:
@@ -77,7 +79,7 @@ const errors: Record<string, string> = {
   platform_upgrade_unavailable:
     "Der aktuelle Accelerator-Stand ist für neue Vorbereitungen nicht freigegeben. Bitte die Runner-Konfiguration prüfen lassen.",
   platform_upgrade_state_unavailable:
-    "Für den Accelerator-Wechsel einer bereits bereitgestellten Plattform muss deren vorhandener State an ein S3-Backend gebunden sein. Prüfe die State-Übernahme; deine Konfiguration bleibt unverändert.",
+    "Für den Accelerator-Wechsel ist der vorhandene S3-State oder ein ausdrücklich geprüfter, unterstützter Bootstrap-Checkpoint erforderlich. Prüfe den Checkpoint und offene Ausführungen; deine Konfiguration bleibt erhalten.",
   state_locked:
     "Der Plattform-State ist durch eine laufende Ausführung gesperrt. Prüfe den Ausführungsstatus und warte auf deren Abschluss.",
   backend_not_found:

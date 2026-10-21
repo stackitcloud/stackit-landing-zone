@@ -44,6 +44,7 @@ export function initialPlanIssues(
     "sandboxes",
     "devops",
     "observability",
+    "bucket_naming",
     "audit_logs",
     "connectivity",
   ]);

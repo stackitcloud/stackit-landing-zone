@@ -105,7 +105,7 @@ künftigen Plan/Apply müssen Zugriff, Secret-Version und Ziel erneut geprüft w
 
 Ergänzung vom 2026-10-06: Die gewöhnliche Vorbereitung bleibt auf `a256f68`
 gebunden. Für den Contract-Output kann eine zusätzliche Vorbereitung ausdrücklich
-den fest qualifizierten Commit `c4b43c36af198985980b17626c48d357795e3fbd` wählen.
+den fest qualifizierten Commit `9e7fb46c329aca32e878ce1f0ea3b944ea240354` wählen.
 Das ist derzeit ein lokaler, opt-in Laufpfad, keine allgemeine Source-Auswahl und
 keine Produktionsfreigabe.
 
@@ -123,16 +123,26 @@ Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
 {
   "platformUpgrade": {
     "confirm": true,
-    "acceleratorCommit": "c4b43c36af198985980b17626c48d357795e3fbd"
+    "acceleratorCommit": "9e7fb46c329aca32e878ce1f0ea3b944ea240354"
   }
 }
 ```
 
-Der Server verlangt ein passendes qualifiziertes Paket sowie einen bestehenden,
-entsperrten S3-State. Fremde Revisionen, zusätzliche Namespace-/Tenant-Felder und
-abweichende Backend-Bindungen werden abgelehnt. Die neue Vorbereitung verwendet
-denselben State und dieselbe Konfiguration. Alte Manifeste, Artefakte, Revisionen
-und Freigaben werden nicht umgeschrieben.
+Der Server verlangt ein passendes qualifiziertes Paket und behält die vorhandene
+State-Bindung bei. Eine initialisierte Plattform benötigt normalerweise einen
+entsperrten S3-State. Nach einem teilweise fehlgeschlagenen Bootstrap-Apply kann
+stattdessen der vorhandene verschlüsselte Checkpoint verwendet werden, wenn der
+Eigentümer ihn über „Checkpoint prüfen“ ausdrücklich geprüft und zur Wiederaufnahme
+freigegeben hat. Der Nachweis muss exakt zur aktuellen State-Version, Konfiguration
+und zum Mandanten passen. Der fehlgeschlagene Apply muss den aktuell festgelegten
+Plattform-Quellstand oder dessen unterstützten Vorgänger
+`c4b43c36af198985980b17626c48d357795e3fbd` verwendet haben.
+Sperren, offene Migrationen, separater Recovery-State und aktive Läufe sperren diesen
+Pfad; ein geänderter Checkpoint benötigt eine erneute Prüfung. Es wird weder ein
+leerer State angelegt noch das Backend migriert. Fremde Revisionen, zusätzliche
+Namespace-/Tenant-Felder und abweichende Backend-Bindungen werden abgelehnt. Die
+neue Vorbereitung verwendet denselben State und dieselbe Konfiguration. Alte
+Manifeste, Artefakte, Revisionen und Freigaben werden nicht umgeschrieben.
 
 Der Contract-Namensraum stammt aus der authentifizierten Serversitzung und ist Teil
 des exakten neuen tfvars-Hashes. Die API lockert ihre Tenant-/Organisationsprüfung

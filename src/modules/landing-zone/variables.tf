@@ -1,3 +1,14 @@
+variable "bucket_naming" {
+  type        = string
+  description = "Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration."
+  default     = "project-id"
+
+  validation {
+    condition     = contains(["legacy", "project-id"], var.bucket_naming)
+    error_message = "Bucket naming must be legacy or project-id."
+  }
+}
+
 variable "organization_id" {
   type        = string
   description = "Container ID of the root organization."

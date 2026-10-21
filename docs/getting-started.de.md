@@ -9,6 +9,27 @@ Diese Anleitung führt Sie durch die Bereitstellung der STACKIT Landing Zone von
 > Die Module in diesem Terraform-Repository sind nicht zur direkten Nutzung vorgesehen. Klonen Sie das Repository und passen Sie die Module an Ihre konkreten Anforderungen an. Es gibt keine Garantien für Migrationspfade oder dafür, dass die Module unverändert bleiben.
 
 <a id="prerequisites"></a>
+## Upgrade von Bucket-Namen und Observability-Einstellungen
+
+Bucket-Namen gelten STACKIT-weit. Der Standard `bucket_naming = "project-id"`
+enthält jetzt die vollständige ID des jeweiligen Management- oder Anwendungsprojekts.
+Nur der lesbare Präfix wird auf insgesamt höchstens 63 Zeichen gekürzt.
+Die State-Adressen bleiben stabil, Bucket-Namen sind jedoch unveränderlich:
+**Vor dem Upgrade einer Installation mit vorhandenen bisherigen Bucket-Namen
+`bucket_naming = "legacy"` setzen**, sofern keine separate Ersetzung bzw.
+Daten-/Backend-Migration geprüft wurde. Es gibt keine automatische Datenmigration
+oder State-Neuanlage. Ein teilweise ausgeführtes Deployment ohne Buckets kann
+Projekt und Checkpoint mit dem neuen Standard beibehalten. Vor Apply einen neuen
+vollständigen Plan prüfen.
+Siehe [Issue #127](https://github.com/stackitcloud/stackit-landing-zone/issues/127).
+
+Zentrale Observability-Aufbewahrungswerte sind optional/null und verwenden sonst
+die Servicestandards. Monitoring unterstützt keine Logs-/Trace-Aufbewahrung;
+Frontend und MetricsEndpoint keine Aufbewahrungsüberschreibungen. Explizite Werte
+müssen innerhalb der Servicegrenzen liegen (ganze Tage: Logs/Traces 1–30,
+Metriken/Downsampling 1–780). Das native Root weist diese unzulässigen Kombinationen
+vor der Ressourcenbereitstellung zurück.
+
 ## Voraussetzungen
 
 - Eine **STACKIT-Organisation**, in der Ihr Benutzerkonto registriert ist

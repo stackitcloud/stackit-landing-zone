@@ -2,55 +2,52 @@
 
 ## Purpose
 
-Provide the platform's management project, Terraform state storage and base
-operating identities. Distinguish these from optional monitoring services and
-from the backend that stores the current Accelerator deployment's own state.
+Management project, state storage and operating identities; distinguish optional
+monitoring and the backend of the current Accelerator deployment.
 
 ## Accelerator Contract
 
-The root calls module.management unconditionally beneath the governance
-platform folder. Ownership, naming, organization and labels are derived from
-root inputs. Management implementation determines state-bucket and identity
-resources; it has no independent invented management_enabled switch.
-The module also creates its Secrets Manager foundation; do not equate that
-instance with every workload's separate secretsmanager_enabled choice. Backend
-bootstrap/configuration is a separate native execution prerequisite, not a
-runtime Configurator dependency embedded into exported configuration.
+module.management always exists under the governance platform folder; no
+management_enabled switch. Root inputs derive ownership, naming and labels.
+Secrets Manager is a foundation, independent of workload secretsmanager_enabled.
+Backend bootstrap/configuration is a separate execution prerequisite.
+
+bucket_naming defaults to project-id: all management/workload bucket names contain
+the full owning project UUID and distinct purpose suffixes within 63 characters.
+STACKIT names are global. Explicit legacy preserves existing bucket names; never
+switch existing buckets without reviewing replacement/migration. A failed Apply
+with no buckets can keep its original project/state and use project-id naming.
 
 ## Dependencies
 
-Governance/naming and credential foundations. Observability, audit routing and
-federation are optional settings attached to management. Their knowledge
-dependencies do not make those services required.
+Governance, naming and credentials. Monitoring, audit and federation stay optional.
 
 ## Dialogue
 
-Explain that "only SNA first" scopes the desired configuration change, not a
-targeted cloud operation: a full native apply still includes mandatory base
-resources and other enabled inputs. Ask about backend ownership, lifecycle,
-retention and operating responsibility without requesting state or passwords.
+“Only SNA first” scopes the draft change, not a targeted cloud operation. Full
+native Apply includes management and other enabled inputs. Discuss ownership,
+lifecycle and recovery without requesting state or credentials.
 
 ## Examples
 
-Synthetic baseline: observability = null, audit_logs = null,
-federated_identity_providers = []. Optional services are disabled but management
-and governance remain part of the root. This is a fragment, not a complete run.
+observability=null, audit_logs=null, federated_identity_providers=[] disables
+optional services, not management/governance. This is not a complete run.
 
 ## Limits
 
-A created state bucket does not prove a configured backend, successful state
-migration, encryption, lock safety or disaster recovery. Never read/pull/mutate
-remote state as a chat action. Plan, apply, destroy, recovery and publication
-have independent authorization gates; no targeted Terraform workaround.
+A bucket proves no backend setup, migration, encryption, locking or recovery.
+Never pull/mutate state as a chat action. Plan, Apply, Destroy, recovery and
+publication require separate authorization. No targeted Terraform workaround.
+A source correction may reuse a failed Bootstrap checkpoint only after explicit
+owner reconciliation of its exact state version, with supported pinned provenance
+and no lock, migration, separate recovery or active run. Use a new preparation
+and reviewed Plan; never restart with empty state or retry the consumed Plan.
 
 ## Credentials
 
-Provide backend/object-storage and provider credentials through approved
-external execution bindings. Keys, passphrases, state contents and plan files
-must never enter model context or a knowledge file.
+Use approved external bindings. No keys, passphrases, state or plans in chat.
 
 ## Sources
 
-Root and management implementation plus deployment-credential documentation
-are fingerprinted in the manifest. Re-review resource/bootstrap changes before
-regeneration; no source snapshot proves operational recovery qualification.
+Fingerprint root/management and credential docs. Re-review before regeneration;
+source snapshots do not qualify operational recovery.

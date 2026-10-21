@@ -7,6 +7,25 @@ This guide walks you through deploying the STACKIT Landing Zone from scratch.
 > [!NOTE]
 > The modules in this Terraform repository are not intended to be used directly. Clone the repository and adjust the modules to your specific requirements. No guarantees are made about migration paths or that the modules will remain unchanged.
 
+## Upgrading bucket naming and Observability settings
+
+Bucket names are STACKIT-wide. The default `bucket_naming = "project-id"` now
+includes the complete owning project UUID for management and application buckets.
+Only the readable prefix is truncated to keep the full name within 63 characters.
+Existing bucket resource addresses remain stable, but names are immutable:
+**set `bucket_naming = "legacy"` before upgrading an installation that already
+owns legacy-named buckets**, unless a separate replacement/data/backend migration
+has been reviewed. No data migration or state reset happens automatically.
+A partially applied deployment without buckets can keep its original project and
+checkpoint and use the new default. Review a fresh full Plan before Apply.
+See [issue #127](https://github.com/stackitcloud/stackit-landing-zone/issues/127).
+
+Central Observability retention overrides are optional/null and otherwise use
+service defaults. Monitoring supports no logs/traces retention; Frontend and
+MetricsEndpoint support no retention overrides. Explicit values must fit the
+service limits (whole days: logs/traces 1–30, metrics/downsampling 1–780). The native
+root rejects these incompatible combinations before provisioning resources.
+
 ## Prerequisites
 
 - A **STACKIT organization** with your user account registered

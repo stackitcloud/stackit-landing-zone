@@ -173,6 +173,7 @@ describe.skipIf(!enabled)(
       applicationContracts = false,
       services = false,
       firewall = false,
+      platformRoot = false,
     ) {
       let owner = await session();
       const organizationId = randomUUID(),
@@ -258,7 +259,12 @@ describe.skipIf(!enabled)(
       };
       const keyId = randomUUID();
       const manifest = preparationManifest(
-        { source: "database", configurationId, revision: 1, credentialId },
+        {
+          source: "database",
+          configurationId,
+          revision: 1,
+          credentialId,
+        },
         {
           document,
           head: "1",
@@ -340,7 +346,10 @@ describe.skipIf(!enabled)(
         firewallPlansEnabled: firewall,
         supportsAccelerator: vi.fn(
           (commit: string) =>
-            commit === "a256f6896d11134fdc351786f1be5eba4e56b2e2",
+            commit ===
+            (platformRoot
+              ? platformUpgradeAcceleratorCommit
+              : "a256f6896d11134fdc351786f1be5eba4e56b2e2"),
         ),
         supportsArtifact: vi.fn(() => true),
         output: vi.fn(
@@ -436,8 +445,11 @@ describe.skipIf(!enabled)(
         execution,
         token,
       );
-      async function plan(overrides: object = {}) {
-        const run = await plans.start(owner, token, preparationId);
+      async function plan(
+        overrides: object = {},
+        targetPreparationId = preparationId,
+      ) {
+        const run = await plans.start(owner, token, targetPreparationId);
         const ticket = tickets.get(run.id)!;
         await plans.input(ticket);
         await plans.stage(ticket, "validating");
@@ -480,6 +492,79 @@ describe.skipIf(!enabled)(
         managementState,
       };
     }
+
+    it("blocks live-incompatible retention before preparing and uses reviewed fallback when catalogue loading fails", async () => {
+      const test = await fixture(false, true);
+      if (test.manifest.configuration.schemaVersion !== 3)
+        throw new Error("Expected common configuration fixture");
+      const document = editCommonInput(
+        test.manifest.configuration,
+        "observability",
+        {
+          plan_name: "Observability-Starter-EU01",
+          logs_retention_days: 7,
+        },
+      );
+      await migration!.query(
+        "UPDATE lzc.configurations SET document=$2 WHERE id=$1",
+        [test.configurationId, JSON.stringify(recordDraft(document))],
+      );
+      const unavailable = { status: "unavailable" as const, options: [] };
+      const automatic = vi.fn(async () => ({
+        region: "eu01",
+        projectId: null,
+        fetchedAt: new Date().toISOString(),
+        gitFlavors: unavailable,
+        vpnPlans: unavailable,
+        kubernetesVersions: unavailable,
+        machineTypes: unavailable,
+        availabilityZones: unavailable,
+        volumeTypes: unavailable,
+        observabilityPlans: {
+          status: "available" as const,
+          options: [
+            {
+              value: "Observability-Starter-EU01",
+              label: "Starter",
+              capabilities: {
+                metricsRetention: true,
+                logsRetention: false,
+                tracesRetention: true,
+              },
+            },
+          ],
+        },
+      }));
+      const preparations = new Preparations(
+        pool,
+        test.repositories,
+        test.profiles,
+        false,
+        undefined,
+        { automatic },
+      );
+      const request = {
+        source: "database",
+        configurationId: test.configurationId,
+        revision: 1,
+        credentialId: test.credentialId,
+      } as const;
+      await expect(
+        preparations.create(test.owner, null, request),
+      ).rejects.toMatchObject({
+        code: "observability_plan_incompatible",
+      });
+      expect(await preparations.list(test.owner)).toHaveLength(1);
+      expect(test.runner.start).not.toHaveBeenCalled();
+      automatic.mockRejectedValueOnce(new Error("catalogue unavailable"));
+      const prepared = await preparations.create(test.owner, null, request);
+      expect(
+        (await preparations.list(test.owner)).find(
+          (item) => item.id === prepared.id,
+        )?.manifest.configuration,
+      ).toEqual(document);
+      expect(test.runner.start).not.toHaveBeenCalled();
+    });
 
     it("prepares and dispatches saved initial service inputs without bypassing tenant, ticket or approval gates", async () => {
       const test = await fixture(false, true);
@@ -1751,9 +1836,30 @@ describe.skipIf(!enabled)(
       ).rejects.toBeDefined();
     });
 
-    async function failedCheckpoint() {
-      const test = await fixture();
-      const saved = await test.plan();
+    async function failedCheckpoint(platformRoot = false) {
+      const test = await fixture(false, platformRoot, false, platformRoot);
+      const currentPreparation = platformRoot
+        ? await new Preparations(
+            pool,
+            test.repositories,
+            test.profiles,
+            true,
+            platformUpgradeAcceleratorCommit,
+          ).create(test.owner, null, {
+            source: "database",
+            configurationId: test.configurationId,
+            revision: 1,
+            credentialId: test.credentialId,
+            platformUpgrade: {
+              confirm: true,
+              acceleratorCommit: platformUpgradeAcceleratorCommit,
+            },
+          })
+        : undefined;
+      const saved = await test.plan(
+        {},
+        currentPreparation?.id ?? test.preparationId,
+      );
       const run = await test.plans.apply(
         test.owner,
         test.token,
@@ -1788,7 +1894,21 @@ describe.skipIf(!enabled)(
         errorCode: "apply_failed",
       });
       const checkpoint = await test.plans.checkpoint(test.owner, run.id);
-      return { ...test, saved, run, checkpoint };
+      return {
+        ...test,
+        manifest: currentPreparation
+          ? (
+              await new Preparations(
+                pool,
+                test.repositories,
+                test.profiles,
+              ).list(test.owner)
+            ).find((item) => item.id === currentPreparation.id)?.manifest
+          : test.manifest,
+        saved,
+        run,
+        checkpoint,
+      };
     }
 
     it.each(["bootstrap", "migration"])(
@@ -2244,6 +2364,78 @@ describe.skipIf(!enabled)(
         ).toBe(0);
       },
     );
+
+    it("allows a reviewed current-root bootstrap correction only for the exact reconciled checkpoint without changing state", async () => {
+      const test = await failedCheckpoint(true);
+      const preparations = new Preparations(
+        pool,
+        test.repositories,
+        test.profiles,
+        true,
+        platformUpgradeAcceleratorCommit,
+      );
+      const request = {
+        source: "database" as const,
+        configurationId: test.configurationId,
+        revision: 1,
+        credentialId: test.credentialId,
+        platformUpgrade: {
+          confirm: true as const,
+          acceleratorCommit: platformUpgradeAcceleratorCommit,
+        },
+      } as const;
+      await expect(
+        preparations.create(test.owner, null, request),
+      ).rejects.toMatchObject({ code: "platform_upgrade_state_unavailable" });
+      await test.plans.reconcile(test.owner, test.run.id, {
+        confirmRetainState: true,
+        stateVersion: test.checkpoint.stateVersion,
+        checkpointSha256: test.checkpoint.checkpointSha256,
+      });
+      const key = stableStateKey(test.owner, test.manifest);
+      const before = (
+        await migration!.query(
+          "SELECT version,ciphertext,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rows;
+      const starts = test.runner.start.mock.calls.length;
+      const prepared = await preparations.create(test.owner, null, request);
+      expect(
+        (await preparations.list(test.owner)).find(
+          (item) => item.id === prepared.id,
+        )?.manifest.accelerator.commit,
+      ).toBe(platformUpgradeAcceleratorCommit);
+      expect(
+        (
+          await migration!.query(
+            "SELECT version,ciphertext,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1",
+            [key],
+          )
+        ).rows,
+      ).toEqual(before);
+      expect(test.runner.start).toHaveBeenCalledTimes(starts);
+      const fresh = await test.plans.start(test.owner, test.token, prepared.id);
+      expect(
+        (
+          await migration!.query(
+            "SELECT state_key,state_version FROM lzc.plan_runs WHERE id=$1",
+            [fresh.id],
+          )
+        ).rows[0],
+      ).toMatchObject({
+        state_key: key,
+        state_version: test.checkpoint.stateVersion,
+      });
+      await test.plans.cancel(test.owner, fresh.id);
+      await migration!.query(
+        "UPDATE lzc.platform_states SET version=version+1 WHERE state_key=$1",
+        [key],
+      );
+      await expect(
+        preparations.create(test.owner, null, request),
+      ).rejects.toMatchObject({ code: "platform_upgrade_state_unavailable" });
+    });
 
     it("reconciles only explicitly reviewed checkpoints once and preserves state for a corrected fresh plan", async () => {
       const test = await failedCheckpoint();
