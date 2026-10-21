@@ -5,6 +5,7 @@ provider "registry.opentofu.org/hashicorp/time" {
   version     = "0.14.1"
   constraints = ">= 0.14.1, 0.14.1"
   hashes = [
+    "h1:Ssb164oIHIO9VWGljof/xqbxbnPmrT5jyJ+WegAj2+k=",
     "h1:jfH6FAhiYd3hKB29s8cxk9PUKGdEN0fPB3zQ0IE5pdQ=",
     "zh:032ea0f53759a5ade64286ad8a403956bb390860429de3647c6652701c2fff8b",
     "zh:204581f170c50a579357b1a067f407b890adfc0404952cb922fefe2aba7655a8",
@@ -29,6 +30,7 @@ provider "registry.opentofu.org/stackitcloud/stackit" {
   constraints = ">= 0.114.0, 0.114.0"
   hashes = [
     "h1:1LWQQnyh7olj5+Ceu33qfZrtvwV6oB4OatOT01QhHBQ=",
+    "h1:Pw89rX8OcLNY06pMMsdZ48ATRHRdc14Hqr7Gz70jfRo=",
     "zh:096d6a1d716f124e9a7576318ffb2128ae0ac29e7c1f13b1b3c7723b79f760de",
     "zh:0dde99e7b343fa01f8eefc378171fb8621bedb20f59157d6cc8e3d46c738105f",
     "zh:1d48af034c791b5565a86c4905abd309152bf50c2c67c44e4943a750a3b0b060",

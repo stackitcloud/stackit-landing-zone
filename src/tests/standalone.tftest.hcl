@@ -401,3 +401,196 @@ run "standalone_local_project_network" {
     error_message = "A local project network must not require connectivity or an SNA."
   }
 }
+
+run "management_monitoring_nullable_retention" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    observability = {
+      plan_name             = "Observability-Monitoring-Medium-EU01"
+      logs_retention_days   = null
+      traces_retention_days = null
+    }
+  }
+
+  assert {
+    condition     = var.observability.logs_retention_days == null && var.observability.traces_retention_days == null && try(var.observability.metrics_retention_days, null) == null
+    error_message = "Monitoring must preserve omitted/null logs and traces retention while leaving metrics at the service default."
+  }
+}
+
+run "management_monitoring_rejects_logs_retention" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    observability = {
+      plan_name           = "Observability-Monitoring-Medium-EU01"
+      logs_retention_days = 14
+    }
+  }
+
+  expect_failures = [var.observability]
+}
+
+run "management_observability_preserves_explicit_retention" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    observability = {
+      plan_name             = "Observability-Medium-EU01"
+      logs_retention_days   = 14
+      traces_retention_days = 7
+    }
+  }
+
+  assert {
+    condition     = stackit_observability_instance.this[0].logs_retention_days == 14 && stackit_observability_instance.this[0].traces_retention_days == 7
+    error_message = "Explicit retention values must survive unchanged for a full Observability plan."
+  }
+}
+
+run "root_monitoring_omits_unsupported_retention" {
+  command = plan
+
+  variables {
+    observability = {
+      plan_name = "Observability-Monitoring-Medium-EU01"
+    }
+  }
+
+  assert {
+    condition     = try(var.observability.logs_retention_days, null) == null && try(var.observability.traces_retention_days, null) == null
+    error_message = "Root defaults must not inject unsupported log or trace retention into Monitoring plans."
+  }
+}
+
+run "root_monitoring_rejects_traces_retention" {
+  command = plan
+
+  variables {
+    observability = {
+      plan_name             = "Observability-Monitoring-Medium-EU01"
+      traces_retention_days = 14
+    }
+  }
+
+  expect_failures = [var.observability]
+}
+
+run "management_project_unique_bucket_defaults" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "a-very-long-but-valid-management-resource-name-prefix"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+  }
+
+  assert {
+    condition = alltrue([
+      for name in [stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name, stackit_objectstorage_bucket.audit_logs.name] :
+      length(name) <= 63 && strcontains(name, stackit_resourcemanager_project.this.project_id)
+    ]) && length(toset([stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name, stackit_objectstorage_bucket.audit_logs.name])) == 3
+    error_message = "All bucket defaults must contain the full project UUID, remain distinct and fit the S3 name limit."
+  }
+}
+
+run "management_legacy_bucket_names_require_explicit_choice" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    bucket_naming       = "legacy"
+  }
+
+  assert {
+    condition     = stackit_objectstorage_bucket.default.name == "tst-pltfm-mgmt-prod-default" && stackit_objectstorage_bucket.tfstate.name == "tst-pltfm-mgmt-prod-tfstate" && stackit_objectstorage_bucket.audit_logs.name == "tst-pltfm-mgmt-prod-audit-logs"
+    error_message = "Explicit legacy mode must retain all existing bucket names exactly."
+  }
+}
+
+run "frontend_omits_all_retention_overrides" {
+  command = plan
+
+  variables {
+    observability = {
+      plan_name = "Observability-Frontend-Starter-EU01"
+    }
+  }
+}
+
+run "frontend_rejects_metrics_override" {
+  command = plan
+
+  variables {
+    observability = {
+      plan_name              = "Observability-Frontend-Starter-EU01"
+      metrics_retention_days = 90
+    }
+  }
+
+  expect_failures = [var.observability]
+}
+
+run "observability_rejects_invalid_trace_retention" {
+  command = plan
+
+  variables {
+    observability = {
+      traces_retention_days = 31
+    }
+  }
+
+  expect_failures = [var.observability]
+}
+
+run "management_identical_prefix_distinct_project" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "a-very-long-but-valid-management-resource-name-prefix"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+  }
+
+  override_resource {
+    target = stackit_resourcemanager_project.this
+    values = {
+      project_id = "99999999-9999-4999-8999-999999999999"
+    }
+  }
+
+  assert {
+    condition     = stackit_objectstorage_bucket.tfstate.name != "${substr(var.naming_pattern, 0, 18)}-11111111-1111-4111-8111-111111111111-tfstate" && strcontains(stackit_objectstorage_bucket.tfstate.name, "99999999-9999-4999-8999-999999999999")
+    error_message = "Identical naming prefixes in distinct projects must produce distinct bucket names using the full immutable UUID."
+  }
+}

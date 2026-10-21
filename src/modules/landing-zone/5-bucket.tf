@@ -1,14 +1,25 @@
+locals {
+  # Keep legacy names stable; opt-in project UUID names fit S3's 63-character limit.
+  bucket_names = {
+    for purpose in ["default", "tfstate"] : purpose => (
+      var.bucket_naming == "project-id"
+      ? "${substr(var.naming_pattern, 0, 63 - length(purpose) - 38)}-${stackit_resourcemanager_project.this.project_id}-${purpose}"
+      : "${var.naming_pattern}-${purpose}"
+    )
+  }
+}
+
 ####################
 ## OBJECT STORAGE ##
 ####################
 
 resource "stackit_objectstorage_bucket" "default" {
-  name       = "${var.naming_pattern}-default"
+  name       = local.bucket_names["default"]
   project_id = stackit_resourcemanager_project.this.project_id
 }
 
 resource "stackit_objectstorage_bucket" "tfstate" {
-  name       = "${var.naming_pattern}-tfstate"
+  name       = local.bucket_names["tfstate"]
   project_id = stackit_resourcemanager_project.this.project_id
 
   depends_on = [

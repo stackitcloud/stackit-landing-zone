@@ -28,6 +28,7 @@ module "management" {
   organization_id              = var.organization_id
   labels                       = local.resource_labels
   observability                = var.observability
+  bucket_naming                = var.bucket_naming
   audit_logs                   = var.audit_logs
   federated_identity_providers = var.federated_identity_providers
 }
@@ -273,6 +274,7 @@ module "landing_zone" {
   organization_id        = var.organization_id
   parent_container_id    = each.value.corporate ? module.governance.folder_container_ids["landing_zones_corporate"] : module.governance.folder_container_ids["landing_zones_public"]
   naming_pattern         = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
+  bucket_naming          = var.bucket_naming
   dns_zone_name          = try("${each.value.project_code}-${each.value.env}-${var.region}-${split(".", values(module.connectivity[0].dns_zone_dns_names)[0])[0]}.stackit.run", null)
   network_area_id        = each.value.corporate ? try(module.connectivity[0].network_area_id[each.value.network_area_key], null) : null
   corporate              = each.value.corporate
@@ -296,6 +298,7 @@ module "landing_zone_eu01" {
   organization_id        = var.organization_id
   parent_container_id    = each.value.corporate ? module.governance.folder_container_ids["landing_zones_corporate"] : module.governance.folder_container_ids["landing_zones_public"]
   naming_pattern         = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
+  bucket_naming          = var.bucket_naming
   dns_zone_name          = try("${each.value.project_code}-${each.value.env}-eu01-${split(".", values(module.connectivity_eu01[0].dns_zone_dns_names)[0])[0]}.stackit.run", null)
   network_area_id        = each.value.corporate ? try(module.connectivity_eu01[0].network_area_id[each.value.network_area_key], null) : null
   corporate              = each.value.corporate
@@ -319,6 +322,7 @@ module "landing_zone_eu02" {
   organization_id        = var.organization_id
   parent_container_id    = each.value.corporate ? module.governance.folder_container_ids["landing_zones_corporate"] : module.governance.folder_container_ids["landing_zones_public"]
   naming_pattern         = "${var.company_code}-lz-${each.value.project_code}-${each.value.env}"
+  bucket_naming          = var.bucket_naming
   dns_zone_name          = try("${each.value.project_code}-${each.value.env}-eu02-${split(".", values(module.connectivity_eu02[0].dns_zone_dns_names)[0])[0]}.stackit.run", null)
   network_area_id        = each.value.corporate ? try(module.connectivity_eu02[0].network_area_id[each.value.network_area_key], null) : null
   corporate              = each.value.corporate

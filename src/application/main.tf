@@ -45,6 +45,7 @@ module "application" {
   organization_id        = var.platform_contract.organization_id
   parent_container_id    = try(local.target.folder_id, "")
   naming_pattern         = local.naming_pattern
+  bucket_naming          = var.bucket_naming
   project_name           = var.application.name
   owner_email            = var.application.owner_email
   custom_roles           = var.application.custom_roles
