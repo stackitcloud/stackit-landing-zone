@@ -64,7 +64,7 @@ variable "observability" {
 
   validation {
     condition = var.observability == null ? true : (
-      !can(regex("^Observability-(Frontend|MetricsEndpoint)", var.observability.plan_name)) ||
+      !can(regex("^Observability-(Frontend|Metrics-?Endpoint)", var.observability.plan_name)) ||
       alltrue([for value in [var.observability.logs_retention_days, var.observability.traces_retention_days, var.observability.metrics_retention_days, var.observability.metrics_retention_days_5m_downsampling, var.observability.metrics_retention_days_1h_downsampling] : value == null])
     )
     error_message = "Frontend and MetricsEndpoint plans do not support retention overrides. Omit all retention fields or set them to null."

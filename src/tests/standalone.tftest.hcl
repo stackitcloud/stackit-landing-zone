@@ -594,3 +594,16 @@ run "management_identical_prefix_distinct_project" {
     error_message = "Identical naming prefixes in distinct projects must produce distinct bucket names using the full immutable UUID."
   }
 }
+
+run "metrics_endpoint_rejects_retention_override" {
+  command = plan
+
+  variables {
+    observability = {
+      plan_name              = "Observability-Metrics-Endpoint-100k-EU01"
+      metrics_retention_days = 90
+    }
+  }
+
+  expect_failures = [var.observability]
+}
