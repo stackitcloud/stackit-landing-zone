@@ -21,6 +21,7 @@ import {
 import {
   applicationAcceleratorRevisionSchema,
   applicationOrderSchema,
+  applicationPlanScopeIssues,
   applicationPublicationSchema,
   assertBoundedJson,
   compileApplicationPlan,
@@ -60,6 +61,7 @@ export const applicationRunnerPackageSchema = z.strictObject({
     "c4b43c36af198985980b17626c48d357795e3fbd",
     "88149782bf8e91dcdbb43a203b54337886023f7f",
     "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+    "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
   ]),
   providerLockSha256: z.literal(
     "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
@@ -1628,6 +1630,7 @@ export class Applications {
           "c4b43c36af198985980b17626c48d357795e3fbd",
           "88149782bf8e91dcdbb43a203b54337886023f7f",
           "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+          "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
         ].includes(prepared.plan.acceleratorRevision)
       )
         throw new ApplicationError(409, "application_runner_revision_required");
@@ -2419,6 +2422,7 @@ export class Applications {
       "c4b43c36af198985980b17626c48d357795e3fbd",
       "88149782bf8e91dcdbb43a203b54337886023f7f",
       "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+      "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
     ]).parse(acceleratorRevision);
     if (!this.profiles || !this.secrets)
       throw new ApplicationError(
@@ -2571,9 +2575,11 @@ export class Applications {
     const settings = resolved.resolution.settings;
     const observability = objectValue(settings.observability);
     if (
-      template.kind !== "public" ||
-      settings.network_enabled !== true ||
-      Object.keys(template.namespaceServices ?? {}).length
+      applicationPlanScopeIssues(
+        template,
+        settings,
+        published.accelerator_revision,
+      ).length
     )
       throw new ApplicationError(409, "application_plan_scope_not_supported");
     const plan = compileApplicationPlan({

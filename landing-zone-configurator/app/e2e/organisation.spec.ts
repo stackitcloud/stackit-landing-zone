@@ -2483,6 +2483,11 @@ for (const { publishing, applied, renewProof, executing } of [
           .click();
         if (renewProof) {
           await expect(
+            page.getByText(
+              /Die Auswahl benötigt einen aktuellen persönlichen STACKIT-Organisationsnachweis/,
+            ),
+          ).toBeVisible();
+          await expect(
             page
               .getByLabel("Erfolgreicher Plattform-Apply", { exact: true })
               .locator("option"),
@@ -2568,6 +2573,12 @@ for (const { publishing, applied, renewProof, executing } of [
       await expect(
         page.getByLabel("Plattformziel", { exact: true }),
       ).toBeDisabled();
+      await expect(
+        page.getByRole("button", {
+          name: "Konfiguration auswählen",
+          exact: true,
+        }),
+      ).toBeVisible();
       await page
         .getByLabel("Application Landing Zone Template aus meinem Entwurf", {
           exact: true,

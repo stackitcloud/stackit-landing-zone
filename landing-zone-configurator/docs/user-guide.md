@@ -60,6 +60,26 @@ and provide its exposed parameters. A template draft is not an Application
 instance, and publishing does not deploy one. Existing instances are not silently
 upgraded when a new version is published.
 
+### Bind published templates to an applied platform
+
+Open the saved platform configuration as Platform Engineer in the same workspace.
+Publication reads its template drafts from this open configuration; platform contracts
+and State backends are loaded independently. Under **Platform binding**, renew current
+personal **STACKIT organization proof** if the successful-Apply list is empty. A technical
+service account does not replace that proof. Only successful Applies matching current,
+unlocked State appear. Review the selected Apply's outputs and folders and approve its
+platform contract using the technical credential profile.
+
+Under **Publication**, select the template, approved contract, matching target and
+permitted Application Owner groups. Publish a new immutable version; existing versions
+and orders are not rebound. The invited owner selects that version in the same workspace.
+Public projects support optional local networking; Corporate projects use the approved
+SNA target. Both support optional Secrets Manager and Observability. Namespace services
+still need a separate Kubernetes execution path. Symbolic Observability network ACL
+bindings remain blocked until their effective egress source is qualified. Existing
+versions on older Runner sources retain their previous execution scope. Each order uses
+its own State key; publication and ordering do not approve an infrastructure Apply.
+
 ## Plan and Apply
 
 Choose the correct environment and target, bind the authorized technical

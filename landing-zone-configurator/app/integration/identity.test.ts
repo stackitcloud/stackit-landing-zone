@@ -3894,7 +3894,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       expect(
         await applications.prepareJob(owner, jobOrder.id, jobRequest),
       ).toEqual(job);
-      const cliRevision = "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f";
+      const cliRevision = "9e7fb46c329aca32e878ce1f0ea3b944ea240354";
       const cliVersion = await applications.publish(engineer, {
         template,
         ...binding,
@@ -3925,6 +3925,106 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         cliOrder.id,
         cliJobRequest,
       );
+      // The current immutable source supports networkless Public and routed Corporate
+      // instances; neither must inherit the platform State or another order's key.
+      const corporateTarget = {
+        folder_id: randomUUID(),
+        region: "eu01",
+        corporate: true,
+        network_area_id: randomUUID(),
+        firewall_next_hop_ip: "10.0.2.6",
+        ipv4_nameservers: ["192.0.2.53"],
+      };
+      const corporateContract = await applications.approvePlatformContract(
+        engineer,
+        {
+          ...input,
+          targets: { corporate: corporateTarget },
+        },
+      );
+      for (const kind of ["public", "corporate"] as const) {
+        const currentVersion = await applications.publish(engineer, {
+          template: {
+            ...template,
+            id: randomUUID(),
+            key: `current-${kind}`,
+            kind,
+            settings: { ...template.settings, network_enabled: false },
+          },
+          acceleratorRevision: cliRevision,
+          platformRevision:
+            kind === "corporate"
+              ? corporateContract.document.revision
+              : approved.document.revision,
+          targetKey: kind,
+          deploymentPolicy: "direct",
+        });
+        const currentOrder = await applications.order(owner, {
+          versionId: currentVersion.id,
+          idempotencyKey: randomUUID(),
+          name: `Current ${kind}`,
+          parameters: {},
+        });
+        const preparedInput = await applications.preparePlanInput(
+          owner,
+          currentOrder.id,
+        );
+        expect(preparedInput.plan.variables.application).toMatchObject({
+          network_enabled: false,
+        });
+        expect(preparedInput.plan.stateKey).toBe(
+          `applications/${tenantId}/${currentOrder.id}/terraform.tfstate`,
+        );
+        expect(preparedInput.plan.stateKey).not.toBe(cliOrder.stateKey);
+        expect(
+          preparedInput.plan.variables.platform_contract.targets[kind],
+        ).toEqual(
+          kind === "corporate" ? corporateTarget : input.targets.public,
+        );
+        const currentJob = await applications.prepareJob(
+          owner,
+          currentOrder.id,
+          {
+            idempotencyKey: randomUUID(),
+            confirmPlan: true,
+          },
+        );
+        expect(
+          (
+            await migration.query(
+              "SELECT accelerator_revision,state_key FROM lzc.application_job_grants WHERE job_id=$1",
+              [currentJob.id],
+            )
+          ).rows[0],
+        ).toEqual({
+          accelerator_revision: cliRevision,
+          state_key: currentOrder.stateKey,
+        });
+        await expect(
+          applications.preparePlanInput(engineer, currentOrder.id),
+        ).rejects.toMatchObject({ status: 404 });
+      }
+      const legacyCorporate = await applications.publish(engineer, {
+        template: {
+          ...template,
+          id: randomUUID(),
+          key: "legacy-corporate",
+          kind: "corporate",
+        },
+        acceleratorRevision: "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+        platformRevision: corporateContract.document.revision,
+        targetKey: "corporate",
+        deploymentPolicy: "direct",
+      });
+      const legacyCorporateOrder = await applications.order(owner, {
+        versionId: legacyCorporate.id,
+        idempotencyKey: randomUUID(),
+        name: "Legacy corporate",
+        parameters: {},
+      });
+      await expect(
+        applications.preparePlanInput(owner, legacyCorporateOrder.id),
+      ).rejects.toMatchObject({ code: "application_plan_scope_not_supported" });
       const plannedObservability = (
         await withTenant(pool, owner, (client) =>
           client.query(
@@ -5604,6 +5704,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           ).json(),
         ).toMatchObject({
           contracts: [
+            { document: { revision: corporateContract.document.revision } },
             { document: { revision: next.document.revision } },
             { document: { revision: approved.document.revision } },
           ],

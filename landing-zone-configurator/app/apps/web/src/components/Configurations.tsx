@@ -1,5 +1,6 @@
 import {
   type EditorDraft,
+  editorIssues,
   initialPlanIssues,
   readEditorDraft,
   recordOrganization,
@@ -20,10 +21,15 @@ export function configurationDeploymentSelection(
     "id" | "revision" | "draft" | "name"
   >,
 ): DeploymentSelection {
-  const record = saveEditorDraft(
-    configuration.id,
-    readEditorDraft(configuration.draft),
-  );
+  const draft = readEditorDraft(configuration.draft);
+  const validationIssues = editorIssues(draft);
+  if (validationIssues.length)
+    throw new Error(
+      validationIssues
+        .map((issue) => `${issue.field}: ${issue.message}`)
+        .join(" "),
+    );
+  const record = saveEditorDraft(configuration.id, draft);
   const issues = initialPlanIssues(record);
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join(" "));

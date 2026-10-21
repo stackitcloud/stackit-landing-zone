@@ -74,10 +74,10 @@ behalten ihre bisherigen Projekte. [Details und Bestandsschutz](project-template
 
 ## Application-Plan-Input und Plattformvertrag
 
-Der lokal aktivierte Application-Katalog hat einen eigenen Freigabe- und Bestellpfad.
-Er startet **noch keinen CF-Task** und legt keinen State an. `Plan-Input prüfen`
-ist eine erneute serverseitige Qualifikation und zeigt Terraform-Variablen,
-Entrypoint und Ausführungssperre, kein berechnetes Ressourcenergebnis.
+Der Application-Katalog besitzt einen eigenen Freigabe- und Bestellpfad.
+`Plan-Input prüfen` startet keinen CF-Task und legt keinen State an; es zeigt
+serverseitig geprüfte Terraform-Variablen und den Entrypoint. Ein tatsächlicher
+Cloud-Plan wird über den separat aktivierten Application-Runner ausgeführt.
 
 Ein Platform Engineer kann im Application-Katalog einen JSON-Vertrag aus bereits
 angewendeten, geprüften Plattform-Outputs laden. Das Dokument ist kein Terraform-State
@@ -121,20 +121,26 @@ Diese Ressourcenprüfung bleibt vor einer zukünftigen Job-/Credential-Freigabe 
   Client-Identitäts-/Backend-Overrides werden abgewiesen. Identitätsablauf, Widerruf,
   Rollenentzug und geänderte Besteller-E-Mail werden erneut geprüft.
 - Der Compiler verwendet exakt die Vertrags- und Template-Version der Bestellung,
-  feste Parameterregeln und den eigenen Instanz-State-Key. Die MVP-Teilmenge ist
-  Public mit lokalem Netz, ohne Observability-Ausführung oder Namespace-Dienste.
+  feste Parameterregeln und den eigenen Instanz-State-Key. Der aktuelle geprüfte
+  Application-Quellstand unterstützt Public-Projekte mit oder ohne lokales Netz
+  und Corporate-Projekte am ausgewählten Plattformziel, optional mit Secrets Manager
+  und Observability. Namespace-Dienste bleiben bis zum eigenen Kubernetes-Ausführungspfad
+  gesperrt. Ältere unveränderliche Quellversionen behalten die frühere Einschränkung
+  auf Public-Projekte mit lokalem Netz.
   Die Antwort meldet ausdrücklich `cloudPlanExecuted: false` und
   `executionEnabled: false`; keine Schlüssel werden an den Browser geliefert.
   Die unveraenderliche Versions-/Bestellpolicy wird als `applyPolicy` uebernommen
   (`approval-required` oder `direct`); `requiresExplicitApplyApproval: true`
   bleibt fuer beide gesetzt. Eine direkte Policy ist keine Ausfuehrungsfreigabe.
 
-Für den tatsächlichen eigenen Cloud-Plan fehlen noch ein unveränderlich freigegebenes
-Application-Runner-Artefakt, getrenntes State-Backend mit Locking und eng begrenzte
-serverseitige Nutzung des PE-Zugangs durch genau den autorisierten Job. Der bisherige
-Runner-Pin enthält kein Application-Root. Er wird nicht auf ungeprüften Arbeitsbaumcode
-umgestellt. Application-Apply bleibt deaktiviert; der freigabegebundene
-Plattform-Apply-Pfad ist davon getrennt.
+Tatsächliche Application-Plans und -Applies verwenden das separat paketierte,
+unveränderliche Application-Root, instanzbezogenen S3-State und auftragsgebundene
+serverseitige Credential-Grants. Die Laufzeitfähigkeiten zeigen, ob der konfigurierte
+Application-Runner aktiviert ist. `executionEnabled: false` bei Compiler- oder
+Vorschauantworten bedeutet, dass diese Aufrufe keine Cloud-Ausführung gestartet haben;
+es bedeutet nicht, dass die gesamte Laufzeit deaktiviert ist. Ein gespeicherter
+Apply bleibt separat zu bestätigen und an das genaue Planartefakt gebunden.
+Ein Quell-Merge aktiviert oder deployt diese Laufzeit nicht.
 
 <a id="common-editor-and-execution-scope"></a>
 

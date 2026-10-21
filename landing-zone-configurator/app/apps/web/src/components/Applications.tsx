@@ -10,6 +10,7 @@ import {
   appliedPlatformSourceSchema,
 } from "@lzc/contracts";
 import {
+  applicationPlanScopeIssues,
   type CommonConfiguration,
   type JsonValue,
   objectValue,
@@ -149,7 +150,7 @@ const errors: Record<string, string> = {
   application_parameters_not_qualified:
     "Die Bestellparameter sind noch nicht vollständig qualifiziert.",
   application_plan_scope_not_supported:
-    "Der MVP-Plan unterstützt Public-Projekte mit lokalem Netz, optionaler Observability und ohne Namespace-Dienste.",
+    "Diese Template-Version enthält noch nicht unterstützte Dienste oder verwendet eine ältere Runner-Revision. Die Hinweise im Katalog zeigen die fehlenden Voraussetzungen.",
   application_instance_not_found:
     "Diese eigene Bestellung ist in diesem Arbeitsbereich nicht verfügbar.",
 };
@@ -2092,7 +2093,7 @@ export function Applications({
       setActiveTab("catalogue");
       setNotice(
         formatMessage(
-          "{{value0}} · Version {{value1}} veröffentlicht. Cloud-Ausführung bleibt gesperrt.",
+          "{{value0}} · Version {{value1}} veröffentlicht. Es wurde kein Plan oder Apply gestartet.",
           { value0: published.template.name, value1: published.version },
         ),
       );
@@ -2289,7 +2290,12 @@ export function Applications({
       if (
         instance.deploymentPolicy === "direct" &&
         planEnabled &&
-        instance.executionConfigured
+        instance.executionConfigured &&
+        applicationPlanScopeIssues(
+          selected.template,
+          instance.settings,
+          selected.acceleratorRevision,
+        ).length === 0
       ) {
         await request(`instances/${instance.id}/plan`, session, {
           idempotencyKey,
@@ -2574,6 +2580,11 @@ export function Applications({
               </div>
               {loaded && !appliedPlatforms.length && (
                 <>
+                  <p className="field-hint">
+                    {t(
+                      "Die Auswahl benötigt einen aktuellen persönlichen STACKIT-Organisationsnachweis sowie einen abgeschlossenen Apply auf dem aktuellen, entsperrten State. Ein technischer Service-Account ersetzt den persönlichen Nachweis nicht.",
+                    )}
+                  </p>
                   <p role="status">
                     {t(
                       "Kein aktueller erfolgreicher Plattform-Apply verfügbar.",
@@ -2676,6 +2687,28 @@ export function Applications({
           hidden={selectedTab !== "publish"}
         >
           <h2>{t("Application Landing Zone Template veröffentlichen")}</h2>
+          <p className="field-hint">
+            {t(
+              "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.",
+            )}
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={onSelectConfiguration}
+          >
+            {t("Konfiguration auswählen")}
+          </button>
+          {publicationTemplate &&
+            applicationPlanScopeIssues(
+              publicationTemplate,
+              publicationTemplate.settings,
+              runnerRevision ?? "",
+            ).map((issue) => (
+              <p key={issue} role="status">
+                {t(issue)}
+              </p>
+            ))}
           {delegationEnabled && (
             <fieldset disabled={busy}>
               <legend>{t("Plattform-Ausführung")}</legend>
@@ -2927,20 +2960,11 @@ export function Applications({
               )}
             </div>
           ) : (
-            <>
-              <p className="muted">
-                {t(
-                  "Kein Application Landing Zone Template im aktuellen Entwurf.",
-                )}
-              </p>
-              <button
-                type="button"
-                className="button"
-                onClick={onSelectConfiguration}
-              >
-                {t("Konfiguration auswählen")}
-              </button>
-            </>
+            <p className="muted">
+              {t(
+                "Kein Application Landing Zone Template im aktuellen Entwurf.",
+              )}
+            </p>
           )}
         </section>
       )}
@@ -3159,6 +3183,15 @@ export function Applications({
                   : t("STACKIT-Standard")}
               </dd>
             </dl>
+            {applicationPlanScopeIssues(
+              selected.template,
+              selected.template.settings,
+              selected.acceleratorRevision,
+            ).map((issue) => (
+              <p key={issue} role="status">
+                {t(issue)}
+              </p>
+            ))}
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="application-name">{t("Projektname")}</label>

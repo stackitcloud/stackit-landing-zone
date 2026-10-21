@@ -26,3 +26,15 @@ env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=
   "$tofu_bin" -chdir="$work_dir/src/modules/landing-zone" init -backend=false -input=false -no-color
 env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
   "$tofu_bin" -chdir="$work_dir/src/modules/landing-zone" test -no-color
+
+# Exercise the exact source shipped in the Application Runner with compiler-produced
+# Public/Corporate orders, both regions, optional networking and Observability.
+application_commit="$(node --input-type=module -e 'import {applicationMvpAcceleratorCommit} from "./packages/contracts/dist/index.js"; process.stdout.write(applicationMvpAcceleratorCommit);')"
+if ! git -C "$repo_dir" cat-file -e "$application_commit^{commit}" 2>/dev/null; then
+  git -C "$repo_dir" fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$application_commit"
+fi
+node "$app_dir/scripts/prepare-application-project-contract.ts" "$work_dir/pinned"
+env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+  "$tofu_bin" -chdir="$work_dir/pinned/src/application" init -backend=false -lockfile=readonly -input=false -no-color
+env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+  "$tofu_bin" -chdir="$work_dir/pinned/src/application" test -no-color
