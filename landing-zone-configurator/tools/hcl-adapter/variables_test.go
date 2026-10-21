@@ -19,12 +19,16 @@ func TestCompleteRootVariableInventory(t *testing.T) {
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Variables) != 29 {
+	if len(result.Variables) != 30 {
 		t.Fatalf("review Accelerator feature coverage: %d inputs", len(result.Variables))
 	}
 	variables := map[string]variableDefinition{}
 	for _, variable := range result.Variables {
 		variables[variable.Name] = variable
+	}
+	bucketNaming, exists := variables["bucket_naming"]
+	if !exists || string(bucketNaming.Type) != `"string"` || string(bucketNaming.Default) != `"project-id"` || bucketNaming.Required || bucketNaming.Sensitive || len(bucketNaming.Validations) == 0 {
+		t.Fatal("project-qualified bucket naming metadata lost")
 	}
 	namespace, exists := variables["platform_contract_namespace"]
 	if !exists || string(namespace.Type) != `"string"` || namespace.Sensitive || len(namespace.Validations) == 0 {

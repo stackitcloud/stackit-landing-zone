@@ -57,7 +57,7 @@ jobs:
           npm run build:packages
       - name: Test HCL importer and exporter and verify catalogue freshness
         run: |
-          go test ./...
+          go test -count=1 ./...
           go run . -check
           go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
           go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json -check

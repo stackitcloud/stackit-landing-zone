@@ -294,6 +294,12 @@ separate explicit operations, not part of application release validation.
 Raw CF logs are not exported to CI, since router URLs may contain OAuth codes.
 Task status, sanitized diagnostics and public health checks provide release evidence.
 
+The Dev deployment job has a 45-minute total budget for Runner staging, database
+migrations, application staging and the cold/warm Runner checks. Individual step
+deadlines still apply. Native input coverage runs with `go test -count=1 ./...`
+in both PR validation and release builds so it checks the current Accelerator
+source rather than accepting a cached test result.
+
 ### Dev release without live Assistant qualification
 
 During Model Serving outages, select

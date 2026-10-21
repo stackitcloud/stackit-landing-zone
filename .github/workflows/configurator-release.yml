@@ -92,7 +92,7 @@ jobs:
       - name: Verify source templates match the release catalogue
         working-directory: landing-zone-configurator/tools/hcl-adapter
         run: |
-          go test ./...
+          go test -count=1 ./...
           go run . -check
           go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
           go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json -check
@@ -198,7 +198,7 @@ jobs:
       actions: read
       contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment:
       name: lzc-dev-release
       url: https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
