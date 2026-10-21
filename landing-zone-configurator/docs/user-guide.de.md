@@ -67,6 +67,29 @@ Version und geben deren freigegebene Parameter an. Ein Vorlagenentwurf ist keine
 Application-Instanz, und eine Veröffentlichung deployt keine Instanz. Bestehende
 Instanzen werden bei Veröffentlichung einer neuen Version nicht stillschweigend aktualisiert.
 
+### Veröffentlichte Templates an eine bereitgestellte Plattform binden
+
+Als Platform Engineer im selben Arbeitsbereich die gespeicherte Plattformkonfiguration
+öffnen. Die Veröffentlichung lädt deren Template-Entwürfe aus dieser geöffneten
+Konfiguration; Plattformverträge und State-Backends werden unabhängig davon geladen.
+Unter **Plattformanbindung** bei leerer Apply-Auswahl den aktuellen persönlichen
+**STACKIT-Organisationsnachweis** erneuern. Ein technischer Service-Account ersetzt ihn
+nicht. Nur erfolgreiche Applies auf dem aktuellen, entsperrten State werden angezeigt.
+Outputs und Zielordner des ausgewählten Applies prüfen und dessen Plattformvertrag mit
+dem technischen Zugangsprofil freigeben.
+
+Unter **Veröffentlichung** Template, freigegebenen Vertrag, passendes Ziel und berechtigte
+Application-Owner-Gruppen auswählen. Eine neue unveränderliche Version veröffentlichen;
+bestehende Versionen und Bestellungen werden nicht umgebunden. Der eingeladene Owner
+wählt diese Version im selben Arbeitsbereich. Public-Projekte unterstützen ein optionales
+lokales Netz; Corporate-Projekte verwenden das freigegebene SNA-Ziel. Beide unterstützen
+optional Secrets Manager und Observability. Namespace-Dienste benötigen weiterhin einen
+eigenen Kubernetes-Ausführungspfad. Symbolische Observability-Netz-ACL-Bindungen bleiben
+bis zur Qualifikation ihrer tatsächlichen Egress-Quelle gesperrt. Bestehende Versionen
+mit älteren Runner-Quellen behalten ihren früheren Ausführungsumfang. Jede Bestellung
+verwendet einen eigenen State-Schlüssel; Veröffentlichung und Bestellung geben keinen
+Infrastruktur-Apply frei.
+
 <a id="plan-and-apply"></a>
 ## Plan und Apply
 

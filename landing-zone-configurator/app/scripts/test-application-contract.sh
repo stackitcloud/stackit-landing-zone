@@ -26,3 +26,11 @@ env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=
   "$tofu_bin" -chdir="$work_dir/src/modules/landing-zone" init -backend=false -input=false -no-color
 env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
   "$tofu_bin" -chdir="$work_dir/src/modules/landing-zone" test -no-color
+
+# Exercise the exact source shipped in the Application Runner with compiler-produced
+# Public/Corporate orders, both regions, optional networking and Observability.
+node "$app_dir/scripts/prepare-application-project-contract.ts" "$work_dir/pinned"
+env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+  "$tofu_bin" -chdir="$work_dir/pinned/src/application" init -backend=false -lockfile=readonly -input=false -no-color
+env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
+  "$tofu_bin" -chdir="$work_dir/pinned/src/application" test -no-color

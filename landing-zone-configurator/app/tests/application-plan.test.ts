@@ -1,5 +1,7 @@
+import { applicationMvpAcceleratorCommit } from "@lzc/contracts";
 import { expect, it } from "vitest";
 import {
+  applicationPlanScopeIssues,
   resolveApplicationOrder,
   validateApplicationPublication,
 } from "../packages/domain/src/application-catalogue.js";
@@ -424,3 +426,45 @@ it.each([true, false])(
     expect(plan.executionEnabled).toBe(false);
   },
 );
+
+it.each(["public", "corporate"] as const)(
+  "allows current %s project plans with optional local networking",
+  (kind) => {
+    for (const network_enabled of [true, false]) {
+      expect(
+        applicationPlanScopeIssues(
+          { kind },
+          { network_enabled },
+          applicationMvpAcceleratorCommit,
+        ),
+      ).toEqual([]);
+    }
+  },
+);
+it("retains the previous source scope and rejects namespaces rather than silently dropping them", () => {
+  const legacy = "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f";
+  expect(
+    applicationPlanScopeIssues(
+      { kind: "public" },
+      { network_enabled: true },
+      legacy,
+    ),
+  ).toEqual([]);
+  expect(
+    applicationPlanScopeIssues(
+      { kind: "public" },
+      { network_enabled: false },
+      legacy,
+    ),
+  ).toHaveLength(1);
+  expect(
+    applicationPlanScopeIssues({ kind: "corporate" }, {}, legacy),
+  ).toHaveLength(1);
+  expect(
+    applicationPlanScopeIssues(
+      { kind: "public", namespaceServices: { example: {} } },
+      { network_enabled: true },
+      applicationMvpAcceleratorCommit,
+    )[0],
+  ).toContain("Namespace-Dienste");
+});

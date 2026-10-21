@@ -12,6 +12,7 @@ export const applicationAcceleratorRevisionSchema = z.enum([
   "c4b43c36af198985980b17626c48d357795e3fbd",
   "88149782bf8e91dcdbb43a203b54337886023f7f",
   "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+  "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
 ]);
 
 export const applicationPublicationSchema = z
@@ -103,4 +104,30 @@ export function resolveApplicationOrder(
     context,
   );
   return { order, resolution };
+}
+
+/** Execution support is bound to the published source, never inferred from editor coverage. */
+export function applicationPlanScopeIssues(
+  template: Pick<
+    PublishedProjectTemplate["template"],
+    "kind" | "namespaceServices"
+  >,
+  settings: Record<string, unknown>,
+  acceleratorRevision: string,
+): string[] {
+  const issues: string[] = [];
+  if (template.kind === "sandbox")
+    issues.push("Sandbox-Bestellungen sind noch nicht ausführbar.");
+  if (Object.keys(template.namespaceServices ?? {}).length)
+    issues.push(
+      "Namespace-Dienste benötigen einen gesonderten Kubernetes-Ausführungspfad und sind noch nicht bestellbar.",
+    );
+  if (
+    acceleratorRevision !== "9e7fb46c329aca32e878ce1f0ea3b944ea240354" &&
+    (template.kind !== "public" || settings.network_enabled !== true)
+  )
+    issues.push(
+      "Diese ältere Template-Version unterstützt nur Public-Projekte mit lokalem Netz. Für Corporate-Projekte oder Public-Projekte ohne Netz eine neue Version mit der aktuellen Runner-Revision veröffentlichen.",
+    );
+  return issues;
 }

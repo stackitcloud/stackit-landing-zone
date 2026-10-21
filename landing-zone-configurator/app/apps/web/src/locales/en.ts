@@ -1,4 +1,18 @@
 export const englishMessages: Record<string, string> = {
+  "{{value0}} · Version {{value1}} veröffentlicht. Es wurde kein Plan oder Apply gestartet.":
+    "{{value0}} · Version {{value1}} published. No Plan or Apply was started.",
+  "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.":
+    "Templates come from the open configuration. The platform contract and state backend are loaded separately.",
+  "Die Auswahl benötigt einen aktuellen persönlichen STACKIT-Organisationsnachweis sowie einen abgeschlossenen Apply auf dem aktuellen, entsperrten State. Ein technischer Service-Account ersetzt den persönlichen Nachweis nicht.":
+    "This list requires current personal STACKIT organization proof and a completed Apply matching the current unlocked state. A technical service account does not replace personal proof.",
+  "Diese Template-Version enthält noch nicht unterstützte Dienste oder verwendet eine ältere Runner-Revision. Die Hinweise im Katalog zeigen die fehlenden Voraussetzungen.":
+    "This template version contains unsupported services or uses an older Runner revision. The catalogue explains the missing prerequisites.",
+  "Sandbox-Bestellungen sind noch nicht ausführbar.":
+    "Sandbox orders are not executable yet.",
+  "Namespace-Dienste benötigen einen gesonderten Kubernetes-Ausführungspfad und sind noch nicht bestellbar.":
+    "Namespace services require a separate Kubernetes execution path and cannot be provisioned through this order yet.",
+  "Diese ältere Template-Version unterstützt nur Public-Projekte mit lokalem Netz. Für Corporate-Projekte oder Public-Projekte ohne Netz eine neue Version mit der aktuellen Runner-Revision veröffentlichen.":
+    "This older template version supports only Public projects with a local network. Publish a new version with the current Runner revision for Corporate projects or Public projects without a network.",
   "Der gewählte Observability-Tarif und seine Einstellungen passen nicht zusammen oder konnten nicht verifiziert werden. Prüfe Tarif und Aufbewahrung im Editor. Gespeicherte Werte bleiben erhalten.":
     "The selected Observability plan and its settings are incompatible or could not be verified. Check the plan and retention in the editor. Saved values are preserved.",
   "Der Observability-Vorschlag passt nicht zu den geprüften Tariffähigkeiten. Tarif und Aufbewahrung prüfen; vorhandene Werte bleiben erhalten.":
