@@ -71,7 +71,10 @@ Hosted-Archive lassen ausschließlich das gepinnte `firewall-image.qcow2` aus; l
 Archive bleiben eigenständig vollständig. CI qualifiziert zunächst das vollständige imagegestützte Paket,
 extrahiert dann beide schlanken Archive, stellt das Image über den tatsächlichen Buildpack-
 Einstiegspunkt wieder her und prüft bytegenaue Runner-Gleichheit sowie dieselbe Paketidentität.
-Jedes komprimierte CF-Archiv muss kleiner als 384 MiB sein.
+Jedes komprimierte CF-Archiv muss kleiner als 384 MiB sein. Nach der Prüfung
+macht die Bereinigung nur Verzeichnisse im temporären Staging-Baum beschreibbar
+und folgt keinen Symlinks. Das ursprüngliche Runner-/Provider-Verzeichnis bleibt
+unverändert.
 
 `prepare-release.mjs` bindet `LZC_IMAGE_BUILDPACK` an
 `lzc-image-buildpack-<approved-source-sha>`, auch bei Promotion.

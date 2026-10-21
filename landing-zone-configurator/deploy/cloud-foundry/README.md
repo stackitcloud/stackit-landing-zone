@@ -63,7 +63,9 @@ Hosted archives omit only the pinned `firewall-image.qcow2`; local Runner
 archives remain self-contained. CI first qualifies the full image-backed package,
 then extracts both thin archives, restores the image through the actual buildpack
 entrypoint and verifies byte-for-byte Runner equality and the same package identity.
-Each compressed CF archive must be smaller than 384 MiB.
+Each compressed CF archive must be smaller than 384 MiB. After qualification,
+cleanup makes only directories inside the temporary staging tree writable,
+without following symlinks. The original Runner/provider mirror stays unchanged.
 
 `prepare-release.mjs` binds `LZC_IMAGE_BUILDPACK` to
 `lzc-image-buildpack-<approved-source-sha>`, including during promotion.

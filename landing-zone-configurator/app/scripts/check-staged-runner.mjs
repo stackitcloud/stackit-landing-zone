@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { constants } from "node:fs";
-import { copyFile, lstat, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { copyFile, lstat, mkdir, mkdtemp } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { LocalPlanRunner } from "../apps/api/dist/plans/local.js";
 import { platformFirewallImage } from "../packages/contracts/dist/index.js";
+import { removeStagingWork } from "./remove-staging-work.mjs";
 
 const directory = resolve(process.argv[2]);
 const repository = fileURLToPath(new URL("../../../", import.meta.url));
@@ -90,5 +91,5 @@ try {
     "PASS: both thin CF archives below 384 MiB restore the exact image-qualified Runner identity during staging; runtime package/disk footprint unchanged.",
   );
 } finally {
-  await rm(work, { recursive: true, force: true });
+  await removeStagingWork(work);
 }
