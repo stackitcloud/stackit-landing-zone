@@ -4684,7 +4684,7 @@ test.describe("explicit saved-plan approval", () => {
         for (const [code, message] of [
           [
             "platform_upgrade_state_unavailable",
-            "vorhandener State an ein S3-Backend gebunden",
+            "vorhandene S3-State oder ein ausdrücklich geprüfter, unterstützter Bootstrap-Checkpoint",
           ],
           ["state_locked", "durch eine laufende Ausführung gesperrt"],
           [
