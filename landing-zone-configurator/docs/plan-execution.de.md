@@ -582,8 +582,18 @@ verwendeten Governance-Modul geprüft: `npm run test:plan` ruft den separaten
 Accelerator-Pin. OpenTofu 1.12.6 plant mit Mock-Providern in bereinigter Umgebung,
 ohne Cloud-Credentials und ohne Apply. Geprüft werden Organisationsrollen
 `owner`/`organization.auditor`, Ordnerrollen `owner`/`auditor`, das Auslassen
-doppelter Ordnerzuweisungen für Organisations-Owner sowie beide Elternvarianten.
+doppelter Ordnerzuweisungen für Organisations-Owner, beide Elternvarianten sowie
+die Ablehnung nicht leerer Ordnerbeschreibungen.
 Diese lokale Qualifikation ersetzt keinen Plan gegen die konkrete Kundenorganisation.
+
+Der geprüfte Quellnachweis liegt unter
+`app/integration/fixtures/governance/source.json`. Bei Änderungen am Plattform-
+Runner-Pin die Root- und Governance-Dateihashes gegen genau diesen Commit prüfen
+und alle vorhandenen Governance-Pläne erneut ausführen. Die strikten Revisions-/
+Hashprüfungen sowie Rollen- und Eigentümer-Assertions bleiben erhalten. Die
+PR-Validierung führt den vollständigen Ablauf `npm run test:plan` einschließlich
+dieser Qualifikation aus; Release-Builds wiederholen ihn vor der Paketierung des
+isolierten Runners.
 
 **Service-Account-Föderation für CI/CD** ist eine optionale Editor-Komponente.
 Sie regelt, welche OIDC-Tokens externer Pipelines den Management-Service-Account
