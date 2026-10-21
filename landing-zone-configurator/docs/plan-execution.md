@@ -126,6 +126,42 @@ Migration `034_platform_reconciliation.sql` adds explicit, audited UI reconcilia
 
 The user can then save the corrected configuration, choose a new preparation and start a new Plan against the same existing state. Apply again requires separate review and approval of the new saved plan. The old plan remains consumed. If the checkpoint has changed meanwhile, a new check is required. Ambiguous Runner aborts, unverifiable migrations and separate recovery states remain blocked and need separate operational reconciliation. No automatic unblocking, state deletion, import or Destroy action. The migration must be enabled before using the new API.
 
+### Globally unique bucket names
+
+Object Storage bucket names are STACKIT-wide. `bucket_naming = "project-id"` is
+the default for management and workload buckets. Names include the complete owning
+project UUID and a purpose suffix (`default`, `tfstate`, `audit-logs` where used).
+Only the readable prefix is truncated to keep names within 63 characters.
+
+Before upgrading an installation that already owns legacy-named buckets, explicitly
+set `bucket_naming = "legacy"` in the root (or child module). Otherwise OpenTofu
+will plan replacements; this change does not migrate bucket contents or backend
+configuration. Keep existing state and review the full Plan. A partial bootstrap
+with no bucket instances can use the new default with its existing project ID.
+Configurator execution additionally requires a reviewed Runner pin containing
+this native contract; a source change alone does not update a hosted Runner.
+See [the tracked naming defect](https://github.com/stackitcloud/stackit-landing-zone/issues/127).
+
+### Multiple errors during a partial bootstrap Apply
+
+Independent branches can fail after other resources were created. Keep the same
+configuration identity and bootstrap checkpoint. Check the checkpoint before
+allowing replanning; do not repeat the consumed saved plan or confirm a new empty
+deployment. After corrections, inspect the new plan for unexpected replacement
+or deletion before separately approving Apply.
+
+A Monitoring service plan cannot accept logs/traces retention. Omit these fields
+or explicitly set them to null; the root and management module preserve null and
+reject explicit Monitoring overrides before Apply. Other plans use their service
+defaults when these values are omitted; existing explicit retention is preserved.
+
+An Object Storage `bucket.name_conflict` is not proof that a bucket belongs to
+this deployment. Compare the checkpoint with an authorized lookup in the exact
+management project before considering import or a targeted naming correction.
+Do not change `company_code` to resolve it: that affects many existing resources.
+A sensitive HA provisioner can hide its error output; resource creation alone
+proves neither appliance authentication nor completed HA configuration.
+
 <a id="erfolgreichen-apply-mit-offener-s3-bestaetigung-abschliessen"></a>
 ### Completing a successful Apply with pending S3 confirmation
 

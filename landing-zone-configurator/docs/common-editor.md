@@ -481,3 +481,28 @@ required inputs and tunnel settings. VPN execution remains blocked.
 The subsequently created separate Application root and its compiler are
 a prototype testable locally or on the feature branch, not part of
 the activated self-service interface.
+
+
+## Observability plan capabilities
+
+The editor retains the selected plan and all explicit retention values. Fresh
+Observability catalogue entries carry only validated metric/log/trace capacity
+flags, not raw API responses. A zero capacity forbids its retention override;
+missing capacity is unknown. Data older than 15 minutes or from the future is
+not treated as live. Missing fields fall back to the reviewed service-family
+policy. Live data can further restrict the pinned native contract, but cannot
+expand settings that the reviewed native engine explicitly rejects.
+
+Monitoring supports metrics retention, not logs or traces. Frontend and Metrics
+Endpoint have no configurable retention. Unknown support is shown for review;
+preparation rejects unverified explicit options. All central retention fields
+accept omission/null for service defaults. Whole-day bounds use the documented
+service limits: logs/traces 1–30, metrics/downsampling 1–780. This is not a quota
+or target-project availability guarantee.
+
+Known unsupported optional fields cannot be activated. Existing incompatible
+values stay visible and can be deliberately reset; selecting another plan never
+drops them. Live-aware validation preserves unrelated validation, including ACLs.
+The server rechecks capabilities before preparation and Assistant proposal
+acceptance. The Assistant receives the same safe capability flags and reviewed
+fallback facts. Neither catalogue access nor proposal acceptance authorizes Apply.

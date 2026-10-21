@@ -1,10 +1,22 @@
 {
   "schemaVersion": 1,
-  "sourceSha256": "a7bdc9a31e93d355e228072c743b5d85a1dae956d3676cd9079ab904e8ee6f23",
+  "sourceSha256": "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
   "variables": [
     {
+      "name": "bucket_naming",
+      "line": 1,
+      "description": "Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration.",
+      "type": "string",
+      "required": false,
+      "sensitive": false,
+      "default": "project-id",
+      "validations": [
+        "validation {\n    condition     = contains([\"legacy\", \"project-id\"], var.bucket_naming)\n    error_message = \"Bucket naming must be legacy or project-id.\"\n  }"
+      ]
+    },
+    {
       "name": "owner_email",
-      "line": 5,
+      "line": 16,
       "description": "Email address of the owner. Required for STACKIT resource manager.",
       "type": "string",
       "required": true,
@@ -12,7 +24,7 @@
     },
     {
       "name": "company_name",
-      "line": 10,
+      "line": 21,
       "description": "Name of the company.",
       "type": "string",
       "required": true,
@@ -20,7 +32,7 @@
     },
     {
       "name": "company_code",
-      "line": 15,
+      "line": 26,
       "description": "Company code used in resource naming conventions.",
       "type": "string",
       "required": true,
@@ -28,7 +40,7 @@
     },
     {
       "name": "organization_id",
-      "line": 20,
+      "line": 31,
       "description": "Container ID of the root organization.",
       "type": "string",
       "required": true,
@@ -36,7 +48,7 @@
     },
     {
       "name": "rm_folder_parent_id",
-      "line": 25,
+      "line": 36,
       "description": "ID of the parent folder under which the resource manager folders will be created. If not provided, the resource manager folders will be created under the organization.",
       "type": "string",
       "required": false,
@@ -45,7 +57,7 @@
     },
     {
       "name": "region",
-      "line": 31,
+      "line": 42,
       "description": "STACKIT region for regional resources.",
       "type": "string",
       "required": false,
@@ -54,7 +66,7 @@
     },
     {
       "name": "platform_kubernetes_kube_config_override",
-      "line": 37,
+      "line": 48,
       "description": "Optional raw kubeconfig used by kubernetes/helm platform providers when no platform_kubernetes module output is available.",
       "type": "string",
       "required": false,
@@ -62,7 +74,7 @@
     },
     {
       "name": "platform_contract_namespace",
-      "line": 44,
+      "line": 55,
       "description": "Optional stable UUID namespace for Application handoff; defaults to the organization ID for independent CLI use. This is metadata, not an authorization boundary.",
       "type": "string",
       "required": false,
@@ -74,7 +86,7 @@
     },
     {
       "name": "labels",
-      "line": 55,
+      "line": 66,
       "description": "Additional labels to apply to all resources.",
       "type": [
         "map",
@@ -86,7 +98,7 @@
     },
     {
       "name": "organization_owners",
-      "line": 61,
+      "line": 72,
       "description": "List of organization owners.",
       "type": [
         "list",
@@ -98,7 +110,7 @@
     },
     {
       "name": "organization_auditors",
-      "line": 67,
+      "line": 78,
       "description": "List of organization auditors.",
       "type": [
         "list",
@@ -110,7 +122,7 @@
     },
     {
       "name": "devops",
-      "line": 73,
+      "line": 84,
       "description": "DevOps module configuration. Set to null to skip deployment.",
       "type": [
         "object",
@@ -140,7 +152,7 @@
     },
     {
       "name": "platform_kubernetes",
-      "line": 82,
+      "line": 93,
       "description": "Map of central, region-scoped platform Kubernetes deployments. Empty map skips deployment.",
       "type": [
         "map",
@@ -504,8 +516,8 @@
     },
     {
       "name": "observability",
-      "line": 184,
-      "description": "Observability instance configuration for the management module. Set to null to skip observability deployment.",
+      "line": 195,
+      "description": "Observability instance configuration for the management module. Omitted or null retention uses the service plan defaults. Monitoring plans require both retention fields to be omitted or null. Set to null to skip observability deployment.",
       "type": [
         "object",
         {
@@ -536,18 +548,19 @@
       "nestedDefaults": {
         "values": {
           "acl": [],
-          "logs_retention_days": 30,
-          "metrics_retention_days": 90,
-          "metrics_retention_days_1h_downsampling": 90,
-          "metrics_retention_days_5m_downsampling": 90,
-          "plan_name": "Observability-Starter-EU01",
-          "traces_retention_days": 30
+          "plan_name": "Observability-Starter-EU01"
         }
-      }
+      },
+      "validations": [
+        "validation {\n    condition = var.observability == null ? true : (\n      !startswith(var.observability.plan_name, \"Observability-Monitoring-\") ||\n      (var.observability.logs_retention_days == null \u0026\u0026 var.observability.traces_retention_days == null)\n    )\n    error_message = \"Monitoring plans do not support logs or traces retention. Omit logs_retention_days and traces_retention_days or set them to null.\"\n  }",
+        "validation {\n    condition = var.observability == null ? true : (\n      !can(regex(\"^Observability-(Frontend|Metrics-?Endpoint)\", var.observability.plan_name)) ||\n      alltrue([for value in [var.observability.logs_retention_days, var.observability.traces_retention_days, var.observability.metrics_retention_days, var.observability.metrics_retention_days_5m_downsampling, var.observability.metrics_retention_days_1h_downsampling] : value == null])\n    )\n    error_message = \"Frontend and MetricsEndpoint plans do not support retention overrides. Omit all retention fields or set them to null.\"\n  }",
+        "validation {\n    condition = var.observability == null ? true : alltrue([\n      for value in [var.observability.logs_retention_days, var.observability.traces_retention_days] : value == null ? true : value \u003e= 1 \u0026\u0026 value \u003c= 30 \u0026\u0026 floor(value) == value\n    ])\n    error_message = \"Logs and traces retention must be omitted, null or a whole number from 1 to 30 days.\"\n  }",
+        "validation {\n    condition = var.observability == null ? true : alltrue([\n      for value in [var.observability.metrics_retention_days, var.observability.metrics_retention_days_5m_downsampling, var.observability.metrics_retention_days_1h_downsampling] : value == null ? true : value \u003e= 1 \u0026\u0026 value \u003c= 780 \u0026\u0026 floor(value) == value\n    ])\n    error_message = \"Metrics retention must be omitted, null or a whole number from 1 to 780 days.\"\n  }"
+      ]
     },
     {
       "name": "audit_logs",
-      "line": 198,
+      "line": 239,
       "description": "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link_scopes defaults to a single organization-wide link. retention_days applies to both the Logs instance and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock is off by default and turns on GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment.",
       "type": [
         "object",
@@ -592,7 +605,7 @@
     },
     {
       "name": "federated_identity_providers",
-      "line": 212,
+      "line": 253,
       "description": "List of federated identity providers to configure for the management service account.",
       "type": [
         "list",
@@ -621,7 +634,7 @@
     },
     {
       "name": "rm_folders",
-      "line": 226,
+      "line": 267,
       "description": "Map of resource manager folders to create under the root organization. Folder descriptions are unsupported; omit description or leave it empty.",
       "type": [
         "map",
@@ -684,7 +697,7 @@
     },
     {
       "name": "connectivity",
-      "line": 272,
+      "line": 313,
       "description": "Connectivity configuration including DNS zones, network areas, firewalls, and VPN. Use network_areas with descriptive keys that reflect any business, security, tenant, or regional boundary; network_area and firewall remain supported for existing single-area configurations. Use firewalls for per-area appliance settings.",
       "type": [
         "object",
@@ -1282,7 +1295,7 @@
     },
     {
       "name": "connectivity_regions",
-      "line": 425,
+      "line": 466,
       "description": "Regional connectivity configuration for the statically supported eu01 and eu02 hubs. Set to null to use the single-region connectivity input.",
       "type": [
         "map",
@@ -1297,7 +1310,7 @@
     },
     {
       "name": "vpn_pre_shared_keys",
-      "line": 436,
+      "line": 477,
       "description": "Pre-shared keys per connectivity.vpn.connections key, one per tunnel. Kept out of the connectivity object so the topology stays committable; supply through TF_VAR_vpn_pre_shared_keys or a gitignored tfvars file. Minimum 20 characters.",
       "type": [
         "map",
@@ -1314,7 +1327,7 @@
     },
     {
       "name": "firewall_config",
-      "line": 450,
+      "line": 491,
       "description": "Policy pushed to one OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched.",
       "type": [
         "object",
@@ -1600,7 +1613,7 @@
     },
     {
       "name": "firewall_admin_username",
-      "line": 538,
+      "line": 579,
       "description": "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root.",
       "type": "string",
       "required": false,
@@ -1609,7 +1622,7 @@
     },
     {
       "name": "firewall_admin_password",
-      "line": 544,
+      "line": 585,
       "description": "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead.",
       "type": "string",
       "required": false,
@@ -1617,7 +1630,7 @@
     },
     {
       "name": "firewall_bootstrap",
-      "line": 551,
+      "line": 592,
       "description": "Pass -var firewall_bootstrap=true on the two greenfield applies that create the OPNsense API key. It suppresses the Secrets Manager read, which would otherwise fail at plan time because the secret does not exist yet. Never set it on an established deployment: without the bootstrap cache file it plans the destruction of the policy and the stored key. The steady state needs no variable at all.",
       "type": "bool",
       "required": false,
@@ -1626,7 +1639,7 @@
     },
     {
       "name": "firewall_api_secret_version",
-      "line": 557,
+      "line": 598,
       "description": "Write version of the OPNsense API key in the Secrets Manager. The key is only transmitted when this number changes, so bump it by one after a re-bootstrap has produced a fresh key, otherwise the Secrets Manager keeps serving the old one.",
       "type": "number",
       "required": false,
@@ -1635,7 +1648,7 @@
     },
     {
       "name": "firewall_api_credentials",
-      "line": 563,
+      "line": 604,
       "description": "OPNsense API key and secret. Bootstrap them once from the appliance login with src/modules/firewall-config/scripts/bootstrap-api-key.sh, then supply through TF_VAR_firewall_api_credentials or a gitignored tfvars file. Kept out of firewall_config so the policy stays committable.",
       "type": [
         "object",
@@ -1649,7 +1662,7 @@
     },
     {
       "name": "sandboxes",
-      "line": 577,
+      "line": 618,
       "description": "List of sandboxes to create.",
       "type": [
         "list",
@@ -1674,7 +1687,7 @@
     },
     {
       "name": "landing_zones",
-      "line": 591,
+      "line": 632,
       "description": "Map of landing zones to create. Public landing zones can create a local network with network_enabled. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions.",
       "type": [
         "map",
@@ -1790,7 +1803,7 @@
     },
     {
       "name": "landing_zone_namespace_services",
-      "line": 645,
+      "line": 686,
       "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
       "type": [
         "map",

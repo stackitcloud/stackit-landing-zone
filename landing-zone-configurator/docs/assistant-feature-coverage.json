@@ -3,12 +3,13 @@
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
   "status": "concept-coverage-not-ai-qualification",
   "sourceDigests": {
-    "packages/domain/src/features.ts": "6f99918f825b2891db70ba023284a8d1ae529965c56d06445a9108fb0d791138",
-    "packages/domain/src/accelerator-inputs.json": "6c7c17d9fe550e4f9e1ee41db4463b6ed4840b63e4e01620b99626c8ff8737de",
+    "packages/domain/src/features.ts": "bf2506a3ba0bff45ce87c010a4a86e119dd07b0b9216dfea88e34e71d17c9ba6",
+    "packages/domain/src/accelerator-inputs.json": "5bc4c00a4be5546e44208ec26cc51a5465b4407fbea07f7e3edb807438bab501",
     "packages/domain/src/catalogue.json": "0c9fc73cbfff4eb0ea2e9956165646e409fbff107cbf9ca1eb3b78a25dca2059",
     "packages/domain/src/project-templates.ts": "6629d6cf5e557682b181bc9aca99d496d493e9ae9070e875f72ff608f0642459",
     "packages/domain/src/template-parameters.ts": "ea2cb1e272f4f51da6bc68ea78895febe128b83f2b3022371a5aeeb666120e0a",
-    "packages/domain/src/common-validation.ts": "12b1a51aef9055e0146f41fa30f9ba03de0e6e078f78597cc488da9884f0761f",
+    "packages/domain/src/common-validation.ts": "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
+    "packages/domain/src/observability-plans.ts": "04b12f2744c453ff44f7b386ba6d6b7052b53f66fc483d46e9d5af0f5f75bbe5",
     "packages/domain/src/common-document.ts": "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
     "packages/domain/src/editor-document.ts": "b807d40f04b7739cab026d43a412ed9252d22cb9bd1034fbad858825308c1345",
     "packages/domain/src/application-catalogue.ts": "2e1dfe53840775f5acd6212b783d7823673c71620c868abf919dae7e3a0b798a",
@@ -99,6 +100,13 @@
     {
       "id": "management",
       "inputs": [
+        {
+          "input": "bucket_naming",
+          "scenarios": [
+            "A03",
+            "A16"
+          ]
+        },
         {
           "input": "observability",
           "scenarios": [
@@ -246,6 +254,20 @@
     }
   ],
   "fields": [
+    {
+      "path": "bucket_naming",
+      "group": "management",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A03",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
     {
       "path": "owner_email",
       "group": "identity",

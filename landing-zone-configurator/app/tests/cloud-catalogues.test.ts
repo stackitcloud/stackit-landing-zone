@@ -538,7 +538,13 @@ it("loads distinct IaaS bastion options and Observability plan names without sug
     if (target.includes("argus.api"))
       return Response.json({
         plans: [
-          { planId: "not-the-tf-input", name: "Observability-Starter-EU01" },
+          {
+            planId: "not-the-tf-input",
+            name: "Observability-Starter-EU01",
+            totalMetricSamples: 100,
+            logsStorage: 0,
+            tracesStorage: 0,
+          },
         ],
       });
     if (target.endsWith("/machine-types"))
@@ -578,6 +584,11 @@ it("loads distinct IaaS bastion options and Observability plan names without sug
     {
       value: "Observability-Starter-EU01",
       label: "Observability-Starter-EU01",
+      capabilities: {
+        metricsRetention: true,
+        logsRetention: false,
+        tracesRetention: false,
+      },
     },
   ]);
   expect(result.bastionMachineTypes?.options[0]?.value).toBe("g2i.1");

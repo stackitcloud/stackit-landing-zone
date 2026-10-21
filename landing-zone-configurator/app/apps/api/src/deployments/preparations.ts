@@ -7,6 +7,8 @@ import {
   type ConfigurationRecord,
   initialPlanIssues,
   initialPlanRequiresFirewallAdministration,
+  objectValue,
+  observabilityRetentionFindings,
   recordName,
   recordOrganization,
   recordValues,
@@ -18,6 +20,7 @@ import type pg from "pg";
 import { z } from "zod";
 import type { Session } from "../auth/store.js";
 import { Configurations } from "../configurations/service.js";
+import type { PostgresCloudCatalogues } from "../credentials/catalogues.js";
 import type { CredentialCheck } from "../credentials/check.js";
 import {
   CredentialError,
@@ -126,6 +129,11 @@ export function preparationManifest(
 ): PreparationManifest {
   if (initialPlanIssues(snapshot.document).length)
     throw new CredentialError(409, "configuration_execution_not_supported");
+  if (
+    recordValues(snapshot.document).bucket_naming !== undefined &&
+    !input.platformUpgrade
+  )
+    throw new CredentialError(409, "configuration_execution_not_supported");
   const requiresAdministration = initialPlanRequiresFirewallAdministration(
     snapshot.document,
   );
@@ -215,6 +223,7 @@ export class Preparations {
     >,
     private readonly platformUpgradeEnabled = false,
     private readonly runnerAcceleratorCommit = acceleratorCommit,
+    private readonly catalogues?: Pick<PostgresCloudCatalogues, "automatic">,
   ) {}
   capabilities() {
     return {
@@ -289,6 +298,19 @@ export class Preparations {
     );
     if (checked.check.status !== "passed")
       throw new CredentialError(422, checked.check.code);
+    const sourceValues = recordValues(snapshot.document);
+    if (sourceValues.observability != null) {
+      const region = sourceValues.region === "eu02" ? "eu02" : "eu01";
+      const live = await this.catalogues
+        ?.automatic(session, region)
+        .catch(() => undefined);
+      const report = observabilityRetentionFindings(
+        objectValue(sourceValues.observability),
+        live?.region === region ? live : undefined,
+      );
+      if (report.findings.length)
+        throw new CredentialError(422, "observability_plan_incompatible");
+    }
     const manifest = preparationManifest(
       input,
       snapshot,
@@ -327,14 +349,59 @@ export class Preparations {
       if (input.platformUpgrade && bound) {
         const current = (
           await c.query(
-            "SELECT version,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE",
+            "SELECT version,backend_id,lock_run_id,pending_backend_id,migration_run_id,ciphertext IS NOT NULL AS checkpoint_present FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE",
             [bound.state_key],
           )
         ).rows[0];
         if (current?.lock_run_id)
           throw new CredentialError(423, "state_locked");
-        if (!current || (Number(current.version) > 0 && !current.backend_id))
+        if (!current)
           throw new CredentialError(409, "platform_upgrade_state_unavailable");
+        if (Number(current.version) > 0 && !current.backend_id) {
+          // A CAS state version identifies the checkpoint already verified by
+          // explicit reconciliation. Never make a fresh/empty bootstrap here.
+          const compatibleSources = [
+            platformUpgradeAcceleratorCommit,
+            "c4b43c36af198985980b17626c48d357795e3fbd",
+          ];
+          const reviewed =
+            !current.checkpoint_present ||
+            current.pending_backend_id ||
+            current.migration_run_id
+              ? false
+              : (
+                  await c.query(
+                    `SELECT EXISTS(
+                SELECT 1 FROM lzc.platform_reconciliations receipt
+                JOIN lzc.plan_runs run ON run.id=receipt.run_id
+                JOIN lzc.deployment_preparations original ON original.id=run.preparation_id
+                WHERE receipt.state_key=$1 AND receipt.state_version=$2
+                  AND run.state_key=receipt.state_key AND run.operation='apply'
+                  AND run.status='failed' AND run.error_code='apply_failed'
+                  AND run.input_claimed=true AND run.finished_at IS NOT NULL
+                  AND original.manifest#>>'{source,configurationId}'=$3
+                  AND original.manifest#>>'{platformContractNamespace}'=$4
+                  AND original.manifest#>>'{accelerator,commit}'=ANY($5::text[])
+                  AND NOT EXISTS(SELECT 1 FROM lzc.state_recoveries recovery
+                    JOIN lzc.plan_runs other ON other.id=recovery.run_id WHERE other.state_key=$1)
+                  AND NOT EXISTS(SELECT 1 FROM lzc.plan_runs active WHERE active.state_key=$1
+                    AND active.status IN ('starting','initializing','validating','planning','applying','recovery_required'))
+              ) AS allowed`,
+                    [
+                      bound.state_key,
+                      current.version,
+                      input.configurationId,
+                      session.tenantId,
+                      compatibleSources,
+                    ],
+                  )
+                ).rows[0]?.allowed === true;
+          if (!reviewed)
+            throw new CredentialError(
+              409,
+              "platform_upgrade_state_unavailable",
+            );
+        }
       }
       if (input.backendId && bound && input.backendId !== bound.backend_id)
         throw new CredentialError(409, "backend_binding_changed");

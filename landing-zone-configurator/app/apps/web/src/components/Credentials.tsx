@@ -243,7 +243,7 @@ export function Credentials({
                   <input
                     id="credential-firewall-password"
                     type="password"
-                    autoComplete="new-password"
+                    autoComplete="current-password"
                     value={firewallPassword}
                     onChange={(event) =>
                       setFirewallPassword(event.target.value)

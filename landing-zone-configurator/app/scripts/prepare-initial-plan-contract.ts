@@ -114,6 +114,7 @@ const configurations: [string, Record<string, JsonValue>][] = [
     {
       ...capabilities,
       observability: { logs_retention_days: 14, acl: ["192.0.2.0/24"] },
+      bucket_naming: "project-id",
       audit_logs: {
         s3_object_lock: false,
         link_scopes: [

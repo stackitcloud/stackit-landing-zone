@@ -80,7 +80,7 @@ async function fixture(
 
 it("binds the explicit platform upgrade source into the package identity and rejects unknown sources", async () => {
   const { root, jobs, runner } = await fixture();
-  const upgrade = "c4b43c36af198985980b17626c48d357795e3fbd";
+  const upgrade = "9e7fb46c329aca32e878ce1f0ea3b944ea240354";
   expect(runner.supportsAccelerator(upgrade)).toBe(false);
   await writeFile(
     join(root, "platform-source.json"),

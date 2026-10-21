@@ -702,6 +702,103 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     await configurations.remove(alice, stored.id, 1);
   });
 
+  it("rechecks live retention capabilities before presentation, preview and acceptance without nested pool transactions", async () => {
+    const configurations = new Configurations(pool);
+    const original = createEditorConfiguration("standalone", randomUUID());
+    const stored = await configurations.create(alice, original);
+    let supported = false;
+    const automatic = vi.fn(
+      async (
+        session: Session,
+        region: "eu01" | "eu02",
+      ): Promise<CloudCatalogue> => {
+        // The pool has a single connection: network/credential reads must be outside
+        // the proposal write transaction or this read would deadlock.
+        await withTenant(pool, session, (client) => client.query("SELECT 1"));
+        const empty = { status: "unavailable" as const, options: [] };
+        return {
+          region,
+          projectId: null,
+          fetchedAt: new Date().toISOString(),
+          gitFlavors: empty,
+          vpnPlans: empty,
+          kubernetesVersions: empty,
+          machineTypes: empty,
+          availabilityZones: empty,
+          volumeTypes: empty,
+          observabilityPlans: {
+            status: "available",
+            options: [
+              {
+                value: "Observability-Starter-EU01",
+                label: "Starter",
+                capabilities: {
+                  metricsRetention: true,
+                  logsRetention: supported,
+                  tracesRetention: true,
+                },
+              },
+            ],
+          },
+        };
+      },
+    );
+    const proposal: Dialogue = {
+      explanation: "Aufbewahrung für den gewählten Tarif prüfen.",
+      questions: [],
+      changes: [
+        {
+          path: "observability",
+          operation: "merge",
+          value: {
+            plan_name: "Observability-Starter-EU01",
+            logs_retention_days: 7,
+          },
+        },
+      ],
+      references: ["observability"],
+    };
+    const assistant = new AssistantConversations(
+      pool,
+      {
+        converse: vi.fn<AssistantModelServing["converse"]>(
+          async () => proposal,
+        ),
+      },
+      { automatic },
+    );
+    await expect(
+      assistant.send(alice, stored.id, 1, "Logs sieben Tage speichern"),
+    ).rejects.toThrow("assistant_observability_plan_incompatible");
+    supported = true;
+    const conversation = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Logs sieben Tage speichern",
+    );
+    supported = false;
+    await expect(
+      assistant.preview(
+        alice,
+        stored.id,
+        conversation.revision,
+        1,
+        assistantProposalFields(conversation.proposal?.changes ?? []).map(
+          (field) => field.id,
+        ),
+        original,
+        original,
+      ),
+    ).rejects.toThrow("assistant_observability_plan_incompatible");
+    await expect(
+      assistant.accept(alice, stored.id, conversation.revision, 1),
+    ).rejects.toThrow("assistant_observability_plan_incompatible");
+    expect((await configurations.get(alice, stored.id)).revision).toBe(1);
+    expect(await assistant.get(alice, stored.id)).toEqual(conversation);
+    await configurations.remove(alice, stored.id, 1);
+  });
+
   it("validates SNA proposals before presentation and saves native configuration only after acceptance", async () => {
     const configurations = new Configurations(pool);
     const stored = await configurations.create(

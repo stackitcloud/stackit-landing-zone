@@ -23,6 +23,15 @@ Stand: 2026-09-30. Nächster Baustein nach Fork-Speicherung und tfvars-Export.
 
 ## Optionaler Administrationszugang für Firewall-HA
 
+Verwende den aktuellen Appliance-Login, kein gewünschtes künftiges Passwort. Ein
+frisch gestartetes gepinntes Image behält seinen Image-Zugang, bis ein Betreiber
+ihn ändert; das Speichern des Profils legt weder Benutzer an noch konfiguriert es
+eine VM. Prüfe beide WAN-Login-Seiten im Connectivity-Projekt. Hat ein Apply die
+VMs bereits erstellt, das Profil korrigieren und eine neue Vorbereitung/einen
+neuen Plan mit dem erhaltenen Checkpoint verwenden; weder VMs neu erstellen noch
+den verbrauchten gespeicherten Plan erneut ausführen.
+
+
 Aktiviere beim Anlegen des Profils **OPNsense-Administrationszugang für Firewall-HA
 hinterlegen** und trage den bestehenden GUI-Administrator samt Passwort für beide
 Appliances ein. Einzelne Firewall-Instanzen benötigen diesen zusätzlichen Zugang

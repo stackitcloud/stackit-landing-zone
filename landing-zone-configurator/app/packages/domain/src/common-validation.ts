@@ -6,6 +6,10 @@ import {
 } from "./common-document.js";
 import { objectValue, textValue, type Values } from "./configuration.js";
 import { acceleratorInputs, effectiveInput } from "./features.js";
+import {
+  type ObservabilityPlanCatalogue,
+  observabilityRetentionFindings,
+} from "./observability-plans.js";
 
 export type ConfigurationFinding = {
   path: string;
@@ -27,6 +31,7 @@ export type ConfigurationAssessment = {
 // A clean report is not deployment authorization or a reachability proof.
 export function assessCommonConfiguration(
   document: CommonConfiguration,
+  catalogue?: ObservabilityPlanCatalogue,
 ): ConfigurationAssessment {
   const values = compileCommonConfiguration(document);
   const areas = commonNetworkAreas(document);
@@ -60,6 +65,46 @@ export function assessCommonConfiguration(
       (values[input.name] == null || values[input.name] === "")
     )
       add(input.name, "required", "Diese Angabe ist erforderlich.");
+  }
+  const bucketNaming = effectiveInput(values, "bucket_naming");
+  if (bucketNaming !== "legacy" && bucketNaming !== "project-id")
+    add(
+      "bucket_naming",
+      "invalid-bucket-naming",
+      "Das Bucket-Namensschema muss project-id oder legacy sein.",
+    );
+  const observability = effectiveInput(values, "observability");
+  if (observability != null) {
+    const current =
+      catalogue?.region === (textValue(values.region) || "eu01")
+        ? catalogue
+        : undefined;
+    const report = observabilityRetentionFindings(
+      objectValue(observability),
+      current,
+    );
+    for (const finding of report.findings)
+      add(
+        `observability.${finding.field}`,
+        finding.code,
+        finding.message,
+        undefined,
+        finding.code === "unverified-observability-retention"
+          ? "execution"
+          : "configuration",
+        finding.code === "unverified-observability-retention"
+          ? "warning"
+          : "error",
+      );
+    if (report.capabilities.source !== "live")
+      add(
+        "observability.plan_name",
+        "observability-static-capabilities",
+        "Tariffähigkeiten werden ganz oder teilweise anhand dokumentierter statischer Regeln geprüft; dies bestätigt keine aktuelle Verfügbarkeit im Zielprojekt.",
+        undefined,
+        "execution",
+        "warning",
+      );
   }
   const region = textValue(values.region) || "eu01";
   if (!["eu01", "eu02"].includes(region))

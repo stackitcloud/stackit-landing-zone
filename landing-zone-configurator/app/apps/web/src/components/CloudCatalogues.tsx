@@ -80,6 +80,11 @@ export function useCatalogueOptions(path: string, region: string) {
   const part = data[field];
   return part?.status === "available" ? part.options : undefined;
 }
+export function useObservabilityCatalogue(region: string) {
+  const context = useContext(CatalogueContext);
+  const data = context.regions[region] ?? context.data;
+  return data?.region === region ? data : undefined;
+}
 export function useCatalogueRoleTemplates() {
   return useContext(CatalogueContext).data?.projectRoleTemplates ?? [];
 }

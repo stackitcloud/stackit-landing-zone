@@ -1,7 +1,9 @@
 import {
   type InputType,
   type JsonValue,
+  type ObservabilityPlanCapabilities,
   objectValue,
+  observabilityPlanCapabilities,
   regionalConnectivityType,
 } from "@lzc/domain";
 import { useId, useState } from "react";
@@ -9,6 +11,7 @@ import { t } from "../i18n";
 import {
   useCatalogueOptions,
   useCatalogueRoleTemplates,
+  useObservabilityCatalogue,
 } from "./CloudCatalogues";
 import { fieldDescription, fieldLabel } from "./feature-labels";
 
@@ -43,6 +46,7 @@ export function StructuredField({
   regionContext = "eu01",
   roleNames = [],
   hideInactiveDetails = false,
+  retentionSupport,
 }: {
   name: string;
   type: InputType;
@@ -60,6 +64,7 @@ export function StructuredField({
   regionContext?: string;
   roleNames?: string[];
   hideInactiveDetails?: boolean;
+  retentionSupport?: ObservabilityPlanCapabilities | undefined;
 }) {
   const id = useId();
   const [newKey, setNewKey] = useState("");
@@ -69,7 +74,9 @@ export function StructuredField({
   const missing = value === undefined || value === null;
   const standard =
     effective === undefined || effective === null
-      ? "nicht aktiviert"
+      ? /observability\.(?:logs|traces|metrics)_retention_days/.test(path)
+        ? "Servicestandard des Tarifs"
+        : "nicht aktiviert"
       : typeof effective === "boolean"
         ? effective
           ? "eingeschaltet"
@@ -79,6 +86,26 @@ export function StructuredField({
             ? "keine Einträge"
             : "Voreinstellung des Accelerators"
           : String(effective);
+  const liveObservability = useObservabilityCatalogue(regionContext);
+  const support =
+    path === "observability" || path.endsWith(".observability")
+      ? observabilityPlanCapabilities(
+          String(
+            objectValue(value).plan_name ??
+              objectValue(effective).plan_name ??
+              "Observability-Starter-EU01",
+          ),
+          liveObservability,
+        )
+      : retentionSupport;
+  const unsupportedRetention =
+    name === "logs_retention_days"
+      ? support?.logsRetention === false
+      : name === "traces_retention_days"
+        ? support?.tracesRetention === false
+        : name.startsWith("metrics_retention_days")
+          ? support?.metricsRetention === false
+          : false;
   const cloudOptions = useCatalogueOptions(path, regionContext);
   const roleTemplates = useCatalogueRoleTemplates();
   const customRoles = objectValue(value).custom_roles;
@@ -101,46 +128,50 @@ export function StructuredField({
             : []),
         ]),
       ]
-    : path.endsWith("role_assignments[*].role") && projectRoleNames.length
-      ? projectRoleNames
-      : path.endsWith(".dns_zones[*].type")
-        ? ["primary", "secondary"]
-        : path.includes(".vpn.") && path.endsWith(".encryption_algorithms[*]")
-          ? ["aes256", "aes128gcm16", "aes256gcm16"]
-          : path.includes(".vpn.") && path.endsWith(".integrity_algorithms[*]")
-            ? ["sha1", "sha2_256", "sha2_384", "sha2_512"]
-            : path.includes(".vpn.") && path.endsWith(".dh_groups[*]")
-              ? ["modp1024", "modp2048", "ecp256", "ecp384", "modp2048s256"]
-              : path.endsWith(".network_area_key")
-                ? (networkAreaKeys[regionContext] ?? [])
-                : path === "firewall_config.aliases[*].type"
-                  ? [
-                      "host",
-                      "network",
-                      "port",
-                      "url",
-                      "urltable",
-                      "urljson",
-                      "geoip",
-                      "asn",
-                      "networkgroup",
-                      "mac",
-                      "external",
-                    ]
-                  : path === "firewall_config.rules[*].action"
-                    ? ["pass", "block", "reject"]
-                    : path === "firewall_config.rules[*].direction"
-                      ? ["in", "out"]
-                      : path === "region" || path.endsWith(".region")
-                        ? ["eu01", "eu02"]
-                        : path.endsWith(".secrets_enforcement.mode")
-                          ? ["audit", "soft", "strict"]
-                          : name === "resource_type" &&
-                              path.startsWith("audit_logs.")
-                            ? ["organization", "folder", "project"]
-                            : name === "routing_type" && path.includes(".vpn.")
-                              ? ["POLICY_BASED", "ROUTE_BASED"]
-                              : undefined;
+    : path === "bucket_naming"
+      ? ["project-id", "legacy"]
+      : path.endsWith("role_assignments[*].role") && projectRoleNames.length
+        ? projectRoleNames
+        : path.endsWith(".dns_zones[*].type")
+          ? ["primary", "secondary"]
+          : path.includes(".vpn.") && path.endsWith(".encryption_algorithms[*]")
+            ? ["aes256", "aes128gcm16", "aes256gcm16"]
+            : path.includes(".vpn.") &&
+                path.endsWith(".integrity_algorithms[*]")
+              ? ["sha1", "sha2_256", "sha2_384", "sha2_512"]
+              : path.includes(".vpn.") && path.endsWith(".dh_groups[*]")
+                ? ["modp1024", "modp2048", "ecp256", "ecp384", "modp2048s256"]
+                : path.endsWith(".network_area_key")
+                  ? (networkAreaKeys[regionContext] ?? [])
+                  : path === "firewall_config.aliases[*].type"
+                    ? [
+                        "host",
+                        "network",
+                        "port",
+                        "url",
+                        "urltable",
+                        "urljson",
+                        "geoip",
+                        "asn",
+                        "networkgroup",
+                        "mac",
+                        "external",
+                      ]
+                    : path === "firewall_config.rules[*].action"
+                      ? ["pass", "block", "reject"]
+                      : path === "firewall_config.rules[*].direction"
+                        ? ["in", "out"]
+                        : path === "region" || path.endsWith(".region")
+                          ? ["eu01", "eu02"]
+                          : path.endsWith(".secrets_enforcement.mode")
+                            ? ["audit", "soft", "strict"]
+                            : name === "resource_type" &&
+                                path.startsWith("audit_logs.")
+                              ? ["organization", "folder", "project"]
+                              : name === "routing_type" &&
+                                  path.includes(".vpn.")
+                                ? ["POLICY_BASED", "ROUTE_BASED"]
+                                : undefined;
   const keyChoices =
     path === "connectivity_regions"
       ? ["eu01", "eu02"]
@@ -205,6 +236,7 @@ export function StructuredField({
         <button
           type="button"
           className="button secondary"
+          disabled={unsupportedRetention}
           onClick={() =>
             onChange(
               (simple || name === "rm_folders") && effective != null
@@ -215,6 +247,13 @@ export function StructuredField({
         >
           {simple ? t("Eigene Einstellung") : t("Konfigurieren")}: {t(label)}
         </button>
+        {unsupportedRetention && (
+          <p className="field-hint">
+            {t(
+              "Vom gewählten Tarif nicht unterstützt. Vorhandene Werte werden beibehalten.",
+            )}
+          </p>
+        )}
         {controls}
       </div>
     );
@@ -262,6 +301,7 @@ export function StructuredField({
           <input
             id={id}
             type={type === "number" ? "number" : "text"}
+            disabled={unsupportedRetention}
             value={
               typeof value === "string" || typeof value === "number"
                 ? value
@@ -278,6 +318,13 @@ export function StructuredField({
         )}
         {fieldDescription(path, name) && (
           <p className="field-hint">{t(fieldDescription(path, name))}</p>
+        )}
+        {unsupportedRetention && (
+          <p className="field-hint">
+            {t(
+              "Vom gewählten Tarif nicht unterstützt. Vorhandene Werte werden beibehalten.",
+            )}
+          </p>
         )}
         {controls}
       </div>
@@ -370,6 +417,7 @@ export function StructuredField({
                 key={key}
                 name={key}
                 hideInactiveDetails={hideInactiveDetails}
+                retentionSupport={support}
                 path={`${path}.${key}`}
                 referenceKeys={referenceKeys}
                 roleNames={projectRoleNames}
@@ -394,6 +442,7 @@ export function StructuredField({
               <StructuredField
                 name={key}
                 hideInactiveDetails={hideInactiveDetails}
+                retentionSupport={support}
                 path={`${path}[*]`}
                 referenceKeys={referenceKeys}
                 roleNames={projectRoleNames}
@@ -487,6 +536,7 @@ export function StructuredField({
               <StructuredField
                 name={name}
                 hideInactiveDetails={hideInactiveDetails}
+                retentionSupport={support}
                 path={`${path}[*]`}
                 referenceKeys={referenceKeys}
                 roleNames={projectRoleNames}

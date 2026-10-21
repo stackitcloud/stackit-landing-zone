@@ -1,3 +1,4 @@
+import type { ObservabilityPlanCapabilities } from "@lzc/domain";
 import type pg from "pg";
 import { z } from "zod";
 import type { Session } from "../auth/store.js";
@@ -15,7 +16,11 @@ export const catalogueRequest = z
   })
   .strict();
 export type CatalogueRequest = z.infer<typeof catalogueRequest>;
-export type CatalogueOption = { value: string; label: string };
+export type CatalogueOption = {
+  value: string;
+  label: string;
+  capabilities?: ObservabilityPlanCapabilities;
+};
 export type CataloguePart = {
   status: "available" | "unavailable";
   options: CatalogueOption[];
@@ -107,7 +112,16 @@ const ske = z.object({
   volumeTypes: names,
 });
 const observability = z.object({
-  plans: z.array(z.object({ name: text.optional() })).max(2000),
+  plans: z
+    .array(
+      z.object({
+        name: text.optional(),
+        totalMetricSamples: z.number().int().nonnegative().optional(),
+        logsStorage: z.number().int().nonnegative().optional(),
+        tracesStorage: z.number().int().nonnegative().optional(),
+      }),
+    )
+    .max(2000),
 });
 const iaasMachines = z.object({ items: names });
 const iaasImages = z.object({
@@ -477,7 +491,31 @@ export class StackitCatalogueClient {
     if (observabilityResult.status === "fulfilled")
       result.observabilityPlans = available(
         observabilityResult.value.plans.flatMap((v) =>
-          v.name ? [{ value: v.name, label: v.name }] : [],
+          v.name
+            ? [
+                {
+                  value: v.name,
+                  label: v.name,
+                  ...(v.totalMetricSamples !== undefined ||
+                  v.logsStorage !== undefined ||
+                  v.tracesStorage !== undefined
+                    ? {
+                        capabilities: {
+                          ...(v.totalMetricSamples === undefined
+                            ? {}
+                            : { metricsRetention: v.totalMetricSamples > 0 }),
+                          ...(v.logsStorage === undefined
+                            ? {}
+                            : { logsRetention: v.logsStorage > 0 }),
+                          ...(v.tracesStorage === undefined
+                            ? {}
+                            : { tracesRetention: v.tracesStorage > 0 }),
+                        },
+                      }
+                    : {}),
+                },
+              ]
+            : [],
         ),
       );
     if (machinesResult.status === "fulfilled")

@@ -339,6 +339,45 @@ States bleiben gesperrt und benoetigen einen gesonderten operativen Abgleich.
 Es gibt keine automatische Entsperrung, State-Loeschung, Import- oder
 Destroy-Aktion. Die Migration muss vor Nutzung der neuen API aktiviert sein.
 
+### Weltweit eindeutige Bucket-Namen
+
+Object-Storage-Bucket-Namen gelten STACKIT-weit. `bucket_naming = "project-id"`
+ist der Standard für Management- und Workload-Buckets. Namen enthalten die
+vollständige ID ihres Projekts und ein Zwecksuffix (`default`, `tfstate`, bei
+Bedarf `audit-logs`). Nur der lesbare Präfix wird auf insgesamt höchstens 63 Zeichen
+gekürzt.
+
+Vor dem Upgrade einer Installation mit bereits angelegten bisherigen Bucket-Namen
+`bucket_naming = "legacy"` explizit im Root bzw. Kindmodul setzen. Andernfalls plant
+OpenTofu Ersetzungen; diese Änderung migriert weder Bucket-Inhalte noch die
+Backend-Konfiguration. Vorhandenen State beibehalten und den vollständigen Plan
+prüfen. Ein teilweise ausgeführter Bootstrap ohne Bucket-Instanzen kann mit seiner
+bestehenden Projekt-ID den neuen Standard verwenden. Configurator-Ausführung
+benötigt zusätzlich einen geprüften Runner-Pin mit diesem nativen Vertrag; eine
+Quellcodeänderung allein aktualisiert keinen gehosteten Runner.
+Siehe [den erfassten Namensfehler](https://github.com/stackitcloud/stackit-landing-zone/issues/127).
+
+### Mehrere Fehler bei einem teilweise ausgeführten Bootstrap-Apply
+
+Unabhängige Zweige können fehlschlagen, nachdem andere Ressourcen bereits erstellt
+wurden. Konfigurationsidentität und Bootstrap-Checkpoint beibehalten. Vor der
+Freigabe eines neuen Plans den Checkpoint prüfen; weder den verbrauchten Plan
+wiederholen noch eine neue leere Bereitstellung bestätigen. Nach den Korrekturen
+den neuen Plan auf unerwartete Ersetzungen oder Löschungen prüfen und Apply
+separat freigeben.
+
+Ein Monitoring-Serviceplan unterstützt keine Logs-/Trace-Aufbewahrung. Diese
+Felder auslassen oder explizit auf null setzen; Root und Management-Modul erhalten
+null und weisen explizite Monitoring-Werte vor Apply zurück. Andere Tarife nutzen
+bei ausgelassenen Werten ihren Servicestandard; explizite Werte bleiben erhalten.
+
+Ein Object-Storage-Fehler `bucket.name_conflict` belegt keine Zugehörigkeit des
+Buckets zu dieser Bereitstellung. Vor Import oder gezielter Namenskorrektur den
+Checkpoint mit einer autorisierten Abfrage im exakten Management-Projekt
+abgleichen. Dafür nicht `company_code` ändern: Das betrifft viele bestehende
+Ressourcen. Ein sensibler HA-Provisioner kann seine Fehlerausgabe verbergen;
+erstellte VMs belegen weder eine erfolgreiche Anmeldung noch die HA-Konfiguration.
+
 <a id="completing-a-successful-apply-with-pending-s3-confirmation"></a>
 
 ### Erfolgreichen Apply mit offener S3-Bestaetigung abschliessen

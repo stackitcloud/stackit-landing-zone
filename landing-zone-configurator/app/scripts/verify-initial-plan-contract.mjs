@@ -138,11 +138,15 @@ for (const event of plans) {
   if (enabled("observability")) {
     const instance = resources("stackit_observability_instance")[0].change
       .after;
+    // Mock providers synthesize computed retention values. Assert the native
+    // input contract instead of mistaking a mock zero for a service default.
     assert.equal(
-      instance.logs_retention_days,
-      name === "combined" ? 14 : 30,
+      event.test_plan.variables.observability.value.logs_retention_days ?? null,
+      name === "combined" ? 14 : null,
       name,
     );
+    if (name === "combined")
+      assert.equal(instance.logs_retention_days, 14, name);
     assert.deepEqual(
       instance.acl,
       name === "combined" ? ["192.0.2.0/24"] : [],

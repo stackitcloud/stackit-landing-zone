@@ -30,6 +30,15 @@ Backend-Bootstrap/-Konfiguration ist eine getrennte Voraussetzung nativer
 Ausfuehrung, keine in exportierte Konfiguration eingebettete
 Configurator-Laufzeitabhaengigkeit.
 
+
+`bucket_naming` verwendet standardmäßig `project-id`: Alle Management- und
+Workload-Buckets enthalten die vollständige ID ihres Projekts und unterschiedliche
+Zwecksuffixe, höchstens 63 Zeichen lang. Der Namensraum gilt STACKIT-weit.
+`legacy` ist eine ausdrückliche Kompatibilitätswahl für vorhandene Bucket-Namen.
+Ein Wechsel bei bestehenden Buckets erfordert eine geprüfte Migration oder
+Ersetzungsentscheidung. Nach einem fehlgeschlagenen Apply ohne Buckets können
+vorhandenes Projekt und State mit den neuen Namen weiterverwendet werden.
+
 <a id="dependencies"></a>
 
 ## Abhaengigkeiten
@@ -67,6 +76,13 @@ erfolgreiche State-Migration, Verschluesselung, sichere Sperren oder
 Disaster Recovery. Niemals Remote-State als Chat-Aktion lesen, abrufen oder
 veraendern. Plan, Apply, Destroy, Recovery und Veroeffentlichung haben eigene
 Autorisierungsgates; kein gezielter Terraform-Workaround.
+
+Eine Quellkorrektur darf einen fehlgeschlagenen Bootstrap-Checkpoint nur nach
+explizitem Abgleich seiner exakten State-Version durch den Eigentümer verwenden,
+mit unterstütztem festgelegtem Quellstand und ohne Sperre, Migration, separaten
+Recovery-State oder aktiven Lauf. Eine neue Vorbereitung und einen neu geprüften
+Plan verwenden; niemals mit leerem State beginnen oder den verbrauchten Plan
+wiederholen.
 
 <a id="credentials"></a>
 

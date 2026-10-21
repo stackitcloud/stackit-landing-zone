@@ -493,3 +493,31 @@ Pflichtangaben und Tunnel-Einstellungen prüfen. VPN-Ausführung bleibt gesperrt
 Der anschließend entstandene separate Application-Root und sein Compiler sind
 ein lokaler bzw. im Feature-Branch prüfbarer Prototyp, kein Bestandteil der
 aktivierten Self-Service-Oberfläche.
+
+
+## Fähigkeiten von Observability-Tarifen
+
+Der Editor behält Tarifauswahl und alle expliziten Aufbewahrungswerte bei. Frische
+Katalogeinträge tragen ausschließlich validierte Kapazitätsmerkmale für
+Metriken/Logs/Traces, keine rohen API-Antworten. Kapazität null verbietet die
+entsprechende Aufbewahrungsüberschreibung; fehlende Angaben gelten als unbekannt.
+Daten älter als 15 Minuten oder aus der Zukunft gelten nicht als live. Fehlende
+Felder verwenden die geprüfte statische Tarifgruppenregel. Live-Daten dürfen den
+gepinnten nativen Vertrag weiter einschränken, aber keine Einstellungen freigeben,
+die der geprüfte native Runner ausdrücklich zurückweist.
+
+Monitoring unterstützt Metrikaufbewahrung, keine Logs/Traces. Frontend und Metrics
+Endpoint haben keine konfigurierbare Aufbewahrung. Unbekannte Unterstützung wird
+zur Prüfung angezeigt; Vorbereitung weist nicht verifizierte explizite Optionen
+zurück. Alle zentralen Aufbewahrungsfelder akzeptieren Auslassen/null für den
+Servicestandard. Ganzzahlige Tagesgrenzen entsprechen den dokumentierten
+Servicegrenzen: Logs/Traces 1–30, Metriken/Downsampling 1–780. Dies garantiert weder
+Quoten noch Verfügbarkeit im Zielprojekt.
+
+Bekannt unzulässige optionale Felder lassen sich nicht aktivieren. Vorhandene
+inkompatible Werte bleiben sichtbar und können bewusst zurückgesetzt werden;
+ein Tarifwechsel entfernt sie niemals. Die Live-Prüfung erhält andere Prüfungen,
+einschließlich ACLs. Der Server prüft Fähigkeiten vor Vorbereitung und
+Assistant-Vorschlagsübernahme erneut. Der Assistant erhält dieselben sicheren
+Merkmale und geprüften Fallback-Fakten. Weder Katalogzugriff noch
+Vorschlagsübernahme erlauben Apply.

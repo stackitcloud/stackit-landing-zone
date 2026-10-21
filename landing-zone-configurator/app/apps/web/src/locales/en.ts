@@ -1,4 +1,27 @@
 export const englishMessages: Record<string, string> = {
+  "Der gewählte Observability-Tarif und seine Einstellungen passen nicht zusammen oder konnten nicht verifiziert werden. Prüfe Tarif und Aufbewahrung im Editor. Gespeicherte Werte bleiben erhalten.":
+    "The selected Observability plan and its settings are incompatible or could not be verified. Check the plan and retention in the editor. Saved values are preserved.",
+  "Der Observability-Vorschlag passt nicht zu den geprüften Tariffähigkeiten. Tarif und Aufbewahrung prüfen; vorhandene Werte bleiben erhalten.":
+    "The Observability proposal is incompatible with the verified plan capabilities. Check the plan and retention; existing values are preserved.",
+  "Bucket-Namensschema": "Bucket naming scheme",
+  "Servicestandard des Tarifs": "Service plan default",
+  "Vom gewählten Tarif nicht unterstützt. Vorhandene Werte werden beibehalten.":
+    "Not supported by the selected plan. Existing values are preserved.",
+  "Das Bucket-Namensschema muss project-id oder legacy sein.":
+    "Bucket naming must be project-id or legacy.",
+  "Der gewählte Observability-Tarif fehlt im aktuellen Katalog. Tarif prüfen; vorhandene Werte werden beibehalten.":
+    "The selected Observability plan is missing from the current catalogue. Check the plan; existing values are preserved.",
+  "Der gewählte Observability-Tarif unterstützt diese Aufbewahrungseinstellung nicht. Wert entfernen oder auf null setzen; Tarif nicht automatisch ändern.":
+    "The selected Observability plan does not support this retention setting. Remove it or set it to null; do not change the plan automatically.",
+  "Die Unterstützung dieser Aufbewahrungseinstellung ist weder live noch durch den geprüften Fallback bekannt. Vor Ausführung prüfen.":
+    "Support for this retention setting is unknown from both live data and the reviewed fallback. Verify before execution.",
+  "Tariffähigkeiten werden ganz oder teilweise anhand dokumentierter statischer Regeln geprüft; dies bestätigt keine aktuelle Verfügbarkeit im Zielprojekt.":
+    "Plan capabilities are checked partly or entirely using documented static rules; this does not confirm current availability in the target project.",
+  "Die Aufbewahrung muss eine ganze Zahl zwischen 1 und 30 Tagen sein (dokumentierter Servicegrenzwert).":
+    "Retention must be a whole number between 1 and 30 days (documented service limit).",
+  "Die Aufbewahrung muss eine ganze Zahl zwischen 1 und 780 Tagen sein (dokumentierter Servicegrenzwert).":
+    "Retention must be a whole number between 1 and 780 days (documented service limit).",
+
   "OPNsense-Administrationszugang für Firewall-HA hinterlegen":
     "Store OPNsense administration credentials for firewall HA",
   "OPNsense-Benutzername": "OPNsense username",
@@ -1084,8 +1107,8 @@ export const englishMessages: Record<string, string> = {
     "Could not confirm the action. Refresh the list before retrying.",
   "Die Aktion konnte nicht bestätigt werden. Aktualisiere die Liste. Unvollständige Profile kannst du löschen und neu anlegen.":
     "Could not confirm the action. Refresh the list. Incomplete profiles can be deleted and recreated.",
-  "Für den Accelerator-Wechsel einer bereits bereitgestellten Plattform muss deren vorhandener State an ein S3-Backend gebunden sein. Prüfe die State-Übernahme; deine Konfiguration bleibt unverändert.":
-    "Changing the accelerator version of an already deployed platform requires its existing state to be bound to an S3 backend. Check the state migration; your configuration remains unchanged.",
+  "Für den Accelerator-Wechsel ist der vorhandene S3-State oder ein ausdrücklich geprüfter, unterstützter Bootstrap-Checkpoint erforderlich. Prüfe den Checkpoint und offene Ausführungen; deine Konfiguration bleibt erhalten.":
+    "Changing the accelerator version requires the existing S3 state or an explicitly reviewed, supported Bootstrap checkpoint. Check the checkpoint and pending executions; your configuration is preserved.",
   "Der Plattform-State ist durch eine laufende Ausführung gesperrt. Prüfe den Ausführungsstatus und warte auf deren Abschluss.":
     "The platform state is locked by a running execution. Check its status and wait for it to finish.",
   "Das ausgewählte State-Backend ist nicht mehr verfügbar. Wähle das zur Landing Zone gehörende Backend erneut aus.":

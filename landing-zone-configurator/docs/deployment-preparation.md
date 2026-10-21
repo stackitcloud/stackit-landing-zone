@@ -100,7 +100,7 @@ future Plan/Apply, access, secret version and target must be checked again.
 
 Addition from 2026-10-06: ordinary preparation remains bound to `a256f68`.
 For contract output, an additional preparation can explicitly
-select the fixed qualified commit `c4b43c36af198985980b17626c48d357795e3fbd`.
+select the fixed qualified commit `9e7fb46c329aca32e878ce1f0ea3b944ea240354`.
 This is currently a local opt-in execution path, not general source selection or
 production approval.
 
@@ -118,16 +118,23 @@ revision and own credential profile. The additional selection is:
 {
   "platformUpgrade": {
     "confirm": true,
-    "acceleratorCommit": "c4b43c36af198985980b17626c48d357795e3fbd"
+    "acceleratorCommit": "9e7fb46c329aca32e878ce1f0ea3b944ea240354"
   }
 }
 ```
 
-The server requires a matching qualified package and an existing,
-unlocked S3 state. Other revisions, extra namespace/tenant fields and
-different backend bindings are rejected. The new preparation uses
-the same state and configuration. Old manifests, artifacts, revisions
-and approvals are not rewritten.
+The server requires a matching qualified package and preserves the existing state
+binding. An initialized platform normally requires an unlocked S3 state. A
+partially failed Bootstrap Apply can instead use its existing encrypted checkpoint
+only after the owner explicitly reviews and reconciles it through “Check checkpoint”.
+The reconciliation receipt must match the exact current state version, configuration
+and tenant. The failed Apply must have used the current pinned platform source or
+its supported predecessor `c4b43c36af198985980b17626c48d357795e3fbd`.
+Locks, pending migrations, separate recovery state and active runs block this path;
+a changed checkpoint requires renewed review. This does not create an empty state
+or migrate the backend. Other revisions, extra namespace/tenant fields and different
+backend bindings are rejected. The new preparation uses the same state and
+configuration. Old manifests, artifacts, revisions and approvals are not rewritten.
 
 The contract namespace comes from the authenticated server session and is part of
 the exact new tfvars hash. The API does not relax its tenant/organization check.

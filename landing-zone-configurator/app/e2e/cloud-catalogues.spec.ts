@@ -67,7 +67,15 @@ for (const kind of ["personal", "organisation"]) {
               "Observability-Monitoring-Medium-EU01",
               "Observability-Metrics-Endpoint-100k-EU01",
               "Observability-Frontend-Starter-EU01",
-            ].map((value) => ({ value, label: value })),
+            ].map((value) => ({
+              value,
+              label: value,
+              capabilities: {
+                metricsRetention: value.includes("Monitoring"),
+                logsRetention: false,
+                tracesRetention: false,
+              },
+            })),
           },
         },
       });
@@ -124,6 +132,77 @@ for (const kind of ["personal", "organisation"]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    await page
+      .getByRole("button", { name: "Komponente hinzufügen", exact: true })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Hinzufügen: STACKIT Observability",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Konfigurieren: Zentrale STACKIT Observability",
+        exact: true,
+      })
+      .click();
+    await page
+      .locator("summary")
+      .filter({ hasText: /^Zentrale STACKIT Observability/ })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Eigene Einstellung: Dienst-Leistungsklasse",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Eigene Einstellung: Protokollaufbewahrung (Tage)",
+        exact: true,
+      })
+      .click();
+    const logsRetention = page.getByLabel("Protokollaufbewahrung (Tage)", {
+      exact: true,
+    });
+    await logsRetention.fill("7");
+    await page
+      .getByLabel("Dienst-Leistungsklasse", { exact: true })
+      .selectOption("Observability-Monitoring-Medium-EU01");
+    await expect(logsRetention).toHaveValue("7");
+    await expect(logsRetention).toBeDisabled();
+    await logsRetention
+      .locator("..")
+      .getByRole("button", {
+        name: "Accelerator-Standard verwenden",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "Eigene Einstellung: Protokollaufbewahrung (Tage)",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", {
+        name: "Eigene Einstellung: Metrikaufbewahrung (Tage)",
+        exact: true,
+      }),
+    ).toBeEnabled();
+    await page
+      .getByLabel("Dienst-Leistungsklasse", { exact: true })
+      .selectOption("Observability-Frontend-Starter-EU01");
+    await expect(
+      page.getByRole("button", {
+        name: "Eigene Einstellung: Metrikaufbewahrung (Tage)",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await page
+      .getByLabel("Dienst-Leistungsklasse", { exact: true })
+      .selectOption("Observability-Monitoring-Medium-EU01");
     await page
       .getByRole("button", {
         name: "5 Template-Entwürfe",

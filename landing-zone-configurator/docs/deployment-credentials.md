@@ -19,6 +19,14 @@ As of 2026-09-30. Next building block after fork storage and tfvars export.
 
 ## Optional Firewall HA administration
 
+Use the current appliance login, not a desired future password. A freshly booted
+pinned image retains its image account until an operator changes it; storing the
+profile does not create a user or configure either VM. Check both WAN login pages
+in the connectivity project. If an Apply already created the VMs, correct the
+profile and use a new preparation/Plan against the retained checkpoint; do not
+recreate the VMs or reuse the consumed saved Plan.
+
+
 For Firewall HA, enable **Store OPNsense administration credentials for Firewall
 HA** when creating the profile and enter the existing GUI administrator username
 and password for both appliances. Single-node Firewall infrastructure does not

@@ -47,9 +47,19 @@ Unterstuetzung.
 ## Beispiele
 
 `metrics_retention_days=30`: Diese Wahl und Plan/ACL des Nutzers vorschlagen.
-Andere Aufbewahrungsueberschreibungen auslassen, um native Defaults zu erben;
+Andere Aufbewahrungsueberschreibungen auslassen, um den Servicestandard zu erben;
 keine Beispielwerte fuer Logs/Traces kopieren oder bereits beantwortete ACLs
 erneut abfragen. Optionale Aufbewahrungswerte sind keine Pflichtentscheidungen.
+
+Alle zentralen Aufbewahrungsfelder akzeptieren `null` oder Auslassen für den
+Servicestandard. Frische Live-Kapazitäten haben je Signal Vorrang innerhalb des
+geprüften nativen Vertrags; fehlende Daten nutzen dokumentierte statische Regeln.
+Das bestätigt keine aktuelle Verfügbarkeit. Monitoring unterstützt nur Metriken;
+Frontend/MetricsEndpoint erlauben keine Aufbewahrungsüberschreibungen. Unbekannte
+Unterstützung ist keine Freigabe. Ganzzahlige Tagesgrenzen: Logs/Traces 1–30,
+Metriken/Downsampling 1–780. Editor, Vorbereitung und Vorschlagsübernahme verwenden
+dieselbe Prüfung. Gespeicherte Werte und Tarif bleiben bis zur bewussten Korrektur
+erhalten.
 
 <a id="limits"></a>
 

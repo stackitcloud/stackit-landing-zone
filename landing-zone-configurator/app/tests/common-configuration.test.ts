@@ -94,12 +94,12 @@ describe("shared accelerator feature contract", () => {
       landing_zone_configurator: "true",
     });
   });
-  it("assigns all 29 inputs exactly once, including every protected input", () => {
+  it("assigns all 30 inputs exactly once, including every protected input", () => {
     const assigned = Object.values(featureGroups).flatMap((group) => [
       ...group.inputs,
     ]);
-    expect(assigned.length).toBe(29);
-    expect(new Set(assigned).size).toBe(29);
+    expect(assigned.length).toBe(30);
+    expect(new Set(assigned).size).toBe(30);
     expect([...assigned].sort()).toEqual(
       acceleratorInputs.map((input) => input.name).sort(),
     );
@@ -487,5 +487,65 @@ describe("combination and execution boundaries", () => {
         expect(exportCommonTfvars(restored)).toBe(original);
       }
     },
+  );
+});
+
+it("keeps Monitoring retention nullable and rejects explicit log/trace overrides before execution", () => {
+  for (const retention of [
+    {},
+    { logs_retention_days: null, traces_retention_days: null },
+  ]) {
+    const document = setCommonInput(create(), "observability", {
+      plan_name: "Observability-Monitoring-Medium-EU01",
+      ...retention,
+    });
+    const effective = objectValue(
+      effectiveInput(values(document), "observability"),
+    );
+    expect(effective.logs_retention_days ?? null).toBeNull();
+    expect(effective.traces_retention_days ?? null).toBeNull();
+    expect(effective.metrics_retention_days ?? null).toBeNull();
+    expect(
+      assessCommonConfiguration(document).findings.some(
+        (finding) => finding.code === "unsupported-observability-retention",
+      ),
+    ).toBe(false);
+  }
+  const document = setCommonInput(create(), "observability", {
+    plan_name: "Observability-Monitoring-Medium-EU01",
+    logs_retention_days: 30,
+    traces_retention_days: 14,
+  });
+  expect(
+    assessCommonConfiguration(document)
+      .findings.filter(
+        (finding) => finding.code === "unsupported-observability-retention",
+      )
+      .map((finding) => finding.path),
+  ).toEqual([
+    "observability.logs_retention_days",
+    "observability.traces_retention_days",
+  ]);
+  expect(values(document).observability).toMatchObject({
+    logs_retention_days: 30,
+    traces_retention_days: 14,
+  });
+});
+
+it("uses project-qualified bucket naming by default and preserves explicit legacy selection", () => {
+  expect(effectiveInput(values(create()), "bucket_naming")).toBe("project-id");
+  const legacy = setCommonInput(create(), "bucket_naming", "legacy");
+  expect(values(legacy).bucket_naming).toBe("legacy");
+  expect(
+    assessCommonConfiguration(legacy).findings.some(
+      (finding) => finding.code === "invalid-bucket-naming",
+    ),
+  ).toBe(false);
+  const invalid = setCommonInput(create(), "bucket_naming", "unsupported");
+  expect(assessCommonConfiguration(invalid).findings).toContainEqual(
+    expect.objectContaining({
+      path: "bucket_naming",
+      code: "invalid-bucket-naming",
+    }),
   );
 });
