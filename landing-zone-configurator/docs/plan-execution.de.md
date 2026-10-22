@@ -145,6 +145,17 @@ es bedeutet nicht, dass die gesamte Laufzeit deaktiviert ist. Ein gespeicherter
 Apply bleibt separat zu bestätigen und an das genaue Planartefakt gebunden.
 Ein Quell-Merge aktiviert oder deployt diese Laufzeit nicht.
 
+Die Application-Ausführungslogs sind ein verschlüsselter, begrenzter
+Fortschrittsstand. Migration 063 erlaubt den Austausch von Inhalt, Hash und
+Kürzungskennzeichen nur während des exakt gebundenen aktiven Dispatchs und unter
+den bestehenden Sitzungs-, Delegierungs-, Claim- und Ticketprüfungen. Artefakte,
+Recovery- und Bindungsmetadaten bleiben unveränderlich; abgeschlossene Logs
+können nicht überschrieben werden. Der Auftraggeber kann gespeicherte
+Planfehlerdetails in der Oberfläche lesen, ohne einen weiteren Job zu starten.
+Zuvor abgewiesene Log-Aktualisierungen lassen sich aus dem ersten gespeicherten
+Fortschrittsstand nicht rekonstruieren.
+
+
 <a id="common-editor-and-execution-scope"></a>
 
 ## Gemeinsamer Editor und Ausführungsumfang

@@ -578,7 +578,7 @@ export async function runWorker(
           if (!outputStopped) outputTimer = setTimeout(pollOutput, 500);
         });
       };
-      if (broker === "platform") outputTimer = setTimeout(pollOutput, 500);
+      outputTimer = setTimeout(pollOutput, 500);
       try {
         await new Promise<void>((done, fail) => {
           const child = spawn(

@@ -101,6 +101,13 @@ its own State key; publication and ordering do not approve an infrastructure App
 
 ## Plan and Apply
 
+Application order details show **Execution logs** on the **Plan**, **Drift** and
+**Destroy** steps as well as during Apply. The user who requested the job can read
+its redacted progress and retained failure output and refresh it without starting
+another execution. A code such as `plan_failed` identifies the failed phase;
+the OpenTofu error in the logs is needed to diagnose its cause. Logs do not grant
+Plan/Apply permission and are not shared with another requester.
+
 Choose the correct environment and target, bind the authorized technical
 credentials, then create a preparation and request a Plan. Follow the job output
 and review the resulting changes, source/configuration version and state binding.

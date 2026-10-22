@@ -79,6 +79,15 @@ The UUIDs are placeholders and must come from the actually applied platform. App
 
 Actual Application Plan/Apply uses the separately packaged immutable Application root, instance-specific S3 State and job-bound server-side credential grants. Runtime capabilities report whether the configured Application Runner is enabled; `executionEnabled: false` on compiler/preview responses means those calls did not execute a cloud operation, not that the entire runtime is disabled. A saved-plan Apply remains separately confirmed and bound to the exact artifact. Source merge does not enable or deploy this runtime.
 
+Application execution output is an encrypted, bounded progress snapshot. Migration
+063 permits replacement of output content/hash/truncation only while the exact
+bound dispatch is active, through the existing session/delegation/claim/ticket
+checks. Artifact, recovery and binding metadata remain immutable; terminal output
+cannot be rewritten. The requester can read retained Plan failure details in the
+UI without starting another job. Previously rejected log updates cannot be
+reconstructed from the first stored snapshot.
+
+
 <a id="gemeinsamer-editor-und-ausführungsumfang"></a>
 ## Common editor and execution scope
 
