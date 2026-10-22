@@ -525,6 +525,26 @@ export const englishMessages: Record<string, string> = {
   Bereitstellungsrichtlinie: "Deployment policy",
   "Direkte Bereitstellung": "Direct deployment",
   "Bereitstellung mit Freigabe": "Approval-required deployment",
+  Archiv: "Archive",
+  "Diese Template-Version wurde bereits bestellt und kann nicht gelöscht werden.":
+    "This template version has already been ordered and cannot be deleted.",
+  "Lege diese Template-Version vor dem Löschen still.":
+    "Retire this template version before deleting it.",
+  "{{value0}} · Version {{value1}} gelöscht.":
+    "{{value0}} · Version {{value1}} deleted.",
+  "Die Template-Version konnte nicht gelöscht werden.":
+    "Could not delete the template version.",
+  "Stillgelegte Template-Versionen sind für neue Bestellungen gesperrt. Bestehende Bestellungen bleiben erhalten.":
+    "Retired template versions are blocked for new orders. Existing orders remain available.",
+  "Keine stillgelegten Template-Versionen im Archiv.":
+    "No retired template versions in the archive.",
+  "Löschen entfernt diese Version aus dem Archiv. Der Veröffentlichungs- und Löschnachweis bleibt erhalten.":
+    "Deletion removes this version from the archive. Publication and deletion evidence is retained.",
+  "Diese unbenutzte Template-Version aus dem Archiv löschen":
+    "Delete this unused template version from the archive",
+  "Template-Version löschen": "Delete template version",
+  "Diese Version kann nicht gelöscht werden, wenn sie bereits bestellt wurde. Auch gelöschte oder archivierte Bestellungen zählen als Verwendung.":
+    "This version cannot be deleted once ordered. Deleted or archived orders also count as usage.",
   "Diese Template-Version wurde stillgelegt.":
     "This template version has been retired.",
   "Die Template-Version konnte nicht stillgelegt werden.":

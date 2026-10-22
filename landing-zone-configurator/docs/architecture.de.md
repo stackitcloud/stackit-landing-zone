@@ -98,6 +98,16 @@ Veroeffentlichung oder Apply-Freigabe. Die Plattformkonfiguration erzeugt nicht
 bereits die Anwendungsinstanzen. Template-Versionen und konkrete Bestellungen
 bleiben getrennte Objekte; Rollen gelten pro Arbeitsumgebung.
 
+Stilllegung und Kataloglöschung werden als getrennte, nur ergänzbare Nachweise
+gespeichert. Stillgelegte Versionen erscheinen im Archiv für Platform Engineers.
+Die Löschfunktion prüft die aktuelle Mandantensitzung und Platform-Engineer-Rolle
+erneut, verwendet dieselbe transaktionale Advisory-Sperre wie Bestellung und
+Stilllegung und lehnt jede historische Bestellung ab, auch bereits gelöschte.
+Nur unbenutzte stillgelegte Versionen können aus dem Archiv entfernt werden.
+Veröffentlichungsdokumente, Versionsnummern, Löschnachweise, Bestellungen und
+State-Zuordnungen bleiben unveränderlich; eine neue Veröffentlichung kann keine
+gelöschte Versionsnummer erneut verwenden.
+
 <a id="technical-detail-reference"></a>
 
 ## Technische Detailreferenz

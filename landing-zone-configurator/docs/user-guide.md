@@ -60,6 +60,20 @@ and provide its exposed parameters. A template draft is not an Application
 instance, and publishing does not deploy one. Existing instances are not silently
 upgraded when a new version is published.
 
+
+### Retire, archive and delete versions
+
+The catalogue shows active versions. Platform Engineers can retire a version after
+confirmation; it moves to **Archive** and no longer accepts new orders. Existing
+orders and their State bindings remain available. Application Owners see active
+versions permitted for their groups.
+
+In **Archive**, an unused version can be deleted after a separate confirmation.
+Deletion is allowed only if nobody has ever ordered that version; even deleted
+or archived orders prevent deletion. Deletion removes the version from the UI,
+while immutable publication and deletion evidence and version numbers are retained.
+Publishing again creates a new version and does not reuse deleted version numbers.
+
 ### Bind published templates to an applied platform
 
 Open the saved platform configuration as Platform Engineer in the same workspace.

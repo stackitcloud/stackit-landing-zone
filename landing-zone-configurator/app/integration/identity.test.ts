@@ -3478,6 +3478,118 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       await expect(applications.listTemplates(bob)).rejects.toMatchObject({
         code: "42501",
       });
+      const deletion = { confirmDeletion: true };
+      expect(() =>
+        applications.deleteTemplate(engineer, republished.id, {
+          confirmDeletion: false,
+        }),
+      ).toThrow();
+      await expect(
+        applications.deleteTemplate(owner, republished.id, deletion),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.deleteTemplate(alice, republished.id, deletion),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        applications.deleteTemplate(engineer, republished.id, deletion),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "template_version_not_retired",
+      });
+      await expect(
+        applications.deleteTemplate(engineer, published.id, deletion),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "template_version_in_use",
+      });
+      await applications.retire(engineer, republished.id, {
+        confirmRetirement: true,
+      });
+      expect(
+        (await applications.listTemplates(engineer)).find(
+          (v) => v.id === republished.id,
+        )?.canDelete,
+      ).toBe(true);
+      await expect(
+        applications.deleteTemplate(engineer, randomUUID(), deletion),
+      ).rejects.toMatchObject({ code: "42501" });
+      const [removed, removedAgain, blockedOrder] = await Promise.all([
+        applications.deleteTemplate(engineer, republished.id, deletion),
+        applications.deleteTemplate(engineer, republished.id, deletion),
+        applications
+          .order(engineer, {
+            ...request,
+            versionId: republished.id,
+            idempotencyKey: randomUUID(),
+          })
+          .then(
+            () => "unexpected_order",
+            (error: unknown) => error,
+          ),
+      ]);
+      expect(blockedOrder).toBeInstanceOf(Error);
+      expect([
+        "template_version_retired",
+        "template_version_not_found",
+      ]).toContain((blockedOrder as Error & { code: string }).code);
+      expect(removedAgain).toEqual(removed);
+      expect(
+        (await applications.listTemplates(engineer)).some(
+          (v) => v.id === republished.id,
+        ),
+      ).toBe(false);
+      await expect(
+        applications.order(engineer, {
+          ...request,
+          versionId: republished.id,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toMatchObject({ code: "template_version_not_found" });
+      const deletionProof = await migration.query(
+        "SELECT v.version,d.deleted_by FROM lzc.application_template_versions v JOIN lzc.application_template_deletions d ON d.tenant_id=v.tenant_id AND d.version_id=v.id WHERE v.id=$1",
+        [republished.id],
+      );
+      expect(deletionProof.rows).toEqual([
+        { version: 3, deleted_by: engineer.userId },
+      ]);
+      await expect(
+        migration.query(
+          "DELETE FROM lzc.application_template_deletions WHERE version_id=$1",
+          [republished.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await expect(
+        withTenant(pool, engineer, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_template_deletions(tenant_id,version_id,deleted_by) VALUES($1,$2,$3)",
+            [tenantId, published.id, engineer.userId],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      const newVersion = await applications.publish(engineer, {
+        template: updated.template,
+      });
+      expect(newVersion.version).toBe(5);
+      const historicalOrder = await applications.order(engineer, {
+        ...request,
+        versionId: newVersion.id,
+        idempotencyKey: randomUUID(),
+      });
+      await applications.deleteOrder(engineer, historicalOrder.id, deletion);
+      await applications.retire(engineer, newVersion.id, {
+        confirmRetirement: true,
+      });
+      expect(
+        (await applications.listTemplates(engineer)).find(
+          (v) => v.id === newVersion.id,
+        )?.canDelete,
+      ).toBe(false);
+      await expect(
+        applications.deleteTemplate(engineer, newVersion.id, deletion),
+      ).rejects.toMatchObject({
+        code: "40001",
+        message: "template_version_in_use",
+      });
       await organisations.editMember(
         engineer,
         bob.userId,

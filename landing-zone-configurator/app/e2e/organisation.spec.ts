@@ -2227,6 +2227,7 @@ for (const { publishing, applied, renewProof, executing } of [
               ? {
                   versions,
                   retirementEnabled: true,
+                  templateDeletionEnabled: true,
                   deploymentPolicyEnabled: true,
                   groupAccessEnabled: true,
                   appliedPlatformsEnabled: applied,
@@ -2321,6 +2322,23 @@ for (const { publishing, applied, renewProof, executing } of [
         };
         return route.fulfill({ json: { id: versionId } });
       }
+      if (new URL(request.url()).pathname.endsWith("/delete")) {
+        expect(publishing).toBe(true);
+        expect(body).toEqual({ confirmDeletion: true });
+        const deletingId = new URL(request.url()).pathname.split("/").at(-2);
+        const index = versions.findIndex(
+          (value) =>
+            publishedProjectTemplateSchema.parse(value).id === deletingId,
+        );
+        expect(index).toBeGreaterThanOrEqual(0);
+        expect(
+          publishedProjectTemplateSchema.parse(versions[index]).retiredAt,
+        ).toBeTruthy();
+        versions.splice(index, 1);
+        return route.fulfill({
+          json: { versionId: deletingId, deletedAt: new Date().toISOString() },
+        });
+      }
       if (new URL(request.url()).pathname.endsWith("/retire")) {
         expect(publishing).toBe(true);
         expect(body).toEqual({ confirmRetirement: true });
@@ -2332,7 +2350,7 @@ for (const { publishing, applied, renewProof, executing } of [
         expect(index).toBeGreaterThanOrEqual(0);
         const published = publishedProjectTemplateSchema.parse(versions[index]);
         const retiredAt = new Date().toISOString();
-        versions[index] = { ...published, retiredAt };
+        versions[index] = { ...published, retiredAt, canDelete: true };
         return route.fulfill({
           json: { versionId: published.id, retiredAt, retiredBy: userId },
         });
@@ -2699,6 +2717,38 @@ for (const { publishing, applied, renewProof, executing } of [
           }),
         }),
       ]);
+      await page.getByRole("tab", { name: "Katalog", exact: true }).click();
+      await expect(
+        page.getByRole("button", { name: /, Version 2,/ }),
+      ).toHaveCount(0);
+      await page.getByRole("tab", { name: "Archiv", exact: true }).click();
+      await page
+        .getByRole("button", { name: /, Version 2,.*Stillgelegt/ })
+        .click();
+      await expect(
+        page.getByRole("button", {
+          name: "Template-Version löschen",
+          exact: true,
+        }),
+      ).toBeDisabled();
+      await page
+        .getByLabel(
+          "Diese unbenutzte Template-Version aus dem Archiv löschen",
+          { exact: true },
+        )
+        .check();
+      await page
+        .getByRole("button", { name: "Template-Version löschen", exact: true })
+        .click();
+      await expect(page.getByRole("status")).toContainText(
+        "Version 2 gelöscht",
+      );
+      await expect(
+        page.getByText("Keine stillgelegten Template-Versionen im Archiv.", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      expect(versions).toHaveLength(1);
     } else {
       await expect(page).toHaveURL(/\/applications$/);
       await expect(
