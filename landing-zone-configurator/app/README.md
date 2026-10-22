@@ -408,6 +408,27 @@ neither Runner termination nor revocation of cloud credentials already issued.
 Cloud reconciliation, Runner termination, state recovery and execution approval
 remain separate operations with their own evidence and approvals.
 
+### Application replan after failed Apply
+
+Migration 064 adds a separate immutable completion-clearance receipt. It is
+independent of the advisory review flag above. The original Application Owner
+can check and clear a terminal `apply_failed` job with a consumed, package-bound
+Runner ticket, bound output evidence and no recovery record. The check reads
+only the exact Application S3 key using server-held backend credentials, checks
+locks before and after reads, verifies `terraform_data.contract`, and returns
+resource counts plus checkpoint metadata. It never returns raw State or secrets.
+The five-minute encrypted review token is bound to the tenant, session, job,
+backend and observed checkpoint; approval rechecks all bindings and S3 content.
+
+This records reported command completion, not independently verified Runner or
+cloud reconciliation. A fresh, normally refreshed Plan and normal Apply review
+remain mandatory. Unknown final completion retains the separate original-PE
+operator-attestation path with expired execution windows; State write failures,
+recovery records, locks or mismatched State cannot use this path. Clearance
+changes no historical dispatch or State and starts no execution. SQL enforces
+the fresh-Plan boundary at saved-plan lookup and Apply insertion, and a new failed
+Apply requires its own clearance. The original Accelerator pin is unchanged.
+
 <a id="lokale-plan-apply-ausführung"></a>
 
 ### Local Plan/Apply execution

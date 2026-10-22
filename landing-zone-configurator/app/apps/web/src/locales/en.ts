@@ -1,4 +1,40 @@
 export const englishMessages: Record<string, string> = {
+  "Nach der Checkpoint-Prüfung ist ein neuer Plan erforderlich. Bitte dieselbe Bestellung neu planen und den neuen Plan prüfen.":
+    "A new Plan is required after checkpoint review. Replan the same order and review the new Plan.",
+  "Bei regulär gemeldetem Apply-Fehler prüft der Server den gespeicherten State für einen neuen Plan. Nur unklare Abschlüsse benötigen einen externen Operator-Abgleich.":
+    "For a normally reported Apply failure, the server checks saved state for a new Plan. Only unresolved completion requires external operator reconciliation.",
+  "Neuen Plan prüfen": "Review new Plan",
+  "Der Runner hat das Ende des Apply-Befehls gemeldet. Der gebundene State ist lesbar und entsperrt; ein separater Recovery-State liegt nicht vor. Der neue Plan aktualisiert den Cloud-Zustand. Prüfe ihn vor einem erneuten Apply vollständig.":
+    "The runner reported completion of the Apply command. The bound state is readable and unlocked; no separate recovery state exists. The new Plan refreshes cloud state. Review it fully before another Apply.",
+  "Ich möchte dieselbe Bestellung mit dem vorhandenen State neu planen. Den neuen Plan prüfe ich vor Apply; ein Apply wird jetzt nicht gestartet oder freigegeben.":
+    "I want to replan the same order using existing state. I will review the new Plan before Apply; no Apply is started or authorized now.",
+  "Neuen Plan ermöglichen": "Enable new Plan",
+  "Ein vorheriger Apply ist fehlgeschlagen. Prüfe in der Apply-Ansicht den Application-Checkpoint, um dieselbe Bestellung neu zu planen. Nur bei unklarem Abschluss ist ein Operator-Abgleich nötig.":
+    "A previous Apply failed. In the Apply view, check the Application checkpoint to replan the same order. Only unresolved completion requires operator reconciliation.",
+  "Der Checkpoint wurde geprüft. Ein neuer Plan derselben Bestellung ist möglich; der alte Plan bleibt für Apply gesperrt.":
+    "The checkpoint was checked. A new Plan for the same order is available; the old Plan remains blocked for Apply.",
+
+  "Der Checkpoint oder Prüfkontext hat sich geändert oder ist abgelaufen. Bitte erneut prüfen.":
+    "The checkpoint or review context changed or expired. Check again.",
+  "Dieser Apply ist noch nicht für einen neuen Plan freigebbar. Ausführung, Berechtigungen und Recovery-State müssen vom Platform Owner geprüft werden.":
+    "This Apply cannot yet be cleared for a new Plan. The Platform Owner must review execution, permissions and recovery state.",
+  "Der Application-State ist gesperrt. Keine Freigabe möglich; die Sperre wird nicht verändert.":
+    "The Application state is locked. Clearance is unavailable; the lock is not changed.",
+  "Der State passt nicht eindeutig zu dieser Bestellung oder enthält ersetzte Instanzen. Operator-Abgleich erforderlich.":
+    "The state cannot be bound unambiguously to this order or contains deposed instances. Operator reconciliation is required.",
+  "Der gebundene Application-State konnte nicht sicher gelesen werden. Bitte den Platform Owner kontaktieren.":
+    "The bound Application state could not be read safely. Contact the Platform Owner.",
+  "Neuen Plan nach Apply-Fehler ermöglichen":
+    "Enable a new Plan after a failed Apply",
+  "Application-Checkpoint prüfen": "Check Application checkpoint",
+  "Runner-App": "Runner app",
+  "Prüfung gültig bis": "Review valid until",
+  "Externer Operator-Abgleich": "External operator reconciliation",
+  "Ich habe extern geprüft, dass der angezeigte Runner keine Ausführung mehr ausführt und nicht erneut starten kann.":
+    "I checked externally that the displayed runner has stopped executing and cannot restart execution.",
+  "Ich habe Cloud-Ressourcen und Checkpoint abgeglichen; es gibt keine ungeklärten, nicht im State erfassten Ressourcen dieses Apply.":
+    "I compared cloud resources with the checkpoint; this Apply has no unresolved resources missing from state.",
+
   "{{value0}} · Version {{value1}} veröffentlicht. Es wurde kein Plan oder Apply gestartet.":
     "{{value0}} · Version {{value1}} published. No Plan or Apply was started.",
   "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.":

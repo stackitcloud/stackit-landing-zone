@@ -122,6 +122,28 @@ fehlgeschlagene Phase; zur Ursachenklärung dient der OpenTofu-Fehler in den Log
 Die Logs erteilen keine Plan-/Apply-Berechtigung und werden keinem anderen
 Auftraggeber offengelegt.
 
+Behalte nach einem regulär gemeldeten Application-Apply-Fehler (`apply_failed`)
+die bestehende Bestellung. Wähle in deren Schritt **Apply** die Aktion
+**Application-Checkpoint prüfen**. Der Server prüft den exakt zur Bestellung
+gehörenden S3-State, eine mögliche Sperre, separate Recovery-Nachweise und die
+Abschlussmeldung des Runners. Bestätige, dass du dieselbe Bestellung neu planen
+möchtest, wechsle zu **Plan** und starte einen neuen Cloud-Plan. Das kann der
+Application Owner ohne erneute Freigabe des Platform Owners und ohne Warten auf
+den Ablauf der alten Freigabe durchführen. Bestehende Zugangsdaten sowie
+ursprüngliche Quelle, Bestellung und State-Bindung bleiben erhalten. Diese
+Aktion startet keinen Apply; der alte gespeicherte Plan kann nicht erneut
+angewendet werden.
+
+Ein neuer Plan aktualisiert die Cloud-Ressourcen; prüfe seine vollständigen
+Änderungen vor einem weiteren Apply. Nach einem Service-Timeout kann eine
+asynchrone Cloud-Operation ungeklärt sein. Ein lesbarer Checkpoint beweist daher
+allein keine vollständige Übereinstimmung von Cloud und State. Fehlende
+Abschlussmeldungen, State-Schreibfehler, separate Recovery-States, Sperren oder
+abweichende Checkpoints bleiben blockiert. Bei dafür geeigneten unklaren
+Abschlüssen kann der ursprünglich freigebende Platform Owner nach Ablauf der
+alten Ausführungsberechtigungen einen externen Runner-/Cloud-Abgleich gesondert
+bestätigen. Das ist keine automatische Cloud-Prüfung oder State-Reparatur.
+
 Wähle die richtige Umgebung und das richtige Ziel, binde die autorisierten technischen
 Zugangsdaten, erstelle eine Vorbereitung und fordere anschließend einen Plan an. Verfolge
 die Job-Ausgabe und prüfe die resultierenden Änderungen, Quell-/Konfigurationsversion

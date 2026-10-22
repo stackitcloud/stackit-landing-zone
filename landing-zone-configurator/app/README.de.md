@@ -408,6 +408,33 @@ weder Runner-Stillstand noch Widerruf bereits ausgegebener Cloud-Credentials.
 Cloud-Abgleich, Runner-Stillstand, State-Wiederherstellung und Ausfuehrungsfreigabe
 bleiben separate Vorgänge mit eigenen Nachweisen und Freigaben.
 
+<a id="application-replan-after-failed-apply"></a>
+
+### Application nach fehlgeschlagenem Apply neu planen
+
+Migration 064 ergänzt einen separaten unveränderlichen Abschlussbeleg, unabhängig
+vom obigen Flag für beratende Prüfbelege. Der ursprüngliche Application Owner
+kann einen abschließend als `apply_failed` gemeldeten Job mit verbrauchtem,
+paketgebundenem Runner-Ticket, gebundenem Ausgabenachweis und ohne Recovery-Beleg
+prüfen und für einen neuen Plan freigeben. Die Prüfung liest mit serverseitigen
+Backend-Zugangsdaten ausschließlich den exakten Application-S3-Schlüssel,
+kontrolliert Sperren vor und nach dem Lesen, prüft `terraform_data.contract` und
+liefert Ressourcenanzahlen sowie Checkpoint-Metadaten. Rohe States oder
+Zugangsdaten werden nicht ausgegeben. Das fünf Minuten gültige verschlüsselte
+Prüftoken ist an Tenant, Sitzung, Job, Backend und beobachteten Checkpoint
+gebunden; die Bestätigung prüft alle Bindungen und den S3-Inhalt erneut.
+
+Dies protokolliert das gemeldete Befehlsende, keinen unabhängig verifizierten
+Runner-/Cloud-Abgleich. Ein frischer Plan mit normalem Refresh und die normale
+Apply-Prüfung bleiben erforderlich. Bei unklarem Abschluss bleibt der separate
+Operator-Abgleich durch den ursprünglich freigebenden PE nach Ablauf der
+Ausführungsfenster nötig. State-Schreibfehler, Recovery-Belege, Sperren oder
+abweichende States sind von diesem Weg ausgeschlossen. Der Beleg verändert
+keinen historischen Dispatch oder State und startet keine Ausführung. SQL erzwingt
+den frischen Plan bei der Artefaktabfrage und beim Anlegen eines Apply. Ein neuer
+fehlgeschlagener Apply benötigt einen eigenen Beleg. Der ursprüngliche
+Accelerator-Quellstand bleibt unverändert.
+
 <a id="local-planapply-execution"></a>
 
 ### Lokale Plan-/Apply-Ausführung

@@ -301,6 +301,31 @@ const credentials = {
 const backend: S3RunnerBackend = { kind: "s3", descriptor, credentials };
 const session = { tenantId: randomUUID(), userId: randomUUID() } as Session;
 const crypto = new ArtifactCrypto(randomBytes(32).toString("base64"));
+it("checks a newly acquired lock after reading an Application checkpoint without changing it", async () => {
+  const bytes = Buffer.from(
+    JSON.stringify({
+      version: 4,
+      lineage: randomUUID(),
+      serial: 3,
+      resources: [],
+    }),
+  );
+  const read = vi
+    .fn()
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce({ bytes, identity: "snapshot" })
+    .mockResolvedValueOnce({ bytes: Buffer.from("lock"), identity: "lock" });
+  const backends = new Backends({} as pg.Pool, crypto, read);
+  await expect(backends.current(backend, true)).rejects.toMatchObject({
+    code: "state_locked",
+  });
+  expect(read.mock.calls.map((call) => call[1])).toEqual([
+    `${descriptor.key}.tflock`,
+    descriptor.key,
+    `${descriptor.key}.tflock`,
+  ]);
+});
+
 function fixture() {
   const source = {
     version: 4 as const,
