@@ -5246,10 +5246,37 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         runner_package_id: ticketPackage.runnerPackageId,
         sha256: artifactReceipt.sha256,
       });
-      await dispatchApplications.runnerOutput(dispatchedTicket, ticketPackage, {
-        text: "application plan output",
-        truncated: false,
-      });
+      for (const text of [
+        "package verified",
+        "providers initialized",
+        "application plan output",
+        "application plan output",
+      ])
+        await dispatchApplications.runnerOutput(
+          dispatchedTicket,
+          ticketPackage,
+          { text, truncated: false },
+        );
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "UPDATE lzc.application_runner_records SET ciphertext=$2 WHERE job_id=$1 AND kind='output'",
+            [dispatchJob.id, Buffer.alloc(40)],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_runner_records SET state_key='different' WHERE job_id=$1 AND kind='output'",
+          [dispatchJob.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_runner_records SET ciphertext=$2 WHERE job_id=$1 AND kind='artifact'",
+          [dispatchJob.id, Buffer.alloc(40)],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
       const sealedOutput = (
         await migration.query(
           "SELECT ciphertext FROM lzc.application_runner_records WHERE job_id=$1 AND kind='output'",
@@ -5291,6 +5318,18 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           status: "succeeded",
           summary: applicationSummary,
           artifactSha256: artifactReceipt.sha256,
+        }),
+      ).rejects.toMatchObject({ status: 401 });
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_runner_records SET ciphertext=$2 WHERE job_id=$1 AND kind='output'",
+          [dispatchJob.id, Buffer.alloc(40)],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await expect(
+        dispatchApplications.runnerOutput(dispatchedTicket, ticketPackage, {
+          text: "late output",
+          truncated: false,
         }),
       ).rejects.toMatchObject({ status: 401 });
       await expect(
@@ -5962,6 +6001,37 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             ),
           ),
         ).rejects.toMatchObject({ code: "42501" });
+        await delegatedApplications.runnerOutput(
+          delegatedTicket,
+          ticketPackage,
+          { text: "temporarily truncated", truncated: true },
+        );
+        expect(
+          await delegatedApplications.outputJob(owner, delegatedJob.id),
+        ).toMatchObject({ truncated: true });
+        for (const text of [
+          "package verified",
+          "delegated planning progress",
+          "delegated planning progress",
+        ])
+          await delegatedApplications.runnerOutput(
+            delegatedTicket,
+            ticketPackage,
+            { text, truncated: false },
+          );
+        expect(
+          await delegatedApplications.outputJob(owner, delegatedJob.id),
+        ).toEqual({
+          text: "delegated planning progress",
+          truncated: false,
+          kind: "execution",
+        });
+        await expect(
+          delegatedApplications.outputJob(
+            { ...peer, tenantId },
+            delegatedJob.id,
+          ),
+        ).rejects.toMatchObject({ status: 404 });
         const artifact = await delegatedApplications.runnerArtifact(
           delegatedTicket,
           ticketPackage,
@@ -6130,12 +6200,28 @@ describe("real PostgreSQL session and tenant boundaries", () => {
               { stage },
             );
           await delegatedApplications.runnerOutput(applyTicket, ticketPackage, {
+            text: "Apply started",
+            truncated: false,
+          });
+          await delegatedApplications.runnerOutput(applyTicket, ticketPackage, {
             text: "Apply complete",
             truncated: false,
           });
           await delegatedApplications.runnerResult(applyTicket, ticketPackage, {
             status: "succeeded",
           });
+          await expect(
+            delegatedApplications.runnerOutput(applyTicket, ticketPackage, {
+              text: "late output",
+              truncated: false,
+            }),
+          ).rejects.toBeDefined();
+          await expect(
+            migration.query(
+              "UPDATE lzc.application_runner_records SET ciphertext=$2 WHERE job_id=$1 AND kind='output'",
+              [apply.jobId, Buffer.alloc(40)],
+            ),
+          ).rejects.toMatchObject({ code: "55000" });
           await expect(
             delegatedApplications.runnerResult(applyTicket, ticketPackage, {
               status: "succeeded",

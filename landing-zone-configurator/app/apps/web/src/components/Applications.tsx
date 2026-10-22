@@ -941,15 +941,24 @@ function ApplicationPlanControls({
         job.status,
       ),
   );
+  const outputJob =
+    view === "destroy"
+      ? jobs.find(
+          (job) => job.id === currentPlan?.id || job.id === currentApply?.id,
+        )
+      : view === "apply"
+        ? currentApply
+        : planView
+          ? currentPlan
+          : undefined;
   const outputJobId =
-    (view === "apply" || view === "destroy") &&
-    currentApply?.requestedBy === session.user.id
-      ? currentApply?.id
+    outputJob && outputJob.requestedBy === session.user.id
+      ? outputJob.id
       : undefined;
   const outputPolling = Boolean(
-    currentApply &&
+    outputJob &&
       !["succeeded", "failed", "reconciliation_required"].includes(
-        currentApply.status,
+        outputJob.status,
       ),
   );
   const loadOutput = useCallback(
@@ -1258,41 +1267,39 @@ function ApplicationPlanControls({
                   )}
                 </>
               )}
-            {(view === "apply" || view === "destroy") &&
-              job.operation === "apply" &&
-              job.requestedBy === session.user.id && (
-                <details open className="application-output">
-                  <summary>{t("Ausführungslogs")}</summary>
-                  <button
-                    type="button"
-                    className="button secondary icon-button"
-                    aria-label={t("Ausführungslogs aktualisieren")}
-                    title={t("Ausführungslogs aktualisieren")}
-                    onClick={() =>
-                      void loadOutput(job.id).catch((cause: unknown) =>
-                        setOutputError(
-                          cause instanceof Error
-                            ? cause.message
-                            : "Die Ausführungslogs sind derzeit nicht verfügbar.",
-                        ),
-                      )
-                    }
-                  >
-                    <RefreshCw size={18} aria-hidden="true" />
-                  </button>
-                  {outputError && <p role="alert">{t(outputError)}</p>}
-                  {output?.jobId === job.id && output.text ? (
-                    <section aria-label={t("Ausführungslogs")}>
-                      <pre>{output.text}</pre>
-                    </section>
-                  ) : (
-                    <p>{t("Noch keine Ausführungslogs verfügbar.")}</p>
-                  )}
-                  {output?.jobId === job.id && output.truncated && (
-                    <p>{t("Die Ausführungslogs wurden gekürzt.")}</p>
-                  )}
-                </details>
-              )}
+            {job.id === outputJobId && job.requestedBy === session.user.id && (
+              <details open className="application-output">
+                <summary>{t("Ausführungslogs")}</summary>
+                <button
+                  type="button"
+                  className="button secondary icon-button"
+                  aria-label={t("Ausführungslogs aktualisieren")}
+                  title={t("Ausführungslogs aktualisieren")}
+                  onClick={() =>
+                    void loadOutput(job.id).catch((cause: unknown) =>
+                      setOutputError(
+                        cause instanceof Error
+                          ? cause.message
+                          : "Die Ausführungslogs sind derzeit nicht verfügbar.",
+                      ),
+                    )
+                  }
+                >
+                  <RefreshCw size={18} aria-hidden="true" />
+                </button>
+                {outputError && <p role="alert">{t(outputError)}</p>}
+                {output?.jobId === job.id && output.text ? (
+                  <section aria-label={t("Ausführungslogs")}>
+                    <pre>{output.text}</pre>
+                  </section>
+                ) : (
+                  <p>{t("Noch keine Ausführungslogs verfügbar.")}</p>
+                )}
+                {output?.jobId === job.id && output.truncated && (
+                  <p>{t("Die Ausführungslogs wurden gekürzt.")}</p>
+                )}
+              </details>
+            )}
             {job.requestedBy === session.user.id &&
               (job.status === "reconciliation_required" ||
                 (job.operation === "apply" && job.status === "failed")) && (

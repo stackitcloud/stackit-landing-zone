@@ -200,6 +200,10 @@ if (phase === "plan") {
   fs.writeFileSync("plan.bin", ${JSON.stringify(plan.toString())});
   console.log(JSON.stringify({type:"version", ui:"1.2", "@message":"OpenTofu 1.12.6"}));
   console.log(JSON.stringify({type:"diagnostic", "@message":${JSON.stringify(secret)}}));
+  if (${JSON.stringify(behavior)} === "plan-failure") {
+    console.log(JSON.stringify({type:"diagnostic", "@message":"Error: Corporate plan fixture failure " + ${JSON.stringify(secret)}}));
+    process.exit(1);
+  }
   if (${JSON.stringify(behavior)} === "live-output") {
     console.log(JSON.stringify({type:"refresh_start", "@message":"Refreshing state...", hook:{private:"private-event-metadata"}}));
     process.stdout.write('{"type":"refresh_complete","@message":"unfinished-sensitive-line');
@@ -756,6 +760,30 @@ it("plans the pinned application root with sibling modules and only its instance
   ).toHaveLength(1);
 });
 
+it("retains a redacted failed Application plan diagnostic before reporting failure and cleanup", async () => {
+  const test = await fixture("platform-plan", "plan-failure");
+  applicationInput(test);
+  expect(await test.execute()).toBe("failed");
+  const outputIndex = test.reports.findLastIndex(
+    ({ path }) => path === "output",
+  );
+  const resultIndex = test.reports.findIndex(({ path }) => path === "result");
+  expect(test.reports[outputIndex]?.body).toMatchObject({
+    text: expect.stringContaining("Error: Corporate plan fixture failure"),
+    truncated: false,
+  });
+  expect(JSON.stringify(test.reports[outputIndex]?.body)).not.toContain(secret);
+  expect(JSON.stringify(test.reports[outputIndex]?.body)).not.toContain(ticket);
+  expect(outputIndex).toBeLessThan(resultIndex);
+  expect(test.reports[resultIndex]?.body).toEqual({
+    status: "failed",
+    errorCode: "plan_failed",
+  });
+  expect(test.reports.some(({ path }) => path === "artifact")).toBe(false);
+  for (const call of await test.calls())
+    await expect(stat(call.work)).rejects.toThrow("ENOENT");
+});
+
 it.each(["destroy", "drift"])(
   "plans an application %s without executing an Apply",
   async (purpose) => {
@@ -1107,10 +1135,16 @@ it.runIf(process.env.LZC_NATIVE_APPLICATION_RUNNER_TEST === "true")(
   120000,
 );
 
-it.each([false, true])(
-  "publishes progress within 1.5s before Plan completion, deduplicates acknowledged output and retries a failed publication: %s",
-  async (failFirst) => {
+it.each([
+  { broker: "platform", failFirst: false },
+  { broker: "platform", failFirst: true },
+  { broker: "application", failFirst: false },
+  { broker: "application", failFirst: true },
+])(
+  "publishes progress within 1.5s before Plan completion, deduplicates acknowledged output and retries a failed publication: $broker / $failFirst",
+  async ({ broker, failFirst }) => {
     const test = await fixture("platform-plan", "live-output");
+    if (broker === "application") applicationInput(test);
     let planningAt = 0;
     let firstProgressAt = 0;
     let failed = false;

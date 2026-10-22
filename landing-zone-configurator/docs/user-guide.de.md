@@ -98,6 +98,14 @@ Infrastruktur-Apply frei.
 <a id="plan-and-apply"></a>
 ## Plan und Apply
 
+Die Bestelldetails zeigen **Ausführungslogs** in den Schritten **Plan**, **Drift**
+und **Destroy** sowie beim Apply. Der Benutzer, der den Job angefordert hat, kann
+bereinigten Fortschritt und gespeicherte Fehlerausgaben lesen und aktualisieren,
+ohne eine neue Ausführung zu starten. Ein Code wie `plan_failed` bezeichnet die
+fehlgeschlagene Phase; zur Ursachenklärung dient der OpenTofu-Fehler in den Logs.
+Die Logs erteilen keine Plan-/Apply-Berechtigung und werden keinem anderen
+Auftraggeber offengelegt.
+
 Wähle die richtige Umgebung und das richtige Ziel, binde die autorisierten technischen
 Zugangsdaten, erstelle eine Vorbereitung und fordere anschließend einen Plan an. Verfolge
 die Job-Ausgabe und prüfe die resultierenden Änderungen, Quell-/Konfigurationsversion

@@ -15,6 +15,7 @@ for (const scenario of [
   "disabled",
   "engineer",
   "dispatch-failed",
+  "plan-failed",
   "prepare-retry",
   "prepare-refresh-retry",
   "delete-owner",
@@ -35,6 +36,7 @@ for (const scenario of [
   "archive-blocked",
   "order-table",
   "maintenance-destroy",
+  "maintenance-replan-failed",
   "maintenance-drift",
   "maintenance-expired",
   "maintenance-running",
@@ -48,15 +50,22 @@ for (const scenario of [
     const backendId = "88888888-8888-4888-8888-888888888888";
     const maintenance = scenario.startsWith("maintenance-");
     const recoveryReview = scenario.startsWith("recovery-review");
-    const purpose = scenario === "maintenance-destroy" ? "destroy" : "drift";
-    let maintenanceStarted = false;
+    const purpose =
+      scenario === "maintenance-destroy" ||
+      scenario === "maintenance-replan-failed"
+        ? "destroy"
+        : "drift";
+    const failedPlan =
+      scenario === "plan-failed" || scenario === "maintenance-replan-failed";
+    let maintenanceStarted = scenario === "maintenance-replan-failed";
     const initialApply =
       recoveryReview ||
       scenario.startsWith("apply-") ||
       scenario.startsWith("archive-") ||
       scenario === "order-table" ||
       scenario === "maintenance-expired" ||
-      scenario === "maintenance-running";
+      scenario === "maintenance-running" ||
+      scenario === "maintenance-replan-failed";
     const engineer =
       recoveryReview ||
       scenario === "engineer" ||
@@ -108,7 +117,7 @@ for (const scenario of [
               reason: "Reviewed",
             },
     };
-    let prepared = engineer || initialApply;
+    let prepared = engineer || initialApply || scenario === "plan-failed";
     let backendApproved = scenario === "delegated-owner" || initialApply;
     let dispatched = scenario === "delete-started" || initialApply;
     let deleted = false;
@@ -405,9 +414,11 @@ for (const scenario of [
                         ).toISOString(),
                         operation: "apply",
                         purpose:
-                          maintenanceStarted && !initialApply
-                            ? purpose
-                            : "standard",
+                          scenario === "maintenance-replan-failed"
+                            ? "destroy"
+                            : maintenanceStarted && !initialApply
+                              ? purpose
+                              : "standard",
                         planId: jobId,
                         status:
                           scenario === "apply-running" ||
@@ -442,11 +453,13 @@ for (const scenario of [
                     : "99999999-9999-4999-8999-999999999999",
                   createdAt: new Date().toISOString(),
                   expiresAt: new Date(Date.now() + 120000).toISOString(),
-                  status: dispatched
-                    ? succeeded
-                      ? "succeeded"
-                      : "planning"
-                    : "prepared",
+                  status: failedPlan
+                    ? "failed"
+                    : dispatched
+                      ? succeeded
+                        ? "succeeded"
+                        : "planning"
+                      : "prepared",
                   grantActive: true,
                   backendId: backendApproved ? backendId : null,
                   canApproveBackend:
@@ -455,7 +468,7 @@ for (const scenario of [
                     (engineer || delegated) && backendApproved && !dispatched,
                   ...(delegated ? { delegatedExecution: true } : {}),
                   summary: succeeded ? summary : null,
-                  errorCode: null,
+                  errorCode: failedPlan ? "plan_failed" : null,
                   canApply:
                     delegated &&
                     succeeded &&
@@ -464,7 +477,7 @@ for (const scenario of [
                   artifactSha256: succeeded ? "a".repeat(64) : null,
                 },
               ];
-          if (applied) {
+          if (applied && scenario !== "maintenance-replan-failed") {
             const plan = jobs.find((job) => job.id === jobId);
             if (plan)
               jobs.push({
@@ -472,7 +485,21 @@ for (const scenario of [
                 id: "bbbbbbb2-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
               });
           }
+          if (scenario === "maintenance-replan-failed") jobs.reverse();
           return route.fulfill({ json: { jobs } });
+        }
+        if (path === `jobs/${jobId}/output`) {
+          expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
+          expect(requesterId).toBe(userId);
+          return route.fulfill({
+            json: {
+              text: failedPlan
+                ? "Error: Corporate plan fixture failure"
+                : "Refreshing application project...",
+              truncated: false,
+              kind: failedPlan ? "execution" : "live",
+            },
+          });
         }
         if (path === "jobs/aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa/output")
           return route.fulfill({
@@ -781,6 +808,43 @@ for (const scenario of [
       return;
     }
     const plan = await details();
+    if (scenario === "plan-failed") {
+      await expect(plan.getByRole("alert")).toContainText("plan_failed");
+      const logs = plan.getByRole("region", {
+        name: "Ausführungslogs",
+        exact: true,
+      });
+      await expect(logs).toContainText("Error: Corporate plan fixture failure");
+      await plan
+        .getByRole("button", {
+          name: "Ausführungslogs aktualisieren",
+          exact: true,
+        })
+        .click();
+      await expect(logs).toContainText("Error: Corporate plan fixture failure");
+      expect(mutations).toEqual([]);
+      await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+      await expect(
+        page
+          .getByRole("region", { name: "Application plan", exact: true })
+          .getByRole("region", { name: "Execution logs", exact: true }),
+      ).toContainText("Corporate plan fixture failure");
+      return;
+    }
+    if (scenario === "maintenance-replan-failed") {
+      await page
+        .getByRole("region", { name: "Bestelldetails", exact: true })
+        .getByRole("tab", { name: "Destroy", exact: true })
+        .click();
+      await expect(
+        plan.getByRole("region", { name: "Ausführungslogs", exact: true }),
+      ).toContainText("Error: Corporate plan fixture failure");
+      await expect(
+        plan.getByRole("region", { name: "Ausführungslogs", exact: true }),
+      ).not.toContainText("Error creating credentials group");
+      expect(mutations).toEqual([]);
+      return;
+    }
     if (maintenance) {
       const orderDetails = page.getByRole("region", {
         name: "Bestelldetails",
