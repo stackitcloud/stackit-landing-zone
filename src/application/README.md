@@ -27,6 +27,14 @@ qualify its private CIDR as an Observability ACL source. This scope must appear 
 publication and plan review. Generated credentials remain in the protected
 application state; they are not exposed by the root outputs.
 
+For Corporate projects, a null `network_prefix_length` inherits the current
+SNA-region default through a read-only provider query during Plan. Explicit
+prefixes are preserved and configured DNS is retained. The credential needs SNA
+region read access. A changed SNA default may produce a network replacement in a
+later Plan; review that change before Apply. This works with existing platform
+contracts and does not require a new contract field or State migration.
+
+
 ## Independent two-phase CLI workflow
 
 ### Phase 1: Platform

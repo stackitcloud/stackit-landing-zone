@@ -6,9 +6,22 @@
 Corporate-Projekte behalten ihr geroutetes Netzwerk und ihre SNA-Integration. Wird die
 Option weggelassen, bleiben bestehende öffentliche Projekte ohne Netzwerk unverändert.
 Das optionale `network_prefix_length` gilt für beide Arten von Projektnetzwerken.
+Bei Corporate-Projekten liest `null` über den regionalen Provider des Moduls die
+aktuelle Standardpräfixlänge der ausgewählten SNA-Region und verwendet diese
+effektive Netzgröße beim Planen. Dafür ist die Berechtigung zum Lesen der
+Netzbereichsregion erforderlich. Explizite Größen wie `/26` bleiben unverändert
+und benötigen diese Abfrage nicht. DNS-Einstellungen bleiben wie angegeben;
+automatische Größenwahl entfernt keine konfigurierten Resolver. Public-Netze
+behalten die automatische Größenwahl des Providers und fragen keine SNA ab.
+
+Automatische Größenwahl weist keine freie Kapazität im Adresspool nach. Ändert
+sich der SNA-Standard, kann ein späterer Plan eine Größenänderung oder einen
+Austausch eines vorhandenen Projektnetzes zeigen. Den Plan vor der ausdrücklichen
+Apply-Freigabe prüfen; State-Migrationen oder Änderungen an Ressourcenadressen
+sind dafür nicht erforderlich.
 
 Der folgende generatorverwaltete technische Block bleibt unverändert auf Englisch;
-maßgeblich ist die [kanonische englische Referenz](README.de.md).
+maßgeblich ist die [kanonische englische Referenz](README.md).
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -23,8 +36,8 @@ maßgeblich ist die [kanonische englische Referenz](README.de.md).
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | >= 0.14.1 |
 
 ## Modules
 
@@ -51,6 +64,7 @@ No modules.
 | [stackit_service_account.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account) | resource |
 | [stackit_service_account_key.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account_key) | resource |
 | [time_rotating.key_rotate](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/rotating) | resource |
+| [stackit_network_area_region.defaults](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/data-sources/network_area_region) | data source |
 
 ## Inputs
 

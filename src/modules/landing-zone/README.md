@@ -5,7 +5,18 @@
 Public projects can opt into a local project network with `network_enabled = true`.
 Corporate projects retain their routed network and SNA integration. Omitting the
 option preserves existing public projects without a network. The optional
-`network_prefix_length` applies to both kinds of project network.
+`network_prefix_length` applies to both kinds of project network. For Corporate
+projects, `null` reads the selected SNA region's current default prefix length
+through the module's regional provider and uses that effective size when planning
+the network. This read requires permission to view the network area region.
+Explicit sizes, such as `/26`, bypass the read and remain unchanged. DNS settings
+remain as supplied; automatic sizing does not remove configured resolvers. Public
+networks keep provider-managed automatic sizing and do not query an SNA.
+
+Automatic sizing does not prove address-pool capacity. If an SNA default changes,
+a later Plan can show a size change or replacement for an existing project
+network. Review the Plan before explicitly approving Apply; no State migration
+or resource-address changes are required.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -20,8 +31,8 @@ option preserves existing public projects without a network. The optional
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | >= 0.14.1 |
 
 ## Modules
 
@@ -48,6 +59,7 @@ No modules.
 | [stackit_service_account.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account) | resource |
 | [stackit_service_account_key.automation](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/service_account_key) | resource |
 | [time_rotating.key_rotate](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/rotating) | resource |
+| [stackit_network_area_region.defaults](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/data-sources/network_area_region) | data source |
 
 ## Inputs
 

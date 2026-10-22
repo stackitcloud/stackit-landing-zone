@@ -29,6 +29,15 @@ Observability-ACL-Quelle. Dieser Umfang muss bei Template-Veröffentlichung und 
 sichtbar sein. Generierte Zugangsdaten verbleiben im geschützten Application-State;
 sie werden nicht über Root-Ausgaben offengelegt.
 
+Bei Corporate-Projekten übernimmt `network_prefix_length = null` den aktuellen
+Standard der SNA-Region durch eine lesende Provider-Abfrage während des Plans.
+Explizite Präfixe und konfigurierte DNS-Server bleiben erhalten. Der verwendete
+Zugang benötigt Leserechte für die SNA-Region. Ein geänderter SNA-Standard kann in
+einem späteren Plan einen Austausch des Netzes bewirken; diese Änderung vor Apply
+prüfen. Das funktioniert mit vorhandenen Plattformverträgen und benötigt weder
+ein zusätzliches Vertragsfeld noch eine State-Migration.
+
+
 <a id="independent-two-phase-cli-workflow"></a>
 ## Unabhängiger zweiphasiger CLI-Ablauf
 
