@@ -108,6 +108,25 @@ another execution. A code such as `plan_failed` identifies the failed phase;
 the OpenTofu error in the logs is needed to diagnose its cause. Logs do not grant
 Plan/Apply permission and are not shared with another requester.
 
+After a normally reported Application Apply failure (`apply_failed`), keep the
+existing order. In its **Apply** step, choose **Check Application checkpoint**.
+The server verifies the exact order-bound S3 state, checks for a lock and separate
+recovery evidence, and verifies the Runner's terminal report. Confirm that you
+want to replan the same order, then switch to **Plan** and start a new Cloud Plan.
+The Application Owner can do this without another Platform Owner approval and
+without waiting for the old grant to expire. Existing credentials and the
+original source, order and State binding are preserved. No Apply starts from
+this action, and the old saved Plan cannot be reused.
+
+A new Plan refreshes cloud resources; review its complete changes before another
+Apply. A service timeout can leave an asynchronous cloud operation unresolved,
+so a readable checkpoint alone does not prove that every cloud resource matches
+State. Missing final reports, State write failures, separate recovery State,
+locks or mismatched checkpoints remain blocked. For eligible uncertain
+completion, the originally approving Platform Owner can separately attest an
+external Runner/cloud reconciliation after the old execution credentials expire;
+this is not an automatic cloud verification or State repair.
+
 Choose the correct environment and target, bind the authorized technical
 credentials, then create a preparation and request a Plan. Follow the job output
 and review the resulting changes, source/configuration version and state binding.

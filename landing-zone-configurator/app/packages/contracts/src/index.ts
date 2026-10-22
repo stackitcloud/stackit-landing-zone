@@ -226,6 +226,7 @@ export const applicationPlanJobSchema = z.strictObject({
     .nullable()
     .optional(),
   canApply: z.boolean().default(false),
+  recoveryReplanApproved: z.boolean().default(false),
   status: z.enum([
     "prepared",
     "reserved",
@@ -362,6 +363,56 @@ export const applicationRecoveryReviewViewSchema =
   applicationRecoveryReviewContextSchema.extend({
     review: applicationRecoveryReviewSchema.nullable(),
   });
+
+// Checkpoint contents and credentials never cross this API boundary.
+export const applicationRecoveryReplanCheckSchema = z.strictObject({
+  jobId: z.uuid(),
+  runnerAppId: z.uuid(),
+  instanceId: z.uuid(),
+  observedAt: z.iso.datetime(),
+  expiresAt: z.iso.datetime(),
+  stateSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  stateSerial: z.number().int().nonnegative().refine(Number.isSafeInteger),
+  stateLock: z.literal("free"),
+  resources: z
+    .array(
+      z.strictObject({
+        type: z.string(),
+        mode: z.enum(["managed", "data"]),
+        count: z.number().int().nonnegative(),
+      }),
+    )
+    .max(1024),
+  reviewToken: z.string().min(1).max(8192),
+  mode: z.enum(["reported-failure", "operator-attested"]),
+  runnerStop: z.enum([
+    "reported-command-completed",
+    "operator-attestation-required",
+  ]),
+  cloudState: z.enum([
+    "requires-fresh-plan-review",
+    "operator-attestation-required",
+  ]),
+  startsExecution: z.literal(false),
+});
+export const applicationRecoveryReplanRequestSchema = z.strictObject({
+  reviewToken: applicationRecoveryReplanCheckSchema.shape.reviewToken,
+  confirmRunnerStopped: z.literal(true).optional(),
+  confirmCloudStateCompared: z.literal(true).optional(),
+  confirmFreshPlan: z.literal(true),
+});
+export const applicationRecoveryReplanReceiptSchema = z.strictObject({
+  jobId: z.uuid(),
+  reviewedBy: z.uuid(),
+  reviewedAt: z.iso.datetime(),
+  stateSha256: applicationRecoveryReplanCheckSchema.shape.stateSha256,
+  stateSerial: applicationRecoveryReplanCheckSchema.shape.stateSerial,
+  mode: z.enum(["reported-failure", "operator-attested"]),
+  runnerStop: z.enum(["reported-command-completed", "operator-attested"]),
+  cloudState: z.enum(["requires-fresh-plan-review", "operator-attested"]),
+  requiresFreshPlan: z.literal(true),
+  startsExecution: z.literal(false),
+});
 
 export const planResultSchema = z.discriminatedUnion("status", [
   z

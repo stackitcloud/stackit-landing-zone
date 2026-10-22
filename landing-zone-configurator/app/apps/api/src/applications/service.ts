@@ -39,12 +39,17 @@ import type { Session } from "../auth/store.js";
 import { tokenHash } from "../auth/store.js";
 import type { PostgresCredentialProfiles } from "../credentials/profiles.js";
 import type { CredentialSecrets } from "../credentials/secrets.js";
-import type { Backends } from "../deployments/backends.js";
 import type { PlanRunner } from "../plans/cloud-foundry.js";
 import { type ArtifactCrypto, canonicalBase64 } from "../plans/crypto.js";
 import { canonicalJson, sha256 } from "../plans/execution.js";
 import type { Plans } from "../plans/service.js";
 import { withTenant } from "../storage/database.js";
+
+import {
+  approveRecoveryReplan,
+  checkRecoveryReplan,
+  type RecoveryReplanBackends,
+} from "./recovery-replan.js";
 
 export class ApplicationError extends Error {
   constructor(
@@ -195,7 +200,7 @@ export class Applications {
     > &
       Partial<Pick<PostgresCredentialProfiles, "verifyDelegated">>,
     private readonly secrets?: Pick<CredentialSecrets, "get">,
-    private readonly backends?: Pick<Backends, "runner">,
+    private readonly backends?: RecoveryReplanBackends,
     private readonly dispatch?: { runner: PlanRunner; origin: string },
     private readonly artifactCrypto?: ArtifactCrypto,
     private readonly platforms?: Pick<Plans, "outputs">,
@@ -1156,6 +1161,7 @@ export class Applications {
         plan_id: string | null;
         artifact_sha256: string | null;
         can_apply: boolean;
+        recovery_replan_approved: boolean;
       }>(
         `SELECT j.id,j.instance_id,j.owner_user_id,g.approved_by,j.created_at,j.expires_at,
          coalesce(d.status,j.status) AS status,g.revoked_at IS NULL AND g.expires_at>now() AS grant_active,
@@ -1166,6 +1172,7 @@ export class Applications {
          jd.job_id IS NOT NULL AS delegated_execution,
          j.operation,coalesce(j.inputs->>'purpose','standard') AS purpose,j.plan_id,a.sha256 AS artifact_sha256,
          CASE WHEN j.operation='plan' AND a.sha256 IS NOT NULL AND j.owner_user_id=$3 THEN lzc_auth.application_apply_available($4,j.id,a.sha256) ELSE false END AS can_apply,
+         lzc_auth.application_recovery_replan_approved(j.id) AS recovery_replan_approved,
          d.summary,d.error_code FROM lzc.application_jobs j
          JOIN lzc.application_job_grants g ON g.job_id=j.id AND g.tenant_id=j.tenant_id
          LEFT JOIN lzc.application_job_backends b ON b.job_id=j.id AND b.tenant_id=j.tenant_id
@@ -1189,6 +1196,7 @@ export class Applications {
           planId: row.plan_id,
           artifactSha256: row.artifact_sha256,
           canApply: this.executionCapabilities().applyEnabled && row.can_apply,
+          recoveryReplanApproved: row.recovery_replan_approved ?? false,
           status: row.status,
           grantActive: row.grant_active,
           backendId: row.backend_id,
@@ -1316,6 +1324,34 @@ export class Applications {
         })),
       });
     });
+  }
+
+  async checkRecoveryReplan(session: Session, jobId: string) {
+    const id = z.uuid().parse(jobId);
+    const backends = this.backends;
+    const crypto = this.artifactCrypto;
+    if (!backends?.current || !crypto)
+      throw new ApplicationError(
+        503,
+        "application_recovery_replan_unavailable",
+      );
+    return this.work(session, "read", (client) =>
+      checkRecoveryReplan(client, session, id, { backends, crypto }),
+    );
+  }
+
+  async approveRecoveryReplan(session: Session, jobId: string, input: unknown) {
+    const id = z.uuid().parse(jobId);
+    const backends = this.backends;
+    const crypto = this.artifactCrypto;
+    if (!backends?.current || !crypto)
+      throw new ApplicationError(
+        503,
+        "application_recovery_replan_unavailable",
+      );
+    return this.work(session, "read", (client) =>
+      approveRecoveryReplan(client, session, id, input, { backends, crypto }),
+    );
   }
 
   async recoveryReviewContext(session: Session, jobId: string) {
