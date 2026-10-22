@@ -3853,6 +3853,235 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
         organization: null,
       });
+      const identityVersion = await applications.publish(engineer, {
+        template: {
+          ...template,
+          id: randomUUID(),
+          key: "identity-completion",
+          name: "Complete verified owner",
+          settings: {
+            ...template.settings,
+            role_assignments: [
+              { role: "auditor", subject: "fixed@example.test" },
+            ],
+          },
+          parameterPolicy: {
+            schema_version: 1,
+            fields: {
+              role_assignments: {
+                source: "context",
+                variable: "verified-project-owner",
+                roles: ["owner"],
+              },
+            },
+          },
+        },
+        ...binding,
+        acceleratorRevision: "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+        deploymentPolicy: "direct",
+      });
+      await identities.revoke(owner);
+      const unboundOrder = await applications.order(owner, {
+        versionId: identityVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Before human login",
+        parameters: {},
+      });
+      expect(unboundOrder.settings.owner_email).toBeUndefined();
+      await expect(
+        applications.preparePlanInput(owner, unboundOrder.id),
+      ).rejects.toMatchObject({
+        status: 403,
+        code: "verified_application_identity_required",
+      });
+      const originalOrder = (
+        await migration.query(
+          "SELECT to_jsonb(i)-ARRAY['resolved_settings','qualification_blockers'] AS metadata FROM lzc.application_instances i WHERE id=$1",
+          [unboundOrder.id],
+        )
+      ).rows[0].metadata;
+      await identities.save(owner, {
+        ...ownerProof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      await expect(
+        applications.preparePlanInput(engineer, unboundOrder.id),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        withTenant(pool, engineer, (client) =>
+          client.query(
+            "SELECT lzc_auth.complete_application_order_identity($1,$2,'{}')",
+            [engineer.id, unboundOrder.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "SELECT lzc_auth.complete_application_order_identity($1,$2,$3)",
+            [
+              owner.id,
+              unboundOrder.id,
+              JSON.stringify({
+                ...unboundOrder.settings,
+                owner_email: ownerProof.email,
+                network_enabled: false,
+              }),
+            ],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        withTenant(pool, bob, (client) =>
+          client.query(
+            "SELECT lzc_auth.complete_application_order_identity($1,$2,'{}')",
+            [bob.id, unboundOrder.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      const identityCompletionPool = new pg.Pool({
+        ...migrationConfig,
+        user: "configurator_app",
+        password: "runtime-test-only",
+        max: 2,
+      });
+      const completionApplications = new Applications(identityCompletionPool);
+      const completedPlans = await Promise.all([
+        completionApplications.preparePlanInput(owner, unboundOrder.id),
+        completionApplications.preparePlanInput(owner, unboundOrder.id),
+      ]).finally(() => identityCompletionPool.end());
+      const completedPlan = completedPlans[0];
+      if (!completedPlan) throw new Error("Missing completed plan input");
+      expect(completedPlans[1]?.plan.stateKey).toBe(
+        completedPlan.plan.stateKey,
+      );
+      expect(completedPlan.plan.variables.application.owner_email).toBe(
+        ownerProof.email,
+      );
+      expect(completedPlan.plan.stateKey).toBe(
+        `applications/${tenantId}/${unboundOrder.id}/terraform.tfstate`,
+      );
+      const completedOrder = (await applications.listInstances(owner)).find(
+        (item) => item.id === unboundOrder.id,
+      );
+      expect(completedOrder?.settings.role_assignments).toEqual([
+        { role: "auditor", subject: "fixed@example.test" },
+        { role: "owner", subject: ownerProof.email },
+      ]);
+      expect(completedOrder?.blockers).not.toContain(
+        "Verifizierte STACKIT-Benutzeridentität für diese Bestellung fehlt.",
+      );
+      expect(
+        (
+          await migration.query(
+            "SELECT to_jsonb(i)-ARRAY['resolved_settings','qualification_blockers'] AS metadata FROM lzc.application_instances i WHERE id=$1",
+            [unboundOrder.id],
+          )
+        ).rows[0].metadata,
+      ).toEqual(originalOrder);
+      await applications.preparePlanInput(owner, unboundOrder.id);
+      const completionAudit = (
+        await migration.query(
+          "SELECT initial_settings,completed_settings,subject FROM lzc.application_order_identity_completions WHERE instance_id=$1",
+          [unboundOrder.id],
+        )
+      ).rows;
+      expect(completionAudit).toHaveLength(1);
+      expect(completionAudit[0].initial_settings.owner_email).toBeUndefined();
+      expect(completionAudit[0].completed_settings.owner_email).toBe(
+        ownerProof.email,
+      );
+      expect(completionAudit[0].subject).toBe(ownerProof.subject);
+      await expect(
+        migration.query(
+          "DELETE FROM lzc.application_order_identity_completions WHERE instance_id=$1",
+          [unboundOrder.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query(
+            "UPDATE lzc.application_instances SET resolved_settings='{}' WHERE id=$1",
+            [unboundOrder.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await identities.save(owner, {
+        ...ownerProof,
+        email: "changed-owner@example.test",
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      await expect(
+        applications.preparePlanInput(owner, unboundOrder.id),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_owner_identity_changed",
+      });
+      await identities.save(owner, {
+        ...ownerProof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      const jobBoundaryOrder = await applications.order(owner, {
+        versionId: identityVersion.id,
+        idempotencyKey: randomUUID(),
+        name: "Job identity boundary",
+        parameters: {},
+      });
+      await migration.query(
+        "UPDATE lzc.tenants SET organization_verified=true WHERE id=$1",
+        [tenantId],
+      );
+      const boundJob = await applications.prepareJob(
+        owner,
+        jobBoundaryOrder.id,
+        {
+          idempotencyKey: randomUUID(),
+          confirmPlan: true,
+        },
+      );
+      await migration.query(
+        "UPDATE lzc.application_instances SET resolved_settings=resolved_settings-'owner_email' WHERE id=$1",
+        [jobBoundaryOrder.id],
+      );
+      await expect(
+        applications.preparePlanInput(owner, jobBoundaryOrder.id),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_order_identity_completion_unavailable",
+      });
+      expect(
+        (await applications.listJobs(owner, jobBoundaryOrder.id))[0]?.id,
+      ).toBe(boundJob.id);
+      await migration.query(
+        "UPDATE lzc.tenants SET organization_verified=false WHERE id=$1",
+        [tenantId],
+      );
+      await identities.revoke(owner);
+      const approvedUnboundOrder = await applications.order(owner, {
+        versionId: first.id,
+        idempotencyKey: randomUUID(),
+        name: "Approved before login",
+        parameters: {},
+      });
+      await applications.decideOrder(engineer, approvedUnboundOrder.id, {
+        decision: "approved",
+        reason: "Reviewed before proof",
+        confirmDecision: true,
+      });
+      await identities.save(owner, {
+        ...ownerProof,
+        tokenExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        organization: null,
+      });
+      await expect(
+        applications.preparePlanInput(owner, approvedUnboundOrder.id),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "application_order_identity_completion_unavailable",
+      });
       const order = await applications.order(owner, {
         versionId: first.id,
         idempotencyKey: randomUUID(),
@@ -3865,6 +4094,14 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         "Der isolierte Application-Plan-Runner ist noch nicht freigegeben. Es wurde kein Cloud-Plan ausgeführt.",
       ]);
       const prepared = await applications.preparePlanInput(owner, order.id);
+      expect(
+        (
+          await migration.query(
+            "SELECT count(*)::int AS total FROM lzc.application_order_identity_completions WHERE instance_id=$1",
+            [order.id],
+          )
+        ).rows[0].total,
+      ).toBe(0);
       expect(prepared).toMatchObject({
         kind: "application-plan-input",
         cloudPlanExecuted: false,

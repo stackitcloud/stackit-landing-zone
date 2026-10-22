@@ -10,7 +10,7 @@ const target = process.argv[2];
 if (!target?.startsWith("/"))
   throw new Error("Absolute fixture directory required");
 if (
-  applicationMvpAcceleratorCommit !== "9e7fb46c329aca32e878ce1f0ea3b944ea240354"
+  applicationMvpAcceleratorCommit !== "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d"
 )
   throw new Error(
     "Requalify Application project scope for the new Runner source",
@@ -41,6 +41,18 @@ const tests = [
   mock_resource "stackit_service_account" {
     defaults = { email = "automation@sa.stackit.cloud" }
   }
+  mock_data "stackit_network_area_region" {
+    defaults = {
+      ipv4 = {
+        default_prefix_length = 28
+        min_prefix_length = 24
+        max_prefix_length = 28
+        default_nameservers = ["192.0.2.53"]
+        transfer_network = "10.254.255.0/24"
+        network_ranges = [{network_range_id="77777777-2222-4333-8444-555555555555",prefix="10.32.0.0/16"}]
+      }
+    }
+  }
   mock_resource "stackit_routing_table" {
     defaults = { routing_table_id = "77777777-2222-4333-8444-555555555555" }
   }
@@ -50,8 +62,13 @@ mock_provider "time" {}
 ];
 const id = "11111111-2222-4333-8444-555555555555";
 for (const region of ["eu01", "eu02"]) {
-  for (const kind of ["public-none", "public-local", "corporate"]) {
-    const corporate = kind === "corporate";
+  for (const kind of [
+    "public-none",
+    "public-local",
+    "corporate",
+    "corporate-automatic",
+  ]) {
+    const corporate = kind.startsWith("corporate");
     for (const observability of [false, true]) {
       const name = `${region}_${kind.replaceAll("-", "_")}_${observability ? "observability" : "base"}`;
       const compiled = compileApplicationPlan({
@@ -83,7 +100,7 @@ for (const region of ["eu01", "eu02"]) {
           apply_policy: "approval-required",
           env: "dev",
           network_enabled: kind === "public-local",
-          network_prefix_length: 24,
+          network_prefix_length: kind === "corporate-automatic" ? null : 24,
           parameter_policy: { schema_version: 1, fields: {} },
           custom_roles: [],
           role_assignments: [],
@@ -116,9 +133,11 @@ for (const region of ["eu01", "eu02"]) {
         JSON.stringify(compiled.variables),
       );
       const network =
-        kind === "public-none"
-          ? "module.application.project_network == null"
-          : `module.application.project_network != null && module.application.project_network.routed == ${corporate} && module.application.project_network.ipv4_prefix_length == 24`;
+        kind === "corporate-automatic"
+          ? "var.application.network_prefix_length == null && var.platform_contract.targets.selected.corporate"
+          : kind === "public-none"
+            ? "module.application.project_network == null"
+            : `module.application.project_network != null && module.application.project_network.routed == ${corporate} && module.application.project_network.ipv4_prefix_length == 24`;
       tests.push(`run "compiled_${name}" {
   command = plan
   variables {
@@ -140,6 +159,19 @@ for (const region of ["eu01", "eu02"]) {
   assert {
     condition = module.application.secretsmanager_instance_id != null && (module.application.observability_instance_id != null) == ${observability}
     error_message = "Compiled optional services must reach the real project module."
+  }
+}`);
+      if (kind === "corporate-automatic")
+        tests.push(`run "compiled_${name}_resolved" {
+  # All providers are mocked: exercise the deferred regional read after contract validation.
+  command = apply
+  variables {
+    platform_contract = jsondecode(file("${name}.json")).platform_contract
+    application = jsondecode(file("${name}.json")).application
+  }
+  assert {
+    condition = module.application.project_network.ipv4_prefix_length == 28 && tolist(var.platform_contract.targets.selected.ipv4_nameservers) == tolist(["192.0.2.53"])
+    error_message = "Automatic must resolve the actual SNA prefix without changing configured DNS."
   }
 }`);
     }

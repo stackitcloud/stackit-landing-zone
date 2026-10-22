@@ -500,8 +500,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 1,
-      "checkedOn": "2026-10-10",
+      "version": 2,
+      "checkedOn": "2026-10-22",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"
@@ -521,9 +521,13 @@
         "src/main.tf",
         "landing-zone-configurator/app/packages/domain/src/common-document.ts",
         "landing-zone-configurator/app/packages/domain/src/project-templates.ts",
-        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
+        "src/modules/landing-zone/3-network.tf",
+        "landing-zone-configurator/app/packages/domain/src/application-plan.ts"
       ],
-      "externalSources": [],
+      "externalSources": [
+        "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go"
+      ],
       "scenarios": [
         "A04",
         "A10",

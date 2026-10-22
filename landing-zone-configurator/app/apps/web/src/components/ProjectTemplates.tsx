@@ -282,7 +282,7 @@ export function ProjectTemplates({
                       className="field-hint"
                     >
                       {t(
-                        "Bestimmt die Größe des IPv4-Adressbereichs: /24 umfasst 256 Adressen, /25 umfasst 128, /26 umfasst 64. Je höher die Zahl, desto kleiner das Netz. Nicht alle Adressen stehen für VMs zur Verfügung. Leer lassen: STACKIT legt die Größe fest.",
+                        "Bestimmt die Größe des IPv4-Adressbereichs: /24 umfasst 256 Adressen, /25 umfasst 128, /26 umfasst 64. Je höher die Zahl, desto kleiner das Netz. Nicht alle Adressen stehen für VMs zur Verfügung. Leer lassen für Automatisch: Corporate übernimmt die Standardgröße der angebundenen SNA, Public die Vorgabe von STACKIT.",
                       )}
                     </p>
                   </div>

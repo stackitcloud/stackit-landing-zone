@@ -25,6 +25,16 @@ Public-Instanzen setzen explizit `corporate=false`.
 Plattformentwuerfe verwenden `projectTemplates` und Parameterrichtlinien,
 keine persoenlichen Instanzfelder oder erfundene
 Veroeffentlichungs-/Bestell-Terraform-Attribute.
+Corporate-Anwendungsnetze uebernehmen `ipv4_nameservers` vom gebundenen
+Plattformziel. STACKIT-Provider 0.114.0 lehnt Null-Praefix plus gesetztes DNS,
+auch eine leere Liste, trotz erfolgreichem Validate mit
+„Invalid IPv4 configuration“ ab.
+Automatische Netzgroesse belaesst `network_prefix_length=null` im Template:
+Das native Corporate-Modul liest im Plan/Apply `default_prefix_length` der
+angebundenen regionalen SNA und uebergibt das effektive Praefix an den Provider,
+bei unveraendertem DNS. Ein explizites Template-Praefix ueberschreibt den
+SNA-Default und darf nicht still ersetzt werden. Public verwendet weiterhin die
+automatische Providerwahl ohne Corporate-SNA-Abfrage.
 
 <a id="dependencies"></a>
 
@@ -59,6 +69,23 @@ Nicht betroffene Templates nicht ohne Zustimmung entfernen.
 eine Template-Quote.
 Aus effektiven Praefixen berechnen und Plattform-/Firewall-/Zukunftsbereiche
 reservieren.
+Bei diesem IPv4-Fehler die DNS-/Praefix-Abhaengigkeit und den korrigierten
+nativen Automatikpfad erklaeren. Automatisch uebernimmt den tatsaechlichen
+Default der angebundenen SNA, setzt weder pauschal /24 noch schaltet es DNS ab.
+Ein SNA-Default im Entwurf beschreibt Absicht, keinen Nachweis des aktuellen
+Cloud-Defaults oder freier Adressen; die Abfrage findet im Plan statt.
+Bei ausdruecklichem Automatisch nicht nach einem Zahlenpraefix fragen.
+Bestehende explizite Praefixe erhalten. Fuer angeforderte Abweichungen bei Bedarf
+Adressbedarf und bekannte Poolgrenzen klaeren; /24 ist ein Beispiel, keine
+Eignungs- oder Verfuegbarkeitsgarantie. Bei ausdruecklichem /26
+`settings.network_prefix_length=26` fuer das bestehende Template vorschlagen,
+Identitaet und andere Einstellungen erhalten. Fuer ausdrueckliches Automatisch
+`settings.network_prefix_length=null` vorschlagen, keinen festen Ersatzwert.
+DNS nicht abschalten, nicht zu Public wechseln und keinen State loeschen.
+Veroeffentlichte Versionen/Bestellungen behalten ihre unveraenderliche Quelle und
+Einstellungen. Fuer die native Korrektur eine neue Version mit korrigierter
+Runner-Revision veroeffentlichen und diese bestellen; der Assistant kann nicht
+fuer den Benutzer veroeffentlichen/bestellen/Plan/Apply ausfuehren.
 
 <a id="examples"></a>
 
@@ -67,6 +94,11 @@ reservieren.
 Public-Instanzen verwenden `corporate=false`.
 `network_prefix_length=24` ueberschreibt einen SNA-/25-Default.
 Dies sind Fragmente, keine automatischen Projekterstellungsanfragen.
+Corporate-SNA-Default /28 und Automatisch: null im Template erhalten; das
+korrigierte native Modul loest /28 fuer den Provider auf und erhaelt Ziel-DNS.
+Bestaetigtes /26 ueberschreibt /28; der ausdrueckliche Wechsel zurueck auf
+Automatisch schlaegt null vor. Beides garantiert weder freie Kapazitaet noch
+einen erfolgreichen Cloud-Apply.
 
 <a id="limits"></a>
 
@@ -93,6 +125,9 @@ externe Ausfuehrung benoetigt explizite Bindungen.
 ## Quellen
 
 Root-/Landing-Zone-Variablen und gemeinsame Template-/Compiler-/
-Validierungsvertraege.
+Validierungsvertraege sowie native Netzverdrahtung. Die Netzwerkressource des
+gepinnten Providers validiert die IPv4-Kombination; ein isolierter Plan-Test mit
+dem echten Provider prueft leeres/gesetztes DNS, explizite Praefixe und
+automatische Groessenwahl ohne DNS.
 Policy-/Identitaets-/Exportaenderungen erneut pruefen;
 Anwendungslebenszyklus bleibt getrennt.

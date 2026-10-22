@@ -45,3 +45,28 @@ it.each([
     expect(result.text).not.toContain("private-value");
   },
 );
+
+it("includes human diagnostic details without exposing structured snippets or expression values", () => {
+  const output = openTofuProgress(
+    [
+      version,
+      JSON.stringify({
+        type: "diagnostic",
+        "@message": "Error: Invalid IPv4 configuration",
+        diagnostic: {
+          detail:
+            "When IPv4 is configured, provide ipv4_prefix or ipv4_prefix_length.",
+          snippet: {
+            code: "private-snippet-value",
+            values: [{ value: "private-expression-value" }],
+          },
+          address: "private-address",
+        },
+      }),
+    ].join("\n"),
+  );
+  expect(output.text).toContain("Error: Invalid IPv4 configuration");
+  expect(output.text).toContain("provide ipv4_prefix or ipv4_prefix_length");
+  expect(output.invalid).toBe(false);
+  expect(output.text).not.toContain("private-");
+});

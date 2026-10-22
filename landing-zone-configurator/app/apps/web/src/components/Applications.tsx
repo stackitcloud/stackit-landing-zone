@@ -147,8 +147,10 @@ const errors: Record<string, string> = {
     "Die Plattformquelle hat sich geändert. Bitte erneut prüfen.",
   verified_application_identity_required:
     "Bitte mit STACKIT für die Organisation dieses Tenants erneut anmelden.",
+  application_order_identity_completion_unavailable:
+    "Diese Bestellung hat bereits Freigaben oder Ausführungsnachweise. Die fehlende Bestellerbindung kann nicht automatisch ergänzt werden. Bitte vom Platform Owner prüfen lassen.",
   application_owner_identity_changed:
-    "Die verifizierte Besteller-E-Mail hat sich geändert. Bitte eine neue Bestellung anlegen.",
+    "Die verifizierte STACKIT-Identität passt nicht zur bestehenden Bestellerbindung. Melde dich mit der ursprünglich verwendeten Identität an; vorhandene Ausführungsnachweise bleiben erhalten.",
   application_policy_mismatch:
     "Die Bereitstellungsrichtlinie dieser Bestellung stimmt nicht mit der veröffentlichten Version überein.",
   application_parameters_not_qualified:
@@ -2524,6 +2526,7 @@ export function Applications({
       )
         throw new Error("Plan-Input gehört nicht zu dieser Bestellung.");
       setPlanInput(prepared);
+      if (selectedInstance.settings.owner_email == null) await load();
     } catch (cause) {
       setError(
         cause instanceof Error

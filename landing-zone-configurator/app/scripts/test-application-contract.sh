@@ -38,3 +38,7 @@ env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=
   "$tofu_bin" -chdir="$work_dir/pinned/src/application" init -backend=false -lockfile=readonly -input=false -no-color
 env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=0 \
   "$tofu_bin" -chdir="$work_dir/pinned/src/application" test -no-color
+
+# Reuse the installed, checksum-locked Runner provider in a credential-free,
+# local-only regression: mocks do not run the provider's IPv4 validator.
+bash "$app_dir/scripts/test-application-network.sh" "$work_dir/pinned/src/application/.terraform/providers"

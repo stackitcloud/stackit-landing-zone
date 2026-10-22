@@ -3692,3 +3692,206 @@ for (const manager of [true, false]) {
     );
   });
 }
+
+for (const outcome of [
+  "completed",
+  "already-used",
+  "different-identity",
+] as const) {
+  test(`application order identity completion ${outcome} retains the existing order`, async ({
+    page,
+  }) => {
+    const instanceId = "44444444-4444-4444-8444-444444444444";
+    const missingProof =
+      "Verifizierte STACKIT-Benutzeridentität für diese Bestellung fehlt.";
+    const tenant = {
+      id: tenantId,
+      name: "Pilot",
+      kind: "organisation",
+      organizationId: organisationId,
+      roles: ["application-owner"],
+      manageMembers: false,
+    };
+    let completed = false;
+    let reads = 0;
+    const mutations: string[] = [];
+    const instance = {
+      id: instanceId,
+      versionId: "55555555-5555-4555-8555-555555555555",
+      requestedBy: userId,
+      name: "Existing identity order",
+      deploymentPolicy: "direct",
+      approval: { status: "not-required" },
+      parameters: {},
+      settings: (outcome === "different-identity"
+        ? { owner_email: "original@example.test" }
+        : {}) as Record<string, unknown>,
+      createdAt: "2026-10-08T10:15:00.000Z",
+      stateKey: `applications/${tenantId}/${instanceId}/terraform.tfstate`,
+      executionEnabled: false,
+      planStatus: "blocked",
+      blockers: [
+        ...(outcome === "different-identity" ? [] : [missingProof]),
+        "Der isolierte Application-Plan-Runner ist noch nicht freigegeben. Es wurde kein Cloud-Plan ausgeführt.",
+      ],
+    };
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { stackit: true, github: false, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: userId, login: "pilot@example.test" },
+          tenant,
+          csrfToken: "csrf-identity",
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    await page.route("**/api/v1/organisation", (route) =>
+      route.fulfill({
+        json: {
+          userId,
+          activeTenantId: tenantId,
+          tenants: [tenant],
+          members: [],
+        },
+      }),
+    );
+    await page.route("**/api/v1/applications/**", async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname.replace(
+        "/api/v1/applications/",
+        "",
+      );
+      expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
+      if (request.method() === "GET") {
+        if (path === "templates")
+          return route.fulfill({ json: { versions: [] } });
+        if (path === "platform-contracts")
+          return route.fulfill({ json: { contracts: [] } });
+        if (path === `instances/${instanceId}/jobs`)
+          return route.fulfill({ json: { jobs: [] } });
+        if (path === "instances") {
+          reads++;
+          return route.fulfill({
+            json: {
+              instances: [instance],
+              planJobsEnabled: true,
+              execution: { planEnabled: true, applyEnabled: false },
+            },
+          });
+        }
+      }
+      mutations.push(path);
+      expect(request.method()).toBe("POST");
+      expect(request.headers()["x-lzc-csrf"]).toBe("csrf-identity");
+      expect(path).toBe(`instances/${instanceId}/plan-input`);
+      expect(request.postDataJSON()).toEqual({});
+      if (outcome !== "completed")
+        return route.fulfill({
+          status: 409,
+          json: {
+            error:
+              outcome === "already-used"
+                ? "application_order_identity_completion_unavailable"
+                : "application_owner_identity_changed",
+          },
+        });
+      completed = true;
+      instance.settings = { owner_email: "pilot@example.test" };
+      instance.blockers = [
+        "Der isolierte Application-Plan-Runner ist noch nicht freigegeben. Es wurde kein Cloud-Plan ausgeführt.",
+      ];
+      return route.fulfill({
+        json: {
+          kind: "application-plan-input",
+          cloudPlanExecuted: false,
+          requiresExplicitApplyApproval: true,
+          blockers: [],
+          plan: {
+            entrypoint: "src/application",
+            acceleratorRevision: "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+            stateKey: instance.stateKey,
+            requestedBy: userId,
+            executionEnabled: false,
+            variables: {
+              application: {
+                instance_id: instanceId,
+                owner_email: "pilot@example.test",
+              },
+            },
+          },
+        },
+      });
+    });
+    await page.goto("/applications");
+    await page.getByRole("tab", { name: "Bestellungen", exact: true }).click();
+    await page
+      .getByRole("button", {
+        name: /Details anzeigen: Existing identity order/,
+      })
+      .click();
+    const details = page.getByRole("region", {
+      name: "Bestelldetails",
+      exact: true,
+    });
+    await details.getByRole("tab", { name: "Übersicht", exact: true }).click();
+    if (outcome === "different-identity") {
+      await expect(details).toContainText(
+        "Bei Bestellung verifiziert: original@example.test",
+      );
+    } else {
+      await expect(details).toContainText(missingProof);
+      await expect(details).toContainText("Bei Bestellung nicht verifiziert");
+    }
+    const readsBefore = reads;
+    await details
+      .getByRole("button", { name: "Plan-Input prüfen", exact: true })
+      .click();
+    if (outcome === "completed") {
+      await expect(details).toContainText(
+        "Bei Bestellung verifiziert: pilot@example.test",
+      );
+      await expect(details).not.toContainText(missingProof);
+      await expect(
+        details.getByRole("heading", {
+          name: "Plan-Input geprüft · Kein Cloud-Plan ausgeführt",
+          exact: true,
+        }),
+      ).toBeVisible();
+      expect(reads).toBeGreaterThan(readsBefore);
+      await details.getByRole("tab", { name: "Plan", exact: true }).click();
+      await expect(
+        details.getByRole("button", {
+          name: "Cloud-Plan starten",
+          exact: true,
+        }),
+      ).toBeEnabled();
+    } else {
+      const message =
+        outcome === "already-used"
+          ? "Diese Bestellung hat bereits Freigaben oder Ausführungsnachweise."
+          : "Die verifizierte STACKIT-Identität passt nicht zur bestehenden Bestellerbindung.";
+      await expect(page.getByRole("alert")).toContainText(message);
+      await expect(page.getByRole("alert")).not.toContainText(
+        "Bitte eine neue Bestellung anlegen",
+      );
+      await page.getByLabel("Sprache", { exact: true }).selectOption("en");
+      await expect(page.getByRole("alert")).toContainText(
+        outcome === "already-used"
+          ? "This order already has approvals or execution evidence."
+          : "The verified STACKIT identity does not match the existing order owner binding.",
+      );
+    }
+    expect(completed).toBe(outcome === "completed");
+    expect(instance.id).toBe(instanceId);
+    expect(instance.stateKey).toBe(
+      `applications/${tenantId}/${instanceId}/terraform.tfstate`,
+    );
+    expect(mutations).toEqual([`instances/${instanceId}/plan-input`]);
+    await expect(page.getByRole("table").getByRole("rowheader")).toHaveCount(1);
+  });
+}

@@ -123,12 +123,14 @@ export type AssistantScenario = {
     | "firewall-new"
     | "firewall-ha"
     | "firewall-metro"
-    | "sna";
+    | "sna"
+    | "corporate-ipv4";
   acceptableReferences?: readonly string[];
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
+  corporateIpv4?: "advice" | "automatic" | "explicit";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
 
@@ -208,6 +210,30 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     dnsRole: "draft",
     message:
       "Ergänze zusätzlich genau eine bei STACKIT verwaltete öffentliche DNS-Zone new-company.stackit.gg unter dem Schlüssel company. Die vorhandene Zone example und alle Netzwerke bleiben unverändert. Wähle den fachlich passenden Zonentyp und verwende die hinterlegte Owner-E-Mail als Kontakt. Nur einen überprüfbaren Entwurf vorschlagen, nichts deployen.",
+  },
+  {
+    id: "corporate-ipv4-automatic-advice",
+    topic: "project-templates",
+    fixture: "baseline",
+    corporateIpv4: "advice",
+    message:
+      "Unser Corporate-Template nutzt Automatisch, die angebundene SNA hat Standardpräfix /28 und DNS-Server. Erkläre, wie Automatisch im korrigierten Accelerator funktioniert und warum zuvor Invalid IPv4 configuration kam. Muss ich zwingend /24 setzen oder DNS ausschalten? Nur beraten, nichts ändern; keine freien Adressen behaupten.",
+  },
+  {
+    id: "corporate-ipv4-explicit-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    corporateIpv4: "explicit",
+    message:
+      "Ändere nur die Netzgröße der bestehenden Corporate-Vorlage central auf ausdrücklich /26. Der Adressbedarf und die SNA-Grenzen sind dafür geprüft. Schlüssel, Name, Dienste und DNS unverändert lassen. Nur überprüfbarer Editor-Vorschlag, keine Veröffentlichung oder Ausführung.",
+  },
+  {
+    id: "corporate-ipv4-automatic-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    corporateIpv4: "automatic",
+    message:
+      "Setze nur die Netzgröße der bestehenden Corporate-Vorlage central von /26 zurück auf Automatisch, damit der Standard der angebundenen SNA verwendet wird. Keinen festen Ersatzwert setzen, DNS und alle anderen Einstellungen erhalten. Nur überprüfbarer Editor-Vorschlag, keine Veröffentlichung oder Ausführung.",
   },
   {
     id: "platform-public-corporate-networks",
@@ -593,7 +619,11 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     organization_id: syntheticOrganizationId,
   }))
     draft = setCommonInput(draft, path, value);
-  if (scenario.fixture.startsWith("dns-") || scenario.fixture === "sna")
+  if (
+    scenario.fixture.startsWith("dns-") ||
+    scenario.fixture === "sna" ||
+    scenario.corporateIpv4
+  )
     draft = commonConfigurationFromValues(template, draft.id, draft.name, {
       ...compileCommonConfiguration(draft),
       connectivity: {
@@ -603,7 +633,7 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
             transfer_network: "10.254.255.0/24",
             min_prefix_length: 24,
             max_prefix_length: 28,
-            default_prefix_length: 24,
+            default_prefix_length: scenario.corporateIpv4 ? 28 : 24,
             default_nameservers: ["1.1.1.1"],
           },
         },
@@ -738,6 +768,25 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
   }
   if (scenario.id === "editor-project-unique-buckets")
     draft = setCommonInput(draft, "bucket_naming", "legacy");
+  if (scenario.corporateIpv4) {
+    draft = createPlatformDraftCopy(draft, crypto.randomUUID());
+    draft.projectTemplates = [
+      {
+        id: "00000000-0000-4000-8000-000000000026",
+        key: "central",
+        name: "Corporate central",
+        kind: "corporate",
+        region: "eu01",
+        settings: {
+          network_enabled: true,
+          network_area_key: "default",
+          network_prefix_length:
+            scenario.corporateIpv4 === "automatic" ? 26 : null,
+          secretsmanager_enabled: true,
+        },
+      },
+    ];
+  }
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
@@ -807,6 +856,32 @@ export function validateAssistantScenario(
   const fixture = assistantScenarioFixture(scenario);
   if (scenario.id === "devops-git-advice")
     failures.push(...assistantDevOpsDefaultFailures(dialogue.explanation));
+  if (scenario.corporateIpv4 === "advice") {
+    failures.push(...assistantCorporateIpv4Failures(dialogue.explanation));
+    if (dialogue.changes.length)
+      failures.push("corporate_ipv4_advice_mutated_draft");
+    if (dialogue.questions.length)
+      failures.push("corporate_ipv4_automatic_requested_numeric_size");
+  } else if (scenario.corporateIpv4) {
+    const expected = structuredClone(fixture.draft);
+    const central = expected.projectTemplates?.find(
+      (entry) => entry.key === "central",
+    );
+    if (!central) throw new Error("corporate_ipv4_fixture_missing");
+    central.settings.network_prefix_length =
+      scenario.corporateIpv4 === "automatic" ? null : 26;
+    try {
+      const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
+      if (
+        !dialogue.changes.length ||
+        dialogue.questions.length ||
+        !isDeepStrictEqual(candidate, expected)
+      )
+        failures.push("corporate_ipv4_proposal_incorrect_or_unrelated_change");
+    } catch {
+      failures.push("corporate_ipv4_proposal_invalid");
+    }
+  }
   if (scenario.templateExpected) {
     if (
       !dialogue.changes.length ||
@@ -1537,4 +1612,65 @@ export function buildAssistantScenarioInventory() {
         })),
     })),
   };
+}
+
+/** Bounded factual regression, not a proof of universal advice quality. */
+export function assistantCorporateIpv4Failures(explanation: string): string[] {
+  const failures: string[] = [];
+  const text = explanation
+    .toLowerCase()
+    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "<ip>");
+  const unnegatedClaim = (pattern: RegExp) =>
+    [...text.matchAll(pattern)].some(
+      (match) => !/\b(?:nicht|not|never|kein\w*)\b/.test(match[0]),
+    );
+  if (
+    !/automat/.test(text) ||
+    !/sna|network area/.test(text) ||
+    !/standard|default/.test(text) ||
+    !/28/.test(text) ||
+    !/übern|uebern|erbt|inherit|lies|liest|read|abfrag/.test(text)
+  )
+    failures.push("corporate_ipv4_automatic_inheritance_missing");
+  if (
+    !/dns|nameserver/.test(text) ||
+    !/präfix|praefix|prefix/.test(text) ||
+    !/provider/.test(text) ||
+    !/explizit|explicit|numerisch|numeric/.test(text)
+  )
+    failures.push("corporate_ipv4_provider_dependency_missing");
+  if (
+    !/dns[^.!?]*(?:erhalt|unverändert|unveraendert|beibeh|beibe|retain|preserv|bleibt aktiv)|(?:erhalt|beibeh|beibe|unverändert|unveraendert|retain|preserv)[^.!?]*dns/.test(
+      text,
+    )
+  )
+    failures.push("corporate_ipv4_dns_preservation_missing");
+  if (
+    !/kein[^.!?]*(?:garant|kapaz|verfügbar|verfuegbar|frei)|nicht[^.!?]*(?:garant|frei)|no[^.!?]*(?:guarantee|free)|nicht garantiert/.test(
+      text,
+    )
+  )
+    failures.push("corporate_ipv4_capacity_boundary_missing");
+  if (
+    unnegatedClaim(
+      /(?:du musst|you must|zwingend erforderlich)[^.!?]{0,45}\/24|dns[^.!?]{0,35}(?:muss|must)[^.!?]{0,30}(?:ab(?:ge)?schalt|deaktiv|disable)/g,
+    )
+  )
+    failures.push("corporate_ipv4_invented_fixed_size_or_dns_removal");
+  if (
+    unnegatedClaim(
+      /null[^.!?]{0,90}(?:ohne|fehlend)[^.!?]{0,45}dns[^.!?]{0,70}(?:ablehn|lehnt[^.!?]{0,35}ab|ungueltig|ungültig)|provider[^,.;!?]{0,30}(?:liest|reads)[^.!?]{0,80}sna[^.!?]{0,20}/g,
+    )
+  )
+    failures.push("corporate_ipv4_failure_condition_inverted");
+  if (
+    /provider[- ]?upgrade[^.!?]{0,70}(?:behob|gelöst|geloest|fix)|(?:provider[^.!?]{0,45}(?:vor|before)\s+0\.114)|(?:älteren versionen des providers|aelteren versionen des providers)[^.!?]{0,60}0\.114|(?:accelerator\s*\(version|accelerator\s*\(ab version)[^.!?]{0,20}0\.114/.test(
+      text.replace(
+        /nicht\s+durch\s+(?:ein(?:en)?\s+)?provider[- ]?upgrade/g,
+        "<denied upgrade>",
+      ),
+    )
+  )
+    failures.push("corporate_ipv4_invented_provider_upgrade");
+  return failures;
 }
