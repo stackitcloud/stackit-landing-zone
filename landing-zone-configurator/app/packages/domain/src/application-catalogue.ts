@@ -53,6 +53,7 @@ export const publishedProjectTemplateSchema = z.strictObject({
   deploymentPolicy: z.enum(["approval-required", "direct"]).optional(),
   allowedGroupIds: z.array(z.uuid()).max(100).optional(),
   retiredAt: z.iso.datetime().optional(),
+  canDelete: z.boolean().optional(),
   acceleratorRevision: z.string().regex(/^[0-9a-f]{40}$/),
   platformRevision: z.uuid().nullable().optional(),
   targetKey: z

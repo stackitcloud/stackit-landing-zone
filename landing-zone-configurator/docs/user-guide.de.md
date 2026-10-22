@@ -67,6 +67,22 @@ Version und geben deren freigegebene Parameter an. Ein Vorlagenentwurf ist keine
 Application-Instanz, und eine Veröffentlichung deployt keine Instanz. Bestehende
 Instanzen werden bei Veröffentlichung einer neuen Version nicht stillschweigend aktualisiert.
 
+
+<a id="retire-archive-and-delete-versions"></a>
+### Versionen stilllegen, archivieren und löschen
+
+Der Katalog zeigt aktive Versionen. Platform Engineers können eine Version nach
+Bestätigung stilllegen; sie wechselt ins **Archiv** und nimmt keine neuen
+Bestellungen mehr an. Bestehende Bestellungen und deren State-Zuordnungen bleiben
+erhalten. Application Owners sehen aktive, für ihre Gruppen freigegebene Versionen.
+
+Im **Archiv** kann eine unbenutzte Version nach gesonderter Bestätigung gelöscht
+werden. Das ist nur erlaubt, wenn diese Version noch nie bestellt wurde; auch
+gelöschte oder archivierte Bestellungen verhindern das Löschen. Die Version
+verschwindet aus der Oberfläche. Unveränderliche Veröffentlichungs- und
+Löschnachweise sowie Versionsnummern bleiben erhalten. Eine erneute Veröffentlichung
+erstellt eine neue Version und verwendet gelöschte Versionsnummern nicht erneut.
+
 ### Veröffentlichte Templates an eine bereitgestellte Plattform binden
 
 Als Platform Engineer im selben Arbeitsbereich die gespeicherte Plattformkonfiguration

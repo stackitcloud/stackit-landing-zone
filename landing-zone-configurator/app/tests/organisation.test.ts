@@ -290,6 +290,10 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
           ),
         }
       : {}),
+    deleteTemplate: vi.fn(async (_session: Session, id: string) => ({
+      versionId: id,
+      deletedAt: new Date().toISOString(),
+    })),
     retire: vi.fn(async () => ({
       versionId: randomUUID(),
       retiredAt: new Date().toISOString(),
@@ -951,6 +955,42 @@ it("protects template retirement with current tenant, origin, CSRF and a valid v
   expect(applications.retire).not.toHaveBeenCalled();
 });
 
+it("protects template deletion with current tenant, origin, CSRF and a valid version ID", async () => {
+  const { app, headers, applications } = setup();
+  const versionId = randomUUID();
+  const url = `/api/v1/applications/templates/${versionId}/delete`;
+  const payload = { confirmDeletion: true };
+  expect(
+    (await app.inject({ method: "POST", url, headers, payload })).statusCode,
+  ).toBe(200);
+  expect(applications.deleteTemplate).toHaveBeenCalledWith(
+    session,
+    versionId,
+    payload,
+  );
+  applications.deleteTemplate.mockClear();
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/applications/templates/not-a-version/delete",
+        headers,
+        payload,
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect(applications.deleteTemplate).not.toHaveBeenCalled();
+});
+
 it("allows organisation platform engineers to access credentials, catalogues and platform plans but denies application owners", () => {
   const engineer = {
     ...session,
@@ -1029,6 +1069,7 @@ it("scopes every application read and mutation to the authenticated active tenan
   ).toEqual({
     versions: [],
     retirementEnabled: true,
+    templateDeletionEnabled: true,
     deploymentPolicyEnabled: true,
   });
   expect(applications.listTemplates).toHaveBeenCalledWith(session);

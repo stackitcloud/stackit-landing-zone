@@ -76,6 +76,7 @@ type VersionRow = {
   published_by: string;
   published_at: Date;
   retired_at?: Date | null;
+  can_delete?: boolean;
   deployment_policy: NonNullable<ApplicationInstance["deploymentPolicy"]>;
   accelerator_revision: string;
   document: unknown;
@@ -144,6 +145,7 @@ function version(row: VersionRow): PublishedProjectTemplate {
       ? { allowedGroupIds: row.allowed_group_ids }
       : {}),
     ...(row.retired_at ? { retiredAt: row.retired_at.toISOString() } : {}),
+    ...(row.can_delete !== undefined ? { canDelete: row.can_delete } : {}),
     acceleratorRevision: row.accelerator_revision,
     platformRevision: row.platform_revision,
     targetKey: row.target_key,
@@ -374,7 +376,7 @@ export class Applications {
   listTemplates(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<VersionRow>(
-        "SELECT v.*,r.retired_at,ARRAY(SELECT access.group_id FROM lzc.application_template_groups access WHERE access.tenant_id=v.tenant_id AND access.version_id=v.id ORDER BY access.group_id) AS allowed_group_ids FROM lzc.application_template_versions v LEFT JOIN lzc.application_template_retirements r ON r.tenant_id=v.tenant_id AND r.version_id=v.id WHERE r.version_id IS NULL OR lzc.application_role('platform-engineer') ORDER BY v.published_at DESC,v.id DESC LIMIT 200",
+        "SELECT v.*,r.retired_at,lzc.application_template_deletable(v.id) AS can_delete,ARRAY(SELECT access.group_id FROM lzc.application_template_groups access WHERE access.tenant_id=v.tenant_id AND access.version_id=v.id ORDER BY access.group_id) AS allowed_group_ids FROM lzc.application_template_versions v LEFT JOIN lzc.application_template_retirements r ON r.tenant_id=v.tenant_id AND r.version_id=v.id WHERE NOT EXISTS(SELECT 1 FROM lzc.application_template_deletions d WHERE d.tenant_id=v.tenant_id AND d.version_id=v.id) AND (r.version_id IS NULL OR lzc.application_role('platform-engineer')) ORDER BY v.published_at DESC,v.id DESC LIMIT 200",
       );
       return result.rows.map(version);
     });
@@ -388,6 +390,27 @@ export class Applications {
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
       `application-availability:${session.tenantId}:${versionId}`,
     ]);
+    const deleted = await client.query(
+      "SELECT 1 FROM lzc.application_template_deletions WHERE tenant_id=$1 AND version_id=$2",
+      [session.tenantId, versionId],
+    );
+    if (deleted.rowCount)
+      throw new ApplicationError(404, "template_version_not_found");
+  }
+
+  deleteTemplate(session: Session, versionId: string, input: unknown) {
+    z.uuid().parse(versionId);
+    assertBoundedJson(input);
+    z.strictObject({ confirmDeletion: z.literal(true) }).parse(input);
+    return this.work(session, "publish", async (client) => {
+      const result = await client.query<{ deleted_at: Date }>(
+        "SELECT (lzc_auth.delete_application_template($1,$2)).deleted_at",
+        [session.id, versionId],
+      );
+      const receipt = result.rows[0];
+      if (!receipt) throw new ApplicationError(503, "template_deletion_failed");
+      return { versionId, deletedAt: receipt.deleted_at.toISOString() };
+    });
   }
 
   listGroups(session: Session) {

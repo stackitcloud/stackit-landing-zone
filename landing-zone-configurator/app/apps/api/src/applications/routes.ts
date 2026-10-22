@@ -137,6 +137,7 @@ export function registerApplications(
         | "prepareJob"
         | "decideOrder"
         | "deleteOrder"
+        | "deleteTemplate"
         | "configureExecution"
         | "listExecutionBindings"
         | "executionCapabilities"
@@ -179,6 +180,8 @@ export function registerApplications(
             "application_order_deleted",
             "application_order_execution_started",
             "application_order_archive_unavailable",
+            "template_version_in_use",
+            "template_version_not_retired",
             "application_execution_binding_conflict",
             "application_apply_plan_unavailable",
             "application_apply_package_changed",
@@ -356,6 +359,7 @@ export function registerApplications(
       return {
         versions: await applications.listTemplates(session),
         retirementEnabled: true,
+        templateDeletionEnabled: Boolean(applications.deleteTemplate),
         deploymentPolicyEnabled: true,
         ...(applications.appliedPlatformsEnabled?.()
           ? { appliedPlatformsEnabled: true }
@@ -379,6 +383,16 @@ export function registerApplications(
         return applications.retire(session, id, request.body);
       },
     );
+    if (applications.deleteTemplate)
+      routes.post(
+        "/api/v1/applications/templates/:id/delete",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.object({ id: z.uuid() }).parse(request.params);
+          return applications.deleteTemplate?.(session, id, request.body);
+        },
+      );
     routes.get("/api/v1/applications/instances", async (request, reply) => {
       const session = sessions.get(request);
       if (!session) return reply.code(401).send();

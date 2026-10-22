@@ -12,7 +12,7 @@
     "packages/domain/src/observability-plans.ts": "04b12f2744c453ff44f7b386ba6d6b7052b53f66fc483d46e9d5af0f5f75bbe5",
     "packages/domain/src/common-document.ts": "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
     "packages/domain/src/editor-document.ts": "b807d40f04b7739cab026d43a412ed9252d22cb9bd1034fbad858825308c1345",
-    "packages/domain/src/application-catalogue.ts": "6060f1877cae659c19a946ee064964b91e672f4278e454bb903c6ab8d75ccec9",
+    "packages/domain/src/application-catalogue.ts": "eceeaa060c73df05a23a8e588a20e6416786f589d5a9ff979ebd2e737b0594d8",
     "packages/domain/src/application-plan.ts": "748832e7c2284bba61b11f194164c8f513225010d18571f283ee7b72723bf302"
   },
   "groups": [

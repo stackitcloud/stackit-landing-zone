@@ -119,6 +119,10 @@ const errors: Record<string, string> = {
   template_version_not_found:
     "Diese Template-Version ist in deinem Arbeitsbereich nicht verfügbar.",
   template_version_retired: "Diese Template-Version wurde stillgelegt.",
+  template_version_in_use:
+    "Diese Template-Version wurde bereits bestellt und kann nicht gelöscht werden.",
+  template_version_not_retired:
+    "Lege diese Template-Version vor dem Löschen still.",
   template_retirement_failed:
     "Die Template-Version konnte nicht stillgelegt werden.",
   idempotency_conflict:
@@ -1703,6 +1707,8 @@ export function Applications({
   const [instances, setInstances] = useState<ApplicationInstance[]>([]);
   const [versionId, setVersionId] = useState("");
   const [retirementEnabled, setRetirementEnabled] = useState(false);
+  const [templateDeletionEnabled, setTemplateDeletionEnabled] = useState(false);
+  const [confirmTemplateDeletion, setConfirmTemplateDeletion] = useState(false);
   const [deploymentPolicyEnabled, setDeploymentPolicyEnabled] = useState(false);
   const [orderDecisionEnabled, setOrderDecisionEnabled] = useState(false);
   const [orderDeletionEnabled, setOrderDeletionEnabled] = useState(false);
@@ -1797,6 +1803,7 @@ export function Applications({
         .object({
           versions: z.array(publishedProjectTemplateSchema).max(200),
           retirementEnabled: z.boolean().default(false),
+          templateDeletionEnabled: z.boolean().default(false),
           deploymentPolicyEnabled: z.boolean().default(false),
           groupAccessEnabled: z.boolean().default(false),
           appliedPlatformsEnabled: z.boolean().default(false),
@@ -1804,6 +1811,7 @@ export function Applications({
         .parse(catalogue);
       setVersions(published.versions);
       setRetirementEnabled(published.retirementEnabled);
+      setTemplateDeletionEnabled(published.templateDeletionEnabled);
       setDeploymentPolicyEnabled(published.deploymentPolicyEnabled);
       setGroupAccessEnabled(published.groupAccessEnabled);
       setAppliedPlatformsEnabled(published.appliedPlatformsEnabled);
@@ -1997,6 +2005,7 @@ export function Applications({
     { id: "orders", label: "Bestellungen" },
     ...(canPublish
       ? [
+          { id: "archive", label: "Archiv" },
           { id: "publish", label: "Veröffentlichung" },
           { id: "platform", label: "Plattformanbindung" },
         ]
@@ -2016,7 +2025,11 @@ export function Applications({
     canPublish && draft
       ? projectTemplates(draft).filter((item) => item.kind !== "sandbox")
       : [];
-  const selected = versions.find((item) => item.id === versionId);
+  const archived = selectedTab === "archive";
+  const visibleVersions = versions.filter(
+    (item) => Boolean(item.retiredAt) === archived,
+  );
+  const selected = visibleVersions.find((item) => item.id === versionId);
   const detailVersion = versions.find(
     (item) => item.id === selectedInstance?.versionId,
   );
@@ -2049,6 +2062,7 @@ export function Applications({
   function selectVersion(nextVersionId: string) {
     setVersionId(nextVersionId);
     setConfirmRetirement(false);
+    setConfirmTemplateDeletion(false);
     const version = versions.find((item) => item.id === nextVersionId);
     setVersionGroupIds(version?.allowedGroupIds ?? []);
     setConfirmGroupAccess(false);
@@ -2133,6 +2147,7 @@ export function Applications({
       );
       await load();
       setConfirmRetirement(false);
+      setActiveTab("archive");
       setNotice(
         formatMessage("{{value0}} · Version {{value1}} stillgelegt.", {
           value0: selected.template.name,
@@ -2144,6 +2159,46 @@ export function Applications({
         cause instanceof Error
           ? cause.message
           : "Die Template-Version konnte nicht stillgelegt werden.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteTemplate() {
+    if (
+      !session ||
+      !selected?.canDelete ||
+      !selected.retiredAt ||
+      !canPublish ||
+      !templateDeletionEnabled ||
+      !confirmTemplateDeletion ||
+      busy
+    )
+      return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      z.object({ versionId: z.uuid(), deletedAt: z.iso.datetime() }).parse(
+        await request(`templates/${selected.id}/delete`, session, {
+          confirmDeletion: true,
+        }),
+      );
+      setVersionId("");
+      setConfirmTemplateDeletion(false);
+      await load();
+      setNotice(
+        formatMessage("{{value0}} · Version {{value1}} gelöscht.", {
+          value0: selected.template.name,
+          value1: selected.version,
+        }),
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Die Template-Version konnte nicht gelöscht werden.",
       );
     } finally {
       setBusy(false);
@@ -2969,30 +3024,34 @@ export function Applications({
         </section>
       )}
       <section
-        id="application-panel-catalogue"
+        id={`application-panel-${archived ? "archive" : "catalogue"}`}
         role="tabpanel"
-        aria-labelledby="application-tab-catalogue"
-        hidden={selectedTab !== "catalogue"}
+        aria-labelledby={`application-tab-${archived ? "archive" : "catalogue"}`}
+        hidden={selectedTab !== "catalogue" && !archived}
       >
         <h2>{t("Application Landing Zone Templates")}</h2>
         <p>
           {t(
-            "Wähle eine veröffentlichte Template-Version. Eine Bestellung speichert einen Auftrag; Cloud-Ressourcen werden dabei nicht erzeugt.",
+            archived
+              ? "Stillgelegte Template-Versionen sind für neue Bestellungen gesperrt. Bestehende Bestellungen bleiben erhalten."
+              : "Wähle eine veröffentlichte Template-Version. Eine Bestellung speichert einen Auftrag; Cloud-Ressourcen werden dabei nicht erzeugt.",
           )}
         </p>
-        {loaded && !versions.length && (
+        {loaded && !visibleVersions.length && (
           <p className="muted">
             {t(
-              "Noch keine veröffentlichten Application Landing Zone Templates.",
+              archived
+                ? "Keine stillgelegten Template-Versionen im Archiv."
+                : "Noch keine veröffentlichten Application Landing Zone Templates.",
             )}
           </p>
         )}
-        {!!versions.length && (
+        {!!visibleVersions.length && (
           <fieldset className="application-template-catalog">
             <legend className="sr-only">
               {t("Veröffentlichte Application Landing Zone Templates")}
             </legend>
-            {versions.map((item) => (
+            {visibleVersions.map((item) => (
               <button
                 type="button"
                 className="application-template-choice"
@@ -3049,7 +3108,7 @@ export function Applications({
             ))}
           </fieldset>
         )}
-        {canPublish && groupAccessEnabled && selected && (
+        {canPublish && groupAccessEnabled && selected && !archived && (
           <fieldset>
             <legend>{t("Freigaben dieser Template-Version")}</legend>
             {applicationGroups.groups.map((group) => (
@@ -3107,10 +3166,51 @@ export function Applications({
               {selected.template.name} · {t("Version")} {selected.version}
             </h3>
             {selected.retiredAt ? (
-              <p>
-                {t("Stillgelegt")} ·{" "}
-                {new Date(selected.retiredAt).toLocaleString(currentLanguage())}
-              </p>
+              <div>
+                <p>
+                  {t("Stillgelegt")} ·{" "}
+                  {new Date(selected.retiredAt).toLocaleString(
+                    currentLanguage(),
+                  )}
+                </p>
+                {templateDeletionEnabled &&
+                  (selected.canDelete ? (
+                    <>
+                      <p>
+                        {t(
+                          "Löschen entfernt diese Version aus dem Archiv. Der Veröffentlichungs- und Löschnachweis bleibt erhalten.",
+                        )}
+                      </p>
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={confirmTemplateDeletion}
+                          disabled={busy}
+                          onChange={(event) =>
+                            setConfirmTemplateDeletion(event.target.checked)
+                          }
+                        />
+                        {t(
+                          "Diese unbenutzte Template-Version aus dem Archiv löschen",
+                        )}
+                      </label>
+                      <button
+                        type="button"
+                        className="button"
+                        disabled={busy || !confirmTemplateDeletion}
+                        onClick={() => void deleteTemplate()}
+                      >
+                        {t("Template-Version löschen")}
+                      </button>
+                    </>
+                  ) : (
+                    <p>
+                      {t(
+                        "Diese Version kann nicht gelöscht werden, wenn sie bereits bestellt wurde. Auch gelöschte oder archivierte Bestellungen zählen als Verwendung.",
+                      )}
+                    </p>
+                  ))}
+              </div>
             ) : (
               <>
                 <label className="toggle-label">

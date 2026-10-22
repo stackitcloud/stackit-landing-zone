@@ -94,6 +94,14 @@ publication or Apply approval. Platform configuration does not
 already create Application instances. Template versions and concrete orders
 remain separate objects; roles apply per working environment.
 
+Template retirement and catalogue deletion are separate append-only records.
+Retired versions appear in the Platform Engineer archive. The deletion function
+revalidates the current tenant session and Platform Engineer role, takes the same
+transaction advisory lock as ordering/retirement and rejects any historical order,
+including tombstoned orders. Only unused retired versions can leave the archive.
+Publication documents, version numbers, deletion receipts, orders and State bindings
+remain immutable; a new publication cannot reuse a deleted version number.
+
 <a id="technische-detailreferenz"></a>
 ## Technical detail reference
 
