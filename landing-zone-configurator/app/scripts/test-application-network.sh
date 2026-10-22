@@ -89,8 +89,8 @@ else if (process.argv[3] !== 'null')
 JS
   else
     if [[ "$expected" != invalid ]]; then cat "$log_file" >&2; exit 1; fi
-    if ! rg -q '^Error: Invalid IPv4 configuration$' "$log_file" ||
-       ! rg -q "must provide either 'ipv4_prefix' or" "$log_file"; then
+    if ! grep -q '^Error: Invalid IPv4 configuration$' "$log_file" ||
+       ! grep -q "must provide either 'ipv4_prefix' or" "$log_file"; then
       cat "$log_file" >&2; exit 1
     fi
   fi
