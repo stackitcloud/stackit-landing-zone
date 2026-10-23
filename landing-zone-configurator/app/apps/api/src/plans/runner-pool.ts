@@ -239,6 +239,10 @@ export class RunnerPool implements WarmRunnerDispatch {
     this.maintaining = true;
     try {
       await this.database.query(
+        "SELECT lzc_auth.retire_completed_application_runners($1,$2)",
+        [this.config.spaceId, this.config.origin],
+      );
+      await this.database.query(
         "UPDATE lzc.runner_pool_slots SET status='retiring',assignment=NULL,token_hash=NULL WHERE space_id=$1 AND origin=$2 AND ((status IN ('warming','ready','reserved','assigned') AND (expires_at<=now() OR (status='ready' AND last_seen_at<now()-interval '15 seconds') OR ($3=0 AND status IN ('warming','ready')))) OR (status='consumed' AND is_probe AND expires_at<=now()))",
         [this.config.spaceId, this.config.origin, this.config.size],
       );

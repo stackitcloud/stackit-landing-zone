@@ -5649,11 +5649,68 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           artifactSha256: artifactReceipt.sha256,
         }),
       ).rejects.toMatchObject({ code: "42501" });
+      const cleanupSlot = randomUUID();
+      const cleanupSpace = randomUUID();
+      const cleanupOrigin = "https://configurator.example";
+      await pool.query(
+        "INSERT INTO lzc.runner_pool_slots(id,pool_key,origin,space_id,source_droplet_id,app_id,status,job_id,expires_at) VALUES($1,'cleanup-test',$2,$3,$4,$5,'consumed',$5,now()-interval '1 hour')",
+        [
+          cleanupSlot,
+          cleanupOrigin,
+          cleanupSpace,
+          ticketPackage.runnerPackageId,
+          dispatchJob.id,
+        ],
+      );
+      const retireCompleted = async (
+        space = cleanupSpace,
+        origin = cleanupOrigin,
+      ) =>
+        (
+          await pool.query(
+            "SELECT lzc_auth.retire_completed_application_runners($1,$2) AS retired",
+            [space, origin],
+          )
+        ).rows[0].retired;
+      // Even an expired consumed lease must not stop an active native job.
+      expect(await retireCompleted()).toBe(0);
       await dispatchApplications.runnerResult(dispatchedTicket, ticketPackage, {
         status: "succeeded",
         summary: applicationSummary,
         artifactSha256: artifactReceipt.sha256,
       });
+      expect(await retireCompleted(randomUUID())).toBe(0);
+      expect(await retireCompleted(cleanupSpace, "https://other.example")).toBe(
+        0,
+      );
+      await pool.query(
+        "UPDATE lzc.runner_pool_slots SET app_id=$2 WHERE id=$1",
+        [cleanupSlot, randomUUID()],
+      );
+      expect(await retireCompleted()).toBe(0);
+      await pool.query(
+        "UPDATE lzc.runner_pool_slots SET app_id=$2,source_droplet_id=$3 WHERE id=$1",
+        [cleanupSlot, dispatchJob.id, randomUUID()],
+      );
+      expect(await retireCompleted()).toBe(0);
+      await pool.query(
+        "UPDATE lzc.runner_pool_slots SET source_droplet_id=$2 WHERE id=$1",
+        [cleanupSlot, ticketPackage.runnerPackageId],
+      );
+      expect(await retireCompleted()).toBe(1);
+      expect(await retireCompleted()).toBe(0);
+      expect(
+        (
+          await pool.query(
+            "SELECT status FROM lzc.runner_pool_slots WHERE id=$1",
+            [cleanupSlot],
+          )
+        ).rows[0].status,
+      ).toBe("retiring");
+      await pool.query("DELETE FROM lzc.runner_pool_slots WHERE id=$1", [
+        cleanupSlot,
+      ]);
+
       expect(
         (
           await migration.query(
@@ -5734,6 +5791,28 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           )
         ).rows[0].status,
       ).toBe("reconciliation_required");
+      await pool.query(
+        "INSERT INTO lzc.runner_pool_slots(id,pool_key,origin,space_id,source_droplet_id,app_id,status,job_id,expires_at) VALUES($1,'cleanup-test',$2,$3,$4,$5,'consumed',$5,now()-interval '1 hour')",
+        [
+          cleanupSlot,
+          cleanupOrigin,
+          cleanupSpace,
+          ticketPackage.runnerPackageId,
+          uncertainJob.id,
+        ],
+      );
+      expect(await retireCompleted()).toBe(0);
+      expect(
+        (
+          await pool.query(
+            "SELECT status FROM lzc.runner_pool_slots WHERE id=$1",
+            [cleanupSlot],
+          )
+        ).rows[0].status,
+      ).toBe("consumed");
+      await pool.query("DELETE FROM lzc.runner_pool_slots WHERE id=$1", [
+        cleanupSlot,
+      ]);
       applicationSecrets.get.mockClear();
       await expect(
         dispatchApplications.runnerInput(uncertainTicket, ticketPackage),
