@@ -122,3 +122,28 @@ python3 landing-zone-configurator/infra/recovery-lab/interrupt.py --tofu /absolu
 
 Do not infer the local-backend result for HTTP/S3 or normally completed Applies.
 Those require their own tests; do not upgrade the engine or alter State silently.
+
+## Remote backend protocol fixtures
+
+`remote_interrupt.py` adds the real OpenTofu HTTP and S3 backend implementations
+against separate in-memory loopback services. It starts with no workload resources,
+observes a checkpoint containing both completed resources, hard-stops its own Apply
+process group and verifies a subsequent Plan is rejected because the orphaned lock
+remains. The lock is removed only from the in-memory fixture after confirmed process
+exit, followed by a fresh Plan/Apply retaining the created resource and its ID.
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/remote_interrupt.py --tofu /absolute/path/to/tofu
+```
+
+Use `--backend http` or `--backend s3` to select one case; the default runs both.
+The S3 fixture implements conditional lock creation and uses only dummy credentials.
+The HTTP fixture checks lock identity on normal unlock. These tests do not validate
+STACKIT service authentication, eventual consistency, real cloud locking or hosted
+worker reconciliation. Fixture lock removal is not a production force-unlock tool.
+
+Both protocol cases retained the completed resources in initially empty State; the
+local filesystem backend limitation in #140 remains separate. S3 init may create
+an empty State object before the first resource Apply. No backend result is inferred
+for another backend. CI runs both fixtures without cloud credentials or public
+raw-State/log artifacts.

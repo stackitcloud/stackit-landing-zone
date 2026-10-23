@@ -169,3 +169,7 @@ The `Isolated recovery lab` job in **Validate Configurator** verifies a local
 PostgreSQL restore and native OpenTofu 1.12.6 interruption with synthetic fixtures.
 It interrupts no hosted Runner and performs no cloud Apply. See the
 [lab runbook](../landing-zone-configurator/infra/recovery-lab/README.md).
+
+The recovery lab also exercises the real OpenTofu HTTP/S3 backend code against
+loopback protocol fixtures, including retained checkpoints and an orphaned-lock
+block before explicit fixture-only reconciliation. This remains local evidence.

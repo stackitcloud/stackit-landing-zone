@@ -150,6 +150,8 @@ jobs:
         run: python3 landing-zone-configurator/infra/recovery-lab/lab.py selftest
       - name: Verify deterministic native Plan and Apply interruption
         run: python3 landing-zone-configurator/infra/recovery-lab/interrupt.py --tofu "$(command -v tofu)"
+      - name: Verify native remote State checkpoints and orphaned locks locally
+        run: python3 landing-zone-configurator/infra/recovery-lab/remote_interrupt.py --tofu "$(command -v tofu)"
       - name: Remove disposable lab containers and volumes
         if: always()
         run: python3 landing-zone-configurator/infra/recovery-lab/lab.py destroy --confirm-disposable-lab
