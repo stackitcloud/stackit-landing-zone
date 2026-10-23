@@ -47,7 +47,15 @@ Unrelated topic texts stay out of the scoped answer context. Missing dependencie
 fail explicitly; a restricted feature-group selection is preserved.
 
 Intent classification deliberately receives topic summaries, not the full
-advisory knowledge. Firewall evidence classification receives user statements
+advisory knowledge. DNS classification also receives the stable saved-zone keys and validated presence flags for domain, display name,
+description and contact, plus confirmed owner/human contact availability. Actual
+domain/contact values, unknown fields and credentials are excluded from this
+additional classification context. The serving contract requires an explicit
+DNS-task decision rather than suggesting the parser's legacy default. An explicit semantic
+`remaining-settings` decision uses draft mode even if the classifier emitted a
+contradictory advice mode. Existing domains and metadata are not missing setup
+choices. Informational/no-change questions remain advice; completion still passes
+all proposal, contact-source, preservation and explicit-acceptance guards. Firewall evidence classification receives user statements
 only. Deterministic field overviews and the policy boundary use reviewed local
 contracts without a second model call. Starting-template advice and synthetic
 qualification retain their complete selected rule texts.

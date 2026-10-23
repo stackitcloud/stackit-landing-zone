@@ -20,6 +20,7 @@ import {
   assistantNamingPaths,
   assistantNetworkAreaSchema,
   assistantNetworkAreasSchema,
+  assistantPublicDnsZone,
   assistantQuestionFields,
   assistantQuestionOptionsSchema,
   assistantScalarFields,
@@ -855,6 +856,46 @@ export class AssistantModelServing {
               availableNetworkAreas: current["assistant.network_areas"] ?? [],
               namingSources: Object.fromEntries(namingSources),
               currentFolders: assistantFolderNames(publicValues),
+              currentDns: {
+                zones: Object.entries(
+                  objectValue(
+                    current["connectivity.dns_zones"] as Parameters<
+                      typeof objectValue
+                    >[0],
+                  ),
+                ).map(([key, raw]) => {
+                  const zone: Record<string, unknown> =
+                    assistantPublicDnsZone(raw);
+                  return {
+                    key,
+                    hasDomain:
+                      typeof zone.dns_name === "string" &&
+                      zone.dns_name.length > 0,
+                    hasDisplayName:
+                      typeof zone.name === "string" && zone.name.length > 0,
+                    hasDescription:
+                      typeof zone.description === "string" &&
+                      zone.description.length > 0,
+                    hasContact:
+                      typeof zone.contact_email === "string" &&
+                      zone.contact_email.length > 0,
+                  };
+                }),
+                savedOwnerContactAvailable:
+                  z.email().safeParse(current.owner_email).success &&
+                  !/@sa\.stackit\.cloud$/i.test(String(current.owner_email)) &&
+                  (current["assistant.owner_email_is_template_default"] !==
+                    true ||
+                    [...namingSources.values()].some((source) =>
+                      source.includes(String(current.owner_email)),
+                    )),
+                verifiedHumanContactAvailable:
+                  z.email().safeParse(current["assistant.user_email"])
+                    .success &&
+                  !/@sa\.stackit\.cloud$/i.test(
+                    String(current["assistant.user_email"]),
+                  ),
+              },
               currentNetwork:
                 publicValues && typeof publicValues === "object"
                   ? Object.fromEntries(
@@ -909,10 +950,18 @@ export class AssistantModelServing {
             content:
               "Informational native-field questions use mode=advice, adviceTask=field-overview and adviceTaskSource=current: the USER asks about the native configuration contract, including fields, parameters, field meanings, enum roles, defaults, effects of null/default values, limits or prerequisites. A field overview is NOT restricted to listing field names. Questions whether a default enables/creates a component, or whether an assumed default is correct, still ask about native configuration semantics, not a live deployment. For example, Git flavor/default/no-instance and deliberate ACL questions are devops-git field-overview; DNS zone type primary/secondary, their authoritative roles versus visibility, and native Secondary prerequisites are dns-zones field-overview. This also applies when correcting earlier misleading field explanations. Do not classify these informational semantics as other. Available topics mark reviewedFieldOverview when a reviewed answer exists. Select that component's topic, not configuration-lifecycle. Explaining how protected inputs are supplied separately is still a field overview, not a credential request or setup task. This includes VPN gateway/connection fields, site networks, tunnel parameters and separate PSK handling. Do not default adviceTask to other for such questions. Actual configuration/proposal requests remain draft; never infer them from an informational question. Conversely, an explicit request to complete DNS settings or propose suitable remaining settings is topic=dns-zones, mode=draft, dnsTask=remaining-settings, adviceTask=other. It is NOT an informational overview or a request to ask all fields again. Missing contact values do not change that task classification: the downstream proposal flow resolves confirmed contact sources or asks only genuinely missing decisions.",
           },
+          {
+            role: "system",
+            content:
+              "DNS completion uses currentDns as authoritative saved context. remaining-settings uses the dedicated bounded DNS metadata proposal flow: set dnsCollection=null, editorContract=false and editorInputs=[]. It is not an add/replace collection request; explicit collection operations instead use dnsTask=other with their own source evidence. Do not put an existing context-only zone key into dnsCollection.entries: those entries require keys explicitly mentioned in the user's source. An explicit request to propose sensible remaining DNS settings is draft + remaining-settings, including when the domain is already present and only display name, description or contact are missing. Missing metadata is the subject of the requested proposal, not a reason to classify it as advice or ask every field again. Do not ask the user to choose whether to use an already confirmed saved owner contact versus a verified login contact; the proposal contract preserves an existing zone contact, then uses confirmed owner_email, then verified human login. DNS contact metadata is not an IAM grant and does not require the saved owner to be the logged-in user. Mere template placeholders are not confirmed contacts. Informational questions and explicit no-change requests remain advice + other; they must not become proposals just because metadata is missing.",
+          },
           { role: "user", content: message },
         ],
         z.toJSONSchema(
           intentSchema.extend({
+            dnsTask: z
+              .enum(["remaining-settings", "other"])
+              .describe(intentSchema.shape.dnsTask.description ?? "DNS task"),
             topic: z
               .string()
               .describe(
@@ -1675,6 +1724,10 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
       }
     }
     if (intent.topic === "firewall-policy") return policyBoundary();
+    // Remaining-settings is already a semantic proposal decision. Keep its
+    // mode coherent instead of dropping downstream proposal constraints.
+    if (intent.topic === "dns-zones" && intent.dnsTask === "remaining-settings")
+      intent.mode = "draft";
     const networkFirst = intent.topic === "stackit-network-components";
     const dnsAdvice = intent.topic === "dns-zones";
     const dnsSettingsDraft =
