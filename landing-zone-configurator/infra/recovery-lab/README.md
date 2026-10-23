@@ -120,6 +120,16 @@ CF, follows bounded log streams only from one-shot/warm Runner apps, and ignores
 other instances, malformed IDs, observations before arming and events older than
 three seconds. Its environment carries no ambient cloud credentials.
 
+The organization/space/template boundary is verified once when arming. Immediately
+before stopping, a single lookup rechecks the exact Runner app GUID and its space;
+one-shot tasks additionally require the unique active task. An unverified boundary
+cannot authorize a stop. Repeating organization, template and full app-list reads
+inside the short Plan window is deliberately avoided. The worker observes the
+bounded first native version record as its file is written, with normal output
+publication retained as a fallback. Neither mechanism delays the Plan or changes
+its inputs. Private receipts include intent and response timestamps for comparing
+the actual stop with native completion.
+
 For an executable template with direct deployment policy, the ordinary ordering
 UI automatically starts the first Plan. Let that initial Plan finish and review
 its outcome. Reuse the same disposable instance for the interruption drill:

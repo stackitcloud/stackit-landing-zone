@@ -29,7 +29,7 @@ import {
   s3RunnerBackendSchema,
   summarizePlan,
 } from "@lzc/contracts";
-import { applicationPlanObservation } from "./observation.js";
+import { applicationPlanObservation, watchPlanVersion } from "./observation.js";
 
 export const brokerOrigin =
   "https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud";
@@ -610,62 +610,77 @@ export async function runWorker(
       outputTimer = setTimeout(pollOutput, 500);
       try {
         activeCommand = phase;
-        await new Promise<void>((done, fail) => {
-          const child = spawn(
-            "/bin/bash",
-            [
-              resolve(root, "run-plan.sh"),
-              phase,
-              applying
-                ? "platform-apply"
-                : applicationBinding?.purpose === "destroy"
-                  ? "application-destroy-plan"
-                  : applicationBinding?.purpose === "drift"
-                    ? "application-drift-plan"
-                    : mode === "initial-plan-only"
-                      ? mode
-                      : "platform-plan",
-            ],
-            {
-              cwd: work as string,
-              env,
-              stdio: ["ignore", "ignore", "ignore"],
-              detached: true,
-            },
-          );
-          let killTimer: ReturnType<typeof setTimeout> | undefined;
-          const stop = (signal: NodeJS.Signals) => {
-            try {
-              if (child.pid) process.kill(-child.pid, signal);
-            } catch {}
-          };
-          const timeout = setTimeout(
-            () => {
-              errorCode = "timed_out";
-              stop("SIGTERM");
-              killTimer = setTimeout(() => stop("SIGKILL"), 10000);
-            },
-            Math.max(1, deadline - Date.now()),
-          );
-          const clear = () => {
-            clearTimeout(timeout);
-            if (killTimer) clearTimeout(killTimer);
-          };
-          child.once("error", () => {
-            clear();
-            fail(new Error("Runner process failed"));
+        const stopObservation =
+          phase === "planning" && mode === "application-plan"
+            ? watchPlanVersion(
+                work as string,
+                () => activeCommand === "planning" && !planObserved,
+                () => {
+                  planObserved = true;
+                  observePlan("native-plan-observed");
+                },
+              )
+            : () => {};
+        try {
+          await new Promise<void>((done, fail) => {
+            const child = spawn(
+              "/bin/bash",
+              [
+                resolve(root, "run-plan.sh"),
+                phase,
+                applying
+                  ? "platform-apply"
+                  : applicationBinding?.purpose === "destroy"
+                    ? "application-destroy-plan"
+                    : applicationBinding?.purpose === "drift"
+                      ? "application-drift-plan"
+                      : mode === "initial-plan-only"
+                        ? mode
+                        : "platform-plan",
+              ],
+              {
+                cwd: work as string,
+                env,
+                stdio: ["ignore", "ignore", "ignore"],
+                detached: true,
+              },
+            );
+            let killTimer: ReturnType<typeof setTimeout> | undefined;
+            const stop = (signal: NodeJS.Signals) => {
+              try {
+                if (child.pid) process.kill(-child.pid, signal);
+              } catch {}
+            };
+            const timeout = setTimeout(
+              () => {
+                errorCode = "timed_out";
+                stop("SIGTERM");
+                killTimer = setTimeout(() => stop("SIGKILL"), 10000);
+              },
+              Math.max(1, deadline - Date.now()),
+            );
+            const clear = () => {
+              clearTimeout(timeout);
+              if (killTimer) clearTimeout(killTimer);
+            };
+            child.once("error", () => {
+              clear();
+              fail(new Error("Runner process failed"));
+            });
+            child.once("exit", (code) => {
+              activeCommand = undefined;
+              if (phase === "planning" && planObserved)
+                observePlan("plan-command-finished");
+              if (errorCode === "timed_out") stop("SIGKILL");
+              clear();
+              code === 0 && errorCode !== "timed_out"
+                ? done()
+                : fail(new Error("Runner phase failed"));
+            });
           });
-          child.once("exit", (code) => {
-            activeCommand = undefined;
-            if (phase === "planning" && planObserved)
-              observePlan("plan-command-finished");
-            if (errorCode === "timed_out") stop("SIGKILL");
-            clear();
-            code === 0 && errorCode !== "timed_out"
-              ? done()
-              : fail(new Error("Runner phase failed"));
-          });
-        });
+        } finally {
+          stopObservation();
+        }
       } finally {
         activeCommand = undefined;
         outputStopped = true;

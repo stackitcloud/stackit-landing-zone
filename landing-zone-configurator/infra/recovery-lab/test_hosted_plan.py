@@ -23,17 +23,19 @@ def event(instance=INSTANCE, age=0):
 
 
 class HostedBoundaries(unittest.TestCase):
+    def app(self, warm=True):
+        return {"guid": APP, "name": "lzc-warm-"+OTHER if warm else "lzc-plan-"+JOB, "state": "STARTED", "relationships": {"space": {"data": {"guid": SPACE}}}}
+
     def controller(self, confirm=INSTANCE, warm=True):
         controller = object.__new__(hosted.Controller)
         controller.instance, controller.space, controller.template = INSTANCE, SPACE, TEMPLATE
         controller.confirm, controller.stopped = confirm, False
+        controller.boundary_verified = True
         private = tempfile.TemporaryDirectory()
         self.addCleanup(private.cleanup)
         controller.receipt_path = str(Path(private.name) / "receipt.json")
         controller.armed_at = time.time()-1
-        controller.boundary = lambda: None
-        controller.apps = lambda: {APP: {"name": "lzc-warm-"+OTHER if warm else "lzc-plan-"+JOB, "state": "STARTED"}}
-        controller.api = lambda path, method="GET": {"pagination": {"next": None}, "resources": [{"guid": OTHER, "state": "RUNNING", "name": "initial-plan"}]}
+        controller.api = lambda path, method="GET": self.app(warm) if path == f"/v3/apps/{APP}" else {"pagination": {"next": None}, "resources": [{"guid": OTHER, "state": "RUNNING", "name": "initial-plan"}]}
         return controller
 
     def test_foreign_instance_stale_and_prearmed_events_are_ignored(self):
@@ -50,11 +52,11 @@ class HostedBoundaries(unittest.TestCase):
 
     def test_only_one_exact_warm_runner_can_be_stopped(self):
         controller = self.controller()
-        with patch.object(controller, "api", return_value={}) as api:
+        with patch.object(controller, "api", side_effect=controller.api) as api:
             controller.stop(APP, event(), set())
-            api.assert_called_once_with(f"/v3/apps/{APP}/actions/stop", "POST")
+            self.assertEqual([call.args for call in api.call_args_list], [(f"/v3/apps/{APP}",), (f"/v3/apps/{APP}/actions/stop", "POST")])
             with self.assertRaises(RuntimeError): controller.stop(APP, event(), set())
-            self.assertEqual(api.call_count, 1)
+            self.assertEqual(api.call_count, 2)
 
     def test_cold_runner_cancels_only_unique_matching_active_task(self):
         controller = self.controller(warm=False)
@@ -63,25 +65,38 @@ class HostedBoundaries(unittest.TestCase):
             controller.stop(APP, event(), set())
             self.assertEqual(api.call_args.args, (f"/v3/tasks/{OTHER}/actions/cancel", "POST"))
         controller = self.controller(warm=False)
-        with patch.object(controller, "api", return_value={"pagination": {"next": None}, "resources": []}) as api:
+        with patch.object(controller, "api", side_effect=lambda path: self.app(False) if path == f"/v3/apps/{APP}" else {"pagination": {"next": None}, "resources": []}) as api:
             with self.assertRaises(RuntimeError): controller.stop(APP, event(), set())
             self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
 
     def test_target_disappearance_or_expiry_during_validation_prevents_stop(self):
         controller = self.controller()
-        controller.apps = lambda: {}
+        with patch.object(controller, "api", return_value={}) as api:
+            with self.assertRaises(RuntimeError): controller.stop(APP, event(), set())
+            self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
+        controller = self.controller()
+        value = event()
+        def expire(path):
+            value["observedAt"] = event(age=10)["observedAt"]
+            return self.app()
+        with patch.object(controller, "api", side_effect=expire) as api:
+            with self.assertRaises(RuntimeError): controller.stop(APP, value, set())
+            self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
+
+    def test_boundary_must_have_been_verified_before_a_stop(self):
+        controller = self.controller()
+        controller.boundary_verified = False
         with patch.object(controller, "api") as api:
             with self.assertRaises(RuntimeError): controller.stop(APP, event(), set())
             api.assert_not_called()
+
+    def test_current_app_in_another_space_cannot_be_stopped(self):
         controller = self.controller()
-        value = event()
-        def expire():
-            value["observedAt"] = event(age=10)["observedAt"]
-            return {APP: {"name": "lzc-warm-"+OTHER, "state": "STARTED"}}
-        controller.apps = expire
-        with patch.object(controller, "api") as api:
-            with self.assertRaises(RuntimeError): controller.stop(APP, value, set())
-            api.assert_not_called()
+        app = self.app()
+        app["relationships"]["space"]["data"]["guid"] = OTHER
+        with patch.object(controller, "api", return_value=app) as api:
+            with self.assertRaises(RuntimeError): controller.stop(APP, event(), set())
+            self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
 
     def test_other_organization_and_public_credential_directory_are_rejected(self):
         controller = self.controller()
@@ -120,7 +135,9 @@ class HostedBoundaries(unittest.TestCase):
 
     def test_durable_intent_precedes_stop_and_receipt_cannot_be_reused(self):
         controller = self.controller()
-        def request(path, method):
+        original = controller.api
+        def request(path, method="GET"):
+            if method == "GET": return original(path)
             stored = json.loads(Path(controller.receipt_path).read_text())
             self.assertEqual(stored["phase"], "stop-intent")
             self.assertEqual(stored["jobId"], JOB)
@@ -132,13 +149,17 @@ class HostedBoundaries(unittest.TestCase):
         self.assertEqual(Path(controller.receipt_path).stat().st_mode & 0o777, 0o600)
         retry = self.controller()
         retry.receipt_path = controller.receipt_path
-        with patch.object(retry, "api") as api:
+        with patch.object(retry, "api", side_effect=retry.api) as api:
             with self.assertRaises(FileExistsError): retry.stop(APP, event(), set())
-            api.assert_not_called()
+            self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
 
     def test_ambiguous_stop_retains_intent_and_prevents_another_mutation(self):
         controller = self.controller()
-        with patch.object(controller, "api", side_effect=RuntimeError("ambiguous request")):
+        original = controller.api
+        def ambiguous(path, method="GET"):
+            if method == "GET": return original(path)
+            raise RuntimeError("ambiguous request")
+        with patch.object(controller, "api", side_effect=ambiguous):
             with self.assertRaises(RuntimeError): controller.stop(APP, event(), set())
         self.assertEqual(json.loads(Path(controller.receipt_path).read_text())["phase"], "stop-intent")
         with self.assertRaises(FileExistsError): hosted.Receipt(controller.receipt_path)
@@ -146,9 +167,9 @@ class HostedBoundaries(unittest.TestCase):
     def test_public_receipt_directory_cannot_reach_cloud_mutation(self):
         controller = self.controller()
         controller.receipt_path = "/tmp/never-created-hosted-stop.json"
-        with patch.object(controller, "api") as api:
+        with patch.object(controller, "api", side_effect=controller.api) as api:
             with self.assertRaises(ValueError): controller.stop(APP, event(), set())
-            api.assert_not_called()
+            self.assertTrue(all(len(call.args) == 1 for call in api.call_args_list))
 
 
 if __name__ == "__main__": unittest.main()
