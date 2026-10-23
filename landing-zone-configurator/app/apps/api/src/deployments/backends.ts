@@ -343,12 +343,17 @@ export class Backends {
       throw new CredentialError(409, "backend_credentials_invalid");
     }
   }
-  async current(backend: S3RunnerBackend) {
+  async current(backend: S3RunnerBackend, verifyUnlockedAfterRead = false) {
     if (await this.read(backend, `${backend.descriptor.key}.tflock`))
       throw new CredentialError(423, "state_locked");
     const remote = await this.read(backend, backend.descriptor.key);
     if (!remote) throw new CredentialError(409, "backend_state_missing");
     const document = stateDocument(remote.bytes);
+    if (
+      verifyUnlockedAfterRead &&
+      (await this.read(backend, `${backend.descriptor.key}.tflock`))
+    )
+      throw new CredentialError(423, "state_locked");
     return { ...remote, document };
   }
 }

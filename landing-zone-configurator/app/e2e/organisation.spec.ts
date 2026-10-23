@@ -27,6 +27,9 @@ for (const scenario of [
   "delegated-missing",
   "apply-running",
   "apply-failed",
+  "replan-owner",
+  "replan-conflict",
+  "replan-operator",
   "apply-report-missing",
   "recovery-review",
   "recovery-review-conflict",
@@ -48,6 +51,8 @@ for (const scenario of [
     const instanceId = "44444444-4444-4444-8444-444444444444";
     const jobId = "77777777-7777-4777-8777-777777777777";
     const backendId = "88888888-8888-4888-8888-888888888888";
+    const replan = scenario.startsWith("replan-");
+    let replanApproved = false;
     const maintenance = scenario.startsWith("maintenance-");
     const recoveryReview = scenario.startsWith("recovery-review");
     const purpose =
@@ -59,6 +64,7 @@ for (const scenario of [
       scenario === "plan-failed" || scenario === "maintenance-replan-failed";
     let maintenanceStarted = scenario === "maintenance-replan-failed";
     const initialApply =
+      replan ||
       recoveryReview ||
       scenario.startsWith("apply-") ||
       scenario.startsWith("archive-") ||
@@ -67,6 +73,7 @@ for (const scenario of [
       scenario === "maintenance-running" ||
       scenario === "maintenance-replan-failed";
     const engineer =
+      scenario === "replan-operator" ||
       recoveryReview ||
       scenario === "engineer" ||
       scenario === "dispatch-failed" ||
@@ -402,9 +409,10 @@ for (const scenario of [
                         id: "aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
                         instanceId,
                         requestedBy: requesterId,
-                        approvedBy: recoveryReview
-                          ? userId
-                          : "99999999-9999-4999-8999-999999999999",
+                        approvedBy:
+                          recoveryReview || scenario === "replan-operator"
+                            ? userId
+                            : "99999999-9999-4999-8999-999999999999",
                         createdAt: new Date().toISOString(),
                         expiresAt: new Date(
                           Date.now() +
@@ -413,6 +421,7 @@ for (const scenario of [
                               : 120000),
                         ).toISOString(),
                         operation: "apply",
+                        recoveryReplanApproved: replanApproved,
                         purpose:
                           scenario === "maintenance-replan-failed"
                             ? "destroy"
@@ -629,6 +638,65 @@ for (const scenario of [
       expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
       expect(request.headers()["x-lzc-csrf"]).toBe("csrf-plan");
       mutations.push(path);
+      if (path === `jobs/${reviewJobId}/recovery-replan/check`) {
+        expect(replan).toBe(true);
+        expect(request.postDataJSON()).toEqual({});
+        return route.fulfill({
+          json: {
+            jobId: reviewJobId,
+            instanceId,
+            runnerAppId: backendId,
+            observedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 300000).toISOString(),
+            stateSha256: "d".repeat(64),
+            stateSerial: 3,
+            stateLock: "free",
+            resources: [{ type: "terraform_data", mode: "managed", count: 1 }],
+            reviewToken: "opaque-proof",
+            mode: engineer ? "operator-attested" : "reported-failure",
+            runnerStop: engineer
+              ? "operator-attestation-required"
+              : "reported-command-completed",
+            cloudState: engineer
+              ? "operator-attestation-required"
+              : "requires-fresh-plan-review",
+            startsExecution: false,
+          },
+        });
+      }
+      if (path === `jobs/${reviewJobId}/recovery-replan`) {
+        expect(request.postDataJSON()).toEqual({
+          reviewToken: "opaque-proof",
+          confirmFreshPlan: true,
+          ...(engineer
+            ? { confirmRunnerStopped: true, confirmCloudStateCompared: true }
+            : {}),
+        });
+        if (scenario === "replan-conflict")
+          return route.fulfill({
+            status: 409,
+            json: { error: "application_recovery_replan_changed" },
+          });
+        replanApproved = true;
+        return route.fulfill({
+          json: {
+            jobId: reviewJobId,
+            reviewedBy: userId,
+            reviewedAt: new Date().toISOString(),
+            stateSha256: "d".repeat(64),
+            stateSerial: 3,
+            mode: engineer ? "operator-attested" : "reported-failure",
+            runnerStop: engineer
+              ? "operator-attested"
+              : "reported-command-completed",
+            cloudState: engineer
+              ? "operator-attested"
+              : "requires-fresh-plan-review",
+            requiresFreshPlan: true,
+            startsExecution: false,
+          },
+        });
+      }
       if (path === `jobs/${reviewJobId}/recovery-review`) {
         expect(recoveryReview).toBe(true);
         expect(request.postDataJSON()).toEqual({
@@ -1060,6 +1128,95 @@ for (const scenario of [
         }),
       ).toBeVisible();
       await expect(plan.locator(".application-plan-job")).toHaveCount(1);
+      if (replan) {
+        const check = plan.getByRole("region", {
+          name: "Neuen Plan nach Apply-Fehler ermöglichen",
+          exact: true,
+        });
+        await expect(check).toBeVisible();
+        if (!engineer) {
+          await tabs.getByRole("tab", { name: "Plan", exact: true }).click();
+          await expect(
+            plan.getByRole("button", {
+              name: "Cloud-Plan starten",
+              exact: true,
+            }),
+          ).toBeDisabled();
+          await expect(plan).toContainText(
+            "Prüfe in der Apply-Ansicht den Application-Checkpoint",
+          );
+          await tabs.getByRole("tab", { name: "Apply", exact: true }).click();
+        }
+        await check
+          .getByRole("button", {
+            name: "Application-Checkpoint prüfen",
+            exact: true,
+          })
+          .click();
+        await expect(check).toContainText("d".repeat(64));
+        const enable = check.getByRole("button", {
+          name: "Neuen Plan ermöglichen",
+          exact: true,
+        });
+        await expect(enable).toBeDisabled();
+        await expect(check.getByRole("checkbox")).toHaveCount(engineer ? 3 : 1);
+        if (engineer) {
+          await check
+            .getByRole("checkbox", { name: /Ich habe extern geprüft/ })
+            .check();
+          await check
+            .getByRole("checkbox", { name: /Ich habe Cloud-Ressourcen/ })
+            .check();
+        } else {
+          await expect(check).toContainText(
+            "Der Runner hat das Ende des Apply-Befehls gemeldet.",
+          );
+        }
+        await check
+          .getByRole("checkbox", { name: /Ich möchte dieselbe Bestellung/ })
+          .check();
+        await expect(enable).toBeEnabled();
+        await enable.click();
+        if (scenario === "replan-conflict") {
+          await expect(check.getByRole("alert")).toContainText("erneut prüfen");
+          await expect(enable).toHaveCount(0);
+          await expect(check).not.toContainText("d".repeat(64));
+        } else {
+          await expect(check).toHaveCount(0);
+          await expect(plan).toContainText(
+            "Ein neuer Plan derselben Bestellung ist möglich",
+          );
+          if (!engineer) {
+            await tabs.getByRole("tab", { name: "Plan", exact: true }).click();
+            await expect(
+              plan.getByRole("button", {
+                name: "Cloud-Plan starten",
+                exact: true,
+              }),
+            ).toBeEnabled();
+          }
+        }
+        expect(mutations).toEqual([
+          `jobs/${reviewJobId}/recovery-replan/check`,
+          `jobs/${reviewJobId}/recovery-replan`,
+        ]);
+        await tabs.getByRole("tab", { name: "Apply", exact: true }).click();
+        await page.getByLabel("Sprache").selectOption("en");
+        if (scenario !== "replan-conflict")
+          await expect(
+            page.getByText(/A new Plan for the same order is available/),
+          ).toBeVisible();
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        await page.screenshot({
+          path: testInfo.outputPath("application-replan.png"),
+          fullPage: true,
+        });
+        return;
+      }
       if (recoveryReview) {
         const review = plan.getByRole("region", {
           name: "Recovery-Prüfung",

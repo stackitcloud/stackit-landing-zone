@@ -6664,6 +6664,399 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           });
           return { ordered, id: started.jobId, sha: receipt.sha256 };
         };
+        // A reconciled partial Apply keeps its original order and all evidence.
+        // An operator clearance opens only a fresh standard Plan, never the old artifact.
+        for (const selfService of [false, true]) {
+          const reviewer = selfService ? owner : engineer;
+          const resumable = await freshPlan("Application checkpoint replan");
+          const partialApply = await delegatedApplications.startApply(
+            owner,
+            resumable.id,
+            {
+              artifactSha256: resumable.sha,
+            },
+          );
+          const partialTicket = delegatedTicket;
+          await delegatedApplications.runnerInput(partialTicket, ticketPackage);
+          for (const stage of ["initializing", "validating", "applying"])
+            await delegatedApplications.runnerStage(
+              partialTicket,
+              ticketPackage,
+              { stage },
+            );
+          if (selfService)
+            await delegatedApplications.runnerOutput(
+              partialTicket,
+              ticketPackage,
+              { text: "Synthetic partial Apply failed", truncated: false },
+            );
+          await delegatedApplications.runnerResult(
+            partialTicket,
+            ticketPackage,
+            {
+              status: "failed",
+              errorCode: "apply_failed",
+            },
+          );
+          const originalOrder = (
+            await migration.query(
+              "SELECT to_jsonb(i) AS value FROM lzc.application_instances i WHERE id=$1",
+              [resumable.ordered.id],
+            )
+          ).rows[0].value;
+          const originalDispatch = (
+            await migration.query(
+              "SELECT to_jsonb(d) AS value FROM lzc.application_dispatches d WHERE job_id=$1",
+              [partialApply.jobId],
+            )
+          ).rows[0].value;
+          await migration.query(
+            "UPDATE lzc_auth.sessions SET expires_at=$2 WHERE id=$1",
+            [engineer.id, engineerExpiry],
+          );
+          const context = (session: Session) =>
+            withTenant(
+              pool,
+              session,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT lzc_auth.application_recovery_replan_context($1,$2) AS value",
+                    [session.id, partialApply.jobId],
+                  )
+                ).rows[0].value,
+            );
+          const approved = (session: Session) =>
+            withTenant(
+              pool,
+              session,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT lzc_auth.application_recovery_replan_approved($1) AS approved",
+                    [partialApply.jobId],
+                  )
+                ).rows[0].approved,
+            );
+          const clear = (
+            session: Session,
+            input: {
+              binding?: string;
+              backend?: string;
+              sha?: string;
+              attested?: boolean;
+            } = {},
+            database: pg.Pool = pool,
+          ) =>
+            withTenant(
+              database,
+              session,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT receipt.* FROM lzc_auth.record_application_recovery_replan($1,$2,$3,$4,$5,$6,$7,$8) receipt",
+                    [
+                      session.id,
+                      partialApply.jobId,
+                      input.binding ?? reviewed.bindingSha256,
+                      input.backend ?? reviewed.backendSha256,
+                      input.sha ?? "a".repeat(64),
+                      3,
+                      "synthetic-state-version",
+                      input.attested ?? !selfService,
+                    ],
+                  )
+                ).rows[0],
+            );
+          let reviewed: {
+            bindingSha256: string;
+            backendSha256: string;
+            backendId: string;
+            stateKey: string;
+            backendDescriptor: unknown;
+            existingReceipt: unknown;
+          };
+          try {
+            await expect(context(engineer)).rejects.toMatchObject({
+              code: "40001",
+              message: "application_recovery_replan_unavailable",
+            });
+            if (selfService) {
+              expect(await context(owner)).toMatchObject({
+                mode: "reported-failure",
+              });
+              await expect(
+                delegatedApplications.runnerInput(partialTicket, ticketPackage),
+              ).rejects.toBeDefined();
+              await expect(
+                delegatedApplications.releaseRunnerCredential(
+                  partialTicket,
+                  ticketPackage,
+                ),
+              ).rejects.toBeDefined();
+              await expect(
+                delegatedApplications.runnerStage(
+                  partialTicket,
+                  ticketPackage,
+                  { stage: "applying" },
+                ),
+              ).rejects.toBeDefined();
+              await expect(
+                delegatedApplications.runnerResult(
+                  partialTicket,
+                  ticketPackage,
+                  { status: "succeeded" },
+                ),
+              ).rejects.toBeDefined();
+            } else
+              await expect(context(owner)).rejects.toMatchObject({
+                code: "42501",
+              });
+            await expect(context(bob)).rejects.toBeDefined();
+            if (!selfService) {
+              await admin.query(
+                "BEGIN; SET LOCAL session_replication_role=replica",
+              );
+              await admin.query(
+                "UPDATE lzc.application_runner_tickets SET expires_at=clock_timestamp()-interval '1 microsecond' WHERE job_id=$1",
+                [partialApply.jobId],
+              );
+              await admin.query(
+                "UPDATE lzc.application_job_grants SET expires_at=clock_timestamp()-interval '1 microsecond' WHERE job_id=$1",
+                [partialApply.jobId],
+              );
+              await admin.query("COMMIT");
+            }
+            reviewed = await context(reviewer);
+            expect(await approved(owner)).toBe(false);
+            expect(await approved(bob)).toBe(false);
+            expect(reviewed).toMatchObject({
+              stateKey: resumable.ordered.stateKey,
+              backendId: delegatedBackendId,
+              existingReceipt: null,
+            });
+            expect(reviewed.backendDescriptor).toMatchObject({
+              key: resumable.ordered.stateKey,
+              useLockfile: true,
+            });
+            await expect(
+              clear(reviewer, { binding: "f".repeat(64) }),
+            ).rejects.toMatchObject({
+              code: "40001",
+              message: "application_recovery_replan_changed",
+            });
+            await expect(
+              clear(reviewer, { backend: "f".repeat(64) }),
+            ).rejects.toMatchObject({
+              code: "40001",
+              message: "application_recovery_replan_changed",
+            });
+            await expect(
+              clear(reviewer, { attested: selfService }),
+            ).rejects.toMatchObject({ code: "40001" });
+            await expect(
+              clear(reviewer, { sha: "invalid" }),
+            ).rejects.toMatchObject({ code: "40001" });
+            await expect(
+              withTenant(pool, engineer, (client) =>
+                client.query(
+                  "INSERT INTO lzc.application_recovery_replans(job_id) VALUES($1)",
+                  [partialApply.jobId],
+                ),
+              ),
+            ).rejects.toMatchObject({ code: "42501" });
+            const concurrent = new pg.Pool({
+              ...migrationConfig,
+              user: "configurator_app",
+              password: "runtime-test-only",
+              max: 2,
+            });
+            let receipt: Record<string, unknown>;
+            try {
+              const [first, second] = await Promise.all([
+                clear(reviewer, {}, concurrent),
+                clear(reviewer, {}, concurrent),
+              ]);
+              expect(second).toEqual(first);
+              receipt = first;
+            } finally {
+              await concurrent.end();
+            }
+            expect(receipt).toMatchObject({
+              job_id: partialApply.jobId,
+              state_key: resumable.ordered.stateKey,
+              state_sha256: "a".repeat(64),
+              state_serial: "3",
+              mode: selfService ? "reported-failure" : "operator-attested",
+              attested_runner_stopped: !selfService,
+              attested_cloud_state_compared: !selfService,
+            });
+            expect(await clear(reviewer)).toEqual(receipt);
+            expect(await approved(owner)).toBe(true);
+            expect(await approved(engineer)).toBe(true);
+            expect(await approved(bob)).toBe(false);
+            await expect(
+              clear(reviewer, { sha: "b".repeat(64) }),
+            ).rejects.toMatchObject({
+              code: "40001",
+              message: "application_recovery_replan_changed",
+            });
+            await expect(
+              migration.query(
+                "DELETE FROM lzc.application_recovery_replans WHERE job_id=$1",
+                [partialApply.jobId],
+              ),
+            ).rejects.toMatchObject({ code: "55000" });
+            await expect(
+              migration.query(
+                "UPDATE lzc.application_recovery_replans SET state_serial=4 WHERE job_id=$1",
+                [partialApply.jobId],
+              ),
+            ).rejects.toMatchObject({ code: "55000" });
+            await expect(
+              migration.query(
+                "SELECT lzc_auth.assert_application_replan_fresh($1)",
+                [resumable.id],
+              ),
+            ).rejects.toMatchObject({
+              code: "40001",
+              message: "application_recovery_fresh_plan_required",
+            });
+            // A later local recovery record invalidates even a previously recorded clearance.
+            await admin.query(
+              "BEGIN; SET LOCAL session_replication_role=replica",
+            );
+            await admin.query(
+              "INSERT INTO lzc.application_runner_records(job_id,kind,tenant_id,owner_user_id,ciphertext,sha256,binding_sha256,state_key,runner_package_id) SELECT job_id,'recovery',tenant_id,owner_user_id,$2,$3,binding_sha256,state_key,$4 FROM lzc.application_job_grants WHERE job_id=$1",
+              [
+                partialApply.jobId,
+                Buffer.alloc(40),
+                "c".repeat(64),
+                ticketPackage.runnerPackageId,
+              ],
+            );
+            await admin.query("COMMIT");
+            expect(await approved(owner)).toBe(false);
+            await expect(context(reviewer)).rejects.toBeDefined();
+            await expect(
+              delegatedApplications.startPlan(owner, resumable.ordered.id, {
+                idempotencyKey: randomUUID(),
+              }),
+            ).rejects.toMatchObject({ code: "40001" });
+            await admin.query(
+              "BEGIN; SET LOCAL session_replication_role=replica",
+            );
+            await admin.query(
+              "DELETE FROM lzc.application_runner_records WHERE job_id=$1 AND kind='recovery'",
+              [partialApply.jobId],
+            );
+            await admin.query(
+              "UPDATE lzc.application_dispatches SET error_code='state_failed' WHERE job_id=$1",
+              [partialApply.jobId],
+            );
+            await admin.query("COMMIT");
+            expect(await approved(owner)).toBe(false);
+            await expect(context(reviewer)).rejects.toBeDefined();
+            await expect(
+              delegatedApplications.startPlan(owner, resumable.ordered.id, {
+                idempotencyKey: randomUUID(),
+              }),
+            ).rejects.toMatchObject({ code: "40001" });
+            await admin.query(
+              "BEGIN; SET LOCAL session_replication_role=replica",
+            );
+            await admin.query(
+              "UPDATE lzc.application_dispatches SET error_code='apply_failed' WHERE job_id=$1",
+              [partialApply.jobId],
+            );
+            await admin.query("COMMIT");
+            const nextPlan = await delegatedApplications.startPlan(
+              owner,
+              resumable.ordered.id,
+              { idempotencyKey: randomUUID() },
+            );
+            expect(nextPlan.jobId).not.toBe(resumable.id);
+            const nextTicket = delegatedTicket;
+            await delegatedApplications.runnerInput(nextTicket, ticketPackage);
+            for (const stage of ["initializing", "validating", "planning"])
+              await delegatedApplications.runnerStage(
+                nextTicket,
+                ticketPackage,
+                { stage },
+              );
+            const summary = summarizePlan(
+              await delegatedRunner.preview(),
+              2,
+              "opentofu-1.12.6",
+            );
+            const artifact = await delegatedApplications.runnerArtifact(
+              nextTicket,
+              ticketPackage,
+              {
+                data: Buffer.from("fresh-recovery-plan").toString("base64"),
+                summary,
+              },
+            );
+            await delegatedApplications.runnerResult(
+              nextTicket,
+              ticketPackage,
+              { status: "succeeded", summary, artifactSha256: artifact.sha256 },
+            );
+            await migration.query(
+              "SELECT lzc_auth.assert_application_replan_fresh($1)",
+              [nextPlan.jobId],
+            );
+            const nextApply = await delegatedApplications.startApply(
+              owner,
+              nextPlan.jobId,
+              { artifactSha256: artifact.sha256 },
+            );
+            expect(nextApply.jobId).not.toBe(partialApply.jobId);
+            const nextApplyTicket = delegatedTicket;
+            await delegatedApplications.runnerInput(
+              nextApplyTicket,
+              ticketPackage,
+            );
+            for (const stage of ["initializing", "validating", "applying"])
+              await delegatedApplications.runnerStage(
+                nextApplyTicket,
+                ticketPackage,
+                { stage },
+              );
+            await delegatedApplications.runnerResult(
+              nextApplyTicket,
+              ticketPackage,
+              { status: "failed", errorCode: "apply_failed" },
+            );
+            await expect(
+              delegatedApplications.startPlan(owner, resumable.ordered.id, {
+                idempotencyKey: randomUUID(),
+              }),
+            ).rejects.toMatchObject({ code: "40001" });
+            expect(
+              (
+                await migration.query(
+                  "SELECT to_jsonb(i) AS value FROM lzc.application_instances i WHERE id=$1",
+                  [resumable.ordered.id],
+                )
+              ).rows[0].value,
+            ).toEqual(originalOrder);
+            expect(
+              (
+                await migration.query(
+                  "SELECT to_jsonb(d) AS value FROM lzc.application_dispatches d WHERE job_id=$1",
+                  [partialApply.jobId],
+                )
+              ).rows[0].value,
+            ).toEqual(originalDispatch);
+          } finally {
+            await admin.query("ROLLBACK");
+            await migration.query(
+              "UPDATE lzc_auth.sessions SET expires_at=now()-interval '1 second' WHERE id=$1",
+              [engineer.id],
+            );
+          }
+        }
         const maintenance = await freshPlan("Application maintenance");
         const failedApply = await delegatedApplications.startApply(
           owner,
@@ -7712,7 +8105,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       await organisations.switch(alice, alice.tenantId);
       await organisations.switch(bob, bob.tenantId);
     }
-  });
+  }, 30000);
   it("uses a runtime role without ownership, superuser or bypass privileges", async () => {
     const result = await pool.query(
       "SELECT rolsuper, rolbypassrls, rolcreaterole FROM pg_roles WHERE rolname=current_user",

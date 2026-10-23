@@ -27,6 +27,7 @@ filled manually and use a separate backend/state.
 
 - [Getting Started](docs/getting-started.md)
 - [Architecture/Modules](docs/architecture.md)
+- [Corporate VM connectivity: firewall, NAT and SSH](docs/corporate-vm-connectivity.md)
 - [Landing Zone Configurator](landing-zone-configurator/README.md)
 - [Configurator Architecture](landing-zone-configurator/docs/architecture.md)
 - [Configurator User Guide](landing-zone-configurator/docs/user-guide.md)

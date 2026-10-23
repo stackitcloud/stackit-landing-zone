@@ -5,6 +5,8 @@ import {
   applicationPlanJobSchema,
   applicationPlanPreviewSchema,
   applicationRecoveryDiagnosisSchema,
+  applicationRecoveryReplanCheckSchema,
+  applicationRecoveryReplanReceiptSchema,
   applicationRecoveryReviewSchema,
   applicationRecoveryReviewViewSchema,
   appliedPlatformSourceSchema,
@@ -43,6 +45,18 @@ import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_recovery_fresh_plan_required:
+    "Nach der Checkpoint-Prüfung ist ein neuer Plan erforderlich. Bitte dieselbe Bestellung neu planen und den neuen Plan prüfen.",
+  application_recovery_replan_changed:
+    "Der Checkpoint oder Prüfkontext hat sich geändert oder ist abgelaufen. Bitte erneut prüfen.",
+  application_recovery_replan_unavailable:
+    "Dieser Apply ist noch nicht für einen neuen Plan freigebbar. Ausführung, Berechtigungen und Recovery-State müssen vom Platform Owner geprüft werden.",
+  application_recovery_replan_state_locked:
+    "Der Application-State ist gesperrt. Keine Freigabe möglich; die Sperre wird nicht verändert.",
+  application_recovery_replan_state_invalid:
+    "Der State passt nicht eindeutig zu dieser Bestellung oder enthält ersetzte Instanzen. Operator-Abgleich erforderlich.",
+  application_recovery_replan_state_unavailable:
+    "Der gebundene Application-State konnte nicht sicher gelesen werden. Bitte den Platform Owner kontaktieren.",
   application_recovery_review_changed:
     "Der Prüfstand hat sich geändert. Bitte den Prüfkontext neu laden.",
   application_recovery_review_unavailable:
@@ -744,6 +758,187 @@ function RecoveryReview({
   );
 }
 
+function RecoveryReplan({
+  session,
+  jobId,
+  onApproved,
+}: {
+  session: Session;
+  jobId: string;
+  onApproved: () => Promise<void>;
+}) {
+  const [checkpoint, setCheckpoint] = useState<z.infer<
+    typeof applicationRecoveryReplanCheckSchema
+  > | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [runnerStopped, setRunnerStopped] = useState(false);
+  const [cloudCompared, setCloudCompared] = useState(false);
+  const [freshPlan, setFreshPlan] = useState(false);
+  async function check() {
+    setBusy(true);
+    setError("");
+    setCheckpoint(null);
+    setRunnerStopped(false);
+    setCloudCompared(false);
+    setFreshPlan(false);
+    try {
+      setCheckpoint(
+        applicationRecoveryReplanCheckSchema.parse(
+          await request(`jobs/${jobId}/recovery-replan/check`, session, {}),
+        ),
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Die Recovery-Prüfung ist derzeit nicht verfügbar.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function approve() {
+    if (
+      !checkpoint ||
+      !freshPlan ||
+      (checkpoint.mode === "operator-attested" &&
+        (!runnerStopped || !cloudCompared))
+    )
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      applicationRecoveryReplanReceiptSchema.parse(
+        await request(`jobs/${jobId}/recovery-replan`, session, {
+          reviewToken: checkpoint.reviewToken,
+          confirmFreshPlan: true,
+          ...(checkpoint.mode === "operator-attested"
+            ? { confirmRunnerStopped: true, confirmCloudStateCompared: true }
+            : {}),
+        }),
+      );
+      await onApproved();
+    } catch (cause) {
+      setCheckpoint(null);
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Die Recovery-Prüfung ist derzeit nicht verfügbar.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section aria-label={t("Neuen Plan nach Apply-Fehler ermöglichen")}>
+      <h4>{t("Neuen Plan nach Apply-Fehler ermöglichen")}</h4>
+      <p>
+        {t(
+          "Bei regulär gemeldetem Apply-Fehler prüft der Server den gespeicherten State für einen neuen Plan. Nur unklare Abschlüsse benötigen einen externen Operator-Abgleich.",
+        )}
+      </p>
+      {error && <p role="alert">{t(error)}</p>}
+      <button
+        type="button"
+        className="button secondary"
+        disabled={busy}
+        onClick={() => void check()}
+      >
+        {t("Application-Checkpoint prüfen")}
+      </button>
+      {checkpoint && (
+        <>
+          <dl className="application-properties">
+            <dt>{t("Runner-App")}</dt>
+            <dd>{checkpoint.runnerAppId}</dd>
+            <dt>{t("State-Serial")}</dt>
+            <dd>{checkpoint.stateSerial}</dd>
+            <dt>{t("Checkpoint-SHA256")}</dt>
+            <dd>{checkpoint.stateSha256}</dd>
+            <dt>{t("State-Lock")}</dt>
+            <dd>{t("Frei")}</dd>
+            <dt>{t("Prüfung gültig bis")}</dt>
+            <dd>
+              {new Date(checkpoint.expiresAt).toLocaleString(currentLanguage())}
+            </dd>
+          </dl>
+          <ul>
+            {checkpoint.resources.map((r) => (
+              <li key={`${r.mode}:${r.type}`}>
+                {r.type} ({r.mode}): {r.count}
+              </li>
+            ))}
+          </ul>
+          <fieldset disabled={busy}>
+            <legend>
+              {t(
+                checkpoint.mode === "reported-failure"
+                  ? "Neuen Plan prüfen"
+                  : "Externer Operator-Abgleich",
+              )}
+            </legend>
+            {checkpoint.mode === "reported-failure" && (
+              <p>
+                {t(
+                  "Der Runner hat das Ende des Apply-Befehls gemeldet. Der gebundene State ist lesbar und entsperrt; ein separater Recovery-State liegt nicht vor. Der neue Plan aktualisiert den Cloud-Zustand. Prüfe ihn vor einem erneuten Apply vollständig.",
+                )}
+              </p>
+            )}
+            {checkpoint.mode === "operator-attested" && (
+              <>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={runnerStopped}
+                    onChange={(e) => setRunnerStopped(e.target.checked)}
+                  />
+                  {t(
+                    "Ich habe extern geprüft, dass der angezeigte Runner keine Ausführung mehr ausführt und nicht erneut starten kann.",
+                  )}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={cloudCompared}
+                    onChange={(e) => setCloudCompared(e.target.checked)}
+                  />
+                  {t(
+                    "Ich habe Cloud-Ressourcen und Checkpoint abgeglichen; es gibt keine ungeklärten, nicht im State erfassten Ressourcen dieses Apply.",
+                  )}
+                </label>
+              </>
+            )}
+            <label>
+              <input
+                type="checkbox"
+                checked={freshPlan}
+                onChange={(e) => setFreshPlan(e.target.checked)}
+              />
+              {t(
+                "Ich möchte dieselbe Bestellung mit dem vorhandenen State neu planen. Den neuen Plan prüfe ich vor Apply; ein Apply wird jetzt nicht gestartet oder freigegeben.",
+              )}
+            </label>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={
+                !freshPlan ||
+                (checkpoint.mode === "operator-attested" &&
+                  (!runnerStopped || !cloudCompared)) ||
+                new Date(checkpoint.expiresAt).getTime() <= Date.now()
+              }
+              onClick={() => void approve()}
+            >
+              {t("Neuen Plan ermöglichen")}
+            </button>
+          </fieldset>
+        </>
+      )}
+    </section>
+  );
+}
+
 function ApplicationPlanControls({
   instance,
   session,
@@ -1062,9 +1257,10 @@ function ApplicationPlanControls({
       (job.status === "prepared" && job.grantActive) ||
       (!["prepared", "succeeded", "failed"].includes(job.status) &&
         !(
-          purpose !== "standard" &&
           job.status === "reconciliation_required" &&
-          new Date(job.expiresAt).getTime() <= Date.now()
+          (job.recoveryReplanApproved ||
+            (purpose !== "standard" &&
+              new Date(job.expiresAt).getTime() <= Date.now()))
         )),
   );
   return (
@@ -1105,6 +1301,18 @@ function ApplicationPlanControls({
       {!planEnabled && (
         <p>{t("Der Application-Plan-Runner ist nicht aktiviert.")}</p>
       )}
+      {planView &&
+        jobs.some(
+          (job) =>
+            job.status === "reconciliation_required" &&
+            !job.recoveryReplanApproved,
+        ) && (
+          <p role="status">
+            {t(
+              "Ein vorheriger Apply ist fehlgeschlagen. Prüfe in der Apply-Ansicht den Application-Checkpoint, um dieselbe Bestellung neu zu planen. Nur bei unklarem Abschluss ist ein Operator-Abgleich nötig.",
+            )}
+          </p>
+        )}
       {planView && instance.requestedBy === session.user.id && approved && (
         <fieldset
           disabled={
@@ -1313,6 +1521,26 @@ function ApplicationPlanControls({
                   key={`${session.tenant?.id}:${session.user.id}:${job.id}`}
                   session={session}
                   jobId={job.id}
+                />
+              )}
+            {job.recoveryReplanApproved && (
+              <p role="status">
+                {t(
+                  "Der Checkpoint wurde geprüft. Ein neuer Plan derselben Bestellung ist möglich; der alte Plan bleibt für Apply gesperrt.",
+                )}
+              </p>
+            )}
+            {((job.requestedBy === session.user.id &&
+              job.errorCode === "apply_failed") ||
+              (isEngineer && job.approvedBy === session.user.id)) &&
+              job.operation === "apply" &&
+              job.status === "reconciliation_required" &&
+              !job.recoveryReplanApproved && (
+                <RecoveryReplan
+                  key={`replan:${session.tenant?.id}:${session.user.id}:${job.id}`}
+                  session={session}
+                  jobId={job.id}
+                  onApproved={() => refresh()}
                 />
               )}
             {recoveryReviewsEnabled &&

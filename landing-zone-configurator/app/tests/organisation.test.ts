@@ -300,6 +300,12 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
       retiredBy: session.userId,
     })),
     listInstances: vi.fn(async () => []),
+    checkRecoveryReplan: vi.fn(async (_session: Session, jobId: string) => ({
+      jobId,
+    })),
+    approveRecoveryReplan: vi.fn(
+      async (_session: Session, jobId: string, _input: unknown) => ({ jobId }),
+    ),
     recoveryReviewContext: vi.fn(async (_session: Session, jobId: string) => ({
       reconciliation: reconciliationFixture,
       jobId,
@@ -645,6 +651,84 @@ it("requires explicit snapshot-bound recovery review with tenant, origin and CSR
   expect(applications.recoveryReviewContext).toHaveBeenCalledExactlyOnceWith(
     session,
     id,
+  );
+});
+
+it("protects checkpoint checks and replan clearance with tenant, origin, CSRF and strict requests", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID();
+  const url = `/api/v1/applications/jobs/${id}/recovery-replan`;
+  const payload = { reviewToken: "opaque-proof", confirmFreshPlan: true };
+  for (const path of [url, `${url}/check`]) {
+    const body = path.endsWith("/check") ? {} : payload;
+    for (const rejected of [
+      { ...headers, "x-lzc-tenant": randomUUID() },
+      { ...headers, "x-lzc-csrf": "" },
+      { ...headers, origin: "https://untrusted.example" },
+    ])
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: path,
+            headers: rejected,
+            payload: body,
+          })
+        ).statusCode,
+      ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: path,
+          headers: {},
+          payload: body,
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect((await app.inject({ url: path, headers })).statusCode).toBe(404);
+  }
+  for (const invalid of [
+    { ...payload, confirmFreshPlan: false },
+    { ...payload, stateSha256: "a".repeat(64) },
+    { ...payload, reviewedBy: randomUUID() },
+    { confirmFreshPlan: true },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: `${url}/check`,
+        headers,
+        payload: { backendId: randomUUID() },
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect(applications.checkRecoveryReplan).not.toHaveBeenCalled();
+  expect(applications.approveRecoveryReplan).not.toHaveBeenCalled();
+  const check = await app.inject({
+    method: "POST",
+    url: `${url}/check`,
+    headers,
+    payload: {},
+  });
+  expect(check.statusCode).toBe(200);
+  expect(check.headers["cache-control"]).toBe("no-store");
+  expect(applications.checkRecoveryReplan).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+  );
+  const approve = await app.inject({ method: "POST", url, headers, payload });
+  expect(approve.statusCode).toBe(200);
+  expect(approve.headers["cache-control"]).toBe("no-store");
+  expect(applications.approveRecoveryReplan).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+    payload,
   );
 });
 

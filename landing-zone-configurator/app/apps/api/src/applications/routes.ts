@@ -1,6 +1,7 @@
 import {
   applicationOrderDecisionSchema,
   applicationPlanPurposeSchema,
+  applicationRecoveryReplanRequestSchema,
   applicationRecoveryReviewRequestSchema,
 } from "@lzc/contracts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
@@ -11,6 +12,7 @@ import {
   validMutation,
 } from "../auth/routes.js";
 import type { Session } from "../auth/store.js";
+import { RecoveryReplanError } from "./recovery-replan.js";
 import {
   ApplicationError,
   type Applications,
@@ -151,6 +153,8 @@ export function registerApplications(
         | "diagnoseRecovery"
         | "recoveryReviewContext"
         | "recordRecoveryReview"
+        | "checkRecoveryReplan"
+        | "approveRecoveryReplan"
         | "startApply"
         | "listGroups"
         | "createGroup"
@@ -167,7 +171,10 @@ export function registerApplications(
   const sessions = new WeakMap<FastifyRequest, Session>();
   app.register(async (routes) => {
     routes.setErrorHandler((error, _request, reply) => {
-      if (error instanceof ApplicationError)
+      if (
+        error instanceof ApplicationError ||
+        error instanceof RecoveryReplanError
+      )
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_application_request" });
@@ -185,6 +192,9 @@ export function registerApplications(
             "application_execution_binding_conflict",
             "application_apply_plan_unavailable",
             "application_apply_package_changed",
+            "application_recovery_fresh_plan_required",
+            "application_recovery_replan_changed",
+            "application_recovery_replan_unavailable",
             "application_recovery_review_changed",
             "application_recovery_review_unavailable",
           ].includes(error.message)
@@ -549,6 +559,39 @@ export function registerApplications(
           session,
           id,
           applicationRecoveryReviewRequestSchema.parse(request.body),
+        );
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/recovery-replan/check",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.checkRecoveryReplan)
+          return reply
+            .code(503)
+            .send({ error: "application_recovery_replan_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        z.strictObject({}).parse(request.body);
+        return applications.checkRecoveryReplan(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/recovery-replan",
+      { bodyLimit: 16384 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.approveRecoveryReplan)
+          return reply
+            .code(503)
+            .send({ error: "application_recovery_replan_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.approveRecoveryReplan(
+          session,
+          id,
+          applicationRecoveryReplanRequestSchema.parse(request.body),
         );
       },
     );

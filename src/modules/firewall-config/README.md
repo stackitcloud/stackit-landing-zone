@@ -10,6 +10,9 @@ The appliance itself is deployed by the `connectivity` module (`connectivity.fir
 this module only configures it. Wire it up through the root `firewall_config` variable
 rather than calling it directly — see `src/config/hub-and-spoke-firewall.tfvars`.
 
+For the manual Corporate VM setup and layered diagnostics, see the
+[connectivity runbook](../../../docs/corporate-vm-connectivity.md).
+
 ## What it manages
 
 - **Aliases** — named network, host, port or FQDN groups referenced from rules and NAT entries.
