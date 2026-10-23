@@ -102,6 +102,59 @@ Laufzeittests an einer identifizierten entbehrlichen Application-Instanz nötig.
 Aus diesem Fixture-Ergebnis folgt niemals ein Force-Unlock, Löschen von Kunden-State
 oder Wiederholen eines unklar abgeschlossenen Cloud-Applies.
 
+## Beobachtung eines gehosteten entbehrlichen Plans
+
+`hosted_plan.py` verwendet eine bestehende private CF-CLI-Anmeldung für den
+isolierten Space `lzc-dev-runners/plans`. Es meldet sich nicht als Application
+Owner an, erstellt oder startet keine Jobs und liest oder entsperrt keinen State.
+Die freigegebene entbehrliche Bestellung bleibt von funktionierenden Application-
+Instanzen getrennt. Der Runner muss zuvor mit der zugehörigen Unterstützung für
+`application_plan_observation` veröffentlicht worden sein. Ältere Pakete liefern
+keine passende Beobachtung; der Controller läuft dann in sein Zeitlimit.
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/hosted_plan.py \
+  --cf /absolute/path/to/cf --cf-home /private/operator-cf-home \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid>
+```
+
+Standardmäßig wird ausschließlich gelesen. `CF_HOME` muss ein eigenes Verzeichnis
+mit Modus `0700` sein, das auf die feste STACKIT-CF-API und den gewählten Runner-
+Space zeigt. Der Controller prüft zusätzlich die tatsächliche Organisation, den
+Space und das Template über CF. Er verfolgt begrenzte Log-Streams ausschließlich
+von einmaligen oder warmen Runner-Apps und ignoriert andere Instanzen, ungültige
+IDs, Meldungen vor dem Scharfschalten sowie über drei Sekunden alte Ereignisse.
+Seine Umgebung übernimmt keine sonstigen Cloud-Zugangsdaten.
+
+Einen Plan erst über die normale authentifizierte Oberfläche starten, wenn der
+Beobachter `observer-ready` meldet. Es entstehen keine zusätzlichen Rechte oder
+Umgehungen der Anmeldung. Für den separat freigegebenen Abbruchtest denselben
+Befehl um `--confirm-disposable-stop <same-disposable-instance-uuid>` ergänzen.
+Dieser Modus fordert höchstens einen Stop an: Er bricht die eindeutig aktive Task
+des passenden einmaligen Jobs ab oder stoppt die passende einmalig verwendete
+warme Runner-App. Er stoppt niemals das Template oder einen ganzen Pool. Beide
+Modi verändern weder die Pool-Größe noch die SSH-Beschränkungen.
+
+Der Worker meldet ausschließlich begrenzte Kennungen und Zeitstempel, nachdem er
+das native Versionsereignis von OpenTofu 1.12.6 in einem **laufenden, aktiven
+Standard-Application-Plan** gesehen hat, sowie eine Abschlussmeldung. Drift-,
+Destroy-, Apply- und Plattform-Jobs erzeugen diese Meldungen nicht. Native
+Nachrichten, Eingaben, E-Mail-Adressen, Backend-Keys, Geheimnisse und State-Werte
+gelangen nicht in diese strukturierten Operator-Ereignisse. Kennungen und Logs
+bleiben private Betriebsnachweise und gehören nicht in öffentliche Issues.
+
+Bei schnellen Plänen können Log-Zustellung und CF-Abbruch zu spät kommen. Eine
+veraltete oder bereits abgeschlossene Beobachtung darf keinen Stop auslösen.
+`window-missed`, Zeitlimit oder eine verletzte Grenze sind kein eindeutiger
+Nachweis. Auch `stop-requested` meldet **keine Recovery-Qualifikation**: Das
+tatsächliche Runner-Ende, das serverseitige Job-Ergebnis, vorhandener State und
+Lock sowie das Verhalten eines neuen Plans müssen separat geprüft werden. Die
+Meldung beweist nicht, dass die native Engine noch lief, als CF den Abbruch
+verarbeitete. Einen abgeschlossenen Plan oder eine bloße Stop-Anforderung niemals
+als erfolgreichen Abbruchtest zählen. Apply-/Checkpoint-Tests benötigen einen
+separaten Controller und werden mit diesem Tool nicht aktiviert.
+
 ## CI
 
 Der Job `Isolated recovery lab` in **Validate Configurator** führt Isolationstests,

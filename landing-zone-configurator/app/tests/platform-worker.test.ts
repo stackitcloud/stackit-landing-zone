@@ -291,7 +291,8 @@ LZC_FAKE_TOFU
   );
   const output = vi.spyOn(console, "log").mockImplementation(() => {});
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-  const options: Pick<WorkerOptions, "broker" | "report"> = { report };
+  const options: Pick<WorkerOptions, "broker" | "report"> &
+    Partial<Pick<WorkerOptions, "id">> = { report };
   const execute = (timeoutMilliseconds?: number) =>
     runWorker({
       root,
@@ -1153,6 +1154,9 @@ it.each([
   async ({ broker, failFirst }) => {
     const test = await fixture("platform-plan", "live-output");
     if (broker === "application") applicationInput(test);
+    const jobId = "33333333-3333-4333-8333-333333333333";
+    test.input.id = jobId;
+    test.options.id = jobId;
     let planningAt = 0;
     let firstProgressAt = 0;
     let failed = false;
@@ -1199,12 +1203,42 @@ it.each([
           );
           expect(planningAt).toBeGreaterThan(0);
           expect(firstProgressAt - planningAt).toBeLessThan(1500);
+          const observations = test.output.mock.calls
+            .map(([line]) => JSON.parse(String(line)))
+            .filter((event) => event.event === "application_plan_observation");
+          expect(observations).toEqual(
+            broker === "application"
+              ? [
+                  expect.objectContaining({
+                    jobId,
+                    instanceId: applicationBinding.instanceId,
+                    observation: "native-plan-observed",
+                  }),
+                ]
+              : [],
+          );
         },
         { timeout: 3000 },
       );
     } finally {
       expect(await execution).toBe("succeeded");
     }
+    const observations = test.output.mock.calls
+      .map(([line]) => JSON.parse(String(line)))
+      .filter((event) => event.event === "application_plan_observation");
+    expect(observations.map((event) => event.observation)).toEqual(
+      broker === "application"
+        ? ["native-plan-observed", "plan-command-finished"]
+        : [],
+    );
+    for (const event of observations)
+      expect(Object.keys(event).sort()).toEqual([
+        "event",
+        "instanceId",
+        "jobId",
+        "observation",
+        "observedAt",
+      ]);
     const output = test.reports.findLast(({ path }) => path === "output");
     expect(output?.body).toMatchObject({
       text: expect.stringContaining("Refresh complete"),

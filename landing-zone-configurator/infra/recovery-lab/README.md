@@ -97,6 +97,53 @@ Configurator's terminal-job handling. Those need separately targeted runtime tes
 against an identified disposable Application instance. Never force-unlock, delete
 customer State or retry an ambiguous cloud Apply based on this fixture's result.
 
+## Hosted disposable Plan observation
+
+`hosted_plan.py` uses an existing private CF CLI login for the isolated
+`lzc-dev-runners/plans` space. It does not authenticate as an Application Owner,
+create/dispatch jobs, read State or unlock anything. Keep the approved disposable
+order separate from working Application instances. The Runner must first be
+released with the corresponding `application_plan_observation` support; older
+packages produce no matching observation and the controller times out.
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/hosted_plan.py \
+  --cf /absolute/path/to/cf --cf-home /private/operator-cf-home \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid>
+```
+
+The default is read-only observation. `CF_HOME` must be an owned directory with
+mode `0700`, targeted at the fixed STACKIT CF API and the selected Runner space.
+The controller additionally checks the actual organization/space/template through
+CF, follows bounded log streams only from one-shot/warm Runner apps, and ignores
+other instances, malformed IDs, observations before arming and events older than
+three seconds. Its environment carries no ambient cloud credentials.
+
+Start a Plan through the ordinary authenticated UI only after the observer reports
+`observer-ready`. No extra permission or authentication bypass is introduced.
+For the separately authorized stop drill, repeat the same command with
+`--confirm-disposable-stop <same-disposable-instance-uuid>`. That mode can request
+one stop only: cancel the unique active task of the matching one-shot job, or stop
+the matching single-use warm Runner app. It never stops the template or a whole
+pool. Neither mode changes the pool size or disables SSH restrictions.
+
+The worker emits only a bounded identifier/timestamp observation after seeing the
+native OpenTofu 1.12.6 version event in a **live, active standard Application
+Plan**, plus a completion marker. Drift, destroy, Apply and platform jobs do not
+emit these observations. No native messages, inputs, email addresses, backend keys,
+secrets or State values enter these structured operator events. Identifiers/logs
+remain private operational evidence and must not be pasted into public issues.
+
+Log delivery and CF cancellation can lose the race with a fast Plan. A stale or
+already-finished observation must not trigger a stop. `window-missed`, timeout or
+any boundary failure are inconclusive. Even `stop-requested` reports **no recovery
+qualification**: verify actual Runner exit and the server's job outcome, retained
+State/lock, and fresh-Plan behavior separately. It does not prove that the native
+engine was still running when CF processed cancellation. Do not count a completed
+Plan or a mere stop request as a successful interruption. Apply/checkpoint drills
+need a separate controller and are not enabled by this tool.
+
 ## CI
 
 The `Isolated recovery lab` job in **Validate Configurator** runs the isolation
