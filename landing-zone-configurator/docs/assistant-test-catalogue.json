@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "436435106841a476ec0c7cf7a948f0f94e9ac99566ebfdb98838980fe45f3738",
+  "knowledgeSha256": "06c2a2b9a86b1120b33aa29da0999d9831c534a9de1e95e63c4d2497be672b0e",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "d9d361ddc0da9d928abeedfa85e6da189f3fed25aa581ca7264723ac85ac24a9",
+    "scripts/assistant-scenarios.ts": "89bf733e05cc0d073287064bab130dce46e1465a7a64c68592db64de4199fa75",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "a186d02cfe1f3c0aa0b82d058006dbb1029b2e4b07020e0e934db478354f19b9",
+  "suiteSha256": "c82eeec4a5972b70c7287a565efae9ea149110feeba6f7fc87728ec2fa685b4d",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5269,6 +5269,46 @@
         }
       ],
       "cases": [
+        {
+          "id": "corporate-ipv4-automatic-advice",
+          "topic": "project-templates",
+          "fixture": "baseline",
+          "corporateIpv4": "advice",
+          "message": "Unser Corporate-Template nutzt Automatisch, die angebundene SNA hat Standardpräfix /28 und DNS-Server. Erkläre, wie Automatisch im korrigierten Accelerator funktioniert und warum zuvor Invalid IPv4 configuration kam. Muss ich zwingend /24 setzen oder DNS ausschalten? Nur beraten, nichts ändern; keine freien Adressen behaupten.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "corporate-ipv4-explicit-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "corporateIpv4": "explicit",
+          "message": "Ändere nur die Netzgröße der bestehenden Corporate-Vorlage central auf ausdrücklich /26. Der Adressbedarf und die SNA-Grenzen sind dafür geprüft. Schlüssel, Name, Dienste und DNS unverändert lassen. Nur überprüfbarer Editor-Vorschlag, keine Veröffentlichung oder Ausführung.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "corporate-ipv4-automatic-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "corporateIpv4": "automatic",
+          "message": "Setze nur die Netzgröße der bestehenden Corporate-Vorlage central von /26 zurück auf Automatisch, damit der Standard der angebundenen SNA verwendet wird. Keinen festen Ersatzwert setzen, DNS und alle anderen Einstellungen erhalten. Nur überprüfbarer Editor-Vorschlag, keine Veröffentlichung oder Ausführung.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "platform-public-corporate-networks",
           "topic": "project-templates",

@@ -111,7 +111,28 @@ mit älteren Runner-Quellen behalten ihren früheren Ausführungsumfang. Jede Be
 verwendet einen eigenen State-Schlüssel; Veröffentlichung und Bestellung geben keinen
 Infrastruktur-Apply frei.
 
+<a id="corporate-ipv4-network-size"></a>
+
+### IPv4-Netzgröße für Corporate-Projekte
+
+**Netzgröße (IPv4-Präfixlänge)** für **Automatisch** leer lassen. Corporate-Netze
+übernehmen das Standardpräfix ihrer angebundenen regionalen SNA: Das native Modul
+liest es im Plan/Apply und übergibt es bei unverändertem DNS explizit an den
+STACKIT-Provider. Bei Public übernimmt weiterhin der Provider die automatische
+Größenwahl. Ein explizites Präfix überschreibt den Default; Kapazität und Plan vor
+Apply prüfen. Automatisch garantiert keine freien Adressen.
+
+Die Korrektur benötigt eine neue Template-Version mit korrigierter Runner-Revision.
+Bestehende Versionen und Bestellungen behalten ihre unveränderliche Quelle und
+Einstellungen; aus der korrigierten Version eine neue Bestellung erstellen.
+Bestehender State wird weder zurückgesetzt noch verschoben. Ein fehlgeschlagener
+Plan legt keine Cloud-Ressourcen an. Lesbare Providerdiagnosen enthalten ihre
+Erklärung, ohne strukturierte Snippets oder Ausdrücke weiterzugeben.
+Der Assistant erklärt die Vererbung und schlägt für angefordertes Automatisch
+null oder den explizit gewünschten Zahlenwert vor, ohne Veröffentlichung/Ausführung.
+
 <a id="plan-and-apply"></a>
+
 ## Plan und Apply
 
 Die Bestelldetails zeigen **Ausführungslogs** in den Schritten **Plan**, **Drift**
@@ -179,3 +200,23 @@ dass private Endpunkte während Apply erreichbar sind.
 
 Siehe [MVP-Umfang und Grenzen](mvp-scope.de.md) für bewusste Ausschlüsse und
 [Architektur](architecture.de.md) für Komponenten und State-Grenzen.
+
+
+<a id="complete-a-missing-order-identity-after-login"></a>
+## Fehlende Bestelleridentität nach dem Login ergänzen
+
+Eine Bestellung kann bereits angelegt sein, bevor ein gültiger persönlicher
+STACKIT-Anmeldenachweis vorliegt. Nach der Anmeldung kann die bestellende Person
+die Plan-Eingaben derselben Bestellung prüfen. Fehlte die verifizierte
+Bestellerbindung und hat die Bestellung noch keine Freigabe und keinen Job,
+ergänzt der Server diese Bindung einmalig und leitet ausschließlich die im Template
+vorgesehenen Besteller-Kontextrollen ab. Ursprüngliche Einstellungen und Ergänzung
+bleiben als unveränderlicher Nachweis erhalten. Bestell-ID, Template/Version,
+Parameter und State-Schlüssel bleiben gleich; dabei läuft kein Cloud-Plan oder
+Apply. Eine doppelte Bestellung ist nicht erforderlich.
+
+Eine andere E-Mail bei einer bereits gebundenen Bestellung bleibt gesperrt.
+Mit der ursprünglich verwendeten Identität anmelden. Bestellungen mit Freigaben
+oder Ausführungsnachweisen werden nicht automatisch umgebunden; der Platform Owner
+soll die bestehende Bindung und die Nachweise prüfen. State und Bestellung werden
+dabei weder stillschweigend ersetzt noch zurückgesetzt.

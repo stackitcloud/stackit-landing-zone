@@ -47,6 +47,16 @@ export function openTofuProgress(content: string) {
       continue;
     }
     if (event.data.type !== "outputs") messages.push(event.data["@message"]);
+    if (event.data.type === "diagnostic") {
+      const diagnostic = z
+        .object({ diagnostic: z.object({ detail: z.string() }) })
+        .safeParse(raw);
+      const detail = diagnostic.success
+        ? diagnostic.data.diagnostic.detail
+        : "";
+      if (detail.trim() && !event.data["@message"].includes(detail))
+        messages.push(detail);
+    }
   }
   if (invalid) messages.push("[OpenTofu progress event unavailable]");
   return { text: `${messages.join("\n")}\n`, invalid };

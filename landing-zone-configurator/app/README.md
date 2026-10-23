@@ -19,6 +19,14 @@ npm run check
 
 `check` runs Biome, TypeScript checking including tests, the production build and Vitest. `npm run format` corrects formatting and import order.
 
+`npm run test:plan` additionally exercises the real pinned STACKIT network
+provider through `scripts/test-application-network.sh`. It uses fresh temporary
+local state, a sanitized environment, dummy authentication and a loopback IaaS
+endpoint. The cases cover missing prefixes with populated/empty DNS lists,
+SNA-default `/28`, explicit `/24` and `/26`, deferred prefix resolution, and
+automatic sizing without configured DNS. Ordinary
+provider mocks bypass this validation; no Apply or customer cloud access is used.
+
 If the matching runtime is not yet available locally, the following works without a global installation, for example:
 
 ```sh

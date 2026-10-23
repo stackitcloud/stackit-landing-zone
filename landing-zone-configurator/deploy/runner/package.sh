@@ -62,7 +62,7 @@ test ! -e "$runner_dir/accelerator/terraform.auto.tfvars"
 test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' \) -print -quit)"
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	mkdir -p "$runner_dir/application-src"
-	application_commit=9e7fb46c329aca32e878ce1f0ea3b944ea240354
+	application_commit=1ed855609d4dcbfded6759c7c8b4fabf7bd6725d
 	if [[ "${LZC_HOSTED_EXECUTION_PACKAGE:-false}" == "true" ]]; then
 		git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$application_commit"
 	fi

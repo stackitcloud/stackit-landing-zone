@@ -99,6 +99,23 @@ bindings remain blocked until their effective egress source is qualified. Existi
 versions on older Runner sources retain their previous execution scope. Each order uses
 its own State key; publication and ordering do not approve an infrastructure Apply.
 
+### Corporate IPv4 network size
+
+Leave **Network size (IPv4 prefix length)** empty for **Automatic**. Corporate
+networks inherit the default prefix of their attached regional SNA: the native
+module reads that value during Plan/Apply and passes it explicitly to the STACKIT
+provider while retaining DNS settings. Public automatic sizing remains managed
+by the provider. An explicit prefix overrides the default; review capacity and
+the resulting Plan before Apply. Automatic does not guarantee free addresses.
+
+The correction requires a new template version using the corrected Runner
+revision. Existing versions and orders keep their immutable source/settings;
+create an order from the corrected version. No existing State is reset or moved.
+A failed Plan creates no cloud resources. Human-readable provider diagnostics
+include their explanation, without forwarding structured snippets or expressions.
+The Assistant explains inheritance and proposes null for requested Automatic or
+the explicitly requested numeric override, without publishing or executing it.
+
 ## Plan and Apply
 
 Application order details show **Execution logs** on the **Plan**, **Drift** and
@@ -160,3 +177,19 @@ private endpoints will be reachable during Apply.
 
 See [MVP scope and limits](mvp-scope.md) for deliberate exclusions and
 [architecture](architecture.md) for components and state boundaries.
+
+
+## Complete a missing order identity after login
+
+An order may be created before its owner's valid STACKIT login proof is available.
+After logging in, the owner can check that same order's Plan inputs. If the verified
+owner binding was missing and the order has no approval or job yet, the server
+completes the binding once and derives only the template's declared owner-context
+roles. The original settings and completion are retained in an immutable audit.
+The order ID, template/version, parameters and State key stay unchanged; no cloud
+Plan or Apply runs as part of this completion. A duplicate order is unnecessary.
+
+A different email on an already bound order remains blocked. Sign in with the
+identity originally used. An order with approval or execution evidence is not
+rebound automatically; ask the Platform Owner to review its existing binding and
+evidence rather than changing the State or silently replacing the order.

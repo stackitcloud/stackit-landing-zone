@@ -929,8 +929,8 @@ export const englishMessages: Record<string, string> = {
     "Order saved. No cloud resources were created.",
   "Bestellung testen": "Test order",
   Bestellungen: "Orders",
-  "Bestimmt die Größe des IPv4-Adressbereichs: /24 umfasst 256 Adressen, /25 umfasst 128, /26 umfasst 64. Je höher die Zahl, desto kleiner das Netz. Nicht alle Adressen stehen für VMs zur Verfügung. Leer lassen: STACKIT legt die Größe fest.":
-    "Sets the IPv4 address range size: /24 contains 256 addresses, /25 contains 128, and /26 contains 64. Higher numbers mean smaller networks. Not all addresses are available to VMs. Leave empty to let STACKIT set the size.",
+  "Bestimmt die Größe des IPv4-Adressbereichs: /24 umfasst 256 Adressen, /25 umfasst 128, /26 umfasst 64. Je höher die Zahl, desto kleiner das Netz. Nicht alle Adressen stehen für VMs zur Verfügung. Leer lassen für Automatisch: Corporate übernimmt die Standardgröße der angebundenen SNA, Public die Vorgabe von STACKIT.":
+    "Sets the IPv4 address range size: /24 contains 256 addresses, /25 contains 128, and /26 contains 64. Higher numbers mean smaller networks. Not all addresses are available to VMs. Leave empty for Automatic: Corporate inherits the attached SNA default size; Public uses the STACKIT default.",
   Betrieb: "Operations",
   Betriebssystem: "Operating system",
   "Bezieht sich auf das Dateisystem des späteren Runners, nicht auf deinen Computer. Alternativ den öffentlichen Schlüssel hinterlegen.":
@@ -1284,8 +1284,10 @@ export const englishMessages: Record<string, string> = {
     "Could not verify the state assignment.",
   "Die tfvars-Datei wurde außerhalb des Configurators geändert oder passt nicht mehr zum gespeicherten Entwurf. Prüfe den Stand in GitHub oder speichere deinen Entwurf als neue Kopie. Es wurde nichts überschrieben.":
     "The tfvars file changed outside the configurator or no longer matches the saved draft. Check the GitHub version or save your draft as a new copy. Nothing was overwritten.",
-  "Die verifizierte Besteller-E-Mail hat sich geändert. Bitte eine neue Bestellung anlegen.":
-    "The verified orderer's email address changed. Please create a new order.",
+  "Die verifizierte STACKIT-Identität passt nicht zur bestehenden Bestellerbindung. Melde dich mit der ursprünglich verwendeten Identität an; vorhandene Ausführungsnachweise bleiben erhalten.":
+    "The verified STACKIT identity does not match the existing order owner binding. Sign in with the identity originally used; existing execution evidence is retained.",
+  "Diese Bestellung hat bereits Freigaben oder Ausführungsnachweise. Die fehlende Bestellerbindung kann nicht automatisch ergänzt werden. Bitte vom Platform Owner prüfen lassen.":
+    "This order already has approvals or execution evidence. The missing owner binding cannot be completed automatically. Please ask the Platform Owner to review it.",
   "Die vier Ordnerrollen bestimmen die Projektzuordnung. Anzeigenamen und Zugriffsrechte können hier geändert werden. Ordnerbeschreibungen werden vom Accelerator derzeit nicht wirksam übernommen.":
     "The four folder roles determine project assignments. Display names and permissions can be changed here. Folder descriptions are not currently applied by the accelerator.",
   "Die Zielorganisation stimmt nicht mit der gespeicherten Vorbereitung überein. Prüfe die exakte Organisations-ID.":

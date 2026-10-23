@@ -1,4 +1,17 @@
 mock_provider "stackit" {
+  mock_data "stackit_network_area_region" {
+    defaults = {
+      ipv4 = {
+        min_prefix_length     = 24
+        max_prefix_length     = 28
+        transfer_network      = "10.254.255.0/24"
+        network_ranges        = [{ network_range_id = "77777777-2222-4333-8444-555555555555", prefix = "10.32.0.0/16" }]
+        default_prefix_length = 28
+        default_nameservers   = ["192.0.2.54"]
+      }
+    }
+  }
+
   mock_resource "stackit_resourcemanager_project" {
     defaults = {
       project_id   = "44444444-2222-4333-8444-555555555555"
@@ -12,6 +25,37 @@ mock_provider "stackit" {
 
   mock_resource "stackit_service_account" {
     defaults = { email = "automation@sa.stackit.cloud" }
+  }
+}
+mock_provider "stackit" {
+  alias = "eu02"
+
+  mock_resource "stackit_resourcemanager_project" {
+    defaults = {
+      project_id   = "44444444-2222-4333-8444-555555555555"
+      container_id = "55555555-2222-4333-8444-555555555555"
+    }
+  }
+
+  mock_resource "stackit_objectstorage_credentials_group" {
+    defaults = { credentials_group_id = "66666666-2222-4333-8444-555555555555" }
+  }
+
+  mock_resource "stackit_service_account" {
+    defaults = { email = "automation@sa.stackit.cloud" }
+  }
+
+  mock_data "stackit_network_area_region" {
+    defaults = {
+      ipv4 = {
+        min_prefix_length     = 24
+        max_prefix_length     = 28
+        transfer_network      = "10.254.255.0/24"
+        network_ranges        = [{ network_range_id = "77777777-2222-4333-8444-555555555555", prefix = "10.32.0.0/16" }]
+        default_prefix_length = 27
+        default_nameservers   = ["192.0.2.55"]
+      }
+    }
   }
 }
 mock_provider "time" {}
@@ -33,7 +77,7 @@ run "legacy_public_without_network" {
   }
 
   assert {
-    condition     = length(stackit_network.this) == 0
+    condition     = length(stackit_network.this) == 0 && length(data.stackit_network_area_region.defaults) == 0
     error_message = "Existing public projects must not gain a network implicitly."
   }
 }
@@ -69,6 +113,73 @@ run "legacy_corporate_network" {
   assert {
     condition     = length(stackit_network.this) == 1 && stackit_network.this[0].routed && stackit_network.this[0].name == "application-dev-routed"
     error_message = "Corporate projects must retain their existing routed network and resource name."
+  }
+}
+
+run "corporate_automatic_prefix_preserves_dns" {
+  command = plan
+
+  variables {
+    corporate        = true
+    network_area_id  = "33333333-2222-4333-8444-555555555555"
+    ipv4_nameservers = ["192.0.2.53"]
+  }
+
+  assert {
+    condition     = length(data.stackit_network_area_region.defaults) == 1 && data.stackit_network_area_region.defaults[0].network_area_id == var.network_area_id && data.stackit_network_area_region.defaults[0].organization_id == var.organization_id && stackit_network.this[0].ipv4_prefix_length == 28
+    error_message = "Automatic Corporate size must inherit the selected SNA region's actual /28 default, not an arbitrary /24."
+  }
+
+  assert {
+    condition     = stackit_network.this[0].ipv4_nameservers == tolist(["192.0.2.53"]) && stackit_network.this[0].routed
+    error_message = "Reading the network area's size must preserve the bound target's DNS and routed semantics."
+  }
+}
+
+run "corporate_explicit_prefix_skips_sna_read" {
+  command = plan
+
+  variables {
+    corporate             = true
+    network_area_id       = "33333333-2222-4333-8444-555555555555"
+    network_prefix_length = 26
+    ipv4_nameservers      = []
+  }
+
+  assert {
+    condition     = length(data.stackit_network_area_region.defaults) == 0 && stackit_network.this[0].ipv4_prefix_length == 26 && length(stackit_network.this[0].ipv4_nameservers) == 0
+    error_message = "An explicit /26 and an intentionally empty DNS list must survive without querying the SNA default."
+  }
+}
+
+run "public_automatic_skips_sna_read" {
+  command = plan
+
+  variables {
+    network_enabled = true
+  }
+
+  assert {
+    condition     = length(data.stackit_network_area_region.defaults) == 0 && !stackit_network.this[0].routed
+    error_message = "Automatic Public networking must not query a Corporate SNA."
+  }
+}
+
+run "corporate_automatic_uses_inherited_regional_provider" {
+  command = plan
+
+  providers = {
+    stackit = stackit.eu02
+  }
+
+  variables {
+    corporate       = true
+    network_area_id = "33333333-2222-4333-8444-555555555555"
+  }
+
+  assert {
+    condition     = stackit_network.this[0].ipv4_prefix_length == 27 && data.stackit_network_area_region.defaults[0].ipv4.default_prefix_length == 27
+    error_message = "The SNA default must come from the module's regional provider, not a hard-coded eu01 provider."
   }
 }
 

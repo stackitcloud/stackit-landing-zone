@@ -9,6 +9,7 @@ import {
 } from "../apps/api/src/assistant/knowledge.js";
 import { buildAssistantTopicFieldPaths } from "../apps/api/src/assistant/topic-fields.js";
 import {
+  assistantCorporateIpv4Failures,
   assistantDevOpsDefaultFailures,
   assistantDnsRoleFailures,
   assistantScenarioFixture,
@@ -267,11 +268,13 @@ it.each(assistantScenarios)(
       expect(
         validateAssistantScenario(scenario, {
           explanation:
-            scenario.topic === "vpn"
-              ? buildAssistantKnowledge().topics.find(
-                  (topic) => topic.id === "vpn",
-                )?.fieldOverview
-              : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
+            scenario.corporateIpv4 === "advice"
+              ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
+              : scenario.topic === "vpn"
+                ? buildAssistantKnowledge().topics.find(
+                    (topic) => topic.id === "vpn",
+                  )?.fieldOverview
+                : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
           changes: [],
           references: [scenario.topic],
@@ -680,3 +683,116 @@ it("checks exact SNA values and rejects missing or unrelated settings", () => {
     validateAssistantScenario(scenario, { ...input, changes: [] }).failures,
   ).toContain("sna_values_not_proposed_exactly");
 });
+
+it("requires factual Automatic/DNS advice and rejects fixed-size or DNS-removal claims", () => {
+  const correct =
+    "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert.";
+  expect(assistantCorporateIpv4Failures(correct)).toEqual([]);
+  expect(
+    assistantCorporateIpv4Failures(
+      `${correct} Du musst nicht /24 setzen. DNS muss nicht abgeschaltet werden. Der Provider liest den SNA-Default nicht.`,
+    ),
+  ).toEqual([]);
+  expect(
+    assistantCorporateIpv4Failures(
+      "Automatisch /28 SNA Standard DNS Provider explizites Präfix",
+    ),
+  ).not.toEqual([]);
+  expect(
+    assistantCorporateIpv4Failures(`${correct} Du musst /24 setzen.`),
+  ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+  expect(
+    assistantCorporateIpv4Failures(`${correct} DNS muss abgeschaltet werden.`),
+  ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+});
+
+it("accepts numeric-prefix wording and DNS with an IP while rejecting inverted cause/reader claims", () => {
+  const correct =
+    "Automatisch liest das Corporate-Modul den SNA-Standard /28 und übergibt einen numerischen Präfix an den Provider. Der DNS-Eintrag (hier: 1.1.1.1) bleibt unverändert erhalten. Freie Kapazität ist nicht garantiert.";
+  expect(assistantCorporateIpv4Failures(correct)).toEqual([]);
+  expect(
+    assistantCorporateIpv4Failures(
+      `${correct} Der Provider liest den SNA-Default.`,
+    ),
+  ).toContain("corporate_ipv4_failure_condition_inverted");
+  expect(
+    assistantCorporateIpv4Failures(
+      `${correct} Null ohne DNS lehnt der Provider ab.`,
+    ),
+  ).toContain("corporate_ipv4_failure_condition_inverted");
+});
+
+it("rejects attributing the native sizing fix to a provider upgrade", () => {
+  const base =
+    "Automatisch übernimmt das Standardpräfix /28 der SNA. Das Modul übergibt dem Provider den numerischen Präfix mit unveränderten DNS-Servern. Freie Kapazität ist nicht garantiert.";
+  expect(assistantCorporateIpv4Failures(base)).toEqual([]);
+  expect(
+    assistantCorporateIpv4Failures(
+      `${base} Dieser Fehler wurde nicht durch einen Provider-Upgrade, sondern durch eine Korrektur im Accelerator-Modul behoben.`,
+    ),
+  ).toEqual([]);
+  expect(
+    assistantCorporateIpv4Failures(
+      `${base} Vor und nach dem Modul-Fix bleibt der Provider bei 0.114.0. Im korrigierten Accelerator bleibt Provider 0.114.0 unverändert.`,
+    ),
+  ).toEqual([]);
+  expect(
+    assistantCorporateIpv4Failures(
+      `${base} Der Provider vor 0.114.0 scheiterte; ein Provider-Upgrade hat den Fehler behoben.`,
+    ),
+  ).toContain("corporate_ipv4_invented_provider_upgrade");
+});
+
+it.each(["automatic", "explicit"] as const)(
+  "checks Corporate %s proposals preserve the full draft and exact prefix",
+  (mode) => {
+    const scenario = assistantScenarios.find(
+      (entry) => entry.id === `corporate-ipv4-${mode}-proposal`,
+    );
+    if (!scenario) throw new Error("scenario_missing");
+    const prefix = mode === "automatic" ? null : 26;
+    const dialogue = {
+      explanation:
+        "Überprüfbarer Vorschlag für die angeforderte Netzgröße. Noch nichts gespeichert.",
+      questions: [],
+      references: ["project-templates"],
+      changes: [
+        {
+          path: "projectTemplates",
+          operation: "merge",
+          value: { central: { settings: { network_prefix_length: prefix } } },
+        },
+      ],
+    };
+    expect(validateAssistantScenario(scenario, dialogue).failures).toEqual([]);
+    expect(
+      validateAssistantScenario(scenario, {
+        ...dialogue,
+        changes: [
+          {
+            ...dialogue.changes[0],
+            value: { central: { settings: { network_prefix_length: 24 } } },
+          },
+        ],
+      }).failures,
+    ).toContain("corporate_ipv4_proposal_incorrect_or_unrelated_change");
+    expect(
+      validateAssistantScenario(scenario, {
+        ...dialogue,
+        changes: [
+          {
+            ...dialogue.changes[0],
+            value: {
+              central: {
+                settings: {
+                  network_prefix_length: prefix,
+                  secretsmanager_enabled: false,
+                },
+              },
+            },
+          },
+        ],
+      }).failures,
+    ).toContain("corporate_ipv4_proposal_incorrect_or_unrelated_change");
+  },
+);

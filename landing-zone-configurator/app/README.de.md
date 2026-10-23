@@ -19,6 +19,14 @@ npm run check
 
 `check` führt Biome, TypeScript-Prüfung einschließlich Tests, Produktionsbuild und Vitest aus. `npm run format` korrigiert Formatierung und Importreihenfolge.
 
+`npm run test:plan` prüft zusätzlich den echten gepinnten STACKIT-Netzwerkprovider
+über `scripts/test-application-network.sh`. Die Prüfung verwendet frischen
+temporären lokalen State, eine bereinigte Umgebung, Dummy-Authentifizierung und
+einen Loopback-IaaS-Endpunkt. Sie deckt fehlende Präfixe mit gefüllter/leerer
+DNS-Liste, SNA-Standard `/28`, explizite `/24` und `/26`, verzögerte Präfixauflösung
+sowie automatische Größe ohne konfigurierte DNS-Server ab. Gewöhnliche Provider-Mocks umgehen diese Validierung; es gibt
+keinen Apply und keinen Zugriff auf eine Kunden-Cloud.
+
 Falls die passende Runtime lokal noch fehlt, funktioniert ohne globale Installation beispielsweise:
 
 ```sh

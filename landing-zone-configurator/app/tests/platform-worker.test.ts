@@ -201,7 +201,7 @@ if (phase === "plan") {
   console.log(JSON.stringify({type:"version", ui:"1.2", "@message":"OpenTofu 1.12.6"}));
   console.log(JSON.stringify({type:"diagnostic", "@message":${JSON.stringify(secret)}}));
   if (${JSON.stringify(behavior)} === "plan-failure") {
-    console.log(JSON.stringify({type:"diagnostic", "@message":"Error: Corporate plan fixture failure " + ${JSON.stringify(secret)}}));
+    console.log(JSON.stringify({type:"diagnostic", "@message":"Error: Corporate plan fixture failure " + ${JSON.stringify(secret)}, diagnostic:{detail:"Provide ipv4_prefix_length " + ${JSON.stringify(secret)}, snippet:{code:"private-diagnostic-snippet"}}}));
     process.exit(1);
   }
   if (${JSON.stringify(behavior)} === "live-output") {
@@ -772,6 +772,14 @@ it("retains a redacted failed Application plan diagnostic before reporting failu
     text: expect.stringContaining("Error: Corporate plan fixture failure"),
     truncated: false,
   });
+  expect(test.reports[outputIndex]?.body).toMatchObject({
+    text: expect.stringContaining(
+      "Provide ipv4_prefix_length (sensitive value)",
+    ),
+  });
+  expect(JSON.stringify(test.reports[outputIndex]?.body)).not.toContain(
+    "private-diagnostic-snippet",
+  );
   expect(JSON.stringify(test.reports[outputIndex]?.body)).not.toContain(secret);
   expect(JSON.stringify(test.reports[outputIndex]?.body)).not.toContain(ticket);
   expect(outputIndex).toBeLessThan(resultIndex);

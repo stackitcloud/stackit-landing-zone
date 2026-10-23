@@ -67,6 +67,7 @@ export const applicationRunnerPackageSchema = z.strictObject({
     "88149782bf8e91dcdbb43a203b54337886023f7f",
     "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
     "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+    "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
   ]),
   providerLockSha256: z.literal(
     "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
@@ -1690,6 +1691,7 @@ export class Applications {
           "88149782bf8e91dcdbb43a203b54337886023f7f",
           "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
           "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+          "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
         ].includes(prepared.plan.acceleratorRevision)
       )
         throw new ApplicationError(409, "application_runner_revision_required");
@@ -2482,6 +2484,7 @@ export class Applications {
       "88149782bf8e91dcdbb43a203b54337886023f7f",
       "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
       "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+      "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
     ]).parse(acceleratorRevision);
     if (!this.profiles || !this.secrets)
       throw new ApplicationError(
@@ -2586,7 +2589,7 @@ export class Applications {
       "SELECT i.* FROM lzc.application_instances i WHERE i.id=$1 AND i.requested_by=$2 AND NOT EXISTS(SELECT 1 FROM lzc.application_order_deletions deleted WHERE deleted.instance_id=i.id AND deleted.tenant_id=i.tenant_id)",
       [id, session.userId],
     );
-    const row = instances.rows[0];
+    let row = instances.rows[0];
     if (!row) throw new ApplicationError(404, "application_instance_not_found");
     const versions = await client.query<VersionRow>(
       "SELECT * FROM lzc.application_template_versions WHERE id=$1",
@@ -2609,7 +2612,10 @@ export class Applications {
     ).rows[0];
     if (!identity)
       throw new ApplicationError(403, "verified_application_identity_required");
-    if (row.resolved_settings.owner_email !== identity.email)
+    if (
+      row.resolved_settings.owner_email != null &&
+      row.resolved_settings.owner_email !== identity.email
+    )
       throw new ApplicationError(409, "application_owner_identity_changed");
     const contracts = await client.query<ContractRow>(
       "SELECT * FROM lzc.application_platform_contracts WHERE revision=$1",
@@ -2629,6 +2635,40 @@ export class Applications {
       },
       { verifiedStackitEmail: identity.email },
     );
+    if (row.resolved_settings.owner_email == null) {
+      try {
+        const completed = await client.query<InstanceRow>(
+          "SELECT completed.* FROM lzc_auth.complete_application_order_identity($1,$2,$3::jsonb) completed",
+          [
+            session.id,
+            row.id,
+            JSON.stringify({
+              ...resolved.resolution.settings,
+              owner_email: identity.email,
+            }),
+          ],
+        );
+        const completedRow = completed.rows[0];
+        if (!completedRow)
+          throw new ApplicationError(
+            409,
+            "application_order_identity_completion_unavailable",
+          );
+        row = completedRow;
+      } catch (cause) {
+        if (
+          cause instanceof Error &&
+          "code" in cause &&
+          cause.code === "40001" &&
+          [
+            "application_owner_identity_changed",
+            "application_order_identity_completion_unavailable",
+          ].includes(cause.message)
+        )
+          throw new ApplicationError(409, cause.message);
+        throw cause;
+      }
+    }
     if (resolved.resolution.qualificationBlockers.length)
       throw new ApplicationError(409, "application_parameters_not_qualified");
     const settings = resolved.resolution.settings;
