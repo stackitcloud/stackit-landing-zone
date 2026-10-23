@@ -185,3 +185,8 @@ Bereitstellungsfreigabe.
 Weitere Referenzen: [Mitwirken](../CONTRIBUTING.de.md),
 [Configurator-Entwicklung](../landing-zone-configurator/docs/development.de.md),
 [Operator-CI und Umgebungsschranken](../landing-zone-configurator/infra/ci/README.de.md).
+
+Der Job `Isolated recovery lab` in **Validate Configurator** prüft einen lokalen
+PostgreSQL-Restore und native OpenTofu-1.12.6-Abbrüche mit synthetischen Fixtures.
+Er unterbricht keine gehosteten Runner und führt keinen Cloud-Apply aus. Siehe die
+[Lab-Anleitung](../landing-zone-configurator/infra/recovery-lab/README.de.md).

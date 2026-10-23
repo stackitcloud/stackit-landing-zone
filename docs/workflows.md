@@ -164,3 +164,8 @@ source of truth; this catalogue is not deployment authorization.
 Related references: [contributing](../CONTRIBUTING.md),
 [Configurator development](../landing-zone-configurator/docs/development.md),
 [operator CI and environment gates](../landing-zone-configurator/infra/ci/README.md).
+
+The `Isolated recovery lab` job in **Validate Configurator** verifies a local
+PostgreSQL restore and native OpenTofu 1.12.6 interruption with synthetic fixtures.
+It interrupts no hosted Runner and performs no cloud Apply. See the
+[lab runbook](../landing-zone-configurator/infra/recovery-lab/README.md).

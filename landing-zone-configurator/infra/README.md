@@ -6,6 +6,10 @@
 
 All Configurator services are managed through OpenTofu. The infrastructure remains separate from the actual Landing Zone Accelerator. OpenTofu **1.12.6** and provider versions are pinned; each executable root has a versioned lockfile.
 
+For local, repeatable database restore and synthetic native interruption tests,
+use the [isolated recovery lab](recovery-lab/README.md). It creates no cloud resources
+and is separate from these hosted OpenTofu roots.
+
 <a id="roots-und-reihenfolge"></a>
 
 ## Roots and order

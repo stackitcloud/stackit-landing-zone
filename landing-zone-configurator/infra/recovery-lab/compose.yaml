@@ -1,0 +1,42 @@
+name: lzc-recovery-lab
+
+x-database: &database
+  image: postgres:17.11@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+  environment:
+    POSTGRES_DB: configurator_test
+    POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+  secrets:
+    - database_password
+  networks:
+    - isolated
+  healthcheck:
+    test: [CMD-SHELL, 'pg_isready -U postgres -d configurator_test']
+    interval: 2s
+    timeout: 3s
+    retries: 30
+  security_opt:
+    - no-new-privileges:true
+  labels:
+    io.stackit.lzc.recovery-lab: "true"
+
+services:
+  source:
+    <<: *database
+    volumes:
+      - source_data:/var/lib/postgresql/data
+  restored:
+    <<: *database
+    volumes:
+      - restored_data:/var/lib/postgresql/data
+
+networks:
+  isolated:
+    internal: true
+
+volumes:
+  source_data:
+  restored_data:
+
+secrets:
+  database_password:
+    file: .private/database-password
