@@ -127,6 +127,18 @@ von einmaligen oder warmen Runner-Apps und ignoriert andere Instanzen, ungültig
 IDs, Meldungen vor dem Scharfschalten sowie über drei Sekunden alte Ereignisse.
 Seine Umgebung übernimmt keine sonstigen Cloud-Zugangsdaten.
 
+Die Organisations-, Space- und Template-Grenze wird einmal beim Scharfschalten
+geprüft. Unmittelbar vor dem Stop prüft eine einzelne Abfrage erneut die genaue
+Runner-App-GUID und ihren Space; einmalige Tasks benötigen zusätzlich die
+eindeutig aktive Task. Eine ungeprüfte Grenze kann keinen Stop autorisieren.
+Wiederholte Organisations-, Template- und vollständige App-Listen-Abfragen im
+kurzen Plan-Zeitfenster werden gezielt vermieden. Der Worker beobachtet den
+begrenzten ersten nativen Versionsdatensatz beim Schreiben seiner Datei; die
+normale Ausgabeübertragung bleibt als Rückfall erhalten. Beide Mechanismen
+verzögern den Plan nicht und ändern keine Eingaben. Private Nachweise enthalten
+Zeitstempel für Absicht und Antwort zum Vergleich von tatsächlichem Stop und
+nativem Abschluss.
+
 Bei einem ausführbaren Template mit direkter Bereitstellung startet die normale
 Bestelloberfläche automatisch den ersten Plan. Diesen Lauf beenden lassen und
 sein Ergebnis prüfen. Für den Abbruchtest dieselbe entbehrliche Instanz verwenden:

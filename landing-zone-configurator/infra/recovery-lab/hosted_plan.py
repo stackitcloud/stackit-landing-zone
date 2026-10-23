@@ -70,6 +70,7 @@ class Controller:
         self.env = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "CF_HOME": str(home.resolve())}
         self.confirm = confirm
         self.stopped = False
+        self.boundary_verified = False
 
     def call(self, args):
         result = subprocess.run([self.cf, *args], env=self.env, capture_output=True, timeout=15)
@@ -88,6 +89,7 @@ class Controller:
         return value
 
     def boundary(self):
+        self.boundary_verified = False
         space = self.api(f"/v3/spaces/{self.space}")
         org = self.api("/v3/organizations/" + guid(space["relationships"]["organization"]["data"]["guid"]))
         if org["name"] != "lzc-dev-runners" or space["name"] != "plans":
@@ -95,6 +97,7 @@ class Controller:
         template = self.api(f"/v3/apps/{self.template}")
         if template["name"] != "lzc-plan-template" or template["relationships"]["space"]["data"]["guid"] != self.space:
             raise RuntimeError("Runner template binding mismatch")
+        self.boundary_verified = True
 
     def apps(self):
         result = self.api(f"/v3/apps?space_guids={self.space}&per_page=100")
@@ -104,13 +107,12 @@ class Controller:
 
     def stop(self, app_id, event, finished):
         guid(app_id)
-        if not self.confirm or self.stopped or event["jobId"] in finished:
+        if not self.confirm or self.stopped or not self.boundary_verified or event["jobId"] in finished:
             raise RuntimeError("No stop authorization or observation is already finished")
         if observation(json.dumps(event, separators=(",", ":")), self.instance, self.armed_at, time.time()) is None or event["observation"] != "native-plan-observed":
             raise RuntimeError("Fresh matching native Plan observation required")
-        self.boundary()
-        app = self.apps().get(app_id)
-        if not app:
+        app = self.api(f"/v3/apps/{app_id}")
+        if app_id == self.template or app.get("guid") != app_id or app.get("relationships", {}).get("space", {}).get("data", {}).get("guid") != self.space:
             raise RuntimeError("Observed Runner is outside the allowed space")
         # Single-use guard is set before the first mutation, including API failure.
         self.stopped = True
@@ -120,11 +122,11 @@ class Controller:
         def request(path, result):
             fresh()
             with Receipt(self.receipt_path) as receipt:
-                record = {"phase": "stop-intent", "instanceId": self.instance, "jobId": event["jobId"], "observedAt": event["observedAt"], "qualifiesRecovery": False, **result}
+                record = {"phase": "stop-intent", "instanceId": self.instance, "jobId": event["jobId"], "observedAt": event["observedAt"], "intentAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "qualifiesRecovery": False, **result}
                 receipt.write(record)
                 fresh()
                 self.api(path, "POST")
-                receipt.write({**record, "phase": "stop-requested"})
+                receipt.write({**record, "phase": "stop-requested", "responseAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")})
             return result
         if app["name"] == "lzc-plan-" + event["jobId"]:
             tasks = self.api(f"/v3/apps/{app_id}/tasks?per_page=100")
