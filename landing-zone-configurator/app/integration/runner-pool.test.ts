@@ -264,6 +264,36 @@ it("fails closed after record errors, expired reservations and duplicate dispatc
   expect(await pool.claim(thirdSlot.id, thirdSlot.ticket)).toEqual(third);
 });
 
+it("retains a retiring lease after CF deletion failure and retries before replenishing", async () => {
+  const pool = create();
+  const slot = await ready(pool);
+  await database.query(
+    "UPDATE lzc.runner_pool_slots SET status='retiring',token_hash=NULL WHERE id=$1",
+    [slot.id],
+  );
+  driver.removeWarm.mockRejectedValueOnce(new Error("CF deletion unavailable"));
+  await expect(pool.maintain()).rejects.toThrow("CF deletion unavailable");
+  expect(
+    (
+      await database.query(
+        "SELECT status,app_id FROM lzc.runner_pool_slots WHERE id=$1",
+        [slot.id],
+      )
+    ).rows,
+  ).toEqual([{ status: "retiring", app_id: slot.appId }]);
+  expect(driver.prepareWarm).toHaveBeenCalledTimes(1);
+  await pool.maintain();
+  expect(driver.removeWarm).toHaveBeenNthCalledWith(2, slot.id, slot.appId);
+  expect(
+    (
+      await database.query("SELECT id FROM lzc.runner_pool_slots WHERE id=$1", [
+        slot.id,
+      ])
+    ).rowCount,
+  ).toBe(0);
+  expect(driver.prepareWarm).toHaveBeenCalledTimes(2);
+});
+
 it("drains idle capacity when disabled without killing a consumed job", async () => {
   const pool = create();
   const slot = await ready(pool);

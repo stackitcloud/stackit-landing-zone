@@ -32,6 +32,16 @@ Planberechnung. Gespeicherte Vorbereitung und Apply-Freigabe bleiben unveränder
 Standard ist Kapazität null; siehe
 [Deployment-Steuerung](../deploy/cloud-foundry/README.de.md).
 
+Die Bereinigung eines Application-Runners erfordert einen dauerhaft gespeicherten
+Dispatch mit `succeeded` oder `failed` und die exakte Zuordnung von Job, App und
+Quell-Droplet. Die Pool-Wartung entfernt danach die einmalige CF-App, auch bei
+abgeschlossenen Runnern älterer Releases.
+Laufende Jobs und Fälle mit `reconciliation_required` bleiben erhalten; allein der
+Lease-Ablauf erlaubt niemals das Löschen eines verbrauchten Application-Runners.
+`runner_pool_size` zählt die Bereitschaftskapazität, nicht parallel laufende Jobs.
+In CF muss Speicher für aktive Jobs und zusätzlich 1 GiB für das Staging des
+Templates frei bleiben.
+
 **Keine Kunden-Ausführung in dieser Abnahme.** Der Benutzer verlangt ausdrücklich
 eine neue Freigabe vor jedem Kunden-Apply; Infrastrukturfreigaben gelten nicht dafür.
 Der ältere Erstbereitstellungsplan bleibt plan-only. Der neue Plattformpfad besitzt

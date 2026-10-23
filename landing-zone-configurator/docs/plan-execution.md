@@ -24,6 +24,14 @@ validation or planning. It changes neither the saved preparation nor Apply
 approval. Pool capacity defaults to zero; see
 [the deployment controls](../deploy/cloud-foundry/README.md).
 
+Application Runner cleanup requires a durably saved `succeeded` or `failed`
+dispatch and the exact job/app/source-droplet binding. Pool maintenance then
+removes the one-shot CF app, including completed runners left by an older release. Running jobs and
+`reconciliation_required` cases are retained; lease expiry alone never makes a
+consumed Application Runner safe to delete. `runner_pool_size` counts standby
+capacity, not concurrently executing jobs. Keep CF memory headroom for active
+jobs and the additional 1 GiB required for template staging.
+
 **No customer execution in this acceptance.** The user explicitly requires fresh approval before every customer Apply; infrastructure approvals do not cover this. The older initial-provisioning plan remains Plan-only. The new platform path has a gated Apply endpoint: only with execution enabled, matching immutable plan artifact/hash, confirmed target organization and rechecked access, source and state bindings. Export is not Apply approval. No Destroy path.
 
 A successful Plan is not automatically eligible for Apply. For blocked approval, the server returns an error code and, for unsupported components, the affected fields with reasons. Plan and Apply pages show this block; the Apply button remains visible but disabled. An eligible Plan still shows explicit review confirmation and requires the exact UUID of the target organization. All conditions are checked again server-side before Apply.
