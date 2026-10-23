@@ -29,6 +29,7 @@ import {
   s3RunnerBackendSchema,
   summarizePlan,
 } from "@lzc/contracts";
+import { applicationPlanObservation } from "./observation.js";
 
 export const brokerOrigin =
   "https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud";
@@ -441,6 +442,24 @@ export async function runWorker(
         resolve(root, "runner.tfrc"),
         resolve(work, "runner.tfrc"),
       );
+    let activeCommand: string | undefined;
+    let planObserved = false;
+    const observePlan = (
+      phase: "native-plan-observed" | "plan-command-finished",
+    ) => {
+      if (
+        mode !== "application-plan" ||
+        (applicationBinding?.purpose &&
+          applicationBinding.purpose !== "standard")
+      )
+        return;
+      const event = applicationPlanObservation(
+        options.id,
+        applicationBinding?.instanceId,
+        phase,
+      );
+      if (event) console.log(JSON.stringify(event));
+    };
     const env: NodeJS.ProcessEnv = {
       PATH: `${root}/tools:/usr/bin:/bin`,
       HOME: work,
@@ -517,6 +536,16 @@ export async function runWorker(
             if (fileName === "plan-events") {
               content = content.slice(0, content.lastIndexOf("\n") + 1);
               const progress = openTofuProgress(content);
+              if (
+                live &&
+                activeCommand === "planning" &&
+                !planObserved &&
+                !progress.invalid &&
+                /^OpenTofu 1\.12\.6\n/.test(progress.text)
+              ) {
+                planObserved = true;
+                observePlan("native-plan-observed");
+              }
               content = progress.text;
               if (progress.invalid && !invalidProgressReported) {
                 console.error(
@@ -580,6 +609,7 @@ export async function runWorker(
       };
       outputTimer = setTimeout(pollOutput, 500);
       try {
+        activeCommand = phase;
         await new Promise<void>((done, fail) => {
           const child = spawn(
             "/bin/bash",
@@ -626,6 +656,9 @@ export async function runWorker(
             fail(new Error("Runner process failed"));
           });
           child.once("exit", (code) => {
+            activeCommand = undefined;
+            if (phase === "planning" && planObserved)
+              observePlan("plan-command-finished");
             if (errorCode === "timed_out") stop("SIGKILL");
             clear();
             code === 0 && errorCode !== "timed_out"
@@ -634,6 +667,7 @@ export async function runWorker(
           });
         });
       } finally {
+        activeCommand = undefined;
         outputStopped = true;
         clearTimeout(outputTimer);
         await pendingOutput;
