@@ -102,5 +102,11 @@ class HostedBoundaries(unittest.TestCase):
             config.chmod(0o644)
             with self.assertRaises(ValueError): hosted.Controller("/bin/true", home, SPACE, TEMPLATE, INSTANCE)
 
+    def test_empty_cf_stop_response_and_explicit_empty_json_request(self):
+        controller = self.controller()
+        with patch.object(controller, "call", return_value="") as call:
+            self.assertEqual(hosted.Controller.api(controller, f"/v3/apps/{APP}/actions/stop", "POST"), {})
+            call.assert_called_once_with(["curl", f"/v3/apps/{APP}/actions/stop", "-X", "POST", "-d", "{}"])
+
 
 if __name__ == "__main__": unittest.main()

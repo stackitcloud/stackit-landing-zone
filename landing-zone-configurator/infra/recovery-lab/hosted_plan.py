@@ -77,8 +77,9 @@ class Controller:
     def api(self, path, method="GET"):
         args = ["curl", path]
         if method != "GET":
-            args += ["-X", method]
-        value = json.loads(self.call(args))
+            args += ["-X", method, "-d", "{}"]
+        body = self.call(args).strip()
+        value = json.loads(body) if body else {}
         if isinstance(value, dict) and value.get("errors"):
             raise RuntimeError("CF API rejected operation; private response omitted")
         return value
