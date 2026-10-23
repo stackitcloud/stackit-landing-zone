@@ -123,10 +123,19 @@ three seconds. Its environment carries no ambient cloud credentials.
 Start a Plan through the ordinary authenticated UI only after the observer reports
 `observer-ready`. No extra permission or authentication bypass is introduced.
 For the separately authorized stop drill, repeat the same command with
-`--confirm-disposable-stop <same-disposable-instance-uuid>`. That mode can request
+`--confirm-disposable-stop <same-disposable-instance-uuid>` and
+`--receipt /private/drill-evidence/new-stop.json`. That mode can request
 one stop only: cancel the unique active task of the matching one-shot job, or stop
 the matching single-use warm Runner app. It never stops the template or a whole
 pool. Neither mode changes the pool size or disables SSH restrictions.
+
+The receipt directory must be owned/private (`0700`). Before any stop request, the
+controller exclusively creates a `0600` receipt and flushes its exact instance,
+job, Runner and optional task binding to disk as `stop-intent`. After CF responds,
+the phase becomes `stop-requested`. An ambiguous response retains the intent.
+Existing receipts are never overwritten, including after process restart. Review
+the recorded operation before another attempt; do not discard its receipt to retry
+an uncertain request. The receipt contains no credentials, Plan or State values.
 
 The worker emits only a bounded identifier/timestamp observation after seeing the
 native OpenTofu 1.12.6 version event in a **live, active standard Application
@@ -135,8 +144,9 @@ emit these observations. No native messages, inputs, email addresses, backend ke
 secrets or State values enter these structured operator events. Identifiers/logs
 remain private operational evidence and must not be pasted into public issues.
 
-Log delivery and CF cancellation can lose the race with a fast Plan. A stale or
-already-finished observation must not trigger a stop. `window-missed`, timeout or
+Operator and CF clocks must be synchronized. Log delivery and CF cancellation can
+lose the race with a fast Plan. A stale observation or an already-received
+completion marker prevents the stop. `window-missed`, timeout or
 any boundary failure are inconclusive. Even `stop-requested` reports **no recovery
 qualification**: verify actual Runner exit and the server's job outcome, retained
 State/lock, and fresh-Plan behavior separately. It does not prove that the native

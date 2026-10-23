@@ -50,11 +50,14 @@ def observation(line, instance, armed_at, now):
 
 
 class Controller:
-    def __init__(self, cf, cf_home, space, template, instance, confirm=None):
+    def __init__(self, cf, cf_home, space, template, instance, confirm=None, receipt=None):
         self.cf = str(Path(cf).resolve(strict=True))
         self.space, self.template, self.instance = map(guid, (space, template, instance))
         if confirm is not None and confirm != instance:
             raise ValueError("Stop confirmation must exactly match the disposable instance UUID")
+        if confirm and not receipt:
+            raise ValueError("Stop mode requires a new private receipt path")
+        self.receipt_path = receipt
         home = Path(cf_home)
         if home.is_symlink() or not home.is_dir() or home.stat().st_uid != os.getuid() or home.stat().st_mode & 0o077:
             raise ValueError("CF_HOME must be an owned private directory, not a symlink")
@@ -75,7 +78,7 @@ class Controller:
         return result.stdout.decode()
 
     def api(self, path, method="GET"):
-        args = ["curl", path]
+        args = ["curl", path, "--fail"]
         if method != "GET":
             args += ["-X", method, "-d", "{}"]
         body = self.call(args).strip()
@@ -112,22 +115,27 @@ class Controller:
         # Single-use guard is set before the first mutation, including API failure.
         self.stopped = True
         def fresh():
-            if observation(json.dumps(event, separators=(",", ":")), self.instance, self.armed_at, time.time()) is None:
+            if event["jobId"] in finished or observation(json.dumps(event, separators=(",", ":")), self.instance, self.armed_at, time.time()) is None:
                 raise RuntimeError("Native Plan observation expired before mutation")
+        def request(path, result):
+            fresh()
+            with Receipt(self.receipt_path) as receipt:
+                record = {"phase": "stop-intent", "instanceId": self.instance, "jobId": event["jobId"], "observedAt": event["observedAt"], "qualifiesRecovery": False, **result}
+                receipt.write(record)
+                fresh()
+                self.api(path, "POST")
+                receipt.write({**record, "phase": "stop-requested"})
+            return result
         if app["name"] == "lzc-plan-" + event["jobId"]:
             tasks = self.api(f"/v3/apps/{app_id}/tasks?per_page=100")
             active = [t for t in tasks["resources"] if t["state"] == "RUNNING"]
             if tasks["pagination"].get("next") or len(active) != 1 or active[0]["name"] != "initial-plan":
                 raise RuntimeError("Exact active one-shot task was not established")
             task = guid(active[0]["guid"])
-            fresh()
-            self.api(f"/v3/tasks/{task}/actions/cancel", "POST")
-            return {"action": "task-cancel-requested", "task": task, "app": app_id}
+            return request(f"/v3/tasks/{task}/actions/cancel", {"action": "task-cancel-requested", "task": task, "app": app_id})
         if not app["name"].startswith("lzc-warm-") or app["state"] != "STARTED":
             raise RuntimeError("Exact active warm Runner was not established")
-        fresh()
-        self.api(f"/v3/apps/{app_id}/actions/stop", "POST")
-        return {"action": "warm-runner-stop-requested", "app": app_id}
+        return request(f"/v3/apps/{app_id}/actions/stop", {"action": "warm-runner-stop-requested", "app": app_id})
 
     def observe(self, seconds):
         self.boundary()
@@ -195,6 +203,34 @@ class Controller:
             selector.close()
 
 
+class Receipt:
+    """Persist an intent before a possibly ambiguous CF request; never overwrite."""
+    def __init__(self, path):
+        path = Path(path)
+        parent = path.parent
+        if parent.resolve() != parent.absolute() or parent.stat().st_uid != os.getuid() or parent.stat().st_mode & 0o077:
+            raise ValueError("Receipt parent must be an owned private directory without symlinks")
+        self.parent = parent
+        self.fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+
+    def __enter__(self): return self
+
+    def write(self, value):
+        data = (json.dumps(value) + "\n").encode()
+        os.lseek(self.fd, 0, os.SEEK_SET)
+        os.ftruncate(self.fd, 0)
+        while data:
+            data = data[os.write(self.fd, data):]
+        os.fsync(self.fd)
+        directory = os.open(self.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+
+    def __exit__(self, *_): os.close(self.fd)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cf", required=True)
@@ -203,10 +239,11 @@ def main():
     parser.add_argument("--runner-template", required=True, type=guid)
     parser.add_argument("--instance", required=True, type=guid)
     parser.add_argument("--confirm-disposable-stop", type=guid)
+    parser.add_argument("--receipt", help="New file in an owned private directory; required for stop mode")
     parser.add_argument("--seconds", type=int, default=300, choices=range(10, 901))
     args = parser.parse_args()
     try:
-        Controller(args.cf, args.cf_home, args.runner_space, args.runner_template, args.instance, args.confirm_disposable_stop).observe(args.seconds)
+        Controller(args.cf, args.cf_home, args.runner_space, args.runner_template, args.instance, args.confirm_disposable_stop, args.receipt).observe(args.seconds)
     except (RuntimeError, ValueError, KeyError, OSError, subprocess.SubprocessError):
         print(json.dumps({"event": "observer-inconclusive", "qualifiesRecovery": False}), flush=True)
         raise SystemExit(1)

@@ -130,11 +130,22 @@ Seine Umgebung übernimmt keine sonstigen Cloud-Zugangsdaten.
 Einen Plan erst über die normale authentifizierte Oberfläche starten, wenn der
 Beobachter `observer-ready` meldet. Es entstehen keine zusätzlichen Rechte oder
 Umgehungen der Anmeldung. Für den separat freigegebenen Abbruchtest denselben
-Befehl um `--confirm-disposable-stop <same-disposable-instance-uuid>` ergänzen.
+Befehl um `--confirm-disposable-stop <same-disposable-instance-uuid>` und
+`--receipt /private/drill-evidence/new-stop.json` ergänzen.
 Dieser Modus fordert höchstens einen Stop an: Er bricht die eindeutig aktive Task
 des passenden einmaligen Jobs ab oder stoppt die passende einmalig verwendete
 warme Runner-App. Er stoppt niemals das Template oder einen ganzen Pool. Beide
 Modi verändern weder die Pool-Größe noch die SSH-Beschränkungen.
+
+Das Nachweisverzeichnis muss ein eigenes privates Verzeichnis (`0700`) sein. Vor
+jeder Stop-Anforderung erstellt der Controller exklusiv eine Datei mit Modus
+`0600` und schreibt die genaue Instanz-, Job-, Runner- und gegebenenfalls Task-
+Bindung als `stop-intent` dauerhaft auf den Datenträger. Nach der CF-Antwort wird
+die Phase zu `stop-requested`. Bei unklarer Antwort bleibt die Absicht gespeichert.
+Bestehende Dateien werden auch nach einem Prozessneustart niemals überschrieben.
+Vor einem weiteren Versuch die gespeicherte Operation prüfen; den Nachweis nicht
+löschen, um eine unklare Anforderung erneut zu versuchen. Die Datei enthält keine
+Zugangsdaten, Plan- oder State-Werte.
 
 Der Worker meldet ausschließlich begrenzte Kennungen und Zeitstempel, nachdem er
 das native Versionsereignis von OpenTofu 1.12.6 in einem **laufenden, aktiven
@@ -144,8 +155,9 @@ Nachrichten, Eingaben, E-Mail-Adressen, Backend-Keys, Geheimnisse und State-Wert
 gelangen nicht in diese strukturierten Operator-Ereignisse. Kennungen und Logs
 bleiben private Betriebsnachweise und gehören nicht in öffentliche Issues.
 
-Bei schnellen Plänen können Log-Zustellung und CF-Abbruch zu spät kommen. Eine
-veraltete oder bereits abgeschlossene Beobachtung darf keinen Stop auslösen.
+Die Uhren des Operator-Systems und von CF müssen synchron sein. Bei schnellen
+Plänen können Log-Zustellung und CF-Abbruch zu spät kommen. Eine veraltete
+Beobachtung oder eine bereits empfangene Abschlussmeldung verhindert den Stop.
 `window-missed`, Zeitlimit oder eine verletzte Grenze sind kein eindeutiger
 Nachweis. Auch `stop-requested` meldet **keine Recovery-Qualifikation**: Das
 tatsächliche Runner-Ende, das serverseitige Job-Ergebnis, vorhandener State und

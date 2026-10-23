@@ -27,6 +27,9 @@ class HostedBoundaries(unittest.TestCase):
         controller = object.__new__(hosted.Controller)
         controller.instance, controller.space, controller.template = INSTANCE, SPACE, TEMPLATE
         controller.confirm, controller.stopped = confirm, False
+        private = tempfile.TemporaryDirectory()
+        self.addCleanup(private.cleanup)
+        controller.receipt_path = str(Path(private.name) / "receipt.json")
         controller.armed_at = time.time()-1
         controller.boundary = lambda: None
         controller.apps = lambda: {APP: {"name": "lzc-warm-"+OTHER if warm else "lzc-plan-"+JOB, "state": "STARTED"}}
@@ -106,7 +109,46 @@ class HostedBoundaries(unittest.TestCase):
         controller = self.controller()
         with patch.object(controller, "call", return_value="") as call:
             self.assertEqual(hosted.Controller.api(controller, f"/v3/apps/{APP}/actions/stop", "POST"), {})
-            call.assert_called_once_with(["curl", f"/v3/apps/{APP}/actions/stop", "-X", "POST", "-d", "{}"])
+            call.assert_called_once_with(["curl", f"/v3/apps/{APP}/actions/stop", "--fail", "-X", "POST", "-d", "{}"])
+
+    def test_private_cf_errors_are_not_forwarded(self):
+        controller = self.controller()
+        with patch.object(controller, "call", return_value=json.dumps({"errors": [{"detail": "private-server-detail"}]})):
+            with self.assertRaisesRegex(RuntimeError, "private response omitted") as error:
+                hosted.Controller.api(controller, "/v3/apps")
+            self.assertNotIn("private-server-detail", str(error.exception))
+
+    def test_durable_intent_precedes_stop_and_receipt_cannot_be_reused(self):
+        controller = self.controller()
+        def request(path, method):
+            stored = json.loads(Path(controller.receipt_path).read_text())
+            self.assertEqual(stored["phase"], "stop-intent")
+            self.assertEqual(stored["jobId"], JOB)
+            self.assertFalse(stored["qualifiesRecovery"])
+            return {}
+        controller.api = request
+        controller.stop(APP, event(), set())
+        self.assertEqual(json.loads(Path(controller.receipt_path).read_text())["phase"], "stop-requested")
+        self.assertEqual(Path(controller.receipt_path).stat().st_mode & 0o777, 0o600)
+        retry = self.controller()
+        retry.receipt_path = controller.receipt_path
+        with patch.object(retry, "api") as api:
+            with self.assertRaises(FileExistsError): retry.stop(APP, event(), set())
+            api.assert_not_called()
+
+    def test_ambiguous_stop_retains_intent_and_prevents_another_mutation(self):
+        controller = self.controller()
+        with patch.object(controller, "api", side_effect=RuntimeError("ambiguous request")):
+            with self.assertRaises(RuntimeError): controller.stop(APP, event(), set())
+        self.assertEqual(json.loads(Path(controller.receipt_path).read_text())["phase"], "stop-intent")
+        with self.assertRaises(FileExistsError): hosted.Receipt(controller.receipt_path)
+
+    def test_public_receipt_directory_cannot_reach_cloud_mutation(self):
+        controller = self.controller()
+        controller.receipt_path = "/tmp/never-created-hosted-stop.json"
+        with patch.object(controller, "api") as api:
+            with self.assertRaises(ValueError): controller.stop(APP, event(), set())
+            api.assert_not_called()
 
 
 if __name__ == "__main__": unittest.main()
