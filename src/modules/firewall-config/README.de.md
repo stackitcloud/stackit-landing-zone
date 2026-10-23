@@ -10,6 +10,9 @@ Die Appliance selbst wird vom Modul `connectivity` bereitgestellt (`connectivity
 dieses Modul konfiguriert sie nur. Binden Sie es über die Root-Variable `firewall_config`
 ein, statt es direkt aufzurufen – siehe `src/config/hub-and-spoke-firewall.tfvars`.
 
+Die manuelle Corporate-VM-Einrichtung und Diagnose über alle Ebenen beschreibt die
+[Verbindungsanleitung](../../../docs/corporate-vm-connectivity.de.md).
+
 <a id="what-it-manages"></a>
 ## Verwaltete Bestandteile
 

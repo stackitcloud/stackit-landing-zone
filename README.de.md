@@ -28,6 +28,7 @@ können manuell ausgefüllt werden und verwenden ein separates Backend mit eigen
 
 - [Erste Schritte](docs/getting-started.de.md)
 - [Architektur/Module](docs/architecture.de.md)
+- [Corporate-VM: Firewall, NAT und SSH](docs/corporate-vm-connectivity.de.md)
 - [Landing Zone Configurator](landing-zone-configurator/README.de.md)
 - [Configurator-Architektur](landing-zone-configurator/docs/architecture.de.md)
 - [Configurator-Benutzerhandbuch](landing-zone-configurator/docs/user-guide.de.md)
