@@ -120,7 +120,14 @@ CF, follows bounded log streams only from one-shot/warm Runner apps, and ignores
 other instances, malformed IDs, observations before arming and events older than
 three seconds. Its environment carries no ambient cloud credentials.
 
-Start a Plan through the ordinary authenticated UI only after the observer reports
+For an executable template with direct deployment policy, the ordinary ordering
+UI automatically starts the first Plan. Let that initial Plan finish and review
+its outcome. Reuse the same disposable instance for the interruption drill:
+arm the observer first, then select **Cloud-Plan starten** again in its Plan tab.
+No further order or Apply is needed for this Plan drill. A first Plan that started
+before arming is not retrospective interruption evidence.
+
+Start the test Plan through the ordinary authenticated UI only after the observer reports
 `observer-ready`. No extra permission or authentication bypass is introduced.
 For the separately authorized stop drill, repeat the same command with
 `--confirm-disposable-stop <same-disposable-instance-uuid>` and

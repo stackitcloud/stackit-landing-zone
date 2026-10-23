@@ -127,7 +127,15 @@ von einmaligen oder warmen Runner-Apps und ignoriert andere Instanzen, ungültig
 IDs, Meldungen vor dem Scharfschalten sowie über drei Sekunden alte Ereignisse.
 Seine Umgebung übernimmt keine sonstigen Cloud-Zugangsdaten.
 
-Einen Plan erst über die normale authentifizierte Oberfläche starten, wenn der
+Bei einem ausführbaren Template mit direkter Bereitstellung startet die normale
+Bestelloberfläche automatisch den ersten Plan. Diesen Lauf beenden lassen und
+sein Ergebnis prüfen. Für den Abbruchtest dieselbe entbehrliche Instanz verwenden:
+zuerst den Beobachter scharfschalten, danach in ihrem Plan-Reiter erneut
+**Cloud-Plan starten** wählen. Für diesen Plan-Test ist weder eine weitere
+Bestellung noch ein Apply erforderlich. Ein vor dem Scharfschalten gestarteter
+erster Plan gilt nicht nachträglich als Abbruchnachweis.
+
+Den Testplan erst über die normale authentifizierte Oberfläche starten, wenn der
 Beobachter `observer-ready` meldet. Es entstehen keine zusätzlichen Rechte oder
 Umgehungen der Anmeldung. Für den separat freigegebenen Abbruchtest denselben
 Befehl um `--confirm-disposable-stop <same-disposable-instance-uuid>` und
