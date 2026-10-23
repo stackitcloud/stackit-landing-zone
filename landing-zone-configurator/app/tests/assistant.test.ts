@@ -689,13 +689,17 @@ it("rejects new DNS keys and cross-topic changes and removes unchanged DNS names
     ).rejects.toBeInstanceOf(AssistantInferenceError);
 });
 
-it.each([
-  "Bitte das DNS Thema vervollständigen, da fehlen noch einige weitere Details.",
-  "Mach auch die restlichen Felder sinnvoll.",
-  "Please finish this setup with sensible additional details.",
-])(
-  "uses semantic DNS completion intent despite obsolete name-only history: %s",
-  async (message) => {
+it.each(
+  [
+    "Bitte das DNS Thema vervollständigen, da fehlen noch einige weitere Details.",
+    "Mach auch die restlichen Felder sinnvoll.",
+    "Please finish this setup with sensible additional details.",
+  ].flatMap((message) =>
+    (["draft", "advice"] as const).map((mode) => ({ mode, message })),
+  ),
+)(
+  "uses semantic DNS completion despite contradictory $mode and obsolete name-only history: $message",
+  async ({ mode, message }) => {
     const values = {
       company_name: "Example GmbH",
       "connectivity.dns_zones": {
@@ -756,7 +760,7 @@ it.each([
         payload.response_format.json_schema.name === "conversation_intent"
           ? {
               topic: "dns-zones",
-              mode: "draft",
+              mode,
               dnsTask: "remaining-settings",
               requirements: [],
             }
@@ -771,6 +775,24 @@ it.each([
     expect(result.questions[0]?.text).toContain("optional");
     expect(result.questions[0]?.text).not.toContain("invented@example.test");
     expect(result.questions[0]?.options).toEqual([]);
+    const classification = JSON.parse(String(request.mock.calls[0]?.[1]?.body));
+    const supplied = classification.messages.find(
+      (entry: { role: string; content: string }) =>
+        entry.role === "user" && entry.content.includes('"currentDns"'),
+    );
+    expect(JSON.parse(supplied?.content ?? "{}").currentDns.zones).toEqual([
+      {
+        key: "example-corp",
+        hasDomain: true,
+        hasDisplayName: false,
+        hasDescription: false,
+        hasContact: false,
+      },
+    ]);
+    expect(
+      JSON.stringify(JSON.parse(supplied?.content ?? "{}").currentDns),
+    ).not.toContain("example-gmbh.runs.onstackit.cloud");
+    expect(supplied?.content).toContain('"savedOwnerContactAvailable":false');
     const payload = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
     expect(payload.messages[0].content).toContain("IS delegation");
     expect(JSON.stringify(payload.messages)).not.toContain(
@@ -779,6 +801,9 @@ it.each([
     expect(JSON.stringify(payload.messages)).toContain(
       "authoritative saved baseline",
     );
+    expect(
+      classification.response_format.json_schema.schema.required,
+    ).toContain("dnsTask");
     const schema = payload.response_format.json_schema.schema.properties;
     expect(schema.changes.minItems).toBe(1);
     expect(

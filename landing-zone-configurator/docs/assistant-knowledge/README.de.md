@@ -551,3 +551,17 @@ Wissensreleases, automatische Promotion und vollstaendige
 A01-A24-Gespraechsqualifikation sind mit dieser Architektur nicht implementiert.
 Kuenftige Themenpartitionierung soll vor Einfuehrung von RAG explizit
 und testbar sein.
+
+### DNS-Kontext bei der Intent-Einstufung
+
+Die DNS-Einstufung erhält zusätzlich stabile gespeicherte Zonenschlüssel und
+validierte Angaben dazu, ob Domain, Anzeigename, Beschreibung und Kontakt vorhanden
+sind, sowie zur Verfügbarkeit bestätigter Owner-/Benutzerkontakte. Tatsächliche
+Domain-/Kontaktwerte, unbekannte Felder und Zugangsdaten sind aus diesem zusätzlichen
+Klassifikationskontext ausgeschlossen. Der Serving-Vertrag verlangt eine explizite
+DNS-Aufgabenentscheidung statt des bisherigen Parser-Standardwerts. Eine
+semantische Entscheidung `remaining-settings` verwendet den Entwurfsmodus, auch wenn
+der Klassifikator widersprüchlich Advice gemeldet hat. Vorhandene Domains und
+Metadaten sind keine offenen Setup-Entscheidungen. Informationsfragen und ausdrücklich
+änderungsfreie Fragen bleiben Advice. Kontaktquelle, Erhalt bestehender Werte,
+Vorschlagsvalidierung und ausdrückliche Übernahme werden weiterhin geprüft.
