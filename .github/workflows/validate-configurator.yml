@@ -129,6 +129,32 @@ jobs:
           retention-days: 7
 
 
+
+  recovery-lab:
+    name: Isolated recovery lab
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: '1.12.6'
+          tofu_wrapper: false
+      - name: Check lab isolation guards
+        run: python3 -m unittest discover -s landing-zone-configurator/infra/recovery-lab -p 'test_*.py'
+      - name: Build isolated schema and verify backup and restore
+        run: python3 landing-zone-configurator/infra/recovery-lab/lab.py selftest
+      - name: Verify deterministic native Plan and Apply interruption
+        run: python3 landing-zone-configurator/infra/recovery-lab/interrupt.py --tofu "$(command -v tofu)"
+      - name: Remove disposable lab containers and volumes
+        if: always()
+        run: python3 landing-zone-configurator/infra/recovery-lab/lab.py destroy --confirm-disposable-lab
+
+
   infrastructure:
     name: OpenTofu (${{ matrix.root }})
     runs-on: ubuntu-latest
