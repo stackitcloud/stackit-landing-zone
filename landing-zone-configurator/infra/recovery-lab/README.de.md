@@ -128,3 +128,30 @@ python3 landing-zone-configurator/infra/recovery-lab/interrupt.py --tofu /absolu
 
 Übertrage den Befund des lokalen Backends nicht auf HTTP/S3 oder regulär abgeschlossene
 Applies. Dafür sind eigene Tests nötig; Engine und State werden nicht stillschweigend geändert.
+
+## Protokoll-Fixtures für Remote-Backends
+
+`remote_interrupt.py` prüft die echten HTTP- und S3-Backend-Implementierungen von
+OpenTofu gegen getrennte Loopback-Dienste im Arbeitsspeicher. Der Test startet ohne
+Workload-Ressourcen, beobachtet einen Checkpoint mit beiden fertiggestellten Ressourcen,
+beendet seine Apply-Prozessgruppe hart und prüft, dass ein nachfolgender Plan wegen
+der verbliebenen Sperre abgelehnt wird. Erst nach bestätigtem Prozessende wird die
+Sperre ausschließlich aus der In-Memory-Fixture entfernt. Ein frischer Plan/Apply
+muss die erstellte Ressource und ihre ID erhalten.
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/remote_interrupt.py --tofu /absolute/path/to/tofu
+```
+
+Mit `--backend http` oder `--backend s3` wird ein Fall gewählt; standardmäßig laufen
+beide. Die S3-Fixture implementiert bedingtes Anlegen der Sperre und verwendet nur
+Dummy-Zugangsdaten. Die HTTP-Fixture prüft beim regulären Unlock die Sperridentität.
+Diese Tests qualifizieren weder die STACKIT-Authentifizierung noch Eventual Consistency,
+echte Cloud-Sperren oder gehostete Worker-Reconciliation. Das Entfernen einer
+Fixture-Sperre ist kein Force-Unlock-Werkzeug für den Betrieb.
+
+Beide Protokollfälle erhielten die fertiggestellten Ressourcen bei anfänglich leerem
+State; die Grenze des lokalen Dateibackends in #140 bleibt getrennt. S3-Init kann vor
+dem ersten Ressourcen-Apply bereits ein leeres State-Objekt anlegen. Ergebnisse eines
+Backends werden nicht auf ein anderes übertragen. CI führt beide Fixtures ohne
+Cloud-Zugangsdaten oder öffentliche rohe State-/Log-Artefakte aus.
