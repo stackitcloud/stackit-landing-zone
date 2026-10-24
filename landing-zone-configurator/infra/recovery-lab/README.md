@@ -186,6 +186,10 @@ destroy, local execution and foreign instances cannot activate it. At the first
 native version observation it sends `SIGSTOP` only to its spawned process group,
 checks Linux reports both the shell leader and its actual native `tofu plan`
 process stopped in that group, and emits `native-plan-held`.
+The foundation uses shortened `CF_INSTANCE_GUID` values in hexadecimal
+`8-4-4-4-4` format. This runtime-instance check also accepts full `8-4-4-4-12`
+GUIDs; app, space and order IDs still require UUIDs, and `VCAP_APPLICATION.process_type`
+must still be `web`. Task metadata cannot activate the hold.
 It resumes automatically after 30 seconds or when command cleanup runs. No
 operator-set arbitrary delay or shell command is accepted. See the official
 [CF runtime metadata](https://docs.cloudfoundry.org/devguide/deploy-apps/environment-variable.html).

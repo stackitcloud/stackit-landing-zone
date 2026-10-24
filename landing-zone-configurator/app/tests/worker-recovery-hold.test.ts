@@ -99,6 +99,44 @@ it("requires explicit short-lived exact-instance opt-in in the route-free Dev wa
       }),
     ).toBeUndefined();
 });
+it("accepts the observed STACKIT short instance format without relaxing app, space or process bindings", () => {
+  const env = make();
+  for (const value of [
+    "11111111-1111-4111-8111-1111",
+    "41653aa4-3a3a-486a-4431-ef258b39f042",
+  ])
+    expect(
+      devPlanHoldConfiguration(job, { ...env, CF_INSTANCE_GUID: value }),
+    ).toBeDefined();
+  for (const value of [
+    "",
+    "instance",
+    "11111111-1111-4111-8111",
+    "11111111-1111-4111-8111-11111",
+    "11111111-1111-4111-8111-1111\n",
+    "11111111-1111-4111-8111-gggg",
+  ])
+    expect(
+      devPlanHoldConfiguration(job, { ...env, CF_INSTANCE_GUID: value }),
+    ).toBeUndefined();
+  const short = { ...env, CF_INSTANCE_GUID: "11111111-1111-4111-8111-1111" };
+  for (const changes of [
+    { application_id: randomUUID() },
+    { space_id: randomUUID() },
+    { process_type: "task" },
+    { process_type: undefined },
+  ])
+    expect(
+      devPlanHoldConfiguration(job, {
+        ...short,
+        VCAP_APPLICATION: JSON.stringify({
+          ...JSON.parse(env.VCAP_APPLICATION),
+          ...changes,
+        }),
+      }),
+    ).toBeUndefined();
+});
+
 it("does not signal any process without opt-in, a safe child PID and remaining deadline", () => {
   const kill = vi.spyOn(process, "kill");
   const disabled = createDevPlanHold(undefined, vi.fn());

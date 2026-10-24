@@ -204,7 +204,12 @@ Ausführung und andere Instanzen können den Wartepunkt nicht aktivieren. Beim
 ersten nativen Versionsereignis sendet er `SIGSTOP` nur an seine eigene gestartete
 Prozessgruppe, prüft den von Linux gemeldeten Halt sowohl des Shell-Gruppenleiters
 als auch seines echten nativen `tofu plan` in derselben Gruppe und meldet
-`native-plan-held`. Nach 30 Sekunden oder beim Aufräumen des Befehls setzt
+`native-plan-held`. Die Foundation liefert verkürzte `CF_INSTANCE_GUID`-Werte
+im Hexadezimalformat `8-4-4-4-4`. Diese Laufzeit-Instanzprüfung akzeptiert auch
+vollständige GUIDs im Format `8-4-4-4-12`; App-, Space- und Bestell-IDs müssen
+weiter UUIDs sein und `VCAP_APPLICATION.process_type` muss `web` bleiben.
+Task-Metadaten können den Wartepunkt nicht aktivieren.
+Nach 30 Sekunden oder beim Aufräumen des Befehls setzt
 er automatisch fort. Frei einstellbare Verzögerungen oder Shell-Befehle werden
 nicht angenommen. Siehe die offiziellen
 [CF-Laufzeitmetadaten](https://docs.cloudfoundry.org/devguide/deploy-apps/environment-variable.html).

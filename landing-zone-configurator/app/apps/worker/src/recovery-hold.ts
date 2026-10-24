@@ -5,6 +5,12 @@ import { z } from "zod";
 export const devPlanHoldMilliseconds = 30_000;
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 const origin = "https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud";
+// The fixed STACKIT foundation emits shortened Diego instance IDs, not RFC UUIDs.
+const liveInstance = z
+  .string()
+  .regex(
+    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-(?:[a-f0-9]{4}|[a-f0-9]{12})$/,
+  );
 const configuration = z.strictObject({
   version: z.literal(1),
   instanceId: z.uuid(),
@@ -41,7 +47,7 @@ export function devPlanHoldConfiguration(
     job.origin !== origin ||
     (job.purpose !== undefined && job.purpose !== "standard") ||
     !env.LZC_RECOVERY_PLAN_HOLD ||
-    !z.uuid().safeParse(env.CF_INSTANCE_GUID).success
+    !liveInstance.safeParse(env.CF_INSTANCE_GUID).success
   )
     return undefined;
   try {
