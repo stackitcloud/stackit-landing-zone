@@ -339,3 +339,85 @@ State; die Grenze des lokalen Dateibackends in #140 bleibt getrennt. S3-Init kan
 dem ersten Ressourcen-Apply bereits ein leeres State-Objekt anlegen. Ergebnisse eines
 Backends werden nicht auf ein anderes übertragen. CI führt beide Fixtures ohne
 Cloud-Zugangsdaten oder öffentliche rohe State-/Log-Artefakte aus.
+
+## Gehosteten entbehrlichen Apply am Checkpoint beobachten
+
+Der getrennte Apply-Test verwendet `hosted_apply.py` mit Python 3 und einem
+ausdrücklich konfigurierten boto3-/S3-Operator-Profil. Er unterstützt ausschließlich
+die feste Dev-CF-Foundation, den Space `lzc-dev-runners/plans` und STACKIT eu01 S3.
+Stelle zuerst den Diagnose-Endpunkt für unterbrochene Applies bereit. Verwende
+einen neuen, geprüften regulären Plan aus der aktuellen Runner-Quelle für eine
+ausdrücklich freigegebene entbehrliche Bestellung ohne bisherigen Apply. Nur
+Anlegeaktionen sind zulässig. Im exakten Backend dürfen anfangs weder State noch
+Sperre liegen. Jedes vorhandene Objekt, auch leerer State, benötigt einen
+getrennten Abgleich.
+
+Der Besteller startet Apply über die normale authentifizierte Oberfläche, sobald
+beide Beobachter bereit sind. Der Controller erzeugt keine Bestellung oder
+Benutzer-Session, startet keinen Job und erteilt keine Apply-Freigabe. Normale
+Runner-Befehle und Eingaben bleiben unverändert; es gibt keinen Apply-Delay oder
+Pause-Hook.
+
+`apply_candidate.mjs` läuft in einer kurzlebigen Dev-Diagnose-App ohne Route, die
+aus der bereitgestellten API kopiert wird. Übergib ausschließlich die vorhandene
+Migrations-Datenbankidentität und eine private `LZC_RECOVERY_DRILL`-JSON-Konfiguration
+mit `binding`, `startedAt` und `expiresAt` für höchstens 15 Minuten. Vor dem
+Datenbankzugriff prüft das Skript seine tatsächliche CF-Organisation, Space/App-
+Bezeichnung und fehlende Routen. Jeder Poll verwendet eine eigene Transaktion
+`BEGIN READ ONLY` mit zwei Sekunden Statement-Timeout. Während der Wartezeit bleibt
+keine Transaktion offen. Die Vorprüfung verlangt einen unbenutzten, nicht
+abgelaufenen gespeicherten Plan derselben Runner-Quelle mit reinen Anlegeaktionen.
+Die Abfrage bindet den neuen Apply an Plan, Mandanten, Bestellung, Backend,
+gültige Freigabe, verbrauchtes Ticket, Claim und erfassten Runner. Nur Kennungen,
+Bindungs-Hashes, Phase und Zeitstempel verlassen den Task. Private Pläne, State
+und Zugangsdaten dürfen nicht in öffentliche Logs gelangen.
+
+Eine Operator-Brücke verfolgt ausschließlich den Logstream dieses exakten
+Diagnose-Tasks, prüft dessen begrenzte JSON-Datensätze und ersetzt atomar eine
+private Kandidatendatei mit Modus `0600`. Auch Idle- und terminale Datensätze
+müssen den vorherigen Kandidaten ersetzen; bewahre keinen veralteten `applying`-
+Datensatz auf. Die CLI verwirft unabhängig davon Beobachtungen älter als drei
+Sekunden und Applies, die vor dem Scharfschalten angelegt wurden. Verwende eigene
+private Verzeichnisse und neue Nachweispfade. Beende die Brücke und entferne die
+Diagnose-App in einem `finally`-Block; bestätige vor einem weiteren Test die
+abgeschlossene Löschung.
+
+```sh
+node --test landing-zone-configurator/infra/recovery-lab/apply_candidate.test.mjs
+python3 landing-zone-configurator/infra/recovery-lab/hosted_apply.py \
+  --cf /absolute/path/to/cf --cf-home /private/runner-cf-home \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid> --binding /private/reviewed-binding.json \
+  --snapshot /private/current-candidate.json --s3-profile <operator-profile>
+```
+
+Die geprüfte Bindung enthält `version:1`, `instanceId`, `tenantId`, `planId`,
+`runnerSpace`, `runnerTemplate`, `sourceDropletId`, `backendSha256`, `creates` und
+den exakt registrierten S3-Deskriptor `backend`. Erzeuge sie durch lesenden
+Abgleich des gespeicherten Plans/Backends, nicht aus Browser-Behauptungen. Sie
+enthält keine Zugangsdaten. Standardmäßig beobachtet die CLI nur. Für genau einen
+gezielten Stop kommen `--confirm-disposable-stop <same-instance-uuid>` und
+`--receipt /private/new-stop.json` hinzu.
+
+Vor dem Stop verlangt die CLI wiederholt identische State-/Sperrlesungen: einen
+State-Vertrag dieser Bestellung, ein fertig angelegtes Cloud-Projekt, gespeicherte
+Cloud-Ressourcen, weniger verwaltete Ressourcen als geplante Anlegeaktionen sowie
+eine neue native OpenTofu-1.12.6-Apply-Sperre am exakten Backend-Key. Tainted/
+deposed-State, fremde oder geänderte Checkpoints, fertiger State und fehlende oder
+nicht lesbare Beobachtungen können keinen Stop auslösen. CF prüft die exakte
+App/Quellkopie ohne Route und den einzelnen laufenden Warm-Prozess beziehungsweise
+eindeutigen Einmal-Task. Ein letzter aktueller Job-/Checkpoint-Abgleich geht dem
+dauerhaft gespeicherten, exklusiven Stop-Intent voraus. Eine unklare Antwort wird
+nicht erneut ausgeführt. Der Controller besitzt keine Schreib-/Löschoperation
+für State oder Sperren.
+
+Ein Apply kann vor einem geeigneten Teil-Checkpoint oder während der CF-Stop-
+Verarbeitung fertig werden. Eine Stop-Anforderung allein qualifiziert weder
+Unterbrechung noch Wiederherstellung. Prüfe unabhängig das Prozessende, dauerhaften
+Job-/Ergebnisstatus sowie State/Sperre und gleiche Cloud-Ressourcen ab, bevor eine
+Recovery-Freigabe erfolgt. Behalte dieselbe Bestellung. Die neue UI-Aktion
+**Unterbrochenen Apply prüfen** erfasst nur einen ungeklärten Abschluss und
+schließt alte Broker-Meldungen. Sie gleicht weder Cloud noch State ab, entfernt
+keine Sperre und genehmigt keinen neuen Plan oder Apply. Eine verwaiste Sperre
+benötigt nach diesem Abgleich eine separate ausdrückliche Operator-Entscheidung
+für genau diese Sperre.

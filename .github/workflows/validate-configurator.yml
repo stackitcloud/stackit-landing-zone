@@ -141,6 +141,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Setup Node.js for read-only Apply observer tests
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
@@ -148,6 +152,8 @@ jobs:
           tofu_wrapper: false
       - name: Check lab isolation guards
         run: python3 -m unittest discover -s landing-zone-configurator/infra/recovery-lab -p 'test_*.py'
+      - name: Check read-only hosted Apply observer
+        run: node --test landing-zone-configurator/infra/recovery-lab/apply_candidate.test.mjs
       - name: Build isolated schema and verify backup and restore
         run: python3 landing-zone-configurator/infra/recovery-lab/lab.py selftest
       - name: Verify deterministic native Plan and Apply interruption
