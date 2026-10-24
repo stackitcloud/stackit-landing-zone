@@ -24,6 +24,12 @@ validation or planning. It changes neither the saved preparation nor Apply
 approval. Pool capacity defaults to zero; see
 [the deployment controls](../deploy/cloud-foundry/README.md).
 
+A concurrent readiness heartbeat can briefly lock a ready slot. Before falling
+back, dispatch makes at most four further reservation attempts, 50 ms apart, and
+only while a fresh candidate in the same source-bound pool remains visible.
+A missing, stale or already assigned reserve still uses the cold path. This
+bounded wait never replays a recorded assignment or an ambiguous database error.
+
 Application Runner cleanup requires a durably saved `succeeded` or `failed`
 dispatch and the exact job/app/source-droplet binding. Pool maintenance then
 removes the one-shot CF app, including completed runners left by an older release. Running jobs and

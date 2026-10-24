@@ -32,6 +32,13 @@ Planberechnung. Gespeicherte Vorbereitung und Apply-Freigabe bleiben unveränder
 Standard ist Kapazität null; siehe
 [Deployment-Steuerung](../deploy/cloud-foundry/README.de.md).
 
+Eine gleichzeitige Bereitschaftsmeldung kann einen bereiten Eintrag kurz sperren.
+Vor dem Kaltstart versucht der Dispatch die Reservierung höchstens vier weitere
+Male im Abstand von 50 ms, solange ein frischer Kandidat im selben an die Quelle
+gebundenen Pool sichtbar bleibt. Ohne Reserve sowie bei veralteter oder bereits
+zugewiesener Reserve gilt weiterhin der Kaltstart. Dieses begrenzte Warten
+wiederholt niemals eine gespeicherte Zuweisung oder einen unklaren Datenbankfehler.
+
 Die Bereinigung eines Application-Runners erfordert einen dauerhaft gespeicherten
 Dispatch mit `succeeded` oder `failed` und die exakte Zuordnung von Job, App und
 Quell-Droplet. Die Pool-Wartung entfernt danach die einmalige CF-App, auch bei

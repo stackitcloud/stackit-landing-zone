@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
@@ -160,6 +161,81 @@ it("leases a standby to at most one concurrent job", async () => {
   expect(record).toHaveBeenCalledTimes(1);
   const assigned = await pool.claim(slot.id, slot.ticket);
   expect(assigned?.id).toBe(assignments[results.indexOf(true)]?.id);
+});
+
+it("uses a ready standby after a brief concurrent claim lock", async () => {
+  const pool = create();
+  const slot = await ready(pool);
+  const claimant = await database.connect();
+  let release: Promise<unknown> | undefined;
+  try {
+    await claimant.query("BEGIN");
+    await claimant.query(
+      "SELECT id FROM lzc.runner_pool_slots WHERE id=$1 FOR UPDATE",
+      [slot.id],
+    );
+    const assignment = job();
+    const record = vi.fn(async () => {});
+    release = sleep(100).then(() => claimant.query("COMMIT"));
+    expect(
+      await pool.start(
+        assignment.id,
+        assignment.ticket,
+        config.origin,
+        "application",
+        record,
+      ),
+    ).toBe(true);
+    expect(record).toHaveBeenCalledExactlyOnceWith(
+      slot.appId,
+      config.dropletId,
+    );
+    expect(await pool.claim(slot.id, slot.ticket)).toEqual({
+      ...assignment,
+      broker: "application",
+    });
+  } finally {
+    await release;
+    await claimant.query("ROLLBACK");
+    claimant.release();
+  }
+});
+
+it("falls back without assigning a standby whose claim lock remains held", async () => {
+  const pool = create();
+  const slot = await ready(pool);
+  const claimant = await database.connect();
+  try {
+    await claimant.query("BEGIN");
+    await claimant.query(
+      "SELECT id FROM lzc.runner_pool_slots WHERE id=$1 FOR UPDATE",
+      [slot.id],
+    );
+    const assignment = job();
+    const record = vi.fn(async () => {});
+    expect(
+      await pool.start(
+        assignment.id,
+        assignment.ticket,
+        config.origin,
+        "application",
+        record,
+      ),
+    ).toBe(false);
+    expect(record).not.toHaveBeenCalled();
+    const stored = await claimant.query(
+      "SELECT status,job_id,assignment FROM lzc.runner_pool_slots WHERE id=$1",
+      [slot.id],
+    );
+    expect(stored.rows[0]).toEqual({
+      status: "ready",
+      job_id: null,
+      assignment: null,
+    });
+  } finally {
+    await claimant.query("ROLLBACK");
+    claimant.release();
+  }
 });
 
 it("serializes pool capacity across API replicas", async () => {
