@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import shlex
@@ -122,6 +123,21 @@ class OperatorTask:
         raise RuntimeError("Exact operator task receipt unavailable")
 
 
+def verified_clone(deployed, current, app_id, source):
+    if current.get("guid") != source or current.get("state") != "STAGED":
+        raise RuntimeError("Runner source changed during arming")
+    checksum = current.get("checksum")
+    if (not isinstance(checksum, dict) or checksum.get("type") != "sha256"
+            or not isinstance(checksum.get("value"), str) or not re.fullmatch(r"[a-f0-9]{64}", checksum["value"])):
+        raise RuntimeError("Exact source checksum unavailable")
+    # CAPI copies have their own GUID; the immutable payload and owning app must match.
+    cloned = guid(deployed.get("guid"))
+    if (cloned == source or deployed.get("state") != "STAGED" or deployed.get("checksum") != checksum
+            or deployed.get("relationships", {}).get("app", {}).get("data", {}).get("guid") != app_id):
+        raise RuntimeError("Warm app clone source mismatch")
+    return cloned, checksum
+
+
 def arm(runner, manager, task, instance, space, template, source, record):
     ticket = secrets.token_urlsafe(32)
     record({"phase": "lease-intent", "instanceId": instance, "sourceDropletId": source, "qualifiesRecovery": False})
@@ -136,9 +152,10 @@ def arm(runner, manager, task, instance, space, template, source, record):
     if runner.api(f"/v3/apps/{app_id}/routes")["resources"]:
         raise RuntimeError("Routed app cannot be used for a drill")
     deployed = runner.api(f"/v3/apps/{app_id}/droplets/current")
-    if deployed.get("guid") != source: raise RuntimeError("Warm app source mismatch")
     current = runner.api(f"/v3/apps/{template}/droplets/current")
-    if current.get("guid") != source: raise RuntimeError("Runner source changed during arming")
+    cloned, checksum = verified_clone(deployed, current, app_id, source)
+    record({"phase": "clone-verified", "appId": app_id, "sourceDropletId": source,
+            "clonedDropletId": cloned, "checksumSha256": checksum["value"], "qualifiesRecovery": False})
     record({"phase": "stop-unassigned-intent", "appId": app_id, "qualifiesRecovery": False})
     runner.api(f"/v3/apps/{app_id}/actions/stop", "POST")
     expires = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
@@ -150,7 +167,7 @@ def arm(runner, manager, task, instance, space, template, source, record):
     ready = task.query("SELECT status,app_id,source_droplet_id,last_seen_at>now()-interval '10 seconds' AS fresh FROM lzc.runner_pool_slots WHERE id=$1", [slot_id], wait_ready=True)
     if len(ready) != 1 or ready[0]["status"] != "ready" or not ready[0]["fresh"] or ready[0]["app_id"] != app_id or ready[0]["source_droplet_id"] != source:
         raise RuntimeError("Broker readiness not established; no Plan may be started")
-    record({"phase": "ready", **config, "slotId": slot_id, "sourceDropletId": source, "qualifiesRecovery": False})
+    record({"phase": "ready", **config, "slotId": slot_id, "sourceDropletId": source, "clonedDropletId": cloned, "checksumSha256": checksum["value"], "qualifiesRecovery": False})
 
 
 def main():

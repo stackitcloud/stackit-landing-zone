@@ -244,7 +244,12 @@ Erfolg meldet, muss der normale Broker mit dem neuen Ticket Bereitschaft
 bestätigen. CF-Umgebungsänderungen gelten nach dem Neustart; die übrige Umgebung
 bleibt durch die
 [CAPI-Zusammenführung](https://v3-apidocs.cloudfoundry.org/version/3.226.0/index.html#update-environment-variables)
-erhalten. Die temporäre privilegierte Task-App wird beim Verlassen gelöscht.
+erhalten. Die warme App nutzt ein kopiertes Droplet mit eigener GUID. Die Vorbereitung
+prüft seinen Zustand `STAGED`, die genaue App-Zuordnung und den gültigen
+SHA-256-Inhalt gegen die unveränderliche Template-Quelle; die Broker-Quellbindung
+bleibt die GUID des Template-Droplets. Beide GUIDs und die Prüfsumme bleiben
+privat im Vorbereitungsnachweis erhalten.
+Die temporäre privilegierte Task-App wird beim Verlassen gelöscht.
 Fehlende Bereitschaft bleibt ungeklärt; die zweiminütige Warming-Lease läuft
 über die normale Wartung ab. Nach einem unklaren Nachweis keine Mutation
 wiederholen: zuerst aufgezeichnete Phase und exakte App/Lease prüfen.

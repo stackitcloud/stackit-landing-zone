@@ -221,6 +221,10 @@ configuration into its environment, and start it. It requires the normal broker 
 confirm readiness with the new ticket before reporting success. CF environment
 changes take effect after restart; the existing environment is retained through
 [the CAPI merge operation](https://v3-apidocs.cloudfoundry.org/version/3.226.0/index.html#update-environment-variables).
+The warm app uses a copied droplet with a different GUID. Preparation checks its
+`STAGED` state, exact owning app and valid SHA-256 payload against the immutable
+template source; the broker source binding remains the template droplet GUID.
+Both GUIDs and the checksum are retained privately in the preparation receipt.
 The temporary privileged task app is deleted on exit. Failed readiness is
 inconclusive; the two-minute warming lease expires through normal maintenance.
 Do not replay a mutation after an ambiguous receipt. Inspect its recorded phase
