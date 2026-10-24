@@ -171,6 +171,85 @@ engine was still running when CF processed cancellation. Do not count a complete
 Plan or a mere stop request as a successful interruption. Apply/checkpoint drills
 need a separate controller and are not enabled by this tool.
 
+## Explicit Dev-only native Plan hold
+
+For Plans too fast for log delivery and CF cancellation, `held_plan.py` prepares
+one disposable warm Runner with a bounded native-process hold. This is an
+instrumented interruption drill, not a measurement of ordinary Plan latency.
+It adds no UI/API execution bypass and changes no native inputs, backend or saved
+Plan format. Ordinary jobs have no hold configuration and run unchanged.
+
+The worker accepts `LZC_RECOVERY_PLAN_HOLD` only in the fixed Dev foundation,
+`lzc-dev-runners/plans` web process, with no public routes, the exact CF app/space
+and disposable instance, and an expiry within 15 minutes. Apply, platform, drift,
+destroy, local execution and foreign instances cannot activate it. At the first
+native version observation it sends `SIGSTOP` only to its spawned process group,
+checks Linux reports both the shell leader and its actual native `tofu plan`
+process stopped in that group, and emits `native-plan-held`.
+It resumes automatically after 30 seconds or when command cleanup runs. No
+operator-set arbitrary delay or shell command is accepted. See the official
+[CF runtime metadata](https://docs.cloudfoundry.org/devguide/deploy-apps/environment-variable.html).
+
+Preparation requires two separate private CF logins: the existing confined Runner
+login and the Dev application manager login targeted at `lzc-dev/configurator`.
+Provide a private, owned `0600` JSON file with only `LZC_DATABASE_HOST`,
+`LZC_DATABASE_PORT`, `LZC_DATABASE_NAME`, `LZC_DATABASE_USER` and
+`LZC_DATABASE_PASSWORD` for the existing Dev migration identity. The tool checks
+the target against the running API; do not retrieve or paste credentials in chat,
+issues or shell history. Both CF_HOME directories must be owned/private (`0700`).
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/held_plan.py \
+  --cf /absolute/path/to/cf --cf-home /private/runner-cf-home \
+  --app-cf-home /private/app-manager-cf-home \
+  --migration-vars /private/dev-migration.json \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid> \
+  --confirm-disposable-hold <same-disposable-instance-uuid> \
+  --receipt /private/drill-evidence/new-preparation.json
+```
+
+The tool first verifies deployed hold support. A temporary route-free task app
+uses the migration identity to atomically lease one fresh, unassigned, exact-source
+ready pool slot and rotate its ticket hash. The old worker cannot reclaim it.
+Only then does it stop that unassigned app, merge the new ticket and expiring hold
+configuration into its environment, and start it. It requires the normal broker to
+confirm readiness with the new ticket before reporting success. CF environment
+changes take effect after restart; the existing environment is retained through
+[the CAPI merge operation](https://v3-apidocs.cloudfoundry.org/version/3.226.0/index.html#update-environment-variables).
+The temporary privileged task app is deleted on exit. Failed readiness is
+inconclusive; the two-minute warming lease expires through normal maintenance.
+Do not replay a mutation after an ambiguous receipt. Inspect its recorded phase
+and exact app/lease first. A preparation receipt alone never authorizes a Plan.
+
+After successful preparation, arm the observer before starting a Plan:
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/hosted_plan.py \
+  --cf /absolute/path/to/cf --cf-home /private/runner-cf-home \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid> --require-held-plan \
+  --confirm-disposable-stop <same-disposable-instance-uuid> \
+  --receipt /private/drill-evidence/new-stop.json
+```
+
+Wait for `observer-ready`, then start exactly one new Plan through the authenticated
+UI. Avoid unrelated jobs consuming the prepared standby: a foreign instance runs
+normally, and this drill must then be prepared again. Held-only observation ignores
+an ordinary native-start event, accepts a confirmed hold no older than 15 seconds,
+and refuses a released/finished Plan. A missed window remains inconclusive.
+Verify actual process loss, durable job status, State/lock disposition and a fresh
+Plan on the same order separately before qualifying recovery. In particular, a
+hold at the version event does not prove backend lock acquisition or orphan-lock
+recovery. Never force-unlock or retry an ambiguous Apply based on this test.
+
+Local tests use the real pinned OpenTofu with a synthetic loopback State-read
+barrier to prove stopped-process confirmation, automatic/manual continuation and
+hard interruption without cloud credentials. Both release and validation CI run
+them explicitly with `LZC_TEST_TOFU_BIN`; ordinary unit runs skip native cases when
+that variable is absent. PostgreSQL integration tests exercise the actual lease
+SQL, ticket rotation and refusal of assigned or foreign-source slots.
+
 ## CI
 
 The `Isolated recovery lab` job in **Validate Configurator** runs the isolation

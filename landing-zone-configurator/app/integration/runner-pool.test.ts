@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
@@ -517,4 +518,56 @@ it("hands a real database lease through the HTTP broker to exactly one waiting w
     vi.unstubAllGlobals();
     await app.close();
   }
+});
+
+it("atomically rewarms only a fresh unassigned exact-source lease and rotates its capability", async () => {
+  const pool = create();
+  const slot = await ready(pool);
+  const sql = await readFile(
+    new URL("../../infra/recovery-lab/hold_lease.sql", import.meta.url),
+    "utf8",
+  );
+  const ticket = randomBytes(32).toString("base64url");
+  const { createHash } = await import("node:crypto");
+  const hash = createHash("sha256").update(ticket).digest("hex");
+  for (const [space, source] of [
+    [randomUUID(), config.dropletId],
+    [config.spaceId, randomUUID()],
+  ])
+    expect(
+      (await database.query(sql, [space, config.origin, source, hash]))
+        .rowCount,
+    ).toBe(0);
+  const leased = await database.query(sql, [
+    config.spaceId,
+    config.origin,
+    config.dropletId,
+    hash,
+  ]);
+  expect(leased.rows).toEqual([
+    { id: slot.id, app_id: slot.appId, source_droplet_id: config.dropletId },
+  ]);
+  await expect(pool.claim(slot.id, slot.ticket)).rejects.toThrow();
+  await pool.maintain();
+  expect(driver.prepareWarm).toHaveBeenCalledTimes(1);
+  expect(await pool.claim(slot.id, ticket)).toBeNull();
+  const assignment = job();
+  await pool.start(
+    assignment.id,
+    assignment.ticket,
+    config.origin,
+    "application",
+    async () => {},
+  );
+  expect(
+    (
+      await database.query(sql, [
+        config.spaceId,
+        config.origin,
+        config.dropletId,
+        hash,
+      ])
+    ).rowCount,
+  ).toBe(0);
+  expect((await pool.claim(slot.id, ticket))?.id).toBe(assignment.id);
 });

@@ -120,6 +120,8 @@ jobs:
         with:
           tofu_version: '1.12.6'
           tofu_wrapper: false
+      - name: Test isolated native Plan hold and interruption
+        run: LZC_TEST_TOFU_BIN="$(command -v tofu)" npx vitest run tests/worker-recovery-hold.test.ts
       - name: Test real OpenTofu contract and package isolated runner
         run: |
           npm run test:common-contract

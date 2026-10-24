@@ -37,12 +37,13 @@ def observation(line, instance, armed_at, now):
         guid(event["jobId"])
         if event["instanceId"] != instance or event["event"] != "application_plan_observation":
             return None
-        if event["observation"] not in {"native-plan-observed", "plan-command-finished"}:
+        if event["observation"] not in {"native-plan-observed", "plan-command-finished", "native-plan-held", "native-plan-released"}:
             return None
         if not isinstance(event["observedAt"], str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", event["observedAt"]):
             return None
         stamp = datetime.fromisoformat(event["observedAt"].replace("Z", "+00:00")).timestamp()
-        if not armed_at <= stamp <= now + 1 or now - stamp > 3:
+        max_age = 15 if event["observation"] == "native-plan-held" else 3
+        if not armed_at <= stamp <= now + 1 or now - stamp > max_age:
             return None
         return event
     except (ValueError, TypeError, KeyError):
@@ -50,7 +51,7 @@ def observation(line, instance, armed_at, now):
 
 
 class Controller:
-    def __init__(self, cf, cf_home, space, template, instance, confirm=None, receipt=None):
+    def __init__(self, cf, cf_home, space, template, instance, confirm=None, receipt=None, require_held=False):
         self.cf = str(Path(cf).resolve(strict=True))
         self.space, self.template, self.instance = map(guid, (space, template, instance))
         if confirm is not None and confirm != instance:
@@ -68,6 +69,7 @@ class Controller:
         if config.get("Target") != API or config.get("SpaceFields", {}).get("GUID") != space:
             raise ValueError("CF target does not match the selected Dev Runner space")
         self.env = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "CF_HOME": str(home.resolve())}
+        self.require_held = require_held
         self.confirm = confirm
         self.stopped = False
         self.boundary_verified = False
@@ -109,7 +111,7 @@ class Controller:
         guid(app_id)
         if not self.confirm or self.stopped or not self.boundary_verified or event["jobId"] in finished:
             raise RuntimeError("No stop authorization or observation is already finished")
-        if observation(json.dumps(event, separators=(",", ":")), self.instance, self.armed_at, time.time()) is None or event["observation"] != "native-plan-observed":
+        if observation(json.dumps(event, separators=(",", ":")), self.instance, self.armed_at, time.time()) is None or event["observation"] != ("native-plan-held" if self.require_held else "native-plan-observed"):
             raise RuntimeError("Fresh matching native Plan observation required")
         app = self.api(f"/v3/apps/{app_id}")
         if app_id == self.template or app.get("guid") != app_id or app.get("relationships", {}).get("space", {}).get("data", {}).get("guid") != self.space:
@@ -122,7 +124,7 @@ class Controller:
         def request(path, result):
             fresh()
             with Receipt(self.receipt_path) as receipt:
-                record = {"phase": "stop-intent", "instanceId": self.instance, "jobId": event["jobId"], "observedAt": event["observedAt"], "intentAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "qualifiesRecovery": False, **result}
+                record = {"phase": "stop-intent", "instanceId": self.instance, "jobId": event["jobId"], "observedAt": event["observedAt"], "intentAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "qualifiesRecovery": False, "observation": event["observation"], **result}
                 receipt.write(record)
                 fresh()
                 self.api(path, "POST")
@@ -176,9 +178,9 @@ class Controller:
                         buffer[:] = remainder
                         event = observation(line.decode(errors="replace"), self.instance, self.armed_at, time.time())
                         if event:
-                            if event["observation"] == "plan-command-finished":
+                            if event["observation"] in {"plan-command-finished", "native-plan-released"}:
                                 finished.add(event["jobId"])
-                            else:
+                            elif event["observation"] == ("native-plan-held" if self.require_held else "native-plan-observed"):
                                 candidates.append((app_id, event))
                 if len({(a, e["jobId"]) for a, e in candidates}) > 1:
                     raise RuntimeError("Ambiguous concurrent target observations")
@@ -241,11 +243,12 @@ def main():
     parser.add_argument("--runner-template", required=True, type=guid)
     parser.add_argument("--instance", required=True, type=guid)
     parser.add_argument("--confirm-disposable-stop", type=guid)
+    parser.add_argument("--require-held-plan", action="store_true", help="Stop only a confirmed operator-armed 30-second native Plan hold")
     parser.add_argument("--receipt", help="New file in an owned private directory; required for stop mode")
     parser.add_argument("--seconds", type=int, default=300, choices=range(10, 901))
     args = parser.parse_args()
     try:
-        Controller(args.cf, args.cf_home, args.runner_space, args.runner_template, args.instance, args.confirm_disposable_stop, args.receipt).observe(args.seconds)
+        Controller(args.cf, args.cf_home, args.runner_space, args.runner_template, args.instance, args.confirm_disposable_stop, args.receipt, args.require_held_plan).observe(args.seconds)
     except (RuntimeError, ValueError, KeyError, OSError, subprocess.SubprocessError):
         print(json.dumps({"event": "observer-inconclusive", "qualifiesRecovery": False}), flush=True)
         raise SystemExit(1)
