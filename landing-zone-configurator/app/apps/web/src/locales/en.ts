@@ -1,4 +1,19 @@
 export const englishMessages: Record<string, string> = {
+  "Dieser Plan kann nicht sicher abgeschlossen werden. Operator-Abgleich erforderlich.":
+    "This Plan cannot be completed safely. Operator reconciliation is required.",
+  "Der Runner ist noch aktiv oder sein Ende ist nicht nachgewiesen. Bitte später erneut prüfen.":
+    "The runner is still active or its termination has not been verified. Check again later.",
+  "Der Zustand des Runners konnte nicht eindeutig geprüft werden. Bitte später erneut prüfen.":
+    "The runner status could not be verified. Check again later.",
+  "Der gebundene Application-State konnte nicht sicher gelesen werden. Operator-Abgleich erforderlich.":
+    "The bound Application state could not be read safely. Operator reconciliation is required.",
+  "Unterbrochenen Plan abschließen": "Complete interrupted Plan",
+  "Unterbrochenen Plan prüfen und abschließen":
+    "Check and complete interrupted Plan",
+  "Ist dieser Plan unerwartet stehen geblieben? Prüfe den Runner und die State-Sperre. Nur ein nachweislich beendeter Plan wird als fehlgeschlagen abgeschlossen. Danach ist ein neuer Plan derselben Bestellung möglich; ein Apply wird nicht gestartet.":
+    "Has this Plan unexpectedly stopped progressing? Check the runner and state lock. Only a Plan whose runner is verified as stopped is completed as failed. A new Plan for the same order is then available; no Apply is started.",
+  "Der beendete Plan wurde als fehlgeschlagen abgeschlossen. Du kannst dieselbe Bestellung jetzt neu planen. Prüfe den neuen Plan vor Apply.":
+    "The stopped Plan was completed as failed. You can now replan the same order. Review the new Plan before Apply.",
   "Nach der Checkpoint-Prüfung ist ein neuer Plan erforderlich. Bitte dieselbe Bestellung neu planen und den neuen Plan prüfen.":
     "A new Plan is required after checkpoint review. Replan the same order and review the new Plan.",
   "Bei regulär gemeldetem Apply-Fehler prüft der Server den gespeicherten State für einen neuen Plan. Nur unklare Abschlüsse benötigen einen externen Operator-Abgleich.":

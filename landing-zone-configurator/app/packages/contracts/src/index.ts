@@ -226,6 +226,7 @@ export const applicationPlanJobSchema = z.strictObject({
     .nullable()
     .optional(),
   canApply: z.boolean().default(false),
+  canCompleteInterruptedPlan: z.boolean().default(false),
   recoveryReplanApproved: z.boolean().default(false),
   status: z.enum([
     "prepared",
@@ -250,6 +251,21 @@ export const applicationPlanJobSchema = z.strictObject({
     .nullable(),
 });
 export type ApplicationPlanJob = z.infer<typeof applicationPlanJobSchema>;
+
+export const applicationInterruptedPlanRequestSchema = z.strictObject({
+  confirmPlanCompletion: z.literal(true),
+});
+export const applicationInterruptedPlanReceiptSchema = z.strictObject({
+  jobId: z.uuid(),
+  instanceId: z.uuid(),
+  status: z.literal("failed"),
+  recordedAt: z.iso.datetime(),
+  statePresent: z.boolean(),
+  runnerStop: z.literal("verified-stopped"),
+  stateLock: z.literal("free"),
+  requiresFreshPlan: z.literal(true),
+  startsExecution: z.literal(false),
+});
 
 export const applicationRecoveryDiagnosisSchema = z.strictObject({
   jobId: z.uuid(),

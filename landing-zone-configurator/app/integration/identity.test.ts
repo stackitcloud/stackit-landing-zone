@@ -6743,6 +6743,190 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           });
           return { ordered, id: started.jobId, sha: receipt.sha256 };
         };
+        // A lost Plan is completed only after independent, source-bound CF and
+        // State observations. The existing owner can then reuse the same order.
+        {
+          const stopped = vi.fn<NonNullable<PlanRunner["isStopped"]>>(
+            async () => false,
+          );
+          const read = vi.fn<Backends["read"]>(async () => null);
+          const recoveringPlans = new Applications(
+            pool,
+            delegatedTechnical,
+            applicationSecrets,
+            { ...applicationBackends, read },
+            {
+              runner: { ...delegatedRunner, isStopped: stopped },
+              origin: "http://127.0.0.1:3000",
+            },
+            applicationCrypto,
+          );
+          const ordered = await recoveringPlans.order(owner, {
+            versionId: cliVersion.id,
+            idempotencyKey: randomUUID(),
+            name: "Interrupted Plan recovery",
+            parameters: {},
+          });
+          const interrupted = await recoveringPlans.startPlan(
+            owner,
+            ordered.id,
+            { idempotencyKey: randomUUID() },
+          );
+          const ticket = delegatedTicket;
+          await recoveringPlans.runnerInput(ticket, ticketPackage);
+          for (const stage of ["initializing", "validating", "planning"])
+            await recoveringPlans.runnerStage(ticket, ticketPackage, { stage });
+          const confirm = { confirmPlanCompletion: true };
+          expect(
+            (await recoveringPlans.listJobs(owner, ordered.id))[0]
+              ?.canCompleteInterruptedPlan,
+          ).toBe(true);
+          await expect(
+            recoveringPlans.completeInterruptedPlan(
+              { ...peer, tenantId },
+              interrupted.jobId,
+              confirm,
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+          await expect(
+            recoveringPlans.completeInterruptedPlan(
+              { ...owner, tenantId: bob.tenantId },
+              interrupted.jobId,
+              confirm,
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+          expect(stopped).not.toHaveBeenCalled();
+          expect(read).not.toHaveBeenCalled();
+          await expect(
+            recoveringPlans.completeInterruptedPlan(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+          ).rejects.toMatchObject({
+            code: "application_plan_recovery_runner_active",
+          });
+          expect(read).not.toHaveBeenCalled();
+          stopped.mockImplementation(async () => {
+            // The runtime pool has size one: this succeeds only when external
+            // observation runs outside the tenant transaction.
+            await withTenant(pool, owner, (client) => client.query("SELECT 1"));
+            return true;
+          });
+          read.mockImplementation(async (_backend, key) =>
+            key.endsWith(".tflock")
+              ? { bytes: Buffer.from("synthetic-lock"), identity: "lock" }
+              : null,
+          );
+          await expect(
+            recoveringPlans.completeInterruptedPlan(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+          ).rejects.toMatchObject({
+            code: "application_plan_recovery_state_locked",
+          });
+          expect(
+            (await recoveringPlans.listJobs(owner, ordered.id))[0]?.status,
+          ).toBe("planning");
+          expect(
+            (
+              await migration.query(
+                "SELECT 1 FROM lzc.application_plan_interruptions WHERE job_id=$1",
+                [interrupted.jobId],
+              )
+            ).rowCount,
+          ).toBe(0);
+          read.mockResolvedValue(null);
+          const [first, second] = await Promise.all([
+            recoveringPlans.completeInterruptedPlan(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+            recoveringPlans.completeInterruptedPlan(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+          ]);
+          expect(first).toEqual(second);
+          expect(first).toMatchObject({
+            jobId: interrupted.jobId,
+            instanceId: ordered.id,
+            statePresent: false,
+            status: "failed",
+            startsExecution: false,
+            requiresFreshPlan: true,
+          });
+          const jobs = await recoveringPlans.listJobs(owner, ordered.id);
+          expect(jobs[0]).toMatchObject({
+            status: "failed",
+            errorCode: "cancelled",
+            canApply: false,
+            canCompleteInterruptedPlan: false,
+          });
+          expect(
+            (
+              await migration.query(
+                "SELECT count(*)::int AS count FROM lzc.application_plan_interruptions WHERE job_id=$1",
+                [interrupted.jobId],
+              )
+            ).rows[0].count,
+          ).toBe(1);
+          expect(
+            read.mock.calls.every(
+              ([, key]) =>
+                key === ordered.stateKey ||
+                key === `${ordered.stateKey}.tflock`,
+            ),
+          ).toBe(true);
+          await expect(
+            recoveringPlans.runnerStage(ticket, ticketPackage, {
+              stage: "planning",
+            }),
+          ).rejects.toMatchObject({
+            code: "invalid_application_runner_ticket",
+          });
+          await expect(
+            recoveringPlans.startApply(owner, interrupted.jobId, {
+              artifactSha256: "a".repeat(64),
+            }),
+          ).rejects.toBeDefined();
+          const calls = stopped.mock.calls.length;
+          stopped.mockRejectedValue(new Error("Runner removed"));
+          await expect(
+            recoveringPlans.completeInterruptedPlan(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+          ).resolves.toEqual(first);
+          expect(stopped.mock.calls.length).toBe(calls);
+          await expect(
+            withTenant(pool, owner, (client) =>
+              client.query(
+                "DELETE FROM lzc.application_plan_interruptions WHERE job_id=$1",
+                [interrupted.jobId],
+              ),
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+          const starts = delegatedRunner.start.mock.calls.length;
+          const fresh = await recoveringPlans.startPlan(owner, ordered.id, {
+            idempotencyKey: randomUUID(),
+          });
+          expect(fresh.dispatched).toBe(true);
+          expect(fresh.jobId).not.toBe(interrupted.jobId);
+          expect(delegatedRunner.start.mock.calls.length).toBe(starts + 1);
+          await expect(
+            recoveringPlans.completeInterruptedPlan(
+              owner,
+              apply.jobId,
+              confirm,
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+        }
         // A reconciled partial Apply keeps its original order and all evidence.
         // An operator clearance opens only a fresh standard Plan, never the old artifact.
         for (const selfService of [false, true]) {

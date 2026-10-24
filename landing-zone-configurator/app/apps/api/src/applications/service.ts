@@ -44,7 +44,7 @@ import { type ArtifactCrypto, canonicalBase64 } from "../plans/crypto.js";
 import { canonicalJson, sha256 } from "../plans/execution.js";
 import type { Plans } from "../plans/service.js";
 import { withTenant } from "../storage/database.js";
-
+import { completeInterruptedPlan } from "./interrupted-plan.js";
 import {
   approveRecoveryReplan,
   checkRecoveryReplan,
@@ -1197,6 +1197,15 @@ export class Applications {
           planId: row.plan_id,
           artifactSha256: row.artifact_sha256,
           canApply: this.executionCapabilities().applyEnabled && row.can_apply,
+          canCompleteInterruptedPlan: Boolean(
+            this.dispatch?.runner.isStopped &&
+              this.backends?.read &&
+              this.artifactCrypto &&
+              row.owner_user_id === session.userId &&
+              row.operation === "plan" &&
+              ["initializing", "validating", "planning"].includes(row.status) &&
+              !row.artifact_sha256,
+          ),
           recoveryReplanApproved: row.recovery_replan_approved ?? false,
           status: row.status,
           grantActive: row.grant_active,
@@ -1325,6 +1334,32 @@ export class Applications {
         })),
       });
     });
+  }
+
+  async completeInterruptedPlan(
+    session: Session,
+    jobId: string,
+    input: unknown,
+  ) {
+    const id = z.uuid().parse(jobId);
+    if (
+      !this.backends ||
+      !this.artifactCrypto ||
+      !this.dispatch?.runner.isStopped
+    )
+      throw new ApplicationError(503, "application_plan_recovery_unavailable");
+    const deps = {
+      backends: this.backends,
+      crypto: this.artifactCrypto,
+      runner: this.dispatch.runner,
+    };
+    return completeInterruptedPlan(
+      (task) => this.work(session, "order", task),
+      session,
+      id,
+      input,
+      deps,
+    );
   }
 
   async checkRecoveryReplan(session: Session, jobId: string) {

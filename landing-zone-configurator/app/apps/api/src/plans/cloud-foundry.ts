@@ -12,6 +12,11 @@ export class RunnerRequestError extends Error {
 }
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 export interface PlanRunner {
+  isStopped?(
+    id: string,
+    appId: string,
+    sourceDropletId: string,
+  ): Promise<boolean>;
   readonly firewallPlansEnabled?: boolean;
   readonly acceleratorCommit?: string;
   readonly applicationMaintenanceEnabled?: boolean;
@@ -363,6 +368,76 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     guid(id);
     if (await this.config.warm?.remove(id, appId)) return;
     await this.removeNamed(`lzc-plan-${id}`, appId);
+  }
+  async isStopped(id: string, appId: string, sourceDropletId: string) {
+    guid(id);
+    guid(appId);
+    guid(sourceDropletId);
+    const call = await this.authorized();
+    const app = z
+      .object({
+        guid: z.literal(appId),
+        name: z.string(),
+        state: z.enum(["STARTED", "STOPPED"]),
+        relationships: z.object({
+          space: z.object({
+            data: z.object({ guid: z.literal(this.config.spaceId) }),
+          }),
+        }),
+      })
+      .parse(await call(`apps/${appId}`));
+    const warm =
+      app.name.startsWith("lzc-warm-") &&
+      z.uuid().safeParse(app.name.slice("lzc-warm-".length)).success;
+    if (!warm && app.name !== `lzc-plan-${id}`)
+      throw new Error("Runner identity mismatch");
+    const routes = z
+      .object({ resources: z.array(z.unknown()) })
+      .parse(await call(`apps/${appId}/routes`));
+    if (routes.resources.length) throw new Error("Runner identity mismatch");
+    const droplet = z.object({
+      guid: z.uuid(),
+      state: z.literal("STAGED"),
+      checksum: z.object({
+        type: z.literal("sha256"),
+        value: z.string().regex(/^[a-f0-9]{64}$/),
+      }),
+      relationships: z.object({
+        app: z.object({ data: z.object({ guid: z.uuid() }) }),
+      }),
+    });
+    const source = droplet.parse(await call(`droplets/${sourceDropletId}`));
+    const current = droplet.parse(await call(`apps/${appId}/droplets/current`));
+    if (
+      source.guid !== sourceDropletId ||
+      source.relationships.app.data.guid !== this.config.templateId ||
+      current.relationships.app.data.guid !== appId ||
+      current.guid === sourceDropletId ||
+      current.checksum.value !== source.checksum.value
+    )
+      throw new Error("Runner source mismatch");
+    if (app.state !== "STOPPED") return false;
+    const tasks = z
+      .object({
+        pagination: z.object({ next: z.unknown().nullable() }),
+        resources: z.array(z.object({ name: z.string(), state: z.string() })),
+      })
+      .parse(await call(`apps/${appId}/tasks?per_page=100`));
+    if (
+      !Object.hasOwn(tasks.pagination, "next") ||
+      tasks.pagination.next ||
+      tasks.resources.some((t) => !["SUCCEEDED", "FAILED"].includes(t.state))
+    )
+      return false;
+    if (!warm) return tasks.resources.some((t) => t.name === "initial-plan");
+    const stats = z
+      .object({ resources: z.array(z.object({ state: z.string() })) })
+      .parse(await call(`apps/${appId}/processes/web/stats`));
+    // An empty or unavailable observation is not evidence of process loss.
+    return (
+      stats.resources.length > 0 &&
+      stats.resources.every((s) => ["DOWN", "CRASHED"].includes(s.state))
+    );
   }
   async removeWarm(id: string, appId: string | null) {
     guid(id);

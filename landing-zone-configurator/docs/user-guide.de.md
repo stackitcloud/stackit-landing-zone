@@ -143,6 +143,21 @@ fehlgeschlagene Phase; zur Ursachenklärung dient der OpenTofu-Fehler in den Log
 Die Logs erteilen keine Plan-/Apply-Berechtigung und werden keinem anderen
 Auftraggeber offengelegt.
 
+Bleibt ein Application-Plan nach dem Stoppen seines Runners stehen, behalte
+dieselbe Bestellung. Wähle unter **Plan** die Aktion **Unterbrochenen Plan prüfen
+und abschließen**. Der Server prüft die exakte Runner-App und unveränderliche
+Quelle, den beendeten Prozess beziehungsweise Task sowie den zur Bestellung
+gehörenden State und dessen Sperre. Erst danach wird dieser Plan als
+fehlgeschlagen erfasst und **Cloud-Plan starten** wieder verfügbar. Eine erneute
+Freigabe des Platform Owners ist dafür nicht erforderlich. Fehlender State ist
+nur vor dem ersten Apply-Versuch dieser Bestellung zulässig; vorhandener State
+muss zur Bestellung passen. Aktive oder nicht eindeutig prüfbare Runner,
+geänderter oder gesperrter State, gespeicherte Plan-Artefakte und Recovery-State
+bleiben blockiert. Diese Aktion stoppt keinen Runner, schreibt keinen State,
+entfernt keine Sperre und startet oder genehmigt keinen Plan oder Apply. Prüfe
+den separat gestarteten neuen Plan vor Apply. Dieser Weg gilt ausschließlich für
+Plan-Jobs.
+
 Behalte nach einem regulär gemeldeten Application-Apply-Fehler (`apply_failed`)
 die bestehende Bestellung. Wähle in deren Schritt **Apply** die Aktion
 **Application-Checkpoint prüfen**. Der Server prüft den exakt zur Bestellung
@@ -159,7 +174,7 @@ Ein neuer Plan aktualisiert die Cloud-Ressourcen; prüfe seine vollständigen
 Änderungen vor einem weiteren Apply. Nach einem Service-Timeout kann eine
 asynchrone Cloud-Operation ungeklärt sein. Ein lesbarer Checkpoint beweist daher
 allein keine vollständige Übereinstimmung von Cloud und State. Fehlende
-Abschlussmeldungen, State-Schreibfehler, separate Recovery-States, Sperren oder
+Apply-Abschlussmeldungen, State-Schreibfehler, separate Recovery-States, Sperren oder
 abweichende Checkpoints bleiben blockiert. Bei dafür geeigneten unklaren
 Abschlüssen kann der ursprünglich freigebende Platform Owner nach Ablauf der
 alten Ausführungsberechtigungen einen externen Runner-/Cloud-Abgleich gesondert

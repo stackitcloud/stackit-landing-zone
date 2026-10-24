@@ -38,6 +38,21 @@ consumed Application Runner safe to delete. `runner_pool_size` counts standby
 capacity, not concurrently executing jobs. Keep CF memory headroom for active
 jobs and the additional 1 GiB required for template staging.
 
+For a stopped Application Plan that never reported completion, the requesting
+owner can explicitly complete it as failed. `POST
+/api/v1/applications/jobs/{id}/complete-interrupted-plan` requires the current
+tenant, Origin, CSRF and `{"confirmPlanCompletion":true}`. Short tenant
+transactions authorize the owner and bind app/source/backend; CF and S3 reads
+run outside database transactions so checking a live Plan cannot block its
+reports. Exact app ownership, source SHA-256, stopped warm-process stats or
+terminal one-shot tasks, repeated unlocked State observations and final
+reauthorization precede an immutable receipt and terminal `failed/cancelled`
+transition. Missing State is allowed only with no Apply history. The old broker
+report gates close; historical tickets, records and State remain intact. A new
+Plan is a separate authorized action. Unknown/missing apps or stats, active
+processes/tasks, saved artifacts, recovery evidence and every Apply job fail
+closed. Expiry alone is never proof of termination.
+
 **No customer execution in this acceptance.** The user explicitly requires fresh approval before every customer Apply; infrastructure approvals do not cover this. The older initial-provisioning plan remains Plan-only. The new platform path has a gated Apply endpoint: only with execution enabled, matching immutable plan artifact/hash, confirmed target organization and rechecked access, source and state bindings. Export is not Apply approval. No Destroy path.
 
 A successful Plan is not automatically eligible for Apply. For blocked approval, the server returns an error code and, for unsupported components, the affected fields with reasons. Plan and Apply pages show this block; the Apply button remains visible but disabled. An eligible Plan still shows explicit review confirmation and requires the exact UUID of the target organization. All conditions are checked again server-side before Apply.

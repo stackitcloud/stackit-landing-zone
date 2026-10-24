@@ -42,7 +42,7 @@ const proofSchema = z.strictObject({
   expiresAt: z.number().int(),
 });
 export type RecoveryReplanBackends = Pick<Backends, "runner"> &
-  Partial<Pick<Backends, "current">>;
+  Partial<Pick<Backends, "current" | "read">>;
 type Dependencies = {
   backends: RecoveryReplanBackends;
   crypto: ArtifactCrypto;

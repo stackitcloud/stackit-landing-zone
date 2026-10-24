@@ -2,6 +2,7 @@ import {
   type ApplicationInstance,
   type ApplicationRecoveryDiagnosis,
   applicationInstanceSchema,
+  applicationInterruptedPlanReceiptSchema,
   applicationPlanJobSchema,
   applicationPlanPreviewSchema,
   applicationRecoveryDiagnosisSchema,
@@ -45,6 +46,20 @@ import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_plan_recovery_unavailable:
+    "Dieser Plan kann nicht sicher abgeschlossen werden. Operator-Abgleich erforderlich.",
+  application_plan_recovery_runner_active:
+    "Der Runner ist noch aktiv oder sein Ende ist nicht nachgewiesen. Bitte später erneut prüfen.",
+  application_plan_recovery_runner_unavailable:
+    "Der Zustand des Runners konnte nicht eindeutig geprüft werden. Bitte später erneut prüfen.",
+  application_plan_recovery_state_locked:
+    "Der Application-State ist gesperrt. Keine Freigabe möglich; die Sperre wird nicht verändert.",
+  application_plan_recovery_state_invalid:
+    "Der State passt nicht eindeutig zu dieser Bestellung oder enthält ersetzte Instanzen. Operator-Abgleich erforderlich.",
+  application_plan_recovery_state_unavailable:
+    "Der gebundene Application-State konnte nicht sicher gelesen werden. Operator-Abgleich erforderlich.",
+  application_plan_recovery_changed:
+    "Der Prüfstand hat sich geändert. Bitte den Prüfkontext neu laden.",
   application_recovery_fresh_plan_required:
     "Nach der Checkpoint-Prüfung ist ein neuer Plan erforderlich. Bitte dieselbe Bestellung neu planen und den neuen Plan prüfen.",
   application_recovery_replan_changed:
@@ -968,6 +983,8 @@ function ApplicationPlanControls({
   );
   const [backendId, setBackendId] = useState("");
   const [confirmedBackendJob, setConfirmedBackendJob] = useState("");
+  const [interruptedPlanCompleted, setInterruptedPlanCompleted] =
+    useState(false);
   const [jobKey, setJobKey] = useState(() => crypto.randomUUID());
   const maintenanceKeys = useRef({
     destroy: crypto.randomUUID(),
@@ -1226,8 +1243,11 @@ function ApplicationPlanControls({
   async function mutate(path: string, body: unknown) {
     setBusy(true);
     setError("");
+    setInterruptedPlanCompleted(false);
     try {
       const response = await request(path, session, body);
+      if (path.endsWith("/complete-interrupted-plan"))
+        applicationInterruptedPlanReceiptSchema.parse(response);
       if (path === `instances/${instance.id}/plan`)
         preparedJob.current = z
           .object({ jobId: z.uuid() })
@@ -1235,6 +1255,8 @@ function ApplicationPlanControls({
       setConfirmedBackendJob("");
       setDestroyConfirmed(false);
       await refresh();
+      if (path.endsWith("/complete-interrupted-plan"))
+        setInterruptedPlanCompleted(true);
       onViewChange(
         purpose === "standard"
           ? path.endsWith("/apply")
@@ -1279,6 +1301,13 @@ function ApplicationPlanControls({
         )}
       </h3>
       {error && <p role="alert">{t(error)}</p>}
+      {interruptedPlanCompleted && (
+        <p role="status">
+          {t(
+            "Der beendete Plan wurde als fehlgeschlagen abgeschlossen. Du kannst dieselbe Bestellung jetzt neu planen. Prüfe den neuen Plan vor Apply.",
+          )}
+        </p>
+      )}
       <button
         type="button"
         className="button secondary icon-button"
@@ -1514,6 +1543,32 @@ function ApplicationPlanControls({
                 )}
               </details>
             )}
+            {job.canCompleteInterruptedPlan &&
+              job.requestedBy === session.user.id &&
+              job.operation === "plan" &&
+              ["initializing", "validating", "planning"].includes(
+                job.status,
+              ) && (
+                <section aria-label={t("Unterbrochenen Plan abschließen")}>
+                  <p>
+                    {t(
+                      "Ist dieser Plan unerwartet stehen geblieben? Prüfe den Runner und die State-Sperre. Nur ein nachweislich beendeter Plan wird als fehlgeschlagen abgeschlossen. Danach ist ein neuer Plan derselben Bestellung möglich; ein Apply wird nicht gestartet.",
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate(`jobs/${job.id}/complete-interrupted-plan`, {
+                        confirmPlanCompletion: true,
+                      })
+                    }
+                  >
+                    {t("Unterbrochenen Plan prüfen und abschließen")}
+                  </button>
+                </section>
+              )}
             {job.requestedBy === session.user.id &&
               (job.status === "reconciliation_required" ||
                 (job.operation === "apply" && job.status === "failed")) && (
