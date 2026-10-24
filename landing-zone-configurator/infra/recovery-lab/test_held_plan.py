@@ -8,6 +8,8 @@ import held_plan as held
 from test_hosted_plan import INSTANCE, APP, SPACE, TEMPLATE, OTHER
 SOURCE = "77777777-7777-4777-8777-777777777777"
 SLOT = "88888888-8888-4888-8888-888888888888"
+CLONED = "99999999-9999-4999-8999-999999999999"
+CHECKSUM = {"type":"sha256","value":"a"*64}
 
 
 class HeldPlanArming(unittest.TestCase):
@@ -17,7 +19,8 @@ class HeldPlanArming(unittest.TestCase):
             if path == "/v3/apps/" + APP:
                 return {"name":"lzc-warm-"+SLOT,"relationships":{"space":{"data":{"guid":SPACE}}}}
             if path.endswith("/routes"): return {"resources":[]}
-            if path.endswith("/droplets/current"): return {"guid":SOURCE}
+            if path == f"/v3/apps/{APP}/droplets/current": return {"guid":CLONED,"state":"STAGED","checksum":CHECKSUM,"relationships":{"app":{"data":{"guid":APP}}}}
+            if path.endswith("/droplets/current"): return {"guid":SOURCE,"state":"STAGED","checksum":CHECKSUM}
             return {}
         runner.api.side_effect = api
         return runner
@@ -67,7 +70,26 @@ class HeldPlanArming(unittest.TestCase):
         self.assertEqual(config["instanceId"],INSTANCE)
         self.assertEqual(config["appId"],APP)
         self.assertEqual(record.call_args.args[0]["phase"],"ready")
+        self.assertEqual(record.call_args.args[0]["clonedDropletId"],CLONED)
+        self.assertEqual(record.call_args.args[0]["sourceDropletId"],SOURCE)
+        self.assertEqual(record.call_args.args[0]["checksumSha256"],CHECKSUM["value"])
         self.assertTrue(task.query.call_args_list[1].kwargs["wait_ready"])
+
+    def test_clone_requires_matching_sha256_staged_state_and_exact_app(self):
+        for change in [
+            {"checksum":{"type":"sha256","value":"b"*64}},
+            {"checksum":{}}, {"state":"COPYING"}, {"guid":SOURCE},
+            {"relationships":{"app":{"data":{"guid":OTHER}}}},
+        ]:
+            runner=self.runner();original=runner.api.side_effect
+            runner.api.side_effect=lambda path,*args: {**original(path,*args),**change} if path==f"/v3/apps/{APP}/droplets/current" else original(path,*args)
+            with self.assertRaises(RuntimeError): held.arm(runner,None,self.task(),INSTANCE,SPACE,TEMPLATE,SOURCE,Mock())
+            self.assertTrue(all(len(c.args)==1 for c in runner.api.call_args_list))
+        for checksum in [None, {}, {"type":"sha256","value":None}, {"type":"sha1","value":"a"*40}, {"type":"sha256","value":"not-a-hash"}]:
+            runner=self.runner();original=runner.api.side_effect
+            runner.api.side_effect=lambda path,*args: {**original(path,*args),"checksum":checksum} if path==f"/v3/apps/{TEMPLATE}/droplets/current" else original(path,*args)
+            with self.assertRaises(RuntimeError): held.arm(runner,None,self.task(),INSTANCE,SPACE,TEMPLATE,SOURCE,Mock())
+            self.assertTrue(all(len(c.args)==1 for c in runner.api.call_args_list))
 
     def test_failed_readiness_does_not_claim_ready(self):
         task=self.task();task.query.side_effect=[[{"id":SLOT,"app_id":APP,"source_droplet_id":SOURCE}],[]]
