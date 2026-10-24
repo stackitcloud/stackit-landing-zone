@@ -1,4 +1,5 @@
 import {
+  applicationInterruptedApplyRequestSchema,
   applicationInterruptedPlanRequestSchema,
   applicationOrderDecisionSchema,
   applicationPlanPurposeSchema,
@@ -153,6 +154,7 @@ export function registerApplications(
         | "outputJob"
         | "diagnoseRecovery"
         | "completeInterruptedPlan"
+        | "inspectInterruptedApply"
         | "recoveryReviewContext"
         | "recordRecoveryReview"
         | "checkRecoveryReplan"
@@ -201,6 +203,8 @@ export function registerApplications(
             "application_recovery_review_unavailable",
             "application_plan_recovery_unavailable",
             "application_plan_recovery_changed",
+            "application_apply_recovery_unavailable",
+            "application_apply_recovery_changed",
           ].includes(error.message)
         )
           return reply.code(409).send({ error: error.message });
@@ -550,6 +554,24 @@ export function registerApplications(
           session,
           id,
           applicationInterruptedPlanRequestSchema.parse(request.body),
+        );
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/inspect-interrupted-apply",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.inspectInterruptedApply)
+          return reply
+            .code(503)
+            .send({ error: "application_apply_recovery_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.inspectInterruptedApply(
+          session,
+          id,
+          applicationInterruptedApplyRequestSchema.parse(request.body),
         );
       },
     );

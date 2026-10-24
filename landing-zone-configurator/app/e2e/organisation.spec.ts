@@ -16,6 +16,8 @@ for (const scenario of [
   "engineer",
   "dispatch-failed",
   "plan-failed",
+  "interrupted-apply",
+  "interrupted-apply-active",
   "interrupted-plan",
   "interrupted-plan-active",
   "interrupted-plan-locked",
@@ -56,6 +58,8 @@ for (const scenario of [
     const backendId = "88888888-8888-4888-8888-888888888888";
     const replan = scenario.startsWith("replan-");
     const interrupted = scenario.startsWith("interrupted-plan");
+    const interruptedApply = scenario.startsWith("interrupted-apply");
+    let applyInterruptionRecorded = false;
     let interruptionCompleted = false;
     let replanApproved = false;
     const maintenance = scenario.startsWith("maintenance-");
@@ -69,6 +73,7 @@ for (const scenario of [
       scenario === "plan-failed" || scenario === "maintenance-replan-failed";
     let maintenanceStarted = scenario === "maintenance-replan-failed";
     const initialApply =
+      interruptedApply ||
       replan ||
       recoveryReview ||
       scenario.startsWith("apply-") ||
@@ -431,6 +436,8 @@ for (const scenario of [
                               : 120000),
                         ).toISOString(),
                         operation: "apply",
+                        canInspectInterruptedApply:
+                          interruptedApply && !applyInterruptionRecorded,
                         recoveryReplanApproved: replanApproved,
                         purpose:
                           scenario === "maintenance-replan-failed"
@@ -440,6 +447,7 @@ for (const scenario of [
                               : "standard",
                         planId: jobId,
                         status:
+                          (interruptedApply && !applyInterruptionRecorded) ||
                           scenario === "apply-running" ||
                           scenario === "maintenance-running"
                             ? "applying"
@@ -452,9 +460,12 @@ for (const scenario of [
                         canDispatch: false,
                         delegatedExecution: true,
                         summary: null,
-                        errorCode:
-                          scenario === "apply-report-missing" ||
-                          scenario === "maintenance-expired"
+                        errorCode: interruptedApply
+                          ? applyInterruptionRecorded
+                            ? "cancelled"
+                            : null
+                          : scenario === "apply-report-missing" ||
+                              scenario === "maintenance-expired"
                             ? "runner_report_missing"
                             : initialApply && scenario !== "apply-running"
                               ? "apply_failed"
@@ -656,6 +667,32 @@ for (const scenario of [
       expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
       expect(request.headers()["x-lzc-csrf"]).toBe("csrf-plan");
       mutations.push(path);
+      if (path === `jobs/${reviewJobId}/inspect-interrupted-apply`) {
+        expect(interruptedApply).toBe(true);
+        expect(request.postDataJSON()).toEqual({
+          confirmInterruptedApply: true,
+        });
+        if (scenario === "interrupted-apply-active")
+          return route.fulfill({
+            status: 409,
+            json: { error: "application_apply_recovery_runner_active" },
+          });
+        applyInterruptionRecorded = true;
+        return route.fulfill({
+          json: {
+            jobId: reviewJobId,
+            instanceId,
+            status: "reconciliation_required",
+            recordedAt: new Date().toISOString(),
+            runnerStop: "verified-stopped",
+            stateCheck: "not-performed",
+            stateLock: "not-checked",
+            requiresOperatorReview: true,
+            canReplan: false,
+            startsExecution: false,
+          },
+        });
+      }
       if (path === `jobs/${jobId}/complete-interrupted-plan`) {
         expect(interrupted).toBe(true);
         expect(request.postDataJSON()).toEqual({ confirmPlanCompletion: true });
@@ -1204,6 +1241,75 @@ for (const scenario of [
         }),
       ).toBeVisible();
     expect(mutations).toEqual([]);
+    if (interruptedApply) {
+      const details = page.getByRole("region", {
+        name: "Bestelldetails",
+        exact: true,
+      });
+      const tabs = details.getByRole("tablist", {
+        name: "Bestellablauf",
+        exact: true,
+      });
+      await expect(
+        tabs.getByRole("tab", { name: "Apply", exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+      const inspect = plan.getByRole("button", {
+        name: "Unterbrochenen Apply prüfen",
+        exact: true,
+      });
+      await expect(inspect).toBeVisible();
+      await page.getByLabel("Sprache").selectOption("en");
+      await expect(
+        page.getByRole("button", {
+          name: "Check interrupted Apply",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.getByLabel("Language").selectOption("de");
+      await inspect.click();
+      if (scenario === "interrupted-apply-active") {
+        await expect(plan.getByRole("alert")).toContainText(
+          "Der Runner ist noch aktiv",
+        );
+        await expect(inspect).toBeVisible();
+      } else {
+        await expect(plan).toContainText(
+          "Der gestoppte Apply wurde als ungeklärt erfasst.",
+        );
+        await expect(plan).toContainText(
+          "Vor einem neuen Plan ist eine Operator-Prüfung erforderlich.",
+        );
+        await expect(inspect).toHaveCount(0);
+        await expect(
+          plan.getByRole("region", {
+            name: "Neuen Plan nach Apply-Fehler ermöglichen",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+      }
+      expect(mutations).toEqual([
+        `jobs/${reviewJobId}/inspect-interrupted-apply`,
+      ]);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await tabs.getByRole("tab", { name: "Plan", exact: true }).click();
+      await expect(
+        plan.getByRole("button", { name: "Cloud-Plan starten", exact: true }),
+      ).toBeDisabled();
+      await expect(
+        plan.getByRole("button", {
+          name: "Application Landing Zone erstellen",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await plan.screenshot({
+        path: testInfo.outputPath("interrupted-apply.png"),
+      });
+      return;
+    }
     if (initialApply) {
       const details = page.getByRole("region", {
         name: "Bestelldetails",

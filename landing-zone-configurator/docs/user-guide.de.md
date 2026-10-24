@@ -158,6 +158,18 @@ entfernt keine Sperre und startet oder genehmigt keinen Plan oder Apply. Prüfe
 den separat gestarteten neuen Plan vor Apply. Dieser Weg gilt ausschließlich für
 Plan-Jobs.
 
+Bleibt ein Application-Apply ohne Abschlussmeldung stehen, wähle in derselben
+Bestellung **Apply → Unterbrochenen Apply prüfen**. Der Server prüft den exakten
+Runner und seine unveränderliche Quelle unabhängig. Ein nachweislich beendeter
+Runner erlaubt, den Apply mit unveränderlichem Nachweis als **ungeklärt** zu
+erfassen. Die Aktion prüft oder verändert weder Infrastruktur, State noch eine
+Sperre. Sie genehmigt keinen neuen Plan oder Apply. Ein beendeter Runner beweist
+nicht, dass alle Cloud-Änderungen gespeichert wurden. Deshalb bleiben ein
+Operator-Abgleich der Cloud-Ressourcen, des exakten States, eines separaten
+Recovery-States und einer möglichen verwaisten Sperre erforderlich. Aktive oder
+nicht eindeutig prüfbare Runner bleiben gesperrt. Behalte dieselbe Bestellung
+und führe ihren alten gespeicherten Plan nicht erneut aus.
+
 Behalte nach einem regulär gemeldeten Application-Apply-Fehler (`apply_failed`)
 die bestehende Bestellung. Wähle in deren Schritt **Apply** die Aktion
 **Application-Checkpoint prüfen**. Der Server prüft den exakt zur Bestellung

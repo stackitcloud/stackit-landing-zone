@@ -6743,6 +6743,223 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           });
           return { ordered, id: started.jobId, sha: receipt.sha256 };
         };
+        // Hard-lost Apply completion is unknown, even with a verified stopped
+        // Runner. It must not inherit normally reported-failure replan clearance.
+        {
+          const stopped = vi.fn<NonNullable<PlanRunner["isStopped"]>>(
+            async () => false,
+          );
+          const read = vi.fn<Backends["read"]>(async () => {
+            throw new Error("State must not be touched");
+          });
+          const recoveringApplies = new Applications(
+            pool,
+            delegatedTechnical,
+            applicationSecrets,
+            { ...applicationBackends, read },
+            {
+              runner: { ...delegatedRunner, isStopped: stopped },
+              origin: "http://127.0.0.1:3000",
+            },
+            applicationCrypto,
+          );
+          const planned = await freshPlan("Interrupted Apply diagnosis");
+          const interrupted = await delegatedApplications.startApply(
+            owner,
+            planned.id,
+            { artifactSha256: planned.sha },
+          );
+          const ticket = delegatedTicket;
+          await delegatedApplications.runnerInput(ticket, ticketPackage);
+          for (const stage of ["initializing", "validating", "applying"])
+            await delegatedApplications.runnerStage(ticket, ticketPackage, {
+              stage,
+            });
+          // Output alone is not evidence of native completion.
+          await delegatedApplications.runnerOutput(ticket, ticketPackage, {
+            text: "Synthetic Apply in progress",
+            truncated: false,
+          });
+          const confirm = { confirmInterruptedApply: true };
+          expect(
+            (await recoveringApplies.listJobs(owner, planned.ordered.id)).find(
+              (j) => j.id === interrupted.jobId,
+            )?.canInspectInterruptedApply,
+          ).toBe(true);
+          for (const unauthorized of [
+            { ...peer, tenantId },
+            { ...owner, tenantId: bob.tenantId },
+          ])
+            await expect(
+              recoveringApplies.inspectInterruptedApply(
+                unauthorized,
+                interrupted.jobId,
+                confirm,
+              ),
+            ).rejects.toMatchObject({ code: "42501" });
+          expect(stopped).not.toHaveBeenCalled();
+          await expect(
+            recoveringApplies.inspectInterruptedApply(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+          ).rejects.toMatchObject({
+            code: "application_apply_recovery_runner_active",
+          });
+          expect(
+            (
+              await migration.query(
+                "SELECT 1 FROM lzc.application_apply_interruptions WHERE job_id=$1",
+                [interrupted.jobId],
+              )
+            ).rowCount,
+          ).toBe(0);
+          const before = (
+            await migration.query(
+              "SELECT to_jsonb(i) AS value FROM lzc.application_instances i WHERE id=$1",
+              [planned.ordered.id],
+            )
+          ).rows[0].value;
+          const c = await withTenant(
+            pool,
+            owner,
+            async (client) =>
+              (
+                await client.query(
+                  "SELECT lzc_auth.interrupted_application_apply_context($1,$2) AS value",
+                  [owner.id, interrupted.jobId],
+                )
+              ).rows[0].value,
+          );
+          await expect(
+            withTenant(pool, owner, (client) =>
+              client.query(
+                "SELECT lzc_auth.record_interrupted_application_apply($1,$2,$3,$4,clock_timestamp()-interval '31 seconds')",
+                [owner.id, interrupted.jobId, c.bindingSha256, c.backendSha256],
+              ),
+            ),
+          ).rejects.toMatchObject({ code: "40001" });
+          stopped.mockImplementation(async () => {
+            await withTenant(pool, owner, (client) => client.query("SELECT 1"));
+            return true;
+          });
+          const [first, second] = await Promise.all([
+            recoveringApplies.inspectInterruptedApply(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+            recoveringApplies.inspectInterruptedApply(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+          ]);
+          expect(first).toEqual(second);
+          expect(first).toMatchObject({
+            status: "reconciliation_required",
+            runnerStop: "verified-stopped",
+            stateCheck: "not-performed",
+            stateLock: "not-checked",
+            requiresOperatorReview: true,
+            canReplan: false,
+            startsExecution: false,
+          });
+          expect(read).not.toHaveBeenCalled();
+          expect(
+            (
+              await migration.query(
+                "SELECT count(*)::int AS n FROM lzc.application_apply_interruptions WHERE job_id=$1",
+                [interrupted.jobId],
+              )
+            ).rows[0].n,
+          ).toBe(1);
+          expect(
+            (
+              await migration.query(
+                "SELECT status,error_code,finished_at IS NOT NULL AS terminal FROM lzc.application_dispatches WHERE job_id=$1",
+                [interrupted.jobId],
+              )
+            ).rows[0],
+          ).toEqual({
+            status: "reconciliation_required",
+            error_code: "cancelled",
+            terminal: true,
+          });
+          expect(
+            (
+              await migration.query(
+                "SELECT to_jsonb(i) AS value FROM lzc.application_instances i WHERE id=$1",
+                [planned.ordered.id],
+              )
+            ).rows[0].value,
+          ).toEqual(before);
+          await expect(
+            delegatedApplications.runnerStage(ticket, ticketPackage, {
+              stage: "applying",
+            }),
+          ).rejects.toBeDefined();
+          await expect(
+            delegatedApplications.runnerResult(ticket, ticketPackage, {
+              status: "succeeded",
+            }),
+          ).rejects.toBeDefined();
+          await expect(
+            delegatedApplications.startPlan(owner, planned.ordered.id, {
+              idempotencyKey: randomUUID(),
+            }),
+          ).rejects.toBeDefined();
+          const startsAfterInterruption =
+            delegatedRunner.start.mock.calls.length;
+          expect(
+            await delegatedApplications.startApply(owner, planned.id, {
+              artifactSha256: planned.sha,
+            }),
+          ).toEqual({ jobId: interrupted.jobId, dispatched: false });
+          expect(delegatedRunner.start.mock.calls.length).toBe(
+            startsAfterInterruption,
+          );
+          await expect(
+            recoveringApplies.checkRecoveryReplan(owner, interrupted.jobId),
+          ).rejects.toBeDefined();
+          stopped.mockRejectedValue(new Error("Runner no longer available"));
+          expect(
+            await recoveringApplies.inspectInterruptedApply(
+              owner,
+              interrupted.jobId,
+              confirm,
+            ),
+          ).toEqual(first);
+          await expect(
+            withTenant(pool, owner, (client) =>
+              client.query(
+                "DELETE FROM lzc.application_apply_interruptions WHERE job_id=$1",
+                [interrupted.jobId],
+              ),
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+          await expect(
+            migration.query(
+              "DELETE FROM lzc.application_apply_interruptions WHERE job_id=$1",
+              [interrupted.jobId],
+            ),
+          ).rejects.toMatchObject({ code: "55000" });
+          await expect(
+            recoveringApplies.inspectInterruptedApply(
+              owner,
+              planned.id,
+              confirm,
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+          await expect(
+            recoveringApplies.inspectInterruptedApply(
+              owner,
+              apply.jobId,
+              confirm,
+            ),
+          ).rejects.toBeDefined();
+        }
         // A lost Plan is completed only after independent, source-bound CF and
         // State observations. The existing owner can then reuse the same order.
         {

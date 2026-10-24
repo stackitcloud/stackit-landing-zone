@@ -53,6 +53,18 @@ Plan is a separate authorized action. Unknown/missing apps or stats, active
 processes/tasks, saved artifacts, recovery evidence and every Apply job fail
 closed. Expiry alone is never proof of termination.
 
+For an interrupted standard Application Apply, the owner can explicitly call
+`POST /api/v1/applications/jobs/{id}/inspect-interrupted-apply` with
+`{"confirmInterruptedApply":true}` and the same session/tenant/Origin/CSRF guards.
+Short transactions bind the exact order, original saved Plan, backend and claimed
+Runner; independent CF stop/source checks run outside those transactions. A
+fresh observation and final binding revalidation create an immutable receipt and
+set `reconciliation_required/cancelled`. This closes broker input/report gates
+without pretending the worker reported `apply_failed`. It neither reads nor
+changes State/locks, revokes or extends historical grants, stops/deletes a Runner,
+or grants replan/Apply permission. Existing operator review and expiry conditions
+remain required. The receipt explicitly records State and lock as unchecked.
+
 **No customer execution in this acceptance.** The user explicitly requires fresh approval before every customer Apply; infrastructure approvals do not cover this. The older initial-provisioning plan remains Plan-only. The new platform path has a gated Apply endpoint: only with execution enabled, matching immutable plan artifact/hash, confirmed target organization and rechecked access, source and state bindings. Export is not Apply approval. No Destroy path.
 
 A successful Plan is not automatically eligible for Apply. For blocked approval, the server returns an error code and, for unsupported components, the affected fields with reasons. Plan and Apply pages show this block; the Apply button remains visible but disabled. An eligible Plan still shows explicit review confirmation and requires the exact UUID of the target organization. All conditions are checked again server-side before Apply.

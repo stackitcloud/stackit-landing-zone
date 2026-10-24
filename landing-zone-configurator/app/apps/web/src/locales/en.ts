@@ -1,4 +1,11 @@
 export const englishMessages: Record<string, string> = {
+  "Dieser Apply kann nicht sicher als unterbrochen erfasst werden. Operator-Abgleich erforderlich.":
+    "This Apply cannot be recorded safely as interrupted. Operator reconciliation is required.",
+  "Unterbrochenen Apply prüfen": "Check interrupted Apply",
+  "Ist dieser Apply unerwartet stehen geblieben? Prüfe den Runner. Nur bei nachgewiesenem Runner-Ende wird der Apply als ungeklärt erfasst. Ressourcen, State und Sperre bleiben unverändert; ein neuer Plan oder Apply wird nicht freigegeben.":
+    "Has this Apply unexpectedly stopped progressing? Check the runner. Only verified runner termination records the Apply as unresolved. Resources, state and lock remain unchanged; no new Plan or Apply is authorized.",
+  "Der gestoppte Apply wurde als ungeklärt erfasst. Infrastruktur, State und Sperre sind damit nicht abgeglichen. Vor einem neuen Plan ist eine Operator-Prüfung erforderlich.":
+    "The stopped Apply was recorded as unresolved. Infrastructure, state and lock have not been reconciled. Operator review is required before a new Plan.",
   "Dieser Plan kann nicht sicher abgeschlossen werden. Operator-Abgleich erforderlich.":
     "This Plan cannot be completed safely. Operator reconciliation is required.",
   "Der Runner ist noch aktiv oder sein Ende ist nicht nachgewiesen. Bitte später erneut prüfen.":

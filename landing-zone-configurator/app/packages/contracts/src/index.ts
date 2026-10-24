@@ -227,6 +227,7 @@ export const applicationPlanJobSchema = z.strictObject({
     .optional(),
   canApply: z.boolean().default(false),
   canCompleteInterruptedPlan: z.boolean().default(false),
+  canInspectInterruptedApply: z.boolean().default(false),
   recoveryReplanApproved: z.boolean().default(false),
   status: z.enum([
     "prepared",
@@ -254,6 +255,21 @@ export type ApplicationPlanJob = z.infer<typeof applicationPlanJobSchema>;
 
 export const applicationInterruptedPlanRequestSchema = z.strictObject({
   confirmPlanCompletion: z.literal(true),
+});
+export const applicationInterruptedApplyRequestSchema = z.strictObject({
+  confirmInterruptedApply: z.literal(true),
+});
+export const applicationInterruptedApplyReceiptSchema = z.strictObject({
+  jobId: z.uuid(),
+  instanceId: z.uuid(),
+  status: z.literal("reconciliation_required"),
+  recordedAt: z.iso.datetime(),
+  runnerStop: z.literal("verified-stopped"),
+  stateCheck: z.literal("not-performed"),
+  stateLock: z.literal("not-checked"),
+  requiresOperatorReview: z.literal(true),
+  canReplan: z.literal(false),
+  startsExecution: z.literal(false),
 });
 export const applicationInterruptedPlanReceiptSchema = z.strictObject({
   jobId: z.uuid(),

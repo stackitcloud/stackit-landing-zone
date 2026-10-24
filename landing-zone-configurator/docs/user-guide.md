@@ -137,6 +137,17 @@ State remain blocked. The action neither stops a Runner nor writes State, clears
 a lock, starts a new Plan or authorizes Apply. Review the separately started new
 Plan before applying it. This path applies exclusively to Plan jobs.
 
+If an Application Apply stops progressing without a completion report, use
+**Apply → Check interrupted Apply** on the same order. The server independently
+checks the exact Runner and its immutable source. A verified stopped Runner
+allows the Apply to be recorded as **unresolved**, with an immutable receipt.
+This action does not inspect or change infrastructure, State or a lock. It does
+not authorize a new Plan or Apply. A stopped Runner alone cannot establish
+whether all cloud changes were persisted. Operator reconciliation of cloud
+resources, the exact State, any separate recovery State and a possible orphaned
+lock remains necessary. Active or unverifiable Runners remain blocked. Keep the
+existing order and do not replay its old saved Plan.
+
 After a normally reported Application Apply failure (`apply_failed`), keep the
 existing order. In its **Apply** step, choose **Check Application checkpoint**.
 The server verifies the exact order-bound S3 state, checks for a lock and separate
