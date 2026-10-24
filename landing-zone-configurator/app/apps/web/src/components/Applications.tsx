@@ -2,6 +2,7 @@ import {
   type ApplicationInstance,
   type ApplicationRecoveryDiagnosis,
   applicationInstanceSchema,
+  applicationInterruptedApplyReceiptSchema,
   applicationInterruptedPlanReceiptSchema,
   applicationPlanJobSchema,
   applicationPlanPreviewSchema,
@@ -46,6 +47,14 @@ import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_apply_recovery_unavailable:
+    "Dieser Apply kann nicht sicher als unterbrochen erfasst werden. Operator-Abgleich erforderlich.",
+  application_apply_recovery_runner_active:
+    "Der Runner ist noch aktiv oder sein Ende ist nicht nachgewiesen. Bitte später erneut prüfen.",
+  application_apply_recovery_runner_unavailable:
+    "Der Zustand des Runners konnte nicht eindeutig geprüft werden. Bitte später erneut prüfen.",
+  application_apply_recovery_changed:
+    "Der Prüfstand hat sich geändert. Bitte den Prüfkontext neu laden.",
   application_plan_recovery_unavailable:
     "Dieser Plan kann nicht sicher abgeschlossen werden. Operator-Abgleich erforderlich.",
   application_plan_recovery_runner_active:
@@ -985,6 +994,8 @@ function ApplicationPlanControls({
   const [confirmedBackendJob, setConfirmedBackendJob] = useState("");
   const [interruptedPlanCompleted, setInterruptedPlanCompleted] =
     useState(false);
+  const [interruptedApplyRecorded, setInterruptedApplyRecorded] =
+    useState(false);
   const [jobKey, setJobKey] = useState(() => crypto.randomUUID());
   const maintenanceKeys = useRef({
     destroy: crypto.randomUUID(),
@@ -1244,10 +1255,13 @@ function ApplicationPlanControls({
     setBusy(true);
     setError("");
     setInterruptedPlanCompleted(false);
+    setInterruptedApplyRecorded(false);
     try {
       const response = await request(path, session, body);
       if (path.endsWith("/complete-interrupted-plan"))
         applicationInterruptedPlanReceiptSchema.parse(response);
+      if (path.endsWith("/inspect-interrupted-apply"))
+        applicationInterruptedApplyReceiptSchema.parse(response);
       if (path === `instances/${instance.id}/plan`)
         preparedJob.current = z
           .object({ jobId: z.uuid() })
@@ -1257,6 +1271,8 @@ function ApplicationPlanControls({
       await refresh();
       if (path.endsWith("/complete-interrupted-plan"))
         setInterruptedPlanCompleted(true);
+      if (path.endsWith("/inspect-interrupted-apply"))
+        setInterruptedApplyRecorded(true);
       onViewChange(
         purpose === "standard"
           ? path.endsWith("/apply")
@@ -1301,6 +1317,13 @@ function ApplicationPlanControls({
         )}
       </h3>
       {error && <p role="alert">{t(error)}</p>}
+      {interruptedApplyRecorded && (
+        <p role="status">
+          {t(
+            "Der gestoppte Apply wurde als ungeklärt erfasst. Infrastruktur, State und Sperre sind damit nicht abgeglichen. Vor einem neuen Plan ist eine Operator-Prüfung erforderlich.",
+          )}
+        </p>
+      )}
       {interruptedPlanCompleted && (
         <p role="status">
           {t(
@@ -1566,6 +1589,33 @@ function ApplicationPlanControls({
                     }
                   >
                     {t("Unterbrochenen Plan prüfen und abschließen")}
+                  </button>
+                </section>
+              )}
+            {job.canInspectInterruptedApply &&
+              job.requestedBy === session.user.id &&
+              job.operation === "apply" &&
+              job.purpose === "standard" &&
+              ["initializing", "validating", "applying"].includes(
+                job.status,
+              ) && (
+                <section aria-label={t("Unterbrochenen Apply prüfen")}>
+                  <p>
+                    {t(
+                      "Ist dieser Apply unerwartet stehen geblieben? Prüfe den Runner. Nur bei nachgewiesenem Runner-Ende wird der Apply als ungeklärt erfasst. Ressourcen, State und Sperre bleiben unverändert; ein neuer Plan oder Apply wird nicht freigegeben.",
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate(`jobs/${job.id}/inspect-interrupted-apply`, {
+                        confirmInterruptedApply: true,
+                      })
+                    }
+                  >
+                    {t("Unterbrochenen Apply prüfen")}
                   </button>
                 </section>
               )}

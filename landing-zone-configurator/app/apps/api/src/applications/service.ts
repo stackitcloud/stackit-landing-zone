@@ -44,6 +44,7 @@ import { type ArtifactCrypto, canonicalBase64 } from "../plans/crypto.js";
 import { canonicalJson, sha256 } from "../plans/execution.js";
 import type { Plans } from "../plans/service.js";
 import { withTenant } from "../storage/database.js";
+import { inspectInterruptedApply } from "./interrupted-apply.js";
 import { completeInterruptedPlan } from "./interrupted-plan.js";
 import {
   approveRecoveryReplan,
@@ -1206,6 +1207,13 @@ export class Applications {
               ["initializing", "validating", "planning"].includes(row.status) &&
               !row.artifact_sha256,
           ),
+          canInspectInterruptedApply: Boolean(
+            this.dispatch?.runner.isStopped &&
+              row.owner_user_id === session.userId &&
+              row.operation === "apply" &&
+              row.purpose === "standard" &&
+              ["initializing", "validating", "applying"].includes(row.status),
+          ),
           recoveryReplanApproved: row.recovery_replan_approved ?? false,
           status: row.status,
           grantActive: row.grant_active,
@@ -1359,6 +1367,22 @@ export class Applications {
       id,
       input,
       deps,
+    );
+  }
+
+  async inspectInterruptedApply(
+    session: Session,
+    jobId: string,
+    input: unknown,
+  ) {
+    if (!this.dispatch?.runner.isStopped)
+      throw new ApplicationError(503, "application_apply_recovery_unavailable");
+    return inspectInterruptedApply(
+      (task) => this.work(session, "order", task),
+      session,
+      z.uuid().parse(jobId),
+      input,
+      this.dispatch.runner,
     );
   }
 

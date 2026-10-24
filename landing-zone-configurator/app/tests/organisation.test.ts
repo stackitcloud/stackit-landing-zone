@@ -276,6 +276,7 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
   };
   const applications = {
     listTemplates: vi.fn(async () => []),
+    inspectInterruptedApply: vi.fn(async () => ({})),
     completeInterruptedPlan: vi.fn(
       async (_session: Session, id: string, _input: unknown) => ({
         jobId: id,
@@ -701,6 +702,46 @@ it("protects interrupted-Plan completion with authentication, tenant, Origin, CS
   expect(r.statusCode).toBe(200);
   expect(r.headers["cache-control"]).toBe("no-store");
   expect(applications.completeInterruptedPlan).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+    payload,
+  );
+});
+
+it("protects interrupted-Apply diagnosis with authentication, tenant, Origin, CSRF and explicit confirmation", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID();
+  const url = `/api/v1/applications/jobs/${id}/inspect-interrupted-apply`;
+  const payload = { confirmInterruptedApply: true };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  expect(
+    (await app.inject({ method: "POST", url, headers: {}, payload }))
+      .statusCode,
+  ).toBe(401);
+  expect((await app.inject({ url, headers })).statusCode).toBe(404);
+  for (const invalid of [
+    {},
+    { confirmInterruptedApply: false },
+    { ...payload, runnerStopped: true },
+    { ...payload, stateSha256: "a".repeat(64) },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.inspectInterruptedApply).not.toHaveBeenCalled();
+  const r = await app.inject({ method: "POST", url, headers, payload });
+  expect(r.statusCode).toBe(200);
+  expect(r.headers["cache-control"]).toBe("no-store");
+  expect(applications.inspectInterruptedApply).toHaveBeenCalledExactlyOnceWith(
     session,
     id,
     payload,

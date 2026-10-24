@@ -66,6 +66,21 @@ fehlende Apps/Prozessnachweise, aktive Prozesse/Tasks, gespeicherte Plan-Artefak
 Recovery-Nachweise und sämtliche Apply-Jobs bleiben gesperrt. Ablauf einer
 Berechtigung beweist niemals das Ende eines Runners.
 
+Bei einem unterbrochenen regulären Application-Apply kann der Besteller
+`POST /api/v1/applications/jobs/{id}/inspect-interrupted-apply` mit
+`{"confirmInterruptedApply":true}` und denselben Session-/Mandanten-/Origin-/CSRF-
+Prüfungen ausdrücklich aufrufen. Kurze Transaktionen binden die exakte Bestellung,
+den ursprünglichen gespeicherten Plan, das Backend und den übernommenen Runner;
+unabhängige CF-Prüfungen von Stillstand und Quelle laufen außerhalb dieser
+Transaktionen. Ein aktueller Nachweis und eine erneute Bindungsprüfung erzeugen
+einen unveränderlichen Nachweis und setzen `reconciliation_required/cancelled`.
+Damit schließen Broker-Eingabe und -Meldewege, ohne einen vom Worker gemeldeten
+Fehler `apply_failed` vorzutäuschen. Die Aktion liest oder verändert weder State
+noch Sperren, widerruft oder verlängert keine historischen Freigaben, stoppt oder
+löscht keinen Runner und genehmigt keinen neuen Plan oder Apply. Bestehende
+Operator-Prüfungen und Ablaufbedingungen bleiben erforderlich. State und Sperre
+werden im Nachweis ausdrücklich als ungeprüft erfasst.
+
 **Keine Kunden-Ausführung in dieser Abnahme.** Der Benutzer verlangt ausdrücklich
 eine neue Freigabe vor jedem Kunden-Apply; Infrastrukturfreigaben gelten nicht dafür.
 Der ältere Erstbereitstellungsplan bleibt plan-only. Der neue Plattformpfad besitzt
