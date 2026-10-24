@@ -308,3 +308,74 @@ local filesystem backend limitation in #140 remains separate. S3 init may create
 an empty State object before the first resource Apply. No backend result is inferred
 for another backend. CI runs both fixtures without cloud credentials or public
 raw-State/log artifacts.
+
+## Hosted disposable Apply checkpoint observation
+
+The separate Apply drill uses `hosted_apply.py` with Python 3 and an explicitly
+configured boto3/S3 operator profile. It supports only the fixed Dev CF foundation,
+the `lzc-dev-runners/plans` space and STACKIT eu01 S3. Deploy the interrupted-Apply
+diagnosis endpoint first. Use a fresh, reviewed, current-source standard Plan for
+an explicitly approved disposable order with no previous Apply; only creation
+actions are accepted. Its exact backend must initially contain neither State nor
+lock. An existing object, including an empty State, requires separate review.
+
+The owner starts Apply through the ordinary authenticated UI after both observers
+are ready. The controller never creates an order, issues a user session, dispatches
+a job or grants Apply approval. Normal Runner commands and inputs are unchanged;
+there is no Apply delay or pause hook.
+
+`apply_candidate.mjs` runs in a short-lived, route-free Dev diagnostic app copied
+from the deployed API. Supply only the existing migration DB identity and a
+private `LZC_RECOVERY_DRILL` JSON configuration containing `binding`, `startedAt`
+and `expiresAt` (maximum 15 minutes). It verifies its actual CF organization,
+space/app name and lack of routes before opening the database. Each poll uses a
+separate `BEGIN READ ONLY` transaction with a two-second statement timeout. No
+transaction remains open during the polling wait. Preflight requires an unapplied,
+unexpired, creation-only saved Plan from the exact Runner source. Polling binds
+the new Apply to that Plan, tenant, order, backend, live grant, consumed ticket,
+claim and recorded Runner. Only identifiers, binding hashes, phase and timestamps
+leave the task. Never forward private Plan, State or credentials to public logs.
+
+An operator bridge follows only this exact diagnostic task's log stream, validates
+its bounded JSON records and atomically replaces a private `0600` candidate file.
+Idle and terminal records must replace the preceding candidate too; do not keep
+a stale `applying` record. The CLI independently rejects observations older than
+three seconds and Apply jobs created before arming. Use private owned directories
+and fresh receipt paths; stop the bridge and remove the diagnostic app in a
+`finally` block, verifying that deletion completes before another drill.
+
+```sh
+node --test landing-zone-configurator/infra/recovery-lab/apply_candidate.test.mjs
+python3 landing-zone-configurator/infra/recovery-lab/hosted_apply.py \
+  --cf /absolute/path/to/cf --cf-home /private/runner-cf-home \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid> --binding /private/reviewed-binding.json \
+  --snapshot /private/current-candidate.json --s3-profile <operator-profile>
+```
+
+The reviewed binding contains `version:1`, `instanceId`, `tenantId`, `planId`,
+`runnerSpace`, `runnerTemplate`, `sourceDropletId`, `backendSha256`, `creates` and
+the exact registered S3 `backend` descriptor. Produce it from read-only inspection
+of the stored Plan/backend, not browser assertions. It contains no credentials.
+The default CLI mode observes only. To authorize one targeted stop, additionally
+pass `--confirm-disposable-stop <same-instance-uuid>` and
+`--receipt /private/new-stop.json`.
+
+Before stopping, the CLI requires repeated identical State/lock reads: a State
+contract belonging to the order, a completed cloud project, some persisted cloud
+resources, fewer managed resources than planned creates, and a new native
+OpenTofu 1.12.6 Apply lock on the exact backend key. Tainted/deposed State,
+foreign/changed checkpoints, completed State and missing/inaccessible observations
+cannot trigger a stop. CF checks the route-free exact app/source copy and the
+single live warm process or unique one-shot task. A final fresh job/checkpoint
+check precedes a durable, exclusive stop intent; an ambiguous response is never
+replayed. No State/lock write/delete operation exists in this controller.
+
+An Apply can finish before an eligible partial checkpoint appears or while a CF
+stop is being processed. A stop request alone does not qualify interruption or
+recovery. Independently verify process exit, durable job/result status, State and
+lock, and compare cloud resources before any recovery clearance. Keep the same
+order. The new **Check interrupted Apply** UI action only records unresolved
+completion and closes old broker reports. It neither reconciles cloud/State nor
+clears a lock or permits a new Plan/Apply. Orphan-lock clearance requires a
+separate explicit, exact-lock operator decision after that comparison.
