@@ -71,7 +71,11 @@ export function watchPlanVersion(
 export function applicationPlanObservation(
   jobId: unknown,
   instanceId: unknown,
-  phase: "native-plan-observed" | "plan-command-finished",
+  phase:
+    | "native-plan-observed"
+    | "plan-command-finished"
+    | "native-plan-held"
+    | "native-plan-released",
 ) {
   const job = applicationPlanJobSchema.shape.id.safeParse(jobId);
   const instance =

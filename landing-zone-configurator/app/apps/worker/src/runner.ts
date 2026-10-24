@@ -30,6 +30,10 @@ import {
   summarizePlan,
 } from "@lzc/contracts";
 import { applicationPlanObservation, watchPlanVersion } from "./observation.js";
+import {
+  createDevPlanHold,
+  devPlanHoldConfiguration,
+} from "./recovery-hold.js";
 
 export const brokerOrigin =
   "https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud";
@@ -444,8 +448,13 @@ export async function runWorker(
       );
     let activeCommand: string | undefined;
     let planObserved = false;
+    let holdNativePlan: (() => void) | undefined;
     const observePlan = (
-      phase: "native-plan-observed" | "plan-command-finished",
+      phase:
+        | "native-plan-observed"
+        | "plan-command-finished"
+        | "native-plan-held"
+        | "native-plan-released",
     ) => {
       if (
         mode !== "application-plan" ||
@@ -545,6 +554,7 @@ export async function runWorker(
               ) {
                 planObserved = true;
                 observePlan("native-plan-observed");
+                holdNativePlan?.();
               }
               content = progress.text;
               if (progress.invalid && !invalidProgressReported) {
@@ -610,6 +620,18 @@ export async function runWorker(
       outputTimer = setTimeout(pollOutput, 500);
       try {
         activeCommand = phase;
+        const recoveryHold = createDevPlanHold(
+          phase === "planning"
+            ? devPlanHoldConfiguration({
+                mode,
+                instanceId: applicationBinding?.instanceId,
+                purpose: applicationBinding?.purpose,
+                origin: options.brokerOrigin,
+                local: options.local,
+              })
+            : undefined,
+          observePlan,
+        );
         const stopObservation =
           phase === "planning" && mode === "application-plan"
             ? watchPlanVersion(
@@ -618,6 +640,7 @@ export async function runWorker(
                 () => {
                   planObserved = true;
                   observePlan("native-plan-observed");
+                  holdNativePlan?.();
                 },
               )
             : () => {};
@@ -645,6 +668,7 @@ export async function runWorker(
                 detached: true,
               },
             );
+            holdNativePlan = () => recoveryHold.hold(child.pid, deadline);
             let killTimer: ReturnType<typeof setTimeout> | undefined;
             const stop = (signal: NodeJS.Signals) => {
               try {
@@ -680,6 +704,8 @@ export async function runWorker(
           });
         } finally {
           stopObservation();
+          holdNativePlan = undefined;
+          recoveryHold.close();
         }
       } finally {
         activeCommand = undefined;

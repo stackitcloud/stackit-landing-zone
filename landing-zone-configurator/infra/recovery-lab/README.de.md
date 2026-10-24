@@ -187,6 +187,95 @@ verarbeitete. Einen abgeschlossenen Plan oder eine bloße Stop-Anforderung niema
 als erfolgreichen Abbruchtest zählen. Apply-/Checkpoint-Tests benötigen einen
 separaten Controller und werden mit diesem Tool nicht aktiviert.
 
+## Expliziter nativer Plan-Wartepunkt nur für Dev
+
+Für Plans, die schneller als Log-Zustellung und CF-Abbruch sind, bereitet
+`held_plan.py` einen entbehrlichen warmen Runner mit begrenztem Prozess-Wartepunkt
+vor. Dies ist ein instrumentierter Abbruchtest, keine Messung normaler
+Plan-Laufzeiten. Er umgeht keine UI/API-Ausführungsberechtigung und verändert
+weder native Eingaben noch Backend oder gespeichertes Planformat. Normale Jobs
+haben keine Wartekonfiguration und laufen unverändert.
+
+Der Worker akzeptiert `LZC_RECOVERY_PLAN_HOLD` ausschließlich in der festen
+Dev-Foundation, im Web-Prozess von `lzc-dev-runners/plans`, ohne öffentliche
+Routen, für die exakte CF-App, den Space und die Testinstanz sowie mit einem
+Ablauf innerhalb von 15 Minuten. Apply, Plattform, Drift, Destroy, lokale
+Ausführung und andere Instanzen können den Wartepunkt nicht aktivieren. Beim
+ersten nativen Versionsereignis sendet er `SIGSTOP` nur an seine eigene gestartete
+Prozessgruppe, prüft den von Linux gemeldeten Halt sowohl des Shell-Gruppenleiters
+als auch seines echten nativen `tofu plan` in derselben Gruppe und meldet
+`native-plan-held`. Nach 30 Sekunden oder beim Aufräumen des Befehls setzt
+er automatisch fort. Frei einstellbare Verzögerungen oder Shell-Befehle werden
+nicht angenommen. Siehe die offiziellen
+[CF-Laufzeitmetadaten](https://docs.cloudfoundry.org/devguide/deploy-apps/environment-variable.html).
+
+Die Vorbereitung benötigt zwei getrennte private CF-Anmeldungen: den bestehenden
+begrenzten Runner-Zugang und den Dev-App-Manager mit Ziel `lzc-dev/configurator`.
+Eine eigene private JSON-Datei mit Modus `0600` enthält ausschließlich
+`LZC_DATABASE_HOST`, `LZC_DATABASE_PORT`, `LZC_DATABASE_NAME`, `LZC_DATABASE_USER`
+und `LZC_DATABASE_PASSWORD` der bestehenden Dev-Migrationsidentität. Das Werkzeug
+prüft das Ziel gegen die laufende API. Zugangsdaten gehören nicht in Chat,
+Issues oder Shell-Historie. Beide CF_HOME-Verzeichnisse müssen dem Operator
+gehören und privat sein (`0700`).
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/held_plan.py \
+  --cf /absolute/path/to/cf --cf-home /private/runner-cf-home \
+  --app-cf-home /private/app-manager-cf-home \
+  --migration-vars /private/dev-migration.json \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid> \
+  --confirm-disposable-hold <same-disposable-instance-uuid> \
+  --receipt /private/drill-evidence/new-preparation.json
+```
+
+Das Werkzeug prüft zuerst die installierte Wartepunkt-Unterstützung. Eine
+temporäre Task-App ohne Route nutzt die Migrationsidentität, um atomar einen
+frischen, unzugeordneten, bereiten Pool-Slot der exakten Quelle zu reservieren
+und seinen Ticket-Hash zu wechseln. Der alte Worker kann ihn nicht erneut
+beanspruchen. Erst dann stoppt es diese unzugeordnete App, ergänzt das neue Ticket
+und die ablaufende Wartekonfiguration in ihrer Umgebung und startet sie. Bevor es
+Erfolg meldet, muss der normale Broker mit dem neuen Ticket Bereitschaft
+bestätigen. CF-Umgebungsänderungen gelten nach dem Neustart; die übrige Umgebung
+bleibt durch die
+[CAPI-Zusammenführung](https://v3-apidocs.cloudfoundry.org/version/3.226.0/index.html#update-environment-variables)
+erhalten. Die temporäre privilegierte Task-App wird beim Verlassen gelöscht.
+Fehlende Bereitschaft bleibt ungeklärt; die zweiminütige Warming-Lease läuft
+über die normale Wartung ab. Nach einem unklaren Nachweis keine Mutation
+wiederholen: zuerst aufgezeichnete Phase und exakte App/Lease prüfen.
+Ein Vorbereitungsnachweis allein autorisiert keinen Plan.
+
+Nach erfolgreicher Vorbereitung den Beobachter vor dem Plan scharfschalten:
+
+```sh
+python3 landing-zone-configurator/infra/recovery-lab/hosted_plan.py \
+  --cf /absolute/path/to/cf --cf-home /private/runner-cf-home \
+  --runner-space <dev-runner-space-uuid> --runner-template <runner-template-uuid> \
+  --instance <disposable-instance-uuid> --require-held-plan \
+  --confirm-disposable-stop <same-disposable-instance-uuid> \
+  --receipt /private/drill-evidence/new-stop.json
+```
+
+Auf `observer-ready` warten, dann genau einen neuen Plan über die authentifizierte
+UI starten. Andere Jobs sollten den vorbereiteten Standby nicht belegen: Eine
+fremde Instanz läuft normal; danach muss dieser Test erneut vorbereitet werden.
+Der Held-Modus ignoriert gewöhnliche native Startmeldungen, akzeptiert einen
+bestätigten Halt höchstens 15 Sekunden lang und verweigert freigegebene oder
+beendete Plans. Ein verpasstes Zeitfenster bleibt ungeklärt. Vor einer
+Recovery-Qualifikation tatsächlichen Prozessverlust, dauerhaften Jobstatus,
+State-/Lock-Zustand und einen frischen Plan derselben Bestellung getrennt prüfen.
+Ein Halt beim Versionsereignis beweist insbesondere weder Backend-Sperre noch
+Wiederherstellung einer verwaisten Sperre. Darauf niemals ein Force-Unlock oder
+die Wiederholung eines unklaren Apply stützen.
+
+Lokale Tests verwenden das echte festgelegte OpenTofu mit einer synthetischen
+Loopback-State-Lesebarriere, um bestätigten Prozesshalt, automatisches/manuelles
+Fortsetzen und harten Abbruch ohne Cloud-Zugangsdaten nachzuweisen. Release- und
+Validierungs-CI führen sie explizit mit `LZC_TEST_TOFU_BIN` aus; normale Unit-Läufe
+überspringen die nativen Fälle ohne diese Variable. PostgreSQL-Integrationstests
+prüfen das echte Lease-SQL, den Ticketwechsel sowie die Ablehnung zugeordneter
+Slots und fremder Quellen.
+
 ## CI
 
 Der Job `Isolated recovery lab` in **Validate Configurator** führt Isolationstests,

@@ -111,6 +111,8 @@ jobs:
         run: npm run test:common-contract
       - name: Test native Plan, Application and governance contracts
         run: LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
+      - name: Test isolated native Plan hold and interruption
+        run: LZC_TEST_TOFU_BIN="$(command -v tofu)" npx vitest run tests/worker-recovery-hold.test.ts
       - name: Test database migrations and tenant isolation
         run: npm run test:database -- --maxWorkers=2 --testTimeout=30000
         env:

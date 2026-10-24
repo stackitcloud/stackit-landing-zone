@@ -30,6 +30,7 @@ class HostedBoundaries(unittest.TestCase):
         controller = object.__new__(hosted.Controller)
         controller.instance, controller.space, controller.template = INSTANCE, SPACE, TEMPLATE
         controller.confirm, controller.stopped = confirm, False
+        controller.require_held = False
         controller.boundary_verified = True
         private = tempfile.TemporaryDirectory()
         self.addCleanup(private.cleanup)
@@ -49,6 +50,19 @@ class HostedBoundaries(unittest.TestCase):
             with patch.object(controller, "api") as api:
                 with self.assertRaises(RuntimeError): controller.stop(APP, value, finished)
                 api.assert_not_called()
+
+    def test_held_mode_rejects_unheld_and_released_plans(self):
+        controller = self.controller()
+        controller.require_held = True
+        with patch.object(controller, "api") as api:
+            for value in [event(), {**event(), "observation": "native-plan-released"}]:
+                with self.assertRaises(RuntimeError): controller.stop(APP, value, set())
+            api.assert_not_called()
+        held = {**event(age=8), "observation": "native-plan-held"}
+        controller.armed_at = time.time()-10
+        controller.stop(APP, held, set())
+        self.assertTrue(controller.stopped)
+        self.assertIsNone(hosted.observation(json.dumps({**event(age=16), "observation":"native-plan-held"}, separators=(",", ":")), INSTANCE, time.time()-20, time.time()))
 
     def test_only_one_exact_warm_runner_can_be_stopped(self):
         controller = self.controller()
