@@ -1,4 +1,5 @@
 import {
+  applicationInterruptedPlanRequestSchema,
   applicationOrderDecisionSchema,
   applicationPlanPurposeSchema,
   applicationRecoveryReplanRequestSchema,
@@ -151,6 +152,7 @@ export function registerApplications(
         | "previewPlan"
         | "outputJob"
         | "diagnoseRecovery"
+        | "completeInterruptedPlan"
         | "recoveryReviewContext"
         | "recordRecoveryReview"
         | "checkRecoveryReplan"
@@ -197,6 +199,8 @@ export function registerApplications(
             "application_recovery_replan_unavailable",
             "application_recovery_review_changed",
             "application_recovery_review_unavailable",
+            "application_plan_recovery_unavailable",
+            "application_plan_recovery_changed",
           ].includes(error.message)
         )
           return reply.code(409).send({ error: error.message });
@@ -529,6 +533,24 @@ export function registerApplications(
             .send({ error: "application_recovery_diagnosis_unavailable" });
         const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
         return applications.diagnoseRecovery(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/complete-interrupted-plan",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.completeInterruptedPlan)
+          return reply
+            .code(503)
+            .send({ error: "application_plan_recovery_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.completeInterruptedPlan(
+          session,
+          id,
+          applicationInterruptedPlanRequestSchema.parse(request.body),
+        );
       },
     );
     routes.get(

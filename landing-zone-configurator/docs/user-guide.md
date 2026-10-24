@@ -125,6 +125,18 @@ another execution. A code such as `plan_failed` identifies the failed phase;
 the OpenTofu error in the logs is needed to diagnose its cause. Logs do not grant
 Plan/Apply permission and are not shared with another requester.
 
+If an Application Plan stops progressing after its Runner was stopped, keep the
+same order. In **Plan**, choose **Check and complete interrupted Plan**. The
+server verifies the exact Runner app and immutable source, its stopped process
+or terminal task, and the order-bound State and lock. Only then is that Plan
+recorded as failed and **Start Cloud Plan** becomes available again. This needs
+no further Platform Owner approval. A missing State is accepted only before any
+Apply attempt for this order; existing State must match the order. Active or
+unverifiable Runners, changed or locked State, saved Plan artifacts and recovery
+State remain blocked. The action neither stops a Runner nor writes State, clears
+a lock, starts a new Plan or authorizes Apply. Review the separately started new
+Plan before applying it. This path applies exclusively to Plan jobs.
+
 After a normally reported Application Apply failure (`apply_failed`), keep the
 existing order. In its **Apply** step, choose **Check Application checkpoint**.
 The server verifies the exact order-bound S3 state, checks for a lock and separate
@@ -138,7 +150,7 @@ this action, and the old saved Plan cannot be reused.
 A new Plan refreshes cloud resources; review its complete changes before another
 Apply. A service timeout can leave an asynchronous cloud operation unresolved,
 so a readable checkpoint alone does not prove that every cloud resource matches
-State. Missing final reports, State write failures, separate recovery State,
+State. Missing Apply completion reports, State write failures, separate recovery State,
 locks or mismatched checkpoints remain blocked. For eligible uncertain
 completion, the originally approving Platform Owner can separately attest an
 external Runner/cloud reconciliation after the old execution credentials expire;

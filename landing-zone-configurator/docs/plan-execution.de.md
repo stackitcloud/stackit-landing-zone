@@ -49,6 +49,23 @@ Lease-Ablauf erlaubt niemals das Löschen eines verbrauchten Application-Runners
 In CF muss Speicher für aktive Jobs und zusätzlich 1 GiB für das Staging des
 Templates frei bleiben.
 
+Der Besteller kann einen beendeten Application-Plan ohne Abschlussmeldung
+ausdrücklich als fehlgeschlagen abschließen. `POST
+/api/v1/applications/jobs/{id}/complete-interrupted-plan` erfordert aktuellen
+Mandanten, Origin, CSRF und `{"confirmPlanCompletion":true}`. Kurze
+Mandantentransaktionen autorisieren den Besteller und binden App, Quelle und
+Backend; CF- und S3-Leseprüfungen laufen außerhalb der Datenbanktransaktionen,
+damit die Prüfung eines laufenden Plans dessen Meldungen nicht blockiert.
+Exakte App-Zuordnung, Quell-SHA-256, beendete Warm-Prozessinstanzen oder terminale
+Einmal-Tasks, wiederholte State-/Sperrprüfungen und erneute Autorisierung gehen
+einem unveränderlichen Nachweis und dem Abschluss `failed/cancelled` voraus.
+Fehlender State ist nur ohne Apply-Historie zulässig. Die alten
+Broker-Meldewege schließen; historische Tickets, Nachweise und State bleiben
+erhalten. Ein neuer Plan ist eine separate autorisierte Aktion. Unbekannte oder
+fehlende Apps/Prozessnachweise, aktive Prozesse/Tasks, gespeicherte Plan-Artefakte,
+Recovery-Nachweise und sämtliche Apply-Jobs bleiben gesperrt. Ablauf einer
+Berechtigung beweist niemals das Ende eines Runners.
+
 **Keine Kunden-Ausführung in dieser Abnahme.** Der Benutzer verlangt ausdrücklich
 eine neue Freigabe vor jedem Kunden-Apply; Infrastrukturfreigaben gelten nicht dafür.
 Der ältere Erstbereitstellungsplan bleibt plan-only. Der neue Plattformpfad besitzt

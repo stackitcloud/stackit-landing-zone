@@ -276,6 +276,19 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
   };
   const applications = {
     listTemplates: vi.fn(async () => []),
+    completeInterruptedPlan: vi.fn(
+      async (_session: Session, id: string, _input: unknown) => ({
+        jobId: id,
+        instanceId: randomUUID(),
+        status: "failed" as const,
+        recordedAt: new Date().toISOString(),
+        statePresent: false,
+        runnerStop: "verified-stopped" as const,
+        stateLock: "free" as const,
+        requiresFreshPlan: true as const,
+        startsExecution: false as const,
+      }),
+    ),
     ...(groupsEnabled
       ? {
           listGroups: vi.fn(async () => ({ groups: [], members: [] })),
@@ -651,6 +664,46 @@ it("requires explicit snapshot-bound recovery review with tenant, origin and CSR
   expect(applications.recoveryReviewContext).toHaveBeenCalledExactlyOnceWith(
     session,
     id,
+  );
+});
+
+it("protects interrupted-Plan completion with authentication, tenant, Origin, CSRF and explicit confirmation", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID();
+  const url = `/api/v1/applications/jobs/${id}/complete-interrupted-plan`;
+  const payload = { confirmPlanCompletion: true };
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  expect(
+    (await app.inject({ method: "POST", url, headers: {}, payload }))
+      .statusCode,
+  ).toBe(401);
+  expect((await app.inject({ url, headers })).statusCode).toBe(404);
+  for (const invalid of [
+    {},
+    { confirmPlanCompletion: false },
+    { ...payload, runnerStopped: true },
+    { ...payload, stateSha256: "a".repeat(64) },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload: invalid }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.completeInterruptedPlan).not.toHaveBeenCalled();
+  const r = await app.inject({ method: "POST", url, headers, payload });
+  expect(r.statusCode).toBe(200);
+  expect(r.headers["cache-control"]).toBe("no-store");
+  expect(applications.completeInterruptedPlan).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+    payload,
   );
 });
 
