@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
 import {
   type RunnerPoolAssignment,
   runnerPoolAssignmentSchema,
@@ -174,23 +175,36 @@ export class RunnerPool implements WarmRunnerDispatch {
     if (origin !== this.config.origin)
       throw new Error("runner_pool_origin_mismatch");
     const assignment = runnerPoolAssignmentSchema.parse({ id, ticket, broker });
-    const slot = await this.transaction(async (client) => {
-      await client.query(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
-        [`runner-pool-job:${id}`],
+    const reserve = () =>
+      this.transaction(async (client) => {
+        await client.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+          [`runner-pool-job:${id}`],
+        );
+        const existing = await client.query(
+          "SELECT id FROM lzc.runner_pool_slots WHERE job_id=$1",
+          [id],
+        );
+        if (existing.rowCount)
+          throw new Error("runner_pool_job_already_dispatched");
+        const reserved = await client.query<Slot>(
+          `WITH candidate AS (SELECT id FROM lzc.runner_pool_slots WHERE pool_key=$1 AND status='ready' AND last_seen_at>now()-interval '10 seconds' AND expires_at>now()+interval '30 seconds' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE lzc.runner_pool_slots s SET status='reserved',job_id=$2,is_probe=$3,expires_at=now()+interval '30 seconds' FROM candidate WHERE s.id=candidate.id RETURNING s.id,s.app_id AS "appId",s.source_droplet_id AS "sourceDropletId"`,
+          [this.key, id, probe],
+        );
+        return reserved.rows[0];
+      });
+    let slot = await reserve();
+    // A heartbeat briefly locks the same row. Retry only a known, still-ready
+    // candidate skipped before reservation; never replay an assignment or error.
+    for (let attempt = 0; !slot && attempt < 4; attempt++) {
+      const eligible = await this.database.query<{ ready: boolean }>(
+        "SELECT EXISTS(SELECT 1 FROM lzc.runner_pool_slots WHERE pool_key=$1 AND status='ready' AND last_seen_at>now()-interval '10 seconds' AND expires_at>now()+interval '30 seconds') AS ready",
+        [this.key],
       );
-      const existing = await client.query(
-        "SELECT id FROM lzc.runner_pool_slots WHERE job_id=$1",
-        [id],
-      );
-      if (existing.rowCount)
-        throw new Error("runner_pool_job_already_dispatched");
-      const reserved = await client.query<Slot>(
-        `WITH candidate AS (SELECT id FROM lzc.runner_pool_slots WHERE pool_key=$1 AND status='ready' AND last_seen_at>now()-interval '10 seconds' AND expires_at>now()+interval '30 seconds' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE lzc.runner_pool_slots s SET status='reserved',job_id=$2,is_probe=$3,expires_at=now()+interval '30 seconds' FROM candidate WHERE s.id=candidate.id RETURNING s.id,s.app_id AS "appId",s.source_droplet_id AS "sourceDropletId"`,
-        [this.key, id, probe],
-      );
-      return reserved.rows[0];
-    });
+      if (!eligible.rows[0]?.ready) break;
+      await sleep(50);
+      slot = await reserve();
+    }
     if (!slot) return false;
     try {
       if (!slot.appId) throw new Error("runner_pool_app_missing");
