@@ -153,6 +153,7 @@ export async function completeInterruptedPlan(
   // Recheck after State observation; neither a stale CF read nor an expired
   // historical proof can authorize this terminal transition.
   await verifyStopped();
+  const observedAt = new Date().toISOString();
   try {
     const last = await read(backend, backend.descriptor.key);
     if (
@@ -166,7 +167,7 @@ export async function completeInterruptedPlan(
     if (error instanceof RecoveryReplanError) throw error;
     fail("state_unavailable");
   }
-  const observedAt = new Date().toISOString();
+  if (Date.now() - Date.parse(observedAt) > 30_000) fail("changed");
   return work(async (client) => {
     const latest = await context(client);
     const { existingReceipt: _before, ...before } = c;

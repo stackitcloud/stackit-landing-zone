@@ -319,3 +319,31 @@ it("revalidates bindings in a new transaction after external observations", asyn
   });
   expect(f.recorded()).toBe(false);
 });
+it.each([29_000, 31_000])(
+  "retains the actual Runner observation time across a %sms final State read",
+  async (delay) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const observed = new Date("2026-01-01T00:00:00.000Z");
+    vi.setSystemTime(observed);
+    try {
+      const f = fixture();
+      let reads = 0;
+      f.read.mockImplementation(async (_backend, key) => {
+        if (!key.endsWith(".tflock") && ++reads === 3)
+          vi.setSystemTime(observed.getTime() + delay);
+        return null;
+      });
+      if (delay > 30_000) {
+        await expect(f.run()).rejects.toMatchObject({
+          code: "application_plan_recovery_changed",
+        });
+        expect(f.recorded()).toBe(false);
+      } else {
+        await expect(f.run()).resolves.toMatchObject({ status: "failed" });
+        expect(f.query.mock.calls.at(-1)?.[1][4]).toBe(observed.toISOString());
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  },
+);
