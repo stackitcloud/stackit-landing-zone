@@ -7002,7 +7002,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           );
           expect(requested).toMatchObject({
             phase: "requested",
-            canAssess: false,
+            canAssess: true,
             canCommit: false,
             startsInfrastructureApply: false,
           });
@@ -7043,7 +7043,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
                 ).rows[0].value,
             );
           await expect(recoveryContext(owner)).rejects.toMatchObject({
-            code: "42501",
+            code: "40001",
           });
           await expect(recoveryContext(reviewer)).rejects.toMatchObject({
             code: "40001",
@@ -7067,6 +7067,14 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             await admin.query("ROLLBACK");
             throw error;
           }
+          expect(await recoveryContext(owner)).toMatchObject({
+            jobId: interrupted.jobId,
+            instanceId: planned.ordered.id,
+            credentialOwnerId: engineer.userId,
+          });
+          await expect(
+            recoveryContext({ ...peer, tenantId }),
+          ).rejects.toMatchObject({ code: "42501" });
           expect(await recoveryContext(reviewer)).toMatchObject({
             jobId: interrupted.jobId,
             instanceId: planned.ordered.id,
@@ -7076,11 +7084,11 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           const begin = async (mode: "prepare" | "commit", phase: string) => {
             const taskId = randomUUID(),
               token = randomBytes(32).toString("base64url");
-            await withTenant(pool, reviewer, (client) =>
+            await withTenant(pool, owner, (client) =>
               client.query(
                 "SELECT * FROM lzc_auth.begin_application_state_recovery_task($1,$2,$3,$4,$5,$6,$7::jsonb)",
                 [
-                  reviewer.id,
+                  owner.id,
                   requested.id,
                   taskId,
                   mode,
@@ -7094,11 +7102,11 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           };
           const prepare = await begin("prepare", "assessing");
           const bindingApp = randomUUID();
-          await withTenant(pool, reviewer, (client) =>
+          await withTenant(pool, owner, (client) =>
             client.query(
               "SELECT lzc_auth.bind_application_state_recovery_task($1,$2,$3,$4)",
               [
-                reviewer.id,
+                owner.id,
                 prepare.taskId,
                 bindingApp,
                 ticketPackage.runnerPackageId,
@@ -7120,12 +7128,12 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           const release = async (taskId: string) =>
             withTenant(
               pool,
-              reviewer,
+              owner,
               async (client) =>
                 (
                   await client.query(
                     "SELECT lzc_auth.release_application_state_recovery_input($1,$2) AS allowed",
-                    [reviewer.id, taskId],
+                    [owner.id, taskId],
                   )
                 ).rows[0].allowed,
             );
@@ -7140,11 +7148,11 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             ),
           ).rejects.toMatchObject({ code: "42501" });
           const finish = async (taskId: string, phase: string) =>
-            withTenant(pool, reviewer, (client) =>
+            withTenant(pool, owner, (client) =>
               client.query(
                 "SELECT lzc_auth.finish_application_state_recovery_task($1,$2,$3,$4,$5::jsonb)",
                 [
-                  reviewer.id,
+                  owner.id,
                   taskId,
                   phase,
                   Buffer.from("encrypted-result-fixture"),
@@ -7167,11 +7175,11 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             finish(prepare.taskId, "prepared"),
           ).rejects.toMatchObject({ code: "40001" });
           const commit = await begin("commit", "committing");
-          await withTenant(pool, reviewer, (client) =>
+          await withTenant(pool, owner, (client) =>
             client.query(
               "SELECT lzc_auth.bind_application_state_recovery_task($1,$2,$3,$4)",
               [
-                reviewer.id,
+                owner.id,
                 commit.taskId,
                 randomUUID(),
                 ticketPackage.runnerPackageId,
@@ -7182,17 +7190,44 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           const fence = async (step: string) =>
             withTenant(
               pool,
-              reviewer,
+              owner,
               async (client) =>
                 (
                   await client.query(
                     "SELECT lzc_auth.fence_application_state_recovery($1,$2,$3) AS allowed",
-                    [reviewer.id, commit.taskId, step],
+                    [owner.id, commit.taskId, step],
                   )
                 ).rows[0].allowed,
             );
+          const hasStateIntent = async () =>
+            withTenant(
+              pool,
+              owner,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT lzc_auth.application_state_recovery_has_state_intent($1,$2) AS present",
+                    [owner.id, commit.taskId],
+                  )
+                ).rows[0].present,
+            );
+          expect(await hasStateIntent()).toBe(false);
+          await expect(
+            withTenant(pool, { ...peer, tenantId }, (client) =>
+              client.query(
+                "SELECT lzc_auth.application_state_recovery_has_state_intent($1,$2)",
+                [peer.id, commit.taskId],
+              ),
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
           expect(await fence("publish")).toBe(false);
+          const revokeStep = `revoke:${"a".repeat(64)}`;
+          expect(await fence(revokeStep)).toBe(true);
+          expect(await fence(revokeStep)).toBe(false);
+          expect(await hasStateIntent()).toBe(false);
           expect(await fence("unlock")).toBe(true);
+          expect(await hasStateIntent()).toBe(true);
+          expect(await fence(`revoke:${"b".repeat(64)}`)).toBe(false);
           expect(await fence("unlock")).toBe(false);
           expect(await fence("publish")).toBe(true);
           expect(await fence("publish")).toBe(false);
@@ -7217,14 +7252,29 @@ describe("real PostgreSQL session and tenant boundaries", () => {
                 ],
               ),
             );
-          await expect(inspectTask(owner, true)).rejects.toMatchObject({
+          await expect(
+            inspectTask({ ...peer, tenantId }, true),
+          ).rejects.toMatchObject({
             code: "42501",
           });
-          await expect(inspectTask(reviewer, false)).rejects.toMatchObject({
+          await expect(inspectTask(owner, false)).rejects.toMatchObject({
             code: "40001",
           });
+          expect(
+            await withTenant(
+              pool,
+              reviewer,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT id FROM lzc.application_state_recovery_tasks WHERE id=$1",
+                    [commit.taskId],
+                  )
+                ).rows,
+            ),
+          ).toHaveLength(1);
           await inspectTask(reviewer, true);
-          await expect(inspectTask(reviewer, true)).rejects.toMatchObject({
+          await expect(inspectTask(owner, true)).rejects.toMatchObject({
             code: "40001",
           });
           expect(await resolve(commit.token)).toEqual([]);

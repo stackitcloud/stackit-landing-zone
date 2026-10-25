@@ -220,8 +220,9 @@ evidence rather than changing the State or silently replacing the order.
 ### Guided recovery after an interrupted Application Apply
 
 Keep the **same order**. In its **Apply** tab, choose **Request recovery**.
-The request contains no credentials or State files. The originally approving
-Platform Owner, signed in again if necessary, opens that order and starts
+The request contains no credentials or State files. The original Application Owner can perform the complete workflow for their own
+order while the platform execution delegation remains active. The originally
+approving Platform Owner can also perform it. Sign in again if necessary and choose
 **Start cloud reconciliation**. Old execution grants must have expired, the
 original Runner must independently be stopped, and the exact checkpoint must
 be readable. A separate recovery State or an unverifiable Runner blocks this path.
@@ -234,7 +235,7 @@ resource instances, provider-private fields and lineage must be preserved;
 updates, replacement or deletion in this preview block repair. This preview is
 not an approved infrastructure Plan.
 
-After reviewing the proposal, the original Platform Owner explicitly approves
+After reviewing the proposal, the Application Owner explicitly approves
 **Run reviewed state repair**, including release of the checked orphan lock and
 fresh replanning. A separate, single-use Runner rechecks the proposal, releases
 only that lock and publishes the candidate through native OpenTofu locking and
@@ -244,15 +245,27 @@ allowing a **new Cloud Plan on the same order**. Review that Plan before Apply.
 The old saved Plan remains unusable.
 
 If dispatch, publication or its response is interrupted, use **Inspect interrupted
-recovery** as the original Platform Owner. It verifies task termination and the
+recovery** as the original Application Owner or Platform Owner. It verifies task termination and the
 actual remote result; it does not replay a native write. An unproved outcome
 remains blocked. Expired read-only proposals can be replaced by a new assessment.
 
-The first adoption catalogue supports the pinned Application source
-`1ed855609d4dcbfded6759c7c8b4fabf7bd6725d`: a retained project, its local Public
-network, automation Service Account and explicit project role assignments.
-Corporate routing, custom roles and untracked service instances/buckets are
-explicit blockers, not silently ignored resources. A Service Account key whose
-private material was not saved requires a separate recovery decision. Do not
-work around these blockers by creating a replacement order or deleting State.
+The catalogue covers every managed resource type reachable from the pinned
+Application root: Public/Corporate networks and routing, projects, custom roles
+and assignments, automation Service Accounts, buckets and credential groups,
+Secrets Manager and Observability. Local contract/rotation resources are handled
+by normal native planning. DNS zones and platform Kubernetes namespaces are not
+orderable through this Application root.
+
+If an automation key or S3 credential exists but its secret was never saved,
+the proposal lists its exact identity. A separate checkbox explicitly approves
+revoking only those lost credentials before State publication. A fresh normal
+Plan/Apply creates replacements; credentials already in State remain intact.
+No credential is revoked during assessment. A lost deletion response is inspected,
+never blindly repeated. If State publication has not begun, a stopped recovery
+can be closed after checking unchanged State/lock and the permitted key removals;
+a fresh assessment then uses the actual inventory.
+
+Self-service does not grant access to platform credential profiles, other orders,
+or manual operator attestations. Expired/revoked delegation, changed bindings,
+ambiguous resources, incomplete inventory and foreign locks remain blockers.
 See [the recovery execution contract](plan-execution.md#guided-application-state-recovery).

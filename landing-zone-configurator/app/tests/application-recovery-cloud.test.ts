@@ -35,6 +35,11 @@ function fixture(
         parent: { containerId: "folder" },
         labels: {},
       };
+    else if (url.includes("/routing-tables")) value = { items: [] };
+    else if (url.endsWith("/roles"))
+      value = { resourceId: projectId, resourceType: "project", roles: [] };
+    else if (url.includes("/access-keys?"))
+      value = { project: projectId, accessKeys: [] };
     else if (url.endsWith("/networks")) value = { items: [] };
     else if (url.endsWith("/service-accounts"))
       value = {
@@ -149,4 +154,159 @@ it("preserves the literal @ required by STACKIT key-list authorization", async (
     "/service-accounts/account@sa.stackit.cloud/keys",
   );
   expect(requests[0]?.url).not.toContain("%40");
+});
+
+it("collects named service instances, SNA routing, custom roles and Application-group credential metadata", async () => {
+  const tableId = "22222222-2222-4222-8222-222222222222",
+    instanceId = "33333333-3333-4333-8333-333333333333";
+  const f = fixture((url, value) => {
+    if (url.endsWith("/credentials-groups"))
+      value.credentialsGroups = [
+        {
+          credentialsGroupId: "app-group",
+          displayName: "application",
+          urn: "urn:application",
+        },
+      ];
+    if (url.includes("/access-keys?"))
+      value.accessKeys = [{ keyId: "lost-storage-key" }];
+    if (url.includes("secrets-manager"))
+      value.instances = [{ id: "secrets", name: "application-default" }];
+    if (url.includes("argus"))
+      value.instances = [
+        { id: "observability", name: "application", planName: "small" },
+      ];
+    if (url.endsWith("/roles"))
+      value.roles = [
+        {
+          id: "reader",
+          name: "application-reader",
+          description: "Reader",
+          permissions: [{ name: "iaas.network.get" }],
+        },
+      ];
+    if (url.endsWith("/routing-tables"))
+      value.items = [
+        {
+          id: tableId,
+          name: `app-${instanceId}`,
+          labels: {
+            application_instance: instanceId,
+            lzc_instance: instanceId,
+          },
+          systemRoutes: false,
+        },
+      ];
+    if (url.endsWith("/routes"))
+      value.items = [
+        {
+          id: projectId,
+          labels: {
+            application_instance: instanceId,
+            lzc_instance: instanceId,
+          },
+          destination: { type: "cidrv4", value: "0.0.0.0/0" },
+          nexthop: { type: "ipv4", value: "10.0.0.7" },
+        },
+      ];
+  });
+  const result = await f.cloud.read(
+    {
+      projectId,
+      ownerEmail,
+      region: "eu01",
+      customRoles: true,
+      routing: {
+        organizationId: projectId,
+        networkAreaId: tableId,
+        instanceId,
+      },
+    },
+    key,
+  );
+  expect(result.credentialsGroups[0]?.accessKeyIds).toEqual([
+    "lost-storage-key",
+  ]);
+  expect(result.secretsManagers[0]?.name).toBe("application-default");
+  expect(result.observability[0]?.planName).toBe("small");
+  expect(result.customRoles[0]?.permissions).toEqual(["iaas.network.get"]);
+  expect(result.routingTables[0]?.routes[0]?.nextHop).toEqual({
+    type: "ipv4",
+    value: "10.0.0.7",
+  });
+  expect(
+    f.calls.every((c) => c.init.method === "GET" || c.url.endsWith("/token")),
+  ).toBe(true);
+});
+it.each(["service-account-key", "objectstorage-credential"] as const)(
+  "revokes only the fixed reviewed %s endpoint once with no retries",
+  async (kind) => {
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const cloud = new StackitRecoveryCloud((async (
+      url: unknown,
+      init?: RequestInit,
+    ) => {
+      calls.push({ url: String(url), init });
+      return String(url).endsWith("/token")
+        ? Response.json({ access_token: "token", token_type: "Bearer" })
+        : new Response(null, { status: 204 });
+    }) as typeof fetch);
+    await cloud.revoke(
+      {
+        kind,
+        address: "module.application.credential",
+        discardIncompleteState: false,
+        projectId,
+        region: "eu01",
+        keyId: "key/with+separator",
+        ...(kind === "service-account-key"
+          ? { accountEmail: "automation@sa.stackit.cloud" }
+          : { groupId: "application-group" }),
+      },
+      key,
+    );
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.init?.method).toBe("DELETE");
+    expect(calls[1]?.url).toContain("key%2Fwith%2Bseparator");
+    expect(calls[1]?.init?.redirect).toBe("error");
+    if (kind === "service-account-key")
+      expect(calls[1]?.url).toContain("automation@sa.stackit.cloud");
+    else expect(calls[1]?.url).toContain("credentials-group=application-group");
+  },
+);
+
+it("discovers a project only after complete, bounded pagination of the exact folder", async () => {
+  const id = "22222222-2222-4222-8222-222222222222",
+    calls: string[] = [];
+  const cloud = new StackitRecoveryCloud((async (url: unknown) => {
+    const target = String(url);
+    calls.push(target);
+    if (target.endsWith("/token"))
+      return Response.json({ access_token: "token", token_type: "Bearer" });
+    const query = new URL(target);
+    expect(query.searchParams.get("containerParentId")).toBe("bound-folder");
+    const offset = Number(query.searchParams.get("offset"));
+    return Response.json({
+      offset,
+      limit: 100,
+      items:
+        offset === 0
+          ? Array.from({ length: 100 }, (_, i) => ({
+              projectId: `${String(i).padStart(8, "0")}-1111-4111-8111-111111111111`,
+              labels: {},
+              parent: { containerId: "bound-folder" },
+            }))
+          : [
+              {
+                projectId,
+                labels: { application_instance: id, lzc_instance: id },
+                parent: { containerId: "bound-folder" },
+              },
+            ],
+    });
+  }) as typeof fetch);
+  expect(
+    await cloud.findProject({ folderId: "bound-folder", instanceId: id }, key),
+  ).toBe(projectId);
+  expect(calls).toHaveLength(3);
 });

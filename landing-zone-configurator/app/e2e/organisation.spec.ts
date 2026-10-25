@@ -11,6 +11,7 @@ const organisationId = "33333333-3333-4333-8333-333333333333";
 for (const scenario of [
   "state-recovery-owner",
   "state-recovery-prepared",
+  "state-recovery-lost-key",
   "state-recovery-unknown",
   "state-recovery-expired",
   "owner",
@@ -263,6 +264,21 @@ for (const scenario of [
                 resourceId: "test-native-network-id",
               },
             ],
+            credentialRevocations:
+              scenario === "state-recovery-lost-key"
+                ? [
+                    {
+                      kind: "service-account-key",
+                      address:
+                        "module.application.stackit_service_account_key.automation",
+                      projectId: organisationId,
+                      region: "eu01",
+                      accountEmail: "automation@sa.stackit.cloud",
+                      keyId: "lost-key",
+                      discardIncompleteState: true,
+                    },
+                  ]
+                : [],
             preview: {
               create: 6,
               unchanged: 6,
@@ -272,7 +288,9 @@ for (const scenario of [
             },
             requiresPlatformEngineerReview: true,
             canAssess: false,
-            canCommit: scenario === "state-recovery-prepared",
+            canCommit:
+              scenario === "state-recovery-prepared" ||
+              scenario === "state-recovery-lost-key",
             canInspect: scenario === "state-recovery-unknown",
             startsInfrastructureApply: false,
             requiresFreshPlan: true,
@@ -302,6 +320,8 @@ for (const scenario of [
           expect(request.postDataJSON()).toEqual({
             originalStateSha256: "c".repeat(64),
             candidateStateSha256: "d".repeat(64),
+            confirmCredentialRevocations:
+              repairView?.credentialRevocations ?? [],
             confirmStateRepair: true,
             confirmExactOrphanLockRelease: true,
             confirmFreshPlanRequired: true,
@@ -340,8 +360,8 @@ for (const scenario of [
             retainedResources: 0,
             imports: [],
             preview: null,
-            requiresPlatformEngineerReview: true,
-            canAssess: false,
+            requiresPlatformEngineerReview: false,
+            canAssess: true,
             canCommit: false,
             canInspect: false,
             startsInfrastructureApply: false,
@@ -1375,7 +1395,12 @@ for (const scenario of [
         await panel
           .getByRole("button", { name: "Recovery anfordern", exact: true })
           .click();
-        await expect(panel).toContainText("Der zuständige Platform Owner");
+        await expect(
+          panel.getByRole("button", {
+            name: "Cloud-Abgleich starten",
+            exact: true,
+          }),
+        ).toBeEnabled();
         await expect(
           panel.getByRole("button", {
             name: "Geprüfte State-Reparatur ausführen",
@@ -1383,13 +1408,26 @@ for (const scenario of [
           }),
         ).toHaveCount(0);
         expect(mutations).toEqual([`jobs/${reviewJobId}/state-recovery`]);
-      } else if (scenario === "state-recovery-prepared") {
+      } else if (
+        scenario === "state-recovery-prepared" ||
+        scenario === "state-recovery-lost-key"
+      ) {
         const commit = panel.getByRole("button", {
           name: "Geprüfte State-Reparatur ausführen",
           exact: true,
         });
         await expect(commit).toBeDisabled();
-        await panel.getByRole("checkbox").check();
+        if (scenario === "state-recovery-lost-key") {
+          await expect(panel).toContainText(
+            "automation@sa.stackit.cloud / lost-key",
+          );
+          await expect(panel).toContainText(
+            "Der unvollständige State-Eintrag dieses Zugangs wird ebenfalls entfernt",
+          );
+          await panel.getByRole("checkbox").first().check();
+          await expect(commit).toBeDisabled();
+          await panel.getByRole("checkbox").nth(1).check();
+        } else await panel.getByRole("checkbox").check();
         await expect(commit).toBeEnabled();
         await page.getByLabel("Sprache").selectOption("en");
         await expect(

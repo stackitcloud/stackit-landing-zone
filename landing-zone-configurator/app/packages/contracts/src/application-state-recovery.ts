@@ -16,12 +16,33 @@ export const applicationStateRecoveryPhaseSchema = z.enum([
 export const applicationStateRecoveryImportSchema = z.strictObject({
   address: z.string().min(1).max(1024),
   type: z.enum([
+    "stackit_resourcemanager_project",
+    "stackit_routing_table",
+    "stackit_routing_table_route",
+    "stackit_authorization_project_custom_role",
+    "stackit_objectstorage_bucket",
+    "stackit_objectstorage_credentials_group",
+    "stackit_secretsmanager_instance",
+    "stackit_observability_instance",
     "stackit_network",
     "stackit_service_account",
     "stackit_authorization_project_role_assignment",
   ]),
   resourceId: z.string().min(1).max(1024),
 });
+export const applicationStateRecoveryRevocationSchema = z.strictObject({
+  kind: z.enum(["service-account-key", "objectstorage-credential"]),
+  address: z.string().min(1).max(1024),
+  projectId: z.uuid(),
+  region: z.enum(["eu01", "eu02"]),
+  accountEmail: z.email().optional(),
+  groupId: z.string().min(1).max(256).optional(),
+  keyId: z.string().min(1).max(256),
+  discardIncompleteState: z.boolean().default(false),
+});
+export type ApplicationStateRecoveryRevocation = z.infer<
+  typeof applicationStateRecoveryRevocationSchema
+>;
 export const applicationStateRecoveryBlockerSchema = z.enum([
   "runner-not-stopped",
   "execution-capability-active",
@@ -57,7 +78,11 @@ export const applicationStateRecoveryViewSchema = z.strictObject({
     .default(null),
   candidateSerial: count.nullable(),
   retainedResources: count,
-  imports: z.array(applicationStateRecoveryImportSchema).max(100),
+  imports: z.array(applicationStateRecoveryImportSchema).max(500),
+  credentialRevocations: z
+    .array(applicationStateRecoveryRevocationSchema)
+    .max(100)
+    .default([]),
   preview: z
     .strictObject({
       create: count,
@@ -67,7 +92,7 @@ export const applicationStateRecoveryViewSchema = z.strictObject({
       replace: count,
     })
     .nullable(),
-  requiresPlatformEngineerReview: z.literal(true),
+  requiresPlatformEngineerReview: z.boolean(),
   canAssess: z.boolean(),
   canCommit: z.boolean(),
   canInspect: z.boolean().default(false),
@@ -81,6 +106,10 @@ export const applicationStateRecoveryAssessRequestSchema = z.strictObject({
 export const applicationStateRecoveryCommitRequestSchema = z.strictObject({
   originalStateSha256: sha256,
   candidateStateSha256: sha256,
+  confirmCredentialRevocations: z
+    .array(applicationStateRecoveryRevocationSchema)
+    .max(100)
+    .default([]),
   confirmStateRepair: z.literal(true),
   confirmExactOrphanLockRelease: z.literal(true),
   confirmFreshPlanRequired: z.literal(true),

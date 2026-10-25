@@ -65,6 +65,12 @@ export function ApplicationStateRecovery({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [credentialsConfirmed, setCredentialsConfirmed] = useState<
+    string | null
+  >(null);
+  const approvalKey = recovery
+    ? `${recovery.id}:${recovery.candidateStateSha256}:${JSON.stringify(recovery.credentialRevocations)}`
+    : null;
   const lifetime = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const working = useRef(false);
@@ -127,6 +133,7 @@ export function ApplicationStateRecovery({
     setBusy(true);
     setError("");
     setConfirmed(null);
+    setCredentialsConfirmed(null);
     const signal = lifetime.current?.signal;
     try {
       const path =
@@ -146,6 +153,8 @@ export function ApplicationStateRecovery({
               : {
                   originalStateSha256: recovery?.originalStateSha256,
                   candidateStateSha256: recovery?.candidateStateSha256,
+                  confirmCredentialRevocations:
+                    recovery?.credentialRevocations ?? [],
                   confirmStateRepair: true,
                   confirmExactOrphanLockRelease: true,
                   confirmFreshPlanRequired: true,
@@ -255,32 +264,75 @@ export function ApplicationStateRecovery({
               </ul>
             </>
           )}
+          {recovery.credentialRevocations.length > 0 && (
+            <div role="note">
+              <p>
+                {t(
+                  "Diese Zugänge existieren ohne gespeichertes Geheimnis. Mit der Freigabe werden ausschließlich die folgenden Zugänge widerrufen. Ersatz wird erst durch einen neuen geprüften Plan und Apply erstellt.",
+                )}
+              </p>
+              <ul>
+                {recovery.credentialRevocations.map((r) => (
+                  <li key={`${r.kind}-${r.keyId}`}>
+                    <code>{r.address}</code>
+                    <br />
+                    <code>
+                      {r.accountEmail ?? r.groupId} / {r.keyId}
+                    </code>
+                    {r.discardIncompleteState && (
+                      <p>
+                        {t(
+                          "Der unvollständige State-Eintrag dieses Zugangs wird ebenfalls entfernt. Andere State-Einträge bleiben erhalten.",
+                        )}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {recovery.canCommit && (
             <fieldset disabled={busy}>
               <legend>{t("State-Reparatur freigeben")}</legend>
               <label>
                 <input
                   type="checkbox"
-                  checked={
-                    confirmed !== null &&
-                    confirmed === recovery.candidateStateSha256
-                  }
+                  checked={confirmed !== null && confirmed === approvalKey}
                   onChange={(e) =>
-                    setConfirmed(
-                      e.target.checked ? recovery.candidateStateSha256 : null,
-                    )
+                    setConfirmed(e.target.checked ? approvalKey : null)
                   }
                 />
                 {t(
                   "Ich habe den Vorschlag geprüft. Die aufgeführten bestehenden Ressourcen dürfen in den State übernommen und ausschließlich die geprüfte verwaiste Sperre gelöst werden. Danach ist ein neuer Plan derselben Bestellung erforderlich; ein Apply wird nicht freigegeben.",
                 )}
               </label>
+              {recovery.credentialRevocations.length > 0 && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={
+                      credentialsConfirmed !== null &&
+                      credentialsConfirmed === approvalKey
+                    }
+                    onChange={(e) =>
+                      setCredentialsConfirmed(
+                        e.target.checked ? approvalKey : null,
+                      )
+                    }
+                  />
+                  {t(
+                    "Ich bestätige den gezielten Widerruf und das angezeigte Entfernen unvollständiger State-Einträge. Vollständig gespeicherte Zugänge bleiben erhalten.",
+                  )}
+                </label>
+              )}
               <button
                 type="button"
                 className="button secondary"
                 disabled={
+                  (recovery.credentialRevocations.length > 0 &&
+                    credentialsConfirmed !== approvalKey) ||
                   !confirmed ||
-                  confirmed !== recovery.candidateStateSha256 ||
+                  confirmed !== approvalKey ||
                   busy
                 }
                 onClick={() => void act("commit")}

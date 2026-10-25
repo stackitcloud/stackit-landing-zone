@@ -1,3 +1,7 @@
+import {
+  type ApplicationStateRecoveryRevocation,
+  applicationStateRecoveryRevocationSchema,
+} from "@lzc/contracts";
 import { recoveryCloudInventorySchema } from "@lzc/contracts/recovery";
 import { z } from "zod";
 import { signedAssertion } from "../credentials/check.js";
@@ -7,6 +11,18 @@ import {
 } from "../credentials/key.js";
 
 const uuid = z.uuid();
+const scopeSchema = z.strictObject({
+  organizationId: uuid,
+  networkAreaId: uuid,
+  instanceId: uuid,
+});
+type RecoveryCloudInput = {
+  projectId: string;
+  region: "eu01" | "eu02";
+  ownerEmail: string;
+  routing?: z.infer<typeof scopeSchema>;
+  customRoles?: boolean;
+};
 const text = z.string().min(1).max(256);
 const endpoints = {
   "https://accounts.stackit.cloud":
@@ -55,36 +71,9 @@ export class StackitRecoveryCloud {
     return JSON.parse(Buffer.concat(parts).toString("utf8"));
   }
 
-  async read(
-    input: { projectId: string; region: "eu01" | "eu02"; ownerEmail: string },
-    rawKey: ServiceAccountKey,
-  ) {
-    try {
-      return await this.collect(input, rawKey);
-    } catch (error) {
-      if (error instanceof Error && error.message === "cloud-project-mismatch")
-        throw error;
-      throw new Error("cloud-inventory-incomplete");
-    }
-  }
-  private async collect(
-    input: {
-      projectId: string;
-      region: "eu01" | "eu02";
-      ownerEmail: string;
-    },
-    rawKey: ServiceAccountKey,
-  ) {
-    const { projectId, region, ownerEmail } = z
-      .strictObject({
-        projectId: uuid,
-        region: z.enum(["eu01", "eu02"]),
-        ownerEmail: z.email(),
-      })
-      .parse(input);
+  private async token(rawKey: ServiceAccountKey, deadline: number) {
     const key = parseServiceAccountKey(rawKey);
-    const deadline = Date.now() + 45_000;
-    const token = z
+    return z
       .object({
         access_token: z.string().min(1).max(32768),
         token_type: z.string().refine((v) => v.toLowerCase() === "bearer"),
@@ -103,6 +92,108 @@ export class StackitRecoveryCloud {
           deadline,
         ),
       );
+  }
+  /** Called only after the API persisted an exact, once-only reviewed intent.
+   * No retry: a timeout requires independent inspection of key metadata. */
+  async revoke(
+    input: ApplicationStateRecoveryRevocation,
+    rawKey: ServiceAccountKey,
+  ) {
+    const r = applicationStateRecoveryRevocationSchema.parse(input);
+    const token = await this.token(rawKey, Date.now() + 15_000);
+    let url: string;
+    if (r.kind === "service-account-key") {
+      if (!r.accountEmail || r.groupId)
+        throw new Error("cloud-project-mismatch");
+      url = `https://service-account.api.stackit.cloud/v2/projects/${r.projectId}/service-accounts/${encodeURIComponent(r.accountEmail).replaceAll("%40", "@")}/keys/${encodeURIComponent(r.keyId)}`;
+    } else {
+      if (!r.groupId || r.accountEmail)
+        throw new Error("cloud-project-mismatch");
+      url = `https://object-storage.api.stackit.cloud/v2/project/${r.projectId}/regions/${r.region}/access-keys/${encodeURIComponent(r.keyId)}?credentials-group=${encodeURIComponent(r.groupId)}`;
+    }
+    const response = await this.request(url, {
+      method: "DELETE",
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+      headers: { Authorization: `Bearer ${token.access_token}` },
+    });
+    await response.body?.cancel();
+    if (!response.ok) throw new Error("commit-outcome-unknown");
+  }
+  async findProject(
+    input: { folderId: string; instanceId: string },
+    rawKey: ServiceAccountKey,
+  ) {
+    z.object({ folderId: text, instanceId: uuid }).parse(input);
+    const deadline = Date.now() + 30_000;
+    const token = await this.token(rawKey, deadline);
+    const found: string[] = [];
+    const seen = new Set<string>();
+    for (let offset = 0; offset < 1000; offset += 100) {
+      const page = z
+        .strictObject({
+          offset: z.literal(offset),
+          limit: z.literal(100),
+          items: z
+            .array(
+              z.object({
+                projectId: uuid,
+                labels: z.record(z.string(), z.string()).default({}),
+                parent: z.object({ containerId: text }),
+              }),
+            )
+            .max(100),
+        })
+        .parse(
+          await this.json(
+            `https://resource-manager.api.stackit.cloud/v2/projects?containerParentId=${encodeURIComponent(input.folderId)}&offset=${offset}&limit=100`,
+            {
+              method: "GET",
+              headers: { Authorization: `Bearer ${token.access_token}` },
+            },
+            deadline,
+          ),
+        );
+      for (const p of page.items) {
+        if (seen.has(p.projectId))
+          throw new Error("cloud-inventory-incomplete");
+        seen.add(p.projectId);
+        if (p.parent.containerId !== input.folderId)
+          throw new Error("cloud-project-mismatch");
+        if (
+          p.labels.application_instance === input.instanceId ||
+          p.labels.lzc_instance === input.instanceId
+        )
+          found.push(p.projectId);
+      }
+      if (page.items.length < 100) {
+        if (found.length !== 1) throw new Error("cloud-resource-ambiguous");
+        return found[0]!;
+      }
+    }
+    throw new Error("cloud-inventory-incomplete");
+  }
+  async read(input: RecoveryCloudInput, rawKey: ServiceAccountKey) {
+    try {
+      return await this.collect(input, rawKey);
+    } catch (error) {
+      if (error instanceof Error && error.message === "cloud-project-mismatch")
+        throw error;
+      throw new Error("cloud-inventory-incomplete");
+    }
+  }
+  private async collect(input: RecoveryCloudInput, rawKey: ServiceAccountKey) {
+    const { projectId, region, ownerEmail } = z
+      .strictObject({
+        projectId: uuid,
+        region: z.enum(["eu01", "eu02"]),
+        ownerEmail: z.email(),
+        routing: scopeSchema.optional(),
+        customRoles: z.boolean().optional(),
+      })
+      .parse(input);
+    const deadline = Date.now() + 45_000;
+    const token = await this.token(rawKey, deadline);
     const get = (url: string) =>
       this.json(
         url,
@@ -168,6 +259,7 @@ export class StackitRecoveryCloud {
               id: uuid,
               name: text,
               routed: z.boolean(),
+              routingTableId: uuid.nullable().optional(),
               labels: z.record(z.string(), z.string()),
             }),
           )
@@ -232,11 +324,15 @@ export class StackitRecoveryCloud {
       })
       .parse(rawGroups).credentialsGroups;
     const secrets = z
-      .strictObject({ instances: z.array(z.object({ id: text })).max(999) })
+      .strictObject({
+        instances: z.array(z.object({ id: text, name: text })).max(999),
+      })
       .parse(rawSecrets).instances;
     const observability = z
       .strictObject({
-        instances: z.array(z.object({ id: text })).max(999),
+        instances: z
+          .array(z.object({ id: text, name: text, planName: text }))
+          .max(999),
         message: z.string().max(2000),
       })
       .parse(rawObservability).instances;
@@ -255,6 +351,105 @@ export class StackitRecoveryCloud {
             ).items;
       serviceAccounts.push({ ...a, keyIds: keys.map((k) => k.id) });
     }
+    const credentialsGroups = [];
+    for (const g of groups) {
+      const accessKeyIds =
+        g.displayName === "default"
+          ? []
+          : z
+              .strictObject({
+                project: z.literal(projectId),
+                accessKeys: z.array(z.object({ keyId: text })).max(999),
+              })
+              .parse(
+                await get(
+                  `https://object-storage.api.stackit.cloud/v2/project/${projectId}/regions/${region}/access-keys?credentials-group=${encodeURIComponent(g.credentialsGroupId)}`,
+                ),
+              )
+              .accessKeys.map((k) => k.keyId);
+      credentialsGroups.push({
+        id: g.credentialsGroupId,
+        name: g.displayName,
+        platformDefault: g.displayName === "default",
+        accessKeyIds,
+      });
+    }
+    const customRoles = input.customRoles
+      ? z
+          .strictObject({
+            resourceId: z.literal(projectId),
+            resourceType: z.literal("project"),
+            roles: z
+              .array(
+                z.object({
+                  id: text,
+                  name: text,
+                  description: z.string().max(2000),
+                  permissions: z.array(z.object({ name: text })).max(999),
+                }),
+              )
+              .max(999),
+          })
+          .parse(
+            await get(
+              `https://authorization.api.stackit.cloud/v2/project/${projectId}/roles`,
+            ),
+          )
+          .roles.map((r) => ({
+            ...r,
+            permissions: r.permissions.map((p) => p.name),
+          }))
+      : [];
+    const routingTables = [];
+    if (input.routing) {
+      const scope = scopeSchema.parse(input.routing);
+      const base = `https://iaas.api.stackit.cloud/v2/organizations/${scope.organizationId}/network-areas/${scope.networkAreaId}/regions/${region}/routing-tables`;
+      const tables = z
+        .strictObject({
+          items: z
+            .array(
+              z.object({
+                id: uuid,
+                name: text,
+                labels: z.record(z.string(), z.string()),
+                systemRoutes: z.boolean(),
+              }),
+            )
+            .max(999),
+        })
+        .parse(await get(base)).items;
+      for (const table of tables) {
+        // Shared SNA tables belonging to other Applications are not candidates.
+        // A partially matching label/name still reaches the identity verifier.
+        if (
+          table.labels.application_instance !== scope.instanceId &&
+          table.labels.lzc_instance !== scope.instanceId &&
+          !table.name.startsWith(`app-${scope.instanceId}`)
+        )
+          continue;
+        const routes = z
+          .strictObject({
+            items: z
+              .array(
+                z.object({
+                  id: uuid,
+                  destination: z.object({ type: text, value: text }),
+                  nexthop: z.object({ type: text, value: text }),
+                  labels: z.record(z.string(), z.string()),
+                }),
+              )
+              .max(999),
+          })
+          .parse(await get(`${base}/${table.id}/routes`)).items;
+        routingTables.push({
+          ...table,
+          routes: routes.map(({ nexthop, ...r }) => ({
+            ...r,
+            nextHop: nexthop,
+          })),
+        });
+      }
+    }
     return recoveryCloudInventorySchema.parse({
       complete: true,
       project: {
@@ -270,12 +465,22 @@ export class StackitRecoveryCloud {
       serviceAccounts,
       roleAssignments: members.map((r) => ({ ...r, projectId })),
       buckets: buckets.map((b) => b.name),
-      // Exclude the service's default group from adoption. This marker never
-      // permits importing it; the original Application group has its own name.
-      credentialsGroups: groups.map((g) => ({
-        id: g.credentialsGroupId,
-        name: g.displayName,
-        platformDefault: g.displayName === "default",
+      credentialsGroups,
+      customRoles,
+      customRolesComplete: !!input.customRoles,
+      routingScope: input.routing
+        ? {
+            organizationId: input.routing.organizationId,
+            networkAreaId: input.routing.networkAreaId,
+            region,
+          }
+        : null,
+      routingTables,
+      secretsManagers: secrets.map((s) => ({ id: s.id, name: s.name })),
+      observability: observability.map((i) => ({
+        id: i.id,
+        name: i.name,
+        planName: i.planName,
       })),
       secretsManagerIds: secrets.map((s) => s.id),
       observabilityIds: observability.map((i) => i.id),
