@@ -43,10 +43,27 @@ import {
 } from "../i18n";
 import type { Session } from "./Account";
 import { applicationGroupsSchema } from "./ApplicationGroups";
+import { ApplicationStateRecovery } from "./ApplicationStateRecovery";
 import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_state_recovery_active:
+    "Eine Recovery ist noch offen. Schließe zuerst den Abgleich dieser Bestellung ab.",
+  application_state_recovery_changed:
+    "Der Recovery-Prüfstand hat sich geändert. Bitte erneut laden und den Vorschlag neu prüfen.",
+  application_state_recovery_unavailable:
+    "Die geführte State-Recovery ist für diesen Fall noch nicht verfügbar.",
+  application_state_recovery_access_denied:
+    "Diese Recovery-Prüfung benötigt den zuständigen Platform Owner mit aktueller STACKIT-Anmeldung.",
+  application_state_recovery_credential_changed:
+    "Das gebundene Zugangsprofil ist nicht mehr unverändert verfügbar. Bitte den Platform Owner informieren.",
+  application_state_recovery_dispatch_unknown:
+    "Der Start des Recovery-Runners ist nicht eindeutig bestätigt. Bitte den Status prüfen; der Vorgang wird nicht erneut gestartet.",
+  application_state_recovery_runner_active:
+    "Der alte Runner ist noch aktiv oder sein Ende ist nicht nachgewiesen. Keine State-Reparatur möglich.",
+  application_state_recovery_source_changed:
+    "Die gebundene Quellrevision passt nicht zum verfügbaren Recovery-Runner.",
   application_apply_recovery_unavailable:
     "Dieser Apply kann nicht sicher als unterbrochen erfasst werden. Operator-Abgleich erforderlich.",
   application_apply_recovery_runner_active:
@@ -969,6 +986,7 @@ function ApplicationPlanControls({
   planEnabled,
   applyEnabled,
   recoveryReviewsEnabled,
+  stateRecoveryEnabled = false,
   delegationRequired = false,
   view,
   onViewChange,
@@ -979,6 +997,7 @@ function ApplicationPlanControls({
   planEnabled: boolean;
   applyEnabled: boolean;
   recoveryReviewsEnabled: boolean;
+  stateRecoveryEnabled?: boolean;
   delegationRequired?: boolean;
   view: OrderView;
   onViewChange: (view: OrderView) => void;
@@ -986,6 +1005,11 @@ function ApplicationPlanControls({
 }) {
   const [jobs, setJobs] = useState<z.infer<typeof applicationPlanJobSchema>[]>(
     [],
+  );
+  const recoveryRequest = useCallback(
+    (path: string, body?: unknown, signal?: AbortSignal) =>
+      request(path, session, body, signal),
+    [session],
   );
   const [backends, setBackends] = useState<{ id: string; bucket: string }[]>(
     [],
@@ -1659,6 +1683,20 @@ function ApplicationPlanControls({
                   instanceId={instance.id}
                 />
               )}
+            {stateRecoveryEnabled &&
+              job.operation === "apply" &&
+              job.purpose === "standard" &&
+              job.status === "reconciliation_required" &&
+              !job.recoveryReplanApproved &&
+              (job.requestedBy === session.user.id ||
+                (isEngineer && job.approvedBy === session.user.id)) && (
+                <ApplicationStateRecovery
+                  key={`state-recovery:${session.tenant?.id}:${session.user.id}:${job.id}`}
+                  jobId={job.id}
+                  send={recoveryRequest}
+                  onCommitted={refresh}
+                />
+              )}
             <details>
               <summary>{t("Ausführungsdetails")}</summary>
               <dl className="application-properties">
@@ -2060,6 +2098,7 @@ export function Applications({
   const [planEnabled, setPlanEnabled] = useState(false);
   const [applyEnabled, setApplyEnabled] = useState(false);
   const [recoveryReviewsEnabled, setRecoveryReviewsEnabled] = useState(false);
+  const [stateRecoveryEnabled, setStateRecoveryEnabled] = useState(false);
   const [planRefresh, setPlanRefresh] = useState(0);
   const [delegationRequired, setDelegationRequired] = useState(false);
   const [delegationEnabled, setDelegationEnabled] = useState(false);
@@ -2187,6 +2226,7 @@ export function Applications({
               planEnabled: z.boolean(),
               applyEnabled: z.boolean(),
               recoveryReviewsEnabled: z.boolean().default(false),
+              stateRecoveryEnabled: z.boolean().default(false),
               maintenanceEnabled: z.boolean().default(false),
               delegatedExecutionEnabled: z.boolean().default(false),
               acceleratorRevision: z
@@ -2199,6 +2239,7 @@ export function Applications({
               planEnabled: false,
               applyEnabled: false,
               recoveryReviewsEnabled: false,
+              stateRecoveryEnabled: false,
               maintenanceEnabled: false,
               acceleratorRevision: null,
               delegatedExecutionEnabled: false,
@@ -2213,6 +2254,7 @@ export function Applications({
       setPlanEnabled(storedOrders.execution.planEnabled);
       setApplyEnabled(storedOrders.execution.applyEnabled);
       setRecoveryReviewsEnabled(storedOrders.execution.recoveryReviewsEnabled);
+      setStateRecoveryEnabled(storedOrders.execution.stateRecoveryEnabled);
       setMaintenanceEnabled(storedOrders.execution.maintenanceEnabled);
       setDelegationRequired(storedOrders.execution.delegatedExecutionEnabled);
       setDelegationEnabled(storedOrders.executionDelegationEnabled);
@@ -4166,6 +4208,7 @@ export function Applications({
                 planEnabled={planEnabled}
                 applyEnabled={applyEnabled}
                 recoveryReviewsEnabled={recoveryReviewsEnabled}
+                stateRecoveryEnabled={stateRecoveryEnabled}
                 delegationRequired={delegationRequired}
                 view={orderView}
                 onViewChange={setOrderView}

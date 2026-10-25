@@ -286,3 +286,7 @@ The detail SVG is rendered locally with Mermaid CLI 11.12.0 from the Mermaid sou
 The overview uses exclusively local SVG shapes and system fonts.
 No credentials, configurations or diagram sources are sent to an
 online renderer.
+
+### Guided State recovery
+
+Interrupted Application Apply recovery uses separate, source-bound CF tasks, encrypted original/candidate States and immutable write-intent receipts. Preparation imports only into a local copy without S3 credentials. Explicit Platform Owner approval authorizes exact orphan-lock release and native State publication; independent remote verification then permits a fresh Plan of the same order. Unknown outcomes are inspected without replay. See the [execution contract](plan-execution.md#guided-application-state-recovery) for the bounded adoption catalogue and remaining acceptance.

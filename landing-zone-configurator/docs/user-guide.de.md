@@ -247,3 +247,48 @@ Mit der ursprünglich verwendeten Identität anmelden. Bestellungen mit Freigabe
 oder Ausführungsnachweisen werden nicht automatisch umgebunden; der Platform Owner
 soll die bestehende Bindung und die Nachweise prüfen. State und Bestellung werden
 dabei weder stillschweigend ersetzt noch zurückgesetzt.
+
+### Geführte Recovery nach unterbrochenem Application-Apply
+
+Behalte **dieselbe Bestellung**. Wähle in deren Reiter **Apply** die Aktion
+**Recovery anfordern**. Die Anfrage enthält keine Zugangsdaten oder State-Dateien.
+Der ursprünglich freigebende Platform Owner öffnet diese Bestellung, meldet
+sich bei Bedarf erneut an und wählt **Cloud-Abgleich starten**. Alte
+Ausführungsfreigaben müssen abgelaufen, der ursprüngliche Runner unabhängig
+beendet und der genaue Checkpoint lesbar sein. Ein separater Recovery-State
+oder nicht eindeutig prüfbarer Runner sperrt diesen Pfad.
+
+Der Dienst liest das gebundene Projekt, Ressourceninventare und Schlüsselmetadaten.
+Ein eigener Runner importiert eindeutig zugeordnete bestehende Ressourcen in eine
+private **lokale Kopie** des ursprünglichen States und erstellt einen diagnostischen
+Plan. Der Vorschlag zeigt die genauen Übernahmen, State-Prüfsummen/Serials und
+verbleibenden Neuanlagen. Bestehende Ressourceninstanzen, private Providerfelder
+und Lineage müssen erhalten bleiben; Änderungen, Ersetzungen oder Löschungen
+in dieser Vorschau sperren die Reparatur. Die Vorschau ist kein freigegebener
+Infrastrukturplan.
+
+Nach Prüfung bestätigt der ursprüngliche Platform Owner ausdrücklich
+**Geprüfte State-Reparatur ausführen**, einschließlich des Lösens der geprüften
+verwaisten Sperre und eines neuen Plans. Ein separater, einmaliger Runner prüft
+den Vorschlag erneut, löst ausschließlich diese Sperre und veröffentlicht die
+Kopie über natives OpenTofu mit Sperre sowie Serial-/Lineage-Prüfung. Er führt
+keinen Infrastruktur-Apply aus. Erst wenn der Dienst anschließend den entfernten
+State und die freie Sperre unabhängig bestätigt hat, ist ein **neuer Cloud-Plan
+derselben Bestellung** möglich. Prüfe diesen vor Apply. Der alte gespeicherte
+Plan bleibt unbrauchbar.
+
+Bei unterbrochenem Start, Schreiben oder Rückmelden wählt der ursprüngliche
+Platform Owner **Unterbrochene Recovery prüfen**. Die Aktion prüft das Ende des
+Tasks und das tatsächliche entfernte Ergebnis; sie wiederholt keinen nativen
+Schreibvorgang. Ein nicht nachgewiesener Ausgang bleibt gesperrt. Abgelaufene
+rein lesende Vorschläge können durch einen neuen Abgleich ersetzt werden.
+
+Der erste Übernahmekatalog unterstützt die gepinnte Application-Quelle
+`1ed855609d4dcbfded6759c7c8b4fabf7bd6725d`: ein erhaltenes Projekt, dessen lokales
+Public-Netz, Automation-Service-Account und explizite Projektrollenzuweisungen.
+Corporate-Routing, eigene Rollen und nicht erfasste Dienstinstanzen/Buckets sind
+ausdrückliche Blocker und werden nicht stillschweigend ignoriert. Ein
+Service-Account-Schlüssel ohne gespeichertes privates Material braucht eine
+getrennte Recovery-Entscheidung. Umgehe diese Grenzen nicht durch eine neue
+Bestellung oder das Löschen von State.
+Siehe [Recovery-Ausführungsvertrag](plan-execution.de.md#guided-application-state-recovery).

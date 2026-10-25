@@ -9,6 +9,10 @@ const tenantId = "22222222-2222-4222-8222-222222222222";
 const organisationId = "33333333-3333-4333-8333-333333333333";
 
 for (const scenario of [
+  "state-recovery-owner",
+  "state-recovery-prepared",
+  "state-recovery-unknown",
+  "state-recovery-expired",
   "owner",
   "pending",
   "rejected",
@@ -56,6 +60,7 @@ for (const scenario of [
     const instanceId = "44444444-4444-4444-8444-444444444444";
     const jobId = "77777777-7777-4777-8777-777777777777";
     const backendId = "88888888-8888-4888-8888-888888888888";
+    const stateRecovery = scenario.startsWith("state-recovery-");
     const replan = scenario.startsWith("replan-");
     const interrupted = scenario.startsWith("interrupted-plan");
     const interruptedApply = scenario.startsWith("interrupted-apply");
@@ -73,6 +78,7 @@ for (const scenario of [
       scenario === "plan-failed" || scenario === "maintenance-replan-failed";
     let maintenanceStarted = scenario === "maintenance-replan-failed";
     const initialApply =
+      stateRecovery ||
       interruptedApply ||
       replan ||
       recoveryReview ||
@@ -83,6 +89,7 @@ for (const scenario of [
       scenario === "maintenance-running" ||
       scenario === "maintenance-replan-failed";
     const engineer =
+      (stateRecovery && scenario !== "state-recovery-owner") ||
       scenario === "replan-operator" ||
       recoveryReview ||
       scenario === "engineer" ||
@@ -223,12 +230,126 @@ for (const scenario of [
         },
       });
     });
+    const recoveryId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    let repairView: Record<string, unknown> | null =
+      scenario === "state-recovery-owner"
+        ? null
+        : {
+            id: recoveryId,
+            jobId: reviewJobId,
+            instanceId,
+            phase:
+              scenario === "state-recovery-unknown"
+                ? "reconciliation-required"
+                : "prepared",
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(
+              Date.now() +
+                (scenario === "state-recovery-expired" ? -60000 : 600000),
+            ).toISOString(),
+            blockers:
+              scenario === "state-recovery-unknown"
+                ? ["commit-outcome-unknown"]
+                : [],
+            originalStateSha256: "c".repeat(64),
+            candidateStateSha256: "d".repeat(64),
+            originalSerial: 1,
+            candidateSerial: 4,
+            retainedResources: 3,
+            imports: [
+              {
+                address: "module.application.stackit_network.this[0]",
+                type: "stackit_network",
+                resourceId: "test-native-network-id",
+              },
+            ],
+            preview: {
+              create: 6,
+              unchanged: 6,
+              update: 0,
+              delete: 0,
+              replace: 0,
+            },
+            requiresPlatformEngineerReview: true,
+            canAssess: false,
+            canCommit: scenario === "state-recovery-prepared",
+            canInspect: scenario === "state-recovery-unknown",
+            startsInfrastructureApply: false,
+            requiresFreshPlan: true,
+          };
     await page.route("**/api/v1/applications/**", async (route) => {
       const request = route.request();
       const path = new URL(request.url()).pathname.replace(
         "/api/v1/applications/",
         "",
       );
+      if (
+        stateRecovery &&
+        path === `jobs/${reviewJobId}/state-recovery` &&
+        request.method() === "GET"
+      )
+        return route.fulfill({ json: { recovery: repairView } });
+      if (
+        stateRecovery &&
+        request.method() === "POST" &&
+        (path === `jobs/${reviewJobId}/state-recovery` ||
+          path.startsWith(`state-recoveries/${recoveryId}/`))
+      ) {
+        expect(request.headers()["x-lzc-tenant"]).toBe(tenantId);
+        expect(request.headers()["x-lzc-csrf"]).toBe("csrf-plan");
+        mutations.push(path);
+        if (path.endsWith("/commit")) {
+          expect(request.postDataJSON()).toEqual({
+            originalStateSha256: "c".repeat(64),
+            candidateStateSha256: "d".repeat(64),
+            confirmStateRepair: true,
+            confirmExactOrphanLockRelease: true,
+            confirmFreshPlanRequired: true,
+          });
+          repairView = {
+            ...repairView,
+            phase: "committing",
+            canCommit: false,
+            canInspect: true,
+          };
+        } else if (path.endsWith("/inspect")) {
+          expect(request.postDataJSON()).toEqual({});
+          repairView = {
+            ...repairView,
+            phase: "reconciliation-required",
+            canCommit: false,
+            canInspect: true,
+          };
+        } else {
+          expect(request.postDataJSON()).toMatchObject({
+            confirmReadOnlyAssessment: true,
+            idempotencyKey: expect.any(String),
+          });
+          repairView = {
+            id: recoveryId,
+            jobId: reviewJobId,
+            instanceId,
+            phase: "requested",
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 600000).toISOString(),
+            blockers: [],
+            originalStateSha256: null,
+            candidateStateSha256: null,
+            originalSerial: null,
+            candidateSerial: null,
+            retainedResources: 0,
+            imports: [],
+            preview: null,
+            requiresPlatformEngineerReview: true,
+            canAssess: false,
+            canCommit: false,
+            canInspect: false,
+            startsInfrastructureApply: false,
+            requiresFreshPlan: true,
+          };
+        }
+        return route.fulfill({ json: repairView });
+      }
       if (request.method() === "GET") {
         if (path === `jobs/${reviewJobId}/recovery-review`)
           return route.fulfill({
@@ -373,6 +494,7 @@ for (const scenario of [
                 planEnabled: scenario !== "disabled",
                 applyEnabled: delegated,
                 recoveryReviewsEnabled: recoveryReview,
+                stateRecoveryEnabled: stateRecovery,
                 delegatedExecutionEnabled: delegated,
                 maintenanceEnabled: maintenance,
               },
@@ -425,7 +547,9 @@ for (const scenario of [
                         instanceId,
                         requestedBy: requesterId,
                         approvedBy:
-                          recoveryReview || scenario === "replan-operator"
+                          stateRecovery ||
+                          recoveryReview ||
+                          scenario === "replan-operator"
                             ? userId
                             : "99999999-9999-4999-8999-999999999999",
                         createdAt: new Date().toISOString(),
@@ -1241,6 +1365,76 @@ for (const scenario of [
         }),
       ).toBeVisible();
     expect(mutations).toEqual([]);
+    if (stateRecovery) {
+      const panel = page.getByRole("region", {
+        name: "Geführte Application-Recovery",
+        exact: true,
+      });
+      await expect(panel).toBeVisible();
+      if (scenario === "state-recovery-owner") {
+        await panel
+          .getByRole("button", { name: "Recovery anfordern", exact: true })
+          .click();
+        await expect(panel).toContainText("Der zuständige Platform Owner");
+        await expect(
+          panel.getByRole("button", {
+            name: "Geprüfte State-Reparatur ausführen",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        expect(mutations).toEqual([`jobs/${reviewJobId}/state-recovery`]);
+      } else if (scenario === "state-recovery-prepared") {
+        const commit = panel.getByRole("button", {
+          name: "Geprüfte State-Reparatur ausführen",
+          exact: true,
+        });
+        await expect(commit).toBeDisabled();
+        await panel.getByRole("checkbox").check();
+        await expect(commit).toBeEnabled();
+        await page.getByLabel("Sprache").selectOption("en");
+        await expect(
+          page.getByRole("region", {
+            name: "Guided Application recovery",
+            exact: true,
+          }),
+        ).toBeVisible();
+        await page.getByLabel("Language").selectOption("de");
+        await commit.click();
+        await expect(panel).toContainText("State-Reparatur läuft");
+        expect(mutations).toEqual([`state-recoveries/${recoveryId}/commit`]);
+      } else if (scenario === "state-recovery-unknown") {
+        await panel
+          .getByRole("button", {
+            name: "Unterbrochene Recovery prüfen",
+            exact: true,
+          })
+          .click();
+        await expect(panel).toContainText(
+          "Die State-Änderung wird nicht erneut ausgeführt",
+        );
+        expect(mutations).toEqual([`state-recoveries/${recoveryId}/inspect`]);
+      } else {
+        await expect(
+          panel.getByRole("button", {
+            name: "Geprüfte State-Reparatur ausführen",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        await panel
+          .getByRole("button", {
+            name: "Neuen Recovery-Abgleich anfordern",
+            exact: true,
+          })
+          .click();
+        expect(mutations).toEqual([`jobs/${reviewJobId}/state-recovery`]);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      return;
+    }
     if (interruptedApply) {
       const details = page.getByRole("region", {
         name: "Bestelldetails",

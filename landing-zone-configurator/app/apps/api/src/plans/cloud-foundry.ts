@@ -12,6 +12,18 @@ export class RunnerRequestError extends Error {
 }
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 export interface PlanRunner {
+  startRecovery?(
+    id: string,
+    ticket: string,
+    origin: string,
+    record: (appId: string, sourceDropletId: string) => Promise<void>,
+  ): Promise<void>;
+  isRecoveryStopped?(
+    id: string,
+    appId: string,
+    sourceDropletId: string,
+  ): Promise<boolean>;
+  removeRecovery?(id: string, appId: string | null): Promise<void>;
   isStopped?(
     id: string,
     appId: string,
@@ -243,6 +255,42 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     await call(`apps/${appId}/actions/start`, "POST", {});
   }
 
+  async startRecovery(
+    id: string,
+    ticket: string,
+    origin: string,
+    record: (appId: string, sourceDropletId: string) => Promise<void>,
+  ) {
+    guid(id);
+    if (
+      this.config.broker !== "application" ||
+      !this.config.dropletId ||
+      !/^[A-Za-z0-9_-]{43}$/.test(ticket)
+    )
+      throw new Error("Recovery Runner configuration invalid");
+    const { call, appId } = await this.prepare(
+      `lzc-recovery-${id}`,
+      {
+        LZC_STATE_RECOVERY_TASK: id,
+        LZC_RUN_TICKET: ticket,
+        LZC_BROKER_ORIGIN: origin,
+        LZC_RUNNER_BROKER: "application",
+      },
+      record,
+    );
+    await call(`apps/${appId}/tasks`, "POST", {
+      name: "state-recovery",
+      command: "./runtime/bin/node apps/worker/dist/state-recovery-main.js",
+      memory_in_mb: 1024,
+      disk_in_mb: 4096,
+    });
+  }
+
+  async removeRecovery(id: string, appId: string | null) {
+    guid(id);
+    await this.removeNamed(`lzc-recovery-${id}`, appId);
+  }
+
   private async prepare(
     name: string,
     variables: Record<string, string>,
@@ -370,6 +418,17 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     await this.removeNamed(`lzc-plan-${id}`, appId);
   }
   async isStopped(id: string, appId: string, sourceDropletId: string) {
+    return this.inspectStopped(id, appId, sourceDropletId, false);
+  }
+  async isRecoveryStopped(id: string, appId: string, sourceDropletId: string) {
+    return this.inspectStopped(id, appId, sourceDropletId, true);
+  }
+  private async inspectStopped(
+    id: string,
+    appId: string,
+    sourceDropletId: string,
+    recovery: boolean,
+  ) {
     guid(id);
     guid(appId);
     guid(sourceDropletId);
@@ -387,9 +446,10 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       })
       .parse(await call(`apps/${appId}`));
     const warm =
+      !recovery &&
       app.name.startsWith("lzc-warm-") &&
       z.uuid().safeParse(app.name.slice("lzc-warm-".length)).success;
-    if (!warm && app.name !== `lzc-plan-${id}`)
+    if (!warm && app.name !== `${recovery ? "lzc-recovery" : "lzc-plan"}-${id}`)
       throw new Error("Runner identity mismatch");
     const routes = z
       .object({ resources: z.array(z.unknown()) })
@@ -429,7 +489,10 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       tasks.resources.some((t) => !["SUCCEEDED", "FAILED"].includes(t.state))
     )
       return false;
-    if (!warm) return tasks.resources.some((t) => t.name === "initial-plan");
+    if (!warm)
+      return tasks.resources.some(
+        (t) => t.name === (recovery ? "state-recovery" : "initial-plan"),
+      );
     const stats = z
       .object({ resources: z.array(z.object({ state: z.string() })) })
       .parse(await call(`apps/${appId}/processes/web/stats`));
