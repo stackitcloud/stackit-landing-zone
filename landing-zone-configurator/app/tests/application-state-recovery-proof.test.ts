@@ -283,3 +283,30 @@ describe("diagnostic recovery preview", () => {
       ).toThrow();
   });
 });
+
+it("collapses local import serials to exactly one remote successor and rejects inflated candidates", () => {
+  const f = fixture();
+  f.after.serial = 9;
+  expect(() =>
+    verifyImportedRecoveryState({
+      original: bytes(f.before),
+      candidate: bytes(f.after),
+      instanceId,
+      imports: [imported],
+    }),
+  ).toThrow("checkpoint-changed");
+  const normalized = retainRecoveryOutputs(
+    bytes(f.before),
+    bytes(f.after),
+    instanceId,
+  );
+  expect(JSON.parse(normalized.toString()).serial).toBe(f.before.serial + 1);
+  expect(
+    verifyImportedRecoveryState({
+      original: bytes(f.before),
+      candidate: normalized,
+      instanceId,
+      imports: [imported],
+    }).candidateSerial,
+  ).toBe(f.before.serial + 1);
+});

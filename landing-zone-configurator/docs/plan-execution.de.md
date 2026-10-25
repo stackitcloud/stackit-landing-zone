@@ -962,3 +962,5 @@ Platform Owner behält Zugriff.
 [Issue #157](https://github.com/stackitcloud/stackit-landing-zone/issues/157)
 verfolgt diese Abnahme. Lokale Zwischen-State-Persistenz bleibt
 [Issue #140](https://github.com/stackitcloud/stackit-landing-zone/issues/140).
+
+Lokale Recovery-Import-Serials werden vor Freigabe auf genau einen entfernten Nachfolger (`Original + 1`) normalisiert. Der Server weist überhöhte Kandidaten zurück. Ein nativer OpenTofu-Test schiebt beim Sperrerwerb einen konkurrierenden State mit gleicher/höherer Serial ein und weist nach, dass er nicht überschrieben wird.

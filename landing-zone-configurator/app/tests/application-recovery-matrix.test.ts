@@ -179,7 +179,7 @@ it("recovers every retained/missing subset across all importable Application res
     expect(imports).toEqual(missing);
     const candidate = {
       ...before,
-      serial: before.serial + imports.length,
+      serial: before.serial + Number(imports.length > 0),
       resources: [...f.state.resources, ...f.resources],
     };
     expect(
@@ -372,7 +372,7 @@ it.each(["service-account-key", "objectstorage-credential"] as const)(
     });
     const candidate = bytes({
       ...f.state,
-      serial: 15,
+      serial: 2,
       resources: [...f.state.resources, ...f.resources],
     });
     expect(() =>

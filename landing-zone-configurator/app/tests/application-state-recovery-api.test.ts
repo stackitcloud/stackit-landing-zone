@@ -288,7 +288,7 @@ function harness(lostKey = false, missingProject = false) {
     instanceId: instance,
   });
   const candidateDoc = JSON.parse(remote.toString());
-  candidateDoc.serial += imports.length;
+  candidateDoc.serial += Number(imports.length > 0);
   for (const i of imports) {
     const part = i.address.slice("module.application.".length);
     const type = part.split(".")[0];
