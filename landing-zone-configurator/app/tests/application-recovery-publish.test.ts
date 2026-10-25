@@ -50,7 +50,7 @@ function fixture() {
     events.push(c.args.join(" "));
     return "";
   };
-  const fence = async (step: "unlock" | "publish") => {
+  const fence = async (step: "unlock" | "publish" | `revoke:${string}`) => {
     events.push(`fence:${step}`);
   };
   return { input, events, calls, command, fence };
@@ -59,7 +59,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(prepareNativeStateRecovery).mockResolvedValue({
     candidate,
-  } as Awaited<ReturnType<typeof prepareNativeStateRecovery>>);
+    revocations: [],
+  } as unknown as Awaited<ReturnType<typeof prepareNativeStateRecovery>>);
 });
 describe("single-use native State publication", () => {
   it("requires fresh native proof, durable fences and native locking without forcing State", async () => {

@@ -4,6 +4,7 @@ import {
   encodeRecoveryArtifact,
   readRecoveryState,
   recoveryCloudInventorySchema,
+  recoveryRevocationStep,
 } from "@lzc/contracts/recovery";
 import type pg from "pg";
 import { describe, expect, it, vi } from "vitest";
@@ -13,10 +14,12 @@ import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
 import { canonicalJson, sha256 } from "../apps/api/src/plans/execution.js";
 import { recoveryFixture } from "./fixtures/application-state-recovery.js";
 
-function harness() {
+function harness(lostKey = false, missingProject = false) {
   const f = recoveryFixture(),
     instance = f.variables.application.instance_id,
     tenant = f.variables.application.tenant_id;
+  if (lostKey) f.inventory.serviceAccounts[0]!.keyIds.push("lost-key");
+  if (missingProject) f.state.resources = f.state.resources.slice(0, 1);
   const crypto = new ArtifactCrypto(randomBytes(32).toString("base64"));
   const session: Session = {
     id: randomUUID(),
@@ -180,6 +183,16 @@ function harness() {
       t.input_released_at = new Date();
       return { rows: [{ allowed: true }] };
     }
+    if (sql.includes("application_state_recovery_has_state_intent"))
+      return {
+        rows: [
+          {
+            present: [...intents].some(
+              (k) => k === `${args[1]}:unlock` || k === `${args[1]}:publish`,
+            ),
+          },
+        ],
+      };
     if (sql.includes("fence_application_state_recovery")) {
       const key = `${args[1]}:${args[2]}`;
       const allowed = !intents.has(key);
@@ -221,6 +234,10 @@ function harness() {
   };
   const secrets = { get: vi.fn(async () => ({ version: 1, key })) };
   const cloud = {
+    findProject: vi.fn(async () => f.inventory.project.projectId),
+    revoke: vi.fn(async (_revocation: unknown, _key: unknown) => {
+      f.inventory.serviceAccounts[0]!.keyIds = [];
+    }),
     read: vi.fn(async () => recoveryCloudInventorySchema.parse(f.inventory)),
   };
   const isStopped = vi.fn(async () => true),
@@ -315,10 +332,11 @@ function harness() {
       preview: encodeRecoveryArtifact(preview),
     });
   };
-  const commit = async () =>
+  const commit = async (confirmCredentialRevocations: unknown[] = []) =>
     service.commit(session, id, {
       originalStateSha256: sha256(Buffer.from(JSON.stringify(f.state))),
       candidateStateSha256: sha256(candidate),
+      confirmCredentialRevocations,
       confirmStateRepair: true,
       confirmExactOrphanLockRelease: true,
       confirmFreshPlanRequired: true,
@@ -368,7 +386,9 @@ describe("guided recovery broker and independent publication proof", () => {
       /synthetic-secret|input_ciphertext|terraform_version|backendCiphertext/,
     );
     expect(
-      h.queries.some((s) => s.includes("record_application_recovery_replan")),
+      h.queries.some((s) =>
+        s.includes("record_guided_application_recovery_replan"),
+      ),
     ).toBe(false);
     await h.commit();
     await h.service.input(h.ticket, h.binding());
@@ -385,7 +405,9 @@ describe("guided recovery broker and independent publication proof", () => {
       }),
     ).toMatchObject({ phase: "committed" });
     expect(
-      h.queries.filter((s) => s.includes("record_application_recovery_replan")),
+      h.queries.filter((s) =>
+        s.includes("record_guided_application_recovery_replan"),
+      ),
     ).toHaveLength(1);
   });
   it.each(["old-state", "foreign-lock", "foreign-state"])(
@@ -408,7 +430,9 @@ describe("guided recovery broker and independent publication proof", () => {
         }),
       ).toMatchObject({ phase: "reconciliation-required", canCommit: false });
       expect(
-        h.queries.some((s) => s.includes("record_application_recovery_replan")),
+        h.queries.some((s) =>
+          s.includes("record_guided_application_recovery_replan"),
+        ),
       ).toBe(false);
     },
   );
@@ -476,7 +500,9 @@ describe("guided recovery broker and independent publication proof", () => {
     expect(h.secrets.get).toHaveBeenCalledTimes(1);
     expect(h.runner.startRecovery).toHaveBeenCalledTimes(1);
     expect(
-      h.queries.some((s) => s.includes("record_application_recovery_replan")),
+      h.queries.some((s) =>
+        s.includes("record_guided_application_recovery_replan"),
+      ),
     ).toBe(false);
   });
   it("requires independently stopped recovery task before inspecting a lost commit result", async () => {
@@ -502,6 +528,7 @@ describe("guided recovery broker and independent publication proof", () => {
     await h.prepared();
     await h.commit();
     await h.service.input(h.ticket, h.binding());
+    await h.service.fence(h.ticket, h.binding(), { step: "unlock" });
     expect(await h.service.inspect(h.session, h.id)).toMatchObject({
       phase: "reconciliation-required",
     });
@@ -516,4 +543,76 @@ describe("guided recovery broker and independent publication proof", () => {
       ),
     ).toHaveLength(1);
   });
+});
+
+it("requires exact lost-key consent and revokes once before unlocking or publishing", async () => {
+  const h = harness(true);
+  await h.prepared();
+  const proposal = await h.service.get(h.session, h.id);
+  expect(proposal.credentialRevocations).toHaveLength(1);
+  await expect(h.commit()).rejects.toBeDefined();
+  await h.commit(proposal.credentialRevocations);
+  await h.service.input(h.ticket, h.binding());
+  await expect(
+    h.service.fence(h.ticket, h.binding(), { step: "unlock" }),
+  ).rejects.toBeDefined();
+  expect(h.cloud.revoke).not.toHaveBeenCalled();
+  const revoke = proposal.credentialRevocations[0]!;
+  await expect(
+    h.service.fence(h.ticket, h.binding(), {
+      step: `revoke:${"0".repeat(64)}`,
+    }),
+  ).rejects.toBeDefined();
+  await h.service.fence(h.ticket, h.binding(), {
+    step: recoveryRevocationStep(revoke),
+  });
+  expect(h.cloud.revoke).toHaveBeenCalledOnce();
+  expect(h.cloud.revoke.mock.calls[0]?.[0]).toEqual(revoke);
+  await expect(
+    h.service.fence(h.ticket, h.binding(), {
+      step: recoveryRevocationStep(revoke),
+    }),
+  ).rejects.toBeDefined();
+  await h.service.fence(h.ticket, h.binding(), { step: "unlock" });
+  h.setLock(null);
+  await h.service.fence(h.ticket, h.binding(), { step: "publish" });
+  h.setRemote(h.candidate);
+  await h.service.result(h.ticket, h.binding(), {
+    status: "publication-requested",
+  });
+  expect((await h.service.get(h.session, h.id)).phase).toBe("committed");
+});
+it("can abandon an interrupted credential-only repair after stopped-task and unchanged State/lock proof without retrying a deletion", async () => {
+  const h = harness(true);
+  await h.prepared();
+  const proposal = await h.service.get(h.session, h.id);
+  await h.commit(proposal.credentialRevocations);
+  await h.service.input(h.ticket, h.binding());
+  await h.service.fence(h.ticket, h.binding(), {
+    step: recoveryRevocationStep(proposal.credentialRevocations[0]!),
+  });
+  await h.service.result(h.ticket, h.binding(), {
+    status: "failed",
+    blocker: "commit-outcome-unknown",
+  });
+  expect((await h.service.inspect(h.session, h.id)).phase).toBe("blocked");
+  expect(h.cloud.revoke).toHaveBeenCalledOnce();
+  expect(h.runner.isRecoveryStopped).toHaveBeenCalledTimes(2);
+});
+
+it("discovers the exact bound project when its creation did not reach State", async () => {
+  const h = harness(false, true);
+  await h.prepared();
+  expect(h.cloud.findProject).toHaveBeenCalledWith(
+    {
+      folderId: h.f.variables.platform_contract.targets.public.folder_id,
+      instanceId: h.f.variables.application.instance_id,
+    },
+    expect.anything(),
+  );
+  expect(
+    (await h.service.get(h.session, h.id)).imports.some(
+      (i) => i.type === "stackit_resourcemanager_project",
+    ),
+  ).toBe(true);
 });

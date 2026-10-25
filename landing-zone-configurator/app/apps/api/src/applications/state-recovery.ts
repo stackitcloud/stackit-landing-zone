@@ -11,10 +11,14 @@ import {
 import {
   decodeRecoveryArtifact,
   deriveApplicationRecoveryImports,
+  deriveApplicationRecoveryRevocations,
   encodeRecoveryArtifact,
+  normalizeRevokedRecoveryInventory,
   readRecoveryState,
   recoveryArtifactSchema,
   recoveryCloudInventorySchema,
+  recoveryRevocationStep,
+  recoveryRevocationsAbsent,
   verifyImportedRecoveryState,
   verifyRecoveryPreview,
 } from "@lzc/contracts/recovery";
@@ -49,6 +53,8 @@ const contextSchema = z.object({
   credentialProfileId: z.uuid(),
   credentialVersion: z.number().int().positive(),
   credentialKeyId: z.string().min(1),
+  credentialOwnerId: z.uuid().optional(),
+  serviceAccount: z.string().min(1).optional(),
   organizationId: z.uuid(),
   sourceRevision: z.literal("1ed855609d4dcbfded6759c7c8b4fabf7bd6725d"),
   originalInputs: z.object({ variables: z.record(z.string(), z.json()) }),
@@ -153,13 +159,15 @@ export class ApplicationStateRecoveries {
   constructor(
     private readonly deps: {
       pool: pg.Pool;
-      profiles: Pick<PostgresCredentialProfiles, "verifyForPreparation">;
+      profiles: Pick<PostgresCredentialProfiles, "verifyForPreparation"> &
+        Partial<Pick<PostgresCredentialProfiles, "verifyDelegated">>;
       secrets: Pick<CredentialSecrets, "get">;
       backends: Pick<Backends, "read">;
       runner: PlanRunner;
       crypto: ArtifactCrypto;
       origin: string;
-      cloud?: Pick<StackitRecoveryCloud, "read">;
+      cloud?: Pick<StackitRecoveryCloud, "read"> &
+        Partial<Pick<StackitRecoveryCloud, "revoke" | "findProject">>;
     },
   ) {}
   private work<T>(session: Session, fn: (client: pg.PoolClient) => Promise<T>) {
@@ -177,7 +185,7 @@ export class ApplicationStateRecoveries {
       async (client) =>
         (
           await client.query<Row>(
-            "SELECT r.*,r.reviewed_by=$2 AND lzc.application_role('platform-engineer') AS can_review FROM lzc.application_state_recoveries r WHERE id=$1",
+            "SELECT r.*,((r.owner_user_id=$2 AND (lzc.application_role('application-owner') OR lzc.application_role('platform-engineer'))) OR (r.reviewed_by=$2 AND lzc.application_role('platform-engineer'))) AS can_review FROM lzc.application_state_recoveries r WHERE id=$1",
             [z.uuid().parse(id), session.userId],
           )
         ).rows[0],
@@ -195,6 +203,7 @@ export class ApplicationStateRecoveries {
       phase: row.phase,
       createdAt: row.created_at.toISOString(),
       expiresAt: row.expires_at.toISOString(),
+      requiresPlatformEngineerReview: false,
       canInspect:
         row.can_review &&
         ["assessing", "committing", "reconciliation-required"].includes(
@@ -285,9 +294,10 @@ export class ApplicationStateRecoveries {
       orphanLockId: null,
       candidateSerial: null,
       retainedResources: 0,
+      credentialRevocations: [],
       imports: [],
       preview: null,
-      requiresPlatformEngineerReview: true,
+      requiresPlatformEngineerReview: false,
       canAssess: false,
       canCommit: false,
       canInspect: false,
@@ -395,6 +405,34 @@ export class ApplicationStateRecoveries {
     };
   }
   private async credential(session: Session, c: Context) {
+    if (c.credentialOwnerId) {
+      if (!this.deps.profiles.verifyDelegated) fail("unavailable", 503);
+      const secret = await this.deps.secrets.get(
+        { tenantId: session.tenantId, userId: c.credentialOwnerId },
+        c.credentialProfileId,
+      );
+      if (
+        secret.version !== c.credentialVersion ||
+        secret.key.credentials.kid !== c.credentialKeyId ||
+        secret.key.credentials.iss !== c.serviceAccount
+      )
+        fail("credential_changed");
+      const check = await this.deps.profiles.verifyDelegated(
+        secret.key,
+        c.organizationId,
+      );
+      if (
+        check.status !== "passed" ||
+        check.organizationId !== c.organizationId
+      )
+        fail("credential_changed");
+      if (
+        fingerprint(await this.context(session, c.recoveryId)) !==
+        fingerprint(c)
+      )
+        fail();
+      return secret.key;
+    }
     const verified = await this.deps.profiles.verifyForPreparation(
       session,
       c.credentialProfileId,
@@ -426,30 +464,55 @@ export class ApplicationStateRecoveries {
         application: z.object({
           owner_email: z.email(),
           target_key: z.string(),
+          custom_roles: z.array(z.unknown()).optional(),
         }),
         platform_contract: z.object({
+          organization_id: z.uuid().optional(),
           targets: z.record(
             z.string(),
-            z.object({ region: z.enum(["eu01", "eu02"]) }),
+            z.object({
+              folder_id: z.string().min(1),
+              region: z.enum(["eu01", "eu02"]),
+              corporate: z.boolean().optional(),
+              network_area_id: z.uuid().nullable().optional(),
+            }),
           ),
         }),
       })
       .parse(c.originalInputs.variables);
-    const projectId = z
-      .uuid()
-      .parse(
-        projects.length === 1
-          ? projects[0]?.instance.attributes.project_id
-          : null,
-      );
-    const region =
-      vars.platform_contract.targets[vars.application.target_key]?.region;
-    if (!region) fail();
+    const target = vars.platform_contract.targets[vars.application.target_key];
+    const region = target?.region;
+    if (!region || !target) fail();
     const key = await this.credential(session, c);
-    const inventory = await (
-      this.deps.cloud ?? new StackitRecoveryCloud()
-    ).read(
-      { projectId, region, ownerEmail: vars.application.owner_email },
+    const cloud = this.deps.cloud ?? new StackitRecoveryCloud();
+    if (projects.length > 1) fail();
+    const projectId =
+      projects.length === 1
+        ? z.uuid().parse(projects[0]!.instance.attributes.project_id)
+        : cloud.findProject
+          ? await cloud.findProject(
+              { folderId: target.folder_id, instanceId: c.instanceId },
+              key,
+            )
+          : fail("unavailable", 503);
+    const inventory = await cloud.read(
+      {
+        projectId,
+        region,
+        ownerEmail: vars.application.owner_email,
+        customRoles: !!vars.application.custom_roles?.length,
+        ...(target.corporate
+          ? {
+              routing: {
+                organizationId: z
+                  .uuid()
+                  .parse(vars.platform_contract.organization_id),
+                networkAreaId: z.uuid().parse(target.network_area_id),
+                instanceId: c.instanceId,
+              },
+            }
+          : {}),
+      },
       key,
     );
     return { key, inventory };
@@ -486,6 +549,13 @@ export class ApplicationStateRecoveries {
       const publicView = {
         ...this.view(row),
         phase: "assessing" as const,
+        credentialRevocations: deriveApplicationRecoveryRevocations({
+          state: decodeRecoveryArtifact(state.original),
+          variables: c.originalInputs.variables,
+          inventory,
+          tenantId: session.tenantId,
+          instanceId: c.instanceId,
+        }),
         imports,
         originalStateSha256: state.original.sha256,
         originalSerial: state.parsed.state.serial,
@@ -523,7 +593,9 @@ export class ApplicationStateRecoveries {
     if (
       !view.canCommit ||
       view.originalStateSha256 !== request.originalStateSha256 ||
-      view.candidateStateSha256 !== request.candidateStateSha256
+      view.candidateStateSha256 !== request.candidateStateSha256 ||
+      canonicalJson(view.credentialRevocations) !==
+        canonicalJson(request.confirmCredentialRevocations)
     )
       fail();
     const c = await this.context(session, id);
@@ -585,6 +657,7 @@ export class ApplicationStateRecoveries {
     c: Context,
     payload: Private,
     unlocked: boolean,
+    allowRevoked = false,
   ) {
     if (fingerprint(c) !== payload.fingerprint) fail();
     await this.stopped(c);
@@ -602,7 +675,27 @@ export class ApplicationStateRecoveries {
       c,
       decodeRecoveryArtifact(payload.original),
     );
-    if (inventoryHash(current.inventory) !== payload.inventorySha256) fail();
+    const revocations = allowRevoked
+      ? deriveApplicationRecoveryRevocations({
+          state: decodeRecoveryArtifact(payload.original),
+          variables: c.originalInputs.variables,
+          inventory: payload.inventory,
+          tenantId: session.tenantId,
+          instanceId: c.instanceId,
+        })
+      : [];
+    if (
+      inventoryHash(
+        allowRevoked
+          ? normalizeRevokedRecoveryInventory(
+              current.inventory,
+              payload.inventory,
+              revocations,
+            )
+          : current.inventory,
+      ) !== payload.inventorySha256
+    )
+      fail();
     return current;
   }
   private async task(ticket: string, binding: unknown) {
@@ -697,7 +790,12 @@ export class ApplicationStateRecoveries {
   }
   async fence(ticket: string, binding: unknown, input: unknown) {
     const { step } = z
-      .strictObject({ step: z.enum(["unlock", "publish"]) })
+      .strictObject({
+        step: z.union([
+          z.enum(["unlock", "publish"]),
+          z.string().regex(/^revoke:[a-f0-9]{64}$/),
+        ]),
+      })
       .parse(input);
     const { session, row, task } = await this.task(ticket, binding);
     if (task.mode !== "commit") fail();
@@ -706,7 +804,29 @@ export class ApplicationStateRecoveries {
         ...row,
         private_ciphertext: task.input_ciphertext,
       });
-    await this.revalidate(session, c, payload, step === "publish");
+    const revocations = deriveApplicationRecoveryRevocations({
+      state: decodeRecoveryArtifact(payload.original),
+      variables: c.originalInputs.variables,
+      inventory: payload.inventory,
+      tenantId: session.tenantId,
+      instanceId: c.instanceId,
+    });
+    const revocation = revocations.find(
+      (r) => recoveryRevocationStep(r) === step,
+    );
+    if (step.startsWith("revoke:") && !revocation) fail();
+    const current = await this.revalidate(
+      session,
+      c,
+      payload,
+      step === "publish",
+      true,
+    );
+    if (
+      !revocation &&
+      !recoveryRevocationsAbsent(current.inventory, revocations)
+    )
+      fail();
     const allowed = await this.work(
       session,
       async (client) =>
@@ -718,6 +838,15 @@ export class ApplicationStateRecoveries {
         ).rows[0]?.allowed,
     );
     if (!allowed) fail("intent_consumed");
+    if (
+      revocation &&
+      !recoveryRevocationsAbsent(current.inventory, [revocation])
+    ) {
+      const cloud = this.deps.cloud ?? new StackitRecoveryCloud();
+      if (!cloud.revoke) fail("unavailable", 503);
+      await cloud.revoke(revocation, current.key);
+      // HTTP success is insufficient; the subsequent fence re-reads metadata.
+    }
     return { allowed: true };
   }
   private async published(session: Session, c: Context, payload: Private) {
@@ -725,6 +854,29 @@ export class ApplicationStateRecoveries {
       return undefined;
     try {
       await this.stopped(c);
+      const revocations = deriveApplicationRecoveryRevocations({
+        state: decodeRecoveryArtifact(payload.original),
+        variables: c.originalInputs.variables,
+        inventory: payload.inventory,
+        tenantId: session.tenantId,
+        instanceId: c.instanceId,
+      });
+      const cloud = await this.cloud(
+        session,
+        c,
+        decodeRecoveryArtifact(payload.original),
+      );
+      if (
+        inventoryHash(
+          normalizeRevokedRecoveryInventory(
+            cloud.inventory,
+            payload.inventory,
+            revocations,
+          ),
+        ) !== payload.inventorySha256 ||
+        !recoveryRevocationsAbsent(cloud.inventory, revocations)
+      )
+        return undefined;
       const current = await this.snapshot(session, c, false);
       const a = current.parsed.state;
       const b = readRecoveryState(
@@ -796,9 +948,30 @@ export class ApplicationStateRecoveries {
       task.mode === "commit" && task.input_released_at
         ? await this.published(session, c, payload)
         : undefined;
+    let beforeStateWrite = false;
+    if (task.mode === "commit" && task.input_released_at && !clearance) {
+      const stateIntent = await this.work(
+        session,
+        async (client) =>
+          (
+            await client.query<{ present: boolean }>(
+              "SELECT lzc_auth.application_state_recovery_has_state_intent($1,$2) AS present",
+              [session.id, task.id],
+            )
+          ).rows[0]?.present,
+      );
+      if (stateIntent === false) {
+        try {
+          await this.revalidate(session, c, payload, false, true);
+          beforeStateWrite = true;
+        } catch {
+          /* Keep ambiguous state unresolved. */
+        }
+      }
+    }
     const phase = clearance
       ? "committed"
-      : task.mode === "prepare" || !task.input_released_at
+      : task.mode === "prepare" || !task.input_released_at || beforeStateWrite
         ? "blocked"
         : "reconciliation-required";
     const view = {
@@ -813,7 +986,11 @@ export class ApplicationStateRecoveries {
                 : "commit-outcome-unknown",
             ],
     };
-    if (row.phase === "reconciliation-required" && !clearance)
+    if (
+      row.phase === "reconciliation-required" &&
+      !clearance &&
+      !beforeStateWrite
+    )
       return this.get(session, id);
     await this.work(session, async (client) => {
       await client.query(
@@ -829,7 +1006,7 @@ export class ApplicationStateRecoveries {
       );
       if (clearance)
         await client.query(
-          "SELECT * FROM lzc_auth.record_application_recovery_replan($1,$2,$3,$4,$5,$6,$7,true)",
+          "SELECT * FROM lzc_auth.record_guided_application_recovery_replan($1,$2,$3,$4,$5,$6,$7,true)",
           [
             session.id,
             c.jobId,
@@ -889,6 +1066,13 @@ export class ApplicationStateRecoveries {
         candidate,
         instanceId: c.instanceId,
         imports,
+        revocations: deriveApplicationRecoveryRevocations({
+          state: original,
+          variables: c.originalInputs.variables,
+          inventory: payload.inventory,
+          tenantId: session.tenantId,
+          instanceId: c.instanceId,
+        }),
       });
       const preview = verifyRecoveryPreview(
         JSON.parse(decodeRecoveryArtifact(request.preview).toString("utf8")),
@@ -940,7 +1124,7 @@ export class ApplicationStateRecoveries {
       );
       if (clearance)
         await client.query(
-          "SELECT * FROM lzc_auth.record_application_recovery_replan($1,$2,$3,$4,$5,$6,$7,true)",
+          "SELECT * FROM lzc_auth.record_guided_application_recovery_replan($1,$2,$3,$4,$5,$6,$7,true)",
           [
             session.id,
             c.jobId,

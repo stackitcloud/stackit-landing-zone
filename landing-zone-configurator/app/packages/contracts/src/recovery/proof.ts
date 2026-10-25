@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { ApplicationStateRecoveryImport } from "../application-state-recovery.js";
+import type {
+  ApplicationStateRecoveryImport,
+  ApplicationStateRecoveryRevocation,
+} from "../application-state-recovery.js";
 
 const resource = z
   .object({
@@ -56,7 +59,7 @@ export function readRecoveryState(bytes: Buffer, instanceId: string) {
   const addresses = new Set<string>();
   const instances = state.resources.flatMap((r) =>
     r.instances.map((i) => {
-      const address = `${r.module ? `${r.module}.` : ""}${r.type}.${r.name}${
+      const address = `${r.module ? `${r.module}.` : ""}${r.mode === "data" ? "data." : ""}${r.type}.${r.name}${
         i.index_key === undefined ? "" : `[${JSON.stringify(i.index_key)}]`
       }`;
       if (addresses.has(address) || i.deposed || i.status === "tainted")
@@ -101,13 +104,16 @@ export function verifyImportedRecoveryState(input: {
   candidate: Buffer;
   instanceId: string;
   imports: ApplicationStateRecoveryImport[];
+  revocations?: ApplicationStateRecoveryRevocation[];
 }) {
   const before = readRecoveryState(input.original, input.instanceId);
   const after = readRecoveryState(input.candidate, input.instanceId);
   if (
     before.state.lineage !== after.state.lineage ||
     after.state.serial < before.state.serial ||
-    (input.imports.length > 0 && after.state.serial <= before.state.serial)
+    ((input.imports.length > 0 ||
+      input.revocations?.some((r) => r.discardIncompleteState)) &&
+      after.state.serial <= before.state.serial)
   )
     throw new Error("checkpoint-changed");
   const existing = new Map(before.instances.map((i) => [i.address, i]));
@@ -115,7 +121,35 @@ export function verifyImportedRecoveryState(input: {
   const imports = new Map(input.imports.map((i) => [i.address, i]));
   if (imports.size !== input.imports.length)
     throw new Error("cloud-resource-ambiguous");
+  const removals = new Set<string>();
+  for (const r of input.revocations ?? [])
+    if (r.discardIncompleteState) {
+      const old = existing.get(r.address);
+      const attributes = old?.instance.attributes;
+      if (
+        !old ||
+        old.resource.mode !== "managed" ||
+        !attributes ||
+        !recoveryCredentialIncomplete(r.address, attributes) ||
+        attributes.project_id !== r.projectId ||
+        (r.kind === "service-account-key"
+          ? r.address !==
+              "module.application.stackit_service_account_key.automation" ||
+            attributes.key_id !== r.keyId ||
+            attributes.service_account_email !== r.accountEmail
+          : r.address !==
+              "module.application.stackit_objectstorage_credential.this" ||
+            attributes.credential_id !== r.keyId ||
+            attributes.credentials_group_id !== r.groupId)
+      )
+        throw new Error("checkpoint-changed");
+      removals.add(r.address);
+    }
   for (const [address, old] of existing) {
+    if (removals.has(address)) {
+      if (current.has(address)) throw new Error("checkpoint-changed");
+      continue;
+    }
     const retained = current.get(address);
     if (
       !retained ||
@@ -136,7 +170,23 @@ export function verifyImportedRecoveryState(input: {
     )
       throw new Error("checkpoint-changed");
   }
-  if (current.size !== existing.size + imports.size)
+  const newData = after.instances.filter(
+    (i) => !existing.has(i.address) && !imports.has(i.address),
+  );
+  if (
+    newData.some(
+      (i) =>
+        i.resource.mode !== "data" ||
+        i.address !==
+          "module.application.data.stackit_network_area_region.defaults[0]" ||
+        i.resource.type !== "stackit_network_area_region",
+    )
+  )
+    throw new Error("checkpoint-changed");
+  if (
+    current.size !==
+    existing.size - removals.size + imports.size + newData.length
+  )
     throw new Error("checkpoint-changed");
   // Imports must not silently rewrite root outputs or other global State fields.
   const global = (s: typeof before.state) => {
@@ -150,7 +200,7 @@ export function verifyImportedRecoveryState(input: {
     candidateStateSha256: after.sha256,
     originalSerial: before.state.serial,
     candidateSerial: after.state.serial,
-    retainedResources: existing.size,
+    retainedResources: existing.size - removals.size,
     candidateResources: current.size,
   };
 }
@@ -196,4 +246,33 @@ export function verifyRecoveryPreview(
       throw new Error("unexpected-plan-change");
   }
   return counts;
+}
+
+/** Templates generate private credentials; an ID-only checkpoint is not usable
+ * credential material. Only these two exact resource addresses may be discarded
+ * after explicit approval; no arbitrary State removal is accepted. */
+export function recoveryCredentialIncomplete(
+  address: string,
+  attributes: Record<string, unknown>,
+) {
+  if (address === "module.application.stackit_objectstorage_credential.this")
+    return (
+      typeof attributes.secret_access_key !== "string" ||
+      !attributes.secret_access_key ||
+      typeof attributes.access_key !== "string" ||
+      !attributes.access_key
+    );
+  if (address === "module.application.stackit_service_account_key.automation") {
+    try {
+      if (typeof attributes.json !== "string") return true;
+      const key = JSON.parse(attributes.json);
+      return (
+        typeof key?.credentials?.privateKey !== "string" ||
+        !key.credentials.privateKey
+      );
+    } catch {
+      return true;
+    }
+  }
+  return false;
 }

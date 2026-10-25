@@ -1,4 +1,10 @@
 export const englishMessages: Record<string, string> = {
+  "Der unvollständige State-Eintrag dieses Zugangs wird ebenfalls entfernt. Andere State-Einträge bleiben erhalten.":
+    "The incomplete State entry for this credential is also removed. Other State entries are retained.",
+  "Diese Zugänge existieren ohne gespeichertes Geheimnis. Mit der Freigabe werden ausschließlich die folgenden Zugänge widerrufen. Ersatz wird erst durch einen neuen geprüften Plan und Apply erstellt.":
+    "These credentials exist without a stored secret. Approval revokes only the following credentials. Replacements are created only by a newly reviewed Plan and Apply.",
+  "Ich bestätige den gezielten Widerruf und das angezeigte Entfernen unvollständiger State-Einträge. Vollständig gespeicherte Zugänge bleiben erhalten.":
+    "I confirm targeted revocation and the displayed removal of incomplete State entries. Fully stored credentials are retained.",
   "Geführte Application-Recovery": "Guided Application recovery",
   "Recovery angefordert": "Recovery requested",
   "Cloud-Abgleich läuft": "Cloud reconciliation running",

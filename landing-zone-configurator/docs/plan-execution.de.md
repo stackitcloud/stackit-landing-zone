@@ -871,8 +871,10 @@ sind weiterhin erforderlich. Der interne Claim allein aktiviert keine Ausfuehrun
 
 Migration `070` ergänzt mandantengetrennte Anfragen, einmalige Tasks sowie
 unveränderliche Schreibabsichten und Belege. Der bestehende Beleg des
-unterbrochenen Applies bleibt erforderlich. Der ursprüngliche Vertragsfreigeber
-prüft mit echter aktueller Sitzung und verifizierter STACKIT-Identität. Alte
+unterbrochenen Applies bleibt erforderlich. Migrationen `071`/`072` ergänzen den
+ausdrücklichen Widerruf verlorener Zugänge und die Selbstbedienung des ursprünglichen
+Bestellers. Dieser oder der Vertragsfreigeber prüft mit echter aktueller Sitzung
+und verifizierter STACKIT-Identität. Alte
 Apply-Freigaben/Tickets müssen abgelaufen sein. Eine Anfrage erteilt weder eine
 Apply-Freigabe noch Schreibrechte auf State. Normale Jobanlage und Recovery
 nutzen dieselbe Instanzsperre; eine offene Recovery blockiert andere Jobs dieser
@@ -886,8 +888,8 @@ Backend-Zugangsdaten. Vom Aufrufer vorgegebene Importadressen, Ressourcen-IDs,
 Befehle oder hochgeladene States werden nicht ausgeführt. Adressen und IDs
 stammen ausschließlich aus dem versionierten Serverkatalog und vollständigen
 lesenden Inventaren des gebundenen Projekts. Unbekannte Listenantworten,
-abgelehnte Dienstabfragen, mehrdeutige Ressourcen und fehlendes privates Material
-sperren den Ablauf.
+abgelehnte Dienstabfragen, mehrdeutige Ressourcen und nicht freigegebene Recovery
+fehlenden privaten Materials sperren den Ablauf.
 
 Der Application-CF-Dispatcher erstellt eine Kopie des gepinnten Runner-Droplets
 als `lzc-recovery-{taskId}` ohne öffentliche Route. `state-recovery-main.js` nutzt
@@ -924,14 +926,39 @@ Arbeitsverzeichnisse werden beim Verlassen entfernt, deterministisches
 CF-Aufräumen folgt dem gespeicherten Abschluss, und abgelaufene Tickets dürfen
 keine Eingaben mehr erhalten.
 
-Dies ist ein begrenzter Public-Übernahmekatalog für Quelle
-`1ed855609d4dcbfded6759c7c8b4fabf7bd6725d`, kein allgemeiner State-Editor.
-Corporate-Routing/eigene Rollen und verwaiste Dienstinstanzen brauchen weitere
-Katalognachweise. Schlüssel mit verlorenem privatem Material brauchen einen
-getrennten ausdrücklichen Rotations-/Ersetzungsentwurf. Lokale Nachweistests,
-echte PostgreSQL-Berechtigungstests und Browsertests sind noch keine gehostete
-Recovery-Abnahme; der gehostete Abbruchfall bleibt bis zum Nachweis des
-menschlich freigegebenen geführten Ablaufs erhalten.
+Der quellgebundene Übernahmekatalog deckt die verwalteten Ressourcentypen des
+gepinnten Application-Einstiegspunkts ab, einschließlich Corporate-Routing,
+eigener Rollen, Buckets, Credential-Gruppen, Secrets Manager und Observability.
+Fehlt das Projekt im State, sucht ein begrenzter, vollständig paginierter Scan
+im genauen Zielordner. Application-Labels, Geltungsbereich, Identitäten und native
+Vorschau müssen übereinstimmen; fremde SNA-Tabellen werden nicht übernommen.
+Neue bestellbare Ressourcentypen benötigen eine Recovery-Strategie im Katalog;
+CI gleicht diesen mit dem nativen Quellcode ab. Die deterministische Matrix
+prüft alle 8.192 Kombinationen vorhandener/fehlender Einträge der dreizehn
+importierbaren Ressourceninstanzen im vollständigen Corporate-Testfall, ohne
+pro Ressource einen Job zu provisionieren und abzubrechen.
+
+Fehlendes privates Material von Automation-Schlüsseln/S3-Zugängen erzeugt eine
+prüfbare Widerrufsliste statt erfundener Geheimnisse oder leerer Imports. Eine
+zusätzliche Checkbox und die genaue Liste im Commit-Request geben jeden gezielten
+Widerruf frei. Der Broker speichert vor dem DELETE an einen festen Endpunkt einen
+dauerhaften einmaligen `revoke:<identity-hash>`-Intent, ohne Wiederholung.
+Nachfolgende Freigabeschranken prüfen unabhängig, dass alle freigegebenen Schlüssel
+fehlen und das übrige Inventar identisch ist. Erst danach beginnen Entsperren und
+Veröffentlichen. Vollständig gespeicherte Zugänge bleiben unverändert. Einträge mit bloßer ID ohne nutzbares privates Material dürfen nur über dieselbe geprüfte Liste und natives lokales `state rm` aus der geschützten Kopie entfernt werden; die Prüfung weist das Entfernen vollständiger Credentials oder anderer State-Einträge ab. Ersatz entsteht
+über einen neuen regulären Plan/Apply. Ein beendeter Task ohne Entsperr-/Schreib-
+Intent kann erst nach Nachweis von Original-State/Lock und erlaubtem Inventar-
+Unterschied abgeschlossen werden. Native Schreibvorgänge werden nicht wiederholt.
+
+Der ursprüngliche Besteller darf mit der ungekündigten ursprünglichen Plattform-
+Ausführungsdelegation, aktueller verifizierter passender Identität und Mitgliedschaft
+abgleichen, freigeben und prüfen. Zugangsdaten bleiben intern und an diese Delegation
+gebunden. Separate SQL-Kontexte lassen die manuelle Operator-Bestätigung unverändert;
+die neue Wiederplanungsfreigabe verlangt einen unveränderlichen Abschlussnachweis
+der geführten Recovery. Fremde Bestellungen/Mandanten, entfernte Mitgliedschaft und
+widerrufene/geänderte Delegationen werden abgewiesen. Der ursprünglich freigebende
+Platform Owner behält Zugriff.
+
 [Issue #157](https://github.com/stackitcloud/stackit-landing-zone/issues/157)
 verfolgt diese Abnahme. Lokale Zwischen-State-Persistenz bleibt
 [Issue #140](https://github.com/stackitcloud/stackit-landing-zone/issues/140).

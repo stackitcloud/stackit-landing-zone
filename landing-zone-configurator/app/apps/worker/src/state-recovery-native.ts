@@ -13,6 +13,7 @@ import { resolve } from "node:path";
 import { promisify } from "node:util";
 import {
   deriveApplicationRecoveryImports,
+  deriveApplicationRecoveryRevocations,
   recoverySha256,
   retainRecoveryOutputs,
   verifyImportedRecoveryState,
@@ -79,6 +80,13 @@ export async function prepareNativeStateRecovery(
   )
     throw new Error("source-changed");
   const imports = deriveApplicationRecoveryImports({
+    state: input.original,
+    variables: input.variables,
+    inventory: input.inventory,
+    tenantId: input.tenantId,
+    instanceId: input.instanceId,
+  });
+  const revocations = deriveApplicationRecoveryRevocations({
     state: input.original,
     variables: input.variables,
     inventory: input.inventory,
@@ -177,6 +185,8 @@ export async function prepareNativeStateRecovery(
     );
     if (backend.backend && backend.backend.type !== "local")
       throw new Error("source-changed");
+    for (const r of revocations.filter((r) => r.discardIncompleteState))
+      await run(["state", "rm", r.address]);
     for (const item of imports)
       await run([
         "import",
@@ -195,6 +205,7 @@ export async function prepareNativeStateRecovery(
       candidate,
       instanceId: input.instanceId,
       imports,
+      revocations,
     });
     await writeFile(resolve(work, "terraform.tfstate"), candidate, {
       mode: 0o600,
@@ -215,6 +226,7 @@ export async function prepareNativeStateRecovery(
     );
     return {
       candidate,
+      revocations,
       preview: Buffer.from(preview),
       imports,
       proof,

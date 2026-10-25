@@ -53,7 +53,6 @@ describe("bounded Application cloud adoption catalogue", () => {
     "incomplete",
     "duplicate",
     "foreign-account",
-    "key",
     "bucket",
     "group",
     "secrets",

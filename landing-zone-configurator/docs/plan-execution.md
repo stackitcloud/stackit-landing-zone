@@ -372,8 +372,9 @@ No browser/Runner endpoint for this method is registered. It returns only job ID
 
 Migration `070` adds tenant-isolated requests, single-use tasks, immutable write
 intents and receipts. The existing interrupted-Apply receipt remains required.
-The original contract approver reviews with a real current session and verified
-STACKIT identity. Old Apply grants/tickets must expire. A request is neither an
+Migrations `071`/`072` add explicit lost-secret revocation and original-owner
+self-service. The original owner or contract approver reviews with a real current
+session and verified STACKIT identity. Old Apply grants/tickets must expire. A request is neither an
 Apply grant nor permission to mutate State. Normal job insertion and recovery
 use the same instance lock; active recovery blocks other jobs for that order.
 
@@ -384,7 +385,7 @@ cloud key material, native plan JSON or backend credentials. No caller-supplied
 import address, resource ID, command or uploaded State is executed. Addresses
 and IDs come only from the server's versioned catalogue and complete read-only
 inventories of the bound project. Unknown list envelopes, denied service reads,
-ambiguous resources and missing private material fail closed.
+ambiguous resources and unapproved missing-private-material recovery fail closed.
 
 The application-only CF dispatcher creates a route-free `lzc-recovery-{taskId}`
 copy of the pinned Runner droplet. `state-recovery-main.js` uses separate
@@ -416,13 +417,36 @@ can complete the receipt without repeating writes; any other result stays
 unresolved. Temporary workspaces are removed on exit, deterministic CF app
 cleanup follows persisted completion, and expired tickets cannot release input.
 
-This is a bounded Public adoption catalogue for source
-`1ed855609d4dcbfded6759c7c8b4fabf7bd6725d`, not generic State editing.
-Corporate routing/custom roles and orphan service instances require additional
-catalogue proofs. Keys with lost private material require an explicit separate
-rotation/replacement design. Local proof tests, real PostgreSQL authority tests
-and browser tests do not constitute hosted recovery acceptance; preserve the
-hosted interruption fixture until the guided human-approved flow is verified.
+The source-bound adoption catalogue covers the managed resource types of the
+pinned Application root, including Corporate routing, custom roles, buckets,
+credential groups, Secrets Manager and Observability. Project discovery uses a
+bounded, fully paginated scan of the exact target folder if the project has not
+reached State yet. Application labels, scope, exact identities and native preview
+must agree; unrelated SNA tables cannot be adopted. New orderable resource types
+must have a recovery strategy in the catalogue; CI compares it with native source.
+The deterministic matrix covers all 8,192 retained/missing subsets of the thirteen
+importable resource instances in the full Corporate fixture, without provisioning
+or interrupting a job per resource.
+
+Missing private automation-key/S3-credential material produces a reviewed
+revocation manifest, not invented secrets or an empty import. An additional
+checkbox and exact manifest in the commit request authorize each targeted revoke.
+The broker records a durable single-use `revoke:<identity-hash>` intent before its
+fixed-endpoint DELETE, without retries. Subsequent fences require independent
+absence of all approved keys and otherwise identical inventory. Only then may
+unlock/publication begin. Fully stored credentials remain unchanged. ID-only entries without usable private material can be removed from the protected local candidate only through the same reviewed manifest and native local `state rm`; proof rejects removal of a complete credential or any other State entry. Replacement
+is a separate fresh ordinary Plan/Apply. A stopped task which has not acquired an
+unlock/publication intent can be abandoned only after independently proving the
+original State/lock and allowed inventory delta. Native writes remain non-replayed.
+
+The original order owner may assess, approve and inspect using the unrevoked
+original platform execution delegation, a fresh verified matching identity and
+membership. Credential access stays internal and bound to that delegation.
+Separate SQL contexts keep the manual operator-attestation API unchanged; the
+new clearance function requires a committed immutable guided-recovery receipt.
+Foreign orders/tenants, removed membership and revoked/changed delegation fail
+closed. The original approving Platform Owner retains access.
+
 [Issue #157](https://github.com/stackitcloud/stackit-landing-zone/issues/157)
 tracks that acceptance. Local-backend intermediate-State persistence remains
 [Issue #140](https://github.com/stackitcloud/stackit-landing-zone/issues/140).

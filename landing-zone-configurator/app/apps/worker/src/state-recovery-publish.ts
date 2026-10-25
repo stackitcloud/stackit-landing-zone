@@ -2,7 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { s3BackendConfiguration, s3RunnerBackendSchema } from "@lzc/contracts";
-import { recoverySha256 } from "@lzc/contracts/recovery";
+import {
+  recoveryRevocationStep,
+  recoverySha256,
+} from "@lzc/contracts/recovery";
 import {
   prepareNativeStateRecovery,
   type RecoveryNativeCommand,
@@ -19,7 +22,7 @@ export async function publishNativeStateRecovery(
     backend: unknown;
     orphanLockId: string | null;
   },
-  fence: (step: "unlock" | "publish") => Promise<void>,
+  fence: (step: "unlock" | "publish" | `revoke:${string}`) => Promise<void>,
   command: RecoveryNativeCommand = recoveryNativeCommand,
 ) {
   const backend = s3RunnerBackendSchema.parse(input.backend);
@@ -74,6 +77,8 @@ export async function publishNativeStateRecovery(
     // Set before requesting the fence: an uncertain broker reply must never lead
     // to a new native action, even if the caller did not observe the receipt.
     intent = true;
+    for (const revocation of current.revocations)
+      await fence(recoveryRevocationStep(revocation) as `revoke:${string}`);
     await fence("unlock");
     if (input.orphanLockId)
       await run(["force-unlock", "-force", input.orphanLockId]);
