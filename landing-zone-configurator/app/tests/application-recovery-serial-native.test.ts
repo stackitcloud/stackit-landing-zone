@@ -149,7 +149,11 @@ it.skipIf(!binary).each([2, 3])(
       armed = true;
       await expect(
         command(["state", "push", "-lock-timeout=0s", "candidate.tfstate"]),
-      ).rejects.toBeDefined();
+      ).rejects.toMatchObject({
+        stderr: expect.stringMatching(
+          serial === 2 ? /same serial/ : /over newer state/,
+        ),
+      });
       expect(armed).toBe(false);
       expect(objects.get(stateKey)).toEqual(competing);
       expect(writes).toBe(0);
