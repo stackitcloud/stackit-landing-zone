@@ -46,3 +46,4 @@ assert.ok(human.includes('private-spike-value'), 'Normal attribute values remain
 assert.match(human, /private_output\s*=\s*\(sensitive value\)/);
 console.log('Real OpenTofu native UI, full saved-plan text and summary passed; no apply executed.');
 JS
+LZC_TEST_TOFU_BIN="$tofu_bin" node "$app_dir/node_modules/vitest/vitest.mjs" run "$app_dir/tests/application-recovery-serial-native.test.ts"

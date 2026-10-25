@@ -408,7 +408,7 @@ native `force-unlock`; `state push -lock-timeout=0s` never uses `-force` or
 `-lock=false`. There is no infrastructure Apply/Destroy command. The API verifies
 remote candidate semantics, non-regressing serial and a free lock before
 atomically recording an immutable receipt and the existing fresh-Plan clearance.
-State/lock publication and a lost HTTP response are never automatically replayed.
+State/lock publication and a lost HTTP response are never automatically replayed. Local import/removal serials are normalized to one remote successor (`original + 1`) before approval. The server rejects an inflated candidate. Native push acquires its lock and refreshes the destination before comparing snapshots, so an intervening legitimate writer at the same or a higher serial is rejected instead of being outranked by multiple local imports. The native contract suite injects such a writer on lock acquisition against a local S3 server and checks that its State is never overwritten.
 
 A fresh reviewer session can inspect an uncertain result. Tasks which never
 released input are durably revoked before cleanup. Otherwise the exact recovery

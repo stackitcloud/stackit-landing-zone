@@ -84,8 +84,9 @@ export function readRecoveryState(bytes: Buffer, instanceId: string) {
 }
 
 /** Import reevaluates root outputs. Retain the previous outputs until a fresh
- * normal Plan/Apply explicitly publishes newly computed ones. No resource data,
- * lineage, serial or check result is synthesized or altered here. */
+ * normal Plan/Apply explicitly publishes newly computed ones. Local serials
+ * advance by one remote publication; resource data, lineage and check results
+ * are never synthesized or altered here. */
 export function retainRecoveryOutputs(
   original: Buffer,
   imported: Buffer,
@@ -93,6 +94,11 @@ export function retainRecoveryOutputs(
 ): Buffer {
   const before = readRecoveryState(original, instanceId).state;
   const after = readRecoveryState(imported, instanceId).state;
+  // Local imports/removals can advance serial many times. Publication is one
+  // remote successor: never let an inflated candidate outrank an intervening
+  // legitimate writer. Native push re-reads under its own lock and rejects
+  // different snapshots at the same serial (or a newer destination).
+  if (after.serial > before.serial) after.serial = before.serial + 1;
   if (Object.hasOwn(before, "outputs")) after.outputs = before.outputs;
   else delete after.outputs;
   return Buffer.from(`${JSON.stringify(after, null, 2)}\n`);
@@ -111,6 +117,7 @@ export function verifyImportedRecoveryState(input: {
   if (
     before.state.lineage !== after.state.lineage ||
     after.state.serial < before.state.serial ||
+    after.state.serial > before.state.serial + 1 ||
     ((input.imports.length > 0 ||
       input.revocations?.some((r) => r.discardIncompleteState)) &&
       after.state.serial <= before.state.serial)
