@@ -24,6 +24,20 @@ type RecoveryCloudInput = {
   customRoles?: boolean;
 };
 const text = z.string().min(1).max(256);
+// Match the pinned SDK's Go url.PathEscape for opaque key IDs. In particular,
+// padded Object Storage IDs retain '=' and '+'; path/query delimiters stay escaped.
+const keySegment = (value: string) =>
+  encodeURIComponent(value)
+    .replace(
+      /[!'()*]/g,
+      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+    )
+    .replaceAll("%3D", "=")
+    .replaceAll("%2B", "+")
+    .replaceAll("%40", "@")
+    .replaceAll("%3A", ":")
+    .replaceAll("%26", "&")
+    .replaceAll("%24", "$");
 const endpoints = {
   "https://accounts.stackit.cloud":
     "https://accounts.stackit.cloud/oauth/v2/token",
@@ -105,11 +119,11 @@ export class StackitRecoveryCloud {
     if (r.kind === "service-account-key") {
       if (!r.accountEmail || r.groupId)
         throw new Error("cloud-project-mismatch");
-      url = `https://service-account.api.stackit.cloud/v2/projects/${r.projectId}/service-accounts/${encodeURIComponent(r.accountEmail).replaceAll("%40", "@")}/keys/${encodeURIComponent(r.keyId)}`;
+      url = `https://service-account.api.stackit.cloud/v2/projects/${r.projectId}/service-accounts/${encodeURIComponent(r.accountEmail).replaceAll("%40", "@")}/keys/${keySegment(r.keyId)}`;
     } else {
       if (!r.groupId || r.accountEmail)
         throw new Error("cloud-project-mismatch");
-      url = `https://object-storage.api.stackit.cloud/v2/project/${r.projectId}/regions/${r.region}/access-keys/${encodeURIComponent(r.keyId)}?credentials-group=${encodeURIComponent(r.groupId)}`;
+      url = `https://object-storage.api.stackit.cloud/v2/project/${r.projectId}/regions/${r.region}/access-keys/${keySegment(r.keyId)}?credentials-group=${encodeURIComponent(r.groupId)}`;
     }
     const response = await this.request(url, {
       method: "DELETE",

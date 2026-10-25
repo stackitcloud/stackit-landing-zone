@@ -258,7 +258,7 @@ it.each(["service-account-key", "objectstorage-credential"] as const)(
         discardIncompleteState: false,
         projectId,
         region: "eu01",
-        keyId: "key/with+separator",
+        keyId: "key/with+separator==",
         ...(kind === "service-account-key"
           ? { accountEmail: "automation@sa.stackit.cloud" }
           : { groupId: "application-group" }),
@@ -267,7 +267,7 @@ it.each(["service-account-key", "objectstorage-credential"] as const)(
     );
     expect(calls).toHaveLength(2);
     expect(calls[1]?.init?.method).toBe("DELETE");
-    expect(calls[1]?.url).toContain("key%2Fwith%2Bseparator");
+    expect(calls[1]?.url).toContain("key%2Fwith+separator==");
     expect(calls[1]?.init?.redirect).toBe("error");
     if (kind === "service-account-key")
       expect(calls[1]?.url).toContain("automation@sa.stackit.cloud");
