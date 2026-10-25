@@ -51,6 +51,10 @@ import {
   checkRecoveryReplan,
   type RecoveryReplanBackends,
 } from "./recovery-replan.js";
+import {
+  ApplicationStateRecoveries,
+  StateRecoveryError,
+} from "./state-recovery.js";
 
 export class ApplicationError extends Error {
   constructor(
@@ -214,6 +218,16 @@ export class Applications {
   executionCapabilities() {
     return {
       recoveryReviewsEnabled: this.options.recoveryReviewsEnabled,
+      stateRecoveryEnabled: Boolean(
+        this.dispatch?.runner.startRecovery &&
+          this.dispatch.runner.isStopped &&
+          this.dispatch.runner.isRecoveryStopped &&
+          this.dispatch.runner.supportsAccelerator &&
+          this.backends?.read &&
+          this.secrets &&
+          this.profiles &&
+          this.artifactCrypto,
+      ),
       planEnabled: Boolean(
         this.dispatch &&
           this.backends &&
@@ -244,6 +258,56 @@ export class Applications {
           "c4b43c36af198985980b17626c48d357795e3fbd")
         : null,
     };
+  }
+
+  private stateRecoveries() {
+    if (
+      !this.dispatch?.runner.startRecovery ||
+      !this.backends?.read ||
+      !this.profiles ||
+      !this.secrets ||
+      !this.artifactCrypto
+    )
+      throw new StateRecoveryError(
+        503,
+        "application_state_recovery_unavailable",
+      );
+    return new ApplicationStateRecoveries({
+      pool: this.pool,
+      profiles: this.profiles,
+      secrets: this.secrets,
+      backends: { read: this.backends.read },
+      runner: this.dispatch.runner,
+      crypto: this.artifactCrypto,
+      origin: this.dispatch.origin,
+    });
+  }
+  latestStateRecovery(session: Session, jobId: string) {
+    return this.stateRecoveries().latest(session, jobId);
+  }
+  getStateRecovery(session: Session, id: string) {
+    return this.stateRecoveries().get(session, id);
+  }
+  requestStateRecovery(session: Session, jobId: string, input: unknown) {
+    return this.stateRecoveries().request(session, jobId, input);
+  }
+  assessStateRecovery(session: Session, id: string) {
+    return this.stateRecoveries().assess(session, id);
+  }
+  inspectStateRecovery(session: Session, id: string) {
+    return this.stateRecoveries().inspect(session, id);
+  }
+  commitStateRecovery(session: Session, id: string, input: unknown) {
+    return this.stateRecoveries().commit(session, id, input);
+  }
+  stateRecoveryInput(ticket: string, binding: unknown) {
+    return this.stateRecoveries().input(ticket, binding);
+  }
+  stateRecoveryFence(ticket: string, binding: unknown, input: unknown) {
+    return this.stateRecoveries().fence(ticket, binding, input);
+  }
+  stateRecoveryResult(ticket: string, binding: unknown, input: unknown) {
+    return this.stateRecoveries().result(ticket, binding, input);
   }
 
   listExecutionBindings(session: Session) {

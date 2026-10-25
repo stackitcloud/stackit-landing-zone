@@ -864,3 +864,74 @@ Job-ID, Claimzeit und Ablauf zurueck; keine Credentials, Ticket oder Runner-Star
 Die anschliessende technische Profil-/Version-/Key-Pruefung, sichere Secret-
 Ausgabe, abschliessende Autoritaetspruefung und ticketgebundene Dispatch-Integration
 sind weiterhin erforderlich. Der interne Claim allein aktiviert keine Ausfuehrung.
+
+<a id="guided-application-state-recovery"></a>
+
+## Geführte Application-State-Recovery
+
+Migration `070` ergänzt mandantengetrennte Anfragen, einmalige Tasks sowie
+unveränderliche Schreibabsichten und Belege. Der bestehende Beleg des
+unterbrochenen Applies bleibt erforderlich. Der ursprüngliche Vertragsfreigeber
+prüft mit echter aktueller Sitzung und verifizierter STACKIT-Identität. Alte
+Apply-Freigaben/Tickets müssen abgelaufen sein. Eine Anfrage erteilt weder eine
+Apply-Freigabe noch Schreibrechte auf State. Normale Jobanlage und Recovery
+nutzen dieselbe Instanzsperre; eine offene Recovery blockiert andere Jobs dieser
+Bestellung.
+
+Authentifizierte UI-Endpunkte unter `/api/v1/applications` fordern einen Abgleich
+an (`jobs/{id}/state-recovery`) und prüfen, bestätigen oder untersuchen einen
+Vorschlag (`state-recoveries/{id}/{assess|commit|inspect}`). Öffentliche Ansichten
+enthalten weder State, Cloud-Schlüsselmaterial, natives Plan-JSON noch
+Backend-Zugangsdaten. Vom Aufrufer vorgegebene Importadressen, Ressourcen-IDs,
+Befehle oder hochgeladene States werden nicht ausgeführt. Adressen und IDs
+stammen ausschließlich aus dem versionierten Serverkatalog und vollständigen
+lesenden Inventaren des gebundenen Projekts. Unbekannte Listenantworten,
+abgelehnte Dienstabfragen, mehrdeutige Ressourcen und fehlendes privates Material
+sperren den Ablauf.
+
+Der Application-CF-Dispatcher erstellt eine Kopie des gepinnten Runner-Droplets
+als `lzc-recovery-{taskId}` ohne öffentliche Route. `state-recovery-main.js` nutzt
+separate Broker-Endpunkte `/api/application-state-recovery/{input,fence,result}`,
+ein einmaliges opakes Ticket und eine unveränderliche Quellbindung. Jeder Task
+hält eine unveränderliche verschlüsselte Eingabekopie. Die Vorschlagsvorbereitung
+entfernt das S3-Backend vor nativem Init/Import/Plan und erhält keine
+S3-Zugangsdaten. Sie bewahrt alle ursprünglichen Ressourceninstanzen/privaten
+Felder, Lineage und ursprünglichen Root-Outputs in der lokalen Importkopie;
+der reguläre neue Plan berechnet Outputs später neu. Die diagnostische Vorschau
+erlaubt nur Neuanlagen und unveränderte Ressourcen. Komprimierte Artefakte haben
+eigene Größenlimits und Klartextprüfsummen; Originale und Kopien sind
+verschlüsselt gespeichert.
+
+Die Übernahme erfordert die ausdrückliche menschliche Freigabe beider
+State-Prüfsummen, der genauen verwaisten Sperre und eines neuen Plans. Sie prüft
+den alten Runner zweimal, ursprünglichen S3-State und Sperre zweimal sowie
+Quelle, Zugangsdatenversion und Cloud-Inventar. Der Worker wiederholt die native
+lesende Vorbereitung vor den dauerhaften, einmaligen Absichten `unlock` und
+`publish`. Nur die geprüfte verwaiste ID darf an natives `force-unlock` gehen;
+`state push -lock-timeout=0s` nutzt niemals `-force` oder `-lock=false`. Es gibt
+keinen Infrastruktur-Apply-/Destroy-Befehl. Die API bestätigt entfernte
+Kandidatensemantik, nicht zurückgesetzte Serial und freie Sperre, bevor sie
+atomar einen unveränderlichen Beleg und die bestehende Freigabe für einen neuen
+Plan speichert. State-/Lock-Schreiben und verlorene HTTP-Antworten werden nie
+automatisch wiederholt.
+
+Eine frische Prüfersitzung kann einen unklaren Ausgang untersuchen. Tasks ohne
+bereits ausgegebene Eingaben werden vor dem Aufräumen dauerhaft widerrufen.
+Andernfalls muss der genaue Recovery-Runner unabhängig beendet sein. Passender
+veröffentlichter State und freie Sperre können den Beleg ohne Wiederholung von
+Schreibvorgängen abschließen; jedes andere Ergebnis bleibt ungeklärt. Temporäre
+Arbeitsverzeichnisse werden beim Verlassen entfernt, deterministisches
+CF-Aufräumen folgt dem gespeicherten Abschluss, und abgelaufene Tickets dürfen
+keine Eingaben mehr erhalten.
+
+Dies ist ein begrenzter Public-Übernahmekatalog für Quelle
+`1ed855609d4dcbfded6759c7c8b4fabf7bd6725d`, kein allgemeiner State-Editor.
+Corporate-Routing/eigene Rollen und verwaiste Dienstinstanzen brauchen weitere
+Katalognachweise. Schlüssel mit verlorenem privatem Material brauchen einen
+getrennten ausdrücklichen Rotations-/Ersetzungsentwurf. Lokale Nachweistests,
+echte PostgreSQL-Berechtigungstests und Browsertests sind noch keine gehostete
+Recovery-Abnahme; der gehostete Abbruchfall bleibt bis zum Nachweis des
+menschlich freigegebenen geführten Ablaufs erhalten.
+[Issue #157](https://github.com/stackitcloud/stackit-landing-zone/issues/157)
+verfolgt diese Abnahme. Lokale Zwischen-State-Persistenz bleibt
+[Issue #140](https://github.com/stackitcloud/stackit-landing-zone/issues/140).

@@ -365,3 +365,64 @@ Migration 028 provides the atomic consumption stage. Internal `claimJobGrant` re
 Claim and revocation serialize the same row; only one can succeed. After consumption, no revocation claiming credential retrieval is confirmed; 409 is returned instead. Retrying original job preparation returns no false `prepared` evidence. The app role may neither write claims directly nor reset or delete them.
 
 No browser/Runner endpoint for this method is registered. It returns only job ID, claim time and expiry; no credentials, ticket or Runner start. Subsequent technical profile/version/key checking, secure secret issuance, final authority check and ticket-bound dispatch integration remain necessary. Internal claim alone activates no execution.
+
+<a id="guided-application-state-recovery"></a>
+
+## Guided Application State recovery
+
+Migration `070` adds tenant-isolated requests, single-use tasks, immutable write
+intents and receipts. The existing interrupted-Apply receipt remains required.
+The original contract approver reviews with a real current session and verified
+STACKIT identity. Old Apply grants/tickets must expire. A request is neither an
+Apply grant nor permission to mutate State. Normal job insertion and recovery
+use the same instance lock; active recovery blocks other jobs for that order.
+
+Authenticated UI endpoints under `/api/v1/applications` request an assessment
+(`jobs/{id}/state-recovery`) and assess, commit or inspect a proposal
+(`state-recoveries/{id}/{assess|commit|inspect}`). Public views never contain State,
+cloud key material, native plan JSON or backend credentials. No caller-supplied
+import address, resource ID, command or uploaded State is executed. Addresses
+and IDs come only from the server's versioned catalogue and complete read-only
+inventories of the bound project. Unknown list envelopes, denied service reads,
+ambiguous resources and missing private material fail closed.
+
+The application-only CF dispatcher creates a route-free `lzc-recovery-{taskId}`
+copy of the pinned Runner droplet. `state-recovery-main.js` uses separate
+`/api/application-state-recovery/{input,fence,result}` broker endpoints, a
+single-use opaque ticket and immutable source binding. Each task holds an
+immutable encrypted input snapshot. Proposal preparation removes the S3 backend
+before native init/import/Plan and receives no S3 credentials. It preserves all
+original resource instances/private fields, lineage and original root outputs
+in the local imported candidate; ordinary replanning recomputes outputs later.
+The diagnostic preview permits only creates and no-ops. Compressed artifacts
+have independent size limits and plaintext checksums; originals and candidates
+are encrypted at rest.
+
+Commit needs explicit human approval of both State hashes, exact orphan-lock
+release and fresh planning. It rechecks the old Runner twice, original S3 State
+and lock twice, source, credential version and cloud inventory. The worker
+repeats native read-only preparation before requesting durable, once-only
+`unlock` then `publish` intents. Only the approved orphan ID can be passed to
+native `force-unlock`; `state push -lock-timeout=0s` never uses `-force` or
+`-lock=false`. There is no infrastructure Apply/Destroy command. The API verifies
+remote candidate semantics, non-regressing serial and a free lock before
+atomically recording an immutable receipt and the existing fresh-Plan clearance.
+State/lock publication and a lost HTTP response are never automatically replayed.
+
+A fresh reviewer session can inspect an uncertain result. Tasks which never
+released input are durably revoked before cleanup. Otherwise the exact recovery
+Runner must independently be stopped. Matching published State and a free lock
+can complete the receipt without repeating writes; any other result stays
+unresolved. Temporary workspaces are removed on exit, deterministic CF app
+cleanup follows persisted completion, and expired tickets cannot release input.
+
+This is a bounded Public adoption catalogue for source
+`1ed855609d4dcbfded6759c7c8b4fabf7bd6725d`, not generic State editing.
+Corporate routing/custom roles and orphan service instances require additional
+catalogue proofs. Keys with lost private material require an explicit separate
+rotation/replacement design. Local proof tests, real PostgreSQL authority tests
+and browser tests do not constitute hosted recovery acceptance; preserve the
+hosted interruption fixture until the guided human-approved flow is verified.
+[Issue #157](https://github.com/stackitcloud/stackit-landing-zone/issues/157)
+tracks that acceptance. Local-backend intermediate-State persistence remains
+[Issue #140](https://github.com/stackitcloud/stackit-landing-zone/issues/140).

@@ -20,6 +20,7 @@ import {
   type Applications,
   applicationRunnerPackageSchema,
 } from "./service.js";
+import { StateRecoveryError } from "./state-recovery.js";
 
 export type ApplicationRunnerServices = Pick<
   Applications,
@@ -29,7 +30,15 @@ export type ApplicationRunnerServices = Pick<
   | "runnerOutput"
   | "runnerResult"
 > &
-  Partial<Pick<Applications, "runnerRecovery">>;
+  Partial<
+    Pick<
+      Applications,
+      | "runnerRecovery"
+      | "stateRecoveryInput"
+      | "stateRecoveryFence"
+      | "stateRecoveryResult"
+    >
+  >;
 
 export function registerApplicationRunner(
   app: FastifyInstance,
@@ -46,7 +55,10 @@ export function registerApplicationRunner(
     routes.setErrorHandler((error, _request, reply) => {
       if ((error as { statusCode?: number }).statusCode === 413)
         return reply.code(413).send({ error: "request_too_large" });
-      if (error instanceof ApplicationError)
+      if (
+        error instanceof ApplicationError ||
+        error instanceof StateRecoveryError
+      )
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
         return reply
@@ -79,6 +91,35 @@ export function registerApplicationRunner(
         return applications.runnerInput(key, binding);
       },
     );
+    if (
+      applications.stateRecoveryInput &&
+      applications.stateRecoveryFence &&
+      applications.stateRecoveryResult
+    ) {
+      const recoveryInput = applications.stateRecoveryInput.bind(applications);
+      const recoveryFence = applications.stateRecoveryFence.bind(applications);
+      const recoveryResult =
+        applications.stateRecoveryResult.bind(applications);
+      routes.post(
+        "/api/application-state-recovery/input",
+        { bodyLimit: 1024 },
+        async (request) => {
+          z.strictObject({}).parse(request.body);
+          return recoveryInput(ticket(request.headers.authorization), binding);
+        },
+      );
+      for (const path of ["fence", "result"] as const)
+        routes.post(
+          `/api/application-state-recovery/${path}`,
+          { bodyLimit: path === "fence" ? 1024 : 12 * 1024 * 1024 + 65536 },
+          async (request) => {
+            const key = ticket(request.headers.authorization);
+            return path === "fence"
+              ? recoveryFence(key, binding, request.body)
+              : recoveryResult(key, binding, request.body);
+          },
+        );
+    }
     for (const { path, method, limit } of [
       { path: "stage", method: "runnerStage", limit: 1024 },
       {
@@ -159,6 +200,12 @@ export function registerApplications(
         | "recordRecoveryReview"
         | "checkRecoveryReplan"
         | "approveRecoveryReplan"
+        | "latestStateRecovery"
+        | "getStateRecovery"
+        | "requestStateRecovery"
+        | "assessStateRecovery"
+        | "commitStateRecovery"
+        | "inspectStateRecovery"
         | "startApply"
         | "listGroups"
         | "createGroup"
@@ -177,7 +224,8 @@ export function registerApplications(
     routes.setErrorHandler((error, _request, reply) => {
       if (
         error instanceof ApplicationError ||
-        error instanceof RecoveryReplanError
+        error instanceof RecoveryReplanError ||
+        error instanceof StateRecoveryError
       )
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
@@ -205,6 +253,8 @@ export function registerApplications(
             "application_plan_recovery_changed",
             "application_apply_recovery_unavailable",
             "application_apply_recovery_changed",
+            "application_state_recovery_changed",
+            "application_state_recovery_active",
           ].includes(error.message)
         )
           return reply.code(409).send({ error: error.message });
@@ -539,6 +589,72 @@ export function registerApplications(
         return applications.diagnoseRecovery(session, id);
       },
     );
+    routes.get(
+      "/api/v1/applications/jobs/:id/state-recovery",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.latestStateRecovery)
+          return reply
+            .code(503)
+            .send({ error: "application_state_recovery_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.latestStateRecovery(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/state-recovery",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.requestStateRecovery)
+          return reply
+            .code(503)
+            .send({ error: "application_state_recovery_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.requestStateRecovery(session, id, request.body);
+      },
+    );
+    routes.get(
+      "/api/v1/applications/state-recoveries/:id",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.getStateRecovery)
+          return reply
+            .code(503)
+            .send({ error: "application_state_recovery_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.getStateRecovery(session, id);
+      },
+    );
+    for (const action of ["assess", "commit", "inspect"] as const)
+      routes.post(
+        `/api/v1/applications/state-recoveries/:id/${action}`,
+        { bodyLimit: 2048 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const method =
+            action === "assess"
+              ? applications.assessStateRecovery
+              : action === "inspect"
+                ? applications.inspectStateRecovery
+                : applications.commitStateRecovery;
+          if (!method)
+            return reply
+              .code(503)
+              .send({ error: "application_state_recovery_unavailable" });
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          if (action === "assess")
+            z.strictObject({
+              confirmReadOnlyAssessment: z.literal(true),
+            }).parse(request.body);
+          if (action === "inspect") z.strictObject({}).parse(request.body);
+          return method.call(applications, session, id, request.body);
+        },
+      );
     routes.post(
       "/api/v1/applications/jobs/:id/complete-interrupted-plan",
       { bodyLimit: 1024 },

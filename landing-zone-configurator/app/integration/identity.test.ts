@@ -23,6 +23,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
+import { ApplicationStateRecoveries } from "../apps/api/src/applications/state-recovery.js";
 import type { Dialogue } from "../apps/api/src/assistant/dialogue.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import {
@@ -36,7 +37,11 @@ import {
 } from "../apps/api/src/auth/github-flow.js";
 import { StackitDeviceFlow } from "../apps/api/src/auth/stackit-device.js";
 import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
-import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
+import {
+  PostgresAuthStore,
+  type Session,
+  tokenHash,
+} from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
 import type { CloudCatalogue } from "../apps/api/src/credentials/catalogues.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
@@ -6958,6 +6963,297 @@ describe("real PostgreSQL session and tenant boundaries", () => {
               apply.jobId,
               confirm,
             ),
+          ).rejects.toBeDefined();
+
+          // Guided State recovery is a new capability, never an extension of
+          // the expired Apply ticket. Exercise the real SQL authority/fences.
+          const recoverySessionToken = newSessionToken();
+          const renewedReviewer = await store.createSession({
+            githubId: 101,
+            login: alice.login,
+            id: randomUUID(),
+            hash: recoverySessionToken.hash,
+            csrfToken: randomBytes(32).toString("base64url"),
+            expiresAt: new Date(Date.now() + 3600000),
+          });
+          await new PostgresOrganisations(pool).switch(
+            renewedReviewer,
+            tenantId,
+          );
+          const reviewer = { ...renewedReviewer, tenantId };
+          expect(reviewer.userId).toBe(engineer.userId);
+          const stateRecoveries = new ApplicationStateRecoveries({
+            pool,
+            profiles: delegatedTechnical,
+            secrets: applicationSecrets,
+            backends: { read },
+            runner: delegatedRunner,
+            crypto: applicationCrypto,
+            origin: "http://127.0.0.1:3000",
+          });
+          const requestKey = randomUUID();
+          const requested = await stateRecoveries.request(
+            owner,
+            interrupted.jobId,
+            {
+              idempotencyKey: requestKey,
+              confirmReadOnlyAssessment: true,
+            },
+          );
+          expect(requested).toMatchObject({
+            phase: "requested",
+            canAssess: false,
+            canCommit: false,
+            startsInfrastructureApply: false,
+          });
+          expect(
+            await stateRecoveries.request(owner, interrupted.jobId, {
+              idempotencyKey: requestKey,
+              confirmReadOnlyAssessment: true,
+            }),
+          ).toEqual(requested);
+          expect(
+            (await stateRecoveries.latest(reviewer, interrupted.jobId))
+              .recovery,
+          ).toMatchObject({ id: requested.id, canAssess: true });
+          expect(
+            (
+              await stateRecoveries.latest(
+                { ...peer, tenantId },
+                interrupted.jobId,
+              )
+            ).recovery,
+          ).toBeNull();
+          await expect(
+            stateRecoveries.get(
+              { ...owner, tenantId: bob.tenantId },
+              requested.id,
+            ),
+          ).rejects.toBeDefined();
+          const recoveryContext = (who: Session) =>
+            withTenant(
+              pool,
+              who,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT lzc_auth.application_state_recovery_context($1,$2) AS value",
+                    [who.id, requested.id],
+                  )
+                ).rows[0].value,
+            );
+          await expect(recoveryContext(owner)).rejects.toMatchObject({
+            code: "42501",
+          });
+          await expect(recoveryContext(reviewer)).rejects.toMatchObject({
+            code: "40001",
+          });
+          // Test fixture only: advance the immutable old grants to their expired
+          // condition without changing any production expiry/revocation guard.
+          await admin.query(
+            "BEGIN; SET LOCAL session_replication_role=replica",
+          );
+          try {
+            await admin.query(
+              "UPDATE lzc.application_runner_tickets SET expires_at=clock_timestamp()-interval '1 microsecond' WHERE job_id=$1",
+              [interrupted.jobId],
+            );
+            await admin.query(
+              "UPDATE lzc.application_job_grants SET expires_at=clock_timestamp()-interval '1 microsecond' WHERE job_id=$1",
+              [interrupted.jobId],
+            );
+            await admin.query("COMMIT");
+          } catch (error) {
+            await admin.query("ROLLBACK");
+            throw error;
+          }
+          expect(await recoveryContext(reviewer)).toMatchObject({
+            jobId: interrupted.jobId,
+            instanceId: planned.ordered.id,
+            recoveryId: requested.id,
+            runnerPackageId: ticketPackage.runnerPackageId,
+          });
+          const begin = async (mode: "prepare" | "commit", phase: string) => {
+            const taskId = randomUUID(),
+              token = randomBytes(32).toString("base64url");
+            await withTenant(pool, reviewer, (client) =>
+              client.query(
+                "SELECT * FROM lzc_auth.begin_application_state_recovery_task($1,$2,$3,$4,$5,$6,$7::jsonb)",
+                [
+                  reviewer.id,
+                  requested.id,
+                  taskId,
+                  mode,
+                  tokenHash(token),
+                  Buffer.from("encrypted-test-fixture"),
+                  JSON.stringify({ ...requested, phase }),
+                ],
+              ),
+            );
+            return { taskId, token };
+          };
+          const prepare = await begin("prepare", "assessing");
+          const bindingApp = randomUUID();
+          await withTenant(pool, reviewer, (client) =>
+            client.query(
+              "SELECT lzc_auth.bind_application_state_recovery_task($1,$2,$3,$4)",
+              [
+                reviewer.id,
+                prepare.taskId,
+                bindingApp,
+                ticketPackage.runnerPackageId,
+              ],
+            ),
+          );
+          const resolve = async (
+            token: string,
+            packageId = ticketPackage.runnerPackageId,
+          ) =>
+            (
+              await pool.query(
+                "SELECT * FROM lzc_auth.resolve_application_state_recovery_task($1,$2)",
+                [tokenHash(token), packageId],
+              )
+            ).rows;
+          expect(await resolve(prepare.token)).toHaveLength(1);
+          expect(await resolve(prepare.token, randomUUID())).toEqual([]);
+          const release = async (taskId: string) =>
+            withTenant(
+              pool,
+              reviewer,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT lzc_auth.release_application_state_recovery_input($1,$2) AS allowed",
+                    [reviewer.id, taskId],
+                  )
+                ).rows[0].allowed,
+            );
+          expect(await release(prepare.taskId)).toBe(true);
+          expect(await release(prepare.taskId)).toBe(false);
+          await expect(
+            withTenant(pool, owner, (client) =>
+              client.query(
+                "UPDATE lzc.application_state_recoveries SET phase='committed' WHERE id=$1",
+                [requested.id],
+              ),
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+          const finish = async (taskId: string, phase: string) =>
+            withTenant(pool, reviewer, (client) =>
+              client.query(
+                "SELECT lzc_auth.finish_application_state_recovery_task($1,$2,$3,$4,$5::jsonb)",
+                [
+                  reviewer.id,
+                  taskId,
+                  phase,
+                  Buffer.from("encrypted-result-fixture"),
+                  JSON.stringify({ ...requested, phase }),
+                ],
+              ),
+            );
+          await expect(
+            migration.query(
+              "INSERT INTO lzc.application_jobs SELECT * FROM lzc.application_jobs WHERE id=$1",
+              [interrupted.jobId],
+            ),
+          ).rejects.toMatchObject({
+            code: "40001",
+            message: "application_state_recovery_active",
+          });
+          await finish(prepare.taskId, "prepared");
+          expect(await resolve(prepare.token)).toEqual([]);
+          await expect(
+            finish(prepare.taskId, "prepared"),
+          ).rejects.toMatchObject({ code: "40001" });
+          const commit = await begin("commit", "committing");
+          await withTenant(pool, reviewer, (client) =>
+            client.query(
+              "SELECT lzc_auth.bind_application_state_recovery_task($1,$2,$3,$4)",
+              [
+                reviewer.id,
+                commit.taskId,
+                randomUUID(),
+                ticketPackage.runnerPackageId,
+              ],
+            ),
+          );
+          expect(await release(commit.taskId)).toBe(true);
+          const fence = async (step: string) =>
+            withTenant(
+              pool,
+              reviewer,
+              async (client) =>
+                (
+                  await client.query(
+                    "SELECT lzc_auth.fence_application_state_recovery($1,$2,$3) AS allowed",
+                    [reviewer.id, commit.taskId, step],
+                  )
+                ).rows[0].allowed,
+            );
+          expect(await fence("publish")).toBe(false);
+          expect(await fence("unlock")).toBe(true);
+          expect(await fence("unlock")).toBe(false);
+          expect(await fence("publish")).toBe(true);
+          expect(await fence("publish")).toBe(false);
+          await expect(
+            migration.query(
+              "DELETE FROM lzc.application_state_recovery_intents WHERE task_id=$1",
+              [commit.taskId],
+            ),
+          ).rejects.toMatchObject({ code: "55000" });
+          await finish(commit.taskId, "reconciliation-required");
+          const inspectTask = (who: Session, released: boolean) =>
+            withTenant(pool, who, (client) =>
+              client.query(
+                "SELECT lzc_auth.inspect_application_state_recovery_task($1,$2,$3,$4,$5::jsonb,$6)",
+                [
+                  who.id,
+                  commit.taskId,
+                  "committed",
+                  Buffer.from("inspected-test-fixture"),
+                  JSON.stringify({ ...requested, phase: "committed" }),
+                  released,
+                ],
+              ),
+            );
+          await expect(inspectTask(owner, true)).rejects.toMatchObject({
+            code: "42501",
+          });
+          await expect(inspectTask(reviewer, false)).rejects.toMatchObject({
+            code: "40001",
+          });
+          await inspectTask(reviewer, true);
+          await expect(inspectTask(reviewer, true)).rejects.toMatchObject({
+            code: "40001",
+          });
+          expect(await resolve(commit.token)).toEqual([]);
+          expect(
+            (await stateRecoveries.latest(owner, interrupted.jobId)).recovery,
+          ).toMatchObject({
+            phase: "committed",
+            canAssess: false,
+            canCommit: false,
+          });
+          await expect(
+            migration.query(
+              "DELETE FROM lzc.application_state_recovery_receipts WHERE task_id=$1",
+              [commit.taskId],
+            ),
+          ).rejects.toMatchObject({ code: "55000" });
+          await expect(
+            migration.query(
+              "UPDATE lzc.application_state_recovery_tasks SET input_ciphertext=$2 WHERE id=$1",
+              [commit.taskId, Buffer.from("altered")],
+            ),
+          ).rejects.toMatchObject({ code: "55000" });
+          expect(read).not.toHaveBeenCalled();
+          // SQL bookkeeping alone grants no new Plan or Apply: the API must
+          // independently verify S3 and record the existing guarded clearance.
+          await expect(
+            delegatedApplications.startPlan(owner, planned.ordered.id, {
+              idempotencyKey: randomUUID(),
+            }),
           ).rejects.toBeDefined();
         }
         // A lost Plan is completed only after independent, source-bound CF and

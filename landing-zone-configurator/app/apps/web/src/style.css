@@ -1857,3 +1857,13 @@ button.template-node:hover {
   height: 16px;
   margin: 2px 0 0;
 }
+
+.application-state-recovery,
+.application-state-recovery fieldset {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.application-state-recovery code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

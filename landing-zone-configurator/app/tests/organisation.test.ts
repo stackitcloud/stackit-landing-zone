@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import { ApplicationError } from "../apps/api/src/applications/service.js";
+import { StateRecoveryError } from "../apps/api/src/applications/state-recovery.js";
 import { platformAccessError } from "../apps/api/src/auth/platform-access.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import type { Session } from "../apps/api/src/auth/store.js";
@@ -131,6 +132,21 @@ function runnerSetup() {
       },
       application: { tenantId: session.tenantId, instanceId },
     })),
+    stateRecoveryInput: vi.fn(async () => {
+      throw new StateRecoveryError(
+        401,
+        "application_state_recovery_invalid_ticket",
+      );
+    }),
+    stateRecoveryFence: vi.fn(async () => {
+      throw new StateRecoveryError(
+        409,
+        "application_state_recovery_intent_consumed",
+      );
+    }),
+    stateRecoveryResult: vi.fn(async () => {
+      throw new StateRecoveryError(409, "application_state_recovery_changed");
+    }),
     runnerStage: vi.fn(async () => {}),
     runnerArtifact: vi.fn(async () => ({ sha256: "a".repeat(64) })),
     runnerOutput: vi.fn(async () => {}),
@@ -276,6 +292,17 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
   };
   const applications = {
     listTemplates: vi.fn(async () => []),
+    assessStateRecovery: vi.fn(async (_session: Session, _id: string) => {
+      throw new StateRecoveryError(409, "application_state_recovery_changed");
+    }),
+    commitStateRecovery: vi.fn(
+      async (_session: Session, _id: string, _input: unknown) => {
+        throw new StateRecoveryError(409, "application_state_recovery_changed");
+      },
+    ),
+    inspectStateRecovery: vi.fn(async (_session: Session, _id: string) => {
+      throw new StateRecoveryError(409, "application_state_recovery_changed");
+    }),
     inspectInterruptedApply: vi.fn(async () => ({})),
     completeInterruptedPlan: vi.fn(
       async (_session: Session, id: string, _input: unknown) => ({
@@ -1441,4 +1468,108 @@ it("protects draft deletion with authentication, CSRF and explicit target contex
   });
   expect(response.statusCode).toBe(409);
   expect(response.json()).toEqual({ error: "organisation_not_empty_draft" });
+});
+
+it("keeps recovery UI actions behind session, tenant, CSRF and explicit assessment guards", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID();
+  for (const action of ["assess", "commit", "inspect"] as const) {
+    const url = `/api/v1/applications/state-recoveries/${id}/${action}`;
+    const payload =
+      action === "assess" ? { confirmReadOnlyAssessment: true } : {};
+    for (const rejected of [
+      { ...headers, cookie: "" },
+      { ...headers, "x-lzc-tenant": randomUUID() },
+      { ...headers, "x-lzc-csrf": "" },
+      { ...headers, origin: "https://untrusted.example" },
+    ]) {
+      expect(
+        (await app.inject({ method: "POST", url, headers: rejected, payload }))
+          .statusCode,
+      ).toBe(rejected.cookie === "" ? 401 : 403);
+    }
+    const method =
+      action === "assess"
+        ? applications.assessStateRecovery
+        : action === "inspect"
+          ? applications.inspectStateRecovery
+          : applications.commitStateRecovery;
+    expect(method).not.toHaveBeenCalled();
+    expect(
+      (await app.inject({ method: "POST", url, headers, payload })).statusCode,
+    ).toBe(409);
+    expect(method).toHaveBeenCalledOnce();
+  }
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: `/api/v1/applications/state-recoveries/${id}/assess`,
+        headers,
+        payload: { confirmReadOnlyAssessment: false },
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: `/api/v1/applications/state-recoveries/${id}/inspect`,
+        headers,
+        payload: { state: "forged" },
+      })
+    ).statusCode,
+  ).toBe(400);
+});
+it("binds recovery broker routes to server package metadata and opaque tickets", async () => {
+  const { app, binding, applications } = runnerSetup();
+  for (const path of ["input", "fence", "result"] as const) {
+    const url = `/api/application-state-recovery/${path}`;
+    expect(
+      (await app.inject({ method: "POST", url, payload: {} })).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url,
+          headers: { authorization: "Bearer invalid" },
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(401);
+    const method =
+      path === "input"
+        ? applications.stateRecoveryInput
+        : path === "fence"
+          ? applications.stateRecoveryFence
+          : applications.stateRecoveryResult;
+    expect(method).not.toHaveBeenCalled();
+    const payload = path === "input" ? {} : { step: "publish" };
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url,
+          headers: { authorization: `Bearer ${"t".repeat(43)}` },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(path === "input" ? 401 : 409);
+    expect(method).toHaveBeenCalledWith(
+      "t".repeat(43),
+      binding,
+      ...(path === "input" ? [] : [payload]),
+    );
+  }
+  expect(
+    (
+      await app.inject({
+        method: "POST",
+        url: "/api/application-state-recovery/input",
+        headers: { authorization: `Bearer ${"t".repeat(43)}` },
+        payload: { runnerPackageId: randomUUID() },
+      })
+    ).statusCode,
+  ).toBe(400);
 });

@@ -1,4 +1,74 @@
 export const englishMessages: Record<string, string> = {
+  "Geführte Application-Recovery": "Guided Application recovery",
+  "Recovery angefordert": "Recovery requested",
+  "Cloud-Abgleich läuft": "Cloud reconciliation running",
+  "Recovery benötigt Klärung": "Recovery needs reconciliation",
+  "Reparaturvorschlag bereit": "Repair proposal ready",
+  "State-Reparatur läuft": "State repair running",
+  "State-Reparatur abgeschlossen": "State repair completed",
+  "Ergebnis der State-Reparatur prüfen":
+    "Check the outcome of the state repair",
+  "Das Ende des alten Runners ist nicht nachgewiesen.":
+    "Termination of the previous runner has not been verified.",
+  "Die alte Ausführungsberechtigung ist noch aktiv.":
+    "The previous execution capability is still active.",
+  "Der Checkpoint konnte nicht sicher gelesen werden.":
+    "The checkpoint could not be read safely.",
+  "Der Checkpoint hat sich geändert. Ein neuer Abgleich ist erforderlich.":
+    "The checkpoint has changed. A new assessment is required.",
+  "Der Checkpoint passt nicht eindeutig zu dieser Bestellung.":
+    "The checkpoint does not unambiguously match this order.",
+  "Der Cloud-Abgleich ist unvollständig. Fehlende Antworten gelten nicht als leere Ressourcenlisten.":
+    "Cloud reconciliation is incomplete. Missing responses are not treated as empty resource lists.",
+  "Das Cloud-Projekt passt nicht eindeutig zur gebundenen Bestellung.":
+    "The cloud project does not unambiguously match the bound order.",
+  "Mindestens eine Cloud-Ressource ist nicht eindeutig zuordenbar.":
+    "At least one cloud resource cannot be assigned unambiguously.",
+  "Diese Recovery enthält Ressourcen, für die noch keine geprüfte Übernahme verfügbar ist.":
+    "This recovery includes resources for which verified adoption is not yet supported.",
+  "Ein Schlüssel existiert ohne wiederherstellbares privates Material. Eine getrennte Entscheidung ist erforderlich.":
+    "A key exists without recoverable private material. A separate decision is required.",
+  "Die Vorschau würde vorhandene Ressourcen ändern, löschen oder ersetzen. Keine State-Reparatur freigegeben.":
+    "The preview would update, delete or replace existing resources. State repair has not been authorized.",
+  "Die gebundene Quellrevision passt nicht zum verfügbaren Recovery-Runner.":
+    "The bound source revision does not match the available recovery runner.",
+  "Der Reparaturvorschlag ist abgelaufen. Bitte einen neuen Abgleich anfordern.":
+    "The repair proposal has expired. Request a new assessment.",
+  "Der Abschluss ist unklar. Die State-Änderung wird nicht erneut ausgeführt.":
+    "The outcome is uncertain. The state mutation will not be repeated.",
+  "Die native Recovery-Prüfung ist fehlgeschlagen. Es wurde keine Infrastrukturänderung freigegeben.":
+    "The native recovery check failed. No infrastructure change was authorized.",
+  "Cloud-Ressourcen und Checkpoint werden abgeglichen. Ein Reparaturvorschlag wird zunächst in einer geschützten State-Kopie vorbereitet; ein Infrastruktur-Apply wird nicht gestartet.":
+    "Cloud resources and the checkpoint are reconciled. A repair proposal is first prepared in a protected state copy; no infrastructure Apply is started.",
+  "Recovery anfordern": "Request recovery",
+  "Der zuständige Platform Owner kann den Cloud-Abgleich hier starten. Zugangsdaten oder State-Dateien müssen nicht weitergegeben werden.":
+    "The responsible Platform Owner can start cloud reconciliation here. Credentials and state files do not need to be shared.",
+  "Cloud-Abgleich starten": "Start cloud reconciliation",
+  "Vorhandene Ressourcen erhalten": "Existing resources retained",
+  "Im nächsten Plan noch anzulegen": "Still to be created in the next Plan",
+  "Geprüfter State-SHA256": "Reviewed state SHA256",
+  "Diese Vorschau ist kein freigegebener Apply-Plan. Der alte Plan wird nicht erneut verwendet.":
+    "This preview is not an approved Apply plan. The old plan will not be reused.",
+  "State-Reparatur freigeben": "Approve state repair",
+  "Ich habe den Vorschlag geprüft. Die aufgeführten bestehenden Ressourcen dürfen in den State übernommen und ausschließlich die geprüfte verwaiste Sperre gelöst werden. Danach ist ein neuer Plan derselben Bestellung erforderlich; ein Apply wird nicht freigegeben.":
+    "I have reviewed the proposal. The listed existing resources may be adopted into state and only the verified orphan lock may be released. A fresh Plan for the same order is then required; no Apply is authorized.",
+  "Geprüfte State-Reparatur ausführen": "Execute reviewed state repair",
+  "Die vorhandenen Ressourcen sind im State erfasst und die Sperre ist frei. Du kannst dieselbe Bestellung jetzt neu planen. Prüfe den neuen Plan vor einem Apply.":
+    "The existing resources are recorded in state and the lock is free. You can now replan the same order. Review the new Plan before Apply.",
+  "Neuen Recovery-Abgleich anfordern": "Request a new recovery assessment",
+  "Recovery-Status aktualisieren": "Refresh recovery status",
+  "Der Recovery-Prüfstand hat sich geändert. Bitte erneut laden und den Vorschlag neu prüfen.":
+    "The recovery evidence has changed. Reload and review the proposal again.",
+  "Die geführte State-Recovery ist für diesen Fall noch nicht verfügbar.":
+    "Guided state recovery is not available for this case yet.",
+  "Diese Recovery-Prüfung benötigt den zuständigen Platform Owner mit aktueller STACKIT-Anmeldung.":
+    "This recovery assessment requires the responsible Platform Owner with a current STACKIT login.",
+  "Das gebundene Zugangsprofil ist nicht mehr unverändert verfügbar. Bitte den Platform Owner informieren.":
+    "The bound credential profile is no longer available unchanged. Inform the Platform Owner.",
+  "Der Start des Recovery-Runners ist nicht eindeutig bestätigt. Bitte den Status prüfen; der Vorgang wird nicht erneut gestartet.":
+    "Recovery runner startup has not been confirmed unambiguously. Check its status; the operation will not be started again.",
+  "Der alte Runner ist noch aktiv oder sein Ende ist nicht nachgewiesen. Keine State-Reparatur möglich.":
+    "The previous runner is still active or its termination has not been verified. State repair is blocked.",
   "Dieser Apply kann nicht sicher als unterbrochen erfasst werden. Operator-Abgleich erforderlich.":
     "This Apply cannot be recorded safely as interrupted. Operator reconciliation is required.",
   "Unterbrochenen Apply prüfen": "Check interrupted Apply",
@@ -2484,4 +2554,10 @@ export const englishMessages: Record<string, string> = {
     "The order has not been approved or was rejected.",
   "Bestellentscheidungen sind auf diesem Server noch nicht verfügbar.":
     "Order decisions are not yet available on this server.",
+  "Unterbrochene Recovery prüfen": "Inspect interrupted recovery",
+  "Ursprünglicher State-SHA256": "Original state SHA256",
+  "Geprüfte verwaiste Sperre": "Verified orphan lock",
+  "Keine Sperre": "No lock",
+  "Eine Recovery ist noch offen. Schließe zuerst den Abgleich dieser Bestellung ab.":
+    "Recovery is still open. Complete reconciliation of this order first.",
 };

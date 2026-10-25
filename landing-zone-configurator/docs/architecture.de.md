@@ -308,3 +308,7 @@ Die Detail-SVG wird lokal mit Mermaid CLI 11.12.0 aus der Mermaid-Quelle gerende
 Die Uebersicht verwendet ausschliesslich lokale SVG-Formen und Systemschriften.
 Keine Zugangsdaten, Konfigurationen oder Diagrammquellen werden an einen
 Online-Renderer gesendet.
+
+### Geführte State-Recovery
+
+Die Recovery unterbrochener Application-Applies nutzt separate quellgebundene CF-Tasks, verschlüsselte Original-/Kandidaten-States und unveränderliche Schreibabsichtsbelege. Die Vorbereitung importiert nur in eine lokale Kopie ohne S3-Zugangsdaten. Eine ausdrückliche Platform-Owner-Freigabe erlaubt das Lösen der genauen verwaisten Sperre und die native State-Veröffentlichung; unabhängige entfernte Prüfung erlaubt anschließend einen neuen Plan derselben Bestellung. Unklare Ergebnisse werden ohne Wiederholung untersucht. Der [Ausführungsvertrag](plan-execution.de.md#guided-application-state-recovery) beschreibt den begrenzten Übernahmekatalog und die ausstehende Abnahme.

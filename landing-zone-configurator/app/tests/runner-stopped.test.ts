@@ -59,7 +59,7 @@ function fixture() {
     broker: "application",
   });
   const run = () => runner.isStopped(id, app, source);
-  return { id, app, space, template, source, cloned, data, calls, run };
+  return { id, app, space, template, source, cloned, data, calls, run, runner };
 }
 it("verifies a stopped warm copy by immutable source checksum and exact owning apps", async () => {
   const f = fixture();
@@ -156,4 +156,27 @@ it.each([
       .filter((c) => c.url.includes("/v3/"))
       .every((c) => c.method === "GET"),
   ).toBe(true);
+});
+
+it("checks the exact recovery task without accepting normal or warm runners", async () => {
+  const f = fixture();
+  await expect(
+    f.runner.isRecoveryStopped(f.id, f.app, f.source),
+  ).rejects.toThrow("Runner identity mismatch");
+  (f.data[`apps/${f.app}`] as { name: string }).name = `lzc-recovery-${f.id}`;
+  f.data[`apps/${f.app}/tasks?per_page=100`] = {
+    pagination: { next: null },
+    resources: [{ name: "initial-plan", state: "SUCCEEDED" }],
+  };
+  await expect(f.runner.isRecoveryStopped(f.id, f.app, f.source)).resolves.toBe(
+    false,
+  );
+  f.data[`apps/${f.app}/tasks?per_page=100`] = {
+    pagination: { next: null },
+    resources: [{ name: "state-recovery", state: "FAILED" }],
+  };
+  await expect(f.runner.isRecoveryStopped(f.id, f.app, f.source)).resolves.toBe(
+    true,
+  );
+  await expect(f.run()).rejects.toThrow("Runner identity mismatch");
 });
