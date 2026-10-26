@@ -98,6 +98,15 @@ noch fehlenden Application-Apply sind durch diesen Stand überholt.
 
 ## Fachlicher Ablauf
 
+Der Reiter **Template-Entwürfe** unter **Application Landing Zones** zeigt den
+bestehenden Konfigurations-Assistant direkt oberhalb des Template-Editors. Er nutzt
+dieselbe gespeicherte Konfigurations-ID, dasselbe Gespräch und denselben Entwurf wie
+der Konfigurationseditor. Nennen Sie das gewünschte Template und prüfen Sie die
+vorgeschlagenen Felder vor der Übernahme. Die Übernahme ändert den lokalen Entwurf;
+speichern Sie ausdrücklich vor Plattformanbindung oder Veröffentlichung. Sie
+veröffentlicht keine Version und erteilt keine Ausführungsfreigabe. Application Owner
+sehen diesen Konfigurations-Chat nicht und erhalten keinen Zugriff auf Plattformdaten.
+
 Der Platform Engineer definiert zentrale Plattformdienste und die dafür nötigen
 Infrastrukturprojekte. Im Schritt **Projekt-Templates** erstellt er Vorlagen für
 spätere Anwendungsprojekte. Die Plattformkonfiguration erzeugt diese Projekte

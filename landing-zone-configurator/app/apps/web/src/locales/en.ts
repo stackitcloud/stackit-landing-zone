@@ -1,4 +1,7 @@
 export const englishMessages: Record<string, string> = {
+  "Assistant für Template-Entwürfe": "Assistant for template drafts",
+  "Der Assistant verwendet die geöffnete Plattformkonfiguration einschließlich ihrer Template-Entwürfe. Nenne das gewünschte Template und prüfe die vorgeschlagenen Änderungen vor der Übernahme. Speichere sie anschließend ausdrücklich; eine Veröffentlichung erfolgt separat.":
+    "The Assistant uses the open platform configuration, including its template drafts. Name the template you want to change and review the proposed changes before accepting them. Then save explicitly; publication is a separate step.",
   "Für diesen Plattformvertrag fehlt die Ausführungsbindung. Richte sie unter Plattformanbindung mit dem passenden State-Backend ein.":
     "This platform contract has no execution binding. Configure it under platform binding with the appropriate state backend.",
   "Konfiguration bearbeiten": "Edit configuration",

@@ -40,6 +40,14 @@ Apply never runs automatically. A potentially partially executed Apply is blocke
 <a id="fachlicher-ablauf"></a>
 ## Business workflow
 
+The **Template drafts** tab under **Application Landing Zones** shows the existing
+configuration Assistant directly above the template editor. It uses the same saved
+configuration ID, conversation and root draft as the configuration editor. Name the
+template you want to change and review the proposed fields before accepting them.
+Acceptance changes the local draft; save explicitly before platform binding or
+publication. It does not publish a version or authorize execution. Application Owners
+do not see this configuration chat or gain access to platform configuration data.
+
 The Platform Engineer defines central platform services and the infrastructure projects required for them. In the **Project templates** step, they create templates for future application projects. Platform configuration does not create those projects itself. The Application Owner later orders an instance of a published template version in separate Application self-service.
 
 New drafts from all eight Accelerator templates use this workflow. `landing_zones`, `sandboxes` and `landing_zone_namespace_services` from the examples become template drafts. Platform, connectivity, governance, central services and their projects remain part of platform configuration. The preview shows platform resources and template drafts separately.

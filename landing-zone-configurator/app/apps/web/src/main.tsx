@@ -371,6 +371,25 @@ function App() {
     "editor",
   ].includes(view);
 
+  const assistantPanel =
+    platformAccess && draft && session ? (
+      <AssistantChat
+        key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
+        session={session}
+        binding={configurationBinding}
+        dirty={draftDirty}
+        draft={draft}
+        savedDraft={savedDraft ? readEditorDraft(JSON.parse(savedDraft)) : null}
+        onAccepted={(loaded, binding, persisted) => {
+          setDraft(loaded);
+          setDraftEpoch((value) => value + 1);
+          setConfigurationBinding(binding);
+          setSavedDraft(JSON.stringify(persisted));
+          setDeploymentSelection(null);
+        }}
+      />
+    ) : null;
+
   return (
     <>
       <a className="skip-link" href="#content">
@@ -761,6 +780,13 @@ function App() {
                   isCommonDraft(draft) &&
                   draft.projectTemplates !== undefined ? (
                     <>
+                      <h3>{t("Assistant für Template-Entwürfe")}</h3>
+                      <p>
+                        {t(
+                          "Der Assistant verwendet die geöffnete Plattformkonfiguration einschließlich ihrer Template-Entwürfe. Nenne das gewünschte Template und prüfe die vorgeschlagenen Änderungen vor der Übernahme. Speichere sie anschließend ausdrücklich; eine Veröffentlichung erfolgt separat.",
+                        )}
+                      </p>
+                      {assistantPanel}
                       <TemplateDraftEditor
                         key={draft.id}
                         draft={draft}
@@ -1035,27 +1061,7 @@ function App() {
                     )}
                   </div>
                 </div>
-                {view === "editor" && draft && session && (
-                  <AssistantChat
-                    key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
-                    session={session}
-                    binding={configurationBinding}
-                    dirty={draftDirty}
-                    draft={draft}
-                    savedDraft={
-                      savedDraft
-                        ? readEditorDraft(JSON.parse(savedDraft))
-                        : null
-                    }
-                    onAccepted={(loaded, binding, persisted) => {
-                      setDraft(loaded);
-                      setDraftEpoch((value) => value + 1);
-                      setConfigurationBinding(binding);
-                      setSavedDraft(JSON.stringify(persisted));
-                      setDeploymentSelection(null);
-                    }}
-                  />
-                )}
+                {view === "editor" && assistantPanel}
                 {view === "editor" && !draft && (
                   <section className="panel">
                     <h2>{t("Kein Entwurf in diesem Tab")}</h2>
