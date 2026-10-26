@@ -966,6 +966,7 @@ function App() {
                 draft &&
                 (isCommonDraft(draft) ? (
                   <CommonEditor
+                    session={session}
                     draft={draft}
                     onChange={setDraft}
                     onCreatePlatformCopy={copyPlatform}

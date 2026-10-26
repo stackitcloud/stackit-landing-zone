@@ -381,3 +381,38 @@ bei direkten Runtime-Inserts; Browser-Zählungen sind nicht maßgeblich. Dies
 belegt noch keine Behandlung von Cloud-Kontingenten beim Provider, keine
 arbeitsbereichsweite Runner-Nebenläufigkeitsgrenze und keine echte
 Cloud-Retry-Abnahme ohne doppelte Projekte (#93).
+
+### Bestehende Vorlage auf ein Rechteprofil umstellen
+
+Öffne den bestehenden Template-Entwurf und wähle **Neues Rechteprofil
+konfigurieren**. Der erste Schritt zeigt nur die genauen eigenen Rollen,
+Rollenzuweisungen, die Automation-Rolle, einen bisherigen initialen Owner und die
+Rollen-Kontext-/Parameterregel, die ersetzt würden. Abbrechen lässt den Entwurf
+unverändert. Prüfe und bestätige das Ersetzen ausdrücklich und wähle dann
+**Entwurf auf neues Rechteprofil umstellen**. Dies übernimmt eine atomare
+Entwurfsänderung; andere Template-Einstellungen, Parameterregeln und
+Namespace-Metadaten bleiben erhalten. Eine Bearbeitung der Vorlage verwirft die
+bisherige Bestätigung. Der zentrale initiale Projekt-Owner ist zunächst leer.
+
+Wähle dafür den aktuell verifizierten STACKIT-Benutzer oder ein zugängliches
+gespeichertes Service-Account-Profil aus, oder trage eine E-Mail manuell ein.
+Für die Organisation der Konfiguration erfolgreich geprüfte Profile sind
+entsprechend markiert; ungeprüfte Profile werden als ungeprüft angezeigt,
+fehlgeschlagene oder organisationsfremde Prüfungen werden nicht angeboten.
+Gelesen werden nur Identitäts- und Profilmetadaten, niemals Schlüssel. Ein
+verfügbares Profil wird nicht als tatsächlich gebundener Ausführungszugang der
+Plattform ausgegeben. Die Auswahl kopiert die angezeigte E-Mail in den Entwurf
+und zeigt den Kontextwert schreibgeschützt; zur Bearbeitung wähle die manuelle
+Eingabe. Beim Eintreffen der Optionen und bei Änderungen von Sitzung,
+Arbeitsbereich, Organisation oder Profilen bleibt die gespeicherte E-Mail
+bestehen und wird niemals still auf eine andere Identität umgebunden.
+
+Für granulare Rechte muss sich der zentrale initiale Owner vom späteren
+Besteller unterscheiden. Speichere die Konfiguration und veröffentliche für
+künftige Bestellungen eine **neue Template-Version**. Allein das Ändern des
+Profils erfordert keinen neuen Plattform-Apply, wenn der vorhandene
+Plattformvertrag und das Ziel nutzbar sind. Bestehende veröffentlichte Versionen,
+Bestellungen, Projektrechte und State bleiben unverändert; bestehende
+Application-Instanzen werden damit nicht aktualisiert. Eine echte Ausführung
+braucht weiterhin einen gesondert geprüften Plan und eine ausdrückliche
+Apply-Freigabe.

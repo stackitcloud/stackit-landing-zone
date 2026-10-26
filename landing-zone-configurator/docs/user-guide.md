@@ -333,3 +333,33 @@ limit. Admission is serialized and enforced by PostgreSQL, including direct
 runtime inserts; browser counts are not authoritative. This does not yet prove
 provider-side cloud quota handling, tenant-wide Runner concurrency limits or
 real-cloud retry/no-duplicate acceptance (#93).
+
+### Moving a legacy template to an access profile
+
+Open the existing template draft and choose **Configure a new access profile**.
+The first step only previews the exact custom roles, role assignments, automation
+role, initial-owner override and role-context/parameter rule that would be
+replaced. Cancel keeps the draft unchanged. Review and explicitly confirm the
+replacement, then choose **Switch draft to the new access profile**. This applies
+one atomic draft change; unrelated template settings, parameter policies and
+namespace metadata are preserved. Editing the template invalidates the previous
+confirmation. The central initial project owner starts blank.
+
+For that owner, select the currently verified STACKIT user or an accessible
+stored service-account profile, or enter an email manually. Stored profiles
+successfully checked for the configuration's organization are marked accordingly;
+unchecked profiles are labeled as unverified, and failed/foreign checks are not
+offered. This reads only identity/profile metadata, never their keys. It does
+not assume that a stored profile is the credential actually bound to platform
+execution. Selecting an option copies its displayed email into the draft and
+makes that contextual value read-only; choose manual entry to edit it. As options
+arrive or the session, workspace, organization or profiles change, the saved email
+is retained and never silently rebound to another identity.
+
+The central initial owner must differ from the later requester for granular
+rights. Save the configuration and publish a **new template version** for future
+orders. Changing the profile alone needs no new Platform Apply if the existing
+platform contract and target are usable. Existing published versions, orders,
+project grants and State are unchanged; this is not an upgrade of existing
+Application instances. A real execution still needs its own reviewed Plan and
+explicit Apply approval.

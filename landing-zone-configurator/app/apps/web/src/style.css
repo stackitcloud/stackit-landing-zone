@@ -1883,3 +1883,9 @@ button.template-node:hover {
   max-width: 100%;
   white-space: normal;
 }
+
+.application-access-profile pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}

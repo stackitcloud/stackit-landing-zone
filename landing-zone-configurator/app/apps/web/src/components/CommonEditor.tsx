@@ -22,6 +22,7 @@ import {
 import { useState } from "react";
 import { t } from "../i18n";
 import type { EditorStep } from "../navigation";
+import type { Session } from "./Account";
 import { useObservabilityCatalogue } from "./CloudCatalogues";
 import { ComponentPicker } from "./ComponentPicker";
 import { FederatedIdentityEditor } from "./FederatedIdentityEditor";
@@ -83,8 +84,10 @@ const steps: { id: EditorStep; title: string; inputs: string[] }[] = [
   },
   { id: "review", title: "Prüfen", inputs: [] },
 ];
+
 export function CommonEditor({
   draft,
+  session = null,
   onChange,
   step,
   onStepChange,
@@ -92,6 +95,7 @@ export function CommonEditor({
   onCreatePlatformCopy,
 }: {
   draft: CommonConfiguration;
+  session?: Session | null;
   onChange: (draft: CommonConfiguration) => void;
   step: EditorStep;
   onStepChange: (step: EditorStep) => void;
@@ -309,6 +313,7 @@ export function CommonEditor({
             )}
           {step === "projects" && platformDraft && (
             <ProjectTemplates
+              session={session}
               draft={draft}
               onChange={onChange}
               selectedTemplateId={selectedTemplate?.id ?? null}

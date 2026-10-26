@@ -1,21 +1,33 @@
 import {
+  type ApplicationAccessTransitionPatch,
   applicationWorkloadPermissions,
-  type ApplicationAccessProfile as Profile,
   type ProjectTemplateDraft,
+  previewApplicationAccessTransition,
 } from "@lzc/domain";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { t } from "../i18n";
 import { useCatalogueOptions } from "./CloudCatalogues";
+import { InitialProjectOwner } from "./InitialProjectOwner";
 
 export function ApplicationAccessProfile({
   template,
   onChange,
 }: {
   template: ProjectTemplateDraft;
-  onChange: (patch: { accessProfile: Profile }) => void;
+  onChange: (patch: ApplicationAccessTransitionPatch) => void;
 }) {
   const id = useId();
   const [search, setSearch] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  // A changed draft requires a new preview and a new explicit confirmation.
+  const snapshot = JSON.stringify(template);
+  useEffect(() => {
+    setPreview((current) => (current === snapshot ? current : null));
+    setConfirmed(false);
+  }, [snapshot]);
+  const transition =
+    preview === snapshot ? previewApplicationAccessTransition(template) : null;
   const live = useCatalogueOptions(
     "landing_zones[*].custom_roles[*].permissions[*]",
     template.region,
@@ -27,30 +39,96 @@ export function ApplicationAccessProfile({
       <div className="info-banner application-access-profile">
         <p>
           {t(
-            "Bestehendes Rechteverhalten: Die bestellende Person und die Automation erhalten Owner-Rechte. Eine neue Template-Version verändert bestehende Bestellungen nicht.",
+            "Diese Vorlage verwendet bisherige Rollenregeln. Explizite Rollen und Rollen-Kontextbindungen bleiben wirksam; native Owner-Standards gelten nur, soweit sie nicht überschrieben wurden. Eine neue Template-Version verändert bestehende Bestellungen nicht.",
           )}
         </p>
         <p>
           {t(
-            "Vor dem Wechsel eigene Rollen, Rollenzuweisungen und die Rollen-Kontextbindung ausdrücklich entfernen. Bestehende veröffentlichte Versionen bleiben unverändert.",
+            "Der Wechsel zeigt zuerst, welche Rollenregeln im Entwurf ersetzt werden. Erst deine ausdrückliche Bestätigung entfernt diese Regeln und setzt das neue Profil. Andere Einstellungen bleiben erhalten.",
           )}
         </p>
-        <button
-          type="button"
-          onClick={() =>
-            onChange({
-              accessProfile: {
-                schemaVersion: 1,
-                mode: "granular",
-                initialOwnerEmail: "",
-                permissions: [...applicationWorkloadPermissions],
-                automationPermissions: [...applicationWorkloadPermissions],
-              },
-            })
-          }
-        >
-          {t("Neues Rechteprofil konfigurieren")}
-        </button>
+        {transition ? (
+          <fieldset>
+            <legend>{t("Wechsel zum Rechteprofil prüfen")}</legend>
+            <p>
+              {t(
+                "Diese bestehenden Werte werden ausschließlich in diesem Template-Entwurf entfernt und durch das granulare Workload-Rechteprofil ersetzt:",
+              )}
+            </p>
+            {transition.removed.length ? (
+              <dl>
+                {transition.removed.map(({ path, value }) => (
+                  <div key={path}>
+                    <dt>
+                      {t(
+                        (
+                          {
+                            "settings.custom_roles": "Eigene Rollen",
+                            "settings.role_assignments": "Rollenzuweisungen",
+                            "settings.automation_role":
+                              "Rolle der Workload-Automation",
+                            "settings.initial_owner_email":
+                              "Bisheriger initialer Projekt-Owner",
+                            "parameterPolicy.fields.role_assignments":
+                              "Rollen-Kontextbindung und Rollen-Parameterregel",
+                          } as Record<string, string>
+                        )[path] ?? path,
+                      )}
+                    </dt>
+                    <dd>
+                      <pre>{JSON.stringify(value, null, 2)}</pre>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p>
+                {t("Es sind keine zusätzlichen Rollenregeln zu entfernen.")}
+              </p>
+            )}
+            <p>
+              {t(
+                "Der zentrale initiale Projekt-Owner bleibt zunächst leer und muss vor Veröffentlichung bewusst gewählt werden. Speichern und eine neue Template-Version veröffentlichen sind separate Schritte. Bestehende Versionen, Bestellungen, Cloud-Rechte und States bleiben unverändert.",
+              )}
+            </p>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
+              {t("Die angezeigten Rollenregeln in diesem Entwurf ersetzen")}
+            </label>
+            <button
+              type="button"
+              disabled={!confirmed}
+              onClick={() => {
+                if (confirmed) onChange(transition.patch);
+              }}
+            >
+              {t("Entwurf auf neues Rechteprofil umstellen")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPreview(null);
+                setConfirmed(false);
+              }}
+            >
+              {t("Abbrechen")}
+            </button>
+          </fieldset>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setPreview(snapshot);
+              setConfirmed(false);
+            }}
+          >
+            {t("Neues Rechteprofil konfigurieren")}
+          </button>
+        )}
       </div>
     );
   const options = applicationWorkloadPermissions.filter((p) =>
@@ -96,21 +174,11 @@ export function ApplicationAccessProfile({
         </p>
       ) : (
         <>
-          <label htmlFor={`${id}-initial-owner`}>
-            {t(
-              "Initialer Projekt-Owner (zentraler Benutzer oder Service Account)",
-            )}
-          </label>
-          <input
-            id={`${id}-initial-owner`}
-            type="email"
+          <InitialProjectOwner
             value={profile.initialOwnerEmail}
-            onChange={(e) =>
+            onChange={(email) =>
               onChange({
-                accessProfile: {
-                  ...profile,
-                  initialOwnerEmail: e.target.value,
-                },
+                accessProfile: { ...profile, initialOwnerEmail: email },
               })
             }
           />

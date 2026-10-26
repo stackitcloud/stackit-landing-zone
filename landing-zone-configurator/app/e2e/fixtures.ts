@@ -13,6 +13,7 @@ export const test = base.extend<{ backgroundRequests: undefined }>({
         "/api/v1/plans": { runs: [] },
         "/api/v1/invitations": { invitations: [] },
         "/api/v1/credentials": { profiles: [] },
+        "/api/v1/stackit/identity": { verified: false, identity: null },
         "/api/v1/github/forks": { forks: [], nextPage: null },
       };
       await context.route("**/api/v1/**", async (route) => {
