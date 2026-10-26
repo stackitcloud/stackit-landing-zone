@@ -312,3 +312,25 @@ Online-Renderer gesendet.
 ### Geführte State-Recovery
 
 Die Recovery unterbrochener Application-Applies nutzt separate quellgebundene CF-Tasks, verschlüsselte Original-/Kandidaten-States und unveränderliche Schreibabsichtsbelege. Die Vorbereitung importiert nur in eine lokale Kopie ohne S3-Zugangsdaten. Der ursprüngliche Application Owner (mit gültiger Plattform-Ausführungsdelegation) oder freigebende Platform Owner erlaubt ausdrücklich das Lösen der genauen verwaisten Sperre und die native State-Veröffentlichung; unabhängige entfernte Prüfung erlaubt anschließend einen neuen Plan derselben Bestellung. Verlorene Automation-/S3-Geheimnisse benötigen einen separat bestätigten, einmaligen gezielten Widerruf; unvollständige Credential-Einträge mit bloßer ID dürfen nur über die geprüfte Liste entfernt werden. Andere Ressourcenidentitäten bleiben erhalten. Unklare Ergebnisse werden ohne Wiederholung untersucht. Die manuelle Operator-Bestätigung bleibt unverändert. Der [Ausführungsvertrag](plan-execution.de.md#guided-application-state-recovery) beschreibt den begrenzten Übernahmekatalog und die ausstehende Abnahme.
+
+### Zulassung von Application-Bestellungen
+
+Migration 074 ergänzt eine arbeitsbereichsweite Grenze für Bestellreservierungen.
+Ohne ausdrücklich gesetzte Grenze durch den Platform Owner bleibt das Verhalten
+unbegrenzt. Ein unveränderlicher Revisionsnachweis erfasst jede Änderung; die
+Prüfungen von Sitzung, Arbeitsbereich und Rolle werden in SECURITY-DEFINER-Funktionen
+mit festem Suchpfad wiederholt. Runtime-Aufrufer können nur ein berechtigtes
+Aggregat lesen, nicht das private Inventar anderer Besteller. Ein neuer
+Bestell-INSERT wird über eine Advisory-Sperre je Arbeitsbereich mit
+Kontingentänderungen serialisiert. Die volatile Zählung nutzt nach dem Warten
+einen frischen READ-COMMITTED-Snapshot; die idempotente Wiederholung einer
+bestehenden Anfrage erfolgt vor der Zulassungsprüfung. Kein Kontingentpfad
+fordert nach der Kontingentsperre eine Veröffentlichungs- oder Instanzsperre an.
+
+Gelöschte Bestellungen ohne bisherigen Apply geben Kapazität frei. Ein
+fehlgeschlagener oder teilweiser Apply bleibt auch nach Archivierung reserviert;
+ein erfolgreicher Destroy gibt Kapazität erst nach dauerhafter Archivierung frei.
+Bestehende Reservierungen, Ausführungs-/Recovery-Rechte, State und veröffentlichte
+Versionen bleiben beim Senken der Grenze unverändert. Die Kontrolle begrenzt
+weder direkte Cloud-Ressourcenerstellung noch Cloud-Dienstkontingente oder die
+Runner-Nebenläufigkeit; deren Abnahme bleibt in #93 getrennt offen.

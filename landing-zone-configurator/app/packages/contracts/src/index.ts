@@ -1,3 +1,4 @@
+export * from "./application-quota.js";
 export * from "./application-state-recovery.js";
 export * from "./assistant.js";
 export * from "./backend.js";

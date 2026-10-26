@@ -264,7 +264,11 @@ it.each([
   },
 );
 
-function setup(dispatchEnabled = false, groupsEnabled = false) {
+function setup(
+  dispatchEnabled = false,
+  groupsEnabled = false,
+  quotaEnabled = false,
+) {
   const auth: AuthServices = {
     origin: "https://configurator.example",
     clientId: "test",
@@ -290,7 +294,16 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
     archive: vi.fn(async () => {}),
     editMember: vi.fn(async () => {}),
   };
+  const quota = { maxReservedOrders: null, reservedOrders: 5, revision: 0 };
   const applications = {
+    ...(quotaEnabled
+      ? {
+          orderQuota: vi.fn(async (_session: Session) => quota),
+          updateOrderQuota: vi.fn(
+            async (_session: Session, _input: unknown) => quota,
+          ),
+        }
+      : {}),
     listTemplates: vi.fn(async () => []),
     assessStateRecovery: vi.fn(async (_session: Session, _id: string) => {
       throw new StateRecoveryError(409, "application_state_recovery_changed");
@@ -447,6 +460,61 @@ function setup(dispatchEnabled = false, groupsEnabled = false) {
   };
   return { app, service, headers, applications, auth };
 }
+
+it("protects workspace quota reads and changes and preserves actionable conflicts", async () => {
+  const { app, headers, applications } = setup(false, false, true);
+  const url = "/api/v1/applications/order-quota";
+  const payload = {
+    maxReservedOrders: 0,
+    expectedRevision: 0,
+    confirmQuota: true,
+  };
+  expect((await app.inject({ url })).statusCode).toBe(401);
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ]) {
+    expect(
+      (await app.inject({ method: "POST", url, headers: rejected, payload }))
+        .statusCode,
+    ).toBe(403);
+  }
+  expect(applications.updateOrderQuota).not.toHaveBeenCalled();
+  expect((await app.inject({ url, headers })).json()).toEqual({
+    maxReservedOrders: null,
+    reservedOrders: 5,
+    revision: 0,
+  });
+  expect(applications.orderQuota).toHaveBeenCalledWith(session);
+  expect(
+    (await app.inject({ method: "POST", url, headers, payload })).statusCode,
+  ).toBe(200);
+  expect(applications.updateOrderQuota).toHaveBeenCalledWith(session, payload);
+  applications.updateOrderQuota?.mockRejectedValueOnce(
+    Object.assign(new Error("application_order_quota_changed"), {
+      code: "40001",
+    }),
+  );
+  const changed = await app.inject({ method: "POST", url, headers, payload });
+  expect(changed.statusCode).toBe(409);
+  expect(changed.json()).toEqual({ error: "application_order_quota_changed" });
+  applications.order.mockRejectedValueOnce(
+    Object.assign(new Error("application_order_quota_exceeded"), {
+      code: "40001",
+    }),
+  );
+  const exceeded = await app.inject({
+    method: "POST",
+    url: "/api/v1/applications/instances",
+    headers,
+    payload: {},
+  });
+  expect(exceeded.statusCode).toBe(409);
+  expect(exceeded.json()).toEqual({
+    error: "application_order_quota_exceeded",
+  });
+});
 
 it("protects group and template-access mutations with the current tenant, origin and CSRF", async () => {
   const { app, headers, applications } = setup(false, true);

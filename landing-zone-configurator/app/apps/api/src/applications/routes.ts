@@ -179,6 +179,8 @@ export function registerApplications(
     Partial<
       Pick<
         Applications,
+        | "orderQuota"
+        | "updateOrderQuota"
         | "prepareJob"
         | "decideOrder"
         | "deleteOrder"
@@ -233,6 +235,8 @@ export function registerApplications(
       if (error instanceof Error && "code" in error && error.code === "40001") {
         if (
           [
+            "application_order_quota_exceeded",
+            "application_order_quota_changed",
             "application_order_decision_conflict",
             "application_approval_not_required",
             "application_order_not_approved",
@@ -426,6 +430,9 @@ export function registerApplications(
       if (!session) return reply.code(401).send();
       return {
         versions: await applications.listTemplates(session),
+        ...(applications.orderQuota
+          ? { orderQuota: await applications.orderQuota(session) }
+          : {}),
         retirementEnabled: true,
         templateDeletionEnabled: Boolean(applications.deleteTemplate),
         deploymentPolicyEnabled: true,
@@ -437,6 +444,22 @@ export function registerApplications(
           : {}),
       };
     });
+    if (applications.orderQuota)
+      routes.get("/api/v1/applications/order-quota", async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        return applications.orderQuota?.(session);
+      });
+    if (applications.updateOrderQuota)
+      routes.post(
+        "/api/v1/applications/order-quota",
+        { bodyLimit: 1024 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return applications.updateOrderQuota?.(session, request.body);
+        },
+      );
     routes.post("/api/v1/applications/templates", async (request, reply) => {
       const session = sessions.get(request);
       if (!session) return reply.code(401).send();

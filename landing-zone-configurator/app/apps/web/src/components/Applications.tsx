@@ -4,6 +4,7 @@ import {
   applicationInstanceSchema,
   applicationInterruptedApplyReceiptSchema,
   applicationInterruptedPlanReceiptSchema,
+  applicationOrderQuotaSchema,
   applicationPlanJobSchema,
   applicationPlanPreviewSchema,
   applicationRecoveryDiagnosisSchema,
@@ -43,11 +44,16 @@ import {
 } from "../i18n";
 import type { Session } from "./Account";
 import { applicationGroupsSchema } from "./ApplicationGroups";
+import { ApplicationOrderQuota } from "./ApplicationOrderQuota";
 import { ApplicationStateRecovery } from "./ApplicationStateRecovery";
 import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_order_quota_exceeded:
+    "Das Bestellkontingent dieses Arbeitsbereichs ist ausgeschöpft. Bestehende Bestellungen bleiben nutzbar. Bitte den Platform Owner kontaktieren.",
+  application_order_quota_changed:
+    "Das Bestellkontingent wurde zwischenzeitlich geändert. Bitte neu laden und erneut prüfen.",
   application_state_recovery_active:
     "Eine Recovery ist noch offen. Schließe zuerst den Abgleich dieser Bestellung ab.",
   application_state_recovery_changed:
@@ -2119,6 +2125,9 @@ export function Applications({
   const [executionBackend, setExecutionBackend] = useState("");
   const [decisionReason, setDecisionReason] = useState("");
   const [confirmOrderDecision, setConfirmOrderDecision] = useState(false);
+  const [orderQuota, setOrderQuota] = useState<z.infer<
+    typeof applicationOrderQuotaSchema
+  > | null>(null);
   const [groupAccessEnabled, setGroupAccessEnabled] = useState(false);
   const [applicationGroups, setApplicationGroups] = useState<
     z.infer<typeof applicationGroupsSchema>
@@ -2185,6 +2194,7 @@ export function Applications({
       const published = z
         .object({
           versions: z.array(publishedProjectTemplateSchema).max(200),
+          orderQuota: applicationOrderQuotaSchema.optional(),
           retirementEnabled: z.boolean().default(false),
           templateDeletionEnabled: z.boolean().default(false),
           deploymentPolicyEnabled: z.boolean().default(false),
@@ -2193,6 +2203,7 @@ export function Applications({
         })
         .parse(catalogue);
       setVersions(published.versions);
+      setOrderQuota(published.orderQuota ?? null);
       setRetirementEnabled(published.retirementEnabled);
       setTemplateDeletionEnabled(published.templateDeletionEnabled);
       setDeploymentPolicyEnabled(published.deploymentPolicyEnabled);
@@ -2916,6 +2927,19 @@ export function Applications({
   }
   return (
     <div className="application-self-service">
+      {orderQuota && (
+        <ApplicationOrderQuota
+          quota={orderQuota}
+          canManage={!!canPublish}
+          onSave={async (input) => {
+            const saved = applicationOrderQuotaSchema.parse(
+              await request("order-quota", session, input),
+            );
+            setOrderQuota(saved);
+          }}
+        />
+      )}
+
       <div
         className="application-tabs"
         role="tablist"

@@ -346,3 +346,38 @@ Bestellungen oder manuelle Operator-Bestätigungen. Abgelaufene/widerrufene
 Delegationen, geänderte Bindungen, mehrdeutige Ressourcen, unvollständige
 Inventare und fremde Sperren bleiben Blocker.
 Siehe [Recovery-Ausführungsvertrag](plan-execution.de.md#guided-application-state-recovery).
+
+## Application-Bestellkontingente
+
+Der Platform Owner kann auf der Seite Application Landing Zones das
+**Bestellkontingent** verwalten. Es begrenzt dauerhafte Bestellreservierungen im
+gesamten Arbeitsbereich, über alle Besteller und veröffentlichten Template-Versionen.
+Es ist kein STACKIT-Projekt- oder Dienstkontingent, kein Kostenlimit und keine
+Sperre für Ressourcen, die direkt im Portal oder per API erstellt werden.
+Insbesondere bleiben vom Kunden gewählte Cloud-Owner-Rechte außerhalb des
+Konfigurators wirksam.
+
+Der Standard ist **unbegrenzt** und erhält das bisherige Verhalten. Eine ganze
+Zahl von 0 bis 1000000 muss ausdrücklich bestätigt werden; 0 sperrt neue
+Bestellungen. Eine niedrigere Grenze widerruft weder bestehende Bestellungen
+noch ihren Plan-/Apply-/Recovery-Zugriff oder ihren State. Das Wiederholen
+derselben unveränderlichen Bestellanfrage belegt keinen weiteren Platz.
+Widersprüchliche oder gleichzeitige Einstellungsänderungen erfordern erneutes
+Laden und Prüfen.
+
+Ausstehende Freigaben und fehlgeschlagene Bestellungen reservieren ebenfalls
+Kapazität. Das Löschen einer Bestellung, für die es noch keinen Apply gab, gibt
+ihren Platz frei. Das Archivieren eines fehlgeschlagenen oder teilweisen Applies
+bewirkt dies **nicht**, weil Ressourcen vorhanden sein können. Nach einem
+erfolgreichen gespeicherten Destroy-Plan mit Apply schließt die Archivierung die
+Bestellung und gibt ihren Platz frei. Eine zerstörte, aber noch offene Bestellung
+behält ihre Reservierung, weil sie erneut ausgeführt werden kann. Recovery-Nachweise,
+historische Bestellungen und State-Zuordnungen bleiben erhalten.
+
+Application Owner sehen nur die aggregierte Reservierungszahl und Grenze,
+keine Bestelldetails anderer Benutzer. Nur ein berechtigter Platform Owner kann
+das Kontingent ändern. PostgreSQL serialisiert und erzwingt die Zulassung auch
+bei direkten Runtime-Inserts; Browser-Zählungen sind nicht maßgeblich. Dies
+belegt noch keine Behandlung von Cloud-Kontingenten beim Provider, keine
+arbeitsbereichsweite Runner-Nebenläufigkeitsgrenze und keine echte
+Cloud-Retry-Abnahme ohne doppelte Projekte (#93).
