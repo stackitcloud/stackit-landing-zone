@@ -1,4 +1,36 @@
 export const englishMessages: Record<string, string> = {
+  "Quelle für den initialen Projekt-Owner": "Initial project owner source",
+  "Manuell eingeben / gespeicherten Wert behalten":
+    "Enter manually / retain saved value",
+  "Aktuell verifizierter STACKIT-Benutzer": "Currently verified STACKIT user",
+  "Gespeichertes Zugangsprofil · Organisation geprüft":
+    "Stored credential profile \u00b7 organization checked",
+  "Gespeichertes Zugangsprofil · Organisation nicht geprüft":
+    "Stored credential profile \u00b7 organization not checked",
+  "Die Auswahl übernimmt nur die angezeigte E-Mail in den Entwurf. Sie erteilt keine Rechte, wechselt kein Ausführungsprofil und wird bei späteren Konto- oder Profiländerungen nicht automatisch angepasst. Manuelle Eingabe bleibt möglich.":
+    "The selection copies only the displayed email into the draft. It grants no permissions, does not switch the execution profile and is not automatically updated when accounts or profiles change. Manual entry remains available.",
+
+  "Diese Vorlage verwendet bisherige Rollenregeln. Explizite Rollen und Rollen-Kontextbindungen bleiben wirksam; native Owner-Standards gelten nur, soweit sie nicht überschrieben wurden. Eine neue Template-Version verändert bestehende Bestellungen nicht.":
+    "This template uses legacy access rules. Explicit roles and role context bindings remain effective; native owner defaults apply only where they have not been overridden. A new template version does not change existing orders.",
+  "Der Wechsel zeigt zuerst, welche Rollenregeln im Entwurf ersetzt werden. Erst deine ausdrückliche Bestätigung entfernt diese Regeln und setzt das neue Profil. Andere Einstellungen bleiben erhalten.":
+    "The transition first previews the access rules that will be replaced in this draft. Only your explicit confirmation removes those rules and sets the new profile. Other settings are preserved.",
+  "Wechsel zum Rechteprofil prüfen": "Review access profile transition",
+  "Diese bestehenden Werte werden ausschließlich in diesem Template-Entwurf entfernt und durch das granulare Workload-Rechteprofil ersetzt:":
+    "These existing values will be removed only in this template draft and replaced by the granular workload access profile:",
+  "Eigene Rollen": "Custom roles",
+  "Rolle der Workload-Automation": "Workload automation role",
+  "Bisheriger initialer Projekt-Owner": "Previous initial project owner",
+  "Rollen-Kontextbindung und Rollen-Parameterregel":
+    "Role context binding and role parameter rule",
+  "Es sind keine zusätzlichen Rollenregeln zu entfernen.":
+    "There are no additional access rules to remove.",
+  "Der zentrale initiale Projekt-Owner bleibt zunächst leer und muss vor Veröffentlichung bewusst gewählt werden. Speichern und eine neue Template-Version veröffentlichen sind separate Schritte. Bestehende Versionen, Bestellungen, Cloud-Rechte und States bleiben unverändert.":
+    "The central initial project owner starts blank and must be deliberately selected before publication. Saving and publishing a new template version are separate steps. Existing versions, orders, cloud permissions and States remain unchanged.",
+  "Die angezeigten Rollenregeln in diesem Entwurf ersetzen":
+    "Replace the displayed access rules in this draft",
+  "Entwurf auf neues Rechteprofil umstellen":
+    "Switch draft to the new access profile",
+
   Bestellkontingent: "Order quota",
   "Reservierte Bestellungen: {{value0}} · Grenze: {{value1}}":
     "Reserved orders: {{value0}} \u00b7 Limit: {{value1}}",

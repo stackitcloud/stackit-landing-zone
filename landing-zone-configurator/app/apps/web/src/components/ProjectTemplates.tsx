@@ -14,6 +14,8 @@ import {
 } from "@lzc/domain";
 import { useState } from "react";
 import { t } from "../i18n";
+import type { Session } from "./Account";
+import { InitialProjectOwnerOptions } from "./InitialProjectOwner";
 import { projectTemplateSummary } from "./project-template-summary";
 import { StructuredField } from "./StructuredField";
 import {
@@ -23,11 +25,13 @@ import {
 
 export function ProjectTemplates({
   draft,
+  session = null,
   onChange,
   selectedTemplateId,
   onSelectTemplate,
 }: {
   draft: CommonConfiguration;
+  session?: Session | null;
   onChange: (draft: CommonConfiguration) => void;
   selectedTemplateId: string | null;
   onSelectTemplate: (id: string) => void;
@@ -55,7 +59,13 @@ export function ProjectTemplates({
     }
   };
   return (
-    <>
+    <InitialProjectOwnerOptions
+      session={session}
+      organizationId={
+        typeof values.organization_id === "string" ? values.organization_id : ""
+      }
+      configurationId={draft.id}
+    >
       <p>
         {t(
           "Als Platform Engineer definierst du hier Vorlagen für spätere Anwendungsprojekte. Application Owner wählen ein veröffentlichtes Application Landing Zone Template und geben bei der Bestellung den Projektnamen an; die verantwortliche Person muss aus ihrer verifizierten STACKIT-Identität kommen.",
@@ -458,6 +468,6 @@ export function ProjectTemplates({
           {t("Template hinzufügen")}
         </button>
       </section>
-    </>
+    </InitialProjectOwnerOptions>
   );
 }
