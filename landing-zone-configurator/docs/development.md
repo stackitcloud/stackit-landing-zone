@@ -37,6 +37,17 @@ it cannot detach a focused input. Actual identity/workspace changes still reset
 the draft and scoped catalogue provider; never retain private catalogues across
 those boundaries.
 
+Application template drafts use the same controlled root draft, configuration binding
+and saved snapshot in the configuration editor and the first Application Landing
+Zones tab. Do not introduce a separate draft or implicit save when navigating
+between these views. Platform binding contains execution/backend setup before
+publication. Configuration editing belongs to Configurations; deployment phases
+remain separate explicit actions. Keep the catalogue provider scoped to workspace
+and platform capability so losing the platform role clears private catalogue data
+even though the Application view remains accessible. The Platform Owner workflow
+browser regression covers save, reload and progression; its Application Owner
+case also checks that no private configuration reads occur.
+
 Keep frontend navigation and the API's explicit SPA route allowlist aligned,
 including workspace and deployment-phase URLs. Direct loads and reloads must
 serve the compiled UI through the API, not just the development server's history

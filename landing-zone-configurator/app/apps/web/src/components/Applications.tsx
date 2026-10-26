@@ -34,7 +34,14 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { z } from "zod";
 import {
   currentLanguage,
@@ -2086,10 +2093,18 @@ export function Applications({
   session,
   draft,
   onSelectConfiguration,
+  templateEditor,
+  configurationDirty = false,
+  configurationSaved = false,
+  onEditTemplates,
 }: {
   session: Session | null;
   draft: CommonConfiguration | null;
   onSelectConfiguration: () => void;
+  templateEditor?: ReactNode;
+  configurationDirty?: boolean;
+  configurationSaved?: boolean;
+  onEditTemplates?: () => void;
 }) {
   const [versions, setVersions] = useState<PublishedProjectTemplate[]>([]);
   const [instances, setInstances] = useState<ApplicationInstance[]>([]);
@@ -2147,9 +2162,7 @@ export function Applications({
     z.infer<typeof approvedContractSchema>[]
   >([]);
   const [platformRevision, setPlatformRevision] = useState("");
-  const [activeTab, setActiveTab] = useState<string | null>(() =>
-    draft ? "publish" : "catalogue",
-  );
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [appliedPlatformsEnabled, setAppliedPlatformsEnabled] = useState(false);
   const [appliedPlatforms, setAppliedPlatforms] = useState<
     z.infer<typeof appliedPlatformsSchema>["platforms"]
@@ -2398,20 +2411,21 @@ export function Applications({
     ? currentPreview?.document
     : contractCandidate;
   const tabs = [
-    { id: "catalogue", label: "Katalog" },
-    { id: "orders", label: "Bestellungen" },
     ...(canPublish
       ? [
-          { id: "archive", label: "Archiv" },
-          { id: "publish", label: "Veröffentlichung" },
+          { id: "drafts", label: "Template-Entwürfe" },
           { id: "platform", label: "Plattformanbindung" },
+          { id: "publish", label: "Veröffentlichung" },
         ]
       : []),
+    { id: "catalogue", label: "Katalog" },
+    { id: "orders", label: "Bestellungen" },
+    ...(canPublish ? [{ id: "archive", label: "Archiv" }] : []),
   ];
   const selectedTab = tabs.some((tab) => tab.id === activeTab)
     ? activeTab
     : canPublish
-      ? "publish"
+      ? "drafts"
       : "catalogue";
   const publicationAccess =
     publicationGroupIds ??
@@ -2706,6 +2720,8 @@ export function Applications({
       );
       await load();
       setPlatformRevision(approved.document.revision);
+      setExecutionRevision(approved.document.revision);
+      setExecutionBackend("");
       setTargetKey("");
       setContractCandidate(null);
       setAppliedPreview(null);
@@ -2993,12 +3009,70 @@ export function Applications({
       )}
       {canPublish && (
         <section
+          id="application-panel-drafts"
+          role="tabpanel"
+          aria-labelledby="application-tab-drafts"
+          hidden={selectedTab !== "drafts"}
+        >
+          <h2>{t("1. Templates definieren und speichern")}</h2>
+          <p>
+            {t(
+              "Definiere die bestellbaren Application Landing Zones in deiner Plattformkonfiguration. Speichere den Entwurf, prüfe danach die Plattformanbindung und veröffentliche anschließend eine Version für den Katalog.",
+            )}
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={onSelectConfiguration}
+          >
+            {t("Konfiguration auswählen")}
+          </button>
+          {draft && (
+            <p>
+              {t("Geöffnete Konfiguration")}: <strong>{draft.name}</strong>
+            </p>
+          )}
+          {templateEditor ?? (
+            <p>
+              {t(
+                "Öffne eine Plattformkonfiguration, um ihre Template-Entwürfe hier zu bearbeiten.",
+              )}
+            </p>
+          )}
+          {draft && !templateEditor && onEditTemplates && (
+            <button
+              type="button"
+              className="button secondary"
+              onClick={onEditTemplates}
+            >
+              {t("Template-Entwürfe bearbeiten")}
+            </button>
+          )}
+          {(configurationDirty || (draft && !configurationSaved)) && (
+            <p role="status">
+              {t(
+                "Speichere zuerst die Konfiguration. Nicht gespeicherte Änderungen sind noch nicht für den nächsten Schritt gesichert.",
+              )}
+            </p>
+          )}
+          <button
+            type="button"
+            className="button primary"
+            disabled={!draft || !configurationSaved || configurationDirty}
+            onClick={() => setActiveTab("platform")}
+          >
+            {t("Weiter: Plattformanbindung")}
+          </button>
+        </section>
+      )}
+      {canPublish && (
+        <section
           id="application-panel-platform"
           role="tabpanel"
           aria-labelledby="application-tab-platform"
           hidden={selectedTab !== "platform"}
         >
-          <h2>{t("Plattformanbindung")}</h2>
+          <h2>{t("2. Plattform anbinden und Ausführung einrichten")}</h2>
           <div className="field">
             <label htmlFor="application-technical-profile">
               {t("Technischer STACKIT-Zugang")}
@@ -3143,38 +3217,6 @@ export function Applications({
               </button>
             </>
           )}
-        </section>
-      )}
-      {canPublish && (
-        <section
-          id="application-panel-publish"
-          role="tabpanel"
-          aria-labelledby="application-tab-publish"
-          hidden={selectedTab !== "publish"}
-        >
-          <h2>{t("Application Landing Zone Template veröffentlichen")}</h2>
-          <p className="field-hint">
-            {t(
-              "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.",
-            )}
-          </p>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={onSelectConfiguration}
-          >
-            {t("Konfiguration auswählen")}
-          </button>
-          {publicationTemplate &&
-            applicationPlanScopeIssues(
-              publicationTemplate,
-              publicationTemplate.settings,
-              runnerRevision ?? "",
-            ).map((issue) => (
-              <p key={issue} role="status">
-                {t(issue)}
-              </p>
-            ))}
           {delegationEnabled && (
             <fieldset disabled={busy}>
               <legend>{t("Plattform-Ausführung")}</legend>
@@ -3256,6 +3298,74 @@ export function Applications({
               )}
             </fieldset>
           )}
+          <div className="actions">
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setActiveTab("drafts")}
+            >
+              {t("Zurück: Template-Entwürfe")}
+            </button>
+            <button
+              type="button"
+              className="button primary"
+              disabled={busy || !contracts.length}
+              onClick={() => setActiveTab("publish")}
+            >
+              {t("Weiter: Veröffentlichung")}
+            </button>
+          </div>
+          {!contracts.length && (
+            <p role="status">
+              {t(
+                "Prüfe und bestätige zuerst einen Plattformvertrag. Die Ausführungsbindung und das State-Backend richtest du ebenfalls hier ein.",
+              )}
+            </p>
+          )}
+        </section>
+      )}
+      {canPublish && (
+        <section
+          id="application-panel-publish"
+          role="tabpanel"
+          aria-labelledby="application-tab-publish"
+          hidden={selectedTab !== "publish"}
+        >
+          <h2>{t("3. Application Landing Zone Template veröffentlichen")}</h2>
+          <p className="field-hint">
+            {t(
+              "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.",
+            )}
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={onSelectConfiguration}
+          >
+            {t("Konfiguration auswählen")}
+          </button>
+          {platformRevision &&
+            delegationEnabled &&
+            !executionBindings.some(
+              (binding) => binding.platformRevision === platformRevision,
+            ) && (
+              <p role="status">
+                {t(
+                  "Für diesen Plattformvertrag fehlt die Ausführungsbindung. Richte sie unter Plattformanbindung mit dem passenden State-Backend ein.",
+                )}
+              </p>
+            )}
+          {publicationTemplate &&
+            applicationPlanScopeIssues(
+              publicationTemplate,
+              publicationTemplate.settings,
+              runnerRevision ?? "",
+            ).map((issue) => (
+              <p key={issue} role="status">
+                {t(issue)}
+              </p>
+            ))}
+
           {drafts.length ? (
             <div className="form-grid">
               <div className="field">
@@ -3432,6 +3542,22 @@ export function Applications({
               )}
             </p>
           )}
+          <div className="actions">
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setActiveTab("platform")}
+            >
+              {t("Zurück: Plattformanbindung")}
+            </button>
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => setActiveTab("catalogue")}
+            >
+              {t("Weiter: Katalog prüfen")}
+            </button>
+          </div>
         </section>
       )}
       <section

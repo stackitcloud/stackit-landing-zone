@@ -1,4 +1,28 @@
 export const englishMessages: Record<string, string> = {
+  "Für diesen Plattformvertrag fehlt die Ausführungsbindung. Richte sie unter Plattformanbindung mit dem passenden State-Backend ein.":
+    "This platform contract has no execution binding. Configure it under platform binding with the appropriate state backend.",
+  "Konfiguration bearbeiten": "Edit configuration",
+  Bearbeiten: "Edit",
+  "Weiter: Katalog prüfen": "Next: check the catalogue",
+  "Zurück: Plattformanbindung": "Back: platform binding",
+  "3. Application Landing Zone Template veröffentlichen":
+    "3. Publish an application landing zone template",
+  "Prüfe und bestätige zuerst einen Plattformvertrag. Die Ausführungsbindung und das State-Backend richtest du ebenfalls hier ein.":
+    "First check and approve a platform contract. Configure its execution binding and state backend here as well.",
+  "Weiter: Veröffentlichung": "Next: publication",
+  "Zurück: Template-Entwürfe": "Back: template drafts",
+  "2. Plattform anbinden und Ausführung einrichten":
+    "2. Bind the platform and configure execution",
+  "Weiter: Plattformanbindung": "Next: platform binding",
+  "Speichere zuerst die Konfiguration. Nicht gespeicherte Änderungen sind noch nicht für den nächsten Schritt gesichert.":
+    "Save the configuration first. Unsaved changes have not yet been stored for the next step.",
+  "Template-Entwürfe bearbeiten": "Edit template drafts",
+  "Öffne eine Plattformkonfiguration, um ihre Template-Entwürfe hier zu bearbeiten.":
+    "Open a platform configuration to edit its template drafts here.",
+  "Geöffnete Konfiguration": "Open configuration",
+  "Definiere die bestellbaren Application Landing Zones in deiner Plattformkonfiguration. Speichere den Entwurf, prüfe danach die Plattformanbindung und veröffentliche anschließend eine Version für den Katalog.":
+    "Define the orderable application landing zones in your platform configuration. Save the draft, then check the platform binding and publish a version for the catalogue.",
+  "1. Templates definieren und speichern": "1. Define and save templates",
   "Die geprüfte Workload-Auswahl umfasst VMs, Object Storage, Observability und Secrets Manager. IAM, Projektlöschung, zentrale Routing-Änderungen und privilegierte STACKIT-Service-Account-Verwaltung sind ausgeschlossen. Besteller und Application-Service-Account lassen sich getrennt einschränken; volle Owner-Rechte bleiben eine Kundenwahl.":
     "The reviewed workload selection covers VMs, Object Storage, Observability and Secrets Manager. IAM, project deletion, central routing changes and privileged STACKIT service account administration are excluded. Requester and application service account permissions can be restricted independently; full owner rights remain a customer choice.",
   "Bewusste Kundenwahl: Besteller und Application-Service-Account erhalten volle Owner-Rechte, einschließlich IAM und Projektverwaltung. Zentrale Vorgaben lassen sich gegenüber diesen Identitäten damit nicht unveränderlich erzwingen.":

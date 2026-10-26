@@ -21,6 +21,8 @@ GitHub-Verbindung ersetzt weder die STACKIT-Anmeldung noch Cloud-Berechtigungen.
 <a id="create-and-review-a-configuration"></a>
 ## Konfiguration erstellen und prüfen
 
+Öffne **Konfigurationen**, um einen Entwurf anzulegen oder eine gespeicherte Konfiguration über **Bearbeiten** zu ändern. Der Editor gehört zu Konfigurationen; **Deployments** enthält Vorbereitung, Plan, Apply und Verlauf. Speichern allein startet kein Deployment.
+
 Beginne mit einer Plattformvorlage oder einer bestehenden Konfiguration. Vorlagen sind
 Ausgangspunkte, keine Empfehlung, jeden optionalen Dienst einzuschalten.
 Prüfe im Editor Grundlagen, Governance, Netzwerk und Plattformdienste.
@@ -69,6 +71,17 @@ Instanzen werden bei Veröffentlichung einer neuen Version nicht stillschweigend
 
 
 <a id="retire-archive-and-delete-versions"></a>
+### Ablauf für den Platform Owner
+
+Unter **Application Landing Zones** folgen die Reiter von links nach rechts:
+
+1. **Template-Entwürfe:** Plattformkonfiguration auswählen, Templates direkt hier bearbeiten und ausdrücklich speichern. Der Weiter-Button bleibt bei einem nicht gespeicherten oder geänderten Entwurf deaktiviert.
+2. **Plattformanbindung:** angewendeten Plattformvertrag prüfen und freigeben, danach seine Ausführungsbindung und das State-Backend für Applications einrichten. Fehlt ein passender erfolgreicher Plattform-Apply, müssen zuerst Plattform-Deployment und Identitätsnachweise abgeschlossen werden.
+3. **Veröffentlichung:** Template, freigegebenen Vertrag, passendes Ziel, Bestellerzugriff und Bereitstellungsrichtlinie auswählen und eine Version ausdrücklich veröffentlichen. Eine fehlende Ausführungsbindung wird hier mit Verweis auf den vorherigen Schritt angezeigt.
+4. **Katalog:** veröffentlichte Version und Sichtbarkeit prüfen. Bestellungen und Archiv bleiben separate Reiter nach dem Katalog.
+
+Konfigurationen und Application Landing Zones verwenden denselben kontrollierten Entwurf. Ein Schrittwechsel ist ausschließlich Navigation; Speichern, Vertragsfreigabe, Ausführungseinrichtung, Veröffentlichung, Plan und Apply bleiben getrennte ausdrückliche Aktionen. Application Owner starten direkt im Katalog und sehen die Plattform-Verwaltungsschritte nicht. Das Bestellkontingent gilt für den gesamten Arbeitsbereich und steht über diesen Reitern.
+
 ### Ausgerollte Application-Projektrechte wählen
 
 Dies sind **STACKIT-IAM-Berechtigungen, die der Apply anlegt**, keine IDP-Rollen.

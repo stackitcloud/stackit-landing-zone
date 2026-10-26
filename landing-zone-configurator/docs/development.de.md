@@ -70,3 +70,7 @@ Ein Quellmerge löst kein Deployment aus. Kunden-Zugangsdaten, State, private
 Inventare oder rohe Plan-Ausgabe gehören niemals in Issues, Chat oder Testartefakte.
 Lokale Modellbelege qualifizieren nur ihre exakte Quelle und konfigurierten Modelle;
 sie ersetzen nicht die Qualifikation des geschützten Release-Workflows.
+
+## Gemeinsamer Template-Entwurf und geführter Ablauf
+
+Der Konfigurationseditor und der erste Reiter von Application Landing Zones verwenden denselben kontrollierten Root-Entwurf, dieselbe Konfigurationsbindung und denselben gespeicherten Vergleichsstand. Beim Wechsel zwischen diesen Ansichten darf kein separater Entwurf oder implizites Speichern entstehen. Die Plattformanbindung enthält Ausführungs- und Backend-Einrichtung vor der Veröffentlichung. Die Bearbeitung gehört zu Konfigurationen; Deployment-Phasen bleiben getrennte ausdrückliche Aktionen. Der Katalog-Provider muss an Arbeitsbereich und Plattformberechtigung gebunden bleiben, damit ein Rollenverlust private Katalogdaten entfernt, obwohl die Application-Ansicht zugänglich bleibt. Der Browsertest für den Platform-Owner-Ablauf prüft Speichern, Neuladen und Schrittfolge; sein Application-Owner-Fall prüft zusätzlich, dass keine privaten Konfigurationen gelesen werden.

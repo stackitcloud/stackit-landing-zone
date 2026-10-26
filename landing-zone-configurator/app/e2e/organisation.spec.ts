@@ -3152,7 +3152,7 @@ for (const { publishing, applied, renewProof, executing } of [
         .click();
       if (applied) {
         await expect(
-          page.getByRole("tab", { name: "Veröffentlichung", exact: true }),
+          page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
         ).toHaveAttribute("aria-selected", "true");
         await page
           .getByRole("tab", { name: "Plattformanbindung", exact: true })
@@ -3309,6 +3309,9 @@ for (const { publishing, applied, renewProof, executing } of [
           name: "Application Landing Zones",
           exact: true,
         })
+        .click();
+      await page
+        .getByRole("tab", { name: "Veröffentlichung", exact: true })
         .click();
       await page
         .getByLabel("Application Landing Zone Template aus meinem Entwurf", {

@@ -1,5 +1,6 @@
 import { assistantValuesEqual } from "@lzc/contracts";
 import {
+  type CommonConfiguration,
   compileCommonConfiguration,
   createEditorConfiguration,
   createPlatformDraftCopy,
@@ -40,6 +41,7 @@ import {
 import { ForkWorkspace } from "./components/ForkWorkspace";
 import { InvitationAcceptance } from "./components/Invitations";
 import { Organisation } from "./components/Organisation";
+import { ProjectTemplates } from "./components/ProjectTemplates";
 import { TemplateAdvice } from "./components/TemplateAdvice";
 import { Topology } from "./components/Topology";
 import { currentLanguage, setLanguage, t } from "./i18n";
@@ -53,6 +55,30 @@ import {
   preserveLoginDraft,
   readLoginDraft,
 } from "./login-draft";
+
+function TemplateDraftEditor({
+  draft,
+  session,
+  onChange,
+}: {
+  draft: CommonConfiguration;
+  session: Session | null;
+  onChange: (draft: CommonConfiguration) => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected =
+    draft.projectTemplates?.find((template) => template.id === selectedId) ??
+    draft.projectTemplates?.[0];
+  return (
+    <ProjectTemplates
+      draft={draft}
+      session={session}
+      onChange={onChange}
+      selectedTemplateId={selected?.id ?? null}
+      onSelectTemplate={setSelectedId}
+    />
+  );
+}
 
 function App() {
   useTranslation();
@@ -320,6 +346,28 @@ function App() {
     }
   };
 
+  const saveConfigurationBinding = (binding: ConfigurationBinding | null) => {
+    setConfigurationBinding(binding);
+    setSavedDraft(binding && draft ? JSON.stringify(draft) : null);
+  };
+  const loadConfiguration = (
+    loaded: EditorDraft,
+    binding: ConfigurationBinding,
+  ) => {
+    setDraft(loaded);
+    setDraftEpoch((value) => value + 1);
+    setConfigurationBinding(binding);
+    setSavedDraft(JSON.stringify(loaded));
+    setDeploymentSelection(null);
+    setView("editor");
+  };
+  const configurationView = [
+    "repositories",
+    "templates",
+    "preview",
+    "editor",
+  ].includes(view);
+
   return (
     <>
       <a className="skip-link" href="#content">
@@ -403,10 +451,8 @@ function App() {
               <>
                 <button
                   type="button"
-                  className={
-                    view === "repositories" ? "nav-item active" : "nav-item"
-                  }
-                  aria-current={view === "repositories" ? "page" : undefined}
+                  className={configurationView ? "nav-item active" : "nav-item"}
+                  aria-current={configurationView ? "page" : undefined}
                   onClick={() => setView("repositories")}
                 >
                   {t("Konfigurationen")}
@@ -486,6 +532,22 @@ function App() {
               {t("Arbeitsbereiche")}
             </button>
             <span aria-hidden="true">/</span>
+            {view === "editor" && (
+              <>
+                <a
+                  href="/configurations"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setView("repositories");
+                  }}
+                >
+                  {t("Konfigurationen")}
+                </a>
+                <span aria-hidden="true">/</span>
+                <span>{t("Bearbeiten")}</span>
+                <span aria-hidden="true">/</span>
+              </>
+            )}
             <span>
               {view === "workspaces"
                 ? t("Auswahl")
@@ -608,38 +670,50 @@ function App() {
                         ? t("Nicht gespeichert")
                         : ""}
                 </span>
-                <button
-                  type="button"
-                  aria-current={view === "editor" ? "page" : undefined}
-                  onClick={() => setView(draft ? "editor" : "repositories")}
-                >
-                  {t("Konfiguration")}
-                </button>
-                {(
-                  [
-                    ["preparation", "Vorbereitung"],
-                    ["plan", "Plan"],
-                    ["apply", "Apply"],
-                    ["history", "Verlauf"],
-                  ] as const
-                ).map(([next, label]) => (
+                {view === "editor" ? (
                   <button
-                    key={next}
                     type="button"
-                    aria-current={
-                      (
-                        next === "history"
-                          ? view === "history"
-                          : view === "deployments" && deploymentStep === next
-                      )
-                        ? "page"
-                        : undefined
-                    }
-                    onClick={() => openDeploymentStep(next)}
+                    disabled={!configurationBinding || draftDirty}
+                    onClick={() => openDeploymentStep("preparation")}
                   >
-                    {t(label)}
+                    {t("Deployment vorbereiten")}
                   </button>
-                ))}
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setView(draft ? "editor" : "repositories")}
+                    >
+                      {t("Konfiguration bearbeiten")}
+                    </button>
+                    {(
+                      [
+                        ["preparation", "Vorbereitung"],
+                        ["plan", "Plan"],
+                        ["apply", "Apply"],
+                        ["history", "Verlauf"],
+                      ] as const
+                    ).map(([next, label]) => (
+                      <button
+                        key={next}
+                        type="button"
+                        aria-current={
+                          (
+                            next === "history"
+                              ? view === "history"
+                              : view === "deployments" &&
+                                deploymentStep === next
+                          )
+                            ? "page"
+                            : undefined
+                        }
+                        onClick={() => openDeploymentStep(next)}
+                      >
+                        {t(label)}
+                      </button>
+                    ))}
+                  </>
+                )}
               </nav>
             )}
           {(view === "organisation" || view === "workspaces") && (
@@ -666,342 +740,374 @@ function App() {
               }}
             />
           )}
-          {view === "applications" && (
-            <Applications
-              key={`applications:${workspaceKey(session) ?? "guest"}`}
-              session={session}
-              draft={draft && isCommonDraft(draft) ? draft : null}
-              onSelectConfiguration={() => setView("repositories")}
-            />
-          )}
-          {platformAccess && (
-            <CloudCatalogueProvider key={`catalogues:${workspaceEpoch}`}>
-              <div hidden={view !== "editor"}>
-                <CloudCataloguePanel
-                  session={session}
-                  key={credentialRevision}
-                />
-              </div>
-              {platformAccess &&
-                (view === "deployments" || view === "history") && (
-                  <Deployments
-                    key={`${workspaceKey(session) ?? "guest"}:${view}`}
+          <CloudCatalogueProvider
+            key={`catalogues:${workspaceEpoch}:${platformAccess ? "platform" : "application"}`}
+          >
+            {view === "applications" && (
+              <Applications
+                key={`applications:${workspaceKey(session) ?? "guest"}`}
+                session={session}
+                draft={draft && isCommonDraft(draft) ? draft : null}
+                onSelectConfiguration={() => setView("repositories")}
+                configurationDirty={draftDirty}
+                configurationSaved={!!configurationBinding && !draftDirty}
+                onEditTemplates={() => setView("editor", "projects")}
+                templateEditor={
+                  platformAccess &&
+                  draft &&
+                  isCommonDraft(draft) &&
+                  draft.projectTemplates !== undefined ? (
+                    <>
+                      <TemplateDraftEditor
+                        key={draft.id}
+                        draft={draft}
+                        session={session}
+                        onChange={setDraft}
+                      />
+                      <Configurations
+                        session={session}
+                        draft={draft}
+                        binding={configurationBinding}
+                        compact
+                        onSaved={saveConfigurationBinding}
+                        onLoad={loadConfiguration}
+                        onPrepare={openDeployment}
+                      />
+                    </>
+                  ) : undefined
+                }
+              />
+            )}
+            {platformAccess && (
+              <>
+                <div hidden={view !== "editor"}>
+                  <CloudCataloguePanel
                     session={session}
-                    selection={deploymentSelection}
-                    historyOnly={view === "history"}
-                    step={deploymentStep}
-                    onStep={openDeploymentStep}
-                    configurationId={
-                      deploymentSelection?.configurationId ??
-                      configurationBinding?.id ??
-                      (draft ? "unsaved" : undefined)
+                    key={credentialRevision}
+                  />
+                </div>
+                {platformAccess &&
+                  (view === "deployments" || view === "history") && (
+                    <Deployments
+                      key={`${workspaceKey(session) ?? "guest"}:${view}`}
+                      session={session}
+                      selection={deploymentSelection}
+                      historyOnly={view === "history"}
+                      step={deploymentStep}
+                      onStep={openDeploymentStep}
+                      configurationId={
+                        deploymentSelection?.configurationId ??
+                        configurationBinding?.id ??
+                        (draft ? "unsaved" : undefined)
+                      }
+                      onSelect={(selection) => openDeployment(selection, false)}
+                      onChoose={() => setView("repositories")}
+                      onCredentials={() => setView("credentials")}
+                    />
+                  )}
+                {view === "credentials" && (
+                  <Credentials
+                    key={
+                      workspaceKey(session) ?? session?.user.login ?? "guest"
                     }
-                    onSelect={(selection) => openDeployment(selection, false)}
-                    onChoose={() => setView("repositories")}
-                    onCredentials={() => setView("credentials")}
+                    session={session}
+                    onChanged={() =>
+                      setCredentialRevision((revision) => revision + 1)
+                    }
                   />
                 )}
-              {view === "credentials" && (
-                <Credentials
-                  key={workspaceKey(session) ?? session?.user.login ?? "guest"}
-                  session={session}
-                  onChanged={() =>
-                    setCredentialRevision((revision) => revision + 1)
-                  }
-                />
-              )}
-              {(view === "repositories" || view === "templates") && session && (
-                <TemplateAdvice
-                  key={`template-advice:${workspaceKey(session)}`}
-                  session={session}
-                  onChoose={(id) => {
-                    if (templates.some((item) => item.id === id))
-                      setView("preview", id);
-                  }}
-                />
-              )}
-              {view === "templates" && (
-                <>
-                  <div className="info-banner">
-                    <span aria-hidden="true">ⓘ</span>
-                    <p>
-                      {t(
-                        "Als Platform Engineer konfigurierst du zentrale Dienste und Application Landing Zone Templates. Konkrete Anwendungsprojekte entstehen später durch Bestellungen eines Application Owners.",
-                      )}
-                    </p>
-                  </div>
-                  <div className="toolbar">
-                    <h2>
-                      {t("Verfügbare Templates")}{" "}
-                      <span className="muted">({matching.length})</span>
-                    </h2>
-                    <div className="search">
-                      <label className="sr-only" htmlFor="template-search">
-                        {t("Templates durchsuchen")}
-                      </label>
-                      <input
-                        id="template-search"
-                        type="search"
-                        placeholder={t("Templates durchsuchen")}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
+                {(view === "repositories" || view === "templates") &&
+                  session && (
+                    <TemplateAdvice
+                      key={`template-advice:${workspaceKey(session)}`}
+                      session={session}
+                      onChoose={(id) => {
+                        if (templates.some((item) => item.id === id))
+                          setView("preview", id);
+                      }}
+                    />
+                  )}
+                {view === "templates" && (
+                  <>
+                    <div className="info-banner">
+                      <span aria-hidden="true">ⓘ</span>
+                      <p>
+                        {t(
+                          "Als Platform Engineer konfigurierst du zentrale Dienste und Application Landing Zone Templates. Konkrete Anwendungsprojekte entstehen später durch Bestellungen eines Application Owners.",
+                        )}
+                      </p>
                     </div>
-                  </div>
-                  <div className="template-grid">
-                    {matching.map((template) => {
-                      const meta = describe(template);
-                      const count =
-                        Object.keys(objectValue(template.values.landing_zones))
-                          .length +
-                        (Array.isArray(template.values.sandboxes)
-                          ? template.values.sandboxes.length
-                          : 0);
-                      return (
-                        <article className="template-card" key={template.id}>
-                          <div className="card-top">
-                            <span className="template-icon" aria-hidden="true">
-                              {template.id === "standalone" ? "▦" : "◇"}
-                            </span>
-                            <span className="tag">{t(meta.category)}</span>
-                          </div>
-                          <h3>{t(meta.title)}</h3>
-                          <p>{meta.description}</p>
-                          <div className="card-meta">
-                            <span>
-                              {count}{" "}
-                              {count === 1
-                                ? t("Application Landing Zone Template")
-                                : t("Application Landing Zone Templates")}
-                            </span>
-                            <span>{t("Editor verfügbar")}</span>
-                          </div>
+                    <div className="toolbar">
+                      <h2>
+                        {t("Verfügbare Templates")}{" "}
+                        <span className="muted">({matching.length})</span>
+                      </h2>
+                      <div className="search">
+                        <label className="sr-only" htmlFor="template-search">
+                          {t("Templates durchsuchen")}
+                        </label>
+                        <input
+                          id="template-search"
+                          type="search"
+                          placeholder={t("Templates durchsuchen")}
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="template-grid">
+                      {matching.map((template) => {
+                        const meta = describe(template);
+                        const count =
+                          Object.keys(
+                            objectValue(template.values.landing_zones),
+                          ).length +
+                          (Array.isArray(template.values.sandboxes)
+                            ? template.values.sandboxes.length
+                            : 0);
+                        return (
+                          <article className="template-card" key={template.id}>
+                            <div className="card-top">
+                              <span
+                                className="template-icon"
+                                aria-hidden="true"
+                              >
+                                {template.id === "standalone" ? "▦" : "◇"}
+                              </span>
+                              <span className="tag">{t(meta.category)}</span>
+                            </div>
+                            <h3>{t(meta.title)}</h3>
+                            <p>{meta.description}</p>
+                            <div className="card-meta">
+                              <span>
+                                {count}{" "}
+                                {count === 1
+                                  ? t("Application Landing Zone Template")
+                                  : t("Application Landing Zone Templates")}
+                              </span>
+                              <span>{t("Editor verfügbar")}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="button secondary card-button"
+                              onClick={() => {
+                                setView("preview", template.id);
+                              }}
+                            >
+                              {t("Template ansehen")}
+                              <span aria-hidden="true">→</span>
+                              <span className="sr-only">: {t(meta.title)}</span>
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    {!matching.length && (
+                      <div className="empty-state">
+                        <h2>{t("Kein passendes Template gefunden")}</h2>
+                        <p>{t("Versuche einen anderen Suchbegriff.")}</p>
+                        <button
+                          type="button"
+                          className="button secondary"
+                          onClick={() => setSearch("")}
+                        >
+                          {t("Suche zurücksetzen")}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+                {view === "preview" && (
+                  <div className="editor-layout">
+                    <section className="panel">
+                      <h2>{t("Über diese Vorlage")}</h2>
+                      <p>{describe(selected).description}</p>
+                      <dl className="summary-list">
+                        <dt>
+                          {t("Application Landing Zone Template-Entwürfe")}
+                        </dt>
+                        <dd>{preview.projectTemplates?.length ?? 0}</dd>
+
+                        <dt>{t("Herkunft")}</dt>
+                        <dd>
+                          <code>{selected.source}</code>
+                        </dd>
+                      </dl>
+                      {
+                        <>
+                          <p>
+                            {t(
+                              "Erstelle eine Plattformkonfiguration mit zentralen Diensten und Application Landing Zone Template-Entwürfen. Die Beispielprojekte der Accelerator-Vorlage werden zu Vorlagen, nicht direkt zu Anwendungsprojekten. Veröffentlichung und Bestellung folgen im Ansicht Application Landing Zones.",
+                            )}
+                          </p>
                           <button
                             type="button"
-                            className="button secondary card-button"
-                            onClick={() => {
-                              setView("preview", template.id);
-                            }}
+                            className="button primary"
+                            onClick={() => start()}
                           >
-                            {t("Template ansehen")}
-                            <span aria-hidden="true">→</span>
-                            <span className="sr-only">: {t(meta.title)}</span>
+                            {t("Konfiguration erstellen")}
                           </button>
-                        </article>
-                      );
-                    })}
+                        </>
+                      }
+                      <details className="technical">
+                        <summary>
+                          {t("Originale Accelerator-Quelldaten ansehen")}
+                        </summary>
+                        <pre>{JSON.stringify(values, null, 2)}</pre>
+                      </details>
+                    </section>
+                    <Topology
+                      values={compileCommonConfiguration(preview)}
+                      projectTemplates={preview.projectTemplates}
+                    />
                   </div>
-                  {!matching.length && (
-                    <div className="empty-state">
-                      <h2>{t("Kein passendes Template gefunden")}</h2>
-                      <p>{t("Versuche einen anderen Suchbegriff.")}</p>
+                )}
+                <div hidden={view !== "repositories" && view !== "editor"}>
+                  <div className="actions" hidden={view !== "repositories"}>
+                    <button
+                      type="button"
+                      className="button primary"
+                      onClick={() => setView("templates")}
+                    >
+                      {t("Neue Konfiguration")}
+                    </button>
+                    {draft && (
                       <button
                         type="button"
                         className="button secondary"
-                        onClick={() => setSearch("")}
+                        onClick={() => setView("editor")}
                       >
-                        {t("Suche zurücksetzen")}
+                        {draft.name || t("Entwurf")} weiterbearbeiten
                       </button>
-                    </div>
-                  )}
-                </>
-              )}
-              {view === "preview" && (
-                <div className="editor-layout">
+                    )}
+                  </div>
+                  <Configurations
+                    key={`configurations:${workspaceKey(session) ?? "guest"}`}
+                    session={session}
+                    draft={draft}
+                    binding={configurationBinding}
+                    compact={view === "editor"}
+                    onSaved={saveConfigurationBinding}
+                    onPrepare={openDeployment}
+                    onLoad={loadConfiguration}
+                  />
+                  <div hidden={view !== "repositories"}>
+                    {view !== "workspaces" && (
+                      <ForkWorkspace
+                        sourceConfigurationId={configurationBinding?.id ?? null}
+                        key={
+                          workspaceKey(session) ??
+                          session?.user.login ??
+                          "guest"
+                        }
+                        session={session}
+                        path={
+                          view === "preview"
+                            ? `/templates/${selected.id}`
+                            : view === "editor"
+                              ? `/configurations/edit/${step}`
+                              : `/${view}`
+                        }
+                        onRestore={(loaded, path) => {
+                          setDraft(loaded);
+                          setConfigurationBinding(null);
+                          if (path) {
+                            window.history.replaceState(null, "", path);
+                            window.dispatchEvent(new PopStateEvent("popstate"));
+                          }
+                        }}
+                        draft={draft}
+                        draftEpoch={draftEpoch}
+                        onEdit={() => setView("editor")}
+                        onPrepare={openDeployment}
+                        onLoad={(loaded) => {
+                          setDraft(loaded);
+                          setConfigurationBinding(null);
+                          setView("editor");
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+                {view === "editor" && draft && session && (
+                  <AssistantChat
+                    key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
+                    session={session}
+                    binding={configurationBinding}
+                    dirty={draftDirty}
+                    draft={draft}
+                    savedDraft={
+                      savedDraft
+                        ? readEditorDraft(JSON.parse(savedDraft))
+                        : null
+                    }
+                    onAccepted={(loaded, binding, persisted) => {
+                      setDraft(loaded);
+                      setDraftEpoch((value) => value + 1);
+                      setConfigurationBinding(binding);
+                      setSavedDraft(JSON.stringify(persisted));
+                      setDeploymentSelection(null);
+                    }}
+                  />
+                )}
+                {view === "editor" && !draft && (
                   <section className="panel">
-                    <h2>{t("Über diese Vorlage")}</h2>
-                    <p>{describe(selected).description}</p>
-                    <dl className="summary-list">
-                      <dt>{t("Application Landing Zone Template-Entwürfe")}</dt>
-                      <dd>{preview.projectTemplates?.length ?? 0}</dd>
-
-                      <dt>{t("Herkunft")}</dt>
-                      <dd>
-                        <code>{selected.source}</code>
-                      </dd>
-                    </dl>
-                    {
-                      <>
+                    <h2>{t("Kein Entwurf in diesem Tab")}</h2>
+                    <p>
+                      {t(
+                        "Öffne eine gespeicherte Konfiguration oder beginne mit einem Template.",
+                      )}
+                    </p>
+                    <button
+                      type="button"
+                      className="button primary"
+                      onClick={() => setView("repositories")}
+                    >
+                      {t("Gespeicherte Konfiguration öffnen")}
+                    </button>
+                  </section>
+                )}
+                {view === "editor" &&
+                  draft &&
+                  (isCommonDraft(draft) ? (
+                    <CommonEditor
+                      session={session}
+                      draft={draft}
+                      onChange={setDraft}
+                      onCreatePlatformCopy={copyPlatform}
+                      step={step}
+                      onStepChange={(next) => setView("editor", next)}
+                      onOpenStorage={() => setView("repositories")}
+                    />
+                  ) : (
+                    <>
+                      <div className="info-banner legacy-copy-banner">
                         <p>
                           {t(
-                            "Erstelle eine Plattformkonfiguration mit zentralen Diensten und Application Landing Zone Template-Entwürfen. Die Beispielprojekte der Accelerator-Vorlage werden zu Vorlagen, nicht direkt zu Anwendungsprojekten. Veröffentlichung und Bestellung folgen im Ansicht Application Landing Zones.",
+                            "Du bearbeitest eine bestehende Gesamtkonfiguration mit konkreten Projekten. Sie bleibt zur Bestandsverwaltung erhalten. Neue Plattformkonfigurationen enthalten stattdessen Application Landing Zone Templates.",
                           )}
                         </p>
                         <button
                           type="button"
-                          className="button primary"
-                          onClick={() => start()}
+                          className="button secondary"
+                          onClick={copyPlatform}
                         >
-                          {t("Konfiguration erstellen")}
+                          {t("Als neue Plattformkonfiguration übernehmen")}
                         </button>
-                      </>
-                    }
-                    <details className="technical">
-                      <summary>
-                        {t("Originale Accelerator-Quelldaten ansehen")}
-                      </summary>
-                      <pre>{JSON.stringify(values, null, 2)}</pre>
-                    </details>
-                  </section>
-                  <Topology
-                    values={compileCommonConfiguration(preview)}
-                    projectTemplates={preview.projectTemplates}
-                  />
-                </div>
-              )}
-              <div hidden={view !== "repositories" && view !== "editor"}>
-                <div className="actions" hidden={view !== "repositories"}>
-                  <button
-                    type="button"
-                    className="button primary"
-                    onClick={() => setView("templates")}
-                  >
-                    {t("Neue Konfiguration")}
-                  </button>
-                  {draft && (
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={() => setView("editor")}
-                    >
-                      {draft.name || t("Entwurf")} weiterbearbeiten
-                    </button>
-                  )}
-                </div>
-                <Configurations
-                  key={`configurations:${workspaceKey(session) ?? "guest"}`}
-                  session={session}
-                  draft={draft}
-                  binding={configurationBinding}
-                  compact={view === "editor"}
-                  onSaved={(binding) => {
-                    setConfigurationBinding(binding);
-                    setSavedDraft(
-                      binding && draft ? JSON.stringify(draft) : null,
-                    );
-                  }}
-                  onPrepare={openDeployment}
-                  onLoad={(loaded, binding) => {
-                    setDraft(loaded);
-                    setDraftEpoch((value) => value + 1);
-                    setConfigurationBinding(binding);
-                    setSavedDraft(JSON.stringify(loaded));
-                    setDeploymentSelection(null);
-                    setView("editor");
-                  }}
-                />
-                <div hidden={view !== "repositories"}>
-                  {view !== "workspaces" && (
-                    <ForkWorkspace
-                      sourceConfigurationId={configurationBinding?.id ?? null}
-                      key={
-                        workspaceKey(session) ?? session?.user.login ?? "guest"
-                      }
-                      session={session}
-                      path={
-                        view === "preview"
-                          ? `/templates/${selected.id}`
-                          : view === "editor"
-                            ? `/configurations/edit/${step}`
-                            : `/${view}`
-                      }
-                      onRestore={(loaded, path) => {
-                        setDraft(loaded);
-                        setConfigurationBinding(null);
-                        if (path) {
-                          window.history.replaceState(null, "", path);
-                          window.dispatchEvent(new PopStateEvent("popstate"));
-                        }
-                      }}
-                      draft={draft}
-                      draftEpoch={draftEpoch}
-                      onEdit={() => setView("editor")}
-                      onPrepare={openDeployment}
-                      onLoad={(loaded) => {
-                        setDraft(loaded);
-                        setConfigurationBinding(null);
-                        setView("editor");
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-              {view === "editor" && draft && session && (
-                <AssistantChat
-                  key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
-                  session={session}
-                  binding={configurationBinding}
-                  dirty={draftDirty}
-                  draft={draft}
-                  savedDraft={
-                    savedDraft ? readEditorDraft(JSON.parse(savedDraft)) : null
-                  }
-                  onAccepted={(loaded, binding, persisted) => {
-                    setDraft(loaded);
-                    setDraftEpoch((value) => value + 1);
-                    setConfigurationBinding(binding);
-                    setSavedDraft(JSON.stringify(persisted));
-                    setDeploymentSelection(null);
-                  }}
-                />
-              )}
-              {view === "editor" && !draft && (
-                <section className="panel">
-                  <h2>{t("Kein Entwurf in diesem Tab")}</h2>
-                  <p>
-                    {t(
-                      "Öffne eine gespeicherte Konfiguration oder beginne mit einem Template.",
-                    )}
-                  </p>
-                  <button
-                    type="button"
-                    className="button primary"
-                    onClick={() => setView("repositories")}
-                  >
-                    {t("Gespeicherte Konfiguration öffnen")}
-                  </button>
-                </section>
-              )}
-              {view === "editor" &&
-                draft &&
-                (isCommonDraft(draft) ? (
-                  <CommonEditor
-                    session={session}
-                    draft={draft}
-                    onChange={setDraft}
-                    onCreatePlatformCopy={copyPlatform}
-                    step={step}
-                    onStepChange={(next) => setView("editor", next)}
-                    onOpenStorage={() => setView("repositories")}
-                  />
-                ) : (
-                  <>
-                    <div className="info-banner legacy-copy-banner">
-                      <p>
-                        {t(
-                          "Du bearbeitest eine bestehende Gesamtkonfiguration mit konkreten Projekten. Sie bleibt zur Bestandsverwaltung erhalten. Neue Plattformkonfigurationen enthalten stattdessen Application Landing Zone Templates.",
-                        )}
-                      </p>
-                      <button
-                        type="button"
-                        className="button secondary"
-                        onClick={copyPlatform}
-                      >
-                        {t("Als neue Plattformkonfiguration übernehmen")}
-                      </button>
-                    </div>
-                    <ConfigurationEditor
-                      step={step}
-                      onStepChange={(next) => setView("editor", next)}
-                      onOpenStorage={() => setView("repositories")}
-                      template={standaloneTemplate}
-                      draft={draft}
-                      onChange={setDraft}
-                    />
-                  </>
-                ))}
-            </CloudCatalogueProvider>
-          )}
+                      </div>
+                      <ConfigurationEditor
+                        step={step}
+                        onStepChange={(next) => setView("editor", next)}
+                        onOpenStorage={() => setView("repositories")}
+                        template={standaloneTemplate}
+                        draft={draft}
+                        onChange={setDraft}
+                      />
+                    </>
+                  ))}
+              </>
+            )}
+          </CloudCatalogueProvider>
           <footer className="page-footer">
             <span>{t("Landing Zone Configurator")}</span>
             <span>
