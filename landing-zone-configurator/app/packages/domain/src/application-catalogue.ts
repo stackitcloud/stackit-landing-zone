@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  resolveApplicationAccessProfile,
+  validateApplicationAccessProfile,
+} from "./application-access.js";
 import { assertBoundedJson } from "./features.js";
 import {
   projectTemplateDraftSchema,
@@ -14,6 +18,7 @@ export const applicationAcceleratorRevisionSchema = z.enum([
   "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
   "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  "08ac257de1548c8ec5e83dae1a79373711c3d644",
 ]);
 
 export const applicationPublicationSchema = z
@@ -71,8 +76,23 @@ export type PublishedProjectTemplate = z.infer<
 
 export function validateApplicationPublication(input: unknown) {
   assertBoundedJson(input);
-  const { template } = applicationPublicationSchema.parse(input);
+  const publication = applicationPublicationSchema.parse(input);
+  const { template } = publication;
+  if (
+    template.accessProfile &&
+    publication.acceleratorRevision !==
+      "08ac257de1548c8ec5e83dae1a79373711c3d644"
+  )
+    throw new Error(
+      "Dieses Rechteprofil benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
+    );
   validateProjectTemplateDraft(template);
+  validateApplicationAccessProfile(
+    template.accessProfile,
+    template.settings,
+    template.parameterPolicy?.fields.role_assignments,
+    true,
+  );
   if (template.kind === "sandbox")
     throw new Error("Sandbox-Veröffentlichungen sind noch nicht qualifiziert.");
   if (!template.name.trim()) throw new Error("Der Template-Name fehlt.");
@@ -105,19 +125,36 @@ export function resolveApplicationOrder(
     order.parameters,
     context,
   );
-  return { order, resolution };
+  return {
+    order,
+    resolution: {
+      ...resolution,
+      settings: resolveApplicationAccessProfile(
+        version.template.accessProfile,
+        resolution.settings,
+        context?.verifiedStackitEmail,
+      ),
+    },
+  };
 }
 
 /** Execution support is bound to the published source, never inferred from editor coverage. */
 export function applicationPlanScopeIssues(
   template: Pick<
     PublishedProjectTemplate["template"],
-    "kind" | "namespaceServices"
+    "kind" | "namespaceServices" | "accessProfile"
   >,
   settings: Record<string, unknown>,
   acceleratorRevision: string,
 ): string[] {
   const issues: string[] = [];
+  if (
+    (template.accessProfile || settings.automation_role !== undefined) &&
+    acceleratorRevision !== "08ac257de1548c8ec5e83dae1a79373711c3d644"
+  )
+    issues.push(
+      "Dieses Rechteprofil benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
+    );
   if (template.kind === "sandbox")
     issues.push("Sandbox-Bestellungen sind noch nicht ausführbar.");
   if (Object.keys(template.namespaceServices ?? {}).length)
@@ -127,6 +164,7 @@ export function applicationPlanScopeIssues(
   if (
     acceleratorRevision !== "9e7fb46c329aca32e878ce1f0ea3b944ea240354" &&
     acceleratorRevision !== "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d" &&
+    acceleratorRevision !== "08ac257de1548c8ec5e83dae1a79373711c3d644" &&
     (template.kind !== "public" || settings.network_enabled !== true)
   )
     issues.push(

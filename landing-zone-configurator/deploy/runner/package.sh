@@ -40,7 +40,7 @@ cp "$tofu_bin" "$runner_dir/tools/tofu"
 cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
 platform_commit=a256f6896d11134fdc351786f1be5eba4e56b2e2
 if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
-	platform_commit=9e7fb46c329aca32e878ce1f0ea3b944ea240354
+	platform_commit=08ac257de1548c8ec5e83dae1a79373711c3d644
 else
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi
@@ -62,7 +62,7 @@ test ! -e "$runner_dir/accelerator/terraform.auto.tfvars"
 test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' \) -print -quit)"
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	mkdir -p "$runner_dir/application-src"
-	application_commit=1ed855609d4dcbfded6759c7c8b4fabf7bd6725d
+	application_commit=08ac257de1548c8ec5e83dae1a79373711c3d644
 	if [[ "${LZC_HOSTED_EXECUTION_PACKAGE:-false}" == "true" ]]; then
 		git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$application_commit"
 	fi

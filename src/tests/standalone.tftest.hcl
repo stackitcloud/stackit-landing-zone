@@ -607,3 +607,27 @@ run "metrics_endpoint_rejects_retention_override" {
 
   expect_failures = [var.observability]
 }
+
+run "standalone_workload_automation_role" {
+  command = plan
+  variables {
+    landing_zones = {
+      "test-public" = {
+        project_name    = "Test workload permissions"
+        project_code    = "tpub"
+        owner_email     = "platform@example.com"
+        corporate       = false
+        automation_role = "application-reader"
+        custom_roles = [{
+          name        = "application-reader"
+          description = "Application read access"
+          permissions = ["iaas.server.get"]
+        }]
+      }
+    }
+  }
+  assert {
+    condition     = module.landing_zone["test-public"].project_access.automation_role == "application-reader" && module.landing_zone["test-public"].project_access.initial_owner_email == "platform@example.com"
+    error_message = "The combined root must forward the explicit automation role and retain the separately configured initial owner."
+  }
+}

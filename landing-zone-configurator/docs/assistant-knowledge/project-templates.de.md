@@ -131,3 +131,36 @@ dem echten Provider prueft leeres/gesetztes DNS, explizite Praefixe und
 automatische Groessenwahl ohne DNS.
 Policy-/Identitaets-/Exportaenderungen erneut pruefen;
 Anwendungslebenszyklus bleibt getrennt.
+
+## Application-Projektrechte
+
+Für neue Templates werden granulare Workload-Rechte empfohlen; volle Owner-Rechte
+bleiben eine ausdrückliche Kundenwahl. `accessProfile` ist versionierte,
+unveränderliche Template-Metadaten und kein Bestellparameter. Im granularen
+Modus (`schemaVersion: 1`, `mode: granular`) werden ein separater zentraler
+`initialOwnerEmail` sowie explizite `permissions` und `automationPermissions`
+festgelegt. Zwei getrennte eigene Rollen gelten für die verifizierte bestellende
+Person und die Workload-Automation. Das erste VM-Profil enthält keine
+IAM-Verwaltung, Projektlöschung, zentrale Routing-Änderung, privilegierte
+Service-Account-Verwaltung oder direkte Floating-IP-Anbindung. Object Storage, Observability und Secrets Manager sind ebenfalls auswählbar; das
+separate VM-Preset bleibt enger. Die tatsächliche IAM-Wirkung bleibt separat zu prüfen.
+
+Owner-Modus ist genau `{schemaVersion: 1, mode: owner}`: Die bestellende Person
+wird initialer Projekt-Owner, die Automation erhält Owner. Diese Identitäten
+können IAM und Projektvorgaben ändern. Zentrale Audit-/Routing-Vorgaben sind ihnen
+gegenüber nicht unveränderlich. Bestehende Profile, Versionen und Instanzen bleiben
+ohne ausdrücklich geprüfte Migration erhalten; ohne Profil gilt das bisherige
+Owner-Verhalten. Neue Assistant-Templates erhalten serverseitig das granulare
+Standardprofil. Der bekannte zentrale Plattform-Owner kann übernommen werden;
+fehlt er, ist die separate Identität vor Veröffentlichung zu klären.
+
+Profilvorschläge ersetzen die vollständige Policy atomar und erhalten alle
+nicht angeforderten Template-Einstellungen. Keine Kombination mit bisherigen
+eigenen Rollen, Rollenzuweisungen, `automation_role` oder Rollen-Kontextbindung.
+STACKIT-Rechte sind additiv: Geerbte Owner-Rechte werden nicht eingeschränkt.
+Permission-Namen wurden am offiziellen IAM-Katalog geprüft; tatsächliche erlaubte
+Workload-Operationen und verweigerte Eskalationen brauchen eine separate reale
+IAM-Abnahme. Broker-Freigaben und Mock-Pläne sind kein Least-Privilege-Nachweis.
+Native `application.initial_owner_email` trennt Projekterstellungs-Owner und
+`application.owner_email`; `automation_role` bleibt ohne Angabe `owner`.
+Das ist keine Unterstützung für Projekte ohne initialen Owner (#69).

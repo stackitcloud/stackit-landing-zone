@@ -305,6 +305,9 @@ export function ProjectTemplates({
                   type={collection[1] as InputType}
                   value={settings}
                   omit={[
+                    ...(template.accessProfile
+                      ? ["automation_role", "custom_roles", "role_assignments"]
+                      : []),
                     "project_name",
                     "project_code",
                     "owner_email",

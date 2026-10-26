@@ -65,6 +65,19 @@ export class ApplicationError extends Error {
   }
 }
 
+function requireSeparateInitialOwner(
+  template: PublishedProjectTemplate["template"],
+  email?: string,
+) {
+  if (
+    email &&
+    template.accessProfile?.mode === "granular" &&
+    template.accessProfile.initialOwnerEmail.toLowerCase() ===
+      email.toLowerCase()
+  )
+    throw new ApplicationError(409, "application_initial_owner_conflict");
+}
+
 export const applicationRunnerPackageSchema = z.strictObject({
   runnerPackageId: z.uuid(),
   acceleratorRevision: z.enum([
@@ -73,6 +86,7 @@ export const applicationRunnerPackageSchema = z.strictObject({
     "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
     "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
     "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+    "08ac257de1548c8ec5e83dae1a79373711c3d644",
   ]),
   providerLockSha256: z.literal(
     "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
@@ -1144,6 +1158,10 @@ export class Applications {
           [session.userId, session.tenantId],
         )
       ).rows[0];
+      requireSeparateInitialOwner(
+        version(published.rows[0]).template,
+        identity?.email,
+      );
       let resolved: ReturnType<typeof resolveApplicationOrder>;
       try {
         resolved = resolveApplicationOrder(
@@ -1815,6 +1833,7 @@ export class Applications {
           "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
           "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
           "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+          "08ac257de1548c8ec5e83dae1a79373711c3d644",
         ].includes(prepared.plan.acceleratorRevision)
       )
         throw new ApplicationError(409, "application_runner_revision_required");
@@ -2608,6 +2627,7 @@ export class Applications {
       "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
       "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
       "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+      "08ac257de1548c8ec5e83dae1a79373711c3d644",
     ]).parse(acceleratorRevision);
     if (!this.profiles || !this.secrets)
       throw new ApplicationError(
@@ -2748,6 +2768,7 @@ export class Applications {
     if (!approved)
       throw new ApplicationError(409, "application_platform_contract_required");
     const template = version(published).template;
+    requireSeparateInitialOwner(template, identity.email);
     const resolved = resolveApplicationOrder(
       version(published),
       {
@@ -2823,8 +2844,19 @@ export class Applications {
           schema_version: 1,
           fields: {},
         },
-        custom_roles: settings.custom_roles ?? [],
-        role_assignments: settings.role_assignments ?? [],
+        ...(template.accessProfile
+          ? { access_profile: template.accessProfile }
+          : {}),
+        ...(!template.accessProfile &&
+        typeof settings.automation_role === "string"
+          ? { automation_role: settings.automation_role }
+          : {}),
+        custom_roles: template.accessProfile
+          ? []
+          : (settings.custom_roles ?? []),
+        role_assignments: template.accessProfile
+          ? []
+          : (settings.role_assignments ?? []),
         services: {
           secretsmanager_enabled: settings.secretsmanager_enabled === true,
           observability: {

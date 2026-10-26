@@ -1,4 +1,5 @@
 import {
+  type ApplicationAccessProfile as AccessProfile,
   type JsonValue,
   objectValue,
   type ProjectTemplateDraft,
@@ -9,6 +10,7 @@ import {
 } from "@lzc/domain";
 import { useEffect, useId, useState } from "react";
 import { t } from "../i18n";
+import { ApplicationAccessProfile } from "./ApplicationAccessProfile";
 import { useCatalogueOptions } from "./CloudCatalogues";
 
 function read(settings: Values, path: string): JsonValue | undefined {
@@ -257,6 +259,7 @@ export function TemplateParameters({
   template: ProjectTemplateDraft;
   onChange: (patch: {
     settings?: Values;
+    accessProfile?: AccessProfile;
     parameterPolicy?: TemplateParameterPolicy;
   }) => void;
 }) {
@@ -273,8 +276,9 @@ export function TemplateParameters({
   );
   const fields = templateParameterFields.filter(
     (field) =>
-      field.path !== "observability.plan_name" ||
-      templateObservabilityConfigurable(template),
+      (field.path !== "role_assignments" || !template.accessProfile) &&
+      (field.path !== "observability.plan_name" ||
+        templateObservabilityConfigurable(template)),
   );
   const policy: TemplateParameterPolicy = template.parameterPolicy ?? {
     schema_version: 1,
@@ -319,6 +323,7 @@ export function TemplateParameters({
           )}
         </p>
       )}
+      <ApplicationAccessProfile template={template} onChange={onChange} />
       {fields.map((field) => {
         const rule = policy.fields[field.path] ?? { source: "fixed" as const };
         if (field.path === "role_assignments") {

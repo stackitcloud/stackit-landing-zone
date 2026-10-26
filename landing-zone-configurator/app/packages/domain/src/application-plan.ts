@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  applicationAccessProfileSchema,
+  resolveApplicationAccessProfile,
+  validateApplicationAccessProfile,
+} from "./application-access.js";
 import { assertBoundedJson } from "./features.js";
 import {
   projectCustomRoleSchema,
@@ -62,6 +67,8 @@ export const applicationTemplateSchema = z.discriminatedUnion(
       network_enabled: z.boolean().default(false),
       network_prefix_length: z.number().int().nullable().default(null),
       parameter_policy: templateParameterPolicySchema,
+      access_profile: applicationAccessProfileSchema.optional(),
+      automation_role: z.string().min(1).max(256).optional(),
       custom_roles: z.array(projectCustomRoleSchema).max(100).default([]),
       role_assignments: z
         .array(projectRoleAssignmentSchema)
@@ -118,6 +125,24 @@ export function compileApplicationPlan(input: {
     throw new Error("Application target is not allowed");
   const target = platform.targets[request.target_key];
   if (!target) throw new Error("Application target is not allowed");
+  if (template.schema_version === 2)
+    validateApplicationAccessProfile(
+      template.access_profile,
+      {
+        custom_roles: template.custom_roles,
+        role_assignments: template.role_assignments,
+      },
+      template.access_profile
+        ? template.parameter_policy.fields.role_assignments
+        : undefined,
+      true,
+    );
+  if (
+    template.schema_version === 2 &&
+    (template.access_profile || template.automation_role !== undefined) &&
+    template.accelerator_revision !== "08ac257de1548c8ec5e83dae1a79373711c3d644"
+  )
+    throw new Error("Application access profile source mismatch");
   const resolution =
     template.schema_version === 2
       ? resolveTemplateParameters(
@@ -128,6 +153,9 @@ export function compileApplicationPlan(input: {
               network_enabled: template.network_enabled,
               network_prefix_length: template.network_prefix_length,
               ...template.services,
+              ...(template.automation_role
+                ? { automation_role: template.automation_role }
+                : {}),
               custom_roles: template.custom_roles,
               role_assignments: template.role_assignments,
             },
@@ -145,6 +173,7 @@ export function compileApplicationPlan(input: {
           env: z.string().regex(/^[a-z][a-z0-9-]{0,15}$/),
           network_enabled: z.boolean(),
           network_prefix_length: z.number().int().nullable(),
+          automation_role: z.string().min(1).max(256).optional(),
           custom_roles: z.array(projectCustomRoleSchema).max(100),
           role_assignments: z.array(projectRoleAssignmentSchema).max(100),
           observability:
@@ -183,6 +212,11 @@ export function compileApplicationPlan(input: {
         owner_email: context.verified_stackit_email,
         target_key: request.target_key,
         ...resolvedServices,
+        ...resolveApplicationAccessProfile(
+          template.schema_version === 2 ? template.access_profile : undefined,
+          resolvedServices,
+          context.verified_stackit_email,
+        ),
       },
     },
   };

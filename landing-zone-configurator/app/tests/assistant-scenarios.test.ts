@@ -268,13 +268,15 @@ it.each(assistantScenarios)(
       expect(
         validateAssistantScenario(scenario, {
           explanation:
-            scenario.corporateIpv4 === "advice"
-              ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
-              : scenario.topic === "vpn"
-                ? buildAssistantKnowledge().topics.find(
-                    (topic) => topic.id === "vpn",
-                  )?.fieldOverview
-                : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
+            scenario.applicationAccess === "advice"
+              ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv."
+              : scenario.corporateIpv4 === "advice"
+                ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
+                : scenario.topic === "vpn"
+                  ? buildAssistantKnowledge().topics.find(
+                      (topic) => topic.id === "vpn",
+                    )?.fieldOverview
+                  : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
           changes: [],
           references: [scenario.topic],

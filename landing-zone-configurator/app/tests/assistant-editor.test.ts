@@ -10,6 +10,7 @@ import {
   compileCommonConfiguration,
   createCommonConfiguration,
   createEditorConfiguration,
+  defaultApplicationAccessProfile,
   exportCommonTfvars,
   featureFieldCatalogue,
   type InputType,
@@ -1711,5 +1712,199 @@ it.each([
         ? "Nothing has been saved"
         : "Noch nichts gespeichert",
     );
+  },
+);
+
+it.each(["owner", "granular"] as const)(
+  "proposes an atomic source-grounded %s project access policy without broad template generation",
+  async (mode) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    template.accessProfile =
+      mode === "owner"
+        ? defaultApplicationAccessProfile("platform@example.test")
+        : { schemaVersion: 1, mode: "owner" };
+    const profile =
+      mode === "owner"
+        ? { schemaVersion: 1 as const, mode }
+        : {
+            schemaVersion: 1 as const,
+            mode,
+            initialOwnerEmail: "central@example.test",
+            permissions: ["iaas.server.get"],
+            automationPermissions: ["iaas.server.get"],
+          };
+    const calls: string[] = [];
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: mode === "owner" ? "owner" : "custom-granular",
+          initialOwnerEmail: "central@example.test",
+          permissions: ["iaas.server.get"],
+          automationPermissions: ["iaas.server.get"],
+        },
+      },
+      null,
+      (request) => calls.push(request.response_format.json_schema.name),
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      mode === "owner"
+        ? "Volle Owner-Rechte für diese Vorlage vorschlagen."
+        : "Granulares Profil: central@example.test, Team und Automation jeweils iaas.server.get.",
+    );
+    expect(calls).toEqual(["conversation_intent"]);
+    expect(result.changes).toEqual([
+      {
+        path: "projectTemplates",
+        operation: "merge",
+        value: { [template.key]: { accessProfile: profile } },
+      },
+    ]);
+    const expected = structuredClone(original);
+    expected.projectTemplates!.find(
+      (t) => t.id === template.id,
+    )!.accessProfile = profile;
+    expect(applyAssistantChanges(original, result.changes)).toEqual(expected);
+  },
+);
+
+it.each([
+  "unknown-template",
+  "invented-owner",
+  "unconfirmed-permission",
+  "legacy-conflict",
+])("rejects %s in the bounded Application access path", async (reason) => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates!.find(
+    (t) => t.kind === "corporate",
+  )!;
+  if (reason === "legacy-conflict")
+    template.settings.role_assignments = [
+      { role: "owner", subject: "admin@example.test" },
+    ];
+  const profile = {
+    schemaVersion: 1,
+    mode: "granular",
+    initialOwnerEmail:
+      reason === "invented-owner"
+        ? "invented@example.test"
+        : "central@example.test",
+    permissions: [
+      reason === "unconfirmed-permission"
+        ? "iaas.server.delete"
+        : "iaas.server.get",
+    ],
+    automationPermissions: ["iaas.server.get"],
+  };
+  await expect(
+    collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: reason === "unknown-template" ? "unknown" : template.key,
+          choice: "custom-granular",
+          initialOwnerEmail: profile.initialOwnerEmail,
+          permissions: profile.permissions,
+          automationPermissions: profile.automationPermissions,
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      "Granular: central@example.test, Team und Automation iaas.server.get.",
+    ),
+  ).rejects.toBeInstanceOf(AssistantInferenceError);
+});
+
+it.each(["de", "en"] as const)(
+  "uses reviewed %s Application IAM advice without generating permissions",
+  async (language) => {
+    const calls: string[] = [];
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "advice",
+        adviceTask: "application-access",
+        requirements: [],
+        applicationAccessLanguage: language,
+      },
+      null,
+      (r) => calls.push(r.response_format.json_schema.name),
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(draft()),
+      [],
+      "Application project IAM?",
+    );
+    expect(calls).toEqual(["conversation_intent"]);
+    expect(result.changes).toEqual([]);
+    expect(result.explanation).toContain("accessProfile.initialOwnerEmail");
+    expect(result.explanation).toContain("iaas.server.get");
+    expect(result.explanation).not.toContain("compute.instances");
+  },
+);
+
+it.each(["vm-operations-v1", "application-workloads-v1", "missing-owner"])(
+  "handles %s through the bounded Application profile path",
+  async (choice) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice:
+            choice === "application-workloads-v1" ? choice : "vm-operations-v1",
+          initialOwnerEmail:
+            choice === "missing-owner" ? "" : "central@example.test",
+          permissions: [],
+          automationPermissions: [],
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      "Standard VM-Profil mit central@example.test als initialem Owner.",
+    );
+    if (choice === "missing-owner") {
+      expect(result.changes).toEqual([]);
+      expect(result.questions).toHaveLength(1);
+    } else
+      expect(result.changes[0]!.value).toEqual({
+        [template.key]: {
+          accessProfile: defaultApplicationAccessProfile(
+            "central@example.test",
+            choice === "vm-operations-v1" ? "vm" : "workload",
+          ),
+        },
+      });
   },
 );

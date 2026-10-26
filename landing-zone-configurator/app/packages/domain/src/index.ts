@@ -32,6 +32,7 @@ export function canAccessTenant(
   );
 }
 
+export * from "./application-access.js";
 export * from "./application-catalogue.js";
 export {
   compileApplicationPlan,

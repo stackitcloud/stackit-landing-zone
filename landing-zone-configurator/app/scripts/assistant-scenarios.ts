@@ -7,6 +7,7 @@ import {
   compileCommonConfiguration,
   createCommonConfiguration,
   createPlatformDraftCopy,
+  defaultApplicationAccessProfile,
   effectiveInput,
   type JsonValue,
   objectValue,
@@ -130,6 +131,12 @@ export type AssistantScenario = {
   editorExpected?: { path: string; value: JsonValue };
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
+  applicationAccess?:
+    | "advice"
+    | "owner"
+    | "granular"
+    | "vm-default"
+    | "workload-default";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
@@ -210,6 +217,46 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     dnsRole: "draft",
     message:
       "Ergänze zusätzlich genau eine bei STACKIT verwaltete öffentliche DNS-Zone new-company.stackit.gg unter dem Schlüssel company. Die vorhandene Zone example und alle Netzwerke bleiben unverändert. Wähle den fachlich passenden Zonentyp und verwende die hinterlegte Owner-E-Mail als Kontakt. Nur einen überprüfbaren Entwurf vorschlagen, nichts deployen.",
+  },
+  {
+    id: "application-access-profile-advice",
+    topic: "project-templates",
+    fixture: "baseline",
+    applicationAccess: "advice",
+    message:
+      "Welche Projektberechtigungen soll ich für Application-Teams wählen? Erkläre das empfohlene granulare VM-Profil, den separaten zentralen initialen Owner, Automation und die weiterhin mögliche volle Owner-Kundenwahl. Hebt eine eingeschränkte Rolle geerbte Owner-Rechte auf? Welche Produkte/Grenzen sind tatsächlich abgedeckt? Nur beraten, nichts ändern.",
+  },
+  {
+    id: "application-access-workload-default-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "workload-default",
+    message:
+      "Stelle ausschließlich das accessProfile der bestehenden Vorlage central auf das empfohlene granulare Workload-Standardprofil application-workloads-v1 um, einschließlich VMs, Object Storage, Observability und Secrets Manager. Zentraler initialer Projekt-Owner ist platform-owner@example.test. Keine weiteren Änderungen und keine Ausführung. Nur einen überprüfbaren Editor-Vorschlag vorbereiten.",
+  },
+  {
+    id: "application-access-vm-default-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "vm-default",
+    message:
+      "Stelle ausschließlich das accessProfile der bestehenden Vorlage central auf das empfohlene granulare Standardprofil für VM-Betrieb (vm-operations-v1) um. Zentraler initialer Projekt-Owner ist platform-owner@example.test. Team und Automation erhalten den geprüften VM-Standard, keine selbst erfundenen Rechte. Alle anderen Einstellungen erhalten. Nur einen Editor-Vorschlag vorbereiten.",
+  },
+  {
+    id: "application-access-full-owner-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "owner",
+    message:
+      "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf volle Projekt-Owner-Rechte. Das ist unsere ausdrückliche Kundenentscheidung für Besteller und Automation. Verwende das vollständige atomare Profil schemaVersion 1, mode owner ohne granulare Felder. Alles andere unverändert. Nur überprüfbarer Editor-Vorschlag, nichts veröffentlichen oder ausführen.",
+  },
+  {
+    id: "application-access-granular-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "granular",
+    message:
+      "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf granular, schemaVersion 1. Zentraler initialOwnerEmail ist platform-owner@example.test. Für das Team exakt permissions [iaas.server.get, resource-manager.project.get], für Automation exakt automationPermissions [iaas.server.get]. Kein Owner für den Besteller. Keine weiteren Änderungen, keine Veröffentlichung/Ausführung. Vollständiger atomarer Editor-Vorschlag.",
   },
   {
     id: "corporate-ipv4-automatic-advice",
@@ -787,6 +834,27 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       },
     ];
   }
+  if (scenario.applicationAccess && scenario.applicationAccess !== "advice") {
+    draft = createPlatformDraftCopy(draft, crypto.randomUUID());
+    draft.projectTemplates = [
+      {
+        id: "00000000-0000-4000-8000-000000000026",
+        key: "central",
+        name: "Corporate central",
+        kind: "corporate",
+        region: "eu01",
+        settings: {
+          network_enabled: true,
+          network_area_key: "default",
+          secretsmanager_enabled: true,
+        },
+        accessProfile:
+          scenario.applicationAccess === "owner"
+            ? defaultApplicationAccessProfile("platform-owner@example.test")
+            : { schemaVersion: 1, mode: "owner" },
+      },
+    ];
+  }
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
@@ -856,6 +924,55 @@ export function validateAssistantScenario(
   const fixture = assistantScenarioFixture(scenario);
   if (scenario.id === "devops-git-advice")
     failures.push(...assistantDevOpsDefaultFailures(dialogue.explanation));
+  if (scenario.applicationAccess === "advice") {
+    const text = dialogue.explanation.toLowerCase();
+    for (const [name, pattern] of [
+      ["granular", /granular/],
+      ["owner-choice", /owner/],
+      ["inherited", /geerbt|inherited|vererb/],
+      ["automation", /automation|service.account/],
+      ["vm-boundary", /vm|virtuelle|virtual machine/],
+    ] as const)
+      if (!pattern.test(text))
+        failures.push(`application_access_missing_${name}`);
+    if (/compute\.(?:instances|servers)|central\.initialowneremail/.test(text))
+      failures.push("application_access_invented_contract");
+    if (dialogue.changes.length)
+      failures.push("application_access_advice_mutated");
+  } else if (scenario.applicationAccess) {
+    const expected = structuredClone(fixture.draft);
+    const central = expected.projectTemplates?.find((x) => x.key === "central");
+    if (!central) throw new Error("application_access_fixture_missing");
+    central.accessProfile =
+      scenario.applicationAccess === "owner"
+        ? { schemaVersion: 1, mode: "owner" }
+        : scenario.applicationAccess === "vm-default" ||
+            scenario.applicationAccess === "workload-default"
+          ? defaultApplicationAccessProfile(
+              "platform-owner@example.test",
+              scenario.applicationAccess === "vm-default" ? "vm" : "workload",
+            )
+          : {
+              schemaVersion: 1,
+              mode: "granular",
+              initialOwnerEmail: "platform-owner@example.test",
+              permissions: ["iaas.server.get", "resource-manager.project.get"],
+              automationPermissions: ["iaas.server.get"],
+            };
+    try {
+      const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
+      if (
+        !dialogue.changes.length ||
+        dialogue.questions.length ||
+        !isDeepStrictEqual(candidate, expected)
+      )
+        failures.push(
+          "application_access_proposal_incorrect_or_unrelated_change",
+        );
+    } catch {
+      failures.push("application_access_proposal_invalid");
+    }
+  }
   if (scenario.corporateIpv4 === "advice") {
     failures.push(...assistantCorporateIpv4Failures(dialogue.explanation));
     if (dialogue.changes.length)

@@ -1,4 +1,45 @@
 export const englishMessages: Record<string, string> = {
+  "Du bist in dieser Vorlage selbst als zentraler Projekt-Owner festgelegt. Für granulare Bestellerrechte muss der Platform Owner eine andere zentrale Identität in einer neuen Template-Version auswählen. Es wurde kein Plan oder Apply gestartet.":
+    "This template names you as the central project owner. For granular requester permissions, the Platform Owner must select a different central identity in a new template version. No Plan or Apply was started.",
+
+  "Bestehendes Rechteverhalten: Die bestellende Person und die Automation erhalten Owner-Rechte. Eine neue Template-Version verändert bestehende Bestellungen nicht.":
+    "Legacy access: the requester and automation receive owner rights. Publishing a new template version does not change existing orders.",
+  "Vor dem Wechsel eigene Rollen, Rollenzuweisungen und die Rollen-Kontextbindung ausdrücklich entfernen. Bestehende veröffentlichte Versionen bleiben unverändert.":
+    "Before switching, explicitly remove custom roles, role assignments and the role context binding. Existing published versions remain unchanged.",
+  "Neues Rechteprofil konfigurieren": "Configure a new access profile",
+  "Bestehendes Owner-Modell": "Legacy owner model",
+  "Application-Rechteprofil": "Application access profile",
+  "Granular: Workload-Betrieb (empfohlen)":
+    "Granular: workload operations (recommended)",
+  "Volle Projekt-Owner-Rechte": "Full project owner rights",
+  "Das Profil wird mit der Template-Version festgeschrieben. Besteller können es nicht überschreiben. Geerbte oder anderweitig vergebene Rechte bleiben zusätzlich wirksam.":
+    "The profile is fixed in the template version. Requesters cannot override it. Inherited or separately assigned permissions remain effective.",
+  "Bewusste Kundenwahl: Besteller und Workload-Automation erhalten volle Owner-Rechte, einschließlich IAM und Projektverwaltung. Zentrale Vorgaben lassen sich gegenüber diesen Identitäten damit nicht unveränderlich erzwingen.":
+    "Explicit customer choice: requesters and workload automation receive full owner rights, including IAM and project administration. Central policies cannot be made immutable against these identities.",
+  "Initialer Projekt-Owner (zentraler Benutzer oder Service Account)":
+    "Initial project owner (central user or service account)",
+  "Muss vor Veröffentlichung feststehen und sich vom Besteller unterscheiden. Dieser zentrale Owner bleibt privilegiert; Bestellverantwortung und Cloud-Projektrechte sind getrennt.":
+    "Required before publication and must differ from the requester. This central owner remains privileged; order responsibility and cloud project permissions are separate.",
+  "Die geprüfte Workload-Auswahl umfasst VMs, Object Storage, Observability und Secrets Manager. IAM, Projektlöschung, zentrale Routing-Änderungen und privilegierte STACKIT-Service-Account-Verwaltung sind ausgeschlossen. Team und Automation lassen sich getrennt einschränken; volle Owner-Rechte bleiben eine Kundenwahl.":
+    "The reviewed workload selection covers VMs, Object Storage, Observability and Secrets Manager. IAM, project deletion, central routing changes and privileged STACKIT service-account administration are excluded. Team and automation permissions can be restricted separately; full owner remains a customer choice.",
+  "Live-Katalog verfügbar; nicht mehr gelistete Berechtigungen sind markiert und müssen geprüft werden.":
+    "Live catalogue available; permissions no longer listed are marked for review.",
+  "Statischer geprüfter Permission-Katalog vom 26.10.2026; kein Nachweis der effektiven Rechte eines Benutzers.":
+    "Reviewed static permission catalogue from 2026-10-26; this does not prove a user’s effective permissions.",
+  "Berechtigungen durchsuchen": "Search permissions",
+  "Application-Team": "Application team",
+  "Workload-Automation": "Workload automation",
+  "Im Live-Katalog nicht vorhanden": "Missing from the live catalogue",
+  "Ein Rechteprofil kann nicht mit zusätzlichen Rollen oder einer eigenen Rollen-Kontextbindung kombiniert werden.":
+    "An access profile cannot be combined with additional roles or a separate role context binding.",
+  "Für granulare Rechte muss der Platform Owner einen separaten initialen Projekt-Owner festlegen.":
+    "For granular permissions, the Platform Owner must specify a separate initial project owner.",
+  "Der initiale Projekt-Owner fehlt.": "The initial project owner is missing.",
+  "Ein granulares Profil benötigt einen anderen initialen Projekt-Owner als die bestellende Person.":
+    "A granular profile requires an initial project owner who differs from the requester.",
+  "Dieses Rechteprofil benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.":
+    "This access profile requires a new template version using the current Runner source.",
+
   "Der unvollständige State-Eintrag dieses Zugangs wird ebenfalls entfernt. Andere State-Einträge bleiben erhalten.":
     "The incomplete State entry for this credential is also removed. Other State entries are retained.",
   "Diese Zugänge existieren ohne gespeichertes Geheimnis. Mit der Freigabe werden ausschließlich die folgenden Zugänge widerrufen. Ersatz wird erst durch einen neuen geprüften Plan und Apply erstellt.":

@@ -1867,3 +1867,19 @@ button.template-node:hover {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+.application-access-profile {
+  min-inline-size: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.application-access-profile input:not([type="checkbox"]),
+.application-access-profile select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.application-access-profile button {
+  max-width: 100%;
+  white-space: normal;
+}

@@ -1,5 +1,11 @@
 import { z } from "zod";
 import {
+  type ApplicationAccessProfile,
+  applicationAccessProfileSchema,
+  applicationWorkloadPermissions,
+  validateApplicationAccessProfile,
+} from "./application-access.js";
+import {
   type CommonConfiguration,
   commonNetworkAreas,
   readCommonConfiguration,
@@ -27,6 +33,7 @@ export const projectTemplateDraftSchema = z
     settings: z.record(z.string(), z.json()),
     namespaceServices: z.record(z.string(), z.json()).optional(),
     parameterPolicy: templateParameterPolicySchema.optional(),
+    accessProfile: applicationAccessProfileSchema.optional(),
   })
   .strict();
 export type ProjectTemplateDraft = z.infer<typeof projectTemplateDraftSchema>;
@@ -45,6 +52,11 @@ export function validateProjectTemplateDraft(
   draft: ProjectTemplateDraft,
 ): void {
   validateTemplateParameterPolicy(draft);
+  validateApplicationAccessProfile(
+    draft.accessProfile,
+    draft.settings,
+    draft.parameterPolicy?.fields.role_assignments,
+  );
   if (instanceFields.some((field) => Object.hasOwn(draft.settings, field)))
     throw new Error(
       "Projektvorlagen dürfen keine Projektinstanz oder persönliche Eigentümerkennung enthalten.",
@@ -198,6 +210,13 @@ export function addProjectTemplate(
     ...(kind === "sandbox"
       ? {}
       : {
+          accessProfile: {
+            schemaVersion: 1 as const,
+            mode: "granular" as const,
+            initialOwnerEmail: textValue(next.features.identity.owner_email),
+            permissions: [...applicationWorkloadPermissions],
+            automationPermissions: [...applicationWorkloadPermissions],
+          },
           parameterPolicy: {
             schema_version: 1 as const,
             fields: {
@@ -222,11 +241,14 @@ export function updateProjectTemplate(
     settings?: Values;
     namespaceServices?: Values | null;
     parameterPolicy?: TemplateParameterPolicy | null;
+    accessProfile?: ApplicationAccessProfile;
   },
 ): CommonConfiguration {
   const next = readCommonConfiguration(document);
   const template = next.projectTemplates?.find((entry) => entry.id === id);
   if (!template) throw new Error("Unbekannte Projektvorlage.");
+  if (patch.accessProfile !== undefined)
+    template.accessProfile = structuredClone(patch.accessProfile);
   if (patch.name !== undefined) template.name = patch.name;
   if (patch.region !== undefined) template.region = patch.region;
   if (patch.settings !== undefined)

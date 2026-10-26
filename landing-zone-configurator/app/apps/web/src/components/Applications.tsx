@@ -169,6 +169,8 @@ const errors: Record<string, string> = {
     "Deine aktuelle Mitgliedschaft erlaubt diesen Zugriff nicht.",
   invalid_request_origin_or_csrf:
     "Der Arbeitsbereich oder die Sitzung wurde geändert. Bitte neu laden.",
+  application_initial_owner_conflict:
+    "Du bist in dieser Vorlage selbst als zentraler Projekt-Owner festgelegt. Für granulare Bestellerrechte muss der Platform Owner eine andere zentrale Identität in einer neuen Template-Version auswählen. Es wurde kein Plan oder Apply gestartet.",
   invalid_application_request:
     "Das Template oder die Bestellung ist ungültig. Prüfe die freigegebenen Bestellwerte.",
   template_version_not_found:
@@ -3639,6 +3641,14 @@ export function Applications({
                     ? "Direkte Bereitstellung"
                     : "Bereitstellung mit Freigabe",
                 )}
+              </dd>
+              <dt>{t("Application-Rechteprofil")}</dt>
+              <dd>
+                {selected.template.accessProfile?.mode === "granular"
+                  ? t("Granular: Workload-Betrieb (empfohlen)")
+                  : selected.template.accessProfile?.mode === "owner"
+                    ? t("Volle Projekt-Owner-Rechte")
+                    : t("Bestehendes Owner-Modell")}
               </dd>
               <dt>{t("Projektart")}</dt>
               <dd>

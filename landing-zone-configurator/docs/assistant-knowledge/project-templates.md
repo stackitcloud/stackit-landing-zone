@@ -2,58 +2,59 @@
 
 ## Purpose
 
-Reusable Public/Corporate foundations, not provisioning.
+Templates/IAM; no execution.
 
 ## Accelerator Contract
 
-landing_zones: corporate, region, area, project_code/env/owner_email, network
-enabled/prefix, roles, observability, secretsmanager. Public: corporate=false.
-Platform drafts use projectTemplates/policies, not personal instance fields
-or invented Terraform publication/order attributes.
-Automatic keeps network_prefix_length=null. Corrected Corporate module reads
-the attached regional SNA default_prefix_length during Plan and supplies it to
-the provider, retaining DNS. Explicit prefixes override it. Public automatic
-sizing is provider-managed, without a Corporate SNA read.
-Provider0.114.0: null prefix+DNS (even []) fails Plan (not necessarily validate):
-"Invalid IPv4 configuration". Fix: resolve effective prefix.
+landing_zones: corporate/region/area, project_code/env/owner_email, network/roles/
+observability/secretsmanager. Public:corporate=false. Drafts: projectTemplates/policies,
+not personal instance/publication fields.
+accessProfile: granular workload/explicit owner, separate central initial owner and automation.
+Automatic: null prefix; Corporate inherits SNA regional default during Plan
+with DNS; explicit overrides win. Public uses provider sizing.
+Provider0.114: null prefix+DNS (even []) fails Plan: Invalid IPv4 configuration.
 
 ## Dependencies
 
-Governance/identity, same-region SNA for Corporate, separate credentials.
-Public is no Corporate spoke; services are separate.
+Governance, verified identity, same-region SNA for Corporate, separate credentials.
+Public is not a Corporate spoke. Namespace services require Platform Kubernetes.
 
 ## Dialogue
 
-Draft setup, also after Audit/Git: new entries need name/kind/region/settings;
-updates retain identities. Delegated naming means choose names.
-Central versus Internet-only means Corporate versus Public; local networks set
-network_enabled=true. Reuse saved region/unambiguous area and existing prefixes.
-Merge additions; omit unrequested services, retain platform Audit/Git.
-Ask missing choices/policies. No sandboxes does not skip projects; removals need consent.
-"100 projects" is capacity, not generated examples/quota. Calculate effective
-prefixes with platform/firewall/future reservations; no free-capacity guarantee.
-Automatic means inherit actual SNA default, never fixed /24 or disabled DNS.
-Draft defaults are not live evidence. Do not demand numbers for Automatic.
-Explicitly requested /26 proposes settings.network_prefix_length=26; switching
-back to Automatic proposes null. Preserve other settings/identity. Ask capacity/pool constraints for undecided overrides only.
+New: name/kind/region/settings; reuse known keys. Delegate names only.
+Central=Corporate; Internet-only=Public; local network=true. Merge, retain Audit/Git;
+omit unrequested services. Ask missing choices.
+"100 projects" means capacity, not examples/quota; reserve platform/firewall space.
+No free-capacity promise. Explicit /26: network_prefix_length=26; Automatic=null,
+no mandatory /24/numeric choice or disabled DNS. Preserve other settings.
+Recommend NEW-template granular workload rights; full owner remains customer choice.
+IDP verifies identity; Configurator roles and deployed project IAM are separate.
+accessProfile is immutable template metadata, never an order input. Granular:
+schemaVersion=1, mode=granular, accessProfile.initialOwnerEmail (user/SA,
+not requester), explicit permissions/automationPermissions: iaas.server.get, never compute.*.
+Exclude IAM/project deletion/central routing/SA management/Floating-IP attachment;
+VM, Object Storage, Observability, Secrets Manager; VM-only preset is narrower.
+Owner policy exactly {schemaVersion:1,mode:owner}: requester/automation get owner.
+Explain IAM/project-control powers; no immutable central audit/routing claim.
+Propose COMPLETE atomic profile; preserve unrequested fields. No combination with
+legacy custom_roles/role_assignments/automation_role or role-context policy.
+New: granular; ask missing central owner.
+Absent profile preserves legacy owner. Inherited grants are additive, not cancelled.
 
 ## Examples
 
-SNA default /28 + Automatic: null in template, effective /28 to provider, DNS
-retained. Confirmed /26 overrides it. /24 is an example, not universally suitable.
+SNA /28: Automatic=/28, DNS kept.
 
 ## Limits
 
-Propose only; never publish/order/Plan/Apply. Native fix needs corrected Runner
-revision/new version/order; old immutable versions retain source/settings. Never
-delete State. Region/DNS/area/namespace must match; empty roles/ACLs prove no security.
-Quotas/usable addresses need live checks; subnet arithmetic is no guarantee.
+Old versions/State stay bound; changes need reviewed source/publication/migration.
+Never delete State. Region/area/DNS must match. Empty roles/ACLs prove no security.
+Effective rights/workloads need live acceptance, not grants/mock Plans. Not owner-less.
 
 ## Credentials
 
-Separate access/runtime grants. No secrets/profile IDs in context/exports;
-execution needs explicit external bindings.
+Separate user access/runtime grants. No secrets/profile IDs in chat/exports.
 
 ## Sources
 
-Native wiring, template/compiler contracts, pinned IPv4 validator; re-review changes.
+Native/IAM.

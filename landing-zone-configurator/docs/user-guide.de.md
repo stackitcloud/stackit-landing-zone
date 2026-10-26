@@ -69,6 +69,44 @@ Instanzen werden bei Veröffentlichung einer neuen Version nicht stillschweigend
 
 
 <a id="retire-archive-and-delete-versions"></a>
+### Ausgerollte Application-Projektrechte wählen
+
+Dies sind **STACKIT-IAM-Berechtigungen, die der Apply anlegt**, keine IDP-Rollen.
+Der IDP verifiziert die Anmeldeidentität; Platform Engineer/Application Owner sind
+Mitgliedschaftsrollen des Configurators. Die privilegierte Ausführungsidentität
+ist von beiden getrennt.
+
+Neue Public-/Corporate-Entwürfe empfehlen **Granular: Workload-Betrieb**. Lege einen
+zentralen initialen Projekt-Owner als Benutzer oder Service Account fest, der sich
+vom Besteller unterscheidet. Die Berechtigungen des Teams und der Workload-Automation
+werden unabhängig ausgewählt. Die bestellende Person benötigt weiterhin die
+STACKIT-Voraussetzungen für Organisationszugriff (üblicherweise
+`organization.viewer`). Eine Configurator-Einladung vergibt diese Cloud-Rolle
+nicht; siehe [STACKIT-Zugriffskontrolle](https://docs.stackit.cloud/platform/resource-manager/basics/access-control/). Die geprüfte Auswahl umfasst VM-, Volume-, Schlüssel-, Security-Group-, Object-Storage-,
+Observability- und Secrets-Manager-Berechtigungen. IAM,
+Projektlöschung, zentrales Routing, Service-Account-Verwaltung und direkte
+Floating-IP-Anbindung sind ausgeschlossen. Das ausdrücklich angeforderte VM-Preset bleibt enger. Das belegt noch keine reale
+IAM-Abnahme aller Workload-Abläufe.
+Der Editor nutzt nach Möglichkeit den Live-Permission-Katalog, sonst den
+geprüften statischen Stand. Beides belegt nicht die effektiven Benutzerrechte.
+
+**Volle Projekt-Owner-Rechte** bleiben eine ausdrückliche Kundenwahl für Besteller
+und Workload-Automation. Diese Identitäten können IAM und Projektvorgaben verwalten;
+zentrale Audit-/Routing-Regeln sind ihnen gegenüber nicht unveränderlich.
+Geerbte, gruppenbezogene und direkte Rechte sind additiv und separat zu prüfen.
+
+Der Platform Engineer schreibt das vollständige Profil bei Veröffentlichung fest.
+Die Bestellseite zeigt den Modus; Besteller können initialen Owner und Rollen nicht
+überschreiben. Der Server prüft das konkrete Profil erneut vor Job-Erstellung.
+Eine Anmeldung nach Bestellung ergänzt nur die verifizierte Besteller-Zuweisung,
+niemals den zentralen Owner oder die gewählten Rechte. Bestehende Entwürfe ohne
+Profil behalten ihr bisheriges Verhalten; veröffentlichte Versionen, Instanzen
+und State-Zuordnungen bleiben unverändert. Beim Umstellen eines alten Entwurfs
+müssen widersprüchliche eigene Rollen, Rollenzuweisungen und die Rollen-Kontextbindung
+ausdrücklich entfernt werden. Danach neues Profil konfigurieren und neue Version
+veröffentlichen. Änderungen an bereits ausgerolltem IAM benötigen eine separat
+geprüfte Migration. Eine Veröffentlichung allein ändert keine bestehenden Ressourcen.
+
 ### Versionen stilllegen, archivieren und löschen
 
 Der Katalog zeigt aktive Versionen. Platform Engineers können eine Version nach

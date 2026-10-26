@@ -61,6 +61,41 @@ instance, and publishing does not deploy one. Existing instances are not silentl
 upgraded when a new version is published.
 
 
+### Choose the deployed Application project permissions
+
+These are **STACKIT IAM permissions created by Apply**, not IDP roles. The IDP
+verifies login identity; Platform Engineer/Application Owner are Configurator
+membership roles. The privileged execution credential is separate from both.
+
+New Public/Corporate drafts recommend **Granular: workload operations**. Set a central
+initial project owner (user or service account) who differs from the requester.
+Select the team and workload automation permissions independently.
+The requester still needs the STACKIT organization-access prerequisites (normally
+`organization.viewer`); a Configurator workspace invitation does not assign that
+cloud role. See [STACKIT access control](https://docs.stackit.cloud/platform/resource-manager/basics/access-control/). The current
+reviewed selection covers VM, volume, key, security-group, Object Storage,
+Observability and Secrets Manager permissions; it excludes IAM, project deletion, central routing,
+service-account administration and direct Floating-IP attachment. The explicitly requested VM-only preset is narrower. This is not a claim that
+every workload workflow has already passed live IAM acceptance. The editor uses the live permission catalogue
+when available and otherwise the reviewed static snapshot; neither proves a
+particular user's effective permissions.
+
+**Full project owner rights** remains an explicit customer choice for requester
+and workload automation. Those identities can administer IAM/project settings;
+do not claim centrally immutable audit/routing rules against owner rights.
+Inherited/group/direct grants are additive and must be reviewed separately.
+
+The Platform Engineer fixes the complete profile at publication. The order page
+shows its mode; requesters cannot override the initial owner or role definitions.
+The server checks the exact profile again before creating a job. Login after an
+order completes only the verified requester assignment, never the central owner
+or chosen permissions. Existing drafts without a profile retain legacy behavior;
+existing published versions, instances and State bindings are not changed.
+Switching a legacy draft requires explicitly removing conflicting custom roles,
+role assignments and the role context binding, then configuring a new profile and
+publishing a new version. Updates of existing deployed IAM need a separately
+reviewed migration. A new publication alone never changes existing resources.
+
 ### Retire, archive and delete versions
 
 The catalogue shows active versions. Platform Engineers can retire a version after

@@ -62,10 +62,128 @@ mock_provider "stackit" {
 
 mock_provider "stackit" {
   alias = "eu01"
+  mock_resource "stackit_resourcemanager_project" {
+    defaults = {
+      project_id = "11111111-1111-4111-8111-111111111111"
+    }
+  }
+
+  mock_resource "stackit_network_area" {
+    defaults = {
+      network_area_id = "22222222-2222-4222-8222-222222222222"
+    }
+  }
+
+  mock_resource "stackit_network" {
+    defaults = {
+      network_id = "33333333-3333-4333-8333-333333333333"
+    }
+  }
+
+  mock_resource "stackit_secretsmanager_instance" {
+    defaults = {
+      instance_id = "44444444-4444-4444-8444-444444444444"
+    }
+  }
+
+  mock_resource "stackit_observability_instance" {
+    defaults = {
+      instance_id = "55555555-5555-4555-8555-555555555555"
+    }
+  }
+
+  mock_resource "stackit_objectstorage_credentials_group" {
+    defaults = {
+      credentials_group_id = "66666666-6666-4666-8666-666666666666"
+    }
+  }
+
+  mock_resource "stackit_service_account" {
+    defaults = {
+      email = "mock-service-account@sa.stackit.cloud"
+    }
+  }
+
+  mock_resource "stackit_routing_table" {
+    defaults = {
+      routing_table_id = "77777777-7777-4777-8777-777777777777"
+    }
+  }
+
+  mock_resource "stackit_service_account_key" {
+    defaults = {
+      json = "{}"
+    }
+  }
+
+  mock_resource "stackit_network_interface" {
+    defaults = {
+      network_interface_id = "88888888-8888-4888-8888-888888888888"
+    }
+  }
 }
 
 mock_provider "stackit" {
   alias = "eu02"
+  mock_resource "stackit_resourcemanager_project" {
+    defaults = {
+      project_id = "88888888-8888-4888-8888-888888888888"
+    }
+  }
+
+  mock_resource "stackit_network_area" {
+    defaults = {
+      network_area_id = "22222222-2222-4222-8222-222222222222"
+    }
+  }
+
+  mock_resource "stackit_network" {
+    defaults = {
+      network_id = "33333333-3333-4333-8333-333333333333"
+    }
+  }
+
+  mock_resource "stackit_secretsmanager_instance" {
+    defaults = {
+      instance_id = "44444444-4444-4444-8444-444444444444"
+    }
+  }
+
+  mock_resource "stackit_observability_instance" {
+    defaults = {
+      instance_id = "55555555-5555-4555-8555-555555555555"
+    }
+  }
+
+  mock_resource "stackit_objectstorage_credentials_group" {
+    defaults = {
+      credentials_group_id = "66666666-6666-4666-8666-666666666666"
+    }
+  }
+
+  mock_resource "stackit_service_account" {
+    defaults = {
+      email = "mock-service-account@sa.stackit.cloud"
+    }
+  }
+
+  mock_resource "stackit_routing_table" {
+    defaults = {
+      routing_table_id = "77777777-7777-4777-8777-777777777777"
+    }
+  }
+
+  mock_resource "stackit_service_account_key" {
+    defaults = {
+      json = "{}"
+    }
+  }
+
+  mock_resource "stackit_network_interface" {
+    defaults = {
+      network_interface_id = "88888888-8888-4888-8888-888888888888"
+    }
+  }
 }
 
 variables {
@@ -205,4 +323,38 @@ run "regional_public_landing_zone_requires_region" {
   }
 
   expect_failures = [var.landing_zones]
+}
+run "regional_workload_automation_roles" {
+  command = plan
+  variables {
+    connectivity = null
+    connectivity_regions = {
+      eu01 = { network_areas = { default = { ranges = ["10.10.0.0/16"], transfer_network = "10.10.0.0/24" } } }
+      eu02 = { network_areas = { default = { ranges = ["10.20.0.0/16"], transfer_network = "10.20.0.0/24" } } }
+    }
+    landing_zones = {
+      "public-one" = {
+        project_name    = "Test eu01 workload"
+        project_code    = "one"
+        owner_email     = "platform@example.com"
+        corporate       = false
+        region          = "eu01"
+        automation_role = "application-reader"
+        custom_roles    = [{ name = "application-reader", description = "Read access", permissions = ["iaas.server.get"] }]
+      }
+      "public-two" = {
+        project_name    = "Test eu02 workload"
+        project_code    = "two"
+        owner_email     = "platform@example.com"
+        corporate       = false
+        region          = "eu02"
+        automation_role = "application-reader"
+        custom_roles    = [{ name = "application-reader", description = "Read access", permissions = ["iaas.server.get"] }]
+      }
+    }
+  }
+  assert {
+    condition     = module.landing_zone_eu01["public-one"].project_access.automation_role == "application-reader" && module.landing_zone_eu02["public-two"].project_access.automation_role == "application-reader"
+    error_message = "Both regional combined-root module calls must forward the selected workload automation role."
+  }
 }
