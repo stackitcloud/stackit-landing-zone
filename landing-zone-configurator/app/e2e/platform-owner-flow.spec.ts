@@ -303,3 +303,172 @@ test("Application Owner receives the catalogue without platform editor, binding 
   expect(state.writes).toEqual([]);
   expect(state.executionWrites).toEqual([]);
 });
+
+test("Configurations resumes editing and only confirms losing a changed draft", async ({
+  page,
+}) => {
+  const state = await mockWorkspace(page);
+  const dialogs: string[] = [];
+  let discard = false;
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.message());
+    if (discard) await dialog.accept();
+    else await dialog.dismiss();
+  });
+  await page.goto("/configurations");
+  const open = () =>
+    page
+      .getByRole("button", {
+        name: "Konfiguration öffnen: Existing platform workflow",
+        exact: true,
+      })
+      .click();
+  await open();
+  const name = page.getByRole("textbox", {
+    name: "Name der Konfiguration",
+    exact: true,
+  });
+  await expect(name).toHaveValue("Existing platform workflow");
+  const navigation = page.getByRole("navigation", {
+    name: "Hauptnavigation",
+    exact: true,
+  });
+  await navigation
+    .getByRole("button", { name: "Application Landing Zones", exact: true })
+    .click();
+  await navigation
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await expect(name).toHaveValue("Existing platform workflow");
+  const showList = () =>
+    page
+      .getByRole("navigation", { name: "Brotkrumennavigation", exact: true })
+      .getByRole("link", { name: "Konfigurationen", exact: true })
+      .click();
+  await showList();
+  await open();
+  await expect(name).toHaveValue("Existing platform workflow");
+  expect(dialogs).toEqual([]);
+  await name.fill("Unsaved platform draft");
+  await showList();
+  await open();
+  await expect.poll(() => dialogs.length).toBe(1);
+  await expect(page).toHaveURL(/\/configurations$/);
+  await page
+    .getByRole("button", {
+      name: "Unsaved platform draft weiterbearbeiten",
+      exact: true,
+    })
+    .click();
+  await expect(name).toHaveValue("Unsaved platform draft");
+  await expect(
+    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+  ).toBeDisabled();
+  await showList();
+  discard = true;
+  await open();
+  await expect(name).toHaveValue("Existing platform workflow");
+  await expect(
+    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+  ).toBeEnabled();
+  expect(dialogs).toHaveLength(2);
+  expect(state.writes).toEqual([]);
+  expect(state.executionWrites).toEqual([]);
+  expect(state.revision()).toBe(1);
+});
+
+test("configuration reopen protects edits made during its read and skips confirmation for equal saved content", async ({
+  page,
+}) => {
+  const state = await mockWorkspace(page);
+  const dialogs: string[] = [];
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+  await page.goto("/configurations");
+  const open = () =>
+    page
+      .getByRole("button", {
+        name: "Konfiguration öffnen: Existing platform workflow",
+        exact: true,
+      })
+      .click();
+  const showList = () =>
+    page
+      .getByRole("navigation", { name: "Brotkrumennavigation", exact: true })
+      .getByRole("link", { name: "Konfigurationen", exact: true })
+      .click();
+  await open();
+  const name = page.getByRole("textbox", {
+    name: "Name der Konfiguration",
+    exact: true,
+  });
+  await expect(name).toHaveValue("Existing platform workflow");
+  await showList();
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(
+    `**/api/v1/configurations/${configurationId}`,
+    async (route) => {
+      expect(route.request().method()).toBe("GET");
+      await gate;
+      return route.fulfill({
+        json: {
+          configuration: {
+            id: configurationId,
+            name: state.stored().name,
+            revision: 1,
+            draft: state.stored(),
+          },
+        },
+      });
+    },
+  );
+  const pendingRead = page.waitForRequest(
+    `**/api/v1/configurations/${configurationId}`,
+  );
+  await open();
+  await pendingRead;
+  await page
+    .getByRole("button", {
+      name: "Existing platform workflow weiterbearbeiten",
+      exact: true,
+    })
+    .click();
+  await name.fill("Changed while loading");
+  release();
+  await expect.poll(() => dialogs.length).toBe(1);
+  await expect(name).toHaveValue("Changed while loading");
+  await expect(
+    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+  ).toBeDisabled();
+  // Another browser saved exactly the current content. It is dirty relative to
+  // this tab's old snapshot, but reopening would discard no actual changes.
+  const equivalent = { ...state.stored(), name: "Changed while loading" };
+  await page.route(`**/api/v1/configurations/${configurationId}`, (route) => {
+    expect(route.request().method()).toBe("GET");
+    return route.fulfill({
+      json: {
+        configuration: {
+          id: configurationId,
+          name: equivalent.name,
+          revision: 2,
+          draft: equivalent,
+        },
+      },
+    });
+  });
+  await showList();
+  await open();
+  await expect(name).toHaveValue("Changed while loading");
+  await expect(
+    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+  ).toBeEnabled();
+  expect(dialogs).toHaveLength(1);
+  expect(state.writes).toEqual([]);
+  expect(state.executionWrites).toEqual([]);
+});

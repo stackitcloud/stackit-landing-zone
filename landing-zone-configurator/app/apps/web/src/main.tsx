@@ -456,7 +456,7 @@ function App() {
                   type="button"
                   className={configurationView ? "nav-item active" : "nav-item"}
                   aria-current={configurationView ? "page" : undefined}
-                  onClick={() => setView("repositories")}
+                  onClick={() => setView(draft ? "editor" : "repositories")}
                 >
                   {t("Konfigurationen")}
                 </button>
@@ -772,6 +772,7 @@ function App() {
                         session={session}
                         draft={draft}
                         binding={configurationBinding}
+                        dirty={draftDirty}
                         compact
                         onSaved={saveConfigurationBinding}
                         onLoad={loadConfiguration}
@@ -990,6 +991,7 @@ function App() {
                     session={session}
                     draft={draft}
                     binding={configurationBinding}
+                    dirty={draftDirty}
                     compact={view === "editor"}
                     onSaved={saveConfigurationBinding}
                     onPrepare={openDeployment}

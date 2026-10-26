@@ -1,3 +1,4 @@
+import { assistantValuesEqual } from "@lzc/contracts";
 import {
   type EditorDraft,
   editorIssues,
@@ -81,6 +82,7 @@ export function Configurations({
   onLoad,
   onPrepare,
   compact = false,
+  dirty = true,
 }: {
   session: Session | null;
   draft: EditorDraft | null;
@@ -89,6 +91,7 @@ export function Configurations({
   onLoad: (draft: EditorDraft, binding: ConfigurationBinding) => void;
   onPrepare: (selection: DeploymentSelection) => void;
   compact?: boolean;
+  dirty?: boolean;
 }) {
   const [configurations, setConfigurations] = useState<Summary[]>([]);
   const [busy, setBusy] = useState(false);
@@ -103,6 +106,8 @@ export function Configurations({
     string,
     string
   > | null>(null);
+  const currentDraft = useRef({ draft, dirty });
+  currentDraft.current = { draft, dirty };
   const active = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const listRequest = useRef(0);
@@ -380,15 +385,6 @@ export function Configurations({
                   value0: item.name,
                 })}
                 onClick={() => {
-                  if (
-                    draft &&
-                    !window.confirm(
-                      t(
-                        "Aktuellen Entwurf durch die gespeicherte Konfiguration ersetzen?",
-                      ),
-                    )
-                  )
-                    return;
                   void perform(async () => {
                     const response = await checked(
                       await fetch(`/api/v1/configurations/${item.id}`, {
@@ -399,11 +395,23 @@ export function Configurations({
                       configuration: StoredConfiguration;
                     };
                     const loaded = readEditorDraft(configuration.draft);
-                    if (!controller.current?.signal.aborted)
-                      onLoad(loaded, {
-                        id: configuration.id,
-                        revision: configuration.revision,
-                      });
+                    if (controller.current?.signal.aborted) return;
+                    const current = currentDraft.current;
+                    if (
+                      current.draft &&
+                      current.dirty &&
+                      !assistantValuesEqual(current.draft, loaded) &&
+                      !window.confirm(
+                        t(
+                          "Aktuellen Entwurf durch die gespeicherte Konfiguration ersetzen?",
+                        ),
+                      )
+                    )
+                      return;
+                    onLoad(loaded, {
+                      id: configuration.id,
+                      revision: configuration.revision,
+                    });
                   });
                 }}
               >

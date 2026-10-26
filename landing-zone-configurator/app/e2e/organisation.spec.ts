@@ -3294,7 +3294,7 @@ for (const { publishing, applied, renewProof, executing } of [
       await page
         .getByRole("button", { name: "Konfigurationen", exact: true })
         .click();
-      await page.getByRole("button", { name: /weiterbearbeiten$/ }).click();
+
       await page
         .getByRole("button", {
           name: "5 Template-Entwürfe",

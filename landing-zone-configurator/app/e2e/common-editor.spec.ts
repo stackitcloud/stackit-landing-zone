@@ -465,7 +465,8 @@ test("shared configuration saves, reopens and restores in the account workspace"
     "Gemeinsamer Fork-Entwurf",
   );
   await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .getByRole("navigation", { name: "Brotkrumennavigation", exact: true })
+    .getByRole("link", { name: "Konfigurationen", exact: true })
     .click();
   await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
   await expect(page.getByRole("alert")).toContainText(
