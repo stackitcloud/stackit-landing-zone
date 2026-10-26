@@ -88,6 +88,7 @@ const steps: { id: EditorStep; title: string; inputs: string[] }[] = [
 export function CommonEditor({
   draft,
   session = null,
+  savedConfigurationId = null,
   onChange,
   step,
   onStepChange,
@@ -96,6 +97,7 @@ export function CommonEditor({
 }: {
   draft: CommonConfiguration;
   session?: Session | null;
+  savedConfigurationId?: string | null;
   onChange: (draft: CommonConfiguration) => void;
   step: EditorStep;
   onStepChange: (step: EditorStep) => void;
@@ -314,6 +316,7 @@ export function CommonEditor({
           {step === "projects" && platformDraft && (
             <ProjectTemplates
               session={session}
+              savedConfigurationId={savedConfigurationId}
               draft={draft}
               onChange={onChange}
               selectedTemplateId={selectedTemplate?.id ?? null}

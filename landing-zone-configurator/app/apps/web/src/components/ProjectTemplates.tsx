@@ -26,12 +26,14 @@ import {
 export function ProjectTemplates({
   draft,
   session = null,
+  savedConfigurationId = null,
   onChange,
   selectedTemplateId,
   onSelectTemplate,
 }: {
   draft: CommonConfiguration;
   session?: Session | null;
+  savedConfigurationId?: string | null;
   onChange: (draft: CommonConfiguration) => void;
   selectedTemplateId: string | null;
   onSelectTemplate: (id: string) => void;
@@ -64,7 +66,7 @@ export function ProjectTemplates({
       organizationId={
         typeof values.organization_id === "string" ? values.organization_id : ""
       }
-      configurationId={draft.id}
+      configurationId={savedConfigurationId ?? ""}
     >
       <p>
         {t(

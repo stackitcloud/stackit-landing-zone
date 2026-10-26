@@ -59,10 +59,12 @@ import {
 function TemplateDraftEditor({
   draft,
   session,
+  savedConfigurationId,
   onChange,
 }: {
   draft: CommonConfiguration;
   session: Session | null;
+  savedConfigurationId: string | null;
   onChange: (draft: CommonConfiguration) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -73,6 +75,7 @@ function TemplateDraftEditor({
     <ProjectTemplates
       draft={draft}
       session={session}
+      savedConfigurationId={savedConfigurationId}
       onChange={onChange}
       selectedTemplateId={selected?.id ?? null}
       onSelectTemplate={setSelectedId}
@@ -762,6 +765,7 @@ function App() {
                         key={draft.id}
                         draft={draft}
                         session={session}
+                        savedConfigurationId={configurationBinding?.id ?? null}
                         onChange={setDraft}
                       />
                       <Configurations
@@ -1072,6 +1076,7 @@ function App() {
                   (isCommonDraft(draft) ? (
                     <CommonEditor
                       session={session}
+                      savedConfigurationId={configurationBinding?.id ?? null}
                       draft={draft}
                       onChange={setDraft}
                       onCreatePlatformCopy={copyPlatform}
