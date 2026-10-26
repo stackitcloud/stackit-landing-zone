@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceSha256": "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+  "sourceSha256": "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
   "variables": [
     {
       "name": "bucket_naming",
@@ -1694,6 +1694,7 @@
         [
           "object",
           {
+            "automation_role": "string",
             "corporate": "bool",
             "custom_roles": [
               "list",
@@ -1748,6 +1749,7 @@
             "secretsmanager_enabled": "bool"
           },
           [
+            "automation_role",
             "corporate",
             "custom_roles",
             "env",
@@ -1768,6 +1770,7 @@
         "children": {
           "": {
             "values": {
+              "automation_role": "owner",
               "corporate": true,
               "custom_roles": [],
               "env": "dev",
@@ -1803,7 +1806,7 @@
     },
     {
       "name": "landing_zone_namespace_services",
-      "line": 686,
+      "line": 687,
       "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
       "type": [
         "map",

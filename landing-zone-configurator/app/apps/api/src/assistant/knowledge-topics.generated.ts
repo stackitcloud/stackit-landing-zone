@@ -31,7 +31,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/providers.tf",
@@ -89,7 +89,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -171,7 +171,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/providers.tf",
@@ -181,7 +181,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -241,7 +241,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -291,7 +291,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -367,7 +367,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -392,7 +392,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/landing-zone/variables.tf",
           sha256:
-            "c8ec47c9c00d4b7af5f84025bf5a2b443c99d7d6aa17952f24517697504c0905",
+            "b42f23055c9b2cf2878bf4c38a44dc8aa1a4a36ba8af32ccbb6a3a4574d00b8f",
         },
         {
           path: "src/modules/platform-kubernetes/variables.tf",
@@ -451,12 +451,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -507,12 +507,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -583,7 +583,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -674,7 +674,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -759,12 +759,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "src/modules/connectivity/variables.tf",
@@ -936,7 +936,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/modules/firewall-config/variables.tf",
@@ -946,7 +946,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "src/providers.tf",
@@ -1060,7 +1060,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/_firewall-bootstrap.tf",
@@ -1110,7 +1110,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/modules/devops/variables.tf",
@@ -1120,7 +1120,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "src/providers.tf",
@@ -1164,7 +1164,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/modules/platform-kubernetes/variables.tf",
@@ -1179,7 +1179,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "src/providers.tf",
@@ -1291,17 +1291,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/modules/landing-zone/variables.tf",
           sha256:
-            "c8ec47c9c00d4b7af5f84025bf5a2b443c99d7d6aa17952f24517697504c0905",
+            "b42f23055c9b2cf2878bf4c38a44dc8aa1a4a36ba8af32ccbb6a3a4574d00b8f",
         },
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-document.ts",
@@ -1341,6 +1341,7 @@ export const assistantKnowledgeTopics = {
       fieldPaths: [
         "landing_zones",
         "landing_zones[*]",
+        "landing_zones[*].automation_role",
         "landing_zones[*].corporate",
         "landing_zones[*].custom_roles",
         "landing_zones[*].custom_roles[*]",
@@ -1388,7 +1389,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/modules/sandboxes/variables.tf",
@@ -1398,7 +1399,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
+            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-document.ts",
@@ -1441,7 +1442,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
         },
         {
           path: "src/_landing-zone-kubernetes.tf",

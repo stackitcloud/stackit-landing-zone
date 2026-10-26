@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "9a40d2673b4a5661c1d61db4eae42ce97352210fa7d8d34350d290cd4b61692e",
+  "knowledgeSha256": "1b620b1e45b25d485e869256d0b67bf4768b18fa8767398b5b75d13971e0026b",
   "sourceDigests": {
     "scripts/assistant-scenarios.ts": "89bf733e05cc0d073287064bab130dce46e1465a7a64c68592db64de4199fa75",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
@@ -5029,6 +5029,15 @@
           "group": "projects",
           "type": "object",
           "optional": false,
+          "proposalPath": "landing_zones",
+          "responsibility": "user",
+          "mode": "propose-validated-draft"
+        },
+        {
+          "path": "landing_zones[*].automation_role",
+          "group": "projects",
+          "type": "string",
+          "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
           "mode": "propose-validated-draft"

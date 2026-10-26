@@ -20,6 +20,8 @@ variable "application" {
     name                   = string
     env                    = optional(string, null)
     owner_email            = string
+    initial_owner_email    = optional(string, null)
+    automation_role        = optional(string, "owner")
     target_key             = string
     network_enabled        = optional(bool, false)
     network_prefix_length  = optional(number, null)
@@ -42,6 +44,10 @@ variable "application" {
   })
   description = "Resolved application instance supplied manually or by the Configurator. Identity and deployment authorization are enforced by the caller's IAM permissions."
 
+  validation {
+    condition     = var.application.initial_owner_email == null ? true : can(regex("^[^@\\s]+@[^@\\s]+$", var.application.initial_owner_email))
+    error_message = "Initial project owner must be an email address or omitted for legacy requester ownership."
+  }
   validation {
     condition     = var.application.env == null ? true : can(regex("^[a-z][a-z0-9-]{0,15}$", var.application.env))
     error_message = "Application env must contain 1-16 lowercase letters, digits or hyphens and start with a letter. Omit it to preserve legacy resource names."

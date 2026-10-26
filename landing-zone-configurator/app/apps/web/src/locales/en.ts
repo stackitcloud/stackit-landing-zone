@@ -2248,6 +2248,7 @@ export const englishMessages: Record<string, string> = {
   "Systemabbild-ID": "System image ID",
   "Systemkomponenten zulassen": "Allow system components",
   "Systemlaufwerk (GB)": "System disk (GB)",
+  "Projektrolle der Workload-Automation": "Workload automation project role",
   "Technisch verantwortlich": "Technical contact",
   "Technische STACKIT-Zugänge konnten nicht geladen werden.":
     "Could not load technical STACKIT credentials.",

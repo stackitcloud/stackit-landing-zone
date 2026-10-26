@@ -631,9 +631,10 @@ variable "sandboxes" {
 
 variable "landing_zones" {
   type = map(object({
-    project_name = string
-    project_code = string
-    owner_email  = string
+    project_name    = string
+    project_code    = string
+    automation_role = optional(string, "owner")
+    owner_email     = string
     # Set to true for corporate landing zones (connected to network area), false for public
     corporate        = optional(bool, true)
     network_area_key = optional(string, "default")

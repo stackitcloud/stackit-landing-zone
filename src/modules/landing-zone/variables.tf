@@ -1,3 +1,14 @@
+variable "automation_role" {
+  type        = string
+  description = "Project role assigned to the Application automation service account. Defaults to owner for compatibility. Select a reviewed built-in or custom role to restrict workload automation; inherited grants remain additive."
+  default     = "owner"
+
+  validation {
+    condition     = length(trimspace(var.automation_role)) > 0
+    error_message = "Automation role must be a non-empty project role identifier."
+  }
+}
+
 variable "bucket_naming" {
   type        = string
   description = "Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration."
