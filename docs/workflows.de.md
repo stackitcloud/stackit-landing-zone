@@ -117,6 +117,13 @@ Pflichtprüfung, ohne sicherzustellen, dass er für jeden relevanten PR ein Erge
 | Configurator Runtime | `root=runtime`; standardmäßig `apply=false`. Benötigt den obigen Laufzeit-Operatorschalter; Apply verwendet `lzc-dev-runtime-apply`. |
 | Configurator Release | Standardmäßig `release_mode=qualified` und `build_only=false`; leere `release_run_id` bedeutet einen neuen Build im gewählten Modus. Setzen Sie `build_only=true` für einen Build ohne CF-Bereitstellung; die Veröffentlichung des geschützten Tags erfolgt trotzdem; echte Modellaufrufe laufen im Modus `qualified`. Um einen bestehenden qualifizierten Build zu übernehmen, lassen Sie Build-only deaktiviert und geben Sie dessen numerische Run-ID an; das aufbewahrte Artefakt/Tag muss weiterhin gültig sein. |
 
+Browser-Abnahme und native Paketierung laufen im Release-Build parallel; die
+Bereitstellung bereitet Runner, minimales Migrationspaket und Web/API mit getrennten
+CF-Homes parallel vor. Die App-Aktivierung wartet auf alle Prüfungen und die
+vollständige Runner-Bindung. Der Release bleibt eine unveränderliche Quelle;
+Komponenten-Wiederverwendung folgt später in
+[Issue #167](https://github.com/stackitcloud/stackit-landing-zone/issues/167).
+
 Für die normale Configurator-Bereitstellung: Wählen Sie **Configurator Release**,
 **runner_pool_size=1** für einen vorbereiteten Einmal-Runner in Dev
 (`0` deaktiviert/baut den Pool ab; Standard `0`, Maximum `4`, 1 GiB RAM je Reserve),

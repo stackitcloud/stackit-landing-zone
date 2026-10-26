@@ -274,7 +274,7 @@ test("release pins the final buildpack to the approved source and excludes image
   assert.match(runnerManifest, /disk_quota: 6144M/);
   assert.match(runnerManifest, /instances: 0/);
   assert.ok(
-    workflow.includes("if: failure() && steps.push.outcome == 'failure'"),
+    workflow.includes("if: failure() && steps.stage_runner.outcome == 'failure'"),
   );
   assert.ok(workflow.includes("awk '/\\[STG\\/[0-9]+\\]/ { print }'"));
   assert.ok(pack.includes('tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .'));

@@ -238,12 +238,40 @@ Release in `landing-zone-configurator-migrate`, einer separaten Task-only-App oh
 Route. Nur diese kurzlebige App erhält die Datenbank-Owner-Zugangsdaten; sie wird
 nach der Migration und bei Fehlern gelöscht. Migrationsprüfsummen und ein Advisory Lock
 sichern wiederholte Ausführung ab. Die Web-App verwendet ihre eingeschränkte Runtime-Rolle und RLS.
-Migrations-App und ihr Task benötigen beide 4096 MB Festplattenquota, weil sie
-den vollständigen unveränderlichen Web-Release einschließlich der gepinnten Inspektionsruntime entpacken.
-Das frühere Limit von 512 MB scheiterte beim Extrahieren des Containers, bevor Node oder irgendein
-Migrationscode startete. Der Task behält sein Speicherlimit von 128 MB.
-Der exakte qualifizierte Release enthält allein 505.65 MiB Nutzlast regulärer Dateien;
-Dateisystemblöcke, Verzeichnisse und Container verursachen zusätzlichen Overhead.
+Das Migrationspaket wird auf dem Deployment-Runner aus dem per Prüfsumme verifizierten
+unveränderlichen Release abgeleitet. Es enthält nur die gepinnte Node-Binärdatei samt
+Lizenz, den Migrationseinstieg, Datenbankkonfiguration/Migrations-/Fehlerhilfen, das
+vollständige SQL-Verzeichnis und die installierten `pg`-Abhängigkeiten. Es findet keine
+neue Abhängigkeitsauflösung statt. Web-Assets, weitere API-Abhängigkeiten, Provider und
+Inspektions-Images sind ausgeschlossen. Der Task behält seine Limits von 128 MB
+Speicher und 4096 MB Festplatte; Letzteres ist eine Obergrenze und kein Grund, das
+vollständige Web-/Inspektionspaket hochzuladen.
+
+Browser-Abnahme und native Vertragsprüfungen/Runner-Paketierung laufen nach dem
+normalen Anwendungs-Build parallel. Beide müssen erfolgreich sein, bevor das
+Release-Archiv zusammengestellt wird. Bei der Bereitstellung laufen Runner-Staging
+und -Validierung, der kleine Migrationstask und Web/API-Staging parallel; Runner- und
+Migrationsidentität verwenden getrennte CF-Homes. Der Anwendungszweig verwendet eine
+private Kopie mit deaktivierter Ausführung und ohne Runner-Bindung. `cf push --no-start`
+lädt hoch und wendet das Manifest an; `cf stage-package` erstellt aus dem exakt
+bestimmten bereiten Paket ein Droplet, ohne es zuzuweisen oder einen neuen
+Anwendungsprozess zu starten. Bestehende Prozesse behalten ihre bisherige Umgebung.
+Erst nach Erfolg aller drei Zweige wendet die Aktivierung die vollständige Runner-Bindung
+an, prüft die protokollierte Paket-/Build-/Droplet-Zuordnung, stoppt die alte App,
+weist das neue Droplet zu und startet es. Es bleibt eine Bereitstellung mit einer
+Instanz und kurzer Aktivierungsunterbrechung, kein Rolling Release. Ein fehlgeschlagener
+Zweig beendet die übrigen und verhindert die Aktivierung; die privilegierte Migrations-App
+wird bei Erfolg und Fehler gelöscht, ergänzt durch Workflow-Bereinigung bei Abbruch.
+Die Laufzeiten der Zweige werden protokolliert.
+
+Ältere qualifizierte Artefakte, deren exakte Quelle die neuen Skripte noch nicht enthält,
+behalten bei einer Promotion den bisherigen sequenziellen Ablauf. Das Artefakt wird
+weder neu gebaut noch stillschweigend mit einem anderen Quellbaum ausgeführt.
+
+Alle Komponenten gehören weiterhin zu einem quellgebundenen Release. Ein älterer
+Runner wird nicht wiederverwendet; Promotion, Qualifikation, Prüfsummen und Freigaben
+bleiben erhalten. Getrennte Komponenten-Releases verfolgt
+[Issue #167](https://github.com/stackitcloud/stackit-landing-zone/issues/167).
 Die nachfolgenden Tasks für Netzwerk, Dienstverbindung und Runner-Isolation
 entpacken dieses Droplet ebenfalls und verwenden dieselbe Festplattenquota von 4096 MB.
 Diagnosen des Migrationstasks melden nur Release-Run-ID, Verbindungs-/Migrations-

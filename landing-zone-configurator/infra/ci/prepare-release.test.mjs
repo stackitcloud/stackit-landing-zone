@@ -7,13 +7,14 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { approvedReleaseSource, createReleaseManifest, verifyReleaseManifest, releaseMode } from "./release-artifact.mjs";
 const script=fileURLToPath(new URL("./prepare-release.mjs",import.meta.url));
-test("migration task can unpack the full release and web routes match the registered callback origin",()=>{
+test("migration task retains its disk budget and web routes match the registered callback origin",()=>{
  const web=readFileSync(new URL("../../deploy/cloud-foundry/manifest.yml",import.meta.url),"utf8");
  const migration=readFileSync(new URL("../../deploy/cloud-foundry/migration-manifest.yml",import.meta.url),"utf8");
  const workflow=readFileSync(new URL("../../../.github/workflows/configurator-release.yml",import.meta.url),"utf8");
  assert.match(web,/\n    disk_quota: 6144M\n/);
  assert.match(migration,/\n    disk_quota: 4096M\n/);
- assert.match(workflow,/cf run-task landing-zone-configurator-migrate [^\n]+ -m 128M -k 4096M --wait/);
+ const migrationLane=readFileSync(new URL("./stage-release-migration.sh",import.meta.url),"utf8");
+ assert.match(migrationLane,/cf run-task landing-zone-configurator-migrate [^\n]+ -m 128M -k 4096M --wait/);
  const applicationTasks=workflow.split("\n").filter(line=>line.trim().startsWith("cf run-task landing-zone-configurator ")||line.trim().startsWith("run: cf run-task landing-zone-configurator "));
  assert.equal(applicationTasks.length,3);
  for(const task of applicationTasks)assert.match(task,/ -m 128M -k 4096M --wait$/);

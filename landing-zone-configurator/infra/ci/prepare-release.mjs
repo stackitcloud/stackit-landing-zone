@@ -91,6 +91,7 @@ if(mode==="backend") {
   vars.LZC_IMAGE_BUILDPACK=`https://github.com/stackitcloud/stackit-landing-zone.git#${buildpackTag(revision)}`;
   writeFileSync(resolve(dir,"runner-vars.json"),JSON.stringify({LZC_IMAGE_BUILDPACK:vars.LZC_IMAGE_BUILDPACK}),{mode:0o600});
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
+  writeFileSync(resolve(dir,"app-stage-vars.json"),JSON.stringify({...vars,LZC_EXECUTION_ENABLED:"false",LZC_APPLICATION_EXECUTION_ENABLED:"false",LZC_RUNNER_POOL_SIZE:"0"}),{mode:0o600});
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);
 }
 publish("LZC_PRIVATE",dir);

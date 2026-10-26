@@ -229,12 +229,36 @@ release in `landing-zone-configurator-migrate`, a separate task-only app with no
 route. Only this short-lived app receives the database-owner credentials; it is
 deleted after migration and on failure. Migration checksums and an advisory lock
 protect repeat execution. The web app uses its restricted runtime role and RLS.
-The migration app and its task both need 4096 MB disk quota because they unpack
-the complete immutable web release, including the pinned inspection runtime.
-The former 512 MB limit failed during container extraction, before Node or any
-migration code started. The task retains its 128 MB memory limit.
-The exact qualified release contains 505.65 MiB of regular file payload alone;
-filesystem blocks, directories and the container add overhead beyond that.
+Migration packaging is derived on the deployment runner from the checksum-verified
+immutable release. It copies only the pinned Node binary/license, migration entrypoint,
+database configuration/migration/error helpers, the complete SQL directory and the
+installed `pg` dependency closure. It performs no new dependency resolution. Web
+assets, unrelated API dependencies, providers and inspection images are excluded.
+The task retains its 128 MB memory and 4096 MB disk limits; the latter is a ceiling,
+not a reason to upload the complete web/inspection payload.
+
+Browser acceptance and native contract/Runner packaging run concurrently after the
+ordinary application build. Both must succeed before the release archive is assembled.
+During deployment, Runner staging/validation, the small migration task and Web/API
+staging run concurrently, with separate CF homes for the Runner and migration
+identities. The application lane uses a private snapshot with execution disabled
+and no Runner binding. `cf push --no-start` uploads/applies the manifest;
+`cf stage-package` stages the exact ready package without assigning its droplet or
+starting a new application process. Existing processes retain their previous environment.
+Only after all three lanes succeed does activation apply the completed Runner binding,
+verify the recorded package/build/droplet relationship, stop the old app, assign the
+new droplet and start it. This remains a single-instance deployment with a short
+activation interruption, not a rolling release. A failed lane terminates the others
+and prevents activation; the privileged migration app is removed on success/failure,
+with workflow cleanup also covering cancellation. Lane durations are logged.
+
+Older qualified artifacts whose exact source lacks the new scripts retain the original
+sequential deployment path when promoted; the artifact is never rebuilt or silently
+run with a different source tree.
+
+All components still belong to one source-bound release: this does not reuse an
+older Runner or relax promotion, qualification, checksum or approval gates.
+Independent component releases are tracked in [issue #167](https://github.com/stackitcloud/stackit-landing-zone/issues/167).
 The subsequent network, service-connection and runner-isolation tasks also
 unpack this droplet and use the same 4096 MB disk quota.
 Migration task diagnostics report only the release run ID, connection/migration

@@ -97,6 +97,8 @@ jobs:
         run: npm run check
       - name: Check release configuration with the built API validators
         run: node --test ../infra/ci/prepare-release.test.mjs
+      - name: Check parallel release lifecycle and slim migration payload
+        run: node --test ../infra/ci/release-lifecycle.test.mjs
       - name: Check release configuration under the explicit Dev exception
         run: node --test ../infra/ci/prepare-release.test.mjs
         env:
