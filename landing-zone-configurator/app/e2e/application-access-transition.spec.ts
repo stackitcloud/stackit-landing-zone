@@ -12,6 +12,8 @@ const userId = "11111111-1111-4111-8111-111111111111";
 const tenantId = "22222222-2222-4222-8222-222222222222";
 const organizationId = "33333333-3333-4333-8333-333333333333";
 const configurationId = "44444444-4444-4444-8444-444444444444";
+// The persisted row ID is generated independently from the document-local ID.
+const documentId = "55555555-5555-4555-8555-555555555555";
 function configuration(profile = false) {
   const legacy = structuredClone(legacyAccessTemplate);
   if (profile) {
@@ -29,7 +31,7 @@ function configuration(profile = false) {
   }
   return editCommonInput(
     {
-      ...createEditorConfiguration("standalone", configurationId),
+      ...createEditorConfiguration("standalone", documentId),
       projectTemplates: [legacy],
     },
     "organization_id",
@@ -403,169 +405,204 @@ test("old scoped profile responses cannot repopulate choices after the configura
   expect(reads).toBe(2);
 });
 
-test("saved platform preparation keeps its exact accessible service-account choice despite a later failed check", async ({
-  page,
-}) => {
-  const profiles = [
-    {
-      id: "bound-failed",
-      name: "Existing platform deployer",
-      serviceAccount: "deployer@sa.stackit.cloud",
-      keyId: "key-deployer",
-      state: "stored",
-      lastCheck: { status: "failed", organizationId },
-    },
-    {
-      id: "bound-other-check",
-      name: "Other previously prepared deployer",
-      serviceAccount: "other-deployer@sa.stackit.cloud",
-      keyId: "key-other",
-      state: "stored",
-      lastCheck: { status: "passed", organizationId: "another-organization" },
-    },
-    ...[
+for (const context of ["configuration", "inline templates"] as const) {
+  test(`saved platform preparation uses the persisted configuration ID in ${context} despite a later failed check`, async ({
+    page,
+  }) => {
+    const profiles = [
+      {
+        id: "bound-failed",
+        name: "Existing platform deployer",
+        serviceAccount: "deployer@sa.stackit.cloud",
+        keyId: "key-deployer",
+        state: "stored",
+        lastCheck: { status: "failed", organizationId },
+      },
+      {
+        id: "bound-other-check",
+        name: "Other previously prepared deployer",
+        serviceAccount: "other-deployer@sa.stackit.cloud",
+        keyId: "key-other",
+        state: "stored",
+        lastCheck: { status: "passed", organizationId: "another-organization" },
+      },
+      ...[
+        "unbound",
+        "foreign-preparation",
+        "other-configuration",
+        "wrong-key",
+      ].map((id) => ({
+        id,
+        name: id,
+        serviceAccount: `${id}@sa.stackit.cloud`,
+        keyId: `key-${id}`,
+        state: "stored",
+        lastCheck: { status: "failed", organizationId },
+      })),
+    ];
+    const preparation = (
+      id: string,
+      credentialId: string,
+      org = organizationId,
+      config = configurationId,
+      keyId = `key-${credentialId}`,
+    ) => ({
+      id,
+      name: `Preparation ${id}`,
+      credentialId,
+      manifest: {
+        source: { configurationId: config },
+        organization: { id: org },
+        credential: { id: credentialId, keyId },
+      },
+    });
+    const preparations = [
+      preparation(
+        "saved-platform",
+        "bound-failed",
+        organizationId,
+        configurationId,
+        "key-deployer",
+      ),
+      preparation(
+        "other-platform",
+        "bound-other-check",
+        organizationId,
+        configurationId,
+        "key-other",
+      ),
+      preparation("foreign", "foreign-preparation", "foreign-organization"),
+      preparation(
+        "other-config",
+        "other-configuration",
+        organizationId,
+        "different-configuration",
+      ),
+      preparation(
+        "old-key",
+        "wrong-key",
+        organizationId,
+        configurationId,
+        "wrong-profile-key",
+      ),
+      // A preparation cannot disclose another user's profile or synthesize its
+      // identity: it is not among the accessible credential metadata rows.
+      preparation("not-accessible", "another-users-profile"),
+      // Matching the local document ID is not evidence of a saved preparation.
+      preparation("document-only", "unbound", organizationId, documentId),
+    ];
+    const reads: string[] = [];
+    await page.route("**/api/v1/stackit/identity", (route) =>
+      route.fulfill({
+        json: { verified: true, identity: { email: "human@example.test" } },
+      }),
+    );
+    for (const [path, payload] of [
+      ["credentials", { profiles }],
+      ["preparations", { preparations }],
+    ] as const) {
+      await page.route(`**/api/v1/${path}`, (route) => {
+        expect(route.request().method()).toBe("GET");
+        const tenant = route.request().headers()["x-lzc-tenant"];
+        // Existing preparation/storage navigation also reads its lists without
+        // this contextual header. Give those reads no profile/provenance data;
+        // only the picker must make the explicit scoped reads asserted below.
+        if (tenant === undefined)
+          return route.fulfill({
+            json:
+              path === "credentials" ? { profiles: [] } : { preparations: [] },
+          });
+        expect(tenant).toBe(tenantId);
+        reads.push(path);
+        return route.fulfill({ json: payload });
+      });
+    }
+    await page.route("**/api/v1/plans", (route) => {
+      if (route.request().headers()["x-lzc-tenant"] !== undefined)
+        throw new Error(
+          "Owner selection must not request plans or trigger execution checks",
+        );
+      return route.fulfill({ json: { runs: [] } });
+    });
+    if (context === "inline templates") {
+      for (const [path, payload] of [
+        ["templates", { versions: [] }],
+        ["instances", { instances: [] }],
+        ["platform-contracts", { contracts: [] }],
+      ] as const) {
+        await page.route(`**/api/v1/applications/${path}`, (route) => {
+          expect(route.request().method()).toBe("GET");
+          expect(route.request().headers()["x-lzc-tenant"]).toBe(tenantId);
+          return route.fulfill({ json: payload });
+        });
+      }
+    }
+    const state = await setup(page, configuration(true));
+    expect(state.saved().id).not.toBe(configurationId);
+    if (context === "inline templates") {
+      await page
+        .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+        .getByRole("button", { name: "Application Landing Zones", exact: true })
+        .click();
+      await expect(
+        page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+    }
+    const editor =
+      context === "inline templates"
+        ? page.getByRole("tabpanel", { name: "Template-Entwürfe", exact: true })
+        : page.locator("main");
+    const source = editor.getByLabel("Quelle für den initialen Projekt-Owner", {
+      exact: true,
+    });
+    const owner = editor.getByLabel(
+      "Initialer Projekt-Owner (zentraler Benutzer oder Service Account)",
+      { exact: true },
+    );
+    await expect(source.locator("option")).toHaveCount(4);
+    await expect(source).toHaveValue("manual");
+    await expect(owner).toHaveValue("human@example.test");
+    await expect(
+      source.locator('option[value="profile:bound-failed"]'),
+    ).toContainText("Plattform-Zugangsprofil aus gespeicherter Vorbereitung");
+    await expect(
+      source.locator('option[value="profile:bound-failed"]'),
+    ).toContainText("Letzte Zugangsprüfung nicht erfolgreich");
+    await expect(
+      source.locator('option[value="profile:bound-failed"]'),
+    ).toContainText("Preparation saved-platform");
+    await expect(
+      source.locator('option[value="profile:bound-other-check"]'),
+    ).toContainText("Letzte Zugangsprüfung betrifft eine andere Organisation");
+    for (const id of [
       "unbound",
       "foreign-preparation",
       "other-configuration",
       "wrong-key",
-    ].map((id) => ({
-      id,
-      name: id,
-      serviceAccount: `${id}@sa.stackit.cloud`,
-      keyId: `key-${id}`,
-      state: "stored",
-      lastCheck: { status: "failed", organizationId },
-    })),
-  ];
-  const preparation = (
-    id: string,
-    credentialId: string,
-    org = organizationId,
-    config = configurationId,
-    keyId = `key-${credentialId}`,
-  ) => ({
-    id,
-    name: `Preparation ${id}`,
-    credentialId,
-    manifest: {
-      source: { configurationId: config },
-      organization: { id: org },
-      credential: { id: credentialId, keyId },
-    },
-  });
-  const preparations = [
-    preparation(
-      "saved-platform",
-      "bound-failed",
-      organizationId,
-      configurationId,
-      "key-deployer",
-    ),
-    preparation(
-      "other-platform",
-      "bound-other-check",
-      organizationId,
-      configurationId,
-      "key-other",
-    ),
-    preparation("foreign", "foreign-preparation", "foreign-organization"),
-    preparation(
-      "other-config",
-      "other-configuration",
-      organizationId,
-      "different-configuration",
-    ),
-    preparation(
-      "old-key",
-      "wrong-key",
-      organizationId,
-      configurationId,
-      "wrong-profile-key",
-    ),
-    // A preparation cannot disclose another user's profile or synthesize its
-    // identity: it is not among the accessible credential metadata rows.
-    preparation("not-accessible", "another-users-profile"),
-  ];
-  const reads: string[] = [];
-  await page.route("**/api/v1/stackit/identity", (route) =>
-    route.fulfill({
-      json: { verified: true, identity: { email: "human@example.test" } },
-    }),
-  );
-  for (const [path, payload] of [
-    ["credentials", { profiles }],
-    ["preparations", { preparations }],
-  ] as const) {
-    await page.route(`**/api/v1/${path}`, (route) => {
-      expect(route.request().method()).toBe("GET");
-      const tenant = route.request().headers()["x-lzc-tenant"];
-      // Existing preparation/storage navigation also reads its lists without
-      // this contextual header. Give those reads no profile/provenance data;
-      // only the picker must make the explicit scoped reads asserted below.
-      if (tenant === undefined)
-        return route.fulfill({
-          json:
-            path === "credentials" ? { profiles: [] } : { preparations: [] },
-        });
-      expect(tenant).toBe(tenantId);
-      reads.push(path);
-      return route.fulfill({ json: payload });
-    });
-  }
-  await page.route("**/api/v1/plans", (route) => {
-    if (route.request().headers()["x-lzc-tenant"] !== undefined)
-      throw new Error(
-        "Owner selection must not request plans or trigger execution checks",
+      "another-users-profile",
+    ])
+      await expect(source.locator(`option[value="profile:${id}"]`)).toHaveCount(
+        0,
       );
-    return route.fulfill({ json: { runs: [] } });
-  });
-  const state = await setup(page, configuration(true));
-  const source = page.getByLabel("Quelle für den initialen Projekt-Owner", {
-    exact: true,
-  });
-  const owner = page.getByLabel(
-    "Initialer Projekt-Owner (zentraler Benutzer oder Service Account)",
-    { exact: true },
-  );
-  await expect(source.locator("option")).toHaveCount(4);
-  await expect(source).toHaveValue("manual");
-  await expect(owner).toHaveValue("human@example.test");
-  await expect(
-    source.locator('option[value="profile:bound-failed"]'),
-  ).toContainText("Plattform-Zugangsprofil aus gespeicherter Vorbereitung");
-  await expect(
-    source.locator('option[value="profile:bound-failed"]'),
-  ).toContainText("Letzte Zugangsprüfung nicht erfolgreich");
-  await expect(
-    source.locator('option[value="profile:bound-failed"]'),
-  ).toContainText("Preparation saved-platform");
-  await expect(
-    source.locator('option[value="profile:bound-other-check"]'),
-  ).toContainText("Letzte Zugangsprüfung betrifft eine andere Organisation");
-  for (const id of [
-    "unbound",
-    "foreign-preparation",
-    "other-configuration",
-    "wrong-key",
-    "another-users-profile",
-  ])
-    await expect(source.locator(`option[value="profile:${id}"]`)).toHaveCount(
-      0,
+    await source.selectOption("profile:bound-failed");
+    await expect(owner).toHaveValue("deployer@sa.stackit.cloud");
+    await expect(owner).not.toBeEditable();
+    await editor
+      .locator("#configuration-save")
+      .getByRole("button", { name: "Konfiguration speichern", exact: true })
+      .click();
+    await expect.poll(() => state.mutations.length).toBe(1);
+    const expected = configuration(true);
+    const template = expected.projectTemplates?.[0];
+    if (!template) throw new Error("Expected template");
+    template.accessProfile = defaultApplicationAccessProfile(
+      "deployer@sa.stackit.cloud",
     );
-  await source.selectOption("profile:bound-failed");
-  await expect(owner).toHaveValue("deployer@sa.stackit.cloud");
-  await expect(owner).not.toBeEditable();
-  await page
-    .locator("#configuration-save")
-    .getByRole("button", { name: "Konfiguration speichern", exact: true })
-    .click();
-  await expect.poll(() => state.mutations.length).toBe(1);
-  const expected = configuration(true);
-  const template = expected.projectTemplates?.[0];
-  if (!template) throw new Error("Expected template");
-  template.accessProfile = defaultApplicationAccessProfile(
-    "deployer@sa.stackit.cloud",
-  );
-  expect(state.saved()).toEqual(expected);
-  expect(reads.sort()).toEqual(["credentials", "preparations"]);
-});
+    expect(state.saved()).toEqual(expected);
+    expect(reads).toContain("credentials");
+    expect(reads).toContain("preparations");
+    expect(
+      reads.every((path) => path === "credentials" || path === "preparations"),
+    ).toBe(true);
+  });
+}
