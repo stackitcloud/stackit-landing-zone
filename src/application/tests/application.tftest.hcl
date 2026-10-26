@@ -390,3 +390,50 @@ run "disabled_source_binding_rejected" {
   }
   expect_failures = [var.application]
 }
+
+run "separate_initial_owner_and_workload_role" {
+  command = plan
+
+  variables {
+    application = {
+      tenant_id              = "11111111-2222-4333-8444-555555555555"
+      instance_id            = "11111111-2222-4333-8444-555555555555"
+      platform_revision      = "11111111-2222-4333-8444-555555555555"
+      template_id            = "project-base"
+      template_version       = 1
+      name                   = "Application fixture"
+      owner_email            = "requester@example.com"
+      initial_owner_email    = "platform-owner@example.com"
+      automation_role        = "application-reader"
+      target_key             = "public"
+      secretsmanager_enabled = true
+      observability          = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+      custom_roles = [{
+        name        = "application-reader"
+        description = "Project visibility only"
+        permissions = ["resource-manager.project.get"]
+      }]
+      role_assignments = [{
+        role    = "application-reader"
+        subject = "requester@example.com"
+      }]
+    }
+  }
+
+  assert {
+    condition     = module.application.project_access.initial_owner_email == "platform-owner@example.com" && module.application.project_access.automation_role == "application-reader"
+    error_message = "The verified order owner must not implicitly become cloud project owner; the selected automation role must reach the actual binding."
+  }
+  assert {
+    condition     = module.application.project_role_counts.custom_roles == 1 && module.application.project_role_counts.role_assignments == 1
+    error_message = "The independent requester role must be retained alongside the central initial owner."
+  }
+}
+
+run "legacy_owner_permissions_preserved" {
+  command = plan
+  assert {
+    condition     = module.application.project_access.initial_owner_email == "owner@example.com" && module.application.project_access.automation_role == "owner"
+    error_message = "Omitted access options must preserve existing project owner and automation owner behavior."
+  }
+}

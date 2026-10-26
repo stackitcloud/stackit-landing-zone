@@ -47,7 +47,8 @@ module "application" {
   naming_pattern         = local.naming_pattern
   bucket_naming          = var.bucket_naming
   project_name           = var.application.name
-  owner_email            = var.application.owner_email
+  owner_email            = coalesce(var.application.initial_owner_email, var.application.owner_email)
+  automation_role        = var.application.automation_role
   custom_roles           = var.application.custom_roles
   role_assignments       = var.application.role_assignments
   corporate              = try(local.target.corporate, false)

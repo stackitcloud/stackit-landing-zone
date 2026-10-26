@@ -27,6 +27,8 @@ resource "stackit_authorization_project_role_assignment" "this" {
 
 resource "stackit_authorization_project_role_assignment" "sa_owner" {
   resource_id = stackit_resourcemanager_project.this.project_id
-  role        = "owner"
+  role        = var.automation_role
   subject     = stackit_service_account.automation.email
+
+  depends_on = [stackit_authorization_project_custom_role.this]
 }

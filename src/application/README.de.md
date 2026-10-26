@@ -39,6 +39,30 @@ ein zusätzliches Vertragsfeld noch eine State-Migration.
 
 
 <a id="independent-two-phase-cli-workflow"></a>
+## Projektverantwortung und Workload-Automation
+
+`application.owner_email` bezeichnet die verantwortliche bestellende Person.
+Standardmäßig ist sie zugleich der initiale Projekt-Owner; bestehende Eingaben
+bleiben damit kompatibel. Ein ausdrücklich gesetztes
+`application.initial_owner_email` erstellt das Projekt stattdessen mit dem
+geprüften zentralen Benutzer oder Service Account. Die gewünschten Projektrollen
+der bestellenden Person werden über `role_assignments` vergeben. Das erzeugt kein
+Projekt ohne Owner. `application.automation_role` wählt davon unabhängig die
+Projektrolle des Automation-Service-Accounts, einschließlich einer unter
+`custom_roles` definierten eigenen Rolle. Der Standard bleibt aus
+Kompatibilitätsgründen `owner`. Die Ressourcenadresse `sa_owner` bleibt auch bei
+einer anderen ausgewählten Rolle erhalten.
+
+Änderungen dieser Felder in bestehenden Installationen sind als IAM-Migration
+zu prüfen; bestehende Berechtigungen werden nicht stillschweigend entfernt.
+Eigene Rollen werden vor ihrer Automation-Zuweisung erstellt. Eine eingeschränkte
+Rolle hebt direkte, gruppenbezogene oder geerbte Owner-Rechte nicht auf. Wer einen
+privilegierten Automation-Schlüssel auslesen kann, kann dessen Rechte erhalten;
+State und Zugangsdaten sind daher separat zu schützen. Dies sind native
+Fähigkeiten. Die Veröffentlichung im Configurator benötigt separat geprüfte
+Quell-, Identitäts- und Freigabeverträge. Ein erfolgreicher Mock-Plan belegt keine
+reale Least-Privilege-Abnahme.
+
 ## Unabhängiger zweiphasiger CLI-Ablauf
 
 <a id="phase-1-platform"></a>
@@ -189,7 +213,7 @@ sind keine Cloud-Abnahme.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_application"></a> [application](#input\_application) | Resolved application instance supplied manually or by the Configurator. Identity and deployment authorization are enforced by the caller's IAM permissions. | <pre>object({<br/>    configurator_execution = optional(bool, false)<br/>    tenant_id              = string<br/>    instance_id            = string<br/>    platform_revision      = string<br/>    template_id            = string<br/>    template_version       = number<br/>    name                   = string<br/>    env                    = optional(string, null)<br/>    owner_email            = string<br/>    target_key             = string<br/>    network_enabled        = optional(bool, false)<br/>    network_prefix_length  = optional(number, null)<br/>    secretsmanager_enabled = bool<br/>    custom_roles = optional(list(object({<br/>      name        = string<br/>      description = string<br/>      permissions = list(string)<br/>    })), [])<br/>    role_assignments = optional(list(object({<br/>      role    = string<br/>      subject = string<br/>    })), [])<br/>    observability = object({<br/>      enabled       = bool<br/>      plan_name     = string<br/>      acl           = list(string)<br/>      access_source = optional(string, "explicit-cidrs")<br/>    })<br/>  })</pre> | n/a | yes |
+| <a name="input_application"></a> [application](#input\_application) | Resolved application instance supplied manually or by the Configurator. Identity and deployment authorization are enforced by the caller's IAM permissions. | <pre>object({<br/>    configurator_execution = optional(bool, false)<br/>    tenant_id              = string<br/>    instance_id            = string<br/>    platform_revision      = string<br/>    template_id            = string<br/>    template_version       = number<br/>    name                   = string<br/>    env                    = optional(string, null)<br/>    owner_email            = string<br/>    initial_owner_email    = optional(string, null)<br/>    automation_role        = optional(string, "owner")<br/>    target_key             = string<br/>    network_enabled        = optional(bool, false)<br/>    network_prefix_length  = optional(number, null)<br/>    secretsmanager_enabled = bool<br/>    custom_roles = optional(list(object({<br/>      name        = string<br/>      description = string<br/>      permissions = list(string)<br/>    })), [])<br/>    role_assignments = optional(list(object({<br/>      role    = string<br/>      subject = string<br/>    })), [])<br/>    observability = object({<br/>      enabled       = bool<br/>      plan_name     = string<br/>      acl           = list(string)<br/>      access_source = optional(string, "explicit-cidrs")<br/>    })<br/>  })</pre> | n/a | yes |
 | <a name="input_bucket_naming"></a> [bucket\_naming](#input\_bucket\_naming) | Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration. | `string` | `"project-id"` | no |
 | <a name="input_platform_contract"></a> [platform\_contract](#input\_platform\_contract) | Reviewed non-secret platform references supplied as a CLI artifact or by the Configurator. No remote-state access. | <pre>object({<br/>    schema_version  = number<br/>    tenant_id       = string<br/>    revision        = string<br/>    organization_id = string<br/>    targets = map(object({<br/>      folder_id            = string<br/>      region               = string<br/>      corporate            = bool<br/>      network_area_id      = optional(string, null)<br/>      firewall_next_hop_ip = optional(string, null)<br/>      ipv4_nameservers     = optional(list(string), null)<br/>    }))<br/>  })</pre> | n/a | yes |
 

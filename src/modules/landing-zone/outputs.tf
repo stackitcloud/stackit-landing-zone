@@ -81,3 +81,11 @@ output "observability_grafana_admin_password" {
   sensitive   = true
   value       = var.observability.enabled ? stackit_observability_instance.this[0].grafana_initial_admin_password : null
 }
+
+output "project_access" {
+  description = "Configured initial project owner and workload automation role, not a claim about all effective/inherited permissions."
+  value = {
+    initial_owner_email = stackit_resourcemanager_project.this.owner_email
+    automation_role     = stackit_authorization_project_role_assignment.sa_owner.role
+  }
+}

@@ -500,8 +500,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 2,
-      "checkedOn": "2026-10-22",
+      "version": 3,
+      "checkedOn": "2026-10-26",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"
@@ -523,10 +523,15 @@
         "landing-zone-configurator/app/packages/domain/src/project-templates.ts",
         "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
         "src/modules/landing-zone/3-network.tf",
-        "landing-zone-configurator/app/packages/domain/src/application-plan.ts"
+        "landing-zone-configurator/app/packages/domain/src/application-plan.ts",
+        "landing-zone-configurator/app/packages/domain/src/application-access.ts",
+        "landing-zone-configurator/app/packages/domain/src/application-workload-permissions.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/application-access.ts"
       ],
       "externalSources": [
-        "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go"
+        "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go",
+        "https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/roles-permissions/",
+        "https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/custom-roles/"
       ],
       "scenarios": [
         "A04",

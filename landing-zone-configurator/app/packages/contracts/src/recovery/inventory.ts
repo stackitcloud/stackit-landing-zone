@@ -150,6 +150,8 @@ const variables = z.object({
       .nullable()
       .optional(),
     owner_email: email,
+    initial_owner_email: email.nullable().optional(),
+    automation_role: z.string().min(1).optional(),
     target_key: z.string().min(1),
     network_enabled: z.boolean().optional(),
     custom_roles: z
@@ -220,7 +222,7 @@ export function deriveApplicationRecoveryImports(input: {
         p.container_id !== cloud.project.containerId ||
         p.id !== cloud.project.containerId)) ||
     cloud.project.name !== a.name ||
-    cloud.project.ownerEmail !== a.owner_email ||
+    cloud.project.ownerEmail !== (a.initial_owner_email ?? a.owner_email) ||
     cloud.project.parentContainerId !== target.folder_id ||
     cloud.project.labels.application_instance !== a.instance_id ||
     cloud.project.labels.lzc_instance !== a.instance_id ||
@@ -362,7 +364,7 @@ export function deriveApplicationRecoveryImports(input: {
       resourceId: `${projectId},${s.email}`,
     });
     const own = cloud.roleAssignments.filter(
-      (r) => r.role === "owner" && r.subject === s.email,
+      (r) => r.role === (a.automation_role ?? "owner") && r.subject === s.email,
     );
     if (own.length > 1) throw new Error("cloud-resource-ambiguous");
     if (own.length === 1)
@@ -370,7 +372,7 @@ export function deriveApplicationRecoveryImports(input: {
         address:
           "module.application.stackit_authorization_project_role_assignment.sa_owner",
         type: "stackit_authorization_project_role_assignment",
-        resourceId: `${projectId},owner,${s.email}`,
+        resourceId: `${projectId},${a.automation_role ?? "owner"},${s.email}`,
       });
   }
   const plannedRoles = new Set<string>();

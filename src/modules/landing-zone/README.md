@@ -65,6 +65,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_automation_role"></a> [automation\_role](#input\_automation\_role) | Project role assigned to the Application automation service account. Defaults to owner for compatibility. Select a reviewed built-in or custom role to restrict workload automation; inherited grants remain additive. | `string` | `"owner"` | no |
 | <a name="input_bucket_naming"></a> [bucket\_naming](#input\_bucket\_naming) | Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration. | `string` | `"project-id"` | no |
 | <a name="input_corporate"></a> [corporate](#input\_corporate) | Whether this landing zone uses corporate networking (network area + routing). Set to false for public internet. | `bool` | `false` | no |
 | <a name="input_custom_roles"></a> [custom\_roles](#input\_custom\_roles) | List of custom roles to create for the project. | <pre>list(object({<br/>    name        = string<br/>    description = string<br/>    permissions = list(string)<br/>  }))</pre> | n/a | yes |
@@ -98,6 +99,7 @@ No modules.
 | <a name="output_observability_grafana_url"></a> [observability\_grafana\_url](#output\_observability\_grafana\_url) | The Grafana URL of the optional landing zone observability instance. |
 | <a name="output_observability_instance_id"></a> [observability\_instance\_id](#output\_observability\_instance\_id) | The optional observability instance ID in the landing zone project. |
 | <a name="output_observability_metrics_push_url"></a> [observability\_metrics\_push\_url](#output\_observability\_metrics\_push\_url) | The Prometheus remote-write URL of the optional landing zone observability instance. |
+| <a name="output_project_access"></a> [project\_access](#output\_project\_access) | Configured initial project owner and workload automation role, not a claim about all effective/inherited permissions. |
 | <a name="output_project_container_id"></a> [project\_container\_id](#output\_project\_container\_id) | The container ID of the created STACKIT project. |
 | <a name="output_project_id"></a> [project\_id](#output\_project\_id) | The project ID of the created STACKIT project. |
 | <a name="output_project_name"></a> [project\_name](#output\_project\_name) | The name of the created STACKIT project. |

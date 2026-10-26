@@ -4,16 +4,16 @@
   "status": "concept-coverage-not-ai-qualification",
   "sourceDigests": {
     "packages/domain/src/features.ts": "bf2506a3ba0bff45ce87c010a4a86e119dd07b0b9216dfea88e34e71d17c9ba6",
-    "packages/domain/src/accelerator-inputs.json": "5bc4c00a4be5546e44208ec26cc51a5465b4407fbea07f7e3edb807438bab501",
+    "packages/domain/src/accelerator-inputs.json": "0f1f07c09aa843b452cd8d18ebdb0154cd490b528c9bcbd6dd9cf22b30979b24",
     "packages/domain/src/catalogue.json": "0c9fc73cbfff4eb0ea2e9956165646e409fbff107cbf9ca1eb3b78a25dca2059",
-    "packages/domain/src/project-templates.ts": "6629d6cf5e557682b181bc9aca99d496d493e9ae9070e875f72ff608f0642459",
+    "packages/domain/src/project-templates.ts": "f75d0e7ed6bd298bfe1ca4e41fe835ccbca0f753afbbc06b98f9f20c1552d7a0",
     "packages/domain/src/template-parameters.ts": "ea2cb1e272f4f51da6bc68ea78895febe128b83f2b3022371a5aeeb666120e0a",
     "packages/domain/src/common-validation.ts": "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
     "packages/domain/src/observability-plans.ts": "04b12f2744c453ff44f7b386ba6d6b7052b53f66fc483d46e9d5af0f5f75bbe5",
     "packages/domain/src/common-document.ts": "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
     "packages/domain/src/editor-document.ts": "b807d40f04b7739cab026d43a412ed9252d22cb9bd1034fbad858825308c1345",
-    "packages/domain/src/application-catalogue.ts": "6a36aab7d4cbc918c646a8ced8092bb9ce39571d72aae8e9611df3bffb767507",
-    "packages/domain/src/application-plan.ts": "748832e7c2284bba61b11f194164c8f513225010d18571f283ee7b72723bf302"
+    "packages/domain/src/application-catalogue.ts": "0cedb6c501739073391c1a6fa493bf48e112260ea8f6bb40ac6f8cbb02384f12",
+    "packages/domain/src/application-plan.ts": "15529f722a6db6dd5becfe61bb6b497edcc34cf40b4d53375fb55092c4e8e3ea"
   },
   "groups": [
     {
@@ -6493,6 +6493,20 @@
       "sensitive": false,
       "type": "object",
       "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].automation_role",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
       "commonEditor": "form",
       "assistantMode": "analyze-question-propose-validated-diff",
       "scenarios": [

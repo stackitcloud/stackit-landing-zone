@@ -1,8 +1,8 @@
 {
-  "acceleratorRevision": "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+  "acceleratorRevision": "08ac257de1548c8ec5e83dae1a79373711c3d644",
   "files": {
-    "src/main.tf": "0b2f27c869b6afe2be5614fe8895966739f874f18d1fd8905224735703b249c6",
-    "src/variables.tf": "c650b337ee9e154b988927c9a129091b6c6627ff90e9d1661bb9c8ba7815bda5",
+    "src/main.tf": "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+    "src/variables.tf": "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
     "src/locals.tf": "7c4f7c2887755b8581b31982ada8d63c2c0796c963994e61da95c270db1c8d78",
     "src/modules/governance/1-rm-folders.tf": "f1ff318487c780914620a3b516f55b2f17f13af4dd38364937d9567c93cd865b",
     "src/modules/governance/2-custom-roles.tf": "5cf14fc37fb6ad76d0914d38177c0b9bf7600606f2110827f85fded466a1c3d0",

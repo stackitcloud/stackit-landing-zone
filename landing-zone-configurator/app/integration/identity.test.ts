@@ -8,6 +8,7 @@ import {
   configurationValues,
   createDraft,
   createEditorConfiguration,
+  defaultApplicationAccessProfile,
   editCommonInput,
   effectiveInput,
   exportCommonTfvars,
@@ -4279,6 +4280,153 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         cliOrder.id,
         cliJobRequest,
       );
+      // Profiles are fixed by the PE publication, never requester parameters.
+      for (const mode of ["granular", "owner"] as const) {
+        const accessProfile =
+          mode === "owner"
+            ? { schemaVersion: 1 as const, mode }
+            : defaultApplicationAccessProfile("central-platform@example.test");
+        const accessVersion = await applications.publish(engineer, {
+          template: {
+            ...template,
+            id: randomUUID(),
+            key: `access-${mode}`,
+            accessProfile,
+          },
+          ...binding,
+          acceleratorRevision: "08ac257de1548c8ec5e83dae1a79373711c3d644",
+          deploymentPolicy: "direct",
+        });
+        if (mode === "granular") {
+          await migration.query(
+            "UPDATE lzc.stackit_identities SET revoked_at=now() WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+            [owner.userId],
+          );
+          let loginOrder: Awaited<ReturnType<Applications["order"]>>;
+          try {
+            loginOrder = await applications.order(owner, {
+              versionId: accessVersion.id,
+              idempotencyKey: randomUUID(),
+              name: "Profile before login",
+              parameters: {},
+            });
+            expect(loginOrder.settings.owner_email).toBeUndefined();
+            expect(loginOrder.settings.initial_owner_email).toBe(
+              "central-platform@example.test",
+            );
+            expect(loginOrder.settings.role_assignments).toEqual([]);
+          } finally {
+            await migration.query(
+              "UPDATE lzc.stackit_identities SET revoked_at=NULL WHERE user_id=$1 AND issuer='https://accounts.stackit.cloud'",
+              [owner.userId],
+            );
+          }
+          const completed = await applications.preparePlanInput(
+            owner,
+            loginOrder.id,
+          );
+          expect(completed.plan.variables.application.role_assignments).toEqual(
+            [{ role: "application-workload", subject: ownerProof.email }],
+          );
+          expect(completed.plan.variables.application.initial_owner_email).toBe(
+            "central-platform@example.test",
+          );
+        }
+        if (mode === "granular") {
+          const conflictingVersion = await applications.publish(engineer, {
+            template: {
+              ...template,
+              id: randomUUID(),
+              key: "access-conflict",
+              accessProfile: defaultApplicationAccessProfile(ownerProof.email),
+            },
+            ...binding,
+            acceleratorRevision: "08ac257de1548c8ec5e83dae1a79373711c3d644",
+            deploymentPolicy: "direct",
+          });
+          await expect(
+            applications.order(owner, {
+              versionId: conflictingVersion.id,
+              idempotencyKey: randomUUID(),
+              name: "Conflicting initial owner",
+              parameters: {},
+            }),
+          ).rejects.toMatchObject({
+            status: 409,
+            code: "application_initial_owner_conflict",
+          });
+        }
+        const accessOrder = await applications.order(owner, {
+          versionId: accessVersion.id,
+          idempotencyKey: randomUUID(),
+          name: `Access ${mode}`,
+          parameters: {},
+        });
+        const accessInput = await applications.preparePlanInput(
+          owner,
+          accessOrder.id,
+        );
+        expect(accessInput.plan.variables.application.owner_email).toBe(
+          ownerProof.email,
+        );
+        expect(accessInput.plan.variables.application.automation_role).toBe(
+          mode === "owner" ? "owner" : "application-automation",
+        );
+        expect(accessInput.plan.variables.application.initial_owner_email).toBe(
+          mode === "owner" ? undefined : "central-platform@example.test",
+        );
+        const accessJob = await applications.prepareJob(owner, accessOrder.id, {
+          idempotencyKey: randomUUID(),
+          confirmPlan: true,
+        });
+        for (const [path, replacement] of [
+          [
+            "{variables,application,automation_role}",
+            JSON.stringify(mode === "owner" ? "reader" : "owner"),
+          ],
+          [
+            "{variables,application,initial_owner_email}",
+            JSON.stringify("attacker@example.test"),
+          ],
+          [
+            "{variables,application,role_assignments}",
+            JSON.stringify([{ role: "owner", subject: ownerProof.email }]),
+          ],
+          [
+            "{variables,application,custom_roles}",
+            JSON.stringify([
+              {
+                name: "application-workload",
+                description: "escalate",
+                permissions: ["iam.member.add"],
+              },
+            ]),
+          ],
+        ]) {
+          await expect(
+            withTenant(pool, owner, (client) =>
+              client.query(
+                "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at) SELECT $1,tenant_id,instance_id,owner_user_id,issuer_session_id,$2,operation,jsonb_set(inputs,$3::text[],$4::jsonb),binding_sha256,expires_at FROM lzc.application_jobs WHERE id=$5",
+                [randomUUID(), randomUUID(), path, replacement, accessJob.id],
+              ),
+            ),
+          ).rejects.toMatchObject({
+            code: "42501",
+            message: "application_access_profile_mismatch",
+          });
+        }
+        await expect(
+          applications.preparePlanInput(engineer, accessOrder.id),
+        ).rejects.toMatchObject({ status: 404 });
+        await expect(
+          applications.order(owner, {
+            versionId: accessVersion.id,
+            idempotencyKey: randomUUID(),
+            name: "Escalate",
+            parameters: { automation_role: "owner" },
+          }),
+        ).rejects.toMatchObject({ status: 400 });
+      }
       // The current immutable source supports networkless Public and routed Corporate
       // instances; neither must inherit the platform State or another order's key.
       const corporateTarget = {

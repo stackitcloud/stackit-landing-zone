@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "9a40d2673b4a5661c1d61db4eae42ce97352210fa7d8d34350d290cd4b61692e",
+  "knowledgeSha256": "1a6614b08abde21cfcaaef64f27771a10c1bfdce1ff39206644120ee627a5a9c",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "89bf733e05cc0d073287064bab130dce46e1465a7a64c68592db64de4199fa75",
+    "scripts/assistant-scenarios.ts": "7abe8e17164bbf6fed8d762dcb5935bce986fe7e8e7c143f1c12dc9695c7dae9",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "c82eeec4a5972b70c7287a565efae9ea149110feeba6f7fc87728ec2fa685b4d",
+  "suiteSha256": "ab532c33c598193b2007c79f8c99a8dd96910f96ae9bcadad4ba7a53c0cc9ab8",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5034,6 +5034,15 @@
           "mode": "propose-validated-draft"
         },
         {
+          "path": "landing_zones[*].automation_role",
+          "group": "projects",
+          "type": "string",
+          "optional": true,
+          "proposalPath": "landing_zones",
+          "responsibility": "user",
+          "mode": "propose-validated-draft"
+        },
+        {
           "path": "landing_zones[*].corporate",
           "group": "projects",
           "type": "bool",
@@ -5269,6 +5278,74 @@
         }
       ],
       "cases": [
+        {
+          "id": "application-access-profile-advice",
+          "topic": "project-templates",
+          "fixture": "baseline",
+          "applicationAccess": "advice",
+          "message": "Welche Projektberechtigungen soll ich für Application-Teams wählen? Erkläre das empfohlene granulare VM-Profil, den separaten zentralen initialen Owner, Automation und die weiterhin mögliche volle Owner-Kundenwahl. Hebt eine eingeschränkte Rolle geerbte Owner-Rechte auf? Welche Produkte/Grenzen sind tatsächlich abgedeckt? Nur beraten, nichts ändern.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "application-access-workload-default-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "workload-default",
+          "message": "Stelle ausschließlich das accessProfile der bestehenden Vorlage central auf das empfohlene granulare Workload-Standardprofil application-workloads-v1 um, einschließlich VMs, Object Storage, Observability und Secrets Manager. Zentraler initialer Projekt-Owner ist platform-owner@example.test. Keine weiteren Änderungen und keine Ausführung. Nur einen überprüfbaren Editor-Vorschlag vorbereiten.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-vm-default-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "vm-default",
+          "message": "Stelle ausschließlich das accessProfile der bestehenden Vorlage central auf das empfohlene granulare Standardprofil für VM-Betrieb (vm-operations-v1) um. Zentraler initialer Projekt-Owner ist platform-owner@example.test. Team und Automation erhalten den geprüften VM-Standard, keine selbst erfundenen Rechte. Alle anderen Einstellungen erhalten. Nur einen Editor-Vorschlag vorbereiten.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-full-owner-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "owner",
+          "message": "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf volle Projekt-Owner-Rechte. Das ist unsere ausdrückliche Kundenentscheidung für Besteller und Automation. Verwende das vollständige atomare Profil schemaVersion 1, mode owner ohne granulare Felder. Alles andere unverändert. Nur überprüfbarer Editor-Vorschlag, nichts veröffentlichen oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-granular-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "granular",
+          "message": "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf granular, schemaVersion 1. Zentraler initialOwnerEmail ist platform-owner@example.test. Für das Team exakt permissions [iaas.server.get, resource-manager.project.get], für Automation exakt automationPermissions [iaas.server.get]. Kein Owner für den Besteller. Keine weiteren Änderungen, keine Veröffentlichung/Ausführung. Vollständiger atomarer Editor-Vorschlag.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "corporate-ipv4-automatic-advice",
           "topic": "project-templates",

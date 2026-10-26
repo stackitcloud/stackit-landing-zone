@@ -1,5 +1,62 @@
 import { expect, test } from "./fixtures";
 
+test("new templates separate cloud project access from requester identity and retain the explicit owner option", async ({
+  page,
+}) => {
+  await page.goto("/templates/standalone");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "5 Template-Entwürfe", exact: true })
+    .click();
+  await page
+    .getByLabel("Template-Kennung", { exact: true })
+    .fill("access-test");
+  await page
+    .getByRole("button", { name: "Template hinzufügen", exact: true })
+    .click();
+  const template = page.locator("section.project-card").filter({
+    has: page.getByRole("group", {
+      name: "Application-Rechteprofil",
+      exact: true,
+    }),
+  });
+  const profile = template.getByRole("group", {
+    name: "Application-Rechteprofil",
+    exact: true,
+  });
+  await expect(
+    profile.getByLabel("Projektberechtigungen", { exact: true }),
+  ).toHaveValue("granular");
+  const owner = profile.getByLabel(
+    "Initialer Projekt-Owner (zentraler Benutzer oder Service Account)",
+    { exact: true },
+  );
+  await owner.clear();
+  await owner.pressSequentially("central@example.test");
+  await expect(owner).toHaveValue("central@example.test");
+  await expect(profile).toContainText("kein Nachweis der effektiven Rechte");
+  await expect(
+    template.getByLabel(
+      "Wertquelle: Projektrollen der verantwortlichen Person",
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await profile
+    .getByLabel("Berechtigungen durchsuchen", { exact: true })
+    .fill("iam.");
+  await profile.getByText(/^Application-Team ·/).click();
+  await expect(profile.locator('input[type="checkbox"]')).toHaveCount(0);
+  await profile
+    .getByLabel("Projektberechtigungen", { exact: true })
+    .selectOption("owner");
+  await expect(profile).toContainText(
+    "einschließlich IAM und Projektverwaltung",
+  );
+  await expect(owner).toHaveCount(0);
+});
+
 test("MVP Observability has no ACL editor or required order input", async ({
   page,
 }) => {

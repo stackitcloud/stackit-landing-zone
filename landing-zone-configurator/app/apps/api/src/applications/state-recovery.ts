@@ -56,7 +56,10 @@ const contextSchema = z.object({
   credentialOwnerId: z.uuid().optional(),
   serviceAccount: z.string().min(1).optional(),
   organizationId: z.uuid(),
-  sourceRevision: z.literal("1ed855609d4dcbfded6759c7c8b4fabf7bd6725d"),
+  sourceRevision: z.enum([
+    "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+    "08ac257de1548c8ec5e83dae1a79373711c3d644",
+  ]),
   originalInputs: z.object({ variables: z.record(z.string(), z.json()) }),
   backendCiphertext: z.string().regex(/^[a-f0-9]+$/),
   finishedAt: z.iso.datetime({ offset: true }),
@@ -463,6 +466,7 @@ export class ApplicationStateRecoveries {
       .object({
         application: z.object({
           owner_email: z.email(),
+          initial_owner_email: z.email().nullable().optional(),
           target_key: z.string(),
           custom_roles: z.array(z.unknown()).optional(),
         }),
@@ -499,7 +503,8 @@ export class ApplicationStateRecoveries {
       {
         projectId,
         region,
-        ownerEmail: vars.application.owner_email,
+        ownerEmail:
+          vars.application.initial_owner_email ?? vars.application.owner_email,
         customRoles: !!vars.application.custom_roles?.length,
         ...(target.corporate
           ? {
@@ -702,9 +707,10 @@ export class ApplicationStateRecoveries {
     const b = z
       .strictObject({
         runnerPackageId: z.uuid(),
-        acceleratorRevision: z.literal(
+        acceleratorRevision: z.enum([
           "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
-        ),
+          "08ac257de1548c8ec5e83dae1a79373711c3d644",
+        ]),
         providerLockSha256: z.literal(
           "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
         ),

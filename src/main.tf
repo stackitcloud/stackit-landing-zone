@@ -281,6 +281,7 @@ module "landing_zone" {
   owner_email            = each.value.owner_email
   labels                 = local.resource_labels
   role_assignments       = each.value.role_assignments
+  automation_role        = each.value.automation_role
   network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
   ipv4_nameservers       = each.value.corporate ? try(module.connectivity[0].network_area_nameservers[each.value.network_area_key], null) : null
@@ -305,6 +306,7 @@ module "landing_zone_eu01" {
   owner_email            = each.value.owner_email
   labels                 = local.resource_labels
   role_assignments       = each.value.role_assignments
+  automation_role        = each.value.automation_role
   network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
   ipv4_nameservers       = each.value.corporate ? try(module.connectivity_eu01[0].network_area_nameservers[each.value.network_area_key], null) : null
@@ -329,6 +331,7 @@ module "landing_zone_eu02" {
   owner_email            = each.value.owner_email
   labels                 = local.resource_labels
   role_assignments       = each.value.role_assignments
+  automation_role        = each.value.automation_role
   network_enabled        = each.value.network_enabled
   network_prefix_length  = each.value.network_prefix_length
   ipv4_nameservers       = each.value.corporate ? try(module.connectivity_eu02[0].network_area_nameservers[each.value.network_area_key], null) : null

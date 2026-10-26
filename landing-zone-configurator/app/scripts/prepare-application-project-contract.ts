@@ -4,13 +4,16 @@ import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { applicationMvpAcceleratorCommit } from "../packages/contracts/dist/index.js";
-import { compileApplicationPlan } from "../packages/domain/dist/index.js";
+import {
+  compileApplicationPlan,
+  defaultApplicationAccessProfile,
+} from "../packages/domain/dist/index.js";
 
 const target = process.argv[2];
 if (!target?.startsWith("/"))
   throw new Error("Absolute fixture directory required");
 if (
-  applicationMvpAcceleratorCommit !== "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d"
+  applicationMvpAcceleratorCommit !== "08ac257de1548c8ec5e83dae1a79373711c3d644"
 )
   throw new Error(
     "Requalify Application project scope for the new Runner source",
@@ -71,7 +74,7 @@ for (const region of ["eu01", "eu02"]) {
     const corporate = kind.startsWith("corporate");
     for (const observability of [false, true]) {
       const name = `${region}_${kind.replaceAll("-", "_")}_${observability ? "observability" : "base"}`;
-      const compiled = compileApplicationPlan({
+      const compileInput = {
         platform: {
           schema_version: 1,
           tenant_id: id,
@@ -127,7 +130,40 @@ for (const region of ["eu01", "eu02"]) {
           target_key: "selected",
           parameters: {},
         },
-      });
+      };
+      const compiled = compileApplicationPlan(compileInput);
+      if (!observability && ["public-local", "corporate"].includes(kind)) {
+        for (const mode of ["granular", "owner"]) {
+          const profile =
+            mode === "owner"
+              ? { schemaVersion: 1, mode: "owner" }
+              : defaultApplicationAccessProfile("platform-owner@example.test");
+          const withAccess = compileApplicationPlan({
+            ...compileInput,
+            template: { ...compileInput.template, access_profile: profile },
+          });
+          const accessName = `${name}_${mode}`;
+          writeFileSync(
+            resolve(root, `${accessName}.json`),
+            JSON.stringify(withAccess.variables),
+          );
+          tests.push(`run "compiled_${accessName}" {
+  command = plan
+  variables {
+    platform_contract = jsondecode(file("${accessName}.json")).platform_contract
+    application = jsondecode(file("${accessName}.json")).application
+  }
+  assert {
+    condition = module.application.project_access.initial_owner_email == "${mode === "owner" ? "owner@stackit.cloud" : "platform-owner@example.test"}" && module.application.project_access.automation_role == "${mode === "owner" ? "owner" : "application-automation"}"
+    error_message = "Compiled access profile must reach the native project and automation binding without changing the verified requester."
+  }
+  assert {
+    condition = var.application.owner_email == "owner@stackit.cloud" && module.application.project_role_counts.custom_roles == ${mode === "owner" ? 0 : 2} && module.application.project_role_counts.role_assignments == ${mode === "owner" ? 0 : 1}
+    error_message = "Team/automation permissions and the separate requester must survive compilation."
+  }
+}`);
+        }
+      }
       writeFileSync(
         resolve(root, `${name}.json`),
         JSON.stringify(compiled.variables),

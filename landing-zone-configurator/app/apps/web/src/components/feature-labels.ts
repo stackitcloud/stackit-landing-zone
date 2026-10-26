@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 export const labels: Record<string, string> = {
   projectTemplates: "Projekt-Templates",
+  automation_role: "Projektrolle der Workload-Automation",
   owner_email: "Technisch verantwortlich",
   company_name: "Organisation / Unternehmen",
   company_code: "Unternehmenskürzel",

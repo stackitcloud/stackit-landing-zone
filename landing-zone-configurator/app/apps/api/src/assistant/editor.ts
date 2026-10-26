@@ -6,6 +6,7 @@ import {
   assertBoundedJson,
   type CommonConfiguration,
   compileCommonConfiguration,
+  defaultApplicationAccessProfile,
   editCommonInput,
   featureFieldCatalogue,
   type InputType,
@@ -317,6 +318,7 @@ export const assistantTemplateFields = [
     ...Object.keys(templateSettingsType("sandboxes")[1]),
     "namespaceServices",
     "parameterPolicy",
+    "accessProfile",
   ]),
 ];
 
@@ -367,7 +369,11 @@ const templatePatchSchema = z.record(
 function templateProposalSchema(fields?: readonly string[]) {
   if (!fields) return templateValueSchema;
   return templateValueSchema
-    .omit({ namespaceServices: true, parameterPolicy: true })
+    .omit({
+      namespaceServices: true,
+      parameterPolicy: true,
+      accessProfile: true,
+    })
     .extend({
       settings: z
         .union(
@@ -392,6 +398,9 @@ function templateProposalSchema(fields?: readonly string[]) {
           ),
         )
         .optional(),
+      ...(fields.includes("accessProfile")
+        ? { accessProfile: templateValueSchema.shape.accessProfile }
+        : {}),
       ...(fields.includes("namespaceServices")
         ? { namespaceServices: templateValueSchema.shape.namespaceServices }
         : {}),
@@ -741,7 +750,15 @@ export function applyAssistantEditorChange(
           ? mergeAssistantEditorValue(previous, patch)
           : patch;
       templates[key] = projectTemplateDraftSchema.parse({
+        ...(!previous && objectValue(merged).kind !== "sandbox"
+          ? {
+              accessProfile: defaultApplicationAccessProfile(
+                String(next.features.identity.owner_email ?? ""),
+              ),
+            }
+          : {}),
         ...objectValue(merged),
+        ...(patch.accessProfile ? { accessProfile: patch.accessProfile } : {}),
         id: previous?.id ?? randomUUID(),
         key,
       });
