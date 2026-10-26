@@ -18,6 +18,8 @@ connection is not a replacement for STACKIT login or cloud permissions.
 
 ## Create and review a configuration
 
+Open **Configurations** to create a draft or **Edit** a saved configuration. The editor belongs to Configurations; **Deployments** contains preparation, Plan, Apply and history. Saving alone starts no deployment.
+
 Start from a platform template or an existing configuration. Templates are
 starting points, not a recommendation to enable every optional service.
 Use the editor to inspect foundations, governance, networking and platform services.
@@ -60,6 +62,17 @@ and provide its exposed parameters. A template draft is not an Application
 instance, and publishing does not deploy one. Existing instances are not silently
 upgraded when a new version is published.
 
+
+### Platform Owner workflow
+
+Under **Application Landing Zones**, follow the tabs from left to right:
+
+1. **Template drafts:** choose the platform configuration, edit the templates directly here and explicitly save. The next-step button remains disabled while the configuration is unsaved or changed.
+2. **Platform binding:** check and approve the applied platform contract, then configure its execution binding and Application state backend. If no suitable successful Platform Apply is available, complete the platform deployment and identity prerequisites first.
+3. **Publication:** choose the template, approved contract, matching target, requester access and deployment policy, then explicitly publish a version. A missing execution binding is shown here with a reference to the preceding step.
+4. **Catalogue:** check the published version and its visibility. Orders and the archive remain separate tabs after the catalogue.
+
+The same controlled draft is used in Configurations and Application Landing Zones. Each transition is navigation only; saving, contract approval, execution configuration, publication, Plan and Apply remain separate explicit actions. Application Owners enter the catalogue directly and do not see the platform administration steps. The workspace order quota applies across the whole workspace and is displayed above these tabs.
 
 ### Choose the deployed Application project permissions
 

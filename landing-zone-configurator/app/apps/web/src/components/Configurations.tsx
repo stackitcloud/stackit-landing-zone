@@ -407,7 +407,7 @@ export function Configurations({
                   });
                 }}
               >
-                {t("Öffnen")}
+                {t("Bearbeiten")}
               </button>
               <button
                 type="button"

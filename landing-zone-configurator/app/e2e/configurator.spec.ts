@@ -4048,7 +4048,7 @@ test.describe("explicit saved-plan approval", () => {
       exact: true,
     });
     await tabs
-      .getByRole("button", { name: "Preparation", exact: true })
+      .getByRole("button", { name: "Prepare deployment", exact: true })
       .click();
     await expect(
       page.getByRole("heading", { name: "Preparation", level: 1 }),
@@ -4281,7 +4281,7 @@ test.describe("explicit saved-plan approval", () => {
       .click();
     const initialConfigurationTab = page
       .getByRole("navigation", { name: "Konfiguration", exact: true })
-      .getByRole("button", { name: "Konfiguration", exact: true });
+      .getByRole("button", { name: "Konfiguration bearbeiten", exact: true });
     await expect(initialConfigurationTab).toBeEnabled();
     await initialConfigurationTab.click();
     await expect(page).toHaveURL(/\/configurations$/);
@@ -4294,7 +4294,7 @@ test.describe("explicit saved-plan approval", () => {
     });
     await expect(tabs).toContainText("Revision 7");
     await tabs
-      .getByRole("button", { name: "Vorbereitung", exact: true })
+      .getByRole("button", { name: "Deployment vorbereiten", exact: true })
       .click();
     await expect(
       page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
@@ -4362,7 +4362,7 @@ test.describe("explicit saved-plan approval", () => {
       .poll(() => configurationReads)
       .toBe(beforeApplicationReload + 1);
     await expect(
-      page.getByRole("tab", { name: "Katalog", exact: true }),
+      page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
     ).toHaveAttribute("aria-selected", "true");
     expect(saves).toBe(0);
     expect(cloudMutations).toEqual([]);
@@ -4383,14 +4383,15 @@ test.describe("explicit saved-plan approval", () => {
     await expect(name).toHaveValue("Meine Plattform");
     await name.fill("Meine Plattform geändert");
     await expect(
-      tabs.getByRole("button", { name: "Vorbereitung", exact: true }),
-    ).toBeEnabled();
-    await tabs
-      .getByRole("button", { name: "Vorbereitung", exact: true })
+      tabs.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+    ).toBeDisabled();
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Deployments", exact: true })
       .click();
     await expect(tabs).toContainText("Revision 7 · Nicht gespeichert");
     await tabs
-      .getByRole("button", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Konfiguration bearbeiten", exact: true })
       .click();
     await expect(name).toHaveValue("Meine Plattform geändert");
     await page
@@ -5957,7 +5958,7 @@ test.describe("explicit saved-plan approval", () => {
       exact: true,
     });
     await expect(tabs.getByRole("button")).toHaveText([
-      "Konfiguration",
+      "Konfiguration bearbeiten",
       "Vorbereitung",
       "Plan",
       "Apply",
