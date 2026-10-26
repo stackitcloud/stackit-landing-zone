@@ -37,6 +37,74 @@ test("new templates separate cloud project access from requester identity and re
   await owner.pressSequentially("central@example.test");
   await expect(owner).toHaveValue("central@example.test");
   await expect(profile).toContainText("kein Nachweis der effektiven Rechte");
+  await expect(profile).toContainText("Zukünftiger Besteller");
+  await expect(profile).toContainText("Plattform-Service-Account");
+  await expect(profile).not.toContainText("Application-Team");
+  await expect(profile).not.toContainText("Workload-Automation");
+  const requester = profile.locator(":scope > details").nth(0);
+  const automation = profile.locator(":scope > details").nth(1);
+  await requester.locator(":scope > summary").click();
+  await expect(requester.locator('input[type="checkbox"]')).toHaveCount(144);
+  await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
+    144,
+  );
+  await expect(
+    automation.locator('input[type="checkbox"]:checked'),
+  ).toHaveCount(144);
+  const storage = requester.locator("details").filter({
+    has: page.locator("summary").filter({ hasText: /^Object Storage ·/ }),
+  });
+  await storage.locator(":scope > summary").click();
+  await storage
+    .getByRole("checkbox", {
+      name: "object-storage.bucket.create",
+      exact: true,
+    })
+    .uncheck();
+  await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
+    143,
+  );
+  await expect(
+    automation.locator('input[type="checkbox"]:checked'),
+  ).toHaveCount(144);
+  await profile
+    .getByLabel("Berechtigungen durchsuchen", { exact: true })
+    .fill(".bucket.");
+  await storage
+    .getByRole("button", { name: "Alle angezeigten auswählen", exact: true })
+    .click();
+  await expect(storage.getByRole("checkbox", { checked: true })).toHaveCount(4);
+  await storage
+    .getByRole("button", { name: "Angezeigte abwählen", exact: true })
+    .click();
+  await expect(storage.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  await profile
+    .getByLabel("Berechtigungen durchsuchen", { exact: true })
+    .clear();
+  await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
+    140,
+  );
+  await expect(
+    storage.getByRole("checkbox", {
+      name: "object-storage.access-key.create",
+      exact: true,
+    }),
+  ).toBeChecked();
+  await expect(
+    automation.locator('input[type="checkbox"]:checked'),
+  ).toHaveCount(144);
+  await storage
+    .getByRole("button", { name: "Alle angezeigten auswählen", exact: true })
+    .click();
+  await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
+    144,
+  );
+  await profile
+    .getByLabel("Berechtigungen durchsuchen", { exact: true })
+    .fill("Virtuelle Maschinen");
+  await expect(requester.locator("details")).toHaveCount(1);
+  await expect(requester.locator('input[type="checkbox"]')).not.toHaveCount(0);
+
   await expect(
     template.getByLabel(
       "Wertquelle: Projektrollen der verantwortlichen Person",
@@ -46,7 +114,6 @@ test("new templates separate cloud project access from requester identity and re
   await profile
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .fill("iam.");
-  await profile.getByText(/^Application-Team ·/).click();
   await expect(profile.locator('input[type="checkbox"]')).toHaveCount(0);
   await profile
     .getByLabel("Projektberechtigungen", { exact: true })

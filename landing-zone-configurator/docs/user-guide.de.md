@@ -78,8 +78,9 @@ ist von beiden getrennt.
 
 Neue Public-/Corporate-Entwürfe empfehlen **Granular: Workload-Betrieb**. Lege einen
 zentralen initialen Projekt-Owner als Benutzer oder Service Account fest, der sich
-vom Besteller unterscheidet. Die Berechtigungen des Teams und der Workload-Automation
-werden unabhängig ausgewählt. Die bestellende Person benötigt weiterhin die
+vom Besteller unterscheidet. Der Plattform-Service-Account führt das Deployment aus und kann als zentraler Projekt-Owner gewählt werden; alternativ der angemeldete Nutzer. Der zukünftige Besteller ist eine einzelne Person, kein Team. Der Application-Service-Account wird beim Deployment im neuen Projekt angelegt. Neue Profile geben Besteller und Application-Service-Account dieselbe initiale geprüfte Rechteauswahl; beide lassen sich unabhängig anpassen.
+
+Der Editor gruppiert die Rechte nach virtuellen Maschinen; Volumes, Snapshots und Backups; Netzwerk und Security Groups; Images, SSH-Schlüsseln und Projektinformationen; Object Storage; Observability; und Secrets Manager. Jede aufklappbare Gruppe zeigt die Anzahl ausgewählter und verfügbarer Rechte. Die Suche berücksichtigt Permission-Kennungen und Gruppennamen. Auswählen/Abwählen betrifft nur die aktuell angezeigten Rechte dieser Gruppe; andere Gruppen und die andere Identität bleiben erhalten. Die Gruppen gliedern den Editor, legen keine Cloud-Benutzergruppen an und verändern bestehende Auswahlen nicht. Die bestellende Person benötigt weiterhin die
 STACKIT-Voraussetzungen für Organisationszugriff (üblicherweise
 `organization.viewer`). Eine Configurator-Einladung vergibt diese Cloud-Rolle
 nicht; siehe [STACKIT-Zugriffskontrolle](https://docs.stackit.cloud/platform/resource-manager/basics/access-control/). Die geprüfte Auswahl umfasst VM-, Volume-, Schlüssel-, Security-Group-, Object-Storage-,
@@ -91,7 +92,7 @@ Der Editor nutzt nach Möglichkeit den Live-Permission-Katalog, sonst den
 geprüften statischen Stand. Beides belegt nicht die effektiven Benutzerrechte.
 
 **Volle Projekt-Owner-Rechte** bleiben eine ausdrückliche Kundenwahl für Besteller
-und Workload-Automation. Diese Identitäten können IAM und Projektvorgaben verwalten;
+und Application-Service-Account. Diese Identitäten können IAM und Projektvorgaben verwalten;
 zentrale Audit-/Routing-Regeln sind ihnen gegenüber nicht unveränderlich.
 Geerbte, gruppenbezogene und direkte Rechte sind additiv und separat zu prüfen.
 
@@ -397,11 +398,7 @@ bisherige Bestätigung. Der zentrale initiale Projekt-Owner ist zunächst leer.
 Wähle dafür den aktuell verifizierten STACKIT-Benutzer oder ein zugängliches
 gespeichertes Service-Account-Profil aus, oder trage eine E-Mail manuell ein.
 Für die Organisation der Konfiguration erfolgreich geprüfte Profile sind
-entsprechend markiert; ungeprüfte Profile werden als ungeprüft angezeigt,
-fehlgeschlagene oder organisationsfremde Prüfungen werden nicht angeboten.
-Gelesen werden nur Identitäts- und Profilmetadaten, niemals Schlüssel. Ein
-verfügbares Profil wird nicht als tatsächlich gebundener Ausführungszugang der
-Plattform ausgegeben. Die Auswahl kopiert die angezeigte E-Mail in den Entwurf
+entsprechend markiert; ungeprüfte Profile werden als ungeprüft angezeigt. Profile aus einer gespeicherten Plattform-Vorbereitung für genau diese Konfiguration und Organisation werden gesondert angeboten, sofern Profil- und Schlüsselkennung zum zugänglichen Profil passen. Ist eine spätere Prüfung fehlgeschlagen oder betrifft eine andere Organisation, bleibt die bekannte Identität mit Warnhinweis auswählbar. Andere Profile mit fehlgeschlagenen oder organisationsfremden Prüfungen werden nicht angeboten. Gelesen werden nur Identitäts-, Profil- und Vorbereitungsmetadaten, niemals Schlüssel; es wird keine Zugangsprüfung gestartet. Eine gespeicherte Vorbereitung belegt weder ein erfolgreiches Deployment noch aktuell gültige Ausführungsrechte. Die Auswahl kopiert die angezeigte E-Mail in den Entwurf
 und zeigt den Kontextwert schreibgeschützt; zur Bearbeitung wähle die manuelle
 Eingabe. Beim Eintreffen der Optionen und bei Änderungen von Sitzung,
 Arbeitsbereich, Organisation oder Profilen bleibt die gespeicherte E-Mail

@@ -69,7 +69,9 @@ membership roles. The privileged execution credential is separate from both.
 
 New Public/Corporate drafts recommend **Granular: workload operations**. Set a central
 initial project owner (user or service account) who differs from the requester.
-Select the team and workload automation permissions independently.
+The platform service account runs deployment and can be selected as the central project owner; the signed-in user is an alternative. The future requester is an individual, not a team. The application service account is created in the new project during deployment. New profiles give requester and application service account the same initial reviewed permission selection; you can adjust both independently.
+
+The editor groups permissions into virtual machines; volumes, snapshots and backups; networking and security groups; images, SSH keys and project information; Object Storage; Observability; and Secrets Manager. Each collapsible group shows selected/total counts. Search matches permission identifiers or group names. Select/deselect actions affect only the permissions currently shown in that group, leaving other groups and the other identity unchanged. The groups organize the editor; they do not create cloud user groups or change existing selections.
 The requester still needs the STACKIT organization-access prerequisites (normally
 `organization.viewer`); a Configurator workspace invitation does not assign that
 cloud role. See [STACKIT access control](https://docs.stackit.cloud/platform/resource-manager/basics/access-control/). The current
@@ -81,7 +83,7 @@ when available and otherwise the reviewed static snapshot; neither proves a
 particular user's effective permissions.
 
 **Full project owner rights** remains an explicit customer choice for requester
-and workload automation. Those identities can administer IAM/project settings;
+and the application service account. Those identities can administer IAM/project settings;
 do not claim centrally immutable audit/routing rules against owner rights.
 Inherited/group/direct grants are additive and must be reviewed separately.
 
@@ -348,10 +350,7 @@ confirmation. The central initial project owner starts blank.
 For that owner, select the currently verified STACKIT user or an accessible
 stored service-account profile, or enter an email manually. Stored profiles
 successfully checked for the configuration's organization are marked accordingly;
-unchecked profiles are labeled as unverified, and failed/foreign checks are not
-offered. This reads only identity/profile metadata, never their keys. It does
-not assume that a stored profile is the credential actually bound to platform
-execution. Selecting an option copies its displayed email into the draft and
+unchecked profiles are labeled as unverified. Profiles exactly bound to a saved platform preparation for this configuration and organization are offered separately, matching the accessible profile and key identifiers. If a later check failed or concerned another organization, the saved identity remains available with a warning. Other profiles with failed/foreign checks are not offered. This reads only identity, profile and preparation metadata, never keys, and starts no access check. A saved preparation is not proof of a successful deployment or currently valid execution permissions. Selecting an option copies its displayed email into the draft and
 makes that contextual value read-only; choose manual entry to edit it. As options
 arrive or the session, workspace, organization or profiles change, the saved email
 is retained and never silently rebound to another identity.

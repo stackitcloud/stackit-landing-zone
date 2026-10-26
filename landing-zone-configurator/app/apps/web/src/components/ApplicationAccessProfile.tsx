@@ -6,6 +6,7 @@ import {
 } from "@lzc/domain";
 import { useEffect, useId, useState } from "react";
 import { t } from "../i18n";
+import { ApplicationPermissionGroups } from "./ApplicationPermissionGroups";
 import { useCatalogueOptions } from "./CloudCatalogues";
 import { InitialProjectOwner } from "./InitialProjectOwner";
 
@@ -66,7 +67,7 @@ export function ApplicationAccessProfile({
                             "settings.custom_roles": "Eigene Rollen",
                             "settings.role_assignments": "Rollenzuweisungen",
                             "settings.automation_role":
-                              "Rolle der Workload-Automation",
+                              "Rolle des Application-Service-Accounts",
                             "settings.initial_owner_email":
                               "Bisheriger initialer Projekt-Owner",
                             "parameterPolicy.fields.role_assignments":
@@ -131,9 +132,6 @@ export function ApplicationAccessProfile({
         )}
       </div>
     );
-  const options = applicationWorkloadPermissions.filter((p) =>
-    p.includes(search.trim().toLowerCase()),
-  );
   return (
     <fieldset className="application-access-profile">
       <legend>{t("Application-Rechteprofil")}</legend>
@@ -161,6 +159,40 @@ export function ApplicationAccessProfile({
         </option>
         <option value="owner">{t("Volle Projekt-Owner-Rechte")}</option>
       </select>
+      <dl className="application-access-identities">
+        <div>
+          <dt>{t("Plattform-Service-Account")}</dt>
+          <dd>
+            {t(
+              "Führt das Deployment aus und kann als Owner des neuen Projekts hinterlegt werden.",
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("Angemeldeter Nutzer")}</dt>
+          <dd>
+            {t(
+              "Konfiguriert diese Vorlage. Seine Auswahl als Projekt-Owner ist optional.",
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("Zukünftiger Besteller")}</dt>
+          <dd>
+            {t(
+              "Erhält beim Deployment die unten festgelegten Projektberechtigungen als einzelne Person.",
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>{t("Application-Service-Account")}</dt>
+          <dd>
+            {t(
+              "Wird beim Deployment im neuen Application-Projekt angelegt und erhält die unten festgelegten Berechtigungen.",
+            )}
+          </dd>
+        </div>
+      </dl>
       <p className="field-hint">
         {t(
           "Das Profil wird mit der Template-Version festgeschrieben. Besteller können es nicht überschreiben. Geerbte oder anderweitig vergebene Rechte bleiben zusätzlich wirksam.",
@@ -169,7 +201,7 @@ export function ApplicationAccessProfile({
       {profile.mode === "owner" ? (
         <p className="info-banner">
           {t(
-            "Bewusste Kundenwahl: Besteller und Workload-Automation erhalten volle Owner-Rechte, einschließlich IAM und Projektverwaltung. Zentrale Vorgaben lassen sich gegenüber diesen Identitäten damit nicht unveränderlich erzwingen.",
+            "Bewusste Kundenwahl: Besteller und Application-Service-Account erhalten volle Owner-Rechte, einschließlich IAM und Projektverwaltung. Zentrale Vorgaben lassen sich gegenüber diesen Identitäten damit nicht unveränderlich erzwingen.",
           )}
         </p>
       ) : (
@@ -189,7 +221,7 @@ export function ApplicationAccessProfile({
           </p>
           <p>
             {t(
-              "Die geprüfte Workload-Auswahl umfasst VMs, Object Storage, Observability und Secrets Manager. IAM, Projektlöschung, zentrale Routing-Änderungen und privilegierte STACKIT-Service-Account-Verwaltung sind ausgeschlossen. Team und Automation lassen sich getrennt einschränken; volle Owner-Rechte bleiben eine Kundenwahl.",
+              "Die geprüfte Workload-Auswahl umfasst VMs, Object Storage, Observability und Secrets Manager. IAM, Projektlöschung, zentrale Routing-Änderungen und privilegierte STACKIT-Service-Account-Verwaltung sind ausgeschlossen. Besteller und Application-Service-Account lassen sich getrennt einschränken; volle Owner-Rechte bleiben eine Kundenwahl.",
             )}
           </p>
           <p className="field-hint">
@@ -210,36 +242,29 @@ export function ApplicationAccessProfile({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <p className="field-hint">
+            {t(
+              "Neue Profile starten für Besteller und Application-Service-Account mit denselben Berechtigungen. Du kannst beide getrennt anpassen. Die Gruppen dienen nur der Übersicht; es werden keine Benutzergruppen angelegt. Gruppenaktionen ändern ausschließlich die angezeigten Berechtigungen.",
+            )}
+          </p>
           {(["permissions", "automationPermissions"] as const).map((field) => (
             <details key={field}>
               <summary>
                 {field === "permissions"
-                  ? t("Application-Team")
-                  : t("Workload-Automation")}{" "}
+                  ? t("Berechtigungen des Bestellers")
+                  : t("Berechtigungen des Application-Service-Accounts")}{" "}
                 · {profile[field].length}
               </summary>
-              {options.map((permission) => (
-                <label className="parameter-choice" key={permission}>
-                  <input
-                    type="checkbox"
-                    checked={profile[field].includes(permission)}
-                    onChange={(e) =>
-                      onChange({
-                        accessProfile: {
-                          ...profile,
-                          [field]: e.target.checked
-                            ? [...profile[field], permission].sort()
-                            : profile[field].filter((p) => p !== permission),
-                        },
-                      })
-                    }
-                  />
-                  {permission}
-                  {live && !live.some((p) => p.value === permission)
-                    ? ` · ${t("Im Live-Katalog nicht vorhanden")}`
-                    : ""}
-                </label>
-              ))}
+              <ApplicationPermissionGroups
+                selected={profile[field]}
+                search={search}
+                available={live?.map((permission) => permission.value)}
+                onChange={(permissions) =>
+                  onChange({
+                    accessProfile: { ...profile, [field]: permissions },
+                  })
+                }
+              />
             </details>
           ))}
         </>
