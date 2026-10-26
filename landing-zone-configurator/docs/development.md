@@ -44,8 +44,11 @@ between these views. Preparation provenance must use the persisted configuration
 binding ID, never the document-local `draft.id`: saves and copies assign a
 separate database ID without rewriting the document. Pass that binding through
 both editor paths and keep distinct IDs in fixtures. Platform binding contains execution/backend setup before
-publication. Configuration editing belongs to Configurations; deployment phases
-remain separate explicit actions. Keep the catalogue provider scoped to workspace
+publication. Configuration editing belongs to Configurations: its navigation entry resumes the
+current draft in the editor; the editor breadcrumb opens the saved list. List
+actions open the editor directly and ask for replacement only when a different
+unsaved draft would be lost. Clean drafts reopen without confirmation; cancel
+retains the draft and binding. Deployment phases remain separate explicit actions. Keep the catalogue provider scoped to workspace
 and platform capability so losing the platform role clears private catalogue data
 even though the Application view remains accessible. The Platform Owner workflow
 browser regression covers save, reload and progression; its Application Owner

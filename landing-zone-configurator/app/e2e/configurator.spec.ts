@@ -33,6 +33,20 @@ import {
 } from "../scripts/assistant-scenarios.js";
 import { expect, type Page, test } from "./fixtures";
 
+// Storage workflows use the editor breadcrumb; the primary navigation now resumes editing.
+async function openConfigurationStorage(page: Page) {
+  const listLink = page
+    .getByRole("navigation", { name: "Brotkrumennavigation", exact: true })
+    .getByRole("link", { name: "Konfigurationen", exact: true });
+  if (!(await listLink.isVisible())) {
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Konfigurationen", exact: true })
+      .click();
+  }
+  if (await listLink.isVisible()) await listLink.click();
+}
+
 async function holdAssistantCompletion(page: Page, path: string) {
   await page.addInitScript((endpoint) => {
     const original = window.fetch.bind(window);
@@ -2173,9 +2187,7 @@ test("database configurations save, reopen, protect revisions and delete without
     .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
     .fill("Ohne GitHub gespeichert");
   await expect(name).toHaveValue("Ohne GitHub gespeichert");
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   const storage = page.getByRole("region", {
     name: "Gespeicherte Konfigurationen",
   });
@@ -2234,9 +2246,7 @@ test("database configurations save, reopen, protect revisions and delete without
   await page
     .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
     .fill("Aktualisiert ohne GitHub");
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   await storage
     .getByRole("button", { name: "Konfiguration speichern", exact: true })
     .click();
@@ -3034,9 +3044,7 @@ test("edit, validate and download an isolated standalone copy", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   await page
     .getByRole("button", { name: "Neue Konfiguration", exact: true })
     .click();
@@ -3046,9 +3054,7 @@ test("edit, validate and download an isolated standalone copy", async ({
   await expect(page.locator(".topology")).toContainText(
     "Public · public-exmpl",
   );
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   await page
     .getByRole("button", {
       name: "Meine Testumgebung weiterbearbeiten",
@@ -3205,9 +3211,7 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
       exact: true,
     }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   await expect(page).toHaveURL(/\/configurations$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
@@ -3346,9 +3350,7 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
     "Meine neue Kopie",
   );
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   await page
     .getByRole("button", { name: "Im Fork speichern", exact: true })
     .click();
@@ -3357,9 +3359,7 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
     "Meine neue Kopie",
   );
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   await page.getByRole("button", { name: "Neue Kopie vorbereiten" }).click();
   await page
     .getByRole("button", { name: "Im Fork speichern", exact: true })
@@ -3388,9 +3388,7 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
   await page.goto("/templates");
   await expect(page.getByText("@alice", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/templates$/);
-  await page
-    .getByRole("button", { name: "Konfigurationen", exact: true })
-    .click();
+  await openConfigurationStorage(page);
   await expect(
     page.getByRole("button", {
       name: "Meine neue Kopie weiterbearbeiten",
@@ -4366,10 +4364,7 @@ test.describe("explicit saved-plan approval", () => {
     ).toHaveAttribute("aria-selected", "true");
     expect(saves).toBe(0);
     expect(cloudMutations).toEqual([]);
-    await page
-      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
-      .getByRole("button", { name: "Konfigurationen", exact: true })
-      .click();
+    await openConfigurationStorage(page);
     await page
       .getByRole("button", {
         name: "Meine Plattform weiterbearbeiten",
@@ -4402,9 +4397,7 @@ test.describe("explicit saved-plan approval", () => {
       .getByRole("button", { name: "Arbeitsbereich öffnen: Persönlich" })
       .click();
     await expect(page).toHaveURL(/\/workspaces$/);
-    await page
-      .getByRole("button", { name: "Konfigurationen", exact: true })
-      .click();
+    await openConfigurationStorage(page);
     await page
       .getByRole("button", {
         name: "Meine Plattform geändert weiterbearbeiten",
@@ -4431,9 +4424,7 @@ test.describe("explicit saved-plan approval", () => {
       path: testInfo.outputPath("configuration-flow.png"),
       fullPage: true,
     });
-    await page
-      .getByRole("button", { name: "Konfigurationen", exact: true })
-      .click();
+    await openConfigurationStorage(page);
     await page
       .getByRole("button", { name: "Neue Konfiguration", exact: true })
       .click();

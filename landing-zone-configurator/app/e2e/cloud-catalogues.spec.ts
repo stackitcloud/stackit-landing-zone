@@ -271,7 +271,7 @@ for (const kind of ["personal", "organisation"]) {
       await page
         .getByRole("button", { name: "Konfigurationen", exact: true })
         .click();
-      await page.getByRole("button", { name: /weiterbearbeiten$/ }).click();
+
       await page
         .getByRole("button", { name: "4 Plattform", exact: true })
         .click();

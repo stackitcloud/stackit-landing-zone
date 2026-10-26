@@ -41,6 +41,13 @@ Identitäts-/Arbeitsumgebungswechsel setzen weiterhin den Entwurf und den
 bereichsgebundenen Katalogprovider zurück; private Kataloge dürfen nie über
 diese Grenzen hinweg erhalten bleiben.
 
+Die Navigation „Konfigurationen“ setzt den aktuellen Entwurf direkt im Editor
+fort; der Brotkrumen-Link im Editor öffnet die gespeicherte Liste. Listenaktionen
+öffnen direkt den Editor und fragen nur nach Ersetzen, wenn ein abweichender
+ungespeicherter Entwurf verloren ginge. Unveränderte Entwürfe öffnen ohne
+Bestätigung; Abbrechen erhält Entwurf und Speicherbindung. Die
+Deployment-Phasen bleiben davon getrennte, ausdrückliche Aktionen.
+
 Halte Frontend-Navigation und die explizite SPA-Routen-Allowlist der API synchron,
 einschließlich Arbeitsumgebungs- und Deployment-Phasen-URLs. Direkte Aufrufe und
 Neuladen müssen die kompilierte UI über die API ausliefern, nicht nur über den
