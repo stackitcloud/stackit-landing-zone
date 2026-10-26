@@ -40,7 +40,7 @@ export function ApplicationOrderQuota({
       </p>
       <p>
         {t(
-          "Das Kontingent gilt für den gesamten Arbeitsbereich, nicht für einzelne Benutzer oder Cloud-Ressourcen. Offene Bestellungen reservieren einen Platz. Archivierte fehlgeschlagene Applies zählen weiter; erst nachgewiesener Destroy und Archivierung geben den Platz frei.",
+          "Das Kontingent gilt für den gesamten Arbeitsbereich, nicht für einzelne Benutzer oder Cloud-Ressourcen. Bestellungen reservieren einen Platz. Archivierung gibt ihn frei, wenn noch kein Apply gestartet wurde oder ein erfolgreicher Destroy nachgewiesen ist. Archivierte fehlgeschlagene oder teilweise ausgeführte Applies zählen weiter.",
         )}
       </p>
       {canManage && (

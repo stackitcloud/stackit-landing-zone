@@ -3,8 +3,8 @@ export const englishMessages: Record<string, string> = {
   "Reservierte Bestellungen: {{value0}} · Grenze: {{value1}}":
     "Reserved orders: {{value0}} \u00b7 Limit: {{value1}}",
   Unbegrenzt: "Unlimited",
-  "Das Kontingent gilt für den gesamten Arbeitsbereich, nicht für einzelne Benutzer oder Cloud-Ressourcen. Offene Bestellungen reservieren einen Platz. Archivierte fehlgeschlagene Applies zählen weiter; erst nachgewiesener Destroy und Archivierung geben den Platz frei.":
-    "The quota covers the entire workspace, not individual users or cloud resources. Pending orders reserve a slot. Archived failed Applies continue to count; only a confirmed Destroy followed by archiving releases their slot.",
+  "Das Kontingent gilt für den gesamten Arbeitsbereich, nicht für einzelne Benutzer oder Cloud-Ressourcen. Bestellungen reservieren einen Platz. Archivierung gibt ihn frei, wenn noch kein Apply gestartet wurde oder ein erfolgreicher Destroy nachgewiesen ist. Archivierte fehlgeschlagene oder teilweise ausgeführte Applies zählen weiter.":
+    "The quota covers the entire workspace, not individual users or cloud resources. Orders reserve a slot. Archiving releases it if no Apply has started or a successful Destroy is confirmed. Archived failed or partially completed Applies continue to count.",
   "Bestellkontingent verwalten": "Manage order quota",
   "Das Bestellkontingent konnte nicht gespeichert werden. Bitte neu laden und erneut prüfen.":
     "The order quota could not be saved. Reload and review it again.",
