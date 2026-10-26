@@ -14,7 +14,9 @@ type Option = {
   id: string;
   email: string;
   name: string;
-  kind: "human" | "checked-service" | "unchecked-service";
+  kind: "human" | "prepared-service" | "checked-service" | "unchecked-service";
+  preparationName?: string;
+  warning?: "failed" | "other-organization" | "unchecked";
 };
 const Context = createContext<{ scope: string; options: Option[] }>({
   scope: "",
@@ -30,6 +32,7 @@ const profilesSchema = z.object({
       z.object({
         id: z.string().min(1),
         name: z.string(),
+        keyId: z.string().min(1).optional(),
         serviceAccount: z
           .email()
           .refine((email) => email.endsWith("@sa.stackit.cloud")),
@@ -41,6 +44,23 @@ const profilesSchema = z.object({
       }),
     )
     .max(200),
+});
+
+const preparationsSchema = z.object({
+  preparations: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string(),
+        credentialId: z.string().nullable(),
+        manifest: z.object({
+          source: z.object({ configurationId: z.string() }),
+          organization: z.object({ id: z.string() }),
+          credential: z.object({ id: z.string(), keyId: z.string().min(1) }),
+        }),
+      }),
+    )
+    .max(100),
 });
 
 export function InitialProjectOwnerOptions({
@@ -90,6 +110,7 @@ export function InitialProjectOwnerOptions({
     void Promise.allSettled([
       get("/api/v1/stackit/identity"),
       get("/api/v1/credentials"),
+      get("/api/v1/preparations"),
     ]).then((results) => {
       if (controller.signal.aborted) return;
       const options: Option[] = [];
@@ -108,11 +129,34 @@ export function InitialProjectOwnerOptions({
         results[1]?.status === "fulfilled"
           ? profilesSchema.safeParse(results[1].value)
           : null;
+      const preparations =
+        results[2]?.status === "fulfilled"
+          ? preparationsSchema.safeParse(results[2].value)
+          : null;
+      const matchingPreparations = preparations?.success
+        ? preparations.data.preparations.filter(
+            (preparation) =>
+              preparation.manifest.source.configurationId === configurationId &&
+              preparation.manifest.organization.id === organizationId,
+          )
+        : [];
       if (profiles?.success)
         for (const profile of profiles.data.profiles) {
+          // A saved preparation is provenance for this email choice, not proof
+          // of a successful Apply or of current execution permissions.
+          const bound = profile.keyId
+            ? matchingPreparations.find(
+                (preparation) =>
+                  preparation.credentialId === profile.id &&
+                  preparation.manifest.credential.id === profile.id &&
+                  preparation.manifest.credential.keyId === profile.keyId,
+              )
+            : undefined;
+
           if (
             profile.state !== "stored" ||
-            (profile.lastCheck &&
+            (!bound &&
+              profile.lastCheck &&
               (profile.lastCheck.status !== "passed" ||
                 profile.lastCheck.organizationId !== organizationId))
           )
@@ -121,20 +165,39 @@ export function InitialProjectOwnerOptions({
             id: `profile:${profile.id}`,
             email: profile.serviceAccount,
             name: profile.name,
-            kind: profile.lastCheck ? "checked-service" : "unchecked-service",
+            kind: bound
+              ? "prepared-service"
+              : profile.lastCheck
+                ? "checked-service"
+                : "unchecked-service",
+            ...(bound
+              ? {
+                  preparationName: bound.name,
+                  ...(!profile.lastCheck
+                    ? { warning: "unchecked" as const }
+                    : profile.lastCheck.status !== "passed"
+                      ? { warning: "failed" as const }
+                      : profile.lastCheck.organizationId !== organizationId
+                        ? { warning: "other-organization" as const }
+                        : {}),
+                }
+              : {}),
           });
         }
+      const priority: Record<Option["kind"], number> = {
+        human: 0,
+        "prepared-service": 1,
+        "checked-service": 2,
+        "unchecked-service": 3,
+      };
       options.sort(
         (a, b) =>
-          ({ human: 0, "checked-service": 1, "unchecked-service": 2 })[a.kind] -
-            { human: 0, "checked-service": 1, "unchecked-service": 2 }[
-              b.kind
-            ] || a.name.localeCompare(b.name),
+          priority[a.kind] - priority[b.kind] || a.name.localeCompare(b.name),
       );
       setLoaded({ scope, options });
     });
     return () => controller.abort();
-  }, [scope, session, organizationId]);
+  }, [scope, session, organizationId, configurationId]);
   return (
     <Context.Provider
       value={{ scope, options: loaded?.scope === scope ? loaded.options : [] }}
@@ -186,10 +249,22 @@ export function InitialProjectOwner({
           <option key={option.id} value={option.id}>
             {option.kind === "human"
               ? t("Aktuell verifizierter STACKIT-Benutzer")
-              : option.kind === "checked-service"
-                ? t("Gespeichertes Zugangsprofil · Organisation geprüft")
-                : t("Gespeichertes Zugangsprofil · Organisation nicht geprüft")}
+              : option.kind === "prepared-service"
+                ? t("Plattform-Zugangsprofil aus gespeicherter Vorbereitung")
+                : option.kind === "checked-service"
+                  ? t("Gespeichertes Zugangsprofil · Organisation geprüft")
+                  : t(
+                      "Gespeichertes Zugangsprofil · Organisation nicht geprüft",
+                    )}
             {option.name ? ` · ${option.name}` : ""} · {option.email}
+            {option.preparationName ? ` · ${option.preparationName}` : ""}
+            {option.warning === "failed"
+              ? ` · ${t("Letzte Zugangsprüfung nicht erfolgreich")}`
+              : option.warning === "other-organization"
+                ? ` · ${t("Letzte Zugangsprüfung betrifft eine andere Organisation")}`
+                : option.warning === "unchecked"
+                  ? ` · ${t("Aktuelle Zugangsprüfung nicht nachgewiesen")}`
+                  : ""}
           </option>
         ))}
       </select>

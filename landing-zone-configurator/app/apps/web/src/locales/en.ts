@@ -1,4 +1,44 @@
 export const englishMessages: Record<string, string> = {
+  "Die geprüfte Workload-Auswahl umfasst VMs, Object Storage, Observability und Secrets Manager. IAM, Projektlöschung, zentrale Routing-Änderungen und privilegierte STACKIT-Service-Account-Verwaltung sind ausgeschlossen. Besteller und Application-Service-Account lassen sich getrennt einschränken; volle Owner-Rechte bleiben eine Kundenwahl.":
+    "The reviewed workload selection covers VMs, Object Storage, Observability and Secrets Manager. IAM, project deletion, central routing changes and privileged STACKIT service account administration are excluded. Requester and application service account permissions can be restricted independently; full owner rights remain a customer choice.",
+  "Bewusste Kundenwahl: Besteller und Application-Service-Account erhalten volle Owner-Rechte, einschließlich IAM und Projektverwaltung. Zentrale Vorgaben lassen sich gegenüber diesen Identitäten damit nicht unveränderlich erzwingen.":
+    "Explicit customer choice: the requester and application service account receive full owner rights, including IAM and project administration. Central policies cannot be enforced as immutable against these identities.",
+  "Neue Profile starten für Besteller und Application-Service-Account mit denselben Berechtigungen. Du kannst beide getrennt anpassen. Die Gruppen dienen nur der Übersicht; es werden keine Benutzergruppen angelegt. Gruppenaktionen ändern ausschließlich die angezeigten Berechtigungen.":
+    "New profiles start with the same permissions for the requester and application service account. You can adjust them independently. Groups only organize this view; no user groups are created. Group actions change only the permissions shown.",
+  "Aktuelle Zugangsprüfung nicht nachgewiesen":
+    "Current access check is not established",
+  "Letzte Zugangsprüfung betrifft eine andere Organisation":
+    "Last access check concerns another organization",
+  "Letzte Zugangsprüfung nicht erfolgreich":
+    "Last access check was unsuccessful",
+  "Plattform-Zugangsprofil aus gespeicherter Vorbereitung":
+    "Platform credential profile from a saved preparation",
+  "Rolle des Application-Service-Accounts": "Application service account role",
+  "Berechtigungen des Application-Service-Accounts":
+    "Application service account permissions",
+  "Berechtigungen des Bestellers": "Requester permissions",
+  "Wird beim Deployment im neuen Application-Projekt angelegt und erhält die unten festgelegten Berechtigungen.":
+    "Is created in the new application project during deployment and receives the permissions defined below.",
+  "Application-Service-Account": "Application service account",
+  "Erhält beim Deployment die unten festgelegten Projektberechtigungen als einzelne Person.":
+    "Receives the project permissions defined below as an individual during deployment.",
+  "Zukünftiger Besteller": "Future requester",
+  "Konfiguriert diese Vorlage. Seine Auswahl als Projekt-Owner ist optional.":
+    "Configures this template. Selecting this user as project owner is optional.",
+  "Angemeldeter Nutzer": "Signed-in user",
+  "Führt das Deployment aus und kann als Owner des neuen Projekts hinterlegt werden.":
+    "Runs the deployment and can be selected as owner of the new project.",
+  "Plattform-Service-Account": "Platform service account",
+  "Angezeigte abwählen": "Deselect shown",
+  "Alle angezeigten auswählen": "Select all shown",
+  "{{selected}} von {{total}} ausgewählt": "{{selected}} of {{total}} selected",
+  "Keine passenden Berechtigungen.": "No matching permissions.",
+  "Weitere Berechtigungen": "Other permissions",
+  "Images, SSH-Schlüssel und Projektinformationen":
+    "Images, SSH keys and project information",
+  "Netzwerk und Security Groups": "Networking and security groups",
+  "Volumes, Snapshots und Backups": "Volumes, snapshots and backups",
+  "Virtuelle Maschinen": "Virtual machines",
   "Quelle für den initialen Projekt-Owner": "Initial project owner source",
   "Manuell eingeben / gespeicherten Wert behalten":
     "Enter manually / retain saved value",

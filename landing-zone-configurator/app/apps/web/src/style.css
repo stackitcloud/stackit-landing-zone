@@ -1889,3 +1889,54 @@ button.template-node:hover {
   overflow-wrap: anywhere;
   max-width: 100%;
 }
+
+.application-access-identities {
+  display: grid;
+  gap: 12px;
+}
+.application-access-identities dt {
+  font-weight: 600;
+}
+.application-access-identities dd {
+  margin: 4px 0 0;
+}
+.application-permission-groups {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+.application-permission-groups > details {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  min-width: 0;
+}
+.permission-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.application-permission-list {
+  display: grid;
+  gap: 4px;
+}
+.application-permission-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  min-width: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+.application-permission-choice input {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+}
+.application-permission-choice code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
