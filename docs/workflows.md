@@ -106,6 +106,12 @@ it reports a result for every relevant PR.
 | Configurator Runtime | `root=runtime`; `apply=false` by default. Requires the runtime operator switch above; Apply uses `lzc-dev-runtime-apply`. |
 | Configurator Release | `release_mode=qualified` and `build_only=false` by default; `release_run_id` empty means a fresh build under the selected mode. Set `build_only=true` to build without CF deployment; protected tag publication still occurs; live-model calls run in `qualified` mode. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
 
+Release build browser acceptance and native packaging run concurrently; deployment
+stages Runner, the minimal migration payload and Web/API concurrently with isolated
+CF homes. App activation waits for all checks and the completed Runner binding.
+The release remains one immutable source; component reuse is deferred to
+[issue #167](https://github.com/stackitcloud/stackit-landing-zone/issues/167).
+
 For the normal Configurator deployment: select **Configurator Release**, `main`,
 choose **runner_pool_size=1** to maintain one prepared one-shot Dev Runner
 (`0` disables/drains the pool; default `0`, maximum `4`, 1 GiB RAM per reserve),

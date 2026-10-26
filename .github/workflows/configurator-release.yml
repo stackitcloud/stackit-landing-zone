@@ -79,6 +79,7 @@ jobs:
           node --test ../infra/ci/prepare-release.test.mjs
           node --test ../infra/ci/buildpack-source.test.mjs
           node --test ../infra/ci/image-staging.test.mjs
+          node --test ../infra/ci/release-lifecycle.test.mjs
       - name: Test first preparations and stateful platform Plan/Apply broker
         run: npm run test:platform-database
       - name: Test database migrations and tenant isolation
@@ -96,10 +97,6 @@ jobs:
           go run . -check
           go run . -variables-source ../../../src/variables.tf -output ../../docs/accelerator-inputs.json -check
           go run . -variables-source ../../../src/variables.tf -output ../../app/packages/domain/src/accelerator-inputs.json -check
-      - name: Verify browser flow before packaging
-        run: |
-          npx playwright install --with-deps chromium
-          npm run test:e2e
       - name: Package production application and pinned Node runtime
         run: |
           mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/packages/domain ../.local/release/public ../.local/release/runtime
@@ -120,13 +117,14 @@ jobs:
         with:
           tofu_version: '1.12.6'
           tofu_wrapper: false
-      - name: Test isolated native Plan hold and interruption
-        run: LZC_TEST_TOFU_BIN="$(command -v tofu)" npx vitest run tests/worker-recovery-hold.test.ts
-      - name: Test real OpenTofu contract and package isolated runner
+      - name: Verify browser flow and package native runner in parallel
         run: |
+          node ../infra/ci/run-parallel.mjs browser 'npx playwright install --with-deps chromium && npm run test:e2e' native '
+          LZC_TEST_TOFU_BIN="$(command -v tofu)" npx vitest run tests/worker-recovery-hold.test.ts
           npm run test:common-contract
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
           LZC_HOSTED_EXECUTION_PACKAGE=true LZC_PACKAGE_APPLICATION_ROOT=true LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true bash ../deploy/runner/package.sh
+          '
           cp -R ../.local/runner ../.local/release/inspection
           tar --exclude='./inspection/accelerator/firewall-image.qcow2' -czf ../.local/release.tar.gz -C ../.local/release .
           (cd ../.local && sha256sum release.tar.gz > release.sha256)
@@ -279,6 +277,7 @@ jobs:
           mkdir -p .local/runner
           tar -xzf .local/runner.tar.gz -C .local/runner
           diff -qr .local/release/inspection .local/runner
+          node infra/ci/package-migration.mjs .local/release .local/migration
       - name: Prepare encrypted state read access
         run: node infra/ci/prepare-release.mjs backend
         env:
@@ -314,24 +313,22 @@ jobs:
           LZC_DEPLOYMENT_ARTIFACT_KEY: ${{ secrets.LZC_DEPLOYMENT_ARTIFACT_KEY }}
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
-      - name: Stage isolated runner template in its own organisation
+      - name: CF login and target
+        run: |
+          cf version
+          cf api "$CF_API_URL"
+          cf auth
+          cf target -o lzc-dev -s configurator
+          test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
+      - name: Stage runner, migration and application in parallel
         id: stage_runner
         run: |
-          cf api "$CF_API_URL"
-          CF_USERNAME="$LZC_RUNNER_CF_USERNAME" CF_PASSWORD="$LZC_RUNNER_CF_PASSWORD" cf auth
-          cf target -o lzc-dev-runners -s plans
-          test "$(cf org lzc-dev-runners --guid)" = "$LZC_RUNNER_ORG_ID"
-          test "$(cf space plans --guid)" = "$LZC_RUNNER_SPACE_ID"
-          cf push --task -f deploy/runner/manifest.yml -p .local/runner --vars-file "$LZC_PRIVATE/runner-vars.json" --redact-env
-          export LZC_RUNNER_TEMPLATE_ID="$(cf app lzc-plan-template --guid)"
-          export LZC_RUNNER_DROPLET_ID="$(cf curl "/v3/apps/$LZC_RUNNER_TEMPLATE_ID/droplets/current" | jq -er '.guid')"
-          node infra/ci/prepare-release.mjs runner
-          cf run-task lzc-plan-template --command "./runtime/bin/node --input-type=module -e 'import { platformFirewallImage } from \"@lzc/contracts\"; console.log(platformFirewallImage.sha256 + \"  accelerator/firewall-image.qcow2\");' | sha256sum --check" --name "image-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
-          cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=accelerator init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=accelerator validate -no-color' --name "engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
-          cf run-task lzc-plan-template --command 'TF_CLI_CONFIG_FILE=/home/vcap/app/runner.tfrc ./tools/tofu -chdir=application-src/application init -backend=false -input=false -lockfile=readonly -no-color && ./tools/tofu -chdir=application-src/application validate -no-color' --name "application-engine-$GITHUB_RUN_ID" -m 1024M -k 4096M --wait
+          rm -f "$LZC_PRIVATE/runner-staged" "$LZC_PRIVATE/app-stage.json"
+          node infra/ci/run-parallel.mjs runner 'bash infra/ci/stage-release-runner.sh' migration 'bash infra/ci/stage-release-migration.sh' application 'bash infra/ci/stage-release-application.sh'
       - name: Runner staging failure diagnostics
         if: failure() && steps.stage_runner.outcome == 'failure'
         run: |
+          export CF_HOME="${LZC_PRIVATE:-/tmp}/cf-runner"
           app_id="$(cf app lzc-plan-template --guid)"
           build="$(cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq -ce '.resources | if length == 1 then .[0] else error("Expected one latest build") end')"
           printf '%s\n' "$build" | jq '{guid, state, error, created_at, updated_at, staging_disk_in_mb, staging_memory_in_mb}'
@@ -342,42 +339,8 @@ jobs:
             echo "Latest build has no associated droplet; no droplet diagnostics available." >&2
           fi
           cf logs lzc-plan-template --recent
-      - name: CF login and target
-        run: |
-          cf version
-          cf api "$CF_API_URL"
-          cf auth
-          cf target -o lzc-dev -s configurator
-          test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
-      - name: Stage isolated database migration task
-        id: migration
-        run: cf push --task -f deploy/cloud-foundry/migration-manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/migration-vars.json" --redact-env
-      - name: Apply versioned database migrations
-        id: database_migrations
-        timeout-minutes: 5
-        run: cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
-      - name: Sanitized database migration diagnostics
-        if: always() && (steps.database_migrations.outcome == 'success' || steps.database_migrations.outcome == 'failure')
-        run: |
-          for attempt in 1 2 3; do
-            if cf logs landing-zone-configurator-migrate --recent | node infra/ci/migration-evidence.mjs "$GITHUB_RUN_ID" > "$LZC_PRIVATE/migration-evidence.json"; then
-              cat "$LZC_PRIVATE/migration-evidence.json"
-              exit 0
-            fi
-            if [ -s "$LZC_PRIVATE/migration-evidence.json" ]; then
-              cat "$LZC_PRIVATE/migration-evidence.json"
-              exit 1
-            fi
-            if [ "$attempt" -lt 3 ]; then sleep 5; fi
-          done
-          exit 1
-      - name: Remove privileged migration application
-        run: cf delete landing-zone-configurator-migrate -f
-      - name: CF push application
-        id: push
-        run: cf push -f deploy/cloud-foundry/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-vars.json" --redact-env
       - name: Sanitized application staging failure diagnostics
-        if: failure() && steps.push.outcome == 'failure'
+        if: failure() && steps.stage_runner.outcome == 'failure'
         run: |
           app_id="$(cf app landing-zone-configurator --guid)"
           build="$(cf curl "/v3/builds?app_guids=$app_id&order_by=-created_at&per_page=1" | jq -ce '.resources | if length == 1 then .[0] else error("Expected one latest build") end')"
@@ -389,6 +352,9 @@ jobs:
             echo "Latest build has no associated droplet; no droplet diagnostics available." >&2
           fi
           cf logs landing-zone-configurator --recent | awk '/\[STG\/[0-9]+\]/ { print }'
+      - name: Activate application after migration and runner validation
+        id: push
+        run: node infra/ci/activate-release.mjs
       - name: CF network diagnostics
         timeout-minutes: 3
         run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-network.js' --name "network-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
@@ -441,8 +407,10 @@ jobs:
             cf unmap-route landing-zone-configurator apps.01.cf.eu01.stackit.cloud --hostname lzc-dev-configurator-7dbff805
           fi
       - name: Clean up migration application after failure or cancellation
-        if: (failure() || cancelled()) && (steps.migration.outcome == 'success' || steps.migration.outcome == 'failure' || steps.migration.outcome == 'cancelled')
-        run: cf delete landing-zone-configurator-migrate -f
+        if: failure() || cancelled()
+        run: |
+          export CF_HOME="$LZC_PRIVATE/cf-migration"
+          cf delete landing-zone-configurator-migrate -f
       - name: Remove private deployment inputs
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/lzc-release"

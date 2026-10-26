@@ -80,16 +80,17 @@ test('qualifies initial platform capabilities against source identity and lock b
  }
 });
 
-test('verifies the staged runner image before migrating or replacing the web application',()=>{
+test('verifies the staged runner image before activating the web application',()=>{
  const workflow=readFileSync(fileURLToPath(new URL('../../../.github/workflows/configurator-release.yml',import.meta.url)),'utf8');
- const imageTask=workflow.indexOf('--name "image-$GITHUB_RUN_ID"');
- assert.ok(imageTask>workflow.indexOf('cf push --task -f deploy/runner/manifest.yml'));
- assert.ok(imageTask<workflow.indexOf('name: Stage isolated database migration task'));
- const command=workflow.slice(workflow.lastIndexOf('cf run-task',imageTask),imageTask);
+ const runner=readFileSync(fileURLToPath(new URL('./stage-release-runner.sh',import.meta.url)),'utf8');
+ const imageTask=runner.indexOf('--name "image-$GITHUB_RUN_ID"');
+ assert.ok(imageTask>runner.indexOf('cf push --task -f deploy/runner/manifest.yml'));
+ assert.ok(workflow.indexOf('stage-release-runner.sh')<workflow.indexOf('run: node infra/ci/activate-release.mjs'));
+ const command=runner.slice(runner.lastIndexOf('cf run-task',imageTask),imageTask);
  assert.ok(command.includes('import { platformFirewallImage }'));
  assert.ok(command.includes('accelerator/firewall-image.qcow2'));
  assert.ok(command.includes('sha256sum --check'));
- assert.ok(workflow.slice(imageTask,workflow.indexOf('\n',imageTask)).includes('-k 4096M --wait'));
+ assert.ok(runner.slice(imageTask,runner.indexOf('\n',imageTask)).includes('-k 4096M --wait'));
 });
 
 test('qualification provider sockets stay independent of long checkout paths',()=>{
