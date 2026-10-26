@@ -1,3 +1,4 @@
+import { assistantProposalFields } from "@lzc/contracts";
 import {
   type CommonConfiguration,
   createEditorConfiguration,
@@ -10,12 +11,13 @@ const userId = "11111111-1111-4111-8111-111111111111";
 const tenantId = "22222222-2222-4222-8222-222222222222";
 const organizationId = "33333333-3333-4333-8333-333333333333";
 const configurationId = "44444444-4444-4444-8444-444444444444";
+const documentId = "66666666-6666-4666-8666-666666666666";
 const contractRevision = "55555555-5555-4555-8555-555555555555";
 
 function platformConfiguration(): CommonConfiguration {
   return editCommonInput(
     {
-      ...createEditorConfiguration("standalone", configurationId),
+      ...createEditorConfiguration("standalone", documentId),
       name: "Existing platform workflow",
       projectTemplates: [structuredClone(legacyAccessTemplate)],
     },
@@ -299,6 +301,9 @@ test("Application Owner receives the catalogue without platform editor, binding 
   await expect(
     page.getByLabel("Name des Templates", { exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Konfigurations-Chat", exact: true }),
+  ).toHaveCount(0);
   expect(state.privateReads).toEqual([]);
   expect(state.writes).toEqual([]);
   expect(state.executionWrites).toEqual([]);
@@ -470,5 +475,184 @@ test("configuration reopen protects edits made during its read and skips confirm
   ).toBeEnabled();
   expect(dialogs).toHaveLength(1);
   expect(state.writes).toEqual([]);
+  expect(state.executionWrites).toEqual([]);
+});
+
+test("template-draft Assistant uses the saved configuration and accepts locally before explicit save", async ({
+  page,
+}) => {
+  const state = await mockWorkspace(page);
+  const original = platformConfiguration();
+  expect(original.id).not.toBe(configurationId);
+  const template = original.projectTemplates?.[0];
+  if (!template) throw new Error("Expected template");
+  const candidate = structuredClone(original);
+  const proposedTemplate = candidate.projectTemplates?.[0];
+  if (!proposedTemplate) throw new Error("Expected proposed template");
+  proposedTemplate.name = "Assistant reviewed corporate template";
+  const change = {
+    path: "projectTemplates",
+    operation: "merge" as const,
+    before: {},
+    value: { [template.key]: { name: proposedTemplate.name } },
+  };
+  const conversation = {
+    id: contractRevision,
+    revision: 2,
+    baseRevision: 1,
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    stale: false,
+    messages: [],
+    proposal: {
+      explanation:
+        "Name des bestehenden Templates vorschlagen, sonstige Einstellungen erhalten.",
+      questions: [],
+      references: ["project-templates"],
+      changes: [change],
+    },
+  };
+  const reads: string[] = [];
+  let sent = 0;
+  let accepted = 0;
+  let proposalAvailable = false;
+  await page.route(
+    `**/api/v1/configurations/${configurationId}/assistant`,
+    (route) => {
+      const request = route.request();
+      if (request.method() === "GET") {
+        reads.push(new URL(request.url()).pathname);
+        return route.fulfill({
+          json: { conversation: proposalAvailable ? conversation : null },
+        });
+      }
+      expect(request.method()).toBe("POST");
+      expect(request.headers()["x-lzc-csrf"]).toBe("csrf-workflow");
+      expect(request.postDataJSON()).toEqual({
+        revision: 1,
+        message: "Bitte den Namen dieses Templates verbessern.",
+        draft: original,
+      });
+      sent++;
+      proposalAvailable = true;
+      return route.fulfill({ json: { conversation } });
+    },
+  );
+  await page.route(
+    `**/api/v1/configurations/${configurationId}/assistant/accept`,
+    (route) => {
+      expect(route.request().method()).toBe("POST");
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-workflow");
+      expect(route.request().postDataJSON()).toEqual({
+        revision: 2,
+        baseRevision: 1,
+        selectedFields: assistantProposalFields([change]).map(
+          (field) => field.id,
+        ),
+        draft: original,
+        savedDraft: original,
+      });
+      accepted++;
+      proposalAvailable = false;
+      return route.fulfill({
+        json: {
+          configuration: {
+            id: configurationId,
+            revision: 1,
+            draft: candidate,
+            persisted: false,
+          },
+          savedConfiguration: original,
+          conversation: { ...conversation, proposal: null },
+        },
+      });
+    },
+  );
+  await page.goto("/configurations");
+  await page
+    .getByRole("button", {
+      name: "Konfiguration öffnen: Existing platform workflow",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+    .getByRole("button", { name: "Application Landing Zones", exact: true })
+    .click();
+  const drafts = page.getByRole("tabpanel", {
+    name: "Template-Entwürfe",
+    exact: true,
+  });
+  const chat = drafts.getByRole("region", {
+    name: "Konfigurations-Chat",
+    exact: true,
+  });
+  const templateName = drafts.getByLabel("Name des Templates", { exact: true });
+  const next = drafts.getByRole("button", {
+    name: "Weiter: Plattformanbindung",
+    exact: true,
+  });
+  await expect(
+    drafts.getByRole("heading", {
+      name: "Assistant für Template-Entwürfe",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(chat).toBeVisible();
+  await expect(templateName).toHaveValue(template.name);
+  await expect(next).toBeEnabled();
+  await chat
+    .getByLabel("Deine Nachricht", { exact: true })
+    .fill("Bitte den Namen dieses Templates verbessern.");
+  await chat
+    .getByRole("button", { name: "Nachricht senden", exact: true })
+    .click();
+  await expect(chat).toContainText(proposedTemplate.name);
+  expect(sent).toBe(1);
+  expect(accepted).toBe(0);
+  const readsBeforeNavigation = reads.length;
+  await page
+    .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+    .getByRole("button", { name: "Konfigurationen", exact: true })
+    .click();
+  const editorChat = page.getByRole("region", {
+    name: "Konfigurations-Chat",
+    exact: true,
+  });
+  await expect(editorChat).toBeVisible();
+  await expect(editorChat).toContainText(proposedTemplate.name);
+  await page
+    .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+    .getByRole("button", { name: "Application Landing Zones", exact: true })
+    .click();
+  await expect(chat).toBeVisible();
+  await expect(chat).toContainText(proposedTemplate.name);
+  expect(reads.length).toBeGreaterThan(readsBeforeNavigation);
+  expect(sent).toBe(1);
+  expect(accepted).toBe(0);
+  await expect(templateName).toHaveValue(template.name);
+  await expect(next).toBeEnabled();
+  expect(state.writes).toEqual([]);
+  await chat
+    .getByRole("button", { name: "Gesamten Vorschlag übernehmen", exact: true })
+    .click();
+  await expect(templateName).toHaveValue(proposedTemplate.name);
+  await expect(next).toBeDisabled();
+  await expect(drafts).toContainText("Speichere zuerst die Konfiguration.");
+  expect(accepted).toBe(1);
+  expect(state.writes).toEqual([]);
+  expect(state.stored()).toEqual(original);
+  await drafts
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect.poll(() => state.writes.length).toBe(1);
+  await expect(next).toBeEnabled();
+  expect(state.stored()).toEqual(candidate);
+  expect(state.revision()).toBe(2);
+  expect(reads.length).toBeGreaterThan(0);
+  expect(
+    reads.every(
+      (path) => path === `/api/v1/configurations/${configurationId}/assistant`,
+    ),
+  ).toBe(true);
   expect(state.executionWrites).toEqual([]);
 });
