@@ -8,7 +8,7 @@ test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
 trap 'cf delete landing-zone-configurator-migrate -f' EXIT
 cf push --task -f deploy/cloud-foundry/migration-manifest.yml -p .local/migration --vars-file "$LZC_PRIVATE/migration-vars.json" --redact-env
 migration_status=0
-cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 4096M --wait || migration_status=$?
+timeout --signal=TERM --kill-after=15s 300 cf run-task landing-zone-configurator-migrate --command "./runtime/bin/node apps/api/dist/migrate.js $GITHUB_RUN_ID" --name "migrate-$GITHUB_RUN_ID" -m 128M -k 4096M --wait || migration_status=$?
 evidence_status=1
 for attempt in 1 2 3; do
   if cf logs landing-zone-configurator-migrate --recent | node infra/ci/migration-evidence.mjs "$GITHUB_RUN_ID" > "$LZC_PRIVATE/migration-evidence.json"; then

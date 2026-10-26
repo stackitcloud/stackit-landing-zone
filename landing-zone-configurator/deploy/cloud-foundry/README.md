@@ -252,6 +252,10 @@ activation interruption, not a rolling release. A failed lane terminates the oth
 and prevents activation; the privileged migration app is removed on success/failure,
 with workflow cleanup also covering cancellation. Lane durations are logged.
 
+Older qualified artifacts whose exact source lacks the new scripts retain the original
+sequential deployment path when promoted; the artifact is never rebuilt or silently
+run with a different source tree.
+
 All components still belong to one source-bound release: this does not reuse an
 older Runner or relax promotion, qualification, checksum or approval gates.
 Independent component releases are tracked in [issue #167](https://github.com/stackitcloud/stackit-landing-zone/issues/167).

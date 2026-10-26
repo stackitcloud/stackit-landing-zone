@@ -264,6 +264,10 @@ Zweig beendet die übrigen und verhindert die Aktivierung; die privilegierte Mig
 wird bei Erfolg und Fehler gelöscht, ergänzt durch Workflow-Bereinigung bei Abbruch.
 Die Laufzeiten der Zweige werden protokolliert.
 
+Ältere qualifizierte Artefakte, deren exakte Quelle die neuen Skripte noch nicht enthält,
+behalten bei einer Promotion den bisherigen sequenziellen Ablauf. Das Artefakt wird
+weder neu gebaut noch stillschweigend mit einem anderen Quellbaum ausgeführt.
+
 Alle Komponenten gehören weiterhin zu einem quellgebundenen Release. Ein älterer
 Runner wird nicht wiederverwendet; Promotion, Qualifikation, Prüfsummen und Freigaben
 bleiben erhalten. Getrennte Komponenten-Releases verfolgt

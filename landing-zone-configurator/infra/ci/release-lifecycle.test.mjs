@@ -117,3 +117,14 @@ if (args[0] === 'curl') console.log(JSON.stringify(${JSON.stringify(replies)}[ar
     assert.ok(calls[3].includes("--redact-env"));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+ test("older exact-source promotions retain the sequential lifecycle without requiring new scripts", () => {
+  const workflow = readFileSync(join(root, "../.github/workflows/configurator-release.yml"), "utf8");
+  assert.match(workflow, /id: lifecycle/);
+  assert.match(workflow, /parallel=false/);
+  const blocks = workflow.split("      - name: Legacy source — ").slice(1);
+  assert.ok(blocks.length >= 8);
+  for (const block of blocks) assert.match(block.split("\n      - name:")[0], /if: steps.lifecycle.outputs.parallel != 'true'/);
+  assert.match(workflow, /steps.legacy_push.outcome == 'success'/);
+  assert.match(workflow, /if: steps.lifecycle.outputs.parallel == 'true'\n        id: stage_runner/);
+ });
