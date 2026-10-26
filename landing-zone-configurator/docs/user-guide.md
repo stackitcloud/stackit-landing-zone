@@ -304,3 +304,32 @@ Self-service does not grant access to platform credential profiles, other orders
 or manual operator attestations. Expired/revoked delegation, changed bindings,
 ambiguous resources, incomplete inventory and foreign locks remain blockers.
 See [the recovery execution contract](plan-execution.md#guided-application-state-recovery).
+
+## Application order quotas
+
+The Platform Owner can manage **Order quota** on the Application Landing Zones
+page. This is one workspace-wide limit on durable order reservations, across all
+requesters and published template versions. It is not a STACKIT project/service
+quota, a spending limit or a restriction on resources created directly in the
+portal/API. In particular, customer-selected Cloud Owner rights remain effective
+outside the Configurator.
+
+The default is **unlimited**, preserving existing behavior. Choose an integer
+from 0 to 1000000 and explicitly confirm it; 0 blocks new orders. Lowering the
+limit never revokes existing orders, their Plan/Apply/recovery access or their
+State. Retrying the same immutable order request does not consume another slot.
+Conflicting or concurrent settings changes require a reload and review.
+
+Pending approvals and failed orders reserve capacity too. Deleting an order that
+has never had an Apply releases its slot. Archiving a failed or partial Apply does
+**not** release it because resources can remain. After a successful saved-plan
+Destroy, archiving closes the order and releases its slot. A destroyed but still
+open order keeps its reservation because it can be executed again. Recovery
+receipts, historical orders and State bindings are retained.
+
+Application Owners see only the aggregate reserved count and limit, without
+other users' order details. Only an authorized Platform Owner can change the
+limit. Admission is serialized and enforced by PostgreSQL, including direct
+runtime inserts; browser counts are not authoritative. This does not yet prove
+provider-side cloud quota handling, tenant-wide Runner concurrency limits or
+real-cloud retry/no-duplicate acceptance (#93).

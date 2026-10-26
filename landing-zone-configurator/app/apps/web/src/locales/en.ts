@@ -1,4 +1,26 @@
 export const englishMessages: Record<string, string> = {
+  Bestellkontingent: "Order quota",
+  "Reservierte Bestellungen: {{value0}} · Grenze: {{value1}}":
+    "Reserved orders: {{value0}} \u00b7 Limit: {{value1}}",
+  Unbegrenzt: "Unlimited",
+  "Das Kontingent gilt für den gesamten Arbeitsbereich, nicht für einzelne Benutzer oder Cloud-Ressourcen. Bestellungen reservieren einen Platz. Archivierung gibt ihn frei, wenn noch kein Apply gestartet wurde oder ein erfolgreicher Destroy nachgewiesen ist. Archivierte fehlgeschlagene oder teilweise ausgeführte Applies zählen weiter.":
+    "The quota covers the entire workspace, not individual users or cloud resources. Orders reserve a slot. Archiving releases it if no Apply has started or a successful Destroy is confirmed. Archived failed or partially completed Applies continue to count.",
+  "Bestellkontingent verwalten": "Manage order quota",
+  "Das Bestellkontingent konnte nicht gespeichert werden. Bitte neu laden und erneut prüfen.":
+    "The order quota could not be saved. Reload and review it again.",
+  "Unbegrenzte Bestellungen erlauben": "Allow unlimited orders",
+  "Maximal reservierte Bestellungen (0–1000000)":
+    "Maximum reserved orders (0\u20131000000)",
+  "0 sperrt neue Bestellungen. Eine niedrigere Grenze verändert oder widerruft keine bestehende Bestellung; ihre weiteren Pläne und Applies bleiben möglich.":
+    "0 blocks new orders. Lowering the limit does not change or revoke existing orders; their further Plans and Applies remain possible.",
+  "Dieses Kontingent für neue Bestellungen bestätigen":
+    "Confirm this quota for new orders",
+  "Bestellkontingent speichern": "Save order quota",
+  "Das Bestellkontingent dieses Arbeitsbereichs ist ausgeschöpft. Bestehende Bestellungen bleiben nutzbar. Bitte den Platform Owner kontaktieren.":
+    "This workspace has reached its order quota. Existing orders remain usable. Contact the Platform Owner.",
+  "Das Bestellkontingent wurde zwischenzeitlich geändert. Bitte neu laden und erneut prüfen.":
+    "The order quota has changed. Reload and review it again.",
+
   "Du bist in dieser Vorlage selbst als zentraler Projekt-Owner festgelegt. Für granulare Bestellerrechte muss der Platform Owner eine andere zentrale Identität in einer neuen Template-Version auswählen. Es wurde kein Plan oder Apply gestartet.":
     "This template names you as the central project owner. For granular requester permissions, the Platform Owner must select a different central identity in a new template version. No Plan or Apply was started.",
 

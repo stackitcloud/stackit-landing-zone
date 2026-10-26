@@ -290,3 +290,22 @@ online renderer.
 ### Guided State recovery
 
 Interrupted Application Apply recovery uses separate, source-bound CF tasks, encrypted original/candidate States and immutable write-intent receipts. Preparation imports only into a local copy without S3 credentials. The original Application Owner (with the active platform execution delegation) or approving Platform Owner can explicitly authorize exact orphan-lock release and native State publication; independent remote verification then permits a fresh Plan of the same order. Lost automation/S3 secrets require a separately confirmed, once-only targeted revocation; ID-only incomplete credential entries may be removed only through the reviewed manifest. Other resource identities remain preserved. Unknown outcomes are inspected without replay. The manual operator-attestation API is unchanged. See the [execution contract](plan-execution.md#guided-application-state-recovery) for the bounded adoption catalogue and remaining acceptance.
+
+### Application order admission
+
+Migration 074 adds a workspace-wide reserved-order limit, with unlimited behavior
+unless the Platform Owner explicitly configures a limit. An immutable revision
+receipt records each update; the session/tenant/role checks are repeated inside
+SECURITY DEFINER functions with a fixed search path. Runtime callers can read
+only an authorized aggregate, not the private cross-requester inventory. A new
+order INSERT serializes with quota updates through a workspace advisory lock.
+The volatile count uses a fresh READ COMMITTED snapshot after waiting; existing
+per-request idempotency replay returns before admission. No quota path acquires
+a publication or instance lock after the quota lock.
+
+Deleted never-applied orders release capacity. A failed or partial Apply remains
+reserved even after archive; a successful Destroy releases capacity only after
+permanent archive. Existing reservations, execution/recovery rights, State and
+published versions remain unchanged when limits are lowered. This control does
+not limit direct cloud resource creation, cloud service quotas or concurrent
+Runner capacity; those remain separate acceptance in #93.

@@ -4,6 +4,8 @@ import {
   type AppliedPlatformSource,
   applicationInstanceSchema,
   applicationOrderDecisionSchema,
+  applicationOrderQuotaSchema,
+  applicationOrderQuotaUpdateSchema,
   applicationPlanJobSchema,
   applicationPlanPreview,
   applicationPlanPurposeSchema,
@@ -1101,6 +1103,27 @@ export class Applications {
       "SELECT lzc_auth.require_active_application_order($1,$2)",
       [session.id, instanceId],
     );
+  }
+
+  orderQuota(session: Session) {
+    return this.work(session, "read", async (client) => {
+      const result = await client.query<{ quota: unknown }>(
+        "SELECT lzc_auth.application_order_quota($1) AS quota",
+        [session.id],
+      );
+      return applicationOrderQuotaSchema.parse(result.rows[0]?.quota);
+    });
+  }
+
+  updateOrderQuota(session: Session, input: unknown) {
+    const request = applicationOrderQuotaUpdateSchema.parse(input);
+    return this.work(session, "publish", async (client) => {
+      const result = await client.query<{ quota: unknown }>(
+        "SELECT lzc_auth.set_application_order_quota($1,$2,$3) AS quota",
+        [session.id, request.maxReservedOrders, request.expectedRevision],
+      );
+      return applicationOrderQuotaSchema.parse(result.rows[0]?.quota);
+    });
   }
 
   order(session: Session, input: unknown) {

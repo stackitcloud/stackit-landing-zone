@@ -2939,6 +2939,262 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     }
   });
 
+  it("admits tenant-wide order quotas transactionally without restricting retries or other workspaces", async () => {
+    const organisations = new PostgresOrganisations(pool);
+    const tenantId = await organisations.create(
+      alice,
+      "Quota workspace",
+      randomUUID(),
+    );
+    const engineer = { ...alice, tenantId };
+    const owner = { ...bob, tenantId };
+    const concurrencyPool = new pg.Pool({
+      ...migrationConfig,
+      user: "configurator_app",
+      password: "runtime-test-only",
+      max: 8,
+    });
+    const applications = new Applications(concurrencyPool);
+    try {
+      await organisations.switch(alice, tenantId);
+      await inviteMember(engineer, bob, ["application-owner"], false);
+      await organisations.switch(bob, tenantId);
+      const published = await applications.publish(engineer, {
+        template: {
+          id: randomUUID(),
+          key: "quota-public",
+          name: "Quota public",
+          kind: "public",
+          region: "eu01",
+          settings: { env: "dev" },
+        },
+      });
+      const secondVersion = await applications.publish(engineer, {
+        template: {
+          id: randomUUID(),
+          key: "other-quota-public",
+          name: "Other quota public",
+          kind: "public",
+          region: "eu01",
+          settings: { env: "dev" },
+        },
+      });
+      expect(await applications.orderQuota(owner)).toEqual({
+        maxReservedOrders: null,
+        reservedOrders: 0,
+        revision: 0,
+      });
+      const update = {
+        maxReservedOrders: 1,
+        expectedRevision: 0,
+        confirmQuota: true,
+      };
+      await expect(
+        applications.updateOrderQuota(owner, update),
+      ).rejects.toMatchObject({ code: "42501" });
+      await applications.updateOrderQuota(engineer, update);
+      for (const subject of [engineer, owner]) {
+        await migration.query("BEGIN");
+        try {
+          await migration.query(
+            "SELECT set_config('lzc.user_id',$1,true),set_config('lzc.tenant_id',$2,true)",
+            [subject.userId, tenantId],
+          );
+          await migration.query(
+            "UPDATE lzc.memberships SET product_roles='{}',manage_members=false WHERE tenant_id=$1 AND user_id=$2",
+            [tenantId, subject.userId],
+          );
+          await expect(
+            migration.query("SELECT lzc_auth.application_order_quota($1)", [
+              subject.id,
+            ]),
+          ).rejects.toMatchObject({ code: "42501" });
+        } finally {
+          await migration.query("ROLLBACK");
+        }
+        await migration.query("BEGIN");
+        try {
+          await migration.query(
+            "SELECT set_config('lzc.user_id',$1,true),set_config('lzc.tenant_id',$2,true)",
+            [subject.userId, tenantId],
+          );
+          await migration.query(
+            "UPDATE lzc_auth.sessions SET expires_at=now()-interval '1 second' WHERE id=$1",
+            [subject.id],
+          );
+          await expect(
+            migration.query("SELECT lzc_auth.application_order_quota($1)", [
+              subject.id,
+            ]),
+          ).rejects.toMatchObject({ code: "P0002" });
+        } finally {
+          await migration.query("ROLLBACK");
+        }
+      }
+      await expect(
+        applications.updateOrderQuota(engineer, update),
+      ).rejects.toMatchObject({ message: "application_order_quota_changed" });
+      for (const value of [-1, 1.5, 1000001]) {
+        expect(() =>
+          applications.updateOrderQuota(engineer, {
+            ...update,
+            maxReservedOrders: value,
+          }),
+        ).toThrow();
+      }
+      const requests = Array.from({ length: 8 }, (_, index) => ({
+        versionId: index % 2 ? secondVersion.id : published.id,
+        idempotencyKey: randomUUID(),
+        name: `Quota ${index}`,
+        parameters: {},
+      }));
+      const results = await Promise.allSettled(
+        requests.map((request, index) =>
+          applications.order(index % 2 ? owner : engineer, request),
+        ),
+      );
+      expect(
+        results.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        results
+          .filter((result) => result.status === "rejected")
+          .map((result) => (result as PromiseRejectedResult).reason.message),
+      ).toEqual(Array(7).fill("application_order_quota_exceeded"));
+      const winnerIndex = results.findIndex(
+        (result) => result.status === "fulfilled",
+      );
+      const winner = results[winnerIndex];
+      if (winner?.status !== "fulfilled")
+        throw new Error("Expected admitted order");
+      const requester = winnerIndex % 2 ? owner : engineer;
+      // Aggregate includes orders hidden by requester RLS, without exposing them.
+      expect(await applications.orderQuota(owner)).toEqual({
+        maxReservedOrders: 1,
+        reservedOrders: 1,
+        revision: 1,
+      });
+      await applications.updateOrderQuota(engineer, {
+        maxReservedOrders: 0,
+        expectedRevision: 1,
+        confirmQuota: true,
+      });
+      expect(
+        (await applications.order(requester, requests[winnerIndex])).id,
+      ).toBe(winner.value.id);
+      await expect(
+        applications.order(requester, {
+          ...requests[winnerIndex],
+          name: "Different",
+        }),
+      ).rejects.toMatchObject({ code: "idempotency_conflict" });
+      // Direct runtime INSERT cannot bypass the DB gate.
+      await expect(
+        withTenant(concurrencyPool, owner, (client) =>
+          client.query(
+            "INSERT INTO lzc.application_instances(tenant_id,version_id,requested_by,idempotency_key,name,parameters,resolved_settings,qualification_blockers) VALUES($1,$2,$3,$4,'bypass','{}','{}','[\"blocked\"]')",
+            [tenantId, published.id, owner.userId, randomUUID()],
+          ),
+        ),
+      ).rejects.toMatchObject({ message: "application_order_quota_exceeded" });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query("SELECT * FROM lzc.application_order_quota_revisions"),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        withTenant(pool, owner, (client) =>
+          client.query("SELECT lzc_auth.application_reserved_order_count($1)", [
+            tenantId,
+          ]),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await applications.deleteOrder(requester, winner.value.id, {
+        confirmDeletion: true,
+      });
+      expect((await applications.orderQuota(owner)).reservedOrders).toBe(0);
+      await expect(
+        applications.order(owner, {
+          ...requests[0],
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toMatchObject({ message: "application_order_quota_exceeded" });
+      await applications.updateOrderQuota(engineer, {
+        maxReservedOrders: null,
+        expectedRevision: 2,
+        confirmQuota: true,
+      });
+      await applications.order(owner, {
+        ...requests[0],
+        idempotencyKey: randomUUID(),
+      });
+      expect((await applications.orderQuota(owner)).reservedOrders).toBe(1);
+      let setterReady!: () => void;
+      let releaseSetter!: () => void;
+      const ready = new Promise<void>((resolve) => {
+        setterReady = resolve;
+      });
+      const release = new Promise<void>((resolve) => {
+        releaseSetter = resolve;
+      });
+      const setter = withTenant(concurrencyPool, engineer, async (client) => {
+        await client.query(
+          "SELECT lzc_auth.set_application_order_quota($1,1,3)",
+          [engineer.id],
+        );
+        setterReady();
+        await release;
+      });
+      await ready;
+      // The INSERT statement starts while the new quota is uncommitted. Its
+      // trigger must refresh the READ COMMITTED snapshot after lock acquisition.
+      const contender = applications.order(owner, {
+        ...requests[0],
+        idempotencyKey: randomUUID(),
+      });
+      let observedWait = false;
+      try {
+        for (let attempt = 0; attempt < 100; attempt++) {
+          const waiting = await admin.query(
+            "SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND usename='configurator_app' AND wait_event='advisory'",
+          );
+          if (waiting.rowCount) {
+            observedWait = true;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+      } finally {
+        releaseSetter();
+      }
+      await setter;
+      await expect(contender).rejects.toMatchObject({
+        message: "application_order_quota_exceeded",
+      });
+      expect(observedWait).toBe(true);
+      expect((await applications.orderQuota(owner)).reservedOrders).toBe(1);
+      await expect(
+        migration.query(
+          "UPDATE lzc.application_order_quota_revisions SET max_reserved_orders=7 WHERE tenant_id=$1",
+          [tenantId],
+        ),
+      ).rejects.toMatchObject({ message: "immutable_application_version" });
+      await organisations.switch(bob, bob.tenantId);
+      expect(await applications.orderQuota(bob)).toEqual({
+        maxReservedOrders: null,
+        reservedOrders: 0,
+        revision: 0,
+      });
+      await expect(applications.orderQuota(owner)).rejects.toMatchObject({
+        code: "42501",
+      });
+    } finally {
+      await concurrencyPool.end();
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+    }
+  });
+
   it("isolates immutable application publications and idempotent orders with current product roles", async () => {
     const organisations = new PostgresOrganisations(pool);
     const tenantId = await organisations.create(
@@ -8268,6 +8524,15 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             (item) => item.id === maintenance.ordered.id,
           ),
         ).toMatchObject({ canDelete: false, canArchive: true });
+        const destroyedReservations = (
+          await delegatedApplications.orderQuota(owner)
+        ).reservedOrders;
+        await delegatedApplications.deleteOrder(owner, maintenance.ordered.id, {
+          confirmArchive: true,
+        });
+        expect(
+          (await delegatedApplications.orderQuota(owner)).reservedOrders,
+        ).toBe(destroyedReservations - 1);
         delegatedRunner.preview.mockResolvedValue(originalPreview);
         const deletablePlan = await freshPlan("Completed plan deletion");
         const storedArtifact = await migration.query(
@@ -8851,9 +9116,15 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             )
           ).review,
         ).toEqual(review);
+        const partialReservations = (
+          await delegatedApplications.orderQuota(owner)
+        ).reservedOrders;
         await delegatedApplications.deleteOrder(owner, recovering.ordered.id, {
           confirmArchive: true,
         });
+        expect(
+          (await delegatedApplications.orderQuota(owner)).reservedOrders,
+        ).toBe(partialReservations);
         expect(
           await delegatedApplications.listInstances(owner),
         ).not.toContainEqual(
