@@ -1,4 +1,13 @@
+import {
+  mockEmptyApplicationLists,
+  openConfigurationStep,
+  openTemplateDrafts,
+} from "./editor-navigation";
 import { expect, test } from "./fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await mockEmptyApplicationLists(page);
+});
 
 test("new templates separate cloud project access from requester identity and retain the explicit owner option", async ({
   page,
@@ -7,9 +16,7 @@ test("new templates separate cloud project access from requester identity and re
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "5 Template-Entwürfe", exact: true })
-    .click();
+  await openTemplateDrafts(page);
   await page
     .getByLabel("Template-Kennung", { exact: true })
     .fill("access-test");
@@ -131,12 +138,7 @@ test("MVP Observability has no ACL editor or required order input", async ({
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   const template = page.locator("section.project-card").first();
   await template
     .getByText("STACKIT Observability · Fest vorgegeben", { exact: true })
@@ -178,12 +180,7 @@ test("disabled Observability hides dependent details without discarding their va
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   const template = page.locator("section.project-card").first();
   const planSection = template.getByText(
     "Observability-Leistungsklasse · Fest vorgegeben",
@@ -244,12 +241,7 @@ test("a public template retains its local VM network independently of SNA", asyn
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   const template = page.locator("section.project-card").first();
   const enabled = template.getByLabel("Lokales Projektnetz anlegen", {
     exact: true,
@@ -265,13 +257,8 @@ test("a public template retains its local VM network independently of SNA", asyn
   await expect(template.getByLabel("STACKIT Network Area (SNA)")).toHaveCount(
     0,
   );
-  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openConfigurationStep(page, "Grundlagen");
+  await openTemplateDrafts(page);
   await expect(enabled).toBeChecked();
   await expect(prefix).toHaveValue("24");
   await expect(template).toContainText("Entwurf · Public");
@@ -312,12 +299,7 @@ test("platform engineer controls stage inputs and can test an order without prov
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   const template = page.locator("section.project-card").first();
   await template
     .getByText("Umgebung / Stage · Bei Bestellung auswählbar", { exact: true })
@@ -368,13 +350,8 @@ test("platform engineer controls stage inputs and can test an order without prov
   await template
     .getByLabel("Vorauswahl: Umgebung / Stage")
     .selectOption("prod");
-  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openConfigurationStep(page, "Grundlagen");
+  await openTemplateDrafts(page);
   await template
     .getByText("Umgebung / Stage · Bei Bestellung auswählbar", { exact: true })
     .click();
@@ -403,12 +380,7 @@ test("corporate Observability does not require an ACL network relationship", asy
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   const template = page
     .locator("section.project-card")
     .filter({ hasText: /Entwurf · Corporate/ })

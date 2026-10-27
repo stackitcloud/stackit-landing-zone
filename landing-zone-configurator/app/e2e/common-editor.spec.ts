@@ -8,7 +8,16 @@ import {
   readConfigurationRecord,
   recordValues,
 } from "@lzc/domain";
+import {
+  mockEmptyApplicationLists,
+  openConfigurationStep,
+  openTemplateDrafts,
+} from "./editor-navigation";
 import { expect, test } from "./fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await mockEmptyApplicationLists(page);
+});
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/auth/status", (route) =>
@@ -16,6 +25,38 @@ test.beforeEach(async ({ page }) => {
   );
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({ status: 401, json: { error: "authentication_required" } }),
+  );
+});
+
+test("old template-step links open the single local template editor without trapping browser history", async ({
+  page,
+}) => {
+  await page.goto("/templates/standalone");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await page
+    .getByLabel("Name der Konfiguration")
+    .fill("Unsaved platform draft");
+  await page.evaluate(() => {
+    history.pushState(null, "", "/configurations/edit/projects");
+    dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await expect(page).toHaveURL(/\/applications$/);
+  await expect(page.locator(".template-overview")).toBeVisible();
+  await page.getByLabel("Name des Templates").first().fill("Unsaved template");
+  await page.goBack();
+  await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
+  await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
+    "Unsaved platform draft",
+  );
+  await expect(
+    page.getByRole("button", { name: "5 Template-Entwürfe", exact: true }),
+  ).toHaveCount(0);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/applications$/);
+  await expect(page.getByLabel("Name des Templates").first()).toHaveValue(
+    "Unsaved template",
   );
 });
 
@@ -31,12 +72,25 @@ test("platform editor defines project templates without concrete application pro
   await page
     .getByLabel("Name der Konfiguration")
     .fill("Plattform mit Templates");
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  const steps = page.getByRole("navigation", {
+    name: "Konfigurationsschritte",
+    exact: true,
+  });
+  await expect(steps.getByRole("button")).toHaveText([
+    "1Grundlagen",
+    "2Ordner",
+    "3Netzwerk",
+    "4Plattform",
+    "5Betrieb",
+    "6Prüfen",
+  ]);
+  await expect(page.locator("section.project-card")).toHaveCount(0);
+  await openConfigurationStep(page, "Plattform");
+  await page.getByRole("button", { name: "Weiter →", exact: true }).click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/operations$/);
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
+  await expect(page).toHaveURL(/\/configurations\/edit\/platform$/);
+  await openTemplateDrafts(page);
   const corporate = page
     .locator("section.project-card")
     .filter({ hasText: /Entwurf · Corporate/ })
@@ -61,13 +115,8 @@ test("platform editor defines project templates without concrete application pro
   await corporate
     .getByLabel("Fester Wert: STACKIT Observability", { exact: true })
     .selectOption("true");
-  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openConfigurationStep(page, "Netzwerk");
+  await openTemplateDrafts(page);
   await expect(
     corporate.getByLabel("Fester Wert: STACKIT Secrets Manager", {
       exact: true,
@@ -105,6 +154,7 @@ test("platform editor defines project templates without concrete application pro
   await expect(
     details.getByRole("heading", { name: "Neue Sandbox-Vorlage", exact: true }),
   ).toBeVisible();
+  await openConfigurationStep(page, "Netzwerk");
   await expect(
     page.getByRole("region", {
       name: "Application Landing Zone Template-Entwürfe",
@@ -114,9 +164,9 @@ test("platform editor defines project templates without concrete application pro
   await expect(
     page.locator(".topology").first().locator(".tree-children").first(),
   ).not.toContainText("External API Gateway");
-  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
   await page.goBack();
-  await expect(page).toHaveURL(/\/projects$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/applications$/);
   await page.screenshot({
     path: testInfo.outputPath("project-templates.png"),
     fullPage: true,
@@ -419,9 +469,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await page
     .getByLabel("Name der Konfiguration")
     .fill("Gemeinsamer Fork-Entwurf");
-  await page
-    .getByRole("button", { name: "5 Projekte (Bestand)", exact: true })
-    .click();
+  await openConfigurationStep(page, "Projekte (Bestand)");
   await page
     .getByRole("button", { name: "Komponente hinzufügen", exact: true })
     .click();
@@ -437,7 +485,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
       exact: true,
     })
     .click();
-  await page.getByRole("button", { name: "7 Prüfen", exact: true }).click();
+  await openConfigurationStep(page, "Prüfen");
   await expect(
     page.getByRole("button", { name: "tfvars herunterladen", exact: true }),
   ).toBeEnabled();
@@ -457,10 +505,10 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await page
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
     .click();
-  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
+  await openConfigurationStep(page, "Netzwerk");
   await page.goto("/configurations/edit/network");
   await expect(page).toHaveURL(/\/configurations\/edit\/network$/);
-  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
+  await openConfigurationStep(page, "Grundlagen");
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
     "Gemeinsamer Fork-Entwurf",
   );
@@ -479,9 +527,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await page
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "5 Projekte (Bestand)", exact: true })
-    .click();
+  await openConfigurationStep(page, "Projekte (Bestand)");
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", {
@@ -489,12 +535,8 @@ test("shared configuration saves, reopens and restores in the account workspace"
       exact: true,
     })
     .click();
-  await expect(
-    page.getByRole("heading", {
-      name: "Template-Entwürfe",
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/applications$/);
+  await expect(page.locator(".template-overview")).toBeVisible();
   await expect(page.getByLabel("Projektname", { exact: true })).toHaveCount(0);
   await page.getByLabel("Name des Templates").first().fill("Team-Anwendungen");
   const firstTemplate = page.locator("section.project-card").first();
@@ -507,7 +549,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await firstTemplate
     .getByLabel("Vorauswahl: Umgebung / Stage")
     .selectOption("prod");
-  await page.getByRole("button", { name: "7 Prüfen", exact: true }).click();
+  await openConfigurationStep(page, "Prüfen");
   await page
     .getByRole("button", { name: "Konfiguration speichern →", exact: true })
     .click();
@@ -526,12 +568,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await page
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
     .click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   await expect(page.getByLabel("Name des Templates").first()).toHaveValue(
     "Team-Anwendungen",
   );
@@ -557,12 +594,7 @@ test("Standalone starts Public and offers regional choices and explicit platform
     "SELECT",
   );
   await page.getByLabel("Region", { exact: true }).selectOption("eu02");
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   await expect(page.locator("section.project-card").first()).toContainText(
     "Entwurf · Public",
   );
@@ -572,7 +604,7 @@ test("Standalone starts Public and offers regional choices and explicit platform
       { exact: false },
     ),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "4 Plattform", exact: true }).click();
+  await openConfigurationStep(page, "Plattform");
   await expect(
     page.getByText("Observability stellt zentrales Monitoring bereit.", {
       exact: false,
@@ -624,7 +656,7 @@ test("Standalone starts Public and offers regional choices and explicit platform
   await expect(
     kubernetes.getByRole("button", { name: "Deaktivieren", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
+  await openConfigurationStep(page, "Netzwerk");
   const regions = page.getByLabel("Weitere Connectivity-Region", {
     exact: true,
   });
@@ -646,7 +678,7 @@ test("regional Connectivity offers a guided VPN draft with both tunnels and miss
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page.getByRole("button", { name: "3 Netzwerk", exact: true }).click();
+  await openConfigurationStep(page, "Netzwerk");
   await page
     .getByLabel("Weitere Connectivity-Region", { exact: true })
     .selectOption("eu01");

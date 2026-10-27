@@ -2,11 +2,19 @@ import {
   createEditorConfiguration,
   publishedProjectTemplateSchema,
 } from "@lzc/domain";
+import {
+  mockEmptyApplicationLists,
+  openTemplateDrafts,
+} from "./editor-navigation";
 import { expect, test } from "./fixtures";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const tenantId = "22222222-2222-4222-8222-222222222222";
 const organisationId = "33333333-3333-4333-8333-333333333333";
+
+test.beforeEach(async ({ page }) => {
+  await mockEmptyApplicationLists(page);
+});
 
 for (const scenario of [
   "state-recovery-owner",
@@ -3133,12 +3141,7 @@ for (const { publishing, applied, renewProof, executing } of [
       await page
         .getByRole("button", { name: "Konfiguration erstellen", exact: true })
         .click();
-      await page
-        .getByRole("button", {
-          name: "5 Template-Entwürfe",
-          exact: true,
-        })
-        .click();
+      await openTemplateDrafts(page);
       const editor = page.locator("section.project-card").first();
       await editor.getByLabel(/Lokales/).check();
       await editor
@@ -3295,12 +3298,7 @@ for (const { publishing, applied, renewProof, executing } of [
         .getByRole("button", { name: "Konfigurationen", exact: true })
         .click();
 
-      await page
-        .getByRole("button", {
-          name: "5 Template-Entwürfe",
-          exact: true,
-        })
-        .click();
+      await openTemplateDrafts(page);
       await editor
         .getByLabel("Netzgröße (IPv4-Präfixlänge)", { exact: true })
         .fill("26");

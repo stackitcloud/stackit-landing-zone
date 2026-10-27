@@ -38,8 +38,11 @@ the draft and scoped catalogue provider; never retain private catalogues across
 those boundaries.
 
 Application template drafts use the same controlled root draft, configuration binding
-and saved snapshot in the configuration editor and the first Application Landing
-Zones tab. Do not introduce a separate draft or implicit save when navigating
+and saved snapshot across configuration editing and the first Application Landing
+Zones tab. Template editing belongs exclusively to that tab; the configuration
+step list omits projects for platform drafts, while legacy concrete-project editing
+remains available. Old platform draft project-step routes redirect to Applications.
+Guest users may edit their local templates there without publication or ordering. Do not introduce a separate draft or implicit save when navigating
 between these views. Preparation provenance must use the persisted configuration
 binding ID, never the document-local `draft.id`: saves and copies assign a
 separate database ID without rewriting the document. Pass that binding through

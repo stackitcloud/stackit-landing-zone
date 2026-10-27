@@ -2097,6 +2097,7 @@ export function Applications({
   configurationDirty = false,
   configurationSaved = false,
   onEditTemplates,
+  onTemplateEditingChange,
 }: {
   session: Session | null;
   draft: CommonConfiguration | null;
@@ -2105,6 +2106,7 @@ export function Applications({
   configurationDirty?: boolean;
   configurationSaved?: boolean;
   onEditTemplates?: () => void;
+  onTemplateEditingChange?: (editing: boolean) => void;
 }) {
   const [versions, setVersions] = useState<PublishedProjectTemplate[]>([]);
   const [instances, setInstances] = useState<ApplicationInstance[]>([]);
@@ -2163,6 +2165,9 @@ export function Applications({
   >([]);
   const [platformRevision, setPlatformRevision] = useState("");
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  useEffect(() => {
+    onTemplateEditingChange?.(activeTab === null || activeTab === "drafts");
+  }, [activeTab, onTemplateEditingChange]);
   const [appliedPlatformsEnabled, setAppliedPlatformsEnabled] = useState(false);
   const [appliedPlatforms, setAppliedPlatforms] = useState<
     z.infer<typeof appliedPlatformsSchema>["platforms"]
@@ -2397,8 +2402,11 @@ export function Applications({
   if (!session)
     return (
       <section>
-        <h2>{t("Anmeldung erforderlich")}</h2>
+        <h2>
+          {t(templateEditor ? "Template-Entwürfe" : "Anmeldung erforderlich")}
+        </h2>
         <p>{t("Bitte melde dich für Application Landing Zones an.")}</p>
+        {templateEditor}
       </section>
     );
 

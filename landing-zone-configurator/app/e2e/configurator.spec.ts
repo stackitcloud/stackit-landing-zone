@@ -31,6 +31,11 @@ import {
   assistantScenarioFixture,
   assistantScenarios,
 } from "../scripts/assistant-scenarios.js";
+import {
+  mockEmptyApplicationLists,
+  openConfigurationStep,
+  openTemplateDrafts,
+} from "./editor-navigation";
 import { expect, type Page, test } from "./fixtures";
 
 // Storage workflows use the editor breadcrumb; the primary navigation now resumes editing.
@@ -90,6 +95,10 @@ async function holdAssistantCompletion(page: Page, path: string) {
     };
   }, path);
 }
+
+test.beforeEach(async ({ page }) => {
+  await mockEmptyApplicationLists(page);
+});
 
 test("DNS collection removals are explicit and can be excluded from local acceptance", async ({
   page,
@@ -1223,9 +1232,7 @@ test("template overview and structure share selection, edits and network referen
       exact: true,
     })
     .click();
-  await page
-    .getByRole("button", { name: "5 Template-Entwürfe", exact: true })
-    .click();
+  await openTemplateDrafts(page);
   const overview = page.getByRole("region", {
     name: "Template-Übersicht",
     exact: true,
@@ -2968,7 +2975,7 @@ test("edit, validate and download an isolated standalone copy", async ({
     .getByRole("button", { name: "Template ansehen : Standalone", exact: true })
     .click();
   await restoreLegacy(page);
-  await page.getByRole("button", { name: "4 Prüfen", exact: true }).click();
+  await openConfigurationStep(page, "Prüfen");
   await expect(page.getByRole("alert")).toContainText("Angaben bitte prüfen");
   await page.getByRole("button", { name: /Organisations-ID: Bitte/ }).click();
   await expect(page.getByLabel("STACKIT Organisations-ID")).toBeFocused();
@@ -3187,14 +3194,9 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
     .click();
   await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
   await page.getByLabel("Name der Konfiguration").fill("Entwurf mit History");
-  await page.getByRole("button", { name: "2 Ordner", exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
-  await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await openConfigurationStep(page, "Ordner");
+  await openConfigurationStep(page, "Plattform");
+  await expect(page).toHaveURL(/\/configurations\/edit\/platform$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/configurations\/edit\/folders$/);
   await page.goBack();
@@ -3207,14 +3209,14 @@ test("URLs and browser back/forward preserve an in-progress draft", async ({
   await page.goForward();
   await expect(
     page.getByRole("heading", {
-      name: "Template-Entwürfe",
+      name: "Plattform",
       exact: true,
     }),
   ).toBeVisible();
   await openConfigurationStorage(page);
   await expect(page).toHaveURL(/\/configurations$/);
   await page.goBack();
-  await expect(page).toHaveURL(/\/configurations\/edit\/projects$/);
+  await expect(page).toHaveURL(/\/configurations\/edit\/platform$/);
   await page.goBack();
   await page.goBack();
   await expect(page.getByLabel("Name der Konfiguration")).toHaveValue(
@@ -3338,11 +3340,11 @@ test("select a fork, reopen a config and resolve a save conflict as a new copy",
     .click();
   await expect(page).toHaveURL(/\/configurations\/edit\/basics$/);
   await page.getByLabel("Name der Konfiguration").fill("Meine neue Kopie");
-  await page.getByRole("button", { name: "2 Ordner", exact: true }).click();
+  await openConfigurationStep(page, "Ordner");
   await page
     .getByRole("textbox", { name: "Platform", exact: true })
     .fill("Plattform aus Fork");
-  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
+  await openConfigurationStep(page, "Grundlagen");
   // Fresh entry restores unsaved edits, the selected fork and the original base revision.
   head = "b".repeat(40);
   await page.goto("/configurations/edit/basics");

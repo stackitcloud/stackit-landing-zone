@@ -22,13 +22,11 @@ import {
 import { useState } from "react";
 import { t } from "../i18n";
 import type { EditorStep } from "../navigation";
-import type { Session } from "./Account";
 import { useObservabilityCatalogue } from "./CloudCatalogues";
 import { ComponentPicker } from "./ComponentPicker";
 import { FederatedIdentityEditor } from "./FederatedIdentityEditor";
 import { labelFor } from "./feature-labels";
 import { NetworkEditor } from "./NetworkEditor";
-import { ProjectTemplates } from "./ProjectTemplates";
 import { projectTemplateSummary } from "./project-template-summary";
 import { StructuredField } from "./StructuredField";
 import { Topology } from "./Topology";
@@ -87,22 +85,20 @@ const steps: { id: EditorStep; title: string; inputs: string[] }[] = [
 
 export function CommonEditor({
   draft,
-  session = null,
-  savedConfigurationId = null,
   onChange,
   step,
   onStepChange,
   onOpenStorage,
   onCreatePlatformCopy,
+  onOpenTemplates,
 }: {
   draft: CommonConfiguration;
-  session?: Session | null;
-  savedConfigurationId?: string | null;
   onChange: (draft: CommonConfiguration) => void;
   step: EditorStep;
   onStepChange: (step: EditorStep) => void;
   onOpenStorage: () => void;
   onCreatePlatformCopy?: () => void;
+  onOpenTemplates: () => void;
 }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -110,24 +106,12 @@ export function CommonEditor({
     "public",
   );
   const [newKey, setNewKey] = useState("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    null,
-  );
   const platformDraft = draft.projectTemplates !== undefined;
-  const selectedTemplate =
-    draft.projectTemplates?.find(
-      (template) => template.id === selectedTemplateId,
-    ) ?? draft.projectTemplates?.[0];
-  const selectTemplate = (id: string) => {
-    setSelectedTemplateId(id);
-    onStepChange("projects");
-  };
+  const visibleSteps = steps.filter(
+    (item) => !platformDraft || item.id !== "projects",
+  );
   const stepTitle = (id: EditorStep, title: string) =>
-    id === "projects"
-      ? platformDraft
-        ? "Template-Entwürfe"
-        : "Projekte (Bestand)"
-      : title;
+    id === "projects" ? "Projekte (Bestand)" : title;
   const values = compileCommonConfiguration(draft);
   const projects = commonProjects(draft);
   const areas = commonNetworkAreas(draft);
@@ -158,7 +142,8 @@ export function CommonEditor({
       )
       .map((finding) => ({ field: finding.path, message: finding.message })),
   ];
-  const active = steps.find((item) => item.id === step) ?? steps[0];
+  const active =
+    visibleSteps.find((item) => item.id === step) ?? visibleSteps[0];
   const perform = (action: () => CommonConfiguration) => {
     try {
       onChange(action());
@@ -257,11 +242,25 @@ export function CommonEditor({
           {t("Konfigurationen →")}
         </button>
       </div>
+      {platformDraft && (
+        <p className="info-banner">
+          {t(
+            "Template-Entwürfe bearbeitest du unter Application Landing Zones. Sie werden weiterhin mit dieser Konfiguration gespeichert.",
+          )}{" "}
+          <button
+            type="button"
+            className="text-button"
+            onClick={onOpenTemplates}
+          >
+            {t("Zu den Application Landing Zones →")}
+          </button>
+        </p>
+      )}
       <nav
         aria-label={t("Konfigurationsschritte")}
         className="steps shared-steps"
       >
-        {steps.map((item, index) => (
+        {visibleSteps.map((item, index) => (
           <button
             type="button"
             key={item.id}
@@ -313,16 +312,6 @@ export function CommonEditor({
                 )}
               </p>
             )}
-          {step === "projects" && platformDraft && (
-            <ProjectTemplates
-              session={session}
-              savedConfigurationId={savedConfigurationId}
-              draft={draft}
-              onChange={onChange}
-              selectedTemplateId={selectedTemplate?.id ?? null}
-              onSelectTemplate={selectTemplate}
-            />
-          )}
           {step === "projects" && !platformDraft && (
             <>
               <p className="info-banner">
@@ -816,10 +805,10 @@ export function CommonEditor({
                 className="button secondary"
                 onClick={() =>
                   onStepChange(
-                    steps[
+                    visibleSteps[
                       Math.max(
                         0,
-                        steps.findIndex((item) => item.id === step) - 1,
+                        visibleSteps.findIndex((item) => item.id === step) - 1,
                       )
                     ]?.id ?? "basics",
                   )
@@ -834,8 +823,9 @@ export function CommonEditor({
                 className="button primary"
                 onClick={() =>
                   onStepChange(
-                    steps[steps.findIndex((item) => item.id === step) + 1]
-                      ?.id ?? "review",
+                    visibleSteps[
+                      visibleSteps.findIndex((item) => item.id === step) + 1
+                    ]?.id ?? "review",
                   )
                 }
               >
@@ -845,12 +835,7 @@ export function CommonEditor({
           </div>
         </section>
         <div className="editor-previews">
-          <Topology
-            values={values}
-            projectTemplates={draft.projectTemplates}
-            selectedTemplateId={selectedTemplate?.id}
-            onSelectTemplate={selectTemplate}
-          />
+          <Topology values={values} projectTemplates={draft.projectTemplates} />
           {areas.length > 0 && (
             <figure className="topology network-topology">
               <figcaption>{t("Netzwerkzuordnung")}</figcaption>
@@ -888,20 +873,8 @@ export function CommonEditor({
                             )
                             .map((template) => (
                               <li key={template.id}>
-                                <button
-                                  type="button"
-                                  className="text-button"
-                                  aria-pressed={
-                                    selectedTemplate?.id === template.id
-                                  }
-                                  onClick={() => selectTemplate(template.id)}
-                                >
-                                  {t("Template ·")}{" "}
-                                  {
-                                    projectTemplateSummary(template, values)
-                                      .name
-                                  }
-                                </button>
+                                {t("Template ·")}{" "}
+                                {projectTemplateSummary(template, values).name}
                               </li>
                             ))}
                         </ul>

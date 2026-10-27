@@ -1,4 +1,13 @@
+import {
+  mockEmptyApplicationLists,
+  openConfigurationStep,
+  openTemplateDrafts,
+} from "./editor-navigation";
 import { expect, test } from "./fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await mockEmptyApplicationLists(page);
+});
 
 for (const kind of ["personal", "organisation"]) {
   test(`automatic technical catalogues require no additional editor setup in ${kind}`, async ({
@@ -98,9 +107,7 @@ for (const kind of ["personal", "organisation"]) {
     await expect(
       page.getByPlaceholder("UUID eines vorhandenen STACKIT-Projekts"),
     ).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "4 Plattform", exact: true })
-      .click();
+    await openConfigurationStep(page, "Plattform");
     await page
       .getByRole("button", { name: "Komponente hinzufügen", exact: true })
       .click();
@@ -203,12 +210,7 @@ for (const kind of ["personal", "organisation"]) {
     await page
       .getByLabel("Dienst-Leistungsklasse", { exact: true })
       .selectOption("Observability-Monitoring-Medium-EU01");
-    await page
-      .getByRole("button", {
-        name: "5 Template-Entwürfe",
-        exact: true,
-      })
-      .click();
+    await openTemplateDrafts(page);
     const template = page.locator("section.project-card").first();
     await template
       .getByText("STACKIT Observability · Fest vorgegeben", { exact: true })
@@ -272,9 +274,7 @@ for (const kind of ["personal", "organisation"]) {
         .getByRole("button", { name: "Konfigurationen", exact: true })
         .click();
 
-      await page
-        .getByRole("button", { name: "4 Plattform", exact: true })
-        .click();
+      await openConfigurationStep(page, "Plattform");
       await page
         .locator("summary")
         .filter({ hasText: /^Git-Service/ })
@@ -416,7 +416,7 @@ test("product choices preserve imported values and restore manual fields when ca
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page.getByRole("button", { name: "4 Plattform", exact: true }).click();
+  await openConfigurationStep(page, "Plattform");
   await page
     .getByRole("button", { name: "Komponente hinzufügen", exact: true })
     .click();
@@ -633,12 +633,7 @@ test("product choices preserve imported values and restore manual fields when ca
   await monitoring
     .getByLabel("Dienst-Leistungsklasse", { exact: true })
     .selectOption("Observability-Starter-EU01");
-  await page
-    .getByRole("button", {
-      name: "5 Template-Entwürfe",
-      exact: true,
-    })
-    .click();
+  await openTemplateDrafts(page);
   const template = page.locator("section.project-card").first();
   await template
     .getByText("STACKIT Observability · Fest vorgegeben", { exact: true })

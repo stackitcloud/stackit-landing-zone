@@ -108,10 +108,12 @@ veröffentlicht keine Version und erteilt keine Ausführungsfreigabe. Applicatio
 sehen diesen Konfigurations-Chat nicht und erhalten keinen Zugriff auf Plattformdaten.
 
 Der Platform Engineer definiert zentrale Plattformdienste und die dafür nötigen
-Infrastrukturprojekte. Im Schritt **Projekt-Templates** erstellt er Vorlagen für
+Infrastrukturprojekte. Unter **Application Landing Zones → Template-Entwürfe** erstellt er Vorlagen für
 spätere Anwendungsprojekte. Die Plattformkonfiguration erzeugt diese Projekte
 nicht selbst. Der Application Owner bestellt später eine Instanz einer
 veröffentlichten Template-Version im separaten Application-Self-Service.
+
+Der Konfigurationseditor enthält keinen separaten Template-Schritt mehr. Template-Entwürfe bleiben Teil der gespeicherten Konfiguration; der Wechsel zwischen beiden Ansichten speichert keine Änderungen automatisch. Bestehende Gesamtkonfigurationen behalten den Schritt **Projekte (Bestand)**. Alte Links auf den Template-Schritt öffnen die Application Landing Zones. Ohne Anmeldung können lokale Template-Entwürfe weiterhin bearbeitet werden; Veröffentlichung und Bestellung erfordern eine Anmeldung.
 
 Neue Entwürfe aus allen acht Accelerator-Vorlagen nutzen diesen Ablauf.
 `landing_zones`, `sandboxes` und `landing_zone_namespace_services` aus den

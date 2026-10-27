@@ -1,4 +1,7 @@
 export const englishMessages: Record<string, string> = {
+  "Template-Entwürfe bearbeitest du unter Application Landing Zones. Sie werden weiterhin mit dieser Konfiguration gespeichert.":
+    "Edit template drafts under Application Landing Zones. They are still saved with this configuration.",
+  "Zu den Application Landing Zones →": "Go to Application Landing Zones →",
   "Assistant für Template-Entwürfe": "Assistant for template drafts",
   "Der Assistant verwendet die geöffnete Plattformkonfiguration einschließlich ihrer Template-Entwürfe. Nenne das gewünschte Template und prüfe die vorgeschlagenen Änderungen vor der Übernahme. Speichere sie anschließend ausdrücklich; eine Veröffentlichung erfolgt separat.":
     "The Assistant uses the open platform configuration, including its template drafts. Name the template you want to change and review the proposed changes before accepting them. Then save explicitly; publication is a separate step.",
