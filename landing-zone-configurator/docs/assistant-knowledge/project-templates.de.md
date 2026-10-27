@@ -140,9 +140,9 @@ unveränderliche Template-Metadaten und kein Bestellparameter. Im granularen
 Modus (`schemaVersion: 1`, `mode: granular`) werden ein separater zentraler
 `initialOwnerEmail` sowie explizite `permissions` und `automationPermissions`
 festgelegt. Zwei getrennte eigene Rollen gelten für die verifizierte bestellende
-Person und die Workload-Automation. Das erste VM-Profil enthält keine
+Person und den Application-Service-Account. Die 144er-Standardauswahl enthält keine
 IAM-Verwaltung, Projektlöschung, zentrale Routing-Änderung, privilegierte
-Service-Account-Verwaltung oder direkte Floating-IP-Anbindung. Object Storage, Observability und Secrets Manager sind ebenfalls auswählbar; das
+Service-Account-Verwaltung oder direkte Floating-IP-Anbindung. Die Vorauswahl umfasst VMs, Object Storage, Observability und Secrets Manager; zusätzliche Rechte sind ergänzbar. Das
 separate VM-Preset bleibt enger. Die tatsächliche IAM-Wirkung bleibt separat zu prüfen.
 
 Owner-Modus ist genau `{schemaVersion: 1, mode: owner}`: Die bestellende Person
@@ -164,3 +164,7 @@ IAM-Abnahme. Broker-Freigaben und Mock-Pläne sind kein Least-Privilege-Nachweis
 Native `application.initial_owner_email` trennt Projekterstellungs-Owner und
 `application.owner_email`; `automation_role` bleibt ohne Angabe `owner`.
 Das ist keine Unterstützung für Projekte ohne initialen Owner (#69).
+
+## Erweiterbare Projektberechtigungen
+
+Die 144 Rechte des Workload-Standards sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Listen hinzugefügt (ohne Unterscheidung beiden). Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.

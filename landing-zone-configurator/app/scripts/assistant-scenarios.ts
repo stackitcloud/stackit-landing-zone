@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import {
+  applicationProjectPermissionNames,
   catalogue,
   commonConfigurationFromValues,
   compileCommonConfiguration,
@@ -136,7 +137,9 @@ export type AssistantScenario = {
     | "owner"
     | "granular"
     | "vm-default"
-    | "workload-default";
+    | "workload-default"
+    | "kubernetes-add"
+    | "kubernetes-requester";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
@@ -257,6 +260,22 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     applicationAccess: "granular",
     message:
       "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf granular, schemaVersion 1. Zentraler initialOwnerEmail ist platform-owner@example.test. Für das Team exakt permissions [iaas.server.get, resource-manager.project.get], für Automation exakt automationPermissions [iaas.server.get]. Kein Owner für den Besteller. Keine weiteren Änderungen, keine Veröffentlichung/Ausführung. Vollständiger atomarer Editor-Vorschlag.",
+  },
+  {
+    id: "application-access-kubernetes-add",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "kubernetes-add",
+    message:
+      "Bitte füge der bestehenden Corporate-Vorlage central die Rechte zum Management von Kubernetes Clustern hinzu, für Besteller und Application-Service-Account. Bestehende Rechte, zentralen Projekt-Owner und alle anderen Einstellungen erhalten. Nur Vorschlag, nichts veröffentlichen oder ausführen.",
+  },
+  {
+    id: "application-access-kubernetes-requester",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "kubernetes-requester",
+    message:
+      "Ergänze bei der vorhandenen Vorlage central nur für den Besteller die Rechte zum Management von Kubernetes Clustern. Die Rechte des Application-Service-Accounts und der zentrale Owner bleiben unverändert, ebenso alle anderen Einstellungen. Nur einen überprüfbaren Vorschlag erstellen.",
   },
   {
     id: "corporate-ipv4-automatic-advice",
@@ -849,7 +868,9 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
           secretsmanager_enabled: true,
         },
         accessProfile:
-          scenario.applicationAccess === "owner"
+          scenario.applicationAccess === "owner" ||
+          scenario.applicationAccess === "kubernetes-add" ||
+          scenario.applicationAccess === "kubernetes-requester"
             ? defaultApplicationAccessProfile("platform-owner@example.test")
             : { schemaVersion: 1, mode: "owner" },
       },
@@ -959,6 +980,29 @@ export function validateAssistantScenario(
               permissions: ["iaas.server.get", "resource-manager.project.get"],
               automationPermissions: ["iaas.server.get"],
             };
+    if (
+      scenario.applicationAccess === "kubernetes-add" ||
+      scenario.applicationAccess === "kubernetes-requester"
+    ) {
+      const before = fixture.draft.projectTemplates?.find(
+        (t) => t.key === "central",
+      )?.accessProfile;
+      if (!before || before.mode !== "granular")
+        throw new Error("expected granular fixture");
+      const additions = applicationProjectPermissionNames.filter((p) =>
+        p.startsWith("ske."),
+      );
+      central.accessProfile = {
+        ...before,
+        permissions: [...new Set([...before.permissions, ...additions])].sort(),
+        automationPermissions:
+          scenario.applicationAccess === "kubernetes-requester"
+            ? before.automationPermissions
+            : [
+                ...new Set([...before.automationPermissions, ...additions]),
+              ].sort(),
+      };
+    }
     try {
       const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
       if (

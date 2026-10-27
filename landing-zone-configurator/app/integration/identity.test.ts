@@ -4542,6 +4542,67 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           mode === "owner"
             ? { schemaVersion: 1 as const, mode }
             : defaultApplicationAccessProfile("central-platform@example.test");
+        if (accessProfile.mode === "granular") {
+          accessProfile.permissions.push("ske.cluster.create", "iam.role.add");
+          accessProfile.automationPermissions.push("ske.cluster.get");
+          await expect(
+            applications.publish(engineer, {
+              template: {
+                ...template,
+                id: randomUUID(),
+                key: "unknown-project-right",
+                accessProfile: {
+                  ...accessProfile,
+                  permissions: ["unknown.permission"],
+                },
+              },
+              ...binding,
+              acceleratorRevision: "08ac257de1548c8ec5e83dae1a79373711c3d644",
+            }),
+          ).rejects.toMatchObject({ code: "unknown_application_permissions" });
+          let lookups = 0;
+          const futureCatalogue = new Applications(
+            pool,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            {
+              recoveryReviewsEnabled: false,
+              projectPermissions: async () => {
+                lookups++;
+                return ["future-service.cluster.create"];
+              },
+            },
+          );
+          const futureRequest = {
+            template: {
+              ...template,
+              id: randomUUID(),
+              key: "live-project-right",
+              accessProfile: {
+                ...accessProfile,
+                permissions: ["future-service.cluster.create"],
+              },
+            },
+            ...binding,
+            acceleratorRevision: "08ac257de1548c8ec5e83dae1a79373711c3d644",
+          };
+          await expect(
+            futureCatalogue.publish(owner, futureRequest),
+          ).rejects.toMatchObject({ code: "42501" });
+          expect(lookups).toBe(0);
+          const futureVersion = await futureCatalogue.publish(
+            engineer,
+            futureRequest,
+          );
+          expect(futureVersion.template.accessProfile).toMatchObject({
+            permissions: ["future-service.cluster.create"],
+          });
+          expect(lookups).toBe(1);
+        }
         const accessVersion = await applications.publish(engineer, {
           template: {
             ...template,
@@ -4631,6 +4692,24 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         expect(accessInput.plan.variables.application.initial_owner_email).toBe(
           mode === "owner" ? undefined : "central-platform@example.test",
         );
+        if (mode === "granular") {
+          expect(
+            accessInput.plan.variables.application.custom_roles?.[0]
+              ?.permissions,
+          ).toContain("ske.cluster.create");
+          expect(
+            accessInput.plan.variables.application.custom_roles?.[0]
+              ?.permissions,
+          ).toContain("iam.role.add");
+          expect(
+            accessInput.plan.variables.application.custom_roles?.[1]
+              ?.permissions,
+          ).toContain("ske.cluster.get");
+          expect(
+            accessInput.plan.variables.application.custom_roles?.[1]
+              ?.permissions,
+          ).not.toContain("iam.role.add");
+        }
         const accessJob = await applications.prepareJob(owner, accessOrder.id, {
           idempotencyKey: randomUUID(),
           confirmPlan: true,

@@ -1,18 +1,70 @@
 import { z } from "zod";
 import permissions from "./application-workload-permissions.js";
 import type { Values } from "./configuration.js";
+import projectCatalogue from "./project-permissions.generated.js";
 
 export const applicationWorkloadPermissions = permissions.permissions;
+export const applicationProjectPermissions = projectCatalogue.permissions;
+export const applicationProjectPermissionNames =
+  applicationProjectPermissions.map((p) => p.name);
+export const applicationProjectPermissionCheckedAt = projectCatalogue.checkedAt;
+export const applicationPermissionServices = [
+  ...new Set(
+    applicationProjectPermissionNames.map((p) => p.split(".")[0] ?? p),
+  ),
+].sort();
+export const applicationPermissionServiceAliases: Record<string, string[]> = {
+  ske: ["kubernetes", "ske", "k8s"],
+  iam: ["iam", "zugriffsverwaltung", "access management"],
+  "postgres-flex": ["postgres", "postgresql"],
+  mongodbflex: ["mongodb"],
+  redis: ["redis"],
+  "object-storage": ["object storage", "object-storage", "s3"],
+  argus: ["observability", "argus", "grafana"],
+  "secrets-manager": ["secrets manager", "secrets-manager"],
+  "resource-manager": [
+    "resource manager",
+    "resource-manager",
+    "projektverwaltung",
+  ],
+  alb: ["load balancer", "alb"],
+};
+export function applicationPermissionServiceMentioned(
+  service: string,
+  quote: string,
+) {
+  const text = quote.toLowerCase();
+  return [
+    service,
+    service.replaceAll("-", " "),
+    ...(applicationPermissionServiceAliases[service] ?? []),
+  ].some((alias) =>
+    new RegExp(`(?:^|[^a-z0-9])${alias}(?:$|[^a-z0-9])`).test(text),
+  );
+}
+/** Syntax is forward-compatible; publication and model proposals also check the trusted catalogue. */
+export const applicationPermissionName = z
+  .string()
+  .max(256)
+  .regex(/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+$/);
+export function unknownApplicationPermissions(
+  profile: ApplicationAccessProfile,
+  live: readonly string[] = [],
+) {
+  if (profile.mode === "owner") return [];
+  const known = new Set([...applicationProjectPermissionNames, ...live]);
+  return [
+    ...new Set([...profile.permissions, ...profile.automationPermissions]),
+  ].filter((p) => !known.has(p));
+}
 export const applicationWorkloadRole = "application-workload";
 const permissionList = z
-  .array(z.string())
+  .array(applicationPermissionName)
   .min(1)
-  .max(200)
+  .max(2000)
   .refine(
-    (items) =>
-      new Set(items).size === items.length &&
-      items.every((item) => applicationWorkloadPermissions.includes(item)),
-    "Select distinct reviewed workload permissions; IAM, project lifecycle, central routing and privileged account management are excluded.",
+    (items) => new Set(items).size === items.length,
+    "Select distinct STACKIT project permission identifiers.",
   );
 export const applicationAccessProfileSchema = z.discriminatedUnion("mode", [
   z.strictObject({ schemaVersion: z.literal(1), mode: z.literal("owner") }),

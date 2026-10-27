@@ -2929,7 +2929,17 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
         text: _text,
         fieldPaths: _fieldPaths,
         ...topic
-      }) => ({ ...topic, sources: sources.map((entry) => entry.path) }),
+      }) => ({
+        ...topic,
+        // The generator adds this mandatory source; it is not a manifest input entry.
+        sources: sources
+          .map((entry) => entry.path)
+          .filter(
+            (path) =>
+              path !==
+              "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+          ),
+      }),
     ),
   };
   expect(() =>

@@ -1,3 +1,4 @@
+import { applicationProjectPermissionNames } from "@lzc/domain";
 import {
   mockEmptyApplicationLists,
   openConfigurationStep,
@@ -51,7 +52,9 @@ test("new templates separate cloud project access from requester identity and re
   const requester = profile.locator(":scope > details").nth(0);
   const automation = profile.locator(":scope > details").nth(1);
   await requester.locator(":scope > summary").click();
-  await expect(requester.locator('input[type="checkbox"]')).toHaveCount(144);
+  await expect(requester.locator('input[type="checkbox"]')).toHaveCount(
+    applicationProjectPermissionNames.length,
+  );
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
     144,
   );
@@ -121,7 +124,36 @@ test("new templates separate cloud project access from requester identity and re
   await profile
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .fill("iam.");
-  await expect(profile.locator('input[type="checkbox"]')).toHaveCount(0);
+  await expect(profile.locator('input[type="checkbox"]')).toHaveCount(54);
+  await expect(profile.locator('input[type="checkbox"]:checked')).toHaveCount(
+    0,
+  );
+  await profile
+    .getByLabel("Berechtigungen durchsuchen", { exact: true })
+    .fill("Kubernetes");
+  const kubernetes = requester.locator("details").filter({
+    has: page.locator("summary").filter({ hasText: /^Kubernetes/ }),
+  });
+  await kubernetes.locator(":scope > summary").click();
+  await expect(kubernetes.getByRole("checkbox")).toHaveCount(11);
+  await kubernetes
+    .getByRole("button", { name: "Alle angezeigten auswählen", exact: true })
+    .click();
+  await expect(kubernetes.getByRole("checkbox", { checked: true })).toHaveCount(
+    11,
+  );
+  await expect(
+    automation.locator('input[type="checkbox"]:checked'),
+  ).toHaveCount(0);
+  await profile
+    .getByLabel("Berechtigungen durchsuchen", { exact: true })
+    .clear();
+  await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
+    155,
+  );
+  await expect(
+    automation.locator('input[type="checkbox"]:checked'),
+  ).toHaveCount(144);
   await profile
     .getByLabel("Projektberechtigungen", { exact: true })
     .selectOption("owner");

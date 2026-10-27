@@ -33,6 +33,7 @@ import {
   publishedProjectTemplateSchema,
   resolveApplicationOrder,
   serializeTfvars,
+  unknownApplicationPermissions,
   validateApplicationPublication,
 } from "@lzc/domain";
 import type pg from "pg";
@@ -226,7 +227,13 @@ export class Applications {
     private readonly dispatch?: { runner: PlanRunner; origin: string },
     private readonly artifactCrypto?: ArtifactCrypto,
     private readonly platforms?: Pick<Plans, "outputs">,
-    private readonly options: { recoveryReviewsEnabled: boolean } = {
+    private readonly options: {
+      recoveryReviewsEnabled: boolean;
+      projectPermissions?: (
+        session: Session,
+        region: "eu01" | "eu02",
+      ) => Promise<string[]>;
+    } = {
       recoveryReviewsEnabled: false,
     },
   ) {}
@@ -947,75 +954,98 @@ export class Applications {
     } catch {
       throw new ApplicationError(400, "invalid_application_request");
     }
-    return this.work(session, "publish", async (client) => {
-      if (binding.platformRevision && binding.targetKey) {
-        const contracts = await client.query<ContractRow>(
-          "SELECT * FROM lzc.application_platform_contracts WHERE revision=$1",
-          [binding.platformRevision],
-        );
-        const row = contracts.rows[0];
-        if (!row)
-          throw new ApplicationError(404, "platform_contract_not_found");
-        const target = contract(row).document.targets[binding.targetKey];
-        if (
-          !target ||
-          target.region !== template.region ||
-          target.corporate !== (template.kind === "corporate")
-        )
-          throw new ApplicationError(400, "invalid_application_target");
+    const verifyPermissions = async () => {
+      if (
+        template.accessProfile &&
+        unknownApplicationPermissions(template.accessProfile).length
+      ) {
+        // Catalogue lookup may open another pool connection; authorize and release first.
+        await this.work(session, "publish", async () => undefined);
+        let live: string[] = [];
+        try {
+          live =
+            (await this.options.projectPermissions?.(
+              session,
+              template.region,
+            )) ?? [];
+        } catch {
+          /* Snapshot fallback remains available. */
+        }
+        if (unknownApplicationPermissions(template.accessProfile, live).length)
+          throw new ApplicationError(400, "unknown_application_permissions");
       }
-      await client.query(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
-        [`application-version:${session.tenantId}:${template.id}`],
-      );
-      const latest = await client.query<VersionRow & { matches: boolean }>(
-        "SELECT *,document=$2::jsonb AND accelerator_revision=$3 AND platform_revision IS NOT DISTINCT FROM $4::uuid AND target_key IS NOT DISTINCT FROM $5::text AND deployment_policy=$6 AS matches FROM lzc.application_template_versions WHERE template_id=$1 ORDER BY version DESC LIMIT 1",
-        [
-          template.id,
-          JSON.stringify(template),
-          binding.acceleratorRevision,
-          binding.platformRevision ?? null,
-          binding.targetKey ?? null,
-          binding.deploymentPolicy,
-        ],
-      );
-      if (latest.rows[0]?.matches) {
-        await this.lockVersion(client, session, latest.rows[0].id);
-        const retired = await client.query(
-          "SELECT 1 FROM lzc.application_template_retirements WHERE tenant_id=$1 AND version_id=$2",
-          [session.tenantId, latest.rows[0].id],
-        );
-        if (retired.rowCount === 0)
-          return this.publicationAccess(
-            client,
-            session,
-            latest.rows[0],
-            binding.allowedGroupIds,
+    };
+    return verifyPermissions().then(() =>
+      this.work(session, "publish", async (client) => {
+        if (binding.platformRevision && binding.targetKey) {
+          const contracts = await client.query<ContractRow>(
+            "SELECT * FROM lzc.application_platform_contracts WHERE revision=$1",
+            [binding.platformRevision],
           );
-      }
-      const result = await client.query<VersionRow>(
-        "INSERT INTO lzc.application_template_versions(tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
-        [
-          session.tenantId,
-          template.id,
-          (latest.rows[0]?.version ?? 0) + 1,
-          session.userId,
-          binding.acceleratorRevision,
-          JSON.stringify(template),
-          binding.platformRevision ?? null,
-          binding.targetKey ?? null,
-          binding.deploymentPolicy,
-        ],
-      );
-      const row = result.rows[0];
-      if (!row) throw new ApplicationError(503, "publication_failed");
-      return this.publicationAccess(
-        client,
-        session,
-        row,
-        binding.allowedGroupIds,
-      );
-    });
+          const row = contracts.rows[0];
+          if (!row)
+            throw new ApplicationError(404, "platform_contract_not_found");
+          const target = contract(row).document.targets[binding.targetKey];
+          if (
+            !target ||
+            target.region !== template.region ||
+            target.corporate !== (template.kind === "corporate")
+          )
+            throw new ApplicationError(400, "invalid_application_target");
+        }
+        await client.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+          [`application-version:${session.tenantId}:${template.id}`],
+        );
+        const latest = await client.query<VersionRow & { matches: boolean }>(
+          "SELECT *,document=$2::jsonb AND accelerator_revision=$3 AND platform_revision IS NOT DISTINCT FROM $4::uuid AND target_key IS NOT DISTINCT FROM $5::text AND deployment_policy=$6 AS matches FROM lzc.application_template_versions WHERE template_id=$1 ORDER BY version DESC LIMIT 1",
+          [
+            template.id,
+            JSON.stringify(template),
+            binding.acceleratorRevision,
+            binding.platformRevision ?? null,
+            binding.targetKey ?? null,
+            binding.deploymentPolicy,
+          ],
+        );
+        if (latest.rows[0]?.matches) {
+          await this.lockVersion(client, session, latest.rows[0].id);
+          const retired = await client.query(
+            "SELECT 1 FROM lzc.application_template_retirements WHERE tenant_id=$1 AND version_id=$2",
+            [session.tenantId, latest.rows[0].id],
+          );
+          if (retired.rowCount === 0)
+            return this.publicationAccess(
+              client,
+              session,
+              latest.rows[0],
+              binding.allowedGroupIds,
+            );
+        }
+        const result = await client.query<VersionRow>(
+          "INSERT INTO lzc.application_template_versions(tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
+          [
+            session.tenantId,
+            template.id,
+            (latest.rows[0]?.version ?? 0) + 1,
+            session.userId,
+            binding.acceleratorRevision,
+            JSON.stringify(template),
+            binding.platformRevision ?? null,
+            binding.targetKey ?? null,
+            binding.deploymentPolicy,
+          ],
+        );
+        const row = result.rows[0];
+        if (!row) throw new ApplicationError(503, "publication_failed");
+        return this.publicationAccess(
+          client,
+          session,
+          row,
+          binding.allowedGroupIds,
+        );
+      }),
+    );
   }
 
   private async instanceWithExecution(client: pg.PoolClient, row: InstanceRow) {

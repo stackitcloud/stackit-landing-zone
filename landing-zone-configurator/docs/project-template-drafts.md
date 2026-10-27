@@ -68,6 +68,16 @@ retain the normal question flow. A model response that violates the closed
 question contract is rejected, not silently trimmed. Proposals still require
 explicit acceptance and saving; they grant no publication or execution.
 
+## Adding project permissions
+
+Under **Application Landing Zones → Template drafts → Application access profile**, the workload profile's 144 permissions are the default selection, not a maximum. The complete project catalogue also includes Kubernetes, databases and IAM. For example, search for **Kubernetes**, open **Kubernetes (SKE)** and select individual permissions or **Select all displayed**. Requester and Application service account lists are edited separately; group actions change only the filtered, displayed permissions.
+
+Live data supplements the complete bundled catalogue. Identifiers no longer listed live, and unknown imported identifiers, are never silently removed. Before publication, new identifiers outside the static catalogue must be confirmed by the official catalogue retrieved server-side; publication is blocked without confirmation. The catalogue describes possible permissions, not a person's effective permissions or product activation.
+
+For example, ask the Assistant: “Add Kubernetes cluster management permissions to template central.” It adds official SKE permissions while preserving existing permissions, the central owner and other settings. Without a distinction it adds to both lists; “requester only” leaves automation unchanged. Acceptance, saving and a new publication remain explicit separate actions. Existing versions and orders are unchanged.
+
+SKE project permissions manage clusters; Kubernetes RBAC inside a cluster is a separate mechanism. The management set includes `ske.cluster.kubeconfig.create`, which permits obtaining admin kubeconfigs and therefore cluster administrator access. Additional IAM role/member administration can enable privilege escalation and is not selected by default. Such permissions and full Owner rights remain deliberate customer choices. See [STACKIT custom roles](https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/custom-roles/) and [SKE cluster access](https://docs.stackit.cloud/products/runtime/kubernetes-engine/getting-started/access-cluster/).
+
 <a id="template-eingaben-und-verknüpfungen"></a>
 ## Template inputs and bindings
 

@@ -204,6 +204,12 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       {
         recoveryReviewsEnabled:
           process.env.LZC_APPLICATION_RECOVERY_REVIEWS_ENABLED === "true",
+        projectPermissions: async (session, region) => {
+          const snapshot = await catalogues?.automatic(session, region);
+          return snapshot?.projectPermissions?.status === "available"
+            ? snapshot.projectPermissions.options.map((p) => p.value)
+            : [];
+        },
       },
     );
   }

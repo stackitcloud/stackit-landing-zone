@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "1a6614b08abde21cfcaaef64f27771a10c1bfdce1ff39206644120ee627a5a9c",
+  "knowledgeSha256": "3fe20dc2abf855fbcb422e4702abc9287cd31691a2aa0e7529cca4360d6999aa",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "7abe8e17164bbf6fed8d762dcb5935bce986fe7e8e7c143f1c12dc9695c7dae9",
+    "scripts/assistant-scenarios.ts": "1c8f359c0d93aa8df8e21ed41ec9291911aded82a07ff9bf857306728134fb0e",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "ab532c33c598193b2007c79f8c99a8dd96910f96ae9bcadad4ba7a53c0cc9ab8",
+  "suiteSha256": "574a5af4f62fac2f64a43ceddfd197d8a8b28f7186d78c6556a2cbf80ae4f78d",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5338,6 +5338,34 @@
           "fixture": "corporate-ipv4",
           "applicationAccess": "granular",
           "message": "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf granular, schemaVersion 1. Zentraler initialOwnerEmail ist platform-owner@example.test. Für das Team exakt permissions [iaas.server.get, resource-manager.project.get], für Automation exakt automationPermissions [iaas.server.get]. Kein Owner für den Besteller. Keine weiteren Änderungen, keine Veröffentlichung/Ausführung. Vollständiger atomarer Editor-Vorschlag.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-kubernetes-add",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "kubernetes-add",
+          "message": "Bitte füge der bestehenden Corporate-Vorlage central die Rechte zum Management von Kubernetes Clustern hinzu, für Besteller und Application-Service-Account. Bestehende Rechte, zentralen Projekt-Owner und alle anderen Einstellungen erhalten. Nur Vorschlag, nichts veröffentlichen oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-kubernetes-requester",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "kubernetes-requester",
+          "message": "Ergänze bei der vorhandenen Vorlage central nur für den Besteller die Rechte zum Management von Kubernetes Clustern. Die Rechte des Application-Service-Accounts und der zentrale Owner bleiben unverändert, ebenso alle anderen Einstellungen. Nur einen überprüfbaren Vorschlag erstellen.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
