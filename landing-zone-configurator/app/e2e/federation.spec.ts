@@ -1,4 +1,12 @@
+import {
+  mockEmptyApplicationLists,
+  openConfigurationStep,
+} from "./editor-navigation";
 import { expect, test } from "./fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await mockEmptyApplicationLists(page);
+});
 
 test("CI federation stays optional and creates exact GitHub trust conditions", async ({
   page,
@@ -13,7 +21,7 @@ test("CI federation stays optional and creates exact GitHub trust conditions", a
   await page
     .getByRole("button", { name: "Konfiguration erstellen", exact: true })
     .click();
-  await page.getByRole("button", { name: "6 Betrieb", exact: true }).click();
+  await openConfigurationStep(page, "Betrieb");
   await expect(
     page.getByRole("region", {
       name: "Service-Account-Föderation",
@@ -73,8 +81,8 @@ test("CI federation stays optional and creates exact GitHub trust conditions", a
     path: testInfo.outputPath("federation.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
-  await page.getByRole("button", { name: "6 Betrieb", exact: true }).click();
+  await openConfigurationStep(page, "Grundlagen");
+  await openConfigurationStep(page, "Betrieb");
   await expect(rule.getByLabel("Erwarteter Wert").nth(1)).toHaveValue(
     "repo:example/platform:ref:refs/heads/main",
   );

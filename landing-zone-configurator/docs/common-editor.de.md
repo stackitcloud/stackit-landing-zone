@@ -21,11 +21,13 @@ der App ab; es verlängert aber auch keine Cloud-Berechtigung. Ohne App-Sitzung
 bleibt **Mit STACKIT anmelden** die eigentliche Anmeldung.
 
 1. Eine beliebige Vorlage öffnen und **Konfiguration erstellen** wählen.
-2. **Grundlagen → Ordner → Netzwerk → Plattform → Projekte → Betrieb → Prüfen**.
+2. **Grundlagen → Ordner → Netzwerk → Plattform → Betrieb → Prüfen**.
+   Vorlagen werden ausschließlich unter **Application Landing Zones → Template-Entwürfe** bearbeitet; sie bleiben Teil derselben gespeicherten Konfiguration.
 3. Einstellungen nur bei Bedarf aufklappen. **Accelerator-Standard verwenden** entfernt die
    eigene Einstellung und nutzt den Engine-Standard, nicht den Vorlagenwert. Der Export enthält weiterhin nur explizite Angaben;
    angezeigte Standardwerte werden nicht beim bloßen Öffnen materialisiert.
-4. In **Projekte** Public, Corporate oder Sandbox hinzufügen. Public/Corporate
+4. Unter **Application Landing Zones → Template-Entwürfe** Public, Corporate oder Sandbox hinzufügen.
+   Bestehende Gesamtkonfigurationen behalten die Verwaltung konkreter Projekte unter **Projekte (Bestand)**. Public/Corporate
    können nach Bestätigung gewechselt werden. Der Zielordner wird angezeigt.
    Corporate benötigt eine passende Region und einen vorhandenen Bereich.
    Sandboxes haben einen eigenen Accelerator-Vertrag; ein Wechsel zu einer

@@ -2397,8 +2397,11 @@ export function Applications({
   if (!session)
     return (
       <section>
-        <h2>{t("Anmeldung erforderlich")}</h2>
+        <h2>
+          {t(templateEditor ? "Template-Entwürfe" : "Anmeldung erforderlich")}
+        </h2>
         <p>{t("Bitte melde dich für Application Landing Zones an.")}</p>
+        {templateEditor}
       </section>
     );
 

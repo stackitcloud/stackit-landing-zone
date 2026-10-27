@@ -5,6 +5,11 @@ import {
   editCommonInput,
 } from "@lzc/domain";
 import { legacyAccessTemplate } from "../tests/fixtures/application-access-transition";
+import {
+  mockEmptyApplicationLists,
+  openConfigurationStep,
+  openTemplateDrafts,
+} from "./editor-navigation";
 import type { Page } from "./fixtures";
 import { expect, test } from "./fixtures";
 
@@ -116,11 +121,13 @@ async function setup(page: Page, initial: CommonConfiguration) {
       exact: true,
     })
     .click();
-  await page
-    .getByRole("button", { name: "5 Template-Entwürfe", exact: true })
-    .click();
+  await openTemplateDrafts(page);
   return { mutations, saved: () => stored };
 }
+
+test.beforeEach(async ({ page }) => {
+  await mockEmptyApplicationLists(page);
+});
 
 test("legacy access rules require reviewed atomic replacement and cancel leaves the draft unchanged", async ({
   page,
@@ -286,7 +293,8 @@ for (const verified of [true, false])
     expect(state.saved().projectTemplates?.[0]?.accessProfile).toEqual(
       defaultApplicationAccessProfile("manual@example.test"),
     );
-    expect(reads.sort()).toEqual(["identity", "profiles"]);
+    // The template owner chooser and platform binding each read credential metadata.
+    expect(reads.sort()).toEqual(["identity", "profiles", "profiles"]);
   });
 
 test("late owner metadata never replaces or disables a focused manual email", async ({
@@ -366,13 +374,11 @@ test("old scoped profile responses cannot repopulate choices after the configura
   });
   await setup(page, configuration(true));
   await seen;
-  await page.getByRole("button", { name: "1 Grundlagen", exact: true }).click();
+  await openConfigurationStep(page, "Grundlagen");
   await page
     .getByLabel("STACKIT Organisations-ID", { exact: true })
     .fill(nextOrg);
-  await page
-    .getByRole("button", { name: "5 Template-Entwürfe", exact: true })
-    .click();
+  await openTemplateDrafts(page);
   const source = page.getByLabel("Quelle für den initialen Projekt-Owner", {
     exact: true,
   });
@@ -402,7 +408,7 @@ test("old scoped profile responses cannot repopulate choices after the configura
   );
   await expect(owner).toHaveValue("human@example.test");
   await expect(owner).toBeEditable();
-  expect(reads).toBe(2);
+  expect(reads).toBe(4);
 });
 
 for (const context of ["configuration", "inline templates"] as const) {

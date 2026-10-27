@@ -19,11 +19,14 @@ it also does not extend any cloud permission. Without an app session,
 **Sign in with STACKIT** remains the actual login.
 
 1. Open any template and choose **Create configuration**.
-2. **Foundations → Folders → Network → Platform → Projects → Operations → Review**.
+2. **Foundations → Folders → Network → Platform → Operations → Review**.
+   Edit templates exclusively under **Application Landing Zones → Template drafts**;
+   they remain part of the same saved configuration.
 3. Expand settings only when needed. **Use Accelerator default** removes the
    custom setting and uses the engine default, not the template value. Export still contains only explicit inputs;
    displayed defaults are not materialized merely on opening.
-4. Under **Projects**, add Public, Corporate or Sandbox. Public/Corporate
+4. Under **Application Landing Zones → Template drafts**, add Public, Corporate or Sandbox.
+   Existing combined configurations retain concrete project management under **Projects (existing)**. Public/Corporate
    can be switched after confirmation. The target folder is shown.
    Corporate needs a matching region and an existing area.
    Sandboxes have their own Accelerator contract; switching to a

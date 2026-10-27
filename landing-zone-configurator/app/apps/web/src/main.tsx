@@ -1,6 +1,7 @@
 import { assistantValuesEqual } from "@lzc/contracts";
 import {
   type CommonConfiguration,
+  commonNetworkAreas,
   compileCommonConfiguration,
   createEditorConfiguration,
   createPlatformDraftCopy,
@@ -8,6 +9,7 @@ import {
   isCommonDraft,
   objectValue,
   readEditorDraft,
+  textValue,
   upgradeEditorDraft,
 } from "@lzc/domain";
 import {
@@ -42,6 +44,7 @@ import { ForkWorkspace } from "./components/ForkWorkspace";
 import { InvitationAcceptance } from "./components/Invitations";
 import { Organisation } from "./components/Organisation";
 import { ProjectTemplates } from "./components/ProjectTemplates";
+import { projectTemplateSummary } from "./components/project-template-summary";
 import { TemplateAdvice } from "./components/TemplateAdvice";
 import { Topology } from "./components/Topology";
 import { currentLanguage, setLanguage, t } from "./i18n";
@@ -71,15 +74,64 @@ function TemplateDraftEditor({
   const selected =
     draft.projectTemplates?.find((template) => template.id === selectedId) ??
     draft.projectTemplates?.[0];
+  const values = compileCommonConfiguration(draft);
+  const areas = commonNetworkAreas(draft);
   return (
-    <ProjectTemplates
-      draft={draft}
-      session={session}
-      savedConfigurationId={savedConfigurationId}
-      onChange={onChange}
-      selectedTemplateId={selected?.id ?? null}
-      onSelectTemplate={setSelectedId}
-    />
+    <div className="editor-layout">
+      <section className="panel">
+        <ProjectTemplates
+          draft={draft}
+          session={session}
+          savedConfigurationId={savedConfigurationId}
+          onChange={onChange}
+          selectedTemplateId={selected?.id ?? null}
+          onSelectTemplate={setSelectedId}
+        />
+      </section>
+      <div className="editor-previews">
+        <Topology
+          values={values}
+          projectTemplates={draft.projectTemplates}
+          selectedTemplateId={selected?.id}
+          onSelectTemplate={setSelectedId}
+        />
+        {areas.length > 0 && (
+          <figure className="topology network-topology">
+            <figcaption>{t("Netzwerkzuordnung")}</figcaption>
+            {areas.map((area) => (
+              <section key={area.id}>
+                <h3>
+                  {area.region} · {textValue(area.settings.name) || area.key}
+                </h3>
+                <ul>
+                  {draft.projectTemplates
+                    ?.filter(
+                      (template) =>
+                        template.kind === "corporate" &&
+                        template.region === area.region &&
+                        (textValue(template.settings.network_area_key) ||
+                          "default") === area.key,
+                    )
+                    .map((template) => (
+                      <li key={template.id}>
+                        <button
+                          type="button"
+                          className="text-button"
+                          aria-pressed={selected?.id === template.id}
+                          onClick={() => setSelectedId(template.id)}
+                        >
+                          {t("Template ·")}{" "}
+                          {projectTemplateSummary(template, values).name}
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </section>
+            ))}
+          </figure>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -126,6 +178,17 @@ function App() {
     draft &&
       (!savedDraft || !assistantValuesEqual(draft, JSON.parse(savedDraft))),
   );
+  useEffect(() => {
+    if (
+      platformAccess &&
+      view === "editor" &&
+      step === "projects" &&
+      draft &&
+      isCommonDraft(draft) &&
+      draft.projectTemplates !== undefined
+    )
+      setView("applications", undefined, true);
+  }, [platformAccess, view, step, draft, setView]);
   const finishLogin = useCallback(() => {
     if (draft) return;
     setReturningFromLogin(true);
@@ -340,7 +403,7 @@ function App() {
       );
       setDraftEpoch((value) => value + 1);
       setConfigurationBinding(null);
-      setView("editor", "projects");
+      setView("applications");
       setLoginError("");
     } catch {
       setLoginError(
@@ -811,7 +874,7 @@ function App() {
             )}
             {platformAccess && (
               <>
-                <div hidden={view !== "editor"}>
+                <div hidden={view !== "editor" && view !== "applications"}>
                   <CloudCataloguePanel
                     session={session}
                     key={credentialRevision}
@@ -1083,11 +1146,10 @@ function App() {
                   draft &&
                   (isCommonDraft(draft) ? (
                     <CommonEditor
-                      session={session}
-                      savedConfigurationId={configurationBinding?.id ?? null}
                       draft={draft}
                       onChange={setDraft}
                       onCreatePlatformCopy={copyPlatform}
+                      onOpenTemplates={() => setView("applications")}
                       step={step}
                       onStepChange={(next) => setView("editor", next)}
                       onOpenStorage={() => setView("repositories")}

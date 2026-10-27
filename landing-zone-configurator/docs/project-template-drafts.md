@@ -48,7 +48,9 @@ Acceptance changes the local draft; save explicitly before platform binding or
 publication. It does not publish a version or authorize execution. Application Owners
 do not see this configuration chat or gain access to platform configuration data.
 
-The Platform Engineer defines central platform services and the infrastructure projects required for them. In the **Project templates** step, they create templates for future application projects. Platform configuration does not create those projects itself. The Application Owner later orders an instance of a published template version in separate Application self-service.
+The Platform Engineer defines central platform services and the infrastructure projects required for them. Under **Application Landing Zones → Template drafts**, they create templates for future application projects. Platform configuration does not create those projects itself. The Application Owner later orders an instance of a published template version in separate Application self-service.
+
+The configuration editor no longer contains a separate template step. Template drafts remain part of the saved configuration; switching views does not save changes automatically. Existing combined configurations retain the **Projects (existing)** step. Old links to the template step open Application Landing Zones. Local template drafts can still be edited without signing in; publication and ordering require authentication.
 
 New drafts from all eight Accelerator templates use this workflow. `landing_zones`, `sandboxes` and `landing_zone_namespace_services` from the examples become template drafts. Platform, connectivity, governance, central services and their projects remain part of platform configuration. The preview shows platform resources and template drafts separately.
 

@@ -96,37 +96,41 @@ export function useNavigation(restoreEditor: boolean) {
     window.addEventListener("popstate", update);
     return () => window.removeEventListener("popstate", update);
   }, [restoreEditor]);
-  const navigate = useCallback((view: View, detail?: string) => {
-    const path =
-      view === "preview"
-        ? `/templates/${detail ?? "standalone"}`
-        : view === "applications"
-          ? "/applications"
-          : view === "editor"
-            ? `/configurations/edit/${detail ?? "basics"}`
-            : view === "organisation"
-              ? "/organisation"
-              : view === "history"
-                ? "/deployments/history"
-                : view === "deployments"
-                  ? detail === "plan" || detail === "apply"
-                    ? `/deployments/${detail}`
-                    : "/deployments"
-                  : view === "credentials"
-                    ? "/credentials"
-                    : view === "repositories"
-                      ? "/configurations"
-                      : view === "workspaces"
-                        ? "/workspaces"
-                        : "/templates";
-    if (
-      window.location.pathname !== path ||
-      window.location.search ||
-      window.location.hash
-    ) {
-      window.history.pushState(null, "", path);
-      setRoute(readRoute());
-    }
-  }, []);
+  const navigate = useCallback(
+    (view: View, detail?: string, replace = false) => {
+      const path =
+        view === "preview"
+          ? `/templates/${detail ?? "standalone"}`
+          : view === "applications"
+            ? "/applications"
+            : view === "editor"
+              ? `/configurations/edit/${detail ?? "basics"}`
+              : view === "organisation"
+                ? "/organisation"
+                : view === "history"
+                  ? "/deployments/history"
+                  : view === "deployments"
+                    ? detail === "plan" || detail === "apply"
+                      ? `/deployments/${detail}`
+                      : "/deployments"
+                    : view === "credentials"
+                      ? "/credentials"
+                      : view === "repositories"
+                        ? "/configurations"
+                        : view === "workspaces"
+                          ? "/workspaces"
+                          : "/templates";
+      if (
+        window.location.pathname !== path ||
+        window.location.search ||
+        window.location.hash
+      ) {
+        if (replace) window.history.replaceState(null, "", path);
+        else window.history.pushState(null, "", path);
+        setRoute(readRoute());
+      }
+    },
+    [],
+  );
   return { ...route, navigate };
 }
