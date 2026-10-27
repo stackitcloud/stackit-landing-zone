@@ -148,6 +148,8 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [returningFromLogin, setReturningFromLogin] = useState(false);
   const [credentialRevision, setCredentialRevision] = useState(0);
+  const [applicationTemplateEditing, setApplicationTemplateEditing] =
+    useState(true);
   const organisationWorkspace = session?.tenant?.kind === "organisation";
   const platformAccess =
     !organisationWorkspace ||
@@ -837,6 +839,7 @@ function App() {
                 configurationDirty={draftDirty}
                 configurationSaved={!!configurationBinding && !draftDirty}
                 onEditTemplates={() => setView("editor", "projects")}
+                onTemplateEditingChange={setApplicationTemplateEditing}
                 templateEditor={
                   platformAccess &&
                   draft &&
@@ -874,7 +877,12 @@ function App() {
             )}
             {platformAccess && (
               <>
-                <div hidden={view !== "editor" && view !== "applications"}>
+                <div
+                  hidden={
+                    view !== "editor" &&
+                    !(view === "applications" && applicationTemplateEditing)
+                  }
+                >
                   <CloudCataloguePanel
                     session={session}
                     key={credentialRevision}
