@@ -500,8 +500,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 3,
-      "checkedOn": "2026-10-26",
+      "version": 4,
+      "checkedOn": "2026-10-27",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"
@@ -526,7 +526,8 @@
         "landing-zone-configurator/app/packages/domain/src/application-plan.ts",
         "landing-zone-configurator/app/packages/domain/src/application-access.ts",
         "landing-zone-configurator/app/packages/domain/src/application-workload-permissions.ts",
-        "landing-zone-configurator/app/apps/api/src/assistant/application-access.ts"
+        "landing-zone-configurator/app/apps/api/src/assistant/application-access.ts",
+        "landing-zone-configurator/app/packages/domain/src/project-permissions.generated.ts"
       ],
       "externalSources": [
         "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go",

@@ -38,7 +38,8 @@
     "test:database": "vitest run integration --no-file-parallelism",
     "test:platform-database": "LZC_PLAN_DATABASE_TEST=true vitest run tests/platform-plan.test.ts --no-file-parallelism --testTimeout=30000",
     "test:common-contract": "node scripts/prepare-common-contract.ts && tofu -chdir=../.local/common-contract fmt -recursive && tofu -chdir=../.local/common-contract init -backend=false -input=false -no-color && tofu -chdir=../.local/common-contract validate -no-color && tofu -chdir=../.local/common-contract test -no-color",
-    "test:plan": "npm run typecheck && bash scripts/test-plan-summary.sh && bash scripts/test-application-contract.sh && bash scripts/test-governance-contract.sh"
+    "test:plan": "npm run typecheck && bash scripts/test-plan-summary.sh && bash scripts/test-application-contract.sh && bash scripts/test-governance-contract.sh",
+    "permissions:generate": "node --import tsx scripts/project-permissions.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

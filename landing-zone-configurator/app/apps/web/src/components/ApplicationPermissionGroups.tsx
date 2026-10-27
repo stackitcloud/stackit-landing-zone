@@ -1,7 +1,10 @@
-import { applicationWorkloadPermissions } from "@lzc/domain";
+import {
+  applicationProjectPermissionNames,
+  applicationProjectPermissions,
+} from "@lzc/domain";
 import { t } from "../i18n";
 
-const groups = [
+const baseGroups = [
   {
     name: "Virtuelle Maschinen",
     matches: (p: string) => p.startsWith("iaas.server."),
@@ -32,7 +35,6 @@ const groups = [
     name: "Secrets Manager",
     matches: (p: string) => p.startsWith("secrets-manager."),
   },
-  { name: "Weitere Berechtigungen", matches: () => true },
 ];
 
 export function ApplicationPermissionGroups({
@@ -46,11 +48,53 @@ export function ApplicationPermissionGroups({
   available: string[] | undefined;
   onChange: (permissions: string[]) => void;
 }) {
+  const labels: Record<string, string> = {
+    ske: "Kubernetes (SKE)",
+    iam: "IAM und Zugriffsverwaltung",
+    "service-account": "Service Accounts",
+    "resource-manager": "Projektverwaltung",
+    dns: "DNS",
+    git: "Git",
+    logs: "Logs",
+    kafka: "Kafka",
+    mongodbflex: "MongoDB Flex",
+    "postgres-flex": "PostgreSQL Flex",
+    "sqlserver-flex": "SQL Server Flex",
+    redis: "Redis",
+    alb: "Application Load Balancer",
+    opensearch: "OpenSearch",
+    airflow: "Airflow",
+    kms: "Schlüsselverwaltung (KMS)",
+  };
+  const all = [
+    ...new Set([
+      ...applicationProjectPermissionNames,
+      ...(available ?? []),
+      ...selected,
+    ]),
+  ].sort();
+  const otherServices = [
+    ...new Set(
+      all
+        .filter((p) => !baseGroups.some((g) => g.matches(p)))
+        .map((p) => p.split(".")[0] ?? p),
+    ),
+  ];
+  const groups = [
+    ...baseGroups,
+    ...otherServices.map((service) => ({
+      name: labels[service] ?? service,
+      matches: (p: string) => p.startsWith(`${service}.`),
+    })),
+  ];
+  const descriptions = new Map(
+    applicationProjectPermissions.map((p) => [p.name, p.description]),
+  );
   const grouped = groups.map((group) => ({
     ...group,
     permissions: [] as string[],
   }));
-  for (const permission of applicationWorkloadPermissions)
+  for (const permission of all)
     grouped
       .find((group) => group.matches(permission))
       ?.permissions.push(permission);
@@ -61,7 +105,8 @@ export function ApplicationPermissionGroups({
       ...group,
       visible: group.permissions.filter(
         (permission) =>
-          permission.includes(query) ||
+          permission.toLowerCase().includes(query) ||
+          descriptions.get(permission)?.toLowerCase().includes(query) ||
           t(group.name).toLowerCase().includes(query),
       ),
     }))
@@ -106,6 +151,8 @@ export function ApplicationPermissionGroups({
               <label key={permission} className="application-permission-choice">
                 <input
                   type="checkbox"
+                  aria-label={permission}
+                  aria-description={descriptions.get(permission)}
                   checked={chosen.has(permission)}
                   onChange={(event) =>
                     update([permission], event.target.checked)
@@ -113,6 +160,16 @@ export function ApplicationPermissionGroups({
                 />
                 <span>
                   <code>{permission}</code>
+                  {descriptions.get(permission) && (
+                    <span className="field-hint">
+                      {" "}
+                      · {descriptions.get(permission)}
+                    </span>
+                  )}
+                  {!applicationProjectPermissionNames.includes(permission) &&
+                    !available?.includes(permission) && (
+                      <> · {t("Im Projektkatalog nicht bestätigt")}</>
+                    )}
                   {available && !available.includes(permission) && (
                     <> · {t("Im Live-Katalog nicht vorhanden")}</>
                   )}

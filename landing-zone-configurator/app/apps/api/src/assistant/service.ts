@@ -392,6 +392,7 @@ export class AssistantConversations {
   ): Promise<AssistantCatalogueContext> {
     const fields = [
       "gitFlavors",
+      "projectPermissions",
       "vpnPlans",
       "kubernetesVersions",
       "machineTypes",
@@ -449,7 +450,10 @@ export class AssistantConversations {
                     options:
                       part?.status === "available"
                         ? part.options
-                            .slice(0, 50)
+                            .slice(
+                              0,
+                              field === "projectPermissions" ? 2000 : 50,
+                            )
                             .map(({ value, label, capabilities }) => ({
                               value,
                               label,
@@ -457,7 +461,9 @@ export class AssistantConversations {
                             }))
                         : [],
                     totalOptions: part?.options.length ?? 0,
-                    truncated: (part?.options.length ?? 0) > 50,
+                    truncated:
+                      (part?.options.length ?? 0) >
+                      (field === "projectPermissions" ? 2000 : 50),
                   },
                 ];
               }),

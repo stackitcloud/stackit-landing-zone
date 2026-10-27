@@ -2,6 +2,21 @@ export const englishMessages: Record<string, string> = {
   "Template-Entwürfe bearbeitest du unter Application Landing Zones. Sie werden weiterhin mit dieser Konfiguration gespeichert.":
     "Edit template drafts under Application Landing Zones. They are still saved with this configuration.",
   "Zu den Application Landing Zones →": "Go to Application Landing Zones →",
+  "Das Standardprofil wählt 144 Rechte für VMs, Object Storage, Observability und Secrets Manager vor. Du kannst weitere STACKIT-Projektberechtigungen hinzufügen, etwa Kubernetes. Besteller und Application-Service-Account werden getrennt konfiguriert. Zusätzliche IAM- und Projektverwaltungsrechte können weitreichende Änderungen und Rechteerweiterungen ermöglichen; sie gehören nicht zur Standardauswahl.":
+    "The default profile selects 144 permissions for VMs, Object Storage, Observability and Secrets Manager. Add further STACKIT project permissions, such as Kubernetes. Requester and Application service account are configured separately. Additional IAM and project administration permissions can enable extensive changes and privilege escalation; they are not selected by default.",
+  "Vollständiger Projektberechtigungskatalog vom {{date}} mit {{count}} Rechten; kein Nachweis der effektiven Rechte eines Benutzers.":
+    "Complete project permission catalogue checked on {{date}}, with {{count}} permissions; not proof of a user's effective permissions.",
+  "Kubernetes (SKE)": "Kubernetes (SKE)",
+  "IAM und Zugriffsverwaltung": "IAM and access management",
+  Projektverwaltung: "Project administration",
+  "Schlüsselverwaltung (KMS)": "Key management (KMS)",
+  "Das Rechteprofil enthält unbekannte Projektberechtigungen. Lade die STACKIT-Produktoptionen neu und prüfe die Auswahl vor der Veröffentlichung.":
+    "The profile contains unknown project permissions. Refresh STACKIT product options and review the selection before publishing.",
+  "Im Projektkatalog nicht bestätigt": "Not confirmed by the project catalogue",
+  "Granular: individuelle Projektrechte":
+    "Granular: individual project permissions",
+  "{{selected}} von {{total}} Rechten ausgewählt":
+    "{{selected}} of {{total}} permissions selected",
   "Assistant für Template-Entwürfe": "Assistant for template drafts",
   "Der Assistant verwendet die geöffnete Plattformkonfiguration einschließlich ihrer Template-Entwürfe. Nenne das gewünschte Template und prüfe die vorgeschlagenen Änderungen vor der Übernahme. Speichere sie anschließend ausdrücklich; eine Veröffentlichung erfolgt separat.":
     "The Assistant uses the open platform configuration, including its template drafts. Name the template you want to change and review the proposed changes before accepting them. Then save explicitly; publication is a separate step.",

@@ -1,5 +1,7 @@
 import {
   type ApplicationAccessTransitionPatch,
+  applicationProjectPermissionCheckedAt,
+  applicationProjectPermissionNames,
   applicationWorkloadPermissions,
   type ProjectTemplateDraft,
   previewApplicationAccessTransition,
@@ -155,7 +157,7 @@ export function ApplicationAccessProfile({
         }
       >
         <option value="granular">
-          {t("Granular: Workload-Betrieb (empfohlen)")}
+          {t("Granular: individuelle Projektrechte")}
         </option>
         <option value="owner">{t("Volle Projekt-Owner-Rechte")}</option>
       </select>
@@ -221,7 +223,7 @@ export function ApplicationAccessProfile({
           </p>
           <p>
             {t(
-              "Die geprüfte Workload-Auswahl umfasst VMs, Object Storage, Observability und Secrets Manager. IAM, Projektlöschung, zentrale Routing-Änderungen und privilegierte STACKIT-Service-Account-Verwaltung sind ausgeschlossen. Besteller und Application-Service-Account lassen sich getrennt einschränken; volle Owner-Rechte bleiben eine Kundenwahl.",
+              "Das Standardprofil wählt 144 Rechte für VMs, Object Storage, Observability und Secrets Manager vor. Du kannst weitere STACKIT-Projektberechtigungen hinzufügen, etwa Kubernetes. Besteller und Application-Service-Account werden getrennt konfiguriert. Zusätzliche IAM- und Projektverwaltungsrechte können weitreichende Änderungen und Rechteerweiterungen ermöglichen; sie gehören nicht zur Standardauswahl.",
             )}
           </p>
           <p className="field-hint">
@@ -230,7 +232,11 @@ export function ApplicationAccessProfile({
                   "Live-Katalog verfügbar; nicht mehr gelistete Berechtigungen sind markiert und müssen geprüft werden.",
                 )
               : t(
-                  "Statischer geprüfter Permission-Katalog vom 26.10.2026; kein Nachweis der effektiven Rechte eines Benutzers.",
+                  "Vollständiger Projektberechtigungskatalog vom {{date}} mit {{count}} Rechten; kein Nachweis der effektiven Rechte eines Benutzers.",
+                  {
+                    date: applicationProjectPermissionCheckedAt,
+                    count: applicationProjectPermissionNames.length,
+                  },
                 )}
           </p>
           <label htmlFor={`${id}-search`}>
@@ -253,7 +259,15 @@ export function ApplicationAccessProfile({
                 {field === "permissions"
                   ? t("Berechtigungen des Bestellers")
                   : t("Berechtigungen des Application-Service-Accounts")}{" "}
-                · {profile[field].length}
+                ·{" "}
+                {t("{{selected}} von {{total}} Rechten ausgewählt", {
+                  selected: profile[field].length,
+                  total: new Set([
+                    ...applicationProjectPermissionNames,
+                    ...(live?.map((p) => p.value) ?? []),
+                    ...profile[field],
+                  ]).size,
+                })}
               </summary>
               <ApplicationPermissionGroups
                 selected={profile[field]}

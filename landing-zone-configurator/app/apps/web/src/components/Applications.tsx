@@ -184,6 +184,8 @@ const errors: Record<string, string> = {
     "Der Arbeitsbereich oder die Sitzung wurde geändert. Bitte neu laden.",
   application_initial_owner_conflict:
     "Du bist in dieser Vorlage selbst als zentraler Projekt-Owner festgelegt. Für granulare Bestellerrechte muss der Platform Owner eine andere zentrale Identität in einer neuen Template-Version auswählen. Es wurde kein Plan oder Apply gestartet.",
+  unknown_application_permissions:
+    "Das Rechteprofil enthält unbekannte Projektberechtigungen. Lade die STACKIT-Produktoptionen neu und prüfe die Auswahl vor der Veröffentlichung.",
   invalid_application_request:
     "Das Template oder die Bestellung ist ungültig. Prüfe die freigegebenen Bestellwerte.",
   template_version_not_found:

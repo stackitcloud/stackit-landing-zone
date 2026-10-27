@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import { assistantProposalValue } from "@lzc/contracts";
 import {
   acceleratorInputs,
+  applicationPermissionName,
   assertBoundedJson,
   type CommonConfiguration,
   compileCommonConfiguration,
@@ -590,10 +591,16 @@ export function assistantEditorChangeSchema(
 
 export function assistantEditorResponseSchema(schema: z.ZodType) {
   const result = z.toJSONSchema(schema);
+  const permissionPattern = z.toJSONSchema(applicationPermissionName).pattern;
   // Serving lacks propertyNames; the original Zod schema still checks map keys.
   const visit = (value: unknown): void => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
     if ("propertyNames" in value) delete value.propertyNames;
+    // Serving cannot compile the permission regex intersected with maxLength.
+    // Keep bounded strings here; the original Zod schema and trusted catalogue
+    // still validate every returned profile before a proposal is accepted.
+    if ("pattern" in value && value.pattern === permissionPattern)
+      delete value.pattern;
     for (const [key, child] of Object.entries(value)) {
       if (
         ["properties", "$defs", "definitions", "patternProperties"].includes(

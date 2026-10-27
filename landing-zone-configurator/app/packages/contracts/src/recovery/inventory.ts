@@ -90,7 +90,7 @@ export const recoveryCloudInventorySchema = z.strictObject({
         id: z.string().min(1).max(256),
         name: z.string().min(1).max(256),
         description: z.string().max(2000),
-        permissions: z.array(z.string().min(1).max(256)).max(1000),
+        permissions: z.array(z.string().min(1).max(256)).max(2000),
       }),
     )
     .max(1000)

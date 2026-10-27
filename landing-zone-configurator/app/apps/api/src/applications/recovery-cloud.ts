@@ -399,7 +399,7 @@ export class StackitRecoveryCloud {
                   id: text,
                   name: text,
                   description: z.string().max(2000),
-                  permissions: z.array(z.object({ name: text })).max(999),
+                  permissions: z.array(z.object({ name: text })).max(2000),
                 }),
               )
               .max(999),

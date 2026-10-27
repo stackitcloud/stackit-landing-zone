@@ -3,9 +3,11 @@ import { deriveApplicationRecoveryImports } from "@lzc/contracts/recovery";
 import { describe, expect, it } from "vitest";
 import {
   applicationAccessProfileSchema,
+  applicationProjectPermissionNames,
   applicationWorkloadPermissions,
   defaultApplicationAccessProfile,
   resolveApplicationAccessProfile,
+  unknownApplicationPermissions,
   validateApplicationAccessProfile,
 } from "../packages/domain/src/application-access.js";
 import {
@@ -169,12 +171,18 @@ describe("versioned Application project access", () => {
     "does not advertise %s as a granular workload permission",
     (permission) => {
       expect(applicationWorkloadPermissions).not.toContain(permission);
-      expect(
-        applicationAccessProfileSchema.safeParse({
-          ...defaultApplicationAccessProfile(),
-          permissions: [permission],
-        }).success,
-      ).toBe(false);
+      const profile = {
+        ...defaultApplicationAccessProfile(),
+        permissions: [permission],
+      };
+      expect(applicationAccessProfileSchema.safeParse(profile).success).toBe(
+        true,
+      );
+      expect(unknownApplicationPermissions(profile)).toEqual(
+        applicationProjectPermissionNames.includes(permission)
+          ? []
+          : [permission],
+      );
     },
   );
   it("allows incomplete owner text in drafts but requires a valid owner for publication", () => {
@@ -317,4 +325,46 @@ it("offers registered service permissions without turning the VM-only preset int
   expect(workload.permissions).not.toContain(
     "argus.grafana.server-administrate",
   );
+});
+
+it("compiles all current STACKIT project permissions without expanding the 144-permission default", () => {
+  expect(applicationProjectPermissionNames.length).toBeGreaterThan(900);
+  expect(defaultApplicationAccessProfile().permissions).toHaveLength(144);
+  for (const permission of applicationProjectPermissionNames)
+    expect(
+      unknownApplicationPermissions({
+        ...defaultApplicationAccessProfile(),
+        permissions: [permission],
+      }),
+    ).toEqual([]);
+  const f = fixture();
+  f.template.access_profile.permissions = [
+    ...applicationProjectPermissionNames,
+  ];
+  const result = compileApplicationPlan(f);
+  expect(result.variables.application.custom_roles?.[0]?.permissions).toEqual(
+    applicationProjectPermissionNames,
+  );
+  expect(result.variables.application.custom_roles?.[0]?.permissions).toContain(
+    "ske.cluster.create",
+  );
+  expect(result.variables.application.custom_roles?.[0]?.permissions).toContain(
+    "iam.role.add",
+  );
+  expect(f.template.access_profile.automationPermissions).toHaveLength(144);
+  expect(
+    unknownApplicationPermissions(
+      {
+        ...defaultApplicationAccessProfile(),
+        permissions: ["future-service.instance.create"],
+      },
+      ["future-service.instance.create"],
+    ),
+  ).toEqual([]);
+  expect(
+    applicationAccessProfileSchema.safeParse({
+      ...defaultApplicationAccessProfile(),
+      permissions: ["*", "owner"],
+    }).success,
+  ).toBe(false);
 });

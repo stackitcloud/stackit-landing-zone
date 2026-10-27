@@ -148,6 +148,16 @@ geschlossenen Fragevertrag verletzt, wird abgewiesen und nicht still gekürzt.
 Vorschläge benötigen weiterhin ausdrückliche Übernahme und Speicherung; sie
 erteilen keine Veröffentlichungs- oder Ausführungsberechtigung.
 
+## Projektberechtigungen erweitern
+
+Unter **Application Landing Zones → Template-Entwürfe → Application-Rechteprofil** sind die 144 Rechte des Workload-Standards die Vorauswahl, keine Obergrenze. Der vollständige Projektkatalog umfasst auch Kubernetes, Datenbanken und IAM. Suchen Sie zum Beispiel nach **Kubernetes**, öffnen Sie **Kubernetes (SKE)** und wählen Sie einzelne Rechte oder **Alle angezeigten auswählen**. Die Listen für Besteller und Application-Service-Account sind getrennt; Gruppenaktionen ändern nur die gefiltert angezeigten Rechte.
+
+Live-Daten ergänzen den vollständigen mitgelieferten Katalog. Nicht mehr live gelistete und unbekannte importierte Kennungen werden nicht stillschweigend entfernt. Neue Kennungen außerhalb des statischen Katalogs muss der Server vor Veröffentlichung durch den offiziellen Live-Katalog bestätigen; ohne Bestätigung wird nicht veröffentlicht. Der Katalog beschreibt mögliche Rechte, nicht die effektiven Rechte oder Produktfreigabe einer Person.
+
+Bitten Sie den Assistant beispielsweise: „Bitte füge der Vorlage central die Rechte zum Management von Kubernetes Clustern hinzu.“ Er ergänzt offizielle SKE-Rechte und erhält vorhandene Rechte, zentralen Owner und sonstige Einstellungen. Ohne Unterscheidung ergänzt er beide Listen; „nur für den Besteller“ lässt die Automation unverändert. Übernahme, Speichern und neue Veröffentlichung bleiben ausdrücklich getrennt. Bestehende Versionen und Bestellungen werden nicht verändert.
+
+SKE-Projektrechte verwalten Cluster; Kubernetes-RBAC innerhalb eines Clusters ist ein separater Mechanismus. Der Verwaltungsumfang enthält `ske.cluster.kubeconfig.create`, das den Abruf von Admin-Kubeconfigs und damit Clusteradministrator-Zugriff erlaubt. Zusätzliche IAM-Rollen-/Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und ist nicht vorausgewählt. Solche Rechte und volle Owner-Rechte bleiben bewusste Kundenwahl. Siehe [STACKIT Custom Roles](https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/custom-roles/) und [SKE-Clusterzugriff](https://docs.stackit.cloud/products/runtime/kubernetes-engine/getting-started/access-cluster/).
+
 <a id="template-inputs-and-bindings"></a>
 
 ## Template-Eingaben und Verknüpfungen

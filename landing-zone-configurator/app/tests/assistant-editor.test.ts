@@ -6,6 +6,8 @@ import {
   selectAssistantProposalFields,
 } from "@lzc/contracts";
 import {
+  applicationPermissionName,
+  applicationProjectPermissionNames,
   catalogue,
   compileCommonConfiguration,
   createCommonConfiguration,
@@ -1908,3 +1910,237 @@ it.each(["vm-operations-v1", "application-workloads-v1", "missing-owner"])(
       });
   },
 );
+
+it.each(["both", "requester", "automation"] as const)(
+  "adds Kubernetes catalogue rights for %s while preserving the existing granular policy",
+  async (target) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    template.accessProfile = {
+      ...defaultApplicationAccessProfile("central@example.test"),
+      permissions: ["secrets-manager.secret.get", "iaas.server.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+    const message =
+      "Bitte füge im Corporate-Template die Rechte zum Management von Kubernetes Clustern hinzu.";
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: "add-service-permissions",
+          services: ["ske"],
+          permissionTarget: target,
+          serviceEvidence: "Management von Kubernetes Clustern",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    const candidate = applyAssistantChanges(original, result.changes);
+    const after = candidate.projectTemplates!.find(
+      (t) => t.id === template.id,
+    )!.accessProfile;
+    expect(after?.mode).toBe("granular");
+    if (after?.mode !== "granular") throw new Error("expected granular");
+    expect(after.initialOwnerEmail).toBe("central@example.test");
+    const before = template.accessProfile;
+    expect(after.permissions).toEqual(
+      target === "automation"
+        ? before.permissions
+        : [
+            ...new Set([
+              ...before.permissions,
+              ...applicationProjectPermissionNames.filter((p) =>
+                p.startsWith("ske."),
+              ),
+            ]),
+          ],
+    );
+    expect(after.automationPermissions).toEqual(
+      target === "requester"
+        ? before.automationPermissions
+        : [
+            ...new Set([
+              ...before.automationPermissions,
+              ...applicationProjectPermissionNames.filter((p) =>
+                p.startsWith("ske."),
+              ),
+            ]),
+          ],
+    );
+    expect(after.permissions).not.toContain("iam.member.add");
+    const expected = structuredClone(original);
+    expected.projectTemplates!.find(
+      (t) => t.id === template.id,
+    )!.accessProfile = after;
+    expect(candidate).toEqual(expected);
+  },
+);
+it("rejects an unrelated service or invented evidence in the catalogue-derived addition path", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates!.find(
+    (t) => t.kind === "corporate",
+  )!;
+  template.accessProfile = defaultApplicationAccessProfile(
+    "central@example.test",
+  );
+  for (const [services, evidence] of [
+    [["iam"], "Kubernetes"],
+    [["ske"], "not in user message"],
+  ] as const)
+    await expect(
+      collectionModel(
+        {
+          topic: "project-templates",
+          mode: "draft",
+          requirements: [],
+          applicationAccess: {
+            key: template.key,
+            choice: "add-service-permissions",
+            services,
+            serviceEvidence: evidence,
+          },
+        },
+        null,
+      ).converse(
+        knowledgeSelection(),
+        assistantPublicValues(original),
+        [],
+        "Bitte Kubernetes-Rechte hinzufügen.",
+      ),
+    ).rejects.toBeInstanceOf(AssistantInferenceError);
+});
+
+it("does not offer an unchanged policy when all Kubernetes rights are already present", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates?.find(
+    (t) => t.kind === "corporate",
+  );
+  if (!template) throw new Error("fixture missing");
+  const profile = defaultApplicationAccessProfile("central@example.test");
+  const permissions = [
+    ...profile.permissions,
+    ...applicationProjectPermissionNames.filter((p) => p.startsWith("ske.")),
+  ];
+  template.accessProfile = {
+    ...profile,
+    permissions,
+    automationPermissions: permissions,
+  };
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: template.key,
+        choice: "add-service-permissions",
+        services: ["ske"],
+        serviceEvidence: "Kubernetes",
+      },
+    },
+    null,
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    "Bitte Kubernetes-Rechte ergänzen.",
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.questions).toEqual([]);
+  expect(result.explanation).toContain("bereits");
+});
+
+it.each(["ske.cluster.create", "ske.cluster.invented"])(
+  "checks generic editor access profiles against the trusted catalogue: %s",
+  async (permission) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    const profile = {
+      ...defaultApplicationAccessProfile("central@example.test"),
+      permissions: [permission],
+      automationPermissions: [permission],
+    };
+    const proposal = collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        editorContract: true,
+        editorInputs: ["landing_zones"],
+        requirements: [],
+        applicationAccess: null,
+        templateSetup: {
+          source: "current",
+          kinds: ["corporate"],
+          delegateNaming: false,
+          localNetworks: false,
+          collectionMode: "update",
+          fields: ["accessProfile"],
+        },
+      },
+      {
+        ...response([
+          patch("projectTemplates", {
+            [template.key]: { accessProfile: profile },
+          }),
+        ]),
+        references: ["project-templates"],
+      },
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      `Setze das Corporate-Rechteprofil auf granular, initialOwnerEmail central@example.test, permissions und automationPermissions jeweils nur ${permission}.`,
+    );
+    if (permission.endsWith("invented"))
+      await expect(proposal).rejects.toBeInstanceOf(AssistantInferenceError);
+    else {
+      const result = await proposal;
+      expect(result.changes).toHaveLength(1);
+      expect(
+        applyAssistantChanges(original, result.changes).projectTemplates!.find(
+          (t) => t.key === template.key,
+        )!.accessProfile,
+      ).toEqual(profile);
+    }
+  },
+);
+
+it("uses bounded serving strings for permissions while retaining strict runtime names", () => {
+  const profile = z.object({
+    permissions: z.array(applicationPermissionName).max(2000),
+  });
+  const serving = assistantEditorResponseSchema(profile);
+  expect(serving.properties?.permissions).toMatchObject({
+    maxItems: 2000,
+    items: { type: "string", maxLength: 256 },
+  });
+  expect(JSON.stringify(serving)).not.toContain("pattern");
+  expect(profile.safeParse({ permissions: ["*"] }).success).toBe(false);
+  expect(
+    profile.safeParse({ permissions: ["ske.cluster.create"] }).success,
+  ).toBe(true);
+});
