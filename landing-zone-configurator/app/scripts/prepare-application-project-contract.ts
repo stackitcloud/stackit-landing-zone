@@ -1,9 +1,13 @@
 // Compile actual order inputs against the immutable Application Runner source.
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { applicationMvpAcceleratorCommit } from "../packages/contracts/dist/index.js";
+import {
+  applicationExecutionRevisionSchema,
+  applicationMvpAcceleratorCommit,
+} from "../packages/contracts/dist/index.js";
 import {
   compileApplicationPlan,
   defaultApplicationAccessProfile,
@@ -18,12 +22,24 @@ if (
   throw new Error(
     "Requalify Application project scope for the new Runner source",
   );
+const executionRevision = applicationExecutionRevisionSchema.parse(
+  process.argv[3] ?? applicationMvpAcceleratorCommit,
+);
+const modernNetworking = [
+  "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+  "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  applicationMvpAcceleratorCommit,
+].includes(executionRevision);
+const automaticNetworking = [
+  "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  applicationMvpAcceleratorCommit,
+].includes(executionRevision);
 mkdirSync(resolve(target, "src"), { recursive: true });
 const archive = execFileSync("git", [
   "-C",
   fileURLToPath(new URL("../../../", import.meta.url)),
   "archive",
-  applicationMvpAcceleratorCommit,
+  executionRevision,
   "src/application",
   "src/modules/landing-zone",
 ]);
@@ -32,6 +48,18 @@ const root = resolve(target, "src/application");
 copyFileSync(
   new URL("../../deploy/runner/application.lock.hcl", import.meta.url),
   resolve(root, ".terraform.lock.hcl"),
+);
+// Test-only outputs expose names from the real historical resources, without
+// changing their inputs, addresses or implementation in the archived module.
+writeFileSync(
+  resolve(target, "src/modules/landing-zone/recovery-fixture-outputs.tf"),
+  `output "recovery_fixture_names" {
+ value = {
+  buckets = [stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name]
+  group = stackit_objectstorage_credentials_group.this.name
+ }
+}
+`,
 );
 const tests = [
   `mock_provider "stackit" {
@@ -71,6 +99,8 @@ for (const region of ["eu01", "eu02"]) {
     "corporate",
     "corporate-automatic",
   ]) {
+    if (!modernNetworking && kind !== "public-local") continue;
+    if (!automaticNetworking && kind === "corporate-automatic") continue;
     const corporate = kind.startsWith("corporate");
     for (const observability of [false, true]) {
       const name = `${region}_${kind.replaceAll("-", "_")}_${observability ? "observability" : "base"}`;
@@ -97,7 +127,7 @@ for (const region of ["eu01", "eu02"]) {
           id: "project-template",
           version: 1,
           status: "published",
-          accelerator_revision: applicationMvpAcceleratorCommit,
+          accelerator_revision: executionRevision,
           platform_revision: id,
           target_keys: ["selected"],
           apply_policy: "approval-required",
@@ -123,7 +153,7 @@ for (const region of ["eu01", "eu02"]) {
           role: "application-owner",
           verified_stackit_email: "owner@stackit.cloud",
           stackit_organization_id: id,
-          allowed_accelerator_revision: applicationMvpAcceleratorCommit,
+          allowed_accelerator_revision: executionRevision,
         },
         request: {
           name: "Order contract fixture",
@@ -132,7 +162,11 @@ for (const region of ["eu01", "eu02"]) {
         },
       };
       const compiled = compileApplicationPlan(compileInput);
-      if (!observability && ["public-local", "corporate"].includes(kind)) {
+      if (
+        executionRevision === applicationMvpAcceleratorCommit &&
+        !observability &&
+        ["public-local", "corporate"].includes(kind)
+      ) {
         for (const mode of ["granular", "owner"]) {
           const profile =
             mode === "owner"
@@ -174,6 +208,18 @@ for (const region of ["eu01", "eu02"]) {
           : kind === "public-none"
             ? "module.application.project_network == null"
             : `module.application.project_network != null && module.application.project_network.routed == ${corporate} && module.application.project_network.ipv4_prefix_length == 24`;
+      const prefix = `app-${id}-dev`;
+      const expectedBucketNames = ["default", "tfstate"].map((purpose) =>
+        modernNetworking
+          ? `${prefix.slice(0, 63 - purpose.length - 38)}-44444444-2222-4333-8444-555555555555-${purpose}`
+          : `${prefix}-${purpose}`,
+      );
+      const expectedGroupName = [
+        "c4b43c36af198985980b17626c48d357795e3fbd",
+        "88149782bf8e91dcdbb43a203b54337886023f7f",
+      ].includes(executionRevision)
+        ? prefix
+        : `${prefix.slice(0, 23)}-${createHash("sha256").update(prefix).digest("hex").slice(0, 8)}`;
       tests.push(`run "compiled_${name}" {
   command = plan
   variables {
@@ -185,7 +231,11 @@ for (const region of ["eu01", "eu02"]) {
     error_message = "Compiled order must preserve Public/Corporate network semantics."
   }
   assert {
-    condition = local.target.region == "${region}" && local.target.folder_id == "platform-folder" && local.target.corporate == ${corporate} && var.application.owner_email == "owner@stackit.cloud" && var.bucket_naming == "project-id"
+    condition = module.application.recovery_fixture_names.buckets == ${JSON.stringify(expectedBucketNames)} && module.application.recovery_fixture_names.group == "${expectedGroupName}"
+    error_message = "Historical resource names must match the source-aware Recovery adoption catalogue."
+  }
+  assert {
+    condition = local.target.region == "${region}" && local.target.folder_id == "platform-folder" && local.target.corporate == ${corporate} && var.application.owner_email == "owner@stackit.cloud" ${modernNetworking ? '&& var.bucket_naming == "project-id"' : ""}
     error_message = "Compiled owner, platform target, region and unique bucket default must be preserved."
   }
   assert {

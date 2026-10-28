@@ -23,6 +23,16 @@ export const test = base.extend<{ backgroundRequests: undefined }>({
           await route.fulfill({ json: lists[path] });
         } else if (
           request.method() === "GET" &&
+          /^\/api\/v1\/applications\/instances\/[a-f0-9-]+\/execution-lifecycle$/.test(
+            path,
+          )
+        ) {
+          await route.fulfill({
+            status: 503,
+            json: { error: "application_execution_lifecycle_unavailable" },
+          });
+        } else if (
+          request.method() === "GET" &&
           /^\/api\/v1\/configurations\/[a-f0-9-]+\/assistant$/.test(path)
         ) {
           await route.fulfill({

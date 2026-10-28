@@ -616,3 +616,22 @@ it("discovers the exact bound project when its creation did not reach State", as
     ),
   ).toBe(true);
 });
+
+it.each([
+  "c4b43c36af198985980b17626c48d357795e3fbd",
+  "88149782bf8e91dcdbb43a203b54337886023f7f",
+  "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
+  "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+  "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  "08ac257de1548c8ec5e83dae1a79373711c3d644",
+])(
+  "keeps original historical source %s through API context and native task binding",
+  async (source) => {
+    const h = harness();
+    h.context.sourceRevision = source;
+    await h.service.assess(h.session, h.id);
+    const input = await h.service.input(h.ticket, h.binding());
+    expect(input).toMatchObject({ sourceRevision: source });
+    expect(h.binding().acceleratorRevision).toBe(source);
+  },
+);

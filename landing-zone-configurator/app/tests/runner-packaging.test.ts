@@ -25,6 +25,12 @@ const publicPackage = process.env.LZC_MIRROR_TEST_PACKAGE;
 it("packages unpacked providers only after readonly-lock offline verification", async () => {
   const script = await readFile(join(runner, "package.sh"), "utf8");
   expect(script).toContain("prepare-provider-mirror.sh");
+  expect(script).toContain(
+    'archive "$historical_commit" src/application src/modules/landing-zone',
+  );
+  expect(script).toContain('"$' + '{application_sources[@]}"');
+  expect(script).toContain("package-application-execution.mjs");
+  expect(script).toContain("test-application-execution-sources.sh");
   const config = await readFile(join(runner, "runner.tfrc"), "utf8");
   expect(config).toContain("filesystem_mirror");
   expect(config).not.toMatch(/\bdirect\b|\bnetwork_mirror\b/);
@@ -186,4 +192,64 @@ it.runIf(Boolean(publicPackage))(
     }
   },
   60000,
+);
+
+it.each(["failure", "empty", "duplicate", "incomplete", "complete"] as const)(
+  "fails closed for %s source enumeration and checks exactly all six sources on success",
+  async (mode) => {
+    const root = await mkdtemp(join(tmpdir(), "lzc-source-enumeration-"));
+    const calls = join(root, "tofu-calls");
+    const revisions = Array.from({ length: 6 }, (_, i) =>
+      String(i + 1).repeat(40),
+    );
+    const script = fileURLToPath(
+      new URL(
+        "../scripts/test-application-execution-sources.sh",
+        import.meta.url,
+      ),
+    );
+    try {
+      await writeFile(
+        join(root, "node"),
+        `#!/bin/sh\ncase "$*" in\n *applicationExecutionRevisions*)\n ${
+          mode === "failure"
+            ? "exit 47"
+            : mode === "empty"
+              ? ":"
+              : `printf '%s\\n' ${revisions
+                  .slice(0, mode === "incomplete" ? 5 : 6)
+                  .map((r) => `'${mode === "duplicate" ? revisions[0] : r}'`)
+                  .join(" ")}`
+        }\n ;;\n *) : ;;\nesac\n`,
+        { mode: 0o700 },
+      );
+      await writeFile(
+        join(root, "tofu"),
+        `#!/bin/sh\nprintf '%s\\n' "$*" >> '${calls}'\n`,
+        { mode: 0o700 },
+      );
+      const operation = run("/bin/bash", [script], {
+        env: {
+          PATH: `${root}:/usr/bin:/bin`,
+          LZC_TEST_TOFU_BIN: join(root, "tofu"),
+          LZC_TEST_PROVIDER_MIRROR: root,
+        },
+      });
+      if (mode === "complete") {
+        const result = await operation;
+        expect(result.stdout.match(/SOURCE_CONTRACT_PASSED/g)).toHaveLength(6);
+        const invocations = (await readFile(calls, "utf8")).trim().split("\n");
+        expect(invocations).toHaveLength(12);
+        for (const revision of revisions)
+          expect(
+            invocations.filter((line) => line.includes(revision)),
+          ).toHaveLength(2);
+      } else {
+        await expect(operation).rejects.toThrow();
+        await expect(readFile(calls)).rejects.toMatchObject({ code: "ENOENT" });
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
 );

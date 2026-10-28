@@ -4561,8 +4561,12 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       const jobRequest = { idempotencyKey: randomUUID(), confirmPlan: true };
       await expect(
         applications.prepareJob(owner, order.id, jobRequest),
-      ).rejects.toMatchObject({ code: "application_runner_revision_required" });
-      const applicationRevision = "4d15d7870afa323badd93559d8b37c5a8d138dcf";
+      ).rejects.toMatchObject({
+        code: "application_execution_package_unavailable",
+      });
+      // Exercise authorization with the oldest supported source; the original
+      // experimental root is now explicitly withdrawn by the source registry.
+      const applicationRevision = "c4b43c36af198985980b17626c48d357795e3fbd";
       const runnerVersion = await applications.publish(engineer, {
         template,
         ...binding,

@@ -33,6 +33,7 @@ export type ApplicationRunnerServices = Pick<
   Partial<
     Pick<
       Applications,
+      | "resolveRunnerBinding"
       | "runnerRecovery"
       | "stateRecoveryInput"
       | "stateRecoveryFence"
@@ -46,6 +47,10 @@ export function registerApplicationRunner(
   input: unknown,
 ) {
   const binding = applicationRunnerPackageSchema.parse(input);
+  const resolveBinding = async (key: string) =>
+    applications.resolveRunnerBinding
+      ? applications.resolveRunnerBinding(key, binding)
+      : binding;
   const ticket = (authorization: string | undefined) => {
     if (!authorization || !/^Bearer [A-Za-z0-9_-]{43}$/.test(authorization))
       throw new ApplicationError(401, "invalid_application_runner_ticket");
@@ -88,7 +93,7 @@ export function registerApplicationRunner(
       async (request) => {
         const key = ticket(request.headers.authorization);
         z.strictObject({}).parse(request.body);
-        return applications.runnerInput(key, binding);
+        return applications.runnerInput(key, await resolveBinding(key));
       },
     );
     if (
@@ -105,7 +110,8 @@ export function registerApplicationRunner(
         { bodyLimit: 1024 },
         async (request) => {
           z.strictObject({}).parse(request.body);
-          return recoveryInput(ticket(request.headers.authorization), binding);
+          const key = ticket(request.headers.authorization);
+          return recoveryInput(key, await resolveBinding(key));
         },
       );
       for (const path of ["fence", "result"] as const)
@@ -115,8 +121,8 @@ export function registerApplicationRunner(
           async (request) => {
             const key = ticket(request.headers.authorization);
             return path === "fence"
-              ? recoveryFence(key, binding, request.body)
-              : recoveryResult(key, binding, request.body);
+              ? recoveryFence(key, await resolveBinding(key), request.body)
+              : recoveryResult(key, await resolveBinding(key), request.body);
           },
         );
     }
@@ -138,9 +144,10 @@ export function registerApplicationRunner(
         `/api/application-runner/${path}`,
         { bodyLimit: limit },
         async (request, reply) => {
+          const key = ticket(request.headers.authorization);
           const receipt = await applications[method](
-            ticket(request.headers.authorization),
-            binding,
+            key,
+            await resolveBinding(key),
             request.body,
           );
           return method === "runnerArtifact" ? receipt : reply.code(204).send();
@@ -152,12 +159,10 @@ export function registerApplicationRunner(
       routes.post(
         "/api/application-runner/recovery",
         { bodyLimit: 22 * 1024 * 1024 + 65536 },
-        async (request) =>
-          recovery(
-            ticket(request.headers.authorization),
-            binding,
-            request.body,
-          ),
+        async (request) => {
+          const key = ticket(request.headers.authorization);
+          return recovery(key, await resolveBinding(key), request.body);
+        },
       );
   });
 }
@@ -188,6 +193,8 @@ export function registerApplications(
         | "configureExecution"
         | "listExecutionBindings"
         | "executionCapabilities"
+        | "executionLifecycle"
+        | "upgradeExecution"
         | "listJobs"
         | "revokeJobGrant"
         | "approveJobBackend"
@@ -246,6 +253,12 @@ export function registerApplications(
             "template_version_in_use",
             "template_version_not_retired",
             "application_execution_binding_conflict",
+            "application_execution_changed",
+            "application_upgrade_execution_active",
+            "application_execution_upgrade_changed",
+            "application_execution_upgrade_unavailable",
+            "application_execution_source_withdrawn",
+            "application_execution_package_unavailable",
             "application_apply_plan_unavailable",
             "application_apply_package_changed",
             "application_recovery_fresh_plan_required",
@@ -268,6 +281,25 @@ export function registerApplications(
             : "application_backend_binding_conflict";
         return reply.code(409).send({ error: code });
       }
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "42501" &&
+        [
+          "application_upgrade_source_unavailable",
+          "application_recovery_source_unavailable",
+          "application_execution_binding_changed",
+          "application_execution_source_withdrawn",
+          "application_upgrade_confirmation_required",
+        ].includes(error.message)
+      )
+        return reply
+          .code(
+            error.message === "application_upgrade_confirmation_required"
+              ? 400
+              : 409,
+          )
+          .send({ error: error.message });
       if (
         error instanceof Error &&
         "code" in error &&
@@ -294,6 +326,33 @@ export function registerApplications(
           .send({ error: "invalid_request_origin_or_csrf" });
       sessions.set(request, session);
     });
+    routes.get(
+      "/api/v1/applications/instances/:id/execution-lifecycle",
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.executionLifecycle)
+          return reply
+            .code(503)
+            .send({ error: "application_execution_lifecycle_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.executionLifecycle(session, id);
+      },
+    );
+    routes.post(
+      "/api/v1/applications/instances/:id/execution-lifecycle",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.upgradeExecution)
+          return reply
+            .code(503)
+            .send({ error: "application_execution_lifecycle_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.upgradeExecution(session, id, request.body);
+      },
+    );
     routes.get(
       "/api/v1/applications/execution-bindings",
       async (request, reply) => {
@@ -491,6 +550,9 @@ export function registerApplications(
         instances: await applications.listInstances(session),
         orderDecisionEnabled: Boolean(applications.decideOrder),
         executionDelegationEnabled: Boolean(applications.configureExecution),
+        executionLifecycleEnabled: Boolean(
+          applications.executionLifecycle && applications.upgradeExecution,
+        ),
         orderDeletionEnabled: Boolean(applications.deleteOrder),
         execution: applications.executionCapabilities?.() ?? {
           planEnabled: false,

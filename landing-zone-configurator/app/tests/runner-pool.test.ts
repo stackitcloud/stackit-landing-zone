@@ -197,3 +197,29 @@ it("exposes only bearer-authenticated no-store assignment claims", async () => {
     await app.close();
   }
 });
+
+it("delegates historical Application source support to validated package inspection without changing pool capacity", () => {
+  const supportsAccelerator = vi.fn(
+    (revision: string) => revision === "historical-reviewed-source",
+  );
+  const runner = new CloudFoundryPlanRunner({
+    spaceId: randomUUID(),
+    templateId: randomUUID(),
+    dropletId: randomUUID(),
+    username: "fixture",
+    password: "fixture",
+    broker: "application",
+    inspection: {
+      packageId: "package-fixture",
+      acceleratorCommit: "current-source",
+      supportsAccelerator,
+      preview: async () => ({}),
+      output: async () => ({ text: "", truncated: false, kind: "live" }),
+      start: async () => {},
+      remove: async () => {},
+    },
+  });
+  expect(runner.supportsAccelerator("historical-reviewed-source")).toBe(true);
+  expect(runner.supportsAccelerator("unbundled-source")).toBe(false);
+  expect(supportsAccelerator).toHaveBeenCalledTimes(2);
+});

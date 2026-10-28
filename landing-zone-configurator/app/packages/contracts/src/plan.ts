@@ -1,16 +1,14 @@
 import { z } from "zod";
+import {
+  applicationExecutionCurrentRevision,
+  applicationExecutionRevisions,
+} from "./application-execution.js";
 
 export const applicationMvpAcceleratorCommit =
-  "08ac257de1548c8ec5e83dae1a79373711c3d644";
+  applicationExecutionCurrentRevision;
 export const applicationRunnerSourceSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  acceleratorCommit: z.enum([
-    "88149782bf8e91dcdbb43a203b54337886023f7f",
-    "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
-    "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
-    "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
-    applicationMvpAcceleratorCommit,
-  ]),
+  acceleratorCommit: z.enum(applicationExecutionRevisions),
   maintenanceEnabled: z.literal(true).optional(),
 });
 export const platformUpgradeAcceleratorCommit =

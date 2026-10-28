@@ -11,9 +11,11 @@ import {
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
+import { applicationExecutionProfile } from "@lzc/contracts";
 import {
   deriveApplicationRecoveryImports,
   deriveApplicationRecoveryRevocations,
+  readApplicationExecutionManifest,
   recoverySha256,
   retainRecoveryOutputs,
   verifyImportedRecoveryState,
@@ -74,12 +76,20 @@ export async function prepareNativeStateRecovery(
 ) {
   z.uuid().parse(input.tenantId);
   z.uuid().parse(input.instanceId);
+  const execution = await readApplicationExecutionManifest(input.root);
+  const profile = execution
+    ? applicationExecutionProfile(execution, input.sourceRevision)
+    : undefined;
+  if (profile && !profile.maintenanceEnabled)
+    throw new Error("Application source maintenance disabled");
   if (
-    input.sourceRevision !== applicationAcceleratorCommit ||
+    input.sourceRevision !==
+      (profile?.revision ?? applicationAcceleratorCommit) ||
     input.providerLockSha256 !== applicationProviderLockHash
   )
     throw new Error("source-changed");
   const imports = deriveApplicationRecoveryImports({
+    sourceRevision: input.sourceRevision,
     state: input.original,
     variables: input.variables,
     inventory: input.inventory,
@@ -87,6 +97,7 @@ export async function prepareNativeStateRecovery(
     instanceId: input.instanceId,
   });
   const revocations = deriveApplicationRecoveryRevocations({
+    sourceRevision: input.sourceRevision,
     state: input.original,
     variables: input.variables,
     inventory: input.inventory,
@@ -101,7 +112,7 @@ export async function prepareNativeStateRecovery(
   )
     throw new Error("checkpoint-invalid");
   const root = resolve(input.root);
-  const source = resolve(root, "application-src");
+  const source = resolve(root, profile?.sourcePath ?? "application-src");
   const lock = await bounded(
     resolve(source, "application/.terraform.lock.hcl"),
     1024 * 1024,

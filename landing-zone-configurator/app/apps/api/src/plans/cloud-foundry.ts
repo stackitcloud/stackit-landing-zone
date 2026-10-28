@@ -122,6 +122,8 @@ export class CloudFoundryPlanRunner implements PlanRunner {
   }
 
   supportsAccelerator(commit: string) {
+    if (this.config.inspection?.supportsAccelerator)
+      return this.config.inspection.supportsAccelerator(commit);
     return (
       commit ===
       (this.acceleratorCommit ?? "a256f6896d11134fdc351786f1be5eba4e56b2e2")

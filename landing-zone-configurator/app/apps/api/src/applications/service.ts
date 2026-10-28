@@ -2,6 +2,9 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   type ApplicationInstance,
   type AppliedPlatformSource,
+  applicationExecutionNativeOverrides,
+  applicationExecutionProfiles,
+  applicationExecutionRevisionSchema,
   applicationInstanceSchema,
   applicationOrderDecisionSchema,
   applicationOrderQuotaSchema,
@@ -47,6 +50,12 @@ import { type ArtifactCrypto, canonicalBase64 } from "../plans/crypto.js";
 import { canonicalJson, sha256 } from "../plans/execution.js";
 import type { Plans } from "../plans/service.js";
 import { withTenant } from "../storage/database.js";
+import {
+  applicationExecutionUpgradeSchema,
+  availableApplicationExecutionContext,
+  readApplicationExecutionContext,
+  supportsApplicationExecution,
+} from "./execution-lifecycle.js";
 import { inspectInterruptedApply } from "./interrupted-apply.js";
 import { completeInterruptedPlan } from "./interrupted-plan.js";
 import {
@@ -83,14 +92,7 @@ function requireSeparateInitialOwner(
 
 export const applicationRunnerPackageSchema = z.strictObject({
   runnerPackageId: z.uuid(),
-  acceleratorRevision: z.enum([
-    "c4b43c36af198985980b17626c48d357795e3fbd",
-    "88149782bf8e91dcdbb43a203b54337886023f7f",
-    "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
-    "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
-    "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
-    "08ac257de1548c8ec5e83dae1a79373711c3d644",
-  ]),
+  acceleratorRevision: applicationExecutionRevisionSchema,
   providerLockSha256: z.literal(
     "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
   ),
@@ -1065,6 +1067,52 @@ export class Applications {
     });
   }
 
+  executionLifecycle(session: Session, instanceId: string) {
+    const id = z.uuid().parse(instanceId);
+    return this.work(session, "read", async (client) =>
+      availableApplicationExecutionContext(
+        await readApplicationExecutionContext(client, session, id),
+        this.dispatch?.runner,
+      ),
+    );
+  }
+
+  async upgradeExecution(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    const request = applicationExecutionUpgradeSchema.parse(input);
+    if (
+      !applicationExecutionProfiles.some(
+        (profile) =>
+          profile.revision === request.targetRevision &&
+          profile.status === "supported",
+      ) ||
+      !supportsApplicationExecution(
+        this.dispatch?.runner,
+        request.targetRevision,
+      )
+    )
+      throw new ApplicationError(
+        409,
+        "application_execution_package_unavailable",
+      );
+    return this.work(session, "order", async (client) => {
+      const result = await client.query<{ context: unknown }>(
+        "SELECT lzc_auth.upgrade_application_execution($1,$2,$3,$4,$5) AS context",
+        [
+          session.id,
+          id,
+          request.targetRevision,
+          request.expectedRevision,
+          request.confirmUpgrade,
+        ],
+      );
+      return availableApplicationExecutionContext(
+        result.rows[0]?.context,
+        this.dispatch?.runner,
+      );
+    });
+  }
+
   listInstances(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<InstanceRow>(
@@ -1879,23 +1927,17 @@ export class Applications {
           ? prepared.plan
           : { ...prepared.plan, purpose: request.purpose };
       if (
-        ![
-          "4d15d7870afa323badd93559d8b37c5a8d138dcf",
-          "c4b43c36af198985980b17626c48d357795e3fbd",
-          "88149782bf8e91dcdbb43a203b54337886023f7f",
-          "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
-          "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
-          "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
-          "08ac257de1548c8ec5e83dae1a79373711c3d644",
-        ].includes(prepared.plan.acceleratorRevision)
-      )
-        throw new ApplicationError(409, "application_runner_revision_required");
-      if (
+        !applicationExecutionRevisionSchema.safeParse(
+          prepared.plan.acceleratorRevision,
+        ).success ||
         this.dispatch?.runner.supportsAccelerator?.(
           prepared.plan.acceleratorRevision,
         ) === false
       )
-        throw new ApplicationError(409, "application_runner_revision_required");
+        throw new ApplicationError(
+          409,
+          "application_execution_package_unavailable",
+        );
       const bindingHash = createHash("sha256")
         .update(JSON.stringify(plan))
         .digest("hex");
@@ -2116,6 +2158,22 @@ export class Applications {
     z.strictObject({ confirmPlan: z.literal(true) }).parse(input);
     if (!this.dispatch || !this.backends || !this.secrets || !this.profiles)
       throw new ApplicationError(503, "application_dispatch_disabled");
+    const jobSource = await this.work(session, "order", async (client) => {
+      const result = await client.query<{ accelerator_revision: string }>(
+        "SELECT accelerator_revision FROM lzc.application_job_grants WHERE job_id=$1 AND tenant_id=$2",
+        [jobId, session.tenantId],
+      );
+      const revision =
+        applicationRunnerPackageSchema.shape.acceleratorRevision.parse(
+          result.rows[0]?.accelerator_revision,
+        );
+      if (this.dispatch?.runner.supportsAccelerator?.(revision) === false)
+        throw new ApplicationError(
+          409,
+          "application_execution_package_unavailable",
+        );
+      return revision;
+    });
     const created = await this.work(session, "order", async (client) => {
       const row = (
         await this.jobQuery<{ created: boolean }>(
@@ -2144,9 +2202,7 @@ export class Applications {
             jobId,
             {
               runnerPackageId,
-              acceleratorRevision:
-                this.dispatch?.runner.acceleratorCommit ??
-                "c4b43c36af198985980b17626c48d357795e3fbd",
+              acceleratorRevision: jobSource,
               providerLockSha256:
                 "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
             },
@@ -2182,6 +2238,22 @@ export class Applications {
       });
       throw new ApplicationError(503, "application_dispatch_failed");
     }
+  }
+
+  async resolveRunnerBinding(ticket: string, input: unknown) {
+    const binding = applicationRunnerPackageSchema.parse(input);
+    if (!/^[A-Za-z0-9_-]{43}$/.test(ticket))
+      throw new ApplicationError(401, "invalid_application_runner_ticket");
+    const result = await this.pool.query<{ binding: unknown }>(
+      "SELECT lzc_auth.application_runner_binding($1,$2) AS binding",
+      [tokenHash(ticket), binding.providerLockSha256],
+    );
+    const resolved = applicationRunnerPackageSchema.safeParse(
+      result.rows[0]?.binding,
+    );
+    if (!resolved.success)
+      throw new ApplicationError(401, "invalid_application_runner_ticket");
+    return resolved.data;
   }
 
   private async consumeRunnerTicket(
@@ -2673,15 +2745,7 @@ export class Applications {
     acceleratorRevision: string,
   ) {
     z.uuid().parse(jobId);
-    z.enum([
-      "4d15d7870afa323badd93559d8b37c5a8d138dcf",
-      "c4b43c36af198985980b17626c48d357795e3fbd",
-      "88149782bf8e91dcdbb43a203b54337886023f7f",
-      "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
-      "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
-      "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
-      "08ac257de1548c8ec5e83dae1a79373711c3d644",
-    ]).parse(acceleratorRevision);
+    applicationExecutionRevisionSchema.parse(acceleratorRevision);
     if (!this.profiles || !this.secrets)
       throw new ApplicationError(
         503,
@@ -2868,14 +2932,21 @@ export class Applications {
     }
     if (resolved.resolution.qualificationBlockers.length)
       throw new ApplicationError(409, "application_parameters_not_qualified");
+    const execution = availableApplicationExecutionContext(
+      await readApplicationExecutionContext(client, session, row.id),
+      this.dispatch?.runner,
+    );
+    if (this.dispatch && execution.sourceStatus === "withdrawn")
+      throw new ApplicationError(409, "application_execution_source_withdrawn");
+    if (this.dispatch && execution.sourceStatus === "unavailable")
+      throw new ApplicationError(
+        409,
+        "application_execution_package_unavailable",
+      );
     const settings = resolved.resolution.settings;
     const observability = objectValue(settings.observability);
     if (
-      applicationPlanScopeIssues(
-        template,
-        settings,
-        published.accelerator_revision,
-      ).length
+      applicationPlanScopeIssues(template, settings, execution.revision).length
     )
       throw new ApplicationError(409, "application_plan_scope_not_supported");
     const plan = compileApplicationPlan({
@@ -2886,7 +2957,7 @@ export class Applications {
         id: `template-${template.id}`,
         version: published.version,
         status: "published",
-        accelerator_revision: published.accelerator_revision,
+        accelerator_revision: execution.revision,
         platform_revision: published.platform_revision,
         target_keys: [published.target_key],
         apply_policy: published.deployment_policy,
@@ -2929,9 +3000,7 @@ export class Applications {
         verified_stackit_email: identity.email,
         stackit_organization_id: identity.organization_id,
         allowed_accelerator_revision:
-          applicationAcceleratorRevisionSchema.parse(
-            published.accelerator_revision,
-          ),
+          applicationAcceleratorRevisionSchema.parse(execution.revision),
       },
       request: {
         name: row.name,
@@ -2943,7 +3012,19 @@ export class Applications {
       kind: "application-plan-input" as const,
       cloudPlanExecuted: false as const,
       requiresExplicitApplyApproval: true as const,
-      plan,
+      plan: {
+        ...plan,
+        variables: {
+          ...plan.variables,
+          ...applicationExecutionNativeOverrides(
+            execution.originRevision,
+            execution.revision,
+          ),
+        },
+        ...(execution.bindingId
+          ? { executionBindingId: execution.bindingId }
+          : {}),
+      },
       blockers: this.executionCapabilities().planEnabled
         ? []
         : [

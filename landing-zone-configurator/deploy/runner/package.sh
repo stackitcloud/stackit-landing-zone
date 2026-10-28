@@ -60,6 +60,7 @@ rm -rf "$runner_dir/accelerator/.terraform"
 test ! -e "$runner_dir/accelerator/terraform.tfstate"
 test ! -e "$runner_dir/accelerator/terraform.auto.tfvars"
 test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' \) -print -quit)"
+application_sources=()
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	mkdir -p "$runner_dir/application-src"
 	application_commit=08ac257de1548c8ec5e83dae1a79373711c3d644
@@ -75,8 +76,26 @@ if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	"$tofu_bin" -chdir="$runner_dir/application-src/application" providers mirror -platform="$provider_platform" "$(cd "$runner_dir/providers" && pwd)"
 	rm -rf "$runner_dir/application-src/application/.terraform"
 	test -z "$(find "$runner_dir/application-src" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' -o -name 'terraform.auto.tfvars' -o -name 'terraform.auto.tfvars.json' \) -print -quit)"
+	application_sources+=("$runner_dir/application-src/application")
+	# Bundle native roots, never historical Worker binaries. Git is used only at build time.
+	while IFS= read -r historical_commit; do
+		test "$historical_commit" != "$application_commit" || continue
+		git cat-file -e "$historical_commit^{commit}" 2>/dev/null || git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$historical_commit"
+		historical_source="$runner_dir/application-sources/$historical_commit"
+		mkdir -p "$historical_source"
+		git -C "$(git rev-parse --show-toplevel)" archive "$historical_commit" src/application src/modules/landing-zone | tar -x --strip-components=1 -C "$historical_source"
+		cp ../deploy/runner/application.lock.hcl "$historical_source/application/.terraform.lock.hcl"
+		application_sources+=("$historical_source/application")
+	done < <(node --input-type=module -e 'import {applicationExecutionProfiles} from "./packages/contracts/dist/index.js"; console.log(applicationExecutionProfiles.filter(p=>p.status==="supported").map(p=>p.revision).join("\n"))')
 fi
-bash ../deploy/runner/prepare-provider-mirror.sh "$tofu_bin" "$runner_dir/providers" "$runner_dir/accelerator" "$runner_dir/application-src/application"
+# Every bundled native root must pass the same readonly lock and unpacked provider mirror.
+bash ../deploy/runner/prepare-provider-mirror.sh "$tofu_bin" "$runner_dir/providers" "$runner_dir/accelerator" "${application_sources[@]}"
+if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
+	node scripts/package-application-execution.mjs "$runner_dir"
+	LZC_TEST_TOFU_BIN="$(cd "$(dirname "$tofu_bin")" && pwd)/$(basename "$tofu_bin")" \
+		LZC_TEST_PROVIDER_MIRROR="$(cd "$runner_dir/providers" && pwd)" \
+		bash scripts/test-application-execution-sources.sh
+fi
 LZC_TEST_RUNNER_ROOT="$(cd "$runner_dir" && pwd)" bash scripts/test-initial-plan-contract.sh
 if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" == "true" ]]; then
 	tar -czf "$runner_dir.tar.gz" -C "$runner_dir" .

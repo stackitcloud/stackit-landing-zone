@@ -407,7 +407,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "f34bfcb1b5d8e0f2149d4779223e663e4bedab6326f955d6416cafd77d585401",
+            "4922fd0a55bbbfe63af6c941f83a8f6db5c85a07578fbc63dad6edd8dba17eb9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1539,8 +1539,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "configuration-lifecycle",
       file: "configuration-lifecycle.md",
-      version: 9,
-      checkedOn: "2026-10-12",
+      version: 10,
+      checkedOn: "2026-10-28",
       qualification: "local-draft-not-reviewed-release",
       groups: [],
       mandatory: true,
@@ -1580,7 +1580,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "f34bfcb1b5d8e0f2149d4779223e663e4bedab6326f955d6416cafd77d585401",
+            "4922fd0a55bbbfe63af6c941f83a8f6db5c85a07578fbc63dad6edd8dba17eb9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
@@ -1591,6 +1591,16 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts",
           sha256:
             "56209a0eea70927042b8799f5e12b3005b53ed9c1584fc9b77cbc99986b174b2",
+        },
+        {
+          path: "landing-zone-configurator/docs/application-execution-lifecycle.md",
+          sha256:
+            "93fb8b2bf37f8688efcb13211ef25c9b1486e9d63f2248c78287871f95bcf82c",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/applications/execution-lifecycle.ts",
+          sha256:
+            "a6defed96d8d56262d3591c9f8288107195596295f8291ba680e5737e77ad94c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1614,9 +1624,9 @@ export const assistantKnowledgeTopics = {
       fieldPaths: [],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/configuration-lifecycle.md",
-      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nMandatory for all service/template advice: authorized workspace/configuration;\ndistinguish requirements, defaults, proposals, acceptance and deployment.\n\n## Accelerator Contract\n\nThe shared document/compiler produces native tfvars for the matching Accelerator.\nTemplate selection supplies defaults, not consent to enable optional services.\nSupported patches: company name/code/region, existing folder names and native SNA.\nExplicit naming delegation permits chosen company/folder names, not region,\nIDs, access, ownership or roles. Preserve existing structural keys and metadata.\nOther topics are advice, never extra mutation rights or inferred access values.\nSaved configuration, application-template publication, ordering, plan, apply,\ndestroy and recovery are independent operations. No free Terraform or a second\nYAML schema. A full apply includes mandatory foundations and all enabled inputs.\n\n## Dependencies\n\nService knowledge and credential foundations do not activate services.\nCatalogue facts, current values, user claims and estimates are not execution.\n\n## Dialogue\n\nReuse confirmed prior requirements, name unresolved assumptions, prioritize the\ncurrent step and explain inconsistent inherited settings. "Later" is not\n"enable now". Topic/mode planning uses the saved history, including unnamed\nfollow-up answers; explicit topic switches override prior focus. Planning is\nnot authorization. Distinguish business decisions, derived technical values\nand operator-only secure setup. Ask one missing firewall decision at a time.\noptions are reply suggestions, not patches/consent. multiple=true permits\ncompatible combined answers; free text remains allowed. Subsets request a new\nvalidated proposal; only explicit whole-proposal acceptance saves changes.\nNew configurations can explicitly inherit their own template\nadvice via a revision-bound server-side context; existing configurations are\nnot silently retrofitted. Application groups/parameter bindings constrain\nauthorized versions and choices; never create grants or orders from chat.\n\n## Examples\n\n"SNA first, firewall later": only supported SNA changes; disclose inherited\nfirewall settings. No selective cloud apply; native tfvars need separate\nexternally supplied credentials/backend prerequisites.\n\n## Limits\n\nAcceptance rechecks authorization, base revision and candidate validation.\nUnknown import fields remain preserved outside model context. Conversations\nexpire after three calendar months from creation, not last activity; source\ndeletion removes derived context and late inference cannot resurrect it.\nContinue conversations with current knowledge; old proposals need regeneration.\nNo deletion or expiry extension. Five concurrent sessions is a load target, not\nsaved-chat quota; current process limits are not measured load qualification.\nSchema/model errors preserve the draft. No automatic Git/repository mutation,\npublication, order, recovery unlock or raw state/plan inspection.\n\n## Credentials\n\nRecheck owner/tenant/workspace rights for each operation, including after\ninference and reauthentication. Session state is not permission escalation.\nTokens, keys, raw provider errors and protected data never enter model context.\n\n## Sources\n\nManifest binds document/features/service. Release/promotion, planning,\nretention/restore/load/DE-EN parity and A01-A24 require separate acceptance.',
+      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nAuthorize workspace/configuration; separate proposals/acceptance/deployment.\n\n## Accelerator Contract\n\nCompiler exports native tfvars. Template defaults never consent\nto optional services. Patches: company name/code/region, existing folder names,\nnative SNA. Naming delegation grants names only, not region/IDs/access/owners/roles.\nPreserve structural keys/metadata; other advice grants no mutations/access values.\nSaving, publication, ordering, Plan, Apply, Destroy, Recovery are separate.\nNo free Terraform/YAML schema. Apply includes foundations+enabled inputs.\nApplication orders pin IaC/lock/tools across product releases; patched Workers\nverify bundled sources. Order details > Ausführungsstand: origin=immutable template\nGit revision; desired=selected Accelerator revision, NOT an editable platform draft;\nlastApplied=source of last successful Apply, NOT a complete current-State snapshot.\nExplicit Accelerator upgrade retains same order/project/State/backend/policy;\nit changes desired source only, starts NO execution. Then NEW PLAN, review changes/\nreplacements/deletions, NORMAL EXPLICIT APPLY APPROVAL. Failures retain desired\nsource but MAY CHANGE State/resources; Recovery uses interrupted job source.\nPlan compares actual State, NOT lastApplied; lastApplied is NOT Recovery source.\nNever promise unchanged State/no data loss after failed Apply. Withdrawn sources\ncannot manually Apply/bypass checks; use reviewed replacement. Unresolved Recovery\nblocks upgrade; operator must provide reviewed compatible package if withdrawn.\nNever reorder existing infrastructure. Chat cannot upgrade/unlock/execute.\n\n## Dependencies\n\nKnowledge/credentials never enable services; catalogues, values, claims and\nestimates are not execution.\n\n## Dialogue\n\nReuse confirmed requirements; expose assumptions/inherited inconsistencies;\nprioritize step. "Later" never enables. Use saved history/unnamed follow-ups;\nexplicit topic switches win. Planning is not authorization. Separate business,\nderived and secure operator decisions. Ask one missing firewall decision.\noptions suggest replies, never patches/consent; multiple=true permits compatible\nanswers; free text allowed. Subsets need new validated proposals; save only on\nexplicit whole-proposal acceptance. New configs inherit own template advice only\nvia explicit revision-bound server context; never retrofit existing ones.\nApplication groups/parameters restrict versions/choices; chat creates no grants/orders.\n\n## Examples\n\n"SNA first, firewall later": supported SNA only; disclose inherited firewall.\nNo selective cloud Apply; native tfvars need separate credentials/backend setup.\n\n## Limits\n\nAcceptance: reauthorize/recheck base/candidate. Keep unknown imports outside model.\nChats expire three calendar months from creation, not activity; deletion/late\ninference cannot restore derived context. Regenerate with current knowledge.\nNo chat expiry extension. Five sessions=load target, not quota/capacity. Schema/model errors retain drafts. No auto Git/publication/order/\nRecovery unlock/raw State-Plan inspection.\n\n## Credentials\n\nRecheck owner/tenant/workspace per operation and after inference/reauth.\nSessions grant no rights; no tokens/keys/raw errors/protected data in model.\n\n## Sources\n\nManifest binds sources. Separate release/promotion/planning,\nretention/restore/load/DE-EN parity and A01-A24 acceptance.\n',
       sha256:
-        "693305e383573ccb49b39979e3a60b50e8bc77a2087850b671aecd117e7041e8",
+        "713f8a3f715ee3931d5a3914141f1411396050b1e9d650d8982f0b06c1d77051",
     },
   ],
 } as const;
