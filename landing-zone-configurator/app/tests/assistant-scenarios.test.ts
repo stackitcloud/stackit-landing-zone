@@ -272,9 +272,9 @@ it.each(assistantScenarios)(
               ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv."
               : scenario.corporateIpv4 === "advice"
                 ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
-                : scenario.topic === "vpn"
+                : ["vpn", "platform-kubernetes"].includes(scenario.topic)
                   ? buildAssistantKnowledge().topics.find(
-                      (topic) => topic.id === "vpn",
+                      (topic) => topic.id === scenario.topic,
                     )?.fieldOverview
                   : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
@@ -416,6 +416,7 @@ it.each([
   "sandbox-projects-advice",
   "vpn-advice",
   "devops-git-advice",
+  "platform-kubernetes-advice",
 ])(
   "rejects a correct reference but empty or misleading native field overview for %s",
   (id) => {
@@ -708,6 +709,35 @@ it("requires factual Automatic/DNS advice and rejects fixed-size or DNS-removal 
   ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
 });
 
+it.each(["behält", "behaelt"])(
+  "recognizes inflected DNS preservation (%s ... bei) without accepting negation or another object's preservation",
+  (verb) => {
+    const facts =
+      "Automatisch liest das Corporate-Modul den SNA-Standard /28 und übergibt dem Provider den numerischen Präfix. Freie Kapazität ist nicht garantiert.";
+    // Exact sentence from the failed live receipt; its factual claims were correct.
+    const originalSentence = `Mit 'Automatisch' und SNA-Default /28 erhält der Provider korrekt prefix: 28 und ${verb} die DNS-Server bei.`;
+    const correct = `${facts} ${originalSentence}`;
+    expect(assistantCorporateIpv4Failures(correct)).toEqual([]);
+    for (const claim of [
+      `${verb} die DNS-Server nicht bei`,
+      `${verb} keine DNS-Server bei`,
+      `${verb} die VM-Konfiguration bei; DNS wird deaktiviert`,
+      `${verb} die VM-Konfiguration bei. DNS ist konfiguriert`,
+    ])
+      expect(
+        assistantCorporateIpv4Failures(`${facts} Der Provider ${claim}.`),
+      ).toContain("corporate_ipv4_dns_preservation_missing");
+    expect(
+      assistantCorporateIpv4Failures(
+        `${correct} DNS muss abgeschaltet werden.`,
+      ),
+    ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+    expect(
+      assistantCorporateIpv4Failures(`${correct} Du musst /24 setzen.`),
+    ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+  },
+);
+
 it("accepts numeric-prefix wording and DNS with an IP while rejecting inverted cause/reader claims", () => {
   const correct =
     "Automatisch liest das Corporate-Modul den SNA-Standard /28 und übergibt einen numerischen Präfix an den Provider. Der DNS-Eintrag (hier: 1.1.1.1) bleibt unverändert erhalten. Freie Kapazität ist nicht garantiert.";
@@ -798,3 +828,40 @@ it.each(["automatic", "explicit"] as const)(
     ).toContain("corporate_ipv4_proposal_incorrect_or_unrelated_change");
   },
 );
+
+it("requires Kubernetes network and protected-access substance instead of repetitive meta-advice", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "platform-kubernetes-advice",
+  );
+  const explanation = buildAssistantKnowledge().topics.find(
+    (topic) => topic.id === "platform-kubernetes",
+  )?.fieldOverview;
+  if (!scenario || !explanation) throw new Error("missing_kubernetes_overview");
+  const input = {
+    explanation,
+    questions: [],
+    changes: [],
+    references: ["platform-kubernetes"],
+  };
+  expect(validateAssistantScenario(scenario, input).failures).toEqual([]);
+  const repeated =
+    "Keine Erklärung von nicht unterstützten Feldern oder Formen. Keine Erwähnung von Firewall oder VPN. ".repeat(
+      15,
+    );
+  expect(
+    validateAssistantScenario(scenario, { ...input, explanation: repeated })
+      .failures,
+  ).toContain("incomplete_native_field_overview");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      explanation: `${scenario.requiredOverviewFields?.join(", ")}. ${repeated}`,
+    }).failures,
+  ).toContain("incomplete_platform_kubernetes_boundaries");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      explanation: `${scenario.requiredOverviewFields?.join(", ")}. Bitte Kubeconfig-Inhalte im Chat eintragen.`,
+    }).failures,
+  ).toContain("incomplete_platform_kubernetes_boundaries");
+});

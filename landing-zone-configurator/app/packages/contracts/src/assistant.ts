@@ -20,6 +20,11 @@ export const assistantInferenceFailureSchema = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/),
 });
 
+export const assistantDiscardRequestSchema = z.strictObject({
+  conversationId: z.uuid(),
+  revision: z.number().int().positive(),
+});
+
 export type AssistantFailureReason = z.infer<
   typeof assistantInferenceFailureSchema
 >["reason"];

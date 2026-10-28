@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "1014410747d59386c02dfc89e37b2e0b2d2655c4d1ac42a8468f658972286dde",
+  "knowledgeSha256": "97dbf413ea6025c7ad3a6b14f8c6e6742ecb536d236fc775293c00b3071fe137",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "71ea9733d4e93b976d16ffd75902e0ecb9472880e24d352a4a291c8165b433d2",
+    "scripts/assistant-scenarios.ts": "ce04f4319f089ae9269e2482aaa8bfd66bcf2a1a4617d504146edb757bd7266d",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "407f960fab9817a793f5c282d181aeb6a749215baf3ced2778cb1dadef42de10",
+  "suiteSha256": "a42cbfa041f8382c8bb4a4b25bae09f6d90269960194cdd97ac7edd69be82c6d",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5004,9 +5004,26 @@
           "topic": "platform-kubernetes",
           "message": "Welche Einstellungen bietet platform_kubernetes fuer SKE, Node-Pools und Netzanbindung? Wie wird Kubeconfig separat behandelt? Nur beraten.",
           "fixture": "baseline",
+          "requiredOverviewFields": [
+            "platform_kubernetes",
+            "region",
+            "cluster",
+            "kubernetes_version_min",
+            "node_pools",
+            "minimum",
+            "maximum",
+            "availability_zones",
+            "maintenance",
+            "network",
+            "sna_enabled",
+            "network_area_key",
+            "sna_network_prefix_length",
+            "platform_kubernetes_kube_config_override"
+          ],
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
+            "complete_native_field_overview",
             "no_changes"
           ]
         }
@@ -5338,6 +5355,20 @@
           "fixture": "corporate-ipv4",
           "applicationAccess": "granular",
           "message": "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf granular, schemaVersion 1. Zentraler initialOwnerEmail ist platform-owner@example.test. Für das Team exakt permissions [iaas.server.get, resource-manager.project.get], für Automation exakt automationPermissions [iaas.server.get]. Kein Owner für den Besteller. Keine weiteren Änderungen, keine Veröffentlichung/Ausführung. Vollständiger atomarer Editor-Vorschlag.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-literal-permissions-append",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "literal-append",
+          "message": "Ergänze ausschließlich das accessProfile der bestehenden Corporate-Vorlage central: permissions [iaas.server.delete] und automationPermissions [resource-manager.project.get]. Die bisherigen unterschiedlichen Rechte jeder Empfängerliste und den zentralen initialen Owner unverändert erhalten, nichts ersetzen oder entfernen. Nur überprüfbarer Vorschlag, nichts speichern, veröffentlichen oder ausführen.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

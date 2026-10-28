@@ -19,17 +19,19 @@ Dies sind getrennte Entscheidungen, keine impliziten Teile einer SNA-Anfrage.
 
 ## Accelerator-Vertrag
 
-Natives `platform_kubernetes` ist eine Map mit Schluesseln.
-Eintraege definieren Region, Cluster (`name/version/node_pools/maintenance`),
-`network`, `dns`, `observability`, `encrypted_volumes`, `debug_bastion` und
-`role_assignments`.
-Netzwerkeinstellungen umfassen `sna_enabled`, `network_area_key` und `prefix`;
-Root loest native Area-Referenzen oder eine explizit gebundene externe Area auf.
-Regionale Modulaufrufe waehlen eu01/eu02.
-KMS-gestuetzte Storage-Class-Konfiguration unterscheidet sich von der
-Aktivierung von Verschluesselung fuer alle Volumes.
-Debug-Bastion ist ein getrenntes VM-/SSH-Zugangsfeature.
-Geschuetztes `platform_kubernetes_kube_config_override` ist keine normale
+`platform_kubernetes` ist eine Map mit stabilen Schluesseln.
+Jeder Eintrag enthaelt `region` und `cluster` mit `name`,
+`kubernetes_version_min`, `node_pools` und `maintenance`.
+Pools bestimmen `name`, `machine_type`, `minimum`/`maximum`,
+`availability_zones` und optionale Systemkomponenten-, Volume-, OS- und Label-Werte.
+`network` enthaelt `sna_enabled`, `network_area_key`, `sna_network_area_id`,
+`firewall_next_hop_ip` und `sna_network_prefix_length`; Root loest native
+Area-Schluessel oder eine explizit gebundene externe Area fuer eu01/eu02 auf.
+`dns`, `observability`, `encrypted_volumes`, `debug_bastion` und
+`role_assignments` sind getrennte Optionen.
+KMS-gestuetzte Storage-Classes verschluesseln nicht automatisch alle Volumes.
+Debug-Bastion ist ein getrenntes VM-/SSH-Feature.
+Geschuetztes `platform_kubernetes_kube_config_override` ist keine oeffentliche
 Chat-Konfiguration.
 
 <a id="dependencies"></a>
@@ -61,8 +63,8 @@ aktivieren, nur um SNA zu testen.
 
 Synthetische Deaktivierung: `platform_kubernetes = {}`.
 Ein aktivierter Eintrag benoetigt bestaetigte Cluster-/Node-Pool-Einstellungen;
-ein /24-Netzpraefix oder Schluessel-Default reicht nicht fuer Zusagen
-ueber 100 Workloads, Cluster-Quoten oder Isolation je Namespace.
+ein /24-Netzpraefix oder Schluessel-Default garantiert weder freie Adressen,
+Workload-Kapazitaet, Cluster-Quoten noch Isolation je Namespace.
 
 <a id="limits"></a>
 

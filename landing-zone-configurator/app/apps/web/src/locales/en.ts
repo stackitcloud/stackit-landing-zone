@@ -2756,4 +2756,8 @@ export const englishMessages: Record<string, string> = {
     "Your session has expired. Your draft is preserved here and can be downloaded. Sign in again to save it in the same workspace.",
   "Abmelden? Nicht gespeicherte Änderungen bitte zuerst speichern oder herunterladen.":
     "Sign out? Save or download unsaved changes first.",
+  "Vorschlag verwerfen": "Discard proposal",
+  "Vorschlag verworfen.": "Proposal discarded.",
+  "Vorschlag verworfen. Gespräch und Konfigurationsentwurf bleiben erhalten.":
+    "Proposal discarded. The conversation and configuration draft are preserved.",
 };

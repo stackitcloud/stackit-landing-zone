@@ -131,6 +131,51 @@ export type AssistantCatalogueContext = {
   }[];
 };
 
+// Literal field-labelled lists are user input, not values for the model to invent
+// or expand. Resolve both recipients independently and keep catalogue checks later.
+function applicationPermissionLists(message: string) {
+  const fields = ["permissions", "automationPermissions"] as const;
+  const sources = fields.map((field) => {
+    const head = String.raw`(?:^|[^A-Za-z0-9_])["\x27\x60]?${field}["\x27\x60]?\s*(?::|=)?\s*\[`;
+    return {
+      field,
+      headers: [...message.matchAll(new RegExp(head, "g"))],
+      arrays: [
+        ...message.matchAll(new RegExp(head + String.raw`([^\]]*)\]`, "g")),
+      ],
+    };
+  });
+  if (sources.some((source) => source.headers.length === 0)) return false;
+  const result: Record<"permissions" | "automationPermissions", string[]> = {
+    permissions: [],
+    automationPermissions: [],
+  };
+  for (const { field, headers, arrays } of sources) {
+    if (headers.length !== 1 || arrays.length !== 1) return null;
+    const body = arrays[0]![1]!.trim();
+    let values: unknown;
+    try {
+      values = JSON.parse(`[${body}]`);
+    } catch {
+      values = body
+        ? body
+            .split(",")
+            .map((value) => value.trim().replace(/^(["'`])(.+)\1$/, "$2"))
+        : [];
+    }
+    if (
+      !Array.isArray(values) ||
+      values.length > 2000 ||
+      !values.every(
+        (value) => applicationPermissionName.safeParse(value).success,
+      )
+    )
+      return null;
+    result[field] = values as string[];
+  }
+  return result;
+}
+
 function modelCatalogueContext(
   context: AssistantCatalogueContext,
 ): AssistantCatalogueContext {
@@ -708,6 +753,113 @@ export class AssistantModelServing {
         }
       return null;
     })();
+    const applicationAccessScope = z.strictObject({
+      key: z
+        .enum([...existingTemplateKeys, "__select_by_kind__"])
+        .describe(
+          "Use the exact existing key only when the user identifies that template. For a kind-only Public/Corporate request use __select_by_kind__, never guess among matching templates.",
+        ),
+    });
+    const permissionListInput = applicationPermissionLists(message);
+    const sourcePermissionLists = permissionListInput || null;
+    const customApplicationAccessIntent = applicationAccessScope.extend({
+      choice: z
+        .literal("custom-granular")
+        .describe(
+          "Only USER-specified explicit permission lists, not a preset or service addition.",
+        ),
+      initialOwnerEmail: z.string().max(254).default(""),
+      ...(sourcePermissionLists
+        ? {
+            listOperation: z
+              .enum(["replace", "append", "clarify"])
+              .describe(
+                "CURRENT USER intent for BOTH field-labelled lists: replace for exact desired complete lists; append for adding entries while keeping each recipient's existing rights and the central owner. clarify when recipients need different operations or the operation is ambiguous. Never turn an addition into replacement. No permission IDs in the response.",
+              ),
+          }
+        : {
+            permissions: z
+              .array(z.string().min(1).max(256))
+              .max(2000)
+              .default([]),
+            automationPermissions: z
+              .array(z.string().min(1).max(256))
+              .max(2000)
+              .default([]),
+          }),
+    });
+    const allApplicationAccessIntents = z.union([
+      applicationAccessScope.extend({
+        choice: z
+          .literal("owner")
+          .describe(
+            "Only explicitly requested full project Owner rights for requester and Application-service-account; no granular fields. Naming a central initial owner is NOT consent to give the requester Owner rights.",
+          ),
+      }),
+      applicationAccessScope.extend({
+        choice: z
+          .enum(["vm-operations-v1", "application-workloads-v1"])
+          .describe(
+            "Explicit VM-only preset, or recommended Application workload preset for VMs, Object Storage, Observability and Secrets Manager. A separate central initialOwnerEmail does not select full project Owner rights for the requester. The server resolves every preset permission; NEVER generate permission IDs here.",
+          ),
+        initialOwnerEmail: z.string().max(254).default(""),
+      }),
+      applicationAccessScope.extend({
+        choice: z
+          .literal("add-service-permissions")
+          .describe(
+            "Add official service permissions to an existing granular profile; the server resolves all permission IDs. Never generate full lists or change the central owner.",
+          ),
+        templateKind: z
+          .enum(["public", "corporate", "unspecified"])
+          .default("unspecified")
+          .describe(
+            "Public/Corporate only when the current user identifies the kind rather than a specific template; otherwise unspecified.",
+          ),
+        templateEvidence: z
+          .string()
+          .max(1000)
+          .default("")
+          .describe(
+            "Exact current USER quote identifying Public or Corporate. If only a kind is named, use key=__select_by_kind__ and this quote; the server resolves exactly one matching existing template or asks which. Never guess a key when several match.",
+          ),
+        services: z
+          .array(z.enum(permissionServices as [string, ...string[]]))
+          .max(60)
+          .default([])
+          .describe(
+            "Official permission service prefixes explicitly requested for addition. Kubernetes cluster management is ske; do not add IAM or unrelated services. This is project IAM, not Kubernetes namespace RBAC.",
+          ),
+        permissionTarget: z
+          .enum(["requester", "automation", "both"])
+          .default("both")
+          .describe(
+            "Who should receive the requested rights? requester = the person ordering the Landing Zone; automation = the created Application-Service-Account; both ONLY if both are intended or no recipient is mentioned. A request that someone gets rights when ordering (German: bei der Bestellung ... Rechte bekommt) explicitly means requester, NOT both. The word Application Landing Zone is not a request for automation permissions. Preserve the other recipient unchanged.",
+          ),
+        serviceEvidenceSource: z
+          .enum([
+            "current",
+            ...(pendingPermissionSelection
+              ? [pendingPermissionSelection.source]
+              : []),
+          ])
+          .default("current")
+          .describe(
+            "Use current normally. The supplied pendingPermissionSelection source may be used ONLY when the current user selects exactly that offered template, continuing the still-open original service-rights request; keep its exact services and permissionTarget. Never use arbitrary history.",
+          ),
+        serviceEvidence: z
+          .string()
+          .max(1000)
+          .default("")
+          .describe(
+            "Exact nonempty quote from the selected USER source requesting service permission addition. Current normally; only the supplied still-open pending selection may use its controlled history source. Never assistant statements or a catalogue.",
+          ),
+      }),
+      customApplicationAccessIntent,
+    ]);
+    const applicationAccessIntent = sourcePermissionLists
+      ? customApplicationAccessIntent
+      : allApplicationAccessIntents;
     const intentSchema = z.strictObject({
       applicationAccessLanguage: z
         .enum(["de", "en"])
@@ -715,78 +867,7 @@ export class AssistantModelServing {
         .describe(
           "Language of the current user or latest natural-language user turn.",
         ),
-      applicationAccess: z
-        .strictObject({
-          key: z
-            .enum([...existingTemplateKeys, "__select_by_kind__"])
-            .describe(
-              "Use the exact existing key only when the user identifies that template. For a kind-only Public/Corporate request use __select_by_kind__, never guess among matching templates.",
-            ),
-          templateKind: z
-            .enum(["public", "corporate", "unspecified"])
-            .default("unspecified")
-            .describe(
-              "Public/Corporate only when the current user identifies the kind rather than a specific template; otherwise unspecified.",
-            ),
-          templateEvidence: z
-            .string()
-            .max(1000)
-            .default("")
-            .describe(
-              "Exact current USER quote identifying Public or Corporate. If only a kind is named, use key=__select_by_kind__ and this quote; the server resolves exactly one matching existing template or asks which. Never guess a key when several match.",
-            ),
-          choice: z
-            .enum([
-              "owner",
-              "vm-operations-v1",
-              "application-workloads-v1",
-              "custom-granular",
-              "add-service-permissions",
-            ])
-            .describe(
-              "USER's requested requester/Application-service-account access, not the separate initial owner: owner ONLY for full owner rights to requester and automation; vm-operations-v1 for the explicitly requested VM-only preset; application-workloads-v1 for the recommended Application workload preset including VM, Object Storage, Observability and Secrets Manager; custom-granular for explicit permissions/automationPermissions lists; add-service-permissions ONLY when the user asks to ADD management permissions for named STACKIT services (Kubernetes/SKE = ske). This adds the official service permission set to existing granular lists and preserves the central owner and all existing permissions. Use services/permissionTarget/serviceEvidence; never copy hundreds of IDs. If several templates could be meant, ask which rather than choosing one. Mentioning a central initial owner does NOT select owner. 'granular ... kein Owner für den Besteller' is custom-granular or the requested VM preset.",
-            ),
-          services: z
-            .array(z.enum(permissionServices as [string, ...string[]]))
-            .max(60)
-            .default([])
-            .describe(
-              "Official permission service prefixes explicitly requested for addition. Kubernetes cluster management is ske; do not add IAM or unrelated services. This is project IAM, not Kubernetes namespace RBAC.",
-            ),
-          permissionTarget: z
-            .enum(["requester", "automation", "both"])
-            .default("both")
-            .describe(
-              "Who should receive the requested rights? requester = the person ordering the Landing Zone; automation = the created Application-Service-Account; both ONLY if both are intended or no recipient is mentioned. A request that someone gets rights when ordering (German: bei der Bestellung ... Rechte bekommt) explicitly means requester, NOT both. The word Application Landing Zone is not a request for automation permissions. Preserve the other recipient unchanged.",
-            ),
-          serviceEvidenceSource: z
-            .enum([
-              "current",
-              ...(pendingPermissionSelection
-                ? [pendingPermissionSelection.source]
-                : []),
-            ])
-            .default("current")
-            .describe(
-              "Use current normally. The supplied pendingPermissionSelection source may be used ONLY when the current user selects exactly that offered template, continuing the still-open original service-rights request; keep its exact services and permissionTarget. Never use arbitrary history.",
-            ),
-          serviceEvidence: z
-            .string()
-            .max(1000)
-            .default("")
-            .describe(
-              "Exact nonempty quote from the selected USER source requesting service permission addition. Current normally; only the supplied still-open pending selection may use its controlled history source. Never assistant statements or a catalogue.",
-            ),
-          initialOwnerEmail: z.string().max(254).default(""),
-          permissions: z
-            .array(z.string().min(1).max(256))
-            .max(2000)
-            .default([]),
-          automationPermissions: z
-            .array(z.string().min(1).max(256))
-            .max(2000)
-            .default([]),
-        })
+      applicationAccess: applicationAccessIntent
         .nullable()
         .default(null)
         .describe(
@@ -1171,7 +1252,7 @@ export class AssistantModelServing {
           {
             role: "system",
             content:
-              "Application project IAM: distinguish information questions from desired changes. An accessProfile-only change on an existing template MUST use applicationAccess, not generic templateSetup/editorInputs. Full project Owner rights explicitly requested for requester and automation select choice=owner (schemaVersion 1, mode owner), with no granular fields; do not substitute the workload default. A wish that future orderers receive Kubernetes/other service rights is an explicit template-change request, even without the words add/proposal: use topic=project-templates, mode=draft, adviceTask=other, applicationAccess.choice=add-service-permissions. Granting a future requester the ability to order/use a Kubernetes cluster means adding SKE project IAM to the existing template, NOT creating a cluster, platform Kubernetes or namespace building block. If only Public/Corporate is specified, use key=__select_by_kind__, templateKind and exact templateEvidence from the current message. The server asks which when several match. If the request concerns what the orderer receives, permissionTarget=requester; do not also change Application-service-account permissions unless requested. Preserve the existing central owner and all other settings. Actual advice questions about what roles mean use mode=advice with applicationAccess=null. Never treat a desired permission change as a request for the general access overview. If pendingPermissionSelection is supplied and the current user chooses that template, continue its original USER service request using that controlled serviceEvidenceSource and key, preserving the original services and recipient. The current selection is not a new advice request. Otherwise never reactivate old permission tasks.",
+              "Application project IAM: distinguish information questions from desired changes. If the CURRENT USER supplies literal arrays for both permissions and automationPermissions, choose applicationAccess custom-granular with only key, initialOwnerEmail and listOperation: the server uses those exact field-labelled lists, so do not echo them and never substitute a preset or generic templateSetup. Set listOperation=replace only for a complete desired set; choose append for Ergänze/add/append requests, preserving each recipient and central owner; choose clarify when the two recipients request different operations or the operation is unclear. Advice remains applicationAccess=null. An accessProfile-only change on an existing template MUST use applicationAccess, not generic templateSetup/editorInputs. Full project Owner rights explicitly requested for requester and automation select choice=owner (schemaVersion 1, mode owner), with no granular fields; do not substitute the workload default. A wish that future orderers receive Kubernetes/other service rights is an explicit template-change request, even without the words add/proposal: use topic=project-templates, mode=draft, adviceTask=other, applicationAccess.choice=add-service-permissions. Granting a future requester the ability to order/use a Kubernetes cluster means adding SKE project IAM to the existing template, NOT creating a cluster, platform Kubernetes or namespace building block. If only Public/Corporate is specified, use key=__select_by_kind__, templateKind and exact templateEvidence from the current message. The server asks which when several match. If the request concerns what the orderer receives, permissionTarget=requester; do not also change Application-service-account permissions unless requested. Preserve the existing central owner and all other settings. Actual advice questions about what roles mean use mode=advice with applicationAccess=null. Never treat a desired permission change as a request for the general access overview. If pendingPermissionSelection is supplied and the current user chooses that template, continue its original USER service request using that controlled serviceEvidenceSource and key, preserving the original services and recipient. The current selection is not a new advice request. Otherwise never reactivate old permission tasks.",
           },
           {
             role: "system",
@@ -1225,6 +1306,47 @@ export class AssistantModelServing {
     if (!intentResult.success)
       throw new AssistantInferenceError("intent_schema");
     const classifiedIntent = intentResult.data;
+    if (
+      (permissionListInput === null ||
+        (sourcePermissionLists &&
+          classifiedIntent.applicationAccess &&
+          "listOperation" in classifiedIntent.applicationAccess &&
+          classifiedIntent.applicationAccess.listOperation === "clarify")) &&
+      classifiedIntent.mode === "draft" &&
+      classifiedIntent.topic === "project-templates"
+    ) {
+      const dialogue = validateDialogue(
+        {
+          explanation:
+            classifiedIntent.applicationAccessLanguage === "en"
+              ? "The two permission lists or their operations are ambiguous or invalid. No changes have been proposed."
+              : "Die beiden Rechte-Listen sind mehrdeutig oder ungültig, oder ihre Änderungsarten sind verschieden. Es wurde keine Änderung vorgeschlagen.",
+          questions: [
+            {
+              path: "projectTemplates",
+              text:
+                classifiedIntent.applicationAccessLanguage === "en"
+                  ? "Please supply each list once and clarify whether both lists should replace the existing rights or append to them. Request different recipient operations separately."
+                  : "Bitte gib jede Liste einmal an und kläre, ob beide Listen die bisherigen Rechte ersetzen oder ergänzen sollen. Unterschiedliche Änderungsarten bitte getrennt anfordern.",
+              options: [],
+            },
+          ],
+          changes: [],
+          references: ["project-templates"],
+        },
+        context.rules.map((rule) => rule.id),
+      );
+      stream?.onText(dialogue.explanation);
+      return dialogue;
+    }
+    if (
+      sourcePermissionLists &&
+      classifiedIntent.mode === "draft" &&
+      classifiedIntent.topic === "project-templates" &&
+      !classifiedIntent.applicationAccess
+    )
+      throw new AssistantInferenceError("intent_evidence");
+
     const policyBoundary = () => {
       const policyOverview = context.topics.find(
         (topic) => topic.id === "firewall-policy",
@@ -1312,7 +1434,30 @@ export class AssistantModelServing {
         !context.rules.some((rule) => rule.id === "project-templates")
       )
         throw new AssistantInferenceError("invalid_scope");
-      const selected = classifiedIntent.applicationAccess;
+      const selected = {
+        templateKind: "unspecified" as "public" | "corporate" | "unspecified",
+        templateEvidence: "",
+        services: [] as string[],
+        permissionTarget: "both" as "requester" | "automation" | "both",
+        serviceEvidenceSource: "current",
+        serviceEvidence: "",
+        initialOwnerEmail: "",
+        ...classifiedIntent.applicationAccess,
+        listOperation:
+          "listOperation" in classifiedIntent.applicationAccess
+            ? classifiedIntent.applicationAccess.listOperation
+            : null,
+        permissions:
+          sourcePermissionLists?.permissions ??
+          ("permissions" in classifiedIntent.applicationAccess
+            ? (classifiedIntent.applicationAccess.permissions ?? [])
+            : []),
+        automationPermissions:
+          sourcePermissionLists?.automationPermissions ??
+          ("automationPermissions" in classifiedIntent.applicationAccess
+            ? (classifiedIntent.applicationAccess.automationPermissions ?? [])
+            : []),
+      };
       let { key } = selected;
       let serviceSource = message;
       if (selected.serviceEvidenceSource !== "current") {
@@ -1461,7 +1606,25 @@ export class AssistantModelServing {
       }
       let profile: ReturnType<typeof applicationAccessProfileSchema.parse>;
       try {
-        if (selected.choice === "add-service-permissions") {
+        if (sourcePermissionLists && selected.listOperation === "append") {
+          const previous = applicationAccessProfileSchema.parse(
+            template.accessProfile,
+          );
+          if (previous.mode !== "granular")
+            throw new Error("literal_append_requires_granular_profile");
+          profile = applicationAccessProfileSchema.parse({
+            ...previous,
+            permissions: [
+              ...new Set([...previous.permissions, ...selected.permissions]),
+            ],
+            automationPermissions: [
+              ...new Set([
+                ...previous.automationPermissions,
+                ...selected.automationPermissions,
+              ]),
+            ],
+          });
+        } else if (selected.choice === "add-service-permissions") {
           const previous = applicationAccessProfileSchema.parse(
             template.accessProfile,
           );
@@ -1635,7 +1798,11 @@ export class AssistantModelServing {
                 ? classifiedIntent.applicationAccessLanguage === "en"
                   ? `Add catalogue permissions for ${selected.services.map((service) => (service === "ske" ? "Kubernetes (SKE)" : service)).join(", ")} to ${selected.permissionTarget}; existing permissions and central owner are preserved. `
                   : `Katalogrechte für ${selected.services.map((service) => (service === "ske" ? "Kubernetes (SKE)" : service)).join(", ")} ergänzen: ${selected.permissionTarget === "requester" ? "nur Besteller" : selected.permissionTarget === "automation" ? "nur Application-Service-Account" : "Besteller und Application-Service-Account"}. Bestehende Rechte und zentraler Owner bleiben erhalten. `
-                : "") +
+                : sourcePermissionLists && selected.listOperation === "append"
+                  ? classifiedIntent.applicationAccessLanguage === "en"
+                    ? "Append the supplied rights to each recipient's own list; existing rights and the central owner are preserved. "
+                    : "Die angegebenen Rechte ergänzen jeweils die eigene Empfängerliste; bestehende Rechte und zentraler Owner bleiben erhalten. "
+                  : "") +
               (classifiedIntent.applicationAccessLanguage === "en"
                 ? "Reviewable Application project IAM proposal. Nothing has been saved. Acceptance changes only the local template draft; no IDP or Configurator roles, publication or execution. Existing instances remain unchanged."
                 : "Überprüfbarer Vorschlag für das ausgerollte Application-Projekt-IAM. Noch nichts gespeichert. Nur der lokale Template-Entwurf ändert sich nach Übernahme; keine IDP-/Configurator-Rollen, Veröffentlichung oder Ausführung. Bestehende Instanzen bleiben unverändert."),

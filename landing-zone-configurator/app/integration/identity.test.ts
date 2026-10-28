@@ -2116,6 +2116,157 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     await configurations.remove(alice, stored.id, 2);
   });
 
+  it("discards only the identified pending proposal without changing its configuration, and closes stale continuations", async () => {
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(
+      alice,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    const original = await configurations.get(alice, stored.id);
+    const initial: Dialogue = {
+      explanation: "Open proposal question that must not be resumed",
+      questions: [],
+      changes: [{ path: "company_name", value: "Never accepted" }],
+      references: ["configuration-contract"],
+    };
+    const model = { converse: vi.fn(async (..._args: unknown[]) => initial) };
+    const assistant = new AssistantConversations(pool, model);
+    const proposal = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Propose a company name",
+    );
+    for (const input of [
+      { conversationId: randomUUID(), revision: proposal.revision },
+      { conversationId: proposal.id, revision: proposal.revision + 1 },
+    ])
+      await expect(
+        assistant.discard(alice, stored.id, input),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "assistant_proposal_changed",
+      });
+    await expect(
+      assistant.discard(bob, stored.id, {
+        conversationId: proposal.id,
+        revision: proposal.revision,
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect((await assistant.get(alice, stored.id))?.proposal).not.toBeNull();
+    let started!: () => void, release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    model.converse.mockImplementationOnce(async () => {
+      started();
+      await gate;
+      return initial;
+    });
+    const inFlight = assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Prepare another draft",
+    );
+    await ready;
+    const discarded = await assistant.discard(alice, stored.id, {
+      conversationId: proposal.id,
+      revision: proposal.revision,
+    });
+    release();
+    await expect(inFlight).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_conversation_changed",
+    });
+    expect(discarded.proposal).toBeNull();
+    expect(discarded.revision).toBe(proposal.revision + 1);
+    expect(discarded.messages).toHaveLength(proposal.messages.length);
+    expect(
+      discarded.messages.map(({ id, role, content }) => ({
+        id,
+        role,
+        content,
+      })),
+    ).toEqual(proposal.messages);
+    expect(discarded.messages.at(-1)?.proposalDiscarded).toBe(true);
+    expect(model.converse).toHaveBeenCalledTimes(2);
+    await expect(
+      assistant.accept(alice, stored.id, proposal.revision, 1),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_proposal_changed",
+    });
+    await expect(
+      assistant.discard(alice, stored.id, {
+        conversationId: proposal.id,
+        revision: proposal.revision,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(await configurations.get(alice, stored.id)).toEqual(original);
+    expect(
+      await new AssistantConversations(pool, model).get(alice, stored.id),
+    ).toEqual(discarded);
+    model.converse.mockImplementationOnce(
+      async (_selection, _values, history) => {
+        expect(history).toHaveLength(proposal.messages.length);
+        expect(history).toEqual([
+          {
+            role: proposal.messages[0]?.role,
+            content: proposal.messages[0]?.content,
+          },
+          expect.objectContaining({
+            role: "assistant",
+            content: expect.stringContaining("This turn is closed"),
+          }),
+        ]);
+        expect(JSON.stringify(history)).not.toContain(initial.explanation);
+        return {
+          explanation: "New advice only",
+          questions: [],
+          changes: [],
+          references: ["configuration-contract"],
+        };
+      },
+    );
+    const continued = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Explain the configuration instead",
+    );
+    expect(continued.proposal?.changes).toEqual([]);
+    expect(continued.messages.slice(0, 2)).toEqual(discarded.messages);
+    expect(await configurations.get(alice, stored.id)).toEqual(original);
+    const fullMessages = Array.from({ length: 40 }, (_, index) => ({
+      id: randomUUID(),
+      role: index % 2 ? "assistant" : "user",
+      content: `Retained message ${index}`,
+    }));
+    await migration.query(
+      "UPDATE lzc.assistant_conversations SET messages=$2 WHERE id=$1",
+      [continued.id, JSON.stringify(fullMessages)],
+    );
+    const fullDiscarded = await assistant.discard(alice, stored.id, {
+      conversationId: continued.id,
+      revision: continued.revision,
+    });
+    expect(fullDiscarded.messages).toHaveLength(40);
+    expect(fullDiscarded.messages.slice(0, 39)).toEqual(
+      fullMessages.slice(0, 39),
+    );
+    expect(fullDiscarded.messages[39]).toEqual({
+      ...fullMessages[39],
+      proposalDiscarded: true,
+    });
+    expect(model.converse).toHaveBeenCalledTimes(3);
+    expect(await configurations.get(alice, stored.id)).toEqual(original);
+    await configurations.remove(alice, stored.id, 1);
+  });
+
   it("persists assistant conversations, accepts only current proposals and cascades parent deletion", async () => {
     const configurations = new Configurations(pool);
     const stored = await configurations.create(

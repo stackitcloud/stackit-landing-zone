@@ -402,12 +402,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "123d79e0bb930a7817fc0557a609587050f56104e6a62c5aa499f1beec3b856f",
+            "f9560f36911f5735ebe69ca7f55f642fda0c78d8d005b975cee8efd032f78c57",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "4f13675917d05b0e57de3ba3cc01a02aa50775608b0004ac8126e429debe7f3c",
+            "1a374ed816dfcaa67a43bd27ca6e36ed2baceabf4bc904fede3e8b373d32680b",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1269,9 +1269,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/platform-kubernetes.md",
-      text: '# Platform Kubernetes, KMS and Bastion\n\n## Purpose\n\nCreate shared STACKIT Kubernetes infrastructure with deliberate networking,\nnode pools and supported optional DNS, monitoring, encrypted storage and debug\naccess. These are separate choices, not implicit parts of an SNA request.\n\n## Accelerator Contract\n\nNative platform_kubernetes is a keyed map. Entries define region, cluster\n(name/version/node_pools/maintenance), network, dns, observability,\nencrypted_volumes, debug_bastion and role_assignments. Network settings include\nsna_enabled, network_area_key and prefix; root resolves native area references\nor an explicitly bound external area. Regional module calls select eu01/eu02.\nKMS-backed storage-class configuration differs from enabling all-volume\nencryption. Debug bastion is a separate VM/SSH access feature. Protected\nplatform_kubernetes_kube_config_override is not normal chat configuration.\n\n## Dependencies\n\nSNA/region for corporate mode, governance/platform ownership and credential\nfoundations. DNS and observability are independent nested options. KMS needs\nrights and compatible storage; namespaces consume the supported cluster/provider\npath. Public mode is not private reachability by assumption.\n\n## Dialogue\n\nAsk about workload scale, private/public connectivity, node-pool/system workload\nroles, availability, maintenance, storage encryption and operational access.\nUse live versions/machines/zones/volumes, not static default SKUs. Never create\na bastion, expose SSH to all networks or enable demos merely to "test SNA".\n\n## Examples\n\nSynthetic opt-out: platform_kubernetes = {}. An enabled entry needs confirmed\ncluster/node-pool settings; a /24 network prefix or key default is not enough\nto promise 100 workloads, cluster quotas or per-namespace isolation.\n\n## Limits\n\nNative Editor proposals support reviewed public cluster/KMS/bastion settings,\nnot credentials or deployment. Validate region,\nprefix bounds, node min/max, system pools and area references. Template defaults\nmay contain region-specific zones. In-cluster connectivity, provider access,\nKMS use and node health need separate real execution qualification.\n\n## Credentials\n\nProvider/KMS rights, Kubernetes access and bastion SSH are distinct secure\nbindings. Never request kubeconfig contents, private SSH keys or KMS secret\nmaterial; externally supplied overrides must work with the native contract.\n\n## Sources\n\nRoot calls, cluster/bastion variables, providers and shared validation define\nthe reviewed scope. Re-review DNS/region/provider and encryption changes before\ngeneration; Markdown does not certify private-cluster execution.',
+      text: '# Platform Kubernetes, KMS and Bastion\n\n## Purpose\n\nConfigure shared STACKIT Kubernetes with deliberate networking and node pools.\nDNS, monitoring, encrypted storage and debug access are separate choices, not\nimplicit parts of an SNA request.\n\n## Accelerator Contract\n\nplatform_kubernetes is a keyed map. Each entry has region and cluster with\nname, kubernetes_version_min, node_pools and maintenance. Pools define name,\nmachine_type, minimum/maximum, availability_zones and optional system-component,\nvolume, OS and label settings. network uses sna_enabled, network_area_key,\nsna_network_area_id, firewall_next_hop_ip and sna_network_prefix_length; root\nresolves native area keys or an explicitly bound external area for eu01/eu02.\ndns, observability, encrypted_volumes, debug_bastion and role_assignments are\nseparate options. KMS-backed storage classes do not encrypt every volume.\nDebug bastion is a separate VM/SSH feature. Protected\nplatform_kubernetes_kube_config_override is not public chat configuration.\n\n## Dependencies\n\nSNA/region for corporate mode, governance/platform ownership and credential\nfoundations. DNS and observability are independent nested options. KMS needs\nrights and compatible storage; namespaces consume the supported cluster/provider\npath. Public mode is not private reachability by assumption.\n\n## Dialogue\n\nAsk about scale, connectivity, system/workload pools, availability, maintenance,\nencryption and operational access.\nUse live versions/machines/zones/volumes, not static default SKUs. Never create\na bastion, expose SSH to all networks or enable demos merely to "test SNA".\n\n## Examples\n\nSynthetic opt-out: platform_kubernetes = {}. Enabled clusters need confirmed\ncluster/pool settings; a /24 or key default guarantees neither free addresses,\nworkload capacity, quotas nor namespace isolation.\n\n## Limits\n\nThe Editor supports reviewed public cluster/KMS/bastion drafts, not credentials\nor deployment. Validate region, prefixes, pool minimum/maximum, system pools\nand area references. Defaults may contain regional zones. Connectivity, provider\naccess, KMS and node health need separate execution qualification.\n\n## Credentials\n\nProvider/KMS rights, Kubernetes access and bastion SSH need distinct secure\nbindings. Never request kubeconfig, private SSH keys or KMS secrets; external\noverrides must match the native contract.\n\n## Sources\n\nRoot calls, cluster/bastion variables, providers and validation define this\nscope. Review DNS, region, provider and encryption changes before generation.\nMarkdown does not certify private-cluster execution.',
       sha256:
-        "8aa0a773059fb47a1f9fa46524fe3aeae2b4f94c23d8f1c46cedd4820f2f7557",
+        "90669bb4c25a91714c74caca6b015e69810d878d55f040d266e09a5b4582e3f4",
     },
     {
       id: "project-templates",
@@ -1560,7 +1560,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "123d79e0bb930a7817fc0557a609587050f56104e6a62c5aa499f1beec3b856f",
+            "f9560f36911f5735ebe69ca7f55f642fda0c78d8d005b975cee8efd032f78c57",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
@@ -1575,17 +1575,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "ae6acbabc570c72a1b2cc14bf05c820747d69d082d058689e1a7624cad2b0ba4",
+            "da3dd860c20b28d68b68a4312a47802205dbd957595ccd03f6c8413786421e91",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "4f13675917d05b0e57de3ba3cc01a02aa50775608b0004ac8126e429debe7f3c",
+            "1a374ed816dfcaa67a43bd27ca6e36ed2baceabf4bc904fede3e8b373d32680b",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "906dc58635bc8d738e252777c7524caf59631fbff4f4a5d8f470aa85c82630b9",
+            "0a87435fcb6ae19aa08fb93716895205261acb19f147b28e1ceba7f1f9bff7c4",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts",

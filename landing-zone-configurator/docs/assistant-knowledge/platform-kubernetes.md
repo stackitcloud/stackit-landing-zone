@@ -2,20 +2,22 @@
 
 ## Purpose
 
-Create shared STACKIT Kubernetes infrastructure with deliberate networking,
-node pools and supported optional DNS, monitoring, encrypted storage and debug
-access. These are separate choices, not implicit parts of an SNA request.
+Configure shared STACKIT Kubernetes with deliberate networking and node pools.
+DNS, monitoring, encrypted storage and debug access are separate choices, not
+implicit parts of an SNA request.
 
 ## Accelerator Contract
 
-Native platform_kubernetes is a keyed map. Entries define region, cluster
-(name/version/node_pools/maintenance), network, dns, observability,
-encrypted_volumes, debug_bastion and role_assignments. Network settings include
-sna_enabled, network_area_key and prefix; root resolves native area references
-or an explicitly bound external area. Regional module calls select eu01/eu02.
-KMS-backed storage-class configuration differs from enabling all-volume
-encryption. Debug bastion is a separate VM/SSH access feature. Protected
-platform_kubernetes_kube_config_override is not normal chat configuration.
+platform_kubernetes is a keyed map. Each entry has region and cluster with
+name, kubernetes_version_min, node_pools and maintenance. Pools define name,
+machine_type, minimum/maximum, availability_zones and optional system-component,
+volume, OS and label settings. network uses sna_enabled, network_area_key,
+sna_network_area_id, firewall_next_hop_ip and sna_network_prefix_length; root
+resolves native area keys or an explicitly bound external area for eu01/eu02.
+dns, observability, encrypted_volumes, debug_bastion and role_assignments are
+separate options. KMS-backed storage classes do not encrypt every volume.
+Debug bastion is a separate VM/SSH feature. Protected
+platform_kubernetes_kube_config_override is not public chat configuration.
 
 ## Dependencies
 
@@ -26,33 +28,32 @@ path. Public mode is not private reachability by assumption.
 
 ## Dialogue
 
-Ask about workload scale, private/public connectivity, node-pool/system workload
-roles, availability, maintenance, storage encryption and operational access.
+Ask about scale, connectivity, system/workload pools, availability, maintenance,
+encryption and operational access.
 Use live versions/machines/zones/volumes, not static default SKUs. Never create
 a bastion, expose SSH to all networks or enable demos merely to "test SNA".
 
 ## Examples
 
-Synthetic opt-out: platform_kubernetes = {}. An enabled entry needs confirmed
-cluster/node-pool settings; a /24 network prefix or key default is not enough
-to promise 100 workloads, cluster quotas or per-namespace isolation.
+Synthetic opt-out: platform_kubernetes = {}. Enabled clusters need confirmed
+cluster/pool settings; a /24 or key default guarantees neither free addresses,
+workload capacity, quotas nor namespace isolation.
 
 ## Limits
 
-Native Editor proposals support reviewed public cluster/KMS/bastion settings,
-not credentials or deployment. Validate region,
-prefix bounds, node min/max, system pools and area references. Template defaults
-may contain region-specific zones. In-cluster connectivity, provider access,
-KMS use and node health need separate real execution qualification.
+The Editor supports reviewed public cluster/KMS/bastion drafts, not credentials
+or deployment. Validate region, prefixes, pool minimum/maximum, system pools
+and area references. Defaults may contain regional zones. Connectivity, provider
+access, KMS and node health need separate execution qualification.
 
 ## Credentials
 
-Provider/KMS rights, Kubernetes access and bastion SSH are distinct secure
-bindings. Never request kubeconfig contents, private SSH keys or KMS secret
-material; externally supplied overrides must work with the native contract.
+Provider/KMS rights, Kubernetes access and bastion SSH need distinct secure
+bindings. Never request kubeconfig, private SSH keys or KMS secrets; external
+overrides must match the native contract.
 
 ## Sources
 
-Root calls, cluster/bastion variables, providers and shared validation define
-the reviewed scope. Re-review DNS/region/provider and encryption changes before
-generation; Markdown does not certify private-cluster execution.
+Root calls, cluster/bastion variables, providers and validation define this
+scope. Review DNS, region, provider and encryption changes before generation.
+Markdown does not certify private-cluster execution.

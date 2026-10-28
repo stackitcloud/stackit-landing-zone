@@ -115,7 +115,7 @@ export function registerAssistant(
   auth: AuthServices,
   assistant: Pick<
     AssistantConversations,
-    "get" | "send" | "accept" | "remove"
+    "get" | "send" | "accept" | "discard" | "remove"
   > &
     Partial<
       Pick<
@@ -192,11 +192,20 @@ export function registerAssistant(
         });
     }
     const prefix = "/api/v1/configurations/:id/assistant";
-    for (const action of ["get", "send", "accept", "remove"] as const) {
+    for (const action of [
+      "get",
+      "send",
+      "accept",
+      "discard",
+      "remove",
+    ] as const) {
       routes.route({
         method:
           action === "get" ? "GET" : action === "remove" ? "DELETE" : "POST",
-        url: action === "accept" ? `${prefix}/accept` : prefix,
+        url:
+          action === "accept" || action === "discard"
+            ? `${prefix}/${action}`
+            : prefix,
         handler: async (request, reply) => {
           const session = await authenticatedSession(request, auth);
           if (!session)
@@ -208,6 +217,10 @@ export function registerAssistant(
             await assistant.remove(session, id);
             return reply.code(204).send();
           }
+          if (action === "discard")
+            return {
+              conversation: await assistant.discard(session, id, request.body),
+            };
           if (action === "send") {
             const { revision, message, draft } = z
               .strictObject({
