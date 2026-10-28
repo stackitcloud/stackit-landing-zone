@@ -436,7 +436,10 @@ export function proposeAssistantAccess(
   if (questions.length)
     return {
       explanation:
-        "Für den Berechtigungsvorschlag fehlt noch die Zielangabe. Ich erfinde keine E-Mail und wähle keine zusätzlichen Ordner oder Rollen. Noch nichts gespeichert oder in STACKIT berechtigt.",
+        "Für den Berechtigungsvorschlag fehlt noch die Zielangabe. Ich erfinde keine E-Mail und wähle keine zusätzlichen Ordner oder Rollen. Noch nichts gespeichert oder in STACKIT berechtigt." +
+        (folderPaths.length
+          ? `\nAusstehende Ordnerrollen: ${[...(folderPaths.includes("rm_folders[*].owner_emails") ? ["Folder-Owner"] : []), ...(folderPaths.includes("rm_folders[*].reader_emails") ? ["Folder-Reader"] : [])].join(", ")}.`
+          : ""),
       questions,
       changes: [],
       references: ["governance-folders"],

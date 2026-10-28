@@ -56,6 +56,11 @@ Eine verworfene Auswahl ist keine offene Rückfrage mehr; fordere bei Bedarf aus
 einen neuen Vorschlag an. **Gespräch löschen** bleibt eine eigene Aktion. Dies gilt
 im Konfigurations- und im Template-Entwurfschat.
 
+Vorschläge für Ordnerrollen benötigen einen ausdrücklich ausgewählten vorhandenen
+Ordner oder die ausdrückliche Auswahl aller Ordner. Fehlt das Ziel, fragt der Assistant
+nach deiner Auswahl. Vorhandene Ordnernamen und frühere abgeschlossene Anfragen
+berechtigen ihn nicht, selbst einen Ordner auszuwählen.
+
 Vorschläge speichern oder veröffentlichen keine Vorlagen, vergeben keine Rollen und
 stellen keine Infrastruktur bereit. Der Server prüft bei der Übernahme erneut deine
 Berechtigung und die Entwurfsrevision. Aktualisiere und prüfe einen neuen Vorschlag, wenn

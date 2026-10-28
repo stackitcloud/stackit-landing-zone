@@ -50,6 +50,10 @@ request, saving or cloud execution is involved. A discarded selection is no long
 open follow-up; ask explicitly if you want a new proposal. **Delete conversation**
 remains a separate action. This applies in the configuration and template-draft chat.
 
+Folder-role proposals require an explicitly selected existing folder or an explicit
+all-folders scope. If the target is missing, the Assistant asks you to select it.
+Existing folder names and closed earlier requests do not authorize a folder choice.
+
 Proposals do not save, publish templates, grant roles or provision infrastructure.
 The server checks your authorization and the draft revision again on acceptance.
 Refresh and review a new proposal if the underlying configuration has changed.

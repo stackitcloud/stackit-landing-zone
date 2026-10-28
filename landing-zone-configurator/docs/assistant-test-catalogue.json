@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "97dbf413ea6025c7ad3a6b14f8c6e6742ecb536d236fc775293c00b3071fe137",
+  "knowledgeSha256": "c1e8f87c55c12c0d135889ac0bd2ede250cb4e16c95c4af4dc610ffe3b8cc85b",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "ce04f4319f089ae9269e2482aaa8bfd66bcf2a1a4617d504146edb757bd7266d",
+    "scripts/assistant-scenarios.ts": "c3ea7ac63ab6213134058af25cdf1227ba727135c9ee03336bf5d65ea872e859",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "a42cbfa041f8382c8bb4a4b25bae09f6d90269960194cdd97ac7edd69be82c6d",
+  "suiteSha256": "24385cceda47a61f9b6e02579eccb1aa4917e8810c7c288e6411357f8065ddec",
   "topics": [
     {
       "id": "credential-foundations",
@@ -765,6 +765,19 @@
           "topic": "governance-folders",
           "fixture": "governance",
           "message": "Nutze die hinterlegte Email fuer eine Folder-Leseberechtigung.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "governance-folder-scope-followup",
+          "topic": "governance-folders",
+          "fixture": "governance",
+          "message": "Platform",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

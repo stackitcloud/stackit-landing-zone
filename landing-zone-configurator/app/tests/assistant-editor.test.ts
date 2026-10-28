@@ -2944,3 +2944,327 @@ it("rejects a missing literal-list operation instead of defaulting an addition t
   ).rejects.toMatchObject({ reason: "intent_schema" });
   expect(original).toEqual(before);
 });
+
+const folderScopeValues = () => ({
+  owner_email: "saved-owner@example.test",
+  rm_folders: {
+    platform: { name: "Platform", reader_emails: ["old-reader@example.test"] },
+    research: {
+      name: "Data Science",
+      reader_emails: ["research-reader@example.test"],
+    },
+  },
+});
+function folderScopeModel(
+  options: {
+    folderKeys?: string[];
+    allFolders?: boolean;
+    source?: string;
+    paths?: string[];
+    emailSource?: string;
+  } = {},
+) {
+  return collectionModel(
+    {
+      topic: "governance-folders",
+      mode: "draft",
+      requirements: [],
+      accessAssignment: {
+        paths: options.paths ?? ["rm_folders[*].reader_emails"],
+        folderKeys: options.folderKeys ?? ["platform"],
+        allFolders: options.allFolders ?? false,
+        source: options.source ?? "current",
+        emailSource: options.emailSource ?? "saved-owner",
+      },
+    },
+    null,
+  );
+}
+
+it.each([
+  ["Nutze die hinterlegte Email fuer eine Folder-Leseberechtigung.", false],
+  [
+    "Als Platform Owner möchte ich mit der hinterlegten Email eine Folder-Leseberechtigung.",
+    false,
+  ],
+  ["Nutze die hinterlegte Email fuer eine Folder-Leseberechtigung.", true],
+  ["Nutze die hinterlegte Email nicht für alle Ordner als Leser.", true],
+  ["Nutze die hinterlegte Email NICHT fuer alle Ordner als Leser.", true],
+  [
+    "Nutze die hinterlegte Email nicht fuer den Platform-Ordner als Leser.",
+    false,
+  ],
+  ["Keine Leseberechtigung für alle Ordner mit der hinterlegten Email.", true],
+  ["Keine Leserechte im Platform-Ordner mit der hinterlegten Email.", false],
+  [
+    "Für alle Ordner keine Leseberechtigung mit der hinterlegten Email vorschlagen.",
+    true,
+  ],
+  [
+    "Nicht rm_folders.platform, sondern rm_folders.research als Leser mit der hinterlegten Email.",
+    false,
+  ],
+  [
+    "rm_folders.platform nicht ändern; Leserechte mit der hinterlegten Email.",
+    false,
+  ],
+  ["Nutze die hinterlegte Email nicht im Platform-Ordner als Leser.", false],
+  [
+    "Nutze die hinterlegte Email für alle Ordner außer Platform als Leser.",
+    true,
+  ],
+] as const)(
+  "asks for a folder instead of trusting guessed scope in %s (all=%s)",
+  async (message, allFolders) => {
+    const values = folderScopeValues(),
+      before = structuredClone(values);
+    const response = await folderScopeModel({
+      allFolders,
+      folderKeys: allFolders ? [] : ["platform"],
+    }).converse(knowledgeSelection(), values, [], message);
+    expect(response.changes).toEqual([]);
+    expect(response.questions).toMatchObject([
+      {
+        path: "rm_folders[*].reader_emails",
+        text: "Für welche vorhandenen Ordner soll ich die Berechtigung vorschlagen?",
+        multiple: true,
+      },
+    ]);
+    expect(values).toEqual(before);
+  },
+);
+
+it.each([
+  [
+    "platform",
+    "Trage die hinterlegte Email als Leser des Platform-Ordners ein.",
+  ],
+  [
+    "research",
+    "Nutze die hinterlegte Email als Leser für den Ordner namens Data Science.",
+  ],
+  [
+    "platform",
+    "Nutze die hinterlegte Email als Leser für rm_folders.platform.",
+  ],
+] as const)("grounds the explicit current folder %s", async (key, message) => {
+  const values = folderScopeValues();
+  const response = await folderScopeModel({ folderKeys: [key] }).converse(
+    knowledgeSelection(),
+    values,
+    [],
+    message,
+  );
+  expect(response.questions).toEqual([]);
+  expect(response.changes).toEqual([
+    {
+      path: "rm_folders",
+      value: {
+        [key]: {
+          reader_emails: [
+            ...values.rm_folders[key].reader_emails,
+            "saved-owner@example.test",
+          ],
+        },
+      },
+    },
+  ]);
+});
+
+it("honors an explicitly requested all-folder scope", async () => {
+  const response = await folderScopeModel({
+    allFolders: true,
+    folderKeys: [],
+  }).converse(
+    knowledgeSelection(),
+    folderScopeValues(),
+    [],
+    "Nutze die hinterlegte Email als Leser für alle vorhandenen Ordner.",
+  );
+  expect(response.questions).toEqual([]);
+  expect(response.changes).toEqual([
+    {
+      path: "rm_folders",
+      value: {
+        platform: {
+          reader_emails: [
+            "old-reader@example.test",
+            "saved-owner@example.test",
+          ],
+        },
+        research: {
+          reader_emails: [
+            "research-reader@example.test",
+            "saved-owner@example.test",
+          ],
+        },
+      },
+    },
+  ]);
+});
+
+it("never revives a historical folder target for a new unspecific request", async () => {
+  const response = await folderScopeModel({ source: "history-0" }).converse(
+    knowledgeSelection(),
+    folderScopeValues(),
+    [
+      {
+        role: "user",
+        content:
+          "Nutze die hinterlegte Email für den Platform-Ordner als Leser.",
+      },
+      {
+        role: "assistant",
+        content: "Auftrag abgeschlossen. Noch nichts ausgeführt.",
+      },
+    ],
+    "Nutze die hinterlegte Email fuer eine Folder-Leseberechtigung.",
+  );
+  expect(response.changes).toEqual([]);
+  expect(response.questions).toHaveLength(1);
+});
+
+it.each([false, true])(
+  "continues only an immediately open folder question (discarded=%s)",
+  async (discarded) => {
+    const values = folderScopeValues();
+    const request =
+      "Als Platform Owner möchte ich die hinterlegte Email für eine Folder-Leseberechtigung nutzen.";
+    const first = await folderScopeModel().converse(
+      knowledgeSelection(),
+      values,
+      [],
+      request,
+    );
+    expect(first.questions).toHaveLength(1);
+    const history: { role: "user" | "assistant"; content: string }[] = [
+      { role: "user", content: request },
+      {
+        role: "assistant",
+        content: discarded
+          ? "Der Vorschlag wurde verworfen; dieser Auftrag ist abgeschlossen."
+          : `${first.explanation}\n${first.questions[0]?.text}`,
+      },
+    ];
+    const response = await folderScopeModel({
+      source: "history-0",
+      paths: ["rm_folders[*].owner_emails"],
+      emailSource: "explicit",
+    }).converse(knowledgeSelection(), values, history, "Platform");
+    if (discarded) {
+      expect(response.changes).toEqual([]);
+      expect(response.questions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "rm_folders[*].owner_emails" }),
+        ]),
+      );
+    } else {
+      expect(response.questions).toEqual([]);
+      expect(response.changes).toEqual([
+        {
+          path: "rm_folders",
+          value: {
+            platform: {
+              reader_emails: [
+                "old-reader@example.test",
+                "saved-owner@example.test",
+              ],
+            },
+          },
+        },
+      ]);
+    }
+  },
+);
+
+it.each(["saved-owner", "explicit"])(
+  "preserves the canonical verified subject despite negated saved-email context and a model %s guess",
+  async (emailSource) => {
+    const values = {
+      ...folderScopeValues(),
+      "assistant.user_email": "verified-reader@example.test",
+    };
+    const request =
+      "Nutze NICHT die gespeicherte Email, sondern die aktuell verifizierte Email für eine Folder-Leseberechtigung.";
+    const first = await folderScopeModel({
+      emailSource: "verified-user",
+    }).converse(knowledgeSelection(), values, [], request);
+    const response = await folderScopeModel({
+      source: "history-0",
+      paths: ["organization_owners"],
+      emailSource,
+    }).converse(
+      knowledgeSelection(),
+      values,
+      [
+        { role: "user", content: request },
+        {
+          role: "assistant",
+          content: `${first.explanation}\n${first.questions[0]?.text}`,
+        },
+      ],
+      "Platform",
+    );
+    expect(response.questions).toEqual([]);
+    expect(response.changes).toEqual([
+      {
+        path: "rm_folders",
+        value: {
+          platform: {
+            reader_emails: [
+              "old-reader@example.test",
+              "verified-reader@example.test",
+            ],
+          },
+        },
+      },
+    ]);
+  },
+);
+
+it("preserves the exact multiple-folder UI answer without organization-role promotion", async () => {
+  const values = folderScopeValues();
+  const request =
+    "Nutze die hinterlegte Email fuer eine Folder-Leseberechtigung.";
+  const first = await folderScopeModel().converse(
+    knowledgeSelection(),
+    values,
+    [],
+    request,
+  );
+  const response = await folderScopeModel({
+    source: "current",
+    paths: ["organization_owners", "rm_folders[*].owner_emails"],
+  }).converse(
+    knowledgeSelection(),
+    values,
+    [
+      { role: "user", content: request },
+      {
+        role: "assistant",
+        content: `${first.explanation}\n${first.questions[0]?.text}`,
+      },
+    ],
+    `${first.questions[0]?.text}\nMeine Antwort: Platform; Data Science`,
+  );
+  expect(response.questions).toEqual([]);
+  expect(response.changes).toEqual([
+    {
+      path: "rm_folders",
+      value: {
+        platform: {
+          reader_emails: [
+            "old-reader@example.test",
+            "saved-owner@example.test",
+          ],
+        },
+        research: {
+          reader_emails: [
+            "research-reader@example.test",
+            "saved-owner@example.test",
+          ],
+        },
+      },
+    },
+  ]);
+});
