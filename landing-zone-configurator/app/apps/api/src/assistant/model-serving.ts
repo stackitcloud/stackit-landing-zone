@@ -106,6 +106,184 @@ function assistantFolderNames(values: unknown) {
   );
 }
 
+// Folder scope is a user decision, never authority supplied by the classifier.
+// Only literal folder references or an exact answer to the immediately open
+// server question can select targets. Historical topics cannot revive scope.
+const folderScopeQuestion =
+  "Für welche vorhandenen Ordner soll ich die Berechtigung vorschlagen?";
+function groundAssistantFolderScope(
+  values: unknown,
+  request: {
+    paths: (typeof assistantAccessPaths)[number][];
+    source: string;
+    emailSource: "saved-owner" | "verified-user" | "explicit";
+    folderKeys: string[];
+    allFolders: boolean;
+  },
+  source: string,
+  message: string,
+  history: { role: "user" | "assistant"; content: string }[],
+  contacts: { saved: string[]; verified: string[] },
+) {
+  const folders = assistantFolderNames(values);
+  if (request.folderKeys.some((key) => !Object.hasOwn(folders, key)))
+    throw new AssistantInferenceError("intent_evidence");
+  const empty = { ...request, folderKeys: [] as string[], allFolders: false };
+  const previous = history.at(-2),
+    reply = history.at(-1);
+  const previousSource = `history-${history.length - 2}`;
+  if (
+    previous?.role === "user" &&
+    reply?.role === "assistant" &&
+    reply.content.endsWith(`\n${folderScopeQuestion}`) &&
+    reply.content.includes(
+      "Für den Berechtigungsvorschlag fehlt noch die Zielangabe.",
+    )
+  ) {
+    const answer = message.startsWith(`${folderScopeQuestion}\nMeine Antwort: `)
+      ? message.slice(`${folderScopeQuestion}\nMeine Antwort: `.length).trim()
+      : message.trim();
+    const choices = Object.entries(folders).some(([key, value]) =>
+      [key, String(value.name ?? "")].includes(answer),
+    )
+      ? [answer]
+      : answer.split("; ").map((choice) => choice.trim());
+    const selected = choices.map((choice) =>
+      Object.entries(folders).filter(([key, value]) =>
+        [key, String(value.name ?? "")].includes(choice),
+      ),
+    );
+    const selectedKeys = selected.flatMap((matches) =>
+      matches.length === 1 ? [matches[0]![0]] : [],
+    );
+    if (
+      choices.length > 0 &&
+      selectedKeys.length === choices.length &&
+      new Set(selectedKeys).size === selectedKeys.length &&
+      (request.source === "current" || request.source === previousSource)
+    ) {
+      // Recover only an exact server-shaped pending question. The stored role
+      // and displayed email identity bind the continuation, not broad keywords
+      // in the original user request or the model's newly guessed role/source.
+      const roles: (typeof assistantAccessPaths)[number][][] = [
+        ["rm_folders[*].reader_emails"],
+        ["rm_folders[*].owner_emails"],
+        ["rm_folders[*].owner_emails", "rm_folders[*].reader_emails"],
+      ];
+      const explicit = [
+        ...new Set(
+          (
+            previous.content.match(
+              /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+            ) ?? []
+          ).filter((email) => z.email().safeParse(email).success),
+        ),
+      ];
+      for (const [emailSource, emails, description] of [
+        [
+          "saved-owner",
+          contacts.saved,
+          "den gespeicherten Grundlagen (owner_email)",
+        ],
+        [
+          "verified-user",
+          contacts.verified,
+          "der aktuell verifizierten STACKIT-Benutzeridentität",
+        ],
+        ["explicit", explicit, "deiner ausdrücklichen E-Mail-Angabe"],
+      ] as const) {
+        if (!emails.length) continue;
+        for (const paths of roles) {
+          const pending = proposeAssistantAccess(
+            values as Record<string, unknown>,
+            { paths, folderKeys: [], allFolders: false },
+            [...emails],
+          );
+          const canonical = `E-Mail-Quelle: ${description} (${emails.join(", ")}).\n${pending.explanation}\n${pending.questions.map((question) => question.text).join("\n")}`;
+          if (reply.content === canonical)
+            return {
+              ...request,
+              paths,
+              source: previousSource,
+              emailSource,
+              folderKeys: selectedKeys,
+              allFolders: false,
+            };
+        }
+      }
+    }
+  }
+  // Older user requests are not the current authority. A genuine pending reply
+  // is admitted only by the exact server-shaped continuation above.
+  if (request.source !== "current") {
+    if (!request.paths.some((path) => path.startsWith("rm_folders")))
+      throw new AssistantInferenceError("intent_evidence");
+    return empty;
+  }
+  if (!request.paths.some((path) => path.startsWith("rm_folders")))
+    return request;
+  const escapePattern = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const folderWord = String.raw`(?:Ordner(?:s|n)?|folders?)`;
+  const allWords = String.raw`(?:alle[nr]?|sämtliche[nr]?|all|every)\s+(?:(?:vorhandenen?|bestehenden?|existing)\s+)?${folderWord}`;
+  const negation = String.raw`(?:nicht|not|kein(?:e|en)?|no|ohne|without)`;
+  const negativeTargetPrefix = String.raw`${negation}\s+(?:(?:Folder[- ]?)?(?:Lese(?:rechte|berechtigung(?:en)?)|Reader|Owner|rights|access|Berechtigung(?:en)?)\s+)?(?:(?:für|fuer|for|in|im|den|dem|the)\s+){0,3}`;
+  const excluded = /(?:\baußer\b|\bausser\b|\bexcept\b|\bexcluding\b)/iu.test(
+    source,
+  );
+  const allMentioned = new RegExp(
+    String.raw`(?:^|[^\p{L}\p{N}_])${allWords}(?:$|[^\p{L}\p{N}_])`,
+    "iu",
+  ).test(source);
+  const allNegated = new RegExp(
+    String.raw`${negativeTargetPrefix}${allWords}`,
+    "iu",
+  ).test(source);
+  const allTrailingNegated = new RegExp(
+    String.raw`${allWords}\s+(?:(?:bitte|please)\s+)?${negation}(?:$|[^\p{L}\p{N}_])`,
+    "iu",
+  ).test(source);
+  if (request.allFolders)
+    return allMentioned && !allNegated && !allTrailingNegated && !excluded
+      ? request
+      : empty;
+  if (excluded) return empty;
+  const referenced = request.folderKeys.filter((key) => {
+    const labels = [...new Set([key, String(folders[key]?.name ?? "")])].filter(
+      Boolean,
+    );
+    return labels.some((label) => {
+      const name = String.raw`["'\x60]?${escapePattern(label)}["'\x60]?`;
+      const boundary = String.raw`(?:^|[^\p{L}\p{N}_])`;
+      const end = String.raw`(?:$|[^\p{L}\p{N}_])`;
+      const reference = String.raw`(?:${name}\s*[-–—]?\s*${folderWord}|${folderWord}\s*(?:(?:namens|called|mit\s+dem\s+Namen|mit\s+dem\s+Schlüssel|with\s+key)\s+|:\s*)?${name})`;
+      const pathReference = String.raw`rm_folders(?:\.${escapePattern(key)}|\[["']${escapePattern(key)}["']\])`;
+      const negated = new RegExp(
+        String.raw`${negativeTargetPrefix}(?:${reference}|${pathReference})`,
+        "iu",
+      ).test(source);
+      const explicitPath = new RegExp(
+        String.raw`${boundary}rm_folders(?:\.${escapePattern(key)}|\[["']${escapePattern(key)}["']\])${end}`,
+        "u",
+      ).test(source);
+      const trailingNegation = new RegExp(
+        String.raw`(?:${reference}|${pathReference})\s+(?:(?:bitte|please)\s+)?(?:nicht|not|keine?)(?:$|[^\p{L}\p{N}_])`,
+        "iu",
+      ).test(source);
+      return (
+        !negated &&
+        !trailingNegation &&
+        (explicitPath ||
+          new RegExp(`${boundary}${reference}${end}`, "iu").test(source))
+      );
+    });
+  });
+  // Never apply only a guessed subset of the classifier's requested scope.
+  return referenced.length === request.folderKeys.length
+    ? { ...request, folderKeys: referenced, allFolders: false }
+    : empty;
+}
+
 export type AssistantCatalogueContext = {
   regions: {
     region: "eu01" | "eu02";
@@ -2641,19 +2819,59 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
                   )
                 ? [String(values["assistant.user_email"])]
                 : [];
+        const groundedAssignment = groundAssistantFolderScope(
+          publicValues,
+          accessAssignment,
+          namingSources.get(accessAssignment.source) ?? "",
+          message,
+          history,
+          {
+            saved: foundationContacts.includes(String(configuredOwner))
+              ? [String(configuredOwner)]
+              : [],
+            verified: foundationContacts.includes(
+              String(values["assistant.user_email"]),
+            )
+              ? [String(values["assistant.user_email"])]
+              : [],
+          },
+        );
+        const effectiveEmails =
+          groundedAssignment.emailSource === accessAssignment.emailSource &&
+          groundedAssignment.source === accessAssignment.source
+            ? emails
+            : groundedAssignment.emailSource === "saved-owner"
+              ? foundationContacts.includes(String(configuredOwner))
+                ? [String(configuredOwner)]
+                : []
+              : groundedAssignment.emailSource === "verified-user"
+                ? foundationContacts.includes(
+                    String(values["assistant.user_email"]),
+                  )
+                  ? [String(values["assistant.user_email"])]
+                  : []
+                : [
+                    ...new Set(
+                      (
+                        namingSources
+                          .get(groundedAssignment.source)
+                          ?.match(emailPattern) ?? []
+                      ).filter((email) => z.email().safeParse(email).success),
+                    ),
+                  ];
         const proposal = proposeAssistantAccess(
           values,
-          accessAssignment,
-          emails,
+          groundedAssignment,
+          effectiveEmails,
         );
-        if (emails.length) {
+        if (effectiveEmails.length) {
           const source =
-            accessAssignment.emailSource === "saved-owner"
+            groundedAssignment.emailSource === "saved-owner"
               ? "den gespeicherten Grundlagen (owner_email)"
-              : accessAssignment.emailSource === "verified-user"
+              : groundedAssignment.emailSource === "verified-user"
                 ? "der aktuell verifizierten STACKIT-Benutzeridentität"
                 : "deiner ausdrücklichen E-Mail-Angabe";
-          proposal.explanation = `E-Mail-Quelle: ${source}.\n${proposal.explanation}`;
+          proposal.explanation = `E-Mail-Quelle: ${source} (${effectiveEmails.join(", ")}).\n${proposal.explanation}`;
         }
         stream?.onText(
           "Berechtigungsvorschlag wird geprüft. Noch nichts gespeichert oder in STACKIT berechtigt.",

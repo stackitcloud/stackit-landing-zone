@@ -17,6 +17,7 @@ import {
 } from "@lzc/domain";
 import {
   applyAssistantChanges,
+  proposeAssistantAccess,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
@@ -680,6 +681,12 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     message: "Nutze die hinterlegte Email fuer eine Folder-Leseberechtigung.",
   },
   {
+    id: "governance-folder-scope-followup",
+    topic: "governance-folders",
+    fixture: "governance",
+    message: "Platform",
+  },
+  {
     id: "governance-missing-email",
     topic: "governance-folders",
     fixture: "governance-missing-email",
@@ -1021,6 +1028,28 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
           ]
         : [],
   };
+  if (scenario.id === "governance-folder-scope-followup") {
+    const question = proposeAssistantAccess(
+      values,
+      {
+        paths: ["rm_folders[*].reader_emails"],
+        folderKeys: [],
+        allFolders: false,
+      },
+      ["owner@example.test"],
+    );
+    history.push(
+      {
+        role: "user",
+        content:
+          "Nutze die hinterlegte Email fuer eine Folder-Leseberechtigung.",
+      },
+      {
+        role: "assistant",
+        content: `E-Mail-Quelle: den gespeicherten Grundlagen (owner_email) (owner@example.test).\n${question.explanation}\n${question.questions.map((q) => q.text).join("\n")}`,
+      },
+    );
+  }
   return { draft, values, history, catalogues };
 }
 
@@ -1486,13 +1515,19 @@ export function validateAssistantScenario(
           ]),
         ),
       };
-    if (scenario.id === "governance-folder-reader")
+    if (
+      ["governance-folder-reader", "governance-folder-scope-followup"].includes(
+        scenario.id,
+      )
+    )
       expected = {
         rm_folders: {
           platform: {
             reader_emails: [
               "folder-reader@example.test",
-              "reader@example.test",
+              scenario.id === "governance-folder-scope-followup"
+                ? "owner@example.test"
+                : "reader@example.test",
             ],
           },
         },
