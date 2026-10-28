@@ -964,3 +964,30 @@ verfolgt diese Abnahme. Lokale Zwischen-State-Persistenz bleibt
 [Issue #140](https://github.com/stackitcloud/stackit-landing-zone/issues/140).
 
 Lokale Recovery-Import-Serials werden vor Freigabe auf genau einen entfernten Nachfolger (`Original + 1`) normalisiert. Der Server weist überhöhte Kandidaten zurück. Ein nativer OpenTofu-Test schiebt beim Sperrerwerb einen konkurrierenden State mit gleicher/höherer Serial ein und weist nach, dass er nicht überschrieben wird.
+
+## Aufbewahrung der CF-Ausführungs-Apps
+
+Abgeschlossene Plattform-Runner werden frühestens 30 Sekunden nach dem gespeicherten
+Abschluss beim nächsten 30-Sekunden-Wartungslauf gelöscht. Der Warm-Pool wird alle
+fünf Sekunden gepflegt; eindeutig abgeschlossene Application-Runner werden dort
+verworfen und bei Bedarf ersetzt. Das betrifft CF-Apps, nicht Jobhistorie oder State.
+
+Zusätzlich prüft die API jede Minute höchstens 50 Apps im konfigurierten Runner-Space
+und setzt den nächsten Lauf auf der folgenden Seite fort. Gestoppte `lzc-plan-<UUID>`
+und `lzc-warm-<UUID>` können ab einem App-Alter von 24 Stunden bereinigt werden:
+Die Datenbank muss einen abgeschlossenen, abgelaufenen Job oder einen ausgemusterten
+Slot bestätigen. Laufende/ungeklärte Jobs, aktive Recovery und gültige Tickets schützen
+die App. Ein abgeglichener Application-Abbruch benötigt einen gespeicherten
+Recovery-Neuplan-Nachweis. Unbekannte Apps werden nur mit der bei Neuanlage gesetzten
+Herkunftsmarkierung dieser Configurator-Origin gelöscht. Unmarkierte, nicht zuordenbare
+Altbestände brauchen einen Operator-Abgleich; Namen allein belegen keine Zugehörigkeit.
+
+Unmittelbar vor DELETE werden Identität/Space, gestoppter Zustand, fehlende Routes und
+Service-Bindings, ausschließlich beendete Tasks/Prozesse und die Datenbankfreigabe
+erneut geprüft. Unvollständige oder nicht erreichbare Prüfungen verhindern die Löschung.
+Erfolg erzeugt einen separaten Bereinigungsnachweis. Vorlage und Recovery-Apps werden
+von diesem Lauf nicht gelöscht. Fehler erscheinen ohne Zugangsdaten als
+`runner_retention_failed` im API-Log; der nächste Lauf versucht die Bereinigung erneut.
+
+Die Log-Zusammenfassung `runner_retention` enthält nur Anzahlen geprüfter, gelöschter,
+geschützter und nicht zuordenbarer Apps. So werden ungeklärte Altbestände sichtbar.

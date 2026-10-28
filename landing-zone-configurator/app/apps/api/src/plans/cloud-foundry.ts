@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { type CleanupApp, runnerOwner } from "./runner-cleanup.js";
 
 const guid = (value: unknown) => z.uuid().parse(value);
 export class RunnerRequestError extends Error {
@@ -322,6 +323,11 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       },
       relationships: { space: { data: { guid: this.config.spaceId } } },
       environment_variables: variables,
+      metadata: {
+        labels: {
+          "lzc.runner-owner": runnerOwner(variables.LZC_BROKER_ORIGIN!),
+        },
+      },
     });
     const appId = guid(app.guid);
     await record(appId, guid(droplet.guid));
@@ -505,6 +511,149 @@ export class CloudFoundryPlanRunner implements PlanRunner {
   async removeWarm(id: string, appId: string | null) {
     guid(id);
     await this.removeNamed(`lzc-warm-${id}`, appId);
+  }
+  async cleanupPage(
+    page: number,
+  ): Promise<{ apps: CleanupApp[]; nextPage: number | null }> {
+    if (!Number.isSafeInteger(page) || page < 1)
+      throw new Error("Invalid cleanup page");
+    const call = await this.authorized();
+    const result = z
+      .object({
+        pagination: z.object({
+          next: z.object({ href: z.string() }).nullable(),
+        }),
+        resources: z.array(
+          z.object({
+            guid: z.uuid(),
+            name: z.string(),
+            created_at: z.string(),
+            state: z.string(),
+            relationships: z.object({
+              space: z.object({
+                data: z.object({ guid: z.literal(this.config.spaceId) }),
+              }),
+            }),
+            metadata: z
+              .object({ labels: z.record(z.string(), z.string().nullable()) })
+              .optional(),
+          }),
+        ),
+      })
+      .parse(
+        await call(
+          `apps?space_guids=${this.config.spaceId}&per_page=50&page=${page}&order_by=created_at`,
+        ),
+      );
+    return {
+      nextPage: result.pagination.next ? page + 1 : null,
+      apps: result.resources.map((app) => ({
+        id: app.guid,
+        name: app.name,
+        createdAt: app.created_at,
+        state: app.state,
+        owner: app.metadata?.labels["lzc.runner-owner"] ?? null,
+      })),
+    };
+  }
+  async deleteStoppedRunner(
+    app: CleanupApp,
+    eligible: () => Promise<boolean>,
+  ): Promise<boolean> {
+    guid(app.id);
+    if (
+      app.id === this.config.templateId ||
+      !/^lzc-(plan|warm)-[a-f0-9-]{36}$/.test(app.name)
+    )
+      return false;
+    const call = await this.authorized();
+    const unchanged = async () => {
+      const current = z
+        .object({
+          guid: z.literal(app.id),
+          name: z.literal(app.name),
+          created_at: z.literal(app.createdAt),
+          state: z.string(),
+          relationships: z.object({
+            space: z.object({
+              data: z.object({ guid: z.literal(this.config.spaceId) }),
+            }),
+          }),
+          metadata: z
+            .object({ labels: z.record(z.string(), z.string().nullable()) })
+            .optional(),
+        })
+        .parse(await call(`apps/${app.id}`));
+      return (
+        current.state === "STOPPED" &&
+        (current.metadata?.labels["lzc.runner-owner"] ?? null) === app.owner
+      );
+    };
+    if (!(await unchanged())) return false;
+    for (const path of [
+      `apps/${app.id}/routes`,
+      `service_credential_bindings?app_guids=${app.id}`,
+    ]) {
+      const result = z
+        .object({
+          resources: z.array(z.unknown()),
+          pagination: z.object({
+            next: z.object({ href: z.string() }).nullable(),
+          }),
+        })
+        .parse(await call(path));
+      if (result.resources.length || result.pagination.next) return false;
+    }
+    const tasks = z
+      .object({
+        resources: z.array(z.object({ state: z.string() })),
+        pagination: z.object({
+          next: z.object({ href: z.string() }).nullable(),
+        }),
+      })
+      .parse(await call(`apps/${app.id}/tasks?per_page=100`));
+    if (
+      tasks.pagination.next ||
+      tasks.resources.some(
+        (task) => !["SUCCEEDED", "FAILED"].includes(task.state),
+      )
+    )
+      return false;
+    const processes = z
+      .object({
+        resources: z.array(z.object({ guid: z.uuid() })),
+        pagination: z.object({
+          next: z.object({ href: z.string() }).nullable(),
+        }),
+      })
+      .parse(await call(`apps/${app.id}/processes`));
+    if (processes.pagination.next) return false;
+    for (const process of processes.resources) {
+      const stats = z
+        .object({ resources: z.array(z.object({ state: z.string() })) })
+        .parse(await call(`processes/${process.guid}/stats`));
+      if (
+        stats.resources.some(
+          (stat) => !["DOWN", "CRASHED"].includes(stat.state),
+        )
+      )
+        return false;
+    }
+    if (!(await unchanged()) || !(await eligible())) return false;
+    await call(`apps/${app.id}`, "DELETE");
+    // CF may only accept an asynchronous DELETE. A receipt means absence,
+    // not merely acceptance of a deletion request.
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        await call(`apps/${app.id}`);
+      } catch (error) {
+        if (error instanceof RunnerRequestError && error.status === 404)
+          return true;
+        throw error;
+      }
+      if (attempt < 5) await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return false;
   }
   private async removeNamed(name: string, appId: string | null) {
     const call = await this.authorized();

@@ -168,3 +168,8 @@ Das ist keine Unterstützung für Projekte ohne initialen Owner (#69).
 ## Erweiterbare Projektberechtigungen
 
 Die 144 Rechte des Workload-Standards sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Listen hinzugefügt (ohne Unterscheidung beiden). Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.
+
+Das Ergänzen von Dienstrechten in einem bestehenden granularen Entwurf bleibt auch
+bei noch leerem initialen Owner möglich. Der Assistant erhält dieses Feld unverändert
+und erstellt den Rechtevorschlag; erst die Veröffentlichung verlangt einen gültigen
+separaten Owner. Beim Einrichten eines neuen Rechteprofils fragt er fehlende Angaben ab.

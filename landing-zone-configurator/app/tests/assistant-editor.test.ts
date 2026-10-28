@@ -2028,6 +2028,60 @@ it("rejects an unrelated service or invented evidence in the catalogue-derived a
     ).rejects.toBeInstanceOf(AssistantInferenceError);
 });
 
+it.each(["", "central@example.test"])(
+  "adds requested service rights to an incomplete draft without replacing its owner (%s)",
+  async (owner) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "public",
+    )!;
+    template.accessProfile = defaultApplicationAccessProfile(owner);
+    const previous = structuredClone(template.accessProfile);
+    const message =
+      "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können";
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: "__select_by_kind__",
+          templateKind: "public",
+          templateEvidence: "Public Landing Zone",
+          choice: "add-service-permissions",
+          services: ["ske"],
+          permissionTarget: "requester",
+          serviceEvidence: "Kubernetes Cluster bestellen und nutzen",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    expect(result.questions).toEqual([]);
+    expect(result.changes).toHaveLength(1);
+    const after = applyAssistantChanges(
+      original,
+      result.changes,
+    ).projectTemplates!.find((t) => t.id === template.id)!.accessProfile!;
+    expect(after.mode).toBe("granular");
+    if (after.mode !== "granular" || previous.mode !== "granular")
+      throw new Error("expected granular fixture");
+    expect(after.initialOwnerEmail).toBe(owner);
+    expect(after.automationPermissions).toEqual(previous.automationPermissions);
+    expect(after.permissions).toEqual([
+      ...previous.permissions,
+      ...applicationProjectPermissionNames.filter((p) => p.startsWith("ske.")),
+    ]);
+  },
+);
+
 it("does not offer an unchanged policy when all Kubernetes rights are already present", async () => {
   const original = createEditorConfiguration(
     "hub-and-spoke",

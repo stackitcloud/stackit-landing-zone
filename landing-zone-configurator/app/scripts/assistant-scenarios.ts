@@ -159,6 +159,7 @@ export type AssistantScenario = {
     | "kubernetes-add"
     | "kubernetes-requester"
     | "public-kubernetes-requester"
+    | "public-kubernetes-incomplete-owner"
     | "public-kubernetes-clarify"
     | "public-kubernetes-followup";
   corporateIpv4?: "advice" | "automatic" | "explicit";
@@ -306,14 +307,16 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     message:
       "Ergänze bei der vorhandenen Vorlage central nur für den Besteller die Rechte zum Management von Kubernetes Clustern. Die Rechte des Application-Service-Accounts und der zentrale Owner bleiben unverändert, ebenso alle anderen Einstellungen. Nur einen überprüfbaren Vorschlag erstellen.",
   },
-  ...(["requester", "clarify"] as const).map((mode) => ({
+  ...(["requester", "clarify", "incomplete-owner"] as const).map((mode) => ({
     id: `application-access-public-kubernetes-${mode}`,
     topic: "project-templates",
     fixture: "corporate-ipv4" as const,
     applicationAccess:
-      mode === "requester"
-        ? ("public-kubernetes-requester" as const)
-        : ("public-kubernetes-clarify" as const),
+      mode === "incomplete-owner"
+        ? ("public-kubernetes-incomplete-owner" as const)
+        : mode === "requester"
+          ? ("public-kubernetes-requester" as const)
+          : ("public-kubernetes-clarify" as const),
     message:
       "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können",
   })),
@@ -963,7 +966,11 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       secretsmanager_enabled: true,
     };
     publicTemplate.accessProfile = {
-      ...defaultApplicationAccessProfile("platform-owner@example.test"),
+      ...defaultApplicationAccessProfile(
+        scenario.applicationAccess === "public-kubernetes-incomplete-owner"
+          ? ""
+          : "platform-owner@example.test",
+      ),
       permissions: ["secrets-manager.secret.get", "iaas.server.get"],
       automationPermissions: ["iaas.server.get"],
     };
@@ -1138,6 +1145,7 @@ export function validateAssistantScenario(
     if (
       scenario.applicationAccess === "kubernetes-add" ||
       scenario.applicationAccess === "kubernetes-requester" ||
+      scenario.applicationAccess === "public-kubernetes-incomplete-owner" ||
       scenario.applicationAccess === "public-kubernetes-requester" ||
       scenario.applicationAccess === "public-kubernetes-followup"
     ) {
@@ -1152,12 +1160,14 @@ export function validateAssistantScenario(
       central.accessProfile = {
         ...before,
         permissions:
+          scenario.applicationAccess === "public-kubernetes-incomplete-owner" ||
           scenario.applicationAccess === "public-kubernetes-requester" ||
           scenario.applicationAccess === "public-kubernetes-followup"
             ? [...new Set([...before.permissions, ...additions])]
             : [...new Set([...before.permissions, ...additions])].sort(),
         automationPermissions:
           scenario.applicationAccess === "kubernetes-requester" ||
+          scenario.applicationAccess === "public-kubernetes-incomplete-owner" ||
           scenario.applicationAccess === "public-kubernetes-requester" ||
           scenario.applicationAccess === "public-kubernetes-followup"
             ? before.automationPermissions
