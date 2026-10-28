@@ -991,3 +991,8 @@ von diesem Lauf nicht gelöscht. Fehler erscheinen ohne Zugangsdaten als
 
 Die Log-Zusammenfassung `runner_retention` enthält nur Anzahlen geprüfter, gelöschter,
 geschützter und nicht zuordenbarer Apps. So werden ungeklärte Altbestände sichtbar.
+
+Auch abgeglichene Warm-Runner-Abbrüche werden im normalen Pool ausgemustert, selbst
+wenn CF nach Prozessende weiter STARTED anfordert. Erforderlich sind der bestehende
+gültige Recovery-Neuplan-Nachweis, abgelaufene Runner-Tickets und keine aktive geführte
+Recovery. Ein durch späteren separaten Recovery-State ungültiger Nachweis schützt die App erneut.
