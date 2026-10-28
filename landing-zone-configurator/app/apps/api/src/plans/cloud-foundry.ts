@@ -559,6 +559,7 @@ export class CloudFoundryPlanRunner implements PlanRunner {
   async deleteStoppedRunner(
     app: CleanupApp,
     eligible: () => Promise<boolean>,
+    recordIntent: () => Promise<void> = async () => {},
   ): Promise<boolean> {
     guid(app.id);
     if (
@@ -640,6 +641,7 @@ export class CloudFoundryPlanRunner implements PlanRunner {
         return false;
     }
     if (!(await unchanged()) || !(await eligible())) return false;
+    await recordIntent();
     await call(`apps/${app.id}`, "DELETE");
     // CF may only accept an asynchronous DELETE. A receipt means absence,
     // not merely acceptance of a deletion request.
@@ -654,6 +656,21 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       if (attempt < 5) await new Promise((resolve) => setTimeout(resolve, 250));
     }
     return false;
+  }
+  get cleanupSpaceId() {
+    return this.config.spaceId;
+  }
+  async cleanupAbsent(appId: string): Promise<boolean> {
+    guid(appId);
+    const call = await this.authorized();
+    try {
+      await call(`apps/${appId}`);
+      return false;
+    } catch (error) {
+      if (error instanceof RunnerRequestError && error.status === 404)
+        return true;
+      throw error;
+    }
   }
   private async removeNamed(name: string, appId: string | null) {
     const call = await this.authorized();

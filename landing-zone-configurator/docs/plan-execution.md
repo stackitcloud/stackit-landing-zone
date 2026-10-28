@@ -480,3 +480,9 @@ Reconciled warm-runner interruptions also retire through the normal pool, even i
 still desires STARTED after process exit. Retirement requires the existing valid
 recovery-replan clearance, expired runner tickets and no active guided recovery.
 A clearance invalidated by a later separate recovery State protects the app again.
+
+Before DELETE, a scoped intent is stored durably. If CF has only accepted the request
+when the immediate absence check ends, a later maintenance pass confirms the same app
+GUID is absent and atomically stores its receipt. Pending confirmations survive API
+restarts, rotate fairly in batches of 50 and never issue DELETE by themselves. Apps
+that still exist are subject to all normal eligibility and CF checks before any retry.

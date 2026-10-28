@@ -702,3 +702,58 @@ it("authorizes retention only for expired retired slots and protects active or u
     ).rows[0].count,
   ).toBe("1");
 });
+
+it("persists asynchronous cleanup intents across maintainers and confirms only within the recorded scope", async () => {
+  const runner = randomUUID(),
+    app = randomUUID(),
+    space = randomUUID(),
+    origin = "https://async-cleanup.example";
+  const pending = async (sc = space, org = origin) =>
+    (
+      await database.query(
+        "SELECT * FROM lzc_auth.pending_runner_cleanups($1,$2)",
+        [sc, org],
+      )
+    ).rows;
+  await database.query(
+    "SELECT lzc_auth.record_runner_cleanup_intent($1,$2,'plan',$3,$4)",
+    [runner, app, space, origin],
+  );
+  expect(await pending()).toEqual([{ app_id: app }]);
+  expect(await pending(randomUUID())).toEqual([]);
+  expect(await pending(space, "https://other.example")).toEqual([]);
+  await database.query("SELECT lzc_auth.confirm_runner_cleanup($1,$2,$3)", [
+    app,
+    randomUUID(),
+    origin,
+  ]);
+  expect(await pending()).toEqual([{ app_id: app }]);
+  await expect(
+    database.query(
+      "SELECT lzc_auth.record_runner_cleanup_intent($1,$2,'plan',$3,$4)",
+      [runner, app, space, "https://other.example"],
+    ),
+  ).rejects.toMatchObject({ code: "40001" });
+  await expect(
+    database.query("SELECT * FROM lzc.runner_cleanup_pending"),
+  ).rejects.toMatchObject({ code: "42501" });
+  await database.query("SELECT lzc_auth.confirm_runner_cleanup($1,$2,$3)", [
+    app,
+    space,
+    origin,
+  ]);
+  await database.query("SELECT lzc_auth.confirm_runner_cleanup($1,$2,$3)", [
+    app,
+    space,
+    origin,
+  ]);
+  expect(await pending()).toEqual([]);
+  expect(
+    (
+      await migration.query(
+        "SELECT count(*) FROM lzc.runner_cleanup_receipts WHERE app_id=$1",
+        [app],
+      )
+    ).rows[0].count,
+  ).toBe("1");
+});
