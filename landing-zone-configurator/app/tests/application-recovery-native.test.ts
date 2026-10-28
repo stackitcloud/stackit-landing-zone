@@ -1,5 +1,6 @@
 import {
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
   readFile,
@@ -10,6 +11,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { applicationExecutionProfiles } from "@lzc/contracts";
+import { applicationSourcePayloadSha256 } from "@lzc/contracts/recovery";
 import { afterEach, expect, it } from "vitest";
 import {
   applicationAcceleratorCommit,
@@ -246,3 +249,42 @@ it("rejects changed source/lock/backend before invoking a native process", async
     "# test mirror",
   );
 });
+
+it.each(applicationExecutionProfiles.filter((p) => p.status === "supported"))(
+  "recovers $revision using its native source under the current Recovery worker",
+  async (profile) => {
+    const f = await fixture();
+    const sourcePath = `application-sources/${profile.revision}`;
+    await cp(
+      join(f.input.root, "application-src"),
+      join(f.input.root, sourcePath),
+      { recursive: true },
+    );
+    await writeFile(
+      join(f.input.root, sourcePath, "application/revision-marker"),
+      profile.revision,
+    );
+    await writeFile(
+      join(f.input.root, "application-execution.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        profiles: [
+          {
+            ...profile,
+            sourcePath,
+            payloadSha256: await applicationSourcePayloadSha256(
+              join(f.input.root, sourcePath),
+            ),
+          },
+        ],
+      }),
+    );
+    f.input.sourceRevision = profile.revision;
+    await prepareNativeStateRecovery(f.input, async (c) => {
+      expect(await readFile(join(c.cwd, "revision-marker"), "utf8")).toBe(
+        profile.revision,
+      );
+      return f.command(c);
+    });
+  },
+);

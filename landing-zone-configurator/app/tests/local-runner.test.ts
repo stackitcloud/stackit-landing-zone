@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   chmod,
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
   readdir,
@@ -16,9 +17,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import {
+  applicationExecutionCurrentRevision,
+  applicationExecutionProfiles,
   applicationMvpAcceleratorCommit,
   platformFirewallImage,
 } from "@lzc/contracts";
+import { applicationSourcePayloadSha256 } from "@lzc/contracts/recovery";
 import { afterEach, expect, it, vi } from "vitest";
 import { approvableSummary } from "../apps/api/src/plans/execution.js";
 import { LocalPlanRunner } from "../apps/api/src/plans/local.js";
@@ -453,4 +457,56 @@ it("keeps unacknowledged recovery and never kills an untracked process after res
   await expect(
     runner.remove(id, "22222222-2222-4333-8444-555555555555"),
   ).rejects.toThrow("identity mismatch");
+});
+
+it("inspects all bundled Application revisions and fingerprints historical payloads before launch", async () => {
+  const { root, jobs } = await fixture("1.12.6", false, "application");
+  await copyFile(
+    fileURLToPath(
+      new URL("../../deploy/runner/application.lock.hcl", import.meta.url),
+    ),
+    join(root, "application-src/application/.terraform.lock.hcl"),
+  );
+  const profiles = [];
+  for (const profile of applicationExecutionProfiles.filter(
+    (p) => p.status === "supported",
+  )) {
+    const sourcePath =
+      profile.revision === applicationExecutionCurrentRevision
+        ? "application-src"
+        : `application-sources/${profile.revision}`;
+    if (sourcePath !== "application-src")
+      await cp(join(root, "application-src"), join(root, sourcePath), {
+        recursive: true,
+      });
+    profiles.push({
+      ...profile,
+      sourcePath,
+      payloadSha256: await applicationSourcePayloadSha256(
+        join(root, sourcePath),
+      ),
+    });
+  }
+  await writeFile(
+    join(root, "application-execution.json"),
+    JSON.stringify({ schemaVersion: 1, profiles }),
+  );
+  const runner = await LocalPlanRunner.open(root, jobs, "application");
+  expect(runner.acceleratorCommit).toBe(applicationExecutionCurrentRevision);
+  for (const p of profiles)
+    expect(runner.supportsAccelerator(p.revision)).toBe(true);
+  expect(
+    runner.supportsAccelerator("4d15d7870afa323badd93559d8b37c5a8d138dcf"),
+  ).toBe(false);
+  const historical = profiles.find(
+    (p) => p.revision !== applicationExecutionCurrentRevision,
+  );
+  if (!historical) throw new Error("missing historical fixture");
+  await writeFile(
+    join(root, historical.sourcePath, "application/tampered.tf"),
+    "changed",
+  );
+  const record = vi.fn();
+  await expect(runner.start(id, ticket, origin, record)).rejects.toThrow();
+  expect(record).not.toHaveBeenCalled();
 });

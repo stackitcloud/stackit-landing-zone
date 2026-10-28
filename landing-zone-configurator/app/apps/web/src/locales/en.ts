@@ -1,4 +1,7 @@
 export const englishMessages: Record<string, string> = {
+  "Die ursprüngliche Recovery-Quelle wurde zurückgezogen oder ihr geprüftes Paket fehlt. Ein Operator muss ein geprüftes kompatibles Recovery-Paket bereitstellen. Bestellung, State und Sperre bleiben erhalten; Upgrade und Apply sind bis zum Abgleich gesperrt.":
+    "The original recovery source was withdrawn or its reviewed package is missing. An operator must provide a reviewed compatible recovery package. The order, State and lock are preserved; upgrade and Apply remain blocked until reconciliation.",
+
   "Template-Entwürfe bearbeitest du unter Application Landing Zones. Sie werden weiterhin mit dieser Konfiguration gespeichert.":
     "Edit template drafts under Application Landing Zones. They are still saved with this configuration.",
   "Zu den Application Landing Zones →": "Go to Application Landing Zones →",
@@ -650,8 +653,6 @@ export const englishMessages: Record<string, string> = {
   "Bestellung konnte nicht gelöscht werden.": "The order could not be deleted.",
   "Bestellung löschen": "Delete order",
   "Freigegebene Runner-Revision": "Approved runner revision",
-  "Diese Bestellung verwendet eine Accelerator-Revision, die der Application-Runner nicht unterstützt. Bitte eine neue Template-Version mit der freigegebenen Runner-Revision veröffentlichen und neu bestellen.":
-    "This order uses an accelerator revision not supported by the Application runner. Publish a new template version with the approved runner revision and place a new order.",
   "Der STACKIT-Nachweis für diesen Plan ist abgelaufen. Bitte erneut mit STACKIT anmelden.":
     "The STACKIT proof for this plan expired. Sign in with STACKIT again.",
   "Application-Plan": "Application plan",
@@ -2760,4 +2761,57 @@ export const englishMessages: Record<string, string> = {
   "Vorschlag verworfen.": "Proposal discarded.",
   "Vorschlag verworfen. Gespräch und Konfigurationsentwurf bleiben erhalten.":
     "Proposal discarded. The conversation and configuration draft are preserved.",
+  "Ausführungsstand der Bestellung": "Order execution version",
+  "Ursprüngliche Templatequelle": "Original template source",
+  "Gewünschter Ausführungsstand": "Desired execution version",
+  "Zuletzt angewendete Quelle": "Last applied source",
+  "Noch kein erfolgreicher Apply": "No successful Apply yet",
+  "Verfügbarkeit des Ausführungsstands": "Execution source availability",
+  Unterstützt: "Supported",
+  Zurückgezogen: "Withdrawn",
+  "Runner-Paket nicht verfügbar": "Runner package unavailable",
+  "Vorgesehener Upgrade-Pfad": "Designated upgrade path",
+  "Hindernisse für ein Upgrade": "Upgrade blockers",
+  "Ausführungsstand explizit aktualisieren":
+    "Explicitly upgrade execution version",
+  "Ziel-Ausführungsstand": "Target execution version",
+  "Provider-Lock SHA256": "Provider lock SHA256",
+  Vertragsversion: "Contract version",
+  "Ausführungsbindung aktualisieren": "Update execution binding",
+  "Ich aktualisiere dieselbe Bestellung mit demselben State. Den neuen Plan prüfe ich einschließlich Ersetzungen und Löschungen. Jetzt wird keine Infrastruktur geändert und kein Plan oder Apply gestartet.":
+    "I am upgrading the same order with the same state. I will review the new Plan, including replacements and deletions. No infrastructure is changed and no Plan or Apply starts now.",
+  "Ausführungsstand aktualisiert. Bestellung und State bleiben erhalten. Starte und prüfe als Nächstes einen neuen Plan; es wurde kein Plan oder Apply ausgeführt.":
+    "Execution version updated. The order and state are preserved. Start and review a new Plan next; no Plan or Apply was executed.",
+  "Dieser Ausführungsstand wurde zurückgezogen. Prüfe den angebotenen Upgrade-Pfad für dieselbe Bestellung und denselben State.":
+    "This execution version was withdrawn. Review the available upgrade path for the same order and state.",
+  "Das gebundene Runner-Paket ist derzeit nicht verfügbar. Die Bestellung und ihr State bleiben erhalten. Prüfe die verfügbaren Ausführungsstände oder aktualisiere den Status.":
+    "The bound runner package is currently unavailable. The order and its state are preserved. Review available execution versions or refresh status.",
+  "Der Ausführungsstand hat sich zwischenzeitlich geändert. Lade den Status erneut und prüfe die Auswahl.":
+    "The execution version changed in the meantime. Refresh status and review the selection.",
+  "Ein Upgrade ist derzeit gesperrt. Prüfe die angezeigten Hindernisse; die bestehende Bestellung bleibt erhalten.":
+    "Upgrade is currently blocked. Review the listed blockers; the existing order is preserved.",
+  "Bestätige die Prüfung des neuen Plans und die Beibehaltung von Bestellung und State.":
+    "Confirm that you will review a new Plan and retain the existing order and state.",
+  "Die Ausführungsbindung passt nicht mehr zum Prüfstand. Lade den Status erneut; Bestellung und State bleiben erhalten.":
+    "The execution binding no longer matches the reviewed version. Refresh status; the order and state are preserved.",
+  "Eine Ausführung ist noch aktiv. Warte auf ihren Abschluss, bevor du den Ausführungsstand änderst.":
+    "An execution is still active. Wait for it to finish before changing the execution version.",
+  "Der Ausführungsstatus ist derzeit nicht verfügbar. Die bestehende Bestellung und ihr State bleiben erhalten. Aktualisiere den Status später erneut.":
+    "Execution status is currently unavailable. The existing order and its state are preserved. Refresh status later.",
+  "Du hast derzeit keine Berechtigung, diese Ausführungsbindung zu ändern.":
+    "You currently have no permission to change this execution binding.",
+  "Das gebundene Runner-Paket dieser Bestellung ist derzeit nicht verfügbar. Prüfe den Ausführungsstand und den angebotenen Upgrade-Pfad für dieselbe Bestellung; ihr State bleibt erhalten.":
+    "The bound runner package for this order is currently unavailable. Review its execution version and the offered upgrade path for the same order; its state is preserved.",
+  "Eine Ausführung oder die Klärung eines fehlgeschlagenen Apply ist noch offen. Schließe sie vor einem Upgrade ab.":
+    "An execution or failed Apply reconciliation is still pending. Complete it before upgrading.",
+  "Eine Runner-Berechtigung ist noch aktiv. Warte auf ihren Ablauf, bevor du den Ausführungsstand änderst.":
+    "A runner capability is still active. Wait for it to expire before changing the execution version.",
+  "Eine geführte State-Wiederherstellung ist noch aktiv. Schließe sie vor einem Upgrade ab.":
+    "Guided state recovery is still active. Complete it before upgrading.",
+  "Eine Apply-Freigabe ist noch aktiv. Kläre die bestehende Ausführung vor einem Upgrade.":
+    "An Apply grant is still active. Reconcile the existing execution before upgrading.",
+  "Ein Runner hält noch eine Ausführungsberechtigung. Kläre die bestehende Ausführung vor einem Upgrade.":
+    "A runner still holds an execution claim. Reconcile the existing execution before upgrading.",
+  "Das gewünschte Runner-Paket ist nicht als Upgrade freigegeben oder derzeit nicht verfügbar. Prüfe den angebotenen Upgrade-Pfad für dieselbe Bestellung.":
+    "The requested runner package is not approved for upgrade or is currently unavailable. Review the offered upgrade path for the same order.",
 };

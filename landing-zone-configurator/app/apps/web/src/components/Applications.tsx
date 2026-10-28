@@ -50,6 +50,7 @@ import {
   t,
 } from "../i18n";
 import type { Session } from "./Account";
+import { ApplicationExecutionLifecycle } from "./ApplicationExecutionLifecycle";
 import { applicationGroupsSchema } from "./ApplicationGroups";
 import { ApplicationOrderQuota } from "./ApplicationOrderQuota";
 import { ApplicationStateRecovery } from "./ApplicationStateRecovery";
@@ -57,6 +58,14 @@ import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_recovery_source_unavailable:
+    "Die ursprüngliche Recovery-Quelle wurde zurückgezogen oder ihr geprüftes Paket fehlt. Ein Operator muss ein geprüftes kompatibles Recovery-Paket bereitstellen. Bestellung, State und Sperre bleiben erhalten; Upgrade und Apply sind bis zum Abgleich gesperrt.",
+  application_execution_source_withdrawn:
+    "Dieser Ausführungsstand wurde zurückgezogen. Prüfe den angebotenen Upgrade-Pfad für dieselbe Bestellung und denselben State.",
+  application_execution_package_unavailable:
+    "Das gebundene Runner-Paket ist derzeit nicht verfügbar. Die Bestellung und ihr State bleiben erhalten. Prüfe die verfügbaren Ausführungsstände oder aktualisiere den Status.",
+  application_execution_binding_changed:
+    "Die Ausführungsbindung passt nicht mehr zum Prüfstand. Lade den Status erneut; Bestellung und State bleiben erhalten.",
   application_order_quota_exceeded:
     "Das Bestellkontingent dieses Arbeitsbereichs ist ausgeschöpft. Bestehende Bestellungen bleiben nutzbar. Bitte den Platform Owner kontaktieren.",
   application_order_quota_changed:
@@ -152,7 +161,7 @@ const errors: Record<string, string> = {
   application_deletions_unavailable:
     "Bestellungen können auf diesem Server noch nicht gelöscht werden.",
   application_runner_revision_required:
-    "Diese Bestellung verwendet eine Accelerator-Revision, die der Application-Runner nicht unterstützt. Bitte eine neue Template-Version mit der freigegebenen Runner-Revision veröffentlichen und neu bestellen.",
+    "Das gebundene Runner-Paket dieser Bestellung ist derzeit nicht verfügbar. Prüfe den Ausführungsstand und den angebotenen Upgrade-Pfad für dieselbe Bestellung; ihr State bleibt erhalten.",
   application_job_identity_unavailable:
     "Der STACKIT-Nachweis für diesen Plan ist abgelaufen. Bitte erneut mit STACKIT anmelden.",
   application_dispatch_disabled:
@@ -2121,6 +2130,8 @@ export function Applications({
   const [orderDeletionEnabled, setOrderDeletionEnabled] = useState(false);
   const [runnerRevision, setRunnerRevision] = useState<string | null>(null);
   const [planJobsEnabled, setPlanJobsEnabled] = useState(false);
+  const [executionLifecycleEnabled, setExecutionLifecycleEnabled] =
+    useState(false);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [planEnabled, setPlanEnabled] = useState(false);
   const [applyEnabled, setApplyEnabled] = useState(false);
@@ -2254,6 +2265,7 @@ export function Applications({
           orderDeletionEnabled: z.boolean().default(false),
           executionDelegationEnabled: z.boolean().default(false),
           planJobsEnabled: z.boolean().default(false),
+          executionLifecycleEnabled: z.boolean().default(false),
           execution: z
             .object({
               planEnabled: z.boolean(),
@@ -2284,6 +2296,7 @@ export function Applications({
       setOrderDeletionEnabled(storedOrders.orderDeletionEnabled);
       setRunnerRevision(storedOrders.execution.acceleratorRevision);
       setPlanJobsEnabled(storedOrders.planJobsEnabled);
+      setExecutionLifecycleEnabled(storedOrders.executionLifecycleEnabled);
       setPlanEnabled(storedOrders.execution.planEnabled);
       setApplyEnabled(storedOrders.execution.applyEnabled);
       setRecoveryReviewsEnabled(storedOrders.execution.recoveryReviewsEnabled);
@@ -4099,6 +4112,20 @@ export function Applications({
           hidden={selectedTab !== "orders"}
         >
           <h2>{selectedInstance.name}</h2>
+          {executionLifecycleEnabled && (
+            <ApplicationExecutionLifecycle
+              key={`${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`}
+              session={session}
+              instanceId={selectedInstance.id}
+              requestedBy={selectedInstance.requestedBy}
+              onUpgraded={async (signal) => {
+                setPlanInput(null);
+                setPlanRefresh((value) => value + 1);
+                setOrderView("overview");
+                await load(signal);
+              }}
+            />
+          )}
           {orderDeletionEnabled &&
             (selectedInstance.canDelete || selectedInstance.canArchive) && (
               <button

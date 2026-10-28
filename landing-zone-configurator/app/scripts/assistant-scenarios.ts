@@ -163,6 +163,7 @@ export type AssistantScenario = {
     | "public-kubernetes-clarify"
     | "public-kubernetes-followup";
   corporateIpv4?: "advice" | "automatic" | "explicit";
+  executionLifecycle?: boolean;
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
 
@@ -703,6 +704,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     message:
       "Nutze die Email meines aktuell verifiziert angemeldeten STACKIT-Benutzers als Organisations-Owner.",
   },
+  {
+    id: "application-execution-lifecycle-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    executionLifecycle: true,
+    message:
+      "Meine bestehende Application-Bestellung kann nach einem Produktupdate wegen ihrer Accelerator-Revision keinen Drift mehr prüfen. Soll ich neu bestellen? Wie bleiben dieselbe Bestellung und der State nutzbar? Unterscheide ursprüngliche Template-Quelle, gewünschten Stand und zuletzt erfolgreich angewendete Revision. Wie funktioniert ein Upgrade, was passiert bei Apply-Fehler und bei einer zurückgezogenen Quelle? Nur beraten, nichts ändern oder ausführen.",
+  },
   ...Object.entries(questions).map(
     ([topic, message]): AssistantScenario => ({
       id: `${topic}-advice`,
@@ -1060,6 +1069,110 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
   return { draft, values, history, catalogues };
 }
 
+export function assistantExecutionLifecycleFailures(text: string) {
+  const required = [
+    ["pinned-source", /Revision|Quelle|Ausführungsstand|execution|version/i],
+    [
+      "same-order",
+      /(?:derselb|dieselb|bestehend|gleich)[^.!?\n]{0,100}(?:Bestellung|Instanz|order)|(?:Bestellung|Instanz|order)[^.!?\n]{0,100}(?:beibehalten|erhalten|weiterverwend|remain|preserv)/i,
+    ],
+    ["state", /State|Zustandsdatei/i],
+    [
+      "fresh-plan",
+      /(?:neu|frisch|fresh)[^.!?\n]{0,50}Plan|Plan[^.!?\n]{0,50}(?:neu|frisch|fresh)|(?:danach|anschließend)[^.!?\n]{0,35}separate[rn]? Plan[^.!?\n]{0,30}(?:erforderlich|nötig)/i,
+    ],
+    [
+      "apply-approval",
+      /Apply/i.test(text) &&
+        /Freigabe|Zustimmung|genehmig|approval/i.test(text),
+    ],
+    ["withdrawal", /zurückgezog|withdrawn|gesperrt|withdrawal/i],
+    [
+      "source-states",
+      /ursprüng|origin|template/i.test(text) &&
+        /gewünscht|desired/i.test(text) &&
+        /zuletzt|letzt(?:en|er|e)?|last applied/i.test(text) &&
+        /erfolgreich|successful/i.test(text),
+    ],
+    [
+      "no-reorder",
+      /(?:keine?|nicht|niemals|never)[^.!?\n]{0,80}(?:neu bestell|Neubestellung|neue Bestellung|reorder)|(?:Neubestell(?:ung|en)|neu bestellen|neue Bestellung)[^.!?\n]{0,80}(?:nicht|unnötig)/i,
+    ],
+  ] as const;
+  const failures = required
+    .filter(([, rule]) =>
+      typeof rule === "boolean" ? !rule : !rule.test(text),
+    )
+    .map(([name]) => `application_execution_missing_${name}`);
+  for (const clause of text.split(/[.!?\n]+/)) {
+    if (
+      /lastApplied[^.!?\n]{0,90}(?:Basis|Grundlage)[^.!?\n]{0,30}Recovery|Plan[^.!?\n]{0,100}gegenüber lastApplied/i.test(
+        clause,
+      ) &&
+      !/nicht|kein/i.test(clause)
+    )
+      failures.push("application_execution_confuses_state_with_last_applied");
+    if (
+      /(?:neu\w*|frisch\w*) Plan[^.!?]{0,50}(?:nicht (?:nötig|erforderlich|notwendig)|entfällt|optional)|(?:kein|ohne) (?:neuen?|frischen?) Plan (?:nötig|erforderlich|notwendig)/i.test(
+        clause,
+      )
+    )
+      failures.push("application_execution_denies_fresh_plan");
+    if (
+      /Apply[^.!?]{0,60}(?:keine?|ohne)[^.!?]{0,30}(?:Freigabe|Zustimmung|Genehmigung|approval)/i.test(
+        clause,
+      ) &&
+      !/(?:nicht zulässig|nicht erlaubt|verboten|niemals|darf nicht)/i.test(
+        clause,
+      )
+    )
+      failures.push("application_execution_denies_apply_approval");
+    if (
+      /(?:zurückgezog|withdrawn|gesperrt)/i.test(clause) &&
+      /(?:automatisch weiter|trotzdem ausführen|weiterlaufen|laufen[^.!?]{0,25}weiter)/i.test(
+        clause,
+      ) &&
+      !/(?:nicht|niemals|keine?)[^.!?]{0,40}(?:weiter|automatisch|ausführ)/i.test(
+        clause,
+      )
+    )
+      failures.push("application_execution_runs_withdrawn_source");
+    if (
+      /\bState bleibt unverändert auf (?:dem|den) zuletzt erfolgreichen|(?:fehlgeschlagen|gescheitert)[^.!?\n]{0,45}Apply[^.!?\n]{0,40}(?:ändert|verändert)[^.!?\n]{0,20}(?:State|Zustand)[^.!?\n]{0,15}nicht/i.test(
+        clause,
+      )
+    )
+      failures.push("application_execution_promises_unchanged_failed_state");
+    if (
+      /ohne Datenverlust|verlustfrei/i.test(clause) &&
+      !/nicht|keine?|niemals/i.test(clause)
+    )
+      failures.push("application_execution_promises_no_data_loss");
+    if (
+      /gewünscht[^.!?\n]{0,100}(?:aktuelle Konfiguration|rm_folders|owner_email|bearbeitbare[rn]? Plattformentwurf)/i.test(
+        clause,
+      ) &&
+      !/nicht|kein/i.test(clause)
+    )
+      failures.push("application_execution_confuses_desired_source");
+    if (
+      /weiterhin manuell[^.!?\n]{0,80}(?:anwenden|Apply|ausführ)/i.test(
+        clause,
+      ) &&
+      !/nicht|keine?|niemals/i.test(clause)
+    )
+      failures.push("application_execution_manual_withdrawal_bypass");
+    if (
+      /(?:ich|wir) (?:führe|führen|starte|starten|aktualisiere|aktualisieren|habe|haben)[^.!?]{0,100}(?:Upgrade|Ausführungsbindung)|(?:Chat|Assistent)[^.!?]{0,40}(?:führt|startet)[^.!?]{0,40}Upgrade/i.test(
+        clause,
+      ) &&
+      !/(?:nicht|niemals|kein\w*)/i.test(clause)
+    )
+      failures.push("application_execution_claims_chat_upgrade");
+  }
+  return failures;
+}
+
 export function validateAssistantScenario(
   scenario: AssistantScenario,
   input: unknown,
@@ -1081,6 +1194,8 @@ export function validateAssistantScenario(
   )
     failures.push("missing_topic_reference");
   const fixture = assistantScenarioFixture(scenario);
+  if (scenario.executionLifecycle)
+    failures.push(...assistantExecutionLifecycleFailures(dialogue.explanation));
   if (scenario.id === "devops-git-advice")
     failures.push(...assistantDevOpsDefaultFailures(dialogue.explanation));
   if (scenario.applicationAccess === "advice") {
@@ -1927,6 +2042,11 @@ export function buildAssistantScenarioInventory() {
                   scenario.dnsRole === "draft"
                     ? "primary_company_zone_preserves_existing_configuration"
                     : "dns_role_meaning_and_native_secondary_limit",
+                ]
+              : []),
+            ...(scenario.executionLifecycle
+              ? [
+                  "pinned_source_same_order_state_fresh_plan_approval_withdrawal_no_reorder",
                 ]
               : []),
             ...(scenario.requiredOverviewFields

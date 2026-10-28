@@ -14,7 +14,7 @@ references; the [user guide](user-guide.md) describes product usage.
 | Native schemas and compiler | [Common feature model](common-feature-model.md), [common editor](common-editor.md) |
 | Template drafts and parameters | [Project template drafts](project-template-drafts.md), [parameters and bindings](template-parameters-and-bindings.md) |
 | Authentication and organization binding | [Login](github-login.md) |
-| Runner, jobs and state | [Plan execution](plan-execution.md), [Runner packaging](../deploy/runner/README.md) |
+| Runner, jobs and state | [Plan execution](plan-execution.md), [Application execution lifecycle](application-execution-lifecycle.md), [Runner packaging](../deploy/runner/README.md) |
 | Assistant facts, generation and qualification | [Knowledge contract](assistant-knowledge/README.md) |
 | Operator IaC and encrypted state | [Infrastructure](../infra/README.md) |
 | CI permissions and manual operations | [CI runbook](../infra/ci/README.md) |

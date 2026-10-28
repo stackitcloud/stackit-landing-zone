@@ -30,6 +30,28 @@ Gespeicherte Konfiguration, Application-Template-Veroeffentlichung, Bestellung,
 Plan, Apply, Destroy und Recovery sind unabhaengige Vorgaenge. Kein freies
 Terraform oder zweites YAML-Schema. Ein vollstaendiger Apply umfasst
 verpflichtende Grundlagen und alle aktivierten Eingaben.
+Bestellungen behalten IaC-Quelle, Lock-/Werkzeugversionen und Ausführungsbindung
+über Produkt-Releases. Aktuelle gepatchte Worker prüfen gebündelte historische
+Quellen. Ein ausdrückliches Upgrade erhält dieselbe Bestellung und denselben
+State; anschließend sind ein neuer geprüfter Plan und die normale Apply-Freigabe
+nötig. Zurückgezogene Quellen benötigen einen geprüften Ersatzpfad, keine
+Neubestellung. Der Chat führt kein Upgrade aus.
+Die ursprüngliche Template-Quelle bleibt unverändert; ein ausdrückliches Upgrade
+ändert nur den gewünschten Ausführungsstand. Zuletzt angewendet ändert sich erst
+nach erfolgreichem Apply. Bei Fehlern bleibt der gewünschte Stand erhalten;
+Recovery verwendet die Quelle des unterbrochenen Jobs, nicht zuletzt angewendet.
+Der neue Plan vergleicht den tatsächlichen State, nicht zuletzt angewendet. Der gewünschte Stand
+bezeichnet eine gewählte Accelerator-Git-Revision, keinen bearbeitbaren
+Plattformentwurf. Zuletzt angewendet ist kein vollständiger aktueller
+State-Snapshot: Ein fehlgeschlagener Apply kann State und Ressourcen bereits
+verändert haben. Niemals unveränderten State oder Verlustfreiheit garantieren.
+In den Bestelldetails unter Ausführungsstand ändert ein Upgrade ausschließlich
+die gewünschte Quelle und startet keine Ausführung. Danach sind ein neuer Plan,
+die Prüfung auf Änderungen, Ersetzungen und Löschungen sowie eine ausdrückliche
+normale Apply-Freigabe nötig. Organisation, Projekt, Bestellung, Backend und
+State-Zuordnung bleiben erhalten. Zurückgezogene Quellen dürfen nicht manuell
+weiter angewendet werden. Offene Recovery sperrt das Upgrade; bei zurückgezogener
+Quelle muss der Operator ein geprüftes kompatibles Paket bereitstellen.
 
 <a id="dependencies"></a>
 
@@ -102,3 +124,7 @@ gelangen niemals in den Modellkontext.
 Das Manifest bindet Dokument, Funktionen und Service.
 Release/Promotion, Planung, Aufbewahrung/Restore/Last/DE-EN-Paritaet und A01-A24
 benoetigen getrennte Abnahme.
+
+Bei ausdrücklich auf Application-Quellen bezogener Lifecycle-Beratung gibt der
+Assistant den festen Produktablauf mit Plan-/Apply-Grenze und Recovery-Regeln aus.
+Dabei werden keine Bestelldaten gelesen oder Aktionen ausgeführt.

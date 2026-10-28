@@ -17,11 +17,15 @@ import {
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
+  type ApplicationExecutionManifest,
+  applicationExecutionCurrentRevision,
+  applicationExecutionProfile,
   applicationRunnerSourceSchema,
   openTofuProgress,
   platformFirewallImage,
   platformRunnerSourceSchema,
 } from "@lzc/contracts";
+import { readApplicationExecutionManifest } from "@lzc/contracts/recovery";
 import { z } from "zod";
 import type { PlanRunner } from "./cloud-foundry.js";
 
@@ -73,6 +77,13 @@ async function fingerprint(
       hash.update("application-source\0");
       await add("application-source.json");
     }
+    const execution = await readApplicationExecutionManifest(root);
+    if (execution) {
+      await add("application-execution.json");
+      for (const profile of execution.profiles)
+        if (profile.sourcePath !== "application-src")
+          await add(profile.sourcePath);
+    }
   }
   if (broker === "platform") {
     const metadata = await lstat(join(root, "platform-source.json")).catch(
@@ -118,6 +129,7 @@ export class LocalPlanRunner implements PlanRunner {
     readonly acceleratorCommit: string,
     readonly applicationMaintenanceEnabled: boolean,
     readonly firewallPlansEnabled: boolean,
+    private readonly applicationExecution: ApplicationExecutionManifest | null,
   ) {}
 
   static async open(
@@ -143,8 +155,18 @@ export class LocalPlanRunner implements PlanRunner {
       throw new Error("Local runner requires OpenTofu 1.12.6");
     let maintenanceEnabled = false;
     let firewallPlansEnabled = false;
-    const source =
-      broker === "platform"
+    const execution =
+      broker === "application"
+        ? await readApplicationExecutionManifest(packageRoot)
+        : null;
+    if (execution)
+      applicationExecutionProfile(
+        execution,
+        applicationExecutionCurrentRevision,
+      );
+    const source = execution
+      ? applicationExecutionCurrentRevision
+      : broker === "platform"
         ? await readFile(
             join(packageRoot, "platform-source.json"),
             "utf8",
@@ -197,8 +219,14 @@ export class LocalPlanRunner implements PlanRunner {
       identity,
       broker,
       source,
-      maintenanceEnabled,
+      execution
+        ? execution.profiles.some(
+            (profile) =>
+              profile.status === "supported" && profile.maintenanceEnabled,
+          )
+        : maintenanceEnabled,
       firewallPlansEnabled,
+      execution,
     );
   }
 
@@ -207,7 +235,15 @@ export class LocalPlanRunner implements PlanRunner {
   }
 
   supportsAccelerator(commit: string) {
-    return commit === this.acceleratorCommit;
+    if (!this.applicationExecution) return commit === this.acceleratorCommit;
+    try {
+      return (
+        applicationExecutionProfile(this.applicationExecution, commit)
+          .status === "supported"
+      );
+    } catch {
+      return false;
+    }
   }
 
   supportsArtifact(identity: string) {

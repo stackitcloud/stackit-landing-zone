@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import {
+  applicationExecutionProfile,
   applicationMvpAcceleratorCommit,
   applicationRunnerBindingSchema,
   firewallAdministrationSchema,
@@ -29,6 +30,7 @@ import {
   s3RunnerBackendSchema,
   summarizePlan,
 } from "@lzc/contracts";
+import { readApplicationExecutionManifest } from "@lzc/contracts/recovery";
 import { applicationPlanObservation, watchPlanVersion } from "./observation.js";
 import {
   createDevPlanHold,
@@ -208,8 +210,17 @@ export async function runWorker(
             return undefined;
           },
         );
+    const applicationExecution = applicationJob
+      ? await readApplicationExecutionManifest(options.root)
+      : null;
+    const executionProfile = applicationExecution
+      ? applicationExecutionProfile(
+          applicationExecution,
+          String(input.acceleratorCommit),
+        )
+      : undefined;
     const expectedCommit = applicationJob
-      ? applicationAcceleratorCommit
+      ? (executionProfile?.revision ?? applicationAcceleratorCommit)
       : (platformSource?.acceleratorCommit ?? acceleratorCommit);
     const expectedLockHash = applicationJob
       ? applicationProviderLockHash
@@ -276,6 +287,12 @@ export async function runWorker(
     const applicationBinding = applicationJob
       ? applicationRunnerBindingSchema.parse(input.application)
       : undefined;
+    if (
+      executionProfile &&
+      applicationBinding?.purpose !== "standard" &&
+      !executionProfile.maintenanceEnabled
+    )
+      throw new Error("Application source maintenance disabled");
     if (applying && applicationBinding?.purpose === "drift")
       throw new Error("Drift cannot be applied");
     if (!applicationJob && input.application !== undefined)
@@ -335,7 +352,9 @@ export async function runWorker(
     const root = resolve(options.root);
     const packageSource = resolve(
       root,
-      applicationJob ? "application-src" : "accelerator",
+      applicationJob
+        ? (executionProfile?.sourcePath ?? "application-src")
+        : "accelerator",
     );
     const source = applicationJob
       ? resolve(packageSource, "application")

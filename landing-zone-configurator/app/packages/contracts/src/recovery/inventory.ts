@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import {
+  applicationExecutionCurrentRevision,
+  applicationExecutionRevisionSchema,
+  applicationExecutionRevisions,
+} from "../application-execution.js";
 import type {
   ApplicationStateRecoveryImport,
   ApplicationStateRecoveryRevocation,
@@ -196,7 +201,17 @@ export function deriveApplicationRecoveryImports(input: {
   inventory: unknown;
   tenantId: string;
   instanceId: string;
+  sourceRevision?: string;
 }): ApplicationStateRecoveryImport[] {
+  const sourceRevision = applicationExecutionRevisionSchema.parse(
+    input.sourceRevision ?? applicationExecutionCurrentRevision,
+  );
+  const legacyBuckets = applicationExecutionRevisions
+    .slice(0, 3)
+    .some((revision) => revision === sourceRevision);
+  const legacyGroup = applicationExecutionRevisions
+    .slice(0, 2)
+    .some((revision) => revision === sourceRevision);
   const original = readRecoveryState(input.state, input.instanceId);
   const v = variables.parse(input.variables);
   const cloud = recoveryCloudInventorySchema.parse(input.inventory);
@@ -394,7 +409,7 @@ export function deriveApplicationRecoveryImports(input: {
   unique(cloud.buckets, (n) => n);
   const expectedBuckets = new Map(
     ["default", "tfstate"].map((purpose) => [
-      v.bucket_naming === "project-id"
+      !legacyBuckets && v.bucket_naming === "project-id"
         ? `${prefix.slice(0, 63 - purpose.length - 38)}-${projectId}-${purpose}`
         : `${prefix}-${purpose}`,
       purpose,
@@ -415,10 +430,22 @@ export function deriveApplicationRecoveryImports(input: {
   );
   if (group) {
     const groupName =
-      prefix.length <= 32
+      legacyGroup || prefix.length <= 32
         ? prefix
         : `${prefix.slice(0, 23)}-${createHash("sha256").update(prefix).digest("hex").slice(0, 8)}`;
-    if (group.name !== groupName) throw new Error("cloud-resource-ambiguous");
+    const retainedGroup = retained.get(
+      "module.application.stackit_objectstorage_credentials_group.this",
+    );
+    // An interrupted explicit source upgrade can retain the old full prefix.
+    // Only the exact already-managed State identity and name prove ownership;
+    // a historical-looking orphan must still match the selected native source.
+    const retainedLegacyGroup =
+      group.name === prefix &&
+      retainedGroup?.instance.attributes.id ===
+        `${projectId},${target.region},${group.id}` &&
+      retainedGroup.instance.attributes.name === group.name;
+    if (group.name !== groupName && !retainedLegacyGroup)
+      throw new Error("cloud-resource-ambiguous");
     // Listing identifies an orphan credential but cannot reconstruct its secret.
     // A missing metadata list must never be interpreted as no credentials.
     if (!group.accessKeyIds) throw new Error("cloud-inventory-incomplete");

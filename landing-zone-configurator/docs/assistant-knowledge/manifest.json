@@ -608,8 +608,8 @@
     {
       "id": "configuration-lifecycle",
       "file": "configuration-lifecycle.md",
-      "version": 9,
-      "checkedOn": "2026-10-12",
+      "version": 10,
+      "checkedOn": "2026-10-28",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [],
       "mandatory": true,
@@ -626,7 +626,9 @@
         "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
-        "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts"
+        "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts",
+        "landing-zone-configurator/docs/application-execution-lifecycle.md",
+        "landing-zone-configurator/app/apps/api/src/applications/execution-lifecycle.ts"
       ],
       "externalSources": [],
       "scenarios": [

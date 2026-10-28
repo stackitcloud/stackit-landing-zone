@@ -21,9 +21,12 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import {
+  applicationExecutionCurrentRevision,
+  applicationExecutionProfiles,
   platformFirewallImage,
   platformRunnerSourceSchema,
 } from "@lzc/contracts";
+import { applicationSourcePayloadSha256 } from "@lzc/contracts/recovery";
 import {
   createEditorConfiguration,
   editCommonInput,
@@ -1973,3 +1976,79 @@ it("refuses an untrusted broker origin before any network or engine execution", 
   expect(fetchMock).not.toHaveBeenCalled();
   expect(await test.calls()).toEqual([]);
 });
+
+async function executionManifest(test: Awaited<ReturnType<typeof fixture>>) {
+  const profiles = [];
+  for (const profile of applicationExecutionProfiles.filter(
+    (p) => p.status === "supported",
+  )) {
+    const sourcePath =
+      profile.revision === applicationExecutionCurrentRevision
+        ? "application-src"
+        : `application-sources/${profile.revision}`;
+    if (sourcePath !== "application-src")
+      await cp(
+        join(test.root, "application-src"),
+        join(test.root, sourcePath),
+        { recursive: true },
+      );
+    await writeFile(
+      join(test.root, sourcePath, "application/root-marker"),
+      profile.revision,
+    );
+    profiles.push({
+      ...profile,
+      sourcePath,
+      payloadSha256: await applicationSourcePayloadSha256(
+        join(test.root, sourcePath),
+      ),
+    });
+  }
+  await writeFile(
+    join(test.root, "application-execution.json"),
+    JSON.stringify({ schemaVersion: 1, profiles }),
+  );
+  return profiles;
+}
+it.each(applicationExecutionProfiles.filter((p) => p.status === "supported"))(
+  "uses the current patched worker with immutable source $revision",
+  async (profile) => {
+    const test = await fixture();
+    applicationInput(test);
+    await executionManifest(test);
+    test.input.acceleratorCommit = profile.revision;
+    expect(await test.execute()).toBe("succeeded");
+    for (const call of await test.calls())
+      expect(call.rootMarker).toBe(profile.revision);
+  },
+);
+it("rejects tampered historical payloads before engine or credential materialization", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  const profiles = await executionManifest(test);
+  await writeFile(
+    join(test.root, firstProfile(profiles).sourcePath, "application/main.tf"),
+    "tampered",
+  );
+  expect(await test.execute()).toBe("failed");
+  expect(await test.calls()).toEqual([]);
+});
+it("does not fall back from a withdrawn execution profile to current source", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  const profiles = await executionManifest(test);
+  firstProfile(profiles).status = "withdrawn";
+  await writeFile(
+    join(test.root, "application-execution.json"),
+    JSON.stringify({ schemaVersion: 1, profiles }),
+  );
+  test.input.acceleratorCommit = firstProfile(profiles).revision;
+  expect(await test.execute()).toBe("failed");
+  expect(await test.calls()).toEqual([]);
+});
+
+function firstProfile<T>(profiles: T[]): T {
+  const first = profiles[0];
+  if (!first) throw new Error("missing fixture profile");
+  return first;
+}

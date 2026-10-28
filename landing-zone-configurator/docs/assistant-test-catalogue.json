@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "af1405ba326c49210f87d1f11c1c44538f88d3f6a83c935028aba2f9eb72f62f",
+  "knowledgeSha256": "2b2e5778aadcf7a6f70256fe8b5a89803b24f993c45e1ad6d021bc714b424834",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "5c9797f284be6801385bfef6b9e1062eed69c76ff4a0058f367564d9ae014757",
+    "scripts/assistant-scenarios.ts": "1109b256250ebd3acb80341c73774a148390fd35a322e210e89c7cedf9e12dd1",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "dd9d18bf0fb1dd9ab4423f2501acfc214a52d085e9d9b1390eda23c1c5ee20e6",
+  "suiteSha256": "ed612feee06aae62f45e0d927b124753d7c9231af6b35a6e82b9e1556e5c79fc",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5978,6 +5978,19 @@
       "id": "configuration-lifecycle",
       "fields": [],
       "cases": [
+        {
+          "id": "application-execution-lifecycle-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "executionLifecycle": true,
+          "message": "Meine bestehende Application-Bestellung kann nach einem Produktupdate wegen ihrer Accelerator-Revision keinen Drift mehr prüfen. Soll ich neu bestellen? Wie bleiben dieselbe Bestellung und der State nutzbar? Unterscheide ursprüngliche Template-Quelle, gewünschten Stand und zuletzt erfolgreich angewendete Revision. Wie funktioniert ein Upgrade, was passiert bei Apply-Fehler und bei einer zurückgezogenen Quelle? Nur beraten, nichts ändern oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "pinned_source_same_order_state_fresh_plan_approval_withdrawal_no_reorder",
+            "no_changes"
+          ]
+        },
         {
           "id": "configuration-lifecycle-advice",
           "topic": "configuration-lifecycle",

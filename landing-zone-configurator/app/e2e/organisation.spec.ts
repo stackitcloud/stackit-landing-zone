@@ -2008,7 +2008,13 @@ for (const scenario of [
       await prepare.click();
       if (scenario === "revision-required") {
         await expect(plan.getByRole("alert")).toContainText(
-          "Accelerator-Revision",
+          "Upgrade-Pfad für dieselbe Bestellung",
+        );
+        await expect(plan.getByRole("alert")).toContainText(
+          "ihr State bleibt erhalten",
+        );
+        await expect(plan.getByRole("alert")).not.toContainText(
+          "neu bestellen",
         );
         await expect(plan.getByRole("alert")).not.toContainText(
           "nicht erreichbar",
