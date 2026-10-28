@@ -21,7 +21,7 @@ Public!=Corporate spoke. Namespace services require Platform Kubernetes.
 
 ## Dialogue
 
-New: name/kind/region/settings; reuse keys, delegate names only.
+New: name/kind/region/settings; reuse keys; delegate names only.
 Central=Corporate; Internet-only=Public; local network=true. Merge, retain Audit/Git,
 Omit unrequested services; ask missing choices. "100 projects"=capacity, not examples/quota;
 Reserve platform/firewall space; no free-capacity promise. /26: network_prefix_length=26;
@@ -29,16 +29,17 @@ Automatic=null; no mandatory /24/numeric choice/disabled DNS. Preserve other set
 New: granular recommended; owner customer choice.
 IDP, Configurator roles and deployed project IAM are separate.
 Immutable accessProfile, never order input. Granular schemaVersion=1,mode=granular:
-initialOwnerEmail=user/SA, not requester; permissions/automationPermissions use official IDs,
-e.g. iaas.server.get, never compute.*. Default144: VM,Object Storage,Observability,Secrets Manager;
+initialOwnerEmail=user/SA, not requester; permissions/automationPermissions: official IDs,
+e.g. iaas.server.get; no compute.*. Default144: VM,Object Storage,Observability,Secrets Manager;
 VM-only narrower. All project rights selectable, including IAM/admin.
-Trusted catalogue IDs only. ADD Kubernetes/SKE=ske rights by union into requested lists
+Catalogue IDs only. ADD Kubernetes/SKE=ske union into requested lists
 (default both), preserving owner/rights; no unrelated IAM. SKE IAM!=Kubernetes RBAC.
 IAM grants can escalate; excluded from defaults.
 Owner={schemaVersion:1,mode:owner}: requester/automation have all project rights;
 IAM/project powers; no immutable central audit/routing claim.
-Complete atomic profile; preserve other fields. No legacy custom_roles/role_assignments/
-automation_role or role-context combination. Ask missing central owner. Absent profile preserves
+Atomic profile; preserve other fields. No legacy custom_roles/role_assignments/
+automation_role/role-context combination. ADD preserves even empty owner; no owner question.
+Publication needs valid owner; new profile asks missing owner. Absent profile preserves
 legacy owner; inherited grants stay additive.
 
 ## Examples
@@ -47,8 +48,8 @@ SNA /28: Automatic /28+DNS.
 
 ## Limits
 
-Old versions/State bound; changes need reviewed source/publication/migration. Never delete State.
-Region/area/DNS match; empty roles/ACLs prove no security. Effective rights need live acceptance, not mock Plans. Not owner-less.
+Versions/State bound; review source/publication/migration. Never delete State.
+Match region/area/DNS. Empty roles/ACLs prove no security. Rights need live acceptance, not mock Plans. Owner required.
 
 ## Credentials
 

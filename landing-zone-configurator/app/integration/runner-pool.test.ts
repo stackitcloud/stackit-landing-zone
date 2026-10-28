@@ -647,3 +647,58 @@ it("atomically rewarms only a fresh unassigned exact-source lease and rotates it
   ).toBe(0);
   expect((await pool.claim(slot.id, ticket))?.id).toBe(assignment.id);
 });
+
+it("authorizes retention only for expired retired slots and protects active or unassociated consumed slots", async () => {
+  const runner = randomUUID(),
+    app = randomUUID();
+  const disposition = async () =>
+    (
+      await database.query(
+        "SELECT lzc_auth.runner_cleanup_disposition($1,$2,'warm') AS result",
+        [runner, app],
+      )
+    ).rows[0].result;
+  expect(await disposition()).toBe("orphan");
+  await database.query(
+    "INSERT INTO lzc.runner_pool_slots(id,pool_key,origin,space_id,source_droplet_id,app_id,status,expires_at) VALUES($1,'retention-test',$2,$3,$4,$5,'ready',now()+interval '1 hour')",
+    [runner, config.origin, config.spaceId, config.dropletId, app],
+  );
+  expect(await disposition()).toBe("protected");
+  await database.query(
+    "UPDATE lzc.runner_pool_slots SET status='retiring',expires_at=now()-interval '1 hour' WHERE id=$1",
+    [runner],
+  );
+  expect(await disposition()).toBe("completed");
+  await database.query(
+    "UPDATE lzc.runner_pool_slots SET status='consumed',job_id=$2 WHERE id=$1",
+    [runner, randomUUID()],
+  );
+  expect(await disposition()).toBe("protected");
+  expect(
+    (
+      await database.query(
+        "SELECT lzc_auth.runner_cleanup_disposition($1,$2,'plan') AS result",
+        [runner, randomUUID()],
+      )
+    ).rows[0].result,
+  ).toBe("protected");
+  await database.query("SELECT lzc_auth.record_runner_cleanup($1,$2,'warm')", [
+    runner,
+    app,
+  ]);
+  await database.query("SELECT lzc_auth.record_runner_cleanup($1,$2,'warm')", [
+    runner,
+    app,
+  ]);
+  await expect(
+    database.query("SELECT * FROM lzc.runner_cleanup_receipts"),
+  ).rejects.toMatchObject({ code: "42501" });
+  expect(
+    (
+      await migration.query(
+        "SELECT count(*) FROM lzc.runner_cleanup_receipts WHERE app_id=$1",
+        [app],
+      )
+    ).rows[0].count,
+  ).toBe("1");
+});

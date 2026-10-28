@@ -10195,6 +10195,33 @@ it.each([false, true])(
       "UPDATE lzc.plan_runs SET finished_at=now()-interval '1 minute' WHERE id=$1",
       [run.id],
     );
+    const retentionApp = (
+      await migration.query(
+        "SELECT runner_app_id FROM lzc.plan_runs WHERE id=$1",
+        [run.id],
+      )
+    ).rows[0].runner_app_id;
+    const retention = async () =>
+      (
+        await pool.query(
+          "SELECT lzc_auth.runner_cleanup_disposition($1,$2,'plan') AS result",
+          [run.id, retentionApp],
+        )
+      ).rows[0].result;
+    expect(await retention()).toBe("protected");
+    await migration.query(
+      "UPDATE lzc.plan_runs SET expires_at=now()-interval '1 second' WHERE id=$1",
+      [run.id],
+    );
+    expect(await retention()).toBe("completed");
+    expect(
+      (
+        await pool.query(
+          "SELECT lzc_auth.runner_cleanup_disposition($1,$2,'plan') AS result",
+          [run.id, randomUUID()],
+        )
+      ).rows[0].result,
+    ).toBe("protected");
     await plans.maintain();
     expect(runner.remove).toHaveBeenCalledWith(run.id, expect.any(String));
     // Expiry prevents another input delivery and releases the user's single active slot.

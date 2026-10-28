@@ -450,3 +450,28 @@ closed. The original approving Platform Owner retains access.
 [Issue #157](https://github.com/stackitcloud/stackit-landing-zone/issues/157)
 tracks that acceptance. Local-backend intermediate-State persistence remains
 [Issue #140](https://github.com/stackitcloud/stackit-landing-zone/issues/140).
+
+## CF execution app retention
+
+Completed platform runners are deleted no earlier than 30 seconds after durable
+completion by the next 30-second maintenance pass. The warm pool is maintained every
+five seconds; exactly bound completed Application runners are retired and replenished
+as needed. These deletions concern CF apps, not job history or infrastructure State.
+
+A supplementary API sweep checks at most 50 apps in the configured Runner space each
+minute and continues from the next page on the following pass. Stopped
+`lzc-plan-<UUID>` and `lzc-warm-<UUID>` apps become eligible at an app age of 24 hours.
+The database must confirm a finished, expired job or retired slot. Active/uncertain
+jobs, active recovery and valid tickets protect the app. A reconciled Application
+interruption needs a recorded recovery-replan clearance. Unassociated apps are deleted
+only with the ownership label set at creation for this Configurator origin. Unlabelled,
+unassociated legacy apps require operator reconciliation; a name alone is not ownership.
+
+Immediately before DELETE, the sweeper rechecks exact identity/space, stopped state,
+absence of routes/service bindings, terminal tasks/processes and database eligibility.
+Incomplete or unavailable checks prevent deletion. Success creates a separate cleanup
+receipt. The template and recovery apps are excluded. Failures log the non-secret
+`runner_retention_failed` event; subsequent passes retry cleanup.
+
+The `runner_retention` log summary contains only scanned, deleted, protected and
+unassociated counts, allowing operators to detect unresolved legacy accumulation.

@@ -27,6 +27,7 @@ import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
 import { ArtifactCrypto } from "./plans/crypto.js";
 import { PlatformExecution } from "./plans/execution.js";
 import { LocalPlanRunner } from "./plans/local.js";
+import { RunnerCleanup } from "./plans/runner-cleanup.js";
 import { RunnerPool, runnerPoolSize } from "./plans/runner-pool.js";
 import { Plans } from "./plans/service.js";
 import { databaseConfig } from "./storage/database.js";
@@ -48,6 +49,7 @@ let stackit: StackitServices | undefined;
 let applicationRunner: CloudFoundryPlanRunner | undefined;
 let applicationRunnerPackageId: string | undefined;
 let runnerPool: RunnerPool | undefined;
+let runnerCleanup: RunnerCleanup | undefined;
 const warmRunnerCount = runnerPoolSize(process.env.LZC_RUNNER_POOL_SIZE);
 const executionEnabled = process.env.LZC_EXECUTION_ENABLED === "true";
 const applicationExecutionEnabled =
@@ -130,6 +132,11 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       )
     : undefined;
   if (process.env.LZC_PLANS_ENABLED === "true") {
+    runnerCleanup = new RunnerCleanup(
+      pool,
+      new CloudFoundryPlanRunner(runnerConfiguration()),
+      origin,
+    );
     runnerPool = new RunnerPool(
       pool,
       artifactCrypto,
@@ -346,10 +353,37 @@ const poolMaintenance = runnerPool
   ? setInterval(() => void maintainRunners(), 5000)
   : undefined;
 poolMaintenance?.unref();
+let cleanupMaintenance: Promise<void> | undefined;
+const cleanupTimer = runnerCleanup
+  ? setInterval(() => {
+      if (cleanupMaintenance) return;
+      cleanupMaintenance = runnerCleanup!
+        .maintain()
+        .then((summary) => {
+          if (summary)
+            app.log.info(
+              { event: "runner_retention", ...summary },
+              "Runner retention checked",
+            );
+        })
+        .catch(() =>
+          app.log.warn(
+            { event: "runner_retention_failed" },
+            "Runner retention failed",
+          ),
+        )
+        .finally(() => {
+          cleanupMaintenance = undefined;
+        });
+    }, 60000)
+  : undefined;
+cleanupTimer?.unref();
 app.addHook("onClose", async () => {
   clearInterval(maintenance);
   clearInterval(poolMaintenance);
+  clearInterval(cleanupTimer);
   await runnerMaintenance;
+  await cleanupMaintenance;
   await pool?.end();
 });
 const port = Number(process.env.PORT ?? "3000");
