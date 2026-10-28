@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "d58a93b40fb96fc191af7865283bca669ed7b1fa328b9590674550e8ad07384e",
+  "knowledgeSha256": "1014410747d59386c02dfc89e37b2e0b2d2655c4d1ac42a8468f658972286dde",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "1c8f359c0d93aa8df8e21ed41ec9291911aded82a07ff9bf857306728134fb0e",
+    "scripts/assistant-scenarios.ts": "71ea9733d4e93b976d16ffd75902e0ecb9472880e24d352a4a291c8165b433d2",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "574a5af4f62fac2f64a43ceddfd197d8a8b28f7186d78c6556a2cbf80ae4f78d",
+  "suiteSha256": "407f960fab9817a793f5c282d181aeb6a749215baf3ced2778cb1dadef42de10",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5366,6 +5366,58 @@
           "fixture": "corporate-ipv4",
           "applicationAccess": "kubernetes-requester",
           "message": "Ergänze bei der vorhandenen Vorlage central nur für den Besteller die Rechte zum Management von Kubernetes Clustern. Die Rechte des Application-Service-Accounts und der zentrale Owner bleiben unverändert, ebenso alle anderen Einstellungen. Nur einen überprüfbaren Vorschlag erstellen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-public-kubernetes-requester",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "public-kubernetes-requester",
+          "message": "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-public-kubernetes-clarify",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "public-kubernetes-clarify",
+          "message": "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-public-kubernetes-followup",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "public-kubernetes-followup",
+          "history": [
+            {
+              "role": "user",
+              "content": "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können"
+            },
+            {
+              "role": "assistant",
+              "content": "Wähle die bestehende Application-Vorlage, deren Dienstberechtigungen ergänzt werden sollen. Angefragte Dienste: ske; Rechte für: Besteller. Noch nichts gespeichert.\nWelche public-Vorlage soll geändert werden? (2: central, second-public)"
+            }
+          ],
+          "message": "central",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

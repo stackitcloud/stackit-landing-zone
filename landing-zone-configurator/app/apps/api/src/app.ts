@@ -151,6 +151,7 @@ export function buildApp(
     github: !!options.auth && options.auth.githubEnabled !== false,
     stackit: !!options.stackit,
     stackitFlow: options.stackit?.authFlow,
+    stackitRenewal: !!options.auth?.stackitSessions,
     primary: options.developmentLogin
       ? "development"
       : options.auth?.primaryStackit

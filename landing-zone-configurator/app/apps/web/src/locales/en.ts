@@ -2747,4 +2747,13 @@ export const englishMessages: Record<string, string> = {
   "Keine Sperre": "No lock",
   "Eine Recovery ist noch offen. Schließe zuerst den Abgleich dieser Bestellung ab.":
     "Recovery is still open. Complete reconciliation of this order first.",
+  "STACKIT-Anmeldung erneuern": "Renew STACKIT sign-in",
+  "Die STACKIT-Anmeldung muss erneuert werden. Deinen Entwurf kannst du weiterhin speichern; Cloud-Aktionen benötigen die erneute Anmeldung.":
+    "Your STACKIT sign-in needs renewal. You can still save your draft; cloud actions require signing in again.",
+  "STACKIT konnte gerade nicht geprüft werden. Dein Entwurf bleibt erhalten; versuche es gleich erneut.":
+    "STACKIT could not be checked right now. Your draft is preserved; try again shortly.",
+  "Deine Sitzung ist abgelaufen. Dein Entwurf bleibt hier erhalten und kann heruntergeladen werden. Melde dich erneut an, um ihn im selben Arbeitsbereich zu speichern.":
+    "Your session has expired. Your draft is preserved here and can be downloaded. Sign in again to save it in the same workspace.",
+  "Abmelden? Nicht gespeicherte Änderungen bitte zuerst speichern oder herunterladen.":
+    "Sign out? Save or download unsaved changes first.",
 };

@@ -10,22 +10,38 @@ restore checks. Real human login, complete
 owner proof and explicit organization binding have passed acceptance in the existing
 customer organization. GitHub remains as legacy mode.
 
-Since migration 058, the eight-hour Configurator session is independent of
-the shorter STACKIT token lifetime. At login, verified proof
-must still be current. Identity and organization-owner proofs retain
-their own expiry times; expired proofs permit neither a new
-organization binding nor protected cloud actions. They must be
-reconfirmed when needed. Refresh tokens are still not stored.
-Logout revokes the app session, and role/tenant checks remain active.
-Existing sessions are not extended retroactively; the new lifetime
-applies after signing in again.
+The Configurator session has an absolute eight-hour lifetime, independent of the
+shorter STACKIT identity proof. With migration 075 and configured session encryption,
+PKCE login retains a refresh grant encrypted on the server, bound to that session,
+user and base workspace. The browser receives neither provider access nor refresh
+tokens. While the tab is visible, a periodic check and checks on return to the tab
+renew the identity proof shortly before expiry. Token rotation is serialized across
+tabs and API instances. Renewal verifies the signed ID token, issuer, audience,
+authorized party, subject and verified userinfo; a changed identity is rejected.
+It never extends the eight-hour app session, revives revoked identities, or extends
+organization-owner permission proofs. Those proofs still need separate confirmation.
+Logout removes the app session and attempts to revoke its provider refresh grant.
+Older sessions without a grant require signing in again when their proof expires.
 
-Web login with Authorization Code and PKCE uses the same browser tab.
-The existing callback resumes login in the Configurator; incomplete
-drafts survive through the existing tab-bound intermediate storage.
-This also applies to renewed STACKIT confirmation in the account area. Only the
-compatible Device Flow with login code still opens a separate tab,
-because the original tab must remain open for polling.
+Web login with Authorization Code and PKCE redirects immediately in the same tab,
+without an additional Configurator confirmation dialog. A required STACKIT login,
+MFA or consent screen remains controlled by STACKIT. Renewal of the client grant
+cannot keep the separate STACKIT Portal browser cookie alive. The compatible Device
+Flow with login code retains its dialog and separate provider tab for polling.
+
+A rejected or unavailable renewal never silently discards an edit or redirects the
+user. While the app session remains valid, configuration saves remain available;
+protected cloud actions require current proof. If the app session itself expires,
+the editor keeps its draft and offers local download and sign-in. A tab-local,
+24-hour checkpoint preserves the draft, original database configuration ID/revision,
+saved baseline and editor location. It contains no login tokens or CSRF secrets.
+It is restored only for the same authenticated user and workspace. After a fresh
+login starts in the personal workspace, the previous organization is selected only
+if a fresh server membership check still permits it. Different accounts and
+workspaces do not receive the private draft; explicit logout clears that account's
+checkpoint. If browser storage is unavailable, sign-in navigation is blocked until
+the draft can be secured or downloaded. Reauthentication never saves, publishes,
+plans or applies a draft automatically. Original revision conflict checks remain.
 
 Resource Manager returns an IAM container reference for the exact requested organization UUID.
 Verification uses only this reference for
@@ -145,8 +161,9 @@ STACKIT identity and select their active tenant when they have multiple membersh
 The Application Owner needs neither GitHub nor a service account.
 The Platform Engineer stores technical STACKIT service-account credentials;
 product catalogues then automatically use the same credentials without additional
-profile or project selection in the editor. Personal login tokens are not stored
-or reused for technical STACKIT automation.
+profile or project selection in the editor. Personal access tokens are discarded
+after identity verification. Encrypted personal refresh grants are used only for
+authentication renewal, never for Runner or technical STACKIT automation.
 
 `POST /auth/stackit/start` begins the configured browser-bound flow.
 Locally this is CLI PKCE; without an explicit flow factory it remains Device Flow.
@@ -161,8 +178,8 @@ Issuer and subject determine the stable user, never email alone.
 Device cookies are `Secure`, `HttpOnly`, `SameSite=Strict`; for the PKCE
 callback return, browser binding uses `SameSite=Lax`. Sessions use
 `SameSite=Lax`. Pre-auth POSTs require exact origin; authenticated
-changes additionally CSRF. Sessions last at most eight hours and end
-at least 30 seconds before the provider token. No refresh token is retained.
+changes additionally CSRF. Sessions last at most eight hours; the independent
+identity proof and encrypted refresh grant follow the renewal rules above.
 Open Device Flows reside only in one instance's memory: restart discards them;
 multiple instances need shared storage or sticky routing before activation.
 

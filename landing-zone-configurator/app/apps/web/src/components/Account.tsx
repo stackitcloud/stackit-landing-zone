@@ -19,12 +19,22 @@ export function Account({
   beforeLogin,
   onSessionChange,
   onLogin,
+  onNavigate,
+  beforeLogout,
 }: {
   beforeLogin: () => boolean;
-  onSessionChange: (session: Session | null) => void;
+  onSessionChange: (
+    session: Session | null,
+    reason?: "expired" | "logout" | "sync",
+  ) => void;
+  onNavigate?: () => void;
+  beforeLogout?: () => boolean;
   onLogin?: () => void;
 }) {
   const [enabled, setEnabled] = useState(false);
+  const [renewalEnabled, setRenewalEnabled] = useState(false);
+  const sessionEnd = useRef<"expired" | "logout" | "sync">("sync");
+  const channel = useRef<BroadcastChannel | null>(null);
   const [primary, setPrimary] = useState<"github" | "stackit" | "development">(
     "github",
   );
@@ -43,8 +53,15 @@ export function Account({
   } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const lastSession = useRef<Session | null>(null);
+  if (session) lastSession.current = session;
+  const sessionIdentity = session
+    ? `${session.user.id}:${session.tenant?.id}:${session.csrfToken}`
+    : "";
   useEffect(() => {
-    onSessionChange(session);
+    onSessionChange(session, session ? "sync" : sessionEnd.current);
   }, [session, onSessionChange]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -78,6 +95,7 @@ export function Account({
               : "github",
         );
         setEnabled(true);
+        setRenewalEnabled(providers.stackitRenewal === true);
         if (returningFromStackit) return;
         const response = await fetch("/api/v1/session", {
           signal: controller.signal,
@@ -130,6 +148,7 @@ export function Account({
           });
           if (!current.ok) throw new Error();
           setSession(await current.json());
+          channel.current?.postMessage("changed");
           setAuthorization(null);
           setReturning(false);
           onLogin?.();
@@ -163,6 +182,7 @@ export function Account({
       return;
     }
     if (primary === "github") {
+      onNavigate?.();
       window.location.assign("/auth/github/start");
       return;
     }
@@ -188,7 +208,17 @@ export function Account({
       if (!response.ok) throw new Error();
       const result = await response.json();
       const url = new URL(result.verificationUri);
-      if (url.origin !== "https://accounts.stackit.cloud") throw new Error();
+      if (
+        url.origin !== "https://accounts.stackit.cloud" ||
+        url.username ||
+        url.password
+      )
+        throw new Error();
+      if (!result.userCode) {
+        onNavigate?.();
+        window.location.assign(url.toString());
+        return;
+      }
       setAuthorization(result);
     } catch {
       setError("STACKIT-Anmeldung derzeit nicht erreichbar.");
@@ -211,13 +241,119 @@ export function Account({
   useEffect(() => {
     if (!session) return;
     const timer = setTimeout(
-      () => setSession(null),
+      () => {
+        sessionEnd.current = "expired";
+        setSession(null);
+      },
       Math.max(0, Date.parse(session.expiresAt) - Date.now()),
     );
     return () => clearTimeout(timer);
   }, [session]);
+  useEffect(() => {
+    if (!enabled || returning || authorization) return;
+    const controller = new AbortController();
+    let pending = false;
+    const check = async () => {
+      if (pending || document.visibilityState === "hidden") return;
+      pending = true;
+      try {
+        const response = await fetch("/api/v1/session", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (controller.signal.aborted) return;
+        if (response.status === 401) {
+          if (sessionRef.current) {
+            sessionEnd.current = "expired";
+            setSession(null);
+          }
+          return;
+        }
+        if (!response.ok) throw new Error();
+        let current: Session = await response.json();
+        if (controller.signal.aborted) return;
+        setSession(current);
+        if (primary === "stackit" && renewalEnabled) {
+          const refreshed = await fetch("/auth/stackit/refresh", {
+            method: "POST",
+            headers: { "x-lzc-csrf": current.csrfToken },
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          if (refreshed.status === 401) {
+            sessionEnd.current = "expired";
+            setSession(null);
+            return;
+          }
+          if (!refreshed.ok) throw new Error();
+          const renewal = await refreshed.json();
+          current = {
+            ...current,
+            stackitVerified: renewal.status === "active",
+          };
+        }
+        if (controller.signal.aborted) return;
+        setSession(current);
+        setError((value) =>
+          value ===
+          "STACKIT konnte gerade nicht geprüft werden. Dein Entwurf bleibt erhalten; versuche es gleich erneut."
+            ? ""
+            : value,
+        );
+      } catch {
+        if (!controller.signal.aborted && sessionRef.current)
+          setError(
+            "STACKIT konnte gerade nicht geprüft werden. Dein Entwurf bleibt erhalten; versuche es gleich erneut.",
+          );
+      } finally {
+        pending = false;
+      }
+    };
+    const timer = setInterval(() => void check(), 60000);
+    const resume = () => void check();
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("focus", resume);
+    const sync =
+      typeof BroadcastChannel === "undefined"
+        ? null
+        : new BroadcastChannel("lzc-auth-session");
+    channel.current = sync;
+    if (sync)
+      sync.onmessage = (event) => {
+        const current = sessionRef.current ?? lastSession.current;
+        if (
+          event.data?.type === "logout" &&
+          current &&
+          event.data.userId === current.user.id &&
+          event.data.expiresAt === current.expiresAt
+        ) {
+          sessionEnd.current = "logout";
+          lastSession.current = null;
+          if (!sessionRef.current) onSessionChange(null, "logout");
+          setSession(null);
+        } else resume();
+      };
+    // Established sessions renew promptly; guest initialization remains a single request.
+    if (sessionIdentity && renewalEnabled) void check();
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("focus", resume);
+      sync?.close();
+      if (channel.current === sync) channel.current = null;
+    };
+  }, [
+    enabled,
+    primary,
+    renewalEnabled,
+    sessionIdentity,
+    returning,
+    authorization,
+    onSessionChange,
+  ]);
   async function logout() {
-    if (!session) return;
+    if (!session || beforeLogout?.() === false) return;
     setBusy(true);
     setError("");
     try {
@@ -226,7 +362,13 @@ export function Account({
         headers: { "x-lzc-csrf": session.csrfToken },
       });
       if (!response.ok && response.status !== 401) throw new Error();
+      sessionEnd.current = "logout";
       setSession(null);
+      channel.current?.postMessage({
+        type: "logout",
+        userId: session.user.id,
+        expiresAt: session.expiresAt,
+      });
     } catch {
       setError("Abmelden fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
@@ -257,6 +399,7 @@ export function Account({
       if (!current.ok) throw new Error("Development session unavailable");
       setSession(await current.json());
       setDevelopmentOpen(false);
+      channel.current?.postMessage("changed");
       onLogin?.();
     } catch {
       setError("Anmeldung derzeit nicht erreichbar.");
@@ -305,13 +448,22 @@ export function Account({
             type="button"
             className="button secondary"
             title={t(
-              "Du bist im Configurator angemeldet. Für geschützte STACKIT-Aktionen ist eine aktuelle Bestätigung erforderlich.",
+              "Die STACKIT-Anmeldung muss erneuert werden. Deinen Entwurf kannst du weiterhin speichern; Cloud-Aktionen benötigen die erneute Anmeldung.",
             )}
             disabled={busy || !!authorization}
             onClick={() => void start()}
           >
-            {t("STACKIT bestätigen")}
+            {t("STACKIT-Anmeldung erneuern")}
           </button>
+        )}
+      {session &&
+        primary === "stackit" &&
+        session.stackitVerified === false && (
+          <p role="status">
+            {t(
+              "Die STACKIT-Anmeldung muss erneuert werden. Deinen Entwurf kannst du weiterhin speichern; Cloud-Aktionen benötigen die erneute Anmeldung.",
+            )}
+          </p>
         )}
       {authorization && (
         <dialog

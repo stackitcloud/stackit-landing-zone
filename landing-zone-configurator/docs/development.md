@@ -36,6 +36,14 @@ The initial guest-to-authenticated session lookup preserves the editor DOM so
 it cannot detach a focused input. Actual identity/workspace changes still reset
 the draft and scoped catalogue provider; never retain private catalogues across
 those boundaries.
+Session heartbeat updates must not restore an older checkpoint over a live draft
+or detach focused inputs. Expiry preserves draft, database binding/revision and
+saved baseline; restoration requires the same user and workspace. Explicit logout
+clears the checkpoint, including in expired tabs, but a logout from an older session
+must not clear a newer login. Test delayed refresh outcomes with a new immutable
+Session value and both desktop/mobile layouts. Refresh grants remain encrypted
+server-side; never extend the absolute app session or organization-owner proof.
+See [login behavior](github-login.md) for renewal and unavailable-storage fallback.
 
 Application template drafts use the same controlled root draft, configuration binding
 and saved snapshot across configuration editing and the first Application Landing

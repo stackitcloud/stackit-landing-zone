@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "../i18n";
+import { pendingLoginOwner } from "../login-draft";
 import type { Session } from "./Account";
 import { ApplicationGroups } from "./ApplicationGroups";
 import { Invitations } from "./Invitations";
@@ -121,11 +122,13 @@ export function Organisation({
           !restoreLastWorkspace
         )
           return;
-        let remembered: string | null;
-        try {
-          remembered = localStorage.getItem(workspacePreference(session));
-        } catch {
-          return;
+        let remembered = pendingLoginOwner(session)?.tenantId ?? null;
+        if (!remembered) {
+          try {
+            remembered = localStorage.getItem(workspacePreference(session));
+          } catch {
+            return;
+          }
         }
         const tenant = overview.tenants.find((item) => item.id === remembered);
         if (!tenant) return;

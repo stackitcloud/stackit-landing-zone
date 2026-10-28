@@ -139,7 +139,10 @@ export type AssistantScenario = {
     | "vm-default"
     | "workload-default"
     | "kubernetes-add"
-    | "kubernetes-requester";
+    | "kubernetes-requester"
+    | "public-kubernetes-requester"
+    | "public-kubernetes-clarify"
+    | "public-kubernetes-followup";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
@@ -276,6 +279,36 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     applicationAccess: "kubernetes-requester",
     message:
       "Ergänze bei der vorhandenen Vorlage central nur für den Besteller die Rechte zum Management von Kubernetes Clustern. Die Rechte des Application-Service-Accounts und der zentrale Owner bleiben unverändert, ebenso alle anderen Einstellungen. Nur einen überprüfbaren Vorschlag erstellen.",
+  },
+  ...(["requester", "clarify"] as const).map((mode) => ({
+    id: `application-access-public-kubernetes-${mode}`,
+    topic: "project-templates",
+    fixture: "corporate-ipv4" as const,
+    applicationAccess:
+      mode === "requester"
+        ? ("public-kubernetes-requester" as const)
+        : ("public-kubernetes-clarify" as const),
+    message:
+      "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können",
+  })),
+  {
+    id: "application-access-public-kubernetes-followup",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "public-kubernetes-followup",
+    history: [
+      {
+        role: "user",
+        content:
+          "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können",
+      },
+      {
+        role: "assistant",
+        content:
+          "Wähle die bestehende Application-Vorlage, deren Dienstberechtigungen ergänzt werden sollen. Angefragte Dienste: ske; Rechte für: Besteller. Noch nichts gespeichert.\nWelche public-Vorlage soll geändert werden? (2: central, second-public)",
+      },
+    ],
+    message: "central",
   },
   {
     id: "corporate-ipv4-automatic-advice",
@@ -876,6 +909,39 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       },
     ];
   }
+  if (scenario.applicationAccess?.startsWith("public-kubernetes-")) {
+    const publicTemplate = draft.projectTemplates![0]!;
+    publicTemplate.kind = "public";
+    publicTemplate.name = "Public workload";
+    publicTemplate.settings = {
+      env: "dev",
+      network_enabled: true,
+      network_prefix_length: 25,
+      secretsmanager_enabled: true,
+    };
+    publicTemplate.accessProfile = {
+      ...defaultApplicationAccessProfile("platform-owner@example.test"),
+      permissions: ["secrets-manager.secret.get", "iaas.server.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+    draft.projectTemplates!.push({
+      ...structuredClone(publicTemplate),
+      id: "00000000-0000-4000-8000-000000000027",
+      key: "untouched-corporate",
+      name: "Other Corporate",
+      kind: "corporate",
+    });
+    if (
+      scenario.applicationAccess === "public-kubernetes-clarify" ||
+      scenario.applicationAccess === "public-kubernetes-followup"
+    )
+      draft.projectTemplates!.push({
+        ...structuredClone(publicTemplate),
+        id: "00000000-0000-4000-8000-000000000028",
+        key: "second-public",
+        name: "Second Public",
+      });
+  }
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
@@ -960,6 +1026,15 @@ export function validateAssistantScenario(
       failures.push("application_access_invented_contract");
     if (dialogue.changes.length)
       failures.push("application_access_advice_mutated");
+  } else if (scenario.applicationAccess === "public-kubernetes-clarify") {
+    if (
+      dialogue.changes.length ||
+      dialogue.questions.length !== 1 ||
+      !["central", "second-public"].every((key) =>
+        dialogue.questions[0]?.options?.some((option) => option.includes(key)),
+      )
+    )
+      failures.push("application_access_ambiguous_public_not_clarified");
   } else if (scenario.applicationAccess) {
     const expected = structuredClone(fixture.draft);
     const central = expected.projectTemplates?.find((x) => x.key === "central");
@@ -982,7 +1057,9 @@ export function validateAssistantScenario(
             };
     if (
       scenario.applicationAccess === "kubernetes-add" ||
-      scenario.applicationAccess === "kubernetes-requester"
+      scenario.applicationAccess === "kubernetes-requester" ||
+      scenario.applicationAccess === "public-kubernetes-requester" ||
+      scenario.applicationAccess === "public-kubernetes-followup"
     ) {
       const before = fixture.draft.projectTemplates?.find(
         (t) => t.key === "central",
@@ -994,9 +1071,15 @@ export function validateAssistantScenario(
       );
       central.accessProfile = {
         ...before,
-        permissions: [...new Set([...before.permissions, ...additions])].sort(),
+        permissions:
+          scenario.applicationAccess === "public-kubernetes-requester" ||
+          scenario.applicationAccess === "public-kubernetes-followup"
+            ? [...new Set([...before.permissions, ...additions])]
+            : [...new Set([...before.permissions, ...additions])].sort(),
         automationPermissions:
-          scenario.applicationAccess === "kubernetes-requester"
+          scenario.applicationAccess === "kubernetes-requester" ||
+          scenario.applicationAccess === "public-kubernetes-requester" ||
+          scenario.applicationAccess === "public-kubernetes-followup"
             ? before.automationPermissions
             : [
                 ...new Set([...before.automationPermissions, ...additions]),
