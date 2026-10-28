@@ -996,3 +996,10 @@ Auch abgeglichene Warm-Runner-Abbrüche werden im normalen Pool ausgemustert, se
 wenn CF nach Prozessende weiter STARTED anfordert. Erforderlich sind der bestehende
 gültige Recovery-Neuplan-Nachweis, abgelaufene Runner-Tickets und keine aktive geführte
 Recovery. Ein durch späteren separaten Recovery-State ungültiger Nachweis schützt die App erneut.
+
+Vor DELETE wird eine zugeordnete Absicht dauerhaft gespeichert. Ist CF nach der
+kurzen unmittelbaren Prüfung noch nicht fertig, bestätigt ein späterer Wartungslauf
+die Abwesenheit derselben App-GUID und speichert die Quittung atomar. Offene Prüfungen
+überstehen API-Neustarts und werden fair in Gruppen von 50 abgearbeitet. Sie führen
+selbst kein DELETE aus; bestehende Apps durchlaufen vor einem erneuten Versuch alle
+normalen Berechtigungs- und CF-Prüfungen.

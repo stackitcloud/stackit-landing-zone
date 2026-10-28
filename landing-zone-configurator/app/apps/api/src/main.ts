@@ -361,7 +361,11 @@ const cleanupTimer = runnerCleanup
         .maintain()
         .then((summary) => {
           if (summary)
-            app.log.info(
+            app.log[
+              summary.confirmationErrors || summary.cleanupErrors
+                ? "warn"
+                : "info"
+            ](
               { event: "runner_retention", ...summary },
               "Runner retention checked",
             );

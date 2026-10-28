@@ -19,17 +19,34 @@ function fixture() {
     owner: null,
   };
   const database = {
-    query: vi.fn(async (_sql: string, _values?: unknown[]) => ({
-      rows: [{ disposition: "completed" }],
-    })),
+    query: vi.fn(
+      async (
+        _sql: string,
+        _values?: unknown[],
+      ): Promise<{ rows: Record<string, unknown>[] }> => ({
+        rows: _sql.includes("pending_runner_cleanups")
+          ? []
+          : [{ disposition: "completed" }],
+      }),
+    ),
   };
   const driver = {
+    cleanupSpaceId: randomUUID(),
+    cleanupAbsent: vi.fn(async (_id: string) => false),
     cleanupPage: vi.fn(async (_page: number) => ({
       apps: [app],
       nextPage: null as number | null,
     })),
     deleteStoppedRunner: vi.fn(
-      async (_app: CleanupApp, eligible: () => Promise<boolean>) => eligible(),
+      async (
+        _app: CleanupApp,
+        eligible: () => Promise<boolean>,
+        intent: () => Promise<void>,
+      ) => {
+        if (!(await eligible())) return false;
+        await intent();
+        return true;
+      },
     ),
   };
   return {
@@ -43,9 +60,9 @@ it("rechecks database eligibility and records only deleted apps without modifyin
   const f = fixture();
   await f.cleanup.maintain();
   expect(f.driver.deleteStoppedRunner).toHaveBeenCalledOnce();
-  expect(f.database.query.mock.calls).toHaveLength(3);
+  expect(f.database.query.mock.calls).toHaveLength(5);
   expect(f.database.query.mock.calls.at(-1)?.[0]).toContain(
-    "record_runner_cleanup",
+    "confirm_runner_cleanup",
   );
 });
 it.each([
@@ -64,17 +81,25 @@ it.each([
   if (reason === "template") f.app.name = "lzc-plan-template";
   if (reason === "unknown")
     f.database.query.mockResolvedValue({
-      rows: [{ disposition: "protected" }],
+      rows: [],
     });
   if (reason === "unlabelled-orphan")
-    f.database.query.mockResolvedValue({ rows: [{ disposition: "orphan" }] });
+    f.database.query.mockImplementation(async (sql: string) => ({
+      rows: sql.includes("pending_runner_cleanups")
+        ? []
+        : [{ disposition: "orphan" }],
+    }));
   await f.cleanup.maintain();
   expect(f.driver.deleteStoppedRunner).not.toHaveBeenCalled();
 });
 it("removes an old stopped origin-labelled orphan and advances bounded pages", async () => {
   const f = fixture();
   f.app.owner = runnerOwner(origin);
-  f.database.query.mockResolvedValue({ rows: [{ disposition: "orphan" }] });
+  f.database.query.mockImplementation(async (sql: string) => ({
+    rows: sql.includes("pending_runner_cleanups")
+      ? []
+      : [{ disposition: "orphan" }],
+  }));
   f.driver.cleanupPage
     .mockResolvedValueOnce({ apps: [f.app], nextPage: 2 })
     .mockResolvedValueOnce({ apps: [], nextPage: null });
@@ -87,10 +112,10 @@ it("does not record a deletion when final authorization or CF deletion fails", a
   const f = fixture();
   f.driver.deleteStoppedRunner.mockResolvedValue(false);
   await f.cleanup.maintain();
-  expect(f.database.query.mock.calls).toHaveLength(1);
-  f.driver.deleteStoppedRunner.mockRejectedValueOnce(new Error("CF failed"));
-  await expect(f.cleanup.maintain()).rejects.toThrow("CF failed");
   expect(f.database.query.mock.calls).toHaveLength(2);
+  f.driver.deleteStoppedRunner.mockRejectedValueOnce(new Error("CF failed"));
+  expect((await f.cleanup.maintain())?.cleanupErrors).toBe(1);
+  expect(f.database.query.mock.calls).toHaveLength(4);
 });
 function cfFixture() {
   const app: CleanupApp = {
@@ -222,4 +247,100 @@ it("fails closed when CF omits the task pagination completeness marker", async (
     f.runner.deleteStoppedRunner(f.app, async () => true),
   ).rejects.toThrow();
   expect(f.deletes).toEqual([]);
+});
+
+it("recovers a delayed deletion after a new maintainer instance without issuing DELETE again", async () => {
+  const f = fixture();
+  const pendingId = randomUUID();
+  f.driver.cleanupPage.mockResolvedValue({ apps: [], nextPage: null });
+  f.database.query.mockImplementation(async (sql: string) => ({
+    rows: sql.includes("pending_runner_cleanups")
+      ? [{ app_id: pendingId }]
+      : [],
+  }));
+  f.driver.cleanupAbsent.mockResolvedValue(true);
+  const restarted = new RunnerCleanup(
+    f.database as unknown as pg.Pool,
+    f.driver,
+    origin,
+  );
+  expect((await restarted.maintain())?.deleted).toBe(1);
+  expect(f.driver.cleanupAbsent).toHaveBeenCalledWith(pendingId);
+  expect(f.driver.deleteStoppedRunner).not.toHaveBeenCalled();
+  expect(
+    f.database.query.mock.calls.some(([sql]) =>
+      sql.includes("confirm_runner_cleanup"),
+    ),
+  ).toBe(true);
+});
+it("keeps a still-present pending app unconfirmed without bypassing normal deletion guards", async () => {
+  const f = fixture();
+  f.driver.cleanupPage.mockResolvedValue({ apps: [], nextPage: null });
+  f.database.query.mockImplementation(async (sql: string) => ({
+    rows: sql.includes("pending_runner_cleanups")
+      ? [{ app_id: randomUUID() }]
+      : [],
+  }));
+  expect((await f.cleanup.maintain())?.deleted).toBe(0);
+  expect(
+    f.database.query.mock.calls.some(([sql]) =>
+      sql.includes("confirm_runner_cleanup"),
+    ),
+  ).toBe(false);
+});
+it("does not delete when the durable intent cannot be recorded", async () => {
+  const f = cfFixture();
+  const intent = vi.fn(async () => {
+    throw new Error("database unavailable");
+  });
+  await expect(
+    f.runner.deleteStoppedRunner(f.app, async () => true, intent),
+  ).rejects.toThrow("database unavailable");
+  expect(f.deletes).toEqual([]);
+});
+
+it("isolates pending lookup and confirmation failures while continuing confirmations and the sweep", async () => {
+  const f = fixture();
+  const ids = [randomUUID(), randomUUID(), randomUUID()];
+  f.database.query.mockImplementation(async (sql, values) => {
+    if (sql.includes("pending_runner_cleanups"))
+      return { rows: ids.map((app_id) => ({ app_id })) };
+    if (sql.includes("confirm_runner_cleanup") && values?.[0] === ids[1])
+      throw new Error("private database failure");
+    return { rows: [{ disposition: "completed" }] };
+  });
+  f.driver.cleanupAbsent
+    .mockRejectedValueOnce(new Error("private CF failure"))
+    .mockResolvedValue(true);
+  expect(await f.cleanup.maintain()).toMatchObject({
+    confirmationErrors: 2,
+    cleanupErrors: 0,
+    deleted: 2,
+    scanned: 1,
+  });
+  expect(f.driver.cleanupAbsent).toHaveBeenCalledTimes(3);
+  expect(f.driver.deleteStoppedRunner).toHaveBeenCalledOnce();
+  expect(
+    f.database.query.mock.calls.filter(([sql]) =>
+      sql.includes("confirm_runner_cleanup"),
+    ),
+  ).toHaveLength(3);
+});
+it("continues the sweep after one app fails final cleanup", async () => {
+  const f = fixture();
+  f.driver.cleanupPage.mockResolvedValue({
+    apps: [
+      f.app,
+      { ...f.app, id: randomUUID(), name: `lzc-plan-${randomUUID()}` },
+    ],
+    nextPage: null,
+  });
+  f.driver.deleteStoppedRunner.mockRejectedValueOnce(
+    new Error("private CF failure"),
+  );
+  expect(await f.cleanup.maintain()).toMatchObject({
+    cleanupErrors: 1,
+    deleted: 1,
+    scanned: 2,
+  });
 });
