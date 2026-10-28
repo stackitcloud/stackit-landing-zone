@@ -709,6 +709,35 @@ it("requires factual Automatic/DNS advice and rejects fixed-size or DNS-removal 
   ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
 });
 
+it.each(["behält", "behaelt"])(
+  "recognizes inflected DNS preservation (%s ... bei) without accepting negation or another object's preservation",
+  (verb) => {
+    const facts =
+      "Automatisch liest das Corporate-Modul den SNA-Standard /28 und übergibt dem Provider den numerischen Präfix. Freie Kapazität ist nicht garantiert.";
+    // Exact sentence from the failed live receipt; its factual claims were correct.
+    const originalSentence = `Mit 'Automatisch' und SNA-Default /28 erhält der Provider korrekt prefix: 28 und ${verb} die DNS-Server bei.`;
+    const correct = `${facts} ${originalSentence}`;
+    expect(assistantCorporateIpv4Failures(correct)).toEqual([]);
+    for (const claim of [
+      `${verb} die DNS-Server nicht bei`,
+      `${verb} keine DNS-Server bei`,
+      `${verb} die VM-Konfiguration bei; DNS wird deaktiviert`,
+      `${verb} die VM-Konfiguration bei. DNS ist konfiguriert`,
+    ])
+      expect(
+        assistantCorporateIpv4Failures(`${facts} Der Provider ${claim}.`),
+      ).toContain("corporate_ipv4_dns_preservation_missing");
+    expect(
+      assistantCorporateIpv4Failures(
+        `${correct} DNS muss abgeschaltet werden.`,
+      ),
+    ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+    expect(
+      assistantCorporateIpv4Failures(`${correct} Du musst /24 setzen.`),
+    ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+  },
+);
+
 it("accepts numeric-prefix wording and DNS with an IP while rejecting inverted cause/reader claims", () => {
   const correct =
     "Automatisch liest das Corporate-Modul den SNA-Standard /28 und übergibt einen numerischen Präfix an den Provider. Der DNS-Eintrag (hier: 1.1.1.1) bleibt unverändert erhalten. Freie Kapazität ist nicht garantiert.";

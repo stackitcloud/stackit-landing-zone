@@ -1947,7 +1947,13 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
     !/explizit|explicit|numerisch|numeric/.test(text)
   )
     failures.push("corporate_ipv4_provider_dependency_missing");
+  // German separable "beibehalten" also appears as "behält DNS ... bei".
+  // Require the DNS object and particle in the same sentence, without negation.
+  const keepsDns = [
+    ...text.matchAll(/\b(?:behält|behaelt)\b[^.!?]*\bdns\b[^.!?]*\bbei\b/g),
+  ].some((match) => !/\b(?:nicht|kein\w*)\b/.test(match[0]));
   if (
+    !keepsDns &&
     !/dns[^.!?]*(?:erhalt|unverändert|unveraendert|beibeh|beibe|retain|preserv|bleibt aktiv)|(?:erhalt|beibeh|beibe|unverändert|unveraendert|retain|preserv)[^.!?]*dns/.test(
       text,
     )
