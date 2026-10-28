@@ -1948,6 +1948,7 @@ it("requires login, current origin and CSRF for chat and rejects injected tenant
       },
     ),
     accept: vi.fn(),
+    discard: vi.fn(),
     preview: vi.fn(),
     remove: vi.fn(),
     getTemplateAdvice: vi.fn(async () => null),
@@ -2566,6 +2567,7 @@ it.each([
   "vpn",
   "devops-git",
   "dns-zones",
+  "platform-kubernetes",
 ])(
   "answers %s field overviews from reviewed native metadata, not incomplete model prose",
   async (topic) => {
@@ -2623,6 +2625,19 @@ it.each([
         "phase2",
       ])
         expect(result.explanation).toContain(field);
+    }
+    if (topic === "platform-kubernetes") {
+      for (const field of [
+        "node_pools",
+        "minimum",
+        "maximum",
+        "sna_network_prefix_length",
+        "platform_kubernetes_kube_config_override",
+      ])
+        expect(result.explanation).toContain(field);
+      expect(result.explanation).toContain("separater geschützter Eingang");
+      expect(result.explanation).toContain("niemals Kubeconfig-Inhalte");
+      expect(result.explanation).toContain("Erreichbarkeit");
     }
     expect(result.explanation).not.toContain("Untrusted private value");
     expect(result.explanation).not.toContain("private@example.test");

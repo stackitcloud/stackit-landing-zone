@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   type AssistantMergeConflict,
   type AssistantProposalChange,
+  assistantDiscardRequestSchema,
   assistantProposalBaselineAvailable,
   assistantProposalConflicts,
   assistantProposalFields,
@@ -62,7 +63,12 @@ export class AssistantError extends Error {
   }
 }
 
-type Message = { id: string; role: "user" | "assistant"; content: string };
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  proposalDiscarded?: boolean;
+};
 type Conversation = {
   id: string;
   revision: number;
@@ -660,6 +666,41 @@ export class AssistantConversations {
     });
   }
 
+  discard(session: Session, id: string, input: unknown) {
+    const { conversationId, revision } =
+      assistantDiscardRequestSchema.parse(input);
+    return this.work(session, id, async (client, configuration) => {
+      const row = (
+        await client.query<Conversation>(
+          "SELECT * FROM lzc.assistant_conversations WHERE configuration_id=$1 FOR UPDATE",
+          [id],
+        )
+      ).rows[0];
+      if (
+        !row?.proposal ||
+        row.id !== conversationId ||
+        row.revision !== revision
+      )
+        throw new AssistantError(409, "assistant_proposal_changed");
+      const last = row.messages.at(-1);
+      if (last?.role !== "assistant")
+        throw new AssistantError(409, "assistant_proposal_changed");
+      const messages = row.messages.map((entry, index) =>
+        index === row.messages.length - 1
+          ? { ...entry, proposalDiscarded: true }
+          : entry,
+      );
+      const saved = (
+        await client.query<Conversation>(
+          "UPDATE lzc.assistant_conversations SET proposal=NULL,proposal_baseline=NULL,messages=$3,revision=revision+1 WHERE id=$1 AND revision=$2 AND expires_at>now() RETURNING *",
+          [row.id, revision, JSON.stringify(messages)],
+        )
+      ).rows[0];
+      if (!saved) throw new AssistantError(409, "assistant_proposal_changed");
+      return response(saved, configuration);
+    });
+  }
+
   async send(
     session: Session,
     id: string,
@@ -736,7 +777,13 @@ export class AssistantConversations {
             groups: knowledge.groups,
           },
           modelValues,
-          base.row.messages,
+          base.row.messages.map((entry) => ({
+            role: entry.role,
+            content:
+              entry.role === "assistant" && entry.proposalDiscarded === true
+                ? "The user explicitly discarded the preceding proposal. This turn is closed: no proposal, selection question or setup request remains pending. Do not resume or reissue that proposal without a new explicit user request."
+                : entry.content,
+          })),
           message,
           await this.productCatalogues(session, [
             base.values.region === "eu02" ? "eu02" : "eu01",

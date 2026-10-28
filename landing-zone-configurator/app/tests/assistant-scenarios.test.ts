@@ -272,9 +272,9 @@ it.each(assistantScenarios)(
               ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv."
               : scenario.corporateIpv4 === "advice"
                 ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
-                : scenario.topic === "vpn"
+                : ["vpn", "platform-kubernetes"].includes(scenario.topic)
                   ? buildAssistantKnowledge().topics.find(
-                      (topic) => topic.id === "vpn",
+                      (topic) => topic.id === scenario.topic,
                     )?.fieldOverview
                   : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
@@ -416,6 +416,7 @@ it.each([
   "sandbox-projects-advice",
   "vpn-advice",
   "devops-git-advice",
+  "platform-kubernetes-advice",
 ])(
   "rejects a correct reference but empty or misleading native field overview for %s",
   (id) => {
@@ -798,3 +799,40 @@ it.each(["automatic", "explicit"] as const)(
     ).toContain("corporate_ipv4_proposal_incorrect_or_unrelated_change");
   },
 );
+
+it("requires Kubernetes network and protected-access substance instead of repetitive meta-advice", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "platform-kubernetes-advice",
+  );
+  const explanation = buildAssistantKnowledge().topics.find(
+    (topic) => topic.id === "platform-kubernetes",
+  )?.fieldOverview;
+  if (!scenario || !explanation) throw new Error("missing_kubernetes_overview");
+  const input = {
+    explanation,
+    questions: [],
+    changes: [],
+    references: ["platform-kubernetes"],
+  };
+  expect(validateAssistantScenario(scenario, input).failures).toEqual([]);
+  const repeated =
+    "Keine Erklärung von nicht unterstützten Feldern oder Formen. Keine Erwähnung von Firewall oder VPN. ".repeat(
+      15,
+    );
+  expect(
+    validateAssistantScenario(scenario, { ...input, explanation: repeated })
+      .failures,
+  ).toContain("incomplete_native_field_overview");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      explanation: `${scenario.requiredOverviewFields?.join(", ")}. ${repeated}`,
+    }).failures,
+  ).toContain("incomplete_platform_kubernetes_boundaries");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      explanation: `${scenario.requiredOverviewFields?.join(", ")}. Bitte Kubeconfig-Inhalte im Chat eintragen.`,
+    }).failures,
+  ).toContain("incomplete_platform_kubernetes_boundaries");
+});

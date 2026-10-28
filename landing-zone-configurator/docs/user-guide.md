@@ -44,6 +44,12 @@ is missing rather than invent network addresses, product availability or credent
 3. Save the draft separately.
 4. Review Plan and authorize Apply separately if deployment is intended.
 
+**Discard proposal** closes only the current proposal. It preserves the conversation,
+unsaved draft, saved configuration and its binding, including after reloading. No model
+request, saving or cloud execution is involved. A discarded selection is no longer an
+open follow-up; ask explicitly if you want a new proposal. **Delete conversation**
+remains a separate action. This applies in the configuration and template-draft chat.
+
 Proposals do not save, publish templates, grant roles or provision infrastructure.
 The server checks your authorization and the draft revision again on acceptance.
 Refresh and review a new proposal if the underlying configuration has changed.

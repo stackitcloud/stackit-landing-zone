@@ -1750,9 +1750,13 @@ it.each(["owner", "granular"] as const)(
         applicationAccess: {
           key: template.key,
           choice: mode === "owner" ? "owner" : "custom-granular",
-          initialOwnerEmail: "central@example.test",
-          permissions: ["iaas.server.get"],
-          automationPermissions: ["iaas.server.get"],
+          ...(mode === "owner"
+            ? {}
+            : {
+                initialOwnerEmail: "central@example.test",
+                permissions: ["iaas.server.get"],
+                automationPermissions: ["iaas.server.get"],
+              }),
         },
       },
       null,
@@ -1885,8 +1889,6 @@ it.each(["vm-operations-v1", "application-workloads-v1", "missing-owner"])(
             choice === "application-workloads-v1" ? choice : "vm-operations-v1",
           initialOwnerEmail:
             choice === "missing-owner" ? "" : "central@example.test",
-          permissions: [],
-          automationPermissions: [],
         },
       },
       null,
@@ -2447,3 +2449,459 @@ it.each([
     expect(original).toEqual(before);
   },
 );
+
+it.each([
+  "owner",
+  "vm-operations-v1",
+  "application-workloads-v1",
+  "add-service-permissions",
+])(
+  "rejects expanded permission lists in the compact %s intent arm",
+  async (choice) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    template.accessProfile = defaultApplicationAccessProfile(
+      "central@example.test",
+    );
+    const profile = defaultApplicationAccessProfile("central@example.test");
+    if (profile.mode !== "granular") throw new Error("fixture");
+    await expect(
+      collectionModel(
+        {
+          topic: "project-templates",
+          mode: "draft",
+          requirements: [],
+          applicationAccess: {
+            key: template.key,
+            choice,
+            permissions: profile.permissions,
+            ...(choice === "owner"
+              ? {}
+              : choice === "add-service-permissions"
+                ? { services: ["ske"], serviceEvidence: "Kubernetes" }
+                : { initialOwnerEmail: "central@example.test" }),
+          },
+        },
+        null,
+      ).converse(
+        knowledgeSelection(),
+        assistantPublicValues(original),
+        [],
+        `Für Corporate ${template.key} Kubernetes-Rechte vorschlagen.`,
+      ),
+    ).rejects.toMatchObject({ reason: "intent_schema" });
+  },
+);
+
+it("limits permission-list generation to the explicit custom IAM serving arm", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates!.find(
+    (t) => t.kind === "corporate",
+  )!;
+  let contract: unknown;
+  await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: template.key,
+        choice: "application-workloads-v1",
+        initialOwnerEmail: "central@example.test",
+      },
+    },
+    null,
+    (request) => {
+      contract = request.response_format.json_schema.schema;
+    },
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    "Workload-Standard mit central@example.test als initialem Owner vorschlagen.",
+  );
+  const access = (
+    contract as { properties: { applicationAccess: Record<string, unknown> } }
+  ).properties.applicationAccess;
+  expect(JSON.stringify(access)).not.toContain('"oneOf"');
+  const arms: Record<string, unknown>[] = [];
+  function visit(value: unknown) {
+    if (!value || typeof value !== "object") return;
+    const obj = value as Record<string, unknown>;
+    const properties = obj.properties as Record<string, unknown> | undefined;
+    if (properties?.choice) arms.push(obj);
+    if (Array.isArray(obj.anyOf)) obj.anyOf.forEach(visit);
+  }
+  visit(access);
+  expect(arms).toHaveLength(4);
+  for (const arm of arms) {
+    const properties = arm.properties as Record<string, unknown>;
+    const choice = properties.choice as { const?: string; enum?: string[] };
+    expect(arm.additionalProperties).toBe(false);
+    expect(Object.hasOwn(properties, "permissions")).toBe(
+      choice.const === "custom-granular",
+    );
+    expect(Object.hasOwn(properties, "automationPermissions")).toBe(
+      choice.const === "custom-granular",
+    );
+  }
+});
+
+it.each([
+  "permissions [iaas.server.get, resource-manager.project.get], automationPermissions [iaas.server.get]",
+  '"permissions": ["iaas.server.get", "resource-manager.project.get"], "automationPermissions": ["iaas.server.get"]',
+  "`permissions` = ['iaas.server.get', 'resource-manager.project.get'], `automationPermissions`: ['iaas.server.get']",
+])(
+  "takes exact recipient lists from the current literal source: %s",
+  async (lists) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    template.accessProfile = defaultApplicationAccessProfile(
+      "central@example.test",
+    );
+    const before = structuredClone(original);
+    let contract: unknown;
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: "custom-granular",
+          initialOwnerEmail: "central@example.test",
+        },
+      },
+      null,
+      (request) => {
+        contract = request.response_format.json_schema.schema;
+      },
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      `Setze für ${template.key} ein individuelles Profil mit central@example.test als initialem Owner: ${lists}. Exakt diese Listen.`,
+    );
+    expect(original).toEqual(before);
+    const expected = structuredClone(original);
+    expected.projectTemplates!.find(
+      (t) => t.id === template.id,
+    )!.accessProfile = {
+      schemaVersion: 1,
+      mode: "granular",
+      initialOwnerEmail: "central@example.test",
+      permissions: ["iaas.server.get", "resource-manager.project.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+    expect(applyAssistantChanges(original, result.changes)).toEqual(expected);
+    const access = (contract as { properties: { applicationAccess: unknown } })
+      .properties.applicationAccess;
+    expect(JSON.stringify(access)).not.toContain('"automationPermissions"');
+    expect(JSON.stringify(access)).not.toContain('"permissions"');
+  },
+);
+
+it.each(["preset", "extra-saved-right", "recipient-swap"])(
+  "rejects model-owned %s changes to explicit source-owned recipient lists",
+  async (failure) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    template.accessProfile = defaultApplicationAccessProfile(
+      "central@example.test",
+    );
+    const wrong =
+      failure === "preset"
+        ? { choice: "application-workloads-v1" }
+        : {
+            choice: "custom-granular",
+            permissions:
+              failure === "recipient-swap"
+                ? ["iaas.server.get"]
+                : [
+                    "iaas.server.get",
+                    "resource-manager.project.get",
+                    "iaas.server.delete",
+                  ],
+            automationPermissions: [
+              "iaas.server.get",
+              "resource-manager.project.get",
+            ],
+          };
+    await expect(
+      collectionModel(
+        {
+          topic: "project-templates",
+          mode: "draft",
+          requirements: [],
+          applicationAccess: {
+            key: template.key,
+            initialOwnerEmail: "central@example.test",
+            ...wrong,
+          },
+        },
+        null,
+      ).converse(
+        knowledgeSelection(),
+        assistantPublicValues(original),
+        [],
+        "Setze permissions [iaas.server.get, resource-manager.project.get] und automationPermissions [iaas.server.get], initialOwnerEmail central@example.test.",
+      ),
+    ).rejects.toMatchObject({ reason: "intent_schema" });
+  },
+);
+
+it.each([
+  "permissions [iaas.server.get], permissions [iaas.server.delete], automationPermissions [iaas.server.get]",
+  "permissions [iaas.server.get], automationPermissions [not a permission]",
+  "permissions [iaas.server.get], automationPermissions [iaas.server.get",
+])(
+  "asks rather than substituting a preset for invalid literal lists: %s",
+  async (lists) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: "application-workloads-v1",
+          initialOwnerEmail: "central@example.test",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      `Setze ${lists}.`,
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toHaveLength(1);
+    expect(result.explanation).toContain("mehrdeutig oder ungültig");
+  },
+);
+
+it("does not turn literal permission-list advice into a proposal", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "advice",
+      adviceTask: "application-access",
+      requirements: [],
+      applicationAccess: null,
+    },
+    null,
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    "Was bedeuten permissions [iaas.server.get] und automationPermissions [iaas.server.get]? Nur erklären, nichts ändern.",
+  );
+  expect(result.changes).toEqual([]);
+});
+
+it("never expands an explicit empty list into standard permissions", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates!.find(
+    (t) => t.kind === "corporate",
+  )!;
+  await expect(
+    collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: "custom-granular",
+          initialOwnerEmail: "central@example.test",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      "Setze permissions [] und automationPermissions [iaas.server.get], initialOwnerEmail central@example.test.",
+    ),
+  ).rejects.toBeInstanceOf(AssistantInferenceError);
+});
+
+it("appends source-owned literal permissions independently without removing prior rights or changing the central owner", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates?.find(
+    (t) => t.kind === "corporate",
+  );
+  if (!template) throw new Error("missing corporate fixture");
+  template.accessProfile = {
+    schemaVersion: 1,
+    mode: "granular",
+    initialOwnerEmail: "retained-owner@example.test",
+    permissions: ["iaas.server.get", "secrets-manager.secret.get"],
+    automationPermissions: ["resource-manager.project.get"],
+  };
+  const before = structuredClone(original);
+  let contract: unknown;
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: template.key,
+        choice: "custom-granular",
+        listOperation: "append",
+        initialOwnerEmail: "",
+      },
+    },
+    null,
+    (request) => {
+      contract = request.response_format.json_schema.schema;
+    },
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    "Ergänze permissions [iaas.server.delete, iaas.server.get] und automationPermissions [iaas.server.get]. Bestehende Rechte und zentralen Owner erhalten.",
+  );
+  expect(original).toEqual(before);
+  const expected = structuredClone(original);
+  expected.projectTemplates!.find((t) => t.id === template.id)!.accessProfile =
+    {
+      ...template.accessProfile,
+      permissions: [
+        "iaas.server.get",
+        "secrets-manager.secret.get",
+        "iaas.server.delete",
+      ],
+      automationPermissions: [
+        "resource-manager.project.get",
+        "iaas.server.get",
+      ],
+    };
+  expect(applyAssistantChanges(original, result.changes)).toEqual(expected);
+  expect(result.explanation).toContain(
+    "bestehende Rechte und zentraler Owner bleiben erhalten",
+  );
+  const access = (
+    contract as {
+      properties: {
+        applicationAccess: {
+          anyOf: { required?: string[]; properties?: { choice?: unknown } }[];
+        };
+      };
+    }
+  ).properties.applicationAccess;
+  const custom = access.anyOf.find((arm) => arm.properties?.choice);
+  expect(custom?.required).toContain("listOperation");
+});
+
+it("never downgrades full Owner rights into a granular profile when literal additions are requested", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates?.find(
+    (t) => t.kind === "corporate",
+  );
+  if (!template) throw new Error("missing corporate fixture");
+  template.accessProfile = { schemaVersion: 1, mode: "owner" };
+  const before = structuredClone(original);
+  await expect(
+    collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: "custom-granular",
+          listOperation: "append",
+          initialOwnerEmail: "invented@example.test",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      "Ergänze permissions [iaas.server.get] und automationPermissions [resource-manager.project.get].",
+    ),
+  ).rejects.toBeInstanceOf(AssistantInferenceError);
+  expect(original).toEqual(before);
+});
+
+it("asks without changes when literal recipients need different list operations", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates?.find(
+    (t) => t.kind === "corporate",
+  );
+  if (!template) throw new Error("missing corporate fixture");
+  template.accessProfile = defaultApplicationAccessProfile(
+    "central@example.test",
+  );
+  const before = structuredClone(original);
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: template.key,
+        choice: "custom-granular",
+        listOperation: "clarify",
+        initialOwnerEmail: "central@example.test",
+      },
+    },
+    null,
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    "Ergänze permissions [iaas.server.get], aber ersetze automationPermissions [resource-manager.project.get].",
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.questions).toHaveLength(1);
+  expect(result.questions[0]?.text).toContain(
+    "Unterschiedliche Änderungsarten",
+  );
+  expect(original).toEqual(before);
+});

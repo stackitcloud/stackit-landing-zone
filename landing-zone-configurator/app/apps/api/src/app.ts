@@ -53,7 +53,7 @@ export function buildApp(
     developmentLogin?: DevelopmentLogin;
     assistant?: Pick<
       AssistantConversations,
-      "get" | "send" | "accept" | "remove"
+      "get" | "send" | "accept" | "discard" | "remove"
     > &
       Partial<
         Pick<

@@ -65,6 +65,22 @@ const questions: Record<string, string> = {
 };
 
 const overviewFields: Record<string, readonly string[]> = {
+  "platform-kubernetes": [
+    "platform_kubernetes",
+    "region",
+    "cluster",
+    "kubernetes_version_min",
+    "node_pools",
+    "minimum",
+    "maximum",
+    "availability_zones",
+    "maintenance",
+    "network",
+    "sna_enabled",
+    "network_area_key",
+    "sna_network_prefix_length",
+    "platform_kubernetes_kube_config_override",
+  ],
   "devops-git": ["devops", "git_flavor", "allowed_network_ranges"],
   vpn: [
     "connectivity.vpn",
@@ -136,6 +152,7 @@ export type AssistantScenario = {
     | "advice"
     | "owner"
     | "granular"
+    | "literal-append"
     | "vm-default"
     | "workload-default"
     | "kubernetes-add"
@@ -263,6 +280,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     applicationAccess: "granular",
     message:
       "Ändere ausschließlich das accessProfile der bestehenden Corporate-Vorlage central auf granular, schemaVersion 1. Zentraler initialOwnerEmail ist platform-owner@example.test. Für das Team exakt permissions [iaas.server.get, resource-manager.project.get], für Automation exakt automationPermissions [iaas.server.get]. Kein Owner für den Besteller. Keine weiteren Änderungen, keine Veröffentlichung/Ausführung. Vollständiger atomarer Editor-Vorschlag.",
+  },
+  {
+    id: "application-access-literal-permissions-append",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "literal-append",
+    message:
+      "Ergänze ausschließlich das accessProfile der bestehenden Corporate-Vorlage central: permissions [iaas.server.delete] und automationPermissions [resource-manager.project.get]. Die bisherigen unterschiedlichen Rechte jeder Empfängerliste und den zentralen initialen Owner unverändert erhalten, nichts ersetzen oder entfernen. Nur überprüfbarer Vorschlag, nichts speichern, veröffentlichen oder ausführen.",
   },
   {
     id: "application-access-kubernetes-add",
@@ -909,6 +934,17 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       },
     ];
   }
+  if (scenario.applicationAccess === "literal-append") {
+    const appendTemplate = draft.projectTemplates?.[0];
+    if (!appendTemplate) throw new Error("missing literal append template");
+    appendTemplate.accessProfile = {
+      schemaVersion: 1,
+      mode: "granular",
+      initialOwnerEmail: "platform-owner@example.test",
+      permissions: ["iaas.server.get", "secrets-manager.secret.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+  }
   if (scenario.applicationAccess?.startsWith("public-kubernetes-")) {
     const publicTemplate = draft.projectTemplates![0]!;
     publicTemplate.kind = "public";
@@ -1055,6 +1091,21 @@ export function validateAssistantScenario(
               permissions: ["iaas.server.get", "resource-manager.project.get"],
               automationPermissions: ["iaas.server.get"],
             };
+    if (scenario.applicationAccess === "literal-append") {
+      const previous = fixture.draft.projectTemplates?.find(
+        (t) => t.key === "central",
+      )?.accessProfile;
+      if (!previous || previous.mode !== "granular")
+        throw new Error("expected granular append fixture");
+      central.accessProfile = {
+        ...previous,
+        permissions: [...previous.permissions, "iaas.server.delete"],
+        automationPermissions: [
+          ...previous.automationPermissions,
+          "resource-manager.project.get",
+        ],
+      };
+    }
     if (
       scenario.applicationAccess === "kubernetes-add" ||
       scenario.applicationAccess === "kubernetes-requester" ||
@@ -1477,6 +1528,19 @@ export function validateAssistantScenario(
     )
   )
     failures.push("incomplete_native_field_overview");
+  if (
+    scenario.id === "platform-kubernetes-advice" &&
+    (!/kubeconfig|kube_config/i.test(dialogue.explanation) ||
+      !/separat|geschützt|protected|secure binding/i.test(
+        dialogue.explanation,
+      ) ||
+      !/(?:niemals|nicht|keine?|never|do not)[^.!?\n]*chat/i.test(
+        dialogue.explanation,
+      ) ||
+      !/erreichbarkeit|reachability/i.test(dialogue.explanation) ||
+      !/prüf|pruef|verif|check/i.test(dialogue.explanation))
+  )
+    failures.push("incomplete_platform_kubernetes_boundaries");
   if (
     scenario.id === "governance-folders-advice" &&
     (!/\b40\b/.test(dialogue.explanation) ||

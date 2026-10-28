@@ -49,6 +49,13 @@ nachfragen, statt Netzwerkadressen, Produktverfügbarkeit oder Zugangsdaten zu e
 3. Speichere den Entwurf separat.
 4. Prüfe Plan und autorisiere Apply separat, wenn ein Deployment beabsichtigt ist.
 
+**Vorschlag verwerfen** schließt nur den aktuellen Vorschlag. Gespräch, ungespeicherter
+Entwurf, gespeicherte Konfiguration und ihre Zuordnung bleiben auch nach dem Neuladen
+erhalten. Dabei erfolgen weder Modellanfrage noch Speichern oder Cloud-Ausführung.
+Eine verworfene Auswahl ist keine offene Rückfrage mehr; fordere bei Bedarf ausdrücklich
+einen neuen Vorschlag an. **Gespräch löschen** bleibt eine eigene Aktion. Dies gilt
+im Konfigurations- und im Template-Entwurfschat.
+
 Vorschläge speichern oder veröffentlichen keine Vorlagen, vergeben keine Rollen und
 stellen keine Infrastruktur bereit. Der Server prüft bei der Übernahme erneut deine
 Berechtigung und die Entwurfsrevision. Aktualisiere und prüfe einen neuen Vorschlag, wenn

@@ -33,7 +33,12 @@ type Conversation = {
   baseRevision: number;
   expiresAt: string;
   stale: boolean;
-  messages: { id: string; role: "user" | "assistant"; content: string }[];
+  messages: {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    proposalDiscarded?: boolean;
+  }[];
   proposal: {
     explanation: string;
     references: string[];
@@ -235,7 +240,7 @@ export function AssistantChat({
   );
 
   async function act(
-    action: "send" | "accept" | "remove",
+    action: "send" | "accept" | "discard" | "remove",
     approved?: NonNullable<typeof confirmation>,
     outgoingMessage = message,
   ) {
@@ -251,6 +256,7 @@ export function AssistantChat({
       (!conversation || !savedDraft || selected.length === 0)
     )
       return;
+    if (action === "discard" && !conversation?.proposal) return;
     if (
       action === "remove" &&
       !window.confirm("Gespräch und Vorschlag endgültig löschen?")
@@ -283,39 +289,64 @@ export function AssistantChat({
       )
         throw new Error(errors.assistant_editor_changed);
       const response = await checked(
-        await fetch(action === "accept" ? `${endpoint}/accept` : endpoint, {
-          method: action === "remove" ? "DELETE" : "POST",
-          signal: signal ?? null,
-          headers: {
-            ...(action !== "remove"
-              ? { "Content-Type": "application/json" }
-              : {}),
-            ...(action === "send" ? { Accept: "application/x-ndjson" } : {}),
-            "x-lzc-csrf": session.csrfToken,
-          },
-          ...(action === "send"
-            ? {
-                body: JSON.stringify({
-                  revision: binding.revision,
-                  message: outgoingMessage,
-                  draft,
-                }),
-              }
-            : action === "accept"
+        await fetch(
+          action === "accept" || action === "discard"
+            ? `${endpoint}/${action}`
+            : endpoint,
+          {
+            method: action === "remove" ? "DELETE" : "POST",
+            signal: signal ?? null,
+            headers: {
+              ...(action !== "remove"
+                ? { "Content-Type": "application/json" }
+                : {}),
+              ...(action === "send" ? { Accept: "application/x-ndjson" } : {}),
+              "x-lzc-csrf": session.csrfToken,
+            },
+            ...(action === "send"
               ? {
                   body: JSON.stringify({
-                    ...acceptance,
-                    ...(approved
-                      ? { confirmedRevision: approved.configurationRevision }
-                      : {}),
+                    revision: binding.revision,
+                    message: outgoingMessage,
+                    draft,
                   }),
                 }
-              : {}),
-        }),
+              : action === "discard"
+                ? {
+                    body: JSON.stringify({
+                      conversationId: conversation?.id,
+                      revision: conversation?.revision,
+                    }),
+                  }
+                : action === "accept"
+                  ? {
+                      body: JSON.stringify({
+                        ...acceptance,
+                        ...(approved
+                          ? {
+                              confirmedRevision: approved.configurationRevision,
+                            }
+                          : {}),
+                      }),
+                    }
+                  : {}),
+          },
+        ),
       );
       if (signal?.aborted) return;
       if (action === "remove") {
         setConversation(null);
+        return;
+      }
+      if (action === "discard") {
+        const body = await response.json();
+        if (signal?.aborted) return;
+        setConversation(body.conversation);
+        setSelectedPaths(null);
+        setConfirmation(null);
+        setNotice(
+          "Vorschlag verworfen. Gespräch und Konfigurationsentwurf bleiben erhalten.",
+        );
         return;
       }
       if (action === "send") {
@@ -420,6 +451,9 @@ export function AssistantChat({
               <div className={`assistant-message ${entry.role}`} key={entry.id}>
                 <strong>{entry.role === "user" ? "Du" : "Assistent"}</strong>
                 <p>{entry.content}</p>
+                {entry.proposalDiscarded && (
+                  <small>{t("Vorschlag verworfen.")}</small>
+                )}
               </div>
             ))}
             {previewText !== null && (
@@ -566,7 +600,26 @@ export function AssistantChat({
                     : "Ausgewählte Felder übernehmen",
                 )}
               </button>
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => void act("discard")}
+              >
+                <Trash2 size={18} aria-hidden="true" />{" "}
+                {t("Vorschlag verwerfen")}
+              </button>
             </div>
+          )}
+          {conversation?.proposal && fields.length === 0 && (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => void act("discard")}
+            >
+              <Trash2 size={18} aria-hidden="true" /> {t("Vorschlag verwerfen")}
+            </button>
           )}
           <p className="muted">
             {t(
