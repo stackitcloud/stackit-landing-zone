@@ -11,22 +11,46 @@ Restore-Pruefungen lokal aktiviert. Echter menschlicher Login, vollstaendiger
 Owner-Nachweis und ausdrueckliche Organisationsbindung sind in der bestehenden
 Kundenorganisation erfolgreich abgenommen. GitHub bleibt als Legacy-Modus erhalten.
 
-Seit Migration 058 ist die achtstuendige Configurator-Sitzung unabhaengig von
-der kuerzeren STACKIT-Tokenlaufzeit. Beim Login muss der verifizierte Nachweis
-weiterhin aktuell sein. Identitaets- und Organisations-Owner-Nachweise behalten
-ihre eigenen Ablaufzeiten; abgelaufene Nachweise erlauben weder eine neue
-Organisationsbindung noch geschuetzte Cloud-Aktionen. Sie muessen bei Bedarf
-erneut bestaetigt werden. Refresh-Tokens werden weiterhin nicht gespeichert.
-Logout widerruft die App-Sitzung, und Rollen-/Mandantenpruefungen bleiben aktiv.
-Bestehende Sitzungen werden nicht nachtraeglich verlaengert; die neue Laufzeit
-gilt nach erneuter Anmeldung.
+Die Configurator-Sitzung gilt absolut acht Stunden, unabhängig vom kürzeren
+STACKIT-Identitätsnachweis. Mit Migration 075 und konfigurierter
+Sitzungsverschlüsselung behält der PKCE-Login einen serverseitig verschlüsselten
+Refresh-Zugang, gebunden an diese Sitzung, den Benutzer und den ursprünglichen
+Arbeitsbereich. Der Browser erhält weder Provider-Access- noch Refresh-Tokens.
+Solange der Tab sichtbar ist, erneuern regelmäßige Prüfungen und Prüfungen bei der
+Rückkehr zum Tab den Identitätsnachweis kurz vor Ablauf. Die Token-Rotation wird
+über Tabs und API-Instanzen hinweg serialisiert. Die Erneuerung prüft signiertes
+ID-Token, Issuer, Audience, Authorized Party, Subject und bestätigte Userinfo; eine
+geänderte Identität wird abgelehnt. Sie verlängert weder die achtstündige
+App-Sitzung noch Organisations-Owner-Rechtenachweise und hebt keine Widerrufe auf.
+Diese Rechtenachweise müssen weiterhin gesondert bestätigt werden. Logout entfernt
+die App-Sitzung und versucht den zugehörigen Refresh-Zugang beim Provider zu
+widerrufen. Alte Sitzungen ohne diesen Zugang verlangen nach Ablauf ihres
+Nachweises eine erneute Anmeldung.
 
-Der Web-Login mit Authorization Code und PKCE verwendet denselben Browser-Tab.
-Der vorhandene Callback setzt die Anmeldung im Configurator fort; unvollständige
-Entwürfe bleiben dabei über den bestehenden tabgebundenen Zwischenspeicher erhalten.
-Dies gilt auch für die erneute STACKIT-Bestätigung im Kontobereich. Nur der
-kompatible Device-Flow mit Anmeldecode öffnet weiterhin einen separaten Tab,
-weil der ursprüngliche Tab für das Polling geöffnet bleiben muss.
+Der Web-Login mit Authorization Code und PKCE leitet sofort im selben Tab weiter,
+ohne zusätzlichen Bestätigungsdialog des Configurators. Eine notwendige Anmeldung,
+MFA oder Einwilligung bei STACKIT bleibt unter Kontrolle von STACKIT. Die Erneuerung
+des Client-Zugangs kann das getrennte Browsercookie des STACKIT-Portals nicht
+aktiv halten. Der kompatible Device-Flow mit Anmeldecode behält seinen Dialog und
+den separaten Provider-Tab für das Polling.
+
+Eine abgelehnte oder nicht verfügbare Erneuerung verwirft keine Bearbeitung und
+leitet nicht stillschweigend weiter. Solange die App-Sitzung gilt, können
+Konfigurationen weiterhin gespeichert werden; geschützte Cloud-Aktionen brauchen
+einen aktuellen Nachweis. Läuft die App-Sitzung selbst ab, behält der Editor den
+Entwurf und bietet lokalen Download und Anmeldung an. Ein tablokaler Checkpoint
+für 24 Stunden bewahrt Entwurf, ursprüngliche Datenbank-Konfigurations-ID und
+Revision, gespeicherte Vergleichsbasis und Editorposition. Er enthält keine
+Login-Tokens oder CSRF-Geheimnisse. Er wird nur für denselben authentifizierten
+Benutzer und Arbeitsbereich wiederhergestellt. Beginnt eine neue Anmeldung im
+persönlichen Arbeitsbereich, wird die vorherige Organisation nur nach einer
+frischen serverseitigen Mitgliedschaftsprüfung gewählt. Andere Konten und
+Arbeitsbereiche erhalten den privaten Entwurf nicht; ausdrücklicher Logout löscht
+den Checkpoint dieses Kontos. Ist Browserspeicher nicht verfügbar, wird die
+Weiterleitung zur Anmeldung blockiert, bis der Entwurf gesichert oder
+heruntergeladen werden kann. Eine erneute Anmeldung speichert, veröffentlicht,
+plant oder appliziert keinen Entwurf automatisch. Die ursprünglichen
+Revisionskonfliktprüfungen bleiben erhalten.
 
 Der Resource Manager liefert fuer die exakt angefragte Organisations-UUID einen
 IAM-Containerbezug. Die Pruefung verwendet ausschliesslich diesen Bezug fuer
@@ -150,8 +174,10 @@ STACKIT-Identität an und wählen bei mehreren Mitgliedschaften ihren aktiven Te
 Der Application Owner benötigt weder GitHub noch einen Service Account.
 Der Platform Engineer hinterlegt den technischen STACKIT-Service-Account-Zugang;
 Produktkataloge verwenden danach denselben Zugang automatisch, ohne weitere
-Profil- oder Projektwahl im Editor. Persönliche Login-Tokens werden nicht für
-technische STACKIT-Automatisierungen gespeichert oder wiederverwendet.
+Profil- oder Projektwahl im Editor. Persönliche Access-Tokens werden nach der
+Identitätsprüfung verworfen. Verschlüsselte persönliche Refresh-Zugänge dienen
+ausschließlich der Anmeldeerneuerung, niemals dem Runner oder technischer
+STACKIT-Automatisierung.
 
 `POST /auth/stackit/start` beginnt den konfigurierten browsergebundenen Flow.
 Lokal ist dies CLI-PKCE; ohne explizite Flow-Factory bleibt es Device Flow.
@@ -166,8 +192,9 @@ Issuer und Subject bestimmen den stabilen Benutzer, niemals allein die E-Mail-Ad
 Device-Cookies sind `Secure`, `HttpOnly`, `SameSite=Strict`; fuer die PKCE-
 Callback-Rueckkehr verwendet die Browserbindung `SameSite=Lax`. Sessions verwenden
 `SameSite=Lax`. Pre-Auth-POSTs verlangen die exakte Origin, authentifizierte
-Änderungen zusätzlich CSRF. Sessions gelten höchstens acht Stunden und enden
-spätestens 30 Sekunden vor dem Provider-Token. Kein Refresh-Token wird behalten.
+Änderungen zusätzlich CSRF. Sessions gelten höchstens acht Stunden; für den
+unabhängigen Identitätsnachweis und den verschlüsselten Refresh-Zugang gelten
+die oben beschriebenen Erneuerungsregeln.
 Offene Device-Flows liegen nur im Speicher einer Instanz: Neustart verwirft sie;
 mehrere Instanzen benötigen vor Aktivierung eine gemeinsame Ablage oder Sticky Routing.
 

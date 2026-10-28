@@ -14,6 +14,7 @@ const verificationUrl = z.url().refine((value) => {
   const url = new URL(value);
   return url.origin === issuer && !url.username && !url.password;
 });
+export const stackitIssuer = issuer;
 const identitySchema = z.object({
   sub: z.string().min(1).max(255),
   email: z
@@ -42,6 +43,16 @@ export type DeviceIdentity = {
     permissions?: string[];
     ownerPermissions?: string[];
   } | null;
+};
+
+export type StackitRefreshGrant = {
+  clientId: string;
+  refreshToken: string;
+  nonce: string;
+  issuer: string;
+  subject: string;
+  email: string;
+  expiresAt: string;
 };
 
 export type DeviceState =
@@ -125,6 +136,7 @@ export function configuredStackitFlow(
 
 export class StackitDeviceFlow {
   private readonly clientId: string;
+  private refreshGrant: StackitRefreshGrant | null = null;
   private deviceCode: string | null = null;
   private expiresAt = 0;
   private nextPollAt = 0;
@@ -266,7 +278,14 @@ export class StackitDeviceFlow {
     };
   }
 
+  takeRefreshGrant(): StackitRefreshGrant | null {
+    const grant = this.refreshGrant;
+    this.refreshGrant = null;
+    return grant;
+  }
+
   cancel(): DeviceState {
+    this.refreshGrant = null;
     this.deviceCode = null;
     this.codeVerifier = null;
     this.codeState = null;
@@ -375,6 +394,7 @@ export class StackitDeviceFlow {
       const tokens = z
         .object({
           access_token: z.string().min(1).max(32768),
+          refresh_token: z.string().min(1).max(32768).optional(),
           id_token: z.string().min(1).max(32768).optional(),
           expires_in: z.number().int().positive().max(86400),
           token_type: z
@@ -382,6 +402,7 @@ export class StackitDeviceFlow {
             .refine((value) => value.toLowerCase() === "bearer"),
         })
         .parse(data);
+      const authorizationNonce = this.nonce;
       let identity: { sub: string; email?: string | undefined } | undefined;
       let tokenExpiresAt = this.now() + tokens.expires_in * 1000;
       if (this.codeOptions && !tokens.id_token)
@@ -398,6 +419,13 @@ export class StackitDeviceFlow {
           maxTokenAge: "10m",
           currentDate: new Date(this.now()),
         });
+        if (
+          (payload.azp !== undefined && payload.azp !== this.clientId) ||
+          (Array.isArray(payload.aud) &&
+            payload.aud.length > 1 &&
+            payload.azp !== this.clientId)
+        )
+          throw new DeviceFlowError("identity_authorized_party_mismatch");
         if (this.codeOptions && payload.nonce !== this.nonce)
           throw new DeviceFlowError("identity_nonce_mismatch");
         this.nonce = null;
@@ -563,6 +591,20 @@ export class StackitDeviceFlow {
       }
       if (this.state().status !== "waiting") return this.state();
       this.deviceCode = null;
+      if (
+        this.codeOptions?.purpose === "login" &&
+        tokens.refresh_token &&
+        authorizationNonce
+      )
+        this.refreshGrant = {
+          clientId: this.clientId,
+          refreshToken: tokens.refresh_token,
+          nonce: authorizationNonce,
+          issuer,
+          subject: user.sub,
+          email: user.email,
+          expiresAt: new Date(tokenExpiresAt).toISOString(),
+        };
       this.current = {
         status: "verified",
         identity: {

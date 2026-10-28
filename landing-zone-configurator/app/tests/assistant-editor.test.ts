@@ -2062,7 +2062,7 @@ it("does not offer an unchanged policy when all Kubernetes rights are already pr
     knowledgeSelection(),
     assistantPublicValues(original),
     [],
-    "Bitte Kubernetes-Rechte ergänzen.",
+    `Bitte im Template ${template.key} Kubernetes-Rechte ergänzen.`,
   );
   expect(result.changes).toEqual([]);
   expect(result.questions).toEqual([]);
@@ -2144,3 +2144,306 @@ it("uses bounded serving strings for permissions while retaining strict runtime 
     profile.safeParse({ permissions: ["ske.cluster.create"] }).success,
   ).toBe(true);
 });
+
+it.each([
+  [1, false],
+  [2, false],
+  [2, true],
+] as const)(
+  "resolves a natural-language Public request across %s templates even for a guessed key (%s)",
+  async (count, guessedKey) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "public",
+    )!;
+    template.accessProfile = {
+      ...defaultApplicationAccessProfile("central@example.test"),
+      permissions: ["secrets-manager.secret.get", "iaas.server.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+    if (count === 2)
+      original.projectTemplates!.push({
+        ...structuredClone(template),
+        id: crypto.randomUUID(),
+        key: "public-second",
+        name: "Second Public",
+      });
+    const before = structuredClone(original);
+    const message =
+      "Ich will das man bei der Bestellung einer Public Landing Zone auch Rechte bekommt einen Kubernetes Cluster bestellen und nutzen zu können";
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        adviceTask: "application-access",
+        requirements: [],
+        applicationAccess: {
+          key: guessedKey ? template.key : "__select_by_kind__",
+          templateKind: guessedKey ? "unspecified" : "public",
+          templateEvidence: "Public Landing Zone",
+          choice: "add-service-permissions",
+          services: ["ske"],
+          permissionTarget: "requester",
+          serviceEvidence: "Kubernetes Cluster bestellen und nutzen",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    expect(original).toEqual(before);
+    if (count === 2) {
+      expect(result.changes).toEqual([]);
+      expect(result.questions).toHaveLength(1);
+      expect(result.questions[0]!.options).toEqual([
+        `${template.name} (${template.key})`,
+        "Second Public (public-second)",
+      ]);
+      return;
+    }
+    expect(result.questions).toEqual([]);
+    const expected = structuredClone(original);
+    const expectedProfile = expected.projectTemplates!.find(
+      (t) => t.id === template.id,
+    )!.accessProfile!;
+    if (expectedProfile.mode !== "granular")
+      throw new Error("Expected granular");
+    expectedProfile.permissions = [
+      ...expectedProfile.permissions,
+      ...applicationProjectPermissionNames.filter((p) => p.startsWith("ske.")),
+    ];
+    expect(applyAssistantChanges(original, result.changes)).toEqual(expected);
+  },
+);
+
+it.each(["", "Corporate Landing Zone", "Public not quoted"])(
+  "rejects ungrounded template-kind evidence %s",
+  async (templateEvidence) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    await expect(
+      collectionModel(
+        {
+          topic: "project-templates",
+          mode: "draft",
+          requirements: [],
+          applicationAccess: {
+            key: "__select_by_kind__",
+            templateKind: "public",
+            templateEvidence,
+            choice: "add-service-permissions",
+            services: ["ske"],
+            permissionTarget: "requester",
+            serviceEvidence: "Kubernetes",
+          },
+        },
+        null,
+      ).converse(
+        knowledgeSelection(),
+        assistantPublicValues(original),
+        [],
+        "Public Landing Zone soll Kubernetes Rechte erhalten.",
+      ),
+    ).rejects.toBeInstanceOf(AssistantInferenceError);
+  },
+);
+
+it.each(["key", "question-answer"])(
+  "continues only the immediately open Public selection using its USER source (%s)",
+  async (replyKind) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const first = original.projectTemplates!.find((t) => t.kind === "public")!;
+    first.accessProfile = defaultApplicationAccessProfile(
+      "central@example.test",
+    );
+    original.projectTemplates!.push({
+      ...structuredClone(first),
+      id: crypto.randomUUID(),
+      key: "other-public",
+      name: "Other Public",
+    });
+    const request =
+      "Public Landing Zone Besteller sollen Kubernetes Cluster bestellen und nutzen können.";
+    const access = {
+      key: "__select_by_kind__",
+      templateKind: "public",
+      templateEvidence: "Public Landing Zone",
+      choice: "add-service-permissions",
+      services: ["ske"],
+      permissionTarget: "requester",
+      serviceEvidence: "Kubernetes Cluster bestellen und nutzen",
+    };
+    const clarification = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: access,
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      request,
+    );
+    expect(clarification.changes).toEqual([]);
+    const question = clarification.questions[0]!;
+    const message =
+      replyKind === "key"
+        ? first.key
+        : `${question.text}\nMeine Antwort: ${question.options![0]}`;
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          ...access,
+          key: first.key,
+          serviceEvidenceSource: "history-0",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [
+        { role: "user", content: request },
+        {
+          role: "assistant",
+          content: clarification.explanation + "\n" + question.text,
+        },
+      ],
+      message,
+    );
+    const expected = structuredClone(original);
+    const profile = expected.projectTemplates!.find((t) => t.id === first.id)!
+      .accessProfile!;
+    if (profile.mode !== "granular") throw new Error("Expected granular");
+    profile.permissions = [
+      ...new Set([
+        ...profile.permissions,
+        ...applicationProjectPermissionNames.filter((p) =>
+          p.startsWith("ske."),
+        ),
+      ]),
+    ];
+    expect(applyAssistantChanges(original, result.changes)).toEqual(expected);
+  },
+);
+
+it.each([
+  "negation",
+  "new-topic",
+  "completed",
+  "older-question",
+  "wrong-target",
+  "wrong-template",
+  "changed-options",
+])(
+  "never reactivates a historical service request through %s",
+  async (reason) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const first = original.projectTemplates!.find((t) => t.kind === "public")!;
+    first.accessProfile = defaultApplicationAccessProfile(
+      "central@example.test",
+    );
+    original.projectTemplates!.push({
+      ...structuredClone(first),
+      id: crypto.randomUUID(),
+      key: "other-public",
+      name: "Other Public",
+    });
+    const request =
+      "Public Landing Zone Besteller sollen Kubernetes Cluster bestellen und nutzen können.";
+    const access = {
+      key: "__select_by_kind__",
+      templateKind: "public",
+      templateEvidence: "Public Landing Zone",
+      choice: "add-service-permissions",
+      services: ["ske"],
+      permissionTarget: "requester",
+      serviceEvidence: "Kubernetes Cluster bestellen und nutzen",
+    };
+    const clarification = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: access,
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      request,
+    );
+    const history: { role: "user" | "assistant"; content: string }[] = [
+      { role: "user", content: request },
+      {
+        role: "assistant",
+        content:
+          clarification.explanation + "\n" + clarification.questions[0]!.text,
+      },
+    ];
+    if (reason === "completed")
+      history[1]!.content =
+        "Vorschlag erstellt, Auftrag abgeschlossen. Noch nichts gespeichert.";
+    if (reason === "older-question")
+      history.push(
+        { role: "user", content: "Nun etwas anderes." },
+        { role: "assistant", content: "Was möchtest du wissen?" },
+      );
+    if (reason === "changed-options")
+      original.projectTemplates!.push({
+        ...structuredClone(first),
+        id: crypto.randomUUID(),
+        key: "new-public",
+        name: "New Public",
+      });
+    const before = structuredClone(original);
+    await expect(
+      collectionModel(
+        {
+          topic: "project-templates",
+          mode: "draft",
+          requirements: [],
+          applicationAccess: {
+            ...access,
+            key: reason === "wrong-template" ? "other-public" : first.key,
+            serviceEvidenceSource: "history-0",
+            permissionTarget:
+              reason === "wrong-target" ? "automation" : "requester",
+          },
+        },
+        null,
+      ).converse(
+        knowledgeSelection(),
+        assistantPublicValues(original),
+        history,
+        reason === "negation"
+          ? "Nein, doch keine Rechte ändern."
+          : reason === "new-topic"
+            ? "Erkläre mir Object Storage."
+            : first.key,
+      ),
+    ).rejects.toBeInstanceOf(AssistantInferenceError);
+    expect(original).toEqual(before);
+  },
+);

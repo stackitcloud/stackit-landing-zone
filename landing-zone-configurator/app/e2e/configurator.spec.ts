@@ -2387,8 +2387,8 @@ for (const failedRequest of ["start", "poll"] as const) {
         });
       return route.fulfill({
         json: {
-          verificationUri:
-            "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code",
+          verificationUri: "https://accounts.stackit.cloud/device",
+          userCode: "RETRY-CODE",
           expiresAt: new Date(Date.now() + 900000).toISOString(),
           retryAfterMs: 10,
         },
@@ -2507,7 +2507,7 @@ for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
     missingFlow: true,
   },
 ]) {
-  test(`STACKIT primary login, approval dialog and logout without GitHub ${codeFlow ? "PKCE" : "device"}${returning ? ` return${completedElsewhere ? " race" : missingFlow ? " missing" : ""}` : ""}`, async ({
+  test(`STACKIT primary login, ${codeFlow ? "direct redirect" : "approval dialog"} and logout without GitHub ${codeFlow ? "PKCE" : "device"}${returning ? ` return${completedElsewhere ? " race" : missingFlow ? " missing" : ""}` : ""}`, async ({
     page: initialPage,
     context,
   }, testInfo) => {
@@ -2606,45 +2606,17 @@ for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
       });
     }
     await installLoginRoutes(page);
-    await page.goto("/organisation");
-    await page
-      .getByRole("button", { name: "Mit STACKIT anmelden", exact: true })
-      .click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    if (codeFlow) await expect(dialog.getByLabel("Anmeldecode")).toHaveCount(0);
-    else await expect(dialog.getByLabel("Anmeldecode")).toHaveText("TEST-CODE");
-    await expect(
-      dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
-    ).toHaveAttribute(
-      "href",
-      codeFlow
-        ? /^https:\/\/accounts\.stackit\.cloud\/oauth\/v2\/authorize/
-        : /^https:\/\/accounts\.stackit\.cloud\/device/,
-    );
-    await expect(
-      dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
-    ).toHaveAttribute("target", codeFlow ? "_self" : "_blank");
-    expect(
-      await dialog.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        return (
-          box.left >= 0 &&
-          box.right <= innerWidth &&
-          box.top >= 0 &&
-          box.bottom <= innerHeight
-        );
-      }),
-    ).toBe(true);
-    await page.screenshot({
-      path: testInfo.outputPath("stackit-login.png"),
-      fullPage: true,
-    });
-    if (returning) {
-      const returnUrl = new URL("/#stackit-login", page.url()).toString();
+    let providerRedirects = 0;
+    if (codeFlow) {
+      // PKCE navigates immediately: intercept the provider before pressing sign-in.
+      const returnUrl = new URL(
+        "/#stackit-login",
+        testInfo.project.use.baseURL,
+      ).toString();
       await page.route(
         "https://accounts.stackit.cloud/oauth/v2/authorize*",
         (route) => {
+          providerRedirects++;
           approved = true;
           return route.fulfill({
             status: 302,
@@ -2652,12 +2624,43 @@ for (const { codeFlow, returning, completedElsewhere, missingFlow } of [
           });
         },
       );
-      await dialog
-        .getByRole("link", { name: "Bei STACKIT bestätigen" })
-        .click();
+    }
+    await page.goto("/organisation");
+    await page
+      .getByRole("button", { name: "Mit STACKIT anmelden", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    if (codeFlow) {
+      await expect.poll(() => providerRedirects).toBe(1);
+      await expect(dialog).toHaveCount(0);
       await expect(page).not.toHaveURL(/#stackit-login/);
       expect(context.pages()).toEqual([page]);
-    } else approved = true;
+    } else {
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByLabel("Anmeldecode")).toHaveText("TEST-CODE");
+      await expect(
+        dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
+      ).toHaveAttribute("href", /^https:\/\/accounts\.stackit\.cloud\/device/);
+      await expect(
+        dialog.getByRole("link", { name: "Bei STACKIT bestätigen" }),
+      ).toHaveAttribute("target", "_blank");
+      expect(
+        await dialog.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          return (
+            box.left >= 0 &&
+            box.right <= innerWidth &&
+            box.top >= 0 &&
+            box.bottom <= innerHeight
+          );
+        }),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath("stackit-login.png"),
+        fullPage: true,
+      });
+      approved = true;
+    }
     if (missingFlow) {
       await expect(page.locator(".account")).toContainText(
         "STACKIT-Anmeldung fehlgeschlagen",
@@ -2751,8 +2754,8 @@ test("session proof renewal is distinct from signing in and preserves authentica
     starts++;
     return route.fulfill({
       json: {
-        verificationUri:
-          "https://accounts.stackit.cloud/oauth/v2/authorize?response_type=code&code_challenge_method=S256",
+        verificationUri: "https://accounts.stackit.cloud/device",
+        userCode: "RENEW-CODE",
         expiresAt: new Date(Date.now() + 300000).toISOString(),
         retryAfterMs: 50,
       },
@@ -2779,12 +2782,12 @@ test("session proof renewal is distinct from signing in and preserves authentica
     account.getByRole("button", { name: "Mit STACKIT anmelden", exact: true }),
   ).toHaveCount(0);
   const confirmation = account.getByRole("button", {
-    name: "STACKIT bestätigen",
+    name: "STACKIT-Anmeldung erneuern",
     exact: true,
   });
   await expect(confirmation).toHaveAttribute(
     "title",
-    /im Configurator angemeldet/,
+    /Cloud-Aktionen benötigen die erneute Anmeldung/,
   );
   await confirmation.click();
   const dialog = page.getByRole("dialog");
@@ -2807,10 +2810,10 @@ test("session proof renewal is distinct from signing in and preserves authentica
   ).toBe(true);
   approved = true;
   await account
-    .getByRole("button", { name: "Confirm STACKIT", exact: true })
+    .getByRole("button", { name: "Renew STACKIT sign-in", exact: true })
     .click();
   await expect(
-    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+    account.getByRole("button", { name: "Renew STACKIT sign-in", exact: true }),
   ).toHaveCount(0);
   await expect(
     account.getByRole("button", { name: "Sign out", exact: true }),
@@ -2819,7 +2822,7 @@ test("session proof renewal is distinct from signing in and preserves authentica
   expect(starts).toBe(2);
   await page.reload();
   await expect(
-    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+    account.getByRole("button", { name: "Renew STACKIT sign-in", exact: true }),
   ).toHaveCount(0);
   await expect(
     account.getByRole("button", { name: "Sign out", exact: true }),
@@ -2827,7 +2830,7 @@ test("session proof renewal is distinct from signing in and preserves authentica
   verified = false;
   await page.reload();
   await expect(
-    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+    account.getByRole("button", { name: "Renew STACKIT sign-in", exact: true }),
   ).toBeVisible();
   await expect(
     account.getByRole("button", { name: "Sign in with STACKIT", exact: true }),
@@ -2841,7 +2844,7 @@ test("session proof renewal is distinct from signing in and preserves authentica
     account.getByRole("button", { name: "Sign out", exact: true }),
   ).toHaveCount(0);
   await expect(
-    account.getByRole("button", { name: "Confirm STACKIT", exact: true }),
+    account.getByRole("button", { name: "Renew STACKIT sign-in", exact: true }),
   ).toHaveCount(0);
 });
 
@@ -3141,9 +3144,6 @@ for (const provider of ["GitHub", "STACKIT"] as const) {
     await page
       .getByLabel("Name der Konfiguration")
       .fill("Entwurf vor Anmeldung");
-    await page
-      .getByRole("button", { name: `Mit ${provider} anmelden` })
-      .click();
     if (provider === "STACKIT") {
       const returnUrl = new URL("/#stackit-login", page.url()).toString();
       await page.route(
@@ -3156,11 +3156,11 @@ for (const provider of ["GitHub", "STACKIT"] as const) {
           });
         },
       );
-      await page
-        .getByRole("dialog")
-        .getByRole("link", { name: "Bei STACKIT bestätigen" })
-        .click();
     }
+    await page
+      .getByRole("button", { name: `Mit ${provider} anmelden` })
+      .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page
         .locator(".account")
@@ -3173,7 +3173,12 @@ for (const provider of ["GitHub", "STACKIT"] as const) {
       await page.evaluate(() => sessionStorage.getItem("lzc-oauth-draft")),
     ).toBeNull();
     expect(context.pages()).toEqual([page]);
+    const logoutConfirmation = page.waitForEvent("dialog");
+    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Abmelden", exact: true }).click();
+    expect((await logoutConfirmation).message()).toBe(
+      "Abmelden? Nicht gespeicherte Änderungen bitte zuerst speichern oder herunterladen.",
+    );
     await expect(
       page.getByRole("button", { name: `Mit ${provider} anmelden` }),
     ).toBeVisible();
@@ -5505,7 +5510,11 @@ test.describe("explicit saved-plan approval", () => {
       page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
     ).toBeEnabled();
     const initialReads = reads;
-    await page.clock.fastForward(61000);
+    // Session renewal deliberately refreshes session-bound data every 60s.
+    // Assert idle execution polling independently before that heartbeat.
+    await page.clock.fastForward(30000);
+    expect(reads).toBe(initialReads);
+    await page.clock.fastForward(31000);
     await expect(
       page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
     ).toHaveCount(0);
@@ -5521,7 +5530,9 @@ test.describe("explicit saved-plan approval", () => {
     await expect(
       page.getByText(/Plan abgelaufen oder keine Gültigkeit bestätigt/),
     ).toBeVisible();
-    expect(reads).toBe(initialReads);
+    const expiredReads = reads;
+    await page.clock.fastForward(30000);
+    expect(reads).toBe(expiredReads);
     expect(writes).toBe(0);
   });
 

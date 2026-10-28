@@ -40,6 +40,17 @@ Editor-DOM, damit ein fokussiertes Eingabefeld nicht entfernt wird. Tatsächlich
 Identitäts-/Arbeitsumgebungswechsel setzen weiterhin den Entwurf und den
 bereichsgebundenen Katalogprovider zurück; private Kataloge dürfen nie über
 diese Grenzen hinweg erhalten bleiben.
+Heartbeat-Aktualisierungen dürfen keinen älteren Checkpoint über einen aktuellen
+Entwurf zurückspielen oder fokussierte Eingaben entfernen. Bei Sitzungsablauf
+bleiben Entwurf, Datenbankbindung und Revision sowie gespeicherte Vergleichsbasis
+erhalten; Wiederherstellung verlangt denselben Benutzer und Arbeitsbereich.
+Ausdrücklicher Logout löscht den Checkpoint auch in abgelaufenen Tabs; ein Logout
+einer älteren Sitzung darf aber keine neuere Anmeldung löschen. Teste verzögerte
+Refresh-Ergebnisse mit einem neuen unveränderlichen Session-Wert auf Desktop und
+Mobilgeräten. Refresh-Zugänge bleiben serverseitig verschlüsselt; absolute
+App-Laufzeit und Organisations-Owner-Nachweis dürfen nicht verlängert werden.
+Siehe [Anmeldeverhalten](github-login.de.md) für Erneuerung und den Ausweichpfad
+bei nicht verfügbarem Browserspeicher.
 
 Die Navigation „Konfigurationen“ setzt den aktuellen Entwurf direkt im Editor
 fort; der Brotkrumen-Link im Editor öffnet die gespeicherte Liste. Listenaktionen

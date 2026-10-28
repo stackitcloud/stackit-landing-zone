@@ -55,8 +55,10 @@ import "./style.css";
 import { Account, type Session } from "./components/Account";
 import {
   clearLoginDraft,
+  pendingLoginOwner,
   preserveLoginDraft,
   readLoginDraft,
+  readLoginRecovery,
 } from "./login-draft";
 
 function TemplateDraftEditor({
@@ -201,20 +203,111 @@ function App() {
       ? "Die GitHub-Anmeldung ist fehlgeschlagen. Bitte erneut versuchen."
       : "",
   );
+  const latestDraft = useRef({
+    draft,
+    configurationBinding,
+    savedDraft,
+    view,
+    step,
+    deploymentStep,
+  });
+  latestDraft.current = {
+    draft,
+    configurationBinding,
+    savedDraft,
+    view,
+    step,
+    deploymentStep,
+  };
   const activeAccount = useRef<string | null>(null);
+  const draftOwner = useRef<Session | null>(null);
+  const loginInProgress = useRef(window.location.hash === "#stackit-login");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const currentWorkspace = useRef(workspaceKey(session));
   currentWorkspace.current = workspaceKey(session);
-  const changeSession = useCallback((next: Session | null) => {
-    const key = workspaceKey(next);
-    if (activeAccount.current && activeAccount.current !== key) {
-      setDraft(null);
-      setConfigurationBinding(null);
-      setSavedDraft(null);
-      setWorkspaceEpoch((value) => value + 1);
-    }
-    activeAccount.current = key;
-    setSession(next);
-  }, []);
+  const changeSession = useCallback(
+    (next: Session | null, reason: "expired" | "logout" | "sync" = "sync") => {
+      const key = workspaceKey(next);
+      if (
+        reason !== "logout" &&
+        activeAccount.current &&
+        activeAccount.current !== key
+      ) {
+        const owner = draftOwner.current;
+        const snapshot = latestDraft.current;
+        if (snapshot.draft && owner?.user.id && owner.tenant?.id)
+          preserveLoginDraft(snapshot.draft, {
+            owner: { userId: owner.user.id, tenantId: owner.tenant.id },
+            binding: snapshot.configurationBinding,
+            savedDraft: snapshot.savedDraft,
+            location: {
+              view: snapshot.view,
+              step: snapshot.step,
+              deploymentStep: snapshot.deploymentStep,
+            },
+          });
+      }
+      if (!next && reason === "expired") {
+        setSessionExpired(true);
+        setWorkspaceEpoch((value) => value + 1);
+        setSession(null);
+        return;
+      }
+      if (activeAccount.current && activeAccount.current !== key) {
+        setDraft(null);
+        setConfigurationBinding(null);
+        setSavedDraft(null);
+        setWorkspaceEpoch((value) => value + 1);
+      }
+      if (next) {
+        const liveOwner = workspaceKey(draftOwner.current);
+        const preferLive =
+          !!latestDraft.current.draft && (!liveOwner || liveOwner === key);
+        const recovered =
+          activeAccount.current === key || preferLive
+            ? null
+            : readLoginRecovery(next);
+        if (recovered) {
+          setDraft(recovered.draft);
+          setConfigurationBinding(recovered.binding ?? null);
+          setSavedDraft(recovered.savedDraft ?? null);
+          const location = recovered.location;
+          if (
+            location &&
+            (loginInProgress.current ||
+              window.location.pathname === "/" ||
+              (activeAccount.current !== null && activeAccount.current !== key))
+          )
+            setView(
+              location.view,
+              location.view === "editor"
+                ? location.step
+                : location.view === "deployments"
+                  ? location.deploymentStep
+                  : undefined,
+              true,
+            );
+          clearLoginDraft(next);
+        }
+        const pending = loginInProgress.current
+          ? pendingLoginOwner(next)
+          : null;
+        if (pending && pending.tenantId !== next.tenant?.id) {
+          setReturningFromLogin(true);
+          setView("workspaces", undefined, true);
+        } else loginInProgress.current = false;
+        draftOwner.current = next;
+        setSessionExpired(false);
+      } else if (reason === "logout") {
+        clearLoginDraft(draftOwner.current);
+        draftOwner.current = null;
+        setSessionExpired(false);
+      }
+      activeAccount.current = key;
+      setSession(next);
+    },
+    [setView],
+  );
   useEffect(() => {
     const scope = workspaceKey(session);
     if (!scope) return;
@@ -276,13 +369,39 @@ function App() {
       });
     return () => controller.abort();
   }, [session, platformAccess, view, draft, configurationBinding]);
+  useEffect(() => {
+    const owner = session ?? draftOwner.current;
+    if (!draft || !owner?.user.id || !owner.tenant?.id) return;
+    const timer = setTimeout(() => {
+      if (
+        !preserveLoginDraft(draft, {
+          owner: { userId: owner.user.id!, tenantId: owner.tenant!.id },
+          binding: configurationBinding,
+          savedDraft,
+          location: { view, step, deploymentStep },
+        })
+      )
+        setLoginError(
+          "Dein Entwurf konnte nicht zwischengespeichert werden. Bitte lade ihn vor der Anmeldung herunter.",
+        );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [
+    draft,
+    session,
+    configurationBinding,
+    savedDraft,
+    view,
+    step,
+    deploymentStep,
+  ]);
   const leavingForLogin = useRef(false);
   const beforeWorkspaceNavigation = useCallback(() => {
     leavingForLogin.current = true;
   }, []);
   useEffect(() => {
-    clearLoginDraft();
-  }, []);
+    if (restoredDraft) clearLoginDraft();
+  }, [restoredDraft]);
   const [search, setSearch] = useState("");
   const heading = useRef<HTMLHeadingElement>(null);
   // Focus the page title after client-side navigation.
@@ -505,18 +624,49 @@ function App() {
         <Account
           onSessionChange={changeSession}
           onLogin={finishLogin}
+          onNavigate={beforeWorkspaceNavigation}
+          beforeLogout={() =>
+            !draftDirty ||
+            window.confirm(
+              t(
+                "Abmelden? Nicht gespeicherte Änderungen bitte zuerst speichern oder herunterladen.",
+              ),
+            )
+          }
           beforeLogin={() => {
-            if (!preserveLoginDraft(draft)) {
+            const owner = session ?? draftOwner.current;
+            if (
+              !preserveLoginDraft(draft, {
+                ...(owner?.user.id && owner.tenant?.id
+                  ? {
+                      owner: {
+                        userId: owner.user.id,
+                        tenantId: owner.tenant.id,
+                      },
+                    }
+                  : {}),
+                binding: configurationBinding,
+                savedDraft,
+                location: { view, step, deploymentStep },
+              })
+            ) {
               setLoginError(
                 "Dein Entwurf konnte nicht zwischengespeichert werden. Bitte lade ihn vor der Anmeldung herunter.",
               );
               return false;
             }
-            leavingForLogin.current = true;
+            loginInProgress.current = true;
             return true;
           }}
         />
       </header>
+      {sessionExpired && (
+        <p role="status" className="notice">
+          {t(
+            "Deine Sitzung ist abgelaufen. Dein Entwurf bleibt hier erhalten und kann heruntergeladen werden. Melde dich erneut an, um ihn im selben Arbeitsbereich zu speichern.",
+          )}
+        </p>
+      )}
       <div
         className={`portal-layout${view === "deployments" || view === "history" ? " deployment-workflow" : ""}`}
       >

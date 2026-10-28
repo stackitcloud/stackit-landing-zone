@@ -9,6 +9,7 @@ import {
   validGitHubCallback,
 } from "./github-flow.js";
 import type { UserTokenStore } from "./secrets.js";
+import type { StackitSessions } from "./stackit-sessions.js";
 import type { AuthStore, Session } from "./store.js";
 
 export type AuthServices = {
@@ -17,6 +18,7 @@ export type AuthServices = {
   store: AuthStore;
   github: GitHubLoginClient;
   tokens: UserTokenStore;
+  stackitSessions?: Pick<StackitSessions, "put" | "refresh" | "revoke">;
   primaryStackit?: boolean;
   githubEnabled?: boolean;
   allowLoopbackHttp?: boolean;
@@ -255,6 +257,12 @@ export function registerAuth(app: FastifyInstance, services: AuthServices) {
       return reply.code(401).send({ error: "authentication_required" });
     if (!validMutation(request, session, services.origin))
       return reply.code(403).send({ error: "invalid_request_origin_or_csrf" });
+    await services.stackitSessions?.revoke(session, token).catch(() => {
+      app.log.warn(
+        { event: "stackit_secret_cleanup_pending" },
+        "STACKIT session secret cleanup pending",
+      );
+    });
     await services.store.deleteSession(token);
     reply.header("Set-Cookie", clearSession);
     try {

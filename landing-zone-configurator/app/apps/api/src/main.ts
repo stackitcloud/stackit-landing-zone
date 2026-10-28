@@ -12,6 +12,7 @@ import { SecretsManagerTokenStore } from "./auth/secrets.js";
 import { configuredStackitFlow } from "./auth/stackit-device.js";
 import { StackitIdentities } from "./auth/stackit-identities.js";
 import type { StackitServices } from "./auth/stackit-routes.js";
+import { StackitSessions } from "./auth/stackit-sessions.js";
 import { PostgresAuthStore } from "./auth/store.js";
 import { Configurations } from "./configurations/service.js";
 import { PostgresCloudCatalogues } from "./credentials/catalogues.js";
@@ -225,6 +226,15 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       callback: `${origin}/auth/github/callback`,
     }),
     tokens: new SecretsManagerTokenStore(secretConfig),
+    ...(primaryStackit && artifactCrypto && process.env.LZC_STACKIT_CLIENT_ID
+      ? {
+          stackitSessions: new StackitSessions(
+            pool,
+            artifactCrypto,
+            process.env.LZC_STACKIT_CLIENT_ID,
+          ),
+        }
+      : {}),
   };
   if (process.env.LZC_STACKIT_DEVICE_ENABLED === "true") {
     if (!createStackitFlow)

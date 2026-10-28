@@ -133,7 +133,7 @@ export function registerStackitLogin(
             entry.existingSessionId
         )
           throw new Error("Login binding changed");
-        await auth.store.createStackitSession!({
+        const created = await auth.store.createStackitSession!({
           identity: state.identity,
           id: randomUUID(),
           hash: secret.hash,
@@ -143,9 +143,19 @@ export function registerStackitLogin(
             ? { existingSessionId: entry.existingSessionId }
             : {}),
         });
+        const grant = entry.flow.takeRefreshGrant();
+        try {
+          if (grant && auth.stackitSessions)
+            await auth.stackitSessions.put(created, secret.hash, grant);
+        } catch (error) {
+          await auth.store.deleteSession(secret.token);
+          throw error;
+        }
         const old = cookie(request, "__Host-lzc-session");
         if (old) {
           const previous = await authenticatedSession(request, auth);
+          if (previous)
+            await auth.stackitSessions?.revoke(previous, old).catch(() => {});
           await auth.store.deleteSession(old);
           if (previous?.githubId)
             await auth.tokens.remove(previous).catch(() => {});
@@ -170,6 +180,18 @@ export function registerStackitLogin(
           pending.delete(key);
         }
       }
+    });
+    routes.post("/auth/stackit/refresh", async (request, reply) => {
+      const session = await authenticatedSession(request, auth);
+      const token = cookie(request, "__Host-lzc-session");
+      if (!session || !token)
+        return reply.code(401).send({ error: "authentication_required" });
+      if (!validMutation(request, session, auth.origin))
+        return reply
+          .code(403)
+          .send({ error: "invalid_request_origin_or_csrf" });
+      if (!auth.stackitSessions) return { status: "reauthentication-required" };
+      return auth.stackitSessions.refresh(session, token);
     });
     routes.post("/auth/stackit/cancel", async (request, reply) => {
       const key = requestKey(request);

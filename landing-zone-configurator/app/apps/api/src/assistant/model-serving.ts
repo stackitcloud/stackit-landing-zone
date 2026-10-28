@@ -609,6 +609,105 @@ export class AssistantModelServing {
     const permissionServices = [
       ...new Set(permissionNames.map((p) => p.split(".")[0] ?? p)),
     ].sort();
+    const accessTemplates = objectValue(
+      current.projectTemplates as Parameters<typeof objectValue>[0],
+    );
+    const kindCandidates = (kind: string) =>
+      Object.entries(accessTemplates).filter(
+        ([, value]) => objectValue(value).kind === kind,
+      );
+    const kindQuestion = (kind: string, english: boolean) => {
+      const candidates = kindCandidates(kind);
+      return {
+        path: "projectTemplates",
+        text:
+          (english
+            ? `Which ${kind} template should be changed?`
+            : `Welche ${kind}-Vorlage soll geändert werden?`) +
+          ` (${candidates.length}: ${candidates
+            .slice(0, 6)
+            .map(([key]) => key)
+            .join(", ")})`,
+        options: candidates
+          .slice(0, 6)
+          .map(
+            ([key, value]) =>
+              `${String(objectValue(value).name ?? key).slice(0, 100)} (${key})`,
+          ),
+      };
+    };
+    const permissionClarification = (
+      kind: string,
+      services: string[],
+      target: "requester" | "automation" | "both",
+      english: boolean,
+    ) => ({
+      explanation:
+        (english
+          ? "Select the existing Application template to receive the service permissions. "
+          : "Wähle die bestehende Application-Vorlage, deren Dienstberechtigungen ergänzt werden sollen. ") +
+        (english ? "Requested services: " : "Angefragte Dienste: ") +
+        services.join(", ") +
+        (english ? "; permissions for: " : "; Rechte für: ") +
+        (english
+          ? {
+              requester: "requester",
+              automation: "Application service account",
+              both: "requester and Application service account",
+            }[target]
+          : {
+              requester: "Besteller",
+              automation: "Application-Service-Account",
+              both: "Besteller und Application-Service-Account",
+            }[target]) +
+        (english
+          ? ". Nothing has been changed or saved."
+          : ". Noch nichts gespeichert."),
+      questions: [kindQuestion(kind, english)],
+      changes: [],
+      references: ["project-templates"],
+    });
+    // Only the immediately open, server-shaped selection can authorize a source
+    // reference to its immediately preceding USER request. Plain historical
+    // mentions, completed proposals and new topics never open this continuation.
+    const pendingPermissionSelection = (() => {
+      const previous = history.at(-2),
+        reply = history.at(-1);
+      if (previous?.role !== "user" || reply?.role !== "assistant") return null;
+      for (const kind of ["public", "corporate"])
+        for (const english of [false, true]) {
+          const question = kindQuestion(kind, english);
+          if (
+            kindCandidates(kind).length < 2 ||
+            !reply.content.endsWith(`\n${question.text}`)
+          )
+            continue;
+          const selection = message.startsWith(
+            `${question.text}\nMeine Antwort: `,
+          )
+            ? message.slice(`${question.text}\nMeine Antwort: `.length).trim()
+            : message.trim();
+          const matches = kindCandidates(kind)
+            .slice(0, 6)
+            .filter(([key, value], index) =>
+              [
+                key,
+                String(objectValue(value).name ?? key),
+                question.options[index],
+              ].includes(selection),
+            );
+          if (matches.length === 1)
+            return {
+              source: `history-${history.length - 2}`,
+              key: matches[0]![0],
+              kind,
+              english,
+              userMessage: previous.content,
+              assistantMessage: reply.content,
+            };
+        }
+      return null;
+    })();
     const intentSchema = z.strictObject({
       applicationAccessLanguage: z
         .enum(["de", "en"])
@@ -618,11 +717,24 @@ export class AssistantModelServing {
         ),
       applicationAccess: z
         .strictObject({
-          key: z.enum(
-            existingTemplateKeys.length
-              ? existingTemplateKeys
-              : ["no-existing-template"],
-          ),
+          key: z
+            .enum([...existingTemplateKeys, "__select_by_kind__"])
+            .describe(
+              "Use the exact existing key only when the user identifies that template. For a kind-only Public/Corporate request use __select_by_kind__, never guess among matching templates.",
+            ),
+          templateKind: z
+            .enum(["public", "corporate", "unspecified"])
+            .default("unspecified")
+            .describe(
+              "Public/Corporate only when the current user identifies the kind rather than a specific template; otherwise unspecified.",
+            ),
+          templateEvidence: z
+            .string()
+            .max(1000)
+            .default("")
+            .describe(
+              "Exact current USER quote identifying Public or Corporate. If only a kind is named, use key=__select_by_kind__ and this quote; the server resolves exactly one matching existing template or asks which. Never guess a key when several match.",
+            ),
           choice: z
             .enum([
               "owner",
@@ -645,14 +757,25 @@ export class AssistantModelServing {
             .enum(["requester", "automation", "both"])
             .default("both")
             .describe(
-              "Only requester/bestellende Person, only Application-Service-Account, or both. If no distinction is requested, both receive the additions; their previous differing lists stay intact.",
+              "Who should receive the requested rights? requester = the person ordering the Landing Zone; automation = the created Application-Service-Account; both ONLY if both are intended or no recipient is mentioned. A request that someone gets rights when ordering (German: bei der Bestellung ... Rechte bekommt) explicitly means requester, NOT both. The word Application Landing Zone is not a request for automation permissions. Preserve the other recipient unchanged.",
+            ),
+          serviceEvidenceSource: z
+            .enum([
+              "current",
+              ...(pendingPermissionSelection
+                ? [pendingPermissionSelection.source]
+                : []),
+            ])
+            .default("current")
+            .describe(
+              "Use current normally. The supplied pendingPermissionSelection source may be used ONLY when the current user selects exactly that offered template, continuing the still-open original service-rights request; keep its exact services and permissionTarget. Never use arbitrary history.",
             ),
           serviceEvidence: z
             .string()
             .max(1000)
             .default("")
             .describe(
-              "Exact nonempty quote from the current USER message requesting the service permission addition, not from history or a catalogue.",
+              "Exact nonempty quote from the selected USER source requesting service permission addition. Current normally; only the supplied still-open pending selection may use its controlled history source. Never assistant statements or a catalogue.",
             ),
           initialOwnerEmail: z.string().max(254).default(""),
           permissions: z
@@ -667,7 +790,7 @@ export class AssistantModelServing {
         .nullable()
         .default(null)
         .describe(
-          "Only an explicit current USER request to change one existing template's deployed project IAM policy. Copy its exact key, central owner and any explicit permission lists; no invented addresses/permissions. Missing central owner uses empty text so the server can ask. This is a draft, never an IAM grant, IDP role or membership change. Set topic=project-templates,mode=draft. Advice/new-template setup/other settings use null. No templateSetup is needed for this narrow update.",
+          "Required for an explicit current USER request to change one existing template's deployed project IAM policy, including accessProfile-only full project Owner requests (choice=owner), workload presets and adding service rights. Do not use templateSetup or generic editorInputs for an IAM-only change; they can accidentally reconstruct the template or retain the wrong profile. Copy its exact key, central owner and any explicit permission lists; no invented addresses/permissions. Missing central owner uses empty text so the server can ask. This is a draft, never an IAM grant, IDP role or membership change. Set topic=project-templates,mode=draft. Advice/new-template setup/other settings use null. No templateSetup is needed for this narrow update.",
         ),
       templateSetup: z
         .strictObject({
@@ -954,6 +1077,13 @@ export class AssistantModelServing {
                 role,
                 content,
               })),
+              pendingPermissionSelection: pendingPermissionSelection
+                ? {
+                    source: pendingPermissionSelection.source,
+                    key: pendingPermissionSelection.key,
+                    userMessage: pendingPermissionSelection.userMessage,
+                  }
+                : null,
               history: history.map(({ role, content }) => ({
                 role,
                 content,
@@ -1026,7 +1156,7 @@ export class AssistantModelServing {
           {
             role: "system",
             content:
-              "templateSetup.fields limits the next template schema to USER-requested settings. A Corporate/Public request with local networks uses fields=[network_enabled,network_area_key]. Do not include observability, secretsmanager_enabled, namespaceServices or parameterPolicy because the platform already has Audit/Git/services. Only include those fields if the USER requests them for the templates. Questions about Automatic or subnet size in a Corporate/Public TEMPLATE use topic=project-templates, including explanations that mention SNA defaults or Invalid IPv4 configuration. Advice stays mode=advice; editing that template uses editorContract=true, editorInputs=[landing_zones], templateSetup.fields=[network_prefix_length], collectionMode=update. Explicit subnet size overrides use network_prefix_length. Requested template namespace services use namespaceServices; requester-role parameter choices use parameterPolicy only for legacy templates. Project IAM profiles use accessProfile (full owner or granular workload permissions); mode=draft, topic=project-templates, editorContract=true, editorInputs=[landing_zones], templateSetup.fields=[accessProfile], collectionMode=update for existing templates; never put initial owner or profile choices into order parameters. This scope never grants publication, execution or IAM.",
+              "templateSetup.fields limits the next template schema to USER-requested settings. A Corporate/Public request with local networks uses fields=[network_enabled,network_area_key]. Do not include observability, secretsmanager_enabled, namespaceServices or parameterPolicy because the platform already has Audit/Git/services. Only include those fields if the USER requests them for the templates. Questions about Automatic or subnet size in a Corporate/Public TEMPLATE use topic=project-templates, including explanations that mention SNA defaults or Invalid IPv4 configuration. The corrected Accelerator module resolves the actual regional SNA default_prefix_length during Plan and supplies that exact numeric value while preserving DNS; it is not merely a suggestion or a provider-version change. Do not discuss hypothetical provider upgrades unless the user asks about them. Advice stays mode=advice; editing that template uses editorContract=true, editorInputs=[landing_zones], templateSetup.fields=[network_prefix_length], collectionMode=update. Explicit subnet size overrides use network_prefix_length. Requested template namespace services use namespaceServices; requester-role parameter choices use parameterPolicy only for legacy templates. Project IAM profiles use accessProfile (full owner or granular workload permissions). For an IAM-only change of an existing template, use mode=draft, topic=project-templates and the dedicated applicationAccess object, never templateSetup/editorInputs; new template setup may include accessProfile. Never put initial owner or profile choices into order parameters. This scope never grants publication, execution or IAM.",
           },
           {
             role: "system",
@@ -1037,6 +1167,11 @@ export class AssistantModelServing {
             role: "system",
             content:
               "Governance removals, replacements, default resets and new folders use editorContract=true, editorInputs containing only the targeted native roots, and accessAssignment=null. The specialized accessAssignment flow ONLY adds requested subjects to existing roles/folders. Labels and stable platform namespace changes also use editorContract with their exact targeted root. 'Bitte nur das Ressourcenlabel cost_center auf synthetic-team setzen' => topic=identity-foundations, mode=draft, editorContract=true, editorInputs=[labels]. Label editing is NOT configuration-lifecycle. Audit/Observability/Kubernetes setup uses editorContract=true and the corresponding single native root. Application Landing Zone template setup is supported: on a platformDraft, requests to prepare, name or configure Public/Corporate templates and their local networks use topic=project-templates, mode=draft, editorContract=true, editorInputs=[landing_zones]. A current template setup command overrides prior Audit/DevOps history. 'No sandboxes for now' excludes sandbox creation; it is not a sandbox setup topic. Template preparation is not publication or creation of application instances. Advice about Application team/project IAM permissions, initial project owner or accessProfile uses topic=project-templates and mode=advice, not configuration-lifecycle or identity-foundations. IDP login and Configurator membership roles are distinct. For non-network topics requirements MUST be [].",
+          },
+          {
+            role: "system",
+            content:
+              "Application project IAM: distinguish information questions from desired changes. An accessProfile-only change on an existing template MUST use applicationAccess, not generic templateSetup/editorInputs. Full project Owner rights explicitly requested for requester and automation select choice=owner (schemaVersion 1, mode owner), with no granular fields; do not substitute the workload default. A wish that future orderers receive Kubernetes/other service rights is an explicit template-change request, even without the words add/proposal: use topic=project-templates, mode=draft, adviceTask=other, applicationAccess.choice=add-service-permissions. Granting a future requester the ability to order/use a Kubernetes cluster means adding SKE project IAM to the existing template, NOT creating a cluster, platform Kubernetes or namespace building block. If only Public/Corporate is specified, use key=__select_by_kind__, templateKind and exact templateEvidence from the current message. The server asks which when several match. If the request concerns what the orderer receives, permissionTarget=requester; do not also change Application-service-account permissions unless requested. Preserve the existing central owner and all other settings. Actual advice questions about what roles mean use mode=advice with applicationAccess=null. Never treat a desired permission change as a request for the general access overview. If pendingPermissionSelection is supplied and the current user chooses that template, continue its original USER service request using that controlled serviceEvidenceSource and key, preserving the original services and recipient. The current selection is not a new advice request. Otherwise never reactivate old permission tasks.",
           },
           {
             role: "system",
@@ -1150,6 +1285,7 @@ export class AssistantModelServing {
     )
       throw new AssistantInferenceError("intent_evidence");
     if (
+      !classifiedIntent.applicationAccess &&
       classifiedIntent.mode === "advice" &&
       classifiedIntent.topic === "project-templates" &&
       classifiedIntent.adviceTask === "application-access"
@@ -1177,7 +1313,118 @@ export class AssistantModelServing {
       )
         throw new AssistantInferenceError("invalid_scope");
       const selected = classifiedIntent.applicationAccess;
-      const { key } = selected;
+      let { key } = selected;
+      let serviceSource = message;
+      if (selected.serviceEvidenceSource !== "current") {
+        if (
+          selected.choice !== "add-service-permissions" ||
+          !pendingPermissionSelection ||
+          selected.serviceEvidenceSource !==
+            pendingPermissionSelection.source ||
+          key !== pendingPermissionSelection.key
+        )
+          throw new AssistantInferenceError("intent_evidence");
+        const expected = permissionClarification(
+          pendingPermissionSelection.kind,
+          selected.services,
+          selected.permissionTarget,
+          pendingPermissionSelection.english,
+        );
+        if (
+          pendingPermissionSelection.assistantMessage !==
+          expected.explanation + "\n" + expected.questions[0]!.text
+        )
+          throw new AssistantInferenceError("intent_evidence");
+        serviceSource = pendingPermissionSelection.userMessage;
+      }
+      if (
+        selected.choice === "add-service-permissions" &&
+        (!selected.services.length ||
+          !selected.serviceEvidence.trim() ||
+          !serviceSource.includes(selected.serviceEvidence) ||
+          !selected.services.every((service) =>
+            applicationPermissionServiceMentioned(
+              service,
+              selected.serviceEvidence,
+            ),
+          ))
+      )
+        throw new AssistantInferenceError("intent_evidence");
+      // A model-selected existing key is not evidence that the user selected it.
+      // Resolve kind-only requests in the server even if the classifier guessed a key.
+      let templateKind = selected.templateKind;
+      let templateEvidence = selected.templateEvidence;
+      if (
+        selected.choice === "add-service-permissions" &&
+        selected.serviceEvidenceSource === "current" &&
+        key !== "__select_by_kind__"
+      ) {
+        const mentioned = Object.entries(
+          objectValue(
+            current.projectTemplates as Parameters<typeof objectValue>[0],
+          ),
+        ).filter(([candidateKey, value]) => {
+          const candidate = objectValue(value);
+          return [candidateKey, String(candidate.name ?? "")].some((label) => {
+            if (
+              !label ||
+              /^(public|corporate)([- ](?:template|landing[- ]zone))?$/i.test(
+                label,
+              )
+            )
+              return false;
+            const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            return new RegExp(
+              `(?:^|[^\\p{L}\\p{N}_-])${escaped}(?:$|[^\\p{L}\\p{N}_-])`,
+              "iu",
+            ).test(message);
+          });
+        });
+        if (mentioned.length === 1) {
+          if (mentioned[0]![0] !== key)
+            throw new AssistantInferenceError("intent_evidence");
+        } else {
+          const kinds = ["public", "corporate"].filter((kind) =>
+            new RegExp(`(?:^|[^a-z])${kind}(?:$|[^a-z])`, "i").test(message),
+          );
+          if (mentioned.length || kinds.length !== 1)
+            throw new AssistantInferenceError("intent_evidence");
+          key = "__select_by_kind__";
+          templateKind = kinds[0] as "public" | "corporate";
+          templateEvidence = message;
+        }
+      }
+      if (key === "__select_by_kind__") {
+        if (
+          selected.choice !== "add-service-permissions" ||
+          templateKind === "unspecified" ||
+          !templateEvidence.trim() ||
+          !message.includes(templateEvidence) ||
+          !new RegExp(`(?:^|[^a-z])${templateKind}(?:$|[^a-z])`, "i").test(
+            templateEvidence,
+          )
+        )
+          throw new AssistantInferenceError("intent_evidence");
+        const candidates = Object.entries(
+          objectValue(
+            current.projectTemplates as Parameters<typeof objectValue>[0],
+          ),
+        ).filter(([, value]) => objectValue(value).kind === templateKind);
+        if (candidates.length !== 1) {
+          const dialogue = validateDialogue(
+            permissionClarification(
+              templateKind,
+              selected.services,
+              selected.permissionTarget,
+              classifiedIntent.applicationAccessLanguage === "en",
+            ),
+            context.rules.map((rule) => rule.id),
+          );
+          stream?.onText(dialogue.explanation);
+          return dialogue;
+        }
+        key = candidates[0]![0];
+      }
       const template = objectValue(
         objectValue(
           current.projectTemplates as Parameters<typeof objectValue>[0],
@@ -1222,7 +1469,7 @@ export class AssistantModelServing {
             previous.mode !== "granular" ||
             !selected.services.length ||
             !selected.serviceEvidence.trim() ||
-            !message.includes(selected.serviceEvidence) ||
+            !serviceSource.includes(selected.serviceEvidence) ||
             !selected.services.every((service) =>
               applicationPermissionServiceMentioned(
                 service,
