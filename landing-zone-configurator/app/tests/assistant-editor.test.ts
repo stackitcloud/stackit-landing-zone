@@ -2582,6 +2582,7 @@ it.each([
         applicationAccess: {
           key: template.key,
           choice: "custom-granular",
+          listOperation: "replace",
           initialOwnerEmail: "central@example.test",
         },
       },
@@ -2632,6 +2633,7 @@ it.each(["preset", "extra-saved-right", "recipient-swap"])(
         ? { choice: "application-workloads-v1" }
         : {
             choice: "custom-granular",
+            listOperation: "replace",
             permissions:
               failure === "recipient-swap"
                 ? ["iaas.server.get"]
@@ -2746,6 +2748,7 @@ it("never expands an explicit empty list into standard permissions", async () =>
         applicationAccess: {
           key: template.key,
           choice: "custom-granular",
+          listOperation: "replace",
           initialOwnerEmail: "central@example.test",
         },
       },
@@ -2903,5 +2906,41 @@ it("asks without changes when literal recipients need different list operations"
   expect(result.questions[0]?.text).toContain(
     "Unterschiedliche Änderungsarten",
   );
+  expect(original).toEqual(before);
+});
+
+it("rejects a missing literal-list operation instead of defaulting an addition to destructive replacement", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const template = original.projectTemplates?.find(
+    (t) => t.kind === "corporate",
+  );
+  if (!template) throw new Error("missing corporate fixture");
+  template.accessProfile = defaultApplicationAccessProfile(
+    "central@example.test",
+  );
+  const before = structuredClone(original);
+  await expect(
+    collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: "custom-granular",
+          initialOwnerEmail: "central@example.test",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      "Ergänze permissions [iaas.server.delete] und automationPermissions [resource-manager.project.get]. Alle bisherigen Rechte erhalten.",
+    ),
+  ).rejects.toMatchObject({ reason: "intent_schema" });
   expect(original).toEqual(before);
 });
