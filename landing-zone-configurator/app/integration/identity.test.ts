@@ -8355,6 +8355,56 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             expect(await approved(owner)).toBe(true);
             expect(await approved(engineer)).toBe(true);
             expect(await approved(bob)).toBe(false);
+            // Seed expired execution authority in an isolated fixture transaction.
+            // Rollback retains the real recovery fixture for the assertions below.
+            const retiredSlot = randomUUID(),
+              retiredSpace = randomUUID();
+            const retiredOrigin = "https://retention.example";
+            await admin.query(
+              "BEGIN; SET LOCAL session_replication_role=replica",
+            );
+            try {
+              await admin.query(
+                "UPDATE lzc.application_runner_tickets SET issued_at=now()-interval '2 hours',expires_at=now()-interval '1 hour' WHERE job_id=$1",
+                [partialApply.jobId],
+              );
+              await admin.query(
+                "UPDATE lzc.application_job_grants SET expires_at=now()-interval '1 hour' WHERE job_id=$1",
+                [partialApply.jobId],
+              );
+              await admin.query(
+                "INSERT INTO lzc.runner_pool_slots(id,pool_key,origin,space_id,source_droplet_id,app_id,status,job_id,expires_at) SELECT $1,'reconciled-retention',$2,$3,runner_package_id,runner_app_id,'consumed',job_id,now()-interval '1 hour' FROM lzc.application_dispatches WHERE job_id=$4",
+                [retiredSlot, retiredOrigin, retiredSpace, partialApply.jobId],
+              );
+              const retire = async () =>
+                (
+                  await admin.query(
+                    "SELECT lzc_auth.retire_completed_application_runners($1,$2) AS retired",
+                    [retiredSpace, retiredOrigin],
+                  )
+                ).rows[0].retired;
+              expect(await retire()).toBe(1);
+              await admin.query(
+                "UPDATE lzc.runner_pool_slots SET status='consumed' WHERE id=$1",
+                [retiredSlot],
+              );
+              await admin.query(
+                "UPDATE lzc.application_runner_tickets SET expires_at=now()+interval '1 hour' WHERE job_id=$1",
+                [partialApply.jobId],
+              );
+              expect(await retire()).toBe(0);
+              await admin.query(
+                "UPDATE lzc.application_runner_tickets SET issued_at=now()-interval '2 hours',expires_at=now()-interval '1 hour' WHERE job_id=$1",
+                [partialApply.jobId],
+              );
+              await admin.query(
+                "DELETE FROM lzc.application_recovery_replans WHERE job_id=$1",
+                [partialApply.jobId],
+              );
+              expect(await retire()).toBe(0);
+            } finally {
+              await admin.query("ROLLBACK");
+            }
             await expect(
               clear(reviewer, { sha: "b".repeat(64) }),
             ).rejects.toMatchObject({

@@ -475,3 +475,8 @@ receipt. The template and recovery apps are excluded. Failures log the non-secre
 
 The `runner_retention` log summary contains only scanned, deleted, protected and
 unassociated counts, allowing operators to detect unresolved legacy accumulation.
+
+Reconciled warm-runner interruptions also retire through the normal pool, even if CF
+still desires STARTED after process exit. Retirement requires the existing valid
+recovery-replan clearance, expired runner tickets and no active guided recovery.
+A clearance invalidated by a later separate recovery State protects the app again.
