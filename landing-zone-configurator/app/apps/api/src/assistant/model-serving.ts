@@ -222,7 +222,7 @@ function groundAssistantFolderScope(
   }
   if (!request.paths.some((path) => path.startsWith("rm_folders")))
     return request;
-  const escape = (value: string) =>
+  const escapePattern = (value: string) =>
     value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const folderWord = String.raw`(?:Ordner(?:s|n)?|folders?)`;
   const allWords = String.raw`(?:alle[nr]?|sämtliche[nr]?|all|every)\s+(?:(?:vorhandenen?|bestehenden?|existing)\s+)?${folderWord}`;
@@ -253,17 +253,17 @@ function groundAssistantFolderScope(
       Boolean,
     );
     return labels.some((label) => {
-      const name = String.raw`["'\x60]?${escape(label)}["'\x60]?`;
+      const name = String.raw`["'\x60]?${escapePattern(label)}["'\x60]?`;
       const boundary = String.raw`(?:^|[^\p{L}\p{N}_])`;
       const end = String.raw`(?:$|[^\p{L}\p{N}_])`;
       const reference = String.raw`(?:${name}\s*[-–—]?\s*${folderWord}|${folderWord}\s*(?:(?:namens|called|mit\s+dem\s+Namen|mit\s+dem\s+Schlüssel|with\s+key)\s+|:\s*)?${name})`;
-      const pathReference = String.raw`rm_folders(?:\.${escape(key)}|\[["']${escape(key)}["']\])`;
+      const pathReference = String.raw`rm_folders(?:\.${escapePattern(key)}|\[["']${escapePattern(key)}["']\])`;
       const negated = new RegExp(
         String.raw`${negativeTargetPrefix}(?:${reference}|${pathReference})`,
         "iu",
       ).test(source);
       const explicitPath = new RegExp(
-        String.raw`${boundary}rm_folders(?:\.${escape(key)}|\[["']${escape(key)}["']\])${end}`,
+        String.raw`${boundary}rm_folders(?:\.${escapePattern(key)}|\[["']${escapePattern(key)}["']\])${end}`,
         "u",
       ).test(source);
       const trailingNegation = new RegExp(
