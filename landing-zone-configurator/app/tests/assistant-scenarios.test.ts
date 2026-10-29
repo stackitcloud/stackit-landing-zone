@@ -995,3 +995,51 @@ it.each([
     failure,
   );
 });
+
+it.each([
+  "DNS bleibt unverändert aktiviert; es muss weder auf /24 gesetzt noch deaktiviert werden.",
+  "Du musst weder /24 setzen noch DNS deaktivieren.",
+  "Du musst weder /24 setzen, noch DNS deaktivieren.",
+  "DNS muss weder umbenannt noch deaktiviert werden.",
+])(
+  "recognizes modal-bound paired weder/noch without inventing fixed-size or DNS-removal requirements: %s",
+  (clause) => {
+    const facts =
+      "Automatisch übernimmt das Standardpräfix /28 der SNA. Das Modul liest den SNA-Standard und übergibt dem Provider das explizite numerische Präfix. DNS bleibt unverändert erhalten. Freie Kapazität ist nicht garantiert.";
+    expect(assistantCorporateIpv4Failures(`${facts} ${clause}`)).toEqual([]);
+  },
+);
+it.each([
+  "DNS bleibt unverändert aktiviert; es muss weder auf /24 gesetzt noch deaktiviert werden. DNS muss abgeschaltet werden.",
+  "DNS muss weder umbenannt noch deaktiviert werden; DNS muss abgeschaltet werden.",
+  "DNS muss weder umbenannt noch deaktiviert werden, aber DNS muss abgeschaltet werden.",
+  "Du musst weder /25 noch /26 nutzen, /24 ist zwingend erforderlich.",
+  "Du musst weder /25 noch /26 wählen, für das Netz ist /24 erforderlich.",
+  "Du musst weder /25 noch /26 nutzen: /24 ist zwingend erforderlich.",
+  "Du musst weder /25 noch /26 nutzen und /24 ist zwingend erforderlich.",
+  "Du musst weder /25 noch /26 nutzen sowie /24 ist zwingend erforderlich.",
+  "Du musst weder /25 noch /26 nutzen and /24 is required.",
+  "Du musst weder /25 noch /26 nutzen – /24 ist zwingend erforderlich.",
+  "Du musst weder /25 noch /26 nutzen — /24 ist zwingend erforderlich.",
+  "Du musst weder /25 noch /26 nutzen - /24 ist zwingend erforderlich.",
+  "DNS muss weder umbenannt werden. DNS muss abgeschaltet werden.",
+  "DNS muss weder umbenannt werden; DNS muss deaktiviert werden.",
+  "DNS muss weder umbenannt noch verschoben werden, aber DNS muss deaktiviert werden.",
+  "DNS muss weder umbenannt noch verschoben werden, jedoch DNS muss abgeschaltet werden.",
+  "DNS muss weder umbenannt noch verschoben werden, sondern DNS muss deaktiviert werden.",
+  "DNS muss weder umbenannt noch verschoben werden. Du musst /24 setzen.",
+  "Du musst weder /25 nutzen noch /26 wählen; du musst /24 setzen.",
+  "Weder Namen noch Labels ändern sich. DNS muss deaktiviert werden.",
+  "DNS muss weder umbenannt werden und muss deaktiviert werden.",
+  "DNS muss nicht umbenannt werden, aber DNS muss deaktiviert werden.",
+  "DNS muss nicht umbenannt werden und DNS muss deaktiviert werden.",
+])(
+  "retains real wrong requirements outside a paired negative scope: %s",
+  (clause) => {
+    const facts =
+      "Automatisch übernimmt das Standardpräfix /28 der SNA. Das Modul liest den SNA-Standard und übergibt dem Provider das explizite numerische Präfix. DNS bleibt unverändert erhalten. Freie Kapazität ist nicht garantiert.";
+    expect(assistantCorporateIpv4Failures(`${facts} ${clause}`)).toContain(
+      "corporate_ipv4_invented_fixed_size_or_dns_removal",
+    );
+  },
+);

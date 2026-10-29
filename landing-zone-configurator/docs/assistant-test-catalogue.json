@@ -4,10 +4,10 @@
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
   "knowledgeSha256": "c78a9a48fb8f94bdf670c8a8e2e173f8463d5e6556a89edc1a74e7068f5f714d",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "d80d33863782f6b5c6530cecb3b1655cd60e78d8bf7f5d6a62001ec609d5460e",
+    "scripts/assistant-scenarios.ts": "3ae08ac42c83406e5ba519316766d4082a8d254323d1df6a9f71eac1194d7948",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "7e9bc8c31a41737fa8c6fcdbeee469f822ed30e556fcb01b465927b19cb64f31",
+  "suiteSha256": "33abbaa4b37f6d3f1fee3507eab5fab7b4620714a05f15f15a355d1acc939952",
   "topics": [
     {
       "id": "credential-foundations",
