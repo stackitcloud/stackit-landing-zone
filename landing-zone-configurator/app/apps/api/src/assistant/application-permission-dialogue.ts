@@ -151,6 +151,10 @@ function view(
         references: ["project-templates"],
       },
       ["project-templates"],
+      {
+        serviceAccountEmails: saEmails(context),
+        verifiedUserEmail: humanEmail(context),
+      },
     ),
     questions,
   });

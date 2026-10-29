@@ -1186,7 +1186,7 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     scenario.applicationAccess === "both-kubernetes-followup"
   ) {
     values["assistant.platform_service_account_emails"] = [
-      "platform@sa.stackit.cloud",
+      "bootstrap-platform@sa.stackit.cloud",
     ];
     const request =
       "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate";
@@ -1196,7 +1196,7 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       services: ["ske"],
       permissionTarget: "both",
       permissionNames: [...applicationProjectPermissionNames],
-      platformServiceAccountEmails: ["platform@sa.stackit.cloud"],
+      platformServiceAccountEmails: ["bootstrap-platform@sa.stackit.cloud"],
       english: false,
     };
     let state = initialMultiTemplatePermissionState();
@@ -1416,11 +1416,12 @@ export function validateAssistantScenario(
         if (template.kind === "corporate") {
           delete template.settings.automation_role;
           template.accessProfile = defaultApplicationAccessProfile(
-            "platform@sa.stackit.cloud",
+            "bootstrap-platform@sa.stackit.cloud",
           );
         }
         if (template.accessProfile?.mode !== "granular") throw Error("fixture");
-        template.accessProfile.initialOwnerEmail = "platform@sa.stackit.cloud";
+        template.accessProfile.initialOwnerEmail =
+          "bootstrap-platform@sa.stackit.cloud";
         template.accessProfile.permissions = [
           ...new Set([...template.accessProfile.permissions, ...additions]),
         ];

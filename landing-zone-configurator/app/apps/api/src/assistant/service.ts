@@ -808,6 +808,12 @@ export class AssistantConversations {
           stream,
         ),
         knowledge.rules.map((rule) => rule.id),
+        {
+          serviceAccountEmails: base.platformServiceAccountEmails,
+          verifiedUserEmail: identity.verified
+            ? identity.identity?.email
+            : undefined,
+        },
       );
       stream?.signal?.throwIfAborted();
       const catalogue = await this.loadObservabilityCatalogue(
@@ -901,6 +907,7 @@ export class AssistantConversations {
       id,
       localDocument,
     );
+    const identity = await new StackitIdentities(this.pool).status(session);
     return this.work(session, id, async (client, configuration) => {
       const row = (
         await client.query<Conversation>(
@@ -944,6 +951,17 @@ export class AssistantConversations {
         proposal = validateDialogue(
           row.proposal,
           buildAssistantKnowledge().rules.map((rule) => rule.id),
+          {
+            serviceAccountEmails: await preparedPlatformServiceAccountEmails(
+              client,
+              session,
+              id,
+              assistantPublicValues(draft).organization_id,
+            ),
+            verifiedUserEmail: identity.verified
+              ? identity.identity?.email
+              : undefined,
+          },
         );
       } catch (error) {
         if (
@@ -1088,6 +1106,7 @@ export class AssistantConversations {
     selectedFields?: string[],
   ) {
     const catalogue = await this.loadObservabilityCatalogue(session, id);
+    const identity = await new StackitIdentities(this.pool).status(session);
     return this.work(session, id, async (client, configuration) => {
       const row = (
         await client.query<Conversation>(
@@ -1112,6 +1131,17 @@ export class AssistantConversations {
       const proposal = validateDialogue(
         row.proposal,
         buildAssistantKnowledge().rules.map((rule) => rule.id),
+        {
+          serviceAccountEmails: await preparedPlatformServiceAccountEmails(
+            client,
+            session,
+            id,
+            assistantPublicValues(draft).organization_id,
+          ),
+          verifiedUserEmail: identity.verified
+            ? identity.identity?.email
+            : undefined,
+        },
       );
       if (!proposal.changes.length)
         throw new AssistantError(409, "assistant_no_changes");

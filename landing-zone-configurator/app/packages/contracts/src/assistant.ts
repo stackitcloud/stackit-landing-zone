@@ -273,7 +273,13 @@ export function assistantProposalFields(
         !Array.isArray(before)
       )
         return [];
-      if (keys.length < depth && entries(value).length > 0)
+      // Access profiles are discriminated policies. Selecting only changed leaves
+      // would drop their unchanged schema/mode/owner and create an invalid profile.
+      const accessProfile =
+        change.path === "projectTemplates" &&
+        keys.length === 2 &&
+        keys[1] === "accessProfile";
+      if (!accessProfile && keys.length < depth && entries(value).length > 0)
         return entries(value).flatMap(([key, entry]) =>
           flatten(entry, child(before, key), [...keys, key]),
         );

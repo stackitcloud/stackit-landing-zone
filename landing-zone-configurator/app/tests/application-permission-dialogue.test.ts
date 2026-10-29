@@ -16,7 +16,7 @@ import { applyAssistantChanges } from "../apps/api/src/assistant/dialogue.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 import { legacyAccessTemplate } from "./fixtures/application-access-transition.js";
 
-const email = "platform@sa.stackit.cloud";
+const email = "bootstrap-platform@sa.stackit.cloud";
 function fixture(legacy = true) {
   const draft = createEditorConfiguration("hub-and-spoke", crypto.randomUUID());
   for (const t of draft.projectTemplates!)

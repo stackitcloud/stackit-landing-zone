@@ -418,3 +418,7 @@ state files are source inputs. Complete external source
 retrieval, reviewed historical knowledge releases, automatic promotion and full
 A01-A24 conversational qualification are not implemented by this architecture.
 Future topic partitioning should be explicit and testable before adding RAG.
+
+Public owner choices are validated as scoped identity metadata, not credential requests. Only exact German/English server owner-choice labels containing a prepared, current-key-bound platform service-account email or the verified signed-in email are excluded from question keyword checks. Question text, unknown/modified options, protected-value checks and all ordinary callers keep the existing guards. Send, preview/rebase and acceptance re-read the scoped identity context; a rotated key or unrelated profile cannot validate a stored choice. Synthetic mixed-template cases also cover bootstrap-named platform accounts.
+
+Template access profiles are reviewed and selected atomically per template: schema version, mode, initial owner and both permission lists stay together. This preserves required fields during preview/acceptance and detects concurrent profile edits; unrelated templates and settings remain separately selectable.
