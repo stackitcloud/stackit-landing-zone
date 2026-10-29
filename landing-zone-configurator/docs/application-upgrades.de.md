@@ -38,9 +38,12 @@ statt als Änderung vor Ort behandelt. Unbekannte oder unvollständige Nachweise
 blockieren ebenfalls. Eine Checkbox kann das nicht umgehen. Destruktive Migrationen
 benötigen ein separates geprüftes Verfahren.
 
-IAM, Zugangsdaten, Netzwerke, Service-Pläne und Verfügbarkeit können sich auch ohne
-Löschung ändern. Dafür gelten die veröffentlichte Richtlinie für sensible Änderungen
-und die strengere Deployment-Richtlinie beider Versionen. Erforderliche Freigaben
+IAM, Zugangsdaten und Netzwerke können sich auch ohne Löschung ändern. Für vom
+tatsächlichen nativen Plan als sensibel klassifizierte Änderungen gelten die
+veröffentlichte Richtlinie für sensible Änderungen und die strengere
+Deployment-Richtlinie beider Versionen. Änderungen an Service-Plänen und
+Verfügbarkeit vor Ort klassifiziert diese Prüfung derzeit nicht als sensibel;
+diese Änderungen ausdrücklich im Plan prüfen. Erforderliche Freigaben
 binden den neuen tatsächlichen Plan, seinen Artefakt-Hash und den gewünschten
 Upgrade-Snapshot. Sie gelten nicht für andere Pläne oder später geänderte Parameter.
 

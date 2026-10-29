@@ -3285,6 +3285,8 @@ it("answers source-bound Application lifecycle questions with the fixed review a
     return answer({
       topic: "configuration-lifecycle",
       mode: "advice",
+      adviceTask: "execution-source-upgrade",
+      adviceTaskSource: "current",
       requirements: [],
     });
   });
@@ -3348,3 +3350,149 @@ it("keeps non-overview bootstrap advice on its scoped model path without proposi
   expect(result.changes).toEqual([]);
   expect(request).toHaveBeenCalledTimes(2);
 });
+
+it.each([
+  "template-upgrade",
+  "platform-upgrade",
+  "execution-source-upgrade",
+] as const)(
+  "returns reviewed %s steps after one semantic intent call with no second generation",
+  async (adviceTask) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.response_format.json_schema.name).toBe("conversation_intent");
+      expect(
+        body.response_format.json_schema.schema.properties.adviceTask.enum,
+      ).toEqual(
+        expect.arrayContaining([
+          "template-upgrade",
+          "platform-upgrade",
+          "execution-source-upgrade",
+        ]),
+      );
+      return answer({
+        topic: "configuration-lifecycle",
+        mode: "advice",
+        adviceTask,
+        adviceTaskSource: "current",
+        requirements: [],
+      });
+    });
+    const streamed: string[] = [];
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      { company_name: "Private draft must not leak" },
+      [],
+      "Bitte die Schritte und Sicherheitsgrenzen dieses Aktualisierungsverfahrens erklären.",
+      { regions: [] },
+      [],
+      { onText: (text) => streamed.push(text) },
+    );
+    const { assistantApplicationUpgradeAdvice } = await import(
+      "../apps/api/src/assistant/knowledge.js"
+    );
+    expect(result.explanation).toBe(
+      assistantApplicationUpgradeAdvice[adviceTask],
+    );
+    expect(result.explanation.length).toBeLessThan(2400);
+    expect(result.explanation).not.toContain("Private draft must not leak");
+    expect(result.questions).toEqual([]);
+    expect(result.changes).toEqual([]);
+    expect(result.references).toEqual(["configuration-lifecycle"]);
+    expect(streamed).toEqual([result.explanation]);
+    expect(request).toHaveBeenCalledTimes(1);
+    const {
+      assistantApplicationUpgradeFailures,
+      assistantExecutionLifecycleFailures,
+    } = await import("../scripts/assistant-scenarios.js");
+    expect(
+      adviceTask === "execution-source-upgrade"
+        ? assistantExecutionLifecycleFailures(result.explanation)
+        : assistantApplicationUpgradeFailures(
+            result.explanation,
+            adviceTask === "template-upgrade" ? "template" : "platform",
+          ),
+    ).toEqual([]);
+    for (const fact of [
+      "State",
+      "Plan",
+      "Apply",
+      "Recovery",
+      "noch nichts gespeichert",
+    ])
+      expect(result.explanation).toContain(fact);
+    if (adviceTask === "template-upgrade")
+      for (const fact of [
+        "derselben Template-Familie",
+        "Parameter-Antworten",
+        "Artifact-Hash",
+        "strengeren alten/neuen",
+        "blockiert Löschungen und Ersetzungen",
+      ])
+        expect(result.explanation).toContain(fact);
+    if (adviceTask === "platform-upgrade")
+      for (const fact of [
+        "wirkt sofort",
+        "Abhängigkeits-/Auswirkungsprüfung",
+        "tatsächlich entstandenen",
+        "keine automatische Vertragsbindung",
+        "State-Version",
+      ])
+        expect(result.explanation).toContain(fact);
+  },
+);
+it.each([
+  "template-upgrade",
+  "platform-upgrade",
+  "execution-source-upgrade",
+] as const)(
+  "keeps %s closed to current lifecycle advice instead of intercepting draft, wrong-topic, historical or other advice",
+  async (adviceTask) => {
+    for (const override of [
+      { mode: "draft" },
+      { topic: "identity-foundations" },
+      { adviceTaskSource: "none" },
+      { adviceTask: "other" },
+    ]) {
+      const intent = {
+        topic: "configuration-lifecycle",
+        mode: "advice",
+        adviceTask,
+        adviceTaskSource: "current",
+        requirements: [],
+        ...override,
+      };
+      const request = vi.fn<typeof fetch>(async (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        return body.response_format.json_schema.name === "conversation_intent"
+          ? answer(intent)
+          : answer({
+              explanation: "Scoped normal response; no action or update.",
+              questions: [],
+              changes: [],
+              references: [intent.topic],
+            });
+      });
+      const result = await new AssistantModelServing(
+        configuration,
+        request,
+      ).converse(
+        selection(),
+        {},
+        [
+          { role: "user", content: "How did an Application upgrade work?" },
+          { role: "assistant", content: "Earlier explanation." },
+        ],
+        "Please answer this new unrelated question.",
+      );
+      expect(result.explanation).toBe(
+        "Scoped normal response; no action or update.",
+      );
+      expect(result.changes).toEqual([]);
+      expect(request).toHaveBeenCalledTimes(2);
+    }
+  },
+);

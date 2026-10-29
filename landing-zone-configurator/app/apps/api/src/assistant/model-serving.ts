@@ -65,6 +65,7 @@ import {
   validateAssistantFirewall,
 } from "./firewall.js";
 import {
+  assistantApplicationUpgradeAdvice,
   assistantFirewallPolicyLimit,
   assistantKnowledgeContext,
   assistantKnowledgeForTopics,
@@ -1356,6 +1357,9 @@ export class AssistantModelServing {
       adviceTask: z
         .enum([
           "application-access",
+          "template-upgrade",
+          "platform-upgrade",
+          "execution-source-upgrade",
           "field-overview",
           "capability-boundary",
           "policy-request",
@@ -1363,13 +1367,13 @@ export class AssistantModelServing {
         ])
         .default("other")
         .describe(
-          "application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. field-overview fuer aktuelle Informationsfragen nach nativen konfigurierbaren Feldern, Defaults oder Grenzen, ohne Einrichtungsauftrag. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
+          "For current informational Application upgrade workflow questions select topic=configuration-lifecycle,mode=advice,adviceTaskSource=current: template-upgrade for updating an existing order to a published same-family template version with retained answers, State and Plan/Apply approvals; platform-upgrade for shared platform/firewall/routing effects, dependency impact and explicitly adopting the actual approved platform contract; execution-source-upgrade for Accelerator revisions, product updates, origin/desired/lastApplied sources, package withdrawal and source-bound recovery. These are information tasks, not instructions to upgrade, publish, rebind, plan or apply; actual proposal/action requests remain draft/other. Never select them from historical questions or for unrelated advice. application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. field-overview fuer aktuelle Informationsfragen nach nativen konfigurierbaren Feldern, Defaults oder Grenzen, ohne Einrichtungsauftrag. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
         ),
       adviceTaskSource: z
         .enum(["current", "none"])
         .default("none")
         .describe(
-          "current nur wenn die LETZTE Nutzernachricht selbst die Faehigkeitsfrage oder Felduebersicht stellt. Sonst none; niemals eine historische Frage als aktuelle Quelle verwenden.",
+          "current nur wenn die LETZTE Nutzernachricht selbst die entsprechende Faehigkeitsfrage, Felduebersicht, Application-IAM-Informationsfrage oder Application-Upgrade-Workflowfrage stellt. Sonst none; niemals eine historische Frage als aktuelle Quelle verwenden.",
         ),
       requirements: z
         .array(
@@ -3148,33 +3152,29 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
     if (intent.topic === "dns-zones" && intent.dnsTask === "remaining-settings")
       intent.mode = "draft";
     const networkFirst = intent.topic === "stackit-network-components";
-    // Execution recovery advice is a product contract, not a model-selected
-    // approval policy. Do not let a paraphrase omit the required review boundary.
+    // These reviewed workflows are informational; only the closed current-turn
+    // semantic intent selects them. No history regex or action is involved.
     if (
       intent.topic === "configuration-lifecycle" &&
       intent.mode === "advice" &&
-      /Application|Bestellung|\border\b/i.test(message) &&
-      /Accelerator|Produktupdate|Ausführungsstand|source|Quelle/i.test(
-        message,
-      ) &&
-      !/Template.?Upgrade|Plattform.?Upgrade|Template.?Update|Plattform.?Update/i.test(
-        message,
-      )
-    )
-      return validateDialogue(
+      intent.adviceTaskSource === "current" &&
+      Object.hasOwn(assistantApplicationUpgradeAdvice, intent.adviceTask)
+    ) {
+      const dialogue = validateDialogue(
         {
           explanation:
-            "Bestehende Application-Bestellungen und ihre State-Zuordnung bleiben erhalten; keine Neubestellung. Produkt-Updates ändern ihre gebundene Accelerator-Quelle nicht automatisch. Geprüfte historische Quellen laufen mit dem aktuellen gepatchten Worker. Die konkrete Verfügbarkeit und offene Jobs prüfst du in den Bestelldetails unter Updates → Ausführungsstand der Bestellung; ich habe diese Bestellung nicht ausgelesen.\n\n" +
-            "Ursprüngliche Template-Quelle (origin) ist die unveränderliche Git-Revision der Veröffentlichung. Gewünschter Ausführungsstand (desired) ist die ausgewählte Accelerator-Revision. Zuletzt erfolgreich angewendete Revision (lastApplied) bezeichnet die Quelle des letzten erfolgreichen Apply, weder den vollständigen aktuellen State noch die Recovery-Quelle.\n\n" +
-            "Für ein Upgrade derselben Bestellung wählst du dort den angebotenen geprüften Ersatz und bestätigst die Aktualisierung. Das ändert nur die gewünschte Ausführungsbindung; Projekt, State, Backend und Template-Regeln bleiben erhalten. Es startet keinen Plan oder Apply. Danach brauchst du einen neuen Plan gegen den tatsächlichen State: Änderungen, Ersetzungen und Löschungen prüfen, anschließend die normale separate ausdrückliche Apply-Freigabe erteilen. Ein alter Plan wird nicht wiederverwendet.\n\n" +
-            "Ein fehlgeschlagener Apply kann State und Ressourcen bereits verändert haben; Verlustfreiheit oder unveränderter State sind nicht garantiert. Der gewünschte Stand bleibt erhalten. Recovery verwendet die Quelle des unterbrochenen Jobs. Laufende oder ungeklärte Jobs, aktive Freigaben und offene Recovery sperren das Upgrade bis zum Abgleich.\n\n" +
-            "Zurückgezogene Quellen dürfen nicht mehr ausführen: Nutze den geprüften Upgrade-Pfad derselben Bestellung. Fehlt ein Paket, muss ein Operator es geprüft bereitstellen oder den angebotenen Ersatzpfad ermöglichen. Ist zugleich Recovery ungeklärt und deren Quelle zurückgezogen, bleiben State und Sperre erhalten; dafür braucht ein Operator ein geprüftes kompatibles Recovery-Paket, bevor ein Upgrade möglich ist. Keine Umgehung der Prüfungen. Der Chat ändert nichts und führt kein Upgrade, Entsperren, Plan oder Apply aus.",
+            assistantApplicationUpgradeAdvice[
+              intent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
+            ],
           questions: [],
           changes: [],
           references: ["configuration-lifecycle"],
         },
         context.rules.map((rule) => rule.id),
       );
+      stream?.onText(dialogue.explanation);
+      return dialogue;
+    }
     const dnsAdvice = intent.topic === "dns-zones";
     const dnsSettingsDraft =
       dnsAdvice &&

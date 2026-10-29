@@ -39,3 +39,17 @@ it("rejects the observed automatic-contract answer even when shared impact and P
   expect(failures).toContain("application_upgrade_missing_published-path");
   expect(failures).toContain("application_upgrade_missing_explicit-binding");
 });
+
+it("rejects the observed introduction-only template-upgrade response", () => {
+  const text =
+    "Als Besteller aktualisieren Sie Ihre bestehende Application auf eine neue Template-Version über den veröffentlichten Upgrade-Pfad des Platform Owners. Der Prozess ist strikt getrennt von Ausführung und erfordert explizite Bestätigungen. Hier die Schritte im Überblick (nur Beratung, keine Ausführung):";
+  expect(assistantApplicationUpgradeFailures(text, "template")).toEqual(
+    expect.arrayContaining([
+      "application_upgrade_missing_same-state",
+      "application_upgrade_missing_retained-answers",
+      "application_upgrade_missing_fresh-plan",
+      "application_upgrade_missing_separate-apply",
+      "application_upgrade_missing_destructive-block",
+    ]),
+  );
+});
