@@ -102,6 +102,11 @@ export const assistantKnowledgeTopics = {
             "c358064444175a090d7dfb66072938a08056e301b54ba7e88d6f4d0e585e9732",
         },
         {
+          path: "src/modules/landing-zone/3-network.tf",
+          sha256:
+            "0f37a5a088f8555a2c3019d63c2a1b4087aab032bd2fb455d391726deb953471",
+        },
+        {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
             "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
