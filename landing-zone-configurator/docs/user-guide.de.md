@@ -116,6 +116,8 @@ IAM-Abnahme aller Workload-Abläufe.
 Der Editor nutzt nach Möglichkeit den Live-Permission-Katalog, sonst den
 geprüften statischen Stand. Beides belegt nicht die effektiven Benutzerrechte.
 
+Der Assistant kann Dienstrechte für Public- und Corporate-Entwürfe gemeinsam vorschlagen, zum Beispiel: „Besteller und Application-Service-Account sollen in den Public- und Corporate-Templates Kubernetes verwalten können.“ Die bisherigen Rechte jeder Identität und der zentrale Owner jeder Vorlage bleiben erhalten. Gibt es mehrere Vorlagen einer Art, wähle zuerst die gewünschte Vorlage. Ein noch leeres Owner-Feld verhindert den Rechtevorschlag nicht; vor Veröffentlichung ist ein gültiger zentraler Owner erforderlich. Prüfe und übernimm den Vorschlag vor dem Speichern oder Veröffentlichen. Damit werden SKE-Projektrechte ergänzt, kein Cluster erstellt und kein Kubernetes-RBAC eingerichtet.
+
 **Volle Projekt-Owner-Rechte** bleiben eine ausdrückliche Kundenwahl für Besteller
 und Application-Service-Account. Diese Identitäten können IAM und Projektvorgaben verwalten;
 zentrale Audit-/Routing-Regeln sind ihnen gegenüber nicht unveränderlich.

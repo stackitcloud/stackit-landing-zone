@@ -3322,3 +3322,626 @@ it("preserves the exact multiple-folder UI answer without organization-role prom
     },
   ]);
 });
+
+it.each(["both", "requester", "automation"] as const)(
+  "adds requested service rights to Public and Corporate templates for %s with immutable other draft data",
+  async (permissionTarget) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const targets = original.projectTemplates!.filter(
+      (t) => t.kind === "public" || t.kind === "corporate",
+    );
+    expect(targets).toHaveLength(2);
+    for (const [i, template] of targets.entries())
+      template.accessProfile = {
+        ...defaultApplicationAccessProfile(`central-${i}@example.test`),
+        permissions: ["iaas.server.get"],
+        automationPermissions: ["secrets-manager.secret.get"],
+      };
+    const message =
+      permissionTarget === "both"
+        ? "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate"
+        : permissionTarget === "requester"
+          ? "Nur der Besteller soll Kubernetes nutzen können im Template Public und Corporate"
+          : "Nur der Service Account soll Kubernetes nutzen können im Template Public und Corporate";
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: "__select_by_kind__",
+          choice: "add-service-permissions",
+          templateKind: "both",
+          templateEvidence: "Template Public und Corporate",
+          services: ["ske"],
+          permissionTarget,
+          serviceEvidence: "Kubernetes",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    expect(result.questions).toEqual([]);
+    const candidate = applyAssistantChanges(original, result.changes);
+    const expected = structuredClone(original);
+    const additions = applicationProjectPermissionNames.filter((p) =>
+      p.startsWith("ske."),
+    );
+    for (const template of expected.projectTemplates!.filter(
+      (t) => t.kind === "public" || t.kind === "corporate",
+    )) {
+      if (template.accessProfile?.mode !== "granular")
+        throw new Error("fixture");
+      if (permissionTarget !== "automation")
+        template.accessProfile.permissions = [
+          ...template.accessProfile.permissions,
+          ...additions,
+        ];
+      if (permissionTarget !== "requester")
+        template.accessProfile.automationPermissions = [
+          ...template.accessProfile.automationPermissions,
+          ...additions,
+        ];
+    }
+    expect(candidate).toEqual(expected);
+  },
+);
+it("asks a focused initial-owner question while preserving incomplete owners in both draft proposals", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  for (const t of original.projectTemplates!)
+    if (t.kind === "public" || t.kind === "corporate")
+      t.accessProfile = defaultApplicationAccessProfile("");
+  const message =
+    "Public und Corporate: Besteller und Service Account sollen Kubernetes nutzen können.";
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: "__select_by_kind__",
+        choice: "add-service-permissions",
+        templateKind: "both",
+        templateEvidence: "Public und Corporate",
+        services: ["ske"],
+        permissionTarget: "both",
+        serviceEvidence: "Kubernetes",
+      },
+    },
+    null,
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    message,
+  );
+  expect(result.questions).toHaveLength(2);
+  expect(
+    result.questions.every(
+      (q) =>
+        q.path === "projectTemplates" && q.text.includes("initialer Owner"),
+    ),
+  ).toBe(true);
+  const changed = applyAssistantChanges(original, result.changes);
+  for (const t of changed.projectTemplates!)
+    if (t.kind === "public" || t.kind === "corporate")
+      expect(t.accessProfile).toMatchObject({ initialOwnerEmail: "" });
+});
+it.each(["Public, nicht Corporate", "Public and not Corporate", "Public"])(
+  "rejects unconfirmed both-kind target evidence: %s",
+  async (templateEvidence) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    await expect(
+      collectionModel(
+        {
+          topic: "project-templates",
+          mode: "draft",
+          requirements: [],
+          applicationAccess: {
+            key: "__select_by_kind__",
+            choice: "add-service-permissions",
+            templateKind: "both",
+            templateEvidence,
+            services: ["ske"],
+            permissionTarget: "both",
+            serviceEvidence: "Kubernetes",
+          },
+        },
+        null,
+      ).converse(
+        knowledgeSelection(),
+        assistantPublicValues(original),
+        [],
+        `${templateEvidence}: Kubernetes hinzufügen.`,
+      ),
+    ).rejects.toMatchObject({ reason: "intent_evidence" });
+  },
+);
+it("asks for the ambiguous kind without partially changing the other template", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const publicTemplate = original.projectTemplates!.find(
+    (t) => t.kind === "public",
+  )!;
+  original.projectTemplates!.push({
+    ...structuredClone(publicTemplate),
+    id: crypto.randomUUID(),
+    key: "public-second",
+    name: "Public second",
+  });
+  for (const t of original.projectTemplates!)
+    t.accessProfile = defaultApplicationAccessProfile("central@example.test");
+  const message = "Public und Corporate sollen Kubernetes-Rechte erhalten.";
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: "__select_by_kind__",
+        choice: "add-service-permissions",
+        templateKind: "both",
+        templateEvidence: "Public und Corporate",
+        services: ["ske"],
+        permissionTarget: "both",
+        serviceEvidence: "Kubernetes",
+      },
+    },
+    null,
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    message,
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.questions).toHaveLength(1);
+  expect(result.questions[0]!.options).toHaveLength(2);
+});
+
+it("rejects a both-kind quote when the surrounding current request negates those templates", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  await expect(
+    collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: "__select_by_kind__",
+          choice: "add-service-permissions",
+          templateKind: "both",
+          templateEvidence: "Public und Corporate",
+          services: ["ske"],
+          permissionTarget: "both",
+          serviceEvidence: "Kubernetes",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      "Kubernetes Rechte, aber nicht für Public und Corporate.",
+    ),
+  ).rejects.toMatchObject({ reason: "intent_evidence" });
+});
+it("preserves a full Owner profile while extending only the other kind's granular profile", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  const pub = original.projectTemplates!.find((t) => t.kind === "public")!;
+  pub.accessProfile = { schemaVersion: 1, mode: "owner" };
+  const corp = original.projectTemplates!.find((t) => t.kind === "corporate")!;
+  corp.accessProfile = {
+    ...defaultApplicationAccessProfile("central@example.test"),
+    permissions: ["iaas.server.get"],
+    automationPermissions: ["iaas.server.get"],
+  };
+  const message =
+    "Public und Corporate: Kubernetes für Besteller und Service Account ergänzen.";
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: "__select_by_kind__",
+        choice: "add-service-permissions",
+        templateKind: "both",
+        templateEvidence: "Public und Corporate",
+        services: ["ske"],
+        permissionTarget: "both",
+        serviceEvidence: "Kubernetes",
+      },
+    },
+    null,
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    message,
+  );
+  const changed = applyAssistantChanges(original, result.changes);
+  expect(changed.projectTemplates!.find((t) => t.id === pub.id)).toEqual(pub);
+  expect(
+    changed.projectTemplates!.find((t) => t.id === corp.id)?.accessProfile,
+  ).toMatchObject({
+    initialOwnerEmail: "central@example.test",
+    permissions: expect.arrayContaining(
+      applicationProjectPermissionNames.filter((p) => p.startsWith("ske.")),
+    ),
+  });
+});
+
+it("continues two canonical target selections while preserving original services, recipients and the other kind", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  for (const kind of ["public", "corporate"]) {
+    const old = original.projectTemplates!.find((t) => t.kind === kind)!;
+    original.projectTemplates!.push({
+      ...structuredClone(old),
+      id: crypto.randomUUID(),
+      key: `${kind}-second`,
+      name: `${kind} second`,
+    });
+  }
+  for (const t of original.projectTemplates!)
+    t.accessProfile = {
+      ...defaultApplicationAccessProfile("central@example.test"),
+      permissions: ["iaas.server.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+  const request =
+    "Public und Corporate: Besteller und Service Account sollen Kubernetes nutzen.";
+  const intent = (source = "current") => ({
+    topic: "project-templates",
+    mode: "draft",
+    requirements: [],
+    applicationAccess: {
+      key: "__select_by_kind__",
+      choice: "add-service-permissions",
+      templateKind: "both",
+      templateEvidence: "Public und Corporate",
+      services: ["ske"],
+      permissionTarget: "both",
+      serviceEvidence: "Kubernetes",
+      serviceEvidenceSource: source,
+    },
+  });
+  const values = assistantPublicValues(original);
+  const first = await collectionModel(intent(), null).converse(
+    knowledgeSelection(),
+    values,
+    [],
+    request,
+  );
+  const text = (r: typeof first) =>
+    r.explanation + "\n" + r.questions.map((q) => q.text).join("\n");
+  const h1 = [
+    { role: "user" as const, content: request },
+    { role: "assistant" as const, content: text(first) },
+  ];
+  const second = await collectionModel(intent("history-0"), null).converse(
+    knowledgeSelection(),
+    values,
+    h1,
+    "public-second",
+  );
+  expect(second.changes).toEqual([]);
+  expect(second.questions).toHaveLength(1);
+  const history = [
+    ...h1,
+    { role: "user" as const, content: "public-second" },
+    { role: "assistant" as const, content: text(second) },
+  ];
+  const final = await collectionModel(intent("history-0"), null).converse(
+    knowledgeSelection(),
+    values,
+    history,
+    "corporate-second",
+  );
+  expect(final.questions).toEqual([]);
+  const changed = applyAssistantChanges(original, final.changes);
+  const expected = structuredClone(original);
+  const additions = applicationProjectPermissionNames.filter((p) =>
+    p.startsWith("ske."),
+  );
+  for (const t of expected.projectTemplates!)
+    if (t.key === "public-second" || t.key === "corporate-second") {
+      if (t.accessProfile?.mode !== "granular") throw new Error("fixture");
+      t.accessProfile.permissions.push(...additions);
+      t.accessProfile.automationPermissions.push(...additions);
+    }
+  expect(changed).toEqual(expected);
+  for (const modification of [
+    "source-change",
+    "recipient-change",
+    "new-topic",
+    "stale-options",
+    "completed",
+  ]) {
+    const broken = structuredClone(history);
+    const selected = intent("history-0");
+    let message = "corporate-second";
+    let data = values;
+    if (modification === "source-change")
+      selected.applicationAccess.services = ["iam"];
+    if (modification === "recipient-change")
+      selected.applicationAccess.permissionTarget = "requester";
+    if (modification === "new-topic")
+      message = "Bitte stattdessen DNS erklären.";
+    if (modification === "stale-options") {
+      const stale = structuredClone(original);
+      const old = stale.projectTemplates!.find(
+        (t) => t.key === "corporate-second",
+      )!;
+      stale.projectTemplates!.push({
+        ...structuredClone(old),
+        id: crypto.randomUUID(),
+        key: "corporate-third",
+        name: "Corporate third",
+      });
+      data = assistantPublicValues(stale);
+    }
+    if (modification === "completed")
+      broken[3]!.content = "Der Vorschlag ist fertig und wurde übernommen.";
+    await expect(
+      collectionModel(selected, null).converse(
+        knowledgeSelection(),
+        data,
+        broken,
+        message,
+      ),
+    ).rejects.toThrow();
+  }
+});
+it.each([
+  [
+    "Public und Corporate bitte nicht ändern; Kubernetes nur erklären.",
+    "both",
+    "both",
+  ],
+  ["Keine Kubernetes-Rechte für Public und Corporate.", "both", "both"],
+  [
+    "Public und Corporate: Kubernetes für Besteller und Service Account ergänzen.",
+    "public",
+    "both",
+  ],
+  [
+    "Public und Corporate: Kubernetes für Besteller und Service Account ergänzen.",
+    "corporate",
+    "both",
+  ],
+  [
+    "Public und Corporate: Kubernetes nur für den Besteller, kein Service Account.",
+    "both",
+    "both",
+  ],
+  [
+    "Public und Corporate: Kubernetes für Besteller und Service Account ergänzen.",
+    "both",
+    "requester",
+  ],
+])(
+  "rejects inconsistent scope or recipient projection from the complete request: %s",
+  async (message, templateKind, permissionTarget) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    for (const t of original.projectTemplates!)
+      t.accessProfile = defaultApplicationAccessProfile("central@example.test");
+    await expect(
+      collectionModel(
+        {
+          topic: "project-templates",
+          mode: "draft",
+          requirements: [],
+          applicationAccess: {
+            key: "__select_by_kind__",
+            choice: "add-service-permissions",
+            templateKind,
+            templateEvidence:
+              templateKind === "both"
+                ? "Public und Corporate"
+                : templateKind === "public"
+                  ? "Public"
+                  : "Corporate",
+            services: ["ske"],
+            permissionTarget,
+            serviceEvidence: "Kubernetes",
+          },
+        },
+        null,
+      ).converse(
+        knowledgeSelection(),
+        assistantPublicValues(original),
+        [],
+        message,
+      ),
+    ).rejects.toThrow();
+  },
+);
+it("keeps a separate instruction not to change the Owner compatible with both-kind additions", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  for (const t of original.projectTemplates!)
+    t.accessProfile = defaultApplicationAccessProfile("central@example.test");
+  const result = await collectionModel(
+    {
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: "__select_by_kind__",
+        choice: "add-service-permissions",
+        templateKind: "both",
+        templateEvidence: "Public und Corporate",
+        services: ["ske"],
+        permissionTarget: "both",
+        serviceEvidence: "Kubernetes",
+      },
+    },
+    null,
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    "Public und Corporate: Kubernetes für Besteller und Service Account ergänzen; Owner nicht ändern.",
+  );
+  expect(result.changes).toHaveLength(1);
+});
+
+it.each(["single", "both", "single-empty-owner"])(
+  "continues real UI question-answer wrappers: %s",
+  async (mode) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    for (const t of original.projectTemplates!)
+      t.accessProfile = {
+        ...defaultApplicationAccessProfile(
+          mode === "single-empty-owner" && t.kind === "corporate"
+            ? ""
+            : "central@example.test",
+        ),
+        permissions: ["iaas.server.get"],
+        automationPermissions: ["iaas.server.get"],
+      };
+    for (const kind of mode === "both" ? ["public", "corporate"] : ["public"]) {
+      const old = original.projectTemplates!.find((t) => t.kind === kind)!;
+      original.projectTemplates!.push({
+        ...structuredClone(old),
+        id: crypto.randomUUID(),
+        key: `${kind}-second`,
+        name: `${kind} second`,
+      });
+    }
+    const request =
+      "Public und Corporate: Besteller und Service Account sollen Kubernetes nutzen.";
+    const intent = (source = "current") => ({
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: "__select_by_kind__",
+        choice: "add-service-permissions",
+        templateKind: "both",
+        templateEvidence: "Public und Corporate",
+        services: ["ske"],
+        permissionTarget: "both",
+        serviceEvidence: "Kubernetes",
+        serviceEvidenceSource: source,
+      },
+    });
+    const values = assistantPublicValues(original);
+    const first = await collectionModel(intent(), null).converse(
+      knowledgeSelection(),
+      values,
+      [],
+      request,
+    );
+    expect(first.changes).toEqual([]);
+    expect(first.questions).toHaveLength(mode === "both" ? 2 : 1);
+    const answer = first.questions
+      .map(
+        (q) =>
+          `${q.text}\nMeine Antwort: ${q.options!.find((option) => option.includes("-second)"))!}`,
+      )
+      .join("\n\n");
+    const final = await collectionModel(intent("history-0"), null).converse(
+      knowledgeSelection(),
+      values,
+      [
+        { role: "user", content: request },
+        {
+          role: "assistant",
+          content:
+            first.explanation +
+            "\n" +
+            first.questions.map((q) => q.text).join("\n"),
+        },
+      ],
+      answer,
+    );
+    expect(final.questions).toHaveLength(mode === "single-empty-owner" ? 1 : 0);
+    const changed = applyAssistantChanges(original, final.changes);
+    const selected = new Set([
+      "public-second",
+      mode === "both"
+        ? "corporate-second"
+        : original.projectTemplates!.find((t) => t.kind === "corporate")!.key,
+    ]);
+    const expected = structuredClone(original);
+    const additions = applicationProjectPermissionNames.filter((p) =>
+      p.startsWith("ske."),
+    );
+    for (const t of expected.projectTemplates!)
+      if (selected.has(t.key)) {
+        if (t.accessProfile?.mode !== "granular") throw new Error("fixture");
+        t.accessProfile.permissions.push(...additions);
+        t.accessProfile.automationPermissions.push(...additions);
+      }
+    expect(changed).toEqual(expected);
+  },
+);
+it.each([
+  "Public und Corporate: keine Kubernetes-Rechte.",
+  "Public and Corporate: no Kubernetes permissions.",
+])("rejects negated services after target references: %s", async (message) => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  await expect(
+    collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: "__select_by_kind__",
+          choice: "add-service-permissions",
+          templateKind: "both",
+          templateEvidence: message.startsWith("Public and")
+            ? "Public and Corporate"
+            : "Public und Corporate",
+          services: ["ske"],
+          permissionTarget: "both",
+          serviceEvidence: "Kubernetes",
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    ),
+  ).rejects.toMatchObject({ reason: "intent_evidence" });
+});

@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "147c889347061122fadb32c2f970e2423a93bc02dce94424c10da4f21b12c79c",
+  "knowledgeSha256": "2c13a55e5ce6b6ae23d56f215e9bf09858c00977fcb8d101018dbf4e9716a85a",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "2c193c1664f384b4bef27b524ce153dc0b7847ab6fc01d4c48915d66729e6f82",
+    "scripts/assistant-scenarios.ts": "493ab0019ca84106a07d53d4c49d3a08d782412f889e3d74d6a8db88dbcb0f61",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "fe7d8b06c8997b6e1f5a544c011d0c052f310bcfd02d2e1b9f49a54ca6cb9b59",
+  "suiteSha256": "acbd0bde314e5e3568b408096e6cc64c52408882b45590fcd5a8cc964dc002fe",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5476,6 +5476,72 @@
             }
           ],
           "message": "central",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-both-kubernetes",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "both-kubernetes",
+          "message": "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-both-kubernetes-empty-owner",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "both-kubernetes-empty-owner",
+          "message": "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-both-kubernetes-clarify",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "both-kubernetes-clarify",
+          "message": "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-both-kubernetes-followup",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "both-kubernetes-followup",
+          "message": "Welche corporate-Vorlage soll geändert werden? (2: central, second-corporate)\nMeine Antwort: Corporate central (central)",
+          "history": [
+            {
+              "role": "user",
+              "content": "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate"
+            },
+            {
+              "role": "assistant",
+              "content": "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.\nAngefragte Dienste: ske; Empfänger: Besteller und Application-Service-Account; gewählte Vorlagen: public=?, corporate=?. Bestehende Rechte und zentrale Owner bleiben erhalten. Noch nichts gespeichert; es wird nichts ausgeführt. Vor Veröffentlichung ist ein gültiger initialer Owner erforderlich.\nWelche corporate-Vorlage soll geändert werden? (2: central, second-corporate)"
+            }
+          ],
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

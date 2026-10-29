@@ -1,7 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { featureFieldCatalogue, type JsonValue } from "@lzc/domain";
+import {
+  applicationProjectPermissionNames,
+  featureFieldCatalogue,
+  type JsonValue,
+} from "@lzc/domain";
 import { expect, it } from "vitest";
 import {
   assistantKnowledgeContext,
@@ -870,4 +874,58 @@ it("requires Kubernetes network and protected-access substance instead of repeti
       explanation: `${scenario.requiredOverviewFields?.join(", ")}. Bitte Kubeconfig-Inhalte im Chat eintragen.`,
     }).failures,
   ).toContain("incomplete_platform_kubernetes_boundaries");
+});
+
+it("requires SKE additions for both recipients in both templates without losing existing rights or owner", () => {
+  const scenario = assistantScenarios.find(
+    (s) => s.id === "application-access-both-kubernetes",
+  );
+  if (!scenario) throw new Error("scenario_missing");
+  const fixture = assistantScenarioFixture(scenario);
+  const additions = applicationProjectPermissionNames.filter((p) =>
+    p.startsWith("ske."),
+  );
+  const value = Object.fromEntries(
+    (fixture.draft.projectTemplates ?? []).map((t) => {
+      const p = t.accessProfile;
+      if (p?.mode !== "granular") throw new Error("profile_missing");
+      return [
+        t.key,
+        {
+          accessProfile: {
+            ...p,
+            permissions: [...new Set([...p.permissions, ...additions])],
+            automationPermissions: [
+              ...new Set([...p.automationPermissions, ...additions]),
+            ],
+          },
+        },
+      ];
+    }),
+  );
+  const dialogue = {
+    explanation:
+      "Prüfbarer Rechtevorschlag für beide Vorlagen und Empfänger. Noch nichts gespeichert.",
+    questions: [],
+    references: ["project-templates"],
+    changes: [{ path: "projectTemplates", operation: "merge", value }],
+  };
+  expect(validateAssistantScenario(scenario, dialogue).failures).toEqual([]);
+  const oneTarget = structuredClone(dialogue);
+  delete oneTarget.changes[0]!.value["public-workload"];
+  expect(validateAssistantScenario(scenario, oneTarget).failures).toContain(
+    "application_access_multi_target_union_or_preservation_failed",
+  );
+  const missingRecipient = structuredClone(dialogue);
+  missingRecipient.changes[0]!.value
+    .central!.accessProfile.automationPermissions = ["iaas.server.get"];
+  expect(
+    validateAssistantScenario(scenario, missingRecipient).failures,
+  ).toContain("application_access_multi_target_union_or_preservation_failed");
+  const lostOwner = structuredClone(dialogue);
+  lostOwner.changes[0]!.value.central!.accessProfile.initialOwnerEmail =
+    "other@example.test";
+  expect(validateAssistantScenario(scenario, lostOwner).failures).toContain(
+    "application_access_multi_target_union_or_preservation_failed",
+  );
 });

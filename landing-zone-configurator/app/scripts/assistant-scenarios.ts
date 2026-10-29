@@ -161,7 +161,11 @@ export type AssistantScenario = {
     | "public-kubernetes-requester"
     | "public-kubernetes-incomplete-owner"
     | "public-kubernetes-clarify"
-    | "public-kubernetes-followup";
+    | "public-kubernetes-followup"
+    | "both-kubernetes"
+    | "both-kubernetes-empty-owner"
+    | "both-kubernetes-clarify"
+    | "both-kubernetes-followup";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
   applicationUpgrade?: "template" | "platform";
@@ -340,6 +344,40 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       },
     ],
     message: "central",
+  },
+  ...(
+    [
+      "both-kubernetes",
+      "both-kubernetes-empty-owner",
+      "both-kubernetes-clarify",
+    ] as const
+  ).map((mode) => ({
+    id: `application-access-${mode}`,
+    topic: "project-templates",
+    fixture: "corporate-ipv4" as const,
+    applicationAccess: mode,
+    message:
+      "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+  })),
+  {
+    id: "application-access-both-kubernetes-followup",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "both-kubernetes-followup",
+    message:
+      "Welche corporate-Vorlage soll geändert werden? (2: central, second-corporate)\nMeine Antwort: Corporate central (central)",
+    history: [
+      {
+        role: "user",
+        content:
+          "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+      },
+      {
+        role: "assistant",
+        content:
+          "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.\nAngefragte Dienste: ske; Empfänger: Besteller und Application-Service-Account; gewählte Vorlagen: public=?, corporate=?. Bestehende Rechte und zentrale Owner bleiben erhalten. Noch nichts gespeichert; es wird nichts ausgeführt. Vor Veröffentlichung ist ein gültiger initialer Owner erforderlich.\nWelche corporate-Vorlage soll geändert werden? (2: central, second-corporate)",
+      },
+    ],
   },
   {
     id: "corporate-ipv4-automatic-advice",
@@ -1018,6 +1056,45 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
         name: "Second Public",
       });
   }
+  if (scenario.applicationAccess?.startsWith("both-kubernetes")) {
+    const corporate = draft.projectTemplates![0]!;
+    corporate.accessProfile = {
+      ...defaultApplicationAccessProfile(
+        scenario.applicationAccess === "both-kubernetes-empty-owner"
+          ? ""
+          : "platform-owner@example.test",
+      ),
+      permissions: ["secrets-manager.secret.get", "iaas.server.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+    draft.projectTemplates!.push({
+      ...structuredClone(corporate),
+      id: "00000000-0000-4000-8000-000000000027",
+      key: "public-workload",
+      name: "Public workload",
+      kind: "public",
+      settings: {
+        env: "dev",
+        network_enabled: true,
+        network_prefix_length: 25,
+      },
+      accessProfile: {
+        ...corporate.accessProfile,
+        permissions: ["resource-manager.project.get"],
+        automationPermissions: ["secrets-manager.secret.get"],
+      },
+    });
+    if (
+      scenario.applicationAccess === "both-kubernetes-clarify" ||
+      scenario.applicationAccess === "both-kubernetes-followup"
+    )
+      draft.projectTemplates!.push({
+        ...structuredClone(corporate),
+        id: "00000000-0000-4000-8000-000000000028",
+        key: "second-corporate",
+        name: "Second Corporate",
+      });
+  }
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
@@ -1237,6 +1314,58 @@ export function validateAssistantScenario(
       failures.push("application_access_invented_contract");
     if (dialogue.changes.length)
       failures.push("application_access_advice_mutated");
+  } else if (scenario.applicationAccess?.startsWith("both-kubernetes")) {
+    if (scenario.applicationAccess === "both-kubernetes-clarify") {
+      if (
+        dialogue.changes.length ||
+        !dialogue.questions.some((q) =>
+          ["central", "second-corporate"].every((key) =>
+            q.options?.some((option) => option.includes(key)),
+          ),
+        )
+      )
+        failures.push("application_access_multi_target_not_clarified");
+    } else {
+      const expected = structuredClone(fixture.draft);
+      const additions = applicationProjectPermissionNames.filter((p) =>
+        p.startsWith("ske."),
+      );
+      for (const template of expected.projectTemplates ?? []) {
+        if (template.key === "second-corporate") continue;
+        const before = template.accessProfile;
+        if (!before || before.mode !== "granular")
+          throw new Error("expected granular multi-template fixture");
+        template.accessProfile = {
+          ...before,
+          permissions: [...new Set([...before.permissions, ...additions])],
+          automationPermissions: [
+            ...new Set([...before.automationPermissions, ...additions]),
+          ],
+        };
+      }
+      try {
+        if (
+          !dialogue.changes.length ||
+          !isDeepStrictEqual(
+            applyAssistantChanges(fixture.draft, dialogue.changes),
+            expected,
+          )
+        )
+          failures.push(
+            "application_access_multi_target_union_or_preservation_failed",
+          );
+        if (scenario.applicationAccess === "both-kubernetes-empty-owner") {
+          if (
+            dialogue.questions.length !== 2 ||
+            !dialogue.questions.every((q) => /owner/i.test(q.text))
+          )
+            failures.push("application_access_missing_owner_not_clarified");
+        } else if (dialogue.questions.length)
+          failures.push("application_access_unnecessary_multi_target_question");
+      } catch {
+        failures.push("application_access_multi_target_proposal_invalid");
+      }
+    }
   } else if (scenario.applicationAccess === "public-kubernetes-clarify") {
     if (
       dialogue.changes.length ||
