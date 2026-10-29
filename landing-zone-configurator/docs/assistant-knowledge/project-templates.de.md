@@ -175,3 +175,12 @@ und erstellt den Rechtevorschlag; erst die Veröffentlichung verlangt einen gül
 separaten Owner. Beim Einrichten eines neuen Rechteprofils fragt er fehlende Angaben ab.
 
 Explizit Public UND Corporate: Rechtevorschlag für beide Vorlagen; mehrdeutige Ziele zuerst klären. Bestehende Rechte und Owner erhalten, auch bei noch leerem Owner-Feld. Veröffentlichung verlangt weiterhin einen gültigen zentralen Owner.
+
+Bei Public und Corporate erfragt der Assistant einen gemeinsamen fehlenden initialen
+Owner nur einmal; vorhandene ausdrückliche Owner bleiben erhalten. „Plattform-Service-Account“
+bezeichnet ausschließlich eine durch gespeicherte Vorbereitung derselben Konfiguration und
+Organisation zugeordnete E-Mail; Mehrdeutigkeit verlangt eine Auswahl. Der Assistant empfiehlt
+Workload-Rechte mit den angefragten Dienstrechten, statt die Profilwahl zurückzugeben.
+Bisherige Rollenregeln und Rollen-Kontextbindungen werden erst nach ausdrücklicher
+Bestätigung umgestellt; auch der Verlust nativer Owner-Standards wird vorher erklärt.
+Der Vorschlag speichert, veröffentlicht oder provisioniert nichts.

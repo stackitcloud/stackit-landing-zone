@@ -24,6 +24,10 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
+  buildMultiTemplatePermissionDialogue,
+  multiTemplatePermissionHistoryText,
+} from "../apps/api/src/assistant/application-permission-dialogue.js";
+import {
   applyAssistantChanges,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
@@ -3425,11 +3429,11 @@ it("asks a focused initial-owner question while preserving incomplete owners in 
     [],
     message,
   );
-  expect(result.questions).toHaveLength(2);
+  expect(result.questions).toHaveLength(1);
   expect(
     result.questions.every(
       (q) =>
-        q.path === "projectTemplates" && q.text.includes("initialer Owner"),
+        q.path === "projectTemplates" && q.text.includes("initialen Owner"),
     ),
   ).toBe(true);
   const changed = applyAssistantChanges(original, result.changes);
@@ -3687,9 +3691,15 @@ it("continues two canonical target selections while preserving original services
     let message = "corporate-second";
     let data = values;
     if (modification === "source-change")
-      selected.applicationAccess.services = ["iam"];
+      broken[1]!.content = broken[1]!.content.replace(
+        "Dienste: ske",
+        "Dienste: iam",
+      );
     if (modification === "recipient-change")
-      selected.applicationAccess.permissionTarget = "requester";
+      broken[1]!.content = broken[1]!.content.replace(
+        "Empfänger: Besteller und Application-Service-Account",
+        "Empfänger: Besteller",
+      );
     if (modification === "new-topic")
       message = "Bitte stattdessen DNS erklären.";
     if (modification === "stale-options") {
@@ -4037,3 +4047,44 @@ it.each([
       ).rejects.toMatchObject({ reason: "intent_evidence" });
   },
 );
+
+it("resolves a canonical shared-owner follow-up before any model call", async () => {
+  const original = createEditorConfiguration(
+    "hub-and-spoke",
+    crypto.randomUUID(),
+  );
+  for (const t of original.projectTemplates!)
+    if (t.kind === "public" || t.kind === "corporate")
+      t.accessProfile = defaultApplicationAccessProfile("");
+  const values = assistantPublicValues(original);
+  const email = "prepared@sa.stackit.cloud";
+  values["assistant.platform_service_account_emails"] = [email];
+  const request =
+    "Public und Corporate: Kubernetes für Besteller und Service Account ergänzen.";
+  const context = {
+    templates: values.projectTemplates as Record<string, unknown>,
+    originalRequest: request,
+    services: ["ske"],
+    permissionTarget: "both" as const,
+    permissionNames: [...applicationProjectPermissionNames],
+    platformServiceAccountEmails: [email],
+    english: false,
+  };
+  const first = buildMultiTemplatePermissionDialogue(context);
+  const called = vi.fn();
+  const result = await collectionModel(null, null, called).converse(
+    knowledgeSelection(),
+    values,
+    [
+      { role: "user", content: request },
+      { role: "assistant", content: multiTemplatePermissionHistoryText(first) },
+    ],
+    `${first.questions[0]!.text}\nMeine Antwort: Der Platform Service Account`,
+  );
+  expect(called).not.toHaveBeenCalled();
+  expect(result.questions).toEqual([]);
+  const updated = applyAssistantChanges(original, result.changes);
+  for (const t of updated.projectTemplates!)
+    if (t.kind === "public" || t.kind === "corporate")
+      expect(t.accessProfile).toMatchObject({ initialOwnerEmail: email });
+});

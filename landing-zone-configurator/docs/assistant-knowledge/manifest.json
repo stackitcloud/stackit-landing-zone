@@ -500,8 +500,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 4,
-      "checkedOn": "2026-10-27",
+      "version": 5,
+      "checkedOn": "2026-10-29",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"
@@ -518,8 +518,7 @@
       "sources": [
         "src/variables.tf",
         "src/modules/landing-zone/variables.tf",
-        "src/main.tf",
-        "landing-zone-configurator/app/packages/domain/src/common-document.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/application-permission-dialogue.ts",
         "landing-zone-configurator/app/packages/domain/src/project-templates.ts",
         "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
         "src/modules/landing-zone/3-network.tf",
@@ -527,6 +526,7 @@
         "landing-zone-configurator/app/packages/domain/src/application-access.ts",
         "landing-zone-configurator/app/packages/domain/src/application-workload-permissions.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/application-access.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/platform-owner-context.ts",
         "landing-zone-configurator/app/packages/domain/src/project-permissions.generated.ts"
       ],
       "externalSources": [
