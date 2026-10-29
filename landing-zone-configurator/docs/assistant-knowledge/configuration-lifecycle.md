@@ -25,17 +25,17 @@ Never promise unchanged State/no data loss after failure; never reorder.
 Withdrawn source blocks execution; unresolved Recovery blocks upgrades. Operator
 supplies reviewed recovery package; no manual bypass/invented hashes/arbitrary Git.
 
-Template: Platform Owner publishes same-family forward upgrade path.
-Keep same order/project/State/backend and old answers; ask new required answers.
-Confirm desired snapshot, then fresh Plan/separate Apply. Standard upgrades BLOCK
+Template: Platform Owner publishes same-family forward path.
+Keep order/project/State/backend/answers; ask new required answers.
+Confirm desired snapshot; fresh Plan/separate Apply. Standard upgrades BLOCK
 deletions/replacements/unknown evidence; no checkbox override.
 Sensitive IAM/keys/network/service/availability: published policy.
 Stricter old/new policy wins; both-direct+explicit sensitive self-service permits
 requester, otherwise approval binds Plan/artifact/candidate hash.
 Platform Apply changes shared firewall/routes for ALL dependent Applications;
 No per-app old firewall. Gate blocks destructive/unknown shared changes; sensitive
-confirmation binds Plan/State/dependencies. Afterwards publish actual approved
-contract path; template version may remain.
+confirmation binds Plan/State/dependencies. Publish actual successful contract path; requester explicitly adopts it,
+never automatic; same template possible.
 Org/placement/SNA/backend migration: separate.
 Chat cannot publish/upgrade/unlock/execute.
 

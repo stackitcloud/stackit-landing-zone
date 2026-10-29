@@ -2348,6 +2348,11 @@ export function assistantApplicationUpgradeFailures(
             "actual-contract",
             /(?:tatsächlich|erfolgreich|entstand)[^.!?\n]{0,100}(?:Vertrag|contract)|(?:Vertrag|contract)[^.!?\n]{0,100}(?:tatsächlich|erfolgreich|entstand)/i,
           ],
+          ["published-path", /veröffentlich|freigegeben[^.!?\n]{0,60}Pfad/i],
+          [
+            "explicit-binding",
+            /keine automatische[^.!?\n]{0,40}(?:Bindung|Übernahme)|(?:Vertragsbindung|Bindung|Vertrag)[^.!?\n]{0,100}(?:nicht automatisch|explizit|ausdrücklich)|(?:Besteller|Application.?Owner)[^.!?\n]{0,100}(?:übernimmt|übernehmen|bestätigt|bestätigen)[^.!?\n]{0,80}(?:explizit|ausdrücklich|bewusst)/i,
+          ],
         ];
   const failures = checks
     .filter(([, pattern]) => !pattern.test(text))
