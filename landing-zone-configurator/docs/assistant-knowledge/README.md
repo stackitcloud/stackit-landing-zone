@@ -153,6 +153,8 @@ contract. Transport tests check this instruction's delivery; real-model factual
 criteria still decide whether the resulting answers qualify.
 Firewall access/bootstrap workflow overviews also use reviewed native-field metadata and bounded access/phase facts after semantic intent classification. This avoids a second generative request for a static overview. Admin login, API credentials and secure operator bindings remain separate; the overview never activates bootstrap, reads secrets or starts execution. Other advice retains the normal scoped generation path.
 
+Template-version, platform-contract and execution-source upgrade advice use three closed semantic tasks. Only current-turn configuration-lifecycle advice selects their reviewed, bounded workflow descriptions; historical intent, proposals and other topics do not. These responses explain retained identity, explicit binding, fresh Plan and separate Apply, plus the distinct shared-platform and recovery boundaries, without a second generative call. They never inspect or change an order. Other advice keeps scoped answer generation.
+
 For native field overviews, semantic intent classification selects the existing
 reviewed-metadata response when available, rather than generating the same static
 contract again. VPN, DevOps Git and DNS field/role semantics use this path with a
