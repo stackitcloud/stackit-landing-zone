@@ -49,6 +49,7 @@ import {
   type AssistantModelServing,
   type AssistantStream,
 } from "./model-serving.js";
+import { preparedPlatformServiceAccountEmails } from "./platform-owner-context.js";
 
 export class AssistantError extends Error {
   constructor(
@@ -759,12 +760,27 @@ export class AssistantConversations {
               [id],
             )
           ).rows[0];
-          return { row, values, context, document };
+          const platformServiceAccountEmails =
+            await preparedPlatformServiceAccountEmails(
+              client,
+              session,
+              id,
+              values.organization_id,
+            );
+          return {
+            row,
+            values,
+            context,
+            document,
+            platformServiceAccountEmails,
+          };
         },
       );
       const identity = await new StackitIdentities(this.pool).status(session);
       const modelValues = {
         ...base.values,
+        "assistant.platform_service_account_emails":
+          base.platformServiceAccountEmails,
         "assistant.user_email": identity.verified
           ? (identity.identity?.email ?? null)
           : null,

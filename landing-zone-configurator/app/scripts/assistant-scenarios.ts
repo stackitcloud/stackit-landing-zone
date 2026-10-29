@@ -16,6 +16,13 @@ import {
   textValue,
 } from "@lzc/domain";
 import {
+  applyMultiTemplatePermissionAnswers,
+  buildMultiTemplatePermissionDialogue,
+  initialMultiTemplatePermissionState,
+  type MultiTemplatePermissionContext,
+  multiTemplatePermissionHistoryText,
+} from "../apps/api/src/assistant/application-permission-dialogue.js";
+import {
   applyAssistantChanges,
   proposeAssistantAccess,
   validateDialogue,
@@ -165,7 +172,10 @@ export type AssistantScenario = {
     | "both-kubernetes"
     | "both-kubernetes-empty-owner"
     | "both-kubernetes-clarify"
-    | "both-kubernetes-followup";
+    | "both-kubernetes-followup"
+    | "both-kubernetes-mixed-legacy"
+    | "both-kubernetes-mixed-owner"
+    | "both-kubernetes-mixed-confirm";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
   applicationUpgrade?: "template" | "platform";
@@ -379,6 +389,20 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       },
     ],
   },
+  ...(["mixed-legacy", "mixed-owner", "mixed-confirm"] as const).map(
+    (stage) => ({
+      id: `application-access-both-kubernetes-${stage}`,
+      topic: "project-templates",
+      fixture: "corporate-ipv4" as const,
+      applicationAccess: `both-kubernetes-${stage}` as const,
+      message:
+        stage === "mixed-legacy"
+          ? "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate"
+          : stage === "mixed-owner"
+            ? "Der Platform Service Account"
+            : "Workload-Umstellung für central bestätigen",
+    }),
+  ),
   {
     id: "corporate-ipv4-automatic-advice",
     topic: "project-templates",
@@ -1060,7 +1084,8 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     const corporate = draft.projectTemplates![0]!;
     corporate.accessProfile = {
       ...defaultApplicationAccessProfile(
-        scenario.applicationAccess === "both-kubernetes-empty-owner"
+        scenario.applicationAccess === "both-kubernetes-empty-owner" ||
+          scenario.applicationAccess?.startsWith("both-kubernetes-mixed-")
           ? ""
           : "platform-owner@example.test",
       ),
@@ -1094,6 +1119,11 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
         key: "second-corporate",
         name: "Second Corporate",
       });
+  }
+  if (scenario.applicationAccess?.startsWith("both-kubernetes-mixed-")) {
+    const corporate = draft.projectTemplates!.find((t) => t.key === "central")!;
+    delete corporate.accessProfile;
+    corporate.settings.automation_role = "owner";
   }
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
@@ -1138,6 +1168,50 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
           ]
         : [],
   };
+  if (
+    scenario.applicationAccess?.startsWith("both-kubernetes-mixed-") ||
+    scenario.applicationAccess === "both-kubernetes-followup"
+  ) {
+    values["assistant.platform_service_account_emails"] = [
+      "platform@sa.stackit.cloud",
+    ];
+    const request =
+      "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate";
+    const context: MultiTemplatePermissionContext = {
+      templates: objectValue(values.projectTemplates as JsonValue),
+      originalRequest: request,
+      services: ["ske"],
+      permissionTarget: "both",
+      permissionNames: [...applicationProjectPermissionNames],
+      platformServiceAccountEmails: ["platform@sa.stackit.cloud"],
+      english: false,
+    };
+    let state = initialMultiTemplatePermissionState();
+    const initial = buildMultiTemplatePermissionDialogue(context, state);
+    if (scenario.applicationAccess !== "both-kubernetes-mixed-legacy") {
+      history.length = 0;
+      history.push(
+        { role: "user", content: request },
+        {
+          role: "assistant",
+          content: multiTemplatePermissionHistoryText(initial),
+        },
+      );
+    }
+    if (scenario.applicationAccess === "both-kubernetes-mixed-confirm") {
+      const ownerAnswer = "Der Platform Service Account";
+      state = applyMultiTemplatePermissionAnswers(context, state, ownerAnswer);
+      history.push(
+        { role: "user", content: ownerAnswer },
+        {
+          role: "assistant",
+          content: multiTemplatePermissionHistoryText(
+            buildMultiTemplatePermissionDialogue(context, state),
+          ),
+        },
+      );
+    }
+  }
   if (scenario.id === "governance-folder-scope-followup") {
     const question = proposeAssistantAccess(
       values,
@@ -1319,6 +1393,73 @@ export function validateAssistantScenario(
       failures.push("application_access_invented_contract");
     if (dialogue.changes.length)
       failures.push("application_access_advice_mutated");
+  } else if (scenario.applicationAccess?.startsWith("both-kubernetes-mixed-")) {
+    if (scenario.applicationAccess === "both-kubernetes-mixed-confirm") {
+      const expected = structuredClone(fixture.draft);
+      const additions = applicationProjectPermissionNames.filter((p) =>
+        p.startsWith("ske."),
+      );
+      for (const template of expected.projectTemplates!) {
+        if (template.kind === "corporate") {
+          delete template.settings.automation_role;
+          template.accessProfile = defaultApplicationAccessProfile(
+            "platform@sa.stackit.cloud",
+          );
+        }
+        if (template.accessProfile?.mode !== "granular") throw Error("fixture");
+        template.accessProfile.initialOwnerEmail = "platform@sa.stackit.cloud";
+        template.accessProfile.permissions = [
+          ...new Set([...template.accessProfile.permissions, ...additions]),
+        ];
+        template.accessProfile.automationPermissions = [
+          ...new Set([
+            ...template.accessProfile.automationPermissions,
+            ...additions,
+          ]),
+        ];
+      }
+      try {
+        if (
+          !dialogue.changes.length ||
+          dialogue.questions.length ||
+          !isDeepStrictEqual(
+            applyAssistantChanges(fixture.draft, dialogue.changes),
+            expected,
+          )
+        )
+          failures.push("application_access_mixed_confirm_preservation_failed");
+      } catch {
+        failures.push("application_access_mixed_confirm_invalid");
+      }
+    } else {
+      if (dialogue.changes.length)
+        failures.push("application_access_legacy_unconfirmed_change");
+      const owners = dialogue.questions.filter((q) =>
+        /gemeinsamen zentralen initialen Owner/.test(q.text),
+      );
+      const legacy = dialogue.questions.filter((q) =>
+        /Workload-Profil ersetzen/.test(q.text),
+      );
+      if (
+        owners.length !==
+          (scenario.applicationAccess === "both-kubernetes-mixed-owner"
+            ? 0
+            : 1) ||
+        legacy.length !== 1 ||
+        dialogue.questions.length !== owners.length + legacy.length
+      )
+        failures.push(
+          "application_access_mixed_shared_owner_or_confirmation_missing",
+        );
+      if (
+        !/Owner/.test(dialogue.explanation) ||
+        !/Workload/.test(dialogue.explanation) ||
+        /Welches Projekt-Rechteprofil/.test(
+          dialogue.questions.map((q) => q.text).join(" "),
+        )
+      )
+        failures.push("application_access_mixed_recommendation_missing");
+    }
   } else if (scenario.applicationAccess?.startsWith("both-kubernetes")) {
     if (scenario.applicationAccess === "both-kubernetes-clarify") {
       if (
@@ -1361,7 +1502,7 @@ export function validateAssistantScenario(
           );
         if (scenario.applicationAccess === "both-kubernetes-empty-owner") {
           if (
-            dialogue.questions.length !== 2 ||
+            dialogue.questions.length !== 1 ||
             !dialogue.questions.every((q) => /owner/i.test(q.text))
           )
             failures.push("application_access_missing_owner_not_clarified");

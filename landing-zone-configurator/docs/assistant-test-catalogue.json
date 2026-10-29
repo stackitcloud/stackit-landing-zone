@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "c78a9a48fb8f94bdf670c8a8e2e173f8463d5e6556a89edc1a74e7068f5f714d",
+  "knowledgeSha256": "fcd02f300787b47996fc4f346a2303afdc4b6a21874e06341fe44b9d5c4323fa",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "3ae08ac42c83406e5ba519316766d4082a8d254323d1df6a9f71eac1194d7948",
+    "scripts/assistant-scenarios.ts": "b5b8c87dd35f29d323823e0c4e837d01dd922da97f93c364bafd557d6e86721b",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "33abbaa4b37f6d3f1fee3507eab5fab7b4620714a05f15f15a355d1acc939952",
+  "suiteSha256": "f634d2c1bff93be543c831225a6335245fe0588e2a8634b3505efa5eaf52cc5a",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5542,6 +5542,48 @@
               "content": "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.\nAngefragte Dienste: ske; Empfänger: Besteller und Application-Service-Account; gewählte Vorlagen: public=?, corporate=?. Bestehende Rechte und zentrale Owner bleiben erhalten. Noch nichts gespeichert; es wird nichts ausgeführt. Vor Veröffentlichung ist ein gültiger initialer Owner erforderlich.\nWelche corporate-Vorlage soll geändert werden? (2: central, second-corporate)"
             }
           ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-both-kubernetes-mixed-legacy",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "both-kubernetes-mixed-legacy",
+          "message": "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-both-kubernetes-mixed-owner",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "both-kubernetes-mixed-owner",
+          "message": "Der Platform Service Account",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-access-both-kubernetes-mixed-confirm",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "both-kubernetes-mixed-confirm",
+          "message": "Workload-Umstellung für central bestätigen",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

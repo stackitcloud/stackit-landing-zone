@@ -24,6 +24,10 @@ import type {
 } from "../credentials/catalogues.js";
 import { applicationAccessOverview } from "./application-access.js";
 import {
+  buildMultiTemplatePermissionDialogue,
+  resumeMultiTemplatePermissionDialogue,
+} from "./application-permission-dialogue.js";
+import {
   assistantAccessPaths,
   assistantDnsZoneNamesSchema,
   assistantDnsZoneSchema,
@@ -833,6 +837,40 @@ export class AssistantModelServing {
     const permissionServices = [
       ...new Set(permissionNames.map((p) => p.split(".")[0] ?? p)),
     ].sort();
+    const multiPermissionBase = {
+      templates: objectValue(
+        current.projectTemplates as Parameters<typeof objectValue>[0],
+      ),
+      permissionNames,
+      platformServiceAccountEmails: Array.isArray(
+        current["assistant.platform_service_account_emails"],
+      )
+        ? current["assistant.platform_service_account_emails"].filter(
+            (email): email is string => typeof email === "string",
+          )
+        : [],
+      ...(typeof current["assistant.user_email"] === "string"
+        ? { verifiedHumanEmail: current["assistant.user_email"] }
+        : {}),
+    };
+    if (
+      current["assistant.platform_draft"] === true &&
+      context.rules.some((rule) => rule.id === "project-templates")
+    ) {
+      try {
+        const resumed = resumeMultiTemplatePermissionDialogue(
+          multiPermissionBase,
+          history,
+          message,
+        );
+        if (resumed) {
+          stream?.onText(resumed.explanation);
+          return resumed;
+        }
+      } catch {
+        throw new AssistantInferenceError("intent_evidence");
+      }
+    }
     const accessTemplates = objectValue(
       current.projectTemplates as Parameters<typeof objectValue>[0],
     );
@@ -932,135 +970,6 @@ export class AssistantModelServing {
         }
       return null;
     })();
-    const multiPermissionExplanation = (
-      services: string[],
-      target: string,
-      english: boolean,
-      chosen: Record<string, string>,
-    ) =>
-      (english
-        ? "Reviewable service-permission additions for Public and Corporate templates."
-        : "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.") +
-      "\n" +
-      (english ? "Requested services: " : "Angefragte Dienste: ") +
-      services.join(", ") +
-      "; " +
-      (english ? "recipient: " : "Empfänger: ") +
-      (target === "requester"
-        ? english
-          ? "requester"
-          : "Besteller"
-        : target === "automation"
-          ? english
-            ? "Application service account"
-            : "Application-Service-Account"
-          : english
-            ? "requester and Application service account"
-            : "Besteller und Application-Service-Account") +
-      "; " +
-      (english ? "selected templates: " : "gewählte Vorlagen: ") +
-      ["public", "corporate"]
-        .map((kind) => `${kind}=${chosen[kind] ?? "?"}`)
-        .join(", ") +
-      ". " +
-      (english
-        ? "Existing permissions and central owners are preserved. Nothing is saved or executed. A valid initial owner is required before publication."
-        : "Bestehende Rechte und zentrale Owner bleiben erhalten. Noch nichts gespeichert; es wird nichts ausgeführt. Vor Veröffentlichung ist ein gültiger initialer Owner erforderlich.");
-    const multiPermissionQuestions = (
-      chosen: Record<string, string>,
-      english: boolean,
-    ) =>
-      ["public", "corporate"].flatMap((kind) => {
-        if (chosen[kind]) return [];
-        const matching = Object.values(
-          objectValue(
-            current.projectTemplates as Parameters<typeof objectValue>[0],
-          ),
-        ).filter((value) => objectValue(value).kind === kind);
-        return matching.length === 1 ? [] : [kindQuestion(kind, english)];
-      });
-    const unwrapMultiAnswers = (
-      text: string,
-      questions: { text: string; options?: string[] }[],
-    ) => {
-      const blocks = text.trim().split("\n\n");
-      const wrapped = blocks.map((block) => {
-        const question = questions.find((q) =>
-          block.startsWith(`${q.text}\nMeine Antwort: `),
-        );
-        return question
-          ? {
-              selection: block
-                .slice(`${question.text}\nMeine Antwort: `.length)
-                .trim(),
-              question: question.text,
-            }
-          : null;
-      });
-      if (wrapped.every((value) => value !== null))
-        return new Set(wrapped.map((value) => value.question)).size ===
-          wrapped.length
-          ? wrapped
-          : null;
-      if (blocks.length !== 1 || text.includes("\nMeine Antwort:")) return null;
-      return [{ selection: text.trim(), question: null }];
-    };
-    const pendingMultiPermissionSelection = (() => {
-      if (history.at(-1)?.role !== "assistant") return null;
-      const all = Object.entries(
-        objectValue(
-          current.projectTemplates as Parameters<typeof objectValue>[0],
-        ),
-      );
-      const preliminaryAnswers = unwrapMultiAnswers(message, [
-        ...[false, true].flatMap((english) =>
-          ["public", "corporate"].map((kind) => kindQuestion(kind, english)),
-        ),
-      ]);
-      if (
-        !preliminaryAnswers?.length ||
-        !preliminaryAnswers.every((answer) =>
-          all.some(([key, value]) =>
-            [
-              key,
-              String(objectValue(value).name ?? key),
-              `${String(objectValue(value).name ?? key)} (${key})`,
-            ].includes(answer.selection),
-          ),
-        )
-      )
-        return null;
-      for (
-        let index = Math.max(0, history.length - 8);
-        index < history.length - 1;
-        index++
-      ) {
-        const entry = history[index],
-          reply = history[index + 1];
-        if (
-          entry?.role !== "user" ||
-          reply?.role !== "assistant" ||
-          !/\bpublic\b/i.test(entry.content) ||
-          !/\bcorporate\b/i.test(entry.content)
-        )
-          continue;
-        if (
-          !reply.content.startsWith(
-            "Reviewable service-permission additions for Public and Corporate templates.\n",
-          ) &&
-          !reply.content.startsWith(
-            "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.\n",
-          )
-        )
-          continue;
-        return {
-          source: `history-${index}`,
-          userMessage: entry.content,
-          index,
-        };
-      }
-      return null;
-    })();
     const applicationAccessScope = z.strictObject({
       key: z
         .enum([...existingTemplateKeys, "__select_by_kind__"])
@@ -1149,9 +1058,6 @@ export class AssistantModelServing {
             "current",
             ...(pendingPermissionSelection
               ? [pendingPermissionSelection.source]
-              : []),
-            ...(pendingMultiPermissionSelection
-              ? [pendingMultiPermissionSelection.source]
               : []),
           ])
           .default("current")
@@ -1472,13 +1378,6 @@ export class AssistantModelServing {
                 role,
                 content,
               })),
-              pendingMultiPermissionSelection: pendingMultiPermissionSelection
-                ? {
-                    ...pendingMultiPermissionSelection,
-                    instruction:
-                      "Continue only this open original service request after the exact offered template selection; templateKind=both, retain both kinds and services/permissionTarget, serviceEvidenceSource=source and templateEvidence from original userMessage.",
-                  }
-                : null,
               pendingPermissionSelection: pendingPermissionSelection
                 ? {
                     source: pendingPermissionSelection.source,
@@ -1785,85 +1684,7 @@ export class AssistantModelServing {
       };
       let { key } = selected;
       let serviceSource = message;
-      const chosenMultiTemplates: Record<string, string> = {};
-      if (
-        selected.serviceEvidenceSource !== "current" &&
-        pendingMultiPermissionSelection?.source ===
-          selected.serviceEvidenceSource
-      ) {
-        if (
-          selected.choice !== "add-service-permissions" ||
-          selected.templateKind !== "both"
-        )
-          throw new AssistantInferenceError("intent_evidence");
-        const english = classifiedIntent.applicationAccessLanguage === "en";
-        const all = Object.entries(
-          objectValue(
-            current.projectTemplates as Parameters<typeof objectValue>[0],
-          ),
-        );
-        for (
-          let i = pendingMultiPermissionSelection.index + 1;
-          i < history.length;
-          i += 2
-        ) {
-          const reply = history[i];
-          const questions = multiPermissionQuestions(
-            chosenMultiTemplates,
-            english,
-          );
-          const expected =
-            multiPermissionExplanation(
-              selected.services,
-              selected.permissionTarget,
-              english,
-              chosenMultiTemplates,
-            ) +
-            "\n" +
-            questions.map((q) => q.text).join("\n");
-          if (
-            !questions.length ||
-            reply?.role !== "assistant" ||
-            reply.content !== expected
-          )
-            throw new AssistantInferenceError("intent_evidence");
-          const answer =
-            i + 1 < history.length
-              ? history[i + 1]
-              : { role: "user", content: message };
-          if (answer?.role !== "user")
-            throw new AssistantInferenceError("intent_evidence");
-          const selections = unwrapMultiAnswers(answer.content, questions);
-          if (!selections?.length)
-            throw new AssistantInferenceError("intent_evidence");
-          for (const selection of selections) {
-            const matches = all.filter(([candidate, value]) => {
-              const data = objectValue(value);
-              return (
-                !chosenMultiTemplates[String(data.kind)] &&
-                questions.some(
-                  (q) =>
-                    (selection.question === null ||
-                      q.text === selection.question) &&
-                    q.options?.includes(
-                      `${String(data.name ?? candidate)} (${candidate})`,
-                    ),
-                ) &&
-                [
-                  candidate,
-                  String(data.name ?? candidate),
-                  `${String(data.name ?? candidate)} (${candidate})`,
-                ].includes(selection.selection)
-              );
-            });
-            if (matches.length !== 1)
-              throw new AssistantInferenceError("intent_evidence");
-            chosenMultiTemplates[String(objectValue(matches[0]![1]).kind)] =
-              matches[0]![0];
-          }
-        }
-        serviceSource = pendingMultiPermissionSelection.userMessage;
-      } else if (selected.serviceEvidenceSource !== "current") {
+      if (selected.serviceEvidenceSource !== "current") {
         if (
           selected.choice !== "add-service-permissions" ||
           !pendingPermissionSelection ||
@@ -2007,121 +1828,13 @@ export class AssistantModelServing {
           /\b(?:public|corporate)\s+(?:nicht|not)\b/i.test(serviceSource)
         )
           throw new AssistantInferenceError("intent_evidence");
-        const all = objectValue(
-          current.projectTemplates as Parameters<typeof objectValue>[0],
-        );
-        const english = classifiedIntent.applicationAccessLanguage === "en";
-        const changes: {
-          path: string;
-          operation: "merge";
-          value: Record<string, unknown>;
-        }[] = [];
-        const questions: { path: string; text: string; options: string[] }[] =
-          [];
-        const proposals: Record<string, unknown> = {};
-        let unresolvedTarget = false;
-        let ambiguousTargets = false;
-        for (const kind of ["public", "corporate"] as const) {
-          const matches = Object.entries(all).filter(
-            ([candidate, value]) =>
-              objectValue(value).kind === kind &&
-              (!chosenMultiTemplates[kind] ||
-                candidate === chosenMultiTemplates[kind]),
-          );
-          if (matches.length !== 1) {
-            unresolvedTarget = true;
-            ambiguousTargets = true;
-            questions.push(kindQuestion(kind, english));
-            continue;
-          }
-          const [targetKey, value] = matches[0]!;
-          const template = objectValue(value);
-          const parsed = applicationAccessProfileSchema.safeParse(
-            template.accessProfile,
-          );
-          if (!parsed.success) {
-            unresolvedTarget = true;
-            questions.push({
-              path: "projectTemplates",
-              text: english
-                ? `Which project access profile and central initial owner should ${targetKey} use?`
-                : `Welches Projekt-Rechteprofil und welcher zentrale initiale Owner sollen für ${targetKey} verwendet werden?`,
-              options: [],
-            });
-            continue;
-          }
-          const previous = parsed.data;
-          if (previous.mode === "owner") continue;
-          const additions = permissionNames.filter((permission) =>
-            selected.services.includes(permission.split(".")[0] ?? permission),
-          );
-          const profile = applicationAccessProfileSchema.parse({
-            ...previous,
-            permissions:
-              selected.permissionTarget === "automation"
-                ? previous.permissions
-                : [...new Set([...previous.permissions, ...additions])],
-            automationPermissions:
-              selected.permissionTarget === "requester"
-                ? previous.automationPermissions
-                : [
-                    ...new Set([
-                      ...previous.automationPermissions,
-                      ...additions,
-                    ]),
-                  ],
-          });
-          validateApplicationAccessProfile(
-            profile,
-            objectValue(template.settings),
-            objectValue(objectValue(template.parameterPolicy).fields)
-              .role_assignments,
-            false,
-          );
-          if (
-            unknownApplicationPermissions(profile, livePermissionNames).length
-          )
-            throw new AssistantInferenceError("intent_evidence");
-          if (!isDeepStrictEqual(previous, profile))
-            proposals[targetKey] = { accessProfile: profile };
-          if (!z.email().safeParse(previous.initialOwnerEmail).success)
-            questions.push({
-              path: "projectTemplates",
-              text: english
-                ? `Which central user or service-account email should be the initial owner of ${targetKey} before publication?`
-                : `Welche zentrale Benutzer- oder Service-Account-E-Mail soll vor der Veröffentlichung initialer Owner von ${targetKey} werden?`,
-              options: [],
-            });
-        }
-        if (ambiguousTargets)
-          questions.splice(
-            0,
-            questions.length,
-            ...multiPermissionQuestions(chosenMultiTemplates, english),
-          );
-        // Do not partially modify one kind while the other target/profile is unclear.
-        if (!unresolvedTarget && Object.keys(proposals).length)
-          changes.push({
-            path: "projectTemplates",
-            operation: "merge",
-            value: proposals,
-          });
-        for (const change of changes)
-          assistantEditorChangeSchema("projectTemplates").parse(change);
-        const dialogue = validateDialogue(
-          {
-            explanation: multiPermissionExplanation(
-              selected.services,
-              selected.permissionTarget,
-              english,
-              chosenMultiTemplates,
-            ),
-            questions,
-            changes,
-            references: ["project-templates"],
-          },
-          context.rules.map((rule) => rule.id),
-        );
+        const dialogue = buildMultiTemplatePermissionDialogue({
+          ...multiPermissionBase,
+          originalRequest: serviceSource,
+          services: selected.services,
+          permissionTarget: selected.permissionTarget,
+          english: classifiedIntent.applicationAccessLanguage === "en",
+        });
         stream?.onText(dialogue.explanation);
         return dialogue;
       }

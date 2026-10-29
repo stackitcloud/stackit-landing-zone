@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Project templates/IAM.
+Templates/IAM.
 
 ## Accelerator Contract
 
@@ -12,36 +12,36 @@ accessProfile: granular/owner; central owner/automation.
 Automatic=null. Corporate Accelerator reads attached regional SNA default_prefix_length
 before Plan; numeric prefix to Provider0.114, preserves DNS.
 Provider0.114 rejects null prefix WITH DNS (even []): Invalid IPv4 configuration.
-Accelerator resolves it; no provider-upgrade fix. Explicit overrides win; Public provider sizing.
+Accelerator resolves it; not provider upgrade. Overrides win; Public provider sizing.
 
 ## Dependencies
 
-Governance, verified identity, same-region Corporate SNA, separate credentials.
+Verified identity/governance, same-region Corporate SNA, separate credentials.
 Public!=Corporate spoke. Namespace services require Platform Kubernetes.
 
 ## Dialogue
 
 New:name/kind/region/settings; reuse keys; delegate names only.
-Central=Corporate; Internet-only=Public; local network=true. Merge, retain Audit/Git,
-Omit unrequested services; ask missing choices. "100 projects"=capacity, not examples/quota;
-Reserve platform/firewall space; no free-capacity promise. /26: network_prefix_length=26;
-Automatic=null; no mandatory /24/numeric choice/disabled DNS. Preserve other settings.
-New: granular recommended; owner customer choice.
+Central=Corporate; Internet-only=Public; local network=true. Preserve Audit/Git and
+unrequested settings. "100 projects"=capacity, not examples/quota; reserve platform space.
+/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.
+New: granular; Owner optional.
 IDP, Configurator roles and deployed project IAM are separate.
-Immutable accessProfile, never order input. Granular schemaVersion=1,mode=granular:
+Immutable accessProfile, not order input. Granular schemaVersion=1,mode=granular:
 initialOwnerEmail=user/SA, not requester; permissions/automationPermissions: official IDs,
 e.g. iaas.server.get; no compute.*. Default144: VM,Object Storage,Observability,Secrets Manager;
 VM-only narrower. All project rights selectable, including IAM/admin.
 Catalogue IDs only. ADD SKE=ske union into requested lists (default both);
 preserve owner/rights. Public AND Corporate=both; clarify duplicates.
-SKE IAM!=Kubernetes RBAC.
-IAM grants can escalate; excluded from defaults.
+SKE IAM!=Kubernetes RBAC; IAM escalation excluded from defaults.
 Owner={schemaVersion:1,mode:owner}: requester/automation have all project rights;
 IAM/project powers; no immutable central audit/routing claim.
-Atomic profile; preserve other fields. No legacy custom_roles/role_assignments/
-automation_role/role-context combination. ADD preserves even empty owner; prepare rights first.
-Publication needs valid owner; new profile asks missing owner. Absent profile preserves
-legacy owner; inherited grants stay additive.
+Atomic profile; no legacy role combination. ADD preserves existing owners/rights.
+For Public+Corporate ask ONE common missing owner; explicit owners remain.
+"Platform service account" resolves only prepared config/org-bound email; ambiguity asks.
+Recommend workload+requested service rights. Legacy conversion requires explicit confirmation
+of removed role settings/context and native Owner defaults; never silently downgrade.
+Publication needs owner; grants additive. Nothing saved/executed.
 
 ## Examples
 
@@ -49,12 +49,12 @@ SNA /28: Automatic /28+DNS.
 
 ## Limits
 
-Versions/State bound; review source/publication/migration; never delete State.
-Match region/area/DNS. Empty roles/ACLs prove no security. Rights need live acceptance, not mock Plans. Owner required.
+Versions/State bound; review migrations; never delete State.
+Match region/area/DNS. Empty roles/ACLs prove no security. Rights need live acceptance, not mocks. Owner required.
 
 ## Credentials
 
-Separate access/runtime grants; no secrets/profile IDs in chat/exports.
+Separate runtime grants; no secrets/profile IDs in chat/exports.
 
 ## Sources
 

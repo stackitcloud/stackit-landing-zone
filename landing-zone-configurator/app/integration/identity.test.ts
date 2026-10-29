@@ -143,6 +143,138 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL session and tenant boundaries", () => {
+  it("supplies only exact saved-configuration-bound Platform SA email metadata to the Assistant", async () => {
+    const configurations = new Configurations(pool);
+    const org = randomUUID();
+    const draft = editCommonInput(
+      createEditorConfiguration("standalone", randomUUID()),
+      "organization_id",
+      org,
+    );
+    const stored = await configurations.create(alice, draft);
+    expect(stored.id).not.toBe(draft.id);
+    const profileIds: string[] = [],
+      preparationIds: string[] = [];
+    try {
+      const add = async (
+        email: string,
+        options: {
+          configurationId?: string;
+          organizationId?: string;
+          profileOwner?: Session;
+          preparationOwner?: Session;
+          state?: string;
+          keyMismatch?: boolean;
+          idMismatch?: boolean;
+          lastCheck?: unknown;
+        } = {},
+      ) => {
+        const profile = randomUUID(),
+          profileOwner = options.profileOwner ?? alice,
+          preparationOwner = options.preparationOwner ?? alice;
+        profileIds.push(profile);
+        const preparationId = randomUUID();
+        preparationIds.push(preparationId);
+        await migration.query(
+          "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id,state,last_check) VALUES($1,$2,$3,'Private profile name',$4,'current-key',$5,$6)",
+          [
+            profile,
+            profileOwner.tenantId,
+            profileOwner.userId,
+            email,
+            options.state ?? "stored",
+            options.lastCheck ?? null,
+          ],
+        );
+        await migration.query(
+          "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,credential_id,name,manifest) VALUES($1,$2,$3,$4,'Private preparation name',$5)",
+          [
+            preparationId,
+            preparationOwner.tenantId,
+            preparationOwner.userId,
+            profile,
+            {
+              source: { configurationId: options.configurationId ?? stored.id },
+              organization: { id: options.organizationId ?? org },
+              credential: {
+                id: options.idMismatch ? randomUUID() : profile,
+                keyId: options.keyMismatch ? "previous-key" : "current-key",
+              },
+            },
+          ],
+        );
+      };
+      await add("bound@sa.stackit.cloud", {
+        lastCheck: { status: "failed", organizationId: org },
+      });
+      await add("bound@sa.stackit.cloud");
+      await add("another-bound@sa.stackit.cloud");
+      await add("document-id@sa.stackit.cloud", { configurationId: draft.id });
+      await add("other-config@sa.stackit.cloud", {
+        configurationId: randomUUID(),
+      });
+      await add("other-org@sa.stackit.cloud", { organizationId: randomUUID() });
+      await add("old-key@sa.stackit.cloud", { keyMismatch: true });
+      await add("wrong-id@sa.stackit.cloud", { idMismatch: true });
+      await add("pending@sa.stackit.cloud", { state: "pending" });
+      await add("foreign@sa.stackit.cloud", {
+        profileOwner: bob,
+        preparationOwner: bob,
+      });
+      await add("cross-owner@sa.stackit.cloud", { profileOwner: bob });
+      await add("human@example.test");
+      const model = {
+        converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+          explanation: "Unverbindliche Beratung.",
+          questions: [],
+          changes: [],
+          references: ["project-templates"],
+        })),
+      };
+      const assistant = new AssistantConversations(pool, model);
+      await assistant.send(
+        alice,
+        stored.id,
+        1,
+        "Welcher Plattform-Service-Account ist hinterlegt?",
+      );
+      const values = model.converse.mock.calls[0]?.[1];
+      expect(values).toMatchObject({
+        "assistant.platform_service_account_emails": [
+          "another-bound@sa.stackit.cloud",
+          "bound@sa.stackit.cloud",
+        ],
+      });
+      expect(JSON.stringify(values)).not.toContain("Private profile name");
+      expect(JSON.stringify(values)).not.toContain("Private preparation name");
+      expect(JSON.stringify(values)).not.toContain("current-key");
+      // Unsaved organisation edits must not reuse the saved preparation's identity.
+      await assistant.send(
+        alice,
+        stored.id,
+        1,
+        "Und für dieses Ziel?",
+        undefined,
+        editCommonInput(draft, "organization_id", randomUUID()),
+      );
+      expect(model.converse.mock.calls[1]?.[1]).toMatchObject({
+        "assistant.platform_service_account_emails": [],
+      });
+      expect((await configurations.get(alice, stored.id)).draft).toEqual(draft);
+    } finally {
+      await migration.query(
+        "DELETE FROM lzc.deployment_preparations WHERE id=ANY($1::uuid[])",
+        [preparationIds],
+      );
+      await migration.query(
+        "DELETE FROM lzc.credential_profiles WHERE id=ANY($1::uuid[])",
+        [profileIds],
+      );
+      await migration.query("DELETE FROM lzc.configurations WHERE id=$1", [
+        stored.id,
+      ]);
+    }
+  });
   it("reports incomplete model templates as proposal failures without losing successful history or saving a draft", async () => {
     const configurations = new Configurations(pool);
     const draft = createEditorConfiguration("standalone", randomUUID());
