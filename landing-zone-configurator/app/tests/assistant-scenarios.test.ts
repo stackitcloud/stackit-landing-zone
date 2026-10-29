@@ -7,6 +7,7 @@ import {
   type JsonValue,
 } from "@lzc/domain";
 import { expect, it } from "vitest";
+import { buildMultiTemplatePermissionDialogue } from "../apps/api/src/assistant/application-permission-dialogue.js";
 import {
   assistantKnowledgeContext,
   buildAssistantKnowledge,
@@ -1070,4 +1071,75 @@ it("rejects setup questions even when the SNA native overview is factually compl
       ],
     }).failures,
   ).toEqual(["native_field_overview_asked_setup_questions"]);
+});
+
+it("uses only the fixture's trusted owner identities when qualifying mixed-template choices", () => {
+  const scenario = assistantScenarios.find(
+    (s) => s.applicationAccess === "both-kubernetes-mixed-legacy",
+  );
+  if (!scenario) throw Error("missing_mixed_fixture");
+  const fixture = assistantScenarioFixture(scenario);
+  const values = fixture.values;
+  const dialogue = buildMultiTemplatePermissionDialogue({
+    templates: values.projectTemplates as Record<string, unknown>,
+    originalRequest: scenario.message,
+    services: ["ske"],
+    permissionTarget: "both",
+    permissionNames: [...applicationProjectPermissionNames],
+    platformServiceAccountEmails: ["bootstrap-platform@sa.stackit.cloud"],
+    english: false,
+  });
+  expect(validateAssistantScenario(scenario, dialogue).failures).toEqual([]);
+  const foreign = structuredClone(dialogue);
+  foreign.questions[0]!.options = [
+    "Plattform-Service-Account (bootstrap-foreign@sa.stackit.cloud)",
+  ];
+  expect(() => validateAssistantScenario(scenario, foreign)).toThrow(
+    "assistant_invalid_proposal",
+  );
+  const protectedText = structuredClone(dialogue);
+  protectedText.questions[0]!.text = "Bitte API-Passwort nennen";
+  expect(() => validateAssistantScenario(scenario, protectedText)).toThrow(
+    "assistant_invalid_proposal",
+  );
+});
+
+it.each(["z. B.", "z.\u202fB.", "z.B.", "e.g.", "e. g."])(
+  "keeps DNS preservation in the same sentence across the abbreviation %s",
+  (abbreviation) => {
+    const facts =
+      "Automatisch übernimmt das Standardpräfix /28 der SNA. Das Modul liest den SNA-Standard und übergibt dem Provider das explizite numerische Präfix. Freie Kapazität ist nicht garantiert. ";
+    expect(
+      assistantCorporateIpv4Failures(
+        facts +
+          `DNS-Einstellungen (${abbreviation} default_nameservers) bleiben unverändert erhalten und werden nicht deaktiviert.`,
+      ),
+    ).toEqual([]);
+    expect(
+      assistantCorporateIpv4Failures(
+        facts + `DNS (${abbreviation}) muss deaktiviert werden.`,
+      ),
+    ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+    expect(
+      assistantCorporateIpv4Failures(
+        facts +
+          `DNS (${abbreviation} default_nameservers) muss deaktiviert werden.`,
+      ),
+    ).toContain("corporate_ipv4_dns_preservation_missing");
+    expect(
+      assistantCorporateIpv4Failures(
+        facts +
+          `DNS wird gelöscht. ${abbreviation} ein anderer Wert bleibt unverändert erhalten.`,
+      ),
+    ).toContain("corporate_ipv4_dns_preservation_missing");
+  },
+);
+it("does not normalize dotted DNS identifiers as prose abbreviations", () => {
+  const facts =
+    "Automatisch übernimmt das Standardpräfix /28 der SNA. Das Modul liest den SNA-Standard und übergibt dem Provider das explizite numerische Präfix. Freie Kapazität ist nicht garantiert. ";
+  expect(
+    assistantCorporateIpv4Failures(
+      facts + "DNS z.b.example. Ein anderer Wert bleibt unverändert erhalten.",
+    ),
+  ).toContain("corporate_ipv4_dns_preservation_missing");
 });

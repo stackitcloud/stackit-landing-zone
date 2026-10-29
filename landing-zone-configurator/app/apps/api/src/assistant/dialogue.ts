@@ -312,14 +312,48 @@ export function assistantScalarFields() {
   );
 }
 
+export type AssistantOwnerIdentityContext = {
+  serviceAccountEmails: readonly string[];
+  verifiedUserEmail?: string | undefined;
+};
+
+function trustedOwnerChoice(
+  option: string,
+  context: AssistantOwnerIdentityContext | undefined,
+) {
+  if (!context) return false;
+  const match =
+    /^(Plattform-Service-Account|Platform service account|Verifiziert angemeldeter Benutzer|Verified signed-in user) \(([^()\r\n]+)\)$/.exec(
+      option,
+    );
+  if (!match || !z.email().safeParse(match[2]).success) return false;
+  return match[1] === "Plattform-Service-Account" ||
+    match[1] === "Platform service account"
+    ? match[2]!.endsWith("@sa.stackit.cloud") &&
+        context.serviceAccountEmails.includes(match[2]!)
+    : match[2] === context.verifiedUserEmail;
+}
+
 export function validateDialogue(
   input: unknown,
   ruleIds: readonly string[],
+  ownerIdentities?: AssistantOwnerIdentityContext,
 ): Dialogue {
   assertAssistantEditorValue(input);
   const result = dialogueSchema.parse(input);
   const editable = assistantQuestionFields();
   const scalar = assistantScalarFields();
+  // Only exact identity choices from server-scoped metadata are public labels,
+  // not requests for credentials. Never exempt question text or unknown options.
+  const questionContent = (question: Dialogue["questions"][number]) =>
+    [
+      question.text,
+      ...(question.options ?? []).filter(
+        (option) =>
+          question.path !== "projectTemplates" ||
+          !trustedOwnerChoice(option, ownerIdentities),
+      ),
+    ].join("\n");
   for (const change of result.changes)
     if (change.operation) {
       assertAssistantEditorValue(change.value);
@@ -344,10 +378,10 @@ export function validateDialogue(
         (question.path !== "projectTemplates" &&
           !editable.some((field) => field.path === question.path)) ||
         /\b(?:plan|project|projekt|organization|organisation|gateway|tenant)[\s_-]*id\b|\buuid\b|interne[\s]+kennung/i.test(
-          [question.text, ...(question.options ?? [])].join("\n"),
+          questionContent(question),
         ) ||
         /bootstrap|secret[\s_-]*version|version.*(?:secret|geheim|zugang)|(?:api|admin).*(?:secret|password|passwort|benutzername|username)/i.test(
-          [question.text, ...(question.options ?? [])].join("\n"),
+          questionContent(question),
         ),
     ) ||
     result.changes.some((change) =>

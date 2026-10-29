@@ -1186,7 +1186,7 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     scenario.applicationAccess === "both-kubernetes-followup"
   ) {
     values["assistant.platform_service_account_emails"] = [
-      "platform@sa.stackit.cloud",
+      "bootstrap-platform@sa.stackit.cloud",
     ];
     const request =
       "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate";
@@ -1196,7 +1196,7 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       services: ["ske"],
       permissionTarget: "both",
       permissionNames: [...applicationProjectPermissionNames],
-      platformServiceAccountEmails: ["platform@sa.stackit.cloud"],
+      platformServiceAccountEmails: ["bootstrap-platform@sa.stackit.cloud"],
       english: false,
     };
     let state = initialMultiTemplatePermissionState();
@@ -1359,9 +1359,23 @@ export function validateAssistantScenario(
   input: unknown,
 ) {
   const knowledge = buildAssistantKnowledge();
+  const fixture = assistantScenarioFixture(scenario);
+  const ownerEmails =
+    fixture.values["assistant.platform_service_account_emails"];
+  const userEmail = fixture.values["assistant.user_email"];
   const dialogue = validateDialogue(
     input,
     knowledge.rules.map((rule) => rule.id),
+    {
+      serviceAccountEmails: Array.isArray(ownerEmails)
+        ? ownerEmails.filter(
+            (email): email is string => typeof email === "string",
+          )
+        : [],
+      ...(typeof userEmail === "string"
+        ? { verifiedUserEmail: userEmail }
+        : {}),
+    },
   );
   const failures: string[] = [];
   if (scenario.id === "firewall-access-bootstrap-advice") {
@@ -1379,7 +1393,6 @@ export function validateAssistantScenario(
     )
   )
     failures.push("missing_topic_reference");
-  const fixture = assistantScenarioFixture(scenario);
   if (scenario.executionLifecycle)
     failures.push(...assistantExecutionLifecycleFailures(dialogue.explanation));
   if (scenario.applicationUpgrade)
@@ -1416,11 +1429,12 @@ export function validateAssistantScenario(
         if (template.kind === "corporate") {
           delete template.settings.automation_role;
           template.accessProfile = defaultApplicationAccessProfile(
-            "platform@sa.stackit.cloud",
+            "bootstrap-platform@sa.stackit.cloud",
           );
         }
         if (template.accessProfile?.mode !== "granular") throw Error("fixture");
-        template.accessProfile.initialOwnerEmail = "platform@sa.stackit.cloud";
+        template.accessProfile.initialOwnerEmail =
+          "bootstrap-platform@sa.stackit.cloud";
         template.accessProfile.permissions = [
           ...new Set([...template.accessProfile.permissions, ...additions]),
         ];
@@ -2415,7 +2429,17 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
   const failures: string[] = [];
   const text = explanation
     .toLowerCase()
-    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "<ip>");
+    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "<ip>")
+    // These common prose abbreviations do not terminate the DNS sentence.
+    // Keep real sentence boundaries and dotted identifiers unchanged.
+    .replace(
+      /(?<![\p{L}\p{N}_.-])z\.\s*b\.(?![\p{L}\p{N}_.-])/gu,
+      "zum beispiel",
+    )
+    .replace(
+      /(?<![\p{L}\p{N}_.-])e\.\s*g\.(?![\p{L}\p{N}_.-])/gu,
+      "for example",
+    );
   const unnegatedClaim = (pattern: RegExp, coordinatedNegation = false) =>
     [...text.matchAll(pattern)].some((match) => {
       let claim = match[0];

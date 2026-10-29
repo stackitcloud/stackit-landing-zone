@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { assistantProposalFields, summarizePlan } from "@lzc/contracts";
 import {
+  applicationProjectPermissionNames,
   catalogue,
   compileCommonConfiguration,
   configurationValues,
@@ -25,6 +26,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
 import { ApplicationStateRecoveries } from "../apps/api/src/applications/state-recovery.js";
+import { buildMultiTemplatePermissionDialogue } from "../apps/api/src/assistant/application-permission-dialogue.js";
 import type { Dialogue } from "../apps/api/src/assistant/dialogue.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import {
@@ -270,6 +272,159 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         "DELETE FROM lzc.credential_profiles WHERE id=ANY($1::uuid[])",
         [profileIds],
       );
+      await migration.query("DELETE FROM lzc.configurations WHERE id=$1", [
+        stored.id,
+      ]);
+    }
+  });
+  it("validates prepared bootstrap-named owner choices through send, preview and accept with fresh key-scoped metadata", async () => {
+    const configurations = new Configurations(pool);
+    const org = randomUUID();
+    const draft = editCommonInput(
+      createEditorConfiguration("hub-and-spoke", randomUUID()),
+      "organization_id",
+      org,
+    );
+    for (const template of draft.projectTemplates ?? [])
+      if (template.kind === "public" || template.kind === "corporate")
+        template.accessProfile = defaultApplicationAccessProfile("");
+    const stored = await configurations.create(alice, draft);
+    const profile = randomUUID(),
+      preparation = randomUUID();
+    const email = "bootstrap-platform@sa.stackit.cloud";
+    await migration.query(
+      "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id,state) VALUES($1,$2,$3,'Private preparation profile',$4,'original-key','stored')",
+      [profile, alice.tenantId, alice.userId, email],
+    );
+    await migration.query(
+      "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,credential_id,name,manifest) VALUES($1,$2,$3,$4,'Private preparation',$5)",
+      [
+        preparation,
+        alice.tenantId,
+        alice.userId,
+        profile,
+        {
+          source: { configurationId: stored.id },
+          organization: { id: org },
+          credential: { id: profile, keyId: "original-key" },
+        },
+      ],
+    );
+    const message =
+      "Public und Corporate: Kubernetes für Besteller und Service Account ergänzen.";
+    let foreignOption = false;
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(
+        async (_selection, current) => {
+          const result = buildMultiTemplatePermissionDialogue({
+            templates: (current as Record<string, unknown>)
+              .projectTemplates as Record<string, unknown>,
+            originalRequest: message,
+            services: ["ske"],
+            permissionTarget: "both",
+            permissionNames: [...applicationProjectPermissionNames],
+            platformServiceAccountEmails: [email],
+            english: false,
+          });
+          if (foreignOption)
+            result.questions[0]!.options = [
+              "Plattform-Service-Account (bootstrap-foreign@sa.stackit.cloud)",
+            ];
+          return result;
+        },
+      ),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    try {
+      const proposal = await assistant.send(alice, stored.id, 1, message);
+      expect(proposal.proposal?.questions).toHaveLength(1);
+      expect(proposal.proposal?.questions[0]?.options).toEqual([
+        `Plattform-Service-Account (${email})`,
+      ]);
+      expect(proposal.proposal?.changes.length).toBeGreaterThan(0);
+      const preview = await assistant.preview(
+        alice,
+        stored.id,
+        proposal.revision,
+        1,
+        undefined,
+        draft,
+        draft,
+      );
+      expect(preview.configuration.persisted).toBe(false);
+      expect((await configurations.get(alice, stored.id)).draft).toEqual(draft);
+      const expected = structuredClone(draft);
+      const additions = applicationProjectPermissionNames.filter((p) =>
+        p.startsWith("ske."),
+      );
+      for (const template of expected.projectTemplates ?? [])
+        if (template.kind === "public" || template.kind === "corporate") {
+          const access = template.accessProfile;
+          if (access?.mode !== "granular")
+            throw Error("expected_granular_fixture");
+          access.permissions = [
+            ...new Set([...access.permissions, ...additions]),
+          ];
+          access.automationPermissions = [
+            ...new Set([...access.automationPermissions, ...additions]),
+          ];
+        }
+      expect(preview.configuration.draft).toEqual(expected);
+      await migration.query(
+        "UPDATE lzc.credential_profiles SET key_id='rotated-key' WHERE id=$1",
+        [profile],
+      );
+      await expect(
+        assistant.preview(
+          alice,
+          stored.id,
+          proposal.revision,
+          1,
+          undefined,
+          draft,
+          draft,
+        ),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "assistant_proposal_unsupported",
+      });
+      await expect(
+        assistant.accept(alice, stored.id, proposal.revision, 1),
+      ).rejects.toThrow("assistant_invalid_proposal");
+      expect((await configurations.get(alice, stored.id)).draft).toEqual(draft);
+      expect((await assistant.get(alice, stored.id))?.revision).toBe(
+        proposal.revision,
+      );
+      await migration.query(
+        "UPDATE lzc.credential_profiles SET key_id='original-key' WHERE id=$1",
+        [profile],
+      );
+      foreignOption = true;
+      await expect(
+        assistant.send(alice, stored.id, 1, message),
+      ).rejects.toThrow("assistant_invalid_proposal");
+      expect((await configurations.get(alice, stored.id)).draft).toEqual(draft);
+      expect((await assistant.get(alice, stored.id))?.revision).toBe(
+        proposal.revision,
+      );
+      foreignOption = false;
+      const accepted = await assistant.accept(
+        alice,
+        stored.id,
+        proposal.revision,
+        1,
+      );
+      expect(accepted.draft).toEqual(expected);
+      expect(accepted.revision).toBe(2);
+      expect(model.converse).toHaveBeenCalledTimes(2);
+    } finally {
+      await migration.query(
+        "DELETE FROM lzc.deployment_preparations WHERE id=$1",
+        [preparation],
+      );
+      await migration.query("DELETE FROM lzc.credential_profiles WHERE id=$1", [
+        profile,
+      ]);
       await migration.query("DELETE FROM lzc.configurations WHERE id=$1", [
         stored.id,
       ]);

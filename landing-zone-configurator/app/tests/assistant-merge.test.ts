@@ -257,3 +257,71 @@ it("preserves prototype-like JSON keys without modifying object prototypes", () 
   expect(result.conflicts).toEqual([]);
   expect(Object.hasOwn({}, "x")).toBe(false);
 });
+
+it("selects a complete template access profile atomically and detects concurrent owner changes", () => {
+  const before = {
+    schemaVersion: 1,
+    mode: "granular",
+    initialOwnerEmail: "central@example.test",
+    permissions: ["iaas.server.get"],
+    automationPermissions: ["iaas.server.get"],
+  };
+  const after = {
+    ...before,
+    permissions: [...before.permissions, "ske.cluster.create"],
+    automationPermissions: [
+      ...before.automationPermissions,
+      "ske.cluster.create",
+    ],
+  };
+  const changes = [
+    {
+      path: "projectTemplates",
+      operation: "merge" as const,
+      before: {
+        public: { accessProfile: before },
+        corp: { accessProfile: before },
+      },
+      value: {
+        public: { accessProfile: after },
+        corp: { accessProfile: after },
+      },
+    },
+  ];
+  const fields = assistantProposalFields(changes);
+  expect(fields.map((f) => f.id)).toEqual([
+    "projectTemplates/public/accessProfile",
+    "projectTemplates/corp/accessProfile",
+  ]);
+  const publicField = fields[0]!;
+  expect(publicField.before).toEqual(before);
+  expect(publicField.value).toEqual(after);
+  expect(selectAssistantProposalFields(changes, [publicField.id])).toEqual([
+    {
+      path: "projectTemplates",
+      operation: "merge",
+      value: { public: { accessProfile: after } },
+    },
+  ]);
+  expect(
+    assistantProposalConflicts(
+      [publicField],
+      {
+        projectTemplates: {
+          public: {
+            accessProfile: {
+              ...before,
+              initialOwnerEmail: "other@example.test",
+            },
+          },
+        },
+      },
+      () => true,
+    ).map((c) => c.path),
+  ).toEqual(["projectTemplates.public.accessProfile"]);
+  expect(() =>
+    selectAssistantProposalFields(changes, [
+      "projectTemplates/public/accessProfile/permissions",
+    ]),
+  ).toThrow("assistant_invalid_selection");
+});

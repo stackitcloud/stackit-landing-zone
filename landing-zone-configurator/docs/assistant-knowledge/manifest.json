@@ -4,8 +4,8 @@
     {
       "id": "credential-foundations",
       "file": "credential-foundations.md",
-      "version": 2,
-      "checkedOn": "2026-10-10",
+      "version": 3,
+      "checkedOn": "2026-10-29",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [],
       "mandatory": true,
@@ -20,7 +20,9 @@
         "landing-zone-configurator/docs/common-feature-model.md",
         "landing-zone-configurator/docs/deployment-credentials.md",
         "src/variables.tf",
-        "src/providers.tf"
+        "src/providers.tf",
+        "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/service.ts"
       ],
       "externalSources": [
         "https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/manage-service-account-keys/"
@@ -502,7 +504,7 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 5,
+      "version": 6,
       "checkedOn": "2026-10-29",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
@@ -610,7 +612,7 @@
     {
       "id": "configuration-lifecycle",
       "file": "configuration-lifecycle.md",
-      "version": 11,
+      "version": 12,
       "checkedOn": "2026-10-29",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [],
