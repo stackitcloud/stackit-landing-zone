@@ -1043,3 +1043,31 @@ it.each([
     );
   },
 );
+
+it("rejects setup questions even when the SNA native overview is factually complete", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "stackit-network-components-advice",
+  );
+  const explanation = buildAssistantKnowledge().topics.find(
+    (topic) => topic.id === "stackit-network-components",
+  )?.fieldOverview;
+  if (!scenario || !explanation) throw new Error("missing_sna_overview");
+  const input = {
+    explanation,
+    questions: [],
+    changes: [],
+    references: ["stackit-network-components"],
+  };
+  expect(validateAssistantScenario(scenario, input).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...input,
+      questions: [
+        {
+          path: "connectivity.network_areas",
+          text: "Welchen freien Adresspool möchtest du verwenden?",
+        },
+      ],
+    }).failures,
+  ).toEqual(["native_field_overview_asked_setup_questions"]);
+});

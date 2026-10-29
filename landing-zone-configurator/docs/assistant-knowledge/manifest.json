@@ -52,7 +52,9 @@
         "src/modules/connectivity/variables.tf",
         "src/modules/connectivity/1-network-area.tf",
         "src/variables.tf",
-        "landing-zone-configurator/app/packages/domain/src/common-validation.ts"
+        "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
+        "src/modules/landing-zone/3-network.tf"
       ],
       "externalSources": [
         "https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_area"
