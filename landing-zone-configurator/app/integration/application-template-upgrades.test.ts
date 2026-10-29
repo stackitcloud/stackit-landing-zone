@@ -121,6 +121,7 @@ afterAll(async () => {
 async function fixture(
   options: {
     policy?: "direct" | "approval-required";
+    targetPolicy?: "direct" | "approval-required";
     fromSource?: string;
     settings?: Record<string, unknown>;
     targetSettings?: Record<string, unknown>;
@@ -243,7 +244,7 @@ async function fixture(
             settings: value,
           },
           platform,
-          policy,
+          id === to ? (options.targetPolicy ?? policy) : policy,
         ],
       );
     await admin.query(
@@ -1042,3 +1043,48 @@ it.each(["stale-state", "missing-delegation"])(
     ).toBe(0);
   },
 );
+
+it("allows a direct target publication while retaining the older required policy and exact fresh-Plan PE approval", async () => {
+  const f = await fixture({
+    policy: "approval-required",
+    targetPolicy: "direct",
+  });
+  await imported(() =>
+    admin.query(
+      "INSERT INTO lzc.application_order_decisions(instance_id,tenant_id,decision,decided_by,reason) VALUES($1,$2,'approved',$3,'initial order only')",
+      [f.instance, owner.tenantId, engineer.userId],
+    ),
+  );
+  await expect(edge(f, "direct")).rejects.toThrow(
+    "application_upgrade_edge_invalid",
+  );
+  const e = await edge(f);
+  const c = await request(f, e.id);
+  expect(c.effectiveDeploymentPolicy).toBe("approval-required");
+  const j = await plan(f, c.candidate);
+  await artifact(f, j, summary());
+  await expect(apply(f, j)).rejects.toThrow(
+    "application_upgrade_plan_approval_required",
+  );
+  await expect(
+    scoped(engineer, (q) =>
+      q.query(
+        "SELECT lzc_auth.approve_application_upgrade($1,$2,$3,$4,$5,true)",
+        [
+          engineer.id,
+          c.candidate.id,
+          c.candidate.candidateHash,
+          j.id,
+          "b".repeat(64),
+        ],
+      ),
+    ),
+  ).rejects.toThrow("application_upgrade_approval_invalid");
+  await scoped(engineer, (q) =>
+    q.query(
+      "SELECT lzc_auth.approve_application_upgrade($1,$2,$3,$4,$5,true)",
+      [engineer.id, c.candidate.id, c.candidate.candidateHash, j.id, hash],
+    ),
+  );
+  expect(await apply(f, j)).toMatch(/^[a-f0-9-]{36}$/);
+});

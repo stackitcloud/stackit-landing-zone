@@ -138,7 +138,6 @@ BEGIN
  SELECT * INTO old FROM lzc.application_template_versions WHERE id=p_from AND tenant_id=lzc.current_tenant_id();
  SELECT * INTO target FROM lzc.application_template_versions WHERE id=p_to AND tenant_id=lzc.current_tenant_id();
  IF old.id IS NULL OR target.id IS NULL OR old.template_id<>target.template_id OR target.version<=old.version OR old.document->>'kind' IS DISTINCT FROM target.document->>'kind'
-  OR (old.deployment_policy='approval-required' AND target.deployment_policy='direct')
   OR (p_policy->>'sensitive'='direct' AND (old.deployment_policy<>'direct' OR target.deployment_policy<>'direct')) THEN RAISE EXCEPTION 'application_upgrade_edge_invalid' USING ERRCODE='42501'; END IF;
  INSERT INTO lzc.application_upgrade_edges(tenant_id,from_version_id,to_version_id,policy,published_by) VALUES(old.tenant_id,p_from,p_to,p_policy,lzc.current_user_id()) ON CONFLICT(tenant_id,from_version_id,to_version_id) DO NOTHING RETURNING * INTO edge;
  IF edge.id IS NULL THEN SELECT * INTO edge FROM lzc.application_upgrade_edges WHERE tenant_id=old.tenant_id AND from_version_id=p_from AND to_version_id=p_to;
@@ -338,6 +337,9 @@ BEGIN
  anchor:='SELECT * INTO i FROM lzc.application_instances WHERE id=NEW.instance_id AND tenant_id=NEW.tenant_id AND requested_by=NEW.owner_user_id;';
  IF strpos(definition,anchor)=0 THEN RAISE EXCEPTION 'application_upgrade_grant_anchor_missing'; END IF;
  definition:=replace(definition,anchor,'SELECT * INTO i FROM lzc_auth.application_job_order(NEW.id) WHERE tenant_id=NEW.tenant_id AND requested_by=NEW.owner_user_id;');
+ anchor:='i.deployment_policy IS DISTINCT FROM v.deployment_policy';
+ IF strpos(definition,anchor)=0 THEN RAISE EXCEPTION 'application_upgrade_policy_anchor_missing'; END IF;
+ definition:=replace(definition,anchor,'(i.deployment_policy IS DISTINCT FROM v.deployment_policy AND NOT (NEW.inputs->>''applicationUpgradeId'' IS NOT NULL AND i.deployment_policy=''approval-required'' AND v.deployment_policy=''direct''))');
  EXECUTE replace(definition,'revision=v.platform_revision','revision=lzc_auth.application_job_platform_revision(NEW.id)');
  FOREACH signature IN ARRAY ARRAY['lzc.validate_application_access_inputs()','lzc.guard_application_job_group()'] LOOP
   definition:=pg_get_functiondef(signature::regprocedure);

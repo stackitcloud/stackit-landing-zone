@@ -46,3 +46,8 @@ export const upgradeReasonMessages: Record<string, string> = {
   "unknown-setting-change":
     "Eine nicht freigegebene Konfigurationsänderung blockiert dieses Upgrade.",
 };
+
+upgradeReasonMessages["upgrade-target-not-qualified"] =
+  upgradeReasonMessages["target-not-qualified"] ?? "";
+upgradeReasonMessages["shared-platform-apply-active"] =
+  upgradeReasonMessages["execution-or-recovery-active"] ?? "";
