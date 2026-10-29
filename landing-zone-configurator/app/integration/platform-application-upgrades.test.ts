@@ -956,3 +956,89 @@ it("preserves personal deployer Platform authorization when no Applications depe
     });
   }
 });
+
+it("does not retain a preview State lock before requesting an upgrade during concurrent Platform Apply", async () => {
+  const f = await platformFixture();
+  const edge = await scoped(
+    engineer,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,true) AS value",
+          [engineer.id, f.from, f.to, { sensitive: "approval-required" }],
+        )
+      ).rows[0].value,
+  );
+  await acknowledge(f);
+  const preview = await runtime.connect(),
+    platform = await runtime.connect();
+  let requesting: Promise<unknown> | undefined;
+  try {
+    for (const [client, session] of [
+      [preview, owner],
+      [platform, engineer],
+    ] as const) {
+      await client.query("BEGIN");
+      await client.query(
+        "SELECT set_config('lzc.user_id',$1,true),set_config('lzc.tenant_id',$2,true)",
+        [session.userId, session.tenantId],
+      );
+    }
+    expect(
+      (
+        await preview.query(
+          "SELECT lzc_auth.application_upgrade_platform_current($1,$2) AS value",
+          [owner.id, f.to],
+        )
+      ).rows[0].value,
+    ).toBe(true);
+    await platform.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+      [`platform-application-impact:${engineer.tenantId}`],
+    );
+    // A retained preview SHARE lock would fail NOWAIT here, before the inverse
+    // State/workspace lock order could deadlock two real request transactions.
+    await platform.query(
+      "SELECT state_key FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE NOWAIT",
+      [f.stateKey],
+    );
+    await platform.query(
+      "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,ticket_hash,mode,operation,plan_id,artifact_sha256,state_key,state_version) VALUES($1,$2,$3,$4,$5,'platform-apply','apply',$6,$7,$8,1)",
+      [
+        randomUUID(),
+        engineer.tenantId,
+        engineer.userId,
+        f.preparation,
+        randomBytes(32).toString("base64url"),
+        f.plan,
+        hash,
+        f.stateKey,
+      ],
+    );
+    requesting = preview.query(
+      "SELECT lzc_auth.request_application_platform_upgrade($1,$2,$3,NULL,$4,true)",
+      [owner.id, f.instance, edge.id, f.from],
+    );
+    let settled = false;
+    void requesting.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(settled).toBe(false);
+    await platform.query("COMMIT");
+    await expect(requesting).rejects.toThrow(
+      "application_platform_execution_active",
+    );
+  } finally {
+    await preview.query("ROLLBACK");
+    await platform.query("ROLLBACK");
+    preview.release();
+    platform.release();
+    if (requesting) await requesting.catch(() => {});
+  }
+});

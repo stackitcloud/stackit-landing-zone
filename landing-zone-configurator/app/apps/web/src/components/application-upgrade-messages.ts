@@ -49,5 +49,5 @@ export const upgradeReasonMessages: Record<string, string> = {
 
 upgradeReasonMessages["upgrade-target-not-qualified"] =
   upgradeReasonMessages["target-not-qualified"] ?? "";
-upgradeReasonMessages["shared-platform-apply-active"] =
+upgradeReasonMessages["application-platform-execution-active"] =
   upgradeReasonMessages["execution-or-recovery-active"] ?? "";

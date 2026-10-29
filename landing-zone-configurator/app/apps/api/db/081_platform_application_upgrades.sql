@@ -205,7 +205,17 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 BEGIN
  PERFORM lzc_auth.authorize_application(p_session,lzc.current_tenant_id(),'order');
  IF NOT EXISTS(SELECT 1 FROM lzc.application_platform_contracts WHERE revision=p_revision AND tenant_id=lzc.current_tenant_id()) THEN RETURN false; END IF;
- RETURN lzc_auth.application_platform_contract_current(p_revision);
+ -- Advisory preview only: never take a State row lock before the request has
+ -- obtained instance/workspace admission locks. The candidate trigger repeats
+ -- the authoritative locked proof under the correct workspace -> State order.
+ RETURN EXISTS(SELECT 1 FROM lzc.application_platform_sources source
+  JOIN lzc.platform_states state ON state.state_key=source.state_key AND state.tenant_id=source.tenant_id
+  JOIN lzc.plan_runs applied ON applied.id=source.apply_run_id AND applied.tenant_id=source.tenant_id
+  WHERE source.revision=p_revision AND source.tenant_id=lzc.current_tenant_id()
+   AND state.version=source.state_version AND state.lock_run_id IS NULL AND state.migration_run_id IS NULL AND state.pending_backend_id IS NULL
+   AND applied.operation='apply' AND applied.status='succeeded' AND applied.applied_state_version=source.state_version AND applied.state_key=source.state_key
+   AND NOT EXISTS(SELECT 1 FROM lzc.plan_runs active WHERE active.tenant_id=source.tenant_id AND active.state_key=source.state_key AND active.operation='apply' AND active.status IN ('starting','initializing','validating','planning','applying','recovery_required')));
+
 END $$;
 REVOKE ALL ON FUNCTION lzc_auth.application_upgrade_platform_current(uuid,uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION lzc_auth.application_upgrade_platform_current(uuid,uuid) TO configurator_app;
