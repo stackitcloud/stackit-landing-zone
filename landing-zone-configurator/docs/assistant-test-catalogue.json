@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "e914925b7e86158823c1560e813e5513429309e73eab7647d00f1dddd283f478",
+  "knowledgeSha256": "b4b338df7d1cab80a4372f5f0bd56fbcb6f117305d51fd7fc6d605f250c9dac5",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "b5b8c87dd35f29d323823e0c4e837d01dd922da97f93c364bafd557d6e86721b",
+    "scripts/assistant-scenarios.ts": "8e6c928779971e649fcc225bb0b9983158d97233b83511fc549e4663c5f9f9f4",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "f634d2c1bff93be543c831225a6335245fe0588e2a8634b3505efa5eaf52cc5a",
+  "suiteSha256": "0d8147826afcd7992e3b132ce26a833be2449668fbca0d77ef2813bbd87d58c5",
   "topics": [
     {
       "id": "credential-foundations",
@@ -442,9 +442,23 @@
           "topic": "stackit-network-components",
           "message": "Welche Angaben benoetigst du fuer einen zentralen STACKIT Network Area mit Adresspool, Transfernetz, Projekt-Praefixen und Nameservern? Nur beraten, nichts aendern.",
           "fixture": "baseline",
+          "requiredOverviewFields": [
+            "connectivity.network_area",
+            "connectivity.network_areas",
+            "connectivity_regions",
+            "ranges",
+            "transfer_network",
+            "min_prefix_length",
+            "default_prefix_length",
+            "max_prefix_length",
+            "default_nameservers",
+            "region",
+            "ipv4"
+          ],
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
+            "complete_native_field_overview",
             "no_changes"
           ]
         },

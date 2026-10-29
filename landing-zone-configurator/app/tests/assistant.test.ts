@@ -2582,6 +2582,7 @@ it.each([
   "dns-zones",
   "platform-kubernetes",
   "firewall-access-bootstrap",
+  "stackit-network-components",
 ])(
   "answers %s field overviews from reviewed native metadata, not incomplete model prose",
   async (topic) => {
@@ -2626,11 +2627,45 @@ it.each([
     );
     expect(result.explanation.length).toBeLessThanOrEqual(3000);
     if (
-      ["vpn", "devops-git", "dns-zones", "firewall-access-bootstrap"].includes(
-        topic,
-      )
+      [
+        "vpn",
+        "devops-git",
+        "dns-zones",
+        "firewall-access-bootstrap",
+        "stackit-network-components",
+      ].includes(topic)
     )
       expect(result.explanation.length).toBeLessThanOrEqual(2400);
+    if (topic === "stackit-network-components") {
+      for (const fact of [
+        "connectivity.network_area",
+        "connectivity.network_areas",
+        "connectivity_regions",
+        "network_area_key",
+        "ranges",
+        "transfer_network",
+        "min_prefix_length=24",
+        "default_prefix_length=28",
+        "max_prefix_length=28",
+        "0 bis 32",
+        "min_prefix_length <= default_prefix_length <= max_prefix_length",
+        "default_nameservers",
+        "derselben Region",
+        "numerischen Präfix",
+        "DNS-Einstellungen bleiben erhalten",
+        "256 /24",
+        "512 /25",
+        "128 IPv4-Adressen",
+        "weder Firewall noch VPN automatisch",
+        "garantiert weder freie Adressen",
+        "Plattform- und Firewall-Netze",
+        "noch nichts gespeichert oder ausgeführt",
+      ])
+        expect(result.explanation).toContain(fact);
+      expect(result.explanation).not.toMatch(
+        /PIM|Secret-Version|Wie viele|Welches Netz|AWS VPC wird erstellt/i,
+      );
+    }
     if (topic === "vpn") {
       for (const field of [
         "routing_type=ROUTE_BASED",
@@ -3494,5 +3529,47 @@ it.each([
       expect(result.changes).toEqual([]);
       expect(request).toHaveBeenCalledTimes(2);
     }
+  },
+);
+
+it.each([
+  {
+    topic: "stackit-network-components",
+    mode: "draft",
+    adviceTask: "field-overview",
+  },
+  { topic: "stackit-network-components", mode: "advice", adviceTask: "other" },
+  { topic: "identity-foundations", mode: "advice", adviceTask: "other" },
+])(
+  "does not let historical SNA field advice intercept a current $mode/$topic/$adviceTask request",
+  async (intent) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      return body.response_format.json_schema.name === "conversation_intent"
+        ? answer({ ...intent, adviceTaskSource: "current", requirements: [] })
+        : answer({
+            explanation: "Current scoped answer; no changes or execution.",
+            questions: [],
+            changes: [],
+            references: [intent.topic],
+          });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      {},
+      [
+        { role: "user", content: "Welche SNA-Felder und Defaults gibt es?" },
+        { role: "assistant", content: "Vorherige SNA-Feldübersicht." },
+      ],
+      "Bitte beantworte jetzt mein anderes Anliegen.",
+    );
+    expect(result.explanation).toBe(
+      "Current scoped answer; no changes or execution.",
+    );
+    expect(result.explanation).not.toContain("min_prefix_length=24");
+    expect(request).toHaveBeenCalledTimes(2);
   },
 );

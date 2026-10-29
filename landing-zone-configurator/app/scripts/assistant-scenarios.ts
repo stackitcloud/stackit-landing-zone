@@ -73,6 +73,19 @@ const questions: Record<string, string> = {
 };
 
 const overviewFields: Record<string, readonly string[]> = {
+  "stackit-network-components": [
+    "connectivity.network_area",
+    "connectivity.network_areas",
+    "connectivity_regions",
+    "ranges",
+    "transfer_network",
+    "min_prefix_length",
+    "default_prefix_length",
+    "max_prefix_length",
+    "default_nameservers",
+    "region",
+    "ipv4",
+  ],
   "platform-kubernetes": [
     "platform_kubernetes",
     "region",
@@ -1987,6 +2000,8 @@ export function validateAssistantScenario(
     )
   )
     failures.push("incomplete_native_field_overview");
+  if (scenario.requiredOverviewFields && dialogue.questions.length)
+    failures.push("native_field_overview_asked_setup_questions");
   if (
     scenario.id === "platform-kubernetes-advice" &&
     (!/kubeconfig|kube_config/i.test(dialogue.explanation) ||
