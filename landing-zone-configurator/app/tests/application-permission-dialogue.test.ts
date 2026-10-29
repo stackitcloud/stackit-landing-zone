@@ -260,3 +260,21 @@ it("discloses and removes only explicit legacy IAM fields, preserving full Owner
       if (!list.includes(p)) list.push(p);
   expect(actual).toEqual(expected);
 });
+
+it("explicitly states unsaved and non-executing status during ambiguous target selection", () => {
+  const { context } = fixture();
+  const corporate = structuredClone(context.templates.central) as Record<
+    string,
+    unknown
+  >;
+  context.templates["second-corporate"] = {
+    ...corporate,
+    name: "Second corporate",
+  };
+  const response = build(context);
+  expect(response.changes).toEqual([]);
+  expect(response.questions).toHaveLength(1);
+  expect(response.questions[0]!.text).toContain("corporate");
+  expect(response.explanation).toMatch(/noch (?:nichts|nicht) gespeichert/i);
+  expect(response.explanation).toContain("es wird nichts ausgeführt");
+});

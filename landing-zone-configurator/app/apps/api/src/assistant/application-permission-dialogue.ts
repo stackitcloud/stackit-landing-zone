@@ -167,7 +167,7 @@ function view(
     explanation.push(
       english
         ? "Choose the exact targets first. Nothing has been changed or saved."
-        : "Zuerst die genauen Vorlagen auswählen. Noch nichts geändert oder gespeichert.",
+        : "Zuerst die genauen Vorlagen auswählen. Noch nichts gespeichert; es wird nichts ausgeführt.",
     );
     return finish();
   }

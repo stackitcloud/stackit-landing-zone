@@ -1301,7 +1301,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/application-permission-dialogue.ts",
           sha256:
-            "d241dcfbe5cf33f219832c2e3b72680a71070287c8e05cdf2b73e338950e5297",
+            "7ca0cc780006a96bef777b11e7cc98ceb2d4ebbbb955aa07235106e324e1d99c",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/project-templates.ts",
