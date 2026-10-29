@@ -1924,16 +1924,51 @@ export class AssistantModelServing {
             negatedService)
         )
           throw new AssistantInferenceError("intent_evidence");
-        const requester = /(?:Besteller|Bestellende|requester|orderer)/i;
-        const automation = /(?:Service[- ]?Account|automation)/i;
+        const requesterMention = String.raw`(?:Besteller(?:s)?|Bestellende(?:n)?|requester|orderer)`;
+        const automationMention = String.raw`(?:(?:Application|App)[- ]?)?(?:Service[- ]?Accounts?|automation)`;
+        const requester = new RegExp(requesterMention, "i");
+        const automation = new RegExp(automationMention, "i");
+        const recipientUnchanged = (target: string, other: string) =>
+          serviceSource.split(/[.;!?\n]/).some((clause) => {
+            // Preserving existing rights while appending new ones is not exclusion.
+            if (
+              /\b(?:bestehende[nr]?|bisherige[nr]?|existing|sonstige[nr]?|unrelated)\b/i.test(
+                clause,
+              )
+            )
+              return false;
+            return new RegExp(
+              String.raw`(?:Rechte|permissions|rights)\s+(?:(?:des|der|den|dem|of|for|the|von|für|fuer)\s+){0,3}${target}(?:(?!${other}).){0,100}(?:unverändert|unchanged)|${target}[- ](?:Rechte|permissions|rights)(?:(?!${other}).){0,100}(?:unverändert|unchanged)`,
+              "i",
+            ).test(clause);
+          });
+        const requesterUnchanged = recipientUnchanged(
+          requesterMention,
+          automationMention,
+        );
+        const automationUnchanged = recipientUnchanged(
+          automationMention,
+          requesterMention,
+        );
+        if (requesterUnchanged && automationUnchanged)
+          throw new AssistantInferenceError("intent_evidence");
         const onlyRequester =
-          /(?:nur|only)\s+(?:(?:der|die|the)\s+)?(?:Besteller|Bestellende|requester|orderer)|(?:kein\w*|nicht|not|no)\s+(?:(?:der|den|the|für|fuer|for)\s+)*(?:Service[- ]?Account|automation)/i.test(
-            serviceSource,
-          );
+          automationUnchanged ||
+          new RegExp(
+            String.raw`(?:nur|only)\s+(?:(?:für|fuer|for|der|die|den|dem|the)\s+){0,3}${requesterMention}|(?:kein\w*|nicht|not|no)\s+(?:(?:der|den|the|für|fuer|for)\s+)*${automationMention}`,
+            "i",
+          ).test(serviceSource);
         const onlyAutomation =
-          /(?:nur|only)\s+(?:(?:der|die|the)\s+)?(?:Service[- ]?Account|automation)|(?:kein\w*|nicht|not|no)\s+(?:(?:der|den|the|für|fuer|for)\s+)*(?:Besteller|Bestellende|requester|orderer)/i.test(
-            serviceSource,
-          );
+          requesterUnchanged ||
+          new RegExp(
+            String.raw`(?:nur|only)\s+(?:(?:für|fuer|for|der|die|den|dem|the)\s+){0,3}${automationMention}|(?:kein\w*|nicht|not|no)\s+(?:(?:der|den|the|für|fuer|for)\s+)*${requesterMention}`,
+            "i",
+          ).test(serviceSource);
+        if (
+          (requesterUnchanged && onlyRequester) ||
+          (automationUnchanged && onlyAutomation)
+        )
+          throw new AssistantInferenceError("intent_evidence");
         const recipient =
           onlyRequester && !onlyAutomation
             ? "requester"

@@ -3945,3 +3945,95 @@ it.each([
     ),
   ).rejects.toMatchObject({ reason: "intent_evidence" });
 });
+
+it.each([
+  [
+    "requester",
+    "Ergänze bei der vorhandenen Vorlage central nur für den Besteller die Rechte zum Management von Kubernetes Clustern. Die Rechte des Application-Service-Accounts und der zentrale Owner bleiben unverändert, ebenso alle anderen Einstellungen. Nur einen überprüfbaren Vorschlag erstellen.",
+  ],
+  [
+    "automation",
+    "Ergänze bei der vorhandenen Vorlage central nur für den Application-Service-Account die Rechte zum Management von Kubernetes Clustern. Die Rechte des Bestellers und der zentrale Owner bleiben unverändert.",
+  ],
+  [
+    "requester",
+    "Ergänze in central Kubernetes Rechte nur fuer den Besteller. Die Rechte des Application-Service-Accounts bleiben unverändert.",
+  ],
+  [
+    "automation",
+    "Add Kubernetes permissions in central only for the Application service account. The rights of the requester remain unchanged.",
+  ],
+  [
+    "requester",
+    "Add Kubernetes permissions in central for the requester. The rights of the Application service account remain unchanged.",
+  ],
+  [
+    "automation",
+    "Kubernetes in central für den Service Account ergänzen. Die Rechte des Bestellers bleiben unverändert.",
+  ],
+  [
+    "both",
+    "Kubernetes in central für Besteller und Service Account ergänzen. Die bestehenden Rechte des Bestellers bleiben unverändert und werden um die neuen Rechte ergänzt.",
+  ],
+] as const)(
+  "grounds %s recipient rights while preserving the other recipient's list: %s",
+  async (target, message) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates!.find(
+      (t) => t.kind === "corporate",
+    )!;
+    template.key = "central";
+    template.name = "Corporate central";
+    template.accessProfile = {
+      ...defaultApplicationAccessProfile("central@example.test"),
+      permissions: ["iaas.server.get"],
+      automationPermissions: ["secrets-manager.secret.get"],
+    };
+    const intent = (permissionTarget: string) => ({
+      topic: "project-templates",
+      mode: "draft",
+      requirements: [],
+      applicationAccess: {
+        key: template.key,
+        choice: "add-service-permissions",
+        services: ["ske"],
+        permissionTarget,
+        serviceEvidence: message.includes("Management von Kubernetes Clustern")
+          ? "Management von Kubernetes Clustern"
+          : "Kubernetes",
+      },
+    });
+    const result = await collectionModel(intent(target), null).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    const expected = structuredClone(original);
+    const selected = expected.projectTemplates!.find(
+      (t) => t.id === template.id,
+    )!.accessProfile!;
+    if (selected.mode !== "granular") throw new Error("fixture");
+    const additions = applicationProjectPermissionNames.filter((p) =>
+      p.startsWith("ske."),
+    );
+    if (target !== "automation") selected.permissions.push(...additions);
+    if (target !== "requester")
+      selected.automationPermissions.push(...additions);
+    expect(applyAssistantChanges(original, result.changes)).toEqual(expected);
+    for (const wrong of ["requester", "automation", "both"].filter(
+      (value) => value !== target,
+    ))
+      await expect(
+        collectionModel(intent(wrong), null).converse(
+          knowledgeSelection(),
+          assistantPublicValues(original),
+          [],
+          message,
+        ),
+      ).rejects.toMatchObject({ reason: "intent_evidence" });
+  },
+);
