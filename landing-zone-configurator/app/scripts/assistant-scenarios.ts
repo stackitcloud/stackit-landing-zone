@@ -2429,7 +2429,17 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
   const failures: string[] = [];
   const text = explanation
     .toLowerCase()
-    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "<ip>");
+    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "<ip>")
+    // These common prose abbreviations do not terminate the DNS sentence.
+    // Keep real sentence boundaries and dotted identifiers unchanged.
+    .replace(
+      /(?<![\p{L}\p{N}_.-])z\.\s*b\.(?![\p{L}\p{N}_.-])/gu,
+      "zum beispiel",
+    )
+    .replace(
+      /(?<![\p{L}\p{N}_.-])e\.\s*g\.(?![\p{L}\p{N}_.-])/gu,
+      "for example",
+    );
   const unnegatedClaim = (pattern: RegExp, coordinatedNegation = false) =>
     [...text.matchAll(pattern)].some((match) => {
       let claim = match[0];

@@ -1103,3 +1103,43 @@ it("uses only the fixture's trusted owner identities when qualifying mixed-templ
     "assistant_invalid_proposal",
   );
 });
+
+it.each(["z. B.", "z.\u202fB.", "z.B.", "e.g.", "e. g."])(
+  "keeps DNS preservation in the same sentence across the abbreviation %s",
+  (abbreviation) => {
+    const facts =
+      "Automatisch übernimmt das Standardpräfix /28 der SNA. Das Modul liest den SNA-Standard und übergibt dem Provider das explizite numerische Präfix. Freie Kapazität ist nicht garantiert. ";
+    expect(
+      assistantCorporateIpv4Failures(
+        facts +
+          `DNS-Einstellungen (${abbreviation} default_nameservers) bleiben unverändert erhalten und werden nicht deaktiviert.`,
+      ),
+    ).toEqual([]);
+    expect(
+      assistantCorporateIpv4Failures(
+        facts + `DNS (${abbreviation}) muss deaktiviert werden.`,
+      ),
+    ).toContain("corporate_ipv4_invented_fixed_size_or_dns_removal");
+    expect(
+      assistantCorporateIpv4Failures(
+        facts +
+          `DNS (${abbreviation} default_nameservers) muss deaktiviert werden.`,
+      ),
+    ).toContain("corporate_ipv4_dns_preservation_missing");
+    expect(
+      assistantCorporateIpv4Failures(
+        facts +
+          `DNS wird gelöscht. ${abbreviation} ein anderer Wert bleibt unverändert erhalten.`,
+      ),
+    ).toContain("corporate_ipv4_dns_preservation_missing");
+  },
+);
+it("does not normalize dotted DNS identifiers as prose abbreviations", () => {
+  const facts =
+    "Automatisch übernimmt das Standardpräfix /28 der SNA. Das Modul liest den SNA-Standard und übergibt dem Provider das explizite numerische Präfix. Freie Kapazität ist nicht garantiert. ";
+  expect(
+    assistantCorporateIpv4Failures(
+      facts + "DNS z.b.example. Ein anderer Wert bleibt unverändert erhalten.",
+    ),
+  ).toContain("corporate_ipv4_dns_preservation_missing");
+});
