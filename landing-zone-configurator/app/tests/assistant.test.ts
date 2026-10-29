@@ -2581,6 +2581,7 @@ it.each([
   "devops-git",
   "dns-zones",
   "platform-kubernetes",
+  "firewall-access-bootstrap",
 ])(
   "answers %s field overviews from reviewed native metadata, not incomplete model prose",
   async (topic) => {
@@ -2624,7 +2625,11 @@ it.each([
         ?.fieldOverview,
     );
     expect(result.explanation.length).toBeLessThanOrEqual(3000);
-    if (["vpn", "devops-git", "dns-zones"].includes(topic))
+    if (
+      ["vpn", "devops-git", "dns-zones", "firewall-access-bootstrap"].includes(
+        topic,
+      )
+    )
       expect(result.explanation.length).toBeLessThanOrEqual(2400);
     if (topic === "vpn") {
       for (const field of [
@@ -2638,6 +2643,42 @@ it.each([
         "phase2",
       ])
         expect(result.explanation).toContain(field);
+    }
+    if (topic === "firewall-access-bootstrap") {
+      for (const field of [
+        "firewall_admin_username",
+        "firewall_admin_password",
+        "firewall_api_credentials",
+        "api_key/api_secret",
+        "firewall_bootstrap",
+        "firewall_api_secret_version",
+        "Primary und Backup",
+        "Map-/Regional-/Multi-Appliance",
+        "TLS",
+        "--insecure",
+        "Policy",
+        "Löschung",
+      ])
+        expect(result.explanation).toContain(field);
+      expect(result.explanation).toContain(
+        "Es aktiviert weder API-Bootstrap noch Firewall-Policy",
+      );
+      expect(result.explanation).toContain(
+        "Infrastruktur, API-Bootstrap und Policy bleiben getrennte Phasen",
+      );
+      expect(result.explanation).toContain(
+        "API-Key/API-Secret sind eigene API-Zugänge",
+      );
+      expect(result.explanation).toContain("keine Passwörter");
+      expect(result.explanation).toContain(
+        "kein vertrauenswürdiges TLS-Zertifikat",
+      );
+      expect(result.explanation).toContain(
+        "Plan und ausdrücklich freigegebener Apply bleiben separat",
+      );
+      expect(result.explanation).not.toMatch(
+        /STACKIT123|automatische Credential-Rotation ist aktiviert|Bootstrap für alle Firewalls/i,
+      );
     }
     if (topic === "platform-kubernetes") {
       for (const field of [
@@ -3271,4 +3312,39 @@ it("answers source-bound Application lifecycle questions with the fixed review a
     "../scripts/assistant-scenarios.js"
   );
   expect(assistantExecutionLifecycleFailures(result.explanation)).toEqual([]);
+});
+
+it("keeps non-overview bootstrap advice on its scoped model path without proposing protected inputs", async () => {
+  const request = vi.fn<typeof fetch>(async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return body.response_format.json_schema.name === "conversation_intent"
+      ? answer({
+          topic: "firewall-access-bootstrap",
+          mode: "advice",
+          adviceTask: "other",
+          requirements: [],
+        })
+      : answer({
+          explanation:
+            "Sachbezogene Beratung ohne Zugangsdaten oder Änderungen.",
+          questions: [],
+          changes: [],
+          references: ["firewall-access-bootstrap"],
+        });
+  });
+  const result = await new AssistantModelServing(
+    configuration,
+    request,
+  ).converse(
+    selection(),
+    {},
+    [],
+    "Nur die Einordnung dieser Betriebsentscheidung erklären, keine Feldübersicht oder Änderung.",
+  );
+  expect(result.explanation).toBe(
+    "Sachbezogene Beratung ohne Zugangsdaten oder Änderungen.",
+  );
+  expect(result.questions).toEqual([]);
+  expect(result.changes).toEqual([]);
+  expect(request).toHaveBeenCalledTimes(2);
 });

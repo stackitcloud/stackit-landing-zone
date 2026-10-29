@@ -16,6 +16,7 @@ import {
   assistantCorporateIpv4Failures,
   assistantDevOpsDefaultFailures,
   assistantDnsRoleFailures,
+  assistantFirewallBootstrapFailures,
   assistantScenarioFixture,
   assistantScenarios,
   buildAssistantScenarioInventory,
@@ -282,7 +283,11 @@ it.each(assistantScenarios)(
                     ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv."
                     : scenario.corporateIpv4 === "advice"
                       ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
-                      : ["vpn", "platform-kubernetes"].includes(scenario.topic)
+                      : [
+                            "vpn",
+                            "platform-kubernetes",
+                            "firewall-access-bootstrap",
+                          ].includes(scenario.topic)
                         ? buildAssistantKnowledge().topics.find(
                             (topic) => topic.id === scenario.topic,
                           )?.fieldOverview
@@ -927,5 +932,66 @@ it("requires SKE additions for both recipients in both templates without losing 
     "other@example.test";
   expect(validateAssistantScenario(scenario, lostOwner).failures).toContain(
     "application_access_multi_target_union_or_preservation_failed",
+  );
+});
+
+it("requires reviewed bootstrap workflow facts and rejects field-only or secret-requesting answers", () => {
+  const text = buildAssistantKnowledge().topics.find(
+    (t) => t.id === "firewall-access-bootstrap",
+  )?.fieldOverview;
+  if (!text) throw new Error("missing_bootstrap_overview");
+  expect(assistantFirewallBootstrapFailures(text)).toEqual([]);
+  expect(
+    assistantFirewallBootstrapFailures(
+      "firewall_admin_username firewall_admin_password firewall_api_credentials firewall_bootstrap firewall_api_secret_version",
+    ),
+  ).toEqual(
+    expect.arrayContaining([
+      "bootstrap_overview_missing_secure_binding",
+      "bootstrap_overview_missing_phase_boundaries",
+      "bootstrap_overview_missing_single_scope",
+      "bootstrap_overview_missing_separate_access",
+    ]),
+  );
+  expect(
+    assistantFirewallBootstrapFailures(
+      "Bitte poste das Passwort und sende die API-Schlüssel.",
+    ),
+  ).toContain("bootstrap_overview_asks_for_secrets");
+  expect(
+    assistantFirewallBootstrapFailures(`${text}\nBitte poste dein Passwort.`),
+  ).toContain("bootstrap_overview_asks_for_secrets");
+  expect(
+    assistantFirewallBootstrapFailures(
+      `${text}\nPoste keine Passwörter. Bitte sende dein Passwort nicht.`,
+    ),
+  ).not.toContain("bootstrap_overview_asks_for_secrets");
+  expect(
+    assistantFirewallBootstrapFailures(
+      `${text}\nKeine Änderungen; bitte poste dein Passwort.`,
+    ),
+  ).toContain("bootstrap_overview_asks_for_secrets");
+});
+
+it.each([
+  [
+    "Bootstrap unterstützt automatisch alle regionalen Firewalls.",
+    "bootstrap_overview_invented_scope",
+  ],
+  [
+    "--insecure bestätigt ein vertrauenswürdiges Zertifikat.",
+    "bootstrap_overview_unsafe_tls_claim",
+  ],
+  [
+    "Ein erneuter Bootstrap ist immer sicher und benötigt keine Planprüfung.",
+    "bootstrap_overview_unsafe_rebootstrap_claim",
+  ],
+])("rejects contradictory bootstrap advice: %s", (claim, failure) => {
+  const text = buildAssistantKnowledge().topics.find(
+    (t) => t.id === "firewall-access-bootstrap",
+  )?.fieldOverview;
+  if (!text) throw new Error("missing_bootstrap_overview");
+  expect(assistantFirewallBootstrapFailures(`${text}\n${claim}`)).toContain(
+    failure,
   );
 });

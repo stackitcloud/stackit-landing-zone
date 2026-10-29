@@ -565,3 +565,5 @@ der Klassifikator widersprüchlich Advice gemeldet hat. Vorhandene Domains und
 Metadaten sind keine offenen Setup-Entscheidungen. Informationsfragen und ausdrücklich
 änderungsfreie Fragen bleiben Advice. Kontaktquelle, Erhalt bestehender Werte,
 Vorschlagsvalidierung und ausdrückliche Übernahme werden weiterhin geprüft.
+
+Firewall-Zugangs-/Bootstrap-Übersichten nutzen nach semantischer Absichtserkennung ebenfalls geprüfte native Feldmetadaten und begrenzte Zugangs-/Phasenfakten. Dadurch entfällt für diese feste Übersicht ein zweiter generativer Aufruf. Admin-Anmeldung, API-Zugangsdaten und geschützte Operator-Bindungen bleiben getrennt; die Übersicht aktiviert keinen Bootstrap, liest keine Secrets und startet keine Ausführung. Andere Beratung bleibt im bisherigen themengebundenen Generierungspfad.
