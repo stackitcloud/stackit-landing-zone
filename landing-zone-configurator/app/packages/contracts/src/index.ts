@@ -5,6 +5,10 @@ export * from "./assistant.js";
 export * from "./backend.js";
 
 import { z } from "zod";
+import {
+  applicationPlatformImpactSchema,
+  applicationUpgradeSafetySchema,
+} from "./application-upgrades.js";
 
 export const firewallAdministrationSchema = z.strictObject({
   username: z
@@ -88,6 +92,7 @@ export const applicationRunnerBindingSchema = z.strictObject({
   tenantId: z.uuid(),
   instanceId: z.uuid(),
   purpose: applicationPlanPurposeSchema.optional(),
+  applicationUpgradeId: z.uuid().optional(),
 });
 
 export const applicationOrderDecisionSchema = z
@@ -196,6 +201,8 @@ export const planSummarySchema = z
       .strict(),
     destructive: z.boolean(),
     completeness: z.enum(["complete", "incomplete", "not-reported"]),
+    upgradeSafety: applicationUpgradeSafetySchema.optional(),
+    platformImpact: applicationPlatformImpactSchema.optional(),
   })
   .strict();
 export const planFailureSchema = z.enum([
@@ -477,3 +484,5 @@ export const runnerArtifactSchema = z.strictObject({
     .max(22 * 1024 * 1024),
   summary: planSummarySchema,
 });
+
+export * from "./application-upgrades.js";

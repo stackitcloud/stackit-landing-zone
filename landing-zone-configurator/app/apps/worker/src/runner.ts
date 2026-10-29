@@ -20,6 +20,8 @@ import {
   applicationExecutionProfile,
   applicationMvpAcceleratorCommit,
   applicationRunnerBindingSchema,
+  classifyApplicationUpgradePlan,
+  classifyPlatformApplicationImpactPlan,
   firewallAdministrationSchema,
   openTofuProgress,
   planResultSchema,
@@ -293,6 +295,11 @@ export async function runWorker(
       !executionProfile.maintenanceEnabled
     )
       throw new Error("Application source maintenance disabled");
+    if (
+      input.assessApplicationDependencies !== undefined &&
+      (mode !== "platform-plan" || input.assessApplicationDependencies !== true)
+    )
+      throw new Error("Invalid platform impact request");
     if (applying && applicationBinding?.purpose === "drift")
       throw new Error("Drift cannot be applied");
     if (!applicationJob && input.application !== undefined)
@@ -780,11 +787,18 @@ export async function runWorker(
       const exitCode = Number(
         await readFile(resolve(work, "plan.exit"), "utf8"),
       );
-      const summary = summarizePlan(
-        JSON.parse(planBytes.toString("utf8")),
-        exitCode,
-        "opentofu-1.12.6",
-      );
+      const nativePlan = JSON.parse(planBytes.toString("utf8"));
+      const summary = summarizePlan(nativePlan, exitCode, "opentofu-1.12.6");
+      if (
+        applicationBinding?.applicationUpgradeId &&
+        (applicationBinding.purpose ?? "standard") === "standard"
+      ) {
+        summary.upgradeSafety = classifyApplicationUpgradePlan(nativePlan);
+      }
+      if (input.assessApplicationDependencies === true) {
+        summary.platformImpact =
+          classifyPlatformApplicationImpactPlan(nativePlan);
+      }
       if (
         applicationBinding?.purpose === "destroy" &&
         (summary.resources.create ||

@@ -2,66 +2,74 @@
 
 ## Purpose
 
-Authorize workspace/configuration; separate proposals/acceptance/deployment.
+Authorize workspace/config; acceptance ≠ execution.
 
 ## Accelerator Contract
 
-Compiler exports native tfvars. Template defaults never consent
-to optional services. Patches: company name/code/region, existing folder names,
-native SNA. Naming delegation grants names only, not region/IDs/access/owners/roles.
-Preserve structural keys/metadata; other advice grants no mutations/access values.
-Saving, publication, ordering, Plan, Apply, Destroy, Recovery are separate.
-No free Terraform/YAML schema. Apply includes foundations+enabled inputs.
-Application orders pin IaC/lock/tools across product releases; patched Workers
-verify bundled sources. Order details > Ausführungsstand: origin=immutable template
-Git revision; desired=selected Accelerator revision, NOT an editable platform draft;
-lastApplied=source of last successful Apply, NOT a complete current-State snapshot.
-Explicit Accelerator upgrade retains same order/project/State/backend/policy;
-it changes desired source only, starts NO execution. Then NEW PLAN, review changes/
-replacements/deletions, NORMAL EXPLICIT APPLY APPROVAL. Failures retain desired
-source but MAY CHANGE State/resources; Recovery uses interrupted job source.
-Plan compares actual State, NOT lastApplied; lastApplied is NOT Recovery source.
-Never promise unchanged State/no data loss after failed Apply. Withdrawn sources
-cannot manually Apply/bypass checks; use reviewed replacement. Unresolved Recovery
-blocks upgrade; operator must provide reviewed compatible package if withdrawn.
-Never reorder existing infrastructure. Chat cannot upgrade/unlock/execute.
+Only native tfvars. Defaults/knowledge/catalogues enable nothing. Patches: company
+name/code/region, existing folders, native SNA. Naming
+consent grants names only, not IDs/region/access/owners/roles. Preserve keys/metadata.
+Save/publish/order/Plan/Apply/Destroy/Recovery stay separate.
+Apply: foundations and enabled inputs.
+
+Pinned IaC/lock/tools, patched Worker verifies.
+Updates: separate execution/template/platform bindings.
+Origin=template Git revision; desired=Accelerator, NOT platform draft;
+lastApplied=source of last successful Apply,
+NOT current-State snapshot/Recovery source. Source upgrade retains order/project/
+State/backend/policy, starts NO execution. Then NEW PLAN,
+review changes/replacements/deletions, NORMAL EXPLICIT APPLY APPROVAL.
+Failure retains desired but MAY CHANGE State/resources. Recovery=interrupted job
+snapshot/source; Plan=actual State, NOT lastApplied.
+Never promise unchanged State/no data loss after failure; never reorder.
+Withdrawn source blocks execution; unresolved Recovery blocks upgrades. Operator
+supplies reviewed recovery package; no manual bypass/invented hashes/arbitrary Git.
+
+Template: Platform Owner publishes same-family forward upgrade path.
+Keep same order/project/State/backend and old answers; ask new required answers.
+Confirm desired snapshot, then fresh Plan/separate Apply. Standard upgrades BLOCK
+deletions/replacements/unknown evidence; no checkbox override.
+Sensitive IAM/keys/network/service/availability: published policy.
+Stricter old/new policy wins; both-direct+explicit sensitive self-service permits
+requester, otherwise approval binds Plan/artifact/candidate hash.
+Platform Apply changes shared firewall/routes for ALL dependent Applications;
+No per-app old firewall. Gate blocks destructive/unknown shared changes; sensitive
+confirmation binds Plan/State/dependencies. Afterwards publish actual approved
+contract path; template version may remain.
+Org/placement/SNA/backend migration: separate.
+Chat cannot publish/upgrade/unlock/execute.
 
 ## Dependencies
 
-Knowledge/credentials never enable services; catalogues, values, claims and
-estimates are not execution.
+Readiness ≠ execution.
 
 ## Dialogue
 
-Reuse confirmed requirements; expose assumptions/inherited inconsistencies;
-prioritize step. "Later" never enables. Use saved history/unnamed follow-ups;
-explicit topic switches win. Planning is not authorization. Separate business,
-derived and secure operator decisions. Ask one missing firewall decision.
-options suggest replies, never patches/consent; multiple=true permits compatible
-answers; free text allowed. Subsets need new validated proposals; save only on
-explicit whole-proposal acceptance. New configs inherit own template advice only
-via explicit revision-bound server context; never retrofit existing ones.
-Application groups/parameters restrict versions/choices; chat creates no grants/orders.
+Reuse requirements/history/unnamed follow-ups; explicit topic switches win.
+Disclose assumptions; "later" never enables. Separate business/derived/operator
+choices; ask one missing firewall decision.
+Options ≠ consent/patches; multiple=true allows compatible
+answers; free text allowed. Subsets need revalidated proposals. Save only after
+whole-proposal acceptance. New configs inherit via revision-bound server context; never retrofit. Groups/parameters restrict versions.
 
 ## Examples
 
-"SNA first, firewall later": supported SNA only; disclose inherited firewall.
-No selective cloud Apply; native tfvars need separate credentials/backend setup.
+"SNA first, firewall later": SNA only; disclose inherited firewall.
+No selective Apply; standalone tfvars need external credentials/backend.
 
 ## Limits
 
-Acceptance: reauthorize/recheck base/candidate. Keep unknown imports outside model.
-Chats expire three calendar months from creation, not activity; deletion/late
-inference cannot restore derived context. Regenerate with current knowledge.
-No chat expiry extension. Five sessions=load target, not quota/capacity. Schema/model errors retain drafts. No auto Git/publication/order/
-Recovery unlock/raw State-Plan inspection.
+Recheck authorization/base/candidate at acceptance and after inference/reauth.
+Unknown imports stay outside model. Chats expire three calendar months after
+creation, not activity; deletion/late inference cannot restore derived context.
+Regenerate knowledge, no expiry extension. Five sessions=load target, not quota.
+Errors retain drafts. No automatic Git/publish/order/unlock or raw State/Plan.
 
 ## Credentials
 
-Recheck owner/tenant/workspace per operation and after inference/reauth.
-Sessions grant no rights; no tokens/keys/raw errors/protected data in model.
+Session ≠ rights; no tokens/keys/raw errors/protected model data.
 
 ## Sources
 
-Manifest binds sources. Separate release/promotion/planning,
-retention/restore/load/DE-EN parity and A01-A24 acceptance.
+Manifest binds sources. Separate release/promotion/Plan, retention/restore/load,
+DE/EN parity, A01–A24.

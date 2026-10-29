@@ -193,6 +193,10 @@ async function fixture(
   await page
     .getByRole("button", { name: /Details anzeigen: Existing pinned order/ })
     .click();
+  await page
+    .getByRole("region", { name: "Bestelldetails", exact: true })
+    .getByRole("tab", { name: "Updates", exact: true })
+    .click();
   const component = page.getByRole("region", {
     name: "Ausführungsstand der Bestellung",
     exact: true,
@@ -232,6 +236,7 @@ test("explicit upgrade retains the existing order, origin and State across reloa
   await expect(upgrade).toBeDisabled();
   expect(f.mutations).toEqual([]);
   await page.getByRole("tab", { name: "Drift", exact: true }).click();
+  await page.getByRole("tab", { name: "Updates", exact: true }).click();
   await expect(f.component.getByTitle(origin, { exact: true })).toHaveCount(3);
   expect(f.mutations).toEqual([]);
   await f.component
@@ -256,6 +261,7 @@ test("explicit upgrade retains the existing order, origin and State across reloa
   await page
     .getByRole("button", { name: /Details anzeigen: Existing pinned order/ })
     .click();
+  await page.getByRole("tab", { name: "Updates", exact: true }).click();
   await expect(f.component.getByTitle(origin, { exact: true })).toHaveCount(2);
   await expect(f.component.getByTitle(target, { exact: true })).toHaveCount(2);
   expect(f.mutations).toHaveLength(1);
@@ -464,6 +470,7 @@ for (const action of ["plan", "drift"] as const) {
           "Upgrade und Apply sind bis zum Abgleich gesperrt",
         );
       }
+      await details.getByRole("tab", { name: "Updates", exact: true }).click();
       await expect(f.component.getByTitle(origin, { exact: true })).toHaveCount(
         3,
       );

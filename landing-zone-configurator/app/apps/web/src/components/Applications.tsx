@@ -53,7 +53,11 @@ import type { Session } from "./Account";
 import { ApplicationExecutionLifecycle } from "./ApplicationExecutionLifecycle";
 import { applicationGroupsSchema } from "./ApplicationGroups";
 import { ApplicationOrderQuota } from "./ApplicationOrderQuota";
+import { ApplicationOrderUpdates } from "./ApplicationOrderUpdates";
+import { ApplicationPlatformUpgradePublication } from "./ApplicationPlatformUpgradePublication";
 import { ApplicationStateRecovery } from "./ApplicationStateRecovery";
+import { ApplicationUpgradeApproval } from "./ApplicationUpgradeApproval";
+import { ApplicationUpgradePublication } from "./ApplicationUpgradePublication";
 import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
@@ -347,6 +351,7 @@ async function request(
 }
 
 type OrderView =
+  | "updates"
   | "overview"
   | "plan"
   | "apply"
@@ -1009,6 +1014,7 @@ function RecoveryReplan({
 function ApplicationPlanControls({
   instance,
   session,
+  upgradesEnabled = false,
   planEnabled,
   applyEnabled,
   recoveryReviewsEnabled,
@@ -1020,6 +1026,7 @@ function ApplicationPlanControls({
 }: {
   instance: ApplicationInstance;
   session: Session;
+  upgradesEnabled?: boolean;
   planEnabled: boolean;
   applyEnabled: boolean;
   recoveryReviewsEnabled: boolean;
@@ -1678,6 +1685,21 @@ function ApplicationPlanControls({
                   jobId={job.id}
                 />
               )}
+            {upgradesEnabled &&
+              job.operation === "plan" &&
+              job.status === "succeeded" &&
+              job.artifactSha256 &&
+              (view === "plan" || view === "history") && (
+                <ApplicationUpgradeApproval
+                  key={`${session.tenant?.id}:${session.user.id}:${job.id}:${job.artifactSha256}`}
+                  session={session}
+                  planId={job.id}
+                  artifactSha256={job.artifactSha256}
+                  onApproved={async (signal) => {
+                    await refresh(signal);
+                  }}
+                />
+              )}
             {job.recoveryReplanApproved && (
               <p role="status">
                 {t(
@@ -2132,6 +2154,7 @@ export function Applications({
   const [planJobsEnabled, setPlanJobsEnabled] = useState(false);
   const [executionLifecycleEnabled, setExecutionLifecycleEnabled] =
     useState(false);
+  const [upgradesEnabled, setUpgradesEnabled] = useState(false);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [planEnabled, setPlanEnabled] = useState(false);
   const [applyEnabled, setApplyEnabled] = useState(false);
@@ -2266,6 +2289,7 @@ export function Applications({
           executionDelegationEnabled: z.boolean().default(false),
           planJobsEnabled: z.boolean().default(false),
           executionLifecycleEnabled: z.boolean().default(false),
+          upgradesEnabled: z.boolean().default(false),
           execution: z
             .object({
               planEnabled: z.boolean(),
@@ -2297,6 +2321,7 @@ export function Applications({
       setRunnerRevision(storedOrders.execution.acceleratorRevision);
       setPlanJobsEnabled(storedOrders.planJobsEnabled);
       setExecutionLifecycleEnabled(storedOrders.executionLifecycleEnabled);
+      setUpgradesEnabled(storedOrders.upgradesEnabled);
       setPlanEnabled(storedOrders.execution.planEnabled);
       setApplyEnabled(storedOrders.execution.applyEnabled);
       setRecoveryReviewsEnabled(storedOrders.execution.recoveryReviewsEnabled);
@@ -3355,6 +3380,18 @@ export function Applications({
           hidden={selectedTab !== "publish"}
         >
           <h2>{t("3. Application Landing Zone Template veröffentlichen")}</h2>
+          {upgradesEnabled && (
+            <>
+              <ApplicationPlatformUpgradePublication
+                session={session}
+                contracts={contracts.map((item) => item.document)}
+              />
+              <ApplicationUpgradePublication
+                session={session}
+                versions={versions}
+              />
+            </>
+          )}
           <p className="field-hint">
             {t(
               "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.",
@@ -4112,20 +4149,6 @@ export function Applications({
           hidden={selectedTab !== "orders"}
         >
           <h2>{selectedInstance.name}</h2>
-          {executionLifecycleEnabled && (
-            <ApplicationExecutionLifecycle
-              key={`${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`}
-              session={session}
-              instanceId={selectedInstance.id}
-              requestedBy={selectedInstance.requestedBy}
-              onUpgraded={async (signal) => {
-                setPlanInput(null);
-                setPlanRefresh((value) => value + 1);
-                setOrderView("overview");
-                await load(signal);
-              }}
-            />
-          )}
           {orderDeletionEnabled &&
             (selectedInstance.canDelete || selectedInstance.canArchive) && (
               <button
@@ -4152,6 +4175,9 @@ export function Applications({
             {(
               [
                 { id: "overview", label: "Übersicht" },
+                ...(executionLifecycleEnabled || upgradesEnabled
+                  ? ([{ id: "updates", label: "Updates" }] as const)
+                  : []),
                 { id: "plan", label: "Plan" },
                 { id: "apply", label: "Apply" },
                 ...(maintenanceEnabled
@@ -4169,7 +4195,7 @@ export function Applications({
                 type="button"
                 role="tab"
                 aria-selected={orderView === tab.id}
-                aria-controls={`application-order-panel-${tab.id === "overview" ? "overview" : "execution"}`}
+                aria-controls={`application-order-panel-${tab.id === "overview" ? "overview" : tab.id === "updates" ? "updates" : "execution"}`}
                 tabIndex={orderView === tab.id ? 0 : -1}
                 onClick={() => setOrderView(tab.id)}
                 onKeyDown={(event) => {
@@ -4196,6 +4222,41 @@ export function Applications({
                 {t(tab.label)}
               </button>
             ))}
+          </div>
+          <div
+            id="application-order-panel-updates"
+            role="tabpanel"
+            aria-labelledby="application-order-tab-updates"
+            hidden={orderView !== "updates"}
+          >
+            <h3>{t("Updates für dieselbe Bestellung")}</h3>
+            {upgradesEnabled && (
+              <ApplicationOrderUpdates
+                key={`template-updates:${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`}
+                session={session}
+                instanceId={selectedInstance.id}
+                requestedBy={selectedInstance.requestedBy}
+                onChanged={async (signal) => {
+                  setPlanInput(null);
+                  setPlanRefresh((value) => value + 1);
+                  await load(signal);
+                }}
+              />
+            )}
+            {executionLifecycleEnabled && (
+              <ApplicationExecutionLifecycle
+                key={`${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`}
+                session={session}
+                instanceId={selectedInstance.id}
+                requestedBy={selectedInstance.requestedBy}
+                onUpgraded={async (signal) => {
+                  setPlanInput(null);
+                  setPlanRefresh((value) => value + 1);
+                  setOrderView("updates");
+                  await load(signal);
+                }}
+              />
+            )}
           </div>
           <div
             id="application-order-panel-overview"
@@ -4395,13 +4456,14 @@ export function Applications({
             id="application-order-panel-execution"
             role="tabpanel"
             aria-labelledby={`application-order-tab-${orderView}`}
-            hidden={orderView === "overview"}
+            hidden={orderView === "overview" || orderView === "updates"}
           >
             {planJobsEnabled ? (
               <ApplicationPlanControls
                 key={`${session.tenant?.id}:${session.user.id}:${selectedInstance.id}:${planRefresh}`}
                 instance={selectedInstance}
                 session={session}
+                upgradesEnabled={upgradesEnabled}
                 planEnabled={planEnabled}
                 applyEnabled={applyEnabled}
                 recoveryReviewsEnabled={recoveryReviewsEnabled}

@@ -1,130 +1,96 @@
-<a id="configuration-conversation-and-execution-lifecycle"></a>
-
-# Lebenszyklus von Konfiguration, Gespraech und Ausfuehrung
+# Konfiguration, Gespräch und Ausführungslebenszyklus
 
 [English](configuration-lifecycle.md) | [Deutsch](configuration-lifecycle.de.md)
 
-Deutsche Lesefassung. Der Assistant liest ausschliesslich die englische Quelle.
-
-<a id="purpose"></a>
-
 ## Zweck
 
-Verpflichtend fuer jede Service-/Template-Beratung: autorisierter
-Arbeitsbereich und autorisierte Konfiguration; Anforderungen, Defaults,
-Vorschlaege, Annahme und Deployment unterscheiden.
-
-<a id="accelerator-contract"></a>
+Arbeitsbereich und Konfiguration autorisieren; Annahme und Ausführung trennen.
 
 ## Accelerator-Vertrag
 
-Das gemeinsame Dokument/der Compiler erzeugt native tfvars fuer den passenden
-Accelerator. Template-Auswahl liefert Defaults, keine Zustimmung zur
-Aktivierung optionaler Services. Unterstuetzte Patches: Firmenname/-code/Region,
-bestehende Ordnernamen und natives SNA.
-Explizite Namensdelegation erlaubt gewaehlte Firmen-/Ordnernamen, nicht Region,
-IDs, Zugang, Eigentuemerschaft oder Rollen. Bestehende Strukturschluessel und
-Metadaten erhalten. Andere Themen bleiben Beratung, niemals zusaetzliche
-Mutationsrechte oder abgeleitete Zugriffswerte.
-Gespeicherte Konfiguration, Application-Template-Veroeffentlichung, Bestellung,
-Plan, Apply, Destroy und Recovery sind unabhaengige Vorgaenge. Kein freies
-Terraform oder zweites YAML-Schema. Ein vollstaendiger Apply umfasst
-verpflichtende Grundlagen und alle aktivierten Eingaben.
-Bestellungen behalten IaC-Quelle, Lock-/Werkzeugversionen und Ausführungsbindung
-über Produkt-Releases. Aktuelle gepatchte Worker prüfen gebündelte historische
-Quellen. Ein ausdrückliches Upgrade erhält dieselbe Bestellung und denselben
-State; anschließend sind ein neuer geprüfter Plan und die normale Apply-Freigabe
-nötig. Zurückgezogene Quellen benötigen einen geprüften Ersatzpfad, keine
-Neubestellung. Der Chat führt kein Upgrade aus.
-Die ursprüngliche Template-Quelle bleibt unverändert; ein ausdrückliches Upgrade
-ändert nur den gewünschten Ausführungsstand. Zuletzt angewendet ändert sich erst
-nach erfolgreichem Apply. Bei Fehlern bleibt der gewünschte Stand erhalten;
-Recovery verwendet die Quelle des unterbrochenen Jobs, nicht zuletzt angewendet.
-Der neue Plan vergleicht den tatsächlichen State, nicht zuletzt angewendet. Der gewünschte Stand
-bezeichnet eine gewählte Accelerator-Git-Revision, keinen bearbeitbaren
-Plattformentwurf. Zuletzt angewendet ist kein vollständiger aktueller
-State-Snapshot: Ein fehlgeschlagener Apply kann State und Ressourcen bereits
-verändert haben. Niemals unveränderten State oder Verlustfreiheit garantieren.
-In den Bestelldetails unter Ausführungsstand ändert ein Upgrade ausschließlich
-die gewünschte Quelle und startet keine Ausführung. Danach sind ein neuer Plan,
-die Prüfung auf Änderungen, Ersetzungen und Löschungen sowie eine ausdrückliche
-normale Apply-Freigabe nötig. Organisation, Projekt, Bestellung, Backend und
-State-Zuordnung bleiben erhalten. Zurückgezogene Quellen dürfen nicht manuell
-weiter angewendet werden. Offene Recovery sperrt das Upgrade; bei zurückgezogener
-Quelle muss der Operator ein geprüftes kompatibles Paket bereitstellen.
+Nur native tfvars, kein freies Terraform/YAML. Standards, Wissen und Kataloge
+aktivieren nichts. Patches betreffen Firmenname/-kürzel/Region, bestehende Ordner
+und native SNA. Namensdelegation erlaubt Namen, keine IDs, Region, Zugriffe,
+Owner oder Rollen. Struktur und Metadaten erhalten. Speichern, Veröffentlichen,
+Bestellen, Plan, Apply, Destroy und Recovery sind getrennte Schritte. Apply umfasst
+Grundlagen und aktivierte Eingaben.
 
-<a id="dependencies"></a>
+Bestellungen binden IaC, Lockdatei und Werkzeuge; der aktuelle Worker prüft die
+paketierten Quellen. Unter Updates stehen Ausführung, Template und Plattform
+getrennt. Ursprung ist die Template-Git-Revision; gewünscht ist die Accelerator-
+Revision, kein bearbeitbarer Plattformentwurf. Zuletzt angewendet ist die Quelle
+des letzten erfolgreichen Apply, kein aktueller State-Nachweis und keine
+Recovery-Quelle. Ein Quellenupgrade erhält Bestellung, Projekt, State, Backend
+und Richtlinie und startet nichts. Danach neuer Plan, Änderungen/Ersetzungen/
+Löschungen prüfen und Apply separat ausdrücklich freigeben.
 
-## Abhaengigkeiten
+Ein Fehler erhält die gewünschte Bindung, kann Ressourcen und State aber bereits
+verändert haben. Recovery verwendet den Snapshot und die Quelle des unterbrochenen
+Jobs; Plan vergleicht den tatsächlichen State, nicht den letzten erfolgreichen
+Apply. Unveränderten State oder Verlustfreiheit nach Fehlern niemals versprechen;
+vorhandene Infrastruktur nicht neu bestellen. Zurückgezogene Quellen sperren neue
+Ausführungen, ungeklärte Recovery sperrt Upgrades. Bei zurückgezogener Quelle muss
+der Operator ein geprüftes Recovery-Paket bereitstellen. Kein manuelles Umgehen,
+erfundene Hashes oder Ausführen beliebiger Git-Stände.
 
-Service-Wissen und Zugangsdaten-Grundlagen aktivieren keine Services.
-Katalogfakten, aktuelle Werte, Nutzeraussagen und Schaetzungen sind keine
-Ausfuehrung.
+Für Template-Upgrades veröffentlicht der Platform Owner einen Vorwärtspfad
+innerhalb derselben Template-Familie. Bestellung, Projekt, State, Backend und
+bisherige Antworten bleiben erhalten; neue Pflichtantworten erfragen. Gewünschten
+Snapshot bestätigen, dann neuer tatsächlicher Plan und separater Apply.
+Standard-Upgrades blockieren Löschungen, Ersetzungen und unbekannte Nachweise;
+keine Checkbox kann das umgehen. Sensible Änderungen an IAM, Schlüsseln, Netz,
+Diensten und Verfügbarkeit folgen der veröffentlichten Richtlinie. Die strengere
+Richtlinie beider Versionen gilt. Nur beidseitig direkte Freigabe plus ausdrücklich
+erlaubter sensibler Self-Service erlaubt den Bestellerpfad; sonst bindet die
+Freigabe Plan, Artefakt-Hash und Kandidaten-Hash.
 
-<a id="dialogue"></a>
+Ein Plattform-Apply verändert gemeinsame Firewall und Routen für alle abhängigen
+Applications. Es gibt keine private alte Firewall je Application. Die
+Abhängigkeitsprüfung sperrt destruktive und unbekannte gemeinsame Änderungen;
+sensible Bestätigungen binden Plan, State und Abhängigkeiten. Danach einen Pfad
+zwischen tatsächlich freigegebenen Plattformverträgen veröffentlichen; die
+Template-Version kann gleich bleiben. Organisations-, Platzierungs-, SNA- oder
+Backend-Migrationen benötigen ein separates Verfahren. Chat kann weder Pfade
+veröffentlichen noch Bindungen ändern, entsperren oder ausführen.
+
+## Abhängigkeiten
+
+Bereitschaft ist keine Ausführung und keine Autorisierung.
 
 ## Dialog
 
-Bestaetigte fruehere Anforderungen wiederverwenden, offene Annahmen benennen,
-den aktuellen Schritt priorisieren und widerspruechliche geerbte Einstellungen
-erklaeren. "Spaeter" bedeutet nicht "jetzt aktivieren". Themen-/Modusplanung
-nutzt den gespeicherten Verlauf einschliesslich unbenannter Folgeantworten;
-explizite Themenwechsel ersetzen den bisherigen Fokus. Planung ist keine
-Autorisierung. Fachliche Entscheidungen, abgeleitete technische Werte und
-rein operatorseitige sichere Einrichtung unterscheiden. Jeweils nur eine
-fehlende Firewall-Entscheidung erfragen.
-`options` sind Antwortvorschlaege, keine Patches/Zustimmung. `multiple=true`
-erlaubt kompatible kombinierte Antworten; Freitext bleibt moeglich. Teilmengen
-fordern einen neuen validierten Vorschlag an; nur explizite Annahme des gesamten
-Vorschlags speichert Aenderungen.
-Neue Konfigurationen koennen eigene Template-Beratung explizit ueber einen
-revisionsgebundenen serverseitigen Kontext erben; bestehende Konfigurationen
-werden nicht stillschweigend nachgeruestet. Application-Gruppen und
-Parameterbindungen begrenzen autorisierte Versionen und Auswahlmoeglichkeiten;
-niemals Rechte oder Bestellungen aus dem Chat erzeugen.
-
-<a id="examples"></a>
+Bestätigte Anforderungen, Verlauf und unbenannte Folgefragen verwenden;
+ausdrückliche Themenwechsel beachten. Annahmen und bestehende Widersprüche zeigen.
+„Später“ aktiviert nichts. Fachliche, abgeleitete und geschützte Operator-
+Entscheidungen trennen; eine fehlende Firewall-Entscheidung erfragen.
+Antwortoptionen sind keine Zustimmung oder Patches. Mehrfachauswahl erlaubt
+vereinbare Antworten, Freitext bleibt möglich. Teilmengen benötigen neue geprüfte
+Vorschläge. Nur nach ausdrücklicher Gesamtannahme speichern. Neue Konfigurationen
+übernehmen Beratung ausschließlich über revisionsgebundenen Serverkontext;
+bestehende nicht nachträglich verändern. Gruppen und Parameter begrenzen Versionen
+und Auswahlmöglichkeiten; Chat erteilt keine Berechtigungen.
 
 ## Beispiele
 
-"SNA first, firewall later": Nur unterstuetzte SNA-Aenderungen vornehmen und
-geerbte Firewall-Einstellungen offenlegen. Kein selektiver Cloud-Apply; native
-tfvars benoetigen getrennte, extern bereitgestellte Zugangsdaten und
-Backend-Voraussetzungen.
-
-<a id="limits"></a>
+„SNA zuerst, Firewall später“: nur SNA; bestehende Firewall-Einstellungen offenlegen.
+Kein selektiver Apply; eigenständige tfvars benötigen externe Zugangsdaten und Backend.
 
 ## Grenzen
 
-Bei Annahme Berechtigung, Basisrevision und Kandidatenvalidierung erneut pruefen.
-Unbekannte Importfelder bleiben ausserhalb des Modellkontexts erhalten.
-Gespraeche verfallen drei Kalendermonate nach Erstellung, nicht nach letzter
-Aktivitaet; Quellenloeschung entfernt abgeleiteten Kontext und spaete Inferenz
-darf ihn nicht wiederherstellen. Gespraeche mit aktuellem Wissen fortsetzen;
-alte Vorschlaege muessen neu erzeugt werden. Keine Loeschung oder
-Ablaufverlaengerung. Fuenf gleichzeitige Sitzungen sind ein Lastziel, keine
-Quote gespeicherter Chats; aktuelle Prozesslimits sind keine gemessene
-Lastqualifikation. Schema-/Modellfehler erhalten den Entwurf.
-Keine automatische Git-/Repository-Mutation, Veroeffentlichung, Bestellung,
-Recovery-Entsperrung oder Inspektion roher States/Plaene.
-
-<a id="credentials"></a>
+Autorisierung, Ausgangsstand und Kandidat bei Annahme und nach Inferenz oder erneuter
+Anmeldung prüfen. Unbekannte Importfelder nicht ins Modell geben. Chats verfallen
+drei Kalendermonate nach Erstellung, nicht nach letzter Aktivität. Löschen und späte
+Inferenz stellen abgeleiteten Kontext nicht wieder her. Aktuelles Wissen generieren,
+keine Fristverlängerung. Fünf Sitzungen sind ein Lastziel, keine Quote. Schema- und
+Modellfehler erhalten Entwürfe. Kein automatisches Git, Veröffentlichen, Bestellen,
+Entsperren oder Lesen roher States und Pläne.
 
 ## Zugangsdaten
 
-Eigentuemer-/Tenant-/Arbeitsbereichsrechte bei jedem Vorgang erneut pruefen,
-auch nach Inferenz und erneuter Authentifizierung. Sitzungszustand ist keine
-Rechteausweitung. Tokens, Schluessel, rohe Provider-Fehler und geschuetzte Daten
-gelangen niemals in den Modellkontext.
-
-<a id="sources"></a>
+Sitzungen verleihen keine Rechte. Keine Tokens, Schlüssel, rohen Fehler oder
+geschützten Daten im Modell.
 
 ## Quellen
 
-Das Manifest bindet Dokument, Funktionen und Service.
-Release/Promotion, Planung, Aufbewahrung/Restore/Last/DE-EN-Paritaet und A01-A24
-benoetigen getrennte Abnahme.
-
-Bei ausdrücklich auf Application-Quellen bezogener Lifecycle-Beratung gibt der
-Assistant den festen Produktablauf mit Plan-/Apply-Grenze und Recovery-Regeln aus.
-Dabei werden keine Bestelldaten gelesen oder Aktionen ausgeführt.
+Das Manifest bindet Quellen. Release, Promotion und Plan sowie Aufbewahrung,
+Wiederherstellung, Last, Sprachgleichheit und A01–A24 getrennt nachweisen.

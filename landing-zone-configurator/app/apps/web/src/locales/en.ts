@@ -1,4 +1,77 @@
 export const englishMessages: Record<string, string> = {
+  "Diese ältere Bestellung ist an keinen Plattformvertrag gebunden. Upgrade-Aktionen bleiben gesperrt. Bestellung, State und bisherige Ausführungsnachweise bleiben erhalten; prüfe die Plattformanbindung mit dem Platform Owner.":
+    "This older order is not bound to a platform contract. Upgrade actions remain blocked. The order, State and existing execution evidence are preserved; review the platform binding with the Platform Owner.",
+  "Dieser Upgrade-Plan ist gesperrt. Prüfe die Hindernisse und erstelle anschließend einen neuen Plan.":
+    "This upgrade Plan is blocked. Review the blockers and then create a new Plan.",
+  "Dieser Upgrade-Plan ist nicht mehr aktuell. Prüfe den neuesten gespeicherten Plan.":
+    "This upgrade Plan is no longer current. Review the latest saved Plan.",
+  "Zuletzt erfolgreich angewendeter Plattformvertrag":
+    "Platform contract of the last successful Apply",
+  "Der zuletzt erfolgreiche Apply ist ein Ausführungsnachweis, kein aktueller Cloud-Abgleich. Prüfe den neuen Plan vor jedem Apply.":
+    "The last successful Apply is execution evidence, not a current cloud reconciliation. Review the new Plan before every Apply.",
+  "Plattformvertrag derselben Bestellung aktualisieren":
+    "Update the platform contract of the same order",
+  "Ein Plattform-Upgrade behält die Template-Version, Bestellung und den State. Nur ein ausdrücklich veröffentlichter Plattformpfad kann ausgewählt werden.":
+    "A platform upgrade preserves the template version, order and State. Only an explicitly published platform upgrade path can be selected.",
+  "Für diese Bestellung ist noch kein Plattform-Upgrade freigegeben.":
+    "No platform upgrade has been published for this order yet.",
+  "Freigegebener Ziel-Plattformvertrag": "Published target platform contract",
+  "Plattform-Upgrade prüfen": "Preview platform upgrade",
+  "Plattform-Upgrade-Vergleich": "Platform upgrade comparison",
+  "Bisheriger Plattformvertrag": "Previous platform contract",
+  "Ich übernehme nur den gewünschten Plattformvertrag derselben Bestellung. Ein neuer Plan und die normale Apply-Freigabe bleiben separat.":
+    "I select only the desired platform contract of the same order. A new Plan and the normal Apply approval remain separate.",
+  "Gewünschten Plattformstand übernehmen": "Select desired platform revision",
+  "Der gewünschte Plattformstand ist gespeichert. Erstelle und prüfe separat einen neuen Plan. Es wurde kein Plan oder Apply gestartet.":
+    "The desired platform revision was saved. Create and review a new Plan separately. No Plan or Apply was started.",
+  "Plattform-Upgrade-Pfade veröffentlichen": "Publish platform upgrade paths",
+  "Wähle tatsächliche freigegebene Plattformverträge derselben Organisation. Die Veröffentlichung erlaubt nur ein späteres ausdrückliches Upgrade bestehender Bestellungen.":
+    "Select actual approved platform contracts of the same organisation. Publication only allows a later explicit upgrade of existing orders.",
+  "Ausgangs-Plattformvertrag": "Source platform contract",
+  "Sensitive Plattformänderungen dieses Pfades dürfen nach einem neuen Plan die direkte Richtlinie verwenden, soweit die übrigen Freigaberegeln dies erlauben.":
+    "Sensitive platform changes on this path may use the direct policy after a new Plan where the remaining approval rules permit it.",
+  "Ich veröffentliche nur den Plattform-Upgrade-Pfad. Bestehende Bestellungen und States bleiben unverändert; es wird keine Infrastruktur geändert.":
+    "I publish only the platform upgrade path. Existing orders and States remain unchanged; no infrastructure is changed.",
+  "Plattform-Upgrade-Pfad veröffentlichen": "Publish platform upgrade path",
+  "Veröffentlichte Plattform-Upgrade-Pfade": "Published platform upgrade paths",
+  "Plattform-Upgrade-Pfad veröffentlicht. Bestehende Bestellungen bleiben unverändert; es wurde kein Plan oder Apply gestartet.":
+    "Platform upgrade path published. Existing orders remain unchanged; no Plan or Apply was started.",
+
+  "Der Plattformplan ist unvollständig. Ein neuer vollständiger Plan ist erforderlich.":
+    "The platform plan is incomplete. Create a new complete plan.",
+  "Die Auswirkungen einer Ressource sind unbekannt. Apply bleibt bis zur Klärung gesperrt.":
+    "The impact of a resource is unknown. Apply remains blocked until resolved.",
+  "Die Auswirkungen einer Aktion sind unbekannt. Apply bleibt bis zur Klärung gesperrt.":
+    "The impact of an action is unknown. Apply remains blocked until resolved.",
+  "Der Plan ersetzt gemeinsam genutzte Plattformressourcen. Diese Sperre kann nicht durch Bestätigung aufgehoben werden.":
+    "The plan replaces shared platform resources. Acknowledgment cannot override this block.",
+  "Der Plan löscht gemeinsam genutzte Plattformressourcen. Diese Sperre kann nicht durch Bestätigung aufgehoben werden.":
+    "The plan deletes shared platform resources. Acknowledgment cannot override this block.",
+  "Der Plan verändert gemeinsam genutzte Plattformressourcen. Prüfe die betroffenen Application Landing Zones.":
+    "The plan changes shared platform resources. Review the affected Application Landing Zones.",
+  "Die Plattformauswirkungen konnten nicht sicher geprüft werden. Apply bleibt gesperrt.":
+    "The platform impact could not be verified safely. Apply remains blocked.",
+  "Auswirkungen auf Application Landing Zones":
+    "Impact on Application Landing Zones",
+  "Die Prüfung und Bestätigung gelten nur für diesen gespeicherten Plattformplan und den aktuellen Abhängigkeitsstand. Hier wird kein Apply gestartet.":
+    "Review and acknowledgment apply only to this saved platform plan and the current dependency snapshot. No Apply is started here.",
+  "Plattformauswirkungen werden geprüft. Apply bleibt bis zum Ergebnis gesperrt.":
+    "Checking platform impact. Apply remains blocked until the result is available.",
+  "Plattformauswirkungen blockiert": "Platform impact blocked",
+  "Plattformänderung mit prüfpflichtigen Auswirkungen":
+    "Platform change requires impact review",
+  "Keine prüfpflichtigen Plattformauswirkungen":
+    "No platform impact requiring acknowledgment",
+  "Die Plattformauswirkungen sind nicht abschließend geklärt. Apply bleibt gesperrt.":
+    "Platform impact has not been resolved. Apply remains blocked.",
+  "Die Auswirkungen dieses Plattformplans wurden bestätigt.":
+    "The impact of this platform plan has been acknowledged.",
+  "Ich habe die Auswirkungen dieses konkreten Plattformplans auf die aufgeführten Application Landing Zones geprüft. Diese Bestätigung startet keinen Apply.":
+    "I reviewed the impact of this specific platform plan on the listed Application Landing Zones. This acknowledgment does not start Apply.",
+  "Plattformauswirkungen bestätigen": "Acknowledge platform impact",
+  "Unbekannte Auswirkungen, Löschungen und Ersetzungen bleiben gesperrt. Eine Checkbox hebt diese Sperre nicht auf.":
+    "Unknown impacts, deletions and replacements remain blocked. A checkbox cannot override this block.",
+
   "Die ursprüngliche Recovery-Quelle wurde zurückgezogen oder ihr geprüftes Paket fehlt. Ein Operator muss ein geprüftes kompatibles Recovery-Paket bereitstellen. Bestellung, State und Sperre bleiben erhalten; Upgrade und Apply sind bis zum Abgleich gesperrt.":
     "The original recovery source was withdrawn or its reviewed package is missing. An operator must provide a reviewed compatible recovery package. The order, State and lock are preserved; upgrade and Apply remain blocked until reconciliation.",
 
@@ -2814,4 +2887,121 @@ export const englishMessages: Record<string, string> = {
     "A runner still holds an execution claim. Reconcile the existing execution before upgrading.",
   "Das gewünschte Runner-Paket ist nicht als Upgrade freigegeben oder derzeit nicht verfügbar. Prüfe den angebotenen Upgrade-Pfad für dieselbe Bestellung.":
     "The requested runner package is not approved for upgrade or is currently unavailable. Review the offered upgrade path for the same order.",
+  "Aktuell gewünschte Template-Version": "Currently desired template version",
+  "Antworten für die Zielversion": "Answers for the target version",
+  "Ausgangsversion für das Upgrade": "Upgrade source version",
+  "Beibehaltene und neue Antworten": "Retained and new answers",
+  "Bisherige Version": "Previous version",
+  "Bitte beantworten": "Please answer",
+  "Das Plattformziel ist nicht mehr verfügbar.":
+    "The platform target is no longer available.",
+  "Das Upgrade würde die Identität bestehender Ressourcen verändern und ist gesperrt.":
+    "The upgrade would change existing resource identities and is blocked.",
+  "Das Upgrade würde eine bestehende Komponente entfernen und ist gesperrt.":
+    "The upgrade would remove an existing component and is blocked.",
+  "Der Upgrade-Prüfstand hat sich geändert. Lade die Updates erneut und prüfe den Vergleich.":
+    "The reviewed upgrade changed. Reload updates and review the comparison.",
+  "Der gewünschte Upgrade-Stand ist gespeichert. Erstelle und prüfe jetzt separat einen neuen Plan. Es wurde kein Plan oder Apply gestartet.":
+    "The desired upgrade is saved. Create and review a new Plan separately. No Plan or Apply was started.",
+  "Der neue gespeicherte Plan benötigt eine separate Platform-Owner-Freigabe.":
+    "The new saved Plan requires separate Platform Owner approval.",
+  "Die Ausführungsquelle ändert sich.": "The execution source changes.",
+  "Die Dienstkonfiguration ändert sich.": "The service configuration changes.",
+  "Die Netzwerkkonfiguration ändert sich.":
+    "The network configuration changes.",
+  "Die Upgrade-Antwort konnte nicht sicher gelesen werden. Lade die Updates erneut.":
+    "The upgrade response could not be read safely. Reload updates.",
+  "Die Upgrade-Prüfung ist derzeit nicht verfügbar. Bestellung, gewünschter Stand und State bleiben erhalten.":
+    "Upgrade review is currently unavailable. The order, desired version and state are preserved.",
+  "Die Zielversion ist noch nicht vollständig für die Ausführung qualifiziert.":
+    "The target version is not yet fully qualified for execution.",
+  "Die Zielversion ist stillgelegt und kann nicht übernommen werden.":
+    "The target version is retired and cannot be selected.",
+  "Die bisherigen Antworten passen noch nicht vollständig zur Zielversion.":
+    "The existing answers are not yet fully compatible with the target version.",
+  "Die gewünschte Version hat sich geändert. Lade die Updates erneut; Bestellung und State bleiben erhalten.":
+    "The desired version changed. Reload updates; the order and state are preserved.",
+  "Diese Freigabe gilt nur für den angezeigten gespeicherten Plan und seine Upgrade-Bindung. Ein späterer oder geänderter Plan benötigt eine neue Prüfung; hier wird kein Apply gestartet.":
+    "Approval applies only to this saved Plan and its upgrade binding. A later or changed Plan requires a new review; no Apply starts here.",
+  "Diese Änderung muss geprüft werden.": "This change requires review.",
+  "Diesen Upgrade-Plan freigeben": "Approve this upgrade Plan",
+  "Dieser Upgrade-Plan wurde bereits separat freigegeben.":
+    "This upgrade Plan already has separate approval.",
+  "Dieses Upgrade ist blockiert. Eine Bestätigung kann die Sicherheitsgrenzen nicht aufheben.":
+    "This upgrade is blocked. Confirmation cannot override the safety boundaries.",
+  "Dieses Upgrade ist derzeit gesperrt. Prüfe die angezeigten Hindernisse; Bestellung und State bleiben erhalten.":
+    "This upgrade is currently blocked. Review the blockers; the order and state are preserved.",
+  "Du hast derzeit keine Berechtigung für diese Upgrade-Aktion.":
+    "You currently have no permission for this upgrade action.",
+  "Ein Regionswechsel ist hier nicht zulässig.":
+    "Changing region is not allowed here.",
+  "Ein Wechsel der Network Area ist hier nicht zulässig.":
+    "Changing Network Area is not allowed here.",
+  "Ein Wechsel der Template-Familie ist hier nicht zulässig.":
+    "Changing template family is not allowed here.",
+  "Ein Wechsel des State-Backends ist hier nicht zulässig.":
+    "Changing state backend is not allowed here.",
+  "Ein Wechsel des übergeordneten Containers ist hier nicht zulässig.":
+    "Changing parent container is not allowed here.",
+  "Ein Wechsel zwischen Public und Corporate ist hier nicht zulässig.":
+    "Changing between Public and Corporate is not allowed here.",
+  "Ein neuer Bestellparameter muss ausdrücklich beantwortet werden.":
+    "A new order parameter needs an explicit answer.",
+  "Eine Ausführung oder Recovery ist noch offen. Schließe sie ab, bevor du ein Upgrade auswählst.":
+    "An execution or recovery remains unresolved. Complete it before selecting an upgrade.",
+  "Eine nicht freigegebene Konfigurationsänderung blockiert dieses Upgrade.":
+    "An unapproved configuration change blocks this upgrade.",
+  "Freigegebene Zielversion": "Approved target version",
+  "Für diese Bestellung ist noch kein neuer Upgrade-Pfad freigegeben.":
+    "No new upgrade path has been approved for this order yet.",
+  "Gewünschten Upgrade-Stand übernehmen": "Select desired upgrade",
+  "Gewünschter Plattformvertrag": "Desired platform contract",
+  "Ich habe die tatsächlichen Änderungen dieses gespeicherten Plans geprüft und gebe nur diesen Upgrade-Plan frei. Der normale Apply-Schritt bleibt separat.":
+    "I reviewed the actual changes in this saved Plan and approve only this upgrade Plan. The normal Apply step remains separate.",
+  "Ich veröffentliche nur den Upgrade-Pfad und seine Richtlinie. Keine bestehende Bestellung, kein State und keine Cloud-Ressource wird dadurch verändert.":
+    "I am publishing only the upgrade path and its policy. This changes no existing order, state or cloud resource.",
+  "Ich übernehme nur den gewünschten Stand derselben Bestellung. Ich erstelle und prüfe danach einen neuen Plan; diese Aktion startet und genehmigt keinen Apply.":
+    "I am selecting only the desired version of the same order. I will create and review a new Plan afterwards; this action neither starts nor approves Apply.",
+  "Löschungen, Ersetzungen und unzulässige Zielwechsel bleiben gesperrt. Eine Bestätigung hebt diese Sperren nicht auf.":
+    "Deletions, replacements and unsupported target changes remain blocked. Confirmation does not override these blocks.",
+  "Nach der Planprüfung gilt die direkte Apply-Richtlinie.":
+    "The direct Apply policy applies after Plan review.",
+  "Netzwerkvorgaben der Plattform ändern sich.":
+    "Platform network requirements change.",
+  "Neue Antwort erforderlich:": "New answer required:",
+  "Neue Template-Versionen ändern bestehende Bestellungen nicht. Veröffentliche einen geprüften Pfad innerhalb derselben Template-Familie, damit Auftraggeber ihn unter Updates auswählen können.":
+    "New template versions do not change existing orders. Publish a reviewed path within the same template family so requesters can select it under Updates.",
+  "Neue Version derselben Template-Familie":
+    "New version of the same template family",
+  "Projektrollen oder Automatisierungsrechte ändern sich.":
+    "Project roles or automation permissions change.",
+  "Reguläres Upgrade": "Ordinary upgrade",
+  "Schlüssel oder Rotationseinstellungen ändern sich.":
+    "Keys or rotation settings change.",
+  "Sensitive Änderungen dieses Pfades dürfen nach einem neuen Plan direkt angewendet werden, sofern beide Versionen direkte Bereitstellung erlauben. Andernfalls bleibt eine separate Plan-Freigabe erforderlich.":
+    "Sensitive changes on this path may be applied directly after a new Plan if both versions allow direct deployment. Otherwise separate Plan approval remains required.",
+  "Sensitive Änderungen: direkte Richtlinie":
+    "Sensitive changes: direct policy",
+  "Sensitive Änderungen: separate Plan-Freigabe":
+    "Sensitive changes: separate Plan approval",
+  "Sensitives Upgrade": "Sensitive upgrade",
+  "Template- und Plattform-Updates": "Template and platform updates",
+  Updates: "Updates",
+  "Updates für dieselbe Bestellung": "Updates for the same order",
+  "Updates aktualisieren": "Refresh updates",
+  "Updates behalten dieselbe Bestellung und denselben State. Ein gewünschter Stand ist noch kein erfolgreich angewendeter Stand.":
+    "Updates retain the same order and state. A desired version has not yet been successfully applied.",
+  "Upgrade blockiert": "Upgrade blocked",
+  "Upgrade prüfen": "Review upgrade",
+  "Upgrade wählen": "Select upgrade",
+  "Upgrade-Pfad veröffentlichen": "Publish upgrade path",
+  "Upgrade-Pfad veröffentlicht. Bestehende Bestellungen bleiben unverändert, bis ihr Auftraggeber ausdrücklich ein Upgrade prüft und auswählt. Es wurde kein Plan oder Apply gestartet.":
+    "Upgrade path published. Existing orders remain unchanged until their requester explicitly reviews and selects an upgrade. No Plan or Apply was started.",
+  "Upgrade-Pfade veröffentlichen": "Publish upgrade paths",
+  "Upgrade-Plan separat freigeben": "Approve upgrade Plan separately",
+  "Ursprüngliche Template-Version": "Original template version",
+  "Version wählen": "Select version",
+  "Veröffentlichte Upgrade-Pfade": "Published upgrade paths",
+  "Zuletzt erfolgreich angewendete Template-Version":
+    "Last successfully applied template version",
 };

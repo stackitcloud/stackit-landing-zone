@@ -164,6 +164,7 @@ export type AssistantScenario = {
     | "public-kubernetes-followup";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
+  applicationUpgrade?: "template" | "platform";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
 
@@ -705,6 +706,22 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Nutze die Email meines aktuell verifiziert angemeldeten STACKIT-Benutzers als Organisations-Owner.",
   },
   {
+    id: "application-template-upgrade-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    applicationUpgrade: "template",
+    message:
+      "Wie kann ich als Besteller meine bestehende Application auf eine neue Template-Version aktualisieren, ohne neu zu bestellen? Erkläre den veröffentlichten Upgrade-Pfad, erhaltene Antworten und State, Schutz vor Löschungen und Ersetzungen sowie die getrennten Plan- und Apply-Freigaben. Nur beraten, nichts ausführen.",
+  },
+  {
+    id: "application-platform-upgrade-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    applicationUpgrade: "platform",
+    message:
+      "Wenn der Platform Owner die gemeinsame Firewall und Routen aktualisiert: Kann meine Application durch Ablehnen eines Plattform-Upgrades die alte Firewall behalten? Erkläre Abhängigkeitsprüfung und Plan-Freigabe vor dem Plattform-Apply und den tatsächlichen Plattformvertrag danach. Nur beraten, nichts ausführen.",
+  },
+  {
     id: "application-execution-lifecycle-advice",
     topic: "configuration-lifecycle",
     fixture: "baseline",
@@ -1196,6 +1213,13 @@ export function validateAssistantScenario(
   const fixture = assistantScenarioFixture(scenario);
   if (scenario.executionLifecycle)
     failures.push(...assistantExecutionLifecycleFailures(dialogue.explanation));
+  if (scenario.applicationUpgrade)
+    failures.push(
+      ...assistantApplicationUpgradeFailures(
+        dialogue.explanation,
+        scenario.applicationUpgrade,
+      ),
+    );
   if (scenario.id === "devops-git-advice")
     failures.push(...assistantDevOpsDefaultFailures(dialogue.explanation));
   if (scenario.applicationAccess === "advice") {
@@ -2049,6 +2073,15 @@ export function buildAssistantScenarioInventory() {
                   "pinned_source_same_order_state_fresh_plan_approval_withdrawal_no_reorder",
                 ]
               : []),
+            ...(scenario.applicationUpgrade === "template"
+              ? [
+                  "published_same_family_path_retained_answers_same_state_fresh_plan_separate_apply_destructive_block",
+                ]
+              : scenario.applicationUpgrade === "platform"
+                ? [
+                    "shared_effect_dependency_gate_before_apply_actual_contract_after_apply",
+                  ]
+                : []),
             ...(scenario.requiredOverviewFields
               ? ["complete_native_field_overview"]
               : []),
@@ -2151,5 +2184,51 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
     )
   )
     failures.push("corporate_ipv4_invented_provider_upgrade");
+  return failures;
+}
+
+/** Factual upgrade boundaries: refusal of execution alone is insufficient. */
+export function assistantApplicationUpgradeFailures(
+  text: string,
+  kind: "template" | "platform",
+): string[] {
+  const checks: [string, RegExp][] =
+    kind === "template"
+      ? [
+          [
+            "published-path",
+            /veröffentlich|freigegeben.*Pfad|Platform Owner.*Pfad/is,
+          ],
+          ["same-state", /State|Zustand/i],
+          ["retained-answers", /Antwort|Parameter/i],
+          [
+            "fresh-plan",
+            /(?:neu|frisch)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch)/i,
+          ],
+          ["separate-apply", /Apply/i],
+          [
+            "destructive-block",
+            /(?:Lösch|Ersetz|destruktiv)[^.!?\n]{0,100}(?:sperr|block|verhind|unzulässig|nicht erlaubt)|(?:sperr|block|verhind)[^.!?\n]{0,100}(?:Lösch|Ersetz|destruktiv)/i,
+          ],
+        ]
+      : [
+          ["shared-effect", /gemeinsam|alle.*Application|abhängig/is],
+          ["dependency-check", /Abhängig|Auswirk|impact/i],
+          ["plan-approval", /Plan/i],
+          [
+            "actual-contract",
+            /(?:tatsächlich|erfolgreich|entstand)[^.!?\n]{0,100}(?:Vertrag|contract)|(?:Vertrag|contract)[^.!?\n]{0,100}(?:tatsächlich|erfolgreich|entstand)/i,
+          ],
+        ];
+  const failures = checks
+    .filter(([, pattern]) => !pattern.test(text))
+    .map(([code]) => `application_upgrade_missing_${code}`);
+  if (
+    /Checkbox[^.!?\n]{0,80}(?:umgeh|trotzdem)|alte Firewall behalten[^.!?\n]{0,30}kannst/i.test(
+      text,
+    ) &&
+    !/nicht|kein|niemals/i.test(text)
+  )
+    failures.push("application_upgrade_unsafe_bypass");
   return failures;
 }

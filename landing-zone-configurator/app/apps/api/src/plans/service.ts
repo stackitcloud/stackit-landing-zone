@@ -36,6 +36,13 @@ import {
 } from "../deployments/preparations.js";
 import type { Repositories } from "../github/repositories.js";
 import { withTenant } from "../storage/database.js";
+import {
+  acknowledgePlatformApplicationImpact,
+  lockPlatformApplicationImpact,
+  platformApplicationHasDependencies,
+  platformApplicationImpactError,
+  readPlatformApplicationImpact,
+} from "./application-impact.js";
 import type { PlanRunner } from "./cloud-foundry.js";
 import { canonicalBase64 } from "./crypto.js";
 import {
@@ -80,6 +87,12 @@ export class Plans {
   get acceleratorCommit() {
     return this.runner.acceleratorCommit ?? acceleratorCommit;
   }
+  applicationImpact(session: Session, id: string) {
+    return readPlatformApplicationImpact(this.pool, session, id);
+  }
+  acknowledgeApplicationImpact(session: Session, id: string, input: unknown) {
+    return acknowledgePlatformApplicationImpact(this.pool, session, id, input);
+  }
   async list(session: Session) {
     const rows = await withTenant(
       this.pool,
@@ -93,6 +106,7 @@ export class Plans {
     );
     for (const row of rows) {
       row.applyAllowed = false;
+      row.applicationImpactEnabled = true;
       row.applyBlocker = null;
       if (row.operation !== "plan" || row.status !== "succeeded") continue;
       if (!this.execution) {
@@ -116,6 +130,22 @@ export class Plans {
         await this.verifySource(session, manifest);
         await this.verify(session, manifest);
         await withTenant(this.pool, session, async (client) => {
+          await lockPlatformApplicationImpact(client, session.tenantId);
+          const impact = (
+            await client
+              .query(
+                "SELECT lzc_auth.platform_application_impact($1,$2) AS impact",
+                [session.id, row.id],
+              )
+              .catch(platformApplicationImpactError)
+          ).rows[0]?.impact;
+          if (
+            !impact ||
+            impact.classification === "blocked" ||
+            impact.blockers?.length ||
+            (impact.classification === "sensitive" && !impact.acknowledged)
+          )
+            throw invalid("platform_application_impact_required");
           const run = (
             await client.query("SELECT * FROM lzc.plan_runs WHERE id=$1", [
               row.id,
@@ -821,6 +851,7 @@ export class Plans {
     const id = randomUUID(),
       ticket = randomBytes(32).toString("base64url");
     await withTenant(this.pool, session, async (client) => {
+      await lockPlatformApplicationImpact(client, session.tenantId);
       await client.query(
         "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
         [`plans:${session.userId}`],
@@ -1035,9 +1066,15 @@ export class Plans {
       if (grant.rowCount !== 1)
         throw invalid("credential_grant_unavailable", 403);
     });
+    const assessApplicationDependencies =
+      run.mode === "platform-plan" &&
+      (await platformApplicationHasDependencies(this.pool, session, id));
     return {
       id,
       mode: run.mode,
+      ...(assessApplicationDependencies
+        ? { assessApplicationDependencies: true }
+        : {}),
       acceleratorCommit: manifest.accelerator.commit,
       lockHash,
       tfvars,

@@ -2402,10 +2402,17 @@ it.each([
       expect(system).toContain("## Accelerator Contract");
       expect(system).toContain(`The current topic is ${topic}`);
       if (topic === "configuration-lifecycle") {
-        expect(system).toContain("EXECUTION LIFECYCLE ADVICE:");
+        expect(system).toContain("UPGRADE ADVICE:");
+        expect(system).toContain(
+          "TEMPLATE upgrade is not merely changing a Git source",
+        );
+        expect(system).toContain("retains previous parameter answers");
+        expect(system).toContain(
+          "PLATFORM update immediately changes shared firewall/routes",
+        );
         expect(system).toContain("normal separate explicit Apply approval");
         expect(system).toContain("Recovery uses the interrupted job source");
-      } else expect(system).not.toContain("EXECUTION LIFECYCLE ADVICE:");
+      } else expect(system).not.toContain("UPGRADE ADVICE:");
       expect(system).not.toContain("NAMING CONTRACT:");
       expect(system).not.toContain(
         "CURRENT STEP: Firewall requirements advice only",
@@ -3247,7 +3254,7 @@ it("answers source-bound Application lifecycle questions with the fixed review a
     selection(),
     {},
     [],
-    "Meine Application-Bestellung hat eine alte Revision. Wie funktioniert ein Upgrade?",
+    "Meine Application-Bestellung hat eine alte Accelerator-Revision. Wie funktioniert ein Upgrade?",
   );
   expect(request).toHaveBeenCalledTimes(1);
   expect(result.changes).toEqual([]);

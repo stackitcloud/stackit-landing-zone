@@ -19,6 +19,8 @@ export type PlanRoutesServices = Pick<
     Pick<
       Plans,
       | "apply"
+      | "applicationImpact"
+      | "acknowledgeApplicationImpact"
       | "artifact"
       | "state"
       | "outputs"
@@ -51,6 +53,14 @@ export function registerPlans(
           action:
             "Explicitly map and re-encrypt the existing legacy state for this tenant and configuration before retrying. No new state was created.",
         });
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "40001" || error.code === "42501") &&
+        /^platform_impact_[a-z_]+$/.test(error.message)
+      ) {
+        return reply.code(409).send({ error: error.message });
+      }
       if (error instanceof CredentialError || error instanceof RepositoryError)
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
@@ -76,6 +86,36 @@ export function registerPlans(
         if (!session) return reply.code(401).send();
         return { runs: await plans.list(session) };
       });
+      if (plans.applicationImpact)
+        user.get(
+          "/api/v1/plans/:id/application-impact",
+          async (request, reply) => {
+            const session = await authenticatedSession(request, auth);
+            if (!session) return reply.code(401).send();
+            const { id } = z
+              .strictObject({ id: z.uuid() })
+              .parse(request.params);
+            reply.header("Cache-Control", "private, no-store");
+            return plans.applicationImpact?.(session, id);
+          },
+        );
+      if (plans.acknowledgeApplicationImpact)
+        user.post(
+          "/api/v1/plans/:id/application-impact",
+          { bodyLimit: 1024 },
+          async (request, reply) => {
+            const session = await authenticatedSession(request, auth);
+            if (!session) return reply.code(401).send();
+            const { id } = z
+              .strictObject({ id: z.uuid() })
+              .parse(request.params);
+            return plans.acknowledgeApplicationImpact?.(
+              session,
+              id,
+              request.body,
+            );
+          },
+        );
       if (plans.output)
         user.get("/api/v1/plans/:id/output", async (request, reply) => {
           const session = await authenticatedSession(request, auth);

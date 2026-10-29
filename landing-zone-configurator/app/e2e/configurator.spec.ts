@@ -3996,6 +3996,117 @@ test.describe("explicit saved-plan approval", () => {
     );
     return githubRequests;
   }
+  for (const impact of ["sensitive", "blocked", "mismatch"] as const) {
+    test(`platform application impact ${impact} binds acknowledgment to exact plan without Apply`, async ({
+      page,
+    }) => {
+      await setup(page);
+      let acknowledged = false;
+      const posts: unknown[] = [];
+      await page.route("**/api/v1/plans", (route) =>
+        route.fulfill({
+          json: { runs: [{ ...savedPlan(), applicationImpactEnabled: true }] },
+        }),
+      );
+      await page.route(
+        `**/api/v1/plans/${planId}/application-impact`,
+        async (route) => {
+          if (route.request().method() === "POST") {
+            expect(route.request().headers()["x-lzc-tenant"]).toBe("personal");
+            expect(route.request().headers()["x-lzc-csrf"]).toBe("csrf-apply");
+            posts.push(route.request().postDataJSON());
+            expect(route.request().postDataJSON()).toEqual({
+              artifactSha256,
+              dependencyHash: "e".repeat(64),
+              confirmImpact: true,
+            });
+            acknowledged = true;
+          }
+          return route.fulfill({
+            json: {
+              planId,
+              artifactSha256:
+                impact === "mismatch" ? "f".repeat(64) : artifactSha256,
+              dependencyHash: "e".repeat(64),
+              classification: impact === "blocked" ? "blocked" : "sensitive",
+              affectedApplications: [
+                {
+                  instanceId: configurationId,
+                  name: "Corporate application",
+                  targetKey: "corporate",
+                },
+              ],
+              blockers:
+                impact === "blocked" ? ["platform-shared-replacement"] : [],
+              acknowledged,
+              canAcknowledge: true,
+            },
+          });
+        },
+      );
+      await page.goto("/deployments/apply");
+      const panel = page.getByRole("region", {
+        name: "Auswirkungen auf Application Landing Zones",
+        exact: true,
+      });
+      await expect(panel).toHaveCount(1);
+      await expect(panel).toBeVisible();
+      if (impact === "mismatch") {
+        await expect(panel.getByRole("alert")).toContainText(
+          "nicht sicher geprüft",
+        );
+      } else {
+        await expect(panel).toContainText("Corporate application");
+        if (impact === "blocked") {
+          await expect(panel).toContainText(
+            "ersetzt gemeinsam genutzte Plattformressourcen",
+          );
+          await expect(panel.getByRole("checkbox")).toHaveCount(0);
+        } else {
+          await expect(
+            panel.getByRole("button", {
+              name: "Plattformauswirkungen bestätigen",
+            }),
+          ).toBeDisabled();
+          await expect(panel.getByRole("checkbox")).toHaveCount(1);
+          await panel.getByRole("checkbox").check();
+          await panel
+            .getByRole("button", { name: "Plattformauswirkungen bestätigen" })
+            .click();
+          await expect(panel).toContainText("wurden bestätigt");
+          expect(posts).toHaveLength(1);
+          await expect(
+            page.getByRole("button", {
+              name: "Freigegebenen Plan anwenden",
+              exact: true,
+            }),
+          ).toBeDisabled();
+          await expect(panel).toHaveCount(1);
+          await expect(panel.getByRole("checkbox")).toHaveCount(0);
+          const review = page.getByRole("checkbox", {
+            name: "Änderungen und Zielorganisation geprüft",
+            exact: true,
+          });
+          await expect(review).toHaveCount(1);
+          await review.check();
+          await page
+            .getByLabel("Zielorganisation UUID bestätigen", { exact: true })
+            .fill(organizationId);
+          await expect(
+            page.getByRole("button", {
+              name: "Freigegebenen Plan anwenden",
+              exact: true,
+            }),
+          ).toBeEnabled();
+          await expect(panel).toHaveCount(1);
+        }
+      }
+      expect(posts).toHaveLength(impact === "sensitive" ? 1 : 0);
+      await expect(page.getByText("Apply läuft", { exact: true })).toHaveCount(
+        0,
+      );
+    });
+  }
   test("English workflow keeps separate phase histories and explicit saved-plan approval", async ({
     page,
   }, testInfo) => {

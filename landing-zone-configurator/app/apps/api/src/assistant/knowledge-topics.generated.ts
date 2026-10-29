@@ -407,7 +407,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "4922fd0a55bbbfe63af6c941f83a8f6db5c85a07578fbc63dad6edd8dba17eb9",
+            "5527b43a2aa8f26833c61f29604fa08f49fbe891e9e2bb7dea3903223efbf746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1539,24 +1539,14 @@ export const assistantKnowledgeTopics = {
     {
       id: "configuration-lifecycle",
       file: "configuration-lifecycle.md",
-      version: 10,
-      checkedOn: "2026-10-28",
+      version: 11,
+      checkedOn: "2026-10-29",
       qualification: "local-draft-not-reviewed-release",
       groups: [],
       mandatory: true,
       inputs: [],
       dependencies: ["credential-foundations"],
       sources: [
-        {
-          path: "landing-zone-configurator/docs/common-feature-model.md",
-          sha256:
-            "fbb34277b25bd5e37eafc74952f57eb295af87f3669956612b43a8ccccef791d",
-        },
-        {
-          path: "landing-zone-configurator/app/packages/domain/src/common-document.ts",
-          sha256:
-            "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
-        },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
@@ -1580,7 +1570,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "4922fd0a55bbbfe63af6c941f83a8f6db5c85a07578fbc63dad6edd8dba17eb9",
+            "5527b43a2aa8f26833c61f29604fa08f49fbe891e9e2bb7dea3903223efbf746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
@@ -1588,19 +1578,29 @@ export const assistantKnowledgeTopics = {
             "0a87435fcb6ae19aa08fb93716895205261acb19f147b28e1ceba7f1f9bff7c4",
         },
         {
-          path: "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts",
-          sha256:
-            "56209a0eea70927042b8799f5e12b3005b53ed9c1584fc9b77cbc99986b174b2",
-        },
-        {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",
           sha256:
-            "93fb8b2bf37f8688efcb13211ef25c9b1486e9d63f2248c78287871f95bcf82c",
+            "8553cfe5dfff01ebb2e4434dfa8bddd0b2a8aa922ac20ec11b267a9fd663d65b",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/applications/execution-lifecycle.ts",
           sha256:
             "a6defed96d8d56262d3591c9f8288107195596295f8291ba680e5737e77ad94c",
+        },
+        {
+          path: "landing-zone-configurator/docs/application-upgrades.md",
+          sha256:
+            "cd0a8e7300198353d3e373553812fb6933938b1e20d9e4ed9414f0dadae60ee2",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/domain/src/application-upgrades.ts",
+          sha256:
+            "ffcb14f4df9b9d077e46ac0ce6107c8e69ce93006fa71309f86c376cd26cfedf",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/applications/upgrades.ts",
+          sha256:
+            "7303e24c05108242c717615a06e879abbd6b93ff6f620e473f29f16455d81b45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1624,9 +1624,9 @@ export const assistantKnowledgeTopics = {
       fieldPaths: [],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/configuration-lifecycle.md",
-      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nAuthorize workspace/configuration; separate proposals/acceptance/deployment.\n\n## Accelerator Contract\n\nCompiler exports native tfvars. Template defaults never consent\nto optional services. Patches: company name/code/region, existing folder names,\nnative SNA. Naming delegation grants names only, not region/IDs/access/owners/roles.\nPreserve structural keys/metadata; other advice grants no mutations/access values.\nSaving, publication, ordering, Plan, Apply, Destroy, Recovery are separate.\nNo free Terraform/YAML schema. Apply includes foundations+enabled inputs.\nApplication orders pin IaC/lock/tools across product releases; patched Workers\nverify bundled sources. Order details > Ausführungsstand: origin=immutable template\nGit revision; desired=selected Accelerator revision, NOT an editable platform draft;\nlastApplied=source of last successful Apply, NOT a complete current-State snapshot.\nExplicit Accelerator upgrade retains same order/project/State/backend/policy;\nit changes desired source only, starts NO execution. Then NEW PLAN, review changes/\nreplacements/deletions, NORMAL EXPLICIT APPLY APPROVAL. Failures retain desired\nsource but MAY CHANGE State/resources; Recovery uses interrupted job source.\nPlan compares actual State, NOT lastApplied; lastApplied is NOT Recovery source.\nNever promise unchanged State/no data loss after failed Apply. Withdrawn sources\ncannot manually Apply/bypass checks; use reviewed replacement. Unresolved Recovery\nblocks upgrade; operator must provide reviewed compatible package if withdrawn.\nNever reorder existing infrastructure. Chat cannot upgrade/unlock/execute.\n\n## Dependencies\n\nKnowledge/credentials never enable services; catalogues, values, claims and\nestimates are not execution.\n\n## Dialogue\n\nReuse confirmed requirements; expose assumptions/inherited inconsistencies;\nprioritize step. "Later" never enables. Use saved history/unnamed follow-ups;\nexplicit topic switches win. Planning is not authorization. Separate business,\nderived and secure operator decisions. Ask one missing firewall decision.\noptions suggest replies, never patches/consent; multiple=true permits compatible\nanswers; free text allowed. Subsets need new validated proposals; save only on\nexplicit whole-proposal acceptance. New configs inherit own template advice only\nvia explicit revision-bound server context; never retrofit existing ones.\nApplication groups/parameters restrict versions/choices; chat creates no grants/orders.\n\n## Examples\n\n"SNA first, firewall later": supported SNA only; disclose inherited firewall.\nNo selective cloud Apply; native tfvars need separate credentials/backend setup.\n\n## Limits\n\nAcceptance: reauthorize/recheck base/candidate. Keep unknown imports outside model.\nChats expire three calendar months from creation, not activity; deletion/late\ninference cannot restore derived context. Regenerate with current knowledge.\nNo chat expiry extension. Five sessions=load target, not quota/capacity. Schema/model errors retain drafts. No auto Git/publication/order/\nRecovery unlock/raw State-Plan inspection.\n\n## Credentials\n\nRecheck owner/tenant/workspace per operation and after inference/reauth.\nSessions grant no rights; no tokens/keys/raw errors/protected data in model.\n\n## Sources\n\nManifest binds sources. Separate release/promotion/planning,\nretention/restore/load/DE-EN parity and A01-A24 acceptance.\n',
+      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nAuthorize workspace/config; acceptance ≠ execution.\n\n## Accelerator Contract\n\nOnly native tfvars. Defaults/knowledge/catalogues enable nothing. Patches: company\nname/code/region, existing folders, native SNA. Naming\nconsent grants names only, not IDs/region/access/owners/roles. Preserve keys/metadata.\nSave/publish/order/Plan/Apply/Destroy/Recovery stay separate.\nApply: foundations and enabled inputs.\n\nPinned IaC/lock/tools, patched Worker verifies.\nUpdates: separate execution/template/platform bindings.\nOrigin=template Git revision; desired=Accelerator, NOT platform draft;\nlastApplied=source of last successful Apply,\nNOT current-State snapshot/Recovery source. Source upgrade retains order/project/\nState/backend/policy, starts NO execution. Then NEW PLAN,\nreview changes/replacements/deletions, NORMAL EXPLICIT APPLY APPROVAL.\nFailure retains desired but MAY CHANGE State/resources. Recovery=interrupted job\nsnapshot/source; Plan=actual State, NOT lastApplied.\nNever promise unchanged State/no data loss after failure; never reorder.\nWithdrawn source blocks execution; unresolved Recovery blocks upgrades. Operator\nsupplies reviewed recovery package; no manual bypass/invented hashes/arbitrary Git.\n\nTemplate: Platform Owner publishes same-family forward upgrade path.\nKeep same order/project/State/backend and old answers; ask new required answers.\nConfirm desired snapshot, then fresh Plan/separate Apply. Standard upgrades BLOCK\ndeletions/replacements/unknown evidence; no checkbox override.\nSensitive IAM/keys/network/service/availability: published policy.\nStricter old/new policy wins; both-direct+explicit sensitive self-service permits\nrequester, otherwise approval binds Plan/artifact/candidate hash.\nPlatform Apply changes shared firewall/routes for ALL dependent Applications;\nNo per-app old firewall. Gate blocks destructive/unknown shared changes; sensitive\nconfirmation binds Plan/State/dependencies. Afterwards publish actual approved\ncontract path; template version may remain.\nOrg/placement/SNA/backend migration: separate.\nChat cannot publish/upgrade/unlock/execute.\n\n## Dependencies\n\nReadiness ≠ execution.\n\n## Dialogue\n\nReuse requirements/history/unnamed follow-ups; explicit topic switches win.\nDisclose assumptions; "later" never enables. Separate business/derived/operator\nchoices; ask one missing firewall decision.\nOptions ≠ consent/patches; multiple=true allows compatible\nanswers; free text allowed. Subsets need revalidated proposals. Save only after\nwhole-proposal acceptance. New configs inherit via revision-bound server context; never retrofit. Groups/parameters restrict versions.\n\n## Examples\n\n"SNA first, firewall later": SNA only; disclose inherited firewall.\nNo selective Apply; standalone tfvars need external credentials/backend.\n\n## Limits\n\nRecheck authorization/base/candidate at acceptance and after inference/reauth.\nUnknown imports stay outside model. Chats expire three calendar months after\ncreation, not activity; deletion/late inference cannot restore derived context.\nRegenerate knowledge, no expiry extension. Five sessions=load target, not quota.\nErrors retain drafts. No automatic Git/publish/order/unlock or raw State/Plan.\n\n## Credentials\n\nSession ≠ rights; no tokens/keys/raw errors/protected model data.\n\n## Sources\n\nManifest binds sources. Separate release/promotion/Plan, retention/restore/load,\nDE/EN parity, A01–A24.\n',
       sha256:
-        "713f8a3f715ee3931d5a3914141f1411396050b1e9d650d8982f0b06c1d77051",
+        "13a4e0d73259e8383d9985045691906582f18a7bbdc1b1ff1d0b35151700992d",
     },
   ],
 } as const;

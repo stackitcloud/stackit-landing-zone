@@ -438,3 +438,18 @@ Bestellungen, Projektrechte und State bleiben unverändert; bestehende
 Application-Instanzen werden damit nicht aktualisiert. Eine echte Ausführung
 braucht weiterhin einen gesondert geprüften Plan und eine ausdrückliche
 Apply-Freigabe.
+
+## Updates bestehender Applications
+
+Eine bestehende Bestellung öffnen und **Updates** auswählen. Ausführungsquelle,
+Template-Version und Plattformvertrag haben getrennte gewünschte Bindungen.
+Der Platform Owner veröffentlicht zulässige Upgrade-Pfade; Besteller vergleichen
+und bestätigen sie innerhalb derselben Bestellung. State-/Backend-Identität und
+bisherige Parameterantworten bleiben erhalten. Danach einen neuen Plan erstellen
+und Apply separat freigeben. Standard-Upgrades sperren Löschungen, Ersetzungen
+und unbekannte Nachweise.
+
+Gemeinsame Plattformänderungen wirken beim Plattform-Apply auf abhängige
+Applications; sie lassen sich nicht je Application verschieben. Details zu
+Auswirkungsbestätigung, sensiblen Änderungen und Recovery stehen unter
+[Template- und Plattform-Upgrades](application-upgrades.de.md).

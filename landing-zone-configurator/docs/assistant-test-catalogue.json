@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "2b2e5778aadcf7a6f70256fe8b5a89803b24f993c45e1ad6d021bc714b424834",
+  "knowledgeSha256": "147c889347061122fadb32c2f970e2423a93bc02dce94424c10da4f21b12c79c",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "1109b256250ebd3acb80341c73774a148390fd35a322e210e89c7cedf9e12dd1",
+    "scripts/assistant-scenarios.ts": "2c193c1664f384b4bef27b524ce153dc0b7847ab6fc01d4c48915d66729e6f82",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "ed612feee06aae62f45e0d927b124753d7c9231af6b35a6e82b9e1556e5c79fc",
+  "suiteSha256": "fe7d8b06c8997b6e1f5a544c011d0c052f310bcfd02d2e1b9f49a54ca6cb9b59",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5978,6 +5978,32 @@
       "id": "configuration-lifecycle",
       "fields": [],
       "cases": [
+        {
+          "id": "application-template-upgrade-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "applicationUpgrade": "template",
+          "message": "Wie kann ich als Besteller meine bestehende Application auf eine neue Template-Version aktualisieren, ohne neu zu bestellen? Erkläre den veröffentlichten Upgrade-Pfad, erhaltene Antworten und State, Schutz vor Löschungen und Ersetzungen sowie die getrennten Plan- und Apply-Freigaben. Nur beraten, nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "published_same_family_path_retained_answers_same_state_fresh_plan_separate_apply_destructive_block",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "application-platform-upgrade-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "applicationUpgrade": "platform",
+          "message": "Wenn der Platform Owner die gemeinsame Firewall und Routen aktualisiert: Kann meine Application durch Ablehnen eines Plattform-Upgrades die alte Firewall behalten? Erkläre Abhängigkeitsprüfung und Plan-Freigabe vor dem Plattform-Apply und den tatsächlichen Plattformvertrag danach. Nur beraten, nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "shared_effect_dependency_gate_before_apply_actual_contract_after_apply",
+            "no_changes"
+          ]
+        },
         {
           "id": "application-execution-lifecycle-advice",
           "topic": "configuration-lifecycle",
