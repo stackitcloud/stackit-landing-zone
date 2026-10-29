@@ -1,7 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { featureFieldCatalogue, type JsonValue } from "@lzc/domain";
+import {
+  applicationProjectPermissionNames,
+  featureFieldCatalogue,
+  type JsonValue,
+} from "@lzc/domain";
 import { expect, it } from "vitest";
 import {
   assistantKnowledgeContext,
@@ -12,6 +16,7 @@ import {
   assistantCorporateIpv4Failures,
   assistantDevOpsDefaultFailures,
   assistantDnsRoleFailures,
+  assistantFirewallBootstrapFailures,
   assistantScenarioFixture,
   assistantScenarios,
   buildAssistantScenarioInventory,
@@ -271,14 +276,18 @@ it.each(assistantScenarios)(
             scenario.applicationUpgrade === "template"
               ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen werden blockiert."
               : scenario.applicationUpgrade === "platform"
-                ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag freigeben. Keine private alte Firewall."
+                ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag und den Pfad veröffentlichen. Die Vertragsbindung wechselt nicht automatisch. Der Application Owner übernimmt ihn ausdrücklich. Keine private alte Firewall."
                 : scenario.executionLifecycle
                   ? "Ursprüngliche Template-Revision bleibt erhalten. Die gewünschte Quelle bleibt gebunden; zuletzt angewendet ändert sich erst nach erfolgreichem Apply. Bestehende Bestellung und State bleiben erhalten. Ein neuer Plan und die normale Apply-Freigabe sind erforderlich. Zurückgezogene Quellen brauchen einen geprüften Ersatz, keine Neubestellung; der Chat führt kein Upgrade aus."
                   : scenario.applicationAccess === "advice"
                     ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv."
                     : scenario.corporateIpv4 === "advice"
                       ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
-                      : ["vpn", "platform-kubernetes"].includes(scenario.topic)
+                      : [
+                            "vpn",
+                            "platform-kubernetes",
+                            "firewall-access-bootstrap",
+                          ].includes(scenario.topic)
                         ? buildAssistantKnowledge().topics.find(
                             (topic) => topic.id === scenario.topic,
                           )?.fieldOverview
@@ -870,4 +879,119 @@ it("requires Kubernetes network and protected-access substance instead of repeti
       explanation: `${scenario.requiredOverviewFields?.join(", ")}. Bitte Kubeconfig-Inhalte im Chat eintragen.`,
     }).failures,
   ).toContain("incomplete_platform_kubernetes_boundaries");
+});
+
+it("requires SKE additions for both recipients in both templates without losing existing rights or owner", () => {
+  const scenario = assistantScenarios.find(
+    (s) => s.id === "application-access-both-kubernetes",
+  );
+  if (!scenario) throw new Error("scenario_missing");
+  const fixture = assistantScenarioFixture(scenario);
+  const additions = applicationProjectPermissionNames.filter((p) =>
+    p.startsWith("ske."),
+  );
+  const value = Object.fromEntries(
+    (fixture.draft.projectTemplates ?? []).map((t) => {
+      const p = t.accessProfile;
+      if (p?.mode !== "granular") throw new Error("profile_missing");
+      return [
+        t.key,
+        {
+          accessProfile: {
+            ...p,
+            permissions: [...new Set([...p.permissions, ...additions])],
+            automationPermissions: [
+              ...new Set([...p.automationPermissions, ...additions]),
+            ],
+          },
+        },
+      ];
+    }),
+  );
+  const dialogue = {
+    explanation:
+      "Prüfbarer Rechtevorschlag für beide Vorlagen und Empfänger. Noch nichts gespeichert.",
+    questions: [],
+    references: ["project-templates"],
+    changes: [{ path: "projectTemplates", operation: "merge", value }],
+  };
+  expect(validateAssistantScenario(scenario, dialogue).failures).toEqual([]);
+  const oneTarget = structuredClone(dialogue);
+  delete oneTarget.changes[0]!.value["public-workload"];
+  expect(validateAssistantScenario(scenario, oneTarget).failures).toContain(
+    "application_access_multi_target_union_or_preservation_failed",
+  );
+  const missingRecipient = structuredClone(dialogue);
+  missingRecipient.changes[0]!.value
+    .central!.accessProfile.automationPermissions = ["iaas.server.get"];
+  expect(
+    validateAssistantScenario(scenario, missingRecipient).failures,
+  ).toContain("application_access_multi_target_union_or_preservation_failed");
+  const lostOwner = structuredClone(dialogue);
+  lostOwner.changes[0]!.value.central!.accessProfile.initialOwnerEmail =
+    "other@example.test";
+  expect(validateAssistantScenario(scenario, lostOwner).failures).toContain(
+    "application_access_multi_target_union_or_preservation_failed",
+  );
+});
+
+it("requires reviewed bootstrap workflow facts and rejects field-only or secret-requesting answers", () => {
+  const text = buildAssistantKnowledge().topics.find(
+    (t) => t.id === "firewall-access-bootstrap",
+  )?.fieldOverview;
+  if (!text) throw new Error("missing_bootstrap_overview");
+  expect(assistantFirewallBootstrapFailures(text)).toEqual([]);
+  expect(
+    assistantFirewallBootstrapFailures(
+      "firewall_admin_username firewall_admin_password firewall_api_credentials firewall_bootstrap firewall_api_secret_version",
+    ),
+  ).toEqual(
+    expect.arrayContaining([
+      "bootstrap_overview_missing_secure_binding",
+      "bootstrap_overview_missing_phase_boundaries",
+      "bootstrap_overview_missing_single_scope",
+      "bootstrap_overview_missing_separate_access",
+    ]),
+  );
+  expect(
+    assistantFirewallBootstrapFailures(
+      "Bitte poste das Passwort und sende die API-Schlüssel.",
+    ),
+  ).toContain("bootstrap_overview_asks_for_secrets");
+  expect(
+    assistantFirewallBootstrapFailures(`${text}\nBitte poste dein Passwort.`),
+  ).toContain("bootstrap_overview_asks_for_secrets");
+  expect(
+    assistantFirewallBootstrapFailures(
+      `${text}\nPoste keine Passwörter. Bitte sende dein Passwort nicht.`,
+    ),
+  ).not.toContain("bootstrap_overview_asks_for_secrets");
+  expect(
+    assistantFirewallBootstrapFailures(
+      `${text}\nKeine Änderungen; bitte poste dein Passwort.`,
+    ),
+  ).toContain("bootstrap_overview_asks_for_secrets");
+});
+
+it.each([
+  [
+    "Bootstrap unterstützt automatisch alle regionalen Firewalls.",
+    "bootstrap_overview_invented_scope",
+  ],
+  [
+    "--insecure bestätigt ein vertrauenswürdiges Zertifikat.",
+    "bootstrap_overview_unsafe_tls_claim",
+  ],
+  [
+    "Ein erneuter Bootstrap ist immer sicher und benötigt keine Planprüfung.",
+    "bootstrap_overview_unsafe_rebootstrap_claim",
+  ],
+])("rejects contradictory bootstrap advice: %s", (claim, failure) => {
+  const text = buildAssistantKnowledge().topics.find(
+    (t) => t.id === "firewall-access-bootstrap",
+  )?.fieldOverview;
+  if (!text) throw new Error("missing_bootstrap_overview");
+  expect(assistantFirewallBootstrapFailures(`${text}\n${claim}`)).toContain(
+    failure,
+  );
 });

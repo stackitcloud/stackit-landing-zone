@@ -151,6 +151,8 @@ other advice still asks only missing business decisions, never protected inputs.
 The bounded firewall requirements dialogue retains its separate short-answer
 contract. Transport tests check this instruction's delivery; real-model factual
 criteria still decide whether the resulting answers qualify.
+Firewall access/bootstrap workflow overviews also use reviewed native-field metadata and bounded access/phase facts after semantic intent classification. This avoids a second generative request for a static overview. Admin login, API credentials and secure operator bindings remain separate; the overview never activates bootstrap, reads secrets or starts execution. Other advice retains the normal scoped generation path.
+
 For native field overviews, semantic intent classification selects the existing
 reviewed-metadata response when available, rather than generating the same static
 contract again. VPN, DevOps Git and DNS field/role semantics use this path with a

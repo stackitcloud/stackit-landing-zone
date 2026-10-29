@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Templates/IAM.
+Project templates/IAM.
 
 ## Accelerator Contract
 
 landing_zones: corporate/region/area, project_code/env/owner_email, network/roles/services.
 Public:corporate=false. Drafts: projectTemplates/policies, no instance/publication fields.
-accessProfile: granular/owner; separate central initial owner/automation.
+accessProfile: granular/owner; central owner/automation.
 Automatic=null. Corporate Accelerator reads attached regional SNA default_prefix_length
-before Plan; supplies explicit numeric prefix to Provider0.114, preserves DNS.
+before Plan; numeric prefix to Provider0.114, preserves DNS.
 Provider0.114 rejects null prefix WITH DNS (even []): Invalid IPv4 configuration.
 Accelerator resolves it; no provider-upgrade fix. Explicit overrides win; Public provider sizing.
 
@@ -21,7 +21,7 @@ Public!=Corporate spoke. Namespace services require Platform Kubernetes.
 
 ## Dialogue
 
-New: name/kind/region/settings; reuse keys; delegate names only.
+New:name/kind/region/settings; reuse keys; delegate names only.
 Central=Corporate; Internet-only=Public; local network=true. Merge, retain Audit/Git,
 Omit unrequested services; ask missing choices. "100 projects"=capacity, not examples/quota;
 Reserve platform/firewall space; no free-capacity promise. /26: network_prefix_length=26;
@@ -32,13 +32,14 @@ Immutable accessProfile, never order input. Granular schemaVersion=1,mode=granul
 initialOwnerEmail=user/SA, not requester; permissions/automationPermissions: official IDs,
 e.g. iaas.server.get; no compute.*. Default144: VM,Object Storage,Observability,Secrets Manager;
 VM-only narrower. All project rights selectable, including IAM/admin.
-Catalogue IDs only. ADD Kubernetes/SKE=ske union into requested lists
-(default both), preserving owner/rights; no unrelated IAM. SKE IAM!=Kubernetes RBAC.
+Catalogue IDs only. ADD SKE=ske union into requested lists (default both);
+preserve owner/rights. Public AND Corporate=both; clarify duplicates.
+SKE IAM!=Kubernetes RBAC.
 IAM grants can escalate; excluded from defaults.
 Owner={schemaVersion:1,mode:owner}: requester/automation have all project rights;
 IAM/project powers; no immutable central audit/routing claim.
 Atomic profile; preserve other fields. No legacy custom_roles/role_assignments/
-automation_role/role-context combination. ADD preserves even empty owner; no owner question.
+automation_role/role-context combination. ADD preserves even empty owner; prepare rights first.
 Publication needs valid owner; new profile asks missing owner. Absent profile preserves
 legacy owner; inherited grants stay additive.
 
@@ -48,7 +49,7 @@ SNA /28: Automatic /28+DNS.
 
 ## Limits
 
-Versions/State bound; review source/publication/migration. Never delete State.
+Versions/State bound; review source/publication/migration; never delete State.
 Match region/area/DNS. Empty roles/ACLs prove no security. Rights need live acceptance, not mock Plans. Owner required.
 
 ## Credentials

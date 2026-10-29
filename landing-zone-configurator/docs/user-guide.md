@@ -105,6 +105,8 @@ every workload workflow has already passed live IAM acceptance. The editor uses 
 when available and otherwise the reviewed static snapshot; neither proves a
 particular user's effective permissions.
 
+The Assistant can add service permissions to both Public and Corporate drafts in one proposal, for example: “Let the requester and application service account manage Kubernetes in the Public and Corporate templates.” It retains each identity's existing permissions and each template's central owner. If several templates of one kind exist, select the intended template first. An unfinished owner field does not prevent preparing permission additions; publication still requires a valid central owner. Review and accept the proposal before saving or publishing. This adds SKE project permissions; it does not create a cluster or configure Kubernetes RBAC.
+
 **Full project owner rights** remains an explicit customer choice for requester
 and the application service account. Those identities can administer IAM/project settings;
 do not claim centrally immutable audit/routing rules against owner rights.

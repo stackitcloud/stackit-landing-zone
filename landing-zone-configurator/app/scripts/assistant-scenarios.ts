@@ -161,7 +161,11 @@ export type AssistantScenario = {
     | "public-kubernetes-requester"
     | "public-kubernetes-incomplete-owner"
     | "public-kubernetes-clarify"
-    | "public-kubernetes-followup";
+    | "public-kubernetes-followup"
+    | "both-kubernetes"
+    | "both-kubernetes-empty-owner"
+    | "both-kubernetes-clarify"
+    | "both-kubernetes-followup";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
   applicationUpgrade?: "template" | "platform";
@@ -340,6 +344,40 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       },
     ],
     message: "central",
+  },
+  ...(
+    [
+      "both-kubernetes",
+      "both-kubernetes-empty-owner",
+      "both-kubernetes-clarify",
+    ] as const
+  ).map((mode) => ({
+    id: `application-access-${mode}`,
+    topic: "project-templates",
+    fixture: "corporate-ipv4" as const,
+    applicationAccess: mode,
+    message:
+      "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+  })),
+  {
+    id: "application-access-both-kubernetes-followup",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "both-kubernetes-followup",
+    message:
+      "Welche corporate-Vorlage soll geändert werden? (2: central, second-corporate)\nMeine Antwort: Corporate central (central)",
+    history: [
+      {
+        role: "user",
+        content:
+          "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+      },
+      {
+        role: "assistant",
+        content:
+          "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.\nAngefragte Dienste: ske; Empfänger: Besteller und Application-Service-Account; gewählte Vorlagen: public=?, corporate=?. Bestehende Rechte und zentrale Owner bleiben erhalten. Noch nichts gespeichert; es wird nichts ausgeführt. Vor Veröffentlichung ist ein gültiger initialer Owner erforderlich.\nWelche corporate-Vorlage soll geändert werden? (2: central, second-corporate)",
+      },
+    ],
   },
   {
     id: "corporate-ipv4-automatic-advice",
@@ -1018,6 +1056,45 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
         name: "Second Public",
       });
   }
+  if (scenario.applicationAccess?.startsWith("both-kubernetes")) {
+    const corporate = draft.projectTemplates![0]!;
+    corporate.accessProfile = {
+      ...defaultApplicationAccessProfile(
+        scenario.applicationAccess === "both-kubernetes-empty-owner"
+          ? ""
+          : "platform-owner@example.test",
+      ),
+      permissions: ["secrets-manager.secret.get", "iaas.server.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+    draft.projectTemplates!.push({
+      ...structuredClone(corporate),
+      id: "00000000-0000-4000-8000-000000000027",
+      key: "public-workload",
+      name: "Public workload",
+      kind: "public",
+      settings: {
+        env: "dev",
+        network_enabled: true,
+        network_prefix_length: 25,
+      },
+      accessProfile: {
+        ...corporate.accessProfile,
+        permissions: ["resource-manager.project.get"],
+        automationPermissions: ["secrets-manager.secret.get"],
+      },
+    });
+    if (
+      scenario.applicationAccess === "both-kubernetes-clarify" ||
+      scenario.applicationAccess === "both-kubernetes-followup"
+    )
+      draft.projectTemplates!.push({
+        ...structuredClone(corporate),
+        id: "00000000-0000-4000-8000-000000000028",
+        key: "second-corporate",
+        name: "Second Corporate",
+      });
+  }
   const values = assistantPublicValues(draft);
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
@@ -1200,6 +1277,11 @@ export function validateAssistantScenario(
     knowledge.rules.map((rule) => rule.id),
   );
   const failures: string[] = [];
+  if (scenario.id === "firewall-access-bootstrap-advice") {
+    failures.push(...assistantFirewallBootstrapFailures(dialogue.explanation));
+    if (dialogue.changes.length || dialogue.questions.length)
+      failures.push("bootstrap_overview_unrequested_changes_or_questions");
+  }
   if (scenario.dnsRole && scenario.dnsRole !== "draft")
     failures.push(
       ...assistantDnsRoleFailures(dialogue.explanation, scenario.dnsRole),
@@ -1237,6 +1319,58 @@ export function validateAssistantScenario(
       failures.push("application_access_invented_contract");
     if (dialogue.changes.length)
       failures.push("application_access_advice_mutated");
+  } else if (scenario.applicationAccess?.startsWith("both-kubernetes")) {
+    if (scenario.applicationAccess === "both-kubernetes-clarify") {
+      if (
+        dialogue.changes.length ||
+        !dialogue.questions.some((q) =>
+          ["central", "second-corporate"].every((key) =>
+            q.options?.some((option) => option.includes(key)),
+          ),
+        )
+      )
+        failures.push("application_access_multi_target_not_clarified");
+    } else {
+      const expected = structuredClone(fixture.draft);
+      const additions = applicationProjectPermissionNames.filter((p) =>
+        p.startsWith("ske."),
+      );
+      for (const template of expected.projectTemplates ?? []) {
+        if (template.key === "second-corporate") continue;
+        const before = template.accessProfile;
+        if (!before || before.mode !== "granular")
+          throw new Error("expected granular multi-template fixture");
+        template.accessProfile = {
+          ...before,
+          permissions: [...new Set([...before.permissions, ...additions])],
+          automationPermissions: [
+            ...new Set([...before.automationPermissions, ...additions]),
+          ],
+        };
+      }
+      try {
+        if (
+          !dialogue.changes.length ||
+          !isDeepStrictEqual(
+            applyAssistantChanges(fixture.draft, dialogue.changes),
+            expected,
+          )
+        )
+          failures.push(
+            "application_access_multi_target_union_or_preservation_failed",
+          );
+        if (scenario.applicationAccess === "both-kubernetes-empty-owner") {
+          if (
+            dialogue.questions.length !== 2 ||
+            !dialogue.questions.every((q) => /owner/i.test(q.text))
+          )
+            failures.push("application_access_missing_owner_not_clarified");
+        } else if (dialogue.questions.length)
+          failures.push("application_access_unnecessary_multi_target_question");
+      } catch {
+        failures.push("application_access_multi_target_proposal_invalid");
+      }
+    }
   } else if (scenario.applicationAccess === "public-kubernetes-clarify") {
     if (
       dialogue.changes.length ||
@@ -2219,6 +2353,11 @@ export function assistantApplicationUpgradeFailures(
             "actual-contract",
             /(?:tatsächlich|erfolgreich|entstand)[^.!?\n]{0,100}(?:Vertrag|contract)|(?:Vertrag|contract)[^.!?\n]{0,100}(?:tatsächlich|erfolgreich|entstand)/i,
           ],
+          ["published-path", /veröffentlich|freigegeben[^.!?\n]{0,60}Pfad/i],
+          [
+            "explicit-binding",
+            /keine automatische[^.!?\n]{0,40}(?:Bindung|Übernahme)|(?:Vertragsbindung|Bindung|Vertrag)[^.!?\n]{0,100}(?:nicht automatisch|explizit|ausdrücklich)|(?:Besteller|Application.?Owner)[^.!?\n]{0,100}(?:übernimmt|übernehmen|bestätigt|bestätigen)[^.!?\n]{0,80}(?:explizit|ausdrücklich|bewusst)/i,
+          ],
         ];
   const failures = checks
     .filter(([, pattern]) => !pattern.test(text))
@@ -2230,5 +2369,70 @@ export function assistantApplicationUpgradeFailures(
     !/nicht|kein|niemals/i.test(text)
   )
     failures.push("application_upgrade_unsafe_bypass");
+  return failures;
+}
+
+/** Bootstrap workflow metadata must explain boundaries without requesting secrets. */
+export function assistantFirewallBootstrapFailures(text: string): string[] {
+  const failures: string[] = [];
+  for (const field of [
+    "firewall_admin_username",
+    "firewall_admin_password",
+    "firewall_api_credentials",
+    "firewall_bootstrap",
+    "firewall_api_secret_version",
+  ])
+    if (!text.includes(field))
+      failures.push(`bootstrap_overview_missing_${field}`);
+  if (!/geschützt|geschuetzt|sicher|secure|extern/i.test(text))
+    failures.push("bootstrap_overview_missing_secure_binding");
+  if (
+    !/Infrastruktur|infrastructure/i.test(text) ||
+    !/Bootstrap/i.test(text) ||
+    !/Policy|Regeln|policy/i.test(text)
+  )
+    failures.push("bootstrap_overview_missing_phase_boundaries");
+  if (!/single|einzel|connectivity\.firewall/i.test(text))
+    failures.push("bootstrap_overview_missing_single_scope");
+  if (
+    !/getrennt|separat|separate/i.test(text) ||
+    !/Admin/i.test(text) ||
+    !/API/i.test(text)
+  )
+    failures.push("bootstrap_overview_missing_separate_access");
+  const verb =
+    /\b(?:poste|kopiere|sende|nenne|paste|send)\b[^.!?\n;]{0,60}?(Passw(?:ort|örter)|passwords?|API[- ]?(?:Schlüssel|secret)|Secret.?Version.?ID)/gi;
+  for (const clause of text.split(/[.!?\n;]/)) {
+    for (const match of clause.matchAll(verb)) {
+      const prefix = clause.slice(0, match.index);
+      const beforeSecret = match[0].slice(0, -match[1]!.length);
+      const suffix = clause.slice(match.index! + match[0].length);
+      const denied =
+        /(?:niemals|nie|nicht|never|do not|don't)\s*$/i.test(prefix) ||
+        /\b(?:kein\w*|nicht|never|no)\s+(?:(?:dein\w*|ihr\w*|das|the|your|any)\s+){0,3}$/i.test(
+          beforeSecret,
+        ) ||
+        /^\s*(?:nicht|niemals|never)\b/i.test(suffix);
+      if (!denied) failures.push("bootstrap_overview_asks_for_secrets");
+    }
+  }
+  if (
+    /Bootstrap[^.!?\n]{0,60}(?:unterstützt|aktiviert|initialisiert|konfiguriert)[^.!?\n]{0,50}(?:automatisch|alle|generisch)[^.!?\n]{0,50}(?:regional|Map|Multi-Appliance)/i.test(
+      text,
+    )
+  )
+    failures.push("bootstrap_overview_invented_scope");
+  if (
+    /--insecure[^.!?\n]{0,60}(?:bestätigt|beweist|garantiert)\s+(?!(?:kein\w*|nicht)\b)[^.!?\n]{0,60}(?:vertrauenswürdig|sicher|gültig|Produktions)/i.test(
+      text,
+    )
+  )
+    failures.push("bootstrap_overview_unsafe_tls_claim");
+  if (
+    /erneut\w*\s+Bootstrap[^.!?\n]{0,70}(?:immer sicher|ohne Prüfung|keine Planprüfung)/i.test(
+      text,
+    )
+  )
+    failures.push("bootstrap_overview_unsafe_rebootstrap_claim");
   return failures;
 }

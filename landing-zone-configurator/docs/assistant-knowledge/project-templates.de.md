@@ -173,3 +173,5 @@ Das Ergänzen von Dienstrechten in einem bestehenden granularen Entwurf bleibt a
 bei noch leerem initialen Owner möglich. Der Assistant erhält dieses Feld unverändert
 und erstellt den Rechtevorschlag; erst die Veröffentlichung verlangt einen gültigen
 separaten Owner. Beim Einrichten eines neuen Rechteprofils fragt er fehlende Angaben ab.
+
+Explizit Public UND Corporate: Rechtevorschlag für beide Vorlagen; mehrdeutige Ziele zuerst klären. Bestehende Rechte und Owner erhalten, auch bei noch leerem Owner-Feld. Veröffentlichung verlangt weiterhin einen gültigen zentralen Owner.

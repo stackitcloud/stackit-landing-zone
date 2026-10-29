@@ -931,6 +931,135 @@ export class AssistantModelServing {
         }
       return null;
     })();
+    const multiPermissionExplanation = (
+      services: string[],
+      target: string,
+      english: boolean,
+      chosen: Record<string, string>,
+    ) =>
+      (english
+        ? "Reviewable service-permission additions for Public and Corporate templates."
+        : "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.") +
+      "\n" +
+      (english ? "Requested services: " : "Angefragte Dienste: ") +
+      services.join(", ") +
+      "; " +
+      (english ? "recipient: " : "Empfänger: ") +
+      (target === "requester"
+        ? english
+          ? "requester"
+          : "Besteller"
+        : target === "automation"
+          ? english
+            ? "Application service account"
+            : "Application-Service-Account"
+          : english
+            ? "requester and Application service account"
+            : "Besteller und Application-Service-Account") +
+      "; " +
+      (english ? "selected templates: " : "gewählte Vorlagen: ") +
+      ["public", "corporate"]
+        .map((kind) => `${kind}=${chosen[kind] ?? "?"}`)
+        .join(", ") +
+      ". " +
+      (english
+        ? "Existing permissions and central owners are preserved. Nothing is saved or executed. A valid initial owner is required before publication."
+        : "Bestehende Rechte und zentrale Owner bleiben erhalten. Noch nichts gespeichert; es wird nichts ausgeführt. Vor Veröffentlichung ist ein gültiger initialer Owner erforderlich.");
+    const multiPermissionQuestions = (
+      chosen: Record<string, string>,
+      english: boolean,
+    ) =>
+      ["public", "corporate"].flatMap((kind) => {
+        if (chosen[kind]) return [];
+        const matching = Object.values(
+          objectValue(
+            current.projectTemplates as Parameters<typeof objectValue>[0],
+          ),
+        ).filter((value) => objectValue(value).kind === kind);
+        return matching.length === 1 ? [] : [kindQuestion(kind, english)];
+      });
+    const unwrapMultiAnswers = (
+      text: string,
+      questions: { text: string; options?: string[] }[],
+    ) => {
+      const blocks = text.trim().split("\n\n");
+      const wrapped = blocks.map((block) => {
+        const question = questions.find((q) =>
+          block.startsWith(`${q.text}\nMeine Antwort: `),
+        );
+        return question
+          ? {
+              selection: block
+                .slice(`${question.text}\nMeine Antwort: `.length)
+                .trim(),
+              question: question.text,
+            }
+          : null;
+      });
+      if (wrapped.every((value) => value !== null))
+        return new Set(wrapped.map((value) => value.question)).size ===
+          wrapped.length
+          ? wrapped
+          : null;
+      if (blocks.length !== 1 || text.includes("\nMeine Antwort:")) return null;
+      return [{ selection: text.trim(), question: null }];
+    };
+    const pendingMultiPermissionSelection = (() => {
+      if (history.at(-1)?.role !== "assistant") return null;
+      const all = Object.entries(
+        objectValue(
+          current.projectTemplates as Parameters<typeof objectValue>[0],
+        ),
+      );
+      const preliminaryAnswers = unwrapMultiAnswers(message, [
+        ...[false, true].flatMap((english) =>
+          ["public", "corporate"].map((kind) => kindQuestion(kind, english)),
+        ),
+      ]);
+      if (
+        !preliminaryAnswers?.length ||
+        !preliminaryAnswers.every((answer) =>
+          all.some(([key, value]) =>
+            [
+              key,
+              String(objectValue(value).name ?? key),
+              `${String(objectValue(value).name ?? key)} (${key})`,
+            ].includes(answer.selection),
+          ),
+        )
+      )
+        return null;
+      for (
+        let index = Math.max(0, history.length - 8);
+        index < history.length - 1;
+        index++
+      ) {
+        const entry = history[index],
+          reply = history[index + 1];
+        if (
+          entry?.role !== "user" ||
+          reply?.role !== "assistant" ||
+          !/\bpublic\b/i.test(entry.content) ||
+          !/\bcorporate\b/i.test(entry.content)
+        )
+          continue;
+        if (
+          !reply.content.startsWith(
+            "Reviewable service-permission additions for Public and Corporate templates.\n",
+          ) &&
+          !reply.content.startsWith(
+            "Überprüfbare Ergänzung der Dienstrechte für Public- und Corporate-Vorlagen.\n",
+          )
+        )
+          continue;
+        return {
+          source: `history-${index}`,
+          userMessage: entry.content,
+          index,
+        };
+      }
+      return null;
+    })();
     const applicationAccessScope = z.strictObject({
       key: z
         .enum([...existingTemplateKeys, "__select_by_kind__"])
@@ -989,10 +1118,10 @@ export class AssistantModelServing {
             "Add official service permissions to an existing granular profile; the server resolves all permission IDs. Never generate full lists or change the central owner.",
           ),
         templateKind: z
-          .enum(["public", "corporate", "unspecified"])
+          .enum(["public", "corporate", "both", "unspecified"])
           .default("unspecified")
           .describe(
-            "Public/Corporate only when the current user identifies the kind rather than a specific template; otherwise unspecified.",
+            "Public/Corporate only when the current user identifies the kind rather than a specific template; both only for an explicit request for Public AND Corporate templates; otherwise unspecified.",
           ),
         templateEvidence: z
           .string()
@@ -1019,6 +1148,9 @@ export class AssistantModelServing {
             "current",
             ...(pendingPermissionSelection
               ? [pendingPermissionSelection.source]
+              : []),
+            ...(pendingMultiPermissionSelection
+              ? [pendingMultiPermissionSelection.source]
               : []),
           ])
           .default("current")
@@ -1336,6 +1468,13 @@ export class AssistantModelServing {
                 role,
                 content,
               })),
+              pendingMultiPermissionSelection: pendingMultiPermissionSelection
+                ? {
+                    ...pendingMultiPermissionSelection,
+                    instruction:
+                      "Continue only this open original service request after the exact offered template selection; templateKind=both, retain both kinds and services/permissionTarget, serviceEvidenceSource=source and templateEvidence from original userMessage.",
+                  }
+                : null,
               pendingPermissionSelection: pendingPermissionSelection
                 ? {
                     source: pendingPermissionSelection.source,
@@ -1430,7 +1569,7 @@ export class AssistantModelServing {
           {
             role: "system",
             content:
-              "Application project IAM: distinguish information questions from desired changes. If the CURRENT USER supplies literal arrays for both permissions and automationPermissions, choose applicationAccess custom-granular with only key, initialOwnerEmail and listOperation: the server uses those exact field-labelled lists, so do not echo them and never substitute a preset or generic templateSetup. Set listOperation=replace only for a complete desired set; choose append for Ergänze/add/append requests, preserving each recipient and central owner; choose clarify when the two recipients request different operations or the operation is unclear. Advice remains applicationAccess=null. An accessProfile-only change on an existing template MUST use applicationAccess, not generic templateSetup/editorInputs. Full project Owner rights explicitly requested for requester and automation select choice=owner (schemaVersion 1, mode owner), with no granular fields; do not substitute the workload default. A wish that future orderers receive Kubernetes/other service rights is an explicit template-change request, even without the words add/proposal: use topic=project-templates, mode=draft, adviceTask=other, applicationAccess.choice=add-service-permissions. Granting a future requester the ability to order/use a Kubernetes cluster means adding SKE project IAM to the existing template, NOT creating a cluster, platform Kubernetes or namespace building block. If only Public/Corporate is specified, use key=__select_by_kind__, templateKind and exact templateEvidence from the current message. The server asks which when several match. If the request concerns what the orderer receives, permissionTarget=requester; do not also change Application-service-account permissions unless requested. Preserve the existing central owner and all other settings, including an unfinished empty owner field: adding service permissions to a draft must still produce a proposal, not a new owner/preset question. Publication separately requires a valid initial owner. Actual advice questions about what roles mean use mode=advice with applicationAccess=null. Never treat a desired permission change as a request for the general access overview. If pendingPermissionSelection is supplied and the current user chooses that template, continue its original USER service request using that controlled serviceEvidenceSource and key, preserving the original services and recipient. The current selection is not a new advice request. Otherwise never reactivate old permission tasks.",
+              "Application project IAM: distinguish information questions from desired changes. If the CURRENT USER supplies literal arrays for both permissions and automationPermissions, choose applicationAccess custom-granular with only key, initialOwnerEmail and listOperation: the server uses those exact field-labelled lists, so do not echo them and never substitute a preset or generic templateSetup. Set listOperation=replace only for a complete desired set; choose append for Ergänze/add/append requests, preserving each recipient and central owner; choose clarify when the two recipients request different operations or the operation is unclear. Advice remains applicationAccess=null. An accessProfile-only change on an existing template MUST use applicationAccess, not generic templateSetup/editorInputs. Full project Owner rights explicitly requested for requester and automation select choice=owner (schemaVersion 1, mode owner), with no granular fields; do not substitute the workload default. A wish that future orderers receive Kubernetes/other service rights is an explicit template-change request, even without the words add/proposal: use topic=project-templates, mode=draft, adviceTask=other, applicationAccess.choice=add-service-permissions. Granting a future requester the ability to order/use a Kubernetes cluster means adding SKE project IAM to the existing template, NOT creating a cluster, platform Kubernetes or namespace building block. If Public AND Corporate templates are explicitly requested together, use key=__select_by_kind__, templateKind=both and exact templateEvidence quoting BOTH kinds; permissionTarget=both when service account AND requester are named. The server resolves each kind independently and preserves both profiles. If only Public/Corporate is specified, use key=__select_by_kind__, templateKind and exact templateEvidence from the current message. The server asks which when several match. If the request concerns what the orderer receives, permissionTarget=requester; do not also change Application-service-account permissions unless requested. Preserve the existing central owner and all other settings, including an unfinished empty owner field: adding service permissions to a draft must still produce a proposal, not a new owner/preset question. Publication separately requires a valid initial owner. Actual advice questions about what roles mean use mode=advice with applicationAccess=null. Never treat a desired permission change as a request for the general access overview. If pendingPermissionSelection is supplied and the current user chooses that template, continue its original USER service request using that controlled serviceEvidenceSource and key, preserving the original services and recipient. The current selection is not a new advice request. Otherwise never reactivate old permission tasks.",
           },
           {
             role: "system",
@@ -1613,7 +1752,11 @@ export class AssistantModelServing {
       )
         throw new AssistantInferenceError("invalid_scope");
       const selected = {
-        templateKind: "unspecified" as "public" | "corporate" | "unspecified",
+        templateKind: "unspecified" as
+          | "public"
+          | "corporate"
+          | "both"
+          | "unspecified",
         templateEvidence: "",
         services: [] as string[],
         permissionTarget: "both" as "requester" | "automation" | "both",
@@ -1638,7 +1781,85 @@ export class AssistantModelServing {
       };
       let { key } = selected;
       let serviceSource = message;
-      if (selected.serviceEvidenceSource !== "current") {
+      const chosenMultiTemplates: Record<string, string> = {};
+      if (
+        selected.serviceEvidenceSource !== "current" &&
+        pendingMultiPermissionSelection?.source ===
+          selected.serviceEvidenceSource
+      ) {
+        if (
+          selected.choice !== "add-service-permissions" ||
+          selected.templateKind !== "both"
+        )
+          throw new AssistantInferenceError("intent_evidence");
+        const english = classifiedIntent.applicationAccessLanguage === "en";
+        const all = Object.entries(
+          objectValue(
+            current.projectTemplates as Parameters<typeof objectValue>[0],
+          ),
+        );
+        for (
+          let i = pendingMultiPermissionSelection.index + 1;
+          i < history.length;
+          i += 2
+        ) {
+          const reply = history[i];
+          const questions = multiPermissionQuestions(
+            chosenMultiTemplates,
+            english,
+          );
+          const expected =
+            multiPermissionExplanation(
+              selected.services,
+              selected.permissionTarget,
+              english,
+              chosenMultiTemplates,
+            ) +
+            "\n" +
+            questions.map((q) => q.text).join("\n");
+          if (
+            !questions.length ||
+            reply?.role !== "assistant" ||
+            reply.content !== expected
+          )
+            throw new AssistantInferenceError("intent_evidence");
+          const answer =
+            i + 1 < history.length
+              ? history[i + 1]
+              : { role: "user", content: message };
+          if (answer?.role !== "user")
+            throw new AssistantInferenceError("intent_evidence");
+          const selections = unwrapMultiAnswers(answer.content, questions);
+          if (!selections?.length)
+            throw new AssistantInferenceError("intent_evidence");
+          for (const selection of selections) {
+            const matches = all.filter(([candidate, value]) => {
+              const data = objectValue(value);
+              return (
+                !chosenMultiTemplates[String(data.kind)] &&
+                questions.some(
+                  (q) =>
+                    (selection.question === null ||
+                      q.text === selection.question) &&
+                    q.options?.includes(
+                      `${String(data.name ?? candidate)} (${candidate})`,
+                    ),
+                ) &&
+                [
+                  candidate,
+                  String(data.name ?? candidate),
+                  `${String(data.name ?? candidate)} (${candidate})`,
+                ].includes(selection.selection)
+              );
+            });
+            if (matches.length !== 1)
+              throw new AssistantInferenceError("intent_evidence");
+            chosenMultiTemplates[String(objectValue(matches[0]![1]).kind)] =
+              matches[0]![0];
+          }
+        }
+        serviceSource = pendingMultiPermissionSelection.userMessage;
+      } else if (selected.serviceEvidenceSource !== "current") {
         if (
           selected.choice !== "add-service-permissions" ||
           !pendingPermissionSelection ||
@@ -1673,6 +1894,233 @@ export class AssistantModelServing {
           ))
       )
         throw new AssistantInferenceError("intent_evidence");
+      if (selected.choice === "add-service-permissions") {
+        const kindExcluded = (kind: string) =>
+          new RegExp(
+            `(?:nicht|not|ohne|without)\\s+(?:(?:für|fuer|for|das|dem|den|the|template)\\s+){0,3}${kind}\\b|\\b${kind}\\s+(?:(?:und|and|public|corporate|templates?|Vorlagen?|bitte)\\s+)*(?:nicht\\s+(?:ändern|ändern|anpassen|erweitern)|not\\s+(?:change|modify))`,
+            "i",
+          ).test(serviceSource);
+        const bothKinds =
+          /\bpublic\b.{0,60}\b(?:und|and|sowie|both)\b.{0,60}\bcorporate\b|\bcorporate\b.{0,60}\b(?:und|and|sowie|both)\b.{0,60}\bpublic\b/i.test(
+            serviceSource,
+          ) &&
+          !kindExcluded("public") &&
+          !kindExcluded("corporate");
+        if (bothKinds && selected.templateKind !== "both")
+          throw new AssistantInferenceError("intent_evidence");
+        const negatedService = Array.from(
+          serviceSource.matchAll(
+            /(?:keine|no)\s+([^.;!?\n]{1,80}?)(?:[- ]?(?:Rechte|permissions|rights))\b/gi,
+          ),
+        ).some((match) =>
+          selected.services.some((service) =>
+            applicationPermissionServiceMentioned(service, match[1] ?? ""),
+          ),
+        );
+        if (
+          selected.templateKind === "both" &&
+          (kindExcluded("public") ||
+            kindExcluded("corporate") ||
+            negatedService)
+        )
+          throw new AssistantInferenceError("intent_evidence");
+        const requesterMention = String.raw`(?:Besteller(?:s)?|Bestellende(?:n)?|requester|orderer)`;
+        const automationMention = String.raw`(?:(?:Application|App)[- ]?)?(?:Service[- ]?Accounts?|automation)`;
+        const requester = new RegExp(requesterMention, "i");
+        const automation = new RegExp(automationMention, "i");
+        const recipientUnchanged = (target: string, other: string) =>
+          serviceSource.split(/[.;!?\n]/).some((clause) => {
+            // Preserving existing rights while appending new ones is not exclusion.
+            if (
+              /\b(?:bestehende[nr]?|bisherige[nr]?|existing|sonstige[nr]?|unrelated)\b/i.test(
+                clause,
+              )
+            )
+              return false;
+            return new RegExp(
+              String.raw`(?:Rechte|permissions|rights)\s+(?:(?:des|der|den|dem|of|for|the|von|für|fuer)\s+){0,3}${target}(?:(?!${other}).){0,100}(?:unverändert|unchanged)|${target}[- ](?:Rechte|permissions|rights)(?:(?!${other}).){0,100}(?:unverändert|unchanged)`,
+              "i",
+            ).test(clause);
+          });
+        const requesterUnchanged = recipientUnchanged(
+          requesterMention,
+          automationMention,
+        );
+        const automationUnchanged = recipientUnchanged(
+          automationMention,
+          requesterMention,
+        );
+        if (requesterUnchanged && automationUnchanged)
+          throw new AssistantInferenceError("intent_evidence");
+        const onlyRequester =
+          automationUnchanged ||
+          new RegExp(
+            String.raw`(?:nur|only)\s+(?:(?:für|fuer|for|der|die|den|dem|the)\s+){0,3}${requesterMention}|(?:kein\w*|nicht|not|no)\s+(?:(?:der|den|the|für|fuer|for)\s+)*${automationMention}`,
+            "i",
+          ).test(serviceSource);
+        const onlyAutomation =
+          requesterUnchanged ||
+          new RegExp(
+            String.raw`(?:nur|only)\s+(?:(?:für|fuer|for|der|die|den|dem|the)\s+){0,3}${automationMention}|(?:kein\w*|nicht|not|no)\s+(?:(?:der|den|the|für|fuer|for)\s+)*${requesterMention}`,
+            "i",
+          ).test(serviceSource);
+        if (
+          (requesterUnchanged && onlyRequester) ||
+          (automationUnchanged && onlyAutomation)
+        )
+          throw new AssistantInferenceError("intent_evidence");
+        const recipient =
+          onlyRequester && !onlyAutomation
+            ? "requester"
+            : onlyAutomation && !onlyRequester
+              ? "automation"
+              : requester.test(serviceSource) && automation.test(serviceSource)
+                ? "both"
+                : requester.test(serviceSource)
+                  ? "requester"
+                  : automation.test(serviceSource)
+                    ? "automation"
+                    : null;
+        if (recipient && recipient !== selected.permissionTarget)
+          throw new AssistantInferenceError("intent_evidence");
+      }
+      // Multi-kind service additions are resolved from the current quoted request,
+      // never from a guessed model key or arbitrary conversation history.
+      if (
+        selected.choice === "add-service-permissions" &&
+        selected.templateKind === "both"
+      ) {
+        const evidence = selected.templateEvidence;
+        if (
+          !evidence.trim() ||
+          !serviceSource.includes(evidence) ||
+          !/\bpublic\b/i.test(evidence) ||
+          !/\bcorporate\b/i.test(evidence) ||
+          !/\b(?:und|and|sowohl|both|beide)\b/i.test(evidence) ||
+          /(?:nicht|not|ohne|without|kein\w*)\s+(?:(?:für|fuer|for|das|dem|den|the|template)\s+){0,3}(?:public|corporate)\b/i.test(
+            serviceSource,
+          ) ||
+          /\b(?:public|corporate)\s+(?:nicht|not)\b/i.test(serviceSource)
+        )
+          throw new AssistantInferenceError("intent_evidence");
+        const all = objectValue(
+          current.projectTemplates as Parameters<typeof objectValue>[0],
+        );
+        const english = classifiedIntent.applicationAccessLanguage === "en";
+        const changes: {
+          path: string;
+          operation: "merge";
+          value: Record<string, unknown>;
+        }[] = [];
+        const questions: { path: string; text: string; options: string[] }[] =
+          [];
+        const proposals: Record<string, unknown> = {};
+        let unresolvedTarget = false;
+        let ambiguousTargets = false;
+        for (const kind of ["public", "corporate"] as const) {
+          const matches = Object.entries(all).filter(
+            ([candidate, value]) =>
+              objectValue(value).kind === kind &&
+              (!chosenMultiTemplates[kind] ||
+                candidate === chosenMultiTemplates[kind]),
+          );
+          if (matches.length !== 1) {
+            unresolvedTarget = true;
+            ambiguousTargets = true;
+            questions.push(kindQuestion(kind, english));
+            continue;
+          }
+          const [targetKey, value] = matches[0]!;
+          const template = objectValue(value);
+          const parsed = applicationAccessProfileSchema.safeParse(
+            template.accessProfile,
+          );
+          if (!parsed.success) {
+            unresolvedTarget = true;
+            questions.push({
+              path: "projectTemplates",
+              text: english
+                ? `Which project access profile and central initial owner should ${targetKey} use?`
+                : `Welches Projekt-Rechteprofil und welcher zentrale initiale Owner sollen für ${targetKey} verwendet werden?`,
+              options: [],
+            });
+            continue;
+          }
+          const previous = parsed.data;
+          if (previous.mode === "owner") continue;
+          const additions = permissionNames.filter((permission) =>
+            selected.services.includes(permission.split(".")[0] ?? permission),
+          );
+          const profile = applicationAccessProfileSchema.parse({
+            ...previous,
+            permissions:
+              selected.permissionTarget === "automation"
+                ? previous.permissions
+                : [...new Set([...previous.permissions, ...additions])],
+            automationPermissions:
+              selected.permissionTarget === "requester"
+                ? previous.automationPermissions
+                : [
+                    ...new Set([
+                      ...previous.automationPermissions,
+                      ...additions,
+                    ]),
+                  ],
+          });
+          validateApplicationAccessProfile(
+            profile,
+            objectValue(template.settings),
+            objectValue(objectValue(template.parameterPolicy).fields)
+              .role_assignments,
+            false,
+          );
+          if (
+            unknownApplicationPermissions(profile, livePermissionNames).length
+          )
+            throw new AssistantInferenceError("intent_evidence");
+          if (!isDeepStrictEqual(previous, profile))
+            proposals[targetKey] = { accessProfile: profile };
+          if (!z.email().safeParse(previous.initialOwnerEmail).success)
+            questions.push({
+              path: "projectTemplates",
+              text: english
+                ? `Which central user or service-account email should be the initial owner of ${targetKey} before publication?`
+                : `Welche zentrale Benutzer- oder Service-Account-E-Mail soll vor der Veröffentlichung initialer Owner von ${targetKey} werden?`,
+              options: [],
+            });
+        }
+        if (ambiguousTargets)
+          questions.splice(
+            0,
+            questions.length,
+            ...multiPermissionQuestions(chosenMultiTemplates, english),
+          );
+        // Do not partially modify one kind while the other target/profile is unclear.
+        if (!unresolvedTarget && Object.keys(proposals).length)
+          changes.push({
+            path: "projectTemplates",
+            operation: "merge",
+            value: proposals,
+          });
+        for (const change of changes)
+          assistantEditorChangeSchema("projectTemplates").parse(change);
+        const dialogue = validateDialogue(
+          {
+            explanation: multiPermissionExplanation(
+              selected.services,
+              selected.permissionTarget,
+              english,
+              chosenMultiTemplates,
+            ),
+            questions,
+            changes,
+            references: ["project-templates"],
+          },
+          context.rules.map((rule) => rule.id),
+        );
+        stream?.onText(dialogue.explanation);
+        return dialogue;
+      }
       // A model-selected existing key is not evidence that the user selected it.
       // Resolve kind-only requests in the server even if the classifier guessed a key.
       let templateKind = selected.templateKind;
@@ -3386,7 +3834,7 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
               ? "DNS CONTRACT: Suitable DNS settings delegate reviewable name, description and TTL proposals and a known contact default, not invented contacts, ACLs, new topology or execution. Existing DNS keys stay stable; no identity/folder naming delegation needed. Current configuration values are the authoritative saved baseline, even if older conversation messages describe a previous value or a name-only limitation. Reuse the saved domain unless the latest user explicitly requests a domain change; distinguish dns_name (domain) from name (display name). Preserve an existing DNS contact; for an unset contact propose saved owner_email, otherwise verified assistant.user_email, stating its source. Do not claim a saved value was just changed. Explain settings and missing business facts. Never ask whether to accept a proposal: dedicated field-selection controls handle that decision."
               : foundationDraft
                 ? `NAMING CONTRACT: ${JSON.stringify(delegation)} is bounded naming delegation extracted from user requirements. Use explicitly supplied company names as written. For delegated company_code choose a concise resource naming abbreviation; for delegated rm_folders propose suitable names (1-40 chars) for EXISTING keys in currentPublicScalarValues.rm_folders. Without delegation use names explicitly supplied by the user or ask. rm_folders is the only supported nested governance patch: partial existing keys to {name:string}, never descriptions, owner_emails, reader_emails or new keys. Preserve all other metadata and internal/resource IDs. The existing organization_id is the sole UUID draft exception: reuse only the exact user-supplied UUID, never infer access or change tenant binding. owner_email may use actual user requirements, the saved owner address or verified assistant.user_email as a reviewable default. Naming delegation never permits guessing region, emails, grants, parent IDs or credentials. Prepare supported proposals now, not repeated naming questions. Say proposed, not saved or deployed. Missing foundation requirements remain questions, not invented values.`
-                : `${intent.topic === "configuration-lifecycle" ? "UPGRADE ADVICE: Distinguish three different bindings. A TEMPLATE upgrade is not merely changing a Git source: Platform Owner publishes a forward path within the SAME template family; requester opens order Updates, retains previous parameter answers, supplies new required answers, previews and confirms desired snapshot; same order/project/State/backend; then NEW actual Plan and separate normal Apply. Deletion/replacement/unknown evidence is hard-blocked, no checkbox bypass; sensitive changes follow published edge policy and stricter old/new deployment policy. A PLATFORM update immediately changes shared firewall/routes for ALL dependent Applications; declining a contract upgrade cannot preserve a private old firewall. Before Platform Apply, dependency impact gate binds Plan/artifact/State/dependency set and blocks destructive/unknown changes; sensitive acknowledgement is explicit. Afterwards use an actual approved resulting platform contract through a published path, possibly same template version. These are separate from EXECUTION-SOURCE upgrades. Only for an Accelerator source upgrade, explicitly include BOTH a fresh Plan review (changes/replacements/deletions) AND the normal separate explicit Apply approval. The upgrade action itself only changes desired source; it never starts either operation. Preserve the same order/project/State identity. Distinguish immutable template origin, desired source, and last successful Apply source. lastApplied is neither the actual current State nor the source to use for interrupted-job Recovery. Failed Apply can change State/resources; Recovery uses the interrupted job source and blocks upgrade until reconciled. Withdrawn sources cannot execute; unresolved Recovery needs an operator-provided reviewed compatible package. Do not recommend reordering or promise unchanged failed State/no data loss. Chat performs no upgrade or execution. " : ""}ADVICE CONTRACT: The current topic is ${intent.topic}. Answer the actual question fully from that topic's reviewed Accelerator Contract and Limits, with its native field names and supported values. Cite that topic, not only a dependency. Distinguish native Accelerator/editor fields from the narrower chat patch whitelist: unsupported chat patches do NOT mean those fields are immutable or absent in the editor. A fields overview lists concrete fields and limits in explanation; never merely announce a list, replace the answer with follow-up questions, or invent missing features. Questions only resolve actual missing requirements for the current topic, never unrelated components. No changes or saved/deployed claim in advice mode. For governance, distinguish rm_folder_parent_id and organization roles from the names-only chat patch: names 1-40 characters; meaningful folder descriptions are rejected, not silently ignored. For sandbox projects the only native fields are project_name, project_owner_email and optional owner_emails; no native expiry or budget controls. For firewall policy list firewall_config aliases, routes, rules, outbound_nat and port_forwards, endpoint/TLS and pass/block/reject with in/out; explain external bootstrap and explicit HA policy synchronization separately from CARP/pfsync, without starting the infrastructure capacity questionnaire.`,
+                : `${intent.topic === "configuration-lifecycle" ? "UPGRADE ADVICE: Distinguish three different bindings. A TEMPLATE upgrade is not merely changing a Git source: Platform Owner publishes a forward path within the SAME template family; requester opens order Updates, retains previous parameter answers, supplies new required answers, previews and confirms desired snapshot; same order/project/State/backend; then NEW actual Plan and separate normal Apply. Deletion/replacement/unknown evidence is hard-blocked, no checkbox bypass; sensitive changes follow published edge policy and stricter old/new deployment policy. A PLATFORM update immediately changes shared firewall/routes for ALL dependent Applications; declining a contract upgrade cannot preserve a private old firewall. Before Platform Apply, dependency impact gate binds Plan/artifact/State/dependency set and blocks destructive/unknown changes; sensitive acknowledgement is explicit. AFTER a successful, proven Platform Apply, Platform Owner publishes the ACTUAL resulting approved platform contract and a forward contract path. The Application Owner explicitly adopts that contract for the SAME order, possibly keeping the same template version. Your answer MUST explicitly explain that the order contract binding does NOT update automatically: shared cloud changes already affect it, but adopting a new contract is a separate explicit action. Never claim that declining an upgrade automatically binds the order to the new contract, or that a template upgrade only changes Git source. These are separate from EXECUTION-SOURCE upgrades. Only for an Accelerator source upgrade, explicitly include BOTH a fresh Plan review (changes/replacements/deletions) AND the normal separate explicit Apply approval. The upgrade action itself only changes desired source; it never starts either operation. Preserve the same order/project/State identity. Distinguish immutable template origin, desired source, and last successful Apply source. lastApplied is neither the actual current State nor the source to use for interrupted-job Recovery. Failed Apply can change State/resources; Recovery uses the interrupted job source and blocks upgrade until reconciled. Withdrawn sources cannot execute; unresolved Recovery needs an operator-provided reviewed compatible package. Do not recommend reordering or promise unchanged failed State/no data loss. Chat performs no upgrade or execution. " : ""}ADVICE CONTRACT: The current topic is ${intent.topic}. Answer the actual question fully from that topic's reviewed Accelerator Contract and Limits, with its native field names and supported values. Cite that topic, not only a dependency. Distinguish native Accelerator/editor fields from the narrower chat patch whitelist: unsupported chat patches do NOT mean those fields are immutable or absent in the editor. A fields overview lists concrete fields and limits in explanation; never merely announce a list, replace the answer with follow-up questions, or invent missing features. Questions only resolve actual missing requirements for the current topic, never unrelated components. No changes or saved/deployed claim in advice mode. For governance, distinguish rm_folder_parent_id and organization roles from the names-only chat patch: names 1-40 characters; meaningful folder descriptions are rejected, not silently ignored. For sandbox projects the only native fields are project_name, project_owner_email and optional owner_emails; no native expiry or budget controls. For firewall policy list firewall_config aliases, routes, rules, outbound_nat and port_forwards, endpoint/TLS and pass/block/reject with in/out; explain external bootstrap and explicit HA policy synchronization separately from CARP/pfsync, without starting the infrastructure capacity questionnaire.`,
           },
           ...history
             .slice(-12)
