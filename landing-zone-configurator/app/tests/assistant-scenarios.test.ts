@@ -275,7 +275,7 @@ it.each(assistantScenarios)(
             scenario.applicationUpgrade === "template"
               ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen werden blockiert."
               : scenario.applicationUpgrade === "platform"
-                ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag freigeben. Keine private alte Firewall."
+                ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag und den Pfad veröffentlichen. Die Vertragsbindung wechselt nicht automatisch. Der Application Owner übernimmt ihn ausdrücklich. Keine private alte Firewall."
                 : scenario.executionLifecycle
                   ? "Ursprüngliche Template-Revision bleibt erhalten. Die gewünschte Quelle bleibt gebunden; zuletzt angewendet ändert sich erst nach erfolgreichem Apply. Bestehende Bestellung und State bleiben erhalten. Ein neuer Plan und die normale Apply-Freigabe sind erforderlich. Zurückgezogene Quellen brauchen einen geprüften Ersatz, keine Neubestellung; der Chat führt kein Upgrade aus."
                   : scenario.applicationAccess === "advice"
