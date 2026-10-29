@@ -1359,9 +1359,23 @@ export function validateAssistantScenario(
   input: unknown,
 ) {
   const knowledge = buildAssistantKnowledge();
+  const fixture = assistantScenarioFixture(scenario);
+  const ownerEmails =
+    fixture.values["assistant.platform_service_account_emails"];
+  const userEmail = fixture.values["assistant.user_email"];
   const dialogue = validateDialogue(
     input,
     knowledge.rules.map((rule) => rule.id),
+    {
+      serviceAccountEmails: Array.isArray(ownerEmails)
+        ? ownerEmails.filter(
+            (email): email is string => typeof email === "string",
+          )
+        : [],
+      ...(typeof userEmail === "string"
+        ? { verifiedUserEmail: userEmail }
+        : {}),
+    },
   );
   const failures: string[] = [];
   if (scenario.id === "firewall-access-bootstrap-advice") {
@@ -1379,7 +1393,6 @@ export function validateAssistantScenario(
     )
   )
     failures.push("missing_topic_reference");
-  const fixture = assistantScenarioFixture(scenario);
   if (scenario.executionLifecycle)
     failures.push(...assistantExecutionLifecycleFailures(dialogue.explanation));
   if (scenario.applicationUpgrade)

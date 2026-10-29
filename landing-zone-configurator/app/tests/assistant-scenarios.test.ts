@@ -7,6 +7,7 @@ import {
   type JsonValue,
 } from "@lzc/domain";
 import { expect, it } from "vitest";
+import { buildMultiTemplatePermissionDialogue } from "../apps/api/src/assistant/application-permission-dialogue.js";
 import {
   assistantKnowledgeContext,
   buildAssistantKnowledge,
@@ -1070,4 +1071,35 @@ it("rejects setup questions even when the SNA native overview is factually compl
       ],
     }).failures,
   ).toEqual(["native_field_overview_asked_setup_questions"]);
+});
+
+it("uses only the fixture's trusted owner identities when qualifying mixed-template choices", () => {
+  const scenario = assistantScenarios.find(
+    (s) => s.applicationAccess === "both-kubernetes-mixed-legacy",
+  );
+  if (!scenario) throw Error("missing_mixed_fixture");
+  const fixture = assistantScenarioFixture(scenario);
+  const values = fixture.values;
+  const dialogue = buildMultiTemplatePermissionDialogue({
+    templates: values.projectTemplates as Record<string, unknown>,
+    originalRequest: scenario.message,
+    services: ["ske"],
+    permissionTarget: "both",
+    permissionNames: [...applicationProjectPermissionNames],
+    platformServiceAccountEmails: ["bootstrap-platform@sa.stackit.cloud"],
+    english: false,
+  });
+  expect(validateAssistantScenario(scenario, dialogue).failures).toEqual([]);
+  const foreign = structuredClone(dialogue);
+  foreign.questions[0]!.options = [
+    "Plattform-Service-Account (bootstrap-foreign@sa.stackit.cloud)",
+  ];
+  expect(() => validateAssistantScenario(scenario, foreign)).toThrow(
+    "assistant_invalid_proposal",
+  );
+  const protectedText = structuredClone(dialogue);
+  protectedText.questions[0]!.text = "Bitte API-Passwort nennen";
+  expect(() => validateAssistantScenario(scenario, protectedText)).toThrow(
+    "assistant_invalid_proposal",
+  );
 });
