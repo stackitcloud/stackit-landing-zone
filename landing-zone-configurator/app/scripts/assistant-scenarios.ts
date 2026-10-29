@@ -2260,10 +2260,46 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
   const text = explanation
     .toLowerCase()
     .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "<ip>");
-  const unnegatedClaim = (pattern: RegExp) =>
-    [...text.matchAll(pattern)].some(
-      (match) => !/\b(?:nicht|not|never|kein\w*)\b/.test(match[0]),
-    );
+  const unnegatedClaim = (pattern: RegExp, coordinatedNegation = false) =>
+    [...text.matchAll(pattern)].some((match) => {
+      let claim = match[0];
+      if (coordinatedNegation) {
+        // Bind negation to this assertion's final modal, not an earlier correct
+        // clause. In particular, "weder" alone never cancels a bad claim.
+        const modal = [
+          ...claim.matchAll(/\b(?:musst?|must|zwingend erforderlich)\b/g),
+        ].at(-1);
+        if (modal) {
+          const start = match.index + modal.index;
+          claim = claim.slice(modal.index);
+          const scope =
+            text
+              .slice(start, start + 240)
+              .split(
+                /,(?!\s*noch\b)|[.!?;:\n]|\s[-–—]\s|\b(?:aber|jedoch|sondern|dennoch|trotzdem|but|however)\b/,
+              )[0] ?? "";
+          const pair =
+            /^musst?\s+weder\b(?:(?!\bnoch\b)[^,.!?;:–—\n]){1,100},?\s*\bnoch\b(?:(?!\b(?:und|and|sowie)\b)[^,.!?;:–—\n]){0,100}/.exec(
+              scope,
+            );
+          const claimEnd = match.index + match[0].length;
+          if (
+            pair &&
+            claimEnd > start + scope.indexOf("weder") &&
+            claimEnd <= start + pair[0].length
+          )
+            return false;
+          // A later contrasting/independent clause cannot inherit any negation.
+          claim =
+            claim
+              .split(
+                /[;\n]|\b(?:aber|jedoch|sondern|dennoch|trotzdem|but|however)\b/,
+              )
+              .at(-1) ?? claim;
+        }
+      }
+      return !/\b(?:nicht|not|never|kein\w*)\b/.test(claim);
+    });
   if (
     !/automat/.test(text) ||
     !/sna|network area/.test(text) ||
@@ -2300,6 +2336,7 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
   if (
     unnegatedClaim(
       /(?:du musst|you must|zwingend erforderlich)[^.!?]{0,45}\/24|dns[^.!?]{0,35}(?:muss|must)[^.!?]{0,30}(?:ab(?:ge)?schalt|deaktiv|disable)/g,
+      true,
     )
   )
     failures.push("corporate_ipv4_invented_fixed_size_or_dns_removal");
