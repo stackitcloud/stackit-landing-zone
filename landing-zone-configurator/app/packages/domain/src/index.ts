@@ -39,6 +39,7 @@ export {
   compileApplicationPlan,
   platformContractSchema,
 } from "./application-plan.js";
+export * from "./application-upgrades.js";
 export { default as catalogue } from "./catalogue.json" with { type: "json" };
 export * from "./common-document.js";
 export * from "./common-validation.js";

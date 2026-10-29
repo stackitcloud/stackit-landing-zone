@@ -608,8 +608,8 @@
     {
       "id": "configuration-lifecycle",
       "file": "configuration-lifecycle.md",
-      "version": 10,
-      "checkedOn": "2026-10-28",
+      "version": 11,
+      "checkedOn": "2026-10-29",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [],
       "mandatory": true,
@@ -618,17 +618,17 @@
         "credential-foundations"
       ],
       "sources": [
-        "landing-zone-configurator/docs/common-feature-model.md",
-        "landing-zone-configurator/app/packages/domain/src/common-document.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/firewall.ts",
         "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
-        "landing-zone-configurator/app/apps/api/src/assistant/topic-fields.ts",
         "landing-zone-configurator/docs/application-execution-lifecycle.md",
-        "landing-zone-configurator/app/apps/api/src/applications/execution-lifecycle.ts"
+        "landing-zone-configurator/app/apps/api/src/applications/execution-lifecycle.ts",
+        "landing-zone-configurator/docs/application-upgrades.md",
+        "landing-zone-configurator/app/packages/domain/src/application-upgrades.ts",
+        "landing-zone-configurator/app/apps/api/src/applications/upgrades.ts"
       ],
       "externalSources": [],
       "scenarios": [

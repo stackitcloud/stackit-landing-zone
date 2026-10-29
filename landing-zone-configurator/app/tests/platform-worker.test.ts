@@ -222,6 +222,10 @@ if (phase === "show") {
     console.log("Full saved plan: 1 to add, 0 to change, 0 to destroy.");
     process.exit(0);
   }
+  if (${JSON.stringify(behavior)} === "upgrade-risk") {
+    console.log(JSON.stringify({format_version:"1.2", terraform_version:"1.12.6", complete:true, errored:false, configuration:{}, planned_values:{root_module:{}}, resource_changes:[{mode:"managed",type:"stackit_network",address:"private-address",change:{actions:["delete","create"],before:{private:"private-before"},after:{private:"private-after"}}}]}));
+    process.exit(0);
+  }
   console.log(JSON.stringify({format_version:"1.2", terraform_version:"1.12.6", errored:false, configuration:{secret:${JSON.stringify(secret)}}, planned_values:{}, resource_changes:[{mode:"managed", change:{actions:[${JSON.stringify(behavior === "destroy" ? "delete" : "create")}], after:{secret:${JSON.stringify(secret)}}}}]}));
   process.exit(0);
 }
@@ -2052,3 +2056,69 @@ function firstProfile<T>(profiles: T[]): T {
   if (!first) throw new Error("missing fixture profile");
   return first;
 }
+
+it.each(["application", "platform"])(
+  "projects native %s upgrade risk without raw resource data",
+  async (broker) => {
+    const test = await fixture("platform-plan", "upgrade-risk");
+    if (broker === "application") {
+      applicationInput(test);
+      test.input.application = {
+        ...applicationBinding,
+        applicationUpgradeId: "33333333-3333-4333-8333-333333333333",
+      };
+    } else test.input.assessApplicationDependencies = true;
+    expect(await test.execute()).toBe("succeeded");
+    const artifact = test.reports.find((report) => report.path === "artifact")
+      ?.body as {
+      summary: {
+        upgradeSafety?: { classification: string };
+        platformImpact?: { classification: string };
+      };
+    };
+    expect(
+      (broker === "application"
+        ? artifact.summary.upgradeSafety
+        : artifact.summary.platformImpact
+      )?.classification,
+    ).toBe("blocked");
+    expect(JSON.stringify(artifact.summary)).not.toMatch(
+      /private-address|private-before|private-after/,
+    );
+  },
+);
+
+it.each(["application-plan", "platform-apply", "initial-plan-only"])(
+  "rejects dependency-impact capability on %s before engine access",
+  async (mode) => {
+    const test = await fixture(mode);
+    if (mode === "application-plan") applicationInput(test);
+    test.input.assessApplicationDependencies = true;
+    expect(await test.execute()).toBe("failed");
+    expect(await test.calls()).toEqual([]);
+  },
+);
+
+it.each(["drift", "destroy"] as const)(
+  "keeps upgraded %s bound to its snapshot without applying standard-upgrade restrictions",
+  async (purpose) => {
+    const test = await fixture(
+      "platform-plan",
+      purpose === "destroy" ? "destroy" : "success",
+    );
+    applicationInput(test);
+    test.input.application = {
+      ...applicationBinding,
+      applicationUpgradeId: "33333333-3333-4333-8333-333333333333",
+      purpose,
+    };
+    expect(await test.execute()).toBe("succeeded");
+    const artifact = test.reports.find((r) => r.path === "artifact")?.body as {
+      summary: Record<string, unknown>;
+    };
+    expect(artifact.summary.upgradeSafety).toBeUndefined();
+    expect((await test.calls()).some((call) => call.args[0] === "apply")).toBe(
+      false,
+    );
+  },
+);

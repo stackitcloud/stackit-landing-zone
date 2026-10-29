@@ -385,3 +385,16 @@ platform contract and target are usable. Existing published versions, orders,
 project grants and State are unchanged; this is not an upgrade of existing
 Application instances. A real execution still needs its own reviewed Plan and
 explicit Apply approval.
+
+## Updates for existing Applications
+
+Open an existing order and select **Updates**. Execution source, template version
+and platform contract have separate desired bindings. A Platform Owner publishes
+the permitted upgrade paths; the requester compares and confirms one without
+creating another order. Existing State/backend identity and parameter answers
+are retained. Then create a fresh Plan and release Apply separately. Standard
+upgrades block deletions, replacements and unknown evidence.
+
+Shared platform changes affect dependent Applications when Platform Apply runs;
+they cannot be delayed per Application. See [template and platform upgrades](application-upgrades.md)
+for impact acknowledgement, sensitive-change policies and Recovery.

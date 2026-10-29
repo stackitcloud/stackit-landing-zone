@@ -4,12 +4,13 @@
 
 Eine Application-Bestellung beschreibt eine bestehende Instanz einschließlich
 Projekt und State-Zuordnung. Ein Configurator-Update macht daraus keine neue
-Bestellung. Ihr veröffentlichtes Template bleibt der unveränderliche Ursprung
-und die Richtlinie dieser Instanz.
+Bestellung. Ihr veröffentlichtes Template bleibt der unveränderliche Ursprung.
+Template- und Plattform-Upgrades speichern eine separate wirksame Bindung; sie
+überschreiben diesen Ursprung nicht.
 
 ## Mit einer bestehenden Bestellung weiterarbeiten
 
-Öffne die Bestelldetails. **Ausführungsstand** unterscheidet die ursprüngliche
+Öffne die Bestelldetails. **Updates → Ausführungsstand** unterscheidet die ursprüngliche
 Template-Revision, den gewünschten Ausführungsstand und die Revision des letzten
 erfolgreichen Applies. Drift, neue Pläne und Wartung verwenden den gewünschten
 Stand statt des aktuellen Standards für neue Template-Veröffentlichungen.
@@ -32,7 +33,7 @@ API-Releases an dessen ursprüngliches Paket, Quelle und Lockdatei gebunden.
 
 ## Dieselbe Bestellung aktualisieren
 
-1. Öffne **Ausführungsstand** und prüfe die angebotene Zielrevision.
+1. Öffne **Updates → Ausführungsstand** und prüfe die angebotene Zielrevision.
 2. Bestätige, dass dieselbe Bestellung und derselbe State erhalten bleiben und
    der neue Plan auf Änderungen, Ersetzungen und Löschungen geprüft werden muss.
 3. Wähle **Ausführungsbindung aktualisieren**. Das ändert ausschließlich die gewünschte
@@ -107,3 +108,5 @@ Registeränderungen gehören der Migrationsidentität; die Laufzeitrolle kann si
 keine Unterstützung für beliebige Quellen erteilen. Bestehende State-Sperren und
 Recovery-Fences bleiben verbindlich. [Plan-Ausführung](plan-execution.de.md)
 beschreibt die Vertrauensgrenzen für Ausführung und Recovery.
+
+Template- und Plattform-Upgrades verwenden den separaten [versionierten Upgrade-Ablauf](application-upgrades.de.md).

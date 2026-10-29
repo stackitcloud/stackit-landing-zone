@@ -309,3 +309,25 @@ permanent archive. Existing reservations, execution/recovery rights, State and
 published versions remain unchanged when limits are lowered. This control does
 not limit direct cloud resource creation, cloud service quotas or concurrent
 Runner capacity; those remain separate acceptance in #93.
+
+### Existing-order upgrades and shared platform impact
+
+[Application upgrades](application-upgrades.md) use append-only desired snapshots
+for template and platform bindings alongside the independent execution-source
+binding. New jobs compile the effective snapshot; interrupted-job Recovery and
+historical artifacts use their frozen job snapshot. Original orders and published
+versions remain immutable. The same instance/project/State/backend identity is
+retained; changing desired inputs starts no execution.
+
+The full native Plan supplies a bounded risk projection. Standard upgrades reject
+all deletions, replacements and unknown or incomplete evidence at both server and
+SQL admission. Required approvals bind candidate hash, actual fresh Plan binding
+and artifact hash. The stricter old/new deployment policy wins; sensitive direct
+self-service requires explicit publication and both versions to allow it.
+
+Shared Platform Apply admission serializes with Application dependency mutations.
+Dependency impact and any sensitive acknowledgement bind the exact Plan/artifact,
+State version and dependency set; credential/input release rechecks the immutable
+Apply guard. Shared destructive or uncertain changes with dependents remain
+blocked. A later Application contract upgrade cannot defer a shared firewall
+change that the Platform Apply already performed.

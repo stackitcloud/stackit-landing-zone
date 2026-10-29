@@ -11,6 +11,7 @@ import { currentLanguage, t } from "../i18n";
 import type { DeploymentStep } from "../navigation";
 import { readPlanOutput } from "../plan-output";
 import type { Session } from "./Account";
+import { PlatformApplicationImpact } from "./PlatformApplicationImpact";
 
 type Run = {
   id: string;
@@ -24,6 +25,7 @@ type Run = {
   planId?: string;
   artifactSha256?: string;
   applyAllowed?: boolean;
+  applicationImpactEnabled?: boolean;
   applyBlocker?: PlatformApplyBlocker | null;
   expiresAt?: string | null;
   stateBackend?: S3BackendDescriptor | null;
@@ -554,6 +556,8 @@ function PlanReview({
   busy,
   blocked,
   sessionExpiresAt,
+  session,
+  onImpactAcknowledged,
   onApply,
 }: {
   run: Run;
@@ -561,8 +565,13 @@ function PlanReview({
   busy: boolean;
   blocked: boolean;
   sessionExpiresAt: string;
+  session: Session;
+  onImpactAcknowledged: (signal: AbortSignal) => Promise<void>;
   onApply: (organizationId: string) => void;
 }) {
+  const [impactBlocked, setImpactBlocked] = useState(
+    run.applicationImpactEnabled === true,
+  );
   const [reviewed, setReviewed] = useState(false);
   const [organizationId, setOrganizationId] = useState("");
   const [destructiveReviewed, setDestructiveReviewed] = useState(false);
@@ -586,6 +595,7 @@ function PlanReview({
   );
   const allowed =
     run.applyAllowed === true &&
+    !impactBlocked &&
     !expired &&
     deadline > Date.now() &&
     !blocked &&
@@ -622,6 +632,15 @@ function PlanReview({
             : t("Keine Gültigkeit bestätigt")}
         </dd>
       </dl>
+      {run.applicationImpactEnabled && (
+        <PlatformApplicationImpact
+          session={session}
+          planId={run.id}
+          artifactSha256={run.artifactSha256 ?? ""}
+          onBlocked={setImpactBlocked}
+          onAcknowledged={onImpactAcknowledged}
+        />
+      )}
       {destructive && (
         <p role="alert" className="validation-box">
           {t(
@@ -1254,6 +1273,10 @@ export function PlanRuns({
                           item.operation === "apply" && item.planId === run.id,
                       )
                     }
+                    session={session}
+                    onImpactAcknowledged={async (signal) => {
+                      await refresh(signal);
+                    }}
                     sessionExpiresAt={session.expiresAt}
                     onApply={(organizationId) =>
                       void mutate(

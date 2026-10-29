@@ -3,6 +3,10 @@ import {
   applicationExecutionCurrentRevision,
   applicationExecutionRevisions,
 } from "./application-execution.js";
+import type {
+  applicationPlatformImpactSchema,
+  applicationUpgradeSafetySchema,
+} from "./application-upgrades.js";
 
 export const applicationMvpAcceleratorCommit =
   applicationExecutionCurrentRevision;
@@ -46,6 +50,8 @@ export interface PlanSummary {
   checks: { pass: number; fail: number; error: number; unknown: number };
   destructive: boolean;
   completeness: "complete" | "incomplete" | "not-reported";
+  upgradeSafety?: z.infer<typeof applicationUpgradeSafetySchema>;
+  platformImpact?: z.infer<typeof applicationPlatformImpactSchema>;
 }
 
 export interface PlatformApplyBlocker {

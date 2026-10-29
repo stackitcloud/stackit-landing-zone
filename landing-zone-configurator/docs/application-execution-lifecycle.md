@@ -4,11 +4,12 @@
 
 An Application order represents an existing instance, including its project and
 State identity. A Configurator update does not turn it into a new order. Its
-published template remains the immutable origin and policy of that instance.
+published template remains the immutable origin. Template and platform upgrades
+record a separate effective binding; they never rewrite that origin.
 
 ## Continue an existing order
 
-Open the order details. **Execution version** distinguishes the original template
+Open the order details. **Updates → Execution version** distinguishes the original template
 revision, the desired execution revision and the revision of the last successful
 Apply. Drift, new Plans and maintenance use the desired revision, rather than the
 current default used when publishing new templates.
@@ -29,7 +30,7 @@ original package, source and lock, including across API releases.
 
 ## Upgrade the same order
 
-1. Open **Execution version** and review the offered replacement revision.
+1. Open **Updates → Execution version** and review the offered replacement revision.
 2. Confirm that the same order and State remain in use and that the new Plan
    must be checked for changes, replacements and deletions.
 3. Select **Update execution binding**. This changes the desired execution binding
@@ -95,3 +96,5 @@ source/package/lock identities. The migration identity owns registry changes;
 the runtime role cannot grant itself support for an arbitrary source. Existing
 State locks and recovery fences remain mandatory. See [Plan execution](plan-execution.md)
 for the execution and recovery trust boundaries.
+
+Template and platform upgrades use the separate [versioned upgrade flow](application-upgrades.md).

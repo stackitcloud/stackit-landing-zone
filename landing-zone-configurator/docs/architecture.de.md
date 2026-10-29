@@ -334,3 +334,27 @@ Bestehende Reservierungen, Ausführungs-/Recovery-Rechte, State und veröffentli
 Versionen bleiben beim Senken der Grenze unverändert. Die Kontrolle begrenzt
 weder direkte Cloud-Ressourcenerstellung noch Cloud-Dienstkontingente oder die
 Runner-Nebenläufigkeit; deren Abnahme bleibt in #93 getrennt offen.
+
+### Upgrades bestehender Bestellungen und gemeinsame Plattformauswirkungen
+
+[Application-Upgrades](application-upgrades.de.md) speichern gewünschte Template-
+und Plattformbindungen als unveränderliche Folgeeinträge neben der unabhängigen
+Ausführungsquellenbindung. Neue Jobs verwenden den wirksamen Snapshot; Recovery
+unterbrochener Jobs und historische Artefakte deren eingefrorenen Job-Snapshot.
+Ursprüngliche Bestellungen und Veröffentlichungen bleiben unverändert. Instanz,
+Projekt, State und Backend bleiben identisch; die Übernahme startet keine Ausführung.
+
+Der vollständige native Plan liefert eine begrenzte Risikozusammenfassung.
+Standard-Upgrades sperren Löschungen, Ersetzungen sowie unbekannte oder unvollständige
+Nachweise im Server und bei SQL-Zulassung. Erforderliche Freigaben binden Kandidaten-
+Hash, tatsächliche neue Planbindung und Artefakt-Hash. Die strengere Deployment-
+Richtlinie beider Versionen gilt; sensibler direkter Self-Service benötigt eine
+ausdrückliche Veröffentlichung und direkte Richtlinien beider Versionen.
+
+Die Plattform-Apply-Zulassung serialisiert mit Änderungen der Application-
+Abhängigkeiten. Auswirkungsprüfung und sensible Bestätigung binden Plan, Artefakt,
+State-Stand und Abhängigkeitssatz. Die Ausgabe von Zugangsdaten und Runner-Eingaben
+prüft den unveränderlichen Apply-Nachweis erneut. Gemeinsame destruktive oder
+ungeklärte Änderungen mit Abhängigkeiten bleiben gesperrt. Ein späteres
+Application-Vertragsupgrade verzögert keine bereits ausgeführte gemeinsame
+Firewall-Änderung.

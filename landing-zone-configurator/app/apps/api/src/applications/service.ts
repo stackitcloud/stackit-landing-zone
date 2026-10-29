@@ -16,7 +16,9 @@ import {
   applicationRecoveryReviewContextSchema,
   applicationRecoveryReviewRequestSchema,
   applicationRecoveryReviewSchema,
+  applicationTemplateUpgradeRequestSchema,
   appliedPlatformSourceSchema,
+  classifyApplicationUpgradePlan,
   planResultSchema,
   runnerArtifactSchema,
   s3BackendDescriptorSchema,
@@ -67,6 +69,20 @@ import {
   ApplicationStateRecoveries,
   StateRecoveryError,
 } from "./state-recovery.js";
+import {
+  ApplicationUpgradeError,
+  applicationPlatformUpgradeEdgeSchema,
+  applicationPlatformUpgradeRequestSchema,
+  applicationUpgradeApprovalRequestSchema,
+  applicationUpgradeContextSchema,
+  applicationUpgradeEdgeSchema,
+  enrichApplicationUpgradeContext,
+  previewApplicationPlatformUpgrade,
+  previewApplicationUpgrade,
+  publishApplicationPlatformUpgradeEdgeSchema,
+  publishApplicationUpgradeEdgeSchema,
+  readApplicationUpgradeContext,
+} from "./upgrades.js";
 
 export class ApplicationError extends Error {
   constructor(
@@ -1113,6 +1129,261 @@ export class Applications {
     });
   }
 
+  upgradeContext(session: Session, instanceId: string) {
+    const id = z.uuid().parse(instanceId);
+    return this.work(session, "read", async (client) =>
+      enrichApplicationUpgradeContext(
+        client,
+        await readApplicationUpgradeContext(client, session, id),
+        session,
+      ),
+    );
+  }
+
+  listUpgradeEdges(session: Session) {
+    return this.work(session, "read", async (client) => {
+      const result = await client.query<{ edge: unknown }>(
+        "SELECT jsonb_build_object('id',e.id,'fromVersionId',e.from_version_id,'toVersionId',e.to_version_id,'policy',e.policy,'publishedBy',e.published_by,'createdAt',e.created_at) AS edge FROM lzc.application_upgrade_edges e ORDER BY e.created_at DESC LIMIT 500",
+      );
+      return {
+        edges: result.rows.map((row) =>
+          applicationUpgradeEdgeSchema.parse(row.edge),
+        ),
+      };
+    });
+  }
+
+  publishUpgradeEdge(session: Session, input: unknown) {
+    const request = publishApplicationUpgradeEdgeSchema.parse(input);
+    return this.work(session, "publish", async (client) => {
+      const result = await client.query<{ edge: unknown }>(
+        "SELECT lzc_auth.publish_application_upgrade_edge($1,$2,$3,$4,$5) AS edge",
+        [
+          session.id,
+          request.fromVersionId,
+          request.toVersionId,
+          request.policy,
+          request.confirmPublication,
+        ],
+      );
+      return applicationUpgradeEdgeSchema.parse(result.rows[0]?.edge);
+    });
+  }
+
+  previewUpgrade(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    return this.work(session, "order", async (client) => {
+      const preview = await previewApplicationUpgrade(
+        client,
+        session,
+        id,
+        input,
+      );
+      return {
+        kind: "application-upgrade-preview" as const,
+        cloudPlanExecuted: false as const,
+        ...preview,
+      };
+    });
+  }
+
+  async requestUpgrade(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    const confirmed = applicationTemplateUpgradeRequestSchema.parse(input);
+    return this.work(session, "order", async (client) => {
+      const preview = await previewApplicationUpgrade(
+        client,
+        session,
+        id,
+        confirmed,
+      );
+      const execution = await readApplicationExecutionContext(
+        client,
+        session,
+        id,
+      );
+      const selectedSource =
+        execution.replacementRevision === preview.target.acceleratorRevision
+          ? preview.target.acceleratorRevision
+          : execution.revision;
+      if (
+        this.dispatch &&
+        !supportsApplicationExecution(this.dispatch.runner, selectedSource)
+      )
+        throw new ApplicationUpgradeError(
+          409,
+          "application_execution_package_unavailable",
+        );
+      if (preview.assessment.classification === "blocked")
+        throw new ApplicationUpgradeError(
+          409,
+          "application_upgrade_target_blocked",
+        );
+      if (preview.context.blockers.length)
+        throw new ApplicationUpgradeError(
+          409,
+          "application_upgrade_execution_active",
+        );
+      const request = preview.request;
+      const result = await client.query<{ context: unknown }>(
+        "SELECT lzc_auth.request_application_upgrade($1,$2,$3,$4,$5,$6,$7) AS context",
+        [
+          session.id,
+          id,
+          request.edgeId,
+          request.expectedBindingId,
+          request.expectedVersionId,
+          request.parameters ?? {},
+          request.confirmUpgrade,
+        ],
+      );
+      return enrichApplicationUpgradeContext(
+        client,
+        applicationUpgradeContextSchema.parse(result.rows[0]?.context),
+        session,
+      );
+    });
+  }
+
+  listPlatformUpgradeEdges(session: Session) {
+    return this.work(session, "read", async (client) => ({
+      edges: (
+        await client.query<{ edge: unknown }>(
+          "SELECT jsonb_build_object('id',e.id,'fromPlatformRevision',e.from_revision,'toPlatformRevision',e.to_revision,'policy',e.policy,'publishedBy',e.published_by,'createdAt',e.created_at) AS edge FROM lzc.application_platform_upgrade_edges e ORDER BY created_at DESC LIMIT 500",
+        )
+      ).rows.map((row) => applicationPlatformUpgradeEdgeSchema.parse(row.edge)),
+    }));
+  }
+  publishPlatformUpgradeEdge(session: Session, input: unknown) {
+    const request = publishApplicationPlatformUpgradeEdgeSchema.parse(input);
+    return this.work(session, "publish", async (client) =>
+      applicationPlatformUpgradeEdgeSchema.parse(
+        (
+          await client.query<{ edge: unknown }>(
+            "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,$5) AS edge",
+            [
+              session.id,
+              request.fromPlatformRevision,
+              request.toPlatformRevision,
+              request.policy,
+              request.confirmPublication,
+            ],
+          )
+        ).rows[0]?.edge,
+      ),
+    );
+  }
+  previewPlatformUpgrade(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    return this.work(session, "order", async (client) => ({
+      kind: "application-platform-upgrade-preview" as const,
+      cloudPlanExecuted: false as const,
+      ...(await previewApplicationPlatformUpgrade(client, session, id, input)),
+    }));
+  }
+  async requestPlatformUpgrade(
+    session: Session,
+    instanceId: string,
+    input: unknown,
+  ) {
+    const id = z.uuid().parse(instanceId);
+    const request = applicationPlatformUpgradeRequestSchema.parse(input);
+    return this.work(session, "order", async (client) => {
+      const preview = await previewApplicationPlatformUpgrade(
+        client,
+        session,
+        id,
+        request,
+      );
+      if (preview.assessment.classification === "blocked")
+        throw new ApplicationUpgradeError(
+          409,
+          "application_upgrade_target_blocked",
+        );
+      if (preview.context.blockers.length)
+        throw new ApplicationUpgradeError(
+          409,
+          "application_upgrade_execution_active",
+        );
+      const result = await client.query<{ context: unknown }>(
+        "SELECT lzc_auth.request_application_platform_upgrade($1,$2,$3,$4,$5,$6) AS context",
+        [
+          session.id,
+          id,
+          request.edgeId,
+          request.expectedBindingId,
+          preview.context.effectivePlatformRevision,
+          request.confirmUpgrade,
+        ],
+      );
+      return enrichApplicationUpgradeContext(
+        client,
+        applicationUpgradeContextSchema.parse(result.rows[0]?.context),
+        session,
+      );
+    });
+  }
+
+  upgradeApprovalContext(session: Session, planId: string) {
+    const id = z.uuid().parse(planId);
+    return this.work(
+      session,
+      "read",
+      async (client) =>
+        (
+          await client.query<{ context: unknown }>(
+            "SELECT lzc_auth.application_upgrade_approval_context($1,$2) AS context",
+            [session.id, id],
+          )
+        ).rows[0]?.context,
+    );
+  }
+
+  approveUpgrade(session: Session, planId: string, input: unknown) {
+    const id = z.uuid().parse(planId);
+    const request = applicationUpgradeApprovalRequestSchema.parse(input);
+    return this.work(session, "publish", async (client) => {
+      const context = z
+        .object({
+          upgradeId: z.uuid(),
+          candidateHash: z.string().regex(/^[a-f0-9]{64}$/),
+          artifactSha256: z.string().regex(/^[a-f0-9]{64}$/),
+          canApprove: z.boolean(),
+          blocked: z.boolean(),
+        })
+        .parse(
+          (
+            await client.query<{ context: unknown }>(
+              "SELECT lzc_auth.application_upgrade_approval_context($1,$2) AS context",
+              [session.id, id],
+            )
+          ).rows[0]?.context,
+        );
+      if (
+        context.blocked ||
+        !context.canApprove ||
+        context.artifactSha256 !== request.artifactSha256
+      )
+        throw new ApplicationUpgradeError(
+          409,
+          "application_upgrade_approval_invalid",
+        );
+      return (
+        await client.query<{ receipt: unknown }>(
+          "SELECT lzc_auth.approve_application_upgrade($1,$2,$3,$4,$5,$6) AS receipt",
+          [
+            session.id,
+            context.upgradeId,
+            context.candidateHash,
+            id,
+            request.artifactSha256,
+            request.confirmApproval,
+          ],
+        )
+      ).rows[0]?.receipt;
+    });
+  }
+
   listInstances(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<InstanceRow>(
@@ -1425,8 +1696,9 @@ export class Applications {
           runner_package_id: string;
           summary: unknown;
           purpose: unknown;
+          application_upgrade_id?: unknown;
         }>(
-          "SELECT j.instance_id,a.ciphertext,a.sha256,a.runner_package_id,a.summary,coalesce(j.inputs->>'purpose','standard') AS purpose FROM lzc.application_jobs j JOIN lzc.application_runner_records a ON a.job_id=j.id AND a.kind='artifact' JOIN lzc.application_dispatches d ON d.job_id=j.id AND d.status='succeeded' AND d.summary=a.summary WHERE j.id=$1 AND j.operation='plan' AND j.owner_user_id=$2 AND j.tenant_id=$3",
+          "SELECT j.instance_id,a.ciphertext,a.sha256,a.runner_package_id,a.summary,coalesce(j.inputs->>'purpose','standard') AS purpose,j.inputs->>'applicationUpgradeId' AS application_upgrade_id FROM lzc.application_jobs j JOIN lzc.application_runner_records a ON a.job_id=j.id AND a.kind='artifact' JOIN lzc.application_dispatches d ON d.job_id=j.id AND d.status='succeeded' AND d.summary=a.summary WHERE j.id=$1 AND j.operation='plan' AND j.owner_user_id=$2 AND j.tenant_id=$3",
           [jobId, session.userId, session.tenantId],
         )
       ).rows[0];
@@ -1449,6 +1721,9 @@ export class Applications {
         identity: row.runner_package_id,
         summary: row.summary,
         purpose: applicationPlanPurposeSchema.parse(row.purpose),
+        ...(row.application_upgrade_id
+          ? { applicationUpgradeId: z.uuid().parse(row.application_upgrade_id) }
+          : {}),
       };
     });
   }
@@ -1744,11 +2019,16 @@ export class Applications {
       throw new ApplicationError(503, "application_preview_unavailable");
     const saved = await this.savedPlan(session, id);
     const raw = await runner.preview(saved);
-    const summary = summarizePlan(
-      raw,
-      (saved.summary as { result: string }).result === "changes" ? 2 : 0,
-      "opentofu-1.12.6",
-    );
+    const summary = {
+      ...summarizePlan(
+        raw,
+        (saved.summary as { result: string }).result === "changes" ? 2 : 0,
+        "opentofu-1.12.6",
+      ),
+      ...("applicationUpgradeId" in saved && saved.purpose === "standard"
+        ? { upgradeSafety: classifyApplicationUpgradePlan(raw) }
+        : {}),
+    };
     if (canonicalJson(summary) !== canonicalJson(saved.summary))
       throw new ApplicationError(409, "application_plan_artifact_invalid");
     if (
@@ -2364,6 +2644,7 @@ export class Applications {
       variables: z.strictObject({
         platform_contract: platformContractSchema,
         application: z.record(z.string(), z.json()),
+        bucket_naming: z.enum(["legacy", "project-id"]).optional(),
       }),
     });
     const current = () =>
@@ -2382,8 +2663,11 @@ export class Applications {
           )
         ).rows[0];
         const planned = (
-          await client.query<{ purpose: unknown }>(
-            "SELECT coalesce(inputs->>'purpose','standard') AS purpose FROM lzc.application_jobs WHERE id=$1 AND tenant_id=$2",
+          await client.query<{
+            purpose: unknown;
+            application_upgrade_id?: unknown;
+          }>(
+            "SELECT coalesce(inputs->>'purpose','standard') AS purpose, inputs->>'applicationUpgradeId' AS application_upgrade_id FROM lzc.application_jobs WHERE id=$1 AND tenant_id=$2",
             [jobId, session.tenantId],
           )
         ).rows[0];
@@ -2392,6 +2676,13 @@ export class Applications {
         return {
           ...schema.parse(row?.context),
           purpose: applicationPlanPurposeSchema.parse(planned.purpose),
+          ...(planned.application_upgrade_id
+            ? {
+                applicationUpgradeId: z
+                  .uuid()
+                  .parse(planned.application_upgrade_id),
+              }
+            : {}),
         };
       });
     const context = await current();
@@ -2431,7 +2722,9 @@ export class Applications {
     });
     if (JSON.stringify(descriptor) !== JSON.stringify(context.descriptor))
       throw new ApplicationError(409, "application_backend_changed");
-    const tfvars = serializeTfvars(objectValue(context.variables));
+    const tfvars = serializeTfvars(
+      z.record(z.string(), z.json()).parse(context.variables),
+    );
     if (Buffer.byteLength(tfvars) > 1024 * 1024)
       throw new ApplicationError(409, "application_runner_inputs_invalid");
     await current();
@@ -2479,6 +2772,9 @@ export class Applications {
       application: {
         tenantId: context.tenantId,
         instanceId: context.instanceId,
+        ...("applicationUpgradeId" in context
+          ? { applicationUpgradeId: context.applicationUpgradeId as string }
+          : {}),
         ...(context.purpose !== "standard" ? { purpose: context.purpose } : {}),
       },
     };
@@ -2851,11 +3147,32 @@ export class Applications {
     );
     let row = instances.rows[0];
     if (!row) throw new ApplicationError(404, "application_instance_not_found");
+    const upgrade = await readApplicationUpgradeContext(
+      client,
+      session,
+      row.id,
+    );
+    if (upgrade.bindingId)
+      row = {
+        ...row,
+        version_id: upgrade.effectiveVersionId,
+        deployment_policy: upgrade.effectiveDeploymentPolicy,
+        parameters: upgrade.effectiveParameters,
+        resolved_settings: upgrade.effectiveSettings,
+      };
     const versions = await client.query<VersionRow>(
       "SELECT * FROM lzc.application_template_versions WHERE id=$1",
       [row.version_id],
     );
-    const published = versions.rows[0];
+    const storedVersion = versions.rows[0];
+    const published =
+      storedVersion && upgrade.bindingId
+        ? {
+            ...storedVersion,
+            platform_revision: upgrade.effectivePlatformRevision,
+            deployment_policy: upgrade.effectiveDeploymentPolicy,
+          }
+        : storedVersion;
     if (!published?.platform_revision || !published.target_key)
       throw new ApplicationError(409, "application_platform_contract_required");
     if (row.deployment_policy !== published.deployment_policy)
@@ -3023,6 +3340,9 @@ export class Applications {
         },
         ...(execution.bindingId
           ? { executionBindingId: execution.bindingId }
+          : {}),
+        ...(upgrade.bindingId
+          ? { applicationUpgradeId: upgrade.bindingId }
           : {}),
       },
       blockers: this.executionCapabilities().planEnabled

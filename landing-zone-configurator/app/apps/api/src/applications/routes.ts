@@ -21,6 +21,7 @@ import {
   applicationRunnerPackageSchema,
 } from "./service.js";
 import { StateRecoveryError } from "./state-recovery.js";
+import { ApplicationUpgradeError } from "./upgrades.js";
 
 export type ApplicationRunnerServices = Pick<
   Applications,
@@ -62,7 +63,8 @@ export function registerApplicationRunner(
         return reply.code(413).send({ error: "request_too_large" });
       if (
         error instanceof ApplicationError ||
-        error instanceof StateRecoveryError
+        error instanceof StateRecoveryError ||
+        error instanceof ApplicationUpgradeError
       )
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
@@ -195,6 +197,17 @@ export function registerApplications(
         | "executionCapabilities"
         | "executionLifecycle"
         | "upgradeExecution"
+        | "upgradeContext"
+        | "previewUpgrade"
+        | "requestUpgrade"
+        | "listUpgradeEdges"
+        | "publishUpgradeEdge"
+        | "upgradeApprovalContext"
+        | "approveUpgrade"
+        | "previewPlatformUpgrade"
+        | "requestPlatformUpgrade"
+        | "listPlatformUpgradeEdges"
+        | "publishPlatformUpgradeEdge"
         | "listJobs"
         | "revokeJobGrant"
         | "approveJobBackend"
@@ -234,7 +247,8 @@ export function registerApplications(
       if (
         error instanceof ApplicationError ||
         error instanceof RecoveryReplanError ||
-        error instanceof StateRecoveryError
+        error instanceof StateRecoveryError ||
+        error instanceof ApplicationUpgradeError
       )
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
@@ -326,6 +340,135 @@ export function registerApplications(
           .send({ error: "invalid_request_origin_or_csrf" });
       sessions.set(request, session);
     });
+    if (applications.upgradeContext) {
+      routes.get(
+        "/api/v1/applications/instances/:id/upgrades",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          reply.header("Cache-Control", "private, no-store");
+          return applications.upgradeContext?.(session, id);
+        },
+      );
+    }
+    if (applications.previewUpgrade) {
+      routes.post(
+        "/api/v1/applications/instances/:id/upgrades/preview",
+        { bodyLimit: 65536 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          return applications.previewUpgrade?.(session, id, request.body);
+        },
+      );
+    }
+    if (applications.requestUpgrade) {
+      routes.post(
+        "/api/v1/applications/instances/:id/upgrades",
+        { bodyLimit: 65536 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          return applications.requestUpgrade?.(session, id, request.body);
+        },
+      );
+    }
+    if (applications.previewPlatformUpgrade)
+      routes.post(
+        "/api/v1/applications/instances/:id/platform-upgrades/preview",
+        { bodyLimit: 4096 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          return applications.previewPlatformUpgrade?.(
+            session,
+            id,
+            request.body,
+          );
+        },
+      );
+    if (applications.requestPlatformUpgrade)
+      routes.post(
+        "/api/v1/applications/instances/:id/platform-upgrades",
+        { bodyLimit: 4096 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          return applications.requestPlatformUpgrade?.(
+            session,
+            id,
+            request.body,
+          );
+        },
+      );
+    if (applications.listPlatformUpgradeEdges)
+      routes.get(
+        "/api/v1/applications/platform-upgrades",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return applications.listPlatformUpgradeEdges?.(session);
+        },
+      );
+    if (applications.publishPlatformUpgradeEdge)
+      routes.post(
+        "/api/v1/applications/platform-upgrades",
+        { bodyLimit: 4096 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return applications.publishPlatformUpgradeEdge?.(
+            session,
+            request.body,
+          );
+        },
+      );
+    if (applications.listUpgradeEdges)
+      routes.get(
+        "/api/v1/applications/template-upgrades",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return applications.listUpgradeEdges?.(session);
+        },
+      );
+    if (applications.publishUpgradeEdge)
+      routes.post(
+        "/api/v1/applications/template-upgrades",
+        { bodyLimit: 4096 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          return applications.publishUpgradeEdge?.(session, request.body);
+        },
+      );
+    if (applications.upgradeApprovalContext)
+      routes.get(
+        "/api/v1/applications/jobs/:id/upgrade-approval",
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          reply.header("Cache-Control", "private, no-store");
+          return applications.upgradeApprovalContext?.(session, id);
+        },
+      );
+    if (applications.approveUpgrade)
+      routes.post(
+        "/api/v1/applications/jobs/:id/upgrade-approval",
+        { bodyLimit: 1024 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          return applications.approveUpgrade?.(session, id, request.body);
+        },
+      );
     routes.get(
       "/api/v1/applications/instances/:id/execution-lifecycle",
       async (request, reply) => {
@@ -552,6 +695,9 @@ export function registerApplications(
         executionDelegationEnabled: Boolean(applications.configureExecution),
         executionLifecycleEnabled: Boolean(
           applications.executionLifecycle && applications.upgradeExecution,
+        ),
+        upgradesEnabled: Boolean(
+          applications.upgradeContext && applications.requestUpgrade,
         ),
         orderDeletionEnabled: Boolean(applications.deleteOrder),
         execution: applications.executionCapabilities?.() ?? {
