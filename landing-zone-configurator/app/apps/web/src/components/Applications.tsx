@@ -3382,13 +3382,13 @@ export function Applications({
           <h2>{t("3. Application Landing Zone Template veröffentlichen")}</h2>
           {upgradesEnabled && (
             <>
-              <ApplicationPlatformUpgradePublication
-                session={session}
-                contracts={contracts.map((item) => item.document)}
-              />
               <ApplicationUpgradePublication
                 session={session}
                 versions={versions}
+              />
+              <ApplicationPlatformUpgradePublication
+                session={session}
+                contracts={contracts.map((item) => item.document)}
               />
             </>
           )}
@@ -4229,7 +4229,40 @@ export function Applications({
             aria-labelledby="application-order-tab-updates"
             hidden={orderView !== "updates"}
           >
-            <h3>{t("Updates für dieselbe Bestellung")}</h3>
+            <header className="application-updates-header">
+              <h3>{t("Updates für dieselbe Bestellung")}</h3>
+              <p>
+                {t(
+                  "Aktualisiere eine bestehende Landing Zone in drei Schritten. Bestellung und State-Zuordnung bleiben erhalten.",
+                )}
+              </p>
+              <ol className="application-update-steps">
+                <li>
+                  <strong>{t("Update auswählen")}</strong>
+                  <span>
+                    {t(
+                      "Freigegebene Zielversion prüfen und als gewünschten Stand übernehmen.",
+                    )}
+                  </span>
+                </li>
+                <li>
+                  <strong>{t("Neuen Plan prüfen")}</strong>
+                  <span>
+                    {t(
+                      "Im Reiter Plan die tatsächlichen Änderungen prüfen und nötige Freigaben einholen.",
+                    )}
+                  </span>
+                </li>
+                <li>
+                  <strong>{t("Apply starten")}</strong>
+                  <span>
+                    {t(
+                      "Erst der separat freigegebene Apply ändert die Infrastruktur.",
+                    )}
+                  </span>
+                </li>
+              </ol>
+            </header>
             {upgradesEnabled && (
               <ApplicationOrderUpdates
                 key={`template-updates:${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`}

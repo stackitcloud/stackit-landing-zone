@@ -1,4 +1,42 @@
 export const englishMessages: Record<string, string> = {
+  Bestellparameter: "Order parameters",
+  "Technische Ausführung": "Technical execution",
+  "Gewünschte Template-Version": "Desired template version",
+  "Zuletzt erfolgreich angewendet": "Last successfully applied",
+  "Verfügbare Template-Updates": "Available template updates",
+  "{{count}} freigegebene Zielversionen": "{{count}} approved target versions",
+  "Keine passende Freigabe vorhanden": "No matching upgrade approval available",
+  "Technische Details zu Versionen und Plattform":
+    "Technical version and platform details",
+  "Vorheriger Stand (siehe technische Details)":
+    "Previous version (see technical details)",
+  "Template-Version aktualisieren": "Update template version",
+  "Der Platform Owner muss unter Application Landing Zones → Veröffentlichung einen Template-Upgrade-Pfad von dieser gewünschten Version zur neuen Version veröffentlichen und dir den Zugriff auf die Zielversion erlauben. Ein Plattform-Upgrade-Pfad oder ein Pfad ab einer anderen Version reicht dafür nicht aus.":
+    "Under Application Landing Zones → Publication, the Platform Owner must publish a template upgrade path from this desired version to the new version and give you access to the target version. A platform upgrade path or a path starting at another version does not apply.",
+  "Aktualisiere eine bestehende Landing Zone in drei Schritten. Bestellung und State-Zuordnung bleiben erhalten.":
+    "Update an existing landing zone in three steps. The order and State binding are retained.",
+  "Update auswählen": "Select update",
+  "Freigegebene Zielversion prüfen und als gewünschten Stand übernehmen.":
+    "Review an approved target version and select it as the desired version.",
+  "Im Reiter Plan die tatsächlichen Änderungen prüfen und nötige Freigaben einholen.":
+    "Review actual changes in the Plan tab and obtain any required approvals.",
+  "Apply starten": "Start Apply",
+  "Erst der separat freigegebene Apply ändert die Infrastruktur.":
+    "Only a separately approved Apply changes infrastructure.",
+  "Nicht mehr im sichtbaren Katalog": "No longer in the visible catalogue",
+  "Wähle als Ausgangsversion den gewünschten Template-Stand der bestehenden Bestellung. Ein Pfad von Version 3 auf 4 gilt nicht für eine Bestellung auf Version 1. Template- und Plattform-Upgrade-Pfade sind getrennte Freigaben.":
+    "Select the existing order’s desired template version as the source. A path from version 3 to 4 does not apply to an order on version 1. Template and platform upgrade paths are separate approvals.",
+  "Freigegebenes Plattform-Update": "Approved platform update",
+  "Hier aktualisierst du die technische Produkt- und Runner-Ausführung. Rechte und Einstellungen der Template-Version werden dadurch nicht geändert.":
+    "Update the technical product and runner execution here. This does not change the template version’s permissions or settings.",
+  "Ein geprüfter Ersatz ist verfügbar. Nach der Auswahl sind ein neuer Plan und eine separate Apply-Freigabe erforderlich.":
+    "A reviewed replacement is available. Selecting it requires a new Plan and separate Apply approval afterwards.",
+  "Für diese technische Ausführung ist derzeit kein freigegebener Ersatz auswählbar.":
+    "No approved replacement is currently available for this technical execution.",
+  "Geprüfter Ersatz": "Reviewed replacement",
+  "Technische Details zur Ausführung": "Technical execution details",
+  "Ein Dienst wird angelegt oder geändert. Prüfe Leistungsstufe, Kapazität, Verfügbarkeit und Datenaufbewahrung im Plan; ein technisch möglicher Wechsel garantiert keinen Datenerhalt.":
+    "A service is being created or changed. Review its tier, capacity, availability and retention in the Plan; technical feasibility does not guarantee data preservation.",
   "Diese ältere Bestellung ist an keinen Plattformvertrag gebunden. Upgrade-Aktionen bleiben gesperrt. Bestellung, State und bisherige Ausführungsnachweise bleiben erhalten; prüfe die Plattformanbindung mit dem Platform Owner.":
     "This older order is not bound to a platform contract. Upgrade actions remain blocked. The order, State and existing execution evidence are preserved; review the platform binding with the Platform Owner.",
   "Dieser Upgrade-Plan ist gesperrt. Prüfe die Hindernisse und erstelle anschließend einen neuen Plan.":

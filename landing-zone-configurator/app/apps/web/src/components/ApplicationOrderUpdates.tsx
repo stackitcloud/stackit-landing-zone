@@ -4,7 +4,10 @@ import type { z } from "zod";
 import { t } from "../i18n";
 import type { Session } from "./Account";
 import { ApplicationPlatformUpdates } from "./ApplicationPlatformUpdates";
-import { upgradeReasonMessages as reasons } from "./application-upgrade-messages";
+import {
+  upgradeReasonMessages as reasons,
+  upgradeChangeLabel,
+} from "./application-upgrade-messages";
 import { useApplicationUpgradeRequest } from "./application-upgrade-request";
 import {
   type Context,
@@ -131,9 +134,26 @@ export function ApplicationOrderUpdates({
     );
     await onChanged(result.signal);
   }
+  function versionLabel(id: string | null) {
+    if (!id) return t("Noch kein erfolgreicher Apply");
+    const version =
+      context?.versionLabels.find((item) => item.id === id) ??
+      (context?.current.id === id
+        ? {
+            name: context.current.template.name,
+            version: context.current.version,
+          }
+        : undefined);
+    return version
+      ? `${version.name} · ${t("Version")} ${version.version}`
+      : t("Vorheriger Stand (siehe technische Details)");
+  }
   return (
-    <section aria-label={t("Template- und Plattform-Updates")}>
-      <h3>{t("Template- und Plattform-Updates")}</h3>
+    <section
+      className="application-update-card"
+      aria-label={t("Template- und Plattform-Updates")}
+    >
+      <h3>{t("Template-Version aktualisieren")}</h3>
       <p>
         {t(
           "Updates behalten dieselbe Bestellung und denselben State. Ein gewünschter Stand ist noch kein erfolgreich angewendeter Stand.",
@@ -151,49 +171,66 @@ export function ApplicationOrderUpdates({
       {notice && <p role="status">{t(notice)}</p>}
       {context && (
         <>
-          <ApplicationPlatformUpdates
-            key={`${session.tenant?.id}:${session.user.id}:${context.bindingId}:${context.effectiveVersionId}:${context.effectivePlatformRevision}`}
-            session={session}
-            instanceId={instanceId}
-            requestedBy={requestedBy}
-            context={context}
-            onChanged={async (signal) => {
-              await onChanged(signal);
-              if (!signal.aborted) await read();
-            }}
-          />
-          <dl className="application-properties">
-            <dt>{t("Ursprüngliche Template-Version")}</dt>
-            <dd>
-              <Id value={context.originVersionId} />
-            </dd>
-            <dt>{t("Aktuell gewünschte Template-Version")}</dt>
-            <dd>
-              <Id
-                value={
-                  context.candidate?.versionId ?? context.effectiveVersionId
-                }
-              />
-            </dd>
-            <dt>{t("Zuletzt erfolgreich angewendete Template-Version")}</dt>
-            <dd>
-              <Id value={context.lastAppliedVersionId} />
-            </dd>
-            <dt>{t("Zuletzt erfolgreich angewendeter Plattformvertrag")}</dt>
-            <dd>
-              <Id value={context.lastAppliedPlatformRevision} />
-            </dd>
-            <dt>{t("Gewünschter Plattformvertrag")}</dt>
-            <dd>
-              <Id
-                value={
-                  context.candidate?.platformRevision ??
-                  context.effectivePlatformRevision
-                }
-                emptyLabel="Nicht gebunden"
-              />
-            </dd>
-          </dl>
+          <div className="application-update-summary">
+            <div>
+              <span>{t("Gewünschte Template-Version")}</span>
+              <strong>
+                {context.current.template.name} · {t("Version")}{" "}
+                {context.current.version}
+              </strong>
+            </div>
+            <div>
+              <span>{t("Zuletzt erfolgreich angewendet")}</span>
+              <strong>{versionLabel(context.lastAppliedVersionId)}</strong>
+            </div>
+            <div>
+              <span>{t("Verfügbare Template-Updates")}</span>
+              <strong>
+                {context.candidates.length
+                  ? t("{{count}} freigegebene Zielversionen", {
+                      count: context.candidates.length,
+                    })
+                  : t("Keine passende Freigabe vorhanden")}
+              </strong>
+            </div>
+          </div>
+          <details className="application-update-technical">
+            <summary>
+              {t("Technische Details zu Versionen und Plattform")}
+            </summary>
+            <dl className="application-properties">
+              <dt>{t("Ursprüngliche Template-Version")}</dt>
+              <dd>
+                <Id value={context.originVersionId} />
+              </dd>
+              <dt>{t("Aktuell gewünschte Template-Version")}</dt>
+              <dd>
+                <Id
+                  value={
+                    context.candidate?.versionId ?? context.effectiveVersionId
+                  }
+                />
+              </dd>
+              <dt>{t("Zuletzt erfolgreich angewendete Template-Version")}</dt>
+              <dd>
+                <Id value={context.lastAppliedVersionId} />
+              </dd>
+              <dt>{t("Zuletzt erfolgreich angewendeter Plattformvertrag")}</dt>
+              <dd>
+                <Id value={context.lastAppliedPlatformRevision} />
+              </dd>
+              <dt>{t("Gewünschter Plattformvertrag")}</dt>
+              <dd>
+                <Id
+                  value={
+                    context.candidate?.platformRevision ??
+                    context.effectivePlatformRevision
+                  }
+                  emptyLabel="Nicht gebunden"
+                />
+              </dd>
+            </dl>
+          </details>
           <p className="field-hint">
             {t(
               "Der zuletzt erfolgreiche Apply ist ein Ausführungsnachweis, kein aktueller Cloud-Abgleich. Prüfe den neuen Plan vor jedem Apply.",
@@ -212,11 +249,19 @@ export function ApplicationOrderUpdates({
             </ul>
           )}
           {!context.candidates.length && (
-            <p>
-              {t(
-                "Für diese Bestellung ist noch kein neuer Upgrade-Pfad freigegeben.",
-              )}
-            </p>
+            <div className="application-update-empty" role="status">
+              <strong>{t("Keine passende Freigabe vorhanden")}</strong>
+              <p>
+                {t(
+                  "Für diese Bestellung ist noch kein neuer Upgrade-Pfad freigegeben.",
+                )}
+              </p>
+              <p>
+                {t(
+                  "Der Platform Owner muss unter Application Landing Zones → Veröffentlichung einen Template-Upgrade-Pfad von dieser gewünschten Version zur neuen Version veröffentlichen und dir den Zugriff auf die Zielversion erlauben. Ein Plattform-Upgrade-Pfad oder ein Pfad ab einer anderen Version reicht dafür nicht aus.",
+                )}
+              </p>
+            </div>
           )}
           {requestedBy === session.user.id &&
             context.effectivePlatformRevision !== null &&
@@ -379,7 +424,10 @@ export function ApplicationOrderUpdates({
                             <li
                               key={`${reason.code}:${reason.path}:${reason.classification}`}
                             >
-                              <strong>{reason.path}</strong>:{" "}
+                              <strong>
+                                {t(upgradeChangeLabel(reason.path))}
+                              </strong>
+                              :{" "}
                               {t(
                                 reasons[reason.code] ??
                                   "Diese Änderung muss geprüft werden.",
@@ -400,7 +448,7 @@ export function ApplicationOrderUpdates({
                             "Löschungen, Ersetzungen und unzulässige Zielwechsel bleiben gesperrt. Eine Bestätigung hebt diese Sperren nicht auf.",
                           )}
                         </p>
-                        <label>
+                        <label className="checkbox">
                           <input
                             id={`upgrade-confirm-${instanceId}`}
                             type="checkbox"
@@ -435,6 +483,17 @@ export function ApplicationOrderUpdates({
                 )}
               </>
             )}
+          <ApplicationPlatformUpdates
+            key={`${session.tenant?.id}:${session.user.id}:${context.bindingId}:${context.effectiveVersionId}:${context.effectivePlatformRevision}`}
+            session={session}
+            instanceId={instanceId}
+            requestedBy={requestedBy}
+            context={context}
+            onChanged={async (signal) => {
+              await onChanged(signal);
+              if (!signal.aborted) await read();
+            }}
+          />
         </>
       )}
     </section>

@@ -7,6 +7,16 @@ Ausführungsquelle, die Application-Template-Version und ihren Plattformvertrag.
 Sie stehen im Reiter **Updates** der Bestellung. Eine Veröffentlichung oder ein
 Configurator-Release aktualisiert bestehende Bestellungen nicht automatisch.
 
+Im Reiter Updates stehen Template-Name und Versionsnummer, die zuletzt angewendete
+Version und die Anzahl freigegebener Zielversionen im Vordergrund. Technische
+Kennungen sind in Details eingeklappt. Template-, Plattform- und Produkt-/Runner-
+Updates sind getrennt; ein technischer Ausführungswechsel ergänzt keine Template-Rechte.
+Wird kein passender Template-Pfad angeboten, dessen genaue Ausgangsversion,
+Template-Familie und den Zugriff des Bestellers auf die Zielversion prüfen. Ein
+veröffentlichter Pfad 3 → 4 gilt weder für eine Bestellung auf Version 1 noch für
+ein anderes Template. Der Platform Owner prüft die benannten Versionen unter
+Application Landing Zones → Veröffentlichung.
+
 ## Template-Upgrade veröffentlichen
 
 Der Platform Owner veröffentlicht zuerst die neue Template-Version und danach

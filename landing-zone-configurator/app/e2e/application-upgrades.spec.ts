@@ -59,6 +59,7 @@ async function setup(
   approvePlan = false,
   platformMode = false,
   unbound = false,
+  noPath = false,
 ) {
   let approved = false;
   const nextPlatform = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -130,16 +131,18 @@ async function setup(
           },
         ]
       : [],
-    candidates: [
-      {
-        id: edge,
-        fromVersionId: old,
-        toVersionId: target,
-        policy: { sensitive: "approval-required" },
-        target: version(target, 2),
-        assessment: assessment({}),
-      },
-    ],
+    candidates: noPath
+      ? []
+      : [
+          {
+            id: edge,
+            fromVersionId: old,
+            toVersionId: target,
+            policy: { sensitive: "approval-required" },
+            target: version(target, 2),
+            assessment: assessment({}),
+          },
+        ],
     blockers: [],
   };
   const mutations: { path: string; body: Record<string, unknown> }[] = [];
@@ -395,7 +398,7 @@ async function setup(
     exact: true,
   });
   await expect(panel).toBeVisible();
-  if (!unbound)
+  if (!unbound && !noPath)
     await panel.getByLabel("Freigegebene Zielversion").selectOption(edge);
   return { panel, mutations };
 }
@@ -836,4 +839,42 @@ test("unbound legacy order keeps history visible and blocks upgrade actions with
     page.getByRole("region", { name: "Application-Plan", exact: true }),
   ).toBeVisible();
   expect(mutations).toEqual([]);
+});
+
+test("updates explain a missing path with named versions and hide technical identifiers", async ({
+  page,
+}, testInfo) => {
+  const { panel, mutations } = await setup(
+    page,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+  );
+  await expect(panel.getByText("Public · Version 1").first()).toBeVisible();
+  await expect(
+    panel.getByText("Keine passende Freigabe vorhanden").first(),
+  ).toBeVisible();
+  await expect(
+    panel.getByText(
+      /Ein Plattform-Upgrade-Pfad oder ein Pfad ab einer anderen Version reicht/,
+    ),
+  ).toBeVisible();
+  await expect(panel.getByLabel("Freigegebene Zielversion")).toHaveCount(0);
+  await expect(panel.locator(`abbr[title="${old}"]`).first()).toBeHidden();
+  await panel
+    .getByText("Technische Details zu Versionen und Plattform", { exact: true })
+    .click();
+  await expect(panel.locator(`abbr[title="${old}"]`).first()).toBeVisible();
+  await panel
+    .getByText("Technische Details zu Versionen und Plattform", { exact: true })
+    .click();
+  expect(mutations).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath("updates.png"),
+    fullPage: true,
+  });
 });

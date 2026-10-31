@@ -3,7 +3,10 @@ import { useState } from "react";
 import { z } from "zod";
 import { t } from "../i18n";
 import type { Session } from "./Account";
-import { upgradeReasonMessages } from "./application-upgrade-messages";
+import {
+  upgradeChangeLabel,
+  upgradeReasonMessages,
+} from "./application-upgrade-messages";
 import { useApplicationUpgradeRequest } from "./application-upgrade-request";
 import {
   assessmentSchema,
@@ -103,6 +106,7 @@ export function ApplicationPlatformUpdates({
     );
   return (
     <section
+      className="application-update-card application-update-secondary"
       aria-label={t("Plattformvertrag derselben Bestellung aktualisieren")}
     >
       <h4>{t("Plattformvertrag derselben Bestellung aktualisieren")}</h4>
@@ -139,7 +143,10 @@ export function ApplicationPlatformUpdates({
                 <option value="">{t("Upgrade wählen")}</option>
                 {context.platformCandidates.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.toPlatformRevision}
+                    {t("Freigegebenes Plattform-Update")} ·{" "}
+                    {context.current.targetKey} ·{" "}
+                    {context.current.template.region} ·{" "}
+                    {item.toPlatformRevision.slice(0, 8)}
                   </option>
                 ))}
               </select>
@@ -187,7 +194,7 @@ export function ApplicationPlatformUpdates({
                 <ul>
                   {preview.assessment.reasons.map((item) => (
                     <li key={`${item.code}:${item.path}`}>
-                      {item.path}:{" "}
+                      {t(upgradeChangeLabel(item.path))}:{" "}
                       {t(
                         upgradeReasonMessages[item.code] ??
                           "Diese Änderung muss geprüft werden.",
@@ -200,7 +207,7 @@ export function ApplicationPlatformUpdates({
                     "Löschungen, Ersetzungen und unzulässige Zielwechsel bleiben gesperrt. Eine Bestätigung hebt diese Sperren nicht auf.",
                   )}
                 </p>
-                <label>
+                <label className="checkbox">
                   <input
                     type="checkbox"
                     checked={confirmed}

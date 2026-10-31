@@ -75,7 +75,10 @@ export function ApplicationPlatformUpgradePublication({
     await load();
   }
   return (
-    <section aria-label={t("Plattform-Upgrade-Pfade veröffentlichen")}>
+    <section
+      className="application-update-card"
+      aria-label={t("Plattform-Upgrade-Pfade veröffentlichen")}
+    >
       <h3>{t("Plattform-Upgrade-Pfade veröffentlichen")}</h3>
       <p>
         {t(
@@ -84,7 +87,7 @@ export function ApplicationPlatformUpgradePublication({
       </p>
       {error && <p role="alert">{t(error)}</p>}
       {notice && <p role="status">{t(notice)}</p>}
-      <fieldset disabled={busy}>
+      <fieldset className="application-update-form" disabled={busy}>
         <label>
           {t("Ausgangs-Plattformvertrag")}
           <select
@@ -122,7 +125,7 @@ export function ApplicationPlatformUpgradePublication({
             ))}
           </select>
         </label>
-        <label>
+        <label className="checkbox">
           <input
             type="checkbox"
             checked={direct}
@@ -135,7 +138,7 @@ export function ApplicationPlatformUpgradePublication({
             "Sensitive Plattformänderungen dieses Pfades dürfen nach einem neuen Plan die direkte Richtlinie verwenden, soweit die übrigen Freigaberegeln dies erlauben.",
           )}
         </label>
-        <label>
+        <label className="checkbox">
           <input
             type="checkbox"
             checked={confirmed}

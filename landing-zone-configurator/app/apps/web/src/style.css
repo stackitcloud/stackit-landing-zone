@@ -1940,3 +1940,90 @@ button.template-node:hover {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Order updates separate user decisions from technical provenance. */
+.application-update-card {
+  padding: 1.25rem;
+  margin: 1.25rem 0;
+  border: 1px solid var(--nds-border-color-default, #cbd3da);
+  border-radius: 0.5rem;
+  background: var(--nds-color-background-surface, #fff);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.application-update-card h3,
+.application-update-card h4 {
+  margin-top: 0;
+}
+.application-update-summary,
+.application-update-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.application-update-summary > div {
+  padding: 1rem;
+  background: #f3f6f7;
+  border-radius: 0.375rem;
+}
+.application-update-summary span,
+.application-update-summary strong,
+.application-update-steps span {
+  display: block;
+}
+.application-update-summary span {
+  font-size: 0.875rem;
+  margin-bottom: 0.375rem;
+}
+.application-update-steps {
+  padding-left: 1.5rem;
+  margin: 1rem 0 1.5rem;
+}
+.application-update-steps span {
+  margin-top: 0.375rem;
+}
+.application-update-technical {
+  margin: 1rem 0;
+}
+.application-update-technical summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.application-update-empty {
+  padding: 1rem;
+  margin: 1rem 0;
+  border-left: 4px solid #007b83;
+  background: #eef7f7;
+}
+.application-update-form {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+.application-update-form > label {
+  display: grid;
+  gap: 0.5rem;
+}
+.application-update-form > label.checkbox {
+  display: flex;
+  align-items: flex-start;
+  margin: 0;
+}
+.application-update-card label.checkbox {
+  align-items: flex-start;
+}
+.application-update-card label.checkbox input {
+  flex-shrink: 0;
+}
+.application-update-card select {
+  max-width: 100%;
+}
+@media (max-width: 700px) {
+  .application-update-summary,
+  .application-update-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .application-update-card {
+    padding: 1rem;
+  }
+}

@@ -75,7 +75,7 @@ function message(code: unknown): string {
 }
 function Source({ value }: { value: string | null }) {
   return value ? (
-    <abbr title={value}>{value.slice(0, 12)}</abbr>
+    <code title={value}>{value}</code>
   ) : (
     <span>{t("Noch kein erfolgreicher Apply")}</span>
   );
@@ -275,8 +275,16 @@ export function ApplicationExecutionLifecycle({
     ) ?? [];
   const selected = candidates.find((p) => p.revision === target);
   return (
-    <section aria-label={t("Ausführungsstand der Bestellung")}>
+    <section
+      className="application-update-card"
+      aria-label={t("Ausführungsstand der Bestellung")}
+    >
       <h3>{t("Ausführungsstand der Bestellung")}</h3>
+      <p>
+        {t(
+          "Hier aktualisierst du die technische Produkt- und Runner-Ausführung. Rechte und Einstellungen der Template-Version werden dadurch nicht geändert.",
+        )}
+      </p>
       <button
         type="button"
         className="button secondary"
@@ -290,18 +298,6 @@ export function ApplicationExecutionLifecycle({
       {context && (
         <>
           <dl className="application-properties">
-            <dt>{t("Ursprüngliche Templatequelle")}</dt>
-            <dd>
-              <Source value={context.originRevision} />
-            </dd>
-            <dt>{t("Gewünschter Ausführungsstand")}</dt>
-            <dd>
-              <Source value={context.revision} />
-            </dd>
-            <dt>{t("Zuletzt angewendete Quelle")}</dt>
-            <dd>
-              <Source value={context.lastAppliedRevision} />
-            </dd>
             <dt>{t("Verfügbarkeit des Ausführungsstands")}</dt>
             <dd>
               {t(
@@ -312,15 +308,16 @@ export function ApplicationExecutionLifecycle({
                 }[context.sourceStatus],
               )}
             </dd>
-            {context.replacementRevision && (
-              <>
-                <dt>{t("Vorgesehener Upgrade-Pfad")}</dt>
-                <dd>
-                  <Source value={context.replacementRevision} />
-                </dd>
-              </>
-            )}
           </dl>
+          {context.sourceStatus === "supported" && (
+            <p>
+              {t(
+                candidates.length > 0
+                  ? "Ein geprüfter Ersatz ist verfügbar. Nach der Auswahl sind ein neuer Plan und eine separate Apply-Freigabe erforderlich."
+                  : "Für diese technische Ausführung ist derzeit kein freigegebener Ersatz auswählbar.",
+              )}
+            </p>
+          )}
           {context.sourceStatus !== "supported" && (
             <p>
               {t(
@@ -353,25 +350,13 @@ export function ApplicationExecutionLifecycle({
                 >
                   {candidates.map((profile) => (
                     <option key={profile.revision} value={profile.revision}>
-                      {profile.revision.slice(0, 12)} · OpenTofu{" "}
+                      {t("Geprüfter Ersatz")} · OpenTofu{" "}
                       {profile.openTofuVersion}
                     </option>
                   ))}
                 </select>
               </label>
-              {selected && (
-                <dl className="application-properties">
-                  <dt>{t("Provider-Lock SHA256")}</dt>
-                  <dd>
-                    <abbr title={selected.providerLockSha256}>
-                      {selected.providerLockSha256.slice(0, 12)}
-                    </abbr>
-                  </dd>
-                  <dt>{t("Vertragsversion")}</dt>
-                  <dd>{selected.contractVersion}</dd>
-                </dl>
-              )}
-              <label>
+              <label className="checkbox">
                 <input
                   type="checkbox"
                   checked={confirmed}
@@ -391,6 +376,41 @@ export function ApplicationExecutionLifecycle({
               </button>
             </fieldset>
           )}
+          <details>
+            <summary>{t("Technische Details zur Ausführung")}</summary>
+            <dl className="application-properties">
+              <dt>{t("Ursprüngliche Templatequelle")}</dt>
+              <dd>
+                <Source value={context.originRevision} />
+              </dd>
+              <dt>{t("Gewünschter Ausführungsstand")}</dt>
+              <dd>
+                <Source value={context.revision} />
+              </dd>
+              <dt>{t("Zuletzt angewendete Quelle")}</dt>
+              <dd>
+                <Source value={context.lastAppliedRevision} />
+              </dd>
+              {context.replacementRevision && (
+                <>
+                  <dt>{t("Vorgesehener Upgrade-Pfad")}</dt>
+                  <dd>
+                    <Source value={context.replacementRevision} />
+                  </dd>
+                </>
+              )}
+              {selected && (
+                <>
+                  <dt>{t("Provider-Lock SHA256")}</dt>
+                  <dd>
+                    <code>{selected.providerLockSha256}</code>
+                  </dd>
+                  <dt>{t("Vertragsversion")}</dt>
+                  <dd>{selected.contractVersion}</dd>
+                </>
+              )}
+            </dl>
+          </details>
         </>
       )}
     </section>

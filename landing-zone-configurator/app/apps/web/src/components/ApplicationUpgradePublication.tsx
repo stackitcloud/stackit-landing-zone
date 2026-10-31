@@ -75,8 +75,17 @@ export function ApplicationUpgradePublication({
     );
     await load();
   }
+  function versionLabel(id: string) {
+    const value = versions.find((item) => item.id === id);
+    return value
+      ? `${value.template.name} · ${t("Version")} ${value.version}`
+      : t("Nicht mehr im sichtbaren Katalog");
+  }
   return (
-    <section aria-label={t("Upgrade-Pfade veröffentlichen")}>
+    <section
+      className="application-update-card"
+      aria-label={t("Upgrade-Pfade veröffentlichen")}
+    >
       <h3>{t("Upgrade-Pfade veröffentlichen")}</h3>
       <p>
         {t(
@@ -85,7 +94,12 @@ export function ApplicationUpgradePublication({
       </p>
       {error && <p role="alert">{t(error)}</p>}
       {notice && <p role="status">{t(notice)}</p>}
-      <fieldset disabled={busy}>
+      <p className="field-hint">
+        {t(
+          "Wähle als Ausgangsversion den gewünschten Template-Stand der bestehenden Bestellung. Ein Pfad von Version 3 auf 4 gilt nicht für eine Bestellung auf Version 1. Template- und Plattform-Upgrade-Pfade sind getrennte Freigaben.",
+        )}
+      </p>
+      <fieldset className="application-update-form" disabled={busy}>
         <label>
           {t("Ausgangsversion für das Upgrade")}
           <select
@@ -122,7 +136,7 @@ export function ApplicationUpgradePublication({
             ))}
           </select>
         </label>
-        <label>
+        <label className="checkbox">
           <input
             type="checkbox"
             checked={direct}
@@ -135,7 +149,7 @@ export function ApplicationUpgradePublication({
             "Sensitive Änderungen dieses Pfades dürfen nach einem neuen Plan direkt angewendet werden, sofern beide Versionen direkte Bereitstellung erlauben. Andernfalls bleibt eine separate Plan-Freigabe erforderlich.",
           )}
         </label>
-        <label>
+        <label className="checkbox">
           <input
             type="checkbox"
             checked={confirmed}
@@ -158,14 +172,8 @@ export function ApplicationUpgradePublication({
         <ul aria-label={t("Veröffentlichte Upgrade-Pfade")}>
           {edges.map((edge) => (
             <li key={edge.id}>
-              <abbr title={edge.fromVersionId}>
-                {edge.fromVersionId.slice(0, 12)}
-              </abbr>{" "}
-              →{" "}
-              <abbr title={edge.toVersionId}>
-                {edge.toVersionId.slice(0, 12)}
-              </abbr>{" "}
-              ·{" "}
+              <span>{versionLabel(edge.fromVersionId)}</span> →{" "}
+              <span>{versionLabel(edge.toVersionId)}</span> ·{" "}
               {t(
                 edge.policy.sensitive === "direct"
                   ? "Sensitive Änderungen: direkte Richtlinie"

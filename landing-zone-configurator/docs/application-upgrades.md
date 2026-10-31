@@ -7,6 +7,15 @@ the Application template version and its platform contract. Open the order's
 **Updates** tab to inspect them. Publishing a version or releasing the Configurator
 does not silently upgrade an existing order.
 
+The order’s Updates tab shows the template name and version, the last applied version,
+and the number of published target versions. Technical identifiers are collapsed
+under details. Template, platform and product/Runner updates are separate sections;
+selecting a technical execution replacement does not add template permissions.
+If no matching template path is offered, verify its exact source version, template
+family and the requester’s access to the target version. A published 3 → 4 path
+does not apply to an order on version 1 or to a different template. The Platform
+Owner can inspect named versions under Application Landing Zones → Publication.
+
 ## Publish a template upgrade
 
 The Platform Owner first publishes the new template version, then explicitly
