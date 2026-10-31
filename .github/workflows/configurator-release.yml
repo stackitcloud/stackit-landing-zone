@@ -129,6 +129,15 @@ jobs:
           tar --exclude='./inspection/accelerator/firewall-image.qcow2' -czf ../.local/release.tar.gz -C ../.local/release .
           (cd ../.local && sha256sum release.tar.gz > release.sha256)
           node scripts/check-staged-runner.mjs ../.local
+      - name: Retain browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: configurator-release-ui-failure-${{ github.run_id }}
+          path: landing-zone-configurator/.local/browser-tests
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Assemble immutable stage-neutral release
         run: |
           node ../infra/ci/release-artifact.mjs create ../.local

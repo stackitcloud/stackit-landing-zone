@@ -324,6 +324,13 @@ deadlines still apply. Native input coverage runs with `go test -count=1 ./...`
 in both PR validation and release builds so it checks the current Accelerator
 source rather than accepting a cached test result.
 
+If browser verification fails during a release build, its synthetic screenshots,
+traces and error context are retained for seven days as
+`configurator-release-ui-failure-<run-id>`. This narrow artifact excludes the rest
+of `.local`; a failed build still cannot publish or deploy. Browser navigation
+checks wait for the mounted destination, and database-restoration tests explicitly
+exclude the separate local login checkpoint before asserting an exact refetch.
+
 ### Dev release without live Assistant qualification
 
 During Model Serving outages, select

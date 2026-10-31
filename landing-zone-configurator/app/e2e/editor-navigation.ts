@@ -5,8 +5,20 @@ export async function openTemplateDrafts(page: Page) {
     .getByRole("navigation", { name: "Hauptnavigation", exact: true })
     .getByRole("button", { name: "Application Landing Zones", exact: true })
     .click();
+  await expect(page).toHaveURL(/\/applications$/);
   const tab = page.getByRole("tab", { name: "Template-Entwürfe", exact: true });
-  if (await tab.count()) await tab.click();
+  // Authenticated tabs arrive asynchronously; guests can see the editor directly.
+  await expect
+    .poll(
+      async () =>
+        (await tab.isVisible()) ||
+        (await page.locator(".template-overview").isVisible()),
+    )
+    .toBe(true);
+  if (await tab.isVisible()) {
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+  }
   await expect(page.locator(".template-overview")).toBeVisible();
 }
 
