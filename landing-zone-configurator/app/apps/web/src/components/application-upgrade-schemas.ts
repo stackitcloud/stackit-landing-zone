@@ -62,6 +62,15 @@ export const contextSchema = z.object({
     })
     .nullable(),
   current: publishedProjectTemplateSchema,
+  versionLabels: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        name: z.string(),
+        version: z.number().int().positive(),
+      }),
+    )
+    .default([]),
   candidates: z.array(edgeSchema),
   platformCandidates: z
     .array(

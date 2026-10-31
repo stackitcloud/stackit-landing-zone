@@ -749,6 +749,15 @@ it("serves authoritative API preview and compiler snapshots without saving or ex
     wire.candidates.find((candidate) => candidate.id === e.id)?.assessment
       .classification,
   ).not.toBe("blocked");
+  expect(
+    contextSchema.parse(await service.upgradeContext(owner, f.instance))
+      .versionLabels,
+  ).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: f.from, version: 1 }),
+      expect.objectContaining({ id: f.to, version: 2 }),
+    ]),
+  );
   const preview = await service.previewUpgrade(owner, f.instance, request);
   expect(preview.assessment.classification).not.toBe("blocked");
   expect(preview.assessment.applyAllowed).toBe(false);

@@ -53,3 +53,14 @@ upgradeReasonMessages["upgrade-target-not-qualified"] =
   upgradeReasonMessages["target-not-qualified"] ?? "";
 upgradeReasonMessages["application-platform-execution-active"] =
   upgradeReasonMessages["execution-or-recovery-active"] ?? "";
+
+export function upgradeChangeLabel(path: string): string {
+  if (/role|permission|accessProfile/.test(path))
+    return "Projektberechtigungen";
+  if (/observability/.test(path)) return "Observability";
+  if (/secretsmanager/.test(path)) return "Secrets Manager";
+  if (/network|ipv4|firewall|routing/.test(path)) return "Netzwerk";
+  if (/source|accelerator/.test(path)) return "Technische Ausführung";
+  if (/parameter/.test(path)) return "Bestellparameter";
+  return "Konfiguration";
+}

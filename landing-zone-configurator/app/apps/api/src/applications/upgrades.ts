@@ -263,6 +263,7 @@ export async function enrichApplicationUpgradeContext(
     ...new Set([
       context.originVersionId,
       context.effectiveVersionId,
+      ...(context.lastAppliedVersionId ? [context.lastAppliedVersionId] : []),
       ...context.candidates.map((e) => e.toVersionId),
     ]),
   ];
@@ -332,6 +333,14 @@ export async function enrichApplicationUpgradeContext(
   return {
     ...context,
     current,
+    versionLabels: rows.rows.map((row) => {
+      const value = publication(row);
+      return {
+        id: value.id,
+        name: value.template.name,
+        version: value.version,
+      };
+    }),
     candidates: context.candidates.flatMap((edge) => {
       const row = rows.rows.find((v) => v.id === edge.toVersionId);
       if (!row) return [];
