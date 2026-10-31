@@ -41,9 +41,16 @@ benötigen ein separates geprüftes Verfahren.
 IAM, Zugangsdaten und Netzwerke können sich auch ohne Löschung ändern. Für vom
 tatsächlichen nativen Plan als sensibel klassifizierte Änderungen gelten die
 veröffentlichte Richtlinie für sensible Änderungen und die strengere
-Deployment-Richtlinie beider Versionen. Änderungen an Service-Plänen und
-Verfügbarkeit vor Ort klassifiziert diese Prüfung derzeit nicht als sensibel;
-diese Änderungen ausdrücklich im Plan prüfen. Erforderliche Freigaben
+Deployment-Richtlinie beider Versionen. Auch das Anlegen und Ändern von
+Observability und Secrets Manager gilt als sensibel, einschließlich Serviceplan,
+Kapazität, Verfügbarkeit und Aufbewahrungszeit. Ein erfolgreicher Plan zeigt, was
+der Provider technisch ausführen kann; er garantiert weder Datenerhalt noch,
+dass die bisherige Nutzung in einen kleineren Plan passt. Vor der Freigabe die
+Dienstgrenzen und Auswirkungen auf die Datenaufbewahrung prüfen. Aus Plan-Namen
+wird keine Größenreihenfolge abgeleitet; es erfolgen weder automatische
+Datenmigrationen noch Backups. Die veröffentlichte Richtlinie kann sensiblen
+Self-Service ausdrücklich erlauben; der Schutz vor destruktiven Änderungen bleibt.
+Erforderliche Freigaben
 binden den neuen tatsächlichen Plan, seinen Artefakt-Hash und den gewünschten
 Upgrade-Snapshot. Sie gelten nicht für andere Pläne oder später geänderte Parameter.
 

@@ -322,6 +322,51 @@ it.each([
   );
   expect(JSON.stringify(result)).not.toMatch(/DO-NOT-EMIT|secret@example/);
 });
+it.each(["stackit_observability_instance", "stackit_secretsmanager_instance"])(
+  "classifies all non-destructive %s service changes conservatively",
+  (type) => {
+    for (const actions of [["create"], ["update"]]) {
+      const resource = {
+        ...change(type, actions),
+        change: {
+          actions,
+          before: {
+            secret: "DO-NOT-EMIT",
+            plan_name: "larger",
+            retention_days: 30,
+          },
+          after: {
+            secret: "DO-NOT-EMIT",
+            plan_name: "smaller",
+            retention_days: 7,
+          },
+        },
+      };
+      expect(classifyApplicationUpgradePlan(plan([resource]))).toEqual({
+        classification: "sensitive",
+        reasons: [
+          {
+            code: "plan-service-change",
+            path: "resource_changes.0",
+            classification: "sensitive",
+          },
+        ],
+      });
+    }
+    expect(
+      classifyApplicationUpgradePlan(plan([change(type, ["no-op"])])),
+    ).toEqual({ classification: "ordinary", reasons: [] });
+    for (const actions of [
+      ["delete"],
+      ["delete", "create"],
+      ["create", "delete"],
+    ])
+      expect(
+        classifyApplicationUpgradePlan(plan([change(type, actions)]))
+          .classification,
+      ).toBe("blocked");
+  },
+);
 it.each([
   { actions: ["delete"] },
   { actions: ["create", "delete"] },

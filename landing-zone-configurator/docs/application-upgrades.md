@@ -40,8 +40,14 @@ Destructive migrations require a separate reviewed migration procedure.
 IAM, credentials and networking can change without a deletion. Changes classified
 as sensitive by the actual native Plan require the published sensitive-change
 policy as well as the stricter deployment policy of the old and new versions.
-In-place service-plan and availability changes are not currently classified as
-sensitive by this gate; inspect them explicitly in the Plan. Required approval
+Observability and Secrets Manager creation and in-place updates are also sensitive,
+including service-plan, capacity, availability and retention changes. A successful
+Plan shows what the provider can perform; it does not guarantee retained data or
+that a smaller plan fits existing usage. Review the service limits and data-retention
+impact before approval. No ordering of provider plan names is assumed, and no
+automatic data migration or backup is performed. The published policy can explicitly
+permit sensitive self-service; it does not remove destructive-change protection.
+Required approval
 is tied to the fresh actual Plan, its artifact hash and the desired upgrade
 snapshot; it cannot authorize another Plan or a later change of parameters.
 
