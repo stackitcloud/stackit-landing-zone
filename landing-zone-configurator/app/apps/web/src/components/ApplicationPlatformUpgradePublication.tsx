@@ -122,7 +122,7 @@ export function ApplicationPlatformUpgradePublication({
             ))}
           </select>
         </label>
-        <label>
+        <label className="checkbox">
           <input
             type="checkbox"
             checked={direct}
@@ -135,7 +135,7 @@ export function ApplicationPlatformUpgradePublication({
             "Sensitive Plattformänderungen dieses Pfades dürfen nach einem neuen Plan die direkte Richtlinie verwenden, soweit die übrigen Freigaberegeln dies erlauben.",
           )}
         </label>
-        <label>
+        <label className="checkbox">
           <input
             type="checkbox"
             checked={confirmed}
