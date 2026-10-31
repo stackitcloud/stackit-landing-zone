@@ -1166,7 +1166,11 @@ it.each([
     test.options.id = jobId;
     let planningAt = 0;
     let firstProgressAt = 0;
+    let firstAcknowledgedProgressAt = 0;
     let failed = false;
+    let progressAttempts = 0;
+    const acknowledgedProgress: string[] = [];
+    const acknowledgedPartialProgress: string[] = [];
     test.options.report = async (path, body) => {
       if (
         path === "stage" &&
@@ -1180,10 +1184,19 @@ it.each([
         path === "output" &&
         JSON.stringify(body).includes("Refreshing state...");
       if (progress && !firstProgressAt) firstProgressAt = Date.now();
+      if (progress) progressAttempts++;
+      const signature = JSON.stringify(body);
       const result = await test.report(path, body);
       if (failFirst && progress && !failed) {
         failed = true;
         throw new Error(secret);
+      }
+      if (progress) {
+        if (!firstAcknowledgedProgressAt)
+          firstAcknowledgedProgressAt = Date.now();
+        acknowledgedProgress.push(signature);
+        if (!signature.includes("Refresh complete"))
+          acknowledgedPartialProgress.push(signature);
       }
       return result;
     };
@@ -1208,8 +1221,10 @@ it.each([
           expect(test.reports.some(({ path }) => path === "result")).toBe(
             false,
           );
+          expect(acknowledgedPartialProgress.length).toBeGreaterThan(0);
           expect(planningAt).toBeGreaterThan(0);
           expect(firstProgressAt - planningAt).toBeLessThan(1500);
+          expect(firstAcknowledgedProgressAt - planningAt).toBeLessThan(1500);
           const observations = test.output.mock.calls
             .map(([line]) => JSON.parse(String(line)))
             .filter((event) => event.event === "application_plan_observation");
@@ -1256,14 +1271,15 @@ it.each([
     expect(JSON.stringify(output?.body)).not.toContain(
       "private-event-metadata",
     );
-    expect(
-      test.reports.filter(
-        ({ path, body }) =>
-          path === "output" &&
-          JSON.stringify(body).includes("Refreshing state...") &&
-          !JSON.stringify(body).includes("Refresh complete"),
-      ),
-    ).toHaveLength(failFirst ? 2 : 1);
+    // Separate stdout chunks can expose multiple legitimate intermediate snapshots.
+    // Only a repeated successfully acknowledged body would be a duplicate.
+    expect(new Set(acknowledgedProgress).size).toBe(
+      acknowledgedProgress.length,
+    );
+    expect(progressAttempts).toBe(
+      acknowledgedProgress.length + (failFirst ? 1 : 0),
+    );
+    expect(failed).toBe(failFirst);
     const count = test.reports.length;
     await new Promise((resolve) => setTimeout(resolve, 2100));
     expect(test.reports).toHaveLength(count);

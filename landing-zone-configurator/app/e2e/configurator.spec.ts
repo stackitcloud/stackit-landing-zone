@@ -2943,7 +2943,9 @@ test("template catalogue, search and network preview", async ({
   ).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("templates.png"),
-    fullPage: true,
+    // This artifact documents the visible catalogue; card-count assertions cover all entries.
+    fullPage: false,
+    animations: "disabled",
   });
   await page.getByRole("searchbox").fill("Firewall");
   await expect(page.locator(".template-card")).toHaveCount(2);
@@ -4472,8 +4474,25 @@ test.describe("explicit saved-plan approval", () => {
       .getByRole("navigation", { name: "Hauptnavigation", exact: true })
       .getByRole("button", { name: "Application Landing Zones", exact: true })
       .click();
+    await expect(page).toHaveURL(/\/applications$/);
+    await expect(
+      page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
     const beforeApplicationReload = configurationReads;
+    // Exercise database restoration, rather than the independent login checkpoint path.
+    // Keep the persisted configuration binding and all other workspace storage intact.
+    await page.addInitScript(() => {
+      sessionStorage.removeItem("lzc-oauth-draft");
+      sessionStorage.removeItem("lzc-oauth-draft:alice:personal");
+    });
+    const reloadedConfiguration = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        new URL(response.url()).pathname ===
+          `/api/v1/configurations/${configurationId}`,
+    );
     await page.reload();
+    await reloadedConfiguration;
     await expect
       .poll(() => configurationReads)
       .toBe(beforeApplicationReload + 1);

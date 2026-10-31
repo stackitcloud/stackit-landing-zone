@@ -342,6 +342,15 @@ läuft bei PR-Prüfungen und Release-Builds mit `go test -count=1 ./...`, damit 
 den aktuellen Accelerator-Quellstand prüft und kein zwischengespeichertes
 Testergebnis übernimmt.
 
+Schlägt die Browserprüfung eines Release-Builds fehl, werden ihre synthetischen
+Screenshots, Traces und Fehlerkontexte sieben Tage lang als
+`configurator-release-ui-failure-<run-id>` aufbewahrt. Das eng begrenzte Artefakt
+enthält nicht den übrigen `.local`-Inhalt; ein fehlgeschlagener Build kann weiterhin
+weder veröffentlichen noch deployen. Navigationstests warten auf das gerenderte
+Ziel; Datenbank-Wiederherstellungstests schließen vor einem exakt erwarteten
+Neuabruf den separaten lokalen Login-Checkpoint ausdrücklich aus.
+
+
 ### Dev-Release ohne Live-Qualifikation des Assistant
 
 Bei Model-Serving-Ausfällen unter
