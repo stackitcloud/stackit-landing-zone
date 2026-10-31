@@ -1,5 +1,9 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import {
+  type ApplicationUpgradeSafety,
+  classifyApplicationUpgradePlan,
+} from "@lzc/contracts";
 import pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
@@ -517,7 +521,7 @@ const summary = (classification = "ordinary", deletes = 0, replaces = 0) => ({
   checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
   destructive: deletes + replaces > 0,
   completeness: "complete",
-  upgradeSafety: { classification, reasons: [] },
+  upgradeSafety: { classification, reasons: [] } as ApplicationUpgradeSafety,
 });
 async function artifact(
   f: Awaited<ReturnType<typeof fixture>>,
@@ -632,6 +636,48 @@ it("requires fresh artifact-bound PE approval for sensitive changes and then adm
     ).rows[0],
   ).toMatchObject({ version_id: f.to, state_key: j.inputs.stateKey });
 });
+it.each(["stackit_observability_instance", "stackit_secretsmanager_instance"])(
+  "requires exact-Plan approval for an in-place %s service downgrade",
+  async (type) => {
+    const f = await fixture();
+    const e = await edge(f);
+    const c = await request(f, e.id);
+    const j = await plan(f, c.candidate);
+    const nativePlan = {
+      format_version: "1.2",
+      terraform_version: "1.12.6",
+      complete: true,
+      planned_values: { root_module: {} },
+      resource_changes: [
+        {
+          mode: "managed",
+          type,
+          change: {
+            actions: ["update"],
+            before: { plan_name: "larger", retention_days: 30 },
+            after: { plan_name: "smaller", retention_days: 7 },
+          },
+        },
+      ],
+    };
+    const safety = classifyApplicationUpgradePlan(nativePlan);
+    expect(safety.classification).toBe("sensitive");
+    const value = { ...summary(), upgradeSafety: safety };
+    value.resources.create = 0;
+    value.resources.update = 1;
+    await artifact(f, j, value);
+    await expect(apply(f, j)).rejects.toThrow(
+      "application_upgrade_plan_approval_required",
+    );
+    await scoped(engineer, (q) =>
+      q.query(
+        "SELECT lzc_auth.approve_application_upgrade($1,$2,$3,$4,$5,true)",
+        [engineer.id, c.candidate.id, c.candidate.candidateHash, j.id, hash],
+      ),
+    );
+    expect(await apply(f, j)).toMatch(/^[a-f0-9-]{36}$/);
+  },
+);
 it.each([
   [1, 0],
   [0, 1],

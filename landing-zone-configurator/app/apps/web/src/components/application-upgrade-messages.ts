@@ -43,6 +43,8 @@ export const upgradeReasonMessages: Record<string, string> = {
   "iam-change": "Projektrollen oder Automatisierungsrechte ändern sich.",
   "key-change": "Schlüssel oder Rotationseinstellungen ändern sich.",
   "service-change": "Die Dienstkonfiguration ändert sich.",
+  "plan-service-change":
+    "Ein Dienst wird angelegt oder geändert. Prüfe Leistungsstufe, Kapazität, Verfügbarkeit und Datenaufbewahrung im Plan; ein technisch möglicher Wechsel garantiert keinen Datenerhalt.",
   "unknown-setting-change":
     "Eine nicht freigegebene Konfigurationsänderung blockiert dieses Upgrade.",
 };

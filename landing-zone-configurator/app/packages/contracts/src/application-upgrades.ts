@@ -176,6 +176,13 @@ export function classifyApplicationUpgradePlan(
       actions[0] === "update"
     )
       add("plan-project-change", path, "sensitive");
+    else if (
+      resource.type === "stackit_observability_instance" ||
+      resource.type === "stackit_secretsmanager_instance"
+    )
+      // Provider acceptance does not prove that capacity or retained data is safe.
+      // Classify the whole service change, including future provider attributes.
+      add("plan-service-change", path, "sensitive");
   }
   return {
     classification: reasons.some((r) => r.classification === "blocked")
