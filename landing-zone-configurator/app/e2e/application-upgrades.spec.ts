@@ -1326,7 +1326,7 @@ for (const [code, message] of [
     "application_execution_package_unavailable",
     "Ausführungspaket ist derzeit nicht verfügbar",
   ],
-])
+] as const)
   test(`failed save ${code} stays in review and focuses actionable feedback`, async ({
     page,
   }) => {
