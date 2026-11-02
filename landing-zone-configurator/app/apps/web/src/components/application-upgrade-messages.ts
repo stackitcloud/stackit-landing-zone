@@ -50,7 +50,7 @@ export const upgradeReasonMessages: Record<string, string> = {
 };
 
 upgradeReasonMessages["upgrade-target-not-qualified"] =
-  upgradeReasonMessages["target-not-qualified"] ?? "";
+  "Der Plattformnachweis der Zielversion ist nicht aktuell bestätigt oder ihre Backend-Anbindung ist nicht verfügbar. Der Platform Owner muss die Plattformanbindung prüfen; eine Plan-Freigabe behebt diesen Blocker nicht.";
 upgradeReasonMessages["application-platform-execution-active"] =
   upgradeReasonMessages["execution-or-recovery-active"] ?? "";
 
