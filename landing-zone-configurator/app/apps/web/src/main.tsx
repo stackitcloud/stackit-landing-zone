@@ -204,6 +204,7 @@ function App() {
       : "",
   );
   const latestDraft = useRef({
+    owner: session,
     draft,
     configurationBinding,
     savedDraft,
@@ -212,6 +213,7 @@ function App() {
     deploymentStep,
   });
   latestDraft.current = {
+    owner: session,
     draft,
     configurationBinding,
     savedDraft,
@@ -395,6 +397,34 @@ function App() {
     step,
     deploymentStep,
   ]);
+  useEffect(() => {
+    const flush = () => {
+      const snapshot = latestDraft.current;
+      const owner = snapshot.owner ?? draftOwner.current;
+      if (
+        snapshot.draft &&
+        owner?.user.id &&
+        owner.tenant?.id &&
+        workspaceKey(owner) === activeAccount.current
+      )
+        preserveLoginDraft(snapshot.draft, {
+          owner: { userId: owner.user.id, tenantId: owner.tenant.id },
+          binding: snapshot.configurationBinding,
+          savedDraft: snapshot.savedDraft,
+          location: {
+            view: snapshot.view,
+            step: snapshot.step,
+            deploymentStep: snapshot.deploymentStep,
+          },
+        });
+    };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, []);
   const leavingForLogin = useRef(false);
   const beforeWorkspaceNavigation = useCallback(() => {
     leavingForLogin.current = true;

@@ -120,3 +120,12 @@ claims stay immutable; consumed-claim uniqueness and current source/candidate
 checks prevent their reuse. Active executions and unresolved recovery still
 block the upgrade. SQL conflicts retain their explicit safe error codes; an
 unknown conflict must not be reported as a State-backend mismatch.
+
+Signed-in draft checkpoints are debounced during editing, then flushed
+synchronously on `beforeunload` and `pagehide`. Capture the owner in the same
+render snapshot as the draft, binding, saved baseline and location; flush only
+if it still matches the active account/workspace. Explicit logout must not
+resurrect a checkpoint; expiry may retain the original owner's private draft.
+The Fork save/reload browser test pauses the debounce and proves the old
+checkpoint still exists immediately before reload, then checks the new Platform
+template and parameter policy after recovery.

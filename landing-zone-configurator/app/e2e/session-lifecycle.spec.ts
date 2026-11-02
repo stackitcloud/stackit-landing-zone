@@ -346,6 +346,10 @@ test("a matching scoped logout clears a draft even after the local session expir
   await expect(
     page.getByLabel("Name der Konfiguration", { exact: true }),
   ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
+    window.dispatchEvent(new Event("pagehide"));
+  });
   expect(
     await page.evaluate(
       () =>

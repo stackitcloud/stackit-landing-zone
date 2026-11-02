@@ -124,3 +124,13 @@ die Prüfung der aktuellen Quelle bzw. Upgrade-Bindung verhindern eine erneute
 Verwendung. Aktive Ausführungen und ungeklärte Recovery blockieren weiterhin.
 SQL-Konflikte behalten ihren konkreten sicheren Fehlercode; ein unbekannter
 Konflikt darf nicht als State-Backend-Konflikt gemeldet werden.
+
+Entwurfs-Checkpoints angemeldeter Benutzer werden beim Bearbeiten verzögert und
+bei `beforeunload` sowie `pagehide` synchron gesichert. Erfasse den Owner im
+selben Render-Snapshot wie Entwurf, Bindung, gespeicherte Basis und Position;
+sichere nur bei Übereinstimmung mit aktivem Konto/Arbeitsbereich. Explizites
+Abmelden darf keinen Checkpoint wiederherstellen; bei Session-Ablauf darf der
+private Entwurf des ursprünglichen Owners erhalten bleiben. Der Fork-Speicher-/
+Reload-Browsertest pausiert die Verzögerung, weist den alten Checkpoint direkt
+vor dem Reload nach und prüft danach das neue Plattform-Template samt
+Parameterrichtlinie.
