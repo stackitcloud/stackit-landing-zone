@@ -47,7 +47,7 @@ const errors: Record<string, string> = {
   "execution-or-recovery-active":
     "Eine Ausführung oder die Klärung eines fehlgeschlagenen Apply ist noch offen. Schließe sie vor einem Upgrade ab.",
   "runner-ticket-active":
-    "Eine Runner-Berechtigung ist noch aktiv. Warte auf ihren Ablauf, bevor du den Ausführungsstand änderst.",
+    "Ein kürzlich gestarteter Plan oder Apply hat noch eine zeitlich begrenzte Ausführungsfreigabe. Warte auf deren Ablauf und aktualisiere dann den Status, bevor du die technische Ausführung änderst.",
   "guided-recovery-active":
     "Eine geführte State-Wiederherstellung ist noch aktiv. Schließe sie vor einem Upgrade ab.",
   "apply-grant-active":
@@ -297,119 +297,138 @@ export function ApplicationExecutionLifecycle({
       {notice && <p role="status">{t(notice)}</p>}
       {context && (
         <>
-          <dl className="application-properties">
-            <dt>{t("Verfügbarkeit des Ausführungsstands")}</dt>
-            <dd>
-              {t(
-                {
-                  supported: "Unterstützt",
-                  withdrawn: "Zurückgezogen",
-                  unavailable: "Runner-Paket nicht verfügbar",
-                }[context.sourceStatus],
-              )}
-            </dd>
-          </dl>
           {context.sourceStatus === "supported" && (
             <p>
               {t(
-                candidates.length > 0
-                  ? "Ein geprüfter Ersatz ist verfügbar. Nach der Auswahl sind ein neuer Plan und eine separate Apply-Freigabe erforderlich."
-                  : "Für diese technische Ausführung ist derzeit kein freigegebener Ersatz auswählbar.",
+                "Die technische Ausführung ist einsatzbereit. Für Änderungen an Template-Rechten verwende den Template-Upgrade-Assistenten oben.",
               )}
             </p>
           )}
-          {context.sourceStatus !== "supported" && (
-            <p>
+          <details
+            key={context.sourceStatus}
+            open={context.sourceStatus !== "supported"}
+          >
+            <summary>
               {t(
-                errors[
-                  context.sourceStatus === "withdrawn"
-                    ? "application_execution_source_withdrawn"
-                    : "application_execution_package_unavailable"
-                ] ?? "",
+                context.sourceStatus === "supported"
+                  ? "Optionale technische Wartung"
+                  : "Technische Ausführung prüfen",
               )}
-            </p>
-          )}
-          {context.blockers.length > 0 && (
-            <ul aria-label={t("Hindernisse für ein Upgrade")}>
-              {[...new Set(context.blockers)].map((blocker) => (
-                <li key={blocker}>{t(errors[blocker] ?? blocker)}</li>
-              ))}
-            </ul>
-          )}
-          {requestedBy === session.user.id && candidates.length > 0 && (
-            <fieldset disabled={busy || !context.canUpgrade}>
-              <legend>{t("Ausführungsstand explizit aktualisieren")}</legend>
-              <label>
-                {t("Ziel-Ausführungsstand")}
-                <select
-                  value={target}
-                  onChange={(event) => {
-                    setTarget(event.target.value);
-                    setConfirmed(false);
-                  }}
-                >
-                  {candidates.map((profile) => (
-                    <option key={profile.revision} value={profile.revision}>
-                      {t("Geprüfter Ersatz")} · OpenTofu{" "}
-                      {profile.openTofuVersion}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(event) => setConfirmed(event.target.checked)}
-                />
-                {t(
-                  "Ich aktualisiere dieselbe Bestellung mit demselben State. Den neuen Plan prüfe ich einschließlich Ersetzungen und Löschungen. Jetzt wird keine Infrastruktur geändert und kein Plan oder Apply gestartet.",
-                )}
-              </label>
-              <button
-                type="button"
-                className="button secondary"
-                disabled={!confirmed || !selected}
-                onClick={() => void upgrade()}
-              >
-                {t("Ausführungsbindung aktualisieren")}
-              </button>
-            </fieldset>
-          )}
-          <details>
-            <summary>{t("Technische Details zur Ausführung")}</summary>
+            </summary>
             <dl className="application-properties">
-              <dt>{t("Ursprüngliche Templatequelle")}</dt>
+              <dt>{t("Verfügbarkeit des Ausführungsstands")}</dt>
               <dd>
-                <Source value={context.originRevision} />
+                {t(
+                  {
+                    supported: "Unterstützt",
+                    withdrawn: "Zurückgezogen",
+                    unavailable: "Runner-Paket nicht verfügbar",
+                  }[context.sourceStatus],
+                )}
               </dd>
-              <dt>{t("Gewünschter Ausführungsstand")}</dt>
-              <dd>
-                <Source value={context.revision} />
-              </dd>
-              <dt>{t("Zuletzt angewendete Quelle")}</dt>
-              <dd>
-                <Source value={context.lastAppliedRevision} />
-              </dd>
-              {context.replacementRevision && (
-                <>
-                  <dt>{t("Vorgesehener Upgrade-Pfad")}</dt>
-                  <dd>
-                    <Source value={context.replacementRevision} />
-                  </dd>
-                </>
-              )}
-              {selected && (
-                <>
-                  <dt>{t("Provider-Lock SHA256")}</dt>
-                  <dd>
-                    <code>{selected.providerLockSha256}</code>
-                  </dd>
-                  <dt>{t("Vertragsversion")}</dt>
-                  <dd>{selected.contractVersion}</dd>
-                </>
-              )}
             </dl>
+            {context.sourceStatus === "supported" && (
+              <p>
+                {t(
+                  candidates.length > 0
+                    ? "Ein geprüfter Ersatz ist verfügbar. Nach der Auswahl sind ein neuer Plan und eine separate Apply-Freigabe erforderlich."
+                    : "Für diese technische Ausführung ist derzeit kein freigegebener Ersatz auswählbar.",
+                )}
+              </p>
+            )}
+            {context.sourceStatus !== "supported" && (
+              <p>
+                {t(
+                  errors[
+                    context.sourceStatus === "withdrawn"
+                      ? "application_execution_source_withdrawn"
+                      : "application_execution_package_unavailable"
+                  ] ?? "",
+                )}
+              </p>
+            )}
+            {context.blockers.length > 0 && (
+              <ul aria-label={t("Hindernisse für ein Upgrade")}>
+                {[...new Set(context.blockers)].map((blocker) => (
+                  <li key={blocker}>{t(errors[blocker] ?? blocker)}</li>
+                ))}
+              </ul>
+            )}
+            {requestedBy === session.user.id && candidates.length > 0 && (
+              <fieldset disabled={busy || !context.canUpgrade}>
+                <legend>{t("Ausführungsstand explizit aktualisieren")}</legend>
+                <label>
+                  {t("Ziel-Ausführungsstand")}
+                  <select
+                    value={target}
+                    onChange={(event) => {
+                      setTarget(event.target.value);
+                      setConfirmed(false);
+                    }}
+                  >
+                    {candidates.map((profile) => (
+                      <option key={profile.revision} value={profile.revision}>
+                        {t("Geprüfter Ersatz")} · OpenTofu{" "}
+                        {profile.openTofuVersion}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={(event) => setConfirmed(event.target.checked)}
+                  />
+                  {t(
+                    "Ich aktualisiere dieselbe Bestellung mit demselben State. Den neuen Plan prüfe ich einschließlich Ersetzungen und Löschungen. Jetzt wird keine Infrastruktur geändert und kein Plan oder Apply gestartet.",
+                  )}
+                </label>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={!confirmed || !selected}
+                  onClick={() => void upgrade()}
+                >
+                  {t("Ausführungsbindung aktualisieren")}
+                </button>
+              </fieldset>
+            )}
+            <details>
+              <summary>{t("Technische Details zur Ausführung")}</summary>
+              <dl className="application-properties">
+                <dt>{t("Ursprüngliche Templatequelle")}</dt>
+                <dd>
+                  <Source value={context.originRevision} />
+                </dd>
+                <dt>{t("Gewünschter Ausführungsstand")}</dt>
+                <dd>
+                  <Source value={context.revision} />
+                </dd>
+                <dt>{t("Zuletzt angewendete Quelle")}</dt>
+                <dd>
+                  <Source value={context.lastAppliedRevision} />
+                </dd>
+                {context.replacementRevision && (
+                  <>
+                    <dt>{t("Vorgesehener Upgrade-Pfad")}</dt>
+                    <dd>
+                      <Source value={context.replacementRevision} />
+                    </dd>
+                  </>
+                )}
+                {selected && (
+                  <>
+                    <dt>{t("Provider-Lock SHA256")}</dt>
+                    <dd>
+                      <code>{selected.providerLockSha256}</code>
+                    </dd>
+                    <dt>{t("Vertragsversion")}</dt>
+                    <dd>{selected.contractVersion}</dd>
+                  </>
+                )}
+              </dl>
+            </details>
           </details>
         </>
       )}

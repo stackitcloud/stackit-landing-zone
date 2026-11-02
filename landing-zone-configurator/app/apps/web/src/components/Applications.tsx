@@ -57,6 +57,7 @@ import { ApplicationOrderUpdates } from "./ApplicationOrderUpdates";
 import { ApplicationPlatformUpgradePublication } from "./ApplicationPlatformUpgradePublication";
 import { ApplicationStateRecovery } from "./ApplicationStateRecovery";
 import { ApplicationUpgradeApproval } from "./ApplicationUpgradeApproval";
+import { ApplicationUpgradeProgress } from "./ApplicationUpgradeProgress";
 import { ApplicationUpgradePublication } from "./ApplicationUpgradePublication";
 import { OrganizationBinding } from "./OrganizationBinding";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
@@ -1015,6 +1016,7 @@ function ApplicationPlanControls({
   instance,
   session,
   upgradesEnabled = false,
+  upgradeWizard = false,
   planEnabled,
   applyEnabled,
   recoveryReviewsEnabled,
@@ -1027,6 +1029,7 @@ function ApplicationPlanControls({
   instance: ApplicationInstance;
   session: Session;
   upgradesEnabled?: boolean;
+  upgradeWizard?: boolean;
   planEnabled: boolean;
   applyEnabled: boolean;
   recoveryReviewsEnabled: boolean;
@@ -1059,6 +1062,11 @@ function ApplicationPlanControls({
     drift: crypto.randomUUID(),
   });
   const [destroyConfirmed, setDestroyConfirmed] = useState(false);
+  const [applyReviewJob, setApplyReviewJob] = useState("");
+  const applyReviewHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (applyReviewJob) applyReviewHeading.current?.focus();
+  }, [applyReviewJob]);
   const preparedJob = useRef<string | null>(null);
   const initialViewSelected = useRef(false);
   const terminalRefreshed = useRef(false);
@@ -1373,6 +1381,33 @@ function ApplicationPlanControls({
                   : "Application-Plan",
         )}
       </h3>
+      {upgradeWizard && view === "plan" && (
+        <ApplicationUpgradeProgress
+          step={
+            currentPlan?.canApply &&
+            applyReviewJob ===
+              `${currentPlan?.id}:${currentPlan?.artifactSha256}`
+              ? 4
+              : 3
+          }
+        />
+      )}
+      {upgradeWizard && view === "plan" && (
+        <button
+          type="button"
+          className="button secondary"
+          onClick={() => onViewChange("updates")}
+        >
+          {t("Zurück: Upgrade-Ziel")}
+        </button>
+      )}
+      {upgradeWizard && view === "plan" && (
+        <p role="status">
+          {t(
+            "Schritt 3: Erstelle einen neuen Plan für das gespeicherte Upgrade-Ziel. Prüfe die Ressourcen und hole gegebenenfalls die angezeigte Freigabe ein. Danach führt dich Weiter zur Apply-Bestätigung.",
+          )}
+        </p>
+      )}
       {error && <p role="alert">{t(error)}</p>}
       {interruptedApplyRecorded && (
         <p role="status">
@@ -2031,37 +2066,89 @@ function ApplicationPlanControls({
                             )}
                           </label>
                         )}
-                      {purpose !== "drift" && applyEnabled && job.canApply && (
-                        <button
-                          type="button"
-                          className="button primary"
-                          disabled={
-                            busy ||
-                            pending ||
-                            (purpose === "destroy" && !destroyConfirmed)
-                          }
-                          onClick={() =>
-                            void mutate(`jobs/${job.id}/apply`, {
-                              artifactSha256: preview.artifactSha256,
-                              ...(purpose === "destroy"
-                                ? {
-                                    confirmDestroy: true,
-                                    instanceId: instance.id,
-                                  }
-                                : {}),
-                            })
-                          }
-                        >
-                          {purpose === "destroy" && (
-                            <Trash2 size={18} aria-hidden="true" />
-                          )}
-                          {t(
-                            purpose === "destroy"
-                              ? "Application Landing Zone löschen"
-                              : "Application Landing Zone erstellen",
-                          )}
-                        </button>
-                      )}
+                      {upgradeWizard &&
+                        purpose === "standard" &&
+                        applyEnabled &&
+                        job.canApply &&
+                        preview.artifactSha256 === job.artifactSha256 &&
+                        applyReviewJob !==
+                          `${job.id}:${job.artifactSha256}` && (
+                          <button
+                            type="button"
+                            className="button"
+                            disabled={busy || pending}
+                            onClick={() =>
+                              setApplyReviewJob(
+                                `${job.id}:${job.artifactSha256}`,
+                              )
+                            }
+                          >
+                            {t("Weiter: Apply vorbereiten")}
+                          </button>
+                        )}
+                      {upgradeWizard &&
+                        job.canApply &&
+                        !pending &&
+                        applyReviewJob ===
+                          `${job.id}:${job.artifactSha256}` && (
+                          <section aria-label={t("Upgrade anwenden")}>
+                            <h4 tabIndex={-1} ref={applyReviewHeading}>
+                              {t("4. Upgrade anwenden")}
+                            </h4>
+                            <p>
+                              {t(
+                                "Der geprüfte Plan ist bereit. Erst die folgende Apply-Aktion ändert die Infrastruktur. Die Berechtigungen und die Gültigkeit dieses Plans werden beim Start erneut geprüft.",
+                              )}
+                            </p>
+                            <button
+                              type="button"
+                              className="button secondary"
+                              disabled={busy}
+                              onClick={() => setApplyReviewJob("")}
+                            >
+                              {t("Zurück: Plan prüfen")}
+                            </button>
+                          </section>
+                        )}
+                      {purpose !== "drift" &&
+                        applyEnabled &&
+                        job.canApply &&
+                        (!upgradeWizard ||
+                          purpose !== "standard" ||
+                          applyReviewJob ===
+                            `${job.id}:${job.artifactSha256}`) && (
+                          <button
+                            type="button"
+                            className="button primary"
+                            disabled={
+                              busy ||
+                              pending ||
+                              (purpose === "destroy" && !destroyConfirmed)
+                            }
+                            onClick={() =>
+                              void mutate(`jobs/${job.id}/apply`, {
+                                artifactSha256: preview.artifactSha256,
+                                ...(purpose === "destroy"
+                                  ? {
+                                      confirmDestroy: true,
+                                      instanceId: instance.id,
+                                    }
+                                  : {}),
+                              })
+                            }
+                          >
+                            {purpose === "destroy" && (
+                              <Trash2 size={18} aria-hidden="true" />
+                            )}
+                            {t(
+                              purpose === "destroy"
+                                ? "Application Landing Zone löschen"
+                                : upgradeWizard
+                                  ? "Upgrade jetzt anwenden"
+                                  : "Application Landing Zone erstellen",
+                            )}
+                          </button>
+                        )}
                       {jobs.some(
                         (candidate) =>
                           candidate.operation === "apply" &&
@@ -2236,6 +2323,7 @@ export function Applications({
   const [selectedInstance, setSelectedInstance] =
     useState<ApplicationInstance | null>(null);
   const [orderView, setOrderView] = useState<OrderView>("plan");
+  const [upgradeWizardOrder, setUpgradeWizardOrder] = useState("");
   const load = useCallback(
     async (signal?: AbortSignal) => {
       if (!session) return;
@@ -4233,35 +4321,9 @@ export function Applications({
               <h3>{t("Updates für dieselbe Bestellung")}</h3>
               <p>
                 {t(
-                  "Aktualisiere eine bestehende Landing Zone in drei Schritten. Bestellung und State-Zuordnung bleiben erhalten.",
+                  "Aktualisiere eine bestehende Landing Zone Schritt für Schritt. Bestellung und State-Zuordnung bleiben erhalten.",
                 )}
               </p>
-              <ol className="application-update-steps">
-                <li>
-                  <strong>{t("Update auswählen")}</strong>
-                  <span>
-                    {t(
-                      "Freigegebene Zielversion prüfen und als gewünschten Stand übernehmen.",
-                    )}
-                  </span>
-                </li>
-                <li>
-                  <strong>{t("Neuen Plan prüfen")}</strong>
-                  <span>
-                    {t(
-                      "Im Reiter Plan die tatsächlichen Änderungen prüfen und nötige Freigaben einholen.",
-                    )}
-                  </span>
-                </li>
-                <li>
-                  <strong>{t("Apply starten")}</strong>
-                  <span>
-                    {t(
-                      "Erst der separat freigegebene Apply ändert die Infrastruktur.",
-                    )}
-                  </span>
-                </li>
-              </ol>
             </header>
             {upgradesEnabled && (
               <ApplicationOrderUpdates
@@ -4269,6 +4331,15 @@ export function Applications({
                 session={session}
                 instanceId={selectedInstance.id}
                 requestedBy={selectedInstance.requestedBy}
+                onPlan={() => {
+                  setUpgradeWizardOrder(
+                    `${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`,
+                  );
+                  setOrderView("plan");
+                  document
+                    .getElementById("application-order-tab-plan")
+                    ?.focus();
+                }}
                 onChanged={async (signal) => {
                   setPlanInput(null);
                   setPlanRefresh((value) => value + 1);
@@ -4497,6 +4568,10 @@ export function Applications({
                 instance={selectedInstance}
                 session={session}
                 upgradesEnabled={upgradesEnabled}
+                upgradeWizard={
+                  upgradeWizardOrder ===
+                  `${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`
+                }
                 planEnabled={planEnabled}
                 applyEnabled={applyEnabled}
                 recoveryReviewsEnabled={recoveryReviewsEnabled}
