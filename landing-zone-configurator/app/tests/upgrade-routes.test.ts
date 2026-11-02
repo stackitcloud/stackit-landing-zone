@@ -171,6 +171,10 @@ it("distinguishes invalid publication policies and immutable path conflicts from
     for (const [code, message, status] of [
       ["42501", "application_upgrade_edge_invalid", 409],
       ["40001", "application_upgrade_edge_changed", 409],
+      ["40001", "application_upgrade_binding_changed", 409],
+      ["40001", "application_upgrade_platform_changed", 409],
+      ["40001", "application_grant_consumed", 409],
+      ["40001", "application_backend_binding_conflict", 409],
       ["42501", "permission_denied", 403],
     ] as const) {
       publishUpgradeEdge.mockRejectedValueOnce(
@@ -187,7 +191,20 @@ it("distinguishes invalid publication policies and immutable path conflicts from
         error: status === 403 ? "application_access_denied" : message,
       });
     }
-    expect(publishUpgradeEdge).toHaveBeenCalledTimes(3);
+    publishUpgradeEdge.mockRejectedValueOnce(
+      Object.assign(new Error("internal SQL detail must stay private"), {
+        code: "40001",
+      }),
+    );
+    const unknown = await app.inject({
+      method: "POST",
+      url: "/api/v1/applications/template-upgrades",
+      headers,
+      payload,
+    });
+    expect(unknown.statusCode).toBe(409);
+    expect(unknown.json()).toEqual({ error: "application_request_conflict" });
+    expect(publishUpgradeEdge).toHaveBeenCalledTimes(8);
     expect(applications.publish).not.toHaveBeenCalled();
     expect(auth.tokens.get).not.toHaveBeenCalled();
   } finally {

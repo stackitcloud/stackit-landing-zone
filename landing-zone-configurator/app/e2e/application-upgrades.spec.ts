@@ -1318,6 +1318,16 @@ test("wizard continues from saved target to Plan and separate Apply confirmation
 });
 
 for (const [code, message] of [
+  ["application_grant_consumed", "Fehlercode: application_grant_consumed"],
+  [
+    "application_upgrade_platform_changed",
+    "Plattformnachweis hat sich seit der Prüfung geändert",
+  ],
+  [
+    "application_backend_binding_conflict",
+    "State-Backend-Zuordnung widerspricht",
+  ],
+  ["application_request_conflict", "Fehlercode: application_request_conflict"],
   [
     "application_upgrade_source_unavailable",
     "gemeinsamer freigegebener Ausführungsstand",

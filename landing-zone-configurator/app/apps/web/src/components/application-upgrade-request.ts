@@ -13,6 +13,14 @@ const failures: Record<string, string> = {
     "Die gewünschte Version hat sich geändert. Lade die Updates erneut; Bestellung und State bleiben erhalten.",
   application_upgrade_unavailable:
     "Dieses Upgrade ist derzeit gesperrt. Prüfe die angezeigten Hindernisse; Bestellung und State bleiben erhalten.",
+  application_upgrade_platform_changed:
+    "Der Plattformnachweis hat sich seit der Prüfung geändert. Lade die Updates erneut und prüfe den aktuellen Plattformstand. Bestellung und State bleiben erhalten.",
+  application_grant_consumed:
+    "Eine frühere Plan-Freigabe wurde bereits verwendet. Die Aktualisierung konnte nicht gespeichert werden. Bestellung und State bleiben erhalten. Fehlercode: application_grant_consumed.",
+  application_backend_binding_conflict:
+    "Die State-Backend-Zuordnung widerspricht der bereits gespeicherten Zuordnung. Es wurde nichts umgestellt. Fehlercode: application_backend_binding_conflict.",
+  application_request_conflict:
+    "Die Aktualisierung konnte wegen eines Ausführungskonflikts nicht gespeichert werden. Lade die Updates erneut. Bestellung und State bleiben erhalten. Fehlercode: application_request_conflict.",
   application_upgrade_source_unavailable:
     "Für diese Zielversion fehlt ein gemeinsamer freigegebener Ausführungsstand. Der Platform Owner muss den Upgrade-Pfad prüfen. Bestellung und State bleiben erhalten.",
   application_execution_package_unavailable:

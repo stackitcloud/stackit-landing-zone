@@ -96,3 +96,27 @@ they do not replace the protected release workflow's qualification.
 The complete project IAM snapshot is separate from the workload default. Refresh it from the official `GET https://authorization.api.stackit.cloud/v2/permissions?resourceType=project` response with `npm run permissions:generate -- /private/project-permissions.json YYYY-MM-DD`, then format the generated file with Biome, regenerate Assistant knowledge and qualify affected real-model cases. Never guess permission identifiers. Domain parsing preserves bounded future identifiers; server publication confirms additions against the snapshot or an authenticated live catalogue, after authorization and outside the publication transaction. Requester parameters cannot override published policies. Assistant service additions are deterministic catalogue unions, preserve existing lists and owner, and require a service quote matching the current request. Full identifier lists are not sent in unrelated model prompts.
 
 Assistant initial-owner aliases use email metadata only. The server joins personal stored credential profiles to preparations by current profile ID/key and the persisted configuration ID plus draft organization, under the existing tenant/user transaction. Never substitute document-local IDs, read decrypted credentials for inference or treat preparation provenance as a successful access check. Multiple distinct accounts remain a choice. Shared-owner continuations must preserve existing explicit owners, and legacy-role transitions require a fresh, reviewed confirmation rather than implicit permission reduction.
+
+## Upgrade regression without a Dev deployment
+
+Run `npm run test:upgrade-journey` from `app/` after installing the pinned tools,
+Docker and Playwright Chromium (`npx playwright install chromium`). The command
+builds the UI, creates a disposable PostgreSQL container bound to loopback,
+applies all migrations and removes the container afterwards. No cloud access or
+customer data is used. CI supplies its existing local test database and uses
+`--no-build` after the regular build.
+
+The browser uses the compiled SPA, real HTTP routes, PostgreSQL sessions, CSRF,
+RLS and migration functions. Its fixture includes a successful historical
+Plan/Apply and a consumed Plan claim, not just an empty order. It selects,
+previews and saves an upgrade, reloads it, follows the next step to Plan and
+checks the compiled target version, reviewed execution source and unchanged
+State key. It does not run a cloud Plan or Apply. Separate database/Runner broker
+tests cover dispatch and artifact admission. Do not replace these upgrade API
+responses with browser route mocks; those would hide transaction failures.
+
+Upgrades revoke only unclaimed old Plan grants. Claimed historical grants and
+claims stay immutable; consumed-claim uniqueness and current source/candidate
+checks prevent their reuse. Active executions and unresolved recovery still
+block the upgrade. SQL conflicts retain their explicit safe error codes; an
+unknown conflict must not be reported as a State-backend mismatch.

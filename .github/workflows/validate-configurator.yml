@@ -122,6 +122,10 @@ jobs:
           LZC_TEST_DATABASE_URL: postgres://postgres:lzc-test-only@127.0.0.1:5432/configurator_test
       - name: Install isolated browser for UI acceptance
         run: npx playwright install --with-deps chromium
+      - name: Test upgrade wizard against real HTTP and PostgreSQL
+        run: npm run test:upgrade-journey -- --no-build
+        env:
+          LZC_TEST_DATABASE_URL: postgres://postgres:lzc-test-only@127.0.0.1:5432/configurator_test
       - name: Test template-to-draft flow on desktop and mobile
         run: npm run test:e2e
       - name: Upload UI evidence
