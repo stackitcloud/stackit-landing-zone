@@ -363,6 +363,7 @@ test("platform structure shows components with only name and type in their ownin
 test("shared configuration saves, reopens and restores in the account workspace", async ({
   page,
 }, testInfo) => {
+  await page.clock.install({ time: new Date() });
   const id = "11111111-2222-4333-8444-555555555555";
   let document = createCommonConfiguration("hub-and-spoke-multi-region", id);
   document = editCommonInput(document, "organization_id", id);
@@ -528,6 +529,11 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
     .click();
   await openConfigurationStep(page, "Projekte (Bestand)");
+  // Freeze the checkpoint debounce before copying/editing the new platform.
+  // Reload below must retain this draft without waiting for its 500ms timer.
+  await page.clock.pauseAt(
+    new Date((await page.evaluate(() => Date.now())) + 1000),
+  );
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", {
@@ -564,7 +570,16 @@ test("shared configuration saves, reopens and restores in the account workspace"
       () => savedPlatform?.projectTemplates?.[0]?.parameterPolicy?.fields.env,
     )
     .toMatchObject({ source: "input", default: "prod" });
+  expect(
+    await page.evaluate(() => {
+      const raw = sessionStorage.getItem(
+        "lzc-oauth-draft:user-alice:tenant-one",
+      );
+      return raw ? JSON.parse(raw).draft.projectTemplates === undefined : false;
+    }),
+  ).toBe(true);
   await page.reload();
+
   await page
     .getByRole("button", { name: "Entwurf bearbeiten", exact: true })
     .click();
