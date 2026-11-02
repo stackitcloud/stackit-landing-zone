@@ -13,6 +13,10 @@ const failures: Record<string, string> = {
     "Die gewünschte Version hat sich geändert. Lade die Updates erneut; Bestellung und State bleiben erhalten.",
   application_upgrade_unavailable:
     "Dieses Upgrade ist derzeit gesperrt. Prüfe die angezeigten Hindernisse; Bestellung und State bleiben erhalten.",
+  application_upgrade_source_unavailable:
+    "Für diese Zielversion fehlt ein gemeinsamer freigegebener Ausführungsstand. Der Platform Owner muss den Upgrade-Pfad prüfen. Bestellung und State bleiben erhalten.",
+  application_execution_package_unavailable:
+    "Das benötigte Ausführungspaket ist derzeit nicht verfügbar. Aktualisiere die Updates später erneut. Bestellung und State bleiben erhalten.",
   application_upgrade_blocked:
     "Dieses Upgrade ist blockiert. Eine Bestätigung kann die Sicherheitsgrenzen nicht aufheben.",
   application_instance_running:

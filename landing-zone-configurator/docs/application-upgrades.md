@@ -56,6 +56,14 @@ than a missing permission. A failed publication leaves saved paths unchanged.
    a separate final confirmation; only the explicit Apply action changes resources.
    Going back does not start a job or grant approval.
 
+Preview and saving use the same reviewed execution-source resolver. If an older
+order and an older target template both explicitly name the same supported
+successor, the saved upgrade selects that successor and requires a fresh Plan.
+This does not rewrite the original template or order. Unknown, withdrawn target
+sources, unrelated supported sources and missing Runner packages remain blocked;
+no arbitrary source or implicit downgrade is accepted. A failed save focuses its
+error message and retains the comparison and answers for correction.
+
 Supported technical execution is shown as ready; its independent maintenance form
 is collapsed under **Optional technical maintenance**. A withdrawn or unavailable
 execution source keeps its warning and maintenance options visible. Technical

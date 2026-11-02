@@ -3128,4 +3128,8 @@ export const englishMessages: Record<string, string> = {
   "Upgrade jetzt anwenden": "Apply upgrade now",
   "Aktualisiere eine bestehende Landing Zone Schritt für Schritt. Bestellung und State-Zuordnung bleiben erhalten.":
     "Update an existing landing zone step by step. The order and State assignment are preserved.",
+  "Für diese Zielversion fehlt ein gemeinsamer freigegebener Ausführungsstand. Der Platform Owner muss den Upgrade-Pfad prüfen. Bestellung und State bleiben erhalten.":
+    "This target version has no shared approved execution source. The Platform Owner must review the upgrade path. The order and State are preserved.",
+  "Das benötigte Ausführungspaket ist derzeit nicht verfügbar. Aktualisiere die Updates später erneut. Bestellung und State bleiben erhalten.":
+    "The required execution package is currently unavailable. Refresh updates again later. The order and State are preserved.",
 };
