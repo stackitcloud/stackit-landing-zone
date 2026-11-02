@@ -5,7 +5,10 @@ import {
   classifyApplicationUpgradePlan,
 } from "@lzc/contracts";
 import pg from "pg";
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it, vi } from "vitest";
+import { buildApp } from "../apps/api/src/app.js";
+import { newSessionToken } from "../apps/api/src/auth/github-flow.js";
+import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import type { PlanRunner } from "../apps/api/src/plans/cloud-foundry.js";
 import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
@@ -36,6 +39,9 @@ const runtime = new pg.Pool({
   password: "runtime-test-only",
 });
 let owner: Session, engineer: Session, outsider: Session;
+const ownerToken = newSessionToken();
+const ownerGithubId =
+  process.env.LZC_TEST_BROWSER_JOURNEY === "true" ? 900800001 : 800001;
 const source = "08ac257de1548c8ec5e83dae1a79373711c3d644";
 const hash = "a".repeat(64);
 async function scoped<T>(
@@ -85,13 +91,16 @@ beforeAll(async () => {
       githubId: id,
       login: `upgrade-${id}`,
       id: randomUUID(),
-      hash: randomBytes(32).toString("base64url"),
+      hash:
+        id === ownerGithubId
+          ? ownerToken.hash
+          : randomBytes(32).toString("base64url"),
       csrfToken: randomBytes(32).toString("base64url"),
       expiresAt: new Date(Date.now() + 3600000),
     });
-  owner = await session(800001);
-  engineer = await session(800002);
-  outsider = await session(800003);
+  owner = await session(ownerGithubId);
+  engineer = await session(ownerGithubId + 1);
+  outsider = await session(ownerGithubId + 2);
   const org = randomUUID();
   await imported(async () => {
     await admin.query(
@@ -527,7 +536,7 @@ const summary = (classification = "ordinary", deletes = 0, replaces = 0) => ({
 });
 async function artifact(
   f: Awaited<ReturnType<typeof fixture>>,
-  j: Awaited<ReturnType<typeof plan>>,
+  j: { id: string; inputs: { stateKey: string } },
   value: ReturnType<typeof summary>,
 ) {
   const packageId = randomUUID();
@@ -547,12 +556,12 @@ async function artifact(
       ],
     );
     await admin.query(
-      "INSERT INTO lzc.application_job_delegations(job_id,tenant_id,delegation_id) SELECT $1,$2,id FROM lzc.application_execution_delegations WHERE platform_revision=$3 AND revoked_at IS NULL",
+      "INSERT INTO lzc.application_job_delegations(job_id,tenant_id,delegation_id) SELECT $1,$2,id FROM lzc.application_execution_delegations WHERE platform_revision=$3 AND revoked_at IS NULL ON CONFLICT(job_id) DO NOTHING",
       [j.id, owner.tenantId, f.platform],
     );
   });
   await migration.query(
-    "INSERT INTO lzc.application_runner_records(job_id,kind,tenant_id,owner_user_id,ciphertext,sha256,summary,truncated,binding_sha256,state_key,runner_package_id) VALUES($1,'artifact',$2,$3,$4,$5,$6,false,$5,$7,$8)",
+    "INSERT INTO lzc.application_runner_records(job_id,kind,tenant_id,owner_user_id,ciphertext,sha256,summary,truncated,binding_sha256,state_key,runner_package_id) VALUES($1,'artifact',$2,$3,$4,$5,$6,false,(SELECT binding_sha256 FROM lzc.application_jobs WHERE id=$1),$7,$8)",
     [
       j.id,
       owner.tenantId,
@@ -572,7 +581,7 @@ async function apply(
   const id = randomUUID();
   await scoped(owner, (c) =>
     c.query(
-      "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at,plan_id,artifact_sha256) VALUES($1,$2,$3,$4,$5,$6,'apply',$7,$8,now()+interval '10 minutes',$9,$8)",
+      "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at,plan_id,artifact_sha256) VALUES($1,$2,$3,$4,$5,$6,'apply',$7,(SELECT binding_sha256 FROM lzc.application_jobs WHERE id=$9),now()+interval '10 minutes',$9,$8)",
       [
         id,
         owner.tenantId,
@@ -1524,4 +1533,439 @@ it("does not equate two supported sources without reviewed replacement edges", a
       [unrelated],
     );
   }
+});
+
+async function appliedOrderHistory(f: Awaited<ReturnType<typeof fixture>>) {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const service = new Applications(runtime);
+  const old = await service.prepareJob(owner, f.instance, {
+    idempotencyKey: randomUUID(),
+    confirmPlan: true,
+  });
+  const inputs = (
+    await admin.query("SELECT inputs FROM lzc.application_jobs WHERE id=$1", [
+      old.id,
+    ])
+  ).rows[0].inputs;
+  const j = { id: old.id, inputs };
+  await artifact(f, j, summary("ordinary"));
+  const applied = await apply(f, {
+    id: old.id as ReturnType<typeof randomUUID>,
+    inputs,
+  });
+  await imported(async () => {
+    await admin.query(
+      "INSERT INTO lzc.application_job_claims(job_id,tenant_id,owner_user_id,approved_by,approval_session_id,expires_at) SELECT g.job_id,g.tenant_id,g.owner_user_id,g.approved_by,b.approval_session_id,g.expires_at FROM lzc.application_job_grants g JOIN lzc.application_job_backends b ON b.job_id=g.job_id WHERE g.job_id=$1",
+      [old.id],
+    );
+    await admin.query(
+      "INSERT INTO lzc.application_dispatches(job_id,tenant_id,instance_id,owner_user_id,approved_by,approval_session_id,status,runner_app_id,runner_package_id,finished_at) VALUES($1,$2,$3,$4,$5,$6,'succeeded',$7,$8,now())",
+      [
+        applied,
+        owner.tenantId,
+        f.instance,
+        owner.userId,
+        engineer.userId,
+        engineer.id,
+        randomUUID(),
+        randomUUID(),
+      ],
+    );
+  });
+  return j;
+}
+function journeyAuth(origin: string): AuthServices {
+  return {
+    origin,
+    allowLoopbackHttp: true,
+    clientId: "local-test",
+    store: new PostgresAuthStore(runtime),
+    github: { authorize: vi.fn() },
+    tokens: { get: vi.fn(), put: vi.fn(), remove: vi.fn() },
+  };
+}
+it.each(["template", "template-with-execution"])(
+  "upgrades an already applied order (%s) with a consumed Plan claim through real authenticated HTTP routes",
+  async (kind) => {
+    const { Applications } = await import(
+      "../apps/api/src/applications/service.js"
+    );
+    const f = await fixture(
+      kind === "template"
+        ? {}
+        : {
+            fromSource: "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+            targetSource: "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+          },
+    );
+    const old = await appliedOrderHistory(f);
+    const e = await edge(f);
+    const service = new Applications(runtime);
+    const unused = await service.prepareJob(owner, f.instance, {
+      idempotencyKey: randomUUID(),
+      confirmPlan: true,
+    });
+    const before = (
+      await admin.query(
+        "SELECT to_jsonb(g) AS grant FROM lzc.application_job_grants g WHERE job_id=$1",
+        [old.id],
+      )
+    ).rows[0].grant;
+    const app = buildApp({
+      auth: journeyAuth("https://configurator.example"),
+      applications: service,
+    });
+    const headers = {
+      cookie: `__Host-lzc-session=${ownerToken.token}`,
+      origin: "https://configurator.example",
+      "x-lzc-csrf": owner.csrfToken,
+      "x-lzc-tenant": owner.tenantId,
+    };
+    const url = `/api/v1/applications/instances/${f.instance}/upgrades`;
+    const payload = {
+      edgeId: e.id,
+      expectedBindingId: null,
+      expectedVersionId: f.from,
+      confirmUpgrade: true,
+    };
+    try {
+      const preview = await app.inject({
+        method: "POST",
+        url: `${url}/preview`,
+        headers,
+        payload,
+      });
+      expect(preview.statusCode, preview.body).toBe(200);
+      const saved = await app.inject({ method: "POST", url, headers, payload });
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(saved.json().effectiveVersionId).toBe(f.to);
+      expect(saved.json().lastAppliedVersionId).toBe(f.from);
+      expect(
+        (
+          await admin.query(
+            "SELECT to_jsonb(g) AS grant FROM lzc.application_job_grants g WHERE job_id=$1",
+            [old.id],
+          )
+        ).rows[0].grant,
+      ).toEqual(before);
+      expect(
+        (
+          await admin.query(
+            "SELECT revoked_at IS NOT NULL AS revoked FROM lzc.application_job_grants WHERE job_id=$1",
+            [unused.id],
+          )
+        ).rows[0].revoked,
+      ).toBe(true);
+      await expect(
+        admin.query(
+          "UPDATE lzc.application_job_grants SET revoked_at=now() WHERE job_id=$1",
+          [old.id],
+        ),
+      ).rejects.toThrow("application_grant_consumed");
+      const stale = await app.inject({ method: "POST", url, headers, payload });
+      expect(stale.statusCode).toBe(409);
+      expect(stale.json()).toEqual({
+        error: "application_upgrade_binding_changed",
+      });
+      expect(
+        (
+          await admin.query(
+            "SELECT count(*) FROM lzc.application_upgrade_candidates WHERE instance_id=$1",
+            [f.instance],
+          )
+        ).rows[0].count,
+      ).toBe("1");
+      const reload = await app.inject({ url, headers });
+      expect(reload.json().effectiveVersionId).toBe(f.to);
+      const compiled = await app.inject({
+        method: "POST",
+        url: `/api/v1/applications/instances/${f.instance}/plan-input`,
+        headers,
+        payload: {},
+      });
+      expect(compiled.statusCode, compiled.body).toBe(200);
+      expect(compiled.json().plan.variables.application.template_version).toBe(
+        2,
+      );
+      expect(compiled.json().plan.stateKey).toBe(old.inputs.stateKey);
+    } finally {
+      await app.close();
+    }
+  },
+);
+
+it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
+  "completes the upgrade wizard against real HTTP, sessions and PostgreSQL without API response mocks",
+  async () => {
+    const { chromium, expect: browserExpect } = await import(
+      "@playwright/test"
+    );
+    const { Applications } = await import(
+      "../apps/api/src/applications/service.js"
+    );
+    const f = await fixture({
+      fromSource: "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+      targetSource: "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+    });
+    const old = await appliedOrderHistory(f);
+    const publishedEdge = await edge(f);
+    // Use a distinct visible name so other database cases cannot be selected.
+    await imported(() =>
+      admin.query(
+        "UPDATE lzc.application_instances SET name='Browser recovery upgrade' WHERE id=$1",
+        [f.instance],
+      ),
+    );
+    const auth = journeyAuth("http://127.0.0.1:0");
+    const app = buildApp({
+      auth,
+      applications: new Applications(runtime),
+      webRoot: fileURLToPath(new URL("../apps/web/dist/", import.meta.url)),
+    });
+    function gate() {
+      let resolve = () => {};
+      const promise = new Promise<void>((done) => {
+        resolve = done;
+      });
+      return { promise, resolve };
+    }
+    const historyGate = gate();
+    const historyStarted = gate();
+    let delayHistory = true;
+    app.addHook("onSend", async (request) => {
+      if (
+        delayHistory &&
+        request.url === `/api/v1/applications/instances/${f.instance}/jobs`
+      ) {
+        delayHistory = false;
+        historyStarted.resolve();
+        await historyGate.promise;
+      }
+    });
+    const origin = await app.listen({ host: "127.0.0.1", port: 0 });
+    auth.origin = origin;
+    const browser = await chromium.launch();
+    const context = await browser.newContext({ locale: "de-DE" });
+    await context.addCookies([
+      {
+        name: "__Host-lzc-session",
+        value: ownerToken.token,
+        url: origin.replace("http:", "https:"),
+        secure: true,
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    const page = await context.newPage();
+    page.setDefaultTimeout(5000);
+    const failed: string[] = [];
+    page.on("response", (response) => {
+      if (
+        response.url().includes(`/instances/${f.instance}/upgrades`) &&
+        !response.ok()
+      )
+        failed.push(`${response.status()} ${response.url()}`);
+    });
+    try {
+      await page.goto(`${origin}/applications`);
+      await page
+        .getByRole("tab", { name: "Bestellungen", exact: true })
+        .click();
+      await page
+        .getByRole("button", {
+          name: /Details anzeigen: Browser recovery upgrade/,
+        })
+        .click();
+      const details = page.getByRole("region", {
+        name: "Bestelldetails",
+        exact: true,
+      });
+      await historyStarted.promise;
+      await details.getByRole("tab", { name: "Updates", exact: true }).click();
+      historyGate.resolve();
+      const panel = page.getByRole("region", {
+        name: "Template- und Plattform-Updates",
+        exact: true,
+      });
+      await panel
+        .getByLabel("Freigegebene Zielversion")
+        .selectOption(publishedEdge.id);
+      await panel
+        .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+        .click();
+      await browserExpect(
+        panel.getByRole("heading", {
+          name: "2. Vergleich prüfen und Upgrade-Ziel speichern",
+        }),
+      ).toBeVisible();
+      await panel
+        .getByRole("checkbox", {
+          name: "Ich übernehme nur den gewünschten Stand derselben Bestellung. Ich erstelle und prüfe danach einen neuen Plan; diese Aktion startet und genehmigt keinen Apply.",
+        })
+        .check();
+      await panel
+        .getByRole("button", { name: "Upgrade-Ziel speichern und weiter" })
+        .click();
+      await browserExpect(
+        panel.getByRole("button", {
+          name: "Weiter: Neuen Plan prüfen",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.reload();
+      await page
+        .getByRole("tab", { name: "Bestellungen", exact: true })
+        .click();
+      await page
+        .getByRole("button", {
+          name: /Details anzeigen: Browser recovery upgrade/,
+        })
+        .click();
+      await details.getByRole("tab", { name: "Updates", exact: true }).click();
+      await panel
+        .getByRole("button", { name: "Weiter: Neuen Plan prüfen", exact: true })
+        .click();
+      await browserExpect(
+        details.getByRole("tab", { name: "Plan", exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+      const compiled = await page.evaluate(
+        async ({ id, tenant, csrf }) => {
+          const response = await fetch(
+            `/api/v1/applications/instances/${id}/plan-input`,
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-lzc-tenant": tenant,
+                "x-lzc-csrf": csrf,
+              },
+              body: "{}",
+            },
+          );
+          return { status: response.status, body: await response.json() };
+        },
+        { id: f.instance, tenant: owner.tenantId, csrf: owner.csrfToken },
+      );
+      expect(compiled.status).toBe(200);
+      expect(compiled.body.plan.variables.application.template_version).toBe(2);
+      expect(compiled.body.plan.stateKey).toBe(old.inputs.stateKey);
+      expect(compiled.body.plan.acceleratorRevision).toBe(source);
+      expect(failed).toEqual([]);
+      expect(
+        (
+          await admin.query(
+            "SELECT count(*) FROM lzc.application_jobs WHERE instance_id=$1",
+            [f.instance],
+          )
+        ).rows[0].count,
+      ).toBe("2");
+    } catch (error) {
+      console.log((await page.locator("body").innerText()).slice(0, 3000));
+      throw error;
+    } finally {
+      historyGate.resolve();
+      await browser.close();
+      await app.close();
+    }
+  },
+  30000,
+);
+
+it("retains claimed historical grants for an explicit execution upgrade and still blocks active claims", async () => {
+  const f = await fixture({
+    fromSource: "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+  });
+  const old = await appliedOrderHistory(f);
+  await imported(() =>
+    admin.query(
+      "UPDATE lzc.application_dispatches SET status='planning',finished_at=NULL WHERE job_id=$1",
+      [old.id],
+    ),
+  );
+  await expect(
+    scoped(owner, (c) =>
+      c.query(
+        "SELECT lzc_auth.upgrade_application_execution($1,$2,$3,$4,true)",
+        [
+          owner.id,
+          f.instance,
+          source,
+          "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+        ],
+      ),
+    ),
+  ).rejects.toThrow("application_upgrade_execution_active");
+  await imported(() =>
+    admin.query(
+      "UPDATE lzc.application_dispatches SET status='succeeded',finished_at=now() WHERE job_id=$1",
+      [old.id],
+    ),
+  );
+  const result = await scoped(owner, (c) =>
+    c.query(
+      "SELECT lzc_auth.upgrade_application_execution($1,$2,$3,$4,true) AS value",
+      [
+        owner.id,
+        f.instance,
+        source,
+        "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+      ],
+    ),
+  );
+  expect(result.rows[0].value.revision).toBe(source);
+  expect(
+    (
+      await admin.query(
+        "SELECT revoked_at FROM lzc.application_job_grants WHERE job_id=$1",
+        [old.id],
+      )
+    ).rows[0].revoked_at,
+  ).toBeNull();
+});
+
+it("retains consumed Plan receipts when selecting a new Platform contract", async () => {
+  const f = await fixture();
+  const old = await appliedOrderHistory(f);
+  const next = randomUUID();
+  await imported(async () => {
+    await admin.query(
+      "INSERT INTO lzc.application_platform_contracts(revision,tenant_id,organization_id,approved_by,credential_profile_id,credential_version,credential_key_id,credential_checked_at,document) SELECT $1,tenant_id,organization_id,approved_by,credential_profile_id,credential_version,credential_key_id,credential_checked_at,jsonb_set(document,'{revision}',to_jsonb($1::uuid::text)) FROM lzc.application_platform_contracts WHERE revision=$2",
+      [next, f.platform],
+    );
+    await admin.query(
+      "INSERT INTO lzc.application_platform_sources(revision,tenant_id,apply_run_id,state_key,state_version,source_contract_revision,document_sha256,approval_session_id,credential_profile_id,credential_version,credential_key_id) SELECT $1,tenant_id,apply_run_id,state_key,state_version,source_contract_revision,$3,approval_session_id,credential_profile_id,credential_version,credential_key_id FROM lzc.application_platform_sources WHERE revision=$2",
+      [next, f.platform, "b".repeat(64)],
+    );
+    await admin.query(
+      "INSERT INTO lzc.application_execution_delegations(id,tenant_id,platform_revision,delegated_by,credential_profile_id,credential_version,credential_key_id,backend_id,backend_identity,backend_credentials_hash) SELECT gen_random_uuid(),tenant_id,$1,delegated_by,credential_profile_id,credential_version,credential_key_id,backend_id,backend_identity,backend_credentials_hash FROM lzc.application_execution_delegations WHERE platform_revision=$2",
+      [next, f.platform],
+    );
+  });
+  const e = await scoped(
+    engineer,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,true) AS value",
+          [engineer.id, f.platform, next, { sensitive: "approval-required" }],
+        )
+      ).rows[0].value,
+  );
+  const result = await scoped(owner, (c) =>
+    c.query(
+      "SELECT lzc_auth.request_application_platform_upgrade($1,$2,$3,NULL,$4,true) AS value",
+      [owner.id, f.instance, e.id, f.platform],
+    ),
+  );
+  expect(result.rows[0].value.effectivePlatformRevision).toBe(next);
+  expect(
+    (
+      await admin.query(
+        "SELECT revoked_at FROM lzc.application_job_grants WHERE job_id=$1",
+        [old.id],
+      )
+    ).rows[0].revoked_at,
+  ).toBeNull();
 });

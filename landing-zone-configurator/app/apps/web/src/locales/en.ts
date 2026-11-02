@@ -3132,4 +3132,12 @@ export const englishMessages: Record<string, string> = {
     "This target version has no shared approved execution source. The Platform Owner must review the upgrade path. The order and State are preserved.",
   "Das benötigte Ausführungspaket ist derzeit nicht verfügbar. Aktualisiere die Updates später erneut. Bestellung und State bleiben erhalten.":
     "The required execution package is currently unavailable. Refresh updates again later. The order and State are preserved.",
+  "Der Plattformnachweis hat sich seit der Prüfung geändert. Lade die Updates erneut und prüfe den aktuellen Plattformstand. Bestellung und State bleiben erhalten.":
+    "The platform proof has changed since the review. Refresh updates and review the current platform status. The order and State are preserved.",
+  "Eine frühere Plan-Freigabe wurde bereits verwendet. Die Aktualisierung konnte nicht gespeichert werden. Bestellung und State bleiben erhalten. Fehlercode: application_grant_consumed.":
+    "An earlier Plan grant has already been consumed. The update could not be saved. The order and State are preserved. Error code: application_grant_consumed.",
+  "Die State-Backend-Zuordnung widerspricht der bereits gespeicherten Zuordnung. Es wurde nichts umgestellt. Fehlercode: application_backend_binding_conflict.":
+    "The State backend assignment conflicts with the saved assignment. Nothing was switched. Error code: application_backend_binding_conflict.",
+  "Die Aktualisierung konnte wegen eines Ausführungskonflikts nicht gespeichert werden. Lade die Updates erneut. Bestellung und State bleiben erhalten. Fehlercode: application_request_conflict.":
+    "The update could not be saved because of an execution conflict. Refresh updates. The order and State are preserved. Error code: application_request_conflict.",
 };

@@ -98,3 +98,29 @@ Template-Entwürfe werden ausschließlich im ersten Reiter unter Application Lan
 Der vollständige Projekt-IAM-Katalog bleibt vom Workload-Standard getrennt. Nach Abruf von `GET https://authorization.api.stackit.cloud/v2/permissions?resourceType=project` mit `npm run permissions:generate -- /private/project-permissions.json YYYY-MM-DD` aktualisieren, die generierte Datei mit Biome formatieren, Assistant-Wissen neu erzeugen und betroffene reale Modellfälle qualifizieren. Keine Kennungen erraten. Die Domain erhält begrenzte zukünftige Kennungen; vor Veröffentlichung bestätigt der Server neue Kennungen durch Snapshot oder authentifizierten Live-Katalog, nach Autorisierung und außerhalb der Veröffentlichungstransaktion. Bestellparameter können veröffentlichte Policies nicht überschreiben. Dienst-Ergänzungen im Assistant bilden eine deterministische Vereinigung aus dem vertrauenswürdigen Katalog, erhalten Owner und bestehende Listen und benötigen ein passendes Dienstzitat aus der aktuellen Anfrage. Vollständige Kennungslisten werden nicht an fachfremde Modellanfragen angehängt.
 
 Owner-Aliase des Assistant verwenden ausschließlich E-Mail-Metadaten. Der Server verknüpft persönliche gespeicherte Zugangsprofile mit Vorbereitungen über aktuelle Profil-ID und Key sowie gespeicherte Konfigurations-ID und Entwurfsorganisation, innerhalb der bestehenden Mandanten-/Benutzertransaktion. Dokumentlokale IDs ersetzen diese Bindung nicht; entschlüsselte Zugangsdaten dürfen nicht in die Inferenz gelangen. Eine Vorbereitung ist kein erfolgreicher Zugriffscheck. Mehrere unterschiedliche Accounts bleiben eine Auswahl. Gemeinsame Owner-Antworten erhalten vorhandene ausdrückliche Owner; alte Rollenregeln werden nur nach erneuter geprüfter Bestätigung umgestellt und niemals still eingeschränkt.
+
+## Upgrade-Regression ohne Dev-Deployment
+
+Starte `npm run test:upgrade-journey` aus `app/`, nachdem die festgelegten Tools,
+Docker und Playwright Chromium (`npx playwright install chromium`) installiert
+sind. Der Befehl baut die UI, erstellt einen entbehrlichen PostgreSQL-Container
+mit Loopback-Port, führt alle Migrationen aus und entfernt den Container danach.
+Cloud-Zugriff und Kundendaten werden nicht verwendet. CI nutzt seine bestehende
+lokale Testdatenbank und nach dem regulären Build `--no-build`.
+
+Der Browser verwendet die gebaute SPA, echte HTTP-Routen, PostgreSQL-Sessions,
+CSRF, RLS und Migrationsfunktionen. Die Testdaten enthalten einen erfolgreichen
+historischen Plan/Apply und eine verbrauchte Plan-Freigabe statt nur einer leeren
+Bestellung. Er wählt, prüft und speichert ein Upgrade, lädt es erneut, folgt dem
+nächsten Schritt zu Plan und prüft die kompilierte Zielversion, freigegebene
+Ausführungsquelle und unveränderte State-Zuordnung. Ein Cloud-Plan oder Apply
+wird nicht ausgeführt. Separate Datenbank-/Runner-Broker-Tests prüfen Dispatch
+und Artefaktzulassung. Ersetze diese Upgrade-API-Antworten nicht durch
+Browser-Routen-Mocks; solche Mocks würden Transaktionsfehler verdecken.
+
+Upgrades widerrufen nur unverbrauchte alte Plan-Freigaben. Verbrauchte
+historische Freigaben und Claims bleiben unveränderlich; eindeutige Claims und
+die Prüfung der aktuellen Quelle bzw. Upgrade-Bindung verhindern eine erneute
+Verwendung. Aktive Ausführungen und ungeklärte Recovery blockieren weiterhin.
+SQL-Konflikte behalten ihren konkreten sicheren Fehlercode; ein unbekannter
+Konflikt darf nicht als State-Backend-Konflikt gemeldet werden.

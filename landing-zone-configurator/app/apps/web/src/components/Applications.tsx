@@ -1069,6 +1069,8 @@ function ApplicationPlanControls({
   }, [applyReviewJob]);
   const preparedJob = useRef<string | null>(null);
   const initialViewSelected = useRef(false);
+  const currentView = useRef(view);
+  currentView.current = view;
   const terminalRefreshed = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1153,12 +1155,15 @@ function ApplicationPlanControls({
       setJobs(result.jobs);
       if (!initialViewSelected.current) {
         initialViewSelected.current = true;
-        if (
-          result.jobs[0]?.purpose === "destroy" ||
-          result.jobs[0]?.purpose === "drift"
-        )
-          onViewChange(result.jobs[0].purpose);
-        else if (result.jobs[0]?.operation === "apply") onViewChange("apply");
+        // A delayed history response must not override explicit navigation.
+        if (currentView.current === "plan" && !upgradeWizard) {
+          if (
+            result.jobs[0]?.purpose === "destroy" ||
+            result.jobs[0]?.purpose === "drift"
+          )
+            onViewChange(result.jobs[0].purpose);
+          else if (result.jobs[0]?.operation === "apply") onViewChange("apply");
+        }
       }
       if (
         !terminalRefreshed.current &&
@@ -1215,7 +1220,7 @@ function ApplicationPlanControls({
       }
       setLoaded(true);
     },
-    [instance.id, session, isEngineer, onViewChange, onTerminal],
+    [instance.id, session, isEngineer, onViewChange, onTerminal, upgradeWizard],
   );
   useEffect(() => {
     const controller = new AbortController();
