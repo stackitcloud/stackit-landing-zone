@@ -40,6 +40,7 @@ function lifecycle(
 async function fixture(
   page: Page,
   options: {
+    technicalClosed?: boolean;
     status?: "supported" | "withdrawn" | "unavailable";
     foreign?: boolean;
     stale?: boolean;
@@ -202,6 +203,14 @@ async function fixture(
     exact: true,
   });
   await expect(component).toBeVisible();
+  if (
+    !options.technicalClosed &&
+    !options.pending &&
+    (!options.status || options.status === "supported")
+  )
+    await component
+      .getByText("Optionale technische Wartung", { exact: true })
+      .click();
   return {
     component,
     mutations,
@@ -280,7 +289,7 @@ test("withdrawn source offers only its reviewed replacement; active execution bl
     "Eine Ausführung oder die Klärung eines fehlgeschlagenen Apply ist noch offen.",
   );
   await expect(f.component).toContainText(
-    "Eine Runner-Berechtigung ist noch aktiv.",
+    "Ein kürzlich gestarteter Plan oder Apply hat noch eine zeitlich begrenzte Ausführungsfreigabe.",
   );
   await expect(f.component).toContainText(
     "Eine geführte State-Wiederherstellung ist noch aktiv.",
@@ -297,7 +306,9 @@ test("withdrawn source offers only its reviewed replacement; active execution bl
     exact: true,
   });
   await expect(english).toContainText("Withdrawn");
-  await expect(english).toContainText("A runner capability is still active.");
+  await expect(english).toContainText(
+    "A recently started Plan or Apply still has a time-limited execution grant.",
+  );
   await expect(english).toContainText("Guided state recovery is still active.");
 });
 
@@ -493,3 +504,25 @@ for (const action of ["plan", "drift"] as const) {
     });
   }
 }
+
+test("supported execution keeps optional maintenance out of the template wizard", async ({
+  page,
+}) => {
+  const f = await fixture(page, { technicalClosed: true });
+  await expect(f.component).toContainText(
+    "Die technische Ausführung ist einsatzbereit",
+  );
+  await expect(f.component.getByRole("combobox")).not.toBeVisible();
+  expect(f.mutations).toEqual([]);
+  await f.component
+    .getByText("Optionale technische Wartung", { exact: true })
+    .click();
+  await expect(f.component.getByRole("combobox")).toBeVisible();
+  await expect(
+    f.component.getByRole("button", {
+      name: "Ausführungsbindung aktualisieren",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  expect(f.mutations).toEqual([]);
+});

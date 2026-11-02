@@ -40,15 +40,26 @@ than a missing permission. A failed publication leaves saved paths unchanged.
 
 ## Upgrade an existing order
 
-1. In **Updates**, select an offered version and compare its changes.
+1. In **Updates**, select an offered version in the wizard and choose **Next: review changes**.
 2. Existing parameter answers are retained. Supply any newly required answers;
    changing the selection or answers invalidates the previous preview.
-3. Review and explicitly confirm the new desired binding. This starts no Plan
+3. The comparison is a separate step. Use **Back: target version and answers**
+   to revise it; a new review is required afterwards. Confirm and choose
+   **Save upgrade target and continue**. This starts no Plan
    or Apply and does not change the State.
-4. Create a fresh Plan of the same order. The native Plan, rather than only a
+4. **Next: review a new Plan** opens the same order's Plan view without starting a job.
+   This action is also available after reloading a saved, unapplied template target.
+   Create a fresh Plan of the same order. The native Plan, rather than only a
    template comparison, determines whether the actual changes are permitted.
 5. Obtain any required Platform Owner approval for that exact Plan and artifact,
-   then explicitly release Apply through the normal flow.
+   then review its resource preview. In the wizard, **Next: prepare Apply** opens
+   a separate final confirmation; only the explicit Apply action changes resources.
+   Going back does not start a job or grant approval.
+
+Supported technical execution is shown as ready; its independent maintenance form
+is collapsed under **Optional technical maintenance**. A withdrawn or unavailable
+execution source keeps its warning and maintenance options visible. Technical
+maintenance does not change template permissions.
 
 The instance, project identity, State key and backend remain the same. The
 standard path blocks resource deletions and replacements, including changes

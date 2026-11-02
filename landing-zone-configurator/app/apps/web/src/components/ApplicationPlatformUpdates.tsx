@@ -37,8 +37,7 @@ export function ApplicationPlatformUpdates({
     [preview, setPreview] = useState<z.infer<typeof previewSchema> | null>(
       null,
     ),
-    [confirmed, setConfirmed] = useState(false),
-    [notice, setNotice] = useState("");
+    [confirmed, setConfirmed] = useState(false);
   const edge = context.platformCandidates.find((item) => item.id === edgeId);
   async function inspect() {
     if (!edge || busy || context.effectivePlatformRevision === null) return;
@@ -86,9 +85,6 @@ export function ApplicationPlatformUpdates({
     setPreview(null);
     setConfirmed(false);
     setEdgeId("");
-    setNotice(
-      "Der gewünschte Plattformstand ist gespeichert. Erstelle und prüfe separat einen neuen Plan. Es wurde kein Plan oder Apply gestartet.",
-    );
     await onChanged(result.signal);
   }
   if (context.effectivePlatformRevision === null)
@@ -116,7 +112,6 @@ export function ApplicationPlatformUpdates({
         )}
       </p>
       {error && <p role="alert">{t(error)}</p>}
-      {notice && <p role="status">{t(notice)}</p>}
       {!context.platformCandidates.length && (
         <p>
           {t(
@@ -137,7 +132,6 @@ export function ApplicationPlatformUpdates({
                   setEdgeId(event.target.value);
                   setPreview(null);
                   setConfirmed(false);
-                  setNotice("");
                 }}
               >
                 <option value="">{t("Upgrade wählen")}</option>

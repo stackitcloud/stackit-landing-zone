@@ -3077,4 +3077,55 @@ export const englishMessages: Record<string, string> = {
     "Resolve the listed blockers first. This upgrade cannot yet be selected or unblocked through Plan approval.",
   "Übernimm zuerst den gewünschten Upgrade-Stand und erstelle einen neuen Plan. Nach erfolgreichem Plan findet der Platform Owner in dieser Bestellung unter Plan die Aktion „Diesen Upgrade-Plan freigeben“. Apply bleibt ein separater Schritt.":
     "First select the desired upgrade version and create a new Plan. Once the Plan succeeds, the Platform Owner can use “Approve this upgrade Plan” in this order’s Plan tab. Apply remains a separate step.",
+  "Template-Upgrade in zwei Schritten": "Template upgrade in two steps",
+  "Änderungen prüfen": "Review changes",
+  "Prüfung abgeschlossen": "Review complete",
+  "Zielversion auswählen und Änderungen ansehen":
+    "Select a target version and review changes",
+  "Upgrade-Ziel speichern": "Save upgrade target",
+  "Erst nach der Prüfung bestätigen; Plan und Apply folgen separat.":
+    "Confirm after review; Plan and Apply follow separately.",
+  "1. Zielversion auswählen und Änderungen prüfen":
+    "1. Select a target version and review changes",
+  "Änderungen werden geprüft …": "Reviewing changes …",
+  "Auswahl ändern und erneut prüfen": "Change selection and review again",
+  "Das Upgrade-Ziel wird gespeichert …": "Saving the upgrade target …",
+  "Die Änderungen werden geprüft. Es wird kein Cloud-Plan gestartet.":
+    "Reviewing the changes. No Cloud Plan is started.",
+  "2. Vergleich prüfen und Upgrade-Ziel speichern":
+    "2. Review the comparison and save the upgrade target",
+  "Prüfergebnis: Hindernisse zuerst klären":
+    "Review result: resolve blockers first",
+  "Schritt 1 ist abgeschlossen. Prüfe die Änderungen und bestätige anschließend die Zielversion. Damit wird noch keine Infrastruktur geändert.":
+    "Step 1 is complete. Review the changes and then confirm the target version. This does not change infrastructure yet.",
+  "Upgrade-Ziel wird gespeichert …": "Saving upgrade target …",
+  "Zurück: Zielversion und Antworten": "Back: target version and answers",
+  "Weiter: Änderungen prüfen": "Next: review changes",
+  "Upgrade-Ziel speichern und weiter": "Save upgrade target and continue",
+  "Nächster Schritt: Plan": "Next step: Plan",
+  "Upgrade-Ziel ist gespeichert": "Upgrade target saved",
+  "Erstelle jetzt einen neuen Plan für diesen gespeicherten Stand. Prüfe dort die tatsächlichen Änderungen und eine gegebenenfalls erforderliche Platform-Owner-Freigabe. Erst danach kannst du Apply ausdrücklich starten.":
+    "Create a new Plan for this saved target. Review the actual changes and any required Platform Owner approval there. Afterwards you can explicitly start Apply.",
+  "Weiter: Neuen Plan prüfen": "Next: review a new Plan",
+  "Die technische Ausführung ist einsatzbereit. Für Änderungen an Template-Rechten verwende den Template-Upgrade-Assistenten oben.":
+    "Technical execution is ready. Use the template upgrade wizard above to change template permissions.",
+  "Optionale technische Wartung": "Optional technical maintenance",
+  "Technische Ausführung prüfen": "Check technical execution",
+  "Ein kürzlich gestarteter Plan oder Apply hat noch eine zeitlich begrenzte Ausführungsfreigabe. Warte auf deren Ablauf und aktualisiere dann den Status, bevor du die technische Ausführung änderst.":
+    "A recently started Plan or Apply still has a time-limited execution grant. Wait for it to expire, then refresh the status before changing technical execution.",
+  "Schritt 3: Erstelle einen neuen Plan für das gespeicherte Upgrade-Ziel. Prüfe die Ressourcen und hole gegebenenfalls die angezeigte Freigabe ein. Danach führt dich Weiter zur Apply-Bestätigung.":
+    "Step 3: create a new Plan for the saved upgrade target. Review the resources and obtain any required approval shown. Next then takes you to Apply confirmation.",
+  "Weiter: Apply vorbereiten": "Next: prepare Apply",
+  "Upgrade anwenden": "Apply upgrade",
+  "4. Upgrade anwenden": "4. Apply upgrade",
+  "Der geprüfte Plan ist bereit. Erst die folgende Apply-Aktion ändert die Infrastruktur. Die Berechtigungen und die Gültigkeit dieses Plans werden beim Start erneut geprüft.":
+    "The reviewed Plan is ready. Only the following Apply action changes infrastructure. Permissions and Plan validity are checked again when it starts.",
+  "Zurück: Plan prüfen": "Back: review Plan",
+  "Upgrade-Schritte": "Upgrade steps",
+  "Zielversion auswählen": "Select target version",
+  "Änderungen prüfen und Ziel speichern": "Review changes and save target",
+  "Zurück: Upgrade-Ziel": "Back: upgrade target",
+  "Upgrade jetzt anwenden": "Apply upgrade now",
+  "Aktualisiere eine bestehende Landing Zone Schritt für Schritt. Bestellung und State-Zuordnung bleiben erhalten.":
+    "Update an existing landing zone step by step. The order and State assignment are preserved.",
 };

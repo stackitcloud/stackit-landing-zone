@@ -43,15 +43,27 @@ gemeldet. Fehlgeschlagene Veröffentlichungen verändern gespeicherte Pfade nich
 
 ## Bestehende Bestellung aktualisieren
 
-1. Unter **Updates** eine angebotene Version auswählen und Änderungen vergleichen.
+1. Unter **Updates** im Assistenten eine angebotene Version auswählen und
+   **Weiter: Änderungen prüfen** wählen.
 2. Vorhandene Parameterantworten bleiben erhalten. Neu erforderliche Antworten
    ergänzen; geänderte Auswahl oder Antworten machen die bisherige Vorschau ungültig.
-3. Die gewünschte Bindung prüfen und ausdrücklich bestätigen. Das startet weder
+3. Der Vergleich erscheint als eigener Schritt. **Zurück: Zielversion und Antworten**
+   führt zur Auswahl zurück; danach ist eine neue Prüfung nötig. Bestätigen und
+   **Upgrade-Ziel speichern und weiter** wählen. Das startet weder
    Plan noch Apply und verändert keinen State.
-4. Einen neuen Plan derselben Bestellung erstellen. Erst der native Plan zeigt,
+4. **Weiter: Neuen Plan prüfen** öffnet den Plan-Reiter derselben Bestellung, ohne
+   einen Job zu starten. Diese Aktion ist auch nach dem Neuladen eines gespeicherten,
+   noch nicht angewendeten Template-Ziels verfügbar. Einen neuen Plan erstellen. Erst der native Plan zeigt,
    welche tatsächlichen Änderungen zulässig sind.
 5. Falls erforderlich, die Platform-Owner-Freigabe für genau diesen Plan und sein
-   Artefakt einholen; anschließend Apply im normalen Ablauf ausdrücklich freigeben.
+   Artefakt einholen und die Ressourcen-Vorschau prüfen. **Weiter: Apply vorbereiten**
+   öffnet im Assistenten die separate abschließende Bestätigung. Erst die ausdrückliche
+   Apply-Aktion ändert Ressourcen. Zurückgehen startet keinen Job und erteilt keine Freigabe.
+
+Unterstützte technische Ausführung wird als einsatzbereit angezeigt; ihr separates
+Wartungsformular ist unter **Optionale technische Wartung** eingeklappt. Bei einer
+zurückgezogenen oder nicht verfügbaren Ausführung bleiben Warnung und Wartungsoptionen
+sichtbar. Technische Wartung verändert keine Template-Rechte.
 
 Instanz, Projektidentität, State-Key und Backend bleiben gleich. Der Standardpfad
 blockiert Löschungen und Ersetzungen – auch Änderungen, die OpenTofu als Ersetzung

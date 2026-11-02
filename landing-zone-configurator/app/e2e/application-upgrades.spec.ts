@@ -62,6 +62,7 @@ async function setup(
   noPath = false,
   publication: {
     sourceApproval?: boolean;
+    planReady?: boolean;
     saved?: boolean;
     reject?: boolean;
   } = {},
@@ -304,7 +305,7 @@ async function setup(
                     summary: null,
                     errorCode: null,
                     artifactSha256: "a".repeat(64),
-                    canApply: false,
+                    canApply: publication.planReady === true,
                   },
                 ]
               : [],
@@ -394,6 +395,10 @@ async function setup(
       };
       return r.fulfill({ json: context });
     }
+    if (path === `jobs/${family}/apply`) {
+      expect(body).toEqual({ artifactSha256: "a".repeat(64) });
+      return r.fulfill({ json: { jobId: family } });
+    }
     expect(body.edgeId).toBe(edge);
     expect(body.expectedBindingId).toBeNull();
     expect(body.expectedVersionId).toBe(old);
@@ -452,19 +457,19 @@ test("existing order previews new answers and selects desired snapshot without P
 }) => {
   const { panel, mutations } = await setup(page);
   await panel
-    .getByRole("button", { name: "Upgrade prüfen", exact: true })
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
     .click();
   await expect(
     panel.getByText("Upgrade blockiert", { exact: true }),
   ).toBeVisible();
-  await expect(
-    panel.getByRole("checkbox", { name: confirmation }),
-  ).toBeDisabled();
+  await expect(panel.getByRole("checkbox", { name: confirmation })).toHaveCount(
+    0,
+  );
   await panel
     .locator(`select[id$="secretsmanager_enabled"]`)
     .selectOption("false");
   await panel
-    .getByRole("button", { name: "Upgrade prüfen", exact: true })
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
     .click();
   await expect(
     panel.getByText("Sensitives Upgrade", { exact: true }),
@@ -474,7 +479,7 @@ test("existing order previews new answers and selects desired snapshot without P
   ).toBeVisible();
   await panel.getByRole("checkbox", { name: confirmation }).check();
   await panel
-    .getByRole("button", { name: "Gewünschten Upgrade-Stand übernehmen" })
+    .getByRole("button", { name: "Upgrade-Ziel speichern und weiter" })
     .click();
   await expect(
     panel.getByText(/Der gewünschte Upgrade-Stand ist gespeichert/),
@@ -500,6 +505,12 @@ test("existing order previews new answers and selects desired snapshot without P
     .getByRole("tab", { name: "Updates", exact: true })
     .click();
   await expect(page.locator(`abbr[title="${target}"]`)).toHaveCount(1);
+  await expect(
+    page.getByRole("button", {
+      name: "Weiter: Neuen Plan prüfen",
+      exact: true,
+    }),
+  ).toBeVisible();
   expect(mutations).toHaveLength(3);
 });
 test("blocked component removal cannot be confirmed", async ({ page }) => {
@@ -508,17 +519,17 @@ test("blocked component removal cannot be confirmed", async ({ page }) => {
     .locator(`select[id$="secretsmanager_enabled"]`)
     .selectOption("false");
   await panel
-    .getByRole("button", { name: "Upgrade prüfen", exact: true })
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
     .click();
   await expect(
     panel.getByText(/bestehende Komponente entfernen/),
   ).toBeVisible();
+  await expect(panel.getByRole("checkbox", { name: confirmation })).toHaveCount(
+    0,
+  );
   await expect(
-    panel.getByRole("checkbox", { name: confirmation }),
-  ).toBeDisabled();
-  await expect(
-    panel.getByRole("button", { name: "Gewünschten Upgrade-Stand übernehmen" }),
-  ).toBeDisabled();
+    panel.getByRole("button", { name: "Upgrade-Ziel speichern und weiter" }),
+  ).toHaveCount(0);
   await expect(
     panel.getByText(
       "Kläre zuerst die aufgeführten Hindernisse. Dieses Upgrade kann noch nicht übernommen oder per Plan-Freigabe entsperrt werden.",
@@ -537,11 +548,11 @@ test("concurrent desired binding change preserves order and requires refresh", a
     .locator(`select[id$="secretsmanager_enabled"]`)
     .selectOption("false");
   await panel
-    .getByRole("button", { name: "Upgrade prüfen", exact: true })
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
     .click();
   await panel.getByRole("checkbox", { name: confirmation }).check();
   await panel
-    .getByRole("button", { name: "Gewünschten Upgrade-Stand übernehmen" })
+    .getByRole("button", { name: "Upgrade-Ziel speichern und weiter" })
     .click();
   await expect(panel.getByRole("alert")).toContainText(
     "Bestellung und State bleiben erhalten",
@@ -650,9 +661,15 @@ test("platform-only upgrade keeps template and existing State with separate prev
   await panel
     .getByRole("button", { name: "Gewünschten Plattformstand übernehmen" })
     .click();
-  await expect(panel.getByRole("status")).toContainText(
-    "kein Plan oder Apply gestartet",
-  );
+  await expect(
+    page
+      .getByRole("region", {
+        name: "Template- und Plattform-Updates",
+        exact: true,
+      })
+      .getByRole("status")
+      .filter({ hasText: "Der gewünschte Plattformstand ist gespeichert" }),
+  ).toContainText("kein Plan oder Apply gestartet");
   expect(mutations.map((item) => item.path)).toEqual([
     `instances/${instance}/platform-upgrades/preview`,
     `instances/${instance}/platform-upgrades`,
@@ -743,7 +760,7 @@ test("late preview from previous workspace cannot restore upgrade confirmation",
     .locator('select[id$="secretsmanager_enabled"]')
     .selectOption("false");
   await panel
-    .getByRole("button", { name: "Upgrade prüfen", exact: true })
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
     .click();
   await expect.poll(() => started).toBe(true);
   const other = {
@@ -777,7 +794,7 @@ test("late preview from previous workspace cannot restore upgrade confirmation",
   ).toHaveCount(0);
   release();
   await expect(
-    page.getByRole("button", { name: "Gewünschten Upgrade-Stand übernehmen" }),
+    page.getByRole("button", { name: "Upgrade-Ziel speichern und weiter" }),
   ).toHaveCount(0);
   expect(mutations).toEqual([]);
 });
@@ -841,11 +858,11 @@ test("a different desired template binding clears an already confirmed platform 
     .locator('select[id$="secretsmanager_enabled"]')
     .selectOption("false");
   await panel
-    .getByRole("button", { name: "Upgrade prüfen", exact: true })
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
     .click();
   await panel.getByRole("checkbox", { name: confirmation }).check();
   await panel
-    .getByRole("button", { name: "Gewünschten Upgrade-Stand übernehmen" })
+    .getByRole("button", { name: "Upgrade-Ziel speichern und weiter" })
     .click();
   await expect(
     panel.getByText(/Der gewünschte Upgrade-Stand ist gespeichert/),
@@ -1071,4 +1088,217 @@ test("approval-required versions cannot publish a direct path and retain saved f
       },
     },
   ]);
+});
+
+test("upgrade flow advances only after review and changing answers invalidates step two", async ({
+  page,
+}) => {
+  const { panel, mutations } = await setup(page);
+  await expect(
+    panel.getByRole("button", {
+      name: "Upgrade-Ziel speichern und weiter",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await panel
+    .locator('select[id$="secretsmanager_enabled"]')
+    .selectOption("false");
+  await panel
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+    .click();
+  await expect(
+    panel.getByRole("heading", {
+      name: "2. Vergleich prüfen und Upgrade-Ziel speichern",
+    }),
+  ).toBeFocused();
+  await expect(panel.getByLabel("Freigegebene Zielversion")).not.toBeVisible();
+  await expect(
+    panel.getByRole("button", {
+      name: "Weiter: Änderungen prüfen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await panel.getByRole("checkbox", { name: confirmation }).check();
+  await panel
+    .getByRole("button", { name: "Zurück: Zielversion und Antworten" })
+    .click();
+  await expect(panel.getByLabel("Freigegebene Zielversion")).toBeEnabled();
+  await expect(
+    panel.getByRole("button", {
+      name: "Upgrade-Ziel speichern und weiter",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    panel.locator('select[id$="secretsmanager_enabled"]'),
+  ).toHaveValue("false");
+  await panel
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+    .click();
+  await expect(
+    panel.getByRole("checkbox", { name: confirmation }),
+  ).not.toBeChecked();
+  await expect(
+    panel.getByRole("button", {
+      name: "Upgrade-Ziel speichern und weiter",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  expect(mutations.map((x) => x.path)).toEqual([
+    `instances/${instance}/upgrades/preview`,
+    `instances/${instance}/upgrades/preview`,
+  ]);
+  await page.screenshot({
+    path: test.info().outputPath("upgrade-flow.png"),
+    fullPage: false,
+  });
+});
+
+test("failed review displays feedback at the action and never offers save", async ({
+  page,
+}) => {
+  const { panel, mutations } = await setup(page);
+  await panel
+    .locator('select[id$="secretsmanager_enabled"]')
+    .selectOption("false");
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started = false;
+  await page.route(
+    `**/api/v1/applications/instances/${instance}/upgrades/preview`,
+    async (route) => {
+      started = true;
+      await gate;
+      await route.fulfill({
+        status: 503,
+        json: { error: "application_request_failed" },
+      });
+    },
+  );
+  await panel
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+    .click();
+  await expect.poll(() => started).toBe(true);
+  await expect(
+    panel
+      .getByRole("status")
+      .filter({ hasText: "Die Änderungen werden geprüft" }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", {
+      name: "Änderungen werden geprüft …",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  release();
+  await expect(panel.getByRole("alert")).toBeVisible();
+  await expect(panel.getByRole("alert")).toContainText(
+    "Upgrade-Prüfung ist derzeit nicht verfügbar",
+  );
+  await expect(
+    panel.getByRole("button", {
+      name: "Upgrade-Ziel speichern und weiter",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", {
+      name: "Weiter: Änderungen prüfen",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  expect(mutations).toEqual([]);
+});
+
+test("wizard continues from saved target to Plan and separate Apply confirmation without automatic execution", async ({
+  page,
+}) => {
+  const { panel, mutations } = await setup(
+    page,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    { planReady: true },
+  );
+  await expect(
+    panel.getByRole("button", {
+      name: "Weiter: Neuen Plan prüfen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await panel
+    .locator('select[id$="secretsmanager_enabled"]')
+    .selectOption("false");
+  await panel
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+    .click();
+  await expect(panel.getByLabel("Freigegebene Zielversion")).not.toBeVisible();
+  await panel.getByRole("checkbox", { name: confirmation }).check();
+  await panel
+    .getByRole("button", {
+      name: "Upgrade-Ziel speichern und weiter",
+      exact: true,
+    })
+    .click();
+  await panel
+    .getByRole("button", { name: "Weiter: Neuen Plan prüfen", exact: true })
+    .click();
+  await expect(
+    page.getByRole("tab", { name: "Plan", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  const plan = page.getByRole("region", {
+    name: "Application-Plan",
+    exact: true,
+  });
+  await expect(plan).toContainText("Schritt 3:");
+  await expect(
+    plan.getByRole("button", {
+      name: "Upgrade jetzt anwenden",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await plan
+    .getByRole("button", {
+      name: "Ressourcen-Vorschau aktualisieren",
+      exact: true,
+    })
+    .click();
+  await plan
+    .getByRole("button", { name: "Weiter: Apply vorbereiten", exact: true })
+    .click();
+  await expect(
+    plan.getByRole("heading", { name: "4. Upgrade anwenden", exact: true }),
+  ).toBeFocused();
+  expect(mutations.map((x) => x.path)).toEqual([
+    `instances/${instance}/upgrades/preview`,
+    `instances/${instance}/upgrades`,
+  ]);
+  await plan
+    .getByRole("button", { name: "Zurück: Plan prüfen", exact: true })
+    .click();
+  await expect(
+    plan.getByRole("button", {
+      name: "Upgrade jetzt anwenden",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await plan
+    .getByRole("button", { name: "Weiter: Apply vorbereiten", exact: true })
+    .click();
+  await plan
+    .getByRole("button", {
+      name: "Upgrade jetzt anwenden",
+      exact: true,
+    })
+    .click();
+  expect(mutations.at(-1)).toEqual({
+    path: `jobs/${family}/apply`,
+    body: { artifactSha256: "a".repeat(64) },
+  });
 });
