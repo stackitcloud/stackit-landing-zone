@@ -1610,7 +1610,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/docs/application-upgrades.md",
           sha256:
-            "35a29c03009ad6083ff40e964c09a8ef70e66621318c15971f4308d493afac29",
+            "727c4f9119e9418c94283cba73980c1b2769a2d68a302a53e8908010ae28bd44",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-upgrades.ts",

@@ -3,6 +3,10 @@ import { z } from "zod";
 import type { Session } from "./Account";
 
 const failures: Record<string, string> = {
+  application_upgrade_edge_invalid:
+    "Dieser Upgrade-Pfad passt nicht zu den gewählten Versionen oder Richtlinien. Direkte Anwendung ist nur möglich, wenn beide Versionen direkte Bereitstellung erlauben. Es wurde kein Pfad veröffentlicht.",
+  application_upgrade_edge_changed:
+    "Dieser Upgrade-Pfad ist bereits mit einer anderen Richtlinie veröffentlicht. Lade die gespeicherten Pfade erneut. Die bestehende Freigabe bleibt unverändert.",
   application_upgrade_changed:
     "Der Upgrade-Prüfstand hat sich geändert. Lade die Updates erneut und prüfe den Vergleich.",
   application_upgrade_binding_changed:

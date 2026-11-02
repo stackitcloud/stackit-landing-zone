@@ -2027,3 +2027,27 @@ button.template-node:hover {
     padding: 1rem;
   }
 }
+
+.application-upgrade-paths {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.application-upgrade-path {
+  padding: 1rem;
+  border: 1px solid var(--border-color, #bcc8ce);
+  border-radius: 0.5rem;
+}
+.application-upgrade-path-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+}
+.application-upgrade-path-summary dt {
+  font-weight: 600;
+}
+.application-upgrade-path-summary dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
