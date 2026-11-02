@@ -3042,4 +3042,33 @@ export const englishMessages: Record<string, string> = {
   "Veröffentlichte Upgrade-Pfade": "Published upgrade paths",
   "Zuletzt erfolgreich angewendete Template-Version":
     "Last successfully applied template version",
+  "Gespeicherte Upgrade-Pfade": "Saved upgrade paths",
+  "Diese Liste zeigt die gespeicherten Freigaben aller Template-Familien im Arbeitsbereich. Die Auswahl im Formular veröffentlicht noch keinen Pfad.":
+    "This list shows the saved releases for all template families in the workspace. Selecting versions in the form does not publish a path.",
+  "Upgrade-Pfade aktualisieren": "Refresh upgrade paths",
+  "Noch keine Upgrade-Pfade veröffentlicht.":
+    "No upgrade paths have been published yet.",
+  "Die gespeicherten Upgrade-Pfade wurden noch nicht geladen.":
+    "Saved upgrade paths have not been loaded yet.",
+  "Die Liste konnte nicht aktualisiert werden. Angezeigt wird der zuletzt geladene Stand.":
+    "The list could not be refreshed. The last loaded version is displayed.",
+  Ausgangsversion: "Source version",
+  Zielversion: "Target version",
+  "Sensitive Änderungen": "Sensitive changes",
+  "Direkt, sofern beide Versionen es erlauben":
+    "Direct, if both versions permit it",
+  "Separate Plan-Freigabe erforderlich": "Separate Plan approval required",
+  "Veröffentlicht · Für Bestellungen auf genau dieser Ausgangsversion":
+    "Published · For orders on this exact source version",
+  "Neuen Upgrade-Pfad veröffentlichen": "Publish a new upgrade path",
+  "Beide Versionen erlauben direkte Bereitstellung. Für sensitive Änderungen kannst du dennoch eine separate Plan-Freigabe verlangen.":
+    "Both versions allow direct deployment. You can still require separate Plan approval for sensitive changes.",
+  "Mindestens eine Version verlangt eine separate Plan-Freigabe. Dieser Pfad kann diese Richtlinie nicht aufheben.":
+    "At least one version requires separate Plan approval. This path cannot override that policy.",
+  "Dieser Upgrade-Pfad ist bereits veröffentlicht. Du findest ihn oben in den gespeicherten Pfaden.":
+    "This upgrade path is already published. You can find it in the saved paths above.",
+  "Dieser Upgrade-Pfad passt nicht zu den gewählten Versionen oder Richtlinien. Direkte Anwendung ist nur möglich, wenn beide Versionen direkte Bereitstellung erlauben. Es wurde kein Pfad veröffentlicht.":
+    "This upgrade path does not match the selected versions or policies. Direct application is possible only if both versions allow direct deployment. No path was published.",
+  "Dieser Upgrade-Pfad ist bereits mit einer anderen Richtlinie veröffentlicht. Lade die gespeicherten Pfade erneut. Die bestehende Freigabe bleibt unverändert.":
+    "This upgrade path is already published with a different policy. Refresh the saved paths. The existing release remains unchanged.",
 };

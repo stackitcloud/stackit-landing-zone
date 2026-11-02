@@ -268,6 +268,7 @@ export function registerApplications(
             "template_version_not_retired",
             "application_execution_binding_conflict",
             "application_execution_changed",
+            "application_upgrade_edge_changed",
             "application_upgrade_execution_active",
             "application_execution_upgrade_changed",
             "application_execution_upgrade_unavailable",
@@ -305,6 +306,7 @@ export function registerApplications(
           "application_execution_binding_changed",
           "application_execution_source_withdrawn",
           "application_upgrade_confirmation_required",
+          "application_upgrade_edge_invalid",
         ].includes(error.message)
       )
         return reply

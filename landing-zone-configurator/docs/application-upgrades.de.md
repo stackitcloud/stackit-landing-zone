@@ -30,6 +30,17 @@ Freigabe erforderlich. Direkter Self-Service ist nur möglich, wenn beide Versio
 direktes Deployment erlauben und der Platform Owner sensible Änderungen auf
 diesem Pfad ausdrücklich dafür freigibt. Der Löschschutz bleibt verbindlich.
 
+
+Die Veröffentlichungsseite zeigt gespeicherte Pfade aller Template-Familien oberhalb
+des Formulars für neue Pfade. Jede Karte nennt Ausgangs- und Zielversion sowie die
+Richtlinie für sensitive Änderungen. Aktualisiere die Liste, um die Speicherung zu
+prüfen. Die Versionsauswahl und Bestätigungen allein veröffentlichen noch keinen
+Pfad. Ein vorhandener Pfad wird als bereits veröffentlicht angezeigt und kann hier
+nicht überschrieben werden. Verlangt eine Version eine Freigabe, ist die direkte
+Richtlinie nicht auswählbar; veröffentliche den Pfad mit separater Plan-Freigabe.
+Ein Richtlinienkonflikt wird als ungültiger Pfad statt als fehlende Berechtigung
+gemeldet. Fehlgeschlagene Veröffentlichungen verändern gespeicherte Pfade nicht.
+
 ## Bestehende Bestellung aktualisieren
 
 1. Unter **Updates** eine angebotene Version auswählen und Änderungen vergleichen.

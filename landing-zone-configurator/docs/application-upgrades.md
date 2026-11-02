@@ -28,6 +28,16 @@ the default. Direct self-service is available only when both template versions
 permit direct deployment and the Platform Owner explicitly permits sensitive
 self-service on that path. This does not bypass destructive-change protection.
 
+
+The publication page lists saved paths for all template families above the new-path
+form. Each card identifies the source and target version and the sensitive-change
+policy; refresh the list to confirm a path was saved. Selecting two versions or
+checking the confirmations does not publish a path. An existing path is shown as
+already published and cannot be overwritten from this form. If either version
+requires approval, the direct-policy checkbox is unavailable; publish with separate
+Plan approval instead. A policy mismatch is reported as an invalid path rather
+than a missing permission. A failed publication leaves saved paths unchanged.
+
 ## Upgrade an existing order
 
 1. In **Updates**, select an offered version and compare its changes.

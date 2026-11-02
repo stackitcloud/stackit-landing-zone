@@ -60,8 +60,26 @@ async function setup(
   platformMode = false,
   unbound = false,
   noPath = false,
+  publication: {
+    sourceApproval?: boolean;
+    saved?: boolean;
+    reject?: boolean;
+  } = {},
 ) {
   let approved = false;
+  const corporateOld = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const corporateTarget = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const savedPaths = publication.saved
+    ? [
+        {
+          id: edge,
+          fromVersionId: corporateOld,
+          toVersionId: corporateTarget,
+          policy: { sensitive: "direct" },
+        },
+      ]
+    : [];
+
   const nextPlatform = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   const platformDoc = (revision: string) => ({
     schema_version: 1,
@@ -187,12 +205,17 @@ async function setup(
       if (path === "platform-upgrades")
         return r.fulfill({ json: { edges: [] } });
       if (path === "template-upgrades")
-        return r.fulfill({ json: { edges: [] } });
+        return r.fulfill({ json: { edges: savedPaths } });
       if (path === "templates")
         return r.fulfill({
           json: {
             versions: [
-              version(old, 1),
+              {
+                ...version(old, 1),
+                deploymentPolicy: publication.sourceApproval
+                  ? "approval-required"
+                  : "direct",
+              },
               version(target, 2),
               ...(pe
                 ? [
@@ -201,6 +224,15 @@ async function setup(
                       templateId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                       template: {
                         ...version(target, 2).template,
+                        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                        name: "Other family",
+                      },
+                    },
+                    {
+                      ...version(corporateTarget, 4),
+                      templateId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                      template: {
+                        ...version(corporateTarget, 4).template,
                         id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                         name: "Other family",
                       },
@@ -314,8 +346,20 @@ async function setup(
     mutations.push({ path, body });
     if (path === "platform-upgrades")
       return r.fulfill({ json: { id: edge, ...body } });
-    if (path === "template-upgrades")
-      return r.fulfill({ json: { id: edge, ...body } });
+    if (path === "template-upgrades") {
+      if (publication.reject)
+        return r.fulfill({
+          status: 409,
+          json: { error: "application_upgrade_edge_invalid" },
+        });
+      savedPaths.push({
+        id: target,
+        fromVersionId: body.fromVersionId,
+        toVersionId: body.toVersionId,
+        policy: body.policy,
+      });
+      return r.fulfill({ json: { id: target, ...body } });
+    }
     if (path === `jobs/${family}/upgrade-approval`) {
       approved = true;
       return r.fulfill({ json: { approved: true } });
@@ -525,9 +569,11 @@ test("Platform Owner publishes only same-family upgrade path without changing an
   await panel
     .getByRole("button", { name: "Upgrade-Pfad veröffentlichen", exact: true })
     .click();
-  await expect(panel.getByRole("status")).toContainText(
-    "Bestehende Bestellungen bleiben unverändert",
-  );
+  await expect(
+    panel
+      .getByRole("status")
+      .filter({ hasText: "Bestehende Bestellungen bleiben unverändert" }),
+  ).toContainText("Bestehende Bestellungen bleiben unverändert");
   expect(mutations).toEqual([
     {
       path: "template-upgrades",
@@ -877,4 +923,141 @@ test("updates explain a missing path with named versions and hide technical iden
     path: testInfo.outputPath("updates.png"),
     fullPage: true,
   });
+});
+
+test("saved publication paths show every family independently of the selected form and prevent duplicates", async ({
+  page,
+}) => {
+  const { mutations } = await setup(
+    page,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    { saved: true },
+  );
+  await page
+    .getByRole("tab", { name: "Veröffentlichung", exact: true })
+    .click();
+  const panel = page.getByRole("region", {
+    name: "Upgrade-Pfade veröffentlichen",
+    exact: true,
+  });
+  const saved = panel.getByRole("region", {
+    name: "Veröffentlichte Upgrade-Pfade",
+    exact: true,
+  });
+  await expect(
+    saved.getByRole("heading", { name: "Gespeicherte Upgrade-Pfade (1)" }),
+  ).toBeVisible();
+  await expect(
+    saved.getByRole("heading", { name: "Other family", exact: true }),
+  ).toBeVisible();
+  await panel.getByLabel("Ausgangsversion für das Upgrade").selectOption(old);
+  await panel
+    .getByLabel("Neue Version derselben Template-Familie")
+    .selectOption(target);
+  await expect(saved.getByRole("listitem")).toHaveCount(1);
+  await panel
+    .getByRole("checkbox", { name: /Ich veröffentliche nur den Upgrade-Pfad/ })
+    .check();
+  await panel
+    .getByRole("button", { name: "Upgrade-Pfad veröffentlichen", exact: true })
+    .click();
+  await expect(
+    saved.getByRole("heading", { name: "Gespeicherte Upgrade-Pfade (2)" }),
+  ).toBeVisible();
+  await expect(
+    saved.getByRole("heading", { name: "Public", exact: true }),
+  ).toBeVisible();
+  await expect(
+    saved.getByRole("heading", { name: "Other family", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("status").filter({ hasText: "bereits veröffentlicht" }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", {
+      name: "Upgrade-Pfad veröffentlichen",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await panel
+    .getByRole("button", { name: "Upgrade-Pfade aktualisieren", exact: true })
+    .click();
+  await expect(saved.getByRole("listitem")).toHaveCount(2);
+  expect(mutations).toHaveLength(1);
+  await page.screenshot({
+    path: test.info().outputPath("upgrade-publication.png"),
+    fullPage: false,
+  });
+});
+
+test("approval-required versions cannot publish a direct path and retain saved families on a rejected publication", async ({
+  page,
+}) => {
+  const { mutations } = await setup(
+    page,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    { sourceApproval: true, saved: true, reject: true },
+  );
+  await page
+    .getByRole("tab", { name: "Veröffentlichung", exact: true })
+    .click();
+  const panel = page.getByRole("region", {
+    name: "Upgrade-Pfade veröffentlichen",
+    exact: true,
+  });
+  await panel.getByLabel("Ausgangsversion für das Upgrade").selectOption(old);
+  await panel
+    .getByLabel("Neue Version derselben Template-Familie")
+    .selectOption(target);
+  await expect(
+    panel.getByText(
+      "Mindestens eine Version verlangt eine separate Plan-Freigabe. Dieser Pfad kann diese Richtlinie nicht aufheben.",
+    ),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("checkbox", { name: /Sensitive Änderungen dieses Pfades/ }),
+  ).toBeDisabled();
+  await panel
+    .getByRole("checkbox", { name: /Ich veröffentliche nur den Upgrade-Pfad/ })
+    .check();
+  await panel
+    .getByRole("button", { name: "Upgrade-Pfad veröffentlichen", exact: true })
+    .click();
+  await expect(panel.getByRole("alert")).toContainText(
+    "Es wurde kein Pfad veröffentlicht",
+  );
+  await expect(panel.getByRole("alert")).not.toContainText(
+    "keine Berechtigung",
+  );
+  await expect(
+    panel
+      .getByRole("region", {
+        name: "Veröffentlichte Upgrade-Pfade",
+        exact: true,
+      })
+      .getByRole("listitem"),
+  ).toHaveCount(1);
+  expect(mutations).toEqual([
+    {
+      path: "template-upgrades",
+      body: {
+        fromVersionId: old,
+        toVersionId: target,
+        policy: { sensitive: "approval-required" },
+        confirmPublication: true,
+      },
+    },
+  ]);
 });

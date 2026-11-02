@@ -118,3 +118,79 @@ it("keeps impact inspection read-only and binds acknowledgement to authenticated
     await app.close();
   }
 });
+
+it("distinguishes invalid publication policies and immutable path conflicts from authorization failures", async () => {
+  const session: Session = {
+    id: randomUUID(),
+    userId: randomUUID(),
+    tenantId: randomUUID(),
+    githubId: "test",
+    login: "test",
+    csrfToken: "c".repeat(43),
+    expiresAt: new Date(Date.now() + 3600000),
+  };
+  const auth: AuthServices = {
+    origin: "https://configurator.example",
+    clientId: "test",
+    store: {
+      resolveSession: vi.fn(async () => session),
+      beginLogin: vi.fn(),
+      consumeLogin: vi.fn(),
+      createSession: vi.fn(),
+      deleteSession: vi.fn(),
+    },
+    github: { authorize: vi.fn() },
+    tokens: { get: vi.fn(), put: vi.fn(), remove: vi.fn() },
+  };
+  const publishUpgradeEdge = vi.fn();
+  const applications = {
+    listTemplates: vi.fn(),
+    publish: vi.fn(),
+    retire: vi.fn(),
+    listInstances: vi.fn(),
+    order: vi.fn(),
+    listPlatformContracts: vi.fn(),
+    approvePlatformContract: vi.fn(),
+    preparePlanInput: vi.fn(),
+    publishUpgradeEdge,
+  };
+  const app = buildApp({ auth, applications });
+  const headers = {
+    cookie: `__Host-lzc-session=${"b".repeat(43)}`,
+    origin: auth.origin,
+    "x-lzc-csrf": session.csrfToken,
+    "x-lzc-tenant": session.tenantId,
+  };
+  const payload = {
+    fromVersionId: randomUUID(),
+    toVersionId: randomUUID(),
+    policy: { sensitive: "direct" },
+    confirmPublication: true,
+  };
+  try {
+    for (const [code, message, status] of [
+      ["42501", "application_upgrade_edge_invalid", 409],
+      ["40001", "application_upgrade_edge_changed", 409],
+      ["42501", "permission_denied", 403],
+    ] as const) {
+      publishUpgradeEdge.mockRejectedValueOnce(
+        Object.assign(new Error(message), { code }),
+      );
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/applications/template-upgrades",
+        headers,
+        payload,
+      });
+      expect(response.statusCode).toBe(status);
+      expect(response.json()).toEqual({
+        error: status === 403 ? "application_access_denied" : message,
+      });
+    }
+    expect(publishUpgradeEdge).toHaveBeenCalledTimes(3);
+    expect(applications.publish).not.toHaveBeenCalled();
+    expect(auth.tokens.get).not.toHaveBeenCalled();
+  } finally {
+    await app.close();
+  }
+});
