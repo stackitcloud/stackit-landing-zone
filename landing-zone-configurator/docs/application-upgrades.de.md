@@ -60,6 +60,16 @@ gemeldet. Fehlgeschlagene Veröffentlichungen verändern gespeicherte Pfade nich
    öffnet im Assistenten die separate abschließende Bestätigung. Erst die ausdrückliche
    Apply-Aktion ändert Ressourcen. Zurückgehen startet keinen Job und erteilt keine Freigabe.
 
+Vorschau und Speichern verwenden dieselbe Prüfung freigegebener Ausführungsstände.
+Wenn eine ältere Bestellung und eine ältere Ziel-Template-Version ausdrücklich
+denselben unterstützten Nachfolger nennen, wählt das gespeicherte Upgrade diesen
+Nachfolger und erfordert einen neuen Plan. Ursprüngliches Template und Bestellung
+werden nicht umgeschrieben. Unbekannte oder zurückgezogene Zielquellen, unterstützte
+Quellen ohne freigegebene Verbindung und fehlende Runner-Pakete bleiben gesperrt;
+es gibt keine beliebige Quellenwahl oder automatische Herabstufung. Bei fehlgeschlagenem
+Speichern erhält die Fehlermeldung den Fokus; Vergleich und Antworten bleiben zur
+Korrektur erhalten.
+
 Unterstützte technische Ausführung wird als einsatzbereit angezeigt; ihr separates
 Wartungsformular ist unter **Optionale technische Wartung** eingeklappt. Bei einer
 zurückgezogenen oder nicht verfügbaren Ausführung bleiben Warnung und Wartungsoptionen

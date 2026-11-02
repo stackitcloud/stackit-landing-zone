@@ -56,6 +56,12 @@ export function ApplicationOrderUpdates({
     [notice, setNotice] = useState("");
   const comparisonHeading = useRef<HTMLHeadingElement>(null);
   const savedNotice = useRef<HTMLParagraphElement>(null);
+  const errorNotice = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!error) return;
+    errorNotice.current?.focus();
+    errorNotice.current?.scrollIntoView({ block: "center" });
+  }, [error]);
   useEffect(() => {
     if (preview) comparisonHeading.current?.focus();
   }, [preview]);
@@ -196,7 +202,11 @@ export function ApplicationOrderUpdates({
       >
         {t("Updates aktualisieren")}
       </button>
-      {error && !edge && <p role="alert">{t(error)}</p>}
+      {error && !edge && (
+        <p role="alert" ref={errorNotice} tabIndex={-1}>
+          {t(error)}
+        </p>
+      )}
       {notice && (
         <p
           role="status"
@@ -590,7 +600,11 @@ export function ApplicationOrderUpdates({
                         )}
                       </section>
                     )}
-                    {error && <p role="alert">{t(error)}</p>}
+                    {error && (
+                      <p role="alert" ref={errorNotice} tabIndex={-1}>
+                        {t(error)}
+                      </p>
+                    )}
                   </>
                 )}
               </>

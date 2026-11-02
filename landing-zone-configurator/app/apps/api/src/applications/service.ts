@@ -1179,12 +1179,48 @@ export class Applications {
         id,
         input,
       );
+      await this.upgradeExecutionSource(
+        client,
+        session,
+        id,
+        preview.target.acceleratorRevision,
+      );
       return {
         kind: "application-upgrade-preview" as const,
         cloudPlanExecuted: false as const,
         ...preview,
       };
     });
+  }
+
+  private async upgradeExecutionSource(
+    client: pg.PoolClient,
+    session: Session,
+    instanceId: string,
+    templateRevision: string,
+  ) {
+    const execution = await readApplicationExecutionContext(
+      client,
+      session,
+      instanceId,
+    );
+    const result = await client.query<{ revision: string }>(
+      "SELECT lzc_auth.application_upgrade_execution_source($1,$2) AS revision",
+      [execution.revision, templateRevision],
+    );
+    const selected = z
+      .string()
+      .regex(/^[a-f0-9]{40}$/)
+      .parse(result.rows[0]?.revision);
+    if (
+      this.dispatch &&
+      !supportsApplicationExecution(this.dispatch.runner, selected)
+    )
+      throw new ApplicationUpgradeError(
+        409,
+        "application_execution_package_unavailable",
+      );
+    return selected;
   }
 
   async requestUpgrade(session: Session, instanceId: string, input: unknown) {
@@ -1197,23 +1233,12 @@ export class Applications {
         id,
         confirmed,
       );
-      const execution = await readApplicationExecutionContext(
+      await this.upgradeExecutionSource(
         client,
         session,
         id,
+        preview.target.acceleratorRevision,
       );
-      const selectedSource =
-        execution.replacementRevision === preview.target.acceleratorRevision
-          ? preview.target.acceleratorRevision
-          : execution.revision;
-      if (
-        this.dispatch &&
-        !supportsApplicationExecution(this.dispatch.runner, selectedSource)
-      )
-        throw new ApplicationUpgradeError(
-          409,
-          "application_execution_package_unavailable",
-        );
       if (preview.assessment.classification === "blocked")
         throw new ApplicationUpgradeError(
           409,

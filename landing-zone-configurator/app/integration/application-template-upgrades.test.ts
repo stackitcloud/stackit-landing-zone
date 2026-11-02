@@ -7,6 +7,7 @@ import {
 import pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
+import type { PlanRunner } from "../apps/api/src/plans/cloud-foundry.js";
 import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -127,6 +128,7 @@ async function fixture(
     policy?: "direct" | "approval-required";
     targetPolicy?: "direct" | "approval-required";
     fromSource?: string;
+    targetSource?: string;
     settings?: Record<string, unknown>;
     targetSettings?: Record<string, unknown>;
   } = {},
@@ -228,7 +230,7 @@ async function fixture(
     );
     for (const [id, num, value, revision] of [
       [from, 1, settings, options.fromSource ?? source],
-      [to, 2, next, source],
+      [to, 2, next, options.targetSource ?? source],
     ] as const)
       await admin.query(
         "INSERT INTO lzc.application_template_versions(id,tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'public',$9)",
@@ -1309,4 +1311,217 @@ it.each([
   await expect(request(f, e.id)).rejects.toThrow(
     "application_upgrade_platform_changed",
   );
+});
+
+it.each([
+  [
+    "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+    "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  ],
+  [
+    "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+    "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+  ],
+])(
+  "saves an older template through its common reviewed successor (%s → %s)",
+  async (fromSource, targetSource) => {
+    const { Applications } = await import(
+      "../apps/api/src/applications/service.js"
+    );
+    const f = await fixture({ fromSource, targetSource });
+    const e = await edge(f);
+    const service = new Applications(runtime, undefined, undefined, undefined, {
+      runner: {
+        supportsAccelerator: (revision: string) => revision === source,
+      } as unknown as PlanRunner,
+      origin: "https://configurator.example",
+    });
+    const input = {
+      edgeId: e.id,
+      expectedVersionId: f.from,
+      expectedBindingId: null,
+    };
+    const preview = await service.previewUpgrade(owner, f.instance, input);
+    expect(preview.assessment.classification).toBe("sensitive");
+    expect(
+      (
+        await admin.query(
+          "SELECT count(*) FROM lzc.application_execution_bindings WHERE instance_id=$1",
+          [f.instance],
+        )
+      ).rows[0].count,
+    ).toBe("0");
+    const selected = await service.requestUpgrade(owner, f.instance, {
+      ...input,
+      confirmUpgrade: true,
+    });
+    expect(selected.current.id).toBe(f.to);
+    expect(selected.candidate?.sourceRevision).toBe(source);
+    expect(
+      (
+        await admin.query(
+          "SELECT previous_revision,revision FROM lzc.application_execution_bindings WHERE instance_id=$1",
+          [f.instance],
+        )
+      ).rows,
+    ).toEqual([{ previous_revision: fromSource, revision: source }]);
+    expect(
+      (
+        await admin.query(
+          "SELECT accelerator_revision FROM lzc.application_template_versions WHERE id=ANY($1::uuid[]) ORDER BY version",
+          [[f.from, f.to]],
+        )
+      ).rows.map((r) => r.accelerator_revision),
+    ).toEqual([fromSource, targetSource]);
+    expect(
+      (
+        await admin.query(
+          "SELECT version_id FROM lzc.application_instances WHERE id=$1",
+          [f.instance],
+        )
+      ).rows[0].version_id,
+    ).toBe(f.from);
+    expect(
+      (
+        await admin.query(
+          "SELECT count(*) FROM lzc.application_jobs WHERE instance_id=$1",
+          [f.instance],
+        )
+      ).rows[0].count,
+    ).toBe("0");
+    const compiled = await service.preparePlanInput(owner, f.instance);
+    expect(compiled.plan.applicationUpgradeId).toBe(selected.bindingId);
+    expect(compiled.plan.acceleratorRevision).toBe(source);
+    expect(compiled.plan.variables.application.template_version).toBe(2);
+    expect(compiled.plan.stateKey).toBe(
+      `applications/${owner.tenantId}/${f.instance}/terraform.tfstate`,
+    );
+  },
+);
+
+it("blocks both preview and SQL persistence when the common successor is withdrawn", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture({
+    fromSource: "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+    targetSource: "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  });
+  const e = await edge(f);
+  await admin.query(
+    "UPDATE lzc.application_execution_sources SET status='withdrawn' WHERE revision=$1",
+    [source],
+  );
+  try {
+    await expect(
+      new Applications(runtime).previewUpgrade(owner, f.instance, {
+        edgeId: e.id,
+        expectedVersionId: f.from,
+        expectedBindingId: null,
+      }),
+    ).rejects.toThrow("application_upgrade_source_unavailable");
+    await expect(request(f, e.id)).rejects.toThrow(
+      "application_upgrade_source_unavailable",
+    );
+    expect(
+      (
+        await admin.query(
+          "SELECT count(*) FROM lzc.application_upgrade_candidates WHERE instance_id=$1",
+          [f.instance],
+        )
+      ).rows[0].count,
+    ).toBe("0");
+    expect(
+      (
+        await admin.query(
+          "SELECT count(*) FROM lzc.application_execution_bindings WHERE instance_id=$1",
+          [f.instance],
+        )
+      ).rows[0].count,
+    ).toBe("0");
+  } finally {
+    await admin.query(
+      "UPDATE lzc.application_execution_sources SET status='supported' WHERE revision=$1",
+      [source],
+    );
+  }
+});
+
+it("rejects unknown and withdrawn target sources without inferring compatibility", async () => {
+  for (const target of [
+    "0".repeat(40),
+    "4d15d7870afa323badd93559d8b37c5a8d138dcf",
+  ])
+    await expect(
+      admin.query(
+        "SELECT lzc_auth.application_upgrade_execution_source($1,$2)",
+        [source, target],
+      ),
+    ).rejects.toThrow("application_upgrade_source_unavailable");
+});
+
+it("rejects an unavailable common Runner package before persisting any binding", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture({
+    fromSource: "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
+    targetSource: "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  });
+  const e = await edge(f);
+  const service = new Applications(runtime, undefined, undefined, undefined, {
+    runner: { supportsAccelerator: () => false } as unknown as PlanRunner,
+    origin: "https://configurator.example",
+  });
+  const input = {
+    edgeId: e.id,
+    expectedVersionId: f.from,
+    expectedBindingId: null,
+  };
+  await expect(
+    service.previewUpgrade(owner, f.instance, input),
+  ).rejects.toThrow("application_execution_package_unavailable");
+  await expect(
+    service.requestUpgrade(owner, f.instance, {
+      ...input,
+      confirmUpgrade: true,
+    }),
+  ).rejects.toThrow("application_execution_package_unavailable");
+  expect(
+    (
+      await admin.query(
+        "SELECT count(*) FROM lzc.application_upgrade_candidates WHERE instance_id=$1",
+        [f.instance],
+      )
+    ).rows[0].count,
+  ).toBe("0");
+  expect(
+    (
+      await admin.query(
+        "SELECT count(*) FROM lzc.application_execution_bindings WHERE instance_id=$1",
+        [f.instance],
+      )
+    ).rows[0].count,
+  ).toBe("0");
+});
+
+it("does not equate two supported sources without reviewed replacement edges", async () => {
+  const unrelated = "f".repeat(40);
+  await admin.query(
+    "INSERT INTO lzc.application_execution_sources(revision,provider_lock_sha256,tofu_version,contract_version,status) SELECT $1,provider_lock_sha256,tofu_version,contract_version,'supported' FROM lzc.application_execution_sources WHERE revision=$2",
+    [unrelated, source],
+  );
+  try {
+    await expect(
+      admin.query(
+        "SELECT lzc_auth.application_upgrade_execution_source($1,$2)",
+        ["9e7fb46c329aca32e878ce1f0ea3b944ea240354", unrelated],
+      ),
+    ).rejects.toThrow("application_upgrade_source_unavailable");
+  } finally {
+    await admin.query(
+      "DELETE FROM lzc.application_execution_sources WHERE revision=$1",
+      [unrelated],
+    );
+  }
 });

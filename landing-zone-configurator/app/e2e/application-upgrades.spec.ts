@@ -63,6 +63,7 @@ async function setup(
   publication: {
     sourceApproval?: boolean;
     planReady?: boolean;
+    saveError?: string;
     saved?: boolean;
     reject?: boolean;
   } = {},
@@ -412,6 +413,8 @@ async function setup(
       });
     expect(path).toBe(`instances/${instance}/upgrades`);
     expect(body.confirmUpgrade).toBe(true);
+    if (publication.saveError)
+      return r.fulfill({ status: 409, json: { error: publication.saveError } });
     if (stale)
       return r.fulfill({
         status: 409,
@@ -557,6 +560,17 @@ test("concurrent desired binding change preserves order and requires refresh", a
   await expect(panel.getByRole("alert")).toContainText(
     "Bestellung und State bleiben erhalten",
   );
+  await expect(panel.getByRole("alert")).toBeFocused();
+  await expect(panel.getByRole("alert")).toBeInViewport();
+  await expect(
+    panel.getByRole("checkbox", { name: confirmation }),
+  ).not.toBeChecked();
+  await expect(
+    panel.getByRole("button", {
+      name: "Weiter: Neuen Plan prüfen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   await expect(panel.locator(`abbr[title="${target}"]`)).toHaveCount(0);
   expect(mutations).toHaveLength(2);
 });
@@ -1302,3 +1316,64 @@ test("wizard continues from saved target to Plan and separate Apply confirmation
     body: { artifactSha256: "a".repeat(64) },
   });
 });
+
+for (const [code, message] of [
+  [
+    "application_upgrade_source_unavailable",
+    "gemeinsamer freigegebener Ausführungsstand",
+  ],
+  [
+    "application_execution_package_unavailable",
+    "Ausführungspaket ist derzeit nicht verfügbar",
+  ],
+] as const)
+  test(`failed save ${code} stays in review and focuses actionable feedback`, async ({
+    page,
+  }) => {
+    const { panel, mutations } = await setup(
+      page,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      { saveError: code },
+    );
+    await panel
+      .locator('select[id$="secretsmanager_enabled"]')
+      .selectOption("false");
+    await panel
+      .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+      .click();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await panel.getByRole("checkbox", { name: confirmation }).check();
+      await panel
+        .getByRole("button", {
+          name: "Upgrade-Ziel speichern und weiter",
+          exact: true,
+        })
+        .click();
+      await expect(panel.getByRole("alert")).toContainText(message);
+      await expect(panel.getByRole("alert")).toBeFocused();
+      await expect(panel.getByRole("alert")).toBeInViewport();
+      await expect(
+        panel.getByRole("checkbox", { name: confirmation }),
+      ).not.toBeChecked();
+      await expect(
+        panel.getByRole("button", {
+          name: "Weiter: Neuen Plan prüfen",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await expect(
+        panel.getByRole("region", { name: "Upgrade-Vergleich", exact: true }),
+      ).toBeVisible();
+    }
+    expect(mutations.map((x) => x.path)).toEqual([
+      `instances/${instance}/upgrades/preview`,
+      `instances/${instance}/upgrades`,
+      `instances/${instance}/upgrades`,
+    ]);
+  });
