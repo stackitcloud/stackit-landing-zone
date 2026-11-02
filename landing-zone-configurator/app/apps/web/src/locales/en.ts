@@ -3071,4 +3071,10 @@ export const englishMessages: Record<string, string> = {
     "This upgrade path does not match the selected versions or policies. Direct application is possible only if both versions allow direct deployment. No path was published.",
   "Dieser Upgrade-Pfad ist bereits mit einer anderen Richtlinie veröffentlicht. Lade die gespeicherten Pfade erneut. Die bestehende Freigabe bleibt unverändert.":
     "This upgrade path is already published with a different policy. Refresh the saved paths. The existing release remains unchanged.",
+  "Der Plattformnachweis der Zielversion ist nicht aktuell bestätigt oder ihre Backend-Anbindung ist nicht verfügbar. Der Platform Owner muss die Plattformanbindung prüfen; eine Plan-Freigabe behebt diesen Blocker nicht.":
+    "The target version has no confirmed current platform proof or its backend binding is unavailable. The Platform Owner must check the platform binding; Plan approval does not resolve this blocker.",
+  "Kläre zuerst die aufgeführten Hindernisse. Dieses Upgrade kann noch nicht übernommen oder per Plan-Freigabe entsperrt werden.":
+    "Resolve the listed blockers first. This upgrade cannot yet be selected or unblocked through Plan approval.",
+  "Übernimm zuerst den gewünschten Upgrade-Stand und erstelle einen neuen Plan. Nach erfolgreichem Plan findet der Platform Owner in dieser Bestellung unter Plan die Aktion „Diesen Upgrade-Plan freigeben“. Apply bleibt ein separater Schritt.":
+    "First select the desired upgrade version and create a new Plan. Once the Plan succeeds, the Platform Owner can use “Approve this upgrade Plan” in this order’s Plan tab. Apply remains a separate step.",
 };

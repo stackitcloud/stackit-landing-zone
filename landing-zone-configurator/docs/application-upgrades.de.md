@@ -75,6 +75,21 @@ Erforderliche Freigaben
 binden den neuen tatsächlichen Plan, seinen Artefakt-Hash und den gewünschten
 Upgrade-Snapshot. Sie gelten nicht für andere Pläne oder später geänderte Parameter.
 
+Eine abgeschlossene Migration vom Bootstrap- zum Remote-Backend behält ihre
+Metadaten für eine sichere, idempotente Bestätigung. Diese historischen Marker
+bedeuten für sich allein keine offene Migration. Die Upgrade-Prüfung bestätigt den
+passenden erfolgreichen Migrations-Apply, dessen exakten Versionsschritt, das aktuelle
+Remote-Backend und den entfernten Bootstrap-State. Der neueste Plattformnachweis muss
+weiterhin zum aktuellen, ungesperrten State passen. Unvollständige, fehlgeschlagene
+oder widersprüchliche Migrationsnachweise sperren Upgrades weiterhin. State und Sperre
+werden nicht verändert, nur um ein Upgrade verfügbar zu machen.
+
+Ein blockierter Vergleich lässt sich nicht durch eine Plan-Freigabe entsperren.
+Kläre zuerst seine Voraussetzungen. Nach der ausdrücklichen Auswahl eines ausführbaren
+Ziels wird ein neuer Plan erstellt. Bei einem freigabepflichtigen Upgrade öffnet der
+Platform Owner den Reiter **Plan** derselben Bestellung und nutzt am erfolgreichen,
+gespeicherten Plan **Diesen Upgrade-Plan freigeben**. Apply bleibt separat.
+
 ## Plattformänderungen wirken auf gemeinsame Infrastruktur
 
 Vor einem Plattform-Apply dessen Auswirkungen auf Applications prüfen. Der Server

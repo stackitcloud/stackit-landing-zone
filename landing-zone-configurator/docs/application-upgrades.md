@@ -70,6 +70,19 @@ Required approval
 is tied to the fresh actual Plan, its artifact hash and the desired upgrade
 snapshot; it cannot authorize another Plan or a later change of parameters.
 
+A completed bootstrap-to-remote backend migration keeps its metadata for safe,
+idempotent confirmation. These historical markers do not by themselves mean an
+open migration. Upgrade admission verifies the matching successful migration Apply,
+its exact version increment, current remote backend and cleared bootstrap State;
+the latest platform proof must still match the current unlocked State. Incomplete,
+failed or contradictory migration evidence continues to block upgrades. No State
+or lock is changed merely to make an upgrade available.
+
+A blocked comparison cannot be unlocked by approving a Plan. Resolve its prerequisites
+first. After an executable target has been explicitly selected, create a fresh Plan.
+For an approval-required upgrade, the Platform Owner opens that order's **Plan** tab
+and uses **Approve this upgrade Plan** on the successful saved Plan. Apply is separate.
+
 ## Platform changes affect shared infrastructure
 
 Before a Platform Apply, inspect its Application impact. The server determines

@@ -94,7 +94,7 @@ export function ApplicationUpgradeApproval({
                 busy || value.blocked || value.artifactSha256 !== artifactSha256
               }
             >
-              <label>
+              <label className="checkbox">
                 <input
                   type="checkbox"
                   checked={confirmed}

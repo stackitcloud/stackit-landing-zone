@@ -1143,3 +1143,170 @@ it("allows a direct target publication while retaining the older required policy
   );
   expect(await apply(f, j)).toMatch(/^[a-f0-9-]{36}$/);
 });
+
+async function completedBackendMigration(
+  f: Awaited<ReturnType<typeof fixture>>,
+) {
+  const proof = (
+    await admin.query(
+      "SELECT state_key,apply_run_id FROM lzc.application_platform_sources WHERE revision=$1",
+      [f.platform],
+    )
+  ).rows[0];
+  const migrationRun = randomUUID();
+  await imported(async () => {
+    await admin.query(
+      "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,ticket_hash,mode,operation,plan_id,artifact_sha256,state_key,state_version,applied_state_version,status,finished_at) SELECT $1,tenant_id,owner_user_id,preparation_id,$2,'platform-apply','apply',$4,artifact_sha256,state_key,0,1,'succeeded',now() FROM lzc.plan_runs WHERE id=$3",
+      [
+        migrationRun,
+        randomBytes(32).toString("base64url"),
+        proof.apply_run_id,
+        randomUUID(),
+      ],
+    );
+    await admin.query(
+      "UPDATE lzc.platform_states SET version=2,backend_id=$2,pending_backend_id=$2,migration_run_id=$3,migration_version=0,migration_sha256=$4,ciphertext=NULL,stable_aad=true,remote_identity=$4 WHERE state_key=$1",
+      [proof.state_key, f.backend, migrationRun, hash],
+    );
+    await admin.query(
+      "UPDATE lzc.plan_runs SET applied_state_version=2 WHERE id=$1",
+      [proof.apply_run_id],
+    );
+    await admin.query(
+      "UPDATE lzc.application_platform_sources SET state_version=2 WHERE revision=$1",
+      [f.platform],
+    );
+  });
+  return { ...proof, migration_run_id: migrationRun } as {
+    state_key: string;
+    apply_run_id: string;
+    migration_run_id: string;
+  };
+}
+
+it("accepts a proven completed remote-backend migration without clearing its idempotency markers", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture({
+    policy: "approval-required",
+    targetPolicy: "direct",
+  });
+  const proof = await completedBackendMigration(f);
+  const e = await edge(f);
+  const service = new Applications(runtime);
+  const input = {
+    edgeId: e.id,
+    expectedVersionId: f.from,
+    expectedBindingId: null,
+  };
+  const context = await service.upgradeContext(owner, f.instance);
+  expect(context.candidates[0]?.assessment.classification).not.toBe("blocked");
+  const preview = await service.previewUpgrade(owner, f.instance, input);
+  expect(preview.assessment.classification).not.toBe("blocked");
+  expect(preview.assessment.approvalPolicy).toBe("approval-required");
+  const result = await service.requestUpgrade(owner, f.instance, {
+    ...input,
+    confirmUpgrade: true,
+  });
+  expect(result.current.id).toBe(f.to);
+  expect(
+    (
+      await admin.query(
+        "SELECT backend_id,pending_backend_id,migration_run_id,migration_version,version FROM lzc.platform_states WHERE state_key=$1",
+        [proof.state_key],
+      )
+    ).rows[0],
+  ).toEqual({
+    backend_id: f.backend,
+    pending_backend_id: f.backend,
+    migration_run_id: proof.migration_run_id,
+    migration_version: "0",
+    version: "2",
+  });
+  expect(
+    (
+      await admin.query(
+        "SELECT has_function_privilege('configurator_app','lzc_auth.platform_state_backend_settled(lzc.platform_states)','EXECUTE') AS allowed",
+      )
+    ).rows[0].allowed,
+  ).toBe(false);
+});
+
+it.each([
+  [
+    "pending backend missing",
+    "UPDATE lzc.platform_states SET pending_backend_id=NULL WHERE state_key=$1",
+  ],
+  [
+    "migration run missing",
+    "UPDATE lzc.platform_states SET migration_run_id=NULL WHERE state_key=$1",
+  ],
+  [
+    "remote backend missing",
+    "UPDATE lzc.platform_states SET backend_id=NULL,ciphertext=decode(repeat('01',29),'hex') WHERE state_key=$1",
+  ],
+  [
+    "remote identity missing",
+    "UPDATE lzc.platform_states SET remote_identity=NULL WHERE state_key=$1",
+  ],
+  [
+    "stable AAD missing",
+    "UPDATE lzc.platform_states SET stable_aad=false WHERE state_key=$1",
+  ],
+  [
+    "migration hash missing",
+    "UPDATE lzc.platform_states SET migration_sha256=NULL WHERE state_key=$1",
+  ],
+  [
+    "migration version missing",
+    "UPDATE lzc.platform_states SET migration_version=NULL WHERE state_key=$1",
+  ],
+  [
+    "migration version unadvanced",
+    "UPDATE lzc.platform_states SET migration_version=version WHERE state_key=$1",
+  ],
+  [
+    "migration applied version mismatch",
+    "UPDATE lzc.plan_runs SET applied_state_version=2 WHERE id=(SELECT migration_run_id FROM lzc.platform_states WHERE state_key=$1)",
+  ],
+  [
+    "migration apply failed",
+    "UPDATE lzc.plan_runs SET status='failed' WHERE id=(SELECT migration_run_id FROM lzc.platform_states WHERE state_key=$1)",
+  ],
+  [
+    "migration unfinished",
+    "UPDATE lzc.plan_runs SET finished_at=NULL WHERE id=(SELECT migration_run_id FROM lzc.platform_states WHERE state_key=$1)",
+  ],
+  [
+    "current State newer than proof",
+    "UPDATE lzc.platform_states SET version=3 WHERE state_key=$1",
+  ],
+  [
+    "State locked",
+    "UPDATE lzc.platform_states SET lock_run_id=migration_run_id,lock_id='synthetic-lock' WHERE state_key=$1",
+  ],
+] as const)("blocks unsafe migration evidence: %s", async (_name, sql) => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture();
+  const e = await edge(f);
+  const proof = await completedBackendMigration(f);
+  await imported(() => admin.query(sql, [proof.state_key]));
+  const service = new Applications(runtime);
+  const preview = await service.previewUpgrade(owner, f.instance, {
+    edgeId: e.id,
+    expectedVersionId: f.from,
+    expectedBindingId: null,
+  });
+  expect(preview.assessment.classification).toBe("blocked");
+  expect(preview.assessment.reasons).toContainEqual({
+    code: "upgrade-target-not-qualified",
+    path: "platform",
+    classification: "blocked",
+  });
+  await expect(request(f, e.id)).rejects.toThrow(
+    "application_upgrade_platform_changed",
+  );
+});

@@ -413,10 +413,12 @@ export function ApplicationOrderUpdates({
                         </p>
                         <p>
                           {t(
-                            preview.assessment.approvalPolicy ===
-                              "approval-required"
-                              ? "Der neue gespeicherte Plan benötigt eine separate Platform-Owner-Freigabe."
-                              : "Nach der Planprüfung gilt die direkte Apply-Richtlinie.",
+                            preview.assessment.classification === "blocked"
+                              ? "Kläre zuerst die aufgeführten Hindernisse. Dieses Upgrade kann noch nicht übernommen oder per Plan-Freigabe entsperrt werden."
+                              : preview.assessment.approvalPolicy ===
+                                  "approval-required"
+                                ? "Übernimm zuerst den gewünschten Upgrade-Stand und erstelle einen neuen Plan. Nach erfolgreichem Plan findet der Platform Owner in dieser Bestellung unter Plan die Aktion „Diesen Upgrade-Plan freigeben“. Apply bleibt ein separater Schritt."
+                                : "Nach der Planprüfung gilt die direkte Apply-Richtlinie.",
                           )}
                         </p>
                         <ul>

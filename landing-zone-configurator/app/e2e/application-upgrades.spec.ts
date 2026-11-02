@@ -469,6 +469,9 @@ test("existing order previews new answers and selects desired snapshot without P
   await expect(
     panel.getByText("Sensitives Upgrade", { exact: true }),
   ).toBeVisible();
+  await expect(
+    panel.getByText(/Nach erfolgreichem Plan findet der Platform Owner/),
+  ).toBeVisible();
   await panel.getByRole("checkbox", { name: confirmation }).check();
   await panel
     .getByRole("button", { name: "Gewünschten Upgrade-Stand übernehmen" })
@@ -516,6 +519,14 @@ test("blocked component removal cannot be confirmed", async ({ page }) => {
   await expect(
     panel.getByRole("button", { name: "Gewünschten Upgrade-Stand übernehmen" }),
   ).toBeDisabled();
+  await expect(
+    panel.getByText(
+      "Kläre zuerst die aufgeführten Hindernisse. Dieses Upgrade kann noch nicht übernommen oder per Plan-Freigabe entsperrt werden.",
+    ),
+  ).toBeVisible();
+  await expect(
+    panel.getByText(/Nach erfolgreichem Plan findet der Platform Owner/),
+  ).toHaveCount(0);
   expect(mutations).toHaveLength(1);
 });
 test("concurrent desired binding change preserves order and requires refresh", async ({
