@@ -1918,6 +1918,13 @@ function ApplicationPlanControls({
                 <dd>{t(job.summary.destructive ? "Ja" : "Nein")}</dd>
               </dl>
             )}
+            {job.summary?.upgradeSafety?.iamActions && (
+              <p role="status">
+                {t(
+                  "Dieser Plan entfernt oder ersetzt Projektrollen beziehungsweise Rollenzuweisungen. Solche Rechteänderungen sind nach der veröffentlichten Freigaberichtlinie zulässig; Löschungen oder Ersetzungen bestehender Infrastruktur bleiben gesperrt.",
+                )}
+              </p>
+            )}
             {planView &&
               job.operation === "plan" &&
               job.status === "succeeded" &&

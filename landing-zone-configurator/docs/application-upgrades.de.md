@@ -115,11 +115,19 @@ Wartungsformular ist unter **Optionale technische Wartung** eingeklappt. Bei ein
 zurückgezogenen oder nicht verfügbaren Ausführung bleiben Warnung und Wartungsoptionen
 sichtbar. Technische Wartung verändert keine Template-Rechte.
 
-Instanz, Projektidentität, State-Key und Backend bleiben gleich. Der Standardpfad
-blockiert Löschungen und Ersetzungen – auch Änderungen, die OpenTofu als Ersetzung
-statt als Änderung vor Ort behandelt. Unbekannte oder unvollständige Nachweise
-blockieren ebenfalls. Eine Checkbox kann das nicht umgehen. Destruktive Migrationen
-benötigen ein separates geprüftes Verfahren.
+Instanz, Projektidentität, State-Key und Backend bleiben gleich. Ein Wechsel des
+zentralen initialen Projekt-Owners, auch beim Umstieg vom alten Template auf das
+granulare Rechteprofil, gilt als sensible Rechteänderung und darf einen neuen
+Plan erreichen. Der tatsächlich gespeicherte Plan entscheidet über Apply:
+Änderungen am bestehenden Projekt und an Projektrollen folgen der veröffentlichten
+Freigaberichtlinie. Löschungen oder Ersetzungen von Projekt, Netzwerk, Diensten,
+Identitäten und Zugangsdaten bleiben gesperrt. Nur Projektrollen und
+Projekt-Rollenzuweisungen dürfen im Rahmen einer sensiblen IAM-Umstellung gelöscht
+oder ersetzt werden; ihre exakten Anzahlen müssen zur gespeicherten
+Plan-Zusammenfassung passen. Unbekannte oder unvollständige Nachweise blockieren;
+eine Checkbox kann das nicht umgehen. Entzogene Rechte vor Apply prüfen. Ein
+erfolgreicher Plan beweist nicht, dass der Rollenentzug bestehende Workloads
+unbeeinflusst lässt.
 
 IAM, Zugangsdaten und Netzwerke können sich auch ohne Löschung ändern. Für vom
 tatsächlichen nativen Plan als sensibel klassifizierte Änderungen gelten die

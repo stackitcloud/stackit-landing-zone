@@ -13,6 +13,12 @@ export const applicationUpgradeReasonSchema = z.strictObject({
 export const applicationUpgradeSafetySchema = z.strictObject({
   classification: applicationUpgradeClassificationSchema,
   reasons: z.array(applicationUpgradeReasonSchema).max(1001),
+  iamActions: z
+    .strictObject({
+      delete: z.number().int().min(0).max(1000),
+      replace: z.number().int().min(0).max(1000),
+    })
+    .optional(),
 });
 export type ApplicationUpgradeSafety = z.infer<
   typeof applicationUpgradeSafetySchema
@@ -127,6 +133,7 @@ export function classifyApplicationUpgradePlan(
       ],
     };
   const plan = parsed.data;
+  const iamActions = { delete: 0, replace: 0 };
   if (
     plan.complete === false ||
     plan.errored === true ||
@@ -137,6 +144,20 @@ export function classifyApplicationUpgradePlan(
     const path = `resource_changes.${index}`,
       actions = resource.change.actions;
     if (actions.includes("delete")) {
+      // Only project role definitions/assignments are policy transitions. Never
+      // extend this exception to projects, services, identities or credentials.
+      if (
+        resource.mode === "managed" &&
+        [
+          "stackit_authorization_project_custom_role",
+          "stackit_authorization_project_role_assignment",
+        ].includes(resource.type) &&
+        ["delete", "delete,create", "create,delete"].includes(actions.join(","))
+      ) {
+        iamActions[actions.length === 1 ? "delete" : "replace"]++;
+        add("plan-iam-transition", path, "sensitive");
+        continue;
+      }
       add(
         actions.includes("create")
           ? "plan-resource-replacement"
@@ -205,6 +226,7 @@ export function classifyApplicationUpgradePlan(
         ? "sensitive"
         : "ordinary",
     reasons,
+    ...(iamActions.delete + iamActions.replace > 0 ? { iamActions } : {}),
   };
 }
 

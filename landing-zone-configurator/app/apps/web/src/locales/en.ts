@@ -3193,4 +3193,8 @@ export const englishMessages: Record<string, string> = {
     "The State backend assignment conflicts with the saved assignment. Nothing was switched. Error code: application_backend_binding_conflict.",
   "Die Aktualisierung konnte wegen eines Ausführungskonflikts nicht gespeichert werden. Lade die Updates erneut. Bestellung und State bleiben erhalten. Fehlercode: application_request_conflict.":
     "The update could not be saved because of an execution conflict. Refresh updates. The order and State are preserved. Error code: application_request_conflict.",
+  "Dieser Plan entfernt oder ersetzt Projektrollen beziehungsweise Rollenzuweisungen. Solche Rechteänderungen sind nach der veröffentlichten Freigaberichtlinie zulässig; Löschungen oder Ersetzungen bestehender Infrastruktur bleiben gesperrt.":
+    "This plan removes or replaces project roles or role assignments. These permission changes follow the published approval policy; deleting or replacing existing infrastructure remains blocked.",
+  "Der neue Plan prüft die tatsächlichen Rechteänderungen. Löschungen oder Ersetzungen bestehender Infrastruktur und unzulässige Zielwechsel bleiben gesperrt.":
+    "The new plan checks the actual permission changes. Deleting or replacing existing infrastructure and disallowed target changes remain blocked.",
 };

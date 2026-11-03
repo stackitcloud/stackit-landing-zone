@@ -1545,26 +1545,23 @@ async function publishLaterKubernetesVersion(
       [f.to],
     )
   ).rows[0].document;
-  document.settings.custom_roles = [
-    ...document.settings.custom_roles,
-    {
-      name: "kubernetes",
-      description: "Cluster management",
-      permissions: [
-        "ske.cluster.create",
-        "ske.cluster.get",
-        "ske.cluster.list",
-      ],
-    },
-  ];
-  document.settings.role_assignments = [
-    ...document.settings.role_assignments,
-    { role: "kubernetes", subject: `${owner.userId}@example.test` },
-  ];
+  document.settings.custom_roles = [];
+  document.settings.role_assignments = [];
+  document.accessProfile = {
+    schemaVersion: 1,
+    mode: "granular",
+    initialOwnerEmail: "platform@sa.stackit.cloud",
+    permissions: ["ske.cluster.create", "ske.cluster.get", "ske.cluster.list"],
+    automationPermissions: [
+      "ske.cluster.create",
+      "ske.cluster.get",
+      "ske.cluster.list",
+    ],
+  };
   await imported(() =>
     admin.query(
-      "INSERT INTO lzc.application_template_versions(id,tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) SELECT $1,tenant_id,template_id,3,published_by,accelerator_revision,$3,platform_revision,target_key,deployment_policy FROM lzc.application_template_versions WHERE id=$2",
-      [next, f.to, document],
+      "INSERT INTO lzc.application_template_versions(id,tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) SELECT $1,tenant_id,template_id,3,published_by,$4,$3,platform_revision,target_key,deployment_policy FROM lzc.application_template_versions WHERE id=$2",
+      [next, f.to, document, source],
     ),
   );
   await imported(() =>
@@ -2007,9 +2004,15 @@ it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
       expect(selected.plan.variables.application.template_version).toBe(3);
       expect(selected.plan.variables.application.custom_roles).toContainEqual(
         expect.objectContaining({
-          name: "kubernetes",
+          name: "application-workload",
           permissions: expect.arrayContaining(["ske.cluster.create"]),
         }),
+      );
+      expect(selected.plan.variables.application.initial_owner_email).toBe(
+        "platform@sa.stackit.cloud",
+      );
+      expect(selected.plan.variables.application.automation_role).toBe(
+        "application-automation",
       );
       expect(selected.plan.stateKey).toBe(old.inputs.stateKey);
       const outdated = await scoped(owner, (client) =>
@@ -2327,3 +2330,70 @@ it("serializes withdrawal against Apply admission so exactly one transition can 
     expect(after.candidate?.kind).toBe("withdrawal");
   else expect(after.withdrawal.canWithdraw).toBe(false);
 });
+
+it.each(["direct", "approval-required"])(
+  "admits IAM-only deletions/replacements according to the published %s policy",
+  async (sensitive) => {
+    const f = await fixture();
+    const e = await edge(f, sensitive);
+    const c = await request(f, e.id);
+    const j = await plan(f, c.candidate);
+    const safety = classifyApplicationUpgradePlan({
+      format_version: "1.2",
+      terraform_version: "1.12.6",
+      complete: true,
+      planned_values: { root_module: {} },
+      resource_changes: [
+        {
+          mode: "managed",
+          type: "stackit_authorization_project_role_assignment",
+          change: { actions: ["delete"], before: {}, after: null },
+        },
+        {
+          mode: "managed",
+          type: "stackit_authorization_project_role_assignment",
+          change: { actions: ["delete", "create"], before: {}, after: {} },
+        },
+      ],
+    });
+    const value = { ...summary("sensitive", 1, 1), upgradeSafety: safety };
+    await artifact(f, j, value);
+    if (sensitive === "approval-required") {
+      await expect(apply(f, j)).rejects.toThrow(
+        "application_upgrade_plan_approval_required",
+      );
+      await scoped(engineer, (q) =>
+        q.query(
+          "SELECT lzc_auth.approve_application_upgrade($1,$2,$3,$4,$5,true)",
+          [engineer.id, c.candidate.id, c.candidate.candidateHash, j.id, hash],
+        ),
+      );
+    }
+    expect(await apply(f, j)).toMatch(/^[a-f0-9-]{36}$/);
+  },
+);
+it.each([undefined, { delete: 0, replace: 0 }, { delete: 1, replace: 0 }])(
+  "rejects missing or mismatching IAM action evidence %j",
+  async (iamActions) => {
+    const f = await fixture();
+    const e = await edge(f, "direct");
+    const c = await request(f, e.id);
+    const j = await plan(f, c.candidate);
+    const value = summary("sensitive", 1, 1);
+    value.upgradeSafety = {
+      classification: "sensitive",
+      reasons: [
+        {
+          code: "plan-iam-transition",
+          path: "resource_changes.0",
+          classification: "sensitive",
+        },
+      ],
+      ...(iamActions ? { iamActions } : {}),
+    };
+    await artifact(f, j, value);
+    await expect(apply(f, j)).rejects.toThrow(
+      "application_upgrade_plan_blocked",
+    );
+  },
+);
