@@ -3445,6 +3445,12 @@ for (const { publishing, applied, renewProof, executing } of [
       );
       await expect(targetVersion).toHaveValue(nextVersionId);
       await expect(targetVersion).toBeDisabled();
+      await expect(
+        page.getByRole("button", {
+          name: "Weiter: Katalog prüfen",
+          exact: true,
+        }),
+      ).toHaveCount(0);
       await page
         .getByRole("tabpanel", { name: "Veröffentlichung", exact: true })
         .screenshot({

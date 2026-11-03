@@ -267,9 +267,7 @@ test("Platform Owner edits the same saved configuration inline before platform b
       exact: true,
     }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Weiter: Katalog prüfen", exact: true })
-    .click();
+  await page.getByRole("tab", { name: "Katalog", exact: true }).click();
   await expect(
     tabs.getByRole("tab", { name: "Katalog", exact: true }),
   ).toHaveAttribute("aria-selected", "true");

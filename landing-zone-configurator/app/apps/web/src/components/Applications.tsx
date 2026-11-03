@@ -3823,22 +3823,28 @@ export function Applications({
               </button>
             </>
           )}
-          <div className="actions">
-            <button
-              type="button"
-              className="button secondary"
-              onClick={() => setActiveTab("platform")}
-            >
-              {t("Zurück: Plattformanbindung")}
-            </button>
-            <button
-              type="button"
-              className="button primary"
-              onClick={() => setActiveTab("catalogue")}
-            >
-              {t("Weiter: Katalog prüfen")}
-            </button>
-          </div>
+          {publicationStep === "version" && (
+            <div className="actions">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setActiveTab("platform")}
+              >
+                {t("Zurück: Plattformanbindung")}
+              </button>
+            </div>
+          )}
+          {publicationStep === "done" && (
+            <div className="actions">
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => setActiveTab("catalogue")}
+              >
+                {t("Weiter: Katalog prüfen")}
+              </button>
+            </div>
+          )}
           {upgradesEnabled && (
             <div className="application-publication-maintenance">
               <details>
