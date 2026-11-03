@@ -3463,10 +3463,17 @@ for (const { publishing, applied, renewProof, executing } of [
           .getByLabel("Ausgangsversion für das Upgrade")
           .selectOption(versionId);
         await expect(
-          upgradePanel.getByRole("checkbox", {
-            name: /Sensitive Änderungen dieses Pfades/,
+          upgradePanel.getByRole("radio", {
+            name: "Separate Plan-Freigabe erforderlich",
+            exact: true,
           }),
-        ).toBeDisabled();
+        ).toBeChecked();
+        await expect(
+          upgradePanel.getByRole("radio", {
+            name: "Eigenständig durchführen",
+            exact: true,
+          }),
+        ).toBeEnabled();
         await upgradePanel
           .getByRole("checkbox", {
             name: /Ich veröffentliche nur den Upgrade-Pfad/,
