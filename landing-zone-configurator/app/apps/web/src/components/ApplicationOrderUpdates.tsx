@@ -37,12 +37,14 @@ export function ApplicationOrderUpdates({
   requestedBy,
   onChanged,
   onPlan,
+  onWithdrawn,
 }: {
   session: Session;
   instanceId: string;
   requestedBy: string;
   onChanged: (signal: AbortSignal) => Promise<void>;
   onPlan: () => void;
+  onWithdrawn?: () => void;
 }) {
   const { request, cancel, busy, error, setError } =
     useApplicationUpgradeRequest(session, instanceId);
@@ -53,7 +55,11 @@ export function ApplicationOrderUpdates({
     ),
     [preview, setPreview] = useState<Preview | null>(null),
     [confirmed, setConfirmed] = useState(false),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [withdrawAction, setWithdrawAction] = useState<"change" | "discard" | null>(
+      null,
+    ),
+    [confirmWithdrawal, setConfirmWithdrawal] = useState(false);
   const comparisonHeading = useRef<HTMLHeadingElement>(null);
   const savedNotice = useRef<HTMLParagraphElement>(null);
   const errorNotice = useRef<HTMLParagraphElement>(null);
@@ -69,6 +75,8 @@ export function ApplicationOrderUpdates({
     if (notice) savedNotice.current?.focus();
   }, [notice]);
   const read = useCallback(async () => {
+    setWithdrawAction(null);
+    setConfirmWithdrawal(false);
     setPreview(null);
     setConfirmed(false);
     const result = await request(`instances/${instanceId}/upgrades`);
@@ -91,6 +99,7 @@ export function ApplicationOrderUpdates({
   const edge = context?.candidates.find((e) => e.id === edgeId);
   const pendingUpgrade = Boolean(
     context?.candidate &&
+      context.candidate.kind !== "withdrawal" &&
       (context.candidate.versionId !== context.lastAppliedVersionId ||
         context.candidate.platformRevision !==
           context.lastAppliedPlatformRevision),
@@ -167,6 +176,44 @@ export function ApplicationOrderUpdates({
     setNotice(
       "Der gewünschte Upgrade-Stand ist gespeichert. Erstelle und prüfe jetzt separat einen neuen Plan. Es wurde kein Plan oder Apply gestartet.",
     );
+    await onChanged(result.signal);
+  }
+  async function withdraw() {
+    const withdrawal = context?.withdrawal;
+    if (
+      !withdrawal?.canWithdraw ||
+      !withdrawal.expectedBindingId ||
+      !confirmWithdrawal ||
+      !withdrawAction ||
+      busy
+    )
+      return;
+    const result = await request(`instances/${instanceId}/upgrades/withdraw`, {
+      expectedBindingId: withdrawal.expectedBindingId,
+      expectedVersionId: withdrawal.expectedVersionId,
+      lastAppliedJobId: withdrawal.lastAppliedJobId,
+      confirmWithdrawal: true,
+    });
+    setConfirmWithdrawal(false);
+    if (!result) return;
+    const parsed = contextSchema.safeParse(result.data);
+    if (!parsed.success) {
+      setError(
+        "Die Upgrade-Antwort konnte nicht sicher gelesen werden. Lade die Updates erneut.",
+      );
+      return;
+    }
+    setContext(parsed.data);
+    setEdgeId("");
+    setPreview(null);
+    setConfirmed(false);
+    setNotice(
+      withdrawAction === "change"
+        ? "Das bisherige Upgrade-Ziel wurde zurückgenommen. Die alten Pläne bleiben im Verlauf und sind für Apply gesperrt. Wähle jetzt eine neue freigegebene Zielversion."
+        : "Das Upgrade wurde verworfen. Der vorherige Template-Stand ist wieder der gewünschte Stand. Infrastruktur und State wurden nicht verändert; alte Pläne bleiben für Apply gesperrt.",
+    );
+    setWithdrawAction(null);
+    onWithdrawn?.();
     await onChanged(result.signal);
   }
   function versionLabel(id: string | null) {
@@ -626,6 +673,104 @@ export function ApplicationOrderUpdates({
                   "Erstelle jetzt einen neuen Plan für diesen gespeicherten Stand. Prüfe dort die tatsächlichen Änderungen und eine gegebenenfalls erforderliche Platform-Owner-Freigabe. Erst danach kannst du Apply ausdrücklich starten.",
                 )}
               </p>
+              {context.withdrawal && (
+                <section aria-label={t("Upgrade-Ziel ändern oder verwerfen")}>
+                  <p>
+                    {t(
+                      "Solange für diesen Upgrade-Versuch noch kein Apply vorbereitet wurde, kannst du das Ziel ändern oder verwerfen. Alte Pläne bleiben im Verlauf, dürfen danach aber nicht mehr angewendet werden.",
+                    )}
+                  </p>
+                  {!context.withdrawal.canWithdraw && (
+                    <p role="status">
+                      {t(
+                        "Die Rücknahme ist derzeit gesperrt. Prüfe laufende Ausführungen, Recovery und bereits vorbereitete Applies. Es wird nichts automatisch beendet oder entsperrt.",
+                      )}
+                    </p>
+                  )}
+                  {context.withdrawal.blockers.includes(
+                    "restore-platform-unavailable",
+                  ) && (
+                    <p role="status">
+                      {t(
+                        "Der frühere Plattformstand ist nicht mehr aktuell freigegeben. Eine Rücknahme auf diesen Stand ist gesperrt. Der aktuelle Plattformnachweis muss zuerst geklärt werden.",
+                      )}
+                    </p>
+                  )}
+                  <div className="actions">
+                    <button
+                      type="button"
+                      className="button secondary"
+                      disabled={busy || !context.withdrawal.canWithdraw}
+                      onClick={() => {
+                        setWithdrawAction("change");
+                        setConfirmWithdrawal(false);
+                        setError("");
+                      }}
+                    >
+                      {t("Upgrade-Ziel ändern")}
+                    </button>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      disabled={busy || !context.withdrawal.canWithdraw}
+                      onClick={() => {
+                        setWithdrawAction("discard");
+                        setConfirmWithdrawal(false);
+                        setError("");
+                      }}
+                    >
+                      {t("Upgrade verwerfen")}
+                    </button>
+                  </div>
+                  {withdrawAction && (
+                    <fieldset disabled={busy}>
+                      <legend>{t("Rücknahme bestätigen")}</legend>
+                      <p>
+                        {t("Wieder gewünschter Stand")}:{" "}
+                        <strong>
+                          {versionLabel(context.withdrawal.restoreVersionId)}
+                        </strong>
+                      </p>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={confirmWithdrawal}
+                          onChange={(event) =>
+                            setConfirmWithdrawal(event.target.checked)
+                          }
+                        />
+                        {t(
+                          "Ich nehme das gespeicherte Upgrade-Ziel zurück und sperre seine bisherigen Pläne für Apply. Es wird keine Infrastruktur geändert und kein State zurückgesetzt.",
+                        )}
+                      </label>
+                      <button
+                        type="button"
+                        className="button"
+                        disabled={
+                          !confirmWithdrawal || !context.withdrawal.canWithdraw
+                        }
+                        onClick={() => void withdraw()}
+                      >
+                        {t(
+                          withdrawAction === "change"
+                            ? "Ziel zurücknehmen und neu auswählen"
+                            : "Upgrade verbindlich verwerfen",
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => {
+                          setWithdrawAction(null);
+                          setConfirmWithdrawal(false);
+                        }}
+                      >
+                        {t("Rücknahme abbrechen")}
+                      </button>
+                    </fieldset>
+                  )}
+                </section>
+              )}
               <button type="button" className="button" onClick={onPlan}>
                 {t("Weiter: Neuen Plan prüfen")}
               </button>

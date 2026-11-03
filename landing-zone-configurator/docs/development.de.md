@@ -113,8 +113,13 @@ CSRF, RLS und Migrationsfunktionen. Die Testdaten enthalten einen erfolgreichen
 historischen Plan/Apply und eine verbrauchte Plan-Freigabe statt nur einer leeren
 Bestellung. Er wählt, prüft und speichert ein Upgrade, lädt es erneut, folgt dem
 nächsten Schritt zu Plan und prüft die kompilierte Zielversion, freigegebene
-Ausführungsquelle und unveränderte State-Zuordnung. Ein Cloud-Plan oder Apply
-wird nicht ausgeführt. Separate Datenbank-/Runner-Broker-Tests prüfen Dispatch
+Ausführungsquelle und unveränderte State-Zuordnung. Anschließend wird ein
+synthetischer abgeschlossener Plan ohne Änderungen erfasst. Der Browser nimmt
+das noch nicht angewendete Ziel zurück, lädt neu und wählt eine neuere Version
+mit Kubernetes-Rechten. Der neu kompilierte Input muss diese Rechte und dieselbe
+State-Zuordnung enthalten; der verworfene Plan bleibt gesperrt. Der Ablauf prüft
+auch Session-, Herkunfts- und CSRF-Schutz der Rücknahme-Route. Ein Cloud-Plan oder
+Apply wird nicht ausgeführt. Separate Datenbank-/Runner-Broker-Tests prüfen Dispatch
 und Artefaktzulassung. Ersetze diese Upgrade-API-Antworten nicht durch
 Browser-Routen-Mocks; solche Mocks würden Transaktionsfehler verdecken.
 

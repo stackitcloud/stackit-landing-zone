@@ -1,3 +1,4 @@
+import { applicationUpgradeWithdrawalContextSchema } from "@lzc/contracts";
 import {
   platformContractSchema,
   publishedProjectTemplateSchema,
@@ -38,6 +39,7 @@ const edgeSchema = z.object({
   assessment: assessmentSchema,
 });
 export const contextSchema = z.object({
+  withdrawal: applicationUpgradeWithdrawalContextSchema.optional(),
   originVersionId: z.uuid(),
   effectiveVersionId: z.uuid(),
   effectivePlatformRevision: z.uuid().nullable(),
@@ -52,7 +54,7 @@ export const contextSchema = z.object({
       candidateHash: z.string(),
       edgeId: z.uuid().nullable(),
       platformEdgeId: z.uuid().nullable().optional(),
-      kind: z.enum(["template", "platform"]).default("template"),
+      kind: z.enum(["template", "platform", "withdrawal"]).default("template"),
       versionId: z.uuid(),
       platformRevision: z.uuid(),
       parameters: parametersSchema,

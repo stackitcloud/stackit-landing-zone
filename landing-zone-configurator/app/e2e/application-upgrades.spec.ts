@@ -66,6 +66,9 @@ async function setup(
     saveError?: string;
     saved?: boolean;
     reject?: boolean;
+    withdrawalBlocked?: boolean;
+    withdrawalReject?: boolean;
+    withdrawalNoApply?: boolean;
   } = {},
 ) {
   let approved = false;
@@ -128,14 +131,23 @@ async function setup(
     requiresFreshPlan: true,
     applyAllowed: false,
   });
+  let withdrawalReject = publication.withdrawalReject;
   const context = {
+    withdrawal: {
+      canWithdraw: false,
+      blockers: [] as string[],
+      expectedBindingId: null as string | null,
+      expectedVersionId: old,
+      lastAppliedJobId: publication.withdrawalNoApply ? null : family,
+      restoreVersionId: old,
+    },
     originVersionId: old,
     effectiveVersionId: old,
     effectivePlatformRevision: unbound ? null : platform,
     effectiveDeploymentPolicy: "direct",
     effectiveParameters: {},
     bindingId: null as string | null,
-    lastAppliedVersionId: old,
+    lastAppliedVersionId: publication.withdrawalNoApply ? null : old,
     lastAppliedPlatformRevision: platform,
     candidate: null as unknown,
     current: version(old, 1),
@@ -346,6 +358,38 @@ async function setup(
     expect(request.headers()["x-lzc-csrf"]).toBe("upgrade-csrf");
     const body = request.postDataJSON();
     mutations.push({ path, body });
+    if (path === `instances/${instance}/upgrades/withdraw`) {
+      expect(body).toEqual({
+        expectedBindingId: edge,
+        expectedVersionId: target,
+        lastAppliedJobId: publication.withdrawalNoApply ? null : family,
+        confirmWithdrawal: true,
+      });
+      if (withdrawalReject) {
+        withdrawalReject = false;
+        return r.fulfill({
+          status: 409,
+          json: { error: "application_upgrade_withdrawal_blocked" },
+        });
+      }
+      context.bindingId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+      context.effectiveVersionId = old;
+      context.current = version(old, 1);
+      context.candidate = {
+        id: context.bindingId,
+        kind: "withdrawal",
+        candidateHash: "b".repeat(64),
+        edgeId: null,
+        versionId: old,
+        platformRevision: platform,
+        parameters: {},
+        sourceRevision: version(old, 1).acceleratorRevision,
+        sensitivePolicy: "approval-required",
+        createdAt: "2026-11-03T00:00:00.000Z",
+      };
+      context.withdrawal.canWithdraw = false;
+      return r.fulfill({ json: context });
+    }
     if (path === "platform-upgrades")
       return r.fulfill({ json: { id: edge, ...body } });
     if (path === "template-upgrades") {
@@ -420,6 +464,13 @@ async function setup(
         status: 409,
         json: { error: "application_upgrade_binding_changed" },
       });
+    context.withdrawal = {
+      ...context.withdrawal,
+      canWithdraw: !publication.withdrawalBlocked,
+      blockers: publication.withdrawalBlocked ? ["execution-claim-active"] : [],
+      expectedBindingId: edge,
+      expectedVersionId: target,
+    };
     context.bindingId = edge;
     context.effectiveVersionId = target;
     context.current = version(target, 2);
@@ -1399,3 +1450,133 @@ for (const [code, message] of [
       `instances/${instance}/upgrades`,
     ]);
   });
+
+for (const action of [
+  "change",
+  "discard",
+  "reject",
+  "blocked",
+  "first-apply",
+] as const) {
+  test(`unapplied upgrade ${action} keeps the same order and never starts infrastructure work`, async ({
+    page,
+  }) => {
+    const { panel, mutations } = await setup(
+      page,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      {
+        withdrawalBlocked: action === "blocked",
+        withdrawalReject: action === "reject",
+        withdrawalNoApply: action === "first-apply",
+      },
+    );
+    await panel.getByLabel("Freigegebene Zielversion").selectOption(edge);
+    await panel
+      .locator(`select[id$="secretsmanager_enabled"]`)
+      .selectOption("false");
+    await panel
+      .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+      .click();
+    await panel.getByRole("checkbox", { name: confirmation }).check();
+    await panel
+      .getByRole("button", {
+        name: "Upgrade-Ziel speichern und weiter",
+        exact: true,
+      })
+      .click();
+    await expect(
+      panel.getByRole("button", {
+        name: "Weiter: Neuen Plan prüfen",
+        exact: true,
+      }),
+    ).toBeVisible();
+    const change = panel.getByRole("button", {
+      name: "Upgrade-Ziel ändern",
+      exact: true,
+    });
+    if (action === "blocked") {
+      await expect(change).toBeDisabled();
+      await expect(
+        panel.getByText(/Die Rücknahme ist derzeit gesperrt/),
+      ).toBeVisible();
+      expect(
+        mutations.filter((x) => x.path.endsWith("/withdraw")),
+      ).toHaveLength(0);
+      return;
+    }
+    await panel
+      .getByRole("button", { name: "Weiter: Neuen Plan prüfen", exact: true })
+      .click();
+    const details = page.getByRole("region", {
+      name: "Bestelldetails",
+      exact: true,
+    });
+    await details
+      .getByRole("button", {
+        name: "Upgrade-Ziel ändern oder verwerfen",
+        exact: true,
+      })
+      .click();
+    await panel
+      .getByRole("button", {
+        name:
+          action === "discard" ? "Upgrade verwerfen" : "Upgrade-Ziel ändern",
+        exact: true,
+      })
+      .click();
+    const submit = panel.getByRole("button", {
+      name:
+        action === "discard"
+          ? "Upgrade verbindlich verwerfen"
+          : "Ziel zurücknehmen und neu auswählen",
+      exact: true,
+    });
+    await expect(submit).toBeDisabled();
+    const withdrawalConfirmation = panel.getByRole("checkbox", {
+      name: /Ich nehme das gespeicherte Upgrade-Ziel zurück/,
+    });
+    await withdrawalConfirmation.check();
+    await submit.click();
+    if (action === "reject") {
+      await expect(panel.getByRole("alert")).toBeFocused();
+      await expect(panel.getByRole("alert")).toContainText(
+        "Bestellung und State bleiben erhalten",
+      );
+      await expect(withdrawalConfirmation).not.toBeChecked();
+      await expect(
+        panel.getByRole("button", {
+          name: "Weiter: Neuen Plan prüfen",
+          exact: true,
+        }),
+      ).toBeVisible();
+    } else {
+      await expect(panel.getByLabel("Freigegebene Zielversion")).toBeVisible();
+      await expect(
+        panel.getByRole("button", {
+          name: "Weiter: Neuen Plan prüfen",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await expect(
+        panel.getByRole("status").filter({
+          hasText:
+            action === "discard"
+              ? "Upgrade wurde verworfen"
+              : "Upgrade-Ziel wurde zurückgenommen",
+        }),
+      ).toBeVisible();
+    }
+    expect(mutations.filter((x) => x.path.endsWith("/withdraw"))).toHaveLength(
+      1,
+    );
+    expect(
+      mutations.every((x) => /upgrades(?:\/preview|\/withdraw)?$/.test(x.path)),
+    ).toBe(true);
+  });
+}

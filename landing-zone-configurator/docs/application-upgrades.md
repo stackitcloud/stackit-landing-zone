@@ -66,6 +66,31 @@ own collapsed management area and are not part of template publication.
    a separate final confirmation; only the explicit Apply action changes resources.
    Going back does not start a job or grant approval.
 
+### Change or discard an unapplied upgrade
+
+From the Plan step, choose **Change or discard upgrade target** to return to
+Updates. The original requester can choose **Change upgrade target** or
+**Discard upgrade**, review the restored version and explicitly confirm withdrawal.
+The first action returns to target selection; the second leaves the previous
+version as the desired version. This also works after a completed no-change Plan.
+
+The server records a new immutable binding with the last successful Apply's
+settings, answers and platform contract. Before any first Apply it restores the
+original order instead. It preserves order/project/State identity and execution
+source maintenance. It does not run infrastructure, reset State or unlock anything.
+Historical Plans and approvals remain in history, but cannot be used for Apply;
+a fresh binding also prevents them becoming valid after selecting the same target
+again. A new target requires a published path from the restored version, a fresh
+Plan and the normal Apply approvals; an unapplied intermediate version is optional.
+
+Withdrawal is blocked during an active execution or unresolved Recovery, after
+any Apply has already been prepared since the baseline, or when the baseline's
+platform proof is no longer current. A failed/partial Apply must be reconciled
+through Recovery; metadata withdrawal never reverses its cloud changes. The UI
+shows blockers before confirmation and the server rechecks binding, baseline,
+requester and execution state atomically. A concurrent Apply and withdrawal
+cannot both be admitted.
+
 Preview and saving use the same reviewed execution-source resolver. If an older
 order and an older target template both explicitly name the same supported
 successor, the saved upgrade selects that successor and requires a fresh Plan.

@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { Session } from "./Account";
 
 const failures: Record<string, string> = {
+  application_upgrade_withdrawal_blocked:
+    "Das Upgrade-Ziel kann derzeit nicht zurückgenommen werden. Eine Ausführung, eine Recovery oder ein bereits vorbereiteter Apply muss zuerst geklärt werden. Bestellung und State bleiben erhalten.",
   application_upgrade_edge_invalid:
     "Dieser Upgrade-Pfad passt nicht zu den gewählten Versionen oder Richtlinien. Direkte Anwendung ist nur möglich, wenn beide Versionen direkte Bereitstellung erlauben. Es wurde kein Pfad veröffentlicht.",
   application_upgrade_edge_changed:

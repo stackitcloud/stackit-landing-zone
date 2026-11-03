@@ -1403,7 +1403,7 @@ function ApplicationPlanControls({
           className="button secondary"
           onClick={() => onViewChange("updates")}
         >
-          {t("Zurück: Upgrade-Ziel")}
+          {t("Upgrade-Ziel ändern oder verwerfen")}
         </button>
       )}
       {upgradeWizard && view === "plan" && (
@@ -4497,6 +4497,7 @@ export function Applications({
                 session={session}
                 instanceId={selectedInstance.id}
                 requestedBy={selectedInstance.requestedBy}
+                onWithdrawn={() => setUpgradeWizardOrder("")}
                 onPlan={() => {
                   setUpgradeWizardOrder(
                     `${session.tenant?.id}:${session.user.id}:${selectedInstance.id}`,
