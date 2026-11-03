@@ -1,6 +1,7 @@
 import {
   applicationTemplateUpgradeRequestSchema,
   applicationUpgradeEdgePolicySchema,
+  applicationUpgradeWithdrawalContextSchema,
 } from "@lzc/contracts";
 import {
   assessApplicationPlatformUpgrade,
@@ -15,7 +16,7 @@ import type { Session } from "../auth/store.js";
 const revision = z.string().regex(/^[a-f0-9]{40}$/);
 export const applicationUpgradeCandidateSchema = z.object({
   id: z.uuid(),
-  kind: z.enum(["template", "platform"]).default("template"),
+  kind: z.enum(["template", "platform", "withdrawal"]).default("template"),
   platformEdgeId: z.uuid().nullable().optional(),
   candidateHash: z.string().regex(/^[a-f0-9]{64}$/),
   edgeId: z.uuid().nullable(),
@@ -258,6 +259,7 @@ export async function enrichApplicationUpgradeContext(
   client: pg.PoolClient,
   context: z.infer<typeof applicationUpgradeContextSchema>,
   session: Session,
+  instanceId: string,
 ) {
   const ids = [
     ...new Set([
@@ -332,6 +334,14 @@ export async function enrichApplicationUpgradeContext(
   const email = context.effectiveSettings.owner_email;
   return {
     ...context,
+    withdrawal: applicationUpgradeWithdrawalContextSchema.parse(
+      (
+        await client.query<{ context: unknown }>(
+          "SELECT lzc_auth.application_upgrade_withdrawal_context($1,$2) AS context",
+          [session.id, instanceId],
+        )
+      ).rows[0]?.context,
+    ),
     current,
     versionLabels: rows.rows.map((row) => {
       const value = publication(row);

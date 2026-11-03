@@ -72,6 +72,34 @@ Template-Veröffentlichung.
    öffnet im Assistenten die separate abschließende Bestätigung. Erst die ausdrückliche
    Apply-Aktion ändert Ressourcen. Zurückgehen startet keinen Job und erteilt keine Freigabe.
 
+### Noch nicht angewendetes Upgrade ändern oder verwerfen
+
+Im Plan-Schritt führt **Upgrade-Ziel ändern oder verwerfen** zurück zu Updates.
+Der ursprüngliche Besteller kann **Upgrade-Ziel ändern** oder **Upgrade verwerfen**
+wählen, die wiederherzustellende Version prüfen und die Rücknahme ausdrücklich
+bestätigen. Die erste Aktion führt zur Zielauswahl, die zweite lässt die vorherige
+Version als gewünschten Stand bestehen. Das funktioniert auch nach einem
+abgeschlossenen Plan ohne Änderungen.
+
+Der Server protokolliert eine neue unveränderliche Bindung mit Einstellungen,
+Antworten und Plattformvertrag des letzten erfolgreichen Applies. Vor dem ersten
+Apply stellt er stattdessen die ursprüngliche Bestellung wieder her. Bestellung,
+Projekt und State-Zuordnung sowie die technische Ausführungswartung bleiben erhalten.
+Die Aktion führt keine Infrastruktur aus, setzt keinen State zurück und entsperrt
+nichts. Alte Pläne und Freigaben bleiben im Verlauf, sind aber für Apply gesperrt.
+Die neue Bindung verhindert, dass sie nach erneuter Auswahl desselben Ziels wieder
+gültig werden. Ein neues Ziel benötigt einen veröffentlichten Pfad ab der
+wiederhergestellten Version, einen neuen Plan und die regulären Apply-Freigaben.
+Eine noch nicht angewendete Zwischenversion muss nicht erst angewendet werden.
+
+Eine aktive Ausführung oder ungeklärte Recovery, ein bereits vorbereiteter Apply
+seit dem Ausgangsstand oder ein nicht mehr aktueller Plattformnachweis dieses
+Standes sperren die Rücknahme. Ein fehlgeschlagener oder teilweise ausgeführter
+Apply muss über Recovery abgeglichen werden. Eine Metadaten-Rücknahme macht seine
+Cloud-Änderungen nicht rückgängig. Die Oberfläche zeigt Sperren vor der Bestätigung;
+der Server prüft Bindung, Ausgangsstand, Besteller und Ausführungsstatus nochmals
+atomar. Gleichzeitige Apply-Zulassung und Rücknahme können nicht beide gelingen.
+
 Vorschau und Speichern verwenden dieselbe Prüfung freigegebener Ausführungsstände.
 Wenn eine ältere Bestellung und eine ältere Ziel-Template-Version ausdrücklich
 denselben unterstützten Nachfolger nennen, wählt das gespeicherte Upgrade diesen

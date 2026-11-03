@@ -1535,6 +1535,47 @@ it("does not equate two supported sources without reviewed replacement edges", a
   }
 });
 
+async function publishLaterKubernetesVersion(
+  f: Awaited<ReturnType<typeof fixture>>,
+) {
+  const next = randomUUID();
+  const document = (
+    await admin.query(
+      "SELECT document FROM lzc.application_template_versions WHERE id=$1",
+      [f.to],
+    )
+  ).rows[0].document;
+  document.settings.custom_roles = [
+    ...document.settings.custom_roles,
+    {
+      name: "kubernetes",
+      description: "Cluster management",
+      permissions: [
+        "ske.cluster.create",
+        "ske.cluster.get",
+        "ske.cluster.list",
+      ],
+    },
+  ];
+  document.settings.role_assignments = [
+    ...document.settings.role_assignments,
+    { role: "kubernetes", subject: `${owner.userId}@example.test` },
+  ];
+  await imported(() =>
+    admin.query(
+      "INSERT INTO lzc.application_template_versions(id,tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) SELECT $1,tenant_id,template_id,3,published_by,accelerator_revision,$3,platform_revision,target_key,deployment_policy FROM lzc.application_template_versions WHERE id=$2",
+      [next, f.to, document],
+    ),
+  );
+  await imported(() =>
+    admin.query(
+      "INSERT INTO lzc.application_template_groups(tenant_id,version_id,group_id) SELECT tenant_id,$1,group_id FROM lzc.application_template_groups WHERE version_id=$2",
+      [next, f.to],
+    ),
+  );
+  return { versionId: next, edge: await edge({ ...f, to: next }) };
+}
+
 async function appliedOrderHistory(f: Awaited<ReturnType<typeof fixture>>) {
   const { Applications } = await import(
     "../apps/api/src/applications/service.js"
@@ -1711,6 +1752,7 @@ it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
     });
     const old = await appliedOrderHistory(f);
     const publishedEdge = await edge(f);
+    const later = await publishLaterKubernetesVersion(f);
     // Use a distinct visible name so other database cases cannot be selected.
     await imported(() =>
       admin.query(
@@ -1746,6 +1788,41 @@ it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
     });
     const origin = await app.listen({ host: "127.0.0.1", port: 0 });
     auth.origin = origin;
+    const withdrawalUrl = `/api/v1/applications/instances/${f.instance}/upgrades/withdraw`;
+    const withdrawalPayload = {
+      expectedBindingId: randomUUID(),
+      expectedVersionId: f.to,
+      lastAppliedJobId: null,
+      confirmWithdrawal: true,
+    };
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: withdrawalUrl,
+          payload: withdrawalPayload,
+        })
+      ).statusCode,
+    ).toBe(401);
+    for (const replacement of [
+      { origin: "https://foreign.example" },
+      { "x-lzc-csrf": "wrong" },
+    ]) {
+      const rejected = await app.inject({
+        method: "POST",
+        url: withdrawalUrl,
+        headers: {
+          cookie: `__Host-lzc-session=${ownerToken.token}`,
+          origin,
+          "x-lzc-csrf": owner.csrfToken,
+          "x-lzc-tenant": owner.tenantId,
+          ...replacement,
+        },
+        payload: withdrawalPayload,
+      });
+      expect(rejected.statusCode).toBe(403);
+      expect(rejected.json().error).toBe("invalid_request_origin_or_csrf");
+    }
     const browser = await chromium.launch();
     const context = await browser.newContext({ locale: "de-DE" });
     await context.addCookies([
@@ -1852,6 +1929,98 @@ it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
       expect(compiled.body.plan.variables.application.template_version).toBe(2);
       expect(compiled.body.plan.stateKey).toBe(old.inputs.stateKey);
       expect(compiled.body.plan.acceleratorRevision).toBe(source);
+      // Finish a synthetic no-change Plan for the first target, without a cloud Runner.
+      const service = new Applications(runtime);
+      const pending = await service.prepareJob(owner, f.instance, {
+        idempotencyKey: randomUUID(),
+        confirmPlan: true,
+      });
+      const pendingInputs = (
+        await admin.query(
+          "SELECT inputs FROM lzc.application_jobs WHERE id=$1",
+          [pending.id],
+        )
+      ).rows[0].inputs;
+      const noChange = {
+        ...summary("ordinary"),
+        result: "no-changes",
+        resources: { ...summary().resources, create: 0 },
+      };
+      await artifact(f, { id: pending.id, inputs: pendingInputs }, noChange);
+      await details
+        .getByRole("button", {
+          name: "Upgrade-Ziel ändern oder verwerfen",
+          exact: true,
+        })
+        .click();
+      await panel
+        .getByRole("button", { name: "Upgrade-Ziel ändern", exact: true })
+        .click();
+      await panel
+        .getByRole("checkbox", {
+          name: /Ich nehme das gespeicherte Upgrade-Ziel zurück/,
+        })
+        .check();
+      await panel
+        .getByRole("button", {
+          name: "Ziel zurücknehmen und neu auswählen",
+          exact: true,
+        })
+        .click();
+      await browserExpect(
+        panel.getByLabel("Freigegebene Zielversion"),
+      ).toBeVisible();
+      await page.reload();
+      await page
+        .getByRole("tab", { name: "Bestellungen", exact: true })
+        .click();
+      await page
+        .getByRole("button", {
+          name: /Details anzeigen: Browser recovery upgrade/,
+        })
+        .click();
+      await details.getByRole("tab", { name: "Updates", exact: true }).click();
+      await panel
+        .getByLabel("Freigegebene Zielversion")
+        .selectOption(later.edge.id);
+      await panel
+        .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+        .click();
+      await panel
+        .getByRole("checkbox", {
+          name: /Ich übernehme nur den gewünschten Stand/,
+        })
+        .check();
+      await panel
+        .getByRole("button", {
+          name: "Upgrade-Ziel speichern und weiter",
+          exact: true,
+        })
+        .click();
+      await browserExpect(
+        panel.getByRole("button", {
+          name: "Weiter: Neuen Plan prüfen",
+          exact: true,
+        }),
+      ).toBeVisible();
+      const selected = await service.preparePlanInput(owner, f.instance);
+      expect(selected.plan.variables.application.template_version).toBe(3);
+      expect(selected.plan.variables.application.custom_roles).toContainEqual(
+        expect.objectContaining({
+          name: "kubernetes",
+          permissions: expect.arrayContaining(["ske.cluster.create"]),
+        }),
+      );
+      expect(selected.plan.stateKey).toBe(old.inputs.stateKey);
+      const outdated = await scoped(owner, (client) =>
+        client.query("SELECT lzc_auth.assert_application_upgrade_binding($1)", [
+          pending.id,
+        ]),
+      ).then(
+        () => false,
+        () => true,
+      );
+      expect(outdated).toBe(true);
       expect(failed).toEqual([]);
       expect(
         (
@@ -1860,7 +2029,7 @@ it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
             [f.instance],
           )
         ).rows[0].count,
-      ).toBe("2");
+      ).toBe("3");
     } catch (error) {
       console.log((await page.locator("body").innerText()).slice(0, 3000));
       throw error;
@@ -1968,4 +2137,193 @@ it("retains consumed Plan receipts when selecting a new Platform contract", asyn
       )
     ).rows[0].revoked_at,
   ).toBeNull();
+});
+
+it("withdraws an unapplied target with a fresh binding, preserves claimed history and rejects stale Plan/Apply and ABA", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture();
+  const history = await appliedOrderHistory(f);
+  const e = await edge(f);
+  const selected = await request(f, e.id);
+  const j = await plan(f, selected.candidate);
+  await artifact(f, j, summary("ordinary"));
+  const service = new Applications(runtime);
+  const context = await service.upgradeContext(owner, f.instance);
+  expect(context.withdrawal.canWithdraw).toBe(true);
+  const body = {
+    expectedBindingId: context.bindingId,
+    expectedVersionId: f.to,
+    lastAppliedJobId: context.withdrawal.lastAppliedJobId,
+    confirmWithdrawal: true,
+  };
+  const historicalGrant = (
+    await admin.query(
+      "SELECT to_jsonb(g) AS value FROM lzc.application_job_grants g WHERE job_id=$1",
+      [history.id],
+    )
+  ).rows[0].value;
+  const restored = await service.withdrawUpgrade(owner, f.instance, body);
+  expect(restored.effectiveVersionId).toBe(f.from);
+  expect(restored.bindingId).not.toBe(selected.bindingId);
+  expect(restored.bindingId).not.toBeNull();
+  expect(restored.candidate?.kind).toBe("withdrawal");
+  expect(restored.withdrawal.canWithdraw).toBe(false);
+  expect(restored.candidates.some((x) => x.id === e.id)).toBe(true);
+  expect(
+    (await service.preparePlanInput(owner, f.instance)).plan.stateKey,
+  ).toBe(j.inputs.stateKey);
+  expect(
+    (
+      await admin.query(
+        "SELECT to_jsonb(g) AS value FROM lzc.application_job_grants g WHERE job_id=$1",
+        [history.id],
+      )
+    ).rows[0].value,
+  ).toEqual(historicalGrant);
+  expect(
+    (
+      await admin.query(
+        "SELECT revoked_at IS NOT NULL AS value FROM lzc.application_job_grants WHERE job_id=$1",
+        [j.id],
+      )
+    ).rows[0].value,
+  ).toBe(true);
+  await expect(apply(f, j)).rejects.toThrow(
+    /application_(upgrade_binding_changed|grant|apply)/,
+  );
+  await expect(
+    service.withdrawUpgrade(owner, f.instance, body),
+  ).rejects.toThrow("application_upgrade_binding_changed");
+  await expect(
+    apply(f, {
+      id: history.id as ReturnType<typeof randomUUID>,
+      inputs: history.inputs,
+    }),
+  ).rejects.toThrow();
+  const again = await service.requestUpgrade(owner, f.instance, {
+    edgeId: e.id,
+    expectedBindingId: restored.bindingId,
+    expectedVersionId: f.from,
+    confirmUpgrade: true,
+  });
+  expect(again.bindingId).not.toBe(selected.bindingId);
+  await expect(apply(f, j)).rejects.toThrow();
+  await expect(
+    admin.query(
+      "UPDATE lzc.application_upgrade_candidates SET parameters='{}' WHERE id=$1",
+      [restored.bindingId],
+    ),
+  ).rejects.toThrow();
+});
+
+it("allows withdrawal before a first Apply and rejects foreign users, tampered baselines and missing confirmation", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture();
+  const e = await edge(f);
+  await request(f, e.id);
+  const service = new Applications(runtime);
+  const c = await service.upgradeContext(owner, f.instance);
+  expect(c.withdrawal.canWithdraw).toBe(true);
+  const body = {
+    expectedBindingId: c.bindingId,
+    expectedVersionId: f.to,
+    lastAppliedJobId: null,
+    confirmWithdrawal: true,
+  };
+  await expect(
+    service.withdrawUpgrade(outsider, f.instance, body),
+  ).rejects.toThrow();
+  await expect(
+    service.withdrawUpgrade(engineer, f.instance, body),
+  ).rejects.toThrow();
+  await expect(
+    service.withdrawUpgrade(owner, f.instance, {
+      ...body,
+      confirmWithdrawal: false,
+    }),
+  ).rejects.toThrow();
+  await expect(
+    service.withdrawUpgrade(owner, f.instance, {
+      ...body,
+      lastAppliedJobId: randomUUID(),
+    }),
+  ).rejects.toThrow("application_upgrade_binding_changed");
+  const restored = await service.withdrawUpgrade(owner, f.instance, body);
+  expect(restored.effectiveVersionId).toBe(f.from);
+  expect(restored.lastAppliedVersionId).toBeNull();
+});
+
+it("blocks withdrawal while a Runner claim or any later Apply attempt may affect cloud resources", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture();
+  await appliedOrderHistory(f);
+  const e = await edge(f);
+  const selected = await request(f, e.id);
+  const j = await plan(f, selected.candidate);
+  const service = new Applications(runtime);
+  const c = await service.upgradeContext(owner, f.instance);
+  const body = {
+    expectedBindingId: c.bindingId,
+    expectedVersionId: f.to,
+    lastAppliedJobId: c.withdrawal.lastAppliedJobId,
+    confirmWithdrawal: true,
+  };
+  await imported(() =>
+    admin.query(
+      "INSERT INTO lzc.application_job_claims(job_id,tenant_id,owner_user_id,approved_by,approval_session_id,expires_at) SELECT job_id,tenant_id,owner_user_id,approved_by,$2,now()+interval '10 minutes' FROM lzc.application_job_grants WHERE job_id=$1",
+      [j.id, owner.id],
+    ),
+  );
+  await expect(
+    service.withdrawUpgrade(owner, f.instance, body),
+  ).rejects.toThrow("application_upgrade_withdrawal_blocked");
+  await artifact(f, j, summary("ordinary"));
+  const attemptedApply = await apply(f, j);
+  // A transaction timestamp must not hide an Apply from a later desired binding.
+  await imported(() =>
+    admin.query(
+      "UPDATE lzc.application_jobs SET created_at=(SELECT min(created_at)-interval '1 second' FROM lzc.application_jobs WHERE instance_id=$2) WHERE id=$1",
+      [attemptedApply, f.instance],
+    ),
+  );
+  expect(
+    (await service.upgradeContext(owner, f.instance)).withdrawal.blockers,
+  ).toContain("apply-attempt-after-baseline");
+  await expect(
+    service.withdrawUpgrade(owner, f.instance, body),
+  ).rejects.toThrow("application_upgrade_withdrawal_blocked");
+});
+
+it("serializes withdrawal against Apply admission so exactly one transition can win", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture();
+  await appliedOrderHistory(f);
+  const e = await edge(f);
+  const selected = await request(f, e.id);
+  const j = await plan(f, selected.candidate);
+  await artifact(f, j, summary("ordinary"));
+  const service = new Applications(runtime);
+  const c = await service.upgradeContext(owner, f.instance);
+  const results = await Promise.allSettled([
+    service.withdrawUpgrade(owner, f.instance, {
+      expectedBindingId: c.bindingId,
+      expectedVersionId: f.to,
+      lastAppliedJobId: c.withdrawal.lastAppliedJobId,
+      confirmWithdrawal: true,
+    }),
+    apply(f, j),
+  ]);
+  expect(results.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+  const after = await service.upgradeContext(owner, f.instance);
+  if (results[0].status === "fulfilled")
+    expect(after.candidate?.kind).toBe("withdrawal");
+  else expect(after.withdrawal.canWithdraw).toBe(false);
 });

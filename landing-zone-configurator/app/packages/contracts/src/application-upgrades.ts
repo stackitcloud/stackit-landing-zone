@@ -29,6 +29,20 @@ export const applicationTemplateUpgradeRequestSchema = z.strictObject({
   confirmUpgrade: z.literal(true),
   parameters: z.record(z.string(), z.json()).optional(),
 });
+export const applicationUpgradeWithdrawalRequestSchema = z.strictObject({
+  expectedBindingId: z.uuid(),
+  expectedVersionId: z.uuid(),
+  lastAppliedJobId: z.uuid().nullable(),
+  confirmWithdrawal: z.literal(true),
+});
+export const applicationUpgradeWithdrawalContextSchema = z.object({
+  canWithdraw: z.boolean(),
+  blockers: z.array(z.string().max(128)).max(50),
+  expectedBindingId: z.uuid().nullable(),
+  expectedVersionId: z.uuid(),
+  lastAppliedJobId: z.uuid().nullable(),
+  restoreVersionId: z.uuid(),
+});
 export const applicationUpgradeAssessmentSchema =
   applicationUpgradeSafetySchema.extend({
     approvalPolicy: z.enum(["approval-required", "direct"]),

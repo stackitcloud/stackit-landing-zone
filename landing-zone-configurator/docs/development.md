@@ -111,7 +111,11 @@ RLS and migration functions. Its fixture includes a successful historical
 Plan/Apply and a consumed Plan claim, not just an empty order. It selects,
 previews and saves an upgrade, reloads it, follows the next step to Plan and
 checks the compiled target version, reviewed execution source and unchanged
-State key. It does not run a cloud Plan or Apply. Separate database/Runner broker
+State key. It then records a synthetic completed no-change Plan, withdraws the
+unapplied target, reloads and selects a newer version with Kubernetes permissions.
+The new compiled input must contain those permissions and the same State key;
+the withdrawn Plan remains blocked. The journey also checks the withdrawal
+route's session, origin and CSRF guards. It does not run a cloud Plan or Apply. Separate database/Runner broker
 tests cover dispatch and artifact admission. Do not replace these upgrade API
 responses with browser route mocks; those would hide transaction failures.
 

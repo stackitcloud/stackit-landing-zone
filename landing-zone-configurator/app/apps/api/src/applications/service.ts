@@ -17,6 +17,7 @@ import {
   applicationRecoveryReviewRequestSchema,
   applicationRecoveryReviewSchema,
   applicationTemplateUpgradeRequestSchema,
+  applicationUpgradeWithdrawalRequestSchema,
   appliedPlatformSourceSchema,
   classifyApplicationUpgradePlan,
   planResultSchema,
@@ -1136,6 +1137,7 @@ export class Applications {
         client,
         await readApplicationUpgradeContext(client, session, id),
         session,
+        id,
       ),
     );
   }
@@ -1223,6 +1225,30 @@ export class Applications {
     return selected;
   }
 
+  async withdrawUpgrade(session: Session, instanceId: string, input: unknown) {
+    const id = z.uuid().parse(instanceId);
+    const request = applicationUpgradeWithdrawalRequestSchema.parse(input);
+    return this.work(session, "order", async (client) => {
+      const result = await client.query<{ context: unknown }>(
+        "SELECT lzc_auth.withdraw_application_upgrade($1,$2,$3,$4,$5,$6) AS context",
+        [
+          session.id,
+          id,
+          request.expectedBindingId,
+          request.expectedVersionId,
+          request.lastAppliedJobId,
+          request.confirmWithdrawal,
+        ],
+      );
+      return enrichApplicationUpgradeContext(
+        client,
+        applicationUpgradeContextSchema.parse(result.rows[0]?.context),
+        session,
+        id,
+      );
+    });
+  }
+
   async requestUpgrade(session: Session, instanceId: string, input: unknown) {
     const id = z.uuid().parse(instanceId);
     const confirmed = applicationTemplateUpgradeRequestSchema.parse(input);
@@ -1266,6 +1292,7 @@ export class Applications {
         client,
         applicationUpgradeContextSchema.parse(result.rows[0]?.context),
         session,
+        id,
       );
     });
   }
@@ -1345,6 +1372,7 @@ export class Applications {
         client,
         applicationUpgradeContextSchema.parse(result.rows[0]?.context),
         session,
+        id,
       );
     });
   }

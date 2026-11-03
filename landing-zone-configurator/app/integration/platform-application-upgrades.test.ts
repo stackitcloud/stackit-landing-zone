@@ -1042,3 +1042,76 @@ it("does not retain a preview State lock before requesting an upgrade during con
     if (requesting) await requesting.catch(() => {});
   }
 });
+
+it("reports a stale baseline Platform as a withdrawal blocker before confirmation without weakening current-proof guards", async () => {
+  const f = await platformFixture();
+  // Real shared-platform advancement: old proof remains at 1, target proof is now 2.
+  await imported(async () => {
+    await admin.query(
+      "UPDATE lzc.platform_states SET version=2 WHERE state_key=$1",
+      [f.stateKey],
+    );
+    await admin.query(
+      "UPDATE lzc.plan_runs SET applied_state_version=2 WHERE id=(SELECT apply_run_id FROM lzc.application_platform_sources WHERE revision=$1)",
+      [f.to],
+    );
+    await admin.query(
+      "UPDATE lzc.application_platform_sources SET state_version=2 WHERE revision=$1",
+      [f.to],
+    );
+  });
+  const edge = await scoped(
+    engineer,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,true) AS value",
+          [engineer.id, f.from, f.to, { sensitive: "approval-required" }],
+        )
+      ).rows[0].value,
+  );
+  const chosen = await scoped(
+    owner,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.request_application_platform_upgrade($1,$2,$3,NULL,$4,true) AS value",
+          [owner.id, f.instance, edge.id, f.from],
+        )
+      ).rows[0].value,
+  );
+  const withdrawal = await scoped(
+    owner,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.application_upgrade_withdrawal_context($1,$2) AS value",
+          [owner.id, f.instance],
+        )
+      ).rows[0].value,
+  );
+  expect(withdrawal.canWithdraw).toBe(false);
+  expect(withdrawal.blockers).toContain("restore-platform-unavailable");
+  await expect(
+    scoped(owner, (c) =>
+      c.query(
+        "SELECT lzc_auth.withdraw_application_upgrade($1,$2,$3,$4,NULL,true)",
+        [owner.id, f.instance, chosen.bindingId, f.version],
+      ),
+    ),
+  ).rejects.toThrow("application_upgrade_withdrawal_blocked");
+  expect(
+    (
+      await scoped(
+        owner,
+        async (c) =>
+          (
+            await c.query(
+              "SELECT lzc_auth.application_upgrade_context($1,$2) AS value",
+              [owner.id, f.instance],
+            )
+          ).rows[0].value,
+      )
+    ).effectivePlatformRevision,
+  ).toBe(f.to);
+});

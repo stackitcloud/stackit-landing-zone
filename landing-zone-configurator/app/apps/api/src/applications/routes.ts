@@ -200,6 +200,7 @@ export function registerApplications(
         | "upgradeContext"
         | "previewUpgrade"
         | "requestUpgrade"
+        | "withdrawUpgrade"
         | "listUpgradeEdges"
         | "publishUpgradeEdge"
         | "upgradeApprovalContext"
@@ -270,6 +271,7 @@ export function registerApplications(
             "application_execution_changed",
             "application_upgrade_edge_changed",
             "application_upgrade_binding_changed",
+            "application_upgrade_withdrawal_blocked",
             "application_upgrade_platform_changed",
             "application_grant_consumed",
             "application_backend_binding_conflict",
@@ -367,6 +369,18 @@ export function registerApplications(
           if (!session) return reply.code(401).send();
           const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
           return applications.previewUpgrade?.(session, id, request.body);
+        },
+      );
+    }
+    if (applications.withdrawUpgrade) {
+      routes.post(
+        "/api/v1/applications/instances/:id/upgrades/withdraw",
+        { bodyLimit: 4096 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          return applications.withdrawUpgrade?.(session, id, request.body);
         },
       );
     }

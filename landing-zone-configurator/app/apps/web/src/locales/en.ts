@@ -1,4 +1,27 @@
 export const englishMessages: Record<string, string> = {
+  "Der frühere Plattformstand ist nicht mehr aktuell freigegeben. Eine Rücknahme auf diesen Stand ist gesperrt. Der aktuelle Plattformnachweis muss zuerst geklärt werden.":
+    "The previous platform version is no longer currently approved. Withdrawal to that version is blocked. Resolve the current platform evidence first.",
+  "Upgrade-Ziel ändern oder verwerfen": "Change or discard upgrade target",
+  "Upgrade-Ziel ändern": "Change upgrade target",
+  "Upgrade verwerfen": "Discard upgrade",
+  "Rücknahme bestätigen": "Confirm withdrawal",
+  "Wieder gewünschter Stand": "Restored desired version",
+  "Ich nehme das gespeicherte Upgrade-Ziel zurück und sperre seine bisherigen Pläne für Apply. Es wird keine Infrastruktur geändert und kein State zurückgesetzt.":
+    "I withdraw the saved upgrade target and block its previous Plans for Apply. No infrastructure is changed and no State is reset.",
+  "Ziel zurücknehmen und neu auswählen": "Withdraw target and select another",
+  "Upgrade verbindlich verwerfen": "Confirm discarding upgrade",
+  "Rücknahme abbrechen": "Cancel withdrawal",
+  "Solange für diesen Upgrade-Versuch noch kein Apply vorbereitet wurde, kannst du das Ziel ändern oder verwerfen. Alte Pläne bleiben im Verlauf, dürfen danach aber nicht mehr angewendet werden.":
+    "Until an Apply has been prepared for this upgrade attempt, you can change or discard the target. Old Plans stay in history but can no longer be applied.",
+  "Die Rücknahme ist derzeit gesperrt. Prüfe laufende Ausführungen, Recovery und bereits vorbereitete Applies. Es wird nichts automatisch beendet oder entsperrt.":
+    "Withdrawal is currently blocked. Check active executions, Recovery and already prepared Applies. Nothing is automatically stopped or unlocked.",
+  "Das bisherige Upgrade-Ziel wurde zurückgenommen. Die alten Pläne bleiben im Verlauf und sind für Apply gesperrt. Wähle jetzt eine neue freigegebene Zielversion.":
+    "The previous upgrade target was withdrawn. Old Plans stay in history and are blocked for Apply. Select a new approved target version.",
+  "Das Upgrade wurde verworfen. Der vorherige Template-Stand ist wieder der gewünschte Stand. Infrastruktur und State wurden nicht verändert; alte Pläne bleiben für Apply gesperrt.":
+    "The upgrade was discarded. The previous template version is the desired version again. Infrastructure and State were not changed; old Plans stay blocked for Apply.",
+  "Das Upgrade-Ziel kann derzeit nicht zurückgenommen werden. Eine Ausführung, eine Recovery oder ein bereits vorbereiteter Apply muss zuerst geklärt werden. Bestellung und State bleiben erhalten.":
+    "The upgrade target cannot be withdrawn at present. Resolve the active execution, Recovery or already prepared Apply first. The order and State are preserved.",
+
   Veröffentlichungsschritte: "Publication steps",
   "1. Version veröffentlichen": "1. Publish version",
   "2. Upgrade optional anbieten": "2. Optionally offer an upgrade",
