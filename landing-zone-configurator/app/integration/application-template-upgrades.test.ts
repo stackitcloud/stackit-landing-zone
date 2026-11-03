@@ -1745,7 +1745,7 @@ it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
       targetSource: "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
     });
     const old = await appliedOrderHistory(f);
-    const publishedEdge = await edge(f);
+    const publishedEdge = await edge(f, "approval-required");
     const later = await publishLaterKubernetesVersion(f);
     // Use a distinct visible name so other database cases cannot be selected.
     await imported(() =>
@@ -1947,6 +1947,40 @@ it.runIf(process.env.LZC_TEST_BROWSER_JOURNEY === "true")(
           exact: true,
         })
         .click();
+      // Real regression: the old candidate requires approval, its Plan has a
+      // live ticket, but the Platform Owner has now published self-service.
+      await outstandingPlanTicket({ id: pending.id });
+      await edge(f, "direct");
+      await panel
+        .getByRole("button", { name: "Updates aktualisieren", exact: true })
+        .click();
+      const policy = panel.getByRole("group", {
+        name: "Aktualisierte Freigaberichtlinie verfügbar",
+        exact: true,
+      });
+      await browserExpect(policy).toBeVisible();
+      await policy.getByRole("checkbox").check();
+      await policy
+        .getByRole("button", {
+          name: "Aktuelle Richtlinie übernehmen",
+          exact: true,
+        })
+        .click();
+      await browserExpect(policy).not.toBeVisible();
+      const refreshed = await service.preparePlanInput(owner, f.instance);
+      expect(refreshed.plan.applyPolicy).toBe("direct");
+      expect(refreshed.plan.variables.application.template_version).toBe(2);
+      expect(refreshed.plan.variables.application).toEqual(
+        compiled.body.plan.variables.application,
+      );
+      expect(refreshed.plan.stateKey).toBe(old.inputs.stateKey);
+      await expect(
+        scoped(owner, (q) =>
+          q.query("SELECT lzc_auth.assert_application_upgrade_binding($1)", [
+            pending.id,
+          ]),
+        ),
+      ).rejects.toThrow();
       await panel
         .getByRole("button", { name: "Upgrade-Ziel ändern", exact: true })
         .click();
@@ -2533,4 +2567,135 @@ it("revises a path policy immutably, keeps old Plans restricted and rejects obso
       [restricted.id, { sensitive: "direct" }],
     ),
   ).rejects.toThrow();
+});
+
+async function outstandingPlanTicket(j: { id: string }) {
+  await imported(() =>
+    admin.query(
+      "INSERT INTO lzc.application_runner_tickets(job_id,tenant_id,approval_session_id,ticket_hash,runner_package_id,accelerator_revision,provider_lock_sha256,expires_at,consumed_at) SELECT job_id,tenant_id,$2,$3,$4,accelerator_revision,$5,now()+interval '10 minutes',now() FROM lzc.application_job_grants WHERE job_id=$1",
+      [
+        j.id,
+        owner.id,
+        randomBytes(32).toString("base64url"),
+        randomUUID(),
+        "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5",
+      ],
+    ),
+  );
+}
+
+it("lets the requester withdraw after a completed Plan despite its unexpired ticket, but blocks a running Plan", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const service = new Applications(runtime);
+  const f = await fixture();
+  const c = await request(f, (await edge(f)).id);
+  const j = await plan(f, c.candidate);
+  await outstandingPlanTicket(j);
+  expect(
+    (await service.upgradeContext(owner, f.instance)).withdrawal.blockers,
+  ).toContain("runner-ticket-active");
+  await artifact(f, j, summary("ordinary"));
+  const ready = await service.upgradeContext(owner, f.instance);
+  expect(ready.blockers).not.toContain("runner-ticket-active");
+  expect(ready.withdrawal.canWithdraw).toBe(true);
+  const restored = await service.withdrawUpgrade(owner, f.instance, {
+    expectedBindingId: ready.bindingId,
+    expectedVersionId: f.to,
+    lastAppliedJobId: ready.withdrawal.lastAppliedJobId,
+    confirmWithdrawal: true,
+  });
+  expect(restored.effectiveVersionId).toBe(f.from);
+  await expect(apply(f, j)).rejects.toThrow();
+});
+
+it.each(["direct", "approval-required"] as const)(
+  "adopts a changed %s path policy explicitly with a fresh binding, preserving target and rejecting the old Plan",
+  async (policy) => {
+    const { Applications } = await import(
+      "../apps/api/src/applications/service.js"
+    );
+    const service = new Applications(runtime);
+    const f = await fixture();
+    const oldEdge = await edge(
+      f,
+      policy === "direct" ? "approval-required" : "direct",
+    );
+    const c = await request(f, oldEdge.id);
+    const j = await plan(f, c.candidate);
+    await artifact(f, j, summary("sensitive"));
+    await outstandingPlanTicket(j);
+    const latest = await edge(f, policy);
+    const context = await service.upgradeContext(owner, f.instance);
+    expect(context.policyUpdate).toMatchObject({
+      edgeId: latest.id,
+      sensitivePolicy: policy,
+    });
+    const body = {
+      expectedBindingId: c.candidate.id,
+      expectedVersionId: f.to,
+      lastAppliedJobId: null,
+      edgeId: latest.id,
+      confirmPolicyRefresh: true,
+    };
+    await expect(
+      service.refreshUpgradePolicy(outsider, f.instance, body),
+    ).rejects.toThrow();
+    await expect(
+      service.refreshUpgradePolicy(engineer, f.instance, body),
+    ).rejects.toThrow();
+    await expect(
+      service.refreshUpgradePolicy(owner, f.instance, {
+        ...body,
+        edgeId: oldEdge.id,
+      }),
+    ).rejects.toThrow();
+    const next = await service.refreshUpgradePolicy(owner, f.instance, body);
+    expect(next.bindingId).not.toBe(c.candidate.id);
+    expect(next.policyUpdate).toBeNull();
+    expect(next.effectiveVersionId).toBe(f.to);
+    expect(next.effectiveSettings).toEqual(context.effectiveSettings);
+    expect(next.effectiveParameters).toEqual(context.effectiveParameters);
+    expect(next.effectiveDeploymentPolicy).toBe(policy);
+    expect(next.candidate?.sensitivePolicy).toBe(policy);
+    await expect(
+      service.refreshUpgradePolicy(owner, f.instance, body),
+    ).rejects.toThrow("application_upgrade_binding_changed");
+    await expect(apply(f, j)).rejects.toThrow();
+    if (!next.candidate) throw new Error("Expected fresh upgrade binding");
+    const fresh = await plan(f, next.candidate);
+    await artifact(f, fresh, summary("sensitive"));
+    expect(fresh.inputs.stateKey).toBe(j.inputs.stateKey);
+    if (policy === "direct")
+      await expect(apply(f, fresh)).resolves.toBeTruthy();
+    else
+      await expect(apply(f, fresh)).rejects.toThrow(
+        "application_upgrade_plan_approval_required",
+      );
+  },
+);
+
+it("refuses policy adoption after an Apply has been prepared", async () => {
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const f = await fixture();
+  const selected = await request(f, (await edge(f, "direct")).id);
+  const j = await plan(f, selected.candidate);
+  await artifact(f, j, summary("ordinary"));
+  await apply(f, j);
+  const latest = await edge(f, "approval-required");
+  const service = new Applications(runtime);
+  const context = await service.upgradeContext(owner, f.instance);
+  expect(context.policyUpdate?.canRefresh).toBe(false);
+  await expect(
+    service.refreshUpgradePolicy(owner, f.instance, {
+      expectedBindingId: selected.bindingId,
+      expectedVersionId: f.to,
+      lastAppliedJobId: null,
+      edgeId: latest.id,
+      confirmPolicyRefresh: true,
+    }),
+  ).rejects.toThrow("application_upgrade_withdrawal_blocked");
 });

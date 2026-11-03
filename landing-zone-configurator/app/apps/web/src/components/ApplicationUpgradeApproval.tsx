@@ -10,6 +10,7 @@ const schema = z.object({
   candidateHash: z.string().nullable(),
   artifactSha256: z.string().nullable(),
   requiresApproval: z.boolean(),
+  policyUpdateAvailable: z.boolean().default(false),
   approved: z.boolean(),
   canApprove: z.boolean(),
   blocked: z.boolean(),
@@ -20,11 +21,13 @@ export function ApplicationUpgradeApproval({
   planId,
   artifactSha256,
   onApproved,
+  onUpdates,
 }: {
   session: Session;
   planId: string;
   artifactSha256: string;
   onApproved: (signal: AbortSignal) => Promise<void>;
+  onUpdates?: () => void;
 }) {
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
@@ -67,19 +70,48 @@ export function ApplicationUpgradeApproval({
   if (!value?.requiresApproval && !value?.blocked && !error) return null;
   return (
     <section aria-label={t("Upgrade-Plan separat freigeben")}>
-      <h4>{t("Upgrade-Plan separat freigeben")}</h4>
+      <h4>
+        {t(
+          value?.policyUpdateAvailable
+            ? "Aktualisierte Freigaberichtlinie verfügbar"
+            : "Upgrade-Plan separat freigeben",
+        )}
+      </h4>
       {error && <p role="alert">{t(error)}</p>}
       <p>
         {t(
           "Diese Freigabe gilt nur für den angezeigten gespeicherten Plan und seine Upgrade-Bindung. Ein späterer oder geänderter Plan benötigt eine neue Prüfung; hier wird kein Apply gestartet.",
         )}
       </p>
+      {value?.requiresApproval &&
+        !value.approved &&
+        !value.blocked &&
+        !value.policyUpdateAvailable && (
+          <p role="status">
+            {t(
+              "Wartet auf Platform-Owner-Freigabe. Dieser gespeicherte Plan muss nicht erneut erstellt werden, solange er aktuell und gültig ist.",
+            )}
+          </p>
+        )}
       {value?.requiresApproval && !value.approved && !value.blocked && (
-        <p role="status">
-          {t(
-            "Wartet auf Platform-Owner-Freigabe. Dieser gespeicherte Plan muss nicht erneut erstellt werden, solange er aktuell und gültig ist.",
+        <>
+          {value.policyUpdateAvailable && (
+            <p role="status">
+              {t(
+                "Für dieses Upgrade wurde inzwischen eine neue Freigaberichtlinie veröffentlicht. Übernimm sie unter Updates und erstelle danach einen neuen Plan. Der bisherige Plan wird nicht nachträglich freigegeben.",
+              )}
+            </p>
           )}
-        </p>
+          {onUpdates && (
+            <button
+              type="button"
+              className="button secondary"
+              onClick={onUpdates}
+            >
+              {t("Zu den Update-Optionen")}
+            </button>
+          )}
+        </>
       )}
       {value?.approved ? (
         <p role="status">

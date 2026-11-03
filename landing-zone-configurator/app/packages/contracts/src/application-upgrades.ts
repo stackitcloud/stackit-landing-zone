@@ -41,6 +41,19 @@ export const applicationUpgradeWithdrawalRequestSchema = z.strictObject({
   lastAppliedJobId: z.uuid().nullable(),
   confirmWithdrawal: z.literal(true),
 });
+export const applicationUpgradePolicyRefreshRequestSchema =
+  applicationUpgradeWithdrawalRequestSchema
+    .omit({ confirmWithdrawal: true })
+    .extend({
+      edgeId: z.uuid(),
+      confirmPolicyRefresh: z.literal(true),
+    });
+export const applicationUpgradePolicyUpdateSchema = z.object({
+  canRefresh: z.boolean(),
+  blockers: z.array(z.string().max(128)).max(50),
+  edgeId: z.uuid(),
+  sensitivePolicy: z.enum(["direct", "approval-required"]),
+});
 export const applicationUpgradeWithdrawalContextSchema = z.object({
   canWithdraw: z.boolean(),
   blockers: z.array(z.string().max(128)).max(50),

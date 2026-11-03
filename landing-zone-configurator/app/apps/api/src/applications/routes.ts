@@ -201,6 +201,7 @@ export function registerApplications(
         | "previewUpgrade"
         | "requestUpgrade"
         | "withdrawUpgrade"
+        | "refreshUpgradePolicy"
         | "listUpgradeEdges"
         | "publishUpgradeEdge"
         | "upgradeApprovalContext"
@@ -369,6 +370,18 @@ export function registerApplications(
           if (!session) return reply.code(401).send();
           const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
           return applications.previewUpgrade?.(session, id, request.body);
+        },
+      );
+    }
+    if (applications.refreshUpgradePolicy) {
+      routes.post(
+        "/api/v1/applications/instances/:id/upgrades/refresh-policy",
+        { bodyLimit: 4096 },
+        async (request, reply) => {
+          const session = sessions.get(request);
+          if (!session) return reply.code(401).send();
+          const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+          return applications.refreshUpgradePolicy?.(session, id, request.body);
         },
       );
     }

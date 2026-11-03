@@ -17,6 +17,7 @@ import {
   applicationRecoveryReviewRequestSchema,
   applicationRecoveryReviewSchema,
   applicationTemplateUpgradeRequestSchema,
+  applicationUpgradePolicyRefreshRequestSchema,
   applicationUpgradeWithdrawalRequestSchema,
   appliedPlatformSourceSchema,
   classifyApplicationUpgradePlan,
@@ -1238,6 +1239,35 @@ export class Applications {
           request.expectedVersionId,
           request.lastAppliedJobId,
           request.confirmWithdrawal,
+        ],
+      );
+      return enrichApplicationUpgradeContext(
+        client,
+        applicationUpgradeContextSchema.parse(result.rows[0]?.context),
+        session,
+        id,
+      );
+    });
+  }
+
+  async refreshUpgradePolicy(
+    session: Session,
+    instanceId: string,
+    input: unknown,
+  ) {
+    const id = z.uuid().parse(instanceId);
+    const request = applicationUpgradePolicyRefreshRequestSchema.parse(input);
+    return this.work(session, "order", async (client) => {
+      const result = await client.query<{ context: unknown }>(
+        "SELECT lzc_auth.refresh_application_upgrade_policy($1,$2,$3,$4,$5,$6,$7) AS context",
+        [
+          session.id,
+          id,
+          request.expectedBindingId,
+          request.expectedVersionId,
+          request.lastAppliedJobId,
+          request.edgeId,
+          request.confirmPolicyRefresh,
         ],
       );
       return enrichApplicationUpgradeContext(

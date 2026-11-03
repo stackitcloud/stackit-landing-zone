@@ -1735,6 +1735,7 @@ function ApplicationPlanControls({
                   session={session}
                   planId={job.id}
                   artifactSha256={job.artifactSha256}
+                  onUpdates={() => onViewChange("updates")}
                   onApproved={async (signal) => {
                     await refresh(signal);
                   }}

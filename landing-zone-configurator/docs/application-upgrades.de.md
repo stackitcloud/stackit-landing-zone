@@ -42,9 +42,13 @@ aktualisieren** wählen oder über **Zurück zu den Upgrade-Pfaden** ohne
 Veröffentlichung zurückkehren. Neue Pfade erhalten die separate Aktion
 **Neuen Upgrade-Pfad veröffentlichen**. Das ergänzt einen neuen unveränderlichen Nachweis für dasselbe
 Ausgangs-/Zielpaar; die Liste zeigt die neueste Richtlinie. Frühere Veröffentlichungen,
-gewählte Upgrade-Ziele und Pläne behalten ihre gespeicherte Richtlinie. Um die neue
-Richtlinie zu nutzen, gegebenenfalls das noch nicht angewendete Ziel zurücknehmen,
-den neu veröffentlichten Pfad wählen und einen frischen Plan erstellen. Weder
+gewählte Upgrade-Ziele und Pläne behalten ihre gespeicherte Richtlinie. Für ein bereits gewähltes, noch nicht angewendetes Ziel öffnet der Application Owner
+**Updates**, prüft **Aktualisierte Freigaberichtlinie verfügbar**, bestätigt und wählt
+**Aktuelle Richtlinie übernehmen**. Eine neue Bindung erhält dieselbe Zielversion,
+dieselben Parameter und Einstellungen. Danach einen neuen Plan erstellen. Bei
+einem direkten Pfad ist keine weitere Platform-Owner-Freigabe erforderlich; bei
+einer entsprechend eingeschränkten Richtlinie bleibt sie nötig. Der alte Plan
+bleibt für Apply gesperrt. Weder
 Veröffentlichung noch Richtlinienänderung starten eine Ausführung oder entsperren
 einen bestehenden Plan.
 
@@ -213,3 +217,12 @@ nicht stillschweigend zurückgestuft. Nach dem Abgleich einen neuen Plan prüfen
 Der Assistant erklärt den Ablauf. Eine Chat-Annahme veröffentlicht keinen Pfad,
 ändert keine Bindung, gibt keinen Plan frei, entsperrt keinen State und erlaubt
 keinen Apply.
+
+
+Ein noch nicht abgelaufenes Runner-Ticket eines abgeschlossenen Plans blockiert
+das Ändern oder Verwerfen eines noch nicht angewendeten Upgrade-Ziels und die
+Übernahme einer geänderten Pfadrichtlinie nicht. Laufende Jobs, ungeklärte Recovery,
+aktive Apply-Berechtigungen und jeder Apply-Versuch nach dem Ausgangsstand
+bleiben Blocker. Die Richtlinienübernahme setzt eine gemeinsam genutzte Plattform
+nicht auf ihren früheren Stand zurück; die gewählte Zielplattform muss weiterhin
+aktuell sein.
