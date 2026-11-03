@@ -17,18 +17,33 @@ const edgesSchema = z.object({
 });
 export function ApplicationUpgradePublication({
   session,
+  onEditorOpen,
+  onEditorClose,
   versions,
   targetVersion,
   onPublished,
   onSkip,
 }: {
   session: Session;
+  onEditorOpen?: () => void;
+  onEditorClose?: () => void;
   versions: PublishedProjectTemplate[];
   targetVersion?: PublishedProjectTemplate;
   onPublished?: () => void;
   onSkip?: () => void;
 }) {
   const policyGroup = useId();
+  const policyForm = useRef<HTMLFieldSetElement>(null);
+  const [editRequest, setEditRequest] = useState(0);
+  const [mode, setMode] = useState<"list" | "create" | "edit">(
+    targetVersion ? "create" : "list",
+  );
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!editRequest) return;
+    if (mode === "list") heading.current?.focus();
+    else policyForm.current?.focus();
+  }, [editRequest, mode]);
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
     `upgrade-publication:${targetVersion?.id ?? "manage"}`,
@@ -76,7 +91,7 @@ export function ApplicationUpgradePublication({
       version.templateId === previous.templateId &&
       version.template.id === previous.template.id &&
       version.version > previous.version &&
-      !version.retiredAt,
+      (!version.retiredAt || (mode === "edit" && version.id === to)),
   );
   const selectedTarget = targets.find((version) => version.id === to);
   const existing = edges.find(
@@ -109,7 +124,11 @@ export function ApplicationUpgradePublication({
       "Upgrade-Pfad veröffentlicht. Bestehende Bestellungen bleiben unverändert, bis ihr Auftraggeber ausdrücklich ein Upgrade prüft und auswählt. Es wurde kein Plan oder Apply gestartet.",
     );
     if (onPublished) onPublished();
-    else await load();
+    else {
+      await load();
+      setMode("list");
+      onEditorClose?.();
+    }
   }
   function versionLabel(id: string) {
     const value = versions.find((item) => item.id === id);
@@ -126,25 +145,29 @@ export function ApplicationUpgradePublication({
           : "Upgrade-Pfade veröffentlichen",
       )}
     >
-      <h3>
+      <h3 ref={heading} tabIndex={-1}>
         {t(
-          targetVersion
-            ? "Upgrade für die neue Version anbieten"
-            : "Upgrade-Pfade veröffentlichen",
+          mode === "edit"
+            ? "Freigaberichtlinie bearbeiten"
+            : targetVersion
+              ? "Upgrade für die neue Version anbieten"
+              : "Upgrade-Pfade veröffentlichen",
         )}
       </h3>
-      <p>
-        {t(
-          "Neue Template-Versionen ändern bestehende Bestellungen nicht. Veröffentliche einen geprüften Pfad innerhalb derselben Template-Familie, damit Auftraggeber ihn unter Updates auswählen können.",
-        )}
-      </p>
+      {mode !== "edit" && (
+        <p>
+          {t(
+            "Neue Template-Versionen ändern bestehende Bestellungen nicht. Veröffentliche einen geprüften Pfad innerhalb derselben Template-Familie, damit Auftraggeber ihn unter Updates auswählen können.",
+          )}
+        </p>
+      )}
       {error && (
         <p role="alert" ref={errorRef} tabIndex={-1}>
           {t(error)}
         </p>
       )}
       {notice && <p role="status">{t(notice)}</p>}
-      {!targetVersion && (
+      {!targetVersion && mode === "list" && (
         <section aria-label={t("Veröffentlichte Upgrade-Pfade")}>
           <h4>
             {t("Gespeicherte Upgrade-Pfade")}
@@ -215,6 +238,9 @@ export function ApplicationUpgradePublication({
                   className="button secondary"
                   disabled={busy}
                   onClick={() => {
+                    onEditorOpen?.();
+                    setMode("edit");
+                    setEditRequest((value) => value + 1);
                     setFrom(edge.fromVersionId);
                     setTo(edge.toVersionId);
                     setDirect(edge.policy.sensitive === "direct");
@@ -227,134 +253,186 @@ export function ApplicationUpgradePublication({
               </li>
             ))}
           </ul>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => {
+              setFrom("");
+              setTo("");
+              setDirect(false);
+              setConfirmed(false);
+              setError("");
+              setNotice("");
+              onEditorOpen?.();
+              setMode("create");
+              setEditRequest((value) => value + 1);
+            }}
+          >
+            {t("Neuen Upgrade-Pfad veröffentlichen")}
+          </button>
         </section>
       )}
-      <h4>{t("Neuen Upgrade-Pfad veröffentlichen")}</h4>
-      <p className="field-hint">
-        {t(
-          "Wähle als Ausgangsversion den gewünschten Template-Stand der bestehenden Bestellung. Ein Pfad von Version 3 auf 4 gilt nicht für eine Bestellung auf Version 1. Template- und Plattform-Upgrade-Pfade sind getrennte Freigaben.",
-        )}
-      </p>
-      <fieldset className="application-update-form" disabled={busy}>
-        <label>
-          {t("Ausgangsversion für das Upgrade")}
-          <select
-            value={from}
-            onChange={(event) => {
-              setFrom(event.target.value);
-              setTo(targetVersion?.id ?? "");
-              setDirect(false);
-              setConfirmed(false);
-              setNotice("");
-              setError("");
-            }}
-          >
-            <option value="">{t("Version wählen")}</option>
-            {versions
-              .filter(
-                (version) =>
-                  !targetVersion ||
-                  (version.templateId === targetVersion.templateId &&
-                    version.template.id === targetVersion.template.id &&
-                    version.version < targetVersion.version),
-              )
-              .map((version) => (
-                <option value={version.id} key={version.id}>
-                  {version.template.name} · {t("Version")} {version.version}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label>
-          {t("Neue Version derselben Template-Familie")}
-          <select
-            value={to}
-            disabled={Boolean(targetVersion) || !previous}
-            onChange={(event) => {
-              setTo(event.target.value);
-              setDirect(false);
-              setConfirmed(false);
-              setNotice("");
-              setError("");
-            }}
-          >
-            <option value="">{t("Version wählen")}</option>
-            {(targetVersion ? [targetVersion] : targets).map((version) => (
-              <option value={version.id} key={version.id}>
-                {version.template.name} · {t("Version")} {version.version}
-              </option>
-            ))}
-          </select>
-        </label>
-        {previous && selectedTarget && (
-          <p className="field-hint">
-            {t(
-              "Die Freigabe dieses Upgrade-Pfads gilt unabhängig von der Richtlinie für neue Bestellungen. Bestehende Upgrade-Ziele und Pläne behalten ihre gespeicherte Freigabe.",
-            )}
-          </p>
-        )}
-        {existing && (
-          <p role="status">
-            {t(
-              "Dieser Upgrade-Pfad ist bereits veröffentlicht. Du findest ihn oben in den gespeicherten Pfaden.",
-            )}
-          </p>
-        )}
-        <fieldset>
-          <legend>{t("Ausführung des Upgrades")}</legend>
-          <label className="checkbox">
-            <input
-              type="radio"
-              name={policyGroup}
-              checked={direct}
-              onChange={() => {
-                setDirect(true);
+      {mode !== "list" && (
+        <>
+          {!targetVersion && (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => {
                 setConfirmed(false);
+                setError("");
+                setMode("list");
+                onEditorClose?.();
+                setEditRequest((value) => value + 1);
               }}
-            />
-            {t("Eigenständig durchführen")}
-          </label>
-          <label className="checkbox">
-            <input
-              type="radio"
-              name={policyGroup}
-              checked={!direct}
-              onChange={() => {
-                setDirect(false);
-                setConfirmed(false);
-              }}
-            />
-            {t("Separate Plan-Freigabe erforderlich")}
-          </label>
-          <p className="field-hint">
-            {t(
-              "Eigenständig: Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst. Unerlaubte Löschungen und Ersetzungen bleiben gesperrt.",
+            >
+              {t("Zurück zu den Upgrade-Pfaden")}
+            </button>
+          )}
+          {mode !== "edit" && (
+            <p className="field-hint">
+              {t(
+                "Wähle als Ausgangsversion den gewünschten Template-Stand der bestehenden Bestellung. Ein Pfad von Version 3 auf 4 gilt nicht für eine Bestellung auf Version 1. Template- und Plattform-Upgrade-Pfade sind getrennte Freigaben.",
+              )}
+            </p>
+          )}
+          <fieldset
+            ref={policyForm}
+            className="application-update-form"
+            disabled={busy}
+            tabIndex={-1}
+            aria-label={t(
+              mode === "edit"
+                ? "Freigaberichtlinie bearbeiten"
+                : "Neuen Upgrade-Pfad veröffentlichen",
             )}
-          </p>
-        </fieldset>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={confirmed}
-            onChange={(event) => setConfirmed(event.target.checked)}
-          />
-          {t(
-            "Ich veröffentliche nur den Upgrade-Pfad und seine Richtlinie. Keine bestehende Bestellung, kein State und keine Cloud-Ressource wird dadurch verändert.",
-          )}
-        </label>
-        <button
-          type="button"
-          className="button secondary"
-          disabled={!from || !to || !confirmed || samePolicy}
-          onClick={() => void publish()}
-        >
-          {t(
-            existing && !samePolicy
-              ? "Richtlinie aktualisieren"
-              : "Upgrade-Pfad veröffentlichen",
-          )}
-        </button>
-      </fieldset>
+          >
+            <label>
+              {t("Ausgangsversion für das Upgrade")}
+              <select
+                value={from}
+                disabled={mode === "edit"}
+                onChange={(event) => {
+                  setFrom(event.target.value);
+                  setTo(targetVersion?.id ?? "");
+                  setDirect(false);
+                  setConfirmed(false);
+                  setNotice("");
+                  setError("");
+                }}
+              >
+                <option value="">{t("Version wählen")}</option>
+                {versions
+                  .filter(
+                    (version) =>
+                      !targetVersion ||
+                      (version.templateId === targetVersion.templateId &&
+                        version.template.id === targetVersion.template.id &&
+                        version.version < targetVersion.version),
+                  )
+                  .map((version) => (
+                    <option value={version.id} key={version.id}>
+                      {version.template.name} · {t("Version")} {version.version}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              {t("Neue Version derselben Template-Familie")}
+              <select
+                value={to}
+                disabled={
+                  mode === "edit" || Boolean(targetVersion) || !previous
+                }
+                onChange={(event) => {
+                  setTo(event.target.value);
+                  setDirect(false);
+                  setConfirmed(false);
+                  setNotice("");
+                  setError("");
+                }}
+              >
+                <option value="">{t("Version wählen")}</option>
+                {(targetVersion ? [targetVersion] : targets).map((version) => (
+                  <option value={version.id} key={version.id}>
+                    {version.template.name} · {t("Version")} {version.version}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {previous && selectedTarget && (
+              <p className="field-hint">
+                {t(
+                  "Die Freigabe dieses Upgrade-Pfads gilt unabhängig von der Richtlinie für neue Bestellungen. Bestehende Upgrade-Ziele und Pläne behalten ihre gespeicherte Freigabe.",
+                )}
+              </p>
+            )}
+            {existing && (
+              <p role="status">
+                {t(
+                  "Du bearbeitest einen veröffentlichten Upgrade-Pfad. Wähle die Ausführung und bestätige die Aktualisierung.",
+                )}
+              </p>
+            )}
+            <fieldset>
+              <legend>{t("Ausführung des Upgrades")}</legend>
+              <label className="checkbox">
+                <input
+                  type="radio"
+                  name={policyGroup}
+                  checked={direct}
+                  onChange={() => {
+                    setDirect(true);
+                    setConfirmed(false);
+                  }}
+                />
+                {t("Eigenständig durchführen")}
+              </label>
+              <label className="checkbox">
+                <input
+                  type="radio"
+                  name={policyGroup}
+                  checked={!direct}
+                  onChange={() => {
+                    setDirect(false);
+                    setConfirmed(false);
+                  }}
+                />
+                {t("Separate Plan-Freigabe erforderlich")}
+              </label>
+              <p className="field-hint">
+                {t(
+                  "Eigenständig: Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst. Unerlaubte Löschungen und Ersetzungen bleiben gesperrt.",
+                )}
+              </p>
+            </fieldset>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
+              {t(
+                "Ich veröffentliche nur den Upgrade-Pfad und seine Richtlinie. Keine bestehende Bestellung, kein State und keine Cloud-Ressource wird dadurch verändert.",
+              )}
+            </label>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={!from || !to || !confirmed || samePolicy}
+              onClick={() => void publish()}
+            >
+              {t(
+                existing
+                  ? "Richtlinie aktualisieren"
+                  : "Upgrade-Pfad veröffentlichen",
+              )}
+            </button>
+          </fieldset>
+        </>
+      )}
       {onSkip && (
         <button
           type="button"

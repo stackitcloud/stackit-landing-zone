@@ -2301,6 +2301,9 @@ export function Applications({
   >("version");
   const [publishedVersion, setPublishedVersion] =
     useState<PublishedProjectTemplate | null>(null);
+  const [upgradeEditor, setUpgradeEditor] = useState<
+    "template" | "platform" | null
+  >(null);
   const publicationHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (publicationStep !== "version") publicationHeading.current?.focus();
@@ -3500,366 +3503,374 @@ export function Applications({
           aria-labelledby="application-tab-publish"
           hidden={selectedTab !== "publish"}
         >
-          <h2>{t("3. Application Landing Zone Template veröffentlichen")}</h2>
-          <ol
-            className="application-publication-steps"
-            aria-label={t("Veröffentlichungsschritte")}
-          >
-            <li
-              aria-current={publicationStep === "version" ? "step" : undefined}
+          <div hidden={upgradeEditor !== null}>
+            <h2>{t("3. Application Landing Zone Template veröffentlichen")}</h2>
+            <ol
+              className="application-publication-steps"
+              aria-label={t("Veröffentlichungsschritte")}
             >
-              {t("1. Version veröffentlichen")}
-            </li>
-            <li
-              aria-current={publicationStep === "upgrade" ? "step" : undefined}
-            >
-              {t("2. Upgrade optional anbieten")}
-            </li>
-            <li aria-current={publicationStep === "done" ? "step" : undefined}>
-              {t("3. Abschluss")}
-            </li>
-          </ol>
-          <h3 ref={publicationHeading} tabIndex={-1}>
-            {t(
-              publicationStep === "version"
-                ? "Neue Version vorbereiten"
-                : publicationStep === "upgrade"
-                  ? "Version veröffentlicht: Upgrade anbieten?"
-                  : "Veröffentlichung abgeschlossen",
-            )}
-          </h3>
-          {publicationStep !== "version" && publishedVersion && (
-            <p>
-              <strong>
-                {publishedVersion.template.name} · {t("Version")}{" "}
-                {publishedVersion.version}
-              </strong>
-            </p>
-          )}
-          {publicationStep === "version" && (
-            <>
-              <p>
-                {t(
-                  "Veröffentliche zuerst den gespeicherten Template-Entwurf. Im nächsten Schritt kannst du bestehenden Bestellungen ein Upgrade auf genau diese neue Version anbieten.",
-                )}
-              </p>
-              <p className="field-hint">
-                {t(
-                  "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.",
-                )}
-              </p>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={onSelectConfiguration}
+              <li
+                aria-current={
+                  publicationStep === "version" ? "step" : undefined
+                }
               >
-                {t("Konfiguration auswählen")}
-              </button>
-              {platformRevision &&
-                delegationEnabled &&
-                !executionBindings.some(
-                  (binding) => binding.platformRevision === platformRevision,
-                ) && (
-                  <p role="status">
-                    {t(
-                      "Für diesen Plattformvertrag fehlt die Ausführungsbindung. Richte sie unter Plattformanbindung mit dem passenden State-Backend ein.",
-                    )}
-                  </p>
-                )}
-              {publicationTemplate &&
-                applicationPlanScopeIssues(
-                  publicationTemplate,
-                  publicationTemplate.settings,
-                  runnerRevision ?? "",
-                ).map((issue) => (
-                  <p key={issue} role="status">
-                    {t(issue)}
-                  </p>
-                ))}
-
-              {drafts.length ? (
-                <div className="form-grid">
-                  <div className="field">
-                    <label htmlFor="application-publication">
+                {t("1. Version veröffentlichen")}
+              </li>
+              <li
+                aria-current={
+                  publicationStep === "upgrade" ? "step" : undefined
+                }
+              >
+                {t("2. Upgrade optional anbieten")}
+              </li>
+              <li
+                aria-current={publicationStep === "done" ? "step" : undefined}
+              >
+                {t("3. Abschluss")}
+              </li>
+            </ol>
+            <h3 ref={publicationHeading} tabIndex={-1}>
+              {t(
+                publicationStep === "version"
+                  ? "Neue Version vorbereiten"
+                  : publicationStep === "upgrade"
+                    ? "Version veröffentlicht: Upgrade anbieten?"
+                    : "Veröffentlichung abgeschlossen",
+              )}
+            </h3>
+            {publicationStep !== "version" && publishedVersion && (
+              <p>
+                <strong>
+                  {publishedVersion.template.name} · {t("Version")}{" "}
+                  {publishedVersion.version}
+                </strong>
+              </p>
+            )}
+            {publicationStep === "version" && (
+              <>
+                <p>
+                  {t(
+                    "Veröffentliche zuerst den gespeicherten Template-Entwurf. Im nächsten Schritt kannst du bestehenden Bestellungen ein Upgrade auf genau diese neue Version anbieten.",
+                  )}
+                </p>
+                <p className="field-hint">
+                  {t(
+                    "Templates stammen aus der geöffneten Konfiguration. Plattformvertrag und State-Backend werden unabhängig davon geladen.",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={onSelectConfiguration}
+                >
+                  {t("Konfiguration auswählen")}
+                </button>
+                {platformRevision &&
+                  delegationEnabled &&
+                  !executionBindings.some(
+                    (binding) => binding.platformRevision === platformRevision,
+                  ) && (
+                    <p role="status">
                       {t(
-                        "Application Landing Zone Template aus meinem Entwurf",
+                        "Für diesen Plattformvertrag fehlt die Ausführungsbindung. Richte sie unter Plattformanbindung mit dem passenden State-Backend ein.",
                       )}
-                    </label>
-                    <select
-                      id="application-publication"
-                      value={templateId}
-                      onChange={(event) => {
-                        setTemplateId(event.target.value);
-                        setTargetKey("");
-                      }}
-                      disabled={busy}
-                    >
-                      <option value="">{t("Template wählen")}</option>
-                      {drafts.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name || item.key}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {runnerRevision && (
-                    <div className="field">
-                      <label htmlFor="application-runner-revision">
-                        {t("Freigegebene Runner-Revision")}
-                      </label>
-                      <input
-                        id="application-runner-revision"
-                        value={runnerRevision}
-                        readOnly
-                      />
-                    </div>
+                    </p>
                   )}
-                  {deploymentPolicyEnabled && (
+                {publicationTemplate &&
+                  applicationPlanScopeIssues(
+                    publicationTemplate,
+                    publicationTemplate.settings,
+                    runnerRevision ?? "",
+                  ).map((issue) => (
+                    <p key={issue} role="status">
+                      {t(issue)}
+                    </p>
+                  ))}
+
+                {drafts.length ? (
+                  <div className="form-grid">
                     <div className="field">
-                      <label htmlFor="application-deployment-policy">
-                        {t("Bereitstellungsrichtlinie")}
+                      <label htmlFor="application-publication">
+                        {t(
+                          "Application Landing Zone Template aus meinem Entwurf",
+                        )}
                       </label>
                       <select
-                        id="application-deployment-policy"
-                        value={deploymentPolicy}
+                        id="application-publication"
+                        value={templateId}
+                        onChange={(event) => {
+                          setTemplateId(event.target.value);
+                          setTargetKey("");
+                        }}
                         disabled={busy}
-                        onChange={(event) =>
-                          setDeploymentPolicy(
-                            event.target.value === "direct"
-                              ? "direct"
-                              : "approval-required",
-                          )
-                        }
                       >
-                        <option value="approval-required">
-                          {t("Bereitstellung mit Freigabe")}
-                        </option>
-                        <option value="direct">
-                          {t("Direkte Bereitstellung")}
-                        </option>
-                      </select>
-                    </div>
-                  )}
-                  <div className="field">
-                    <label htmlFor="application-platform-revision">
-                      {t("Freigegebener Plattformvertrag")}
-                    </label>
-                    <select
-                      id="application-platform-revision"
-                      value={platformRevision}
-                      disabled={busy}
-                      onChange={(event) => {
-                        setPlatformRevision(event.target.value);
-                        setTargetKey("");
-                      }}
-                    >
-                      <option value="">
-                        {t("Ohne Vertragsbindung · Plan gesperrt")}
-                      </option>
-                      {contracts.map((item) => (
-                        <option
-                          key={item.document.revision}
-                          value={item.document.revision}
-                        >
-                          {item.document.revision} ·{" "}
-                          {new Date(item.approvedAt).toLocaleString(
-                            currentLanguage() === "de" ? "de-DE" : "en-GB",
-                          )}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {platformRevision && (
-                    <div className="field">
-                      <label htmlFor="application-platform-target">
-                        {t("Plattformziel")}
-                      </label>
-                      <select
-                        id="application-platform-target"
-                        value={targetKey}
-                        disabled={
-                          busy || !publicationTemplate || !targets.length
-                        }
-                        onChange={(event) => setTargetKey(event.target.value)}
-                      >
-                        <option value="">
-                          {t(
-                            publicationTemplate
-                              ? "Passendes Ziel wählen"
-                              : "Template wählen",
-                          )}
-                        </option>
-                        {targets.map(([key, target]) => (
-                          <option key={key} value={key}>
-                            {key} · {target.region} · {target.folder_id}
+                        <option value="">{t("Template wählen")}</option>
+                        {drafts.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name || item.key}
                           </option>
                         ))}
                       </select>
-                      {publicationTemplate && !targets.length && (
-                        <p role="status">
-                          {t(
-                            "Kein passendes Plattformziel für dieses Template.",
-                          )}
-                        </p>
-                      )}
                     </div>
-                  )}
-                  <div className="field">
-                    <button
-                      type="button"
-                      className="button primary"
-                      disabled={
-                        busy ||
-                        !loaded ||
-                        !templateId ||
-                        Boolean(
-                          platformRevision &&
-                            !targets.some(([key]) => key === targetKey),
-                        )
-                      }
-                      onClick={() => void publish()}
-                    >
-                      {t("Version veröffentlichen")}
-                    </button>
-                  </div>
-                  {groupAccessEnabled && (
-                    <fieldset>
-                      <legend>{t("Für Gruppen freigeben")}</legend>
-                      {applicationGroups.groups.map((group) => (
-                        <label className="toggle-label" key={group.id}>
-                          <input
-                            type="checkbox"
-                            checked={publicationAccess.includes(group.id)}
-                            disabled={busy}
-                            onChange={(event) =>
-                              setPublicationGroupIds(
-                                event.target.checked
-                                  ? [...publicationAccess, group.id]
-                                  : publicationAccess.filter(
-                                      (id) => id !== group.id,
-                                    ),
-                              )
-                            }
-                          />
-                          {group.name}
+                    {runnerRevision && (
+                      <div className="field">
+                        <label htmlFor="application-runner-revision">
+                          {t("Freigegebene Runner-Revision")}
                         </label>
-                      ))}
-                      {!publicationAccess.length && (
-                        <p role="status">
-                          {t("Für keine Application Owner freigegeben")}
-                        </p>
-                      )}
-                    </fieldset>
-                  )}
-                </div>
-              ) : (
-                <p className="muted">
-                  {t(
-                    "Kein Application Landing Zone Template im aktuellen Entwurf.",
-                  )}
-                </p>
-              )}
-            </>
-          )}
-          {publicationStep === "upgrade" && publishedVersion && (
-            <>
-              <p>
-                {t(
-                  "Die neue Version ist bereits veröffentlicht. Entscheide jetzt, ob bestehende Bestellungen ein Upgrade erhalten sollen. Die Zielversion ist fest ausgewählt; wähle nur die passende Ausgangsversion und prüfe die Freigaberichtlinie.",
+                        <input
+                          id="application-runner-revision"
+                          value={runnerRevision}
+                          readOnly
+                        />
+                      </div>
+                    )}
+                    {deploymentPolicyEnabled && (
+                      <div className="field">
+                        <label htmlFor="application-deployment-policy">
+                          {t("Bereitstellungsrichtlinie")}
+                        </label>
+                        <select
+                          id="application-deployment-policy"
+                          value={deploymentPolicy}
+                          disabled={busy}
+                          onChange={(event) =>
+                            setDeploymentPolicy(
+                              event.target.value === "direct"
+                                ? "direct"
+                                : "approval-required",
+                            )
+                          }
+                        >
+                          <option value="approval-required">
+                            {t("Bereitstellung mit Freigabe")}
+                          </option>
+                          <option value="direct">
+                            {t("Direkte Bereitstellung")}
+                          </option>
+                        </select>
+                      </div>
+                    )}
+                    <div className="field">
+                      <label htmlFor="application-platform-revision">
+                        {t("Freigegebener Plattformvertrag")}
+                      </label>
+                      <select
+                        id="application-platform-revision"
+                        value={platformRevision}
+                        disabled={busy}
+                        onChange={(event) => {
+                          setPlatformRevision(event.target.value);
+                          setTargetKey("");
+                        }}
+                      >
+                        <option value="">
+                          {t("Ohne Vertragsbindung · Plan gesperrt")}
+                        </option>
+                        {contracts.map((item) => (
+                          <option
+                            key={item.document.revision}
+                            value={item.document.revision}
+                          >
+                            {item.document.revision} ·{" "}
+                            {new Date(item.approvedAt).toLocaleString(
+                              currentLanguage() === "de" ? "de-DE" : "en-GB",
+                            )}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {platformRevision && (
+                      <div className="field">
+                        <label htmlFor="application-platform-target">
+                          {t("Plattformziel")}
+                        </label>
+                        <select
+                          id="application-platform-target"
+                          value={targetKey}
+                          disabled={
+                            busy || !publicationTemplate || !targets.length
+                          }
+                          onChange={(event) => setTargetKey(event.target.value)}
+                        >
+                          <option value="">
+                            {t(
+                              publicationTemplate
+                                ? "Passendes Ziel wählen"
+                                : "Template wählen",
+                            )}
+                          </option>
+                          {targets.map(([key, target]) => (
+                            <option key={key} value={key}>
+                              {key} · {target.region} · {target.folder_id}
+                            </option>
+                          ))}
+                        </select>
+                        {publicationTemplate && !targets.length && (
+                          <p role="status">
+                            {t(
+                              "Kein passendes Plattformziel für dieses Template.",
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <div className="field">
+                      <button
+                        type="button"
+                        className="button primary"
+                        disabled={
+                          busy ||
+                          !loaded ||
+                          !templateId ||
+                          Boolean(
+                            platformRevision &&
+                              !targets.some(([key]) => key === targetKey),
+                          )
+                        }
+                        onClick={() => void publish()}
+                      >
+                        {t("Version veröffentlichen")}
+                      </button>
+                    </div>
+                    {groupAccessEnabled && (
+                      <fieldset>
+                        <legend>{t("Für Gruppen freigeben")}</legend>
+                        {applicationGroups.groups.map((group) => (
+                          <label className="toggle-label" key={group.id}>
+                            <input
+                              type="checkbox"
+                              checked={publicationAccess.includes(group.id)}
+                              disabled={busy}
+                              onChange={(event) =>
+                                setPublicationGroupIds(
+                                  event.target.checked
+                                    ? [...publicationAccess, group.id]
+                                    : publicationAccess.filter(
+                                        (id) => id !== group.id,
+                                      ),
+                                )
+                              }
+                            />
+                            {group.name}
+                          </label>
+                        ))}
+                        {!publicationAccess.length && (
+                          <p role="status">
+                            {t("Für keine Application Owner freigegeben")}
+                          </p>
+                        )}
+                      </fieldset>
+                    )}
+                  </div>
+                ) : (
+                  <p className="muted">
+                    {t(
+                      "Kein Application Landing Zone Template im aktuellen Entwurf.",
+                    )}
+                  </p>
                 )}
-              </p>
-              {versions.some(
-                (item) =>
-                  item.templateId === publishedVersion.templateId &&
-                  item.template.id === publishedVersion.template.id &&
-                  item.version < publishedVersion.version,
-              ) ? (
-                <ApplicationUpgradePublication
-                  key={publishedVersion.id}
-                  session={session}
-                  versions={versions}
-                  targetVersion={publishedVersion}
-                  onPublished={() => {
-                    setNotice(
-                      "Upgrade-Pfad veröffentlicht. Bestehende Bestellungen bleiben unverändert, bis ihr Auftraggeber ausdrücklich ein Upgrade prüft und auswählt. Es wurde kein Plan oder Apply gestartet.",
-                    );
-                    setPublicationStep("done");
-                  }}
-                  onSkip={() => setPublicationStep("done")}
-                />
-              ) : (
+              </>
+            )}
+            {publicationStep === "upgrade" && publishedVersion && (
+              <>
                 <p>
                   {t(
-                    "Dies ist die erste veröffentlichte Version dieser Template-Familie. Es gibt noch keine frühere Version für ein Upgrade.",
+                    "Die neue Version ist bereits veröffentlicht. Entscheide jetzt, ob bestehende Bestellungen ein Upgrade erhalten sollen. Die Zielversion ist fest ausgewählt; wähle nur die passende Ausgangsversion und prüfe die Freigaberichtlinie.",
                   )}
                 </p>
-              )}
-              {!versions.some(
-                (item) =>
-                  item.templateId === publishedVersion.templateId &&
-                  item.template.id === publishedVersion.template.id &&
-                  item.version < publishedVersion.version,
-              ) && (
+                {versions.some(
+                  (item) =>
+                    item.templateId === publishedVersion.templateId &&
+                    item.template.id === publishedVersion.template.id &&
+                    item.version < publishedVersion.version,
+                ) ? (
+                  <ApplicationUpgradePublication
+                    key={publishedVersion.id}
+                    session={session}
+                    versions={versions}
+                    targetVersion={publishedVersion}
+                    onPublished={() => {
+                      setNotice(
+                        "Upgrade-Pfad veröffentlicht. Bestehende Bestellungen bleiben unverändert, bis ihr Auftraggeber ausdrücklich ein Upgrade prüft und auswählt. Es wurde kein Plan oder Apply gestartet.",
+                      );
+                      setPublicationStep("done");
+                    }}
+                    onSkip={() => setPublicationStep("done")}
+                  />
+                ) : (
+                  <p>
+                    {t(
+                      "Dies ist die erste veröffentlichte Version dieser Template-Familie. Es gibt noch keine frühere Version für ein Upgrade.",
+                    )}
+                  </p>
+                )}
+                {!versions.some(
+                  (item) =>
+                    item.templateId === publishedVersion.templateId &&
+                    item.template.id === publishedVersion.template.id &&
+                    item.version < publishedVersion.version,
+                ) && (
+                  <button
+                    type="button"
+                    className="button primary"
+                    onClick={() => setPublicationStep("done")}
+                  >
+                    {t("Veröffentlichung abschließen")}
+                  </button>
+                )}
+              </>
+            )}
+            {publicationStep === "done" && (
+              <>
+                <p>
+                  {t(
+                    "Die Version ist im Katalog verfügbar. Bestehende Bestellungen wechseln erst nach Auswahl eines freigegebenen Upgrade-Pfads sowie einem neuen Plan und Apply.",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => {
+                    setPublishedVersion(null);
+                    setPublicationStep("version");
+                    setNotice("");
+                    setError("");
+                  }}
+                >
+                  {t("Weitere Version veröffentlichen")}
+                </button>
+              </>
+            )}
+            {publicationStep === "version" && (
+              <div className="actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setActiveTab("platform")}
+                >
+                  {t("Zurück: Plattformanbindung")}
+                </button>
+              </div>
+            )}
+            {publicationStep === "done" && (
+              <div className="actions">
                 <button
                   type="button"
                   className="button primary"
-                  onClick={() => setPublicationStep("done")}
+                  onClick={() => setActiveTab("catalogue")}
                 >
-                  {t("Veröffentlichung abschließen")}
+                  {t("Weiter: Katalog prüfen")}
                 </button>
-              )}
-            </>
-          )}
-          {publicationStep === "done" && (
-            <>
-              <p>
-                {t(
-                  "Die Version ist im Katalog verfügbar. Bestehende Bestellungen wechseln erst nach Auswahl eines freigegebenen Upgrade-Pfads sowie einem neuen Plan und Apply.",
-                )}
-              </p>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => {
-                  setPublishedVersion(null);
-                  setPublicationStep("version");
-                  setNotice("");
-                  setError("");
-                }}
-              >
-                {t("Weitere Version veröffentlichen")}
-              </button>
-            </>
-          )}
-          {publicationStep === "version" && (
-            <div className="actions">
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => setActiveTab("platform")}
-              >
-                {t("Zurück: Plattformanbindung")}
-              </button>
-            </div>
-          )}
-          {publicationStep === "done" && (
-            <div className="actions">
-              <button
-                type="button"
-                className="button primary"
-                onClick={() => setActiveTab("catalogue")}
-              >
-                {t("Weiter: Katalog prüfen")}
-              </button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
           {upgradesEnabled && (
             <div className="application-publication-maintenance">
-              <details>
-                <summary>
+              <details hidden={upgradeEditor === "platform"}>
+                <summary hidden={upgradeEditor !== null}>
                   {t("Bestehende Template-Upgrade-Pfade verwalten")}
                 </summary>
-                <p>
+                <p hidden={upgradeEditor !== null}>
                   {t(
                     "Hier kannst du gespeicherte Pfade prüfen und nachträglich weitere Ausgangsversionen für bereits veröffentlichte Ziele freigeben.",
                   )}
@@ -3867,15 +3878,19 @@ export function Applications({
                 <ApplicationUpgradePublication
                   session={session}
                   versions={versions}
+                  onEditorOpen={() => setUpgradeEditor("template")}
+                  onEditorClose={() => setUpgradeEditor(null)}
                 />
               </details>
-              <details>
-                <summary>
+              <details hidden={upgradeEditor === "template"}>
+                <summary hidden={upgradeEditor !== null}>
                   {t("Separate Plattform-Upgrade-Pfade verwalten")}
                 </summary>
                 <ApplicationPlatformUpgradePublication
                   session={session}
                   contracts={contracts.map((item) => item.document)}
+                  onEditorOpen={() => setUpgradeEditor("platform")}
+                  onEditorClose={() => setUpgradeEditor(null)}
                 />
               </details>
             </div>

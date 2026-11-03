@@ -26,6 +26,7 @@ async function setup(page: Page, renewalEnabled = true) {
   let renewalStatus = "active";
   let refreshGate: Promise<void> | null = null;
   let writes = 0;
+  let configurationReads = 0;
   const original = {
     ...createEditorConfiguration("standalone", documentId),
     name: "Saved private platform",
@@ -60,6 +61,7 @@ async function setup(page: Page, renewalEnabled = true) {
   });
   await page.route("**/api/v1/configurations", (route) => {
     expect(route.request().method()).toBe("GET");
+    configurationReads++;
     return route.fulfill({
       json: {
         configurations:
@@ -146,6 +148,7 @@ async function setup(page: Page, renewalEnabled = true) {
     },
     refreshes: () => refreshes,
     writes: () => writes,
+    configurationReads: () => configurationReads,
   };
 }
 
@@ -500,4 +503,42 @@ test("an explicit URL wins over an older draft checkpoint location on immediate 
   await expect(
     page.getByLabel("Name der Konfiguration", { exact: true }),
   ).toHaveValue("Draft with older editor location");
+});
+
+test("an unchanged STACKIT heartbeat does not reload session-bound workspace data", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  const settle = () =>
+    page.evaluate(async () => {
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+  await settle();
+  const before = state.configurationReads();
+  const refreshed = page.waitForResponse("**/auth/stackit/refresh");
+  await focusHeartbeat(page);
+  await refreshed;
+  await settle();
+  expect(state.configurationReads()).toBe(before);
+});
+
+test("role revocation is applied before a delayed provider renewal finishes", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  const restricted = structuredClone(state.session()!);
+  restricted.tenant!.roles = ["application-owner"];
+  state.setSession(restricted);
+  const release = state.holdRefresh("active");
+  try {
+    await focusHeartbeat(page);
+    await expect(
+      page
+        .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+        .getByRole("button", { name: "Konfigurationen", exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    release();
+  }
 });

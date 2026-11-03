@@ -27,6 +27,12 @@ die App-Sitzung und versucht den zugehörigen Refresh-Zugang beim Provider zu
 widerrufen. Alte Sitzungen ohne diesen Zugang verlangen nach Ablauf ihres
 Nachweises eine erneute Anmeldung.
 
+Eine unveränderte Sitzungsprüfung erhält den aktuellen Sitzungsstand der
+Oberfläche. So entstehen beim Bearbeiten keine unnötigen Neuladungen des
+Arbeitsbereichs oder abgebrochenen Anfragen. Änderungen an Anmeldung,
+Arbeitsbereich oder Rollen wirken weiterhin sofort, auch bei verzögerter
+Provider-Erneuerung; Ablauf und Logout beenden den Zugriff weiterhin.
+
 Der Web-Login mit Authorization Code und PKCE leitet sofort im selben Tab weiter,
 ohne zusätzlichen Bestätigungsdialog des Configurators. Eine notwendige Anmeldung,
 MFA oder Einwilligung bei STACKIT bleibt unter Kontrolle von STACKIT. Die Erneuerung

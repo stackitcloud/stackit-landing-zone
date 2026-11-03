@@ -253,9 +253,15 @@ export function Account({
     if (!enabled || returning || authorization) return;
     const controller = new AbortController();
     let pending = false;
+    const publishSession = (next: Session) => {
+      setSession((previous) =>
+        JSON.stringify(previous) === JSON.stringify(next) ? previous : next,
+      );
+    };
     const check = async () => {
       if (pending || document.visibilityState === "hidden") return;
       pending = true;
+      let observedSession: Session | null = null;
       try {
         const response = await fetch("/api/v1/session", {
           signal: controller.signal,
@@ -272,7 +278,17 @@ export function Account({
         if (!response.ok) throw new Error();
         let current: Session = await response.json();
         if (controller.signal.aborted) return;
-        setSession(current);
+        observedSession = current;
+        // Apply authentication/role changes immediately. Provider verification
+        // alone is settled by renewal before publishing the session snapshot.
+        if (
+          !sessionRef.current ||
+          JSON.stringify({
+            ...sessionRef.current,
+            stackitVerified: undefined,
+          }) !== JSON.stringify({ ...current, stackitVerified: undefined })
+        )
+          publishSession(current);
         if (primary === "stackit" && renewalEnabled) {
           const refreshed = await fetch("/auth/stackit/refresh", {
             method: "POST",
@@ -293,7 +309,7 @@ export function Account({
           };
         }
         if (controller.signal.aborted) return;
-        setSession(current);
+        publishSession(current);
         setError((value) =>
           value ===
           "STACKIT konnte gerade nicht geprüft werden. Dein Entwurf bleibt erhalten; versuche es gleich erneut."
@@ -301,10 +317,14 @@ export function Account({
             : value,
         );
       } catch {
-        if (!controller.signal.aborted && sessionRef.current)
+        if (!controller.signal.aborted && sessionRef.current) {
+          // Keep the authenticated session read, including changed roles, even
+          // when the provider renewal is temporarily unavailable.
+          if (observedSession) publishSession(observedSession);
           setError(
             "STACKIT konnte gerade nicht geprüft werden. Dein Entwurf bleibt erhalten; versuche es gleich erneut.",
           );
+        }
       } finally {
         pending = false;
       }
