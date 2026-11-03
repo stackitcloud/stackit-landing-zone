@@ -1,4 +1,34 @@
 export const englishMessages: Record<string, string> = {
+  Veröffentlichungsschritte: "Publication steps",
+  "1. Version veröffentlichen": "1. Publish version",
+  "2. Upgrade optional anbieten": "2. Optionally offer an upgrade",
+  "3. Abschluss": "3. Finish",
+  "Neue Version vorbereiten": "Prepare a new version",
+  "Version veröffentlicht: Upgrade anbieten?":
+    "Version published: offer an upgrade?",
+  "Veröffentlichung abgeschlossen": "Publication complete",
+  "Veröffentliche zuerst den gespeicherten Template-Entwurf. Im nächsten Schritt kannst du bestehenden Bestellungen ein Upgrade auf genau diese neue Version anbieten.":
+    "First publish the saved template draft. In the next step you can offer existing orders an upgrade to this exact new version.",
+  "Die neue Version ist bereits veröffentlicht. Entscheide jetzt, ob bestehende Bestellungen ein Upgrade erhalten sollen. Die Zielversion ist fest ausgewählt; wähle nur die passende Ausgangsversion und prüfe die Freigaberichtlinie.":
+    "The new version is already published. Decide whether to offer an upgrade to existing orders. The target version is fixed; select the appropriate source version and review the approval policy.",
+  "Dies ist die erste veröffentlichte Version dieser Template-Familie. Es gibt noch keine frühere Version für ein Upgrade.":
+    "This is the first published version of this template family. There is no earlier version to upgrade from.",
+  "Ohne Upgrade abschließen": "Finish without an upgrade",
+  "Veröffentlichung abschließen": "Finish publication",
+  "Die Version ist im Katalog verfügbar. Bestehende Bestellungen wechseln erst nach Auswahl eines freigegebenen Upgrade-Pfads sowie einem neuen Plan und Apply.":
+    "The version is available in the catalogue. Existing orders change only after selecting an approved upgrade path and completing a new Plan and Apply.",
+  "Weitere Version veröffentlichen": "Publish another version",
+  "Bestehende Template-Upgrade-Pfade verwalten":
+    "Manage existing template upgrade paths",
+  "Hier kannst du gespeicherte Pfade prüfen und nachträglich weitere Ausgangsversionen für bereits veröffentlichte Ziele freigeben.":
+    "Review saved paths here and approve additional source versions for previously published targets.",
+  "Separate Plattform-Upgrade-Pfade verwalten":
+    "Manage separate platform upgrade paths",
+  "Upgrade für die neue Version anbieten":
+    "Offer an upgrade to the new version",
+  "Die Version wurde veröffentlicht, aber der Katalog konnte nicht aktualisiert werden. Veröffentliche sie nicht erneut; lade die Seite später neu.":
+    "The version was published, but the catalogue could not be refreshed. Do not publish it again; reload the page later.",
+
   Bestellparameter: "Order parameters",
   "Technische Ausführung": "Technical execution",
   "Gewünschte Template-Version": "Desired template version",

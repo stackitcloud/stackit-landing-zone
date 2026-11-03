@@ -31,15 +31,27 @@ direktes Deployment erlauben und der Platform Owner sensible Änderungen auf
 diesem Pfad ausdrücklich dafür freigibt. Der Löschschutz bleibt verbindlich.
 
 
-Die Veröffentlichungsseite zeigt gespeicherte Pfade aller Template-Familien oberhalb
-des Formulars für neue Pfade. Jede Karte nennt Ausgangs- und Zielversion sowie die
-Richtlinie für sensitive Änderungen. Aktualisiere die Liste, um die Speicherung zu
-prüfen. Die Versionsauswahl und Bestätigungen allein veröffentlichen noch keinen
-Pfad. Ein vorhandener Pfad wird als bereits veröffentlicht angezeigt und kann hier
-nicht überschrieben werden. Verlangt eine Version eine Freigabe, ist die direkte
-Richtlinie nicht auswählbar; veröffentliche den Pfad mit separater Plan-Freigabe.
-Ein Richtlinienkonflikt wird als ungültiger Pfad statt als fehlende Berechtigung
-gemeldet. Fehlgeschlagene Veröffentlichungen verändern gespeicherte Pfade nicht.
+Die Veröffentlichungsseite führt den Platform Owner durch drei Schritte:
+
+1. Gespeicherten Template-Entwurf, Plattformziel, Bereitstellungsrichtlinie und Katalogzugriff auswählen; die Version veröffentlichen.
+2. Nach der serverseitig bestätigten Veröffentlichung optional ein Upgrade anbieten. Die neue Zielversion steht fest. Eine frühere Version derselben Template-Familie auswählen und die Richtlinie für sensitive Änderungen prüfen, bevor der Pfad ausdrücklich veröffentlicht wird. Alternativ **Ohne Upgrade abschließen** wählen. Für eine erste Version gibt es keine Ausgangsversion; stattdessen die Veröffentlichung abschließen.
+3. Der Abschluss führt zum Katalog. Die Veröffentlichung ändert keine bestehende Bestellung, keinen State und keine Cloud-Ressource.
+
+Version und Upgrade-Pfad werden weiterhin in getrennten autorisierten Transaktionen
+veröffentlicht. Scheitert die Pfadfreigabe, bleibt die Version veröffentlicht und
+der Wizard erhält die Auswahl zur Korrektur. Eine erneute Pfadfreigabe veröffentlicht
+die Version nicht erneut. Scheitert nur die Katalogaktualisierung nach erfolgreicher
+Veröffentlichung, wird dies ausdrücklich gemeldet; der Wizard kehrt nicht zur
+Versionsveröffentlichung zurück. Nach einem Neuladen können unter **Bestehende
+Template-Upgrade-Pfade verwalten** Pfade zu bereits veröffentlichten Versionen
+nachgetragen werden.
+
+Gespeicherte Pfade aller Template-Familien stehen im aufklappbaren Verwaltungsbereich
+unter dem Wizard. Jede Karte benennt Ausgangsversion, Ziel und Freigaberichtlinie.
+Bestehende Pfade können nicht überschrieben werden. Direkte sensitive Änderungen
+setzen direkte Bereitstellung in beiden Versionen voraus. Separate Plattformvertrags-Pfade
+haben einen eigenen aufklappbaren Verwaltungsbereich und gehören nicht zur
+Template-Veröffentlichung.
 
 ## Bestehende Bestellung aktualisieren
 

@@ -582,6 +582,9 @@ test("Platform Owner publishes only same-family upgrade path without changing an
   await page
     .getByRole("tab", { name: "Veröffentlichung", exact: true })
     .click();
+  await page
+    .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
+    .click();
   const panel = page.getByRole("region", {
     name: "Upgrade-Pfade veröffentlichen",
     exact: true,
@@ -701,6 +704,9 @@ test("Platform Owner publishes a path between actual approved platform contracts
   const { mutations } = await setup(page, false, false, true);
   await page
     .getByRole("tab", { name: "Veröffentlichung", exact: true })
+    .click();
+  await page
+    .getByText("Separate Plattform-Upgrade-Pfade verwalten", { exact: true })
     .click();
   const panel = page.getByRole("region", {
     name: "Plattform-Upgrade-Pfade veröffentlichen",
@@ -984,6 +990,9 @@ test("saved publication paths show every family independently of the selected fo
   await page
     .getByRole("tab", { name: "Veröffentlichung", exact: true })
     .click();
+  await page
+    .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
+    .click();
   const panel = page.getByRole("region", {
     name: "Upgrade-Pfade veröffentlichen",
     exact: true,
@@ -1054,6 +1063,9 @@ test("approval-required versions cannot publish a direct path and retain saved f
   );
   await page
     .getByRole("tab", { name: "Veröffentlichung", exact: true })
+    .click();
+  await page
+    .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
     .click();
   const panel = page.getByRole("region", {
     name: "Upgrade-Pfade veröffentlichen",

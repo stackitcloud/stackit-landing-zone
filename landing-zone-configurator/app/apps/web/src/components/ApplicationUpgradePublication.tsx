@@ -1,5 +1,5 @@
 import type { PublishedProjectTemplate } from "@lzc/domain";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { t } from "../i18n";
 import type { Session } from "./Account";
@@ -18,17 +18,30 @@ const edgesSchema = z.object({
 export function ApplicationUpgradePublication({
   session,
   versions,
+  targetVersion,
+  onPublished,
+  onSkip,
 }: {
   session: Session;
   versions: PublishedProjectTemplate[];
+  targetVersion?: PublishedProjectTemplate;
+  onPublished?: () => void;
+  onSkip?: () => void;
 }) {
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
-    "upgrade-publication",
+    `upgrade-publication:${targetVersion?.id ?? "manage"}`,
   );
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus();
+      errorRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [error]);
   const [edges, setEdges] = useState<z.infer<typeof edgesSchema>["edges"]>([]),
     [from, setFrom] = useState(""),
-    [to, setTo] = useState(""),
+    [to, setTo] = useState(targetVersion?.id ?? ""),
     [direct, setDirect] = useState(false),
     [confirmed, setConfirmed] = useState(false),
     [notice, setNotice] = useState(""),
@@ -92,7 +105,8 @@ export function ApplicationUpgradePublication({
     setNotice(
       "Upgrade-Pfad veröffentlicht. Bestehende Bestellungen bleiben unverändert, bis ihr Auftraggeber ausdrücklich ein Upgrade prüft und auswählt. Es wurde kein Plan oder Apply gestartet.",
     );
-    await load();
+    if (onPublished) onPublished();
+    else await load();
   }
   function versionLabel(id: string) {
     const value = versions.find((item) => item.id === id);
@@ -103,85 +117,101 @@ export function ApplicationUpgradePublication({
   return (
     <section
       className="application-update-card"
-      aria-label={t("Upgrade-Pfade veröffentlichen")}
+      aria-label={t(
+        targetVersion
+          ? "Upgrade für die neue Version anbieten"
+          : "Upgrade-Pfade veröffentlichen",
+      )}
     >
-      <h3>{t("Upgrade-Pfade veröffentlichen")}</h3>
+      <h3>
+        {t(
+          targetVersion
+            ? "Upgrade für die neue Version anbieten"
+            : "Upgrade-Pfade veröffentlichen",
+        )}
+      </h3>
       <p>
         {t(
           "Neue Template-Versionen ändern bestehende Bestellungen nicht. Veröffentliche einen geprüften Pfad innerhalb derselben Template-Familie, damit Auftraggeber ihn unter Updates auswählen können.",
         )}
       </p>
-      {error && <p role="alert">{t(error)}</p>}
-      {notice && <p role="status">{t(notice)}</p>}
-      <section aria-label={t("Veröffentlichte Upgrade-Pfade")}>
-        <h4>
-          {t("Gespeicherte Upgrade-Pfade")}
-          {loaded ? ` (${edges.length})` : ""}
-        </h4>
-        <p>
-          {t(
-            "Diese Liste zeigt die gespeicherten Freigaben aller Template-Familien im Arbeitsbereich. Die Auswahl im Formular veröffentlicht noch keinen Pfad.",
-          )}
+      {error && (
+        <p role="alert" ref={errorRef} tabIndex={-1}>
+          {t(error)}
         </p>
-        <button
-          type="button"
-          className="button secondary"
-          disabled={busy}
-          onClick={() => void load()}
-        >
-          {t("Upgrade-Pfade aktualisieren")}
-        </button>
-        {loaded && edges.length === 0 && (
-          <p>{t("Noch keine Upgrade-Pfade veröffentlicht.")}</p>
-        )}
-        {!loaded && (
-          <p>
-            {t("Die gespeicherten Upgrade-Pfade wurden noch nicht geladen.")}
-          </p>
-        )}
-        {listFailed && loaded && (
+      )}
+      {notice && <p role="status">{t(notice)}</p>}
+      {!targetVersion && (
+        <section aria-label={t("Veröffentlichte Upgrade-Pfade")}>
+          <h4>
+            {t("Gespeicherte Upgrade-Pfade")}
+            {loaded ? ` (${edges.length})` : ""}
+          </h4>
           <p>
             {t(
-              "Die Liste konnte nicht aktualisiert werden. Angezeigt wird der zuletzt geladene Stand.",
+              "Diese Liste zeigt die gespeicherten Freigaben aller Template-Familien im Arbeitsbereich. Die Auswahl im Formular veröffentlicht noch keinen Pfad.",
             )}
           </p>
-        )}
-        <ul className="application-upgrade-paths">
-          {edges.map((edge) => (
-            <li className="application-upgrade-path" key={edge.id}>
-              <h4>
-                {versions.find((version) => version.id === edge.fromVersionId)
-                  ?.template.name ?? t("Nicht mehr im sichtbaren Katalog")}
-              </h4>
-              <dl className="application-upgrade-path-summary">
-                <div>
-                  <dt>{t("Ausgangsversion")}</dt>
-                  <dd>{versionLabel(edge.fromVersionId)}</dd>
-                </div>
-                <div>
-                  <dt>{t("Zielversion")}</dt>
-                  <dd>{versionLabel(edge.toVersionId)}</dd>
-                </div>
-                <div>
-                  <dt>{t("Sensitive Änderungen")}</dt>
-                  <dd>
-                    {t(
-                      edge.policy.sensitive === "direct"
-                        ? "Direkt, sofern beide Versionen es erlauben"
-                        : "Separate Plan-Freigabe erforderlich",
-                    )}
-                  </dd>
-                </div>
-              </dl>
-              <p>
-                {t(
-                  "Veröffentlicht · Für Bestellungen auf genau dieser Ausgangsversion",
-                )}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </section>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => void load()}
+          >
+            {t("Upgrade-Pfade aktualisieren")}
+          </button>
+          {loaded && edges.length === 0 && (
+            <p>{t("Noch keine Upgrade-Pfade veröffentlicht.")}</p>
+          )}
+          {!loaded && (
+            <p>
+              {t("Die gespeicherten Upgrade-Pfade wurden noch nicht geladen.")}
+            </p>
+          )}
+          {listFailed && loaded && (
+            <p>
+              {t(
+                "Die Liste konnte nicht aktualisiert werden. Angezeigt wird der zuletzt geladene Stand.",
+              )}
+            </p>
+          )}
+          <ul className="application-upgrade-paths">
+            {edges.map((edge) => (
+              <li className="application-upgrade-path" key={edge.id}>
+                <h4>
+                  {versions.find((version) => version.id === edge.fromVersionId)
+                    ?.template.name ?? t("Nicht mehr im sichtbaren Katalog")}
+                </h4>
+                <dl className="application-upgrade-path-summary">
+                  <div>
+                    <dt>{t("Ausgangsversion")}</dt>
+                    <dd>{versionLabel(edge.fromVersionId)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("Zielversion")}</dt>
+                    <dd>{versionLabel(edge.toVersionId)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("Sensitive Änderungen")}</dt>
+                    <dd>
+                      {t(
+                        edge.policy.sensitive === "direct"
+                          ? "Direkt, sofern beide Versionen es erlauben"
+                          : "Separate Plan-Freigabe erforderlich",
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+                <p>
+                  {t(
+                    "Veröffentlicht · Für Bestellungen auf genau dieser Ausgangsversion",
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <h4>{t("Neuen Upgrade-Pfad veröffentlichen")}</h4>
       <p className="field-hint">
         {t(
@@ -195,7 +225,7 @@ export function ApplicationUpgradePublication({
             value={from}
             onChange={(event) => {
               setFrom(event.target.value);
-              setTo("");
+              setTo(targetVersion?.id ?? "");
               setDirect(false);
               setConfirmed(false);
               setNotice("");
@@ -203,18 +233,26 @@ export function ApplicationUpgradePublication({
             }}
           >
             <option value="">{t("Version wählen")}</option>
-            {versions.map((version) => (
-              <option value={version.id} key={version.id}>
-                {version.template.name} · {t("Version")} {version.version}
-              </option>
-            ))}
+            {versions
+              .filter(
+                (version) =>
+                  !targetVersion ||
+                  (version.templateId === targetVersion.templateId &&
+                    version.template.id === targetVersion.template.id &&
+                    version.version < targetVersion.version),
+              )
+              .map((version) => (
+                <option value={version.id} key={version.id}>
+                  {version.template.name} · {t("Version")} {version.version}
+                </option>
+              ))}
           </select>
         </label>
         <label>
           {t("Neue Version derselben Template-Familie")}
           <select
             value={to}
-            disabled={!previous}
+            disabled={Boolean(targetVersion) || !previous}
             onChange={(event) => {
               setTo(event.target.value);
               setDirect(false);
@@ -224,7 +262,7 @@ export function ApplicationUpgradePublication({
             }}
           >
             <option value="">{t("Version wählen")}</option>
-            {targets.map((version) => (
+            {(targetVersion ? [targetVersion] : targets).map((version) => (
               <option value={version.id} key={version.id}>
                 {version.template.name} · {t("Version")} {version.version}
               </option>
@@ -286,6 +324,16 @@ export function ApplicationUpgradePublication({
           {t("Upgrade-Pfad veröffentlichen")}
         </button>
       </fieldset>
+      {onSkip && (
+        <button
+          type="button"
+          className="button secondary"
+          disabled={busy}
+          onClick={onSkip}
+        >
+          {t("Ohne Upgrade abschließen")}
+        </button>
+      )}
     </section>
   );
 }
