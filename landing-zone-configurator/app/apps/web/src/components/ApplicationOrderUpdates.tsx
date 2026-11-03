@@ -60,7 +60,8 @@ export function ApplicationOrderUpdates({
     [withdrawAction, setWithdrawAction] = useState<"change" | "discard" | null>(
       null,
     ),
-    [confirmWithdrawal, setConfirmWithdrawal] = useState(false);
+    [confirmWithdrawal, setConfirmWithdrawal] = useState(false),
+    [confirmPolicyRefresh, setConfirmPolicyRefresh] = useState(false);
   const comparisonHeading = useRef<HTMLHeadingElement>(null);
   const savedNotice = useRef<HTMLParagraphElement>(null);
   const errorNotice = useRef<HTMLParagraphElement>(null);
@@ -77,6 +78,7 @@ export function ApplicationOrderUpdates({
   }, [notice]);
   const read = useCallback(async () => {
     setWithdrawAction(null);
+    setConfirmPolicyRefresh(false);
     setConfirmWithdrawal(false);
     setPreview(null);
     setConfirmed(false);
@@ -176,6 +178,41 @@ export function ApplicationOrderUpdates({
     setPreview(null);
     setNotice(
       "Der gewünschte Upgrade-Stand ist gespeichert. Erstelle und prüfe jetzt separat einen neuen Plan. Es wurde kein Plan oder Apply gestartet.",
+    );
+    await onChanged(result.signal);
+  }
+  async function refreshPolicy() {
+    const withdrawal = context?.withdrawal;
+    if (
+      !context?.policyUpdate ||
+      !context.policyUpdate.canRefresh ||
+      !withdrawal ||
+      !confirmPolicyRefresh ||
+      busy
+    )
+      return;
+    const result = await request(
+      `instances/${instanceId}/upgrades/refresh-policy`,
+      {
+        expectedBindingId: withdrawal.expectedBindingId,
+        expectedVersionId: withdrawal.expectedVersionId,
+        lastAppliedJobId: withdrawal.lastAppliedJobId,
+        edgeId: context.policyUpdate.edgeId,
+        confirmPolicyRefresh: true,
+      },
+    );
+    if (!result) return;
+    const parsed = contextSchema.safeParse(result.data);
+    if (!parsed.success) {
+      setError(
+        "Die Upgrade-Antwort konnte nicht sicher gelesen werden. Lade die Updates erneut.",
+      );
+      return;
+    }
+    setContext(parsed.data);
+    setConfirmPolicyRefresh(false);
+    setNotice(
+      "Die aktuelle Freigaberichtlinie ist übernommen. Erstelle jetzt einen neuen Plan. Zielversion, Einstellungen und State bleiben erhalten; der alte Plan bleibt für Apply gesperrt.",
     );
     await onChanged(result.signal);
   }
@@ -676,6 +713,46 @@ export function ApplicationOrderUpdates({
                   "Erstelle jetzt einen neuen Plan für diesen gespeicherten Stand. Prüfe dort die tatsächlichen Änderungen und eine gegebenenfalls erforderliche Platform-Owner-Freigabe. Erst danach kannst du Apply ausdrücklich starten.",
                 )}
               </p>
+              {context.policyUpdate && (
+                <fieldset disabled={busy || !context.policyUpdate.canRefresh}>
+                  <legend>
+                    {t("Aktualisierte Freigaberichtlinie verfügbar")}
+                  </legend>
+                  <p>
+                    {t(
+                      "Der Platform Owner hat die Richtlinie dieses Upgrade-Pfads geändert. Dein bisheriger Plan behält seine frühere Freigabebindung. Du kannst dieselbe Zielversion mit der aktuellen Richtlinie neu vorbereiten.",
+                    )}
+                  </p>
+                  <p>
+                    {t("Neue Richtlinie")}:{" "}
+                    {t(
+                      context.policyUpdate.sensitivePolicy === "direct"
+                        ? "Direkte Durchführung nach Plan-Prüfung"
+                        : "Separate Platform-Owner-Freigabe erforderlich",
+                    )}
+                  </p>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={confirmPolicyRefresh}
+                      onChange={(event) =>
+                        setConfirmPolicyRefresh(event.target.checked)
+                      }
+                    />
+                    {t(
+                      "Ich übernehme die aktuelle Richtlinie für dasselbe Upgrade-Ziel. Dafür ist ein neuer Plan erforderlich; es wird kein Apply gestartet.",
+                    )}
+                  </label>
+                  <button
+                    type="button"
+                    className="button primary"
+                    disabled={!confirmPolicyRefresh}
+                    onClick={() => void refreshPolicy()}
+                  >
+                    {t("Aktuelle Richtlinie übernehmen")}
+                  </button>
+                </fieldset>
+              )}
               {context.withdrawal && (
                 <section aria-label={t("Upgrade-Ziel ändern oder verwerfen")}>
                   <p>

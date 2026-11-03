@@ -1,4 +1,7 @@
-import { applicationUpgradeWithdrawalContextSchema } from "@lzc/contracts";
+import {
+  applicationUpgradePolicyUpdateSchema,
+  applicationUpgradeWithdrawalContextSchema,
+} from "@lzc/contracts";
 import {
   platformContractSchema,
   publishedProjectTemplateSchema,
@@ -40,6 +43,7 @@ const edgeSchema = z.object({
 });
 export const contextSchema = z.object({
   withdrawal: applicationUpgradeWithdrawalContextSchema.optional(),
+  policyUpdate: applicationUpgradePolicyUpdateSchema.nullable().optional(),
   originVersionId: z.uuid(),
   effectiveVersionId: z.uuid(),
   effectivePlatformRevision: z.uuid().nullable(),

@@ -37,9 +37,14 @@ publication and select **Update policy**, or return with **Back to upgrade paths
 without publishing. New paths use the separate **Publish a new upgrade path** action.
 This appends a new immutable publication for the same source/target pair; the list
 shows its latest policy. Earlier publications, selected upgrade targets and Plans
-retain their recorded policy. To use the new policy, withdraw an unapplied target
-if necessary, select the newly published path and create a fresh Plan. Neither
-publication nor policy editing starts execution or unlocks an existing Plan.
+retain their recorded policy. To use a revised policy for an already selected,
+unapplied target, the Application Owner opens **Updates**, reviews **Updated
+approval policy available**, confirms and selects **Adopt current policy**. This
+appends a fresh binding for the same target, parameters and settings. Create a
+new Plan; a direct path then needs no additional Platform Owner approval. The
+previous Plan stays blocked for Apply. An approval-required policy still requires
+its normal approval. Neither publication nor policy editing starts execution or
+unlocks an existing Plan.
 
 
 
@@ -189,3 +194,10 @@ partial upgrade. After reconciliation, create and review a new Plan.
 
 The Assistant can explain these steps. Chat acceptance does not publish an
 upgrade path, change a binding, release a Plan, unlock State or authorize Apply.
+
+
+A completed Plan's unexpired Runner ticket does not prevent changing or discarding
+an unapplied upgrade target, or adopting its revised path policy. Running jobs,
+unresolved recovery, active Apply credentials and any Apply attempt after the
+baseline remain blockers. Adopting a path policy does not revert a shared Platform
+to its earlier revision; the selected target Platform must still be current.

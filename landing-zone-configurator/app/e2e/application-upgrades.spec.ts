@@ -62,6 +62,7 @@ async function setup(
   noPath = false,
   publication: {
     sourceApproval?: boolean;
+    policyChanged?: boolean;
     platformSaved?: boolean;
     planReady?: boolean;
     saveError?: string;
@@ -144,6 +145,12 @@ async function setup(
   });
   let withdrawalReject = publication.withdrawalReject;
   const context = {
+    policyUpdate: null as null | {
+      edgeId: string;
+      sensitivePolicy: "direct";
+      canRefresh: boolean;
+      blockers: string[];
+    },
     withdrawal: {
       canWithdraw: false,
       blockers: [] as string[],
@@ -384,6 +391,7 @@ async function setup(
             candidateHash: "b".repeat(64),
             artifactSha256: "a".repeat(64),
             requiresApproval: true,
+            policyUpdateAvailable: !!publication.policyChanged,
             approved,
             canApprove: true,
             blocked: false,
@@ -413,6 +421,23 @@ async function setup(
       };
       savedPlatformPaths.splice(0, savedPlatformPaths.length, published);
       return r.fulfill({ json: published });
+    }
+    if (path === `instances/${instance}/upgrades/refresh-policy`) {
+      expect(body).toEqual({
+        expectedBindingId: edge,
+        expectedVersionId: target,
+        lastAppliedJobId: family,
+        edgeId: target,
+        confirmPolicyRefresh: true,
+      });
+      context.bindingId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+      context.effectiveDeploymentPolicy = "direct";
+      context.policyUpdate = null;
+      context.candidate = {
+        ...(context.candidate as Record<string, unknown>),
+        id: context.bindingId,
+      };
+      return r.fulfill({ json: context });
     }
     if (path === `instances/${instance}/upgrades/withdraw`) {
       expect(body).toEqual({
@@ -533,6 +558,13 @@ async function setup(
       expectedBindingId: edge,
       expectedVersionId: target,
     };
+    if (publication.policyChanged)
+      context.policyUpdate = {
+        edgeId: target,
+        sensitivePolicy: "direct",
+        canRefresh: true,
+        blockers: [],
+      };
     context.bindingId = edge;
     context.effectiveVersionId = target;
     context.current = version(target, 2);
@@ -1898,4 +1930,84 @@ test("editing a platform path opens and focuses its policy form", async ({
   );
   expect(mutations).toHaveLength(1);
   expect(mutations[0]?.path).toBe("platform-upgrades");
+});
+
+test("requester adopts a revised policy for the same target explicitly without publishing or starting Apply", async ({
+  page,
+}) => {
+  const { panel, mutations } = await setup(
+    page,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    { policyChanged: true },
+  );
+  await panel.getByLabel("Freigegebene Zielversion").selectOption(edge);
+  await panel
+    .locator(`select[id$="secretsmanager_enabled"]`)
+    .selectOption("false");
+  await panel
+    .getByRole("button", { name: "Weiter: Änderungen prüfen", exact: true })
+    .click();
+  await panel.getByRole("checkbox", { name: confirmation }).check();
+  await panel
+    .getByRole("button", {
+      name: "Upgrade-Ziel speichern und weiter",
+      exact: true,
+    })
+    .click();
+  const policy = panel.getByRole("group", {
+    name: "Aktualisierte Freigaberichtlinie verfügbar",
+  });
+  await expect(policy).toBeVisible();
+  const save = policy.getByRole("button", {
+    name: "Aktuelle Richtlinie übernehmen",
+    exact: true,
+  });
+  await expect(save).toBeDisabled();
+  await policy.getByRole("checkbox").check();
+  await save.click();
+  await expect(policy).not.toBeVisible();
+  await expect(
+    panel.getByText("Die aktuelle Freigaberichtlinie ist übernommen.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(mutations.map((x) => x.path)).toEqual([
+    `instances/${instance}/upgrades/preview`,
+    `instances/${instance}/upgrades`,
+    `instances/${instance}/upgrades/refresh-policy`,
+  ]);
+});
+
+test("a completed Plan points the requester to the revised path policy instead of waiting for an owner", async ({
+  page,
+}) => {
+  await setup(page, false, false, false, true, false, false, false, {
+    policyChanged: true,
+  });
+  const details = page.getByRole("region", {
+    name: "Bestelldetails",
+    exact: true,
+  });
+  await details.getByRole("tab", { name: "Plan", exact: true }).click();
+  await expect(
+    details.getByText(
+      "Für dieses Upgrade wurde inzwischen eine neue Freigaberichtlinie veröffentlicht.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await expect(
+    details.getByText(/Wartet auf Platform-Owner-Freigabe/),
+  ).toHaveCount(0);
+  await details
+    .getByRole("button", { name: "Zu den Update-Optionen", exact: true })
+    .click();
+  await expect(
+    details.getByRole("tab", { name: "Updates", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
 });

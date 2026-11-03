@@ -1175,3 +1175,65 @@ it("uses a revised self-service Platform path independently of required new-orde
   expect(prepared.plan.applyPolicy).toBe("direct");
   expect(prepared.plan.variables.application.platform_revision).toBe(f.to);
 });
+
+it("refreshes a selected Platform path policy without reverting the already advanced baseline Platform", async () => {
+  const f = await platformFixture("sensitive", "approval-required");
+  const publish = (sensitive: string) =>
+    scoped(
+      engineer,
+      async (q) =>
+        (
+          await q.query(
+            "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,true) AS value",
+            [engineer.id, f.from, f.to, { sensitive }],
+          )
+        ).rows[0].value,
+    );
+  const old = await publish("approval-required");
+  const chosen = await scoped(
+    owner,
+    async (q) =>
+      (
+        await q.query(
+          "SELECT lzc_auth.request_application_platform_upgrade($1,$2,$3,NULL,$4,true) AS value",
+          [owner.id, f.instance, old.id, f.from],
+        )
+      ).rows[0].value,
+  );
+  await imported(async () => {
+    await admin.query(
+      "UPDATE lzc.platform_states SET version=2 WHERE state_key=$1",
+      [f.stateKey],
+    );
+    await admin.query(
+      "UPDATE lzc.plan_runs SET applied_state_version=2 WHERE id=(SELECT apply_run_id FROM lzc.application_platform_sources WHERE revision=$1)",
+      [f.to],
+    );
+    await admin.query(
+      "UPDATE lzc.application_platform_sources SET state_version=2 WHERE revision=$1",
+      [f.to],
+    );
+  });
+  const latest = await publish("direct");
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const service = new Applications(runtime);
+  const context = await service.upgradeContext(owner, f.instance);
+  expect(context.withdrawal.blockers).toContain("restore-platform-unavailable");
+  expect(context.policyUpdate).toMatchObject({
+    canRefresh: true,
+    edgeId: latest.id,
+  });
+  const next = await service.refreshUpgradePolicy(owner, f.instance, {
+    expectedBindingId: chosen.bindingId,
+    expectedVersionId: f.version,
+    lastAppliedJobId: null,
+    edgeId: latest.id,
+    confirmPolicyRefresh: true,
+  });
+  expect(next.candidate?.kind).toBe("platform");
+  expect(next.effectiveDeploymentPolicy).toBe("direct");
+  expect(next.effectivePlatformRevision).toBe(f.to);
+  expect(next.effectiveSettings).toEqual(context.effectiveSettings);
+});

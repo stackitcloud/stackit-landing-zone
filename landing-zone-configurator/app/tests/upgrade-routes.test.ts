@@ -211,3 +211,86 @@ it("distinguishes invalid publication policies and immutable path conflicts from
     await app.close();
   }
 });
+
+it("protects requester policy adoption with the authenticated tenant, origin and CSRF without starting execution", async () => {
+  const session: Session = {
+    id: randomUUID(),
+    userId: randomUUID(),
+    tenantId: randomUUID(),
+    githubId: "test",
+    login: "test",
+    csrfToken: "c".repeat(43),
+    expiresAt: new Date(Date.now() + 3600000),
+  };
+  const auth: AuthServices = {
+    origin: "https://configurator.example",
+    clientId: "test",
+    store: {
+      resolveSession: vi.fn(async () => session),
+      beginLogin: vi.fn(),
+      consumeLogin: vi.fn(),
+      createSession: vi.fn(),
+      deleteSession: vi.fn(),
+    },
+    github: { authorize: vi.fn() },
+    tokens: { get: vi.fn(), put: vi.fn(), remove: vi.fn() },
+  };
+  const refreshUpgradePolicy = vi.fn(async () => ({ bindingId: randomUUID() }));
+  const applications = {
+    listTemplates: vi.fn(),
+    listInstances: vi.fn(),
+    publish: vi.fn(),
+    order: vi.fn(),
+    retire: vi.fn(),
+    listPlatformContracts: vi.fn(),
+    approvePlatformContract: vi.fn(),
+    preparePlanInput: vi.fn(),
+    refreshUpgradePolicy,
+  };
+  const app = buildApp({ auth, applications });
+  const id = randomUUID();
+  const path = `/api/v1/applications/instances/${id}/upgrades/refresh-policy`;
+  const headers = {
+    cookie: `__Host-lzc-session=${"b".repeat(43)}`,
+    origin: auth.origin,
+    "x-lzc-csrf": session.csrfToken,
+    "x-lzc-tenant": session.tenantId,
+  };
+  const payload = {
+    expectedBindingId: randomUUID(),
+    expectedVersionId: randomUUID(),
+    lastAppliedJobId: null,
+    edgeId: randomUUID(),
+    confirmPolicyRefresh: true,
+  };
+  try {
+    expect(
+      (await app.inject({ method: "POST", url: path, payload })).statusCode,
+    ).toBe(401);
+    for (const bad of [
+      { ...headers, origin: "https://evil.example" },
+      { ...headers, "x-lzc-csrf": "" },
+      { ...headers, "x-lzc-tenant": randomUUID() },
+    ]) {
+      expect(
+        (await app.inject({ method: "POST", url: path, payload, headers: bad }))
+          .statusCode,
+      ).toBe(403);
+    }
+    expect(refreshUpgradePolicy).not.toHaveBeenCalled();
+    expect(
+      (await app.inject({ method: "POST", url: path, payload, headers }))
+        .statusCode,
+    ).toBe(200);
+    expect(refreshUpgradePolicy).toHaveBeenCalledExactlyOnceWith(
+      session,
+      id,
+      payload,
+    );
+    expect(applications.order).not.toHaveBeenCalled();
+    expect(applications.publish).not.toHaveBeenCalled();
+    expect(auth.tokens.get).not.toHaveBeenCalled();
+  } finally {
+    await app.close();
+  }
+});

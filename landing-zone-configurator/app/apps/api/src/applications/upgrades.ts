@@ -1,6 +1,7 @@
 import {
   applicationTemplateUpgradeRequestSchema,
   applicationUpgradeEdgePolicySchema,
+  applicationUpgradePolicyUpdateSchema,
   applicationUpgradeWithdrawalContextSchema,
 } from "@lzc/contracts";
 import {
@@ -334,6 +335,16 @@ export async function enrichApplicationUpgradeContext(
   const email = context.effectiveSettings.owner_email;
   return {
     ...context,
+    policyUpdate: applicationUpgradePolicyUpdateSchema
+      .nullable()
+      .parse(
+        (
+          await client.query<{ policy: unknown }>(
+            "SELECT lzc_auth.application_upgrade_policy_update($1,$2) AS policy",
+            [session.id, instanceId],
+          )
+        ).rows[0]?.policy,
+      ),
     withdrawal: applicationUpgradeWithdrawalContextSchema.parse(
       (
         await client.query<{ context: unknown }>(

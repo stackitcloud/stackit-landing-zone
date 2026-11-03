@@ -3212,4 +3212,20 @@ export const englishMessages: Record<string, string> = {
     "Self-service: the Application Owner reviews a fresh plan and confirms Apply. Disallowed deletions and replacements remain blocked.",
   "Wartet auf Platform-Owner-Freigabe. Dieser gespeicherte Plan muss nicht erneut erstellt werden, solange er aktuell und gültig ist.":
     "Waiting for Platform Owner approval. This saved plan does not need to be recreated while it remains current and valid.",
+  "Aktualisierte Freigaberichtlinie verfügbar":
+    "Updated approval policy available",
+  "Der Platform Owner hat die Richtlinie dieses Upgrade-Pfads geändert. Dein bisheriger Plan behält seine frühere Freigabebindung. Du kannst dieselbe Zielversion mit der aktuellen Richtlinie neu vorbereiten.":
+    "The Platform Owner changed this upgrade path policy. Your existing plan retains its previous approval binding. You can prepare the same target version again with the current policy.",
+  "Neue Richtlinie": "New policy",
+  "Direkte Durchführung nach Plan-Prüfung": "Self-service after plan review",
+  "Separate Platform-Owner-Freigabe erforderlich":
+    "Separate Platform Owner approval required",
+  "Ich übernehme die aktuelle Richtlinie für dasselbe Upgrade-Ziel. Dafür ist ein neuer Plan erforderlich; es wird kein Apply gestartet.":
+    "I adopt the current policy for the same upgrade target. This requires a new plan; no Apply is started.",
+  "Aktuelle Richtlinie übernehmen": "Adopt current policy",
+  "Die aktuelle Freigaberichtlinie ist übernommen. Erstelle jetzt einen neuen Plan. Zielversion, Einstellungen und State bleiben erhalten; der alte Plan bleibt für Apply gesperrt.":
+    "The current approval policy has been adopted. Create a new plan. The target version, settings and state are retained; the old plan remains blocked for Apply.",
+  "Für dieses Upgrade wurde inzwischen eine neue Freigaberichtlinie veröffentlicht. Übernimm sie unter Updates und erstelle danach einen neuen Plan. Der bisherige Plan wird nicht nachträglich freigegeben.":
+    "A new approval policy has been published for this upgrade. Adopt it under Updates, then create a new plan. The existing plan is not approved retroactively.",
+  "Zu den Update-Optionen": "Go to update options",
 };
