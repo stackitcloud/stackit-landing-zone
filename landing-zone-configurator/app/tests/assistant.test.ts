@@ -3464,8 +3464,8 @@ it.each([
         "derselben Template-Familie",
         "Parameter-Antworten",
         "Artifact-Hash",
-        "strengeren alten/neuen",
-        "blockiert Löschungen und Ersetzungen",
+        "unabhängig von den Bestellrichtlinien",
+        "Löschungen und Ersetzungen bestehender Infrastruktur bleiben blockiert",
       ])
         expect(result.explanation).toContain(fact);
     if (adviceTask === "platform-upgrade")

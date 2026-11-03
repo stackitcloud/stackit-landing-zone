@@ -1,5 +1,9 @@
 import { expect, it } from "vitest";
-import { assistantApplicationUpgradeFailures } from "../scripts/assistant-scenarios.js";
+import { assistantApplicationUpgradeAdvice } from "../apps/api/src/assistant/knowledge.js";
+import {
+  assistantApplicationUpgradeFailures,
+  assistantUpgradePathPolicyFailures,
+} from "../scripts/assistant-scenarios.js";
 
 it("requires the real upgrade and approval boundaries instead of a generic explanation", () => {
   expect(
@@ -52,4 +56,31 @@ it("rejects the observed introduction-only template-upgrade response", () => {
       "application_upgrade_missing_destructive-block",
     ]),
   );
+});
+
+it("requires the explicit self-service path to avoid another Platform Owner approval", () => {
+  expect(
+    assistantUpgradePathPolicyFailures(
+      "Beim eigenständigen Upgrade ist keine zusätzliche Platform-Owner-Freigabe nötig. Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst.",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantUpgradePathPolicyFailures(
+      "Die strengere Richtlinie beider Versionen entscheidet. Der Platform Owner muss den Plan freigeben.",
+    ),
+  ).toContain("upgrade_path_incorrect_template_policy_override");
+  expect(
+    assistantUpgradePathPolicyFailures(
+      "Eigenständige Durchführung ist möglich, bitte den Platform Owner erneut fragen.",
+    ),
+  ).toContain("upgrade_path_missing_no_extra_approval");
+});
+
+it("keeps reviewed template and contract upgrade replies aligned with the path policy", () => {
+  for (const kind of ["template", "platform"] as const) {
+    const text = assistantApplicationUpgradeAdvice[`${kind}-upgrade`];
+    expect(assistantApplicationUpgradeFailures(text, kind)).toEqual([]);
+    expect(assistantUpgradePathPolicyFailures(text)).toEqual([]);
+    expect(text).not.toMatch(/strengeren alten\/neuen|nur bei beiden direkten/);
+  }
 });

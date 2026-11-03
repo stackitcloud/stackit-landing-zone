@@ -2185,6 +2185,7 @@ function ApplicationPlanControls({
                       {purpose !== "drift" &&
                         applyEnabled &&
                         !job.canApply &&
+                        !job.summary?.upgradeSafety &&
                         !jobs.some(
                           (candidate) =>
                             candidate.operation === "apply" &&

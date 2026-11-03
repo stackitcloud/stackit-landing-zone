@@ -315,7 +315,36 @@ async function setup(
                     backendId: platform,
                     canApproveBackend: false,
                     canDispatch: false,
-                    summary: null,
+                    summary: {
+                      schemaVersion: 1,
+                      execution: "plan-only",
+                      applyAllowed: false,
+                      result: "changes",
+                      resources: {
+                        unchanged: 0,
+                        create: 0,
+                        update: 1,
+                        delete: 0,
+                        replace: 0,
+                        read: 0,
+                      },
+                      drift: {
+                        unchanged: 0,
+                        create: 0,
+                        update: 0,
+                        delete: 0,
+                        replace: 0,
+                        read: 0,
+                      },
+                      changedOutputs: 0,
+                      checks: { pass: 0, fail: 0, error: 0, unknown: 0 },
+                      destructive: false,
+                      completeness: "complete",
+                      upgradeSafety: {
+                        classification: "sensitive",
+                        reasons: [],
+                      },
+                    },
                     errorCode: null,
                     artifactSha256: "a".repeat(64),
                     canApply: publication.planReady === true,
@@ -398,6 +427,12 @@ async function setup(
           status: 409,
           json: { error: "application_upgrade_edge_invalid" },
         });
+      const existingIndex = savedPaths.findIndex(
+        (item) =>
+          item.fromVersionId === body.fromVersionId &&
+          item.toVersionId === body.toVersionId,
+      );
+      if (existingIndex >= 0) savedPaths.splice(existingIndex, 1);
       savedPaths.push({
         id: target,
         fromVersionId: body.fromVersionId,
@@ -1098,7 +1133,7 @@ test("saved publication paths show every family independently of the selected fo
   });
 });
 
-test("approval-required versions cannot publish a direct path and retain saved families on a rejected publication", async ({
+test("approval-required versions can select self-service and retain saved families on a rejected publication", async ({
   page,
 }) => {
   const { mutations } = await setup(
@@ -1127,13 +1162,11 @@ test("approval-required versions cannot publish a direct path and retain saved f
     .getByLabel("Neue Version derselben Template-Familie")
     .selectOption(target);
   await expect(
-    panel.getByText(
-      "Mindestens eine Version verlangt eine separate Plan-Freigabe. Dieser Pfad kann diese Richtlinie nicht aufheben.",
-    ),
+    panel.getByText(/Die Freigabe dieses Upgrade-Pfads gilt unabhängig/),
   ).toBeVisible();
-  await expect(
-    panel.getByRole("checkbox", { name: /Sensitive Änderungen dieses Pfades/ }),
-  ).toBeDisabled();
+  await panel
+    .getByRole("radio", { name: "Eigenständig durchführen", exact: true })
+    .check();
   await panel
     .getByRole("checkbox", { name: /Ich veröffentliche nur den Upgrade-Pfad/ })
     .check();
@@ -1160,7 +1193,7 @@ test("approval-required versions cannot publish a direct path and retain saved f
       body: {
         fromVersionId: old,
         toVersionId: target,
-        policy: { sensitive: "approval-required" },
+        policy: { sensitive: "direct" },
         confirmPublication: true,
       },
     },
@@ -1580,3 +1613,75 @@ for (const action of [
     ).toBe(true);
   });
 }
+
+test("edits a published path policy without changing existing orders", async ({
+  page,
+}) => {
+  const { mutations } = await setup(
+    page,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    { saved: true },
+  );
+  await page
+    .getByRole("tab", { name: "Veröffentlichung", exact: true })
+    .click();
+  await page
+    .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
+    .click();
+  const panel = page.getByRole("region", {
+    name: "Upgrade-Pfade veröffentlichen",
+    exact: true,
+  });
+  await panel
+    .getByRole("button", { name: "Freigaberichtlinie bearbeiten", exact: true })
+    .click();
+  await expect(
+    panel.getByRole("radio", { name: "Eigenständig durchführen", exact: true }),
+  ).toBeChecked();
+  await panel
+    .getByRole("radio", {
+      name: "Separate Plan-Freigabe erforderlich",
+      exact: true,
+    })
+    .check();
+  await panel
+    .getByRole("checkbox", { name: /Ich veröffentliche nur den Upgrade-Pfad/ })
+    .check();
+  await panel
+    .getByRole("button", { name: "Richtlinie aktualisieren", exact: true })
+    .click();
+  await expect(
+    panel
+      .getByRole("region", {
+        name: "Veröffentlichte Upgrade-Pfade",
+        exact: true,
+      })
+      .getByRole("listitem"),
+  ).toHaveCount(1);
+  expect(mutations).toHaveLength(1);
+  expect(mutations[0]?.path).toBe("template-upgrades");
+  expect(mutations[0]?.body.policy).toEqual({ sensitive: "approval-required" });
+});
+test("shows a pending plan approval without asking to recreate the current Plan", async ({
+  page,
+}) => {
+  await setup(page, false, false, true, true);
+  await page.getByRole("tab", { name: "Bestellungen", exact: true }).click();
+  await page.getByRole("button", { name: /Details anzeigen/ }).click();
+  await page.getByRole("tab", { name: "Plan", exact: true }).click();
+  await expect(
+    page.getByText(/Wartet auf Platform-Owner-Freigabe/),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Dieser Plan ist nicht mehr ausführbar. Bitte einen neuen Cloud-Plan starten.",
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+});

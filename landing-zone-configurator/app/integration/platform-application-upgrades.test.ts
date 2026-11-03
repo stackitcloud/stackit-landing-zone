@@ -129,6 +129,7 @@ afterEach(async () => {
 });
 async function platformFixture(
   classification: "ordinary" | "sensitive" | "blocked" = "sensitive",
+  orderPolicy: "direct" | "approval-required" = "direct",
 ) {
   const instance = randomUUID(),
     version = randomUUID(),
@@ -304,7 +305,7 @@ async function platformFixture(
       );
     }
     await admin.query(
-      "INSERT INTO lzc.application_template_versions(id,tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) VALUES($1,$2,$3,1,$4,$5,$6,$7,'public','direct')",
+      "INSERT INTO lzc.application_template_versions(id,tenant_id,template_id,version,published_by,accelerator_revision,document,platform_revision,target_key,deployment_policy) VALUES($1,$2,$3,1,$4,$5,$6,$7,'public',$8)",
       [
         version,
         owner.tenantId,
@@ -313,12 +314,26 @@ async function platformFixture(
         source,
         template,
         from,
+        orderPolicy,
       ],
     );
     await admin.query(
-      "INSERT INTO lzc.application_instances(id,tenant_id,version_id,requested_by,idempotency_key,name,parameters,resolved_settings,qualification_blockers,deployment_policy) VALUES($1,$2,$3,$4,$5,'impacted-order','{}',$6,'[\"historical\"]','direct')",
-      [instance, owner.tenantId, version, owner.userId, randomUUID(), settings],
+      "INSERT INTO lzc.application_instances(id,tenant_id,version_id,requested_by,idempotency_key,name,parameters,resolved_settings,qualification_blockers,deployment_policy) VALUES($1,$2,$3,$4,$5,'impacted-order','{}',$6,'[\"historical\"]',$7)",
+      [
+        instance,
+        owner.tenantId,
+        version,
+        owner.userId,
+        randomUUID(),
+        settings,
+        orderPolicy,
+      ],
     );
+    if (orderPolicy === "approval-required")
+      await admin.query(
+        "INSERT INTO lzc.application_order_decisions(instance_id,tenant_id,decision,decided_by,reason) VALUES($1,$2,'approved',$3,'initial order only')",
+        [instance, owner.tenantId, engineer.userId],
+      );
     const group = randomUUID();
     await admin.query(
       "INSERT INTO lzc.application_groups(id,tenant_id,name) VALUES($1,$2,$3)",
@@ -1114,4 +1129,49 @@ it("reports a stale baseline Platform as a withdrawal blocker before confirmatio
       )
     ).effectivePlatformRevision,
   ).toBe(f.to);
+});
+
+it("uses a revised self-service Platform path independently of required new-order policy", async () => {
+  const f = await platformFixture("sensitive", "approval-required");
+  const publish = (mode: string) =>
+    scoped(
+      engineer,
+      async (q) =>
+        (
+          await q.query(
+            "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,true) AS value",
+            [engineer.id, f.from, f.to, { sensitive: mode }],
+          )
+        ).rows[0].value,
+    );
+  const old = await publish("approval-required");
+  const latest = await publish("direct");
+  expect(latest.id).not.toBe(old.id);
+  expect((await publish("direct")).id).toBe(latest.id);
+  const choose = (id: string) =>
+    scoped(
+      owner,
+      async (q) =>
+        (
+          await q.query(
+            "SELECT lzc_auth.request_application_platform_upgrade($1,$2,$3,NULL,$4,true) AS value",
+            [owner.id, f.instance, id, f.from],
+          )
+        ).rows[0].value,
+    );
+  await expect(choose(old.id)).rejects.toThrow(
+    "application_upgrade_edge_unavailable",
+  );
+  const context = await choose(latest.id);
+  expect(context.effectiveDeploymentPolicy).toBe("direct");
+  expect(context.effectiveVersionId).toBe(f.version);
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const prepared = await new Applications(runtime).preparePlanInput(
+    owner,
+    f.instance,
+  );
+  expect(prepared.plan.applyPolicy).toBe("direct");
+  expect(prepared.plan.variables.application.platform_revision).toBe(f.to);
 });

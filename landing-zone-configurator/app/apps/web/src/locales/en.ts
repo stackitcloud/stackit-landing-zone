@@ -3197,4 +3197,14 @@ export const englishMessages: Record<string, string> = {
     "This plan removes or replaces project roles or role assignments. These permission changes follow the published approval policy; deleting or replacing existing infrastructure remains blocked.",
   "Der neue Plan prüft die tatsächlichen Rechteänderungen. Löschungen oder Ersetzungen bestehender Infrastruktur und unzulässige Zielwechsel bleiben gesperrt.":
     "The new plan checks the actual permission changes. Deleting or replacing existing infrastructure and disallowed target changes remain blocked.",
+  "Ausführung des Upgrades": "Upgrade execution",
+  "Eigenständig durchführen": "Requester self-service",
+  "Richtlinie aktualisieren": "Update policy",
+  "Freigaberichtlinie bearbeiten": "Edit approval policy",
+  "Die Freigabe dieses Upgrade-Pfads gilt unabhängig von der Richtlinie für neue Bestellungen. Bestehende Upgrade-Ziele und Pläne behalten ihre gespeicherte Freigabe.":
+    "This upgrade path policy is independent of new-order policy. Existing upgrade targets and plans retain their recorded approval policy.",
+  "Eigenständig: Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst. Unerlaubte Löschungen und Ersetzungen bleiben gesperrt.":
+    "Self-service: the Application Owner reviews a fresh plan and confirms Apply. Disallowed deletions and replacements remain blocked.",
+  "Wartet auf Platform-Owner-Freigabe. Dieser gespeicherte Plan muss nicht erneut erstellt werden, solange er aktuell und gültig ist.":
+    "Waiting for Platform Owner approval. This saved plan does not need to be recreated while it remains current and valid.",
 };

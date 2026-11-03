@@ -1145,7 +1145,7 @@ export class Applications {
   listUpgradeEdges(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<{ edge: unknown }>(
-        "SELECT jsonb_build_object('id',e.id,'fromVersionId',e.from_version_id,'toVersionId',e.to_version_id,'policy',e.policy,'publishedBy',e.published_by,'createdAt',e.created_at) AS edge FROM lzc.application_upgrade_edges e ORDER BY e.created_at DESC LIMIT 500",
+        "SELECT jsonb_build_object('id',e.id,'fromVersionId',e.from_version_id,'toVersionId',e.to_version_id,'policy',e.policy,'publishedBy',e.published_by,'createdAt',e.created_at) AS edge FROM lzc.application_upgrade_edges e WHERE NOT EXISTS(SELECT 1 FROM lzc.application_upgrade_edges newer WHERE newer.tenant_id=e.tenant_id AND newer.from_version_id=e.from_version_id AND newer.to_version_id=e.to_version_id AND (newer.created_at,newer.id)>(e.created_at,e.id)) ORDER BY e.created_at DESC LIMIT 500",
       );
       return {
         edges: result.rows.map((row) =>
@@ -1301,7 +1301,7 @@ export class Applications {
     return this.work(session, "read", async (client) => ({
       edges: (
         await client.query<{ edge: unknown }>(
-          "SELECT jsonb_build_object('id',e.id,'fromPlatformRevision',e.from_revision,'toPlatformRevision',e.to_revision,'policy',e.policy,'publishedBy',e.published_by,'createdAt',e.created_at) AS edge FROM lzc.application_platform_upgrade_edges e ORDER BY created_at DESC LIMIT 500",
+          "SELECT jsonb_build_object('id',e.id,'fromPlatformRevision',e.from_revision,'toPlatformRevision',e.to_revision,'policy',e.policy,'publishedBy',e.published_by,'createdAt',e.created_at) AS edge FROM lzc.application_platform_upgrade_edges e WHERE NOT EXISTS(SELECT 1 FROM lzc.application_platform_upgrade_edges newer WHERE newer.tenant_id=e.tenant_id AND newer.from_revision=e.from_revision AND newer.to_revision=e.to_revision AND (newer.created_at,newer.id)>(e.created_at,e.id)) ORDER BY created_at DESC LIMIT 500",
         )
       ).rows.map((row) => applicationPlatformUpgradeEdgeSchema.parse(row.edge)),
     }));

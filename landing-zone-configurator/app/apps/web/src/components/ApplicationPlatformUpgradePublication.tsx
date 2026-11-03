@@ -1,5 +1,5 @@
 import type { platformContractSchema } from "@lzc/domain";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { z } from "zod";
 import { t } from "../i18n";
 import type { Session } from "./Account";
@@ -22,6 +22,7 @@ export function ApplicationPlatformUpgradePublication({
   session: Session;
   contracts: z.infer<typeof platformContractSchema>[];
 }) {
+  const policyGroup = useId();
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
     "platform-upgrade-publication",
@@ -53,9 +54,20 @@ export function ApplicationPlatformUpgradePublication({
         item.organization_id === previous.organization_id &&
         item.tenant_id === previous.tenant_id,
     );
+  const existing = edges.find(
+    (item) =>
+      item.fromPlatformRevision === from && item.toPlatformRevision === to,
+  );
+  const samePolicy =
+    existing?.policy.sensitive === (direct ? "direct" : "approval-required");
+  useEffect(() => {
+    if (existing) setDirect(existing.policy.sensitive === "direct");
+    setConfirmed(false);
+  }, [existing]);
   async function publish() {
     if (
       busy ||
+      samePolicy ||
       !confirmed ||
       !previous ||
       !targets.some((item) => item.revision === to)
@@ -125,19 +137,38 @@ export function ApplicationPlatformUpgradePublication({
             ))}
           </select>
         </label>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={direct}
-            onChange={(event) => {
-              setDirect(event.target.checked);
-              setConfirmed(false);
-            }}
-          />
-          {t(
-            "Sensitive Plattformänderungen dieses Pfades dürfen nach einem neuen Plan die direkte Richtlinie verwenden, soweit die übrigen Freigaberegeln dies erlauben.",
-          )}
-        </label>
+        <fieldset>
+          <legend>{t("Ausführung des Upgrades")}</legend>
+          <label className="checkbox">
+            <input
+              type="radio"
+              name={policyGroup}
+              checked={direct}
+              onChange={() => {
+                setDirect(true);
+                setConfirmed(false);
+              }}
+            />
+            {t("Eigenständig durchführen")}
+          </label>
+          <label className="checkbox">
+            <input
+              type="radio"
+              name={policyGroup}
+              checked={!direct}
+              onChange={() => {
+                setDirect(false);
+                setConfirmed(false);
+              }}
+            />
+            {t("Separate Plan-Freigabe erforderlich")}
+          </label>
+          <p>
+            {t(
+              "Eigenständig: Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst. Unerlaubte Löschungen und Ersetzungen bleiben gesperrt.",
+            )}
+          </p>
+        </fieldset>
         <label className="checkbox">
           <input
             type="checkbox"
@@ -151,10 +182,14 @@ export function ApplicationPlatformUpgradePublication({
         <button
           type="button"
           className="button secondary"
-          disabled={!from || !to || !confirmed}
+          disabled={!from || !to || !confirmed || samePolicy}
           onClick={() => void publish()}
         >
-          {t("Plattform-Upgrade-Pfad veröffentlichen")}
+          {t(
+            existing && !samePolicy
+              ? "Richtlinie aktualisieren"
+              : "Plattform-Upgrade-Pfad veröffentlichen",
+          )}
         </button>
       </fieldset>
       {edges.length > 0 && (
@@ -168,6 +203,25 @@ export function ApplicationPlatformUpgradePublication({
               <abbr title={item.toPlatformRevision}>
                 {item.toPlatformRevision.slice(0, 12)}
               </abbr>
+              {" · "}
+              {t(
+                item.policy.sensitive === "direct"
+                  ? "Eigenständig durchführen"
+                  : "Separate Plan-Freigabe erforderlich",
+              )}
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => {
+                  setFrom(item.fromPlatformRevision);
+                  setTo(item.toPlatformRevision);
+                  setDirect(item.policy.sensitive === "direct");
+                  setConfirmed(false);
+                }}
+              >
+                {t("Freigaberichtlinie bearbeiten")}
+              </button>
             </li>
           ))}
         </ul>

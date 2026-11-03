@@ -287,18 +287,12 @@ export function assessApplicationTemplateUpgrade(input: {
   if (current.acceleratorRevision !== target.acceleratorRevision)
     add("execution-source-change", "acceleratorRevision", "sensitive");
   const level = classification(reasons);
-  const bothDirect =
-    policy.parse(current.deploymentPolicy ?? "approval-required") ===
-      "direct" &&
-    policy.parse(target.deploymentPolicy ?? "approval-required") === "direct";
   return {
     classification: level,
     reasons,
-    approvalPolicy:
-      bothDirect &&
-      (level !== "sensitive" || input.edgePolicy?.sensitive === "direct")
-        ? ("direct" as const)
-        : ("approval-required" as const),
+    approvalPolicy: policy.parse(
+      input.edgePolicy?.sensitive ?? "approval-required",
+    ),
     retainedParameters,
     targetSettings,
     requiredParameters,
@@ -416,16 +410,13 @@ export function assessApplicationPlatformUpgrade(
   if (!oldTarget || !newTarget)
     add("platform-target-unavailable", "targetKey", "blocked");
   else targetChanges(oldTarget, newTarget, add);
-  const level = classification(reasons),
-    direct =
-      current.deploymentPolicy === "direct" &&
-      (level !== "sensitive" || input.edgePolicy?.sensitive === "direct");
+  const level = classification(reasons);
   return {
     classification: level,
     reasons,
-    approvalPolicy: direct
-      ? ("direct" as const)
-      : ("approval-required" as const),
+    approvalPolicy: policy.parse(
+      input.edgePolicy?.sensitive ?? "approval-required",
+    ),
     retainedParameters: structuredClone(parameters),
     targetSettings: structuredClone(currentSettings),
     requiredParameters: [],
