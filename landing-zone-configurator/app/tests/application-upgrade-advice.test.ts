@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { assistantApplicationUpgradeAdvice } from "../apps/api/src/assistant/knowledge.js";
 import {
   assistantApplicationUpgradeFailures,
   assistantUpgradePathPolicyFailures,
@@ -73,4 +74,13 @@ it("requires the explicit self-service path to avoid another Platform Owner appr
       "Eigenständige Durchführung ist möglich, bitte den Platform Owner erneut fragen.",
     ),
   ).toContain("upgrade_path_missing_no_extra_approval");
+});
+
+it("keeps reviewed template and contract upgrade replies aligned with the path policy", () => {
+  for (const kind of ["template", "platform"] as const) {
+    const text = assistantApplicationUpgradeAdvice[`${kind}-upgrade`];
+    expect(assistantApplicationUpgradeFailures(text, kind)).toEqual([]);
+    expect(assistantUpgradePathPolicyFailures(text)).toEqual([]);
+    expect(text).not.toMatch(/strengeren alten\/neuen|nur bei beiden direkten/);
+  }
 });
