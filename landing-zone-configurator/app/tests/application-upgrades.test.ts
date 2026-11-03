@@ -568,3 +568,111 @@ it("rejects contradictory managed-read actions and malformed native values", () 
     ).classification,
   ).toBe("blocked");
 });
+
+it("allows a legacy-to-granular initial owner transition to reach a fresh Plan", () => {
+  const input = fixture();
+  Object.assign(input.target.template, {
+    accessProfile: {
+      schemaVersion: 1,
+      mode: "granular",
+      initialOwnerEmail: "platform@sa.stackit.cloud",
+      permissions: ["ske.cluster.create"],
+      automationPermissions: ["ske.cluster.create"],
+    },
+  });
+  const result = assessApplicationTemplateUpgrade(input);
+  expect(result.classification).toBe("sensitive");
+  expect(result.targetSettings.initial_owner_email).toBe(
+    "platform@sa.stackit.cloud",
+  );
+  expect(result.reasons).toContainEqual({
+    code: "iam-change",
+    path: "settings.initial_owner_email",
+    classification: "sensitive",
+  });
+  expect(result.applyAllowed).toBe(false);
+});
+it.each([
+  "stackit_authorization_project_role_assignment",
+  "stackit_authorization_project_custom_role",
+])("allows only known project IAM transitions for %s", (type) => {
+  for (const actions of [
+    ["delete"],
+    ["delete", "create"],
+    ["create", "delete"],
+  ]) {
+    const safety = classifyApplicationUpgradePlan(
+      plan([change(type, actions)]),
+    );
+    expect(safety.classification).toBe("sensitive");
+    expect(safety.iamActions).toEqual({
+      delete: actions.length === 1 ? 1 : 0,
+      replace: actions.length === 1 ? 0 : 1,
+    });
+    expect(
+      classifyApplicationUpgradePlan(
+        plan([change(type, actions), change("stackit_network", ["delete"])]),
+      ).classification,
+    ).toBe("blocked");
+  }
+  for (const actions of [
+    ["delete", "read"],
+    ["delete", "delete"],
+    ["delete", "update"],
+  ])
+    expect(
+      classifyApplicationUpgradePlan(plan([change(type, actions)]))
+        .classification,
+    ).toBe("blocked");
+});
+it.each([
+  "stackit_resourcemanager_project",
+  "stackit_service_account",
+  "stackit_service_account_key",
+  "stackit_objectstorage_credential",
+  "stackit_objectstorage_bucket",
+  "stackit_network",
+  "stackit_observability_instance",
+])(
+  "keeps %s deletion and replacement blocked beside allowed IAM changes",
+  (type) => {
+    for (const actions of [["delete"], ["delete", "create"]])
+      expect(
+        classifyApplicationUpgradePlan(
+          plan([
+            change("stackit_authorization_project_role_assignment", ["delete"]),
+            change(type, actions),
+          ]),
+        ).classification,
+      ).toBe("blocked");
+  },
+);
+
+it("groups repeated IAM preview notices without hiding a blocking reason", async () => {
+  const { visibleUpgradeReasons } = await import(
+    "../apps/web/src/components/application-upgrade-messages.js"
+  );
+  const values = [
+    {
+      code: "iam-change",
+      path: "settings.initial_owner_email",
+      classification: "sensitive",
+    },
+    {
+      code: "iam-change",
+      path: "settings.custom_roles",
+      classification: "sensitive",
+    },
+    {
+      code: "iam-change",
+      path: "settings.automation_role",
+      classification: "sensitive",
+    },
+    {
+      code: "iam-change",
+      path: "settings.custom_roles",
+      classification: "blocked",
+    },
+  ];
+  expect(visibleUpgradeReasons(values)).toEqual([values[0], values[3]]);
+});

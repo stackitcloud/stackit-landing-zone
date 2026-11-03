@@ -227,7 +227,6 @@ export function assessApplicationTemplateUpgrade(input: {
       add("instance-identity-change", "settings.owner_email", "blocked");
     for (const path of [
       "owner_email",
-      "initial_owner_email",
       "env",
       "naming_pattern",
       "project_name",
@@ -256,7 +255,6 @@ export function assessApplicationTemplateUpgrade(input: {
       if (
         [
           "owner_email",
-          "initial_owner_email",
           "env",
           "naming_pattern",
           "project_name",
@@ -266,7 +264,14 @@ export function assessApplicationTemplateUpgrade(input: {
         ].includes(key)
       )
         continue;
-      if (["custom_roles", "role_assignments", "automation_role"].includes(key))
+      if (
+        [
+          "initial_owner_email",
+          "custom_roles",
+          "role_assignments",
+          "automation_role",
+        ].includes(key)
+      )
         add("iam-change", `settings.${key}`, "sensitive");
       else if (["network_enabled", "network_prefix_length"].includes(key))
         add("network-change", `settings.${key}`, "blocked");

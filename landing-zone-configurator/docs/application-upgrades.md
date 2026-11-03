@@ -104,11 +104,17 @@ is collapsed under **Optional technical maintenance**. A withdrawn or unavailabl
 execution source keeps its warning and maintenance options visible. Technical
 maintenance does not change template permissions.
 
-The instance, project identity, State key and backend remain the same. The
-standard path blocks resource deletions and replacements, including changes
-that OpenTofu represents as replacement rather than an in-place update. Unknown
-or incomplete evidence also blocks execution. A checkbox cannot override this.
-Destructive migrations require a separate reviewed migration procedure.
+The instance, project identity, State key and backend remain the same. A change
+of the central initial project owner, including switching a legacy template to
+the granular access profile, is a sensitive permission change and may reach a
+fresh Plan. The actual saved Plan decides whether Apply is possible: in-place
+project updates and project-role changes follow the published approval policy;
+project, network, service, identity and credential deletion or replacement remain
+blocked. Only deletions/replacements of project custom roles and project role
+assignments are allowed as sensitive IAM transitions. Their exact counts must
+match the saved Plan summary. Unknown or incomplete evidence blocks execution;
+a checkbox cannot override this. Review removed rights before Apply. A successful
+Plan does not prove that a removed role has no impact on existing workloads.
 
 IAM, credentials and networking can change without a deletion. Changes classified
 as sensitive by the actual native Plan require the published sensitive-change

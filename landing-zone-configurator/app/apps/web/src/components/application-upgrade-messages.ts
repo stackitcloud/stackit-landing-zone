@@ -55,7 +55,7 @@ upgradeReasonMessages["application-platform-execution-active"] =
   upgradeReasonMessages["execution-or-recovery-active"] ?? "";
 
 export function upgradeChangeLabel(path: string): string {
-  if (/role|permission|accessProfile/.test(path))
+  if (/role|permission|accessProfile|initial_owner/.test(path))
     return "Projektberechtigungen";
   if (/observability/.test(path)) return "Observability";
   if (/secretsmanager/.test(path)) return "Secrets Manager";
@@ -63,4 +63,17 @@ export function upgradeChangeLabel(path: string): string {
   if (/source|accelerator/.test(path)) return "Technische Ausführung";
   if (/parameter/.test(path)) return "Bestellparameter";
   return "Konfiguration";
+}
+
+/** Group identical user-facing notices while retaining separate safety levels. */
+export function visibleUpgradeReasons<
+  T extends { code: string; path: string; classification: string },
+>(values: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = `${value.code}:${upgradeChangeLabel(value.path)}:${value.classification}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

@@ -8,6 +8,7 @@ import { ApplicationUpgradeProgress } from "./ApplicationUpgradeProgress";
 import {
   upgradeReasonMessages as reasons,
   upgradeChangeLabel,
+  visibleUpgradeReasons,
 } from "./application-upgrade-messages";
 import { useApplicationUpgradeRequest } from "./application-upgrade-request";
 import {
@@ -578,7 +579,9 @@ export function ApplicationOrderUpdates({
                           )}
                         </p>
                         <ul>
-                          {preview.assessment.reasons.map((reason) => (
+                          {visibleUpgradeReasons(
+                            preview.assessment.reasons,
+                          ).map((reason) => (
                             <li
                               key={`${reason.code}:${reason.path}:${reason.classification}`}
                             >
@@ -603,7 +606,7 @@ export function ApplicationOrderUpdates({
                         </details>
                         <p>
                           {t(
-                            "Löschungen, Ersetzungen und unzulässige Zielwechsel bleiben gesperrt. Eine Bestätigung hebt diese Sperren nicht auf.",
+                            "Der neue Plan prüft die tatsächlichen Rechteänderungen. Löschungen oder Ersetzungen bestehender Infrastruktur und unzulässige Zielwechsel bleiben gesperrt.",
                           )}
                         </p>
                         {reviewed && (
