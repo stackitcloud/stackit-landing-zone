@@ -62,6 +62,7 @@ async function setup(
   noPath = false,
   publication: {
     sourceApproval?: boolean;
+    platformSaved?: boolean;
     planReady?: boolean;
     saveError?: string;
     saved?: boolean;
@@ -86,6 +87,16 @@ async function setup(
     : [];
 
   const nextPlatform = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const savedPlatformPaths = publication.platformSaved
+    ? [
+        {
+          id: edge,
+          fromPlatformRevision: platform,
+          toPlatformRevision: nextPlatform,
+          policy: { sensitive: "direct" },
+        },
+      ]
+    : [];
   const platformDoc = (revision: string) => ({
     schema_version: 1,
     tenant_id: tenant,
@@ -217,7 +228,7 @@ async function setup(
       );
     if (request.method() === "GET") {
       if (path === "platform-upgrades")
-        return r.fulfill({ json: { edges: [] } });
+        return r.fulfill({ json: { edges: savedPlatformPaths } });
       if (path === "template-upgrades")
         return r.fulfill({ json: { edges: savedPaths } });
       if (path === "templates")
@@ -387,6 +398,22 @@ async function setup(
     expect(request.headers()["x-lzc-csrf"]).toBe("upgrade-csrf");
     const body = request.postDataJSON();
     mutations.push({ path, body });
+    if (path === "platform-upgrades") {
+      expect(body).toEqual({
+        fromPlatformRevision: platform,
+        toPlatformRevision: nextPlatform,
+        policy: { sensitive: "approval-required" },
+        confirmPublication: true,
+      });
+      const published = {
+        id: family,
+        fromPlatformRevision: body.fromPlatformRevision,
+        toPlatformRevision: body.toPlatformRevision,
+        policy: body.policy,
+      };
+      savedPlatformPaths.splice(0, savedPlatformPaths.length, published);
+      return r.fulfill({ json: published });
+    }
     if (path === `instances/${instance}/upgrades/withdraw`) {
       expect(body).toEqual({
         expectedBindingId: edge,
@@ -675,6 +702,12 @@ test("Platform Owner publishes only same-family upgrade path without changing an
     name: "Upgrade-Pfade veröffentlichen",
     exact: true,
   });
+  await panel
+    .getByRole("button", {
+      name: "Neuen Upgrade-Pfad veröffentlichen",
+      exact: true,
+    })
+    .click();
   await panel.getByLabel("Ausgangsversion für das Upgrade").selectOption(old);
   const targetSelect = panel.getByLabel(
     "Neue Version derselben Template-Familie",
@@ -798,6 +831,12 @@ test("Platform Owner publishes a path between actual approved platform contracts
     name: "Plattform-Upgrade-Pfade veröffentlichen",
     exact: true,
   });
+  await panel
+    .getByRole("button", {
+      name: "Neuen Plattform-Upgrade-Pfad veröffentlichen",
+      exact: true,
+    })
+    .click();
   await panel.getByLabel("Ausgangs-Plattformvertrag").selectOption(platform);
   await panel
     .getByLabel("Ziel-Plattformvertrag", { exact: true })
@@ -1093,11 +1132,17 @@ test("saved publication paths show every family independently of the selected fo
   await expect(
     saved.getByRole("heading", { name: "Other family", exact: true }),
   ).toBeVisible();
+  await panel
+    .getByRole("button", {
+      name: "Neuen Upgrade-Pfad veröffentlichen",
+      exact: true,
+    })
+    .click();
   await panel.getByLabel("Ausgangsversion für das Upgrade").selectOption(old);
   await panel
     .getByLabel("Neue Version derselben Template-Familie")
     .selectOption(target);
-  await expect(saved.getByRole("listitem")).toHaveCount(1);
+  await expect(saved).toHaveCount(0);
   await panel
     .getByRole("checkbox", { name: /Ich veröffentliche nur den Upgrade-Pfad/ })
     .check();
@@ -1114,14 +1159,17 @@ test("saved publication paths show every family independently of the selected fo
     saved.getByRole("heading", { name: "Other family", exact: true }),
   ).toBeVisible();
   await expect(
-    panel.getByRole("status").filter({ hasText: "bereits veröffentlicht" }),
-  ).toBeVisible();
-  await expect(
-    panel.getByRole("button", {
-      name: "Upgrade-Pfad veröffentlichen",
+    panel.getByRole("group", {
+      name: "Neuen Upgrade-Pfad veröffentlichen",
       exact: true,
     }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", {
+      name: "Neuen Upgrade-Pfad veröffentlichen",
+      exact: true,
+    }),
+  ).toBeVisible();
   await panel
     .getByRole("button", { name: "Upgrade-Pfade aktualisieren", exact: true })
     .click();
@@ -1157,6 +1205,12 @@ test("approval-required versions can select self-service and retain saved famili
     name: "Upgrade-Pfade veröffentlichen",
     exact: true,
   });
+  await panel
+    .getByRole("button", {
+      name: "Neuen Upgrade-Pfad veröffentlichen",
+      exact: true,
+    })
+    .click();
   await panel.getByLabel("Ausgangsversion für das Upgrade").selectOption(old);
   await panel
     .getByLabel("Neue Version derselben Template-Familie")
@@ -1179,6 +1233,15 @@ test("approval-required versions can select self-service and retain saved famili
   await expect(panel.getByRole("alert")).not.toContainText(
     "keine Berechtigung",
   );
+  await expect(
+    panel.getByRole("region", {
+      name: "Veröffentlichte Upgrade-Pfade",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await panel
+    .getByRole("button", { name: "Zurück zu den Upgrade-Pfaden", exact: true })
+    .click();
   await expect(
     panel
       .getByRole("region", {
@@ -1641,9 +1704,74 @@ test("edits a published path policy without changing existing orders", async ({
   await panel
     .getByRole("button", { name: "Freigaberichtlinie bearbeiten", exact: true })
     .click();
+  const editor = panel.getByRole("group", {
+    name: "Freigaberichtlinie bearbeiten",
+    exact: true,
+  });
+  const editorHeading = panel.getByRole("heading", {
+    name: "Freigaberichtlinie bearbeiten",
+    exact: true,
+  });
+  await expect(editorHeading).toBeFocused();
+  await expect(editorHeading).toBeInViewport({ ratio: 1 });
+  await expect(
+    editor.getByRole("button", {
+      name: "Richtlinie aktualisieren",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(editor).toBeInViewport();
+  await expect(panel.getByRole("listitem")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Neue Version vorbereiten",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Separate Plattform-Upgrade-Pfade verwalten", {
+      exact: true,
+    }),
+  ).toBeHidden();
+  await expect(
+    panel.getByRole("heading", {
+      name: "Freigaberichtlinie bearbeiten",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("heading", {
+      name: "Neuen Upgrade-Pfad veröffentlichen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   await expect(
     panel.getByRole("radio", { name: "Eigenständig durchführen", exact: true }),
   ).toBeChecked();
+  await expect(
+    panel.getByLabel("Ausgangsversion für das Upgrade"),
+  ).toBeDisabled();
+  await expect(
+    panel.getByLabel("Neue Version derselben Template-Familie"),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: test.info().outputPath("focused-upgrade-policy-editor.png"),
+    fullPage: false,
+  });
+  await panel
+    .getByRole("button", { name: "Zurück zu den Upgrade-Pfaden", exact: true })
+    .click();
+  await expect(editor).toHaveCount(0);
+  expect(mutations).toHaveLength(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Neue Version vorbereiten",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await panel
+    .getByRole("button", { name: "Freigaberichtlinie bearbeiten", exact: true })
+    .click();
   await panel
     .getByRole("radio", {
       name: "Separate Plan-Freigabe erforderlich",
@@ -1684,4 +1812,90 @@ test("shows a pending plan approval without asking to recreate the current Plan"
       { exact: true },
     ),
   ).toHaveCount(0);
+});
+
+test("editing a platform path opens and focuses its policy form", async ({
+  page,
+}) => {
+  const { mutations } = await setup(
+    page,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    {
+      platformSaved: true,
+    },
+  );
+  await page
+    .getByRole("tab", { name: "Veröffentlichung", exact: true })
+    .click();
+  await page
+    .getByText("Separate Plattform-Upgrade-Pfade verwalten", { exact: true })
+    .click();
+  const panel = page.getByRole("region", {
+    name: "Plattform-Upgrade-Pfade veröffentlichen",
+    exact: true,
+  });
+  await panel
+    .getByRole("button", { name: "Freigaberichtlinie bearbeiten", exact: true })
+    .click();
+  const editor = panel.getByRole("group", {
+    name: "Freigaberichtlinie bearbeiten",
+    exact: true,
+  });
+  const editorHeading = panel.getByRole("heading", {
+    name: "Freigaberichtlinie bearbeiten",
+    exact: true,
+  });
+  await expect(editorHeading).toBeFocused();
+  await expect(editorHeading).toBeInViewport({ ratio: 1 });
+  await expect(
+    editor.getByRole("button", {
+      name: "Richtlinie aktualisieren",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(editor).toBeInViewport();
+  await expect(panel.getByRole("listitem")).toHaveCount(0);
+  await expect(
+    panel.getByRole("heading", {
+      name: "Freigaberichtlinie bearbeiten",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("heading", {
+      name: "Neuen Upgrade-Pfad veröffentlichen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    editor.getByRole("radio", {
+      name: "Eigenständig durchführen",
+      exact: true,
+    }),
+  ).toBeChecked();
+  await editor
+    .getByRole("radio", {
+      name: "Separate Plan-Freigabe erforderlich",
+      exact: true,
+    })
+    .check();
+  await editor
+    .getByRole("checkbox", {
+      name: /Ich veröffentliche nur den Plattform-Upgrade-Pfad/,
+    })
+    .check();
+  await editor
+    .getByRole("button", { name: "Richtlinie aktualisieren", exact: true })
+    .click();
+  await expect(panel.getByRole("status")).toContainText(
+    "Plattform-Upgrade-Pfad veröffentlicht",
+  );
+  expect(mutations).toHaveLength(1);
+  expect(mutations[0]?.path).toBe("platform-upgrades");
 });

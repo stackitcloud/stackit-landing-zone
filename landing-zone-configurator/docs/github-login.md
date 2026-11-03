@@ -23,6 +23,11 @@ organization-owner permission proofs. Those proofs still need separate confirmat
 Logout removes the app session and attempts to revoke its provider refresh grant.
 Older sessions without a grant require signing in again when their proof expires.
 
+An unchanged session check preserves the current UI session snapshot, avoiding
+unnecessary workspace reloads or canceled requests while editing. Changes to
+authentication, workspace or roles still take effect immediately, even if provider
+renewal is delayed; expiry and logout continue to clear access.
+
 Web login with Authorization Code and PKCE redirects immediately in the same tab,
 without an additional Configurator confirmation dialog. A required STACKIT login,
 MFA or consent screen remains controlled by STACKIT. Renewal of the client grant

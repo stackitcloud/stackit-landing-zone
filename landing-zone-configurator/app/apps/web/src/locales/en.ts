@@ -1,4 +1,9 @@
 export const englishMessages: Record<string, string> = {
+  "Zurück zu den Upgrade-Pfaden": "Back to upgrade paths",
+  "Neuen Plattform-Upgrade-Pfad veröffentlichen":
+    "Publish a new platform upgrade path",
+  "Du bearbeitest einen veröffentlichten Upgrade-Pfad. Wähle die Ausführung und bestätige die Aktualisierung.":
+    "You are editing a published upgrade path. Choose the execution policy and confirm the update.",
   "Der frühere Plattformstand ist nicht mehr aktuell freigegeben. Eine Rücknahme auf diesen Stand ist gesperrt. Der aktuelle Plattformnachweis muss zuerst geklärt werden.":
     "The previous platform version is no longer currently approved. Withdrawal to that version is blocked. Resolve the current platform evidence first.",
   "Upgrade-Ziel ändern oder verwerfen": "Change or discard upgrade target",

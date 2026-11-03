@@ -31,6 +31,10 @@ requires approval of that exact Plan, including ordinary changes. The default is
 separate approval; destructive-change guards remain mandatory.
 
 Under **Edit approval policy**, the Platform Owner can change an existing path.
+The action opens a dedicated, prefilled editor; the path list is hidden while
+editing, together with the other publication sections. The source and target stay fixed. Choose the execution policy, confirm
+publication and select **Update policy**, or return with **Back to upgrade paths**
+without publishing. New paths use the separate **Publish a new upgrade path** action.
 This appends a new immutable publication for the same source/target pair; the list
 shows its latest policy. Earlier publications, selected upgrade targets and Plans
 retain their recorded policy. To use the new policy, withdraw an unapplied target

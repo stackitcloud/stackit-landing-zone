@@ -1,5 +1,5 @@
 import type { platformContractSchema } from "@lzc/domain";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 import { t } from "../i18n";
 import type { Session } from "./Account";
@@ -17,12 +17,23 @@ const edgesSchema = z.object({
 });
 export function ApplicationPlatformUpgradePublication({
   session,
+  onEditorOpen,
+  onEditorClose,
   contracts,
 }: {
   session: Session;
+  onEditorOpen?: () => void;
+  onEditorClose?: () => void;
   contracts: z.infer<typeof platformContractSchema>[];
 }) {
   const policyGroup = useId();
+  const [editRequest, setEditRequest] = useState(0);
+  const [mode, setMode] = useState<"list" | "create" | "edit">("list");
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!editRequest) return;
+    heading.current?.focus();
+  }, [editRequest]);
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
     "platform-upgrade-publication",
@@ -85,146 +96,217 @@ export function ApplicationPlatformUpgradePublication({
       "Plattform-Upgrade-Pfad veröffentlicht. Bestehende Bestellungen bleiben unverändert; es wurde kein Plan oder Apply gestartet.",
     );
     await load();
+    setMode("list");
+    setEditRequest((value) => value + 1);
+    onEditorClose?.();
   }
   return (
     <section
       className="application-update-card"
       aria-label={t("Plattform-Upgrade-Pfade veröffentlichen")}
     >
-      <h3>{t("Plattform-Upgrade-Pfade veröffentlichen")}</h3>
-      <p>
+      <h3 ref={heading} tabIndex={-1}>
         {t(
-          "Wähle tatsächliche freigegebene Plattformverträge derselben Organisation. Die Veröffentlichung erlaubt nur ein späteres ausdrückliches Upgrade bestehender Bestellungen.",
+          mode === "edit"
+            ? "Freigaberichtlinie bearbeiten"
+            : "Plattform-Upgrade-Pfade veröffentlichen",
         )}
-      </p>
+      </h3>
+      {mode !== "edit" && (
+        <p>
+          {t(
+            "Wähle tatsächliche freigegebene Plattformverträge derselben Organisation. Die Veröffentlichung erlaubt nur ein späteres ausdrückliches Upgrade bestehender Bestellungen.",
+          )}
+        </p>
+      )}
       {error && <p role="alert">{t(error)}</p>}
       {notice && <p role="status">{t(notice)}</p>}
-      <fieldset className="application-update-form" disabled={busy}>
-        <label>
-          {t("Ausgangs-Plattformvertrag")}
-          <select
-            value={from}
-            onChange={(event) => {
-              setFrom(event.target.value);
-              setTo("");
+      {mode !== "list" && (
+        <>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => {
               setConfirmed(false);
+              setError("");
+              setMode("list");
+              onEditorClose?.();
+              setEditRequest((value) => value + 1);
             }}
           >
-            <option value="">{t("Bitte auswählen")}</option>
-            {contracts.map((item) => (
-              <option key={item.revision} value={item.revision}>
-                {item.revision}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t("Ziel-Plattformvertrag")}
-          <select
-            aria-label={t("Ziel-Plattformvertrag")}
-            value={to}
-            disabled={!previous}
-            onChange={(event) => {
-              setTo(event.target.value);
-              setConfirmed(false);
-            }}
-          >
-            <option value="">{t("Bitte auswählen")}</option>
-            {targets.map((item) => (
-              <option key={item.revision} value={item.revision}>
-                {item.revision}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset>
-          <legend>{t("Ausführung des Upgrades")}</legend>
-          <label className="checkbox">
-            <input
-              type="radio"
-              name={policyGroup}
-              checked={direct}
-              onChange={() => {
-                setDirect(true);
-                setConfirmed(false);
-              }}
-            />
-            {t("Eigenständig durchführen")}
-          </label>
-          <label className="checkbox">
-            <input
-              type="radio"
-              name={policyGroup}
-              checked={!direct}
-              onChange={() => {
-                setDirect(false);
-                setConfirmed(false);
-              }}
-            />
-            {t("Separate Plan-Freigabe erforderlich")}
-          </label>
-          <p>
-            {t(
-              "Eigenständig: Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst. Unerlaubte Löschungen und Ersetzungen bleiben gesperrt.",
+            {t("Zurück zu den Upgrade-Pfaden")}
+          </button>
+          <fieldset
+            className="application-update-form"
+            disabled={busy}
+            tabIndex={-1}
+            aria-label={t(
+              mode === "edit"
+                ? "Freigaberichtlinie bearbeiten"
+                : "Neuen Plattform-Upgrade-Pfad veröffentlichen",
             )}
-          </p>
-        </fieldset>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={confirmed}
-            onChange={(event) => setConfirmed(event.target.checked)}
-          />
-          {t(
-            "Ich veröffentliche nur den Plattform-Upgrade-Pfad. Bestehende Bestellungen und States bleiben unverändert; es wird keine Infrastruktur geändert.",
-          )}
-        </label>
-        <button
-          type="button"
-          className="button secondary"
-          disabled={!from || !to || !confirmed || samePolicy}
-          onClick={() => void publish()}
-        >
-          {t(
-            existing && !samePolicy
-              ? "Richtlinie aktualisieren"
-              : "Plattform-Upgrade-Pfad veröffentlichen",
-          )}
-        </button>
-      </fieldset>
-      {edges.length > 0 && (
-        <ul aria-label={t("Veröffentlichte Plattform-Upgrade-Pfade")}>
-          {edges.map((item) => (
-            <li key={item.id}>
-              <abbr title={item.fromPlatformRevision}>
-                {item.fromPlatformRevision.slice(0, 12)}
-              </abbr>{" "}
-              →{" "}
-              <abbr title={item.toPlatformRevision}>
-                {item.toPlatformRevision.slice(0, 12)}
-              </abbr>
-              {" · "}
-              {t(
-                item.policy.sensitive === "direct"
-                  ? "Eigenständig durchführen"
-                  : "Separate Plan-Freigabe erforderlich",
-              )}
-              <button
-                type="button"
-                className="button secondary"
-                disabled={busy}
-                onClick={() => {
-                  setFrom(item.fromPlatformRevision);
-                  setTo(item.toPlatformRevision);
-                  setDirect(item.policy.sensitive === "direct");
+          >
+            {existing && (
+              <p>
+                {t(
+                  "Du bearbeitest einen veröffentlichten Upgrade-Pfad. Wähle die Ausführung und bestätige die Aktualisierung.",
+                )}
+              </p>
+            )}
+            <label>
+              {t("Ausgangs-Plattformvertrag")}
+              <select
+                value={from}
+                disabled={mode === "edit"}
+                onChange={(event) => {
+                  setFrom(event.target.value);
+                  setTo("");
                   setConfirmed(false);
                 }}
               >
-                {t("Freigaberichtlinie bearbeiten")}
-              </button>
-            </li>
-          ))}
-        </ul>
+                <option value="">{t("Bitte auswählen")}</option>
+                {contracts.map((item) => (
+                  <option key={item.revision} value={item.revision}>
+                    {item.revision}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t("Ziel-Plattformvertrag")}
+              <select
+                aria-label={t("Ziel-Plattformvertrag")}
+                value={to}
+                disabled={mode === "edit" || !previous}
+                onChange={(event) => {
+                  setTo(event.target.value);
+                  setConfirmed(false);
+                }}
+              >
+                <option value="">{t("Bitte auswählen")}</option>
+                {targets.map((item) => (
+                  <option key={item.revision} value={item.revision}>
+                    {item.revision}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <fieldset>
+              <legend>{t("Ausführung des Upgrades")}</legend>
+              <label className="checkbox">
+                <input
+                  type="radio"
+                  name={policyGroup}
+                  checked={direct}
+                  onChange={() => {
+                    setDirect(true);
+                    setConfirmed(false);
+                  }}
+                />
+                {t("Eigenständig durchführen")}
+              </label>
+              <label className="checkbox">
+                <input
+                  type="radio"
+                  name={policyGroup}
+                  checked={!direct}
+                  onChange={() => {
+                    setDirect(false);
+                    setConfirmed(false);
+                  }}
+                />
+                {t("Separate Plan-Freigabe erforderlich")}
+              </label>
+              <p>
+                {t(
+                  "Eigenständig: Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst. Unerlaubte Löschungen und Ersetzungen bleiben gesperrt.",
+                )}
+              </p>
+            </fieldset>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
+              {t(
+                "Ich veröffentliche nur den Plattform-Upgrade-Pfad. Bestehende Bestellungen und States bleiben unverändert; es wird keine Infrastruktur geändert.",
+              )}
+            </label>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={!from || !to || !confirmed || samePolicy}
+              onClick={() => void publish()}
+            >
+              {t(
+                existing
+                  ? "Richtlinie aktualisieren"
+                  : "Plattform-Upgrade-Pfad veröffentlichen",
+              )}
+            </button>
+          </fieldset>
+        </>
+      )}
+      {mode === "list" && (
+        <>
+          {edges.length > 0 && (
+            <ul aria-label={t("Veröffentlichte Plattform-Upgrade-Pfade")}>
+              {edges.map((item) => (
+                <li key={item.id}>
+                  <abbr title={item.fromPlatformRevision}>
+                    {item.fromPlatformRevision.slice(0, 12)}
+                  </abbr>{" "}
+                  →{" "}
+                  <abbr title={item.toPlatformRevision}>
+                    {item.toPlatformRevision.slice(0, 12)}
+                  </abbr>
+                  {" · "}
+                  {t(
+                    item.policy.sensitive === "direct"
+                      ? "Eigenständig durchführen"
+                      : "Separate Plan-Freigabe erforderlich",
+                  )}
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      onEditorOpen?.();
+                      setMode("edit");
+                      setEditRequest((value) => value + 1);
+                      setFrom(item.fromPlatformRevision);
+                      setTo(item.toPlatformRevision);
+                      setDirect(item.policy.sensitive === "direct");
+                      setConfirmed(false);
+                    }}
+                  >
+                    {t("Freigaberichtlinie bearbeiten")}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => {
+              setFrom("");
+              setTo("");
+              setDirect(false);
+              setConfirmed(false);
+              setError("");
+              setNotice("");
+              onEditorOpen?.();
+              setMode("create");
+              setEditRequest((value) => value + 1);
+            }}
+          >
+            {t("Neuen Plattform-Upgrade-Pfad veröffentlichen")}
+          </button>
+        </>
       )}
     </section>
   );

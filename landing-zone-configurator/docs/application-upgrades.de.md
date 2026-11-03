@@ -34,7 +34,13 @@ auch bei gewöhnlichen Änderungen. Standard ist die separate Freigabe; der
 Löschschutz bleibt verbindlich.
 
 Über **Freigaberichtlinie bearbeiten** kann der Platform Owner einen bestehenden
-Pfad ändern. Das ergänzt einen neuen unveränderlichen Nachweis für dasselbe
+Pfad ändern. Die Aktion öffnet eine eigene, vorausgefüllte Bearbeitungsansicht;
+die Pfadliste und die übrigen Veröffentlichungsbereiche sind währenddessen
+ausgeblendet. Ausgang und Ziel bleiben fest.
+Die Ausführung wählen, die Veröffentlichung bestätigen und **Richtlinie
+aktualisieren** wählen oder über **Zurück zu den Upgrade-Pfaden** ohne
+Veröffentlichung zurückkehren. Neue Pfade erhalten die separate Aktion
+**Neuen Upgrade-Pfad veröffentlichen**. Das ergänzt einen neuen unveränderlichen Nachweis für dasselbe
 Ausgangs-/Zielpaar; die Liste zeigt die neueste Richtlinie. Frühere Veröffentlichungen,
 gewählte Upgrade-Ziele und Pläne behalten ihre gespeicherte Richtlinie. Um die neue
 Richtlinie zu nutzen, gegebenenfalls das noch nicht angewendete Ziel zurücknehmen,
