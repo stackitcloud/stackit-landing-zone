@@ -2063,3 +2063,28 @@ button.template-node:hover {
   display: block;
   margin-top: 0.5rem;
 }
+
+.application-publication-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  list-style: none;
+  padding: 0;
+}
+.application-publication-steps li {
+  padding: 0.75rem;
+  border-bottom: 3px solid var(--border);
+}
+.application-publication-steps [aria-current="step"] {
+  font-weight: 700;
+  border-color: var(--accent);
+}
+.application-publication-maintenance {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.application-publication-maintenance summary {
+  cursor: pointer;
+  font-weight: 600;
+}

@@ -29,14 +29,24 @@ permit direct deployment and the Platform Owner explicitly permits sensitive
 self-service on that path. This does not bypass destructive-change protection.
 
 
-The publication page lists saved paths for all template families above the new-path
-form. Each card identifies the source and target version and the sensitive-change
-policy; refresh the list to confirm a path was saved. Selecting two versions or
-checking the confirmations does not publish a path. An existing path is shown as
-already published and cannot be overwritten from this form. If either version
-requires approval, the direct-policy checkbox is unavailable; publish with separate
-Plan approval instead. A policy mismatch is reported as an invalid path rather
-than a missing permission. A failed publication leaves saved paths unchanged.
+The publication page guides the Platform Owner through three steps:
+
+1. Select the saved template draft, platform target, deployment policy and catalogue access; publish the version.
+2. After the server confirms publication, optionally offer an upgrade. The new target version is fixed. Select an earlier version of the same template family and review the sensitive-change policy before explicitly publishing the path. Alternatively choose **Finish without an upgrade**. A first version has no earlier version; finish publication instead.
+3. The completion step links to the catalogue. No existing order, State or cloud resource is changed by publication.
+
+Version publication and path publication remain separate authorized transactions.
+If publishing a path fails, the version remains published and the wizard retains
+the chosen versions for correction; retrying the path does not republish the version.
+A failed catalogue refresh after successful publication is reported explicitly and
+does not return to version publication. After reloading, use **Manage existing
+template upgrade paths** to add a path for an already published version.
+
+Existing paths for all template families are shown in the collapsed management
+area below the wizard. Each card names source, target and approval policy.
+Existing paths cannot be overwritten. Direct sensitive changes require both
+versions to allow direct deployment. Separate platform-contract paths have their
+own collapsed management area and are not part of template publication.
 
 ## Upgrade an existing order
 

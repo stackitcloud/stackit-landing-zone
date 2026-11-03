@@ -2611,6 +2611,16 @@ for (const { publishing, applied, renewProof, executing } of [
         memberIds: [publishing ? applicationOwnerId : userId],
       },
     ];
+    const upgradePaths: {
+      id: string;
+      fromVersionId: string;
+      toVersionId: string;
+      policy: { sensitive: string };
+    }[] = [];
+    let rejectUpgrade = renewProof;
+    let rejectPublication = publishing && !applied;
+    let publicationAttempts = 0;
+    let failCatalogueRefresh = false;
     let ownerProofVerified = !renewProof;
     const proofMutations: string[] = [];
     await page.route("**/api/v1/stackit/identity**", async (route) => {
@@ -2891,6 +2901,40 @@ for (const { publishing, applied, renewProof, executing } of [
               : [],
           },
         });
+      if (pathname.endsWith("/template-upgrades")) {
+        if (request.method() === "GET")
+          return route.fulfill({ json: { edges: upgradePaths } });
+        expect(request.headers()["x-lzc-csrf"]).toBe("test-csrf");
+        expect(versions).toHaveLength(2);
+        const body = request.postDataJSON();
+        expect(body).toEqual({
+          fromVersionId: versionId,
+          toVersionId: nextVersionId,
+          policy: { sensitive: "approval-required" },
+          confirmPublication: true,
+        });
+        if (rejectUpgrade) {
+          rejectUpgrade = false;
+          return route.fulfill({
+            status: 403,
+            json: { error: "application_upgrade_access_denied" },
+          });
+        }
+        upgradePaths.push({
+          id: "abababab-abab-4bab-8bab-abababababab",
+          ...body,
+        });
+        return route.fulfill({ json: upgradePaths[0] });
+      }
+      if (pathname.endsWith("/platform-upgrades"))
+        return route.fulfill({ json: { edges: [] } });
+      if (request.method() === "GET" && templates && failCatalogueRefresh) {
+        failCatalogueRefresh = false;
+        return route.fulfill({
+          status: 503,
+          json: { error: "application_unavailable" },
+        });
+      }
       if (request.method() === "GET")
         return route.fulfill({
           json: platforms
@@ -2906,6 +2950,7 @@ for (const { publishing, applied, renewProof, executing } of [
                 }
               : {
                   instances,
+                  upgradesEnabled: publishing,
                   planJobsEnabled: executing,
                   execution: {
                     planEnabled: executing,
@@ -3076,6 +3121,14 @@ for (const { publishing, applied, renewProof, executing } of [
         return route.fulfill({ json: approvedContract });
       }
       if (templates) {
+        publicationAttempts++;
+        if (rejectPublication) {
+          rejectPublication = false;
+          return route.fulfill({
+            status: 403,
+            json: { error: "application_access_denied" },
+          });
+        }
         expect(publishing).toBe(true);
         expect(Object.keys(body)).toEqual([
           "template",
@@ -3107,6 +3160,8 @@ for (const { publishing, applied, renewProof, executing } of [
           targetKey: body.targetKey ?? null,
         };
         versions.push(published);
+        if (applied && !renewProof && versions.length === 1)
+          failCatalogueRefresh = true;
         return route.fulfill({ json: published });
       }
       expect(body).toEqual({
@@ -3297,9 +3352,59 @@ for (const { publishing, applied, renewProof, executing } of [
       await page
         .getByRole("button", { name: "Version veröffentlichen", exact: true })
         .click();
+      if (!applied) {
+        await expect(page.getByRole("alert")).toBeVisible();
+        await expect(
+          page.getByRole("heading", {
+            name: "Neue Version vorbereiten",
+            exact: true,
+          }),
+        ).toBeVisible();
+        expect(versions).toHaveLength(0);
+        await page
+          .getByRole("button", { name: "Version veröffentlichen", exact: true })
+          .click();
+      }
       await expect(page.getByRole("status")).toContainText(
         "Version 1 veröffentlicht",
       );
+      await expect(
+        page.getByRole("heading", {
+          name: "Version veröffentlicht: Upgrade anbieten?",
+          exact: true,
+        }),
+      ).toBeFocused();
+      await expect(
+        page.getByText(
+          "Dies ist die erste veröffentlichte Version dieser Template-Familie. Es gibt noch keine frühere Version für ein Upgrade.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      expect(upgradePaths).toHaveLength(0);
+      if (applied && !renewProof) {
+        await expect(page.getByRole("alert")).toContainText(
+          "Die Version wurde veröffentlicht, aber der Katalog konnte nicht aktualisiert werden.",
+        );
+        await expect(
+          page.getByRole("button", {
+            name: "Version veröffentlichen",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        expect(versions).toHaveLength(1);
+      }
+      await page
+        .getByRole("button", {
+          name: "Veröffentlichung abschließen",
+          exact: true,
+        })
+        .click();
+      await expect(
+        page.getByRole("heading", {
+          name: "Veröffentlichung abgeschlossen",
+          exact: true,
+        }),
+      ).toBeVisible();
       await page
         .getByRole("button", { name: "Konfigurationen", exact: true })
         .click();
@@ -3331,13 +3436,89 @@ for (const { publishing, applied, renewProof, executing } of [
       await expect(page.getByRole("status")).toContainText(
         "Version 2 veröffentlicht",
       );
+      const upgradePanel = page.getByRole("region", {
+        name: "Upgrade für die neue Version anbieten",
+        exact: true,
+      });
+      const targetVersion = upgradePanel.getByLabel(
+        "Neue Version derselben Template-Familie",
+      );
+      await expect(targetVersion).toHaveValue(nextVersionId);
+      await expect(targetVersion).toBeDisabled();
+      await expect(
+        page.getByRole("button", {
+          name: "Weiter: Katalog prüfen",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("tabpanel", { name: "Veröffentlichung", exact: true })
+        .screenshot({
+          path: testInfo.outputPath("publication-optional-upgrade.png"),
+        });
+      expect(upgradePaths).toHaveLength(0);
+      const attemptsAfterPublication = publicationAttempts;
+      if (applied) {
+        await upgradePanel
+          .getByLabel("Ausgangsversion für das Upgrade")
+          .selectOption(versionId);
+        await expect(
+          upgradePanel.getByRole("checkbox", {
+            name: /Sensitive Änderungen dieses Pfades/,
+          }),
+        ).toBeDisabled();
+        await upgradePanel
+          .getByRole("checkbox", {
+            name: /Ich veröffentliche nur den Upgrade-Pfad/,
+          })
+          .check();
+        await upgradePanel
+          .getByRole("button", {
+            name: "Upgrade-Pfad veröffentlichen",
+            exact: true,
+          })
+          .click();
+        if (renewProof) {
+          await expect(upgradePanel.getByRole("alert")).toBeFocused();
+          await expect(targetVersion).toHaveValue(nextVersionId);
+          expect(versions).toHaveLength(2);
+          expect(upgradePaths).toHaveLength(0);
+          // Explicit retry of the path only; publishing the version is already complete.
+          await upgradePanel
+            .getByRole("button", {
+              name: "Upgrade-Pfad veröffentlichen",
+              exact: true,
+            })
+            .click();
+        }
+        await expect(
+          page.getByRole("heading", {
+            name: "Veröffentlichung abgeschlossen",
+            exact: true,
+          }),
+        ).toBeVisible();
+        expect(upgradePaths).toHaveLength(1);
+      } else {
+        await upgradePanel
+          .getByRole("button", {
+            name: "Ohne Upgrade abschließen",
+            exact: true,
+          })
+          .click();
+        expect(upgradePaths).toHaveLength(0);
+      }
+      expect(publicationAttempts).toBe(attemptsAfterPublication);
+      await page
+        .getByRole("button", { name: "Weiter: Katalog prüfen", exact: true })
+        .click();
       await page.getByLabel("Sprache", { exact: true }).selectOption("en");
       await expect(page.getByRole("status")).toContainText(
-        "Version 2 published",
+        applied ? "Upgrade path published" : "Version 2 published",
       );
-      await expect(page.getByRole("status")).toContainText(
-        publishedProjectTemplateSchema.parse(versions[1]).template.name,
-      );
+      if (!applied)
+        await expect(page.getByRole("status")).toContainText(
+          publishedProjectTemplateSchema.parse(versions[1]).template.name,
+        );
       await page.getByRole("button", { name: /, version 2,/i }).click();
       await expect(page.locator(".application-properties")).toContainText(
         "Direct deployment",
