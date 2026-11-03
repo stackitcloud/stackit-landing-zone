@@ -33,7 +33,6 @@ export function ApplicationUpgradePublication({
   onSkip?: () => void;
 }) {
   const policyGroup = useId();
-  const policyForm = useRef<HTMLFieldSetElement>(null);
   const [editRequest, setEditRequest] = useState(0);
   const [mode, setMode] = useState<"list" | "create" | "edit">(
     targetVersion ? "create" : "list",
@@ -41,9 +40,8 @@ export function ApplicationUpgradePublication({
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (!editRequest) return;
-    if (mode === "list") heading.current?.focus();
-    else policyForm.current?.focus();
-  }, [editRequest, mode]);
+    heading.current?.focus();
+  }, [editRequest]);
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
     `upgrade-publication:${targetVersion?.id ?? "manage"}`,
@@ -127,6 +125,7 @@ export function ApplicationUpgradePublication({
     else {
       await load();
       setMode("list");
+      setEditRequest((value) => value + 1);
       onEditorClose?.();
     }
   }
@@ -299,7 +298,6 @@ export function ApplicationUpgradePublication({
             </p>
           )}
           <fieldset
-            ref={policyForm}
             className="application-update-form"
             disabled={busy}
             tabIndex={-1}

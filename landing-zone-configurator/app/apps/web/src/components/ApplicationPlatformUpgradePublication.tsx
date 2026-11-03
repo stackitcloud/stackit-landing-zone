@@ -27,15 +27,13 @@ export function ApplicationPlatformUpgradePublication({
   contracts: z.infer<typeof platformContractSchema>[];
 }) {
   const policyGroup = useId();
-  const policyForm = useRef<HTMLFieldSetElement>(null);
   const [editRequest, setEditRequest] = useState(0);
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (!editRequest) return;
-    if (mode === "list") heading.current?.focus();
-    else policyForm.current?.focus();
-  }, [editRequest, mode]);
+    heading.current?.focus();
+  }, [editRequest]);
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
     "platform-upgrade-publication",
@@ -99,6 +97,7 @@ export function ApplicationPlatformUpgradePublication({
     );
     await load();
     setMode("list");
+    setEditRequest((value) => value + 1);
     onEditorClose?.();
   }
   return (
@@ -139,7 +138,6 @@ export function ApplicationPlatformUpgradePublication({
             {t("Zurück zu den Upgrade-Pfaden")}
           </button>
           <fieldset
-            ref={policyForm}
             className="application-update-form"
             disabled={busy}
             tabIndex={-1}

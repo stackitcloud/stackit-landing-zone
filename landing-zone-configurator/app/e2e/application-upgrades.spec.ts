@@ -1708,7 +1708,12 @@ test("edits a published path policy without changing existing orders", async ({
     name: "Freigaberichtlinie bearbeiten",
     exact: true,
   });
-  await expect(editor).toBeFocused();
+  const editorHeading = panel.getByRole("heading", {
+    name: "Freigaberichtlinie bearbeiten",
+    exact: true,
+  });
+  await expect(editorHeading).toBeFocused();
+  await expect(editorHeading).toBeInViewport({ ratio: 1 });
   await expect(
     editor.getByRole("button", {
       name: "Richtlinie aktualisieren",
@@ -1842,7 +1847,12 @@ test("editing a platform path opens and focuses its policy form", async ({
     name: "Freigaberichtlinie bearbeiten",
     exact: true,
   });
-  await expect(editor).toBeFocused();
+  const editorHeading = panel.getByRole("heading", {
+    name: "Freigaberichtlinie bearbeiten",
+    exact: true,
+  });
+  await expect(editorHeading).toBeFocused();
+  await expect(editorHeading).toBeInViewport({ ratio: 1 });
   await expect(
     editor.getByRole("button", {
       name: "Richtlinie aktualisieren",
