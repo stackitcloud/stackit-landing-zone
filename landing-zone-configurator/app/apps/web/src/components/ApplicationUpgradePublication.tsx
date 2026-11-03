@@ -1,5 +1,5 @@
 import type { PublishedProjectTemplate } from "@lzc/domain";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 import { t } from "../i18n";
 import type { Session } from "./Account";
@@ -28,6 +28,7 @@ export function ApplicationUpgradePublication({
   onPublished?: () => void;
   onSkip?: () => void;
 }) {
+  const policyGroup = useId();
   const { request, busy, error, setError } = useApplicationUpgradeRequest(
     session,
     `upgrade-publication:${targetVersion?.id ?? "manage"}`,
@@ -78,19 +79,21 @@ export function ApplicationUpgradePublication({
       !version.retiredAt,
   );
   const selectedTarget = targets.find((version) => version.id === to);
-  const directAllowed =
-    previous?.deploymentPolicy === "direct" &&
-    selectedTarget?.deploymentPolicy === "direct";
   const existing = edges.find(
     (edge) => edge.fromVersionId === from && edge.toVersionId === to,
   );
+  const samePolicy =
+    existing?.policy.sensitive === (direct ? "direct" : "approval-required");
+  useEffect(() => {
+    if (existing) setDirect(existing.policy.sensitive === "direct");
+    setConfirmed(false);
+  }, [existing]);
   async function publish() {
     if (
       !previous ||
       !targets.some((version) => version.id === to) ||
       !confirmed ||
-      existing ||
-      (direct && !directAllowed) ||
+      samePolicy ||
       busy
     )
       return;
@@ -192,11 +195,11 @@ export function ApplicationUpgradePublication({
                     <dd>{versionLabel(edge.toVersionId)}</dd>
                   </div>
                   <div>
-                    <dt>{t("Sensitive Änderungen")}</dt>
+                    <dt>{t("Ausführung des Upgrades")}</dt>
                     <dd>
                       {t(
                         edge.policy.sensitive === "direct"
-                          ? "Direkt, sofern beide Versionen es erlauben"
+                          ? "Eigenständig durchführen"
                           : "Separate Plan-Freigabe erforderlich",
                       )}
                     </dd>
@@ -207,6 +210,20 @@ export function ApplicationUpgradePublication({
                     "Veröffentlicht · Für Bestellungen auf genau dieser Ausgangsversion",
                   )}
                 </p>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setFrom(edge.fromVersionId);
+                    setTo(edge.toVersionId);
+                    setDirect(edge.policy.sensitive === "direct");
+                    setConfirmed(false);
+                    setNotice("");
+                  }}
+                >
+                  {t("Freigaberichtlinie bearbeiten")}
+                </button>
               </li>
             ))}
           </ul>
@@ -272,9 +289,7 @@ export function ApplicationUpgradePublication({
         {previous && selectedTarget && (
           <p className="field-hint">
             {t(
-              directAllowed
-                ? "Beide Versionen erlauben direkte Bereitstellung. Für sensitive Änderungen kannst du dennoch eine separate Plan-Freigabe verlangen."
-                : "Mindestens eine Version verlangt eine separate Plan-Freigabe. Dieser Pfad kann diese Richtlinie nicht aufheben.",
+              "Die Freigabe dieses Upgrade-Pfads gilt unabhängig von der Richtlinie für neue Bestellungen. Bestehende Upgrade-Ziele und Pläne behalten ihre gespeicherte Freigabe.",
             )}
           </p>
         )}
@@ -285,20 +300,38 @@ export function ApplicationUpgradePublication({
             )}
           </p>
         )}
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={direct}
-            disabled={!directAllowed || Boolean(existing)}
-            onChange={(event) => {
-              setDirect(event.target.checked);
-              setConfirmed(false);
-            }}
-          />
-          {t(
-            "Sensitive Änderungen dieses Pfades dürfen nach einem neuen Plan direkt angewendet werden, sofern beide Versionen direkte Bereitstellung erlauben. Andernfalls bleibt eine separate Plan-Freigabe erforderlich.",
-          )}
-        </label>
+        <fieldset>
+          <legend>{t("Ausführung des Upgrades")}</legend>
+          <label className="checkbox">
+            <input
+              type="radio"
+              name={policyGroup}
+              checked={direct}
+              onChange={() => {
+                setDirect(true);
+                setConfirmed(false);
+              }}
+            />
+            {t("Eigenständig durchführen")}
+          </label>
+          <label className="checkbox">
+            <input
+              type="radio"
+              name={policyGroup}
+              checked={!direct}
+              onChange={() => {
+                setDirect(false);
+                setConfirmed(false);
+              }}
+            />
+            {t("Separate Plan-Freigabe erforderlich")}
+          </label>
+          <p className="field-hint">
+            {t(
+              "Eigenständig: Der Application Owner prüft einen frischen Plan und bestätigt Apply selbst. Unerlaubte Löschungen und Ersetzungen bleiben gesperrt.",
+            )}
+          </p>
+        </fieldset>
         <label className="checkbox">
           <input
             type="checkbox"
@@ -312,16 +345,14 @@ export function ApplicationUpgradePublication({
         <button
           type="button"
           className="button secondary"
-          disabled={
-            !from ||
-            !to ||
-            !confirmed ||
-            Boolean(existing) ||
-            (direct && !directAllowed)
-          }
+          disabled={!from || !to || !confirmed || samePolicy}
           onClick={() => void publish()}
         >
-          {t("Upgrade-Pfad veröffentlichen")}
+          {t(
+            existing && !samePolicy
+              ? "Richtlinie aktualisieren"
+              : "Upgrade-Pfad veröffentlichen",
+          )}
         </button>
       </fieldset>
       {onSkip && (

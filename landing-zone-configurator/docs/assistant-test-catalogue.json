@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "c7896cdca73c587d58f77363b7120e4ce22172556d4c16b88218874a89834623",
+  "knowledgeSha256": "57cee850b71110605f5db4539187e7a0ae63d777009c83777bb64613f22c0558",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "a18d740e0edd7ed87e7f0bd4a1033a6c79f3ad9c4c8935b32db2a7f7897b93dc",
+    "scripts/assistant-scenarios.ts": "e7dc883cf6f620bf12bc1fd5dbbe565373e8bc1c6ecb95db811aa5e50f2d91ec",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "a28c99f116b5cf7c94d599deb69454333745b9d904d4b647d6681e2b83eb7dd3",
+  "suiteSha256": "6d6d98db4ee698cb867c35de1de846e46e97c004012508f67e077be4ce26d6b7",
   "topics": [
     {
       "id": "credential-foundations",
@@ -6106,6 +6106,19 @@
           "fixture": "baseline",
           "applicationUpgrade": "template",
           "message": "Wie kann ich als Besteller meine bestehende Application auf eine neue Template-Version aktualisieren, ohne neu zu bestellen? Erkläre den veröffentlichten Upgrade-Pfad, erhaltene Antworten und State, Schutz vor Löschungen und Ersetzungen sowie die getrennten Plan- und Apply-Freigaben. Nur beraten, nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "published_same_family_path_retained_answers_same_state_fresh_plan_separate_apply_destructive_block",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "application-upgrade-self-service-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "applicationUpgrade": "template",
+          "message": "Der Platform Owner hat für meine bestehende Application einen Upgrade-Pfad mit Eigenständig durchführen veröffentlicht. Beide Template-Versionen verlangen für neue Bestellungen eine Freigabe. Der neue Plan ändert das Projekt vor Ort und ersetzt nur Projekt-Rollenzuweisungen. Brauche ich nochmal den Platform Owner? Erkläre die Pfadrichtlinie, den frischen Plan, erhaltene Antworten und State, den Löschschutz sowie den separaten Apply. Nur beraten, nichts ausführen.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

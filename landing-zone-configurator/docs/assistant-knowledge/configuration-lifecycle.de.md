@@ -37,12 +37,19 @@ Für Template-Upgrades veröffentlicht der Platform Owner einen Vorwärtspfad
 innerhalb derselben Template-Familie. Bestellung, Projekt, State, Backend und
 bisherige Antworten bleiben erhalten; neue Pflichtantworten erfragen. Gewünschten
 Snapshot bestätigen, dann neuer tatsächlicher Plan und separater Apply.
-Standard-Upgrades blockieren Löschungen, Ersetzungen und unbekannte Nachweise;
-keine Checkbox kann das umgehen. Sensible Änderungen an IAM, Schlüsseln, Netz,
-Diensten und Verfügbarkeit folgen der veröffentlichten Richtlinie. Die strengere
-Richtlinie beider Versionen gilt. Nur beidseitig direkte Freigabe plus ausdrücklich
-erlaubter sensibler Self-Service erlaubt den Bestellerpfad; sonst bindet die
-Freigabe Plan, Artefakt-Hash und Kandidaten-Hash.
+Standard-Upgrades blockieren unzulässige Infrastruktur-, Dienst-, Account- und
+Zugangsdatenlöschungen bzw. Ersetzungen sowie unbekannte Nachweise; keine Checkbox
+kann das umgehen. Vom tatsächlichen nativen Plan nachgewiesene Löschungen oder
+Ersetzungen von Projektrollen und Rollenzuweisungen können sensible IAM-Übergänge
+sein. Sensible Änderungen folgen der expliziten Ausführungsrichtlinie des Pfads,
+unabhängig von den Bestellrichtlinien beider Versionen. Bei eigenständiger
+Durchführung prüft der Application Owner einen frischen Plan und bestätigt Apply
+selbst, ohne weitere Platform-Owner-Freigabe. Die separate Plan-Freigabe bindet
+Plan, Artefakt-Hash und Kandidaten-Hash, auch für gewöhnliche Änderungen; sie ist
+der Standard. Eine Pfadänderung ergänzt einen unveränderlichen Nachweis. Alte
+Ziele und Pläne behalten ihre Richtlinie; die neue Veröffentlichung ausdrücklich
+mit einem frischen Plan übernehmen, bestehende Pläne nicht nachträglich entsperren.
+
 
 Ein Plattform-Apply verändert gemeinsame Firewall und Routen für alle abhängigen
 Applications. Es gibt keine private alte Firewall je Application. Die

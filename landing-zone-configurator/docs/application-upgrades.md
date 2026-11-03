@@ -23,16 +23,26 @@ publishes an upgrade path from an earlier version of the same template. A new
 name or a different template family is not a migration path. Existing published
 versions and the original order remain immutable audit records.
 
-The upgrade path also records how sensitive changes are approved. Approval is
-the default. Direct self-service is available only when both template versions
-permit direct deployment and the Platform Owner explicitly permits sensitive
-self-service on that path. This does not bypass destructive-change protection.
+The upgrade path owns the approval policy for this transition, independently of
+new-order deployment policies on either template version. **Requester self-service**
+lets the Application Owner review a fresh saved Plan and explicitly confirm Apply
+without an additional Platform Owner approval. **Separate Plan approval required**
+requires approval of that exact Plan, including ordinary changes. The default is
+separate approval; destructive-change guards remain mandatory.
+
+Under **Edit approval policy**, the Platform Owner can change an existing path.
+This appends a new immutable publication for the same source/target pair; the list
+shows its latest policy. Earlier publications, selected upgrade targets and Plans
+retain their recorded policy. To use the new policy, withdraw an unapplied target
+if necessary, select the newly published path and create a fresh Plan. Neither
+publication nor policy editing starts execution or unlocks an existing Plan.
+
 
 
 The publication page guides the Platform Owner through three steps:
 
 1. Select the saved template draft, platform target, deployment policy and catalogue access; publish the version.
-2. After the server confirms publication, optionally offer an upgrade. The new target version is fixed. Select an earlier version of the same template family and review the sensitive-change policy before explicitly publishing the path. Alternatively choose **Finish without an upgrade**. A first version has no earlier version; finish publication instead.
+2. After the server confirms publication, optionally offer an upgrade. The new target version is fixed. Select an earlier version of the same template family and review the path execution policy before explicitly publishing the path. Alternatively choose **Finish without an upgrade**. A first version has no earlier version; finish publication instead.
 3. The completion step links to the catalogue. No existing order, State or cloud resource is changed by publication.
 
 Version publication and path publication remain separate authorized transactions.
@@ -117,8 +127,8 @@ a checkbox cannot override this. Review removed rights before Apply. A successfu
 Plan does not prove that a removed role has no impact on existing workloads.
 
 IAM, credentials and networking can change without a deletion. Changes classified
-as sensitive by the actual native Plan require the published sensitive-change
-policy as well as the stricter deployment policy of the old and new versions.
+as sensitive by the actual native Plan follow the published path execution
+policy.
 Observability and Secrets Manager creation and in-place updates are also sensitive,
 including service-plan, capacity, availability and retention changes. A successful
 Plan shows what the provider can perform; it does not guarantee retained data or

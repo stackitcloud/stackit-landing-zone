@@ -789,6 +789,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Wie kann ich als Besteller meine bestehende Application auf eine neue Template-Version aktualisieren, ohne neu zu bestellen? Erkläre den veröffentlichten Upgrade-Pfad, erhaltene Antworten und State, Schutz vor Löschungen und Ersetzungen sowie die getrennten Plan- und Apply-Freigaben. Nur beraten, nichts ausführen.",
   },
   {
+    id: "application-upgrade-self-service-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    applicationUpgrade: "template",
+    message:
+      "Der Platform Owner hat für meine bestehende Application einen Upgrade-Pfad mit Eigenständig durchführen veröffentlicht. Beide Template-Versionen verlangen für neue Bestellungen eine Freigabe. Der neue Plan ändert das Projekt vor Ort und ersetzt nur Projekt-Rollenzuweisungen. Brauche ich nochmal den Platform Owner? Erkläre die Pfadrichtlinie, den frischen Plan, erhaltene Antworten und State, den Löschschutz sowie den separaten Apply. Nur beraten, nichts ausführen.",
+  },
+  {
     id: "application-platform-upgrade-advice",
     topic: "configuration-lifecycle",
     fixture: "baseline",
@@ -1402,6 +1410,8 @@ export function validateAssistantScenario(
         scenario.applicationUpgrade,
       ),
     );
+  if (scenario.id === "application-upgrade-self-service-advice")
+    failures.push(...assistantUpgradePathPolicyFailures(dialogue.explanation));
   if (scenario.id === "devops-git-advice")
     failures.push(...assistantDevOpsDefaultFailures(dialogue.explanation));
   if (scenario.applicationAccess === "advice") {
@@ -2651,5 +2661,24 @@ export function assistantFirewallBootstrapFailures(text: string): string[] {
     )
   )
     failures.push("bootstrap_overview_unsafe_rebootstrap_claim");
+  return failures;
+}
+
+export function assistantUpgradePathPolicyFailures(text: string): string[] {
+  const failures: string[] = [];
+  if (!/eigenständig|self.service/i.test(text))
+    failures.push("upgrade_path_missing_self_service");
+  if (
+    !/(?:kein|ohne)[^.!?\n]{0,70}(?:zusätz|erneut|weitere|separat)[^.!?\n]{0,80}(?:Freigabe|Genehmigung)|(?:zusätz|erneut|weitere|separat)[^.!?\n]{0,60}(?:Freigabe|Genehmigung)[^.!?\n]{0,40}(?:nicht|entfällt)/i.test(
+      text,
+    )
+  )
+    failures.push("upgrade_path_missing_no_extra_approval");
+  if (
+    /strengere[^.!?\n]{0,70}(?:alte|neue|beider)|beide[^.!?\n]{0,60}Versionen[^.!?\n]{0,60}(?:müssen|erforderlich)[^.!?\n]{0,40}direkt/i.test(
+      text,
+    )
+  )
+    failures.push("upgrade_path_incorrect_template_policy_override");
   return failures;
 }

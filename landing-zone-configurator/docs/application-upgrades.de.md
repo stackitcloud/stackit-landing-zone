@@ -25,16 +25,29 @@ Ein neuer Name oder eine andere Template-Familie ist kein Migrationspfad.
 Veröffentlichte Versionen und die ursprüngliche Bestellung bleiben unveränderliche
 Nachweise.
 
-Der Pfad legt auch die Freigabe sensibler Änderungen fest. Standardmäßig ist eine
-Freigabe erforderlich. Direkter Self-Service ist nur möglich, wenn beide Versionen
-direktes Deployment erlauben und der Platform Owner sensible Änderungen auf
-diesem Pfad ausdrücklich dafür freigibt. Der Löschschutz bleibt verbindlich.
+Der Upgrade-Pfad legt die Freigabe für diesen Übergang unabhängig von den
+Bestellrichtlinien beider Template-Versionen fest. **Eigenständig durchführen**
+erlaubt dem Application Owner, einen frischen gespeicherten Plan zu prüfen und
+Apply ausdrücklich selbst zu bestätigen, ohne zusätzliche Platform-Owner-Freigabe.
+**Separate Plan-Freigabe erforderlich** verlangt die Freigabe genau dieses Plans,
+auch bei gewöhnlichen Änderungen. Standard ist die separate Freigabe; der
+Löschschutz bleibt verbindlich.
+
+Über **Freigaberichtlinie bearbeiten** kann der Platform Owner einen bestehenden
+Pfad ändern. Das ergänzt einen neuen unveränderlichen Nachweis für dasselbe
+Ausgangs-/Zielpaar; die Liste zeigt die neueste Richtlinie. Frühere Veröffentlichungen,
+gewählte Upgrade-Ziele und Pläne behalten ihre gespeicherte Richtlinie. Um die neue
+Richtlinie zu nutzen, gegebenenfalls das noch nicht angewendete Ziel zurücknehmen,
+den neu veröffentlichten Pfad wählen und einen frischen Plan erstellen. Weder
+Veröffentlichung noch Richtlinienänderung starten eine Ausführung oder entsperren
+einen bestehenden Plan.
+
 
 
 Die Veröffentlichungsseite führt den Platform Owner durch drei Schritte:
 
 1. Gespeicherten Template-Entwurf, Plattformziel, Bereitstellungsrichtlinie und Katalogzugriff auswählen; die Version veröffentlichen.
-2. Nach der serverseitig bestätigten Veröffentlichung optional ein Upgrade anbieten. Die neue Zielversion steht fest. Eine frühere Version derselben Template-Familie auswählen und die Richtlinie für sensitive Änderungen prüfen, bevor der Pfad ausdrücklich veröffentlicht wird. Alternativ **Ohne Upgrade abschließen** wählen. Für eine erste Version gibt es keine Ausgangsversion; stattdessen die Veröffentlichung abschließen.
+2. Nach der serverseitig bestätigten Veröffentlichung optional ein Upgrade anbieten. Die neue Zielversion steht fest. Eine frühere Version derselben Template-Familie auswählen und die Ausführungsrichtlinie des Pfads prüfen, bevor der Pfad ausdrücklich veröffentlicht wird. Alternativ **Ohne Upgrade abschließen** wählen. Für eine erste Version gibt es keine Ausgangsversion; stattdessen die Veröffentlichung abschließen.
 3. Der Abschluss führt zum Katalog. Die Veröffentlichung ändert keine bestehende Bestellung, keinen State und keine Cloud-Ressource.
 
 Version und Upgrade-Pfad werden weiterhin in getrennten autorisierten Transaktionen
@@ -131,8 +144,7 @@ unbeeinflusst lässt.
 
 IAM, Zugangsdaten und Netzwerke können sich auch ohne Löschung ändern. Für vom
 tatsächlichen nativen Plan als sensibel klassifizierte Änderungen gelten die
-veröffentlichte Richtlinie für sensible Änderungen und die strengere
-Deployment-Richtlinie beider Versionen. Auch das Anlegen und Ändern von
+veröffentlichte Ausführungsrichtlinie des Pfads. Auch das Anlegen und Ändern von
 Observability und Secrets Manager gilt als sensibel, einschließlich Serviceplan,
 Kapazität, Verfügbarkeit und Aufbewahrungszeit. Ein erfolgreicher Plan zeigt, was
 der Provider technisch ausführen kann; er garantiert weder Datenerhalt noch,

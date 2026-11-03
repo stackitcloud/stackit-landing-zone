@@ -82,6 +82,7 @@ function fixture() {
     target,
     currentSettings,
     parameters: {},
+    edgePolicy: { sensitive: "direct" as "direct" | "approval-required" },
     verifiedStackitEmail: "owner@example.test",
     currentPlatform: platform,
     targetPlatform: structuredClone(platform),
@@ -255,14 +256,19 @@ it("requires explicit confirmation for a new input without a durable prior decis
     ],
   });
 });
-it("classifies IAM additions as sensitive and preserves the stricter deployment/edge policy", () => {
+it("classifies IAM additions as sensitive and uses the published path policy independently of new-order policy", () => {
   const input = fixture();
   Object.assign(input.target.template.settings, {
     role_assignments: [
       { role: "project.reader", subject: "owner@example.test" },
     ],
   });
-  expect(assessApplicationTemplateUpgrade(input)).toMatchObject({
+  expect(
+    assessApplicationTemplateUpgrade({
+      ...input,
+      edgePolicy: { sensitive: "approval-required" },
+    }),
+  ).toMatchObject({
     classification: "sensitive",
     approvalPolicy: "approval-required",
   });
@@ -278,7 +284,7 @@ it("classifies IAM additions as sensitive and preserves the stricter deployment/
       ...input,
       edgePolicy: { sensitive: "direct" },
     }).approvalPolicy,
-  ).toBe("approval-required");
+  ).toBe("direct");
   input.current.deploymentPolicy = "direct";
   input.target.deploymentPolicy = "approval-required";
   expect(
@@ -286,7 +292,7 @@ it("classifies IAM additions as sensitive and preserves the stricter deployment/
       ...input,
       edgePolicy: { sensitive: "direct" },
     }).approvalPolicy,
-  ).toBe("approval-required");
+  ).toBe("direct");
 });
 const change = (type: string, actions: string[], mode = "managed") => ({
   mode,

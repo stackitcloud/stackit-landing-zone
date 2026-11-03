@@ -351,7 +351,7 @@ async function fixture(
 }
 async function edge(
   f: Awaited<ReturnType<typeof fixture>>,
-  sensitive = "approval-required",
+  sensitive = "direct",
 ) {
   return scoped(
     engineer,
@@ -386,13 +386,19 @@ async function plan(
   overrides: Record<string, unknown> = {},
 ) {
   const id = randomUUID();
+  const selectedPolicy = (
+    await admin.query(
+      "SELECT deployment_policy FROM lzc.application_upgrade_candidates WHERE id=$1",
+      [candidate.id],
+    )
+  ).rows[0].deployment_policy;
   const inputs = {
     acceleratorRevision: source,
     ...(candidate.executionBindingId
       ? { executionBindingId: candidate.executionBindingId }
       : {}),
     applicationUpgradeId: candidate.id,
-    applyPolicy: f.policy,
+    applyPolicy: selectedPolicy,
     stateKey: `applications/${owner.tenantId}/${f.instance}/terraform.tfstate`,
     requestedBy: owner.userId,
     variables: {
@@ -507,12 +513,6 @@ it("blocks placement/env changes and known service removals before any native pl
     );
   }
 });
-it("never relaxes a required deployment policy through a direct sensitive edge", async () => {
-  const f = await fixture({ policy: "approval-required" });
-  await expect(edge(f, "direct")).rejects.toThrow(
-    "application_upgrade_edge_invalid",
-  );
-});
 
 const summary = (classification = "ordinary", deletes = 0, replaces = 0) => ({
   schemaVersion: 1,
@@ -599,7 +599,7 @@ async function apply(
 }
 it("requires fresh artifact-bound PE approval for sensitive changes and then admits the same-state Apply", async () => {
   const f = await fixture();
-  const e = await edge(f);
+  const e = await edge(f, "approval-required");
   const c = await request(f, e.id);
   const j = await plan(f, c.candidate);
   await artifact(f, j, summary("sensitive"));
@@ -651,7 +651,7 @@ it.each(["stackit_observability_instance", "stackit_secretsmanager_instance"])(
   "requires exact-Plan approval for an in-place %s service downgrade",
   async (type) => {
     const f = await fixture();
-    const e = await edge(f);
+    const e = await edge(f, "approval-required");
     const c = await request(f, e.id);
     const j = await plan(f, c.candidate);
     const nativePlan = {
@@ -729,7 +729,7 @@ it("makes old/new approval-required policy require a fresh PE receipt even for o
       [f.instance, owner.tenantId, engineer.userId],
     ),
   );
-  const e = await edge(f);
+  const e = await edge(f, "approval-required");
   const c = await request(f, e.id);
   const j = await plan(f, c.candidate);
   await artifact(f, j, summary());
@@ -1121,10 +1121,7 @@ it("allows a direct target publication while retaining the older required policy
       [f.instance, owner.tenantId, engineer.userId],
     ),
   );
-  await expect(edge(f, "direct")).rejects.toThrow(
-    "application_upgrade_edge_invalid",
-  );
-  const e = await edge(f);
+  const e = await edge(f, "approval-required");
   const c = await request(f, e.id);
   expect(c.effectiveDeploymentPolicy).toBe("approval-required");
   const j = await plan(f, c.candidate);
@@ -1215,7 +1212,7 @@ it("accepts a proven completed remote-backend migration without clearing its ide
   expect(context.candidates[0]?.assessment.classification).not.toBe("blocked");
   const preview = await service.previewUpgrade(owner, f.instance, input);
   expect(preview.assessment.classification).not.toBe("blocked");
-  expect(preview.assessment.approvalPolicy).toBe("approval-required");
+  expect(preview.assessment.approvalPolicy).toBe("direct");
   const result = await service.requestUpgrade(owner, f.instance, {
     ...input,
     confirmUpgrade: true,
@@ -2397,3 +2394,143 @@ it.each([undefined, { delete: 0, replace: 0 }, { delete: 1, replace: 0 }])(
     );
   },
 );
+
+it.each([
+  ["direct", "direct"],
+  ["approval-required", "direct"],
+  ["direct", "approval-required"],
+  ["approval-required", "approval-required"],
+] as const)(
+  "uses the explicit self-service path for %s -> %s new-order policies",
+  async (oldPolicy, newPolicy) => {
+    const f = await fixture({ policy: oldPolicy, targetPolicy: newPolicy });
+    if (oldPolicy === "approval-required")
+      await imported(() =>
+        admin.query(
+          "INSERT INTO lzc.application_order_decisions(instance_id,tenant_id,decision,decided_by,reason) VALUES($1,$2,'approved',$3,'initial order approved')",
+          [f.instance, owner.tenantId, engineer.userId],
+        ),
+      );
+    const e = await edge(f, "direct");
+    const c = await request(f, e.id);
+    expect(c.effectiveDeploymentPolicy).toBe("direct");
+    const { Applications } = await import(
+      "../apps/api/src/applications/service.js"
+    );
+    const service = new Applications(runtime);
+    expect(
+      (await service.preparePlanInput(owner, f.instance)).plan.applyPolicy,
+    ).toBe("direct");
+    const j = await plan(f, c.candidate);
+    const value = summary("sensitive", 0, 1);
+    value.upgradeSafety = classifyApplicationUpgradePlan({
+      format_version: "1.2",
+      terraform_version: "1.12.6",
+      complete: true,
+      planned_values: { root_module: {} },
+      resource_changes: [
+        {
+          mode: "managed",
+          type: "stackit_authorization_project_role_assignment",
+          change: {
+            actions: ["delete", "create"],
+            before: { role: "owner" },
+            after: { role: "application-automation" },
+          },
+        },
+      ],
+    });
+    await artifact(f, j, value);
+    expect(
+      await scoped(
+        owner,
+        async (q) =>
+          (
+            await q.query(
+              "SELECT lzc_auth.application_apply_available($1,$2,$3) AS allowed",
+              [owner.id, j.id, hash],
+            )
+          ).rows[0].allowed,
+      ),
+    ).toBe(true);
+    const approval = await scoped(
+      owner,
+      async (q) =>
+        (
+          await q.query(
+            "SELECT lzc_auth.application_upgrade_approval_context($1,$2) AS value",
+            [owner.id, j.id],
+          )
+        ).rows[0].value,
+    );
+    expect(approval).toMatchObject({ requiresApproval: false, blocked: false });
+    expect(await apply(f, j)).toMatch(/^[a-f0-9-]{36}$/);
+  },
+);
+it("revises a path policy immutably, keeps old Plans restricted and rejects obsolete edges for new selection", async () => {
+  const f = await fixture();
+  const restricted = await edge(f, "approval-required");
+  const c = await request(f, restricted.id);
+  const j = await plan(f, c.candidate);
+  await artifact(f, j, summary("sensitive"));
+  const direct = await edge(f, "direct");
+  expect(direct.id).not.toBe(restricted.id);
+  expect((await edge(f, "direct")).id).toBe(direct.id);
+  await expect(apply(f, j)).rejects.toThrow(
+    "application_upgrade_plan_approval_required",
+  );
+  await expect(
+    scoped(owner, (q) =>
+      q.query(
+        "SELECT lzc_auth.publish_application_upgrade_edge($1,$2,$3,$4,true)",
+        [owner.id, f.from, f.to, { sensitive: "direct" }],
+      ),
+    ),
+  ).rejects.toThrow();
+  const { Applications } = await import(
+    "../apps/api/src/applications/service.js"
+  );
+  const service = new Applications(runtime);
+  const restored = await service.withdrawUpgrade(owner, f.instance, {
+    expectedBindingId: c.candidate.id,
+    expectedVersionId: f.to,
+    lastAppliedJobId: null,
+    confirmWithdrawal: true,
+  });
+  expect(
+    restored.candidates.filter((x) => x.toVersionId === f.to).map((x) => x.id),
+  ).toEqual([direct.id]);
+  const body = {
+    expectedBindingId: restored.bindingId,
+    expectedVersionId: f.from,
+    confirmUpgrade: true,
+  };
+  await expect(
+    service.requestUpgrade(owner, f.instance, {
+      ...body,
+      edgeId: restricted.id,
+    }),
+  ).rejects.toThrow();
+  const next = await service.requestUpgrade(owner, f.instance, {
+    ...body,
+    edgeId: direct.id,
+  });
+  expect(next.effectiveDeploymentPolicy).toBe("direct");
+  expect(
+    (await service.preparePlanInput(owner, f.instance)).plan.stateKey,
+  ).toBe(j.inputs.stateKey);
+  expect(
+    (
+      await admin.query(
+        "SELECT policy FROM lzc.application_upgrade_edges WHERE id=$1",
+        [restricted.id],
+      )
+    ).rows[0].policy,
+  ).toEqual({ sensitive: "approval-required" });
+  await expect(
+    migration.query(
+      "UPDATE lzc.application_upgrade_edges SET policy=$2 WHERE id=$1",
+      [restricted.id, { sensitive: "direct" }],
+    ),
+  ).rejects.toThrow();
+});

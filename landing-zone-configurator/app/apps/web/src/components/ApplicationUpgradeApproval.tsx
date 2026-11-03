@@ -64,7 +64,7 @@ export function ApplicationUpgradeApproval({
     await onApproved(result.signal);
     if (!result.signal.aborted) await load();
   }
-  if (!value?.requiresApproval && !error) return null;
+  if (!value?.requiresApproval && !value?.blocked && !error) return null;
   return (
     <section aria-label={t("Upgrade-Plan separat freigeben")}>
       <h4>{t("Upgrade-Plan separat freigeben")}</h4>
@@ -74,6 +74,13 @@ export function ApplicationUpgradeApproval({
           "Diese Freigabe gilt nur für den angezeigten gespeicherten Plan und seine Upgrade-Bindung. Ein späterer oder geänderter Plan benötigt eine neue Prüfung; hier wird kein Apply gestartet.",
         )}
       </p>
+      {value?.requiresApproval && !value.approved && !value.blocked && (
+        <p role="status">
+          {t(
+            "Wartet auf Platform-Owner-Freigabe. Dieser gespeicherte Plan muss nicht erneut erstellt werden, solange er aktuell und gültig ist.",
+          )}
+        </p>
+      )}
       {value?.approved ? (
         <p role="status">
           {t("Dieser Upgrade-Plan wurde bereits separat freigegeben.")}
