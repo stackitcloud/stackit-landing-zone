@@ -37,6 +37,14 @@ Service-Account-Berechtigungen oder Kapazität.
 Speichere Änderungen ausdrücklich. Bei einem Fork ist das Speichern im Repository eine
 separate Aktion. Exporte unterstützen den unabhängigen Terraform/OpenTofu-Workflow.
 
+Für eine selbst verwaltete Accelerator-Bereitstellung exportiert
+**Konfigurationen → Prüfen → Accelerator-Beispiel herunterladen** die Plattform
+und je ein natives Beispielprojekt pro Application-Template einschließlich der
+aufgelösten Projektrechte. Ersetze vor der Nutzung Beispieladressen und
+Projektangaben. Speichern und gehostete Plattform-Plans behandeln Templates
+weiterhin separat. Weiter geht es mit dem
+[Accelerator-Exportweg](../../docs/getting-started.de.md#einen-configurator-export-verwenden).
+
 <a id="assistant-proposals"></a>
 ## Assistant-Vorschläge
 

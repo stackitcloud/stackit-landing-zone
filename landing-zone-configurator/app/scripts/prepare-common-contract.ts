@@ -6,6 +6,7 @@ import {
   catalogue,
   createCommonConfiguration,
   createEditorConfiguration,
+  exportAcceleratorExample,
   exportCommonTfvars,
 } from "../packages/domain/dist/index.js";
 
@@ -35,6 +36,22 @@ ${
 }
 }`;
 });
+for (const template of catalogue.templates) {
+  const draft = createEditorConfiguration(
+    template.id,
+    "11111111-2222-4333-8444-555555555555",
+  );
+  runs.push(`run "native_example_${template.id.replaceAll("-", "_")}" {
+  command = plan
+  variables {
+${exportAcceleratorExample(draft)}
+  }
+  assert {
+    condition = length(output.application_projects) + length(output.sandbox_projects) == ${draft.projectTemplates?.length ?? 0}
+    error_message = "The download must retain every Application template as a native example project."
+  }
+}`);
+}
 for (const explicit of [false, true]) {
   runs.push(`run "corporate_${explicit ? "explicit" : "default"}_requires_connectivity" {
   command = plan

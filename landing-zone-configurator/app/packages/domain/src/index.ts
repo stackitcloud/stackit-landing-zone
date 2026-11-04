@@ -32,6 +32,7 @@ export function canAccessTenant(
   );
 }
 
+export * from "./accelerator-example.js";
 export * from "./application-access.js";
 export * from "./application-access-transition.js";
 export * from "./application-catalogue.js";

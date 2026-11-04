@@ -65,6 +65,56 @@ Both hub-spoke flavours can additionally terminate a site-to-site IPsec VPN in t
 > [!NOTE]
 > This single-root-module approach works well for smaller environments. At larger scale — typically beyond 10 landing zones — you may encounter STACKIT API rate limits during applies and slower plan/refresh cycles due to a growing state file. Tools like [Terragrunt](https://terragrunt.gruntwork.io/), [Terramate](https://terramate.io/), or [Spacelift](https://spacelift.io/) can help by splitting landing zones into isolated state files and orchestrating root module calls with proper concurrency controls. If you are planning a larger enterprise deployment, reach out to [STACKIT](https://stackit.de) or a partner offering a verified landing zone solution via the [STACKIT Marketplace](https://marketplace.stackit.cloud/de/catalog?marketplaceFilters=industries:Service%20%26%20IT%20Provider,deliveryMethod:PROFESSIONAL_SERVICE,categories:DevOps).
 
+## Use a Configurator export
+
+You can use the Configurator solely to choose and adapt a starting configuration,
+including its Application Landing Zone templates. In **Configurations → Review**,
+select **Download Accelerator example**. The downloaded `landing-zone.tfvars` is
+an ordinary native input file for the combined `src/` root. No Configurator,
+Runner, database, publication or order is needed afterwards. Its header records
+the Accelerator source used for the export; use a compatible repository checkout,
+just as with the checked-in examples.
+
+The download includes the platform and **one concrete example per Application
+template**: Public/Corporate entries in `landing_zones`, Sandbox entries in
+`sandboxes`, and configured namespace services in `landing_zone_namespace_services`.
+Granular profiles become native `custom_roles`, `role_assignments` and
+`automation_role`. For granular profiles, `owner_email` is the central initial
+project owner; the example Application user appears in `role_assignments`.
+There are no template policies or context bindings to interpret at runtime.
+
+Before deployment, review or remove example projects, replace `@example.com`
+subjects (including the central owner placeholder when applicable), project names
+and codes, organization references and other environment-specific values.
+Order input defaults are used where configured; a required input without a default
+uses the first allowed choice or the corresponding example setting. Check these
+values, especially stage and service plans. Parameter choices and self-service
+approval policies do not become Terraform access controls. A symbolic Observability
+network binding must be replaced with explicit sources before export; it is never
+silently exported as an unrestricted ACL. Provide external credentials as described
+below; the download does not contain the Configurator's stored deployment secrets.
+
+Follow the normal bootstrap and backend setup below, then use the downloaded
+file instead of a file from `config/`. From `src/`, after initialization:
+
+```sh
+tofu plan -var-file=/path/to/landing-zone.tfvars -out=landing-zone.tfplan
+tofu apply landing-zone.tfplan
+```
+
+For another Application Landing Zone, copy an entry with a **new stable map key**,
+project name and project code, review its owner/subjects, networking and service
+settings, then run Plan/Apply again against the same State. Keep already deployed
+entries and their keys: removing or renaming them may plan deletion/replacement.
+A subsequent Configurator download is a fresh example, not an automatically merged
+update to your locally maintained deployment. Do not point this combined-root
+example at existing separately managed Configurator Application States.
+
+Saving configurations or starting a hosted platform Plan in the Configurator
+continues to keep Application templates separate; only this explicit download
+materializes them as native example projects.
+
+
 ---
 
 ## Step-by-Step Deployment

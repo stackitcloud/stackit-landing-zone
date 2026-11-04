@@ -70,6 +70,62 @@ Beide Hub-Spoke-Varianten können zusätzlich ein Site-to-Site-IPsec-VPN im Hub 
 > [!NOTE]
 > Dieser Ansatz mit einem einzelnen Root-Modul eignet sich gut für kleinere Umgebungen. Bei größerem Umfang – typischerweise über 10 Landing Zones – können STACKIT-API-Ratenlimits bei Applies sowie langsamere Plan-/Refresh-Zyklen durch eine wachsende State-Datei auftreten. Werkzeuge wie [Terragrunt](https://terragrunt.gruntwork.io/), [Terramate](https://terramate.io/) oder [Spacelift](https://spacelift.io/) können helfen, indem sie Landing Zones in isolierte State-Dateien aufteilen und Root-Modulaufrufe mit geeigneter Parallelitätssteuerung orchestrieren. Wenden Sie sich bei einer größeren Unternehmensbereitstellung an [STACKIT](https://stackit.de) oder einen Partner mit verifizierter Landing-Zone-Lösung im [STACKIT Marketplace](https://marketplace.stackit.cloud/de/catalog?marketplaceFilters=industries:Service%20%26%20IT%20Provider,deliveryMethod:PROFESSIONAL_SERVICE,categories:DevOps).
 
+## Einen Configurator-Export verwenden
+
+Du kannst den Configurator ausschließlich zum Auswählen und Anpassen einer
+Ausgangskonfiguration einschließlich ihrer Application-Landing-Zone-Templates
+nutzen. Unter **Konfigurationen → Prüfen** wählst du **Accelerator-Beispiel
+herunterladen**. Die Datei `landing-zone.tfvars` ist eine gewöhnliche native
+Eingabedatei für den gemeinsamen Root `src/`. Danach sind weder Configurator,
+Runner, Datenbank, Veröffentlichung noch Bestellung erforderlich. Im Header steht
+die Accelerator-Quelle des Exports; verwende einen kompatiblen Repository-Stand,
+wie bei den mitgelieferten Beispielen.
+
+Der Download enthält die Plattform und **je ein konkretes Beispiel pro
+Application-Template**: Public/Corporate unter `landing_zones`, Sandboxes unter
+`sandboxes` und konfigurierte Namespace-Dienste unter
+`landing_zone_namespace_services`. Granulare Rechteprofile werden als native
+`custom_roles`, `role_assignments` und `automation_role` ausgegeben. Bei granularen
+Profilen ist `owner_email` der zentrale initiale Projekt-Owner; der beispielhafte
+Application-Benutzer steht in `role_assignments`. Zur Ausführung müssen keine
+Template-Policies oder Kontextbindungen mehr interpretiert werden.
+
+Prüfe oder entferne vor der Bereitstellung die Beispielprojekte und ersetze
+`@example.com`-Adressen (gegebenenfalls auch den zentralen Owner-Platzhalter),
+Projektnamen und -kürzel, Organisationsreferenzen und weitere umgebungsspezifische
+Angaben. Bestelleingaben verwenden ihre konfigurierte Vorauswahl. Eine
+Pflichteingabe ohne Vorauswahl verwendet den ersten erlaubten Auswahlwert oder
+die entsprechende Beispieleinstellung. Prüfe insbesondere Stage und
+Service-Leistungsklassen. Auswahlmöglichkeiten und Self-Service-Freigaberichtlinien
+werden nicht zu Terraform-Zugriffskontrollen. Eine symbolische Observability-
+Netzbindung muss vor dem Export durch explizite Zugriffsquellen ersetzt werden;
+sie wird niemals stillschweigend als unbeschränkte ACL exportiert. Externe
+Zugangsdaten stellst du wie unten beschrieben bereit; gespeicherte Deployment-
+Geheimnisse des Configurators sind nicht im Download enthalten.
+
+Führe Bootstrap und Backend-Einrichtung wie unten beschrieben durch und verwende
+anschließend den Download anstelle einer Datei aus `config/`. Nach der
+Initialisierung im Verzeichnis `src/`:
+
+```sh
+tofu plan -var-file=/pfad/zu/landing-zone.tfvars -out=landing-zone.tfplan
+tofu apply landing-zone.tfplan
+```
+
+Für eine weitere Application Landing Zone kopierst du einen Eintrag mit einem
+**neuen stabilen Map-Schlüssel**, Projektnamen und Projektkürzel. Prüfe Owner,
+Rollenzuweisungen, Netzwerk und Dienste und führe erneut Plan/Apply mit demselben
+State aus. Behalte bereits bereitgestellte Einträge und ihre Schlüssel bei:
+Entfernen oder Umbenennen kann Löschungen oder Ersetzungen planen. Ein neuer
+Configurator-Download ist ein neues Beispiel und kein automatisch mit deiner
+lokalen Bereitstellung zusammengeführtes Update. Verwende dieses Beispiel für den
+gemeinsamen Root nicht mit bestehenden separaten Configurator-Application-States.
+
+Speichern und gehostete Plattform-Plans im Configurator behandeln Application-
+Templates weiterhin separat. Nur dieser ausdrückliche Download macht daraus
+native Beispielprojekte.
+
+
 ---
 
 <a id="step-by-step-deployment"></a>

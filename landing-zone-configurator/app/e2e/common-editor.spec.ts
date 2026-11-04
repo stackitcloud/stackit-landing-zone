@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import {
   type CommonConfiguration,
   catalogue,
@@ -488,11 +489,17 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .click();
   await openConfigurationStep(page, "Prüfen");
   await expect(
-    page.getByRole("button", { name: "tfvars herunterladen", exact: true }),
+    page.getByRole("button", {
+      name: "Accelerator-Beispiel herunterladen",
+      exact: true,
+    }),
   ).toBeEnabled();
   const download = page.waitForEvent("download");
   await page
-    .getByRole("button", { name: "tfvars herunterladen", exact: true })
+    .getByRole("button", {
+      name: "Accelerator-Beispiel herunterladen",
+      exact: true,
+    })
     .click();
   expect((await download).suggestedFilename()).toBe("landing-zone.tfvars");
   await page
@@ -595,6 +602,22 @@ test("shared configuration saves, reopens and restores in the account workspace"
   await expect(
     page.getByLabel("Vorauswahl: Umgebung / Stage").first(),
   ).toHaveValue("prod");
+  await openConfigurationStep(page, "Prüfen");
+  const received = page.waitForEvent("download");
+  await page
+    .getByRole("button", {
+      name: "Accelerator-Beispiel herunterladen",
+      exact: true,
+    })
+    .click();
+  const file = await (await received).path();
+  if (!file) throw new Error("Missing Accelerator example download");
+  const exported = await readFile(file, "utf8");
+  expect(exported).toMatch(/^# Native STACKIT/);
+  expect(exported).toContain('"env" = "prod"');
+  expect(exported).toContain('"project_name"');
+  expect(exported).not.toContain('"projectTemplates"');
+  expect(exported).not.toContain('"parameterPolicy"');
 });
 
 test("Standalone starts Public and offers regional choices and explicit platform switches", async ({

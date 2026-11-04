@@ -33,6 +33,13 @@ availability, network reachability, service-account permissions or capacity.
 Save changes explicitly. If you use a fork, saving to the repository is a separate
 action. Exports support the independent Terraform/OpenTofu workflow.
 
+For a self-managed Accelerator deployment, **Configurations → Review → Download
+Accelerator example** exports the platform and one native example project per
+Application template, including resolved project rights. Replace example subjects
+and project details before use. This differs from saving the platform draft or
+starting a hosted platform Plan, which keeps templates separate. Continue with
+[the Accelerator export workflow](../../docs/getting-started.md#use-a-configurator-export).
+
 ## Assistant proposals
 
 The Assistant explains reviewed service knowledge and proposes supported editor

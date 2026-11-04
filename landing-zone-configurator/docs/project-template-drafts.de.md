@@ -187,8 +187,13 @@ Das bisherige Dokumentformat v3 besitzt nun optional `projectTemplates`.
   Speichern und Exportieren abgewiesen.
 - Template-Einstellungen werden gegen den bestehenden Accelerator-Eingabevertrag
   geprüft; konkrete Instanz-/Owner-Felder sind in den Template-Einstellungen verboten.
-- Das JSON im persönlichen Fork erhält die Template-Entwürfe. Der deterministische
-  tfvars-Export enthält nur die Plattform und explizit leere Anwendungssammlungen.
+- Das JSON im persönlichen Fork erhält die Template-Entwürfe. Die gespeicherten
+  Plattform-tfvars und gehosteten Ausführungseingaben enthalten nur die Plattform
+  und explizit leere Anwendungssammlungen. Die separate Aktion **Accelerator-Beispiel
+  herunterladen** erzeugt je Template ein natives Beispielprojekt, löst Rechte und
+  Kontextbenutzer auf und nennt die Quelle im Header. Veröffentlichung oder eine
+  Configurator-Laufzeit sind dafür nicht erforderlich; siehe
+  [CLI-Exportweg](../../docs/getting-started.de.md#einen-configurator-export-verwenden).
 - Erstbereitstellungspläne für erlaubte Plattform-Teilkonfigurationen planen daher
   **nur die Plattform**, keine Template-Instanzen. Die übrigen Runner-Sperren bleiben wirksam.
 
@@ -412,7 +417,7 @@ Cloud-Ressourcen und ist keine Apply-Freigabe.
 - [x] Alle acht Quellvorlagen werden ohne Verlust von Plattform-/Projektpolicy konvertiert.
 - [x] Persönliche Instanzfelder gelangen nicht in Projektvorlagen.
 - [x] Legacy-Dokumente bleiben beim Einlesen unverändert; Kopien benötigen eine neue ID.
-- [x] Git-Speicherung erhält Metadaten; tfvars und Deployment-Vorbereitung enthalten keine daraus erzeugten Projekte.
+- [x] Git-Speicherung erhält Metadaten; gespeicherte Plattform-tfvars und Deployment-Vorbereitung enthalten keine daraus erzeugten Projekte. Der ausdrückliche Accelerator-Download enthält native Beispielprojekte.
 - [x] Gemischte Template-/Instanzdokumente werden abgewiesen.
 - [x] Native OpenTofu-Variablenprüfung bestätigt leere Anwendungs-, Sandbox- und Namespace-Sammlungen im Plattformexport.
 - [x] Browserprüfung einschließlich Bestandskopie/Speicherung erfolgreich; CI-Validierung und [Release 36855011827](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36855011827) für `0e62c5e` erfolgreich. Live-SPA liefert HTTP 200 mit dem erwarteten Bundle `index-bjLShEoG.js`.

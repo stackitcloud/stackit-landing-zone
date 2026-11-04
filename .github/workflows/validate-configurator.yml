@@ -111,7 +111,9 @@ jobs:
           tofu_version: '1.12.6'
           tofu_wrapper: false
       - name: Check all template exports against native Accelerator variable contracts
-        run: npm run test:common-contract
+        run: |
+          npm run test:common-contract
+          LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:export-native
       - name: Test native Plan, Application and governance contracts
         run: LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
       - name: Test isolated native Plan hold and interruption
