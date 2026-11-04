@@ -310,3 +310,62 @@ it("collapses local import serials to exactly one remote successor and rejects i
     }).candidateSerial,
   ).toBe(f.before.serial + 1);
 });
+
+it("permits only an audit link credential refresh while preserving its destination and resource identity", () => {
+  const before = {
+    id: `project,${instanceId},eu01`,
+    resource_type: "project",
+    resource_id: instanceId,
+    region: "eu01",
+    telemetry_router_id: lineage,
+    access_token: null,
+  };
+  const candidate = original();
+  const resources = [
+    ...candidate.resources,
+    {
+      mode: "managed",
+      type: "stackit_telemetrylink",
+      name: "audit",
+      provider,
+      instances: [{ index_key: 0, attributes: before }],
+    },
+  ];
+  const candidateBytes = bytes({ ...candidate, resources });
+  const plan = (after: Record<string, unknown>) => ({
+    resource_changes: [
+      {
+        address: "terraform_data.contract",
+        mode: "managed",
+        change: { actions: ["no-op"] },
+      },
+      {
+        address: "stackit_telemetrylink.audit[0]",
+        mode: "managed",
+        change: {
+          actions: ["update"],
+          before,
+          after,
+          after_unknown: { access_token: true },
+        },
+      },
+    ],
+  });
+  expect(
+    verifyRecoveryPreview(plan(before), candidateBytes, instanceId).update,
+  ).toBe(1);
+  for (const field of [
+    "id",
+    "resource_id",
+    "region",
+    "telemetry_router_id",
+    "resource_type",
+  ])
+    expect(() =>
+      verifyRecoveryPreview(
+        plan({ ...before, [field]: "changed" }),
+        candidateBytes,
+        instanceId,
+      ),
+    ).toThrow("unexpected-plan-change");
+});

@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   type ApplicationUpgradeSafety,
+  applicationExecutionCurrentRevision,
   classifyApplicationUpgradePlan,
 } from "@lzc/contracts";
 import pg from "pg";
@@ -42,7 +43,7 @@ let owner: Session, engineer: Session, outsider: Session;
 const ownerToken = newSessionToken();
 const ownerGithubId =
   process.env.LZC_TEST_BROWSER_JOURNEY === "true" ? 900800001 : 800001;
-const source = "08ac257de1548c8ec5e83dae1a79373711c3d644";
+const source = applicationExecutionCurrentRevision;
 const hash = "a".repeat(64);
 async function scoped<T>(
   session: Session,

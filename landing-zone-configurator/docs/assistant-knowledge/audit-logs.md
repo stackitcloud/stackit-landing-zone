@@ -2,53 +2,59 @@
 
 ## Purpose
 
-Capture organizational control-plane audit events for investigation and archive
-them with deliberately chosen access, scope and retention.
+Control-plane audit events with chosen scope, access and retention.
 
 ## Accelerator Contract
 
-Native audit_logs is optional; null skips its management resources. The module
-routes audit events to an OTLP Logs destination and an object-storage archive.
-Fields include retention_days, acl, s3_object_lock and link_scopes containing
-resource_type/resource_id. Default scope is organization-wide; explicit scopes
-support organization, folder or project. With Object Lock enabled, the native
-contract limits retention to 1..365 days. Query retention and archive policy
-must be distinguished from backups or legal compliance certification.
+audit_logs=null skips routing/retention, not the archive bucket.
+Sinks: Logs/OTLP and S3. Fields: retention_days, acl,
+s3_object_lock, managed_resources, link_scopes (resource_type/resource_id).
+Object Lock defaults true, including nested null; retention 180.
+Explicit false opts out before creation. With lock: 1..365 days,
+GOVERNANCE mode, not a reversible switch or compliance certification.
+
+Organization links capture organization events ONLY, no folder/project
+inheritance. managed_resources defaults false; true adds all managed folders/
+projects and new Application orders via the platform contract. Existing orders
+need an approved platform upgrade and fresh Plan/Apply. No explicit link_scopes.
+Managed resources must share the platform region; other regions need reviewed
+routers. Custom scopes support organization/folder/project;
+existing external links need reviewed import, never silent takeover.
 
 ## Dependencies
 
-Management foundations, organization access and externally supplied credentials.
-Link scope must belong to authorized resources. Central observability and audit
-logging are distinct optional services.
+Management, central deployment identity, same-region router/link. Audit differs
+from Observability. Application ingestion tokens stay in the central project,
+inaccessible to default workload identities.
 
 ## Dialogue
 
-Ask about audit obligations, retention period, organizational versus selected
-scope, reader access and retention/deletion constraints. Describe Object Lock's
-consequences before a proposal. Resolve resource selections through authorized
-interfaces; never ask customers to paste internal scope IDs or raw audit logs.
+Ask retention, ACL, Object Lock and organization-only/managed coverage. Preserve
+saved choices; defaults are not consent.
+Requested managed coverage uses managed_resources=true with reviewed settings,
+not invented IDs or link_scopes.
 
 ## Examples
 
-Synthetic fragment: audit_logs = { retention_days = 180,
-s3_object_lock = true }. It uses native defaults for other fields; it is not a
-legal retention recommendation or an instruction to enable audit automatically.
+Synthetic draft: audit_logs={ retention_days=90, acl=["203.0.113.0/24"],
+s3_object_lock=false, managed_resources=true }.
 
 ## Limits
 
-Object Lock can constrain deletion independently of Configurator conversation
-expiry. Audit-router configuration does not prove delivered events or all scopes
-covered. Scope, permissions, ingestion and archive retrieval require separate
-tests. Native Editor proposals support typed audit settings; new instances need
-explicit retention, ACL and Object Lock decisions, not sample/default consent.
+Editor creation requires explicit retention, ACL and Object Lock decisions.
+Links capture future events, not retroactive history. Defaults exclude audit
+mutation rights; effective Owner/inherited grants can still change routing.
+No deny guarantee. Verify Logs/S3 delivery and access separately. Recovery
+preserves link identities;
+a lost ingestion secret requires exact approved revocation and a fresh Plan/Apply
+for replacement, never fabricated secret material.
 
 ## Credentials
 
-Archive and ingestion credentials belong to secure execution bindings. Never
-send S3 keys, OTLP tokens, archive contents or compliance evidence to the model.
+No router/OTLP tokens, S3 keys, State or audit contents in chat/public contracts.
+Secrets stay in protected execution and State storage.
 
 ## Sources
 
-Root and management contracts pin scope and retention behavior. Re-review
-service limits and implementation changes rather than silently promoting source
-hashes. External compliance and provider freshness are not asserted here.
+Manifest binds native and recovery contracts. Re-review before generation;
+configuration proves no delivery/compliance.

@@ -1,4 +1,19 @@
 export const englishMessages: Record<string, string> = {
+  "Automatische Audit-Abdeckung kann nicht mit manuellen Link-Zielen kombiniert werden.":
+    "Automatic audit coverage cannot be combined with manual link targets.",
+  "Automatische Audit-Abdeckung benötigt derzeit eine gemeinsame Plattformregion. Weitere Regionen erfordern eigene Router und eine geprüfte Anbindung.":
+    "Automatic audit coverage currently needs a shared platform region. Other regions require their own routers and a reviewed integration.",
+  "Diese Audit-Anbindung benötigt den neuen Ausführungsstand. Übernimm den freigegebenen Plattform-Upgrade-Pfad oder aktualisiere zuerst unter Updates den technischen Ausführungsstand; Bestellung und State bleiben erhalten.":
+    "This audit integration needs the new execution source. Select the approved platform upgrade path or first update the technical execution source under Updates; the order and State are preserved.",
+  "Die zentrale Audit-Anbindung ändert sich. Der freigegebene Upgrade-Pfad übernimmt auch die dafür benötigte technische Ausführungsquelle; danach prüfst du einen neuen Plan.":
+    "Central audit routing changes. The approved upgrade path also selects its required technical execution source; you then review a fresh plan.",
+  "Audit-Anbindung": "Audit routing",
+  "Audit-Ingestion-Zugang": "Audit ingestion credential",
+  "Alle verwalteten Projekte und Ordner automatisch anbinden":
+    "Automatically connect all managed projects and folders",
+  "Ergänzt Audit-Links für Plattformprojekte, Ordner und neue Application-Bestellungen in derselben Region. Ein Organisations-Link allein erfasst deren Ereignisse nicht. Bestehende Bestellungen benötigen einen freigegebenen Plattform-Upgrade-Pfad. Nicht mit manuellen Link-Zielen kombinieren.":
+    "Adds audit links for platform projects, folders and new Application orders in the same region. An organization link alone does not capture their events. Existing orders need an approved platform upgrade path. Do not combine with manual link targets.",
+
   "Schlüsselverwaltung für Besteller ergänzen":
     "Add key management for the requester",
   "Schlüsselverwaltung gilt für alle Service Accounts dieses Projekts. Wer einen Schlüssel erzeugen darf, kann die gesamten Rechte dieses Service Accounts nutzen. Privilegierte Plattform-Service-Accounts deshalb zentral außerhalb dieses Projekts führen.":

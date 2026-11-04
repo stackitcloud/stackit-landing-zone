@@ -30,6 +30,24 @@ const project = z.object({
 });
 export const recoveryCloudInventorySchema = z.strictObject({
   project,
+  audit: z
+    .strictObject({
+      projectId: uuid,
+      routerId: uuid,
+      region: z.enum(["eu01", "eu02"]),
+      link: z
+        .strictObject({
+          routerId: uuid,
+          name: z.string().max(256),
+          enabled: z.boolean(),
+        })
+        .nullable(),
+      tokens: z
+        .array(z.strictObject({ id: uuid, name: z.string().max(256) }))
+        .max(1000),
+    })
+    .nullable()
+    .default(null),
   networks: z
     .array(
       z.strictObject({
@@ -189,6 +207,10 @@ const variables = z.object({
     targets: z.record(
       z.string(),
       z.object({
+        audit_router: z
+          .object({ project_id: uuid, instance_id: uuid })
+          .nullable()
+          .optional(),
         folder_id: z.string().min(1),
         region: z.enum(["eu01", "eu02"]),
         corporate: z.boolean(),
@@ -285,6 +307,35 @@ export function deriveApplicationRecoveryImports(input: {
     if (items.length > 1) throw new Error("cloud-resource-ambiguous");
     return items[0];
   };
+  if (target.audit_router) {
+    const audit = cloud.audit;
+    if (
+      !audit ||
+      audit.projectId !== target.audit_router.project_id ||
+      audit.routerId !== target.audit_router.instance_id ||
+      audit.region !== target.region
+    )
+      throw new Error("cloud-inventory-incomplete");
+    unique(audit.tokens, (t) => t.id);
+    if (
+      audit.tokens.length > 1 ||
+      audit.tokens.some((t) => t.name !== a.instance_id.replaceAll("-", ""))
+    )
+      throw new Error("cloud-resource-ambiguous");
+    if (audit.link) {
+      if (
+        audit.link.routerId !== audit.routerId ||
+        audit.link.name !== a.instance_id.replaceAll("-", "") ||
+        !audit.link.enabled
+      )
+        throw new Error("cloud-resource-ambiguous");
+      adopt({
+        address: "stackit_telemetrylink.audit[0]",
+        type: "stackit_telemetrylink",
+        resourceId: `project,${projectId},${target.region}`,
+      });
+    }
+  } else if (cloud.audit) throw new Error("cloud-project-mismatch");
   let routingTableId: string | undefined;
   if (target.corporate) {
     if (
@@ -558,12 +609,14 @@ export function deriveApplicationRecoveryImports(input: {
       "stackit_objectstorage_credentials_group",
       "stackit_secretsmanager_instance",
       "stackit_observability_instance",
+      "stackit_telemetrylink",
     ].indexOf(type);
   return imports.sort((a, b) => priority(a.type) - priority(b.type));
 }
 
 /** Exact lost-secret cleanup manifest, reviewed separately from State adoption.
- * Only keys of the already verified automation account/Application group qualify.
+ * Only keys of the verified automation account/Application group and the exact
+ * centrally bound Application ingestion token qualify.
  * Retained credentials and their secrets are never revoked. */
 export function deriveApplicationRecoveryRevocations(
   input: Parameters<typeof deriveApplicationRecoveryImports>[0],
@@ -665,6 +718,56 @@ export function deriveApplicationRecoveryRevocations(
         : { groupId: group!.id }),
     });
   }
+  if (cloud.audit) {
+    const token = state.instances.find(
+      (i) => i.address === "stackit_telemetryrouter_access_token.audit[0]",
+    );
+    const attributes = token?.instance.attributes;
+    if (
+      token &&
+      (attributes!.project_id !== cloud.audit.projectId ||
+        attributes!.instance_id !== cloud.audit.routerId ||
+        attributes!.region !== region)
+    )
+      throw new Error("checkpoint-invalid");
+    for (const t of cloud.audit.tokens) {
+      if (
+        attributes?.access_token_id === t.id &&
+        !recoveryCredentialIncomplete(token!.address, attributes)
+      )
+        continue;
+      result.push({
+        kind: "audit-router-token",
+        address: "stackit_telemetryrouter_access_token.audit[0]",
+        projectId: cloud.audit.projectId,
+        region,
+        routerId: cloud.audit.routerId,
+        keyId: t.id,
+        discardIncompleteState: attributes?.access_token_id === t.id,
+      });
+    }
+    if (
+      token &&
+      recoveryCredentialIncomplete(token.address, attributes!) &&
+      !cloud.audit.tokens.some((t) => t.id === attributes!.access_token_id)
+    ) {
+      result.push({
+        kind: "audit-router-token",
+        address: token.address,
+        projectId: cloud.audit.projectId,
+        region,
+        routerId: cloud.audit.routerId,
+        keyId: uuid.parse(attributes!.access_token_id),
+        discardIncompleteState: true,
+      });
+    }
+    if (
+      token &&
+      !recoveryCredentialIncomplete(token.address, attributes!) &&
+      !cloud.audit.tokens.some((t) => t.id === attributes!.access_token_id)
+    )
+      throw new Error("cloud-resource-ambiguous");
+  }
   if (result.length > 100) throw new Error("cloud-resource-ambiguous");
   return result.sort((a, b) =>
     JSON.stringify(a).localeCompare(JSON.stringify(b)),
@@ -679,7 +782,21 @@ export function normalizeRevokedRecoveryInventory(
   const now = recoveryCloudInventorySchema.parse(current),
     before = recoveryCloudInventorySchema.parse(original);
   for (const r of revocations) {
-    if (r.kind === "service-account-key") {
+    if (r.kind === "audit-router-token") {
+      if (
+        !now.audit ||
+        !before.audit ||
+        now.audit.projectId !== r.projectId ||
+        now.audit.routerId !== r.routerId ||
+        before.audit.projectId !== r.projectId ||
+        before.audit.routerId !== r.routerId
+      )
+        throw new Error("cloud-project-mismatch");
+      const old = before.audit.tokens.find((t) => t.id === r.keyId);
+      const current = now.audit.tokens.find((t) => t.id === r.keyId);
+      if (!old && current) throw new Error("cloud-project-mismatch");
+      if (old && !current) now.audit.tokens.push(old);
+    } else if (r.kind === "service-account-key") {
       const a = now.serviceAccounts.find(
         (a) => a.email === r.accountEmail && a.projectId === r.projectId,
       );
@@ -719,13 +836,15 @@ export function recoveryRevocationsAbsent(
 ) {
   const cloud = recoveryCloudInventorySchema.parse(inventory);
   return revocations.every((r) =>
-    r.kind === "service-account-key"
-      ? !cloud.serviceAccounts.some(
-          (a) => a.email === r.accountEmail && a.keyIds.includes(r.keyId),
-        )
-      : !cloud.credentialsGroups.some(
-          (g) => g.id === r.groupId && g.accessKeyIds?.includes(r.keyId),
-        ),
+    r.kind === "audit-router-token"
+      ? !cloud.audit?.tokens.some((t) => t.id === r.keyId)
+      : r.kind === "service-account-key"
+        ? !cloud.serviceAccounts.some(
+            (a) => a.email === r.accountEmail && a.keyIds.includes(r.keyId),
+          )
+        : !cloud.credentialsGroups.some(
+            (g) => g.id === r.groupId && g.accessKeyIds?.includes(r.keyId),
+          ),
   );
 }
 export function recoveryRevocationStep(

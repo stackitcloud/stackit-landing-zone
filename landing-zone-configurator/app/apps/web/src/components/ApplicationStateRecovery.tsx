@@ -277,7 +277,7 @@ export function ApplicationStateRecovery({
                     <code>{r.address}</code>
                     <br />
                     <code>
-                      {r.accountEmail ?? r.groupId} / {r.keyId}
+                      {r.accountEmail ?? r.groupId ?? r.routerId} / {r.keyId}
                     </code>
                     {r.discardIncompleteState && (
                       <p>

@@ -130,6 +130,7 @@ afterEach(async () => {
 async function platformFixture(
   classification: "ordinary" | "sensitive" | "blocked" = "sensitive",
   orderPolicy: "direct" | "approval-required" = "direct",
+  audit = false,
 ) {
   const instance = randomUUID(),
     version = randomUUID(),
@@ -257,6 +258,9 @@ async function platformFixture(
         targets: {
           public: {
             ...target,
+            ...(audit && revision === to
+              ? { audit_router: { project_id: org, instance_id: to } }
+              : {}),
             firewall_next_hop_ip: revision === to ? "10.0.2.7" : null,
           },
         },
@@ -1236,4 +1240,114 @@ it("refreshes a selected Platform path policy without reverting the already adva
   expect(next.effectiveDeploymentPolicy).toBe("direct");
   expect(next.effectivePlatformRevision).toBe(f.to);
   expect(next.effectiveSettings).toEqual(context.effectiveSettings);
+});
+
+it("moves an existing order to the reviewed audit-capable source when the requester accepts an approved Platform audit path", async () => {
+  const f = await platformFixture("sensitive", "direct", true);
+  const edge = await scoped(
+    engineer,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,true) AS value",
+          [engineer.id, f.from, f.to, { sensitive: "direct" }],
+        )
+      ).rows[0].value,
+  );
+  const context = await scoped(
+    owner,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.request_application_platform_upgrade($1,$2,$3,NULL,$4,true) AS value",
+          [owner.id, f.instance, edge.id, f.from],
+        )
+      ).rows[0].value,
+  );
+  expect(context.candidate).toMatchObject({
+    platformRevision: f.to,
+    versionId: f.version,
+    sourceRevision: "c83f3d910ab20131d1cba898023317c0e818843b",
+  });
+  expect(context.candidate.executionBindingId).toEqual(expect.any(String));
+  const stored = (
+    await admin.query(
+      "SELECT version_id,resolved_settings FROM lzc.application_instances WHERE id=$1",
+      [f.instance],
+    )
+  ).rows[0];
+  expect(stored.version_id).toBe(f.version);
+  expect(stored.resolved_settings).toEqual(f.settings);
+  const platform = (
+    await admin.query(
+      "SELECT document FROM lzc.application_platform_contracts WHERE revision=$1",
+      [f.to],
+    )
+  ).rows[0].document;
+  const publication = (
+    await admin.query(
+      "SELECT document,version FROM lzc.application_template_versions WHERE id=$1",
+      [f.version],
+    )
+  ).rows[0];
+  const inputs = {
+    acceleratorRevision: context.candidate.sourceRevision,
+    executionBindingId: context.candidate.executionBindingId,
+    applicationUpgradeId: context.candidate.id,
+    applyPolicy: "direct",
+    stateKey: `applications/${owner.tenantId}/${f.instance}/terraform.tfstate`,
+    requestedBy: owner.userId,
+    variables: {
+      platform_contract: platform,
+      application: {
+        ...f.settings,
+        configurator_execution: true,
+        tenant_id: owner.tenantId,
+        instance_id: f.instance,
+        name: "impacted-order",
+        platform_revision: f.to,
+        template_id: `template-${publication.document.id}`,
+        template_version: publication.version,
+        target_key: "public",
+      },
+    },
+  };
+  const insert = (value: unknown) =>
+    scoped(owner, (c) =>
+      c.query(
+        "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at) VALUES($1,$2,$3,$4,$5,$6,'plan',$7,$8,now()+interval '10 minutes') RETURNING id",
+        [
+          randomUUID(),
+          owner.tenantId,
+          f.instance,
+          owner.userId,
+          owner.id,
+          randomUUID(),
+          value,
+          hash,
+        ],
+      ),
+    );
+  const wrongRouter = structuredClone(inputs);
+  wrongRouter.variables.platform_contract.targets.public.audit_router.instance_id =
+    randomUUID();
+  // Existing upgrade-input guards may reject before the dedicated audit guard.
+  // Both mutations must fail authorization; the unchanged input must admit below.
+  await expect(insert(wrongRouter)).rejects.toMatchObject({ code: "42501" });
+  await expect(
+    insert({ ...inputs, acceleratorRevision: source }),
+  ).rejects.toMatchObject({ code: "42501" });
+  const job = (await insert(inputs)).rows[0];
+  expect(
+    (
+      await admin.query(
+        "SELECT accelerator_revision,platform_revision,state_key FROM lzc.application_job_grants WHERE job_id=$1",
+        [job.id],
+      )
+    ).rows[0],
+  ).toEqual({
+    accelerator_revision: context.candidate.sourceRevision,
+    platform_revision: f.to,
+    state_key: inputs.stateKey,
+  });
 });

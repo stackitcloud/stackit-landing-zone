@@ -75,7 +75,9 @@ New Application orders receive non-secret central router references through the
 published platform contract. The central deployment identity creates their link
 and a separate ingestion token in the management project, after the Application
 resources exist. Workload defaults grant neither audit-link mutation nor access
-to central router credentials. Configuring project Owner rights or inherited
+to central router credentials through project IAM. The Application State contains
+its ingestion token and must use a centrally protected backend that workload
+identities cannot read. Configuring project Owner rights or inherited
 privileged grants remains a customer choice and can allow changing the link;
 this is not an IAM deny policy. Keep privileged platform identities outside
 Application projects. Link activation captures future events, not retroactive

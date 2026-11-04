@@ -80,7 +80,9 @@ Router über den veröffentlichten Plattformvertrag. Die zentrale
 Deployment-Identität erstellt ihren Link und ein separates Ingestion-Token im
 Management-Projekt, nachdem die Application-Ressourcen existieren.
 Workload-Standardrechte erlauben weder Audit-Link-Änderungen noch Zugriff auf
-zentrale Router-Zugangsdaten. Projekt-Owner-Rechte oder geerbte privilegierte
+zentrale Router-Zugangsdaten über Projekt-IAM. Der Application-State enthält
+sein Ingestion-Token und benötigt ein zentral geschütztes Backend, das
+Workload-Identitäten nicht lesen dürfen. Projekt-Owner-Rechte oder geerbte privilegierte
 Rechte bleiben Kundenwahl und können Link-Änderungen ermöglichen; dies ist keine
 IAM-Deny-Richtlinie. Privilegierte Plattform-Identitäten außerhalb der
 Application-Projekte halten. Die Link-Aktivierung erfasst zukünftige Ereignisse,

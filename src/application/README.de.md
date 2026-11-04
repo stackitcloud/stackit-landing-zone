@@ -10,6 +10,16 @@ Für die direkte CLI-Nutzung sind weder Configurator-API, Datenbank, Sitzung, Jo
 noch Template-Engine erforderlich. Migrieren Sie bestehenden kombinierten State nicht durch
 Verzeichniswechsel oder das Löschen seiner `landing_zones`-Einträge: Dies kann destruktive Änderungen planen.
 
+Wenn die Plattform `audit_logs.managed_resources` aktiviert, enthält jedes
+veröffentlichte Ziel die öffentlichen Referenzen `audit_router.project_id` und
+`audit_router.instance_id`. Dieses Root ergänzt einen Projekt-Telemetry-Link
+und ein eigenes Ingestion-Token im zentralen Projekt, unter Verwendung der
+Deployment-Identität. Workload-Identitäten dürfen das State-Backend nicht lesen,
+da es dieses Token enthält. Historische Verträge ohne diese Referenzen bleiben
+unverändert. Bestehende Bestellungen verwenden einen freigegebenen
+Plattform-Upgrade-Pfad und einen neuen geprüften Plan/Apply; siehe
+[Audit-Abdeckung](../../docs/architecture.de.md#audit-abdeckung).
+
 Der Configurator löst Templates auf und prüft seine eigenen Identitäts-/Freigaberichtlinien.
 CLI-Nutzer geben die aufgelösten Werte direkt an, einschließlich Eigentümer und
 Diensteinstellungen. In beiden Betriebsarten setzen STACKIT IAM und Backend-Richtlinien

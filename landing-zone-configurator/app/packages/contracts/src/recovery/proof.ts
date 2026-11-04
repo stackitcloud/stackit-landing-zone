@@ -139,15 +139,20 @@ export function verifyImportedRecoveryState(input: {
         !attributes ||
         !recoveryCredentialIncomplete(r.address, attributes) ||
         attributes.project_id !== r.projectId ||
-        (r.kind === "service-account-key"
-          ? r.address !==
-              "module.application.stackit_service_account_key.automation" ||
-            attributes.key_id !== r.keyId ||
-            attributes.service_account_email !== r.accountEmail
-          : r.address !==
-              "module.application.stackit_objectstorage_credential.this" ||
-            attributes.credential_id !== r.keyId ||
-            attributes.credentials_group_id !== r.groupId)
+        (r.kind === "audit-router-token"
+          ? r.address !== "stackit_telemetryrouter_access_token.audit[0]" ||
+            attributes.access_token_id !== r.keyId ||
+            attributes.instance_id !== r.routerId ||
+            attributes.region !== r.region
+          : r.kind === "service-account-key"
+            ? r.address !==
+                "module.application.stackit_service_account_key.automation" ||
+              attributes.key_id !== r.keyId ||
+              attributes.service_account_email !== r.accountEmail
+            : r.address !==
+                "module.application.stackit_objectstorage_credential.this" ||
+              attributes.credential_id !== r.keyId ||
+              attributes.credentials_group_id !== r.groupId)
       )
         throw new Error("checkpoint-changed");
       removals.add(r.address);
@@ -225,7 +230,12 @@ export function verifyRecoveryPreview(
           z.object({
             address: z.string(),
             mode: z.enum(["managed", "data"]),
-            change: z.object({ actions: z.array(z.string()).min(1).max(2) }),
+            change: z.object({
+              actions: z.array(z.string()).min(1).max(2),
+              before: z.record(z.string(), z.json()).nullable().optional(),
+              after: z.record(z.string(), z.json()).nullable().optional(),
+              after_unknown: z.record(z.string(), z.json()).optional(),
+            }),
           }),
         )
         .max(2000)
@@ -237,6 +247,7 @@ export function verifyRecoveryPreview(
   );
   const counts = { create: 0, unchanged: 0, update: 0, delete: 0, replace: 0 };
   const seen = new Set<string>();
+  const credentialUpdates = new Set<string>();
   for (const r of plan.resource_changes) {
     if (seen.has(r.address)) throw new Error("unexpected-plan-change");
     seen.add(r.address);
@@ -245,23 +256,72 @@ export function verifyRecoveryPreview(
     const actions = canonical(r.change.actions);
     if (actions === '["no-op"]') counts.unchanged++;
     else if (actions === '["create"]') counts.create++;
-    else throw new Error("unexpected-plan-change");
+    else if (
+      actions === '["update"]' &&
+      r.address === "stackit_telemetrylink.audit[0]"
+    ) {
+      // Import cannot restore a router token. Only its credential may change;
+      // Project, region, sink and configuration stay fixed. Only computed
+      // status/timestamps may become unknown during the credential update.
+      const old = retained.find((i) => i.address === r.address)?.instance
+        .attributes;
+      const before = r.change.before,
+        after = r.change.after;
+      const withoutToken = (value: Record<string, unknown>) =>
+        Object.fromEntries(
+          Object.entries(value).filter(
+            ([key]) => !["access_token", "create_time", "status"].includes(key),
+          ),
+        );
+      if (
+        !old ||
+        !before ||
+        !after ||
+        before.id !== old.id ||
+        before.resource_type !== "project" ||
+        [
+          "resource_type",
+          "resource_id",
+          "region",
+          "telemetry_router_id",
+          "display_name",
+          "enabled",
+        ].some((key) => before[key] !== old[key]) ||
+        canonical(withoutToken(before)) !== canonical(withoutToken(after)) ||
+        Object.entries(r.change.after_unknown ?? {}).some(
+          ([key, value]) =>
+            value !== false &&
+            !["access_token", "create_time", "status"].includes(key),
+        )
+      )
+        throw new Error("unexpected-plan-change");
+      credentialUpdates.add(r.address);
+      counts.update++;
+    } else throw new Error("unexpected-plan-change");
   }
   for (const old of retained) {
     const change = plan.resource_changes.find((i) => i.address === old.address);
-    if (!change || canonical(change.change.actions) !== '["no-op"]')
+    if (
+      !change ||
+      (canonical(change.change.actions) !== '["no-op"]' &&
+        !credentialUpdates.has(old.address))
+    )
       throw new Error("unexpected-plan-change");
   }
   return counts;
 }
 
 /** Templates generate private credentials; an ID-only checkpoint is not usable
- * credential material. Only these two exact resource addresses may be discarded
+ * credential material. Only the exact credential addresses below may be discarded
  * after explicit approval; no arbitrary State removal is accepted. */
 export function recoveryCredentialIncomplete(
   address: string,
   attributes: Record<string, unknown>,
 ) {
+  if (address === "stackit_telemetryrouter_access_token.audit[0]")
+    return (
+      typeof attributes.access_token !== "string" || !attributes.access_token
+    );
   if (address === "module.application.stackit_objectstorage_credential.this")
     return (
       typeof attributes.secret_access_key !== "string" ||
