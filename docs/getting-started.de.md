@@ -97,7 +97,10 @@ Angaben. Bestelleingaben verwenden ihre konfigurierte Vorauswahl. Eine
 Pflichteingabe ohne Vorauswahl verwendet den ersten erlaubten Auswahlwert oder
 die entsprechende Beispieleinstellung. Prüfe insbesondere Stage und
 Service-Leistungsklassen. Auswahlmöglichkeiten und Self-Service-Freigaberichtlinien
-werden nicht zu Terraform-Zugriffskontrollen. Eine symbolische Observability-
+werden nicht zu Terraform-Zugriffskontrollen. Template-Regionen müssen zur nativen
+Plattform passen: Public/Corporate in einer anderen Region benötigen eine passende
+`connectivity_regions`-Konfiguration; Sandboxes verwenden die Plattformregion.
+Der Download meldet unpassende Regionen, statt sie stillschweigend zu ignorieren. Eine symbolische Observability-
 Netzbindung muss vor dem Export durch explizite Zugriffsquellen ersetzt werden;
 sie wird niemals stillschweigend als unbeschränkte ACL exportiert. Externe
 Zugangsdaten stellst du wie unten beschrieben bereit; gespeicherte Deployment-

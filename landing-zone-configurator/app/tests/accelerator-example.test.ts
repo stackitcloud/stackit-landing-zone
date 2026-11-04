@@ -53,6 +53,47 @@ it("preserves legacy concrete configurations, including explicit nulls", () => {
   );
 });
 
+it("refuses a Public region the single-region native root would ignore", () => {
+  const draft = createEditorConfiguration("standalone", randomUUID());
+  const template = projectTemplates(draft).find((t) => t.kind === "public");
+  if (!template) throw new Error("Missing public fixture");
+  const changed = updateProjectTemplate(draft, template.id, { region: "eu02" });
+  expect(() => exportAcceleratorExample(changed)).toThrow(
+    "Mehrregionen-Konfiguration",
+  );
+  expect(
+    projectTemplates(changed).find((t) => t.id === template.id)?.region,
+  ).toBe("eu02");
+  expect(compileCommonConfiguration(changed).landing_zones).toEqual({});
+});
+
+it("keeps a central Owner distinct from a coincidentally matching example subject", () => {
+  let draft = addProjectTemplate(
+    createEditorConfiguration("standalone", randomUUID()),
+    "public",
+    "central-owner",
+  );
+  const template = projectTemplates(draft).find(
+    (t) => t.key === "central-owner",
+  );
+  if (template?.accessProfile?.mode !== "granular")
+    throw new Error("Missing granular fixture");
+  draft = updateProjectTemplate(draft, template.id, {
+    accessProfile: { ...template.accessProfile, initialOwnerEmail: "" },
+  });
+  expect(
+    objectValue(acceleratorExampleValues(draft).landing_zones)[template.key],
+  ).toMatchObject({
+    owner_email: "central-owner@example.com",
+    role_assignments: [
+      {
+        role: "application-workload",
+        subject: "example-application-user@example.com",
+      },
+    ],
+  });
+});
+
 it("exports granular SKE rights, distinct automation rights and central ownership", () => {
   let draft = createEditorConfiguration("standalone", randomUUID());
   const template = projectTemplates(draft).find((t) => t.kind === "public");

@@ -20,7 +20,31 @@ export function acceleratorExampleValues(input: CommonConfiguration) {
     objectValue(values.landing_zone_namespace_services),
   );
   for (const template of document.projectTemplates ?? []) {
-    const requester = `${template.key}@example.com`;
+    const platformRegion = textValue(values.region) || "eu01";
+    if (
+      (template.kind === "sandbox" && template.region !== platformRegion) ||
+      (template.kind !== "sandbox" &&
+        (values.connectivity_regions == null
+          ? template.region !== platformRegion
+          : !Object.hasOwn(
+              objectValue(values.connectivity_regions),
+              template.region,
+            )))
+    )
+      throw new Error(
+        "Für den Accelerator-Export müssen die Template-Regionen zur nativen Plattformkonfiguration passen. Public/Corporate benötigen bei abweichender Region eine passende Mehrregionen-Konfiguration; Sandboxes verwenden die Plattformregion.",
+      );
+    const centralOwner =
+      template.accessProfile?.mode === "granular"
+        ? template.accessProfile.initialOwnerEmail ||
+          "central-owner@example.com"
+        : "";
+    const requester =
+      centralOwner.toLowerCase() === `${template.key}@example.com`
+        ? template.key === "example-application-user"
+          ? "another-application-user@example.com"
+          : "example-application-user@example.com"
+        : `${template.key}@example.com`;
     if (template.kind === "sandbox") {
       sandboxes.push({
         ...template.settings,
