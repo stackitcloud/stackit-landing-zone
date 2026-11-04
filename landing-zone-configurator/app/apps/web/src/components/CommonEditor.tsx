@@ -8,7 +8,7 @@ import {
   editCommonInput,
   editorIssues,
   effectiveInput,
-  exportCommonTfvars,
+  exportAcceleratorExample,
   folderNames,
   type InputType,
   inputDefinition,
@@ -766,26 +766,42 @@ export function CommonEditor({
                     )}
                   </p>
                 ))}
+              <p>
+                {t(
+                  "Der Accelerator-Download enthält die Plattform und je einen Projekteinstieg pro Application-Template. Beispieladressen und Projektangaben vor Plan/Apply anpassen; nicht benötigte Einträge entfernen. Speichern und Ausführen im Configurator bleiben davon unabhängig.",
+                )}
+              </p>
               <div className="actions">
                 <button
                   type="button"
                   className="button primary"
                   disabled={issues.length > 0}
                   onClick={() => {
-                    const url = URL.createObjectURL(
-                      new Blob([exportCommonTfvars(draft)], {
-                        type: "text/plain;charset=utf-8",
-                      }),
-                    );
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = "landing-zone.tfvars";
-                    link.click();
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    setNotice("tfvars zum Download bereitgestellt.");
+                    try {
+                      setError("");
+                      const url = URL.createObjectURL(
+                        new Blob([exportAcceleratorExample(draft)], {
+                          type: "text/plain;charset=utf-8",
+                        }),
+                      );
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = "landing-zone.tfvars";
+                      link.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                      setNotice(
+                        "Accelerator-Beispiel zum Download bereitgestellt.",
+                      );
+                    } catch (cause) {
+                      setError(
+                        cause instanceof Error
+                          ? cause.message
+                          : "Accelerator-Export fehlgeschlagen.",
+                      );
+                    }
                   }}
                 >
-                  {t("tfvars herunterladen")}
+                  {t("Accelerator-Beispiel herunterladen")}
                 </button>
                 <button
                   type="button"

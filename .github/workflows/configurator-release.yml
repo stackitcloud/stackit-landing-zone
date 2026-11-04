@@ -122,6 +122,7 @@ jobs:
           node ../infra/ci/run-parallel.mjs browser 'npx playwright install --with-deps chromium && npm run test:e2e' native '
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npx vitest run tests/worker-recovery-hold.test.ts
           npm run test:common-contract
+          LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:export-native
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:plan
           LZC_HOSTED_EXECUTION_PACKAGE=true LZC_PACKAGE_APPLICATION_ROOT=true LZC_PACKAGE_PLATFORM_UPGRADE_ROOT=true bash ../deploy/runner/package.sh
           '

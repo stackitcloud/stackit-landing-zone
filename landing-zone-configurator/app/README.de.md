@@ -19,6 +19,8 @@ npm run check
 
 `check` führt Biome, TypeScript-Prüfung einschließlich Tests, Produktionsbuild und Vitest aus. `npm run format` korrigiert Formatierung und Importreihenfolge.
 
+`LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:export-native` erzeugt den tatsächlichen Accelerator-Download und verarbeitet diese Datei mit dem vollständigen nativen Root und Mock-Providern in einer leeren Zugangsdatenumgebung. Geprüft werden Public/Corporate-Netze, Observability und granulare Kubernetes-Rechte ohne API, Datenbank oder Runner. `npm run test:common-contract` prüft zusätzlich die Downloads aller Katalogvorlagen gegen die nativen Variablenverträge.
+
 `npm run test:plan` prüft zusätzlich den echten gepinnten STACKIT-Netzwerkprovider
 über `scripts/test-application-network.sh`. Die Prüfung verwendet frischen
 temporären lokalen State, eine bereinigte Umgebung, Dummy-Authentifizierung und

@@ -2666,6 +2666,14 @@ export const englishMessages: Record<string, string> = {
   "Testeingaben zurücksetzen": "Reset test inputs",
   "text-button danger": "text-button danger",
   "tfvars herunterladen": "Download tfvars",
+  "Accelerator-Beispiel herunterladen": "Download Accelerator example",
+  "Accelerator-Beispiel zum Download bereitgestellt.":
+    "Accelerator example ready to download.",
+  "Accelerator-Export fehlgeschlagen.": "Accelerator export failed.",
+  "Für den Accelerator-Export die symbolische Observability-Netzbindung durch explizite Zugriffsquellen ersetzen.":
+    "For Accelerator export, replace the symbolic Observability network binding with explicit access sources.",
+  "Der Accelerator-Download enthält die Plattform und je einen Projekteinstieg pro Application-Template. Beispieladressen und Projektangaben vor Plan/Apply anpassen; nicht benötigte Einträge entfernen. Speichern und Ausführen im Configurator bleiben davon unabhängig.":
+    "The Accelerator download includes the platform and one example project per Application template. Before Plan/Apply, replace example addresses and project details; remove unwanted entries. Saving and executing in the Configurator remain separate.",
   "tfvars zum Download bereitgestellt.": "tfvars ready to download.",
   "tfvars-Prüfsumme": "tfvars checksum",
   "Token-Aussteller (Issuer-URL)": "Token issuer (issuer URL)",

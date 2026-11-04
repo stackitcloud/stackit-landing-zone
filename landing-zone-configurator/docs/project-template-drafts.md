@@ -98,7 +98,7 @@ The existing v3 document format now has optional `projectTemplates`.
 - With the field, it is a platform draft; even an empty list identifies this mode.
 - Platform drafts must not contain concrete `landing_zones`, `sandboxes` or `landing_zone_namespace_services`. Mixed forms are rejected during reading, saving and export.
 - Template settings are checked against the existing Accelerator input contract; concrete instance/owner fields are prohibited in template settings.
-- JSON in the personal fork retains template drafts. Deterministic tfvars export contains only the platform and explicitly empty application collections.
+- JSON in the personal fork retains template drafts. The saved platform tfvars and hosted execution inputs contain only the platform and explicitly empty application collections. The separate **Download Accelerator example** action materializes each template as one native example project, resolves rights and context subjects, and records the source in its header. It needs no publication or Configurator runtime; see [CLI export usage](../../docs/getting-started.md#use-a-configurator-export).
 - Initial-provisioning plans for permitted platform subsets therefore plan **only the platform**, not template instances. Other Runner guards remain effective.
 
 The optional field preserves readability of old documents without automatic reinterpretation. Publication will later receive its own tenant-bound, immutable version contract; an editable fork draft is not a published version or provisioning authorization.
@@ -191,7 +191,7 @@ Application Apply remains unimplemented. A successful Plan creates no cloud reso
 - [x] All eight source templates are converted without loss of platform/project policy.
 - [x] Personal instance fields do not enter project templates.
 - [x] Legacy documents remain unchanged on reading; copies require a new ID.
-- [x] Git storage retains metadata; tfvars and deployment preparation contain no projects generated from it.
+- [x] Git storage retains metadata; saved platform tfvars and deployment preparation contain no projects generated from it. The explicit Accelerator download includes native example projects.
 - [x] Mixed template/instance documents are rejected.
 - [x] Native OpenTofu variable checking confirms empty application, sandbox and namespace collections in platform export.
 - [x] Browser checks including legacy copy/save successful; CI validation and [release 36855011827](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36855011827) for `0e62c5e` successful. Live SPA serves HTTP 200 with the expected bundle `index-bjLShEoG.js`.
