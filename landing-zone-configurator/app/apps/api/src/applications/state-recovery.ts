@@ -10,11 +10,14 @@ import {
   s3RunnerBackendSchema,
 } from "@lzc/contracts";
 import {
+  decodeProjectIamPlan,
   decodeRecoveryArtifact,
   deriveApplicationRecoveryImports,
   deriveApplicationRecoveryRevocations,
   encodeRecoveryArtifact,
   normalizeRevokedRecoveryInventory,
+  projectIamEffectiveVariables,
+  projectIamMigrationSchema,
   readRecoveryState,
   recoveryArtifactSchema,
   recoveryCloudInventorySchema,
@@ -58,6 +61,15 @@ const contextSchema = z.object({
   serviceAccount: z.string().min(1).optional(),
   organizationId: z.uuid(),
   sourceRevision: applicationExecutionRevisionSchema,
+  iamPlanArtifact: z
+    .object({
+      ciphertext: z.string().regex(/^[a-f0-9]+$/),
+      sha256: hash,
+      planId: z.uuid(),
+      ownerUserId: z.uuid(),
+    })
+    .nullable()
+    .optional(),
   originalInputs: z.object({ variables: z.record(z.string(), z.json()) }),
   backendCiphertext: z.string().regex(/^[a-f0-9]+$/),
   finishedAt: z.iso.datetime({ offset: true }),
@@ -215,7 +227,7 @@ export class ApplicationStateRecoveries {
     });
   }
   private async context(session: Session, id: string) {
-    return this.work(session, async (client) =>
+    const c = await this.work(session, async (client) =>
       contextSchema.parse(
         (
           await client.query<{ context: unknown }>(
@@ -225,6 +237,22 @@ export class ApplicationStateRecoveries {
         ).rows[0]?.context,
       ),
     );
+    if (c.iamPlanArtifact) {
+      const a = c.iamPlanArtifact;
+      const bytes = this.deps.crypto.decrypt(
+        Buffer.from(a.ciphertext, "hex"),
+        session.tenantId,
+        a.ownerUserId,
+        `application-artifact:${a.planId}`,
+      );
+      if (sha256(bytes) !== a.sha256) fail();
+      const { iam } = decodeProjectIamPlan(bytes);
+      if (iam)
+        c.originalInputs.variables = z
+          .record(z.string(), z.json())
+          .parse(projectIamEffectiveVariables(c.originalInputs.variables, iam));
+    }
+    return c;
   }
   private seal(session: Session, id: string, value: unknown) {
     const bytes = Buffer.from(JSON.stringify(value));
@@ -504,6 +532,22 @@ export class ApplicationStateRecoveries {
         ownerEmail:
           vars.application.initial_owner_email ?? vars.application.owner_email,
         customRoles: !!vars.application.custom_roles?.length,
+        ...(c.originalInputs.variables.lzc_project_iam
+          ? {
+              migrationOwners: (() => {
+                const iam = projectIamMigrationSchema.parse(
+                  c.originalInputs.variables.lzc_project_iam,
+                );
+                return iam.phase === "prepare"
+                  ? iam.oldBindings
+                      .filter((b) =>
+                        ["owner", "project.owner"].includes(b.role),
+                      )
+                      .map((b) => b.subject)
+                  : [];
+              })(),
+            }
+          : {}),
         ...(target.corporate
           ? {
               routing: {

@@ -7,6 +7,10 @@ import type {
   applicationPlatformImpactSchema,
   applicationUpgradeSafetySchema,
 } from "./application-upgrades.js";
+import {
+  type ProjectIamMigrationSummary,
+  projectIamMigrationSummarySchema,
+} from "./project-iam.js";
 
 export const applicationMvpAcceleratorCommit =
   applicationExecutionCurrentRevision;
@@ -51,6 +55,7 @@ export interface PlanSummary {
   destructive: boolean;
   completeness: "complete" | "incomplete" | "not-reported";
   upgradeSafety?: z.infer<typeof applicationUpgradeSafetySchema>;
+  iamMigration?: ProjectIamMigrationSummary;
   platformImpact?: z.infer<typeof applicationPlatformImpactSchema>;
 }
 
@@ -312,7 +317,22 @@ export function summarizePlan(
     plan.terraform_version === "1.12.6" &&
     plan.format_version === "1.2" &&
     plan.deferred_changes === undefined;
+  const iam =
+    plan.variables && typeof plan.variables === "object"
+      ? object(plan.variables).lzc_project_iam
+      : undefined;
+  const migration =
+    iam && object(iam).value ? object(object(iam).value) : undefined;
+  const iamSummary = migration
+    ? projectIamMigrationSummarySchema.parse({
+        version: migration.version,
+        phase: migration.phase,
+        imports: Object.keys(object(migration.imports)).length,
+        pendingRemovals: array(migration.oldBindings).length,
+      })
+    : undefined;
   return {
+    ...(iamSummary ? { iamMigration: iamSummary } : {}),
     schemaVersion: 1,
     execution: "plan-only",
     applyAllowed: false,

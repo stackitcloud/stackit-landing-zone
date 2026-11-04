@@ -7996,6 +7996,12 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             jobId: interrupted.jobId,
             instanceId: planned.ordered.id,
             credentialOwnerId: engineer.userId,
+            iamPlanArtifact: {
+              planId: planned.id,
+              ownerUserId: owner.userId,
+              sha256: planned.sha,
+              ciphertext: expect.any(String),
+            },
           });
           await expect(
             recoveryContext({ ...peer, tenantId }),

@@ -145,6 +145,7 @@ const fs = require("node:fs");
 const crypto = require("node:crypto");
 const args = process.argv.slice(2);
 const phase = args[0];
+if (phase === "state") { console.error("No state file was found!"); process.exit(1); }
 if (phase === "version") {
   console.log(JSON.stringify({terraform_version: ${JSON.stringify(behavior === "wrong-engine" ? "1.11.6" : "1.12.6")}}));
   process.exit(0);
@@ -681,6 +682,14 @@ function applicationInput(
   test: Awaited<ReturnType<typeof fixture>>,
   mode = "application-plan",
 ) {
+  test.input.tfvars = JSON.stringify({
+    application: {
+      instance_id: applicationBinding.instanceId,
+      owner_email: "owner@example.com",
+      role_assignments: [],
+    },
+  });
+  test.input.tfvarsSha256 = digest(test.input.tfvars as string);
   test.options.broker = "application";
   test.input.mode = mode;
   test.input.acceleratorCommit = applicationAcceleratorCommit;

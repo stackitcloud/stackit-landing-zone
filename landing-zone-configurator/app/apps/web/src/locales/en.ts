@@ -1,4 +1,16 @@
 export const englishMessages: Record<string, string> = {
+  "Projektberechtigungen fertigstellen": "Complete project permissions",
+  "Der zentrale Projekt-Owner ist abgesichert. Die bisherigen direkten Owner-Rechte wurden für die sichere Übergabe beibehalten. Erstelle jetzt einen weiteren Plan, um sie zu entfernen, und führe danach den geprüften Apply aus.":
+    "The central project owner is secured. Previous direct owner grants were retained for a safe handover. Create another plan to remove them, then run the reviewed apply.",
+  "Zum nächsten Plan": "Continue to the next plan",
+  "Übergabe der Projektberechtigungen": "Project permission handover",
+  "Schritt 1 von 2: Dieser Apply sichert den zentralen Owner und übernimmt historische direkte Rechte in den State. Die bisherigen Owner-Rechte bleiben zunächst erhalten. Danach ist ein weiterer Plan und Apply zum Entfernen nötig.":
+    "Step 1 of 2: This apply secures the central owner and adopts historical direct grants into state. Previous owner grants are retained initially. Another plan and apply are then needed to remove them.",
+  "Schritt 2 von 2: Der zentrale Owner ist bereits abgesichert. Dieser Plan entfernt die bisherigen direkten Owner-Rechte. Geerbte Rechte aus Ordner oder Organisation bleiben unberührt.":
+    "Step 2 of 2: The central owner is already secured. This plan removes previous direct owner grants. Inherited folder and organization permissions remain unchanged.",
+  "In den State zu übernehmen": "To adopt into state",
+  "Bisherige direkte Owner-Zuweisungen": "Previous direct owner grants",
+
   "Zurück zu den Upgrade-Pfaden": "Back to upgrade paths",
   "Neuen Plattform-Upgrade-Pfad veröffentlichen":
     "Publish a new platform upgrade path",

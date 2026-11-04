@@ -25,7 +25,10 @@ import {
   platformFirewallImage,
   platformRunnerSourceSchema,
 } from "@lzc/contracts";
-import { readApplicationExecutionManifest } from "@lzc/contracts/recovery";
+import {
+  decodeProjectIamPlan,
+  readApplicationExecutionManifest,
+} from "@lzc/contracts/recovery";
 import { z } from "zod";
 import type { PlanRunner } from "./cloud-foundry.js";
 
@@ -428,7 +431,11 @@ export class LocalPlanRunner implements PlanRunner {
         workContainer,
         { recursive: true },
       );
-      await writeFile(join(work, "saved-plan.bin"), bytes, { mode: 0o600 });
+      await writeFile(
+        join(work, "saved-plan.bin"),
+        decodeProjectIamPlan(bytes).native,
+        { mode: 0o600 },
+      );
       await writeFile(
         join(work, "runner.tfrc"),
         `provider_installation {\n  filesystem_mirror {\n    path = ${JSON.stringify(

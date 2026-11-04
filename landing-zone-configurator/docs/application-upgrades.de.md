@@ -152,6 +152,25 @@ eine Checkbox kann das nicht umgehen. Entzogene Rechte vor Apply prüfen. Ein
 erfolgreicher Plan beweist nicht, dass der Rollenentzug bestehende Workloads
 unbeeinflusst lässt.
 
+Direkte Owner-Zuweisungen aus der Projekterstellung werden in zwei geprüften
+Plan-/Apply-Durchläufen umgestellt. Eine Änderung von `owner_email` allein ändert
+nur Erstellungsmetadaten und entzieht keinen bestehenden Owner. Der Runner liest
+ausschließlich direkte Mitgliedschaften des konkreten Projekts, abgesichert durch
+Instanz-Labels und gebundenen Ordner. Zuerst erstellt oder importiert er den
+zentralen Owner und übernimmt historische `owner`-, `project.owner`- und
+`project.admin`-Zuweisungen für Besteller und Application-Service-Account in den
+State. Diese Rechte bleiben zunächst erhalten. Die Oberfläche fordert danach
+explizit einen zweiten Plan/Apply zum Entfernen der alten direkten Rechte an.
+Vor dem Entfernen prüft der Runner den zentralen Owner erneut; nach Apply prüft er
+die direkten Zuweisungen. Direkte Rechte anderer Benutzer und geerbte Rechte aus
+Ordner oder Organisation bleiben außerhalb dieser Migration. Ein ausdrücklich
+gewähltes vollständiges Owner-Profil bleibt möglich. Es gilt die veröffentlichte
+Freigaberichtlinie des Pfades; ein direkter Pfad benötigt keine zusätzliche
+Übergabe an den Platform Owner. Eingefrorener IAM-Kontext und nativer Plan sind
+zusammen als ein verschlüsseltes, gehashtes Artefakt gebunden, auch bei Recovery
+nach einem abgebrochenen Apply. Drift übernimmt keine neuen Zuweisungen; Destroy
+behält deren verwaltete Konfiguration bei, um sie konsistent löschen zu können.
+
 IAM, Zugangsdaten und Netzwerke können sich auch ohne Löschung ändern. Für vom
 tatsächlichen nativen Plan als sensibel klassifizierte Änderungen gelten die
 veröffentlichte Ausführungsrichtlinie des Pfads. Auch das Anlegen und Ändern von

@@ -135,6 +135,22 @@ match the saved Plan summary. Unknown or incomplete evidence blocks execution;
 a checkbox cannot override this. Review removed rights before Apply. A successful
 Plan does not prove that a removed role has no impact on existing workloads.
 
+Direct bootstrap Owner grants are migrated in two reviewed Plan/Apply cycles.
+Changing `owner_email` alone only changes creation metadata; it does not revoke an
+existing Owner. The Runner reads only the exact project's direct memberships,
+secured by the instance labels and bound folder. First it creates or imports the
+central Owner and imports historical `owner`, `project.owner` and `project.admin`
+grants for the requester and Application Service Account, retaining those grants.
+The UI explicitly asks for a second Plan/Apply to remove the old direct grants.
+Before cleanup, the Runner checks that the central Owner still exists; after Apply,
+it checks the direct grants again. Other users' direct grants and inherited
+folder/organization permissions remain outside this migration. An explicit full
+Owner profile remains supported. These steps use the path's published approval
+policy; a direct path requires no additional Platform Owner handoff. The frozen
+IAM context and native Plan share one encrypted, hashed artifact, including during
+interrupted-Apply recovery. Drift does not adopt new grants; Destroy retains their
+managed configuration so it can delete the managed assignments consistently.
+
 IAM, credentials and networking can change without a deletion. Changes classified
 as sensitive by the actual native Plan follow the published path execution
 policy.

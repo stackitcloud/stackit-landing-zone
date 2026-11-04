@@ -310,3 +310,47 @@ it("discovers a project only after complete, bounded pagination of the exact fol
   ).toBe(projectId);
   expect(calls).toHaveLength(3);
 });
+
+it("project IAM discovery verifies the exact target and never queries inherited bindings", async () => {
+  const instance = "22222222-2222-4222-8222-222222222222";
+  const { cloud, calls } = fixture((url, v) => {
+    if (url.includes("resource-manager"))
+      v.labels = {
+        application_instance: instance,
+        lzc_instance: instance,
+        application_template: "template",
+        managed_by: "landing-zone-configurator",
+      };
+  });
+  const result = await cloud.projectIam(
+    {
+      projectId,
+      instanceId: instance,
+      templateId: "template",
+      folderId: "folder",
+    },
+    key,
+  );
+  expect(result.members).toEqual([{ role: "owner", subject: ownerEmail }]);
+  expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
+    "/oauth/v2/token",
+    `/v2/projects/${projectId}`,
+    `/v2/project/${projectId}/members`,
+  ]);
+  expect(
+    calls
+      .slice(1)
+      .every((c) => c.init.method === "GET" && c.init.redirect === "error"),
+  ).toBe(true);
+  await expect(
+    cloud.projectIam(
+      {
+        projectId,
+        instanceId: instance,
+        templateId: "template",
+        folderId: "foreign",
+      },
+      key,
+    ),
+  ).rejects.toThrow("cloud-project-mismatch");
+});
