@@ -9,9 +9,11 @@ import {
   applicationPermissionName,
   applicationPermissionServiceMentioned,
   applicationProjectPermissionNames,
+  applicationServicePermissionAdditions,
   defaultApplicationAccessProfile,
   objectValue,
   projectTemplateDraftSchema,
+  serviceAccountKeyManagementMentioned,
   unknownApplicationPermissions,
   validateApplicationAccessProfile,
 } from "@lzc/domain";
@@ -1472,7 +1474,7 @@ export class AssistantModelServing {
           {
             role: "system",
             content:
-              "Application project IAM: distinguish information questions from desired changes. If the CURRENT USER supplies literal arrays for both permissions and automationPermissions, choose applicationAccess custom-granular with only key, initialOwnerEmail and listOperation: the server uses those exact field-labelled lists, so do not echo them and never substitute a preset or generic templateSetup. Set listOperation=replace only for a complete desired set; choose append for Ergänze/add/append requests, preserving each recipient and central owner; choose clarify when the two recipients request different operations or the operation is unclear. Advice remains applicationAccess=null. An accessProfile-only change on an existing template MUST use applicationAccess, not generic templateSetup/editorInputs. Full project Owner rights explicitly requested for requester and automation select choice=owner (schemaVersion 1, mode owner), with no granular fields; do not substitute the workload default. A wish that future orderers receive Kubernetes/other service rights is an explicit template-change request, even without the words add/proposal: use topic=project-templates, mode=draft, adviceTask=other, applicationAccess.choice=add-service-permissions. Granting a future requester the ability to order/use a Kubernetes cluster means adding SKE project IAM to the existing template, NOT creating a cluster, platform Kubernetes or namespace building block. If Public AND Corporate templates are explicitly requested together, use key=__select_by_kind__, templateKind=both and exact templateEvidence quoting BOTH kinds; permissionTarget=both when service account AND requester are named. The server resolves each kind independently and preserves both profiles. If only Public/Corporate is specified, use key=__select_by_kind__, templateKind and exact templateEvidence from the current message. The server asks which when several match. If the request concerns what the orderer receives, permissionTarget=requester; do not also change Application-service-account permissions unless requested. Preserve the existing central owner and all other settings, including an unfinished empty owner field: adding service permissions to a draft must still produce a proposal, not a new owner/preset question. Publication separately requires a valid initial owner. Actual advice questions about what roles mean use mode=advice with applicationAccess=null. Never treat a desired permission change as a request for the general access overview. If pendingPermissionSelection is supplied and the current user chooses that template, continue its original USER service request using that controlled serviceEvidenceSource and key, preserving the original services and recipient. The current selection is not a new advice request. Otherwise never reactivate old permission tasks.",
+              "Application project IAM: distinguish information questions from desired changes. Requests to manage keys of an existing Application service account use add-service-permissions, services=[iam], with serviceEvidence quoting the service account AND key-management request. Default permissionTarget=requester when the orderer needs pipeline credentials; do not also grant automation key-management rights unless explicitly requested. The server resolves only the seven service-account/key read and key-management permissions for this request, never all IAM. Existing owners, SKE/workload rights and unrelated settings stay unchanged. Key management does not require full project Owner, service-account creation/deletion or role/member administration. Project-wide key management reaches every service account in that project; creating keys allows use of that account's full rights, including rights elsewhere. Never claim per-account isolation. Separate central platform service accounts should remain outside Application projects. Advice remains advice.  If the CURRENT USER supplies literal arrays for both permissions and automationPermissions, choose applicationAccess custom-granular with only key, initialOwnerEmail and listOperation: the server uses those exact field-labelled lists, so do not echo them and never substitute a preset or generic templateSetup. Set listOperation=replace only for a complete desired set; choose append for Ergänze/add/append requests, preserving each recipient and central owner; choose clarify when the two recipients request different operations or the operation is unclear. Advice remains applicationAccess=null. An accessProfile-only change on an existing template MUST use applicationAccess, not generic templateSetup/editorInputs. Full project Owner rights explicitly requested for requester and automation select choice=owner (schemaVersion 1, mode owner), with no granular fields; do not substitute the workload default. A wish that future orderers receive Kubernetes/other service rights is an explicit template-change request, even without the words add/proposal: use topic=project-templates, mode=draft, adviceTask=other, applicationAccess.choice=add-service-permissions. Granting a future requester the ability to order/use a Kubernetes cluster means adding SKE project IAM to the existing template, NOT creating a cluster, platform Kubernetes or namespace building block. If Public AND Corporate templates are explicitly requested together, use key=__select_by_kind__, templateKind=both and exact templateEvidence quoting BOTH kinds; permissionTarget=both when service account AND requester are named. The server resolves each kind independently and preserves both profiles. If only Public/Corporate is specified, use key=__select_by_kind__, templateKind and exact templateEvidence from the current message. The server asks which when several match. If the request concerns what the orderer receives, permissionTarget=requester; do not also change Application-service-account permissions unless requested. Preserve the existing central owner and all other settings, including an unfinished empty owner field: adding service permissions to a draft must still produce a proposal, not a new owner/preset question. Publication separately requires a valid initial owner. Actual advice questions about what roles mean use mode=advice with applicationAccess=null. Never treat a desired permission change as a request for the general access overview. If pendingPermissionSelection is supplied and the current user chooses that template, continue its original USER service request using that controlled serviceEvidenceSource and key, preserving the original services and recipient. The current selection is not a new advice request. Otherwise never reactivate old permission tasks.",
           },
           {
             role: "system",
@@ -1799,13 +1801,23 @@ export class AssistantModelServing {
             ? "requester"
             : onlyAutomation && !onlyRequester
               ? "automation"
-              : requester.test(serviceSource) && automation.test(serviceSource)
-                ? "both"
-                : requester.test(serviceSource)
-                  ? "requester"
-                  : automation.test(serviceSource)
-                    ? "automation"
-                    : null;
+              : serviceAccountKeyManagementMentioned(serviceSource)
+                ? // The account whose key is managed is not necessarily a recipient.
+                  // Keep explicit recipient constraints; otherwise use semantic intent.
+                  new RegExp(
+                    String.raw`${requesterMention}\s+(?:und|and|sowie|als auch)\s+(?:(?:der|den|dem|the)\s+)?${automationMention}|${automationMention}\s+(?:und|and|sowie|als auch)\s+(?:(?:der|den|dem|the)\s+)?${requesterMention}`,
+                    "i",
+                  ).test(serviceSource)
+                  ? "both"
+                  : null
+                : requester.test(serviceSource) &&
+                    automation.test(serviceSource)
+                  ? "both"
+                  : requester.test(serviceSource)
+                    ? "requester"
+                    : automation.test(serviceSource)
+                      ? "automation"
+                      : null;
         if (recipient && recipient !== selected.permissionTarget)
           throw new AssistantInferenceError("intent_evidence");
       }
@@ -1984,8 +1996,10 @@ export class AssistantModelServing {
             )
           )
             throw new Error("service_permission_addition_unconfirmed");
-          const additions = permissionNames.filter((p) =>
-            selected.services.includes(p.split(".")[0] ?? p),
+          const additions = applicationServicePermissionAdditions(
+            permissionNames,
+            selected.services,
+            serviceSource,
           );
           profile = applicationAccessProfileSchema.parse({
             ...previous,

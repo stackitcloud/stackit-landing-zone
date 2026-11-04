@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import {
   applicationAccessProfileSchema,
   applicationPermissionServiceMentioned,
+  applicationServicePermissionAdditions,
   defaultApplicationAccessProfile,
   previewApplicationAccessTransition,
   projectTemplateDraftSchema,
@@ -264,8 +265,10 @@ function view(
       continue;
     }
     if (!old.initialOwnerEmail.trim()) unassigned.push(key);
-    const additions = context.permissionNames.filter((permission) =>
-      context.services.includes(permission.split(".")[0] ?? permission),
+    const additions = applicationServicePermissionAdditions(
+      context.permissionNames,
+      context.services,
+      context.originalRequest,
     );
     const profile = applicationAccessProfileSchema.parse({
       ...old,

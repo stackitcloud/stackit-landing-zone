@@ -1,4 +1,5 @@
 import {
+  applicationServiceAccountKeyPermissions,
   type CommonConfiguration,
   createEditorConfiguration,
   defaultApplicationAccessProfile,
@@ -612,3 +613,36 @@ for (const context of ["configuration", "inline templates"] as const) {
     ).toBe(true);
   });
 }
+
+test("explicitly appends requester key management to a saved profile without widening automation or changing SKE", async ({
+  page,
+}) => {
+  const original = configuration(true);
+  const profile = original.projectTemplates![0]!.accessProfile;
+  if (profile?.mode !== "granular") throw Error("fixture");
+  profile.permissions = ["iaas.server.get", "ske.cluster.create"];
+  profile.automationPermissions = ["ske.cluster.create"];
+  const state = await setup(page, original);
+  const add = page.getByRole("button", {
+    name: "Schlüsselverwaltung für Besteller ergänzen",
+    exact: true,
+  });
+  await expect(
+    page.getByText("Der Workload-Standard enthält 151 Rechte", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await add.click();
+  await expect(add).toBeDisabled();
+  expect(state.mutations).toEqual([]);
+  await page
+    .locator("#configuration-save")
+    .getByRole("button", { name: "Konfiguration speichern", exact: true })
+    .click();
+  await expect.poll(() => state.mutations.length).toBe(1);
+  const expected = structuredClone(original);
+  const updated = expected.projectTemplates![0]!.accessProfile;
+  if (updated?.mode !== "granular") throw Error("fixture");
+  updated.permissions.push(...applicationServiceAccountKeyPermissions);
+  expect(state.saved()).toEqual(expected);
+});

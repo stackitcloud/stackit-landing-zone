@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "53e7fb2bcdd83778d3e8a15ab890d8a75f08d6a910f78267268264003679f980",
+  "knowledgeSha256": "5a32c7ca564bb654f9379fb6d88da154537ae724b652e95b0325ddf43599f80a",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "e7dc883cf6f620bf12bc1fd5dbbe565373e8bc1c6ecb95db811aa5e50f2d91ec",
+    "scripts/assistant-scenarios.ts": "90a6e4a908af07044ec8c6cc48810b3b55aeb2a9f453571e56592f01ecc8f2ee",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "6d6d98db4ee698cb867c35de1de846e46e97c004012508f67e077be4ce26d6b7",
+  "suiteSha256": "c2711791d86814217e4c6caf37c96ee5ff76ce43f12993ac984f1fc392d357b2",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5332,6 +5332,34 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "no_changes"
+          ]
+        },
+        {
+          "id": "application-service-account-key-management-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "key-management",
+          "message": "Ergänze in der bestehenden Vorlage central ausschließlich für den Besteller die Schlüsselverwaltung des vorhandenen Application-Service-Accounts: Schlüssel anlegen, auflisten, lesen, ändern und löschen sowie den Service Account sehen. Er soll Pipelines nutzen können. Keine Service Accounts anlegen oder löschen, keine Rollen oder Benutzer verwalten. Bestehende Kubernetes-Rechte, Plattform-Owner und Rechte der Automation unverändert lassen. Nur einen überprüfbaren Entwurf vorschlagen, nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-service-account-key-management-natural-request",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "key-management",
+          "message": "Im Template central soll der Besteller die Schlüssel des vorhandenen Application-Service-Accounts für Pipelines verwalten können. Ergänze die nötigen Rechte zum Erstellen, Lesen, Auflisten, Ändern und Löschen der Schlüssel und zum Sehen des Accounts. Vorhandene Kubernetes-Rechte und den zentralen Owner erhalten. Nur als Entwurf vorschlagen, nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
           ]
         },
         {

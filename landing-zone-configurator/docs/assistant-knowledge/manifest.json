@@ -504,8 +504,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 6,
-      "checkedOn": "2026-10-29",
+      "version": 7,
+      "checkedOn": "2026-11-04",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"
@@ -536,7 +536,8 @@
       "externalSources": [
         "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go",
         "https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/roles-permissions/",
-        "https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/custom-roles/"
+        "https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/custom-roles/",
+        "https://docs.stackit.cloud/platform/access-and-identity/service-accounts/"
       ],
       "scenarios": [
         "A04",

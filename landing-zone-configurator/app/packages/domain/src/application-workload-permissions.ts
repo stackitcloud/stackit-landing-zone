@@ -4,6 +4,15 @@ export default {
   checkedAt: "2026-10-26",
   source:
     "https://authorization.api.stackit.cloud/v2/permissions?resourceType=project",
+  requesterKeyPermissions: [
+    "iam.service-account.list",
+    "iam.service-account.get",
+    "iam.service-account-key.create",
+    "iam.service-account-key.delete",
+    "iam.service-account-key.edit",
+    "iam.service-account-key.get",
+    "iam.service-account-key.list",
+  ],
   permissions: [
     "argus.grafana.administrate",
     "argus.grafana.edit",

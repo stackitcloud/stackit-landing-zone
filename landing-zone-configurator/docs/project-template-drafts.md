@@ -70,7 +70,7 @@ explicit acceptance and saving; they grant no publication or execution.
 
 ## Adding project permissions
 
-Under **Application Landing Zones → Template drafts → Application access profile**, the workload profile's 144 permissions are the default selection, not a maximum. The complete project catalogue also includes Kubernetes, databases and IAM. For example, search for **Kubernetes**, open **Kubernetes (SKE)** and select individual permissions or **Select all displayed**. Requester and Application service account lists are edited separately; group actions change only the filtered, displayed permissions.
+Under **Application Landing Zones → Template drafts → Application access profile**, the new workload default gives the requester 151 permissions (144 workload permissions plus seven service account key permissions); the Application service account receives 144 workload permissions. These are initial selections, not maxima. The complete project catalogue also includes Kubernetes, databases and IAM. For example, search for **Kubernetes**, open **Kubernetes (SKE)** and select individual permissions or **Select all displayed**. Requester and Application service account lists are edited separately; group actions change only the filtered, displayed permissions.
 
 Live data supplements the complete bundled catalogue. Identifiers no longer listed live, and unknown imported identifiers, are never silently removed. Before publication, new identifiers outside the static catalogue must be confirmed by the official catalogue retrieved server-side; publication is blocked without confirmation. The catalogue describes possible permissions, not a person's effective permissions or product activation.
 
@@ -195,3 +195,32 @@ Application Apply remains unimplemented. A successful Plan creates no cloud reso
 - [x] Mixed template/instance documents are rejected.
 - [x] Native OpenTofu variable checking confirms empty application, sandbox and namespace collections in platform export.
 - [x] Browser checks including legacy copy/save successful; CI validation and [release 36855011827](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36855011827) for `0e62c5e` successful. Live SPA serves HTTP 200 with the expected bundle `index-bjLShEoG.js`.
+
+## Service account keys for pipelines
+
+New granular profiles give the requester `iam.service-account.get`,
+`iam.service-account.list` and `iam.service-account-key.create`, `.delete`,
+`.edit`, `.get`, `.list` in addition to workload permissions. This permits using
+the existing Application service account for pipelines without giving the
+requester project Owner or role/member administration. The Application service
+account does not receive these extra IAM permissions by default. The narrower
+VM preset also adds these seven permissions only for the requester.
+
+These permissions apply to **all service accounts in the project**. Creating a
+key permits using all permissions of that account, including permissions granted
+elsewhere. Keep privileged platform service accounts centrally outside
+Application projects. This is not account-specific delegation. Private key
+material is returned only when creating a key; reading a key does not retrieve
+an existing private key.
+
+Existing saved profiles and published versions remain unchanged. In an existing
+template draft, choose **Add key management for the requester** to append only
+these seven permissions. The owner, existing Kubernetes/workload permissions
+and automation permissions remain unchanged. Alternatively ask the Assistant:
+“Add key management for the existing Application service account to the
+requester only; preserve other rights.” Review and accept its proposal, save,
+publish a new version and offer an upgrade for existing orders. Only a separately
+reviewed Plan and Apply change deployed rights. No direct STACKIT project
+mutation occurs while editing.
+
+Reference: [STACKIT service account roles and permissions](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/).

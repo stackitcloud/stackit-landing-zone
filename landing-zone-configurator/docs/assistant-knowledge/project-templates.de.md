@@ -140,9 +140,11 @@ unveränderliche Template-Metadaten und kein Bestellparameter. Im granularen
 Modus (`schemaVersion: 1`, `mode: granular`) werden ein separater zentraler
 `initialOwnerEmail` sowie explizite `permissions` und `automationPermissions`
 festgelegt. Zwei getrennte eigene Rollen gelten für die verifizierte bestellende
-Person und den Application-Service-Account. Die 144er-Standardauswahl enthält keine
-IAM-Verwaltung, Projektlöschung, zentrale Routing-Änderung, privilegierte
-Service-Account-Verwaltung oder direkte Floating-IP-Anbindung. Die Vorauswahl umfasst VMs, Object Storage, Observability und Secrets Manager; zusätzliche Rechte sind ergänzbar. Das
+Person und den Application-Service-Account. Neu erhält der Besteller 151 Rechte:
+144 Workload-Rechte und sieben Rechte zur Schlüsselverwaltung. Die Automation
+behält 144 Workload-Rechte. Projektlöschung, zentrale Routing-Änderung,
+Service-Account-Erstellung/-Löschung, Rollen-/Mitgliederverwaltung und direkte
+Floating-IP-Anbindung gehören nicht zum Standard. Die Vorauswahl umfasst VMs, Object Storage, Observability und Secrets Manager; zusätzliche Rechte sind ergänzbar. Das
 separate VM-Preset bleibt enger. Die tatsächliche IAM-Wirkung bleibt separat zu prüfen.
 
 Owner-Modus ist genau `{schemaVersion: 1, mode: owner}`: Die bestellende Person
@@ -167,7 +169,7 @@ Das ist keine Unterstützung für Projekte ohne initialen Owner (#69).
 
 ## Erweiterbare Projektberechtigungen
 
-Die 144 Rechte des Workload-Standards sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Listen hinzugefügt (ohne Unterscheidung beiden). Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.
+Die 151 Rechte für den Besteller und 144 Rechte für die Automation sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Listen hinzugefügt (ohne Unterscheidung beiden). Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.
 
 Das Ergänzen von Dienstrechten in einem bestehenden granularen Entwurf bleibt auch
 bei noch leerem initialen Owner möglich. Der Assistant erhält dieses Feld unverändert
@@ -184,3 +186,22 @@ Workload-Rechte mit den angefragten Dienstrechten, statt die Profilwahl zurückz
 Bisherige Rollenregeln und Rollen-Kontextbindungen werden erst nach ausdrücklicher
 Bestätigung umgestellt; auch der Verlust nativer Owner-Standards wird vorher erklärt.
 Der Vorschlag speichert, veröffentlicht oder provisioniert nichts.
+
+## Schlüsselverwaltung für den Besteller
+
+Der Besteller erhält `iam.service-account.get`, `iam.service-account.list` und
+`iam.service-account-key.create`, `.delete`, `.edit`, `.get`, `.list`.
+`resource-manager.project.get` gehört bereits zu den Workload-Rechten. Auch das
+engere VM-Preset ergänzt die sieben Schlüsselrechte nur für den Besteller.
+Die Rechte gelten projektweit für alle Service Accounts: Wer einen Schlüssel
+erstellt, kann sämtliche Rechte dieses Accounts nutzen, auch außerhalb des
+Projekts. Privilegierte Plattform-Service-Accounts bleiben deshalb zentral
+außerhalb der Application-Projekte. Es gibt keine Einschränkung auf einen Account.
+
+Bei einer ausdrücklichen Bitte um Schlüsselverwaltung ergänzt der Assistant
+genau diese sieben Rechte, standardmäßig nur für den Besteller; nie pauschal
+alle IAM-Rechte. Bestehender Owner, Kubernetes-Rechte, andere Einstellungen und
+die Automation bleiben erhalten. Allgemeine Informationsfragen ändern nichts.
+Explizit gespeicherte Profile werden nicht automatisch erweitert. Bestehende
+Entwürfe können die Rechte gezielt ergänzen; veröffentlichte Versionen und
+Bestellungen benötigen weiterhin Veröffentlichung und geprüften Upgrade-Pfad.

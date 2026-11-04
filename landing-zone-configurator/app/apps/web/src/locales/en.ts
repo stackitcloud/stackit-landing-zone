@@ -1,4 +1,9 @@
 export const englishMessages: Record<string, string> = {
+  "Schlüsselverwaltung für Besteller ergänzen":
+    "Add key management for the requester",
+  "Schlüsselverwaltung gilt für alle Service Accounts dieses Projekts. Wer einen Schlüssel erzeugen darf, kann die gesamten Rechte dieses Service Accounts nutzen. Privilegierte Plattform-Service-Accounts deshalb zentral außerhalb dieses Projekts führen.":
+    "Key management applies to all service accounts in this project. Anyone allowed to create a key can use all permissions of that service account. Keep privileged platform service accounts centrally outside this project.",
+
   "Runner-Start prüfen": "Check runner startup",
   "Bleibt die Ausführung auf Startet stehen? Prüfe, ob der Runner vor Ausführungsbeginn beendet wurde. Nur ein nachweislich beendeter Runner ohne abgerufene Ausführungsberechtigung wird abgeschlossen. Eine laufende Ausführung bleibt unverändert.":
     "Execution stuck on Starting? Check whether the runner terminated before execution began. Only a verified stopped runner whose execution capability was never claimed can be closed. A running execution is left unchanged.",
@@ -202,8 +207,8 @@ export const englishMessages: Record<string, string> = {
   "Template-Entwürfe bearbeitest du unter Application Landing Zones. Sie werden weiterhin mit dieser Konfiguration gespeichert.":
     "Edit template drafts under Application Landing Zones. They are still saved with this configuration.",
   "Zu den Application Landing Zones →": "Go to Application Landing Zones →",
-  "Das Standardprofil wählt 144 Rechte für VMs, Object Storage, Observability und Secrets Manager vor. Du kannst weitere STACKIT-Projektberechtigungen hinzufügen, etwa Kubernetes. Besteller und Application-Service-Account werden getrennt konfiguriert. Zusätzliche IAM- und Projektverwaltungsrechte können weitreichende Änderungen und Rechteerweiterungen ermöglichen; sie gehören nicht zur Standardauswahl.":
-    "The default profile selects 144 permissions for VMs, Object Storage, Observability and Secrets Manager. Add further STACKIT project permissions, such as Kubernetes. Requester and Application service account are configured separately. Additional IAM and project administration permissions can enable extensive changes and privilege escalation; they are not selected by default.",
+  "Der Workload-Standard enthält 151 Rechte für den Besteller: 144 Workload-Rechte und 7 Rechte zur Verwaltung von Service-Account-Schlüsseln. Der Application-Service-Account erhält weiterhin 144 Workload-Rechte. Weitere Rechte wie Kubernetes sind ergänzbar. Das Anlegen und Löschen von Service Accounts sowie Benutzer- und Rollenverwaltung gehören nicht zum Standard.":
+    "The workload default gives the requester 151 permissions: 144 workload permissions and 7 service account key management permissions. The Application service account still receives 144 workload permissions. Add further rights such as Kubernetes as needed. Creating and deleting service accounts and administering users or roles are excluded from the default.",
   "Vollständiger Projektberechtigungskatalog vom {{date}} mit {{count}} Rechten; kein Nachweis der effektiven Rechte eines Benutzers.":
     "Complete project permission catalogue checked on {{date}}, with {{count}} permissions; not proof of a user's effective permissions.",
   "Kubernetes (SKE)": "Kubernetes (SKE)",

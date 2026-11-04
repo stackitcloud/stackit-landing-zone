@@ -427,7 +427,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "dd35d010c87efa9a1211e57558095a61fc9d98f7a91ce2d4c99b5b67e0aab3a7",
+            "bc1824cbf30c43a419428cd27bdbebb0d9e4218bcb30bcf73b3779f97b02644d",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1296,8 +1296,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "project-templates",
       file: "project-templates.md",
-      version: 6,
-      checkedOn: "2026-10-29",
+      version: 7,
+      checkedOn: "2026-11-04",
       qualification: "local-draft-not-reviewed-release",
       groups: ["projects"],
       mandatory: false,
@@ -1321,12 +1321,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/application-permission-dialogue.ts",
           sha256:
-            "2d03675fb86f7c400cad0dc450f4cc06fa2ee173a15980f9ed17a228a84ecd15",
+            "2d5a0057c1b0b34e4a0112c8e2f6f64305a6a67112fcbe51cf4bd5875ebef42f",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/project-templates.ts",
           sha256:
-            "f75d0e7ed6bd298bfe1ca4e41fe835ccbca0f753afbbc06b98f9f20c1552d7a0",
+            "dd7e1abfb945376e37f54e5126d110a28a2673fe9f4a5e6bb202dfd116560ff4",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -1346,17 +1346,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-access.ts",
           sha256:
-            "7f5860d4435ee4a134ea66b3db6573b9808bc8620d80d6000c302072386c2c3b",
+            "edb6dab74412d98cf00c8a3d8b5a1dedf08c65b023c5115ea2ebc78633a21d8c",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-workload-permissions.ts",
           sha256:
-            "717ff3a2fa0c28ca0b4e7105387e39470639db2efde22377ffa0e6e3d10e9064",
+            "922b922d0c7f9e12f634f2dceced9a30983eacddd5b3ad7ce3b57770451793d6",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/application-access.ts",
           sha256:
-            "234327003289a9fbb643d4113285950c1bf06706da9721193932542a11fe0355",
+            "84e13d0fee2503076fc2fa929cda49d3e1916147b858d57e586bc801fe793620",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/platform-owner-context.ts",
@@ -1378,6 +1378,7 @@ export const assistantKnowledgeTopics = {
         "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go",
         "https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/roles-permissions/",
         "https://docs.stackit.cloud/platform/access-and-identity/roles-permissions/custom-roles/",
+        "https://docs.stackit.cloud/platform/access-and-identity/service-accounts/",
       ],
       scenarios: ["A04", "A10", "A14", "A22", "A23", "A24"],
       fieldPaths: [
@@ -1413,9 +1414,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/project-templates.md",
-      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nTemplates/IAM.\n\n## Accelerator Contract\n\nlanding_zones: corporate/region/area, project_code/env/owner_email, network/roles/services.\nPublic:corporate=false. Drafts: projectTemplates/policies, no instance/publication fields.\naccessProfile: granular/owner; central owner/automation.\nAutomatic=null. Corporate Accelerator reads attached regional SNA default_prefix_length\nbefore Plan; numeric prefix to Provider0.114, preserves DNS.\nProvider0.114 rejects null prefix WITH DNS (even []): Invalid IPv4 configuration.\nAccelerator resolves it; not provider upgrade. Overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance, same-region Corporate SNA, separate credentials.\nPublic!=Corporate spoke. Namespace services require Platform Kubernetes.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys; delegate names only.\nCentral=Corporate; Internet-only=Public; local network=true. Preserve Audit/Git and\nunrequested settings. "100 projects"=capacity, not examples/quota; reserve platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew: granular; Owner optional.\nIDP, Configurator roles and deployed project IAM are separate.\nImmutable accessProfile, not order input. Granular schemaVersion=1,mode=granular:\ninitialOwnerEmail=user/SA, not requester; permissions/automationPermissions: official IDs,\ne.g. iaas.server.get; no compute.*. Default144: VM,Object Storage,Observability,Secrets Manager;\nVM-only narrower. All project rights selectable, including IAM/admin.\nCatalogue IDs only. ADD SKE=ske union into requested lists (default both);\npreserve owner/rights. Public AND Corporate=both; clarify duplicates.\nSKE IAM!=Kubernetes RBAC; IAM escalation excluded from defaults.\nOwner={schemaVersion:1,mode:owner}: requester/automation have all project rights;\nIAM/project powers; no immutable central audit/routing claim.\nAtomic profile; no legacy role combination. ADD preserves existing owners/rights.\nFor Public+Corporate ask ONE common missing owner; explicit owners remain.\n"Platform service account" resolves only prepared config/org-bound email; ambiguity asks.\nRecommend workload+requested service rights. Legacy conversion requires explicit confirmation\nof removed role settings/context and native Owner defaults; never silently downgrade.\nPublication needs owner; grants additive. Nothing saved/executed.\n\n## Examples\n\nSNA /28: Automatic /28+DNS.\n\n## Limits\n\nVersions/State bound; review migrations; never delete State.\nMatch region/area/DNS. Empty roles/ACLs prove no security. Rights need live acceptance, not mocks. Owner required.\n\n## Credentials\n\nSeparate runtime grants; no secrets/profile IDs in chat/exports.\n\n## Sources\n\nIaC.\n',
+      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nTemplates/IAM.\n\n## Accelerator Contract\n\nlanding_zones: corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies only.\nAutomatic=null: Corporate reads regional SNA default_prefix_length before Plan;\nnumeric to Provider0.114, DNS preserved.\nProvider0.114: null prefix+DNS(even [])=>Invalid IPv4 configuration.\nResolved natively; overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional Corporate SNA; separate credentials.\nPublic!=Corporate. Namespaces:Platform Kubernetes only.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Preserve other settings. "100 projects"=capacity, not examples/quota; reserve platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile, not order input; schemaVersion=1,mode=granular:\ninitialOwnerEmail=user/SA, not requester; permissions/automationPermissions: official IDs,\ne.g. iaas.server.get. Workload requester151=base144+7 key rights; automation144.\nVM-only narrower +requester keys. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights,\nalso elsewhere; privileged Platform SAs stay outside. No SA create/delete/role/member admin.\nADD keys=only seven, default requester; preserve owner/SKE/automation. Old profiles unchanged.\nAll project rights selectable incl.IAM/admin.\nCatalogue only. ADD SKE=ske union into requested lists(default both);\nPreserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=Kubernetes RBAC; IAM role/member administration excluded from defaults.\nOwner={schemaVersion:1,mode:owner}: requester/automation have all project rights;\nIAM/project powers; no immutable central audit/routing claim.\nAtomic; no legacy roles. ADD preserves owners/rights.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email only; ambiguity asks.\nRecommend workload+service rights. Legacy conversion requires confirmation\nof removed role settings/context and native Owner defaults.\nPublication needs owner; grants additive. Nothing saved/executed.\n\n## Examples\n\n/28:Automatic+DNS.\n\n## Limits\n\nVersions/State bound; review migrations; never delete State.\nMatch region/area/DNS. Empty roles/ACLs prove no security; live acceptance required.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs in chat/exports.\n\n## Sources\n\nIaC.\n',
       sha256:
-        "197eb594c9b7ee28e9634a41465d141320b569836a8bf86569ea6e8d804698ed",
+        "3304883ff3333f9943e0a0c9198bec2ea7990de2d7b266aa31f5720c66416900",
     },
     {
       id: "sandbox-projects",
@@ -1590,7 +1591,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "dd35d010c87efa9a1211e57558095a61fc9d98f7a91ce2d4c99b5b67e0aab3a7",
+            "bc1824cbf30c43a419428cd27bdbebb0d9e4218bcb30bcf73b3779f97b02644d",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",

@@ -2,7 +2,8 @@ import {
   type ApplicationAccessTransitionPatch,
   applicationProjectPermissionCheckedAt,
   applicationProjectPermissionNames,
-  applicationWorkloadPermissions,
+  applicationServiceAccountKeyPermissions,
+  defaultApplicationAccessProfile,
   type ProjectTemplateDraft,
   previewApplicationAccessTransition,
 } from "@lzc/domain";
@@ -146,13 +147,7 @@ export function ApplicationAccessProfile({
             accessProfile:
               e.target.value === "owner"
                 ? { schemaVersion: 1, mode: "owner" }
-                : {
-                    schemaVersion: 1,
-                    mode: "granular",
-                    initialOwnerEmail: "",
-                    permissions: [...applicationWorkloadPermissions],
-                    automationPermissions: [...applicationWorkloadPermissions],
-                  },
+                : defaultApplicationAccessProfile(),
           })
         }
       >
@@ -223,9 +218,36 @@ export function ApplicationAccessProfile({
           </p>
           <p>
             {t(
-              "Das Standardprofil wählt 144 Rechte für VMs, Object Storage, Observability und Secrets Manager vor. Du kannst weitere STACKIT-Projektberechtigungen hinzufügen, etwa Kubernetes. Besteller und Application-Service-Account werden getrennt konfiguriert. Zusätzliche IAM- und Projektverwaltungsrechte können weitreichende Änderungen und Rechteerweiterungen ermöglichen; sie gehören nicht zur Standardauswahl.",
+              "Der Workload-Standard enthält 151 Rechte für den Besteller: 144 Workload-Rechte und 7 Rechte zur Verwaltung von Service-Account-Schlüsseln. Der Application-Service-Account erhält weiterhin 144 Workload-Rechte. Weitere Rechte wie Kubernetes sind ergänzbar. Das Anlegen und Löschen von Service Accounts sowie Benutzer- und Rollenverwaltung gehören nicht zum Standard.",
             )}
           </p>
+          <p className="field-hint">
+            {t(
+              "Schlüsselverwaltung gilt für alle Service Accounts dieses Projekts. Wer einen Schlüssel erzeugen darf, kann die gesamten Rechte dieses Service Accounts nutzen. Privilegierte Plattform-Service-Accounts deshalb zentral außerhalb dieses Projekts führen.",
+            )}
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={applicationServiceAccountKeyPermissions.every((p) =>
+              profile.permissions.includes(p),
+            )}
+            onClick={() =>
+              onChange({
+                accessProfile: {
+                  ...profile,
+                  permissions: [
+                    ...new Set([
+                      ...profile.permissions,
+                      ...applicationServiceAccountKeyPermissions,
+                    ]),
+                  ],
+                },
+              })
+            }
+          >
+            {t("Schlüsselverwaltung für Besteller ergänzen")}
+          </button>
           <p className="field-hint">
             {live
               ? t(

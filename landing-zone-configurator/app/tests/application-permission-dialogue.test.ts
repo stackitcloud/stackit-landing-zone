@@ -1,5 +1,6 @@
 import {
   applicationProjectPermissionNames,
+  applicationServiceAccountKeyPermissions,
   createEditorConfiguration,
   defaultApplicationAccessProfile,
 } from "@lzc/domain";
@@ -277,4 +278,39 @@ it("explicitly states unsaved and non-executing status during ambiguous target s
   expect(response.questions[0]!.text).toContain("corporate");
   expect(response.explanation).toMatch(/noch (?:nichts|nicht) gespeichert/i);
   expect(response.explanation).toContain("es wird nichts ausgeführt");
+});
+
+it("adds only key management for requesters of both templates while preserving owners, SKE and automation", () => {
+  const { draft, context } = fixture(false);
+  for (const template of draft.projectTemplates!) {
+    if (template.kind !== "public" && template.kind !== "corporate") continue;
+    const profile = template.accessProfile;
+    if (!profile || profile.mode !== "granular") throw Error("fixture");
+    profile.initialOwnerEmail = email;
+    profile.permissions = ["iaas.server.get", "ske.cluster.create"];
+    profile.automationPermissions = ["ske.cluster.create"];
+  }
+  context.originalRequest =
+    "Ergänze nur für den Besteller in Public und Corporate die Schlüsselverwaltung des vorhandenen Application-Service-Accounts für Pipelines. Andere Rechte erhalten.";
+  context.services = ["iam"];
+  context.permissionTarget = "requester";
+  context.templates = assistantPublicValues(draft).projectTemplates as Record<
+    string,
+    unknown
+  >;
+  const before = structuredClone(draft);
+  const proposal = build(context);
+  expect(proposal.questions).toEqual([]);
+  const expected = structuredClone(draft);
+  for (const template of expected.projectTemplates!) {
+    if (template.kind !== "public" && template.kind !== "corporate") continue;
+    if (template.accessProfile?.mode !== "granular") throw Error("fixture");
+    template.accessProfile.permissions.push(
+      ...applicationProjectPermissionNames.filter((name) =>
+        applicationServiceAccountKeyPermissions.includes(name),
+      ),
+    );
+  }
+  expect(applyAssistantChanges(draft, proposal.changes)).toEqual(expected);
+  expect(draft).toEqual(before);
 });

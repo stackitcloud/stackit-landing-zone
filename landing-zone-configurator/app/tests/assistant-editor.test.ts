@@ -8,6 +8,7 @@ import {
 import {
   applicationPermissionName,
   applicationProjectPermissionNames,
+  applicationServiceAccountKeyPermissions,
   catalogue,
   compileCommonConfiguration,
   createCommonConfiguration,
@@ -4088,3 +4089,62 @@ it("resolves a canonical shared-owner follow-up before any model call", async ()
     if (t.kind === "public" || t.kind === "corporate")
       expect(t.accessProfile).toMatchObject({ initialOwnerEmail: email });
 });
+
+it.each(["requester", "both"] as const)(
+  "limits service-account key management for %s to the seven reviewed rights",
+  async (target) => {
+    const original = createEditorConfiguration(
+      "hub-and-spoke",
+      crypto.randomUUID(),
+    );
+    const template = original.projectTemplates?.find(
+      (t) => t.kind === "corporate",
+    );
+    if (!template) throw Error("fixture");
+    template.accessProfile = {
+      schemaVersion: 1,
+      mode: "granular",
+      initialOwnerEmail: "central@example.test",
+      permissions: ["ske.cluster.create", "iaas.server.get"],
+      automationPermissions: ["iaas.server.get"],
+    };
+    const before = structuredClone(original);
+    const message =
+      target === "requester"
+        ? "Im Corporate-Template soll der Besteller die Schlüssel des vorhandenen Application-Service-Accounts für Pipelines verwalten können. Ergänze diese Rechte, aber nicht alle IAM-Rechte."
+        : "Ergänze im Corporate-Template die Schlüsselverwaltung für Besteller und Application-Service-Account für Pipelines, aber nicht alle IAM-Rechte.";
+    const result = await collectionModel(
+      {
+        topic: "project-templates",
+        mode: "draft",
+        requirements: [],
+        applicationAccess: {
+          key: template.key,
+          choice: "add-service-permissions",
+          services: ["iam"],
+          permissionTarget: target,
+          serviceEvidence: message,
+        },
+      },
+      null,
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    const expected = structuredClone(original);
+    const profile = expected.projectTemplates?.find(
+      (t) => t.id === template.id,
+    )?.accessProfile;
+    if (profile?.mode !== "granular") throw Error("fixture");
+    const additions = applicationProjectPermissionNames.filter((p) =>
+      applicationServiceAccountKeyPermissions.includes(p),
+    );
+    profile.permissions.push(...additions);
+    if (target === "both") profile.automationPermissions.push(...additions);
+    expect(result.questions).toEqual([]);
+    expect(applyAssistantChanges(original, result.changes)).toEqual(expected);
+    expect(original).toEqual(before);
+  },
+);

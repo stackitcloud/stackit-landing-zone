@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import {
   applicationProjectPermissionNames,
+  applicationServiceAccountKeyPermissions,
   catalogue,
   commonConfigurationFromValues,
   compileCommonConfiguration,
@@ -176,6 +177,7 @@ export type AssistantScenario = {
     | "literal-append"
     | "vm-default"
     | "workload-default"
+    | "key-management"
     | "kubernetes-add"
     | "kubernetes-requester"
     | "public-kubernetes-requester"
@@ -279,6 +281,22 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     applicationAccess: "advice",
     message:
       "Welche Projektberechtigungen soll ich für Application-Teams wählen? Erkläre das empfohlene granulare VM-Profil, den separaten zentralen initialen Owner, Automation und die weiterhin mögliche volle Owner-Kundenwahl. Hebt eine eingeschränkte Rolle geerbte Owner-Rechte auf? Welche Produkte/Grenzen sind tatsächlich abgedeckt? Nur beraten, nichts ändern.",
+  },
+  {
+    id: "application-service-account-key-management-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "key-management",
+    message:
+      "Ergänze in der bestehenden Vorlage central ausschließlich für den Besteller die Schlüsselverwaltung des vorhandenen Application-Service-Accounts: Schlüssel anlegen, auflisten, lesen, ändern und löschen sowie den Service Account sehen. Er soll Pipelines nutzen können. Keine Service Accounts anlegen oder löschen, keine Rollen oder Benutzer verwalten. Bestehende Kubernetes-Rechte, Plattform-Owner und Rechte der Automation unverändert lassen. Nur einen überprüfbaren Entwurf vorschlagen, nichts ausführen.",
+  },
+  {
+    id: "application-service-account-key-management-natural-request",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "key-management",
+    message:
+      "Im Template central soll der Besteller die Schlüssel des vorhandenen Application-Service-Accounts für Pipelines verwalten können. Ergänze die nötigen Rechte zum Erstellen, Lesen, Auflisten, Ändern und Löschen der Schlüssel und zum Sehen des Accounts. Vorhandene Kubernetes-Rechte und den zentralen Owner erhalten. Nur als Entwurf vorschlagen, nichts ausführen.",
   },
   {
     id: "application-access-workload-default-proposal",
@@ -1053,6 +1071,19 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       },
     ];
   }
+  if (scenario.applicationAccess === "key-management") {
+    draft.projectTemplates![0]!.accessProfile = {
+      schemaVersion: 1,
+      mode: "granular",
+      initialOwnerEmail: "platform-owner@example.test",
+      permissions: [
+        "iaas.server.get",
+        "ske.cluster.create",
+        "resource-manager.project.get",
+      ],
+      automationPermissions: ["iaas.server.get", "ske.cluster.create"],
+    };
+  }
   if (scenario.applicationAccess === "literal-append") {
     const appendTemplate = draft.projectTemplates?.[0];
     if (!appendTemplate) throw new Error("missing literal append template");
@@ -1422,6 +1453,10 @@ export function validateAssistantScenario(
       ["inherited", /geerbt|inherited|vererb/],
       ["automation", /automation|service.account/],
       ["vm-boundary", /vm|virtuelle|virtual machine/],
+      ["requester-key-management", /151/],
+      ["automation-workload-default", /144/],
+      ["project-key-scope", /projektweit|project.wide/],
+      ["key-management", /schlüssel|key.management/],
     ] as const)
       if (!pattern.test(text))
         failures.push(`application_access_missing_${name}`);
@@ -1578,6 +1613,24 @@ export function validateAssistantScenario(
               permissions: ["iaas.server.get", "resource-manager.project.get"],
               automationPermissions: ["iaas.server.get"],
             };
+    if (scenario.applicationAccess === "key-management") {
+      const before = fixture.draft.projectTemplates?.find(
+        (t) => t.key === "central",
+      )?.accessProfile;
+      if (!before || before.mode !== "granular")
+        throw Error("missing historical key-management profile");
+      central.accessProfile = {
+        ...before,
+        permissions: [
+          ...new Set([
+            ...before.permissions,
+            ...applicationProjectPermissionNames.filter((name) =>
+              applicationServiceAccountKeyPermissions.includes(name),
+            ),
+          ]),
+        ],
+      };
+    }
     if (scenario.applicationAccess === "literal-append") {
       const previous = fixture.draft.projectTemplates?.find(
         (t) => t.key === "central",
