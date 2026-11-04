@@ -327,6 +327,7 @@ function setup(
       throw new StateRecoveryError(409, "application_state_recovery_changed");
     }),
     inspectInterruptedApply: vi.fn(async () => ({})),
+    checkRunnerStart: vi.fn(async () => ({})),
     completeInterruptedPlan: vi.fn(
       async (_session: Session, id: string, _input: unknown) => ({
         jobId: id,
@@ -1650,4 +1651,41 @@ it("binds recovery broker routes to server package metadata and opaque tickets",
       })
     ).statusCode,
   ).toBe(400);
+});
+
+it("protects non-execution startup checks with session, tenant, origin, CSRF and explicit confirmation", async () => {
+  const { app, headers, applications } = setup();
+  const id = randomUUID(),
+    url = `/api/v1/applications/jobs/${id}/check-runner-start`;
+  const payload = { confirmRunnerStartCheck: true };
+  expect((await app.inject({ method: "POST", url, payload })).statusCode).toBe(
+    401,
+  );
+  for (const rejected of [
+    { ...headers, "x-lzc-tenant": randomUUID() },
+    { ...headers, "x-lzc-csrf": "" },
+    { ...headers, origin: "https://untrusted.example" },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, payload, headers: rejected }))
+        .statusCode,
+    ).toBe(403);
+  for (const body of [
+    {},
+    { confirmRunnerStartCheck: false },
+    { ...payload, runnerStopped: true },
+  ])
+    expect(
+      (await app.inject({ method: "POST", url, payload: body, headers }))
+        .statusCode,
+    ).toBe(400);
+  expect(applications.checkRunnerStart).not.toHaveBeenCalled();
+  expect(
+    (await app.inject({ method: "POST", url, payload, headers })).statusCode,
+  ).toBe(200);
+  expect(applications.checkRunnerStart).toHaveBeenCalledExactlyOnceWith(
+    session,
+    id,
+    payload,
+  );
 });

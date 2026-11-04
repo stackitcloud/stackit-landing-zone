@@ -67,6 +67,7 @@ import {
   checkRecoveryReplan,
   type RecoveryReplanBackends,
 } from "./recovery-replan.js";
+import { checkRunnerStart } from "./runner-start.js";
 import {
   ApplicationStateRecoveries,
   StateRecoveryError,
@@ -1744,6 +1745,11 @@ export class Applications {
               ["initializing", "validating", "planning"].includes(row.status) &&
               !row.artifact_sha256,
           ),
+          canCheckRunnerStart: Boolean(
+            this.dispatch?.runner.isStopped &&
+              row.owner_user_id === session.userId &&
+              row.status === "starting",
+          ),
           canInspectInterruptedApply: Boolean(
             this.dispatch?.runner.isStopped &&
               row.owner_user_id === session.userId &&
@@ -1908,6 +1914,18 @@ export class Applications {
       id,
       input,
       deps,
+    );
+  }
+
+  async checkRunnerStart(session: Session, jobId: string, input: unknown) {
+    if (!this.dispatch?.runner.isStopped)
+      throw new ApplicationError(503, "application_runner_start_unavailable");
+    return checkRunnerStart(
+      (task) => this.work(session, "order", task),
+      session,
+      z.uuid().parse(jobId),
+      input,
+      this.dispatch.runner,
     );
   }
 

@@ -67,6 +67,8 @@ async function setup(
     planReady?: boolean;
     iamPhase?: "prepare" | "cleanup";
     iamApplied?: boolean;
+    startupJob?: boolean;
+    startupActive?: boolean;
     saveError?: string;
     saved?: boolean;
     reject?: boolean;
@@ -76,6 +78,7 @@ async function setup(
   } = {},
 ) {
   let approved = false;
+  let startupClosed = false;
   const corporateOld = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const corporateTarget = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
   const savedPaths = publication.saved
@@ -322,7 +325,7 @@ async function setup(
           json: {
             jobs: approvePlan
               ? [
-                  ...(publication.iamApplied
+                  ...(publication.iamApplied || publication.startupJob
                     ? [
                         {
                           id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -334,13 +337,21 @@ async function setup(
                             Date.now() + 3600000,
                           ).toISOString(),
                           operation: "apply",
-                          status: "succeeded",
+                          status: publication.startupJob
+                            ? startupClosed
+                              ? "failed"
+                              : "starting"
+                            : "succeeded",
+                          canCheckRunnerStart:
+                            publication.startupJob && !startupClosed,
                           grantActive: false,
                           backendId: platform,
                           canApproveBackend: false,
                           canDispatch: false,
                           summary: null,
-                          errorCode: null,
+                          errorCode: startupClosed
+                            ? "runner_start_failed"
+                            : null,
                           planId: family,
                         },
                       ]
@@ -409,7 +420,7 @@ async function setup(
         });
       if (
         path === `jobs/${family}/output` ||
-        (publication.iamApplied &&
+        ((publication.iamApplied || publication.startupJob) &&
           path === "jobs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/output")
       )
         return r.fulfill({
@@ -446,6 +457,30 @@ async function setup(
     expect(request.headers()["x-lzc-csrf"]).toBe("upgrade-csrf");
     const body = request.postDataJSON();
     mutations.push({ path, body });
+    if (
+      path === "jobs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/check-runner-start"
+    ) {
+      expect(r.request().method()).toBe("POST");
+      expect(r.request().postDataJSON()).toEqual({
+        confirmRunnerStartCheck: true,
+      });
+      if (publication.startupActive)
+        return r.fulfill({
+          status: 409,
+          json: { error: "application_runner_start_active" },
+        });
+      startupClosed = true;
+      return r.fulfill({
+        json: {
+          jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          instanceId: instance,
+          status: "failed",
+          errorCode: "runner_start_failed",
+          canReplan: true,
+          startsExecution: false,
+        },
+      });
+    }
     if (path === "platform-upgrades") {
       expect(body).toEqual({
         fromPlatformRevision: platform,
@@ -626,6 +661,11 @@ async function setup(
   await page
     .getByRole("button", { name: /Details anzeigen: Existing upgrade order/ })
     .click();
+  if (publication.startupJob)
+    return {
+      panel: page.getByRole("region", { name: "Bestelldetails", exact: true }),
+      mutations,
+    };
   await page
     .getByRole("region", { name: "Bestelldetails", exact: true })
     .getByRole("tab", { name: "Updates", exact: true })
@@ -2106,3 +2146,67 @@ test("a successful preparation Apply offers the next Plan instead of claiming IA
     details.getByRole("tab", { name: "Plan", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
 });
+
+for (const active of [false, true]) {
+  test(`a stuck startup can be checked without replaying Apply; active=${active}`, async ({
+    page,
+  }) => {
+    const { mutations } = await setup(
+      page,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      { startupJob: true, startupActive: active },
+    );
+    const details = page.getByRole("region", {
+      name: "Bestelldetails",
+      exact: true,
+    });
+    await details.getByRole("tab", { name: "Apply", exact: true }).click();
+    await details
+      .getByRole("button", { name: "Runner-Start prüfen", exact: true })
+      .click();
+    if (active) {
+      await expect(details.getByRole("alert")).toContainText(
+        "Der Runner ist noch aktiv",
+      );
+      await expect(
+        details.getByRole("button", {
+          name: "Runner-Start prüfen",
+          exact: true,
+        }),
+      ).toBeVisible();
+    } else {
+      await expect(
+        details
+          .getByRole("status")
+          .filter({ hasText: "Startfehler wurde abgeschlossen" }),
+      ).toBeVisible();
+      await details.getByRole("tab", { name: "Apply", exact: true }).click();
+      await expect(
+        details.getByText(
+          "Der Runner konnte vor Ausführungsbeginn nicht starten.",
+          { exact: false },
+        ),
+      ).toBeVisible();
+      await expect(
+        details.getByRole("button", {
+          name: "Runner-Start prüfen",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+    }
+    expect(
+      mutations.filter((m) => m.path.endsWith("/check-runner-start")),
+    ).toHaveLength(1);
+    expect(
+      mutations.some(
+        (m) => m.path.endsWith("/apply") || m.path.endsWith("/plan"),
+      ),
+    ).toBe(false);
+  });
+}

@@ -12,6 +12,7 @@ import {
   applicationRecoveryReplanReceiptSchema,
   applicationRecoveryReviewSchema,
   applicationRecoveryReviewViewSchema,
+  applicationRunnerStartCheckReceiptSchema,
   appliedPlatformSourceSchema,
 } from "@lzc/contracts";
 import {
@@ -171,6 +172,14 @@ const errors: Record<string, string> = {
     "Der STACKIT-Nachweis für diesen Plan ist abgelaufen. Bitte erneut mit STACKIT anmelden.",
   application_dispatch_disabled:
     "Der Application-Plan-Runner ist nicht aktiviert.",
+  application_runner_start_active:
+    "Der Runner ist noch aktiv oder sein Ende ist nicht sicher nachgewiesen. Es wurde nichts geändert.",
+  application_runner_start_unavailable:
+    "Der Runner-Status konnte nicht sicher geprüft werden. Bitte später erneut prüfen.",
+  application_runner_start_unavailable_or_claimed:
+    "Die Ausführung wurde bereits begonnen oder kann nicht als Startfehler abgeschlossen werden. Nutze bei einem unterbrochenen Apply die Recovery-Prüfung.",
+  application_runner_start_changed:
+    "Der Ausführungsstand hat sich geändert. Bitte den Status neu laden.",
   application_dispatch_failed:
     "Der Application-Plan konnte nicht gestartet werden.",
   application_jobs_unavailable:
@@ -1054,6 +1063,7 @@ function ApplicationPlanControls({
   const [confirmedBackendJob, setConfirmedBackendJob] = useState("");
   const [interruptedPlanCompleted, setInterruptedPlanCompleted] =
     useState(false);
+  const [runnerStartChecked, setRunnerStartChecked] = useState(false);
   const [interruptedApplyRecorded, setInterruptedApplyRecorded] =
     useState(false);
   const [jobKey, setJobKey] = useState(() => crypto.randomUUID());
@@ -1330,12 +1340,15 @@ function ApplicationPlanControls({
     setError("");
     setInterruptedPlanCompleted(false);
     setInterruptedApplyRecorded(false);
+    setRunnerStartChecked(false);
     try {
       const response = await request(path, session, body);
       if (path.endsWith("/complete-interrupted-plan"))
         applicationInterruptedPlanReceiptSchema.parse(response);
       if (path.endsWith("/inspect-interrupted-apply"))
         applicationInterruptedApplyReceiptSchema.parse(response);
+      if (path.endsWith("/check-runner-start"))
+        applicationRunnerStartCheckReceiptSchema.parse(response);
       if (path === `instances/${instance.id}/plan`)
         preparedJob.current = z
           .object({ jobId: z.uuid() })
@@ -1347,6 +1360,7 @@ function ApplicationPlanControls({
         setInterruptedPlanCompleted(true);
       if (path.endsWith("/inspect-interrupted-apply"))
         setInterruptedApplyRecorded(true);
+      if (path.endsWith("/check-runner-start")) setRunnerStartChecked(true);
       onViewChange(
         purpose === "standard"
           ? path.endsWith("/apply")
@@ -1418,6 +1432,13 @@ function ApplicationPlanControls({
         </p>
       )}
       {error && <p role="alert">{t(error)}</p>}
+      {runnerStartChecked && (
+        <p role="status">
+          {t(
+            "Der Runner ist vor Ausführungsbeginn beendet worden. Der Startfehler wurde abgeschlossen und seine Berechtigung widerrufen. Du kannst dieselbe Bestellung jetzt neu planen. Infrastruktur, State und Sperren wurden nicht verändert.",
+          )}
+        </p>
+      )}
       {interruptedApplyRecorded && (
         <p role="status">
           {t(
@@ -1712,6 +1733,29 @@ function ApplicationPlanControls({
                   </button>
                 </section>
               )}
+            {job.canCheckRunnerStart &&
+              job.requestedBy === session.user.id &&
+              job.status === "starting" && (
+                <section aria-label={t("Runner-Start prüfen")}>
+                  <p>
+                    {t(
+                      "Bleibt die Ausführung auf Startet stehen? Prüfe, ob der Runner vor Ausführungsbeginn beendet wurde. Nur ein nachweislich beendeter Runner ohne abgerufene Ausführungsberechtigung wird abgeschlossen. Eine laufende Ausführung bleibt unverändert.",
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate(`jobs/${job.id}/check-runner-start`, {
+                        confirmRunnerStartCheck: true,
+                      })
+                    }
+                  >
+                    {t("Runner-Start prüfen")}
+                  </button>
+                </section>
+              )}
             {job.canInspectInterruptedApply &&
               job.requestedBy === session.user.id &&
               job.operation === "apply" &&
@@ -1741,7 +1785,9 @@ function ApplicationPlanControls({
               )}
             {job.requestedBy === session.user.id &&
               (job.status === "reconciliation_required" ||
-                (job.operation === "apply" && job.status === "failed")) && (
+                (job.operation === "apply" &&
+                  job.status === "failed" &&
+                  job.errorCode !== "runner_start_failed")) && (
                 <RecoveryDiagnosis
                   key={`${session.tenant?.id}:${session.user.id}:${job.id}`}
                   session={session}
@@ -1925,7 +1971,14 @@ function ApplicationPlanControls({
                     ? "Application-Apply fehlgeschlagen"
                     : "Cloud-Plan fehlgeschlagen",
                 )}
-                : <code>{job.errorCode}</code>
+                :{" "}
+                {job.errorCode === "runner_start_failed" ? (
+                  t(
+                    "Der Runner konnte vor Ausführungsbeginn nicht starten. Es wurde keine Infrastruktur geändert. Starte einen neuen Cloud-Plan derselben Bestellung.",
+                  )
+                ) : (
+                  <code>{job.errorCode}</code>
+                )}
               </p>
             )}
             {job.summary && (

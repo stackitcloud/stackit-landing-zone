@@ -241,6 +241,7 @@ export const applicationPlanJobSchema = z.strictObject({
   canApply: z.boolean().default(false),
   canCompleteInterruptedPlan: z.boolean().default(false),
   canInspectInterruptedApply: z.boolean().default(false),
+  canCheckRunnerStart: z.boolean().default(false),
   recoveryReplanApproved: z.boolean().default(false),
   status: z.enum([
     "prepared",
@@ -261,10 +262,26 @@ export const applicationPlanJobSchema = z.strictObject({
   delegatedExecution: z.boolean().optional(),
   summary: planSummarySchema.nullable(),
   errorCode: z
-    .union([planFailureSchema, z.literal("runner_report_missing")])
+    .union([
+      planFailureSchema,
+      z.literal("runner_report_missing"),
+      z.literal("runner_start_failed"),
+    ])
     .nullable(),
 });
 export type ApplicationPlanJob = z.infer<typeof applicationPlanJobSchema>;
+
+export const applicationRunnerStartCheckRequestSchema = z.strictObject({
+  confirmRunnerStartCheck: z.literal(true),
+});
+export const applicationRunnerStartCheckReceiptSchema = z.strictObject({
+  jobId: z.uuid(),
+  instanceId: z.uuid(),
+  status: z.literal("failed"),
+  errorCode: z.literal("runner_start_failed"),
+  canReplan: z.literal(true),
+  startsExecution: z.literal(false),
+});
 
 export const applicationInterruptedPlanRequestSchema = z.strictObject({
   confirmPlanCompletion: z.literal(true),
