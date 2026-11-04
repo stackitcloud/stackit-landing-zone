@@ -56,7 +56,7 @@ test("new templates separate cloud project access from requester identity and re
     applicationProjectPermissionNames.length,
   );
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    144,
+    151,
   );
   await expect(
     automation.locator('input[type="checkbox"]:checked'),
@@ -72,7 +72,7 @@ test("new templates separate cloud project access from requester identity and re
     })
     .uncheck();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    143,
+    150,
   );
   await expect(
     automation.locator('input[type="checkbox"]:checked'),
@@ -92,7 +92,7 @@ test("new templates separate cloud project access from requester identity and re
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .clear();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    140,
+    147,
   );
   await expect(
     storage.getByRole("checkbox", {
@@ -107,7 +107,7 @@ test("new templates separate cloud project access from requester identity and re
     .getByRole("button", { name: "Alle angezeigten auswählen", exact: true })
     .click();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    144,
+    151,
   );
   await profile
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
@@ -126,8 +126,11 @@ test("new templates separate cloud project access from requester identity and re
     .fill("iam.");
   await expect(profile.locator('input[type="checkbox"]')).toHaveCount(54);
   await expect(profile.locator('input[type="checkbox"]:checked')).toHaveCount(
-    0,
+    7,
   );
+  await expect(
+    automation.locator('input[type="checkbox"]:checked'),
+  ).toHaveCount(0);
   await profile
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .fill("Kubernetes");
@@ -149,7 +152,7 @@ test("new templates separate cloud project access from requester identity and re
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .clear();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    155,
+    162,
   );
   await expect(
     automation.locator('input[type="checkbox"]:checked'),
