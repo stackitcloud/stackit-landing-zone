@@ -59,6 +59,63 @@ Provisions the central automation project (`<company_code>-pltfm-mgmt-prod`). Co
 - **Secrets Manager instance**: stores platform secrets such as service account keys and credentials.
 - **Observability instance** (optional): centralized logs, metrics, and traces with configurable retention. Enabled via the `observability` variable.
 
+#### Audit coverage
+
+A Telemetry Link captures events of its own resource; an organization link does
+not cover child folders or projects. Existing `audit_logs` configurations retain
+that organization-only default. Set `audit_logs.managed_resources = true` to add
+links for management, connectivity, DevOps, platform Kubernetes, sandbox and
+concrete Application projects and all managed folders. This opt-in currently
+requires one shared platform region. Multi-region deployment is rejected rather
+than advertised as fully covered; public handoff targets are restricted to that
+region. Automatic coverage cannot be combined with explicit `link_scopes`,
+including an empty list.
+
+New Application orders receive non-secret central router references through the
+published platform contract. The central deployment identity creates their link
+and a separate ingestion token in the management project, after the Application
+resources exist. Workload defaults grant neither audit-link mutation nor access
+to central router credentials. Configuring project Owner rights or inherited
+privileged grants remains a customer choice and can allow changing the link;
+this is not an IAM deny policy. Keep privileged platform identities outside
+Application projects. Link activation captures future events, not retroactive
+history from project creation.
+
+Existing orders remain unchanged. After opting in, review and Apply the platform
+Plan, bind its new contract, publish an approved platform upgrade path, and let
+the requester create and review a fresh Plan/Apply for the same order and State.
+Use the new reviewed execution source; older native roots cannot implement the
+new audit handoff. Existing explicit links keep their original State addresses.
+Before enabling automatic coverage on projects/folders that already have links,
+inspect ownership and import the reviewed links into the new stable addresses;
+never let two States own one resource. There is one link per resource and region.
+The guided Application recovery supports importing an interrupted link and
+explicitly revoking a lost ingestion token before a normal Plan/Apply creates a
+replacement. Recovery never silently redirects an existing link.
+
+After infrastructure Apply, verify an actual project event in both Logs and the
+S3 archive and test allowed workload operations and denied audit mutations with
+the actual Application identity. Offline Plans and Configurator deployment do
+not establish these operational facts.
+
+#### Audit archive retention
+
+`audit_logs = null` (or omitting it) skips audit routing and retention resources.
+The management archive bucket itself still exists. Enabling audit with `{}`
+uses the existing native defaults: `s3_object_lock = true` and
+`retention_days = 180`. A null nested `s3_object_lock` also uses `true`.
+Set `s3_object_lock = false` explicitly **before creating the archive** to opt
+out. The Configurator requires an explicit Object Lock decision instead of
+silently accepting this native default.
+
+Object Lock creates the project compliance lock, enables bucket Object Lock and
+sets a GOVERNANCE default retention of 1–365 days. This preserves the historical
+behavior; no existing bucket is changed by this documentation correction.
+Turning the setting off later is not a supported reversal of bucket protection.
+Review the real Plan and existing retention before changing an installed archive;
+GOVERNANCE bypass rights and retained object versions affect deletion separately.
+Neither this mode nor an audit configuration is a compliance certification.
+
 Source: `src/modules/management/`
 
 ### Connectivity

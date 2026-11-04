@@ -28,6 +28,7 @@ maßgeblich ist die [kanonische englische Referenz](README.de.md).
 | ---- | ------- |
 | <a name="provider_helm.platform"></a> [helm.platform](#provider\_helm.platform) | 3.3.0 |
 | <a name="provider_kubernetes.platform"></a> [kubernetes.platform](#provider\_kubernetes.platform) | 3.2.1 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.114.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 | <a name="provider_vault"></a> [vault](#provider\_vault) | 5.11.0 |
 
@@ -68,6 +69,7 @@ maßgeblich ist die [kanonische englische Referenz](README.de.md).
 | [kubernetes_secret_v1.landing_zone_user_token](https://registry.terraform.io/providers/hashicorp/kubernetes/3.2.1/docs/resources/secret_v1) | resource |
 | [kubernetes_service_account_v1.landing_zone_user](https://registry.terraform.io/providers/hashicorp/kubernetes/3.2.1/docs/resources/service_account_v1) | resource |
 | [kubernetes_service_v1.landing_zone_sample_load](https://registry.terraform.io/providers/hashicorp/kubernetes/3.2.1/docs/resources/service_v1) | resource |
+| [stackit_telemetrylink.managed_audit](https://registry.terraform.io/providers/stackitcloud/stackit/0.114.0/docs/resources/telemetrylink) | resource |
 | [terraform_data.firewall_api_bootstrap](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [vault_kv_secret_v2.firewall_api_credentials](https://registry.terraform.io/providers/hashicorp/vault/5.11.0/docs/resources/kv_secret_v2) | resource |
 
@@ -75,7 +77,7 @@ maßgeblich ist die [kanonische englische Referenz](README.de.md).
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_audit_logs"></a> [audit\_logs](#input\_audit\_logs) | Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link\_scopes defaults to a single organization-wide link. retention\_days applies to both the Logs instance and, when s3\_object\_lock is enabled, the archive bucket's default retention. s3\_object\_lock is off by default and turns on GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment. | <pre>object({<br/>    retention_days = optional(number, 180)<br/>    acl            = optional(list(string), ["0.0.0.0/0"])<br/>    s3_object_lock = optional(bool, true)<br/>    link_scopes = optional(list(object({<br/>      resource_type = string # organization, folder, project<br/>      resource_id   = string<br/>    })), null)<br/>  })</pre> | `null` | no |
+| <a name="input_audit_logs"></a> [audit\_logs](#input\_audit\_logs) | Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link\_scopes defaults to a link for organization events only, without inherited project/folder coverage. managed\_resources adds automatic links for all managed projects and folders in the platform region; it cannot be combined with explicit link\_scopes or other deployment regions. retention\_days applies to both the Logs instance and, when s3\_object\_lock is enabled, the archive bucket's default retention. s3\_object\_lock defaults to true (also when explicitly null) and enables GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment. | <pre>object({<br/>    managed_resources = optional(bool, false)<br/>    retention_days    = optional(number, 180)<br/>    acl               = optional(list(string), ["0.0.0.0/0"])<br/>    s3_object_lock    = optional(bool, true)<br/>    link_scopes = optional(list(object({<br/>      resource_type = string # organization, folder, project<br/>      resource_id   = string<br/>    })), null)<br/>  })</pre> | `null` | no |
 | <a name="input_bucket_naming"></a> [bucket\_naming](#input\_bucket\_naming) | Object Storage bucket naming scheme: legacy preserves existing names; project-id includes the complete owning project UUID for STACKIT-wide uniqueness. Changing this for existing buckets requires a reviewed migration. | `string` | `"project-id"` | no |
 | <a name="input_company_code"></a> [company\_code](#input\_company\_code) | Company code used in resource naming conventions. | `string` | n/a | yes |
 | <a name="input_company_name"></a> [company\_name](#input\_company\_name) | Name of the company. | `string` | n/a | yes |

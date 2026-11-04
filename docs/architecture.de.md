@@ -62,6 +62,69 @@ Provisioniert das zentrale Automatisierungsprojekt (`<company_code>-pltfm-mgmt-p
 - **Secrets-Manager-Instanz**: Speichert Plattformgeheimnisse wie Dienstkontoschlüssel und Zugangsdaten.
 - **Observability-Instanz** (optional): Zentrale Logs, Metriken und Traces mit konfigurierbarer Aufbewahrung. Aktiviert über die Variable `observability`.
 
+#### Audit-Abdeckung
+
+Ein Telemetry Link erfasst Ereignisse seiner eigenen Ressource; ein
+Organisations-Link deckt untergeordnete Ordner oder Projekte nicht ab.
+Bestehende `audit_logs`-Konfigurationen behalten diesen Organisations-Default.
+`audit_logs.managed_resources = true` ergänzt Links für Management-,
+Connectivity-, DevOps-, Plattform-Kubernetes-, Sandbox- und konkrete
+Application-Projekte sowie alle verwalteten Ordner. Diese ausdrückliche Option
+benötigt derzeit eine gemeinsame Plattformregion. Mehrregionale Deployments
+werden abgelehnt, statt vollständige Abdeckung zu behaupten; öffentliche
+Übergabeziele werden auf diese Region begrenzt. Automatische Abdeckung ist nicht
+mit expliziten `link_scopes` kombinierbar, auch nicht mit einer leeren Liste.
+
+Neue Application-Bestellungen erhalten öffentliche Referenzen auf den zentralen
+Router über den veröffentlichten Plattformvertrag. Die zentrale
+Deployment-Identität erstellt ihren Link und ein separates Ingestion-Token im
+Management-Projekt, nachdem die Application-Ressourcen existieren.
+Workload-Standardrechte erlauben weder Audit-Link-Änderungen noch Zugriff auf
+zentrale Router-Zugangsdaten. Projekt-Owner-Rechte oder geerbte privilegierte
+Rechte bleiben Kundenwahl und können Link-Änderungen ermöglichen; dies ist keine
+IAM-Deny-Richtlinie. Privilegierte Plattform-Identitäten außerhalb der
+Application-Projekte halten. Die Link-Aktivierung erfasst zukünftige Ereignisse,
+keine rückwirkende Historie seit Projekterstellung.
+
+Bestehende Bestellungen bleiben unverändert. Nach Aktivierung den Plattform-Plan
+prüfen und anwenden, den neuen Vertrag anbinden, einen geprüften
+Plattform-Upgrade-Pfad veröffentlichen und den Besteller einen neuen Plan/Apply
+für dieselbe Bestellung und denselben State prüfen lassen. Dafür die neue
+geprüfte Ausführungsquelle verwenden; ältere native Roots unterstützen die neue
+Audit-Übergabe nicht. Bestehende explizite Links behalten ihre State-Adressen.
+Vor Aktivierung bei Projekten oder Ordnern mit vorhandenen Links deren
+Eigentümerschaft prüfen und die freigegebenen Links in die neuen stabilen
+Adressen importieren; niemals dieselbe Ressource in zwei States verwalten.
+Je Ressource und Region existiert ein Link. Geführte Application-Recovery
+unterstützt die Übernahme eines unterbrochenen Links und den ausdrücklich
+bestätigten Widerruf eines verlorenen Ingestion-Tokens, bevor ein regulärer
+Plan/Apply Ersatz erstellt. Recovery ändert kein Link-Ziel stillschweigend.
+
+Nach Infrastruktur-Apply ein echtes Projektereignis sowohl in Logs als auch im
+S3-Archiv prüfen und erlaubte Workload-Operationen sowie verbotene
+Audit-Änderungen mit der tatsächlichen Application-Identität testen.
+Offline-Plans und Configurator-Deployment belegen diese Betriebsnachweise nicht.
+
+#### Aufbewahrung des Audit-Archivs
+
+`audit_logs = null` (oder Weglassen) überspringt Audit-Routing und
+Aufbewahrungsressourcen. Der Management-Archiv-Bucket selbst existiert weiterhin.
+Audit mit `{}` verwendet die bisherigen nativen Defaults:
+`s3_object_lock = true` und `retention_days = 180`. Auch ein verschachteltes
+`s3_object_lock = null` verwendet `true`. Zum Verzicht **vor der Erstellung des
+Archivs** ausdrücklich `s3_object_lock = false` setzen. Der Configurator verlangt
+eine ausdrückliche Object-Lock-Entscheidung und übernimmt den nativen Default
+nicht stillschweigend.
+
+Object Lock erstellt den Compliance Lock des Projekts, aktiviert Object Lock am
+Bucket und setzt eine GOVERNANCE-Standardaufbewahrung von 1–365 Tagen. Das
+bisherige Verhalten bleibt erhalten; diese Dokumentationskorrektur verändert
+keinen bestehenden Bucket. Späteres Ausschalten ist keine unterstützte Umkehr
+des Bucket-Schutzes. Vor Änderungen an einem bestehenden Archiv den echten Plan
+und die aktuelle Aufbewahrung prüfen; GOVERNANCE-Bypass-Rechte und aufbewahrte
+Objektversionen beeinflussen das Löschen unabhängig davon. Weder dieser Modus
+noch eine Audit-Konfiguration ist eine Compliance-Zertifizierung.
+
 Quelle: `src/modules/management/`
 
 <a id="connectivity"></a>

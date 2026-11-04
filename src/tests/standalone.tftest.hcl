@@ -96,6 +96,21 @@ mock_provider "vault" {}
 mock_provider "time" {}
 
 mock_provider "stackit" {
+  mock_resource "stackit_resourcemanager_folder" {
+    defaults = { container_id = "aaaaaaaa-1111-4111-8111-111111111111" }
+  }
+  mock_resource "stackit_logs_instance" {
+    defaults = {
+      instance_id = "11111111-1111-4111-8111-111111111111"
+    }
+  }
+
+  mock_resource "stackit_telemetryrouter_instance" {
+    defaults = {
+      instance_id = "22222222-2222-4222-8222-222222222222"
+    }
+  }
+
   mock_resource "stackit_resourcemanager_project" {
     defaults = {
       project_id = "11111111-1111-4111-8111-111111111111"
@@ -630,4 +645,183 @@ run "standalone_workload_automation_role" {
     condition     = module.landing_zone["test-public"].project_access.automation_role == "application-reader" && module.landing_zone["test-public"].project_access.initial_owner_email == "platform@example.com"
     error_message = "The combined root must forward the explicit automation role and retain the separately configured initial owner."
   }
+}
+
+run "audit_disabled" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = null
+  }
+
+  assert {
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 0 && length(stackit_objectstorage_default_retention.audit_logs) == 0 && stackit_objectstorage_bucket.audit_logs.object_lock == false
+    error_message = "Audit disabled must preserve the project lock, bucket Object Lock and retention contract."
+  }
+}
+
+run "audit_omitted_object_lock" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = {}
+  }
+
+  assert {
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs.object_lock == true
+    error_message = "Audit omitted_object_lock must preserve the project lock, bucket Object Lock and retention contract."
+  }
+
+  assert {
+    condition     = stackit_objectstorage_default_retention.audit_logs[0].mode == "GOVERNANCE" && stackit_objectstorage_default_retention.audit_logs[0].days == 180
+    error_message = "Protected archives must use GOVERNANCE mode and the selected retention."
+  }
+}
+
+run "audit_null_object_lock" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { s3_object_lock = null }
+  }
+
+  assert {
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs.object_lock == true
+    error_message = "Audit null_object_lock must preserve the project lock, bucket Object Lock and retention contract."
+  }
+
+  assert {
+    condition     = stackit_objectstorage_default_retention.audit_logs[0].mode == "GOVERNANCE" && stackit_objectstorage_default_retention.audit_logs[0].days == 180
+    error_message = "Protected archives must use GOVERNANCE mode and the selected retention."
+  }
+}
+
+run "audit_explicit_object_lock" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { s3_object_lock = true, retention_days = 365 }
+  }
+
+  assert {
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs.object_lock == true
+    error_message = "Audit explicit_object_lock must preserve the project lock, bucket Object Lock and retention contract."
+  }
+
+  assert {
+    condition     = stackit_objectstorage_default_retention.audit_logs[0].mode == "GOVERNANCE" && stackit_objectstorage_default_retention.audit_logs[0].days == 365
+    error_message = "Protected archives must use GOVERNANCE mode and the selected retention."
+  }
+}
+
+run "audit_explicit_opt_out" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { s3_object_lock = false, retention_days = 366 }
+  }
+
+  assert {
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 0 && length(stackit_objectstorage_default_retention.audit_logs) == 0 && stackit_objectstorage_bucket.audit_logs.object_lock == false
+    error_message = "Audit explicit_opt_out must preserve the project lock, bucket Object Lock and retention contract."
+  }
+}
+
+run "root_audit_object_lock_default" {
+  command = plan
+
+  variables {
+    audit_logs = {}
+  }
+
+  assert {
+    condition     = var.audit_logs.s3_object_lock && var.audit_logs.retention_days == 180
+    error_message = "The root must retain the historical true/180 Object Lock defaults."
+  }
+}
+
+run "management_audit_rejects_excessive_protected_retention" {
+  command = plan
+
+  module {
+    source = "./modules/management"
+  }
+
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { retention_days = 366 }
+  }
+
+  expect_failures = [var.audit_logs]
+}
+
+run "automatic_audit_links_use_stable_keys" {
+  command = plan
+
+  variables {
+    audit_logs = { managed_resources = true, s3_object_lock = false }
+  }
+
+  assert {
+    condition     = length(stackit_telemetrylink.managed_audit) == 8 && contains(keys(stackit_telemetrylink.managed_audit), "project-management") && contains(keys(stackit_telemetrylink.managed_audit), "project-application-test-public") && contains(keys(stackit_telemetrylink.managed_audit), "folder-platform")
+    error_message = "Automatic coverage must add links for management, DevOps, sandbox, Application and every managed folder using stable configuration keys."
+  }
+
+  assert {
+    condition     = length(keys(output.platform_contract.targets)) == 1 && output.platform_contract.targets["public-eu01"].audit_router.project_id == module.management.project_id
+    error_message = "Audit-enabled handoffs must bind the central router without credentials and must not advertise unsupported regional targets."
+  }
+}
+
+run "automatic_audit_rejects_explicit_scopes" {
+  command = plan
+
+  variables {
+    audit_logs = { managed_resources = true, link_scopes = [] }
+  }
+
+  expect_failures = [var.audit_logs]
+}
+
+run "automatic_audit_rejects_uncovered_regions" {
+  command = plan
+
+  variables {
+    audit_logs           = { managed_resources = true, s3_object_lock = false }
+    connectivity_regions = { eu02 = { network_areas = {} } }
+    landing_zones        = {}
+  }
+
+  expect_failures = [stackit_telemetrylink.managed_audit]
 }
