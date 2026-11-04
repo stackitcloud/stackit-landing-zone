@@ -311,6 +311,37 @@ export function assessCommonConfiguration(
       "configuration",
       "warning",
     );
+  const audit = objectValue(values.audit_logs);
+  if (audit.managed_resources === true) {
+    if (audit.link_scopes != null)
+      add(
+        "audit_logs.link_scopes",
+        "managed-audit-explicit-scopes",
+        "Automatische Audit-Abdeckung kann nicht mit manuellen Link-Zielen kombiniert werden.",
+        99,
+        "configuration",
+        "error",
+      );
+    const region = values.region ?? "eu01";
+    const regions = [
+      ...Object.keys(objectValue(values.connectivity_regions)),
+      ...Object.values(objectValue(values.platform_kubernetes)).map(
+        (v) => objectValue(v).region ?? region,
+      ),
+      ...Object.values(objectValue(values.landing_zones)).map(
+        (v) => objectValue(v).region ?? region,
+      ),
+    ];
+    if (regions.some((r) => r !== region))
+      add(
+        "audit_logs.managed_resources",
+        "managed-audit-region",
+        "Automatische Audit-Abdeckung benötigt derzeit eine gemeinsame Plattformregion. Weitere Regionen erfordern eigene Router und eine geprüfte Anbindung.",
+        99,
+        "configuration",
+        "error",
+      );
+  }
   const clusters = objectValue(effectiveInput(values, "platform_kubernetes"));
   const phases: ConfigurationAssessment["requiredPhases"] = [
     "cloud-infrastructure",

@@ -1,3 +1,4 @@
+import { applicationExecutionCurrentRevision } from "@lzc/contracts";
 import { z } from "zod";
 import {
   applicationAccessProfileSchema,
@@ -16,6 +17,9 @@ const uuid = z.uuid();
 const key = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
 const targetSchema = z
   .strictObject({
+    audit_router: z
+      .strictObject({ project_id: uuid, instance_id: uuid })
+      .optional(),
     folder_id: z
       .string()
       .min(1)
@@ -125,6 +129,13 @@ export function compileApplicationPlan(input: {
     throw new Error("Application target is not allowed");
   const target = platform.targets[request.target_key];
   if (!target) throw new Error("Application target is not allowed");
+  if (
+    target.audit_router &&
+    template.accelerator_revision !== applicationExecutionCurrentRevision
+  )
+    throw new Error(
+      "Application audit routing requires the reviewed audit execution source",
+    );
   if (template.schema_version === 2)
     validateApplicationAccessProfile(
       template.access_profile,
@@ -140,7 +151,10 @@ export function compileApplicationPlan(input: {
   if (
     template.schema_version === 2 &&
     (template.access_profile || template.automation_role !== undefined) &&
-    template.accelerator_revision !== "08ac257de1548c8ec5e83dae1a79373711c3d644"
+    ![
+      "08ac257de1548c8ec5e83dae1a79373711c3d644",
+      applicationExecutionCurrentRevision,
+    ].includes(template.accelerator_revision)
   )
     throw new Error("Application access profile source mismatch");
   const resolution =

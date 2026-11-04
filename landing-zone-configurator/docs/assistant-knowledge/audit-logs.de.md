@@ -1,85 +1,74 @@
-<a id="audit-routing-and-archive-retention"></a>
-
 # Audit-Routing und Archivaufbewahrung
 
 [English](audit-logs.md) | [Deutsch](audit-logs.de.md)
 
-Deutsche Lesefassung. Der Assistant liest ausschliesslich die englische Quelle.
-
-<a id="purpose"></a>
-
 ## Zweck
 
-Organisationsweite Control-Plane-Audit-Ereignisse fuer Untersuchungen erfassen
-und mit bewusst gewaehltem Zugriff, Umfang und Aufbewahrung archivieren.
-
-<a id="accelerator-contract"></a>
+Control-Plane-Audit-Ereignisse mit bewusst gewähltem Umfang, Zugriff und
+Aufbewahrung erfassen.
 
 ## Accelerator-Vertrag
 
-Natives `audit_logs` ist optional; `null` ueberspringt seine
-Management-Ressourcen. Das Modul leitet Audit-Ereignisse an ein OTLP-Logs-Ziel
-und ein Object-Storage-Archiv weiter.
-Felder sind unter anderem `retention_days`, `acl`, `s3_object_lock` und
-`link_scopes` mit `resource_type/resource_id`.
-Standardumfang ist organisationsweit; explizite Bereiche unterstuetzen
-Organisation, Ordner oder Projekt. Mit aktiviertem Object Lock begrenzt der
-native Vertrag die Aufbewahrung auf 1..365 Tage.
-Abfrageaufbewahrung und Archivrichtlinie von Backups oder rechtlicher
-Compliance-Zertifizierung unterscheiden.
+`audit_logs=null` überspringt Routing und Aufbewahrung, nicht den bestehenden
+Archiv-Bucket. Die Ziele sind Logs über OTLP und ein S3-Archiv. Felder:
+`retention_days`, `acl`, `s3_object_lock`, `managed_resources`, `link_scopes`
+mit `resource_type/resource_id`. Object Lock verwendet standardmäßig `true`,
+auch bei verschachteltem `null`; die Aufbewahrung beträgt standardmäßig 180 Tage.
+Ausdrückliches `false` verzichtet vor der Archiverstellung darauf. Mit Lock gelten
+1–365 Tage und GOVERNANCE-Modus: kein umkehrbarer Schalter und keine
+Compliance-Zertifizierung.
 
-<a id="dependencies"></a>
+Ein Organisations-Link erfasst NUR Organisationsereignisse; Ordner und Projekte
+erben ihn nicht. `managed_resources` bleibt aus Kompatibilitätsgründen
+standardmäßig `false`. Ausdrückliches `true` ergänzt Links für alle vom Accelerator
+verwalteten Ordner und Projekte, einschließlich neuer Application-Bestellungen
+über den veröffentlichten Plattformvertrag. Bestehende Bestellungen benötigen
+einen freigegebenen Plattform-Upgrade-Pfad und einen neuen Plan/Apply. Nicht mit
+expliziten `link_scopes` kombinierbar. Derzeit müssen alle verwalteten Ressourcen
+die Plattformregion verwenden; weitere Regionen benötigen separate geprüfte
+Router. Manuelle Ziele unterstützen Organisation, Ordner und Projekt. Bestehende
+externe Links benötigen einen geprüften Import, keine stille Übernahme.
 
-## Abhaengigkeiten
+## Abhängigkeiten
 
-Management-Grundlagen, Organisationszugriff und extern bereitgestellte
-Zugangsdaten. Verknuepfte Bereiche muessen zu autorisierten Ressourcen gehoeren.
-Zentrale Observability und Audit Logging sind verschiedene optionale Services.
-
-<a id="dialogue"></a>
+Management, berechtigte zentrale Deployment-Identität und gleiche Region für
+Router und Link. Audit und Observability sind separate Dienste.
+Application-Ingestion-Tokens liegen im zentralen Projekt; Workload-Identitäten
+erhalten keinen Zugriff auf diese zentralen Tokens.
 
 ## Dialog
 
-Audit-Pflichten, Aufbewahrungszeit, organisationsweiten versus ausgewaehlten
-Umfang, Leserzugriff und Aufbewahrungs-/Loeschbeschraenkungen erfragen.
-Folgen von Object Lock vor einem Vorschlag beschreiben.
-Ressourcenauswahl ueber autorisierte Schnittstellen aufloesen; Kunden niemals
-auffordern, interne Scope-IDs oder rohe Audit-Logs einzufuegen.
-
-<a id="examples"></a>
+Aufbewahrung, ACL, Object Lock sowie reine Organisationsereignisse gegenüber
+verwalteten Ressourcen klären. Gespeicherte Entscheidungen erhalten; Defaults
+sind keine Zustimmung. Für ausdrücklich gewünschte verwaltete Abdeckung
+`managed_resources=true` mit geprüften Audit-Einstellungen vorschlagen, keine
+erfundenen Projekt-IDs oder manuellen `link_scopes`.
 
 ## Beispiele
 
-Synthetisches Fragment: `audit_logs = { retention_days = 180,
-s3_object_lock = true }`. Andere Felder nutzen native Defaults; dies ist
-weder eine rechtliche Aufbewahrungsempfehlung noch die Aufforderung,
-Audit automatisch zu aktivieren.
-
-<a id="limits"></a>
+Synthetische Aktivierung: `audit_logs={ retention_days=90,
+acl=["203.0.113.0/24"], s3_object_lock=false, managed_resources=true }`.
+Nur ein Entwurf, kein Deployment.
 
 ## Grenzen
 
-Object Lock kann Loeschung unabhaengig vom Ablauf von Configurator-Gespraechen
-einschraenken. Audit-Router-Konfiguration beweist weder zugestellte Ereignisse
-noch die Abdeckung aller Bereiche.
-Umfang, Berechtigungen, Ingestion und Archivabruf benoetigen eigene Tests.
-Native Editor-Vorschlaege unterstuetzen typisierte Audit-Einstellungen;
-neue Instanzen benoetigen explizite Entscheidungen zu Aufbewahrung, ACL und
-Object Lock, keine Zustimmung durch Beispiel/Default.
-
-<a id="credentials"></a>
+Neue Configurator-Audit-Konfigurationen verlangen ausdrückliche Entscheidungen
+zu Aufbewahrung, ACL und Object Lock. Links erfassen zukünftige Ereignisse, keine
+rückwirkende Historie. Standardrechte enthalten keine Audit-Änderungsrechte;
+effektive Owner- oder geerbte Rechte können Routing trotzdem verändern. Kein
+Deny-Versprechen gegenüber diesen Identitäten. Echte Zustellung nach Logs/S3
+und Zugriffsbeschränkungen separat prüfen. Recovery erhält Link-Identitäten;
+ein verlorenes Ingestion-Geheimnis verlangt gezielt bestätigten Widerruf und
+neuen Plan/Apply für Ersatz, niemals erfundene Zugangsdaten.
 
 ## Zugangsdaten
 
-Archiv- und Ingestion-Zugangsdaten gehoeren in sichere Ausfuehrungsbindungen.
-Niemals S3-Schluessel, OTLP-Tokens, Archivinhalte oder Compliance-Nachweise an
-das Modell senden.
-
-<a id="sources"></a>
+Keine Router-/OTLP-Tokens, S3-Schlüssel, States oder Audit-Inhalte im Chat oder
+öffentlichen Vertrag. Geheimnisse bleiben in geschützter Ausführung und
+State-Ablage.
 
 ## Quellen
 
-Root- und Management-Vertraege pinnen Umfang und Aufbewahrungsverhalten.
-Service-Limits und Implementierungsaenderungen erneut pruefen, statt
-Quellen-Hashes stillschweigend aufzuwerten.
-Externe Compliance und Aktualitaet des Providers werden hier nicht behauptet.
+Das Manifest bindet Root-, Management-, Application- und Recovery-Verträge.
+Vor Generierung erneut prüfen. Konfiguration belegt weder Zustellung noch
+rechtliche Compliance.

@@ -118,7 +118,7 @@ variable "audit_logs" {
       resource_id   = string
     })), null)
   })
-  description = "Audit logs configuration. The router forwards to two destinations: OTLP into the Logs instance for querying, and S3 into the audit bucket for long-term archive. retention_days applies to both, driving the Logs instance retention and, when s3_object_lock is enabled, the archive bucket's default retention. link_scopes defaults to a single organization-wide link; set it to attach individual folders or projects instead."
+  description = "Audit logs configuration. The router forwards to two destinations: OTLP into the Logs instance for querying, and S3 into the audit bucket for long-term archive. retention_days applies to both, driving the Logs instance retention and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null); set false explicitly to opt out before creating an archive. link_scopes defaults to a single link for organization events only, without inherited project/folder coverage; set it to attach individual folders or projects instead."
   default     = null
 
   validation {

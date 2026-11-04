@@ -35,6 +35,18 @@ function fixture(
         parent: { containerId: "folder" },
         labels: {},
       };
+    else if (url.endsWith("/telemetry-link"))
+      value = {
+        telemetryRouterId: projectId,
+        displayName: "audit-link",
+        enabled: true,
+        regionId: "eu01",
+      };
+    else if (
+      url.includes("/telemetry-routers/") &&
+      url.includes("/access-tokens?")
+    )
+      value = { accessTokens: [] };
     else if (url.includes("/routing-tables")) value = { items: [] };
     else if (url.endsWith("/roles"))
       value = { resourceId: projectId, resourceType: "project", roles: [] };
@@ -353,4 +365,58 @@ it("project IAM discovery verifies the exact target and never queries inherited 
       key,
     ),
   ).rejects.toThrow("cloud-project-mismatch");
+});
+
+it("reads every router token metadata page and drops unrelated tokens and secret fields", async () => {
+  const instanceId = "22222222-2222-4222-8222-222222222222";
+  const tokenId = "33333333-3333-4333-8333-333333333333";
+  const f = fixture((url, value) => {
+    if (!url.includes("/access-tokens?")) return;
+    value.accessTokens = url.includes("pageToken=")
+      ? [
+          {
+            id: tokenId,
+            displayName: instanceId.replaceAll("-", ""),
+            accessToken: "never-retain",
+          },
+        ]
+      : [{ id: projectId, displayName: "another-application" }];
+    if (!url.includes("pageToken=")) value.nextPageToken = "opaque/cursor";
+  });
+  const result = await f.cloud.read(
+    {
+      projectId,
+      ownerEmail,
+      region: "eu01",
+      audit: { projectId, routerId: projectId, instanceId },
+    },
+    key,
+  );
+  expect(result.audit?.tokens).toEqual([
+    { id: tokenId, name: instanceId.replaceAll("-", "") },
+  ]);
+  expect(f.calls.filter((c) => c.url.includes("/access-tokens?"))).toHaveLength(
+    2,
+  );
+  expect(f.calls.some((c) => c.url.includes("pageToken=opaque%2Fcursor"))).toBe(
+    true,
+  );
+  expect(JSON.stringify(result)).not.toContain("never-retain");
+});
+
+it("rejects repeated audit pagination and never follows an API-provided endpoint", async () => {
+  const f = fixture((url, value) => {
+    if (url.includes("/access-tokens?")) value.nextPageToken = "same";
+  });
+  await expect(
+    f.cloud.read(
+      {
+        projectId,
+        ownerEmail,
+        region: "eu01",
+        audit: { projectId, routerId: projectId, instanceId: projectId },
+      },
+      key,
+    ),
+  ).rejects.toThrow("cloud-inventory-incomplete");
 });

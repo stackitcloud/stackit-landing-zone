@@ -81,6 +81,8 @@ export const applicationUpgradeAssessmentSchema =
   });
 
 const managedTypes = new Set([
+  "stackit_telemetrylink",
+  "stackit_telemetryrouter_access_token",
   "terraform_data",
   "time_rotating",
   "stackit_resourcemanager_project",

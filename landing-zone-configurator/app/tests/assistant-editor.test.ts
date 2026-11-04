@@ -982,6 +982,7 @@ describe("shared native Editor proposal contract", () => {
 
   it("requires explicit creation decisions in the serving contract without changing partial-update semantics", () => {
     const value = {
+      managed_resources: null,
       link_scopes: null,
       retention_days: 90,
       acl: ["203.0.113.0/24"],
@@ -4148,3 +4149,29 @@ it.each(["requester", "both"] as const)(
     expect(original).toEqual(before);
   },
 );
+
+it("keeps new audit coverage opt-in without adding a false constructor override or dropping a deliberate update", () => {
+  const value = {
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+    managed_resources: false,
+  };
+  expect(assistantEditorCreationValue("audit_logs", value, null)).toEqual({
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+  });
+  expect(
+    assistantEditorCreationValue(
+      "audit_logs",
+      { ...value, managed_resources: true },
+      null,
+    ),
+  ).toEqual({ ...value, managed_resources: true });
+  expect(
+    assistantEditorCreationValue("audit_logs", value, {
+      managed_resources: true,
+    }),
+  ).toEqual(value);
+});

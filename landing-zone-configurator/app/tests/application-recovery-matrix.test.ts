@@ -43,6 +43,7 @@ function fullFixture() {
         public: {
           ...f.variables.platform_contract.targets.public,
           corporate: true,
+          audit_router: { project_id: organizationId, instance_id: areaId },
           network_area_id: areaId,
           firewall_next_hop_ip: "10.0.0.7",
         },
@@ -51,6 +52,17 @@ function fullFixture() {
   };
   const inventory = recoveryCloudInventorySchema.parse({
     ...f.inventory,
+    audit: {
+      projectId: organizationId,
+      routerId: areaId,
+      region: "eu01",
+      link: {
+        routerId: areaId,
+        name: variables.application.instance_id.replaceAll("-", ""),
+        enabled: true,
+      },
+      tokens: [],
+    },
     networks: [
       {
         ...f.inventory.networks[0],
@@ -125,7 +137,7 @@ function fullFixture() {
     instanceId: variables.application.instance_id,
   };
   const imports = deriveApplicationRecoveryImports(input);
-  expect(imports).toHaveLength(13);
+  expect(imports).toHaveLength(14);
   expect([...new Set(imports.map((i) => i.type))].sort()).toEqual(
     Object.entries(applicationRecoveryStrategies)
       .filter(([, strategy]) => strategy === "import")
@@ -134,11 +146,13 @@ function fullFixture() {
   );
   const resources = imports.map((item) => {
     const match =
-      /^module\.application\.([a-z_]+)\.([a-z_]+)(?:\[(.*)\])?$/.exec(
+      /^(?:module\.application\.)?([a-z_]+)\.([a-z_]+)(?:\[(.*)\])?$/.exec(
         item.address,
       )!;
     return {
-      module: "module.application",
+      ...(item.address.startsWith("module.application.")
+        ? { module: "module.application" }
+        : {}),
       mode: "managed",
       type: match[1],
       name: match[2],
@@ -189,7 +203,7 @@ it("recovers every retained/missing subset across all importable Application res
         instanceId: f.input.instanceId,
         imports,
       }).candidateResources,
-    ).toBe(14);
+    ).toBe(15);
   }
 }, 60000);
 it.each([
@@ -303,14 +317,24 @@ it("requires a deliberate recovery strategy for every resource reachable from th
         addresses.add(`module.application.${match[1]}.${match[2]}`);
       }
     }
-  for (const match of main.matchAll(/resource\s+"([a-z_]+)"/g))
-    types.add(match[1]!);
+  for (const file of await readdir(new URL("application/", root))) {
+    if (!file.endsWith(".tf")) continue;
+    const source = await readFile(new URL(`application/${file}`, root), "utf8");
+    for (const match of source.matchAll(
+      /resource\s+"([a-z_]+)"\s+"([a-z_]+)"/g,
+    )) {
+      types.add(match[1]!);
+      addresses.add(`${match[1]}.${match[2]}`);
+    }
+  }
   const expected = new Set(
     fullFixture().imports.map((i) => i.address.replace(/\[.*$/, "")),
   );
   expected.add("module.application.stackit_service_account_key.automation");
   expected.add("module.application.stackit_objectstorage_credential.this");
   expected.add("module.application.time_rotating.key_rotate");
+  expected.add("terraform_data.contract");
+  expected.add("stackit_telemetryrouter_access_token.audit");
   expect([...addresses].sort()).toEqual([...expected].sort());
   expect([...types].sort()).toEqual(
     Object.keys(applicationRecoveryStrategies).sort(),
@@ -416,3 +440,92 @@ it.each(["service-account-key", "objectstorage-credential"] as const)(
     ).toThrow();
   },
 );
+
+it("revokes only the exact Application audit token whose secret was lost", () => {
+  const f = fullFixture();
+  const audit = f.input.inventory.audit!;
+  const id = "99999999-9999-4999-8999-999999999999";
+  audit.tokens.push({ id, name: f.input.instanceId.replaceAll("-", "") });
+  const revocations = deriveApplicationRecoveryRevocations(f.input);
+  expect(revocations).toEqual([
+    {
+      kind: "audit-router-token",
+      address: "stackit_telemetryrouter_access_token.audit[0]",
+      projectId: audit.projectId,
+      region: "eu01",
+      routerId: audit.routerId,
+      keyId: id,
+      discardIncompleteState: false,
+    },
+  ]);
+  const current = structuredClone(f.input.inventory);
+  current.audit!.tokens = [];
+  expect(recoveryRevocationsAbsent(current, revocations)).toBe(true);
+  expect(
+    normalizeRevokedRecoveryInventory(current, f.input.inventory, revocations),
+  ).toEqual(f.input.inventory);
+  audit.tokens[0]!.name = "another-application";
+  expect(() => deriveApplicationRecoveryRevocations(f.input)).toThrow(
+    "cloud-resource-ambiguous",
+  );
+});
+
+it("preserves a fully saved audit ingestion token and only discards its incomplete State after exact approval", () => {
+  const f = fullFixture();
+  const audit = f.input.inventory.audit!;
+  const id = "99999999-9999-4999-8999-999999999999";
+  audit.tokens.push({ id, name: f.input.instanceId.replaceAll("-", "") });
+  const attributes = {
+    id: `${audit.projectId},eu01,${audit.routerId},${id}`,
+    project_id: audit.projectId,
+    region: "eu01",
+    instance_id: audit.routerId,
+    access_token_id: id,
+    access_token: "saved-private-token",
+  };
+  const resource = {
+    mode: "managed",
+    type: "stackit_telemetryrouter_access_token",
+    name: "audit",
+    provider: "stackit",
+    instances: [{ index_key: 0, attributes }],
+  };
+  const original = () =>
+    bytes({ ...f.state, resources: [...f.state.resources, resource] });
+  expect(
+    deriveApplicationRecoveryRevocations({ ...f.input, state: original() }),
+  ).toEqual([]);
+  attributes.access_token = "";
+  const revocations = deriveApplicationRecoveryRevocations({
+    ...f.input,
+    state: original(),
+  });
+  expect(revocations).toHaveLength(1);
+  expect(revocations[0]?.discardIncompleteState).toBe(true);
+  const candidate = bytes({
+    ...f.state,
+    serial: 2,
+    resources: [...f.state.resources, ...f.resources],
+  });
+  expect(() =>
+    verifyImportedRecoveryState({
+      original: original(),
+      candidate,
+      instanceId: f.input.instanceId,
+      imports: f.imports,
+    }),
+  ).toThrow();
+  expect(
+    verifyImportedRecoveryState({
+      original: original(),
+      candidate,
+      instanceId: f.input.instanceId,
+      imports: f.imports,
+      revocations,
+    }).retainedResources,
+  ).toBe(1);
+  attributes.project_id = f.input.inventory.project.projectId;
+  expect(() =>
+    deriveApplicationRecoveryRevocations({ ...f.input, state: original() }),
+  ).toThrow("checkpoint-invalid");
+});

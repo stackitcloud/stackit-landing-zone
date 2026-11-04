@@ -38,6 +38,8 @@ export const upgradeReasonMessages: Record<string, string> = {
   "target-not-qualified":
     "Die Zielversion ist noch nicht vollständig für die Ausführung qualifiziert.",
   "execution-source-change": "Die Ausführungsquelle ändert sich.",
+  "platform-audit-change":
+    "Die zentrale Audit-Anbindung ändert sich. Der freigegebene Upgrade-Pfad übernimmt auch die dafür benötigte technische Ausführungsquelle; danach prüfst du einen neuen Plan.",
   "platform-network-change": "Netzwerkvorgaben der Plattform ändern sich.",
   "network-change": "Die Netzwerkkonfiguration ändert sich.",
   "iam-change": "Projektrollen oder Automatisierungsrechte ändern sich.",
@@ -55,6 +57,7 @@ upgradeReasonMessages["application-platform-execution-active"] =
   upgradeReasonMessages["execution-or-recovery-active"] ?? "";
 
 export function upgradeChangeLabel(path: string): string {
+  if (/audit/.test(path)) return "Audit-Protokollierung";
   if (/role|permission|accessProfile|initial_owner/.test(path))
     return "Projektberechtigungen";
   if (/observability/.test(path)) return "Observability";

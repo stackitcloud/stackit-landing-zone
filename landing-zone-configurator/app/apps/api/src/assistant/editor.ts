@@ -637,7 +637,15 @@ export function assistantEditorCreationValue(
   // Nullable optional constructor slots represent native defaults, not overrides.
   return Object.fromEntries(
     Object.entries(objectValue(value)).filter(
-      ([key, item]) => item !== null || !type[2]?.includes(key),
+      ([key, item]) =>
+        (item !== null || !type[2]?.includes(key)) &&
+        // A fresh audit draft keeps legacy scope through its native false
+        // default. Do not add an unrelated coverage override to old requests.
+        !(
+          path === "audit_logs" &&
+          key === "managed_resources" &&
+          item === false
+        ),
     ),
   );
 }

@@ -106,6 +106,8 @@ export const labels: Record<string, string> = {
   lan_ip: "Interne IP",
   lan_network_range: "Internes Netz (CIDR)",
   lan_vip: "Gemeinsame interne IP",
+  managed_resources:
+    "Alle verwalteten Projekte und Ordner automatisch anbinden",
   link_scopes: "Überwachte Ressourcen",
   local_address: "Lokale Adresse",
   local_subnets: "Lokale Subnetze",
@@ -230,6 +232,8 @@ export const hints: Record<string, string> = {
     "Die Kennungen müssen zu den Netzwerkbereichen passen. Richtlinien für mehrere Appliances sind noch eingeschränkt.",
   sna_enabled:
     "Die private Kubernetes-API ist vom aktuellen CF-Runner nicht nachweislich erreichbar. Siehe Issue #37.",
+  managed_resources:
+    "Ergänzt Audit-Links für Plattformprojekte, Ordner und neue Application-Bestellungen in derselben Region. Ein Organisations-Link allein erfasst deren Ereignisse nicht. Bestehende Bestellungen benötigen einen freigegebenen Plattform-Upgrade-Pfad. Nicht mit manuellen Link-Zielen kombinieren.",
   s3_object_lock:
     "Ohne eigene Einstellung ist diese Sperre im Accelerator eingeschaltet. Aufbewahrungsregeln vor dem Deployment prüfen.",
   firewall_config:

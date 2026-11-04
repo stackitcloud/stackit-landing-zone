@@ -1,3 +1,4 @@
+import { applicationExecutionCurrentRevision } from "@lzc/contracts";
 import { z } from "zod";
 import {
   resolveApplicationAccessProfile,
@@ -19,6 +20,7 @@ export const applicationAcceleratorRevisionSchema = z.enum([
   "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
   "08ac257de1548c8ec5e83dae1a79373711c3d644",
+  applicationExecutionCurrentRevision,
 ]);
 
 export const applicationPublicationSchema = z
@@ -80,8 +82,10 @@ export function validateApplicationPublication(input: unknown) {
   const { template } = publication;
   if (
     template.accessProfile &&
-    publication.acceleratorRevision !==
-      "08ac257de1548c8ec5e83dae1a79373711c3d644"
+    ![
+      "08ac257de1548c8ec5e83dae1a79373711c3d644",
+      applicationExecutionCurrentRevision,
+    ].includes(publication.acceleratorRevision)
   )
     throw new Error(
       "Dieses Rechteprofil benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
@@ -150,7 +154,10 @@ export function applicationPlanScopeIssues(
   const issues: string[] = [];
   if (
     (template.accessProfile || settings.automation_role !== undefined) &&
-    acceleratorRevision !== "08ac257de1548c8ec5e83dae1a79373711c3d644"
+    ![
+      "08ac257de1548c8ec5e83dae1a79373711c3d644",
+      applicationExecutionCurrentRevision,
+    ].includes(acceleratorRevision)
   )
     issues.push(
       "Dieses Rechteprofil benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
@@ -165,6 +172,7 @@ export function applicationPlanScopeIssues(
     acceleratorRevision !== "9e7fb46c329aca32e878ce1f0ea3b944ea240354" &&
     acceleratorRevision !== "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d" &&
     acceleratorRevision !== "08ac257de1548c8ec5e83dae1a79373711c3d644" &&
+    acceleratorRevision !== applicationExecutionCurrentRevision &&
     (template.kind !== "public" || settings.network_enabled !== true)
   )
     issues.push(

@@ -29,7 +29,7 @@ const runtime = new pg.Pool({
   password: "runtime-test-only",
 });
 const old = "9e7fb46c329aca32e878ce1f0ea3b944ea240354";
-const latest = "08ac257de1548c8ec5e83dae1a79373711c3d644";
+const latest = "c83f3d910ab20131d1cba898023317c0e818843b";
 let owner: Session;
 let outsider: Session;
 

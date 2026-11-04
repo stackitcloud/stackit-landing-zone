@@ -495,6 +495,22 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     },
   },
   {
+    id: "editor-audit-managed",
+    topic: "audit-logs",
+    fixture: "baseline",
+    message:
+      "Bitte einen Audit-Entwurf erstellen: 90 Tage, nur ACL 203.0.113.0/24 und Object Lock ausdrücklich aus. Alle vom Accelerator verwalteten Projekte und Ordner in der Plattformregion automatisch anbinden, auch neue Application-Bestellungen. Kein Deployment.",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+        managed_resources: true,
+      },
+    },
+  },
+  {
     id: "editor-audit-followup",
     topic: "audit-logs",
     fixture: "baseline",

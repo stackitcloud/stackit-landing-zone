@@ -16,6 +16,7 @@ export const applicationStateRecoveryPhaseSchema = z.enum([
 export const applicationStateRecoveryImportSchema = z.strictObject({
   address: z.string().min(1).max(1024),
   type: z.enum([
+    "stackit_telemetrylink",
     "stackit_resourcemanager_project",
     "stackit_routing_table",
     "stackit_routing_table_route",
@@ -31,10 +32,15 @@ export const applicationStateRecoveryImportSchema = z.strictObject({
   resourceId: z.string().min(1).max(1024),
 });
 export const applicationStateRecoveryRevocationSchema = z.strictObject({
-  kind: z.enum(["service-account-key", "objectstorage-credential"]),
+  kind: z.enum([
+    "service-account-key",
+    "objectstorage-credential",
+    "audit-router-token",
+  ]),
   address: z.string().min(1).max(1024),
   projectId: z.uuid(),
   region: z.enum(["eu01", "eu02"]),
+  routerId: z.uuid().optional(),
   accountEmail: z.email().optional(),
   groupId: z.string().min(1).max(256).optional(),
   keyId: z.string().min(1).max(256),

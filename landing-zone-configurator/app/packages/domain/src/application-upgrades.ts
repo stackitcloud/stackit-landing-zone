@@ -57,6 +57,8 @@ function targetChanges(
   ])
     if (field && !same(before[field], after[field]))
       add(code ?? "target-migration", `target.${field}`, "blocked");
+  if (!same(before.audit_router, after.audit_router))
+    add("platform-audit-change", "target.audit_router", "sensitive");
   for (const field of ["firewall_next_hop_ip", "ipv4_nameservers"])
     if (!same(before[field], after[field]))
       add("platform-network-change", `target.${field}`, "sensitive");

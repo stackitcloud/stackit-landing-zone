@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "5d2b57806cb5eec74a85a7b001926e2156caae0afb65f2cabe9b1f3cc5d1a8e4",
+  "knowledgeSha256": "ffcf95044113647d676afbbdea40b46dc5823b1f8b791ba7683facea3b6c2e60",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "90a6e4a908af07044ec8c6cc48810b3b55aeb2a9f453571e56592f01ecc8f2ee",
+    "scripts/assistant-scenarios.ts": "82b1aea3652e49bf3255d89986d7bdff89978fbba2dfd9a993965f005e4be51c",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "c2711791d86814217e4c6caf37c96ee5ff76ce43f12993ac984f1fc392d357b2",
+  "suiteSha256": "e0d917bb56bc030b679267ea4c837c855d423af4832bfecf1b281a0b0f846ed1",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1086,6 +1086,15 @@
           "mode": "propose-validated-draft"
         },
         {
+          "path": "audit_logs.managed_resources",
+          "group": "management",
+          "type": "bool",
+          "optional": true,
+          "proposalPath": "audit_logs",
+          "responsibility": "user",
+          "mode": "propose-validated-draft"
+        },
+        {
           "path": "audit_logs.retention_days",
           "group": "management",
           "type": "number",
@@ -1118,6 +1127,28 @@
                 "203.0.113.0/24"
               ],
               "s3_object_lock": false
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-managed",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "message": "Bitte einen Audit-Entwurf erstellen: 90 Tage, nur ACL 203.0.113.0/24 und Object Lock ausdrücklich aus. Alle vom Accelerator verwalteten Projekte und Ordner in der Plattformregion automatisch anbinden, auch neue Application-Bestellungen. Kein Deployment.",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false,
+              "managed_resources": true
             }
           },
           "assertions": [

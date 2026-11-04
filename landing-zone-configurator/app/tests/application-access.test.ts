@@ -441,3 +441,20 @@ it("keeps explicit full IAM and unrelated service selections separate", () => {
     applicationProjectPermissionNames.filter((p) => p.startsWith("ske.")),
   );
 });
+
+it("keeps central audit mutation and token management out of both default workload identities", () => {
+  const profile = defaultApplicationAccessProfile("central@example.test");
+  for (const permissions of [
+    profile.permissions,
+    profile.automationPermissions,
+  ]) {
+    expect(permissions.length).toBeGreaterThan(0);
+    expect(
+      permissions.filter((p) =>
+        /telemetry-link|telemetry-router|iam\.role\.(create|edit)|iam\.member\.(add|edit)|project\.delete/.test(
+          p,
+        ),
+      ),
+    ).toEqual([]);
+  }
+});

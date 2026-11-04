@@ -17,7 +17,7 @@ const target = process.argv[2];
 if (!target?.startsWith("/"))
   throw new Error("Absolute fixture directory required");
 if (
-  applicationMvpAcceleratorCommit !== "08ac257de1548c8ec5e83dae1a79373711c3d644"
+  applicationMvpAcceleratorCommit !== "c83f3d910ab20131d1cba898023317c0e818843b"
 )
   throw new Error(
     "Requalify Application project scope for the new Runner source",
