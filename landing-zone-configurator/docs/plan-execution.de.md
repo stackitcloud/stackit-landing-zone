@@ -1003,3 +1003,18 @@ die Abwesenheit derselben App-GUID und speichert die Quittung atomar. Offene Pr�
 überstehen API-Neustarts und werden fair in Gruppen von 50 abgearbeitet. Sie führen
 selbst kein DELETE aus; bestehende Apps durchlaufen vor einem erneuten Versuch alle
 normalen Berechtigungs- und CF-Prüfungen.
+
+### Fehler beim Runner-Start
+
+Bleibt ein Application-Plan oder Apply bei **Startet** stehen, verwende beim Job
+**Runner-Start prüfen**. Die Prüfung kontrolliert zweimal die genaue Runner-App,
+die Ausführungsquelle und den beendeten Task beziehungsweise Prozess. Sie schließt
+den Job nur ab, wenn sein Ausführungsticket nie abgerufen wurde, weder eine
+Zugangsdatenanforderung noch ein Worker-Bericht vorliegt und eine abschließende
+Datenbanktransaktion dieselbe Bindung bestätigt. Die ungenutzte Jobberechtigung
+wird widerrufen und ein unveränderlicher Startfehlernachweis gespeichert. Danach
+kann der Application Owner dieselbe Bestellung neu planen; der alte Apply wird
+nicht wiederholt. Infrastruktur, entfernter State und State-Sperren werden nicht
+verändert. Ein laufender Runner, eine nicht verfügbare Beobachtung oder Hinweise
+auf eine begonnene Ausführung lassen den Job gesperrt. Ein bereits begonnener,
+unterbrochener Apply verwendet das bestehende Recovery-Verfahren.

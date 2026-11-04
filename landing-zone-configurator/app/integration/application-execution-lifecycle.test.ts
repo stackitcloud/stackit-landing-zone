@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
+import { checkRunnerStart } from "../apps/api/src/applications/runner-start.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -949,4 +950,132 @@ it("keeps project-id bucket defaults available for orders originally created on 
       [id],
     );
   }
+});
+
+async function startupFixture(
+  operation: "plan" | "apply" = "apply",
+  consumed = false,
+) {
+  const { instance } = await historical();
+  const id = await job(instance, operation);
+  await grant(id, instance, operation);
+  const t = await ticket(id, consumed),
+    app = randomUUID();
+  await importRows(() =>
+    admin.query(
+      "INSERT INTO lzc.application_dispatches(job_id,tenant_id,instance_id,owner_user_id,approved_by,approval_session_id,status,runner_app_id,runner_package_id) VALUES($1,$2,$3,$4,$4,$5,'starting',$6,$7)",
+      [id, owner.tenantId, instance, owner.userId, owner.id, app, t.packageId],
+    ),
+  );
+  const run = (session = owner, stop = true) =>
+    checkRunnerStart(
+      (task) => scoped(session, task),
+      session,
+      id,
+      { confirmRunnerStartCheck: true },
+      {
+        isStopped: async () => stop,
+        start: async () => {},
+        remove: async () => {},
+      },
+    );
+  return { id, instance, app, t, run };
+}
+it.each(["plan", "apply"] as const)(
+  "closes a failed-before-start %s with immutable evidence and revokes its unused grant",
+  async (operation) => {
+    const f = await startupFixture(operation);
+    expect(await f.run()).toMatchObject({
+      jobId: f.id,
+      status: "failed",
+      errorCode: "runner_start_failed",
+      canReplan: true,
+    });
+    const saved = (
+      await admin.query(
+        "SELECT d.status,d.error_code,g.revoked_at IS NOT NULL AS revoked,t.consumed_at IS NULL AS unused,(SELECT count(*) FROM lzc.application_runner_start_failures WHERE job_id=d.job_id) AS receipts FROM lzc.application_dispatches d JOIN lzc.application_job_grants g ON g.job_id=d.job_id JOIN lzc.application_runner_tickets t ON t.job_id=d.job_id WHERE d.job_id=$1",
+        [f.id],
+      )
+    ).rows[0];
+    expect(saved).toEqual({
+      status: "failed",
+      error_code: "runner_start_failed",
+      revoked: true,
+      unused: true,
+      receipts: "1",
+    });
+    expect(await f.run()).toMatchObject({ status: "failed" });
+    expect(
+      (
+        await admin.query(
+          "SELECT lzc_auth.application_execution_blocked($1,$2,$3,'standard') AS blocked",
+          [randomUUID(), f.instance, owner.tenantId],
+        )
+      ).rows[0].blocked,
+    ).toBe(false);
+    await expect(
+      scoped(owner, (c) =>
+        c.query(
+          "UPDATE lzc.application_runner_start_failures SET runner_app_id=$2 WHERE job_id=$1",
+          [f.id, randomUUID()],
+        ),
+      ),
+    ).rejects.toThrow();
+  },
+);
+it("preserves consumed, running and unauthorized startup attempts", async () => {
+  const consumed = await startupFixture("apply", true);
+  await expect(consumed.run()).rejects.toThrow(
+    "application_runner_start_unavailable_or_claimed",
+  );
+  const running = await startupFixture();
+  await expect(running.run(owner, false)).rejects.toMatchObject({
+    code: "application_runner_start_active",
+  });
+  await expect(running.run(outsider)).rejects.toThrow(
+    "application_runner_start_access_denied",
+  );
+  expect(
+    (
+      await admin.query(
+        "SELECT status FROM lzc.application_dispatches WHERE job_id=$1",
+        [running.id],
+      )
+    ).rows[0].status,
+  ).toBe("starting");
+});
+
+it("rejects a ticket consumed between runner observation and the final transaction", async () => {
+  const f = await startupFixture();
+  let observations = 0;
+  await expect(
+    checkRunnerStart(
+      (task) => scoped(owner, task),
+      owner,
+      f.id,
+      { confirmRunnerStartCheck: true },
+      {
+        start: async () => {},
+        remove: async () => {},
+        isStopped: async () => {
+          if (++observations === 2)
+            await importRows(() =>
+              admin.query(
+                "UPDATE lzc.application_runner_tickets SET consumed_at=clock_timestamp() WHERE job_id=$1",
+                [f.id],
+              ),
+            );
+          return true;
+        },
+      },
+    ),
+  ).rejects.toThrow("application_runner_start_unavailable_or_claimed");
+  expect(
+    (
+      await admin.query(
+        "SELECT status,(SELECT count(*) FROM lzc.application_runner_start_failures WHERE job_id=$1) AS receipts FROM lzc.application_dispatches WHERE job_id=$1",
+        [f.id],
+      )
+    ).rows[0],
+  ).toEqual({ status: "starting", receipts: "0" });
 });

@@ -1,4 +1,20 @@
 export const englishMessages: Record<string, string> = {
+  "Runner-Start prüfen": "Check runner startup",
+  "Bleibt die Ausführung auf Startet stehen? Prüfe, ob der Runner vor Ausführungsbeginn beendet wurde. Nur ein nachweislich beendeter Runner ohne abgerufene Ausführungsberechtigung wird abgeschlossen. Eine laufende Ausführung bleibt unverändert.":
+    "Execution stuck on Starting? Check whether the runner terminated before execution began. Only a verified stopped runner whose execution capability was never claimed can be closed. A running execution is left unchanged.",
+  "Der Runner ist vor Ausführungsbeginn beendet worden. Der Startfehler wurde abgeschlossen und seine Berechtigung widerrufen. Du kannst dieselbe Bestellung jetzt neu planen. Infrastruktur, State und Sperren wurden nicht verändert.":
+    "The runner terminated before execution began. The startup failure was closed and its execution capability revoked. You can now create a new plan for the same order. Infrastructure, state and locks were not changed.",
+  "Der Runner konnte vor Ausführungsbeginn nicht starten. Es wurde keine Infrastruktur geändert. Starte einen neuen Cloud-Plan derselben Bestellung.":
+    "The runner failed to start before execution began. No infrastructure was changed. Start a new cloud plan for the same order.",
+  "Der Runner ist noch aktiv oder sein Ende ist nicht sicher nachgewiesen. Es wurde nichts geändert.":
+    "The runner is still active or its termination could not be verified. Nothing was changed.",
+  "Der Runner-Status konnte nicht sicher geprüft werden. Bitte später erneut prüfen.":
+    "The runner status could not be verified safely. Please check again later.",
+  "Die Ausführung wurde bereits begonnen oder kann nicht als Startfehler abgeschlossen werden. Nutze bei einem unterbrochenen Apply die Recovery-Prüfung.":
+    "Execution has already begun or cannot be closed as a startup failure. Use recovery inspection for an interrupted Apply.",
+  "Der Ausführungsstand hat sich geändert. Bitte den Status neu laden.":
+    "Execution changed. Please reload the status.",
+
   "Projektberechtigungen fertigstellen": "Complete project permissions",
   "Der zentrale Projekt-Owner ist abgesichert. Die bisherigen direkten Owner-Rechte wurden für die sichere Übergabe beibehalten. Erstelle jetzt einen weiteren Plan, um sie zu entfernen, und führe danach den geprüften Apply aus.":
     "The central project owner is secured. Previous direct owner grants were retained for a safe handover. Create another plan to remove them, then run the reviewed apply.",

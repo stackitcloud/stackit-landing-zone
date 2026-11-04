@@ -5,6 +5,7 @@ import {
   applicationPlanPurposeSchema,
   applicationRecoveryReplanRequestSchema,
   applicationRecoveryReviewRequestSchema,
+  applicationRunnerStartCheckRequestSchema,
 } from "@lzc/contracts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -220,6 +221,7 @@ export function registerApplications(
         | "diagnoseRecovery"
         | "completeInterruptedPlan"
         | "inspectInterruptedApply"
+        | "checkRunnerStart"
         | "recoveryReviewContext"
         | "recordRecoveryReview"
         | "checkRecoveryReplan"
@@ -292,6 +294,8 @@ export function registerApplications(
             "application_plan_recovery_changed",
             "application_apply_recovery_unavailable",
             "application_apply_recovery_changed",
+            "application_runner_start_changed",
+            "application_runner_start_unavailable_or_claimed",
             "application_state_recovery_changed",
             "application_state_recovery_active",
           ].includes(error.message)
@@ -934,6 +938,24 @@ export function registerApplications(
           session,
           id,
           applicationInterruptedPlanRequestSchema.parse(request.body),
+        );
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/check-runner-start",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.checkRunnerStart)
+          return reply
+            .code(503)
+            .send({ error: "application_runner_start_unavailable" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return applications.checkRunnerStart(
+          session,
+          id,
+          applicationRunnerStartCheckRequestSchema.parse(request.body),
         );
       },
     );

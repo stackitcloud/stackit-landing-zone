@@ -486,3 +486,16 @@ when the immediate absence check ends, a later maintenance pass confirms the sam
 GUID is absent and atomically stores its receipt. Pending confirmations survive API
 restarts, rotate fairly in batches of 50 and never issue DELETE by themselves. Apps
 that still exist are subject to all normal eligibility and CF checks before any retry.
+
+### Runner startup failures
+
+If an Application Plan or Apply remains at **Starting**, use **Check runner
+startup** in that job. The check verifies the exact runner app, execution source
+and terminal task/process state twice. It closes the job only when its execution
+ticket was never consumed, no credential claim or worker report exists, and a
+final database transaction confirms the same binding. The unused job grant is
+revoked and an immutable startup-failure receipt is stored. The Application Owner
+can then create a fresh Plan for the same order; the old Apply is not replayed.
+Infrastructure, remote State and State locks are not modified. A running runner,
+an unavailable observation or any evidence of execution leaves the job blocked;
+an interrupted Apply that already began uses the existing Recovery procedure.
