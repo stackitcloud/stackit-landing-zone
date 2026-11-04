@@ -89,7 +89,10 @@ and codes, organization references and other environment-specific values.
 Order input defaults are used where configured; a required input without a default
 uses the first allowed choice or the corresponding example setting. Check these
 values, especially stage and service plans. Parameter choices and self-service
-approval policies do not become Terraform access controls. A symbolic Observability
+approval policies do not become Terraform access controls. Template regions must
+match the native platform: Public/Corporate projects in another region require
+a matching `connectivity_regions` configuration; Sandboxes use the platform region.
+The download reports incompatible regions instead of silently ignoring them. A symbolic Observability
 network binding must be replaced with explicit sources before export; it is never
 silently exported as an unrestricted ACL. Provide external credentials as described
 below; the download does not contain the Configurator's stored deployment secrets.

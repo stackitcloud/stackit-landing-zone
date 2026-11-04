@@ -2685,6 +2685,8 @@ export const englishMessages: Record<string, string> = {
   "Accelerator-Beispiel zum Download bereitgestellt.":
     "Accelerator example ready to download.",
   "Accelerator-Export fehlgeschlagen.": "Accelerator export failed.",
+  "Für den Accelerator-Export müssen die Template-Regionen zur nativen Plattformkonfiguration passen. Public/Corporate benötigen bei abweichender Region eine passende Mehrregionen-Konfiguration; Sandboxes verwenden die Plattformregion.":
+    "For Accelerator export, template regions must match the native platform configuration. Public/Corporate projects in a different region require a matching multi-region configuration; Sandboxes use the platform region.",
   "Für den Accelerator-Export die symbolische Observability-Netzbindung durch explizite Zugriffsquellen ersetzen.":
     "For Accelerator export, replace the symbolic Observability network binding with explicit access sources.",
   "Der Accelerator-Download enthält die Plattform und je einen Projekteinstieg pro Application-Template. Beispieladressen und Projektangaben vor Plan/Apply anpassen; nicht benötigte Einträge entfernen. Speichern und Ausführen im Configurator bleiben davon unabhängig.":
