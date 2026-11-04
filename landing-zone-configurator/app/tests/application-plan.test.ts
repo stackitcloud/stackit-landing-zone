@@ -468,3 +468,47 @@ it("retains the previous source scope and rejects namespaces rather than silentl
     )[0],
   ).toContain("Namespace-Dienste");
 });
+
+it("carries only non-secret audit router references into Application execution", () => {
+  const input = fixture();
+  const target = input.platform.targets.public;
+  const router = {
+    project_id: input.platform.organization_id,
+    instance_id: input.platform.revision,
+  };
+  const plan = compileApplicationPlan({
+    ...input,
+    platform: {
+      ...input.platform,
+      targets: { public: { ...target, audit_router: router } },
+    },
+    context: {
+      ...input.context,
+      allowed_accelerator_revision: applicationMvpAcceleratorCommit,
+    },
+    template: {
+      ...input.template,
+      accelerator_revision: applicationMvpAcceleratorCommit,
+    },
+  });
+  expect(plan.variables.platform_contract.targets.public?.audit_router).toEqual(
+    router,
+  );
+  expect(JSON.stringify(plan.variables)).not.toMatch(
+    /access_token|ROUTER_TOKEN/,
+  );
+  expect(() =>
+    compileApplicationPlan({
+      ...input,
+      platform: {
+        ...input.platform,
+        targets: {
+          public: {
+            ...target,
+            audit_router: { ...router, access_token: "secret" },
+          },
+        },
+      },
+    }),
+  ).toThrow();
+});

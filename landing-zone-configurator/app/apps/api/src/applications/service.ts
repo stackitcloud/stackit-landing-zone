@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   type ApplicationInstance,
   type AppliedPlatformSource,
+  applicationExecutionCurrentRevision,
   applicationExecutionNativeOverrides,
   applicationExecutionProfiles,
   applicationExecutionRevisionSchema,
@@ -3367,8 +3368,17 @@ export class Applications {
       applicationPlanScopeIssues(template, settings, execution.revision).length
     )
       throw new ApplicationError(409, "application_plan_scope_not_supported");
+    const platform = contract(approved).document;
+    if (
+      platform.targets[published.target_key]?.audit_router &&
+      execution.revision !== applicationExecutionCurrentRevision
+    )
+      throw new ApplicationError(
+        409,
+        "application_audit_execution_upgrade_required",
+      );
     const plan = compileApplicationPlan({
-      platform: contract(approved).document,
+      platform,
       template: {
         schema_version: 2,
         tenant_id: session.tenantId,

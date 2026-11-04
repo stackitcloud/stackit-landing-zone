@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const applicationExecutionCurrentRevision =
-  "08ac257de1548c8ec5e83dae1a79373711c3d644";
+  "c83f3d910ab20131d1cba898023317c0e818843b";
 export const applicationExecutionProviderLockSha256 =
   "d40debbff204aee590c2a76d09f6ad3234643329b438fd5c6497de60687f6fa5";
 export const applicationExecutionRevisions = [
@@ -10,6 +10,7 @@ export const applicationExecutionRevisions = [
   "57ad1f6a651c1787694b74ff8aa8b241a3dcd16f",
   "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  "08ac257de1548c8ec5e83dae1a79373711c3d644",
   applicationExecutionCurrentRevision,
 ] as const;
 export const applicationExecutionRevisionSchema = z.enum(

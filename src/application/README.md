@@ -9,6 +9,15 @@ No Configurator API, database, session, job grant or template engine is required
 for direct CLI use. Do not migrate existing combined state by changing directories
 or deleting its `landing_zones` entries: that can plan destructive changes.
 
+When the platform enables `audit_logs.managed_resources`, each published target
+includes non-secret `audit_router.project_id` and `audit_router.instance_id`
+references. This root adds a project Telemetry Link and a dedicated ingestion
+token in that central project, using the deployment identity. Keep the State
+backend inaccessible to workload identities because it contains this token.
+Historical contracts without these references remain unchanged. Existing orders
+use an approved platform upgrade and a fresh reviewed Plan/Apply; see
+[audit coverage](../../docs/architecture.md#audit-coverage).
+
 The Configurator resolves templates and checks its own identity/approval policies.
 CLI users supply the resolved values directly, including owner and service
 settings. In either mode, STACKIT IAM and backend policy enforce permissions;

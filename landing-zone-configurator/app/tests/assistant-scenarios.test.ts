@@ -236,6 +236,9 @@ it.each(assistantScenarios)(
           retention_days: 90,
           acl: ["203.0.113.0/24"],
           s3_object_lock: false,
+          ...(scenario.id === "editor-audit-managed"
+            ? { managed_resources: true }
+            : {}),
         },
         observability: {
           metrics_retention_days: 30,

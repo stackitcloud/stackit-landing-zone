@@ -68,6 +68,8 @@ const errors: Record<string, string> = {
     "Die ursprüngliche Recovery-Quelle wurde zurückgezogen oder ihr geprüftes Paket fehlt. Ein Operator muss ein geprüftes kompatibles Recovery-Paket bereitstellen. Bestellung, State und Sperre bleiben erhalten; Upgrade und Apply sind bis zum Abgleich gesperrt.",
   application_execution_source_withdrawn:
     "Dieser Ausführungsstand wurde zurückgezogen. Prüfe den angebotenen Upgrade-Pfad für dieselbe Bestellung und denselben State.",
+  application_audit_execution_upgrade_required:
+    "Diese Audit-Anbindung benötigt den neuen Ausführungsstand. Übernimm den freigegebenen Plattform-Upgrade-Pfad oder aktualisiere zuerst unter Updates den technischen Ausführungsstand; Bestellung und State bleiben erhalten.",
   application_execution_package_unavailable:
     "Das gebundene Runner-Paket ist derzeit nicht verfügbar. Die Bestellung und ihr State bleiben erhalten. Prüfe die verfügbaren Ausführungsstände oder aktualisiere den Status.",
   application_execution_binding_changed:
@@ -272,6 +274,8 @@ const applicationResourceNames: Record<string, string> = {
   stackit_routing_table: "Routing-Tabelle",
   stackit_routing_table_route: "Route",
   terraform_data: "Plattformbindung",
+  stackit_telemetrylink: "Audit-Anbindung",
+  stackit_telemetryrouter_access_token: "Audit-Ingestion-Zugang",
   time_rotating: "Schlüsselrotation",
 };
 

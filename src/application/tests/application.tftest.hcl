@@ -437,3 +437,41 @@ run "legacy_owner_permissions_preserved" {
     error_message = "Omitted access options must preserve existing project owner and automation owner behavior."
   }
 }
+
+run "application_audit_uses_central_router" {
+  command = plan
+
+  variables {
+    platform_contract = {
+      schema_version  = 1
+      tenant_id       = "11111111-2222-4333-8444-555555555555"
+      revision        = "11111111-2222-4333-8444-555555555555"
+      organization_id = "11111111-2222-4333-8444-555555555555"
+      targets = {
+        public = {
+          folder_id = "11111111-2222-4333-8444-555555555555"
+          region    = "eu01"
+          corporate = false
+          audit_router = {
+            project_id  = "aaaaaaaa-2222-4333-8444-555555555555"
+            instance_id = "bbbbbbbb-2222-4333-8444-555555555555"
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = stackit_telemetryrouter_access_token.audit[0].project_id == "aaaaaaaa-2222-4333-8444-555555555555" && stackit_telemetrylink.audit[0].resource_id == module.application.project_id && stackit_telemetrylink.audit[0].telemetry_router_id == "bbbbbbbb-2222-4333-8444-555555555555"
+    error_message = "The Application must route its own project to the centrally owned router, with an ingestion credential in the central project."
+  }
+}
+
+run "application_legacy_contract_keeps_audit_disabled" {
+  command = plan
+
+  assert {
+    condition     = length(stackit_telemetryrouter_access_token.audit) == 0 && length(stackit_telemetrylink.audit) == 0
+    error_message = "Historical platform contracts must not silently create audit resources."
+  }
+}

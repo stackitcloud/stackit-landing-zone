@@ -2,6 +2,8 @@
  * This catalogue is checked against native source in CI; a new orderable type
  * must define identity recovery or explicit lost-secret revocation first. */
 export const applicationRecoveryStrategies = {
+  stackit_telemetrylink: "import",
+  stackit_telemetryrouter_access_token: "revoke-lost-secret",
   terraform_data: "native-local",
   time_rotating: "native-local",
   stackit_resourcemanager_project: "import",

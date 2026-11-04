@@ -151,8 +151,10 @@ export function buildAssistantKnowledgeTopics() {
         (!/^(?:src\/.*\.tf|landing-zone-configurator\/(?:docs\/.*\.md|app\/(?:packages\/domain|apps\/api)\/src\/.*\.ts))$/.test(
           path,
         ) &&
-          path !==
-            "landing-zone-configurator/app/packages/contracts/src/assistant.ts")
+          ![
+            "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
+            "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
+          ].includes(path))
       )
         throw new Error("Knowledge source outside approved code/documentation");
       return { path, sha256: hash(readFileSync(absolute, "utf8")) };

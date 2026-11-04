@@ -21,6 +21,7 @@ type RecoveryCloudInput = {
   region: "eu01" | "eu02";
   ownerEmail: string;
   routing?: z.infer<typeof scopeSchema>;
+  audit?: { projectId: string; routerId: string; instanceId: string };
   customRoles?: boolean;
   migrationOwners?: string[];
 };
@@ -56,6 +57,7 @@ export class StackitRecoveryCloud {
     url: string,
     init: RequestInit,
     deadline: number,
+    allowNotFound = false,
   ): Promise<unknown> {
     if (Date.now() >= deadline) throw new Error("cloud-inventory-incomplete");
     const response = await this.request(url, {
@@ -65,6 +67,10 @@ export class StackitRecoveryCloud {
         Math.max(1, Math.min(10_000, deadline - Date.now())),
       ),
     });
+    if (allowNotFound && response.status === 404) {
+      await response.body?.cancel();
+      return null;
+    }
     if (!response.ok || !response.body)
       throw new Error("cloud-inventory-incomplete");
     const reader = response.body.getReader();
@@ -179,7 +185,11 @@ export class StackitRecoveryCloud {
     const r = applicationStateRecoveryRevocationSchema.parse(input);
     const token = await this.token(rawKey, Date.now() + 15_000);
     let url: string;
-    if (r.kind === "service-account-key") {
+    if (r.kind === "audit-router-token") {
+      if (!r.routerId || r.accountEmail || r.groupId)
+        throw new Error("cloud-project-mismatch");
+      url = `https://telemetry-router.api.stackit.cloud/v1/projects/${r.projectId}/regions/${r.region}/telemetry-routers/${r.routerId}/access-tokens/${uuid.parse(r.keyId)}`;
+    } else if (r.kind === "service-account-key") {
       if (!r.accountEmail || r.groupId)
         throw new Error("cloud-project-mismatch");
       url = `https://service-account.api.stackit.cloud/v2/projects/${r.projectId}/service-accounts/${encodeURIComponent(r.accountEmail).replaceAll("%40", "@")}/keys/${keySegment(r.keyId)}`;
@@ -266,6 +276,9 @@ export class StackitRecoveryCloud {
         region: z.enum(["eu01", "eu02"]),
         ownerEmail: z.email(),
         routing: scopeSchema.optional(),
+        audit: z
+          .strictObject({ projectId: uuid, routerId: uuid, instanceId: uuid })
+          .optional(),
         customRoles: z.boolean().optional(),
         migrationOwners: z.array(z.email()).max(100).optional(),
       })
@@ -529,7 +542,81 @@ export class StackitRecoveryCloud {
         });
       }
     }
+    let audit = null;
+    if (input.audit) {
+      const scope = input.audit;
+      const raw = await this.json(
+        `https://telemetry-link.api.stackit.cloud/v1/projects/${projectId}/regions/${region}/telemetry-link`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token.access_token}` },
+        },
+        deadline,
+        true,
+      );
+      const link =
+        raw === null
+          ? null
+          : z
+              .object({
+                telemetryRouterId: uuid,
+                displayName: text,
+                enabled: z.boolean(),
+                regionId: z.literal(region),
+              })
+              .parse(raw);
+      const tokens: { id: string; name: string }[] = [];
+      const seen = new Set<string>();
+      let cursor = "";
+      let complete = false;
+      for (let pageNumber = 0; pageNumber < 10; pageNumber++) {
+        const query = new URLSearchParams({
+          pageSize: "100",
+          ...(cursor ? { pageToken: cursor } : {}),
+        });
+        const page = z
+          .strictObject({
+            accessTokens: z
+              .array(z.object({ id: uuid, displayName: text }))
+              .max(100),
+            nextPageToken: z.string().max(4096).optional(),
+          })
+          .parse(
+            await get(
+              `https://telemetry-router.api.stackit.cloud/v1/projects/${scope.projectId}/regions/${region}/telemetry-routers/${scope.routerId}/access-tokens?${query}`,
+            ),
+          );
+        for (const t of page.accessTokens) {
+          if (seen.has(t.id)) throw new Error("cloud-inventory-incomplete");
+          seen.add(t.id);
+          if (t.displayName === scope.instanceId.replaceAll("-", ""))
+            tokens.push({ id: t.id, name: t.displayName });
+        }
+        if (!page.nextPageToken) {
+          complete = true;
+          break;
+        }
+        if (page.nextPageToken === cursor)
+          throw new Error("cloud-inventory-incomplete");
+        cursor = page.nextPageToken;
+      }
+      if (!complete) throw new Error("cloud-inventory-incomplete");
+      audit = {
+        projectId: scope.projectId,
+        routerId: scope.routerId,
+        region,
+        tokens,
+        link: link
+          ? {
+              routerId: link.telemetryRouterId,
+              name: link.displayName,
+              enabled: link.enabled,
+            }
+          : null,
+      };
+    }
     return recoveryCloudInventorySchema.parse({
+      audit,
       complete: true,
       project: {
         projectId: p.projectId,

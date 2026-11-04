@@ -501,6 +501,9 @@ export class ApplicationStateRecoveries {
           targets: z.record(
             z.string(),
             z.object({
+              audit_router: z
+                .object({ project_id: z.uuid(), instance_id: z.uuid() })
+                .optional(),
               folder_id: z.string().min(1),
               region: z.enum(["eu01", "eu02"]),
               corporate: z.boolean().optional(),
@@ -532,6 +535,15 @@ export class ApplicationStateRecoveries {
         ownerEmail:
           vars.application.initial_owner_email ?? vars.application.owner_email,
         customRoles: !!vars.application.custom_roles?.length,
+        ...(target.audit_router
+          ? {
+              audit: {
+                projectId: target.audit_router.project_id,
+                routerId: target.audit_router.instance_id,
+                instanceId: c.instanceId,
+              },
+            }
+          : {}),
         ...(c.originalInputs.variables.lzc_project_iam
           ? {
               migrationOwners: (() => {

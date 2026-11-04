@@ -31,7 +31,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/providers.tf",
@@ -51,7 +51,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [
@@ -99,17 +99,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
+            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "35c2c133171d325d799d87f880c1c92189790475933eb937d1293b33650b88fe",
+            "948ef8a5d290adb57f431d16579c0f981231eb65dbd15780500d581ae4fca223",
         },
         {
           path: "src/modules/landing-zone/3-network.tf",
@@ -119,7 +119,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [
@@ -191,7 +191,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/providers.tf",
@@ -206,7 +206,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -266,12 +266,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
+            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -316,7 +316,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "1a230ff4236020cce81fe390972f5bed083c0e9f66e401ba707caab0f68059d9",
+            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
         },
         {
           path: "src/modules/management/1-project.tf",
@@ -361,7 +361,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -387,12 +387,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "1a230ff4236020cce81fe390972f5bed083c0e9f66e401ba707caab0f68059d9",
+            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
         },
         {
           path: "src/modules/management/5-observability.tf",
@@ -427,12 +427,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "0ca90eb6c281efde9c44a3cc2960fcd5b69b767d19018cd001eed61623905cac",
+            "89b6a8760c89c18c8a3f7de682d8cd2a9e51456fbe330b29344114aa28956b54",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [
@@ -460,8 +460,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "audit-logs",
       file: "audit-logs.md",
-      version: 1,
-      checkedOn: "2026-10-10",
+      version: 2,
+      checkedOn: "2026-11-04",
       qualification: "local-draft-not-reviewed-release",
       groups: ["management"],
       mandatory: false,
@@ -471,7 +471,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/main.tf",
@@ -481,7 +481,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "1a230ff4236020cce81fe390972f5bed083c0e9f66e401ba707caab0f68059d9",
+            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
         },
         {
           path: "src/modules/management/6-audit-logs.tf",
@@ -489,9 +489,39 @@ export const assistantKnowledgeTopics = {
             "cc7285016035ea5ec2ff6d0534275b2261d891851ffe9d24331b1cf77241f1a6",
         },
         {
+          path: "src/audit-coverage.tf",
+          sha256:
+            "d3f280311aa6718dacd7ea81a0ea87c6c6b80d235eb64a37a1598e34f08a952e",
+        },
+        {
+          path: "src/platform-contract.tf",
+          sha256:
+            "d710a8f41bcf94bb8e933df6e210847fcf781018a526d369885e4410fbc330e7",
+        },
+        {
+          path: "src/application/audit.tf",
+          sha256:
+            "d03dad829c2e7af3ce3187f1393fbf15d458f6e3c41abb84f98b934e9c88f41d",
+        },
+        {
+          path: "src/application/variables.tf",
+          sha256:
+            "c184c2677b23cab5aa57d4a53541ee18ef2d34795cbe1d18417e9f4222cf221e",
+        },
+        {
+          path: "src/modules/management/3-object-storage.tf",
+          sha256:
+            "3adda3f12df344f2b7db40a32f606c755ccd45ab84ed4d5cd6d59174c16c4f3b",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
+          sha256:
+            "2d8231b4e96374663c3cf79ddf8417b74671481605e4cca13fcddcbbb8e4f9ef",
+        },
+        {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -504,14 +534,15 @@ export const assistantKnowledgeTopics = {
         "audit_logs.link_scopes[*]",
         "audit_logs.link_scopes[*].resource_id",
         "audit_logs.link_scopes[*].resource_type",
+        "audit_logs.managed_resources",
         "audit_logs.retention_days",
         "audit_logs.s3_object_lock",
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/audit-logs.md",
-      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nCapture organizational control-plane audit events for investigation and archive\nthem with deliberately chosen access, scope and retention.\n\n## Accelerator Contract\n\nNative audit_logs is optional; null skips its management resources. The module\nroutes audit events to an OTLP Logs destination and an object-storage archive.\nFields include retention_days, acl, s3_object_lock and link_scopes containing\nresource_type/resource_id. Default scope is organization-wide; explicit scopes\nsupport organization, folder or project. With Object Lock enabled, the native\ncontract limits retention to 1..365 days. Query retention and archive policy\nmust be distinguished from backups or legal compliance certification.\n\n## Dependencies\n\nManagement foundations, organization access and externally supplied credentials.\nLink scope must belong to authorized resources. Central observability and audit\nlogging are distinct optional services.\n\n## Dialogue\n\nAsk about audit obligations, retention period, organizational versus selected\nscope, reader access and retention/deletion constraints. Describe Object Lock's\nconsequences before a proposal. Resolve resource selections through authorized\ninterfaces; never ask customers to paste internal scope IDs or raw audit logs.\n\n## Examples\n\nSynthetic fragment: audit_logs = { retention_days = 180,\ns3_object_lock = true }. It uses native defaults for other fields; it is not a\nlegal retention recommendation or an instruction to enable audit automatically.\n\n## Limits\n\nObject Lock can constrain deletion independently of Configurator conversation\nexpiry. Audit-router configuration does not prove delivered events or all scopes\ncovered. Scope, permissions, ingestion and archive retrieval require separate\ntests. Native Editor proposals support typed audit settings; new instances need\nexplicit retention, ACL and Object Lock decisions, not sample/default consent.\n\n## Credentials\n\nArchive and ingestion credentials belong to secure execution bindings. Never\nsend S3 keys, OTLP tokens, archive contents or compliance evidence to the model.\n\n## Sources\n\nRoot and management contracts pin scope and retention behavior. Re-review\nservice limits and implementation changes rather than silently promoting source\nhashes. External compliance and provider freshness are not asserted here.",
+      text: '# Audit Routing and Archive Retention\n\n## Purpose\n\nControl-plane audit events with chosen scope, access and retention.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not the archive bucket.\nSinks: Logs/OTLP and S3. Fields: retention_days, acl,\ns3_object_lock, managed_resources, link_scopes (resource_type/resource_id).\nObject Lock defaults true, including nested null; retention 180.\nExplicit false opts out before creation. With lock: 1..365 days,\nGOVERNANCE mode, not a reversible switch or compliance certification.\n\nOrganization links capture organization events ONLY, no folder/project\ninheritance. managed_resources defaults false; true adds all managed folders/\nprojects and new Application orders via the platform contract. Existing orders\nneed an approved platform upgrade and fresh Plan/Apply. No explicit link_scopes.\nManaged resources must share the platform region; other regions need reviewed\nrouters. Custom scopes support organization/folder/project;\nexisting external links need reviewed import, never silent takeover.\n\n## Dependencies\n\nManagement, central deployment identity, same-region router/link. Audit differs\nfrom Observability. Application ingestion tokens stay in the central project,\ninaccessible to default workload identities.\n\n## Dialogue\n\nAsk retention, ACL, Object Lock and organization-only/managed coverage. Preserve\nsaved choices; defaults are not consent.\nRequested managed coverage uses managed_resources=true with reviewed settings,\nnot invented IDs or link_scopes.\n\n## Examples\n\nSynthetic draft: audit_logs={ retention_days=90, acl=["203.0.113.0/24"],\ns3_object_lock=false, managed_resources=true }.\n\n## Limits\n\nEditor creation requires explicit retention, ACL and Object Lock decisions.\nLinks capture future events, not retroactive history. Defaults exclude audit\nmutation rights; effective Owner/inherited grants can still change routing.\nNo deny guarantee. Verify Logs/S3 delivery and access separately. Recovery\npreserves link identities;\na lost ingestion secret requires exact approved revocation and a fresh Plan/Apply\nfor replacement, never fabricated secret material.\n\n## Credentials\n\nNo router/OTLP tokens, S3 keys, State or audit contents in chat/public contracts.\nSecrets stay in protected execution and State storage.\n\n## Sources\n\nManifest binds native and recovery contracts. Re-review before generation;\nconfiguration proves no delivery/compliance.\n',
       sha256:
-        "57c4f4892647abaf053a53626d5ff54ad2e336d4b0c26e578bd15065f2f10396",
+        "18a1e952ea00fd3ec57eb9dac4819597d639528957776bd6f4f9880435b89c77",
     },
     {
       id: "federated-identities",
@@ -527,7 +558,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/main.tf",
@@ -537,7 +568,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "1a230ff4236020cce81fe390972f5bed083c0e9f66e401ba707caab0f68059d9",
+            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
         },
         {
           path: "src/modules/management/4-service-account.tf",
@@ -547,7 +578,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -608,12 +639,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
+            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [
@@ -699,7 +730,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -779,7 +810,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/main.tf",
@@ -804,7 +835,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -956,7 +987,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/modules/firewall-config/variables.tf",
@@ -981,7 +1012,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -1080,7 +1111,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/_firewall-bootstrap.tf",
@@ -1100,7 +1131,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -1130,7 +1161,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/modules/devops/variables.tf",
@@ -1150,7 +1181,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -1184,7 +1215,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/modules/platform-kubernetes/variables.tf",
@@ -1209,12 +1240,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
+            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -1311,7 +1342,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/modules/landing-zone/variables.tf",
@@ -1331,7 +1362,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
+            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
         },
         {
           path: "src/modules/landing-zone/3-network.tf",
@@ -1341,7 +1372,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-plan.ts",
           sha256:
-            "15529f722a6db6dd5becfe61bb6b497edcc34cf40b4d53375fb55092c4e8e3ea",
+            "fdfa84c952c89939554b6699fb516c8a22b3e82c38c7d561254d18266b93ea0f",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-access.ts",
@@ -1371,7 +1402,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [
@@ -1432,7 +1463,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/modules/sandboxes/variables.tf",
@@ -1452,7 +1483,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -1485,7 +1516,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "e54516a59c9569e08dca25046f1625b4e6b3032c92e777c6286154f0ee14ff00",
+            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
         },
         {
           path: "src/_landing-zone-kubernetes.tf",
@@ -1505,12 +1536,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "27b7edb026926aef1b6efb4f8e2c131d43a37afb2abaa78f0d600006a5f4a492",
+            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],
@@ -1591,12 +1622,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "0ca90eb6c281efde9c44a3cc2960fcd5b69b767d19018cd001eed61623905cac",
+            "89b6a8760c89c18c8a3f7de682d8cd2a9e51456fbe330b29344114aa28956b54",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "35c2c133171d325d799d87f880c1c92189790475933eb937d1293b33650b88fe",
+            "948ef8a5d290adb57f431d16579c0f981231eb65dbd15780500d581ae4fca223",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",
@@ -1616,7 +1647,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-upgrades.ts",
           sha256:
-            "3e33e189e39241f0adeb447ce4d0cc8251117282283c1bed8ed430ffe5cb14c6",
+            "8797192e149504ae50d267b9760648369505ca095aaec54dadd17d5a7c179af3",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/applications/upgrades.ts",
@@ -1626,7 +1657,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "94de4686ae2d07144971afd1727639a76984bfe2cc13b3a7b0a95e2a9d69fe28",
+            "5076218b416332f23aee032d0c302d444cef7e07012547e4060b232ea2a92672",
         },
       ],
       externalSources: [],

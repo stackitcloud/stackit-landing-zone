@@ -753,3 +753,50 @@ test("regional Connectivity offers a guided VPN draft with both tunnels and miss
     fullPage: true,
   });
 });
+
+test("offers managed audit coverage explicitly and preserves it across editor steps", async ({
+  page,
+}) => {
+  await page.goto("/templates/standalone");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await openConfigurationStep(page, "Plattform");
+  await page
+    .getByRole("button", { name: "Komponente hinzufügen", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Hinzufügen: Audit-Protokollierung",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Konfigurieren: Audit-Protokollierung",
+      exact: true,
+    })
+    .click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Audit-Protokollierung$/ })
+    .click();
+  const label = "Alle verwalteten Projekte und Ordner automatisch anbinden";
+  await page
+    .getByRole("button", { name: `Eigene Einstellung: ${label}`, exact: true })
+    .click();
+  await expect(page.getByLabel(label, { exact: true })).toHaveValue("false");
+  await page.getByLabel(label, { exact: true }).selectOption("true");
+  await openConfigurationStep(page, "Betrieb");
+  await openConfigurationStep(page, "Plattform");
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Audit-Protokollierung$/ })
+    .click();
+  await expect(page.getByLabel(label, { exact: true })).toHaveValue("true");
+  await expect(
+    page.getByText(
+      /Ein Organisations-Link allein erfasst deren Ereignisse nicht/,
+    ),
+  ).toBeVisible();
+});

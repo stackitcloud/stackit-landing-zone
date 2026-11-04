@@ -25,21 +25,25 @@ locals {
   }
   platform_contract_targets = merge(
     {
-      for region in ["eu01", "eu02"] : "public-${region}" => {
+      for region in ["eu01", "eu02"] : "public-${region}" => merge({
         folder_id            = module.governance.folder_container_ids["landing_zones_public"]
         region               = region
         corporate            = false
         network_area_id      = null
         firewall_next_hop_ip = null
         ipv4_nameservers     = null
-      } if contains(keys(module.governance.folder_container_ids), "landing_zones_public")
+        }, local.audit_managed_enabled ? {
+        audit_router = { project_id = module.management.project_id, instance_id = module.management.audit_telemetry_router_id }
+      } : {}) if contains(keys(module.governance.folder_container_ids), "landing_zones_public") && (!local.audit_managed_enabled || region == var.region)
     },
     merge([for region, areas in local.platform_contract_networks : {
       for area, network in areas : "corporate-${region}-${substr(sha256(area), 0, 16)}" => merge(network, {
         folder_id = module.governance.folder_container_ids["landing_zones_corporate"]
         region    = region
         corporate = true
-      }) if contains(keys(module.governance.folder_container_ids), "landing_zones_corporate")
+        }, local.audit_managed_enabled ? {
+        audit_router = { project_id = module.management.project_id, instance_id = module.management.audit_telemetry_router_id }
+      } : {}) if contains(keys(module.governance.folder_container_ids), "landing_zones_corporate")
     }]...)
   )
 }

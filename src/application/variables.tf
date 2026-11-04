@@ -73,6 +73,10 @@ variable "platform_contract" {
     revision        = string
     organization_id = string
     targets = map(object({
+      audit_router = optional(object({
+        project_id  = string
+        instance_id = string
+      }), null)
       folder_id            = string
       region               = string
       corporate            = bool

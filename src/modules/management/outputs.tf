@@ -57,3 +57,9 @@ output "audit_logs_bucket_name" {
   description = "The name of the object storage bucket archiving audit logs."
   value       = stackit_objectstorage_bucket.audit_logs.name
 }
+
+output "audit_telemetry_router_token" {
+  description = "Sensitive ingestion token for additional platform-owned audit links. Never publish in the platform contract."
+  value       = try(stackit_telemetryrouter_access_token.audit_link[0].access_token, null)
+  sensitive   = true
+}
