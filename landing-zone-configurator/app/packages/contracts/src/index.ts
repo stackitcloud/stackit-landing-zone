@@ -490,3 +490,5 @@ export const runnerArtifactSchema = z.strictObject({
 
 export * from "./application-upgrades.js";
 export * from "./project-iam.js";
+
+export * from "./tfvars.js";

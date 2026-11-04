@@ -1,8 +1,15 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { summarizePlan } from "@lzc/contracts";
 import {
@@ -100,6 +107,8 @@ it.skipIf(!binary || !mirror)(
       });
     try {
       await mkdir(join(folder, "module"));
+      await mkdir(join(folder, "tools"));
+      await symlink(binary!, join(folder, "tools/tofu"));
       await writeFile(
         join(folder, "runner.tfrc"),
         `provider_installation { filesystem_mirror { path = ${JSON.stringify(mirror)} } }`,
@@ -173,12 +182,7 @@ it.skipIf(!binary || !mirror)(
       );
       await command(["init", "-backend=false", "-no-color"]);
       expect(
-        await pullIamState(
-          dirname(dirname(binary!)),
-          folder,
-          env,
-          Date.now() + 30_000,
-        ),
+        await pullIamState(folder, folder, env, Date.now() + 30_000),
       ).toBeNull();
       await command([
         "apply",

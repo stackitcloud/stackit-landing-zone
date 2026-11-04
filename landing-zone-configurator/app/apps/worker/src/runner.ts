@@ -30,6 +30,7 @@ import {
   type S3RunnerBackend,
   s3BackendConfiguration,
   s3RunnerBackendSchema,
+  serializeRunnerTfvars,
   summarizePlan,
 } from "@lzc/contracts";
 import {
@@ -38,6 +39,7 @@ import {
   type ProjectIamMigration,
   readApplicationExecutionManifest,
 } from "@lzc/contracts/recovery";
+import { z } from "zod";
 import { applicationPlanObservation, watchPlanVersion } from "./observation.js";
 import {
   prepareProjectIamMigration,
@@ -299,6 +301,15 @@ export async function runWorker(
       throw new Error("Unexpected capability");
     if (!applying && input.plan !== undefined)
       throw new Error("Unexpected artifact");
+    const applicationVariables = applicationJob
+      ? z.record(z.string(), z.json()).parse(input.variables)
+      : undefined;
+    if (
+      applicationVariables &&
+      (Object.hasOwn(applicationVariables, "lzc_project_iam") ||
+        serializeRunnerTfvars(applicationVariables) !== input.tfvars)
+    )
+      throw new Error("Application variables mismatch");
     const applicationBinding = applicationJob
       ? applicationRunnerBindingSchema.parse(input.application)
       : undefined;
@@ -767,7 +778,7 @@ export async function runWorker(
     if (applicationJob) {
       iamStage = "discovery";
       errorCode = "state_failed";
-      const variables: unknown = JSON.parse(input.tfvars as string);
+      const variables = applicationVariables;
       if (!applying) {
         const state = await pullIamState(root, work, env, deadline);
         if (state) {
@@ -834,7 +845,7 @@ export async function runWorker(
         if (!state) throw new Error("iam-state-unavailable");
         verifyIamCompletion(
           iamMigration,
-          await readDirectIam(JSON.parse(input.tfvars as string), state, key),
+          await readDirectIam(applicationVariables, state, key),
         );
       }
       iamStage = undefined;

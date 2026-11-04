@@ -682,13 +682,16 @@ function applicationInput(
   test: Awaited<ReturnType<typeof fixture>>,
   mode = "application-plan",
 ) {
-  test.input.tfvars = JSON.stringify({
+  test.input.variables = {
     application: {
       instance_id: applicationBinding.instanceId,
       owner_email: "owner@example.com",
       role_assignments: [],
     },
-  });
+  };
+  test.input.tfvars = serializeTfvars(
+    test.input.variables as Record<string, JsonValue>,
+  );
   test.input.tfvarsSha256 = digest(test.input.tfvars as string);
   test.options.broker = "application";
   test.input.mode = mode;
@@ -2147,3 +2150,22 @@ it.each(["drift", "destroy"] as const)(
     );
   },
 );
+
+it("rejects Application JSON metadata that does not match the broker's HCL payload before running any command", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  test.input.variables = {
+    ...(test.input.variables as object),
+    application: {
+      instance_id: applicationBinding.instanceId,
+      owner_email: "foreign@example.com",
+      role_assignments: [],
+    },
+  };
+  expect(await test.execute()).toBe("failed");
+  expect(test.reports.at(-1)).toMatchObject({
+    path: "result",
+    body: { status: "failed", errorCode: "input_invalid" },
+  });
+  expect(await test.calls()).toEqual([]);
+});
