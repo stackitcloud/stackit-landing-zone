@@ -7308,12 +7308,18 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           }),
         ).toEqual({ jobId: delegatedJob.id, dispatched: true });
         const secretReads = applicationSecrets.get.mock.calls.length;
-        expect(
-          await delegatedApplications.runnerInput(
-            delegatedTicket,
-            ticketPackage,
-          ),
-        ).toMatchObject({
+        const delegatedInput = await delegatedApplications.runnerInput(
+          delegatedTicket,
+          ticketPackage,
+        );
+        expect(delegatedInput.tfvars).toBe(
+          serializeTfvars(delegatedInput.variables),
+        );
+        expect(delegatedInput.variables.application).toMatchObject({
+          instance_id: delegatedOrder.id,
+          tenant_id: tenantId,
+        });
+        expect(delegatedInput).toMatchObject({
           id: delegatedJob.id,
           key: applicationSecret.key,
           mode: "application-plan",
@@ -7996,6 +8002,12 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             jobId: interrupted.jobId,
             instanceId: planned.ordered.id,
             credentialOwnerId: engineer.userId,
+            iamPlanArtifact: {
+              planId: planned.id,
+              ownerUserId: owner.userId,
+              sha256: planned.sha,
+              ciphertext: expect.any(String),
+            },
           });
           await expect(
             recoveryContext({ ...peer, tenantId }),

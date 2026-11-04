@@ -9,6 +9,11 @@ import type {
   ApplicationStateRecoveryImport,
   ApplicationStateRecoveryRevocation,
 } from "../application-state-recovery.js";
+import {
+  assertProjectIamScope,
+  projectIamAddress,
+  projectIamMigrationSchema,
+} from "./project-iam.js";
 import { readRecoveryState, recoveryCredentialIncomplete } from "./proof.js";
 
 const uuid = z.uuid();
@@ -389,6 +394,28 @@ export function deriveApplicationRecoveryImports(input: {
         type: "stackit_authorization_project_role_assignment",
         resourceId: `${projectId},${a.automation_role ?? "owner"},${s.email}`,
       });
+  }
+  const rawIam = z
+    .object({ lzc_project_iam: z.unknown().optional() })
+    .parse(input.variables).lzc_project_iam;
+  if (rawIam) {
+    const iam = projectIamMigrationSchema.parse(rawIam);
+    assertProjectIamScope(iam, input.variables);
+    if (iam.projectId !== projectId) throw new Error("cloud-project-mismatch");
+    for (const [key, b] of Object.entries(iam.bindings)) {
+      const matches = cloud.roleAssignments.filter(
+        (r) =>
+          r.role === b.role &&
+          r.subject.toLowerCase() === b.subject.toLowerCase(),
+      );
+      if (matches.length > 1) throw new Error("cloud-resource-ambiguous");
+      if (matches.length === 1)
+        adopt({
+          address: projectIamAddress(key),
+          type: "stackit_authorization_project_role_assignment",
+          resourceId: `${projectId},${b.role},${b.subject}`,
+        });
+    }
   }
   const plannedRoles = new Set<string>();
   for (const r of a.role_assignments) {

@@ -1,7 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import {
   deriveApplicationRecoveryImports,
+  encodeProjectIamPlan,
   encodeRecoveryArtifact,
+  prepareProjectIamMigration,
   readRecoveryState,
   recoveryCloudInventorySchema,
   recoveryRevocationStep,
@@ -344,6 +346,7 @@ function harness(lostKey = false, missingProject = false) {
   return {
     f,
     service,
+    crypto,
     session,
     id,
     row,
@@ -635,3 +638,55 @@ it.each([
     expect(h.binding().acceleratorRevision).toBe(source);
   },
 );
+
+it("recovery tasks carry the encrypted frozen IAM extension without exposing its artifact", async () => {
+  const h = harness();
+  const a = h.context.originalInputs.variables.application;
+  Object.assign(a, {
+    initial_owner_email: "central@example.com",
+    automation_role: "application-automation",
+  });
+  const projectId = h.f.inventory.project.projectId;
+  h.f.inventory.project.ownerEmail = "central@example.com";
+  h.f.inventory.roleAssignments.push({
+    projectId,
+    role: "owner",
+    subject: a.owner_email,
+  });
+  const iam = prepareProjectIamMigration({
+    variables: h.context.originalInputs.variables,
+    state: Buffer.from(JSON.stringify(h.f.state)),
+    members: {
+      resourceId: projectId,
+      resourceType: "project",
+      members: h.f.inventory.roleAssignments.map(({ role, subject }) => ({
+        role,
+        subject,
+      })),
+    },
+  })!;
+  const bytes = encodeProjectIamPlan(Buffer.from("synthetic-native-plan"), iam);
+  const planId = randomUUID();
+  Object.assign(h.context, {
+    iamPlanArtifact: {
+      planId,
+      ownerUserId: h.session.userId,
+      sha256: sha256(bytes),
+      ciphertext: h.crypto
+        .encrypt(
+          bytes,
+          h.session.tenantId,
+          h.session.userId,
+          `application-artifact:${planId}`,
+        )
+        .toString("hex"),
+    },
+  });
+  await h.service.assess(h.session, h.id);
+  const input = await h.service.input(h.ticket, h.binding());
+  expect(input).toMatchObject({ variables: { lzc_project_iam: iam } });
+  const view = await h.service.get(h.session, h.id);
+  expect(JSON.stringify(view)).not.toMatch(
+    /iamPlanArtifact|ciphertext|synthetic-native-plan/,
+  );
+});

@@ -2805,9 +2805,8 @@ export class Applications {
     });
     if (JSON.stringify(descriptor) !== JSON.stringify(context.descriptor))
       throw new ApplicationError(409, "application_backend_changed");
-    const tfvars = serializeTfvars(
-      z.record(z.string(), z.json()).parse(context.variables),
-    );
+    const variables = z.record(z.string(), z.json()).parse(context.variables);
+    const tfvars = serializeTfvars(variables);
     if (Buffer.byteLength(tfvars) > 1024 * 1024)
       throw new ApplicationError(409, "application_runner_inputs_invalid");
     await current();
@@ -2849,6 +2848,7 @@ export class Applications {
       acceleratorCommit: binding.acceleratorRevision,
       lockHash: binding.providerLockSha256,
       tfvars,
+      variables,
       tfvarsSha256: createHash("sha256").update(tfvars).digest("hex"),
       key: credential.key,
       backend: { ...backend, descriptor },

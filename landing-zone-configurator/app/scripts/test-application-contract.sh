@@ -42,3 +42,7 @@ env -i PATH="$PATH" TF_CLI_CONFIG_FILE=/dev/null TF_IN_AUTOMATION=true TF_INPUT=
 # Reuse the installed, checksum-locked Runner provider in a credential-free,
 # local-only regression: mocks do not run the provider's IPv4 validator.
 bash "$app_dir/scripts/test-application-network.sh" "$work_dir/pinned/src/application/.terraform/providers"
+
+# Real pinned IAM provider against a loopback-only synthetic API: no cloud credentials.
+LZC_TEST_TOFU_BIN="$tofu_bin" LZC_TEST_PROVIDER_MIRROR="$work_dir/pinned/src/application/.terraform/providers" \
+  node "$app_dir/node_modules/vitest/vitest.mjs" run "$app_dir/tests/project-iam-native.test.ts"

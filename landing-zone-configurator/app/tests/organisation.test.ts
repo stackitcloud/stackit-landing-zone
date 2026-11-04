@@ -106,6 +106,16 @@ function runnerSetup() {
       acceleratorCommit: binding.acceleratorRevision,
       lockHash: binding.providerLockSha256,
       tfvars: "",
+      variables: {
+        platform_contract: {
+          schema_version: 1 as const,
+          tenant_id: session.tenantId,
+          revision: randomUUID(),
+          organization_id: randomUUID(),
+          targets: {},
+        },
+        application: {},
+      },
       tfvarsSha256: createHash("sha256").update("").digest("hex"),
       key: {
         credentials: {

@@ -13,8 +13,11 @@ import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { applicationExecutionProfile } from "@lzc/contracts";
 import {
+  assertProjectIamScope,
   deriveApplicationRecoveryImports,
   deriveApplicationRecoveryRevocations,
+  projectIamConfiguration,
+  projectIamMigrationSchema,
   readApplicationExecutionManifest,
   recoverySha256,
   retainRecoveryOutputs,
@@ -149,6 +152,18 @@ export async function prepareNativeStateRecovery(
       mode: 0o600,
       flag: "wx",
     });
+    const rawIam = z
+      .object({ lzc_project_iam: z.unknown().optional() })
+      .parse(input.variables).lzc_project_iam;
+    if (rawIam) {
+      const iam = projectIamMigrationSchema.parse(rawIam);
+      assertProjectIamScope(iam, input.variables);
+      await writeFile(
+        resolve(work, "lzc_project_iam.tf.json"),
+        projectIamConfiguration(iam).configuration,
+        { mode: 0o600, flag: "wx" },
+      );
+    }
     await writeFile(resolve(work, "original.auto.tfvars.json"), variables, {
       mode: 0o600,
       flag: "wx",

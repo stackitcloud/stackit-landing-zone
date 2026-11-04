@@ -187,6 +187,8 @@ const counts = z
     read: count,
   })
   .strict();
+
+import { projectIamMigrationSummarySchema } from "./project-iam.js";
 export const planSummarySchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -203,6 +205,7 @@ export const planSummarySchema = z
     completeness: z.enum(["complete", "incomplete", "not-reported"]),
     upgradeSafety: applicationUpgradeSafetySchema.optional(),
     platformImpact: applicationPlatformImpactSchema.optional(),
+    iamMigration: projectIamMigrationSummarySchema.optional(),
   })
   .strict();
 export const planFailureSchema = z.enum([
@@ -486,3 +489,6 @@ export const runnerArtifactSchema = z.strictObject({
 });
 
 export * from "./application-upgrades.js";
+export * from "./project-iam.js";
+
+export * from "./tfvars.js";

@@ -30,10 +30,24 @@ import {
   type S3RunnerBackend,
   s3BackendConfiguration,
   s3RunnerBackendSchema,
+  serializeRunnerTfvars,
   summarizePlan,
 } from "@lzc/contracts";
-import { readApplicationExecutionManifest } from "@lzc/contracts/recovery";
+import {
+  decodeProjectIamPlan,
+  encodeProjectIamPlan,
+  type ProjectIamMigration,
+  readApplicationExecutionManifest,
+} from "@lzc/contracts/recovery";
+import { z } from "zod";
 import { applicationPlanObservation, watchPlanVersion } from "./observation.js";
+import {
+  prepareProjectIamMigration,
+  pullIamState,
+  readDirectIam,
+  verifyIamCompletion,
+  writeIamConfiguration,
+} from "./project-iam.js";
 import {
   createDevPlanHold,
   devPlanHoldConfiguration,
@@ -128,6 +142,7 @@ export async function runWorker(
   let resultReported = false;
   let outputReported = false;
   let executionSucceeded = false;
+  let iamStage: "discovery" | "verification" | undefined;
   let diagnostic: { text: string; truncated: boolean } | undefined;
   const startupStarted = process.hrtime.bigint();
   let phaseStarted = startupStarted;
@@ -286,6 +301,15 @@ export async function runWorker(
       throw new Error("Unexpected capability");
     if (!applying && input.plan !== undefined)
       throw new Error("Unexpected artifact");
+    const applicationVariables = applicationJob
+      ? z.record(z.string(), z.json()).parse(input.variables)
+      : undefined;
+    if (
+      applicationVariables &&
+      (Object.hasOwn(applicationVariables, "lzc_project_iam") ||
+        serializeRunnerTfvars(applicationVariables) !== input.tfvars)
+    )
+      throw new Error("Application variables mismatch");
     const applicationBinding = applicationJob
       ? applicationRunnerBindingSchema.parse(input.application)
       : undefined;
@@ -354,7 +378,13 @@ export async function runWorker(
       }
     }
     errorCode = "artifact_invalid";
-    const savedPlan = applying ? artifact(input.plan) : undefined;
+    const savedArtifact = applying ? artifact(input.plan) : undefined;
+    const decodedPlan =
+      savedArtifact && applicationJob
+        ? decodeProjectIamPlan(savedArtifact)
+        : null;
+    const savedPlan = decodedPlan?.native ?? savedArtifact;
+    let iamMigration: ProjectIamMigration | null = decodedPlan?.iam ?? null;
     errorCode = "input_invalid";
     const root = resolve(options.root);
     const packageSource = resolve(
@@ -743,6 +773,42 @@ export async function runWorker(
     errorCode = "init_failed";
     await command("initializing");
     await startupPhase("providers and backend initialized");
+    // Migration inputs are derived from the bound State and the exact project's
+    // direct IAM API. No IAM or State mutation takes place before saved-plan Apply.
+    if (applicationJob) {
+      iamStage = "discovery";
+      errorCode = "state_failed";
+      const variables = applicationVariables;
+      if (!applying) {
+        const state = await pullIamState(root, work, env, deadline);
+        if (state) {
+          const members = await readDirectIam(variables, state, key);
+          iamMigration = prepareProjectIamMigration({
+            variables,
+            state,
+            members,
+            purpose: applicationBinding?.purpose ?? "standard",
+          });
+        }
+      }
+      if (iamMigration) {
+        await writeIamConfiguration(work, variables, iamMigration);
+        if (applying && iamMigration.phase === "cleanup") {
+          const state = await pullIamState(root, work, env, deadline);
+          if (!state) throw new Error("iam-state-unavailable");
+          const members = await readDirectIam(variables, state, key);
+          if (
+            !members.members.some(
+              (b) =>
+                b.role === "owner" &&
+                b.subject.toLowerCase() === iamMigration!.centralOwner,
+            )
+          )
+            throw new Error("iam-central-owner-missing");
+        }
+      }
+    }
+    iamStage = undefined;
     errorCode = "validate_failed";
     await command("validating");
     if (applying) {
@@ -772,6 +838,17 @@ export async function runWorker(
           throw new Error("Recovery state present");
         await report("migration", { phase: "complete" });
       }
+      if (iamMigration && iamMigration.phase !== "maintenance") {
+        iamStage = "verification";
+        errorCode = "state_failed";
+        const state = await pullIamState(root, work, env, deadline);
+        if (!state) throw new Error("iam-state-unavailable");
+        verifyIamCompletion(
+          iamMigration,
+          await readDirectIam(applicationVariables, state, key),
+        );
+      }
+      iamStage = undefined;
       executionSucceeded = true;
       await publishOutput();
       await report("result", { status: "succeeded" });
@@ -808,10 +885,34 @@ export async function runWorker(
         throw new Error("Invalid application destroy plan");
       if (mode !== "initial-plan-only") {
         errorCode = "artifact_invalid";
-        const bytes = await boundedFile(
+        const nativeBytes = await boundedFile(
           resolve(work, "plan.bin"),
           artifactLimit,
         );
+        if (
+          iamMigration &&
+          JSON.stringify(nativePlan.variables?.lzc_project_iam?.value) !==
+            JSON.stringify(iamMigration)
+        ) {
+          // Native JSON object ordering is immaterial; compare canonical values.
+          const canonical = (v: unknown): string =>
+            Array.isArray(v)
+              ? `[${v.map(canonical).join(",")}]`
+              : v && typeof v === "object"
+                ? `{${Object.entries(v)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([k, x]) => `${JSON.stringify(k)}:${canonical(x)}`)
+                    .join(",")}}`
+                : JSON.stringify(v);
+          if (
+            canonical(nativePlan.variables?.lzc_project_iam?.value) !==
+            canonical(iamMigration)
+          )
+            throw new Error("iam-plan-mismatch");
+        }
+        const bytes = iamMigration
+          ? encodeProjectIamPlan(nativeBytes, iamMigration)
+          : nativeBytes;
         if (!bytes.length) throw new Error("Empty artifact");
         const uploaded = object(
           await report("artifact", { data: bytes.toString("base64"), summary }),
@@ -840,6 +941,12 @@ export async function runWorker(
     );
     return "succeeded";
   } catch {
+    if (iamStage) {
+      startupOutput +=
+        iamStage === "discovery"
+          ? "Error: Direct project permissions could not be verified safely. Check the bound project, central Owner and deployment service account access. No IAM migration Plan or Apply was started.\n"
+          : "Error: Apply finished, but the direct project permission handover could not be confirmed. Inspect the checkpoint and current project memberships before continuing.\n";
+    }
     if (work) {
       recoveryState = await lstat(resolve(work, "errored.tfstate")).then(
         () => true,

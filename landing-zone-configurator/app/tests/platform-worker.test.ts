@@ -145,6 +145,7 @@ const fs = require("node:fs");
 const crypto = require("node:crypto");
 const args = process.argv.slice(2);
 const phase = args[0];
+if (phase === "state") { console.error("No state file was found!"); process.exit(1); }
 if (phase === "version") {
   console.log(JSON.stringify({terraform_version: ${JSON.stringify(behavior === "wrong-engine" ? "1.11.6" : "1.12.6")}}));
   process.exit(0);
@@ -681,6 +682,17 @@ function applicationInput(
   test: Awaited<ReturnType<typeof fixture>>,
   mode = "application-plan",
 ) {
+  test.input.variables = {
+    application: {
+      instance_id: applicationBinding.instanceId,
+      owner_email: "owner@example.com",
+      role_assignments: [],
+    },
+  };
+  test.input.tfvars = serializeTfvars(
+    test.input.variables as Record<string, JsonValue>,
+  );
+  test.input.tfvarsSha256 = digest(test.input.tfvars as string);
   test.options.broker = "application";
   test.input.mode = mode;
   test.input.acceleratorCommit = applicationAcceleratorCommit;
@@ -2138,3 +2150,22 @@ it.each(["drift", "destroy"] as const)(
     );
   },
 );
+
+it("rejects Application JSON metadata that does not match the broker's HCL payload before running any command", async () => {
+  const test = await fixture();
+  applicationInput(test);
+  test.input.variables = {
+    ...(test.input.variables as object),
+    application: {
+      instance_id: applicationBinding.instanceId,
+      owner_email: "foreign@example.com",
+      role_assignments: [],
+    },
+  };
+  expect(await test.execute()).toBe("failed");
+  expect(test.reports.at(-1)).toMatchObject({
+    path: "result",
+    body: { status: "failed", errorCode: "input_invalid" },
+  });
+  expect(await test.calls()).toEqual([]);
+});

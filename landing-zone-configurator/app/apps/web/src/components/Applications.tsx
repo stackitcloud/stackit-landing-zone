@@ -1096,6 +1096,10 @@ function ApplicationPlanControls({
   const currentApply = jobs.find(
     (job) => job.operation === "apply" && job.purpose === purpose,
   );
+  const appliedIam =
+    currentApply?.status === "succeeded"
+      ? jobs.find((j) => j.id === currentApply.planId)?.summary?.iamMigration
+      : undefined;
   const previewJobId =
     planView &&
     currentPlan?.status === "succeeded" &&
@@ -1509,6 +1513,25 @@ function ApplicationPlanControls({
           </button>
         </fieldset>
       )}
+      {purpose === "standard" && appliedIam?.phase === "prepare" && (
+        <section aria-label={t("Projektberechtigungen fertigstellen")}>
+          <h4>{t("Projektberechtigungen fertigstellen")}</h4>
+          <p role="status">
+            {t(
+              "Der zentrale Projekt-Owner ist abgesichert. Die bisherigen direkten Owner-Rechte wurden für die sichere Übergabe beibehalten. Erstelle jetzt einen weiteren Plan, um sie zu entfernen, und führe danach den geprüften Apply aus.",
+            )}
+          </p>
+          {view !== "plan" && (
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => onViewChange("plan")}
+            >
+              {t("Zum nächsten Plan")}
+            </button>
+          )}
+        </section>
+      )}
       {loaded && !jobs.length && <p>{t("Noch kein Plan vorbereitet")}</p>}
       {view === "apply" && loaded && !currentApply && (
         <>
@@ -1919,6 +1942,27 @@ function ApplicationPlanControls({
                 <dd>{t(job.summary.destructive ? "Ja" : "Nein")}</dd>
               </dl>
             )}
+            {job.summary?.iamMigration &&
+              ["prepare", "cleanup"].includes(
+                job.summary.iamMigration.phase,
+              ) && (
+                <section aria-label={t("Übergabe der Projektberechtigungen")}>
+                  <h4>{t("Übergabe der Projektberechtigungen")}</h4>
+                  <p>
+                    {t(
+                      job.summary.iamMigration.phase === "prepare"
+                        ? "Schritt 1 von 2: Dieser Apply sichert den zentralen Owner und übernimmt historische direkte Rechte in den State. Die bisherigen Owner-Rechte bleiben zunächst erhalten. Danach ist ein weiterer Plan und Apply zum Entfernen nötig."
+                        : "Schritt 2 von 2: Der zentrale Owner ist bereits abgesichert. Dieser Plan entfernt die bisherigen direkten Owner-Rechte. Geerbte Rechte aus Ordner oder Organisation bleiben unberührt.",
+                    )}
+                  </p>
+                  <dl className="application-properties">
+                    <dt>{t("In den State zu übernehmen")}</dt>
+                    <dd>{job.summary.iamMigration.imports}</dd>
+                    <dt>{t("Bisherige direkte Owner-Zuweisungen")}</dt>
+                    <dd>{job.summary.iamMigration.pendingRemovals}</dd>
+                  </dl>
+                </section>
+              )}
             {job.summary?.upgradeSafety?.iamActions && (
               <p role="status">
                 {t(

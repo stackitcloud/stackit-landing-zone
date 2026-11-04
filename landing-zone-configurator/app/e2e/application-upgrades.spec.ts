@@ -65,6 +65,8 @@ async function setup(
     policyChanged?: boolean;
     platformSaved?: boolean;
     planReady?: boolean;
+    iamPhase?: "prepare" | "cleanup";
+    iamApplied?: boolean;
     saveError?: string;
     saved?: boolean;
     reject?: boolean;
@@ -320,6 +322,29 @@ async function setup(
           json: {
             jobs: approvePlan
               ? [
+                  ...(publication.iamApplied
+                    ? [
+                        {
+                          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                          instanceId: instance,
+                          requestedBy: user,
+                          approvedBy: user,
+                          createdAt: "2026-10-30T00:00:00.000Z",
+                          expiresAt: new Date(
+                            Date.now() + 3600000,
+                          ).toISOString(),
+                          operation: "apply",
+                          status: "succeeded",
+                          grantActive: false,
+                          backendId: platform,
+                          canApproveBackend: false,
+                          canDispatch: false,
+                          summary: null,
+                          errorCode: null,
+                          planId: family,
+                        },
+                      ]
+                    : []),
                   {
                     id: family,
                     instanceId: instance,
@@ -334,6 +359,17 @@ async function setup(
                     canApproveBackend: false,
                     canDispatch: false,
                     summary: {
+                      ...(publication.iamPhase
+                        ? {
+                            iamMigration: {
+                              version: 1,
+                              phase: publication.iamPhase,
+                              imports:
+                                publication.iamPhase === "prepare" ? 3 : 0,
+                              pendingRemovals: 3,
+                            },
+                          }
+                        : {}),
                       schemaVersion: 1,
                       execution: "plan-only",
                       applyAllowed: false,
@@ -371,7 +407,11 @@ async function setup(
               : [],
           },
         });
-      if (path === `jobs/${family}/output`)
+      if (
+        path === `jobs/${family}/output` ||
+        (publication.iamApplied &&
+          path === "jobs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/output")
+      )
         return r.fulfill({
           json: { text: "", truncated: false, kind: "execution" },
         });
@@ -2009,5 +2049,60 @@ test("a completed Plan points the requester to the revised path policy instead o
     .click();
   await expect(
     details.getByRole("tab", { name: "Updates", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+});
+
+for (const phase of ["prepare", "cleanup"] as const) {
+  test(`IAM ${phase} explains the two-phase project owner handover`, async ({
+    page,
+  }) => {
+    await setup(page, false, false, false, true, false, false, false, {
+      planReady: true,
+      iamPhase: phase,
+    });
+    const details = page.getByRole("region", {
+      name: "Bestelldetails",
+      exact: true,
+    });
+    await details.getByRole("tab", { name: "Plan", exact: true }).click();
+    const handover = details.getByRole("region", {
+      name: "Übergabe der Projektberechtigungen",
+      exact: true,
+    });
+    await expect(
+      handover.getByText(
+        phase === "prepare" ? /Schritt 1 von 2/ : /Schritt 2 von 2/,
+      ),
+    ).toBeVisible();
+    if (phase === "cleanup")
+      await expect(
+        handover.getByText(/Geerbte Rechte aus Ordner/),
+      ).toBeVisible();
+  });
+}
+test("a successful preparation Apply offers the next Plan instead of claiming IAM completion", async ({
+  page,
+}) => {
+  await setup(page, false, false, false, true, false, false, false, {
+    iamPhase: "prepare",
+    iamApplied: true,
+  });
+  const details = page.getByRole("region", {
+    name: "Bestelldetails",
+    exact: true,
+  });
+  await details.getByRole("tab", { name: "Apply", exact: true }).click();
+  const continuation = details.getByRole("region", {
+    name: "Projektberechtigungen fertigstellen",
+    exact: true,
+  });
+  await expect(
+    continuation.getByText(/bisherigen direkten Owner-Rechte/),
+  ).toBeVisible();
+  await continuation
+    .getByRole("button", { name: "Zum nächsten Plan", exact: true })
+    .click();
+  await expect(
+    details.getByRole("tab", { name: "Plan", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
 });
