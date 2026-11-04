@@ -4,6 +4,31 @@ import type { Values } from "./configuration.js";
 import projectCatalogue from "./project-permissions.generated.js";
 
 export const applicationWorkloadPermissions = permissions.permissions;
+export const applicationServiceAccountKeyPermissions =
+  permissions.requesterKeyPermissions;
+
+export function serviceAccountKeyManagementMentioned(text: string) {
+  return (
+    /iam\.service-account-key\./i.test(text) ||
+    (/(?:service[ -]?account|dienstkont)/i.test(text) &&
+      /(?:key|schlüssel|schluessel)/i.test(text))
+  );
+}
+/** A key-management request must never expand into all project IAM rights. */
+export function applicationServicePermissionAdditions(
+  names: readonly string[],
+  services: readonly string[],
+  evidence: string,
+) {
+  const keysOnly = serviceAccountKeyManagementMentioned(evidence);
+  return names.filter(
+    (name) =>
+      services.includes(name.split(".")[0] ?? name) &&
+      (!name.startsWith("iam.") ||
+        !keysOnly ||
+        applicationServiceAccountKeyPermissions.includes(name)),
+  );
+}
 export const applicationProjectPermissions = projectCatalogue.permissions;
 export const applicationProjectPermissionNames =
   applicationProjectPermissions.map((p) => p.name);
@@ -33,6 +58,8 @@ export function applicationPermissionServiceMentioned(
   service: string,
   quote: string,
 ) {
+  if (service === "iam" && serviceAccountKeyManagementMentioned(quote))
+    return true;
   const text = quote.toLowerCase();
   return [
     service,
@@ -166,7 +193,8 @@ export function defaultApplicationAccessProfile(
       ...(preset === "vm"
         ? permissions.vmPermissions
         : applicationWorkloadPermissions),
-    ],
+      ...applicationServiceAccountKeyPermissions,
+    ].sort(),
     automationPermissions: [
       ...(preset === "vm"
         ? permissions.vmPermissions

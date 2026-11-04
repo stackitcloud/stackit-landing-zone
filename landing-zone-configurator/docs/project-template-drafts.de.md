@@ -150,7 +150,7 @@ erteilen keine Veröffentlichungs- oder Ausführungsberechtigung.
 
 ## Projektberechtigungen erweitern
 
-Unter **Application Landing Zones → Template-Entwürfe → Application-Rechteprofil** sind die 144 Rechte des Workload-Standards die Vorauswahl, keine Obergrenze. Der vollständige Projektkatalog umfasst auch Kubernetes, Datenbanken und IAM. Suchen Sie zum Beispiel nach **Kubernetes**, öffnen Sie **Kubernetes (SKE)** und wählen Sie einzelne Rechte oder **Alle angezeigten auswählen**. Die Listen für Besteller und Application-Service-Account sind getrennt; Gruppenaktionen ändern nur die gefiltert angezeigten Rechte.
+Unter **Application Landing Zones → Template-Entwürfe → Application-Rechteprofil** enthält der neue Workload-Standard 151 Rechte für den Besteller (144 Workload-Rechte plus sieben Schlüsselrechte) und 144 Workload-Rechte für den Application-Service-Account. Das ist eine Vorauswahl, keine Obergrenze. Der vollständige Projektkatalog umfasst auch Kubernetes, Datenbanken und IAM. Suchen Sie zum Beispiel nach **Kubernetes**, öffnen Sie **Kubernetes (SKE)** und wählen Sie einzelne Rechte oder **Alle angezeigten auswählen**. Die Listen für Besteller und Application-Service-Account sind getrennt; Gruppenaktionen ändern nur die gefiltert angezeigten Rechte.
 
 Live-Daten ergänzen den vollständigen mitgelieferten Katalog. Nicht mehr live gelistete und unbekannte importierte Kennungen werden nicht stillschweigend entfernt. Neue Kennungen außerhalb des statischen Katalogs muss der Server vor Veröffentlichung durch den offiziellen Live-Katalog bestätigen; ohne Bestätigung wird nicht veröffentlicht. Der Katalog beschreibt mögliche Rechte, nicht die effektiven Rechte oder Produktfreigabe einer Person.
 
@@ -416,3 +416,33 @@ Cloud-Ressourcen und ist keine Apply-Freigabe.
 - [x] Gemischte Template-/Instanzdokumente werden abgewiesen.
 - [x] Native OpenTofu-Variablenprüfung bestätigt leere Anwendungs-, Sandbox- und Namespace-Sammlungen im Plattformexport.
 - [x] Browserprüfung einschließlich Bestandskopie/Speicherung erfolgreich; CI-Validierung und [Release 36855011827](https://github.com/stackitcloud/stackit-landing-zone/actions/runs/36855011827) für `0e62c5e` erfolgreich. Live-SPA liefert HTTP 200 mit dem erwarteten Bundle `index-bjLShEoG.js`.
+
+## Service-Account-Schlüssel für Pipelines
+
+Neue granulare Profile ergänzen für den Besteller `iam.service-account.get`,
+`iam.service-account.list` und `iam.service-account-key.create`, `.delete`,
+`.edit`, `.get`, `.list`. Damit kann er den bestehenden Application-Service-Account
+für Pipelines nutzen, ohne Projekt-Owner oder Rollen-/Mitgliederverwaltung zu
+erhalten. Der Application-Service-Account erhält diese zusätzlichen IAM-Rechte
+nicht automatisch. Auch das engere VM-Preset ergänzt die sieben Rechte nur für
+den Besteller.
+
+Diese Rechte gelten für **alle Service Accounts des Projekts**. Wer einen Schlüssel
+erstellt, kann sämtliche Rechte dieses Accounts nutzen, auch solche in anderen
+Projekten. Privilegierte Plattform-Service-Accounts deshalb zentral außerhalb der
+Application-Projekte führen. Es handelt sich nicht um eine Einschränkung auf einen
+bestimmten Account. Privates Schlüsselmaterial wird nur beim Erstellen ausgegeben;
+das Lesen eines Schlüssels liefert keinen vorhandenen privaten Schlüssel zurück.
+
+Bestehende gespeicherte Profile und veröffentlichte Versionen bleiben unverändert.
+In einem bestehenden Template-Entwurf ergänzt **Schlüsselverwaltung für Besteller
+ergänzen** ausschließlich diese sieben Rechte. Owner, vorhandene Kubernetes-/
+Workload-Rechte und Automatisierungsrechte bleiben erhalten. Alternativ den
+Assistant bitten: „Ergänze nur für den Besteller die Schlüsselverwaltung des
+vorhandenen Application-Service-Accounts; andere Rechte erhalten.“ Den Vorschlag
+prüfen und übernehmen, speichern, eine neue Version veröffentlichen und für
+bestehende Bestellungen einen Upgrade-Pfad anbieten. Erst ein separat geprüfter
+Plan und Apply ändern ausgerollte Rechte. Beim Bearbeiten wird kein STACKIT-Projekt
+verändert.
+
+Referenz: [STACKIT Service-Account-Rollen und Berechtigungen](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/).

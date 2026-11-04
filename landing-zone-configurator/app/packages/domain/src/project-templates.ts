@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   type ApplicationAccessProfile,
   applicationAccessProfileSchema,
-  applicationWorkloadPermissions,
+  defaultApplicationAccessProfile,
   validateApplicationAccessProfile,
 } from "./application-access.js";
 import {
@@ -210,13 +210,9 @@ export function addProjectTemplate(
     ...(kind === "sandbox"
       ? {}
       : {
-          accessProfile: {
-            schemaVersion: 1 as const,
-            mode: "granular" as const,
-            initialOwnerEmail: textValue(next.features.identity.owner_email),
-            permissions: [...applicationWorkloadPermissions],
-            automationPermissions: [...applicationWorkloadPermissions],
-          },
+          accessProfile: defaultApplicationAccessProfile(
+            textValue(next.features.identity.owner_email),
+          ),
           parameterPolicy: {
             schema_version: 1 as const,
             fields: {

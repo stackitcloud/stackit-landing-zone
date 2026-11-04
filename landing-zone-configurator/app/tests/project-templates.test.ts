@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   addProjectTemplate,
+  applicationServiceAccountKeyPermissions,
   catalogue,
   commonNetworkAreas,
   commonProjects,
@@ -212,3 +213,28 @@ it("edits independent template drafts, validates settings and keeps referenced S
     ),
   ).toBe(true);
 });
+
+it.each(["public", "corporate"] as const)(
+  "creates new %s drafts with requester key management and unchanged automation workload rights",
+  (kind) => {
+    const original = createEditorConfiguration("hub-and-spoke", randomUUID());
+    const before = structuredClone(original);
+    const draft = addProjectTemplate(original, kind, "new-application");
+    const profile = draft.projectTemplates?.find(
+      (t) => t.key === "new-application",
+    )?.accessProfile;
+    if (profile?.mode !== "granular") throw Error("fixture");
+    expect(profile.permissions).toHaveLength(151);
+    expect(profile.automationPermissions).toHaveLength(144);
+    expect(
+      profile.permissions.filter((p) => p.startsWith("iam.")).sort(),
+    ).toEqual([...applicationServiceAccountKeyPermissions].sort());
+    expect(
+      profile.automationPermissions.some((p) => p.startsWith("iam.")),
+    ).toBe(false);
+    expect(original).toEqual(before);
+    expect(
+      draft.projectTemplates?.filter((t) => t.key !== "new-application"),
+    ).toEqual(original.projectTemplates);
+  },
+);

@@ -3,7 +3,10 @@ import { deriveApplicationRecoveryImports } from "@lzc/contracts/recovery";
 import { describe, expect, it } from "vitest";
 import {
   applicationAccessProfileSchema,
+  applicationPermissionServiceMentioned,
   applicationProjectPermissionNames,
+  applicationServiceAccountKeyPermissions,
+  applicationServicePermissionAdditions,
   applicationWorkloadPermissions,
   defaultApplicationAccessProfile,
   resolveApplicationAccessProfile,
@@ -327,9 +330,9 @@ it("offers registered service permissions without turning the VM-only preset int
   );
 });
 
-it("compiles all current STACKIT project permissions without expanding the 144-permission default", () => {
+it("compiles all current STACKIT project permissions with distinct requester and automation defaults", () => {
   expect(applicationProjectPermissionNames.length).toBeGreaterThan(900);
-  expect(defaultApplicationAccessProfile().permissions).toHaveLength(144);
+  expect(defaultApplicationAccessProfile().permissions).toHaveLength(151);
   for (const permission of applicationProjectPermissionNames)
     expect(
       unknownApplicationPermissions({
@@ -367,4 +370,74 @@ it("compiles all current STACKIT project permissions without expanding the 144-p
       permissions: ["*", "owner"],
     }).success,
   ).toBe(false);
+});
+
+it.each(["workload", "vm"] as const)(
+  "adds exactly seven key-management rights only to the %s requester default",
+  (preset) => {
+    const p = defaultApplicationAccessProfile("platform@example.test", preset);
+    expect(applicationServiceAccountKeyPermissions).toHaveLength(7);
+    expect(new Set(p.permissions).size).toBe(p.permissions.length);
+    for (const permission of applicationServiceAccountKeyPermissions) {
+      expect(applicationProjectPermissionNames).toContain(permission);
+      expect(p.permissions).toContain(permission);
+      expect(p.automationPermissions).not.toContain(permission);
+    }
+    expect(p.permissions.filter((x) => x.startsWith("iam."))).toEqual(
+      [...applicationServiceAccountKeyPermissions].sort(),
+    );
+    for (const permission of [
+      "iam.service-account.create",
+      "iam.service-account.delete",
+      "iam.role.add",
+      "iam.member.add",
+    ]) {
+      expect(p.permissions).not.toContain(permission);
+      expect(p.automationPermissions).not.toContain(permission);
+    }
+  },
+);
+it("preserves explicit historical profiles through parse, order compilation and JSON roundtrip", () => {
+  const f = fixture();
+  f.template.access_profile.permissions = ["iaas.server.get"];
+  const stored = JSON.parse(JSON.stringify(f));
+  expect(
+    compileApplicationPlan(stored).variables.application.custom_roles?.[0]
+      ?.permissions,
+  ).toEqual(["iaas.server.get"]);
+});
+it.each([
+  "Ergänze Schlüsselverwaltung für den Application-Service-Account beim Besteller",
+  "Allow the requester to manage service account keys",
+  "Ergänze iam.service-account-key.create und die passende Schlüsselverwaltung",
+  "Schlüssel für Service Accounts verwalten, aber nicht alle IAM-Rechte",
+])("selects only the reviewed key bundle for %s", (request) => {
+  expect(applicationPermissionServiceMentioned("iam", request)).toBe(true);
+  expect(
+    applicationServicePermissionAdditions(
+      applicationProjectPermissionNames,
+      ["iam"],
+      request,
+    ).sort(),
+  ).toEqual([...applicationServiceAccountKeyPermissions].sort());
+});
+it("keeps explicit full IAM and unrelated service selections separate", () => {
+  expect(
+    applicationServicePermissionAdditions(
+      applicationProjectPermissionNames,
+      ["iam"],
+      "Alle IAM-Rechte",
+    ),
+  ).toEqual(
+    applicationProjectPermissionNames.filter((p) => p.startsWith("iam.")),
+  );
+  expect(
+    applicationServicePermissionAdditions(
+      applicationProjectPermissionNames,
+      ["ske"],
+      "Kubernetes verwalten",
+    ),
+  ).toEqual(
+    applicationProjectPermissionNames.filter((p) => p.startsWith("ske.")),
+  );
 });
