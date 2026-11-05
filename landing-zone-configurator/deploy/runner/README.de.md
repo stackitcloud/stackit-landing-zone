@@ -20,6 +20,12 @@ CF-Isolation vor der Abnahme; aktueller Status steht im Abnahmedokument. Der opn
 Provider wurde vom Registry-Download ohne GPG-Signatur angeboten; Checksummen sind
 gepinnt, dies ist kein Signaturnachweis dieses Providers.
 
+Die Kompatibilitätsprüfung der Application-Quellen verwendet eine explizit geprüfte
+Quellanzahl. Ihr schneller Paketierungstest gleicht diese Schutzprüfung mit dem
+tatsächlichen Vertragsregister ab und prüft abgeschnittene, doppelte, leere und
+fehlgeschlagene Aufzählungen vor den nativen Tests. Bei einer neuen freigegebenen
+Quelle sind sowohl das Register als auch diese Schutzprüfung zu aktualisieren.
+
 `package.sh` baut ein separates Binary-Paket mit Node, OpenTofu und
 Provider-Mirror; `manifest.yml` staged ein task-only CF-Template ohne Bindings.
 Das Template mit null Instanzen verwendet 6144 MiB Festplatte für Staging und

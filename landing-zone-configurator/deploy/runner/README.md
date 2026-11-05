@@ -20,6 +20,11 @@ CF isolation before acceptance; the acceptance document records the current stat
 The opnsense provider was offered by the registry download without a GPG signature;
 checksums are pinned, but this is not proof of that provider's signature.
 
+The Application source compatibility check keeps an explicit reviewed source count.
+Its fast packaging regression compares that guard with the actual contracts registry
+and exercises truncated, duplicate, empty and failed enumeration before native tests.
+When admitting a new source, update both the registry and this review guard.
+
 `package.sh` builds a separate binary package with Node, OpenTofu and
 a provider mirror; `manifest.yml` stages a task-only CF template without bindings.
 The zero-instance template uses 6144 MiB disk for staging and droplet compression.

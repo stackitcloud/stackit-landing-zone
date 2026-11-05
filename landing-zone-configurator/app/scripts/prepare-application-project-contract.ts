@@ -28,10 +28,12 @@ const executionRevision = applicationExecutionRevisionSchema.parse(
 const modernNetworking = [
   "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  "08ac257de1548c8ec5e83dae1a79373711c3d644",
   applicationMvpAcceleratorCommit,
 ].includes(executionRevision);
 const automaticNetworking = [
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
+  "08ac257de1548c8ec5e83dae1a79373711c3d644",
   applicationMvpAcceleratorCommit,
 ].includes(executionRevision);
 mkdirSync(resolve(target, "src"), { recursive: true });

@@ -13,7 +13,8 @@ cd "$app_dir"
 node --input-type=module -e 'import {writeFileSync} from "node:fs";const p=JSON.stringify(process.argv[2]).replaceAll("${","$${").replaceAll("%{","%%{");writeFileSync(process.argv[1],`provider_installation {\n filesystem_mirror {\n path = ${p}\n }\n}\ndisable_checkpoint=true\n`,{flag:"wx",mode:0o600});' "$work_dir/mirror.tfrc" "$provider_mirror"
 checked_revisions="$(node --input-type=module -e 'import {applicationExecutionRevisions} from "./packages/contracts/dist/index.js";console.log(applicationExecutionRevisions.join("\n"))')"
 [[ -n "$checked_revisions" ]] || { echo "No reviewed Application sources enumerated." >&2; exit 1; }
-expected_sources=6
+# Explicit review guard; the packaging regression checks this against the registry.
+expected_sources=7
 enumerated_sources=0
 seen_revisions=" "
 while IFS= read -r revision; do
