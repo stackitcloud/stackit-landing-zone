@@ -129,6 +129,22 @@ UI without starting another job. Previously rejected log updates cannot be
 reconstructed from the first stored snapshot.
 
 
+Application Plan, Apply and Destroy use the same authenticated NDJSON channel,
+bounded reconnection and follow/pause console as Platform execution. The endpoint
+is `GET /api/v1/applications/jobs/:id/output`; JSON snapshots remain compatible.
+Encrypted output is `live` while the job is active, including after the first
+stored snapshot; `execution` denotes a terminal job. Session, workspace and
+requester authorization are rechecked during streaming. Committed updates notify
+local subscribers; other instances recheck within one second. Collapse, navigation
+and logout close the channel; viewing output never grants execution permission.
+
+A Platform Plan that affects dependent Applications may require an impact
+acknowledgement before Apply. The Plan view explains this prerequisite and links
+to **Apply → Review platform impact**. Acknowledge the exact saved Plan there,
+then separately review and approve Apply. Unknown effects, destructive shared
+changes and active dependent executions remain blocked; acknowledgement does not
+override those checks or extend Plan validity.
+
 <a id="gemeinsamer-editor-und-ausführungsumfang"></a>
 ## Common editor and execution scope
 

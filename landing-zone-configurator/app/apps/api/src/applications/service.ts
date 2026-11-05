@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { EventEmitter, once } from "node:events";
 import {
   type ApplicationInstance,
   type AppliedPlatformSource,
@@ -237,6 +238,17 @@ function instance(row: InstanceRow): ApplicationInstance {
 }
 
 export class Applications {
+  private readonly outputUpdates = new EventEmitter();
+  async waitForOutput(id: string, signal: AbortSignal) {
+    try {
+      await once(this.outputUpdates, id, {
+        signal: AbortSignal.any([signal, AbortSignal.timeout(1000)]),
+      });
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) throw error;
+    }
+  }
+
   constructor(
     private readonly pool: pg.Pool,
     private readonly profiles?: Pick<
@@ -2071,10 +2083,11 @@ export class Applications {
       const row = (
         await client.query<{
           instance_id: string;
+          status: string;
           ciphertext: Buffer | null;
           truncated: boolean | null;
         }>(
-          "SELECT j.instance_id,r.ciphertext,r.truncated FROM lzc.application_jobs j LEFT JOIN lzc.application_runner_records r ON r.job_id=j.id AND r.kind='output' WHERE j.id=$1 AND j.tenant_id=$2 AND j.owner_user_id=$3",
+          "SELECT j.instance_id,coalesce(d.status,j.status) AS status,r.ciphertext,r.truncated FROM lzc.application_jobs j LEFT JOIN lzc.application_dispatches d ON d.job_id=j.id AND d.tenant_id=j.tenant_id LEFT JOIN lzc.application_runner_records r ON r.job_id=j.id AND r.kind='output' WHERE j.id=$1 AND j.tenant_id=$2 AND j.owner_user_id=$3",
           [id, session.tenantId, session.userId],
         )
       ).rows[0];
@@ -2093,7 +2106,11 @@ export class Applications {
         return {
           text: bytes.toString("utf8"),
           truncated: Boolean(row.truncated),
-          kind: "execution" as const,
+          kind: ["succeeded", "failed", "reconciliation_required"].includes(
+            row.status,
+          )
+            ? ("execution" as const)
+            : ("live" as const),
         };
       } finally {
         bytes.fill(0);
@@ -3016,7 +3033,9 @@ export class Applications {
     const bytes = Buffer.from(output.text);
     if (!bytes.length || bytes.length > 2 * 1024 * 1024)
       throw new ApplicationError(400, "application_output_invalid");
-    return this.reportWork(ticket, binding, async (client, session, jobId) => {
+    let reportedJob: string | undefined;
+    await this.reportWork(ticket, binding, async (client, session, jobId) => {
+      reportedJob = jobId;
       const grant = (
         await client.query<{ owner_user_id: string }>(
           "SELECT owner_user_id FROM lzc.application_job_grants WHERE job_id=$1",
@@ -3053,6 +3072,7 @@ export class Applications {
         },
       );
     });
+    if (reportedJob) this.outputUpdates.emit(reportedJob);
   }
 
   async runnerRecovery(ticket: string, binding: unknown, input: unknown) {

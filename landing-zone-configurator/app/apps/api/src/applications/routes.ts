@@ -12,9 +12,12 @@ import { z } from "zod";
 import {
   type AuthServices,
   authenticatedSession,
+  cookie,
   validMutation,
 } from "../auth/routes.js";
 import type { Session } from "../auth/store.js";
+import { CredentialError } from "../credentials/profiles.js";
+import { sendPlanOutput } from "../plans/output-stream.js";
 import { RecoveryReplanError } from "./recovery-replan.js";
 import {
   ApplicationError,
@@ -218,6 +221,7 @@ export function registerApplications(
         | "startPlan"
         | "previewPlan"
         | "outputJob"
+        | "waitForOutput"
         | "diagnoseRecovery"
         | "completeInterruptedPlan"
         | "inspectInterruptedApply"
@@ -246,6 +250,7 @@ export function registerApplications(
     >,
 ) {
   const sessions = new WeakMap<FastifyRequest, Session>();
+  const outputStreams = new Map<string, number>();
   app.register(async (routes) => {
     routes.setErrorHandler((error, _request, reply) => {
       if (
@@ -841,7 +846,53 @@ export function registerApplications(
             .code(503)
             .send({ error: "application_output_unavailable" });
         const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
-        return applications.outputJob(session, id);
+        const initial = await applications.outputJob(session, id);
+        if (!request.headers.accept?.includes("application/x-ndjson"))
+          return initial;
+        const owner = `${session.tenantId}:${session.userId}`;
+        const count = outputStreams.get(owner) ?? 0;
+        if (count >= 8)
+          return reply
+            .code(429)
+            .header("Retry-After", "2")
+            .send({ error: "application_output_stream_limit" });
+        outputStreams.set(owner, count + 1);
+        reply.raw.once("close", () => {
+          const remaining = (outputStreams.get(owner) ?? 1) - 1;
+          if (remaining) outputStreams.set(owner, remaining);
+          else outputStreams.delete(owner);
+        });
+        sendPlanOutput(
+          reply,
+          initial,
+          async () => {
+            const token = cookie(request, "__Host-lzc-session");
+            const current = token
+              ? await auth.store.resolveSession(token)
+              : null;
+            if (
+              !current ||
+              current.id !== session.id ||
+              current.tenantId !== session.tenantId ||
+              current.userId !== session.userId
+            )
+              throw new CredentialError(401, "authentication_required");
+            try {
+              return await applications.outputJob!(current, id);
+            } catch (error) {
+              if (
+                error instanceof ApplicationError &&
+                [403, 404].includes(error.status)
+              )
+                throw new CredentialError(403, "plan_not_found");
+              throw error;
+            }
+          },
+          applications.waitForOutput
+            ? (signal) => applications.waitForOutput!(id, signal)
+            : undefined,
+        );
+        return reply;
       },
     );
     routes.get(

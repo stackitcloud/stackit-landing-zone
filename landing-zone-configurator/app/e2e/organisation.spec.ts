@@ -174,6 +174,7 @@ for (const scenario of [
     };
     const preparations: string[] = [];
     const mutations: string[] = [];
+    let liveOutputRequests = 0;
     const summary = {
       schemaVersion: 1,
       execution: "plan-only",
@@ -691,6 +692,37 @@ for (const scenario of [
             },
           });
         }
+        if (
+          path === "jobs/aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa/output" &&
+          scenario === "apply-running"
+        ) {
+          liveOutputRequests++;
+          expect(request.headers().accept).toContain("application/x-ndjson");
+          return route.fulfill({
+            contentType: "application/x-ndjson",
+            body: [
+              {
+                type: "output",
+                data: {
+                  text: "Creating project...",
+                  truncated: false,
+                  kind: "live",
+                },
+              },
+              {
+                type: "output",
+                data: {
+                  text: "Creating project...\nCreating network...",
+                  truncated: false,
+                  kind: "live",
+                },
+              },
+              { type: "complete" },
+            ]
+              .map((x) => JSON.stringify(x) + "\n")
+              .join(""),
+          });
+        }
         if (path === "jobs/aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa/output")
           return route.fulfill({
             json: {
@@ -1170,21 +1202,26 @@ for (const scenario of [
         name: "Ausführungslogs",
         exact: true,
       });
-      await expect(logs).toContainText("Error: Corporate plan fixture failure");
+      await expect(logs.getByRole("textbox")).toHaveValue(
+        "Error: Corporate plan fixture failure",
+      );
       await plan
         .getByRole("button", {
           name: "Ausführungslogs aktualisieren",
           exact: true,
         })
         .click();
-      await expect(logs).toContainText("Error: Corporate plan fixture failure");
+      await expect(logs.getByRole("textbox")).toHaveValue(
+        "Error: Corporate plan fixture failure",
+      );
       expect(mutations).toEqual([]);
       await page.getByLabel("Sprache", { exact: true }).selectOption("en");
       await expect(
         page
           .getByRole("region", { name: "Application plan", exact: true })
-          .getByRole("region", { name: "Execution logs", exact: true }),
-      ).toContainText("Corporate plan fixture failure");
+          .getByRole("region", { name: "Execution logs", exact: true })
+          .getByRole("textbox"),
+      ).toHaveValue(/Corporate plan fixture failure/);
       return;
     }
     if (scenario === "maintenance-replan-failed") {
@@ -1193,11 +1230,15 @@ for (const scenario of [
         .getByRole("tab", { name: "Destroy", exact: true })
         .click();
       await expect(
-        plan.getByRole("region", { name: "Ausführungslogs", exact: true }),
-      ).toContainText("Error: Corporate plan fixture failure");
+        plan
+          .getByRole("region", { name: "Ausführungslogs", exact: true })
+          .getByRole("textbox"),
+      ).toHaveValue(/Error: Corporate plan fixture failure/);
       await expect(
-        plan.getByRole("region", { name: "Ausführungslogs", exact: true }),
-      ).not.toContainText("Error creating credentials group");
+        plan
+          .getByRole("region", { name: "Ausführungslogs", exact: true })
+          .getByRole("textbox"),
+      ).not.toHaveValue(/Error creating credentials group/);
       expect(mutations).toEqual([]);
       return;
     }
@@ -1280,8 +1321,10 @@ for (const scenario of [
           }),
         ).toBeVisible();
         await expect(
-          plan.getByRole("region", { name: "Ausführungslogs", exact: true }),
-        ).toContainText("Apply complete");
+          plan
+            .getByRole("region", { name: "Ausführungslogs", exact: true })
+            .getByRole("textbox"),
+        ).toHaveValue(/Apply complete/);
         expect(mutations).toEqual([
           `instances/${instanceId}/plan`,
           `jobs/${jobId}/apply`,
@@ -1379,11 +1422,13 @@ for (const scenario of [
         orderDetails.getByRole("tab", { name: "Apply", exact: true }),
       ).toHaveAttribute("aria-selected", "true");
       await expect(
-        orderDetails.getByRole("region", {
-          name: "Ausführungslogs",
-          exact: true,
-        }),
-      ).toContainText("Creating project...");
+        orderDetails
+          .getByRole("region", {
+            name: "Ausführungslogs",
+            exact: true,
+          })
+          .getByRole("textbox"),
+      ).toHaveValue(/Creating project\.\.\./);
     }
     if (scenario !== "delete-owner")
       await expect(
@@ -1822,12 +1867,35 @@ for (const scenario of [
           plan.getByRole("region", { name: "Ausführungslogs", exact: true }),
         ).toHaveCount(1);
         await expect(
-          plan.getByLabel("Ausführungslogs", { exact: true }),
-        ).toContainText(
+          plan.getByRole("textbox", { name: "Ausführungslogs", exact: true }),
+        ).toHaveValue(
           scenario === "apply-running"
-            ? "Creating project..."
-            : "String should have at most 32 characters",
+            ? /Creating project/
+            : /String should have at most 32 characters/,
         );
+      }
+      if (scenario === "apply-running") {
+        await expect(
+          plan.getByRole("textbox", { name: "Ausführungslogs", exact: true }),
+        ).toHaveValue(/Creating network/);
+        const follow = plan.getByRole("checkbox", {
+          name: "Ausgabe folgen",
+          exact: true,
+        });
+        await expect(follow).toBeChecked();
+        await follow.uncheck();
+        await expect(follow).not.toBeChecked();
+        const logs = plan.locator("details.application-output");
+        await logs.locator("summary").click();
+        await expect(logs).not.toHaveAttribute("open");
+        const requests = liveOutputRequests;
+        await page.waitForTimeout(250);
+        expect(liveOutputRequests).toBe(requests);
+        await logs.locator("summary").click();
+        await expect.poll(() => liveOutputRequests).toBeGreaterThan(requests);
+        await expect(
+          plan.getByRole("textbox", { name: "Ausführungslogs", exact: true }),
+        ).toHaveValue(/Creating network/);
       }
       await expect(plan).not.toContainText("Dieser Plan ist bereits verwendet");
       await expect(

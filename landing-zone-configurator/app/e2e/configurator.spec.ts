@@ -4007,7 +4007,18 @@ test.describe("explicit saved-plan approval", () => {
       const posts: unknown[] = [];
       await page.route("**/api/v1/plans", (route) =>
         route.fulfill({
-          json: { runs: [{ ...savedPlan(), applicationImpactEnabled: true }] },
+          json: {
+            runs: [
+              {
+                ...savedPlan(),
+                applicationImpactEnabled: true,
+                applyAllowed: acknowledged,
+                applyBlocker: acknowledged
+                  ? null
+                  : { code: "platform_application_impact_required" },
+              },
+            ],
+          },
         }),
       );
       await page.route(
@@ -4046,7 +4057,19 @@ test.describe("explicit saved-plan approval", () => {
           });
         },
       );
-      await page.goto("/deployments/apply");
+      await page.goto(
+        impact === "sensitive" ? "/deployments/plan" : "/deployments/apply",
+      );
+      if (impact === "sensitive") {
+        await expect(
+          page.getByText(/Dieser Plan benötigt deine Bestätigung/),
+        ).toBeVisible();
+        await page
+          .getByRole("button", {
+            name: "Plattformauswirkungen prüfen und Apply vorbereiten",
+          })
+          .click();
+      }
       const panel = page.getByRole("region", {
         name: "Auswirkungen auf Application Landing Zones",
         exact: true,
