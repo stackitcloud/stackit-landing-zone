@@ -207,6 +207,25 @@ Fortschrittsstand nicht rekonstruieren.
 
 <a id="common-editor-and-execution-scope"></a>
 
+Application-Plan, Apply und Destroy verwenden denselben authentifizierten
+NDJSON-Kanal, begrenzten Wiederverbindungsmechanismus und dieselbe Konsole mit
+Mitlaufen/Pause wie die Plattform-Ausführung. Der Endpunkt ist
+`GET /api/v1/applications/jobs/:id/output`; JSON-Schnappschüsse bleiben kompatibel.
+Verschlüsselte Ausgabe ist während eines aktiven Jobs `live`, auch nach dem ersten
+gespeicherten Schnappschuss; `execution` bezeichnet einen beendeten Job. Sitzung,
+Arbeitsbereich und Bestellerberechtigung werden während der Übertragung erneut
+geprüft. Gespeicherte Änderungen benachrichtigen lokale Abonnenten; andere Instanzen
+prüfen spätestens nach einer Sekunde. Einklappen, Navigation und Abmelden beenden
+den Kanal. Das Anzeigen von Logs erteilt keine Ausführungsberechtigung.
+
+Ein Plattformplan mit abhängigen Applications kann vor Apply eine Bestätigung der
+Auswirkungen benötigen. Die Plan-Ansicht erklärt die Voraussetzung und führt zu
+**Apply → Plattformauswirkungen prüfen**. Dort bestätigst du genau den gespeicherten
+Plan und prüfst und genehmigst anschließend Apply separat. Unbekannte Auswirkungen,
+destruktive Änderungen gemeinsamer Ressourcen und aktive abhängige Ausführungen
+bleiben gesperrt; die Bestätigung umgeht diese Prüfungen nicht und verlängert auch
+nicht die Gültigkeit des Plans.
+
 ## Gemeinsamer Editor und Ausführungsumfang
 
 Schema v3 wird für eine konservative Standalone-Teilmenge unterstützt: eu01,

@@ -7388,7 +7388,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         ).toEqual({
           text: "delegated planning progress",
           truncated: false,
-          kind: "execution",
+          kind: "live",
         });
         await expect(
           delegatedApplications.outputJob(

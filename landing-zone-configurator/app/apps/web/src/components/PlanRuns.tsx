@@ -11,6 +11,7 @@ import { currentLanguage, t } from "../i18n";
 import type { DeploymentStep } from "../navigation";
 import { readPlanOutput } from "../plan-output";
 import type { Session } from "./Account";
+import { OutputConsole } from "./OutputConsole";
 import { PlatformApplicationImpact } from "./PlatformApplicationImpact";
 
 type Run = {
@@ -116,6 +117,12 @@ const failures: Record<string, string> = {
   invalid_request_origin_or_csrf:
     "Die Sitzung ist nicht mehr aktuell. Bitte erneut anmelden und den Plan prüfen.",
   authentication_required: "Bitte erneut anmelden und den Plan prüfen.",
+  platform_application_impact_required:
+    "Dieser Plan benötigt deine Bestätigung der Auswirkungen auf bestehende Application Landing Zones. Öffne den Schritt Apply und bestätige dort die Plattformauswirkungen. Danach kannst du denselben gültigen Plan freigeben.",
+  platform_impact_changed:
+    "Die Plattformabhängigkeiten haben sich geändert. Lade den Planstatus und die Prüfung der Plattformauswirkungen erneut.",
+  platform_impact_access_denied:
+    "Für die Prüfung der Plattformauswirkungen fehlt die Platform-Owner-Berechtigung oder eine aktuelle STACKIT-Anmeldung.",
   apply_not_allowed: "Der Server erlaubt Apply für diesen Plan nicht.",
   apply_unavailable: "Apply ist in dieser Umgebung nicht verfügbar.",
   execution_disabled: "Apply ist in dieser Umgebung nicht aktiviert.",
@@ -185,12 +192,6 @@ function PlanOutput({ run }: { run: Run }) {
   const [loading, setLoading] = useState(false);
   const [truncated, setTruncated] = useState(false);
   const [now, setNow] = useState(Date.now);
-  const [follow, setFollow] = useState(true);
-  const consoleRef = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    if (text && follow && running && consoleRef.current)
-      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
-  }, [text, follow, running]);
   useEffect(() => {
     if (!running) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -276,16 +277,6 @@ function PlanOutput({ run }: { run: Run }) {
           </span>
         </p>
       )}
-      {running && (
-        <label className="field-hint">
-          <input
-            type="checkbox"
-            checked={follow}
-            onChange={(event) => setFollow(event.target.checked)}
-          />{" "}
-          {t("Ausgabe folgen")}
-        </label>
-      )}
       {loading && !text && (
         <p role="status">{t("OpenTofu-Ausgabe wird geladen…")}</p>
       )}
@@ -295,21 +286,7 @@ function PlanOutput({ run }: { run: Run }) {
         </p>
       )}
       {text ? (
-        <textarea
-          ref={consoleRef}
-          className="plan-console"
-          readOnly
-          rows={22}
-          value={text}
-          aria-label={t("OpenTofu-Ausgabe")}
-          onScroll={(event) => {
-            const element = event.currentTarget;
-            setFollow(
-              element.scrollHeight - element.scrollTop - element.clientHeight <=
-                32,
-            );
-          }}
-        />
+        <OutputConsole text={text} running={running} label="OpenTofu-Ausgabe" />
       ) : (
         !loading &&
         !error && (
@@ -1253,7 +1230,24 @@ export function PlanRuns({
                 phase === "plan" &&
                 !historical &&
                 run.operation !== "apply" &&
-                run.status === "succeeded" && <ApplyBlocker run={run} />}
+                run.status === "succeeded" && (
+                  <>
+                    <ApplyBlocker run={run} />
+                    {run.applyBlocker?.code ===
+                      "platform_application_impact_required" &&
+                      onStep && (
+                        <button
+                          type="button"
+                          className="button secondary"
+                          onClick={() => onStep("apply")}
+                        >
+                          {t(
+                            "Plattformauswirkungen prüfen und Apply vorbereiten",
+                          )}
+                        </button>
+                      )}
+                  </>
+                )}
               {!readOnly &&
                 phase === "apply" &&
                 !historical &&

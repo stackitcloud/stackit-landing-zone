@@ -50,6 +50,7 @@ import {
   formatMessage,
   t,
 } from "../i18n";
+import { readPlanOutput } from "../plan-output";
 import type { Session } from "./Account";
 import { ApplicationExecutionLifecycle } from "./ApplicationExecutionLifecycle";
 import { applicationGroupsSchema } from "./ApplicationGroups";
@@ -61,6 +62,7 @@ import { ApplicationUpgradeApproval } from "./ApplicationUpgradeApproval";
 import { ApplicationUpgradeProgress } from "./ApplicationUpgradeProgress";
 import { ApplicationUpgradePublication } from "./ApplicationUpgradePublication";
 import { OrganizationBinding } from "./OrganizationBinding";
+import { OutputConsole } from "./OutputConsole";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
@@ -1272,6 +1274,7 @@ function ApplicationPlanControls({
     outputJob && outputJob.requestedBy === session.user.id
       ? outputJob.id
       : undefined;
+  const [outputExpanded, setOutputExpanded] = useState(true);
   const outputPolling = Boolean(
     outputJob &&
       !["succeeded", "failed", "reconciliation_required"].includes(
@@ -1280,47 +1283,76 @@ function ApplicationPlanControls({
   );
   const loadOutput = useCallback(
     async (jobId: string, signal?: AbortSignal) => {
-      const result = z
-        .strictObject({
-          text: z.string().max(2 * 1024 * 1024),
-          truncated: z.boolean(),
-          kind: z.enum(["live", "execution"]),
-        })
-        .parse(
-          await request(`jobs/${jobId}/output`, session, undefined, signal),
+      const response = await fetch(
+        `/api/v1/applications/jobs/${jobId}/output`,
+        {
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: {
+            "x-lzc-tenant": session.tenant?.id ?? "",
+            Accept:
+              signal && outputPolling
+                ? "application/x-ndjson"
+                : "application/json",
+          },
+          ...(signal ? { signal } : {}),
+        },
+      );
+      if (!response.ok)
+        throw new Error(
+          response.status === 401
+            ? "Bitte erneut anmelden."
+            : response.status === 403 || response.status === 404
+              ? "Keine Berechtigung für diese Ausgabe."
+              : "Die Ausführungslogs sind derzeit nicht verfügbar.",
         );
-      if (!signal?.aborted) {
+      const kind = await readPlanOutput(response, (result) => {
+        if (signal?.aborted) return;
         setOutput({ jobId, text: result.text, truncated: result.truncated });
         setOutputError("");
-      }
+      });
+      return response.headers
+        .get("content-type")
+        ?.includes("application/x-ndjson")
+        ? kind
+        : undefined;
     },
-    [session],
+    [session, outputPolling],
   );
   useEffect(() => {
     setOutput(null);
     setOutputError("");
-    if (!outputJobId) return;
+    if (!outputJobId || !outputExpanded) return;
     const controller = new AbortController();
-    const refreshOutput = () =>
-      void loadOutput(outputJobId, controller.signal).catch(
-        (cause: unknown) => {
-          if (!controller.signal.aborted)
-            setOutputError(
-              cause instanceof Error
-                ? cause.message
-                : "Die Ausführungslogs sind derzeit nicht verfügbar.",
-            );
-        },
-      );
-    refreshOutput();
-    const interval = outputPolling
-      ? window.setInterval(refreshOutput, 5000)
-      : undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = Date.now() + 20 * 60 * 1000;
+    const refreshOutput = async () => {
+      let reconnectAfter = 2000;
+      try {
+        const kind = await loadOutput(outputJobId, controller.signal);
+        if (kind === "live") reconnectAfter = 100;
+      } catch (cause) {
+        if (!controller.signal.aborted)
+          setOutputError(
+            cause instanceof Error
+              ? cause.message
+              : "Die Ausführungslogs sind derzeit nicht verfügbar.",
+          );
+      } finally {
+        if (
+          !controller.signal.aborted &&
+          outputPolling &&
+          Date.now() < deadline
+        )
+          timer = setTimeout(() => void refreshOutput(), reconnectAfter);
+      }
+    };
+    void refreshOutput();
     return () => {
       controller.abort();
-      window.clearInterval(interval);
+      clearTimeout(timer);
     };
-  }, [outputJobId, outputPolling, loadOutput]);
+  }, [outputJobId, outputPolling, loadOutput, outputExpanded]);
   useEffect(() => {
     if (!running) return;
     const controller = new AbortController();
@@ -1679,7 +1711,13 @@ function ApplicationPlanControls({
                 </>
               )}
             {job.id === outputJobId && job.requestedBy === session.user.id && (
-              <details open className="application-output">
+              <details
+                open={outputExpanded}
+                onToggle={(event) =>
+                  setOutputExpanded(event.currentTarget.open)
+                }
+                className="application-output"
+              >
                 <summary>{t("Ausführungslogs")}</summary>
                 <button
                   type="button"
@@ -1701,7 +1739,12 @@ function ApplicationPlanControls({
                 {outputError && <p role="alert">{t(outputError)}</p>}
                 {output?.jobId === job.id && output.text ? (
                   <section aria-label={t("Ausführungslogs")}>
-                    <pre>{output.text}</pre>
+                    <OutputConsole
+                      key={job.id}
+                      text={output.text}
+                      running={outputPolling}
+                      label="Ausführungslogs"
+                    />
                   </section>
                 ) : (
                   <p>{t("Noch keine Ausführungslogs verfügbar.")}</p>

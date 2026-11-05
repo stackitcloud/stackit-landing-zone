@@ -1,4 +1,13 @@
 export const englishMessages: Record<string, string> = {
+  "Dieser Plan benötigt deine Bestätigung der Auswirkungen auf bestehende Application Landing Zones. Öffne den Schritt Apply und bestätige dort die Plattformauswirkungen. Danach kannst du denselben gültigen Plan freigeben.":
+    "This plan requires your acknowledgement of its impact on existing Application Landing Zones. Open Apply and acknowledge the platform impact there. You can then approve the same valid plan.",
+  "Die Plattformabhängigkeiten haben sich geändert. Lade den Planstatus und die Prüfung der Plattformauswirkungen erneut.":
+    "Platform dependencies changed. Reload the plan status and platform impact assessment.",
+  "Für die Prüfung der Plattformauswirkungen fehlt die Platform-Owner-Berechtigung oder eine aktuelle STACKIT-Anmeldung.":
+    "Platform impact assessment requires Platform Owner permission and a current STACKIT login.",
+  "Plattformauswirkungen prüfen und Apply vorbereiten":
+    "Review platform impact and prepare Apply",
+
   "Automatische Audit-Abdeckung kann nicht mit manuellen Link-Zielen kombiniert werden.":
     "Automatic audit coverage cannot be combined with manual link targets.",
   "Automatische Audit-Abdeckung benötigt derzeit eine gemeinsame Plattformregion. Weitere Regionen erfordern eigene Router und eine geprüfte Anbindung.":

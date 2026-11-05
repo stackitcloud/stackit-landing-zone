@@ -82,7 +82,11 @@ export function buildApp(
       Partial<
         Pick<
           Applications,
-          "prepareJob" | "revokeJobGrant" | "approveJobBackend" | "dispatchJob"
+          | "prepareJob"
+          | "revokeJobGrant"
+          | "approveJobBackend"
+          | "dispatchJob"
+          | "outputJob"
         >
       >;
     organisations?: OrganisationService;
