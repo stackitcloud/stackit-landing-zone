@@ -503,7 +503,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .click();
   expect((await download).suggestedFilename()).toBe("landing-zone.tfvars");
   await page
-    .getByRole("button", { name: "Konfiguration speichern →", exact: true })
+    .getByRole("button", { name: "Speicheroptionen öffnen →", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Im Fork speichern", exact: true })
@@ -564,7 +564,7 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .selectOption("prod");
   await openConfigurationStep(page, "Prüfen");
   await page
-    .getByRole("button", { name: "Konfiguration speichern →", exact: true })
+    .getByRole("button", { name: "Speicheroptionen öffnen →", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Im Fork speichern", exact: true })

@@ -808,7 +808,7 @@ export function CommonEditor({
                   className="button primary"
                   onClick={onOpenStorage}
                 >
-                  {t("Konfiguration speichern →")}
+                  {t("Speicheroptionen öffnen →")}
                 </button>
               </div>
               {notice && <p role="status">{t(notice)}</p>}

@@ -1,3 +1,8 @@
+output "folder_ids" {
+  description = "Map of managed folder keys to UUIDs for APIs that require resource IDs, distinct from Resource Manager container IDs"
+  value       = { for k, f in stackit_resourcemanager_folder.this : k => f.folder_id }
+}
+
 output "folder_container_ids" {
   description = "Map of all folder keys to their container IDs for easy reference"
   value = merge(

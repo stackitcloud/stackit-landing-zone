@@ -71,6 +71,9 @@ than advertised as fully covered; public handoff targets are restricted to that
 region. Automatic coverage cannot be combined with explicit `link_scopes`,
 including an empty list.
 
+Folder links use Resource Manager folder UUIDs (`governance.folder_ids`), not
+the readable container IDs used for project parents and platform handoffs.
+
 New Application orders receive non-secret central router references through the
 published platform contract. The central deployment identity creates their link
 and a separate ingestion token in the management project, after the Application

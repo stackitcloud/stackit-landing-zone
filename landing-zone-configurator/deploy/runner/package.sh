@@ -40,7 +40,7 @@ cp "$tofu_bin" "$runner_dir/tools/tofu"
 cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
 platform_commit=a256f6896d11134fdc351786f1be5eba4e56b2e2
 if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
-	platform_commit=c83f3d910ab20131d1cba898023317c0e818843b
+	platform_commit=7c762548005ef28b31ead8aa6e9035a40efd287e
 else
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi

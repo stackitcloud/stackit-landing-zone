@@ -100,7 +100,7 @@ future Plan/Apply, access, secret version and target must be checked again.
 
 Addition from 2026-10-06: ordinary preparation remains bound to `a256f68`.
 For contract output, an additional preparation can explicitly
-select the fixed qualified commit `c83f3d910ab20131d1cba898023317c0e818843b`.
+select the fixed qualified commit `7c762548005ef28b31ead8aa6e9035a40efd287e`.
 This is currently a local opt-in execution path, not general source selection or
 production approval.
 
@@ -118,7 +118,7 @@ revision and own credential profile. The additional selection is:
 {
   "platformUpgrade": {
     "confirm": true,
-    "acceleratorCommit": "c83f3d910ab20131d1cba898023317c0e818843b"
+    "acceleratorCommit": "7c762548005ef28b31ead8aa6e9035a40efd287e"
   }
 }
 ```

@@ -18,7 +18,7 @@ locals {
   )
   audit_managed_scopes = merge(
     { for key, id in local.audit_managed_projects : "project-${key}" => { resource_type = "project", resource_id = id } },
-    { for key, id in module.governance.folder_container_ids : "folder-${key}" => { resource_type = "folder", resource_id = id } if key != "root" },
+    { for key, id in module.governance.folder_ids : "folder-${key}" => { resource_type = "folder", resource_id = id } },
   )
   audit_managed_regions = concat(
     var.connectivity_regions == null ? [] : keys(var.connectivity_regions),

@@ -45,6 +45,12 @@ Die Prüfung in der echten Cloud ist ein separater, manuell gestarteter Workflow
 keine gewöhnliche PR-Prüfung.
 
 <a id="conventions"></a>
+Der echte Telemetry-Link-Provider validiert die verwalteten Ordner-Ziele auch
+ohne Cloud-Zugriff. Führe im Repository-Root
+`LZC_TEST_TOFU_BIN="$(command -v tofu)" bash src/tests/check-audit-folders.sh` aus.
+Der Test akzeptiert native Ordner-UUIDs und prüft, dass lesbare Container-IDs
+abgelehnt werden. `test:plan` des Configurators enthält diesen Regressionstest.
+
 ## Konventionen
 
 <a id="changes-that-cross-the-accelerator-and-configurator"></a>

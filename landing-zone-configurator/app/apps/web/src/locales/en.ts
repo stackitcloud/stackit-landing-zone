@@ -2142,7 +2142,9 @@ export const englishMessages: Record<string, string> = {
   "Konfiguration prüfen": "Review configuration",
   "Konfiguration schließen:": "Close configuration:",
   "Konfiguration speichern": "Save configuration",
-  "Konfiguration speichern →": "Save configuration →",
+  "Speicheroptionen öffnen →": "Open save options →",
+  "Der aktuelle Entwurf enthält nicht gespeicherte Änderungen. Die Vorbereitung verwendet den gespeicherten Stand ohne diese Änderungen. Trotzdem fortfahren?":
+    "The current draft contains unsaved changes. Preparation uses the saved version without those changes. Continue anyway?",
   "Konfiguration wechseln? Nicht gespeicherte Änderungen am Entwurf gehen verloren.":
     "Switch configuration? Unsaved draft changes will be lost.",
   "Konfiguration wird validiert": "Validating configuration",

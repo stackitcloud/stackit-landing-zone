@@ -17,7 +17,7 @@ The generated technical reference below documents this module.
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | 0.106.0 |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.114.0 |
 
 ## Modules
 
@@ -53,5 +53,6 @@ No modules.
 | ---- | ----------- |
 | <a name="output_custom_role_ids"></a> [custom\_role\_ids](#output\_custom\_role\_ids) | Map of custom role names to their role IDs |
 | <a name="output_folder_container_ids"></a> [folder\_container\_ids](#output\_folder\_container\_ids) | Map of all folder keys to their container IDs for easy reference |
+| <a name="output_folder_ids"></a> [folder\_ids](#output\_folder\_ids) | Map of managed folder keys to UUIDs for APIs that require resource IDs, distinct from Resource Manager container IDs |
 | <a name="output_organization_role_assignments"></a> [organization\_role\_assignments](#output\_organization\_role\_assignments) | Map of organization-level role assignment subjects grouped by role |
 <!-- END_TF_DOCS -->

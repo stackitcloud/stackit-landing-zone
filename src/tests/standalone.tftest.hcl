@@ -97,7 +97,10 @@ mock_provider "time" {}
 
 mock_provider "stackit" {
   mock_resource "stackit_resourcemanager_folder" {
-    defaults = { container_id = "aaaaaaaa-1111-4111-8111-111111111111" }
+    defaults = {
+      container_id = "platform-example-abc123"
+      folder_id    = "aaaaaaaa-1111-4111-8111-111111111111"
+    }
   }
   mock_resource "stackit_logs_instance" {
     defaults = {
@@ -796,6 +799,16 @@ run "automatic_audit_links_use_stable_keys" {
   assert {
     condition     = length(stackit_telemetrylink.managed_audit) == 8 && contains(keys(stackit_telemetrylink.managed_audit), "project-management") && contains(keys(stackit_telemetrylink.managed_audit), "project-application-test-public") && contains(keys(stackit_telemetrylink.managed_audit), "folder-platform")
     error_message = "Automatic coverage must add links for management, DevOps, sandbox, Application and every managed folder using stable configuration keys."
+  }
+
+  assert {
+    condition = alltrue([
+      for key, folder_id in module.governance.folder_ids :
+      stackit_telemetrylink.managed_audit["folder-${key}"].resource_id == folder_id &&
+      folder_id == "aaaaaaaa-1111-4111-8111-111111111111" &&
+      module.governance.folder_container_ids[key] == "platform-example-abc123"
+    ])
+    error_message = "Telemetry folder scopes must use folder UUIDs; readable container IDs remain unchanged for project parents and platform handoffs."
   }
 
   assert {

@@ -75,6 +75,10 @@ werden abgelehnt, statt vollständige Abdeckung zu behaupten; öffentliche
 Übergabeziele werden auf diese Region begrenzt. Automatische Abdeckung ist nicht
 mit expliziten `link_scopes` kombinierbar, auch nicht mit einer leeren Liste.
 
+Ordner-Links verwenden die Ordner-UUIDs des Resource Managers
+(`governance.folder_ids`), nicht die lesbaren Container-IDs für Projekt-Eltern
+und Plattformübergaben.
+
 Neue Application-Bestellungen erhalten öffentliche Referenzen auf den zentralen
 Router über den veröffentlichten Plattformvertrag. Die zentrale
 Deployment-Identität erstellt ihren Link und ein separates Ingestion-Token im

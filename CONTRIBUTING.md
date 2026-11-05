@@ -40,6 +40,12 @@ tofu test
 runs with mocked providers. These tests create no cloud resources. Real cloud
 verification is a separate, manually initiated workflow, not an ordinary PR check.
 
+The real Telemetry Link provider also validates managed folder scopes without
+cloud access. From the repository root, run
+`LZC_TEST_TOFU_BIN="$(command -v tofu)" bash src/tests/check-audit-folders.sh`.
+It accepts native folder UUIDs and verifies that readable container IDs are rejected.
+The Configurator's `test:plan` includes this regression.
+
 ## Conventions
 
 ### Changes that cross the Accelerator and Configurator

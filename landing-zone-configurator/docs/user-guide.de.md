@@ -37,6 +37,13 @@ Service-Account-Berechtigungen oder Kapazität.
 Speichere Änderungen ausdrücklich. Bei einem Fork ist das Speichern im Repository eine
 separate Aktion. Exporte unterstützen den unabhängigen Terraform/OpenTofu-Workflow.
 
+**Speicheroptionen öffnen →** öffnet nur die Speicherauswahl. **Konfiguration
+speichern** schreibt eine neue Datenbankrevision; **Speichern und zur
+Bereitstellung** speichert genauso und öffnet anschließend die Vorbereitung.
+Ein Beispiel-Download verwendet den lokalen Entwurf und speichert ihn nicht.
+Enthält der aktuelle Entwurf ungespeicherte Änderungen, muss die Vorbereitung
+des älteren gespeicherten Stands ausdrücklich bestätigt werden.
+
 Für eine selbst verwaltete Accelerator-Bereitstellung exportiert
 **Konfigurationen → Prüfen → Accelerator-Beispiel herunterladen** die Plattform
 und je ein natives Beispielprojekt pro Application-Template einschließlich der
