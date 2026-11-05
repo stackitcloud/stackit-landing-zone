@@ -355,7 +355,7 @@ export function ConfigurationEditor({
                 className="button primary"
                 onClick={onOpenStorage}
               >
-                {t("Konfiguration speichern →")}
+                {t("Speicheroptionen öffnen →")}
               </button>
               <p role="status">{t(notice)}</p>
               <details className="technical">

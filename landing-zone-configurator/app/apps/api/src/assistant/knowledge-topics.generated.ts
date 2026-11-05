@@ -351,7 +351,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/deployments/preparations.ts",
           sha256:
-            "a580691734118d33e406407e1884cec03a5d34488df3c42366d2be049754352d",
+            "86a2708906940ec745aa8f80fa0d9fedbedcc98ad2f6eec38a8eb6775dd25d36",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/initial-plan.ts",
@@ -491,7 +491,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/audit-coverage.tf",
           sha256:
-            "d3f280311aa6718dacd7ea81a0ea87c6c6b80d235eb64a37a1598e34f08a952e",
+            "0b9b2f5f63a4367688c7d07fc6850b1436e52529d6d044ca357ae37133629fdb",
         },
         {
           path: "src/platform-contract.tf",

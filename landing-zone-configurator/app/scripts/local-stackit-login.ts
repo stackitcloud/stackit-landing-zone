@@ -355,7 +355,7 @@ async function start() {
         });
     platformUpgradeEnabled =
       runner.supportsAccelerator?.(
-        "c83f3d910ab20131d1cba898023317c0e818843b",
+        "7c762548005ef28b31ead8aa6e9035a40efd287e",
       ) === true;
     plans = new Plans(
       pool,

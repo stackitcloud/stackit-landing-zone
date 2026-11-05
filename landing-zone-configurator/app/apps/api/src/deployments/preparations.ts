@@ -362,6 +362,7 @@ export class Preparations {
           // explicit reconciliation. Never make a fresh/empty bootstrap here.
           const compatibleSources = [
             platformUpgradeAcceleratorCommit,
+            "c83f3d910ab20131d1cba898023317c0e818843b",
             "c4b43c36af198985980b17626c48d357795e3fbd",
           ];
           const reviewed =

@@ -434,10 +434,24 @@ export function Configurations({
                     const { configuration } = (await response.json()) as {
                       configuration: StoredConfiguration;
                     };
-                    if (!controller.current?.signal.aborted)
-                      onPrepare(
-                        configurationDeploymentSelection(configuration),
-                      );
+                    if (controller.current?.signal.aborted) return;
+                    const current = currentDraft.current;
+                    if (
+                      binding?.id === configuration.id &&
+                      current.dirty &&
+                      current.draft &&
+                      !assistantValuesEqual(
+                        current.draft,
+                        readEditorDraft(configuration.draft),
+                      ) &&
+                      !window.confirm(
+                        t(
+                          "Der aktuelle Entwurf enthält nicht gespeicherte Änderungen. Die Vorbereitung verwendet den gespeicherten Stand ohne diese Änderungen. Trotzdem fortfahren?",
+                        ),
+                      )
+                    )
+                      return;
+                    onPrepare(configurationDeploymentSelection(configuration));
                   })
                 }
               >

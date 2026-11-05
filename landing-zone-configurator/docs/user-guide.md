@@ -33,6 +33,12 @@ availability, network reachability, service-account permissions or capacity.
 Save changes explicitly. If you use a fork, saving to the repository is a separate
 action. Exports support the independent Terraform/OpenTofu workflow.
 
+**Open save options →** only opens storage choices. **Save configuration** writes a
+new database revision; **Save and prepare deployment** performs the same save and
+then opens preparation. Downloading an example uses the local draft and does not
+save it. If the current draft has unsaved changes, preparing its older saved
+configuration requires an explicit confirmation.
+
 For a self-managed Accelerator deployment, **Configurations → Review → Download
 Accelerator example** exports the platform and one native example project per
 Application template, including resolved project rights. Replace example subjects
