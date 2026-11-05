@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { applicationExecutionRevisions } from "@lzc/contracts";
 import { expect, it } from "vitest";
 
 const run = promisify(execFile);
@@ -195,13 +196,11 @@ it.runIf(Boolean(publicPackage))(
 );
 
 it.each(["failure", "empty", "duplicate", "incomplete", "complete"] as const)(
-  "fails closed for %s source enumeration and checks exactly all six sources on success",
+  "fails closed for %s source enumeration and verifies every registered source on success",
   async (mode) => {
     const root = await mkdtemp(join(tmpdir(), "lzc-source-enumeration-"));
     const calls = join(root, "tofu-calls");
-    const revisions = Array.from({ length: 6 }, (_, i) =>
-      String(i + 1).repeat(40),
-    );
+    const revisions = [...applicationExecutionRevisions];
     const script = fileURLToPath(
       new URL(
         "../scripts/test-application-execution-sources.sh",
@@ -209,6 +208,9 @@ it.each(["failure", "empty", "duplicate", "incomplete", "complete"] as const)(
       ),
     );
     try {
+      expect(await readFile(script, "utf8")).toContain(
+        `expected_sources=${revisions.length}\n`,
+      );
       await writeFile(
         join(root, "node"),
         `#!/bin/sh\ncase "$*" in\n *applicationExecutionRevisions*)\n ${
@@ -217,7 +219,12 @@ it.each(["failure", "empty", "duplicate", "incomplete", "complete"] as const)(
             : mode === "empty"
               ? ":"
               : `printf '%s\\n' ${revisions
-                  .slice(0, mode === "incomplete" ? 5 : 6)
+                  .slice(
+                    0,
+                    mode === "incomplete"
+                      ? revisions.length - 1
+                      : revisions.length,
+                  )
                   .map((r) => `'${mode === "duplicate" ? revisions[0] : r}'`)
                   .join(" ")}`
         }\n ;;\n *) : ;;\nesac\n`,
@@ -237,9 +244,11 @@ it.each(["failure", "empty", "duplicate", "incomplete", "complete"] as const)(
       });
       if (mode === "complete") {
         const result = await operation;
-        expect(result.stdout.match(/SOURCE_CONTRACT_PASSED/g)).toHaveLength(6);
+        expect(result.stdout.match(/SOURCE_CONTRACT_PASSED/g)).toHaveLength(
+          revisions.length,
+        );
         const invocations = (await readFile(calls, "utf8")).trim().split("\n");
-        expect(invocations).toHaveLength(12);
+        expect(invocations).toHaveLength(revisions.length * 2);
         for (const revision of revisions)
           expect(
             invocations.filter((line) => line.includes(revision)),
