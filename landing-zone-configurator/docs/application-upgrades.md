@@ -217,3 +217,23 @@ an unapplied upgrade target, or adopting its revised path policy. Running jobs,
 unresolved recovery, active Apply credentials and any Apply attempt after the
 baseline remain blockers. Adopting a path policy does not revert a shared Platform
 to its earlier revision; the selected target Platform must still be current.
+
+### Release a usable platform upgrade path
+
+Under **Manage separate platform upgrade paths**, select the previous platform
+contract and the approved target, choose the approval policy and confirm publication.
+The release verifies the target's technical STACKIT credentials and adopts the
+execution backend from that explicitly selected predecessor. This setup and path
+publication commit together: a failed verification or publication leaves both
+unchanged. It does not change an order, write its State or run a Plan or Apply.
+Different backends are never silently reconciled. The predecessor must already
+have an active execution binding; the target credentials must belong to the
+releasing Platform Owner and match the approved contract.
+
+For an older published path missing its target binding, use **Edit approval policy**,
+keep the policy if appropriate, confirm and select **Check and release upgrade path**.
+This also repairs setup without creating a duplicate path when its policy is unchanged.
+The Application Owner then refreshes Updates, selects the released platform target,
+reviews a fresh Plan and performs Apply under the published approval policy.
+Missing execution setup is reported separately from an actual backend change or
+an outdated platform proof; an extra Plan approval cannot repair those conditions.

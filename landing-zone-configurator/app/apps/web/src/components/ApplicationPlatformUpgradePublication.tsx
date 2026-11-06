@@ -80,8 +80,6 @@ export function ApplicationPlatformUpgradePublication({
     (item) =>
       item.fromPlatformRevision === from && item.toPlatformRevision === to,
   );
-  const samePolicy =
-    existing?.policy.sensitive === (direct ? "direct" : "approval-required");
   useEffect(() => {
     if (existing) setDirect(existing.policy.sensitive === "direct");
     setConfirmed(false);
@@ -89,7 +87,6 @@ export function ApplicationPlatformUpgradePublication({
   async function publish() {
     if (
       busy ||
-      samePolicy ||
       !confirmed ||
       !previous ||
       !targets.some((item) => item.document.revision === to)
@@ -252,18 +249,18 @@ export function ApplicationPlatformUpgradePublication({
                 onChange={(event) => setConfirmed(event.target.checked)}
               />
               {t(
-                "Ich veröffentliche nur den Plattform-Upgrade-Pfad. Bestehende Bestellungen und States bleiben unverändert; es wird keine Infrastruktur geändert.",
+                "Ich gebe diesen Plattform-Upgrade-Pfad frei. Die bestehende Ausführungsbindung wird für den Zielstand geprüft und übernommen. Bestehende Bestellungen und States bleiben unverändert; es wird keine Infrastruktur geändert.",
               )}
             </label>
             <button
               type="button"
               className="button secondary"
-              disabled={!from || !to || !confirmed || samePolicy}
+              disabled={!from || !to || !confirmed}
               onClick={() => void publish()}
             >
               {t(
                 existing
-                  ? "Richtlinie aktualisieren"
+                  ? "Upgrade-Pfad prüfen und freigeben"
                   : "Plattform-Upgrade-Pfad veröffentlichen",
               )}
             </button>

@@ -413,40 +413,12 @@ export class Applications {
         }),
       ])
       .parse(input);
-    if (request.enabled) {
-      const backends = this.backends;
-      if (!this.profiles || !backends)
-        throw new ApplicationError(503, "application_execution_unavailable");
-      const contract = await this.work(session, "publish", async (client) => {
-        const contract = (
-          await client.query<{
-            credential_profile_id: string;
-            credential_version: number;
-            credential_key_id: string;
-            organization_id: string;
-          }>(
-            "SELECT credential_profile_id,credential_version,credential_key_id,organization_id FROM lzc.application_platform_contracts WHERE revision=$1 AND approved_by=$2",
-            [revision, session.userId],
-          )
-        ).rows[0];
-        if (!contract)
-          throw new ApplicationError(403, "application_access_denied");
-        await backends.runner(client, session, request.stateBackendId);
-        return contract;
-      });
-      const verified = await this.profiles.verifyForPreparation(
+    if (request.enabled)
+      await this.verifyExecutionSetup(
         session,
-        contract.credential_profile_id,
-        contract.organization_id,
+        revision,
+        request.stateBackendId,
       );
-      if (
-        verified.check.status !== "passed" ||
-        verified.check.organizationId !== contract.organization_id ||
-        verified.version !== contract.credential_version ||
-        verified.keyId !== contract.credential_key_id
-      )
-        throw new ApplicationError(409, "application_credential_changed");
-    }
     return this.work(session, "publish", async (client) => {
       const row = (
         await client.query<{ id: string | null }>(
@@ -465,6 +437,45 @@ export class Applications {
         enabled: request.enabled,
       };
     });
+  }
+
+  private async verifyExecutionSetup(
+    session: Session,
+    revision: string,
+    stateBackendId: string,
+  ) {
+    const backends = this.backends;
+    if (!this.profiles || !backends)
+      throw new ApplicationError(503, "application_execution_unavailable");
+    const contract = await this.work(session, "publish", async (client) => {
+      const contract = (
+        await client.query<{
+          credential_profile_id: string;
+          credential_version: number;
+          credential_key_id: string;
+          organization_id: string;
+        }>(
+          "SELECT credential_profile_id,credential_version,credential_key_id,organization_id FROM lzc.application_platform_contracts WHERE revision=$1 AND approved_by=$2",
+          [revision, session.userId],
+        )
+      ).rows[0];
+      if (!contract)
+        throw new ApplicationError(403, "application_access_denied");
+      await backends.runner(client, session, stateBackendId);
+      return contract;
+    });
+    const verified = await this.profiles.verifyForPreparation(
+      session,
+      contract.credential_profile_id,
+      contract.organization_id,
+    );
+    if (
+      verified.check.status !== "passed" ||
+      verified.check.organizationId !== contract.organization_id ||
+      verified.version !== contract.credential_version ||
+      verified.keyId !== contract.credential_key_id
+    )
+      throw new ApplicationError(409, "application_credential_changed");
   }
 
   private async jobQuery<Row extends pg.QueryResultRow>(
@@ -1370,10 +1381,44 @@ export class Applications {
       ).rows.map((row) => applicationPlatformUpgradeEdgeSchema.parse(row.edge)),
     }));
   }
-  publishPlatformUpgradeEdge(session: Session, input: unknown) {
+  async publishPlatformUpgradeEdge(session: Session, input: unknown) {
     const request = publishApplicationPlatformUpgradeEdgeSchema.parse(input);
-    return this.work(session, "publish", async (client) =>
-      applicationPlatformUpgradeEdgeSchema.parse(
+    // Publishing a usable path includes the target's execution setup. Resolve
+    // only the explicitly chosen predecessor; never choose a backend by recency.
+    const predecessor = await this.work(session, "publish", async (client) => {
+      const binding = (
+        await client.query<{ id: string; backend_id: string }>(
+          "SELECT d.id,d.backend_id FROM lzc.application_execution_delegations d JOIN lzc.application_platform_contracts c ON c.revision=$2 AND c.tenant_id=d.tenant_id AND c.approved_by=$3 WHERE d.platform_revision=$1 AND d.revoked_at IS NULL",
+          [
+            request.fromPlatformRevision,
+            request.toPlatformRevision,
+            session.userId,
+          ],
+        )
+      ).rows[0];
+      if (!binding)
+        throw new ApplicationError(
+          409,
+          "application_upgrade_execution_unavailable",
+        );
+      return binding;
+    });
+    await this.verifyExecutionSetup(
+      session,
+      request.toPlatformRevision,
+      predecessor.backend_id,
+    );
+    return this.work(session, "publish", async (client) => {
+      await client.query(
+        "SELECT lzc_auth.prepare_application_platform_upgrade_execution($1,$2,$3,$4)",
+        [
+          session.id,
+          request.fromPlatformRevision,
+          request.toPlatformRevision,
+          predecessor.id,
+        ],
+      );
+      return applicationPlatformUpgradeEdgeSchema.parse(
         (
           await client.query<{ edge: unknown }>(
             "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,$5) AS edge",
@@ -1386,8 +1431,8 @@ export class Applications {
             ],
           )
         ).rows[0]?.edge,
-      ),
-    );
+      );
+    });
   }
   previewPlatformUpgrade(session: Session, instanceId: string, input: unknown) {
     const id = z.uuid().parse(instanceId);

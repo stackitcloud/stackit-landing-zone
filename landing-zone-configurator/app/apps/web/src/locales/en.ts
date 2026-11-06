@@ -1,4 +1,20 @@
 export const englishMessages: Record<string, string> = {
+  "Upgrade-Pfad prüfen und freigeben": "Check and release upgrade path",
+  "Ich gebe diesen Plattform-Upgrade-Pfad frei. Die bestehende Ausführungsbindung wird für den Zielstand geprüft und übernommen. Bestehende Bestellungen und States bleiben unverändert; es wird keine Infrastruktur geändert.":
+    "I release this platform upgrade path. The existing execution binding is verified and adopted for the target. Existing orders and States remain unchanged; no infrastructure is modified.",
+  "Der Upgrade-Pfad ist technisch noch nicht einsatzbereit. Der Platform Owner kann ihn erneut prüfen und freigeben; dabei wird die bestehende Ausführungsbindung übernommen. Es ist kein Wechsel des State-Backends erforderlich.":
+    "This upgrade path is not ready to use. The Platform Owner can check and release it again to adopt the existing execution binding. No State backend change is required.",
+  "Der freigegebene Plattformstand ist nicht mehr aktuell bestätigt. Der Platform Owner muss die Plattformanbindung prüfen; eine Plan-Freigabe behebt diesen Blocker nicht.":
+    "The released platform version is no longer confirmed as current. The Platform Owner must check the platform binding; Plan approval does not resolve this blocker.",
+  "Der bisherige Plattformstand hat keine aktive Ausführungsbindung. Richte diese unter Plattformanbindung ein und gib den Upgrade-Pfad anschließend erneut frei. Es wurde nichts veröffentlicht.":
+    "The previous platform version has no active execution binding. Configure it under Platform binding, then release the upgrade path again. Nothing was published.",
+  "Die technische Ausführung ist derzeit nicht verfügbar. Der Upgrade-Pfad wurde nicht freigegeben.":
+    "Technical execution is currently unavailable. The upgrade path was not released.",
+  "Der Zielstand verwendet bereits ein anderes State-Backend. Dieser Pfad kann nicht freigegeben werden; die bestehenden Bindungen bleiben unverändert.":
+    "The target already uses a different State backend. This path cannot be released; existing bindings remain unchanged.",
+  "Der technische STACKIT-Zugang des Zielstands konnte nicht bestätigt werden. Prüfe den Zugang unter Plattformanbindung. Der Upgrade-Pfad wurde nicht freigegeben.":
+    "The technical STACKIT credentials of the target could not be verified. Check the credentials under Platform binding. The upgrade path was not released.",
+
   "Bereitgestellte Plattform": "Applied platform",
   "Importierte Plattform": "Imported platform",
   "Zentrale Audit-Anbindung verfügbar": "Central audit integration available",

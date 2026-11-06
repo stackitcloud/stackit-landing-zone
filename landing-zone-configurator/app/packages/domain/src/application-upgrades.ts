@@ -134,10 +134,9 @@ export function assessApplicationTemplateUpgrade(input: {
     add("platform-contract-mismatch", "platformRevision", "blocked");
   if (beforePlatform.organization_id !== afterPlatform.organization_id)
     add("organization-migration", "organizationId", "blocked");
-  if (
-    input.currentBackendIdentity !== input.targetBackendIdentity ||
-    !input.currentBackendIdentity
-  )
+  if (!input.currentBackendIdentity || !input.targetBackendIdentity)
+    add("execution-binding-unavailable", "stateBackend", "blocked");
+  else if (input.currentBackendIdentity !== input.targetBackendIdentity)
     add("state-backend-migration", "stateBackend", "blocked");
   if (current.template.kind !== target.template.kind)
     add("network-mode-migration", "kind", "blocked");
@@ -388,10 +387,9 @@ export function assessApplicationPlatformUpgrade(
     add("target-contract-not-newer", "platformRevision", "blocked");
   if (before.organization_id !== after.organization_id)
     add("organization-migration", "organizationId", "blocked");
-  if (
-    input.currentBackendIdentity !== input.targetBackendIdentity ||
-    !input.currentBackendIdentity
-  )
+  if (!input.currentBackendIdentity || !input.targetBackendIdentity)
+    add("execution-binding-unavailable", "stateBackend", "blocked");
+  else if (input.currentBackendIdentity !== input.targetBackendIdentity)
     add("state-backend-migration", "stateBackend", "blocked");
   if (
     !same(input.requestedParameters ?? {}, {}) &&

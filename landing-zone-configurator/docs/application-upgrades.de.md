@@ -245,3 +245,26 @@ aktive Apply-Berechtigungen und jeder Apply-Versuch nach dem Ausgangsstand
 bleiben Blocker. Die Richtlinienübernahme setzt eine gemeinsam genutzte Plattform
 nicht auf ihren früheren Stand zurück; die gewählte Zielplattform muss weiterhin
 aktuell sein.
+
+### Einen nutzbaren Plattform-Upgrade-Pfad freigeben
+
+Unter **Separate Plattform-Upgrade-Pfade verwalten** den bisherigen Plattformvertrag
+und den freigegebenen Zielstand auswählen, die Freigaberichtlinie wählen und die
+Veröffentlichung bestätigen. Die Freigabe prüft den technischen STACKIT-Zugang des
+Ziels und übernimmt das Ausführungsbackend des ausdrücklich gewählten bisherigen
+Plattformstands. Einrichtung und Pfadveröffentlichung werden gemeinsam gespeichert:
+Scheitert eine Prüfung oder Veröffentlichung, bleiben beide unverändert. Es wird
+keine Bestellung geändert, kein State geschrieben und kein Plan oder Apply gestartet.
+Unterschiedliche Backends werden nicht automatisch angeglichen. Der bisherige Stand
+muss bereits eine aktive Ausführungsbindung haben; der Zugang des Ziels muss dem
+freigebenden Platform Owner gehören und zum genehmigten Vertrag passen.
+
+Bei einem älteren veröffentlichten Pfad ohne Zielbindung **Freigaberichtlinie
+bearbeiten** öffnen, die Richtlinie bei Bedarf beibehalten, bestätigen und
+**Upgrade-Pfad prüfen und freigeben** wählen. Bei unveränderter Richtlinie wird die
+Einrichtung repariert, ohne einen doppelten Pfad anzulegen. Der Application Owner
+aktualisiert anschließend Updates, wählt den freigegebenen Plattformstand, prüft
+einen neuen Plan und führt Apply nach der veröffentlichten Richtlinie aus.
+Fehlende Einrichtung wird getrennt von einem tatsächlichen Backend-Wechsel oder
+einem veralteten Plattformnachweis angezeigt; eine zusätzliche Plan-Freigabe kann
+diese Hindernisse nicht beheben.

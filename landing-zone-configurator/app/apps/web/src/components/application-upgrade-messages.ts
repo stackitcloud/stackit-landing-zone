@@ -21,6 +21,8 @@ export const upgradeReasonMessages: Record<string, string> = {
     "Das Upgrade würde eine bestehende Komponente entfernen und ist gesperrt.",
   "instance-identity-change":
     "Das Upgrade würde die Identität bestehender Ressourcen verändern und ist gesperrt.",
+  "execution-binding-unavailable":
+    "Der Upgrade-Pfad ist technisch noch nicht einsatzbereit. Der Platform Owner kann ihn erneut prüfen und freigeben; dabei wird die bestehende Ausführungsbindung übernommen. Es ist kein Wechsel des State-Backends erforderlich.",
   "state-backend-migration":
     "Ein Wechsel des State-Backends ist hier nicht zulässig.",
   "template-family-changed":
@@ -52,7 +54,7 @@ export const upgradeReasonMessages: Record<string, string> = {
 };
 
 upgradeReasonMessages["upgrade-target-not-qualified"] =
-  "Der Plattformnachweis der Zielversion ist nicht aktuell bestätigt oder ihre Backend-Anbindung ist nicht verfügbar. Der Platform Owner muss die Plattformanbindung prüfen; eine Plan-Freigabe behebt diesen Blocker nicht.";
+  "Der freigegebene Plattformstand ist nicht mehr aktuell bestätigt. Der Platform Owner muss die Plattformanbindung prüfen; eine Plan-Freigabe behebt diesen Blocker nicht.";
 upgradeReasonMessages["application-platform-execution-active"] =
   upgradeReasonMessages["execution-or-recovery-active"] ?? "";
 
