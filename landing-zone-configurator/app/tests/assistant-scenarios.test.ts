@@ -1156,8 +1156,9 @@ it("binds audit Grafana advice to native routing, retention and upgrade boundari
   expect(topic?.text).toContain("built-in");
   expect(topic?.text).toContain("no Grafana admin");
   expect(topic?.text).toContain("own retention/cost");
-  expect(topic?.text).toContain("no order upgrade for linked");
+  expect(topic?.text).toContain("No order upgrade");
   expect(topic?.text).toContain("historical replay");
+  expect(topic?.text).toContain("removes dedicated Logs");
   expect(topic?.sources.map((s) => s.path)).toContain(
     "src/modules/management/5-observability.tf",
   );

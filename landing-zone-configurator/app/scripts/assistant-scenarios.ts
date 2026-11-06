@@ -861,7 +861,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     fixture: "baseline",
     requiredOverviewFields: ["grafana", "observability", "plan", "apply"],
     message:
-      "Zentrale Audit-Ereignisse kommen in STACKIT Logs an, aber das vorhandene Grafana Audit Logs Dashboard ist leer. Erkläre die native Observability-Anbindung und den Upgrade-Weg für eine bestehende Plattform. Sind Grafana-Admin-Zugang oder Updates jeder bereits angebundenen Application-Bestellung nötig? Werden alte Logs rückwirkend kopiert, und gilt für Observability dieselbe Aufbewahrung wie für Logs/S3? Nur erklären, nichts ändern oder ausführen.",
+      "Zentrale Audit-Ereignisse kommen in STACKIT Logs an, aber das vorhandene Grafana Audit Logs Dashboard ist leer. Erkläre die native Observability-Anbindung und den Upgrade-Weg für eine bestehende Plattform. Sind Grafana-Admin-Zugang oder Updates jeder bereits angebundenen Application-Bestellung nötig? Wird weiter eine separate Logs-Instanz benötigt, was passiert bei der direkten Dev-Umstellung mit ihren bisherigen Daten, und gilt für Observability dieselbe Aufbewahrung wie für Logs/S3? Nur erklären, nichts ändern oder ausführen.",
   },
   ...Object.entries(questions).map(
     ([topic, message]): AssistantScenario => ({

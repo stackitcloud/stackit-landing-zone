@@ -7,15 +7,17 @@ Audit routing.
 ## Accelerator Contract
 
 audit_logs=null skips routing/retention, not archive bucket.
-Fields: retention_days, acl, s3_object_lock, managed_resources, link_scopes, router_egress_cidrs.
-Sinks: Logs/OTLP + S3. With central observability: extra OTLP route feeds built-in
-Grafana Audit Logs Dashboard via technical credential, no Grafana admin.
-Needs Logs plan; not Monitoring/Frontend/MetricsEndpoint. Observability
-stores another copy with own retention/cost; retention_days controls Logs/S3.
-Upgrade: reviewed platform Plan/Apply adds route/ACL, no order upgrade for linked
-projects or historical replay. Dashboard: 24h/all filters; delivery may lag.
-UUIDs are structured metadata.
-Router ranges join Logs/Observability ACLs; keep clients.
+Sinks: S3 + ONE query store. With central observability,
+use its OTLP endpoint and built-in Grafana Audit Logs Dashboard via technical
+credential, no Grafana admin; no separate Logs instance/tokens/destination.
+Without Observability: Logs. Needs logs-capable plan, not
+Monitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;
+retention_days controls S3 and, only in fallback, Logs.
+Dev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability
+target/credential. S3/Router/links/projects stay. No order upgrade for linked
+projects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are
+metadata. acl controls Logs clients, observability.acl Observability.
+Router ranges join the selected store's ACL, preserving clients.
 router_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4
 list narrows. Authentication required; empty feed fails.
 Object Lock defaults true, including nested null; retention 180. Explicit false
@@ -23,21 +25,21 @@ opts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible
 or compliance certification.
 Organization links capture ONLY organization events, no inheritance.
 managed_resources=false by default; true links managed folders/projects and new
-Application orders via platform contract. Existing unlinked orders need approved
-platform upgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.
-Same-region managed scopes; others need reviewed routers. Custom scopes:
-organization/folder/project. External links need reviewed import, no takeover.
+orders via platform contract. Existing unlinked orders need approved platform
+upgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.
+Managed scopes same-region; others need reviewed routers. link_scopes supports
+organization/folder/project. External links need reviewed import.
 
 ## Dependencies
 
-Management identity; same-region router/link. Audit ≠ Observability.
-Ingestion secrets stay central, inaccessible to default workload identities.
+Central identity, same-region router/link. Default workload identities cannot
+read central ingestion secrets.
 
 ## Dialogue
 
-Ask retention/ACL/Lock/coverage; preserve choices. Defaults are not consent.
-Editor creation requires explicit retention/ACL/Lock decisions.
-Managed coverage: managed_resources=true; no invented IDs.
+Ask retention/ACL/Lock/coverage; preserve choices, defaults are not consent.
+Editor creation needs explicit retention/ACL/Lock. Managed coverage uses
+managed_resources=true, no invented IDs.
 
 ## Examples
 
@@ -45,15 +47,15 @@ Draft: audit_logs={retention_days=90,s3_object_lock=false}.
 
 ## Limits
 
-Future events only. Default workload rights exclude audit mutation; Owner/inherited
-grants can alter routing: no deny guarantee. Verify Logs/S3/dashboard delivery and
-access separately. Recovery preserves links; lost secrets require exact approved
-revocation + fresh Plan/Apply, never fabricated keys.
+Future events only. Default rights exclude audit mutation; Owner/inherited grants
+can alter routing: no deny guarantee. Verify query/S3/dashboard delivery/access.
+Recovery preserves links; lost secrets need exact approved revocation + fresh
+Plan/Apply, never fabricated keys.
 
 ## Credentials
 
-No tokens, S3 keys, State or audit contents in chat/public contracts. Secrets stay
-in protected execution/State.
+No tokens, S3 keys, State or audit contents in chat/public contracts.
+Protected execution only.
 
 ## Sources
 

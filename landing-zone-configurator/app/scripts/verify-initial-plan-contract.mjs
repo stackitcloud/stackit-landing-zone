@@ -48,15 +48,21 @@ for (const event of plans) {
     name,
   );
   const audit = enabled("audit_logs") || name === "audit_defaults";
+  const usesDedicatedLogs =
+    audit && !(auditGrafanaRouting && name === "combined");
+  assert.equal(
+    resources("stackit_logs_instance").length,
+    usesDedicatedLogs ? 1 : 0,
+    name,
+  );
   for (const type of [
-    "stackit_logs_instance",
     "stackit_telemetryrouter_instance",
     "stackit_telemetrylink",
   ])
     assert.equal(resources(type).length, audit ? 1 : 0, `${name}: ${type}`);
   assert.equal(
     resources("stackit_telemetryrouter_destination").length,
-    (audit ? 2 : 0) + (auditGrafanaRouting && name === "combined" ? 1 : 0),
+    audit ? 2 : 0,
     name,
   );
   if (auditGrafanaRouting && name === "combined") {
@@ -79,7 +85,7 @@ for (const event of plans) {
   }
   assert.equal(
     resources("stackit_logs_access_token").length,
-    audit ? 2 : 0,
+    usesDedicatedLogs ? 2 : 0,
     name,
   );
   assert.equal(

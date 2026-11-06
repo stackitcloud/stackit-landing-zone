@@ -31,7 +31,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/providers.tf",
@@ -99,7 +99,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -191,7 +191,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/providers.tf",
@@ -316,7 +316,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "bdf493a25c40793641c8c3b764b14431481d34c843c2b61d30afa6b6ca0e75e2",
+            "18dfe8a96a86a7a7f000cca741d8b52211437dba7e326ccb3871489afda5006a",
         },
         {
           path: "src/modules/management/1-project.tf",
@@ -387,12 +387,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "bdf493a25c40793641c8c3b764b14431481d34c843c2b61d30afa6b6ca0e75e2",
+            "18dfe8a96a86a7a7f000cca741d8b52211437dba7e326ccb3871489afda5006a",
         },
         {
           path: "src/modules/management/5-observability.tf",
@@ -471,7 +471,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/main.tf",
@@ -481,12 +481,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "bdf493a25c40793641c8c3b764b14431481d34c843c2b61d30afa6b6ca0e75e2",
+            "18dfe8a96a86a7a7f000cca741d8b52211437dba7e326ccb3871489afda5006a",
         },
         {
           path: "src/modules/management/6-audit-logs.tf",
           sha256:
-            "1af0ea240e90bb44bf9e09eba3fc32b8ce74f079513169453d672ef71965443b",
+            "6ac3743cab43e0c0149fd92267e3315b31f618e8893e09903d78d184fb339d43",
         },
         {
           path: "src/audit-coverage.tf",
@@ -526,7 +526,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/outputs.tf",
           sha256:
-            "2600dc9c6ca0c2f26ca2e7233f20398f2845ac33b4cae03d3fea9eb3396aae2c",
+            "9e0e181769e941a05d42f2db72b041e92eca9115e91909fb6f288fa991868a26",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -552,9 +552,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/audit-logs.md",
-      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nAudit routing.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not archive bucket.\nFields: retention_days, acl, s3_object_lock, managed_resources, link_scopes, router_egress_cidrs.\nSinks: Logs/OTLP + S3. With central observability: extra OTLP route feeds built-in\nGrafana Audit Logs Dashboard via technical credential, no Grafana admin.\nNeeds Logs plan; not Monitoring/Frontend/MetricsEndpoint. Observability\nstores another copy with own retention/cost; retention_days controls Logs/S3.\nUpgrade: reviewed platform Plan/Apply adds route/ACL, no order upgrade for linked\nprojects or historical replay. Dashboard: 24h/all filters; delivery may lag.\nUUIDs are structured metadata.\nRouter ranges join Logs/Observability ACLs; keep clients.\nrouter_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4\nlist narrows. Authentication required; empty feed fails.\nObject Lock defaults true, including nested null; retention 180. Explicit false\nopts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible\nor compliance certification.\nOrganization links capture ONLY organization events, no inheritance.\nmanaged_resources=false by default; true links managed folders/projects and new\nApplication orders via platform contract. Existing unlinked orders need approved\nplatform upgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.\nSame-region managed scopes; others need reviewed routers. Custom scopes:\norganization/folder/project. External links need reviewed import, no takeover.\n\n## Dependencies\n\nManagement identity; same-region router/link. Audit ≠ Observability.\nIngestion secrets stay central, inaccessible to default workload identities.\n\n## Dialogue\n\nAsk retention/ACL/Lock/coverage; preserve choices. Defaults are not consent.\nEditor creation requires explicit retention/ACL/Lock decisions.\nManaged coverage: managed_resources=true; no invented IDs.\n\n## Examples\n\nDraft: audit_logs={retention_days=90,s3_object_lock=false}.\n\n## Limits\n\nFuture events only. Default workload rights exclude audit mutation; Owner/inherited\ngrants can alter routing: no deny guarantee. Verify Logs/S3/dashboard delivery and\naccess separately. Recovery preserves links; lost secrets require exact approved\nrevocation + fresh Plan/Apply, never fabricated keys.\n\n## Credentials\n\nNo tokens, S3 keys, State or audit contents in chat/public contracts. Secrets stay\nin protected execution/State.\n\n## Sources\n\nManifest binds sources; configuration proves no delivery/compliance.\n",
+      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nAudit routing.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not archive bucket.\nSinks: S3 + ONE query store. With central observability,\nuse its OTLP endpoint and built-in Grafana Audit Logs Dashboard via technical\ncredential, no Grafana admin; no separate Logs instance/tokens/destination.\nWithout Observability: Logs. Needs logs-capable plan, not\nMonitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;\nretention_days controls S3 and, only in fallback, Logs.\nDev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability\ntarget/credential. S3/Router/links/projects stay. No order upgrade for linked\nprojects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are\nmetadata. acl controls Logs clients, observability.acl Observability.\nRouter ranges join the selected store's ACL, preserving clients.\nrouter_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4\nlist narrows. Authentication required; empty feed fails.\nObject Lock defaults true, including nested null; retention 180. Explicit false\nopts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible\nor compliance certification.\nOrganization links capture ONLY organization events, no inheritance.\nmanaged_resources=false by default; true links managed folders/projects and new\norders via platform contract. Existing unlinked orders need approved platform\nupgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.\nManaged scopes same-region; others need reviewed routers. link_scopes supports\norganization/folder/project. External links need reviewed import.\n\n## Dependencies\n\nCentral identity, same-region router/link. Default workload identities cannot\nread central ingestion secrets.\n\n## Dialogue\n\nAsk retention/ACL/Lock/coverage; preserve choices, defaults are not consent.\nEditor creation needs explicit retention/ACL/Lock. Managed coverage uses\nmanaged_resources=true, no invented IDs.\n\n## Examples\n\nDraft: audit_logs={retention_days=90,s3_object_lock=false}.\n\n## Limits\n\nFuture events only. Default rights exclude audit mutation; Owner/inherited grants\ncan alter routing: no deny guarantee. Verify query/S3/dashboard delivery/access.\nRecovery preserves links; lost secrets need exact approved revocation + fresh\nPlan/Apply, never fabricated keys.\n\n## Credentials\n\nNo tokens, S3 keys, State or audit contents in chat/public contracts.\nProtected execution only.\n\n## Sources\n\nManifest binds sources; configuration proves no delivery/compliance.\n",
       sha256:
-        "99c7d9227af788fd10a6d05733dd3a643c9567ad5610bee00265984ff09211dc",
+        "81e7f15ca6db913e4d0fefa882d9e4ca7ee7c60b1030852252fb3c57b32bff08",
     },
     {
       id: "federated-identities",
@@ -570,7 +570,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/main.tf",
@@ -580,7 +580,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "bdf493a25c40793641c8c3b764b14431481d34c843c2b61d30afa6b6ca0e75e2",
+            "18dfe8a96a86a7a7f000cca741d8b52211437dba7e326ccb3871489afda5006a",
         },
         {
           path: "src/modules/management/4-service-account.tf",
@@ -822,7 +822,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/main.tf",
@@ -999,7 +999,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/modules/firewall-config/variables.tf",
@@ -1123,7 +1123,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/_firewall-bootstrap.tf",
@@ -1173,7 +1173,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/modules/devops/variables.tf",
@@ -1227,7 +1227,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/modules/platform-kubernetes/variables.tf",
@@ -1354,7 +1354,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/modules/landing-zone/variables.tf",
@@ -1475,7 +1475,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/modules/sandboxes/variables.tf",
@@ -1528,7 +1528,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "f054952172dfd254f88c0a2126328570efef123d12f0f6ff3d56e539501d3de9",
+            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
         },
         {
           path: "src/_landing-zone-kubernetes.tf",
