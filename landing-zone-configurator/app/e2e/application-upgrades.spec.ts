@@ -61,6 +61,7 @@ async function setup(
   unbound = false,
   noPath = false,
   publication: {
+    bindings?: boolean;
     sourceApproval?: boolean;
     policyChanged?: boolean;
     platformSaved?: boolean;
@@ -232,6 +233,9 @@ async function setup(
       },
     }),
   );
+  await page.route("**/api/v1/backends", (r) =>
+    r.fulfill({ json: { backends: [] } }),
+  );
   await page.route("**/api/v1/applications/**", async (r) => {
     const request = r.request(),
       path = new URL(request.url()).pathname.replace(
@@ -279,14 +283,21 @@ async function setup(
             ],
           },
         });
+      if (path === "execution-bindings")
+        return r.fulfill({ json: { bindings: [] } });
       if (path === "platform-contracts")
         return r.fulfill({
           json: {
             contracts: pe
-              ? [platform, nextPlatform].map((revision) => ({
+              ? [platform, nextPlatform].map((revision, index) => ({
                   document: platformDoc(revision),
                   approvedBy: user,
                   approvedAt: "2026-10-29T00:00:00.000Z",
+                  presentation: {
+                    configurationName: "Governance-Plattform",
+                    configurationRevision: String(15 + index),
+                    appliedAt: `2026-10-${28 + index}T09:00:00.000Z`,
+                  },
                 }))
               : [],
           },
@@ -312,6 +323,7 @@ async function setup(
               },
             ],
             upgradesEnabled: true,
+            executionDelegationEnabled: publication.bindings === true,
             planJobsEnabled: true,
             execution: {
               planEnabled: true,
@@ -949,10 +961,25 @@ test("Platform Owner publishes a path between actual approved platform contracts
       exact: true,
     })
     .click();
+  const sourceOption = panel
+    .getByLabel("Ausgangs-Plattformvertrag")
+    .locator(`option[value="${platform}"]`);
+  await expect(sourceOption).toContainText(
+    "Governance-Plattform · Revision 15 · Apply",
+  );
+  await expect(sourceOption).not.toContainText(platform);
   await panel.getByLabel("Ausgangs-Plattformvertrag").selectOption(platform);
   await panel
     .getByLabel("Ziel-Plattformvertrag", { exact: true })
     .selectOption("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+  await expect(
+    panel
+      .getByLabel("Ziel-Plattformvertrag", { exact: true })
+      .locator("option:checked"),
+  ).toContainText("Governance-Plattform · Revision 16 · Apply");
+  await expect(
+    panel.getByText("Technische Vertragsdetails", { exact: true }),
+  ).toHaveCount(2);
   await panel
     .getByRole("checkbox", {
       name: /Ich veröffentliche nur den Plattform-Upgrade-Pfad/,
@@ -1972,7 +1999,11 @@ test("editing a platform path opens and focuses its policy form", async ({
     }),
   ).toBeDisabled();
   await expect(editor).toBeInViewport();
-  await expect(panel.getByRole("listitem")).toHaveCount(0);
+  await expect(
+    panel.getByRole("list", {
+      name: "Veröffentlichte Plattform-Upgrade-Pfade",
+    }),
+  ).toHaveCount(0);
   await expect(
     panel.getByRole("heading", {
       name: "Freigaberichtlinie bearbeiten",
@@ -2210,3 +2241,47 @@ for (const active of [false, true]) {
     ).toBe(false);
   });
 }
+
+test("platform binding contract selectors show the applied configuration and revision instead of UUIDs", async ({
+  page,
+}, testInfo) => {
+  const { mutations } = await setup(
+    page,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    { bindings: true },
+  );
+  await page
+    .getByRole("tab", { name: "Plattformanbindung", exact: true })
+    .click();
+  const select = page.getByLabel("Plattformvertrag für Ausführung", {
+    exact: true,
+  });
+  const option = select.locator(`option[value="${platform}"]`);
+  await expect(option).toContainText(
+    "Governance-Plattform · Revision 15 · Apply",
+  );
+  await expect(option).not.toContainText(platform);
+  await select.selectOption(platform);
+  await expect(
+    page.getByText("Technische Vertragsdetails", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Keine zentrale Audit-Anbindung", { exact: false }),
+  ).toBeVisible();
+  expect(mutations).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("platform-binding-contract-labels.png"),
+    fullPage: true,
+  });
+});

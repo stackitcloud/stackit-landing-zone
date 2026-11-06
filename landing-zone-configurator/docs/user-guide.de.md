@@ -174,7 +174,12 @@ Bei bereits gebundenen Arbeitsbereichen wird der persönliche
 geprüft. Fehlende Rechte und Providerfehler erscheinen als sichtbare Fehlermeldungen.
 Ein technischer Service-Account ersetzt ihn nicht. Nur erfolgreiche Applies auf dem aktuellen, entsperrten State werden angezeigt.
 Outputs und Zielordner des ausgewählten Applies prüfen und dessen Plattformvertrag mit
-dem technischen Zugangsprofil freigeben.
+dem technischen Zugangsprofil freigeben. Vertragsauswahlen zeigen den Namen der
+angewendeten Konfiguration, ihre Revision und das Apply-Datum. Importierte Verträge
+zeigen stattdessen ihr Freigabedatum. Beim ausgewählten Vertrag werden Ziele und
+Audit-Anbindung angezeigt; seine UUID steht unter den technischen Vertragsdetails.
+Dieselben Bezeichnungen gelten für Plattform-Ausführung, Template-Veröffentlichung
+und Plattform-Upgrade-Pfade.
 
 Unter **Veröffentlichung** Template, freigegebenen Vertrag, passendes Ziel und berechtigte
 Application-Owner-Gruppen auswählen. Eine neue unveränderliche Version veröffentlichen;

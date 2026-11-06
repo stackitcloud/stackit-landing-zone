@@ -1,4 +1,12 @@
 export const englishMessages: Record<string, string> = {
+  "Bereitgestellte Plattform": "Applied platform",
+  "Importierte Plattform": "Imported platform",
+  "Zentrale Audit-Anbindung verfügbar": "Central audit integration available",
+  "Keine zentrale Audit-Anbindung": "No central audit integration",
+  "Technische Vertragsdetails": "Technical contract details",
+  "Früherer Plattformstand": "Earlier platform version",
+  "Neuer Plattformstand": "New platform version",
+
   "Die Apply-Auswahl ist wegen fehlender persönlicher Organisationsrechte gesperrt.":
     "Apply selection is blocked because your personal account lacks the required organization permissions.",
   "Die Apply-Auswahl wartet auf einen gültigen persönlichen Organisationsnachweis.":

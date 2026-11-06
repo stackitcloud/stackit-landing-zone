@@ -158,7 +158,11 @@ and State backends are loaded independently. For an already bound workspace, per
 Missing permissions and provider failures appear as explicit errors. A technical
 service account does not replace that proof. Only successful Applies matching current,
 unlocked State appear. Review the selected Apply's outputs and folders and approve its
-platform contract using the technical credential profile.
+platform contract using the technical credential profile. Contract selectors show the
+applied configuration name, its revision and Apply date. Imported contracts show their
+approval date instead. The selected contract lists targets and audit integration; its
+UUID is available under technical contract details. The same labels appear in platform
+execution setup, Template publication and platform upgrade paths.
 
 Under **Publication**, select the template, approved contract, matching target and
 permitted Application Owner groups. Publish a new immutable version; existing versions

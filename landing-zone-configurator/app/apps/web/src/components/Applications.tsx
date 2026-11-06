@@ -62,6 +62,11 @@ import { ApplicationUpgradeApproval } from "./ApplicationUpgradeApproval";
 import { ApplicationUpgradeProgress } from "./ApplicationUpgradeProgress";
 import { ApplicationUpgradePublication } from "./ApplicationUpgradePublication";
 import { OutputConsole } from "./OutputConsole";
+import {
+  approvedContractSchema,
+  PlatformContractDetails,
+  platformContractLabel,
+} from "./platform-contract-label";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
@@ -280,11 +285,6 @@ const applicationResourceNames: Record<string, string> = {
   time_rotating: "Schlüsselrotation",
 };
 
-const approvedContractSchema = z.object({
-  document: platformContractSchema,
-  approvedBy: z.uuid(),
-  approvedAt: z.iso.datetime(),
-});
 const appliedPlatformsSchema = z.object({
   platforms: z
     .array(
@@ -295,6 +295,7 @@ const appliedPlatformsSchema = z.object({
         organizationId: z.uuid(),
         finishedAt: z.iso.datetime(),
         configurationName: z.string().min(1).max(256).default("Plattform"),
+        configurationRevision: z.string().max(128).nullable().optional(),
       }),
     )
     .max(100),
@@ -2750,6 +2751,9 @@ export function Applications({
     (item) => item.id === selectedInstance?.versionId,
   );
   const publicationTemplate = drafts.find((item) => item.id === templateId);
+  const executionContract = contracts.find(
+    (item) => item.document.revision === executionRevision,
+  );
   const publicationContract = contracts.find(
     (item) => item.document.revision === platformRevision,
   );
@@ -3426,7 +3430,11 @@ export function Applications({
                   <option value="">{t("Apply-Lauf wählen")}</option>
                   {appliedPlatforms.map((platform) => (
                     <option key={platform.id} value={platform.id}>
-                      {platform.configurationName} · {t("Apply")}{" "}
+                      {platform.configurationName}
+                      {platform.configurationRevision
+                        ? ` · ${t("Revision")} ${platform.configurationRevision}`
+                        : ""}{" "}
+                      · {t("Apply")}{" "}
                       {new Date(platform.finishedAt).toLocaleString(
                         currentLanguage(),
                       )}
@@ -3553,10 +3561,13 @@ export function Applications({
                           key={item.document.revision}
                           value={item.document.revision}
                         >
-                          {item.document.revision}
+                          {platformContractLabel(item)}
                         </option>
                       ))}
                   </select>
+                  {executionContract && (
+                    <PlatformContractDetails item={executionContract} />
+                  )}
                 </div>
                 <div className="field">
                   <label htmlFor="execution-state-backend">
@@ -3811,14 +3822,14 @@ export function Applications({
                             key={item.document.revision}
                             value={item.document.revision}
                           >
-                            {item.document.revision} ·{" "}
-                            {new Date(item.approvedAt).toLocaleString(
-                              currentLanguage() === "de" ? "de-DE" : "en-GB",
-                            )}
+                            {platformContractLabel(item)}
                           </option>
                         ))}
                       </select>
                     </div>
+                    {publicationContract && (
+                      <PlatformContractDetails item={publicationContract} />
+                    )}
                     {platformRevision && (
                       <div className="field">
                         <label htmlFor="application-platform-target">
@@ -4028,7 +4039,7 @@ export function Applications({
                 </summary>
                 <ApplicationPlatformUpgradePublication
                   session={session}
-                  contracts={contracts.map((item) => item.document)}
+                  contracts={contracts}
                   onEditorOpen={() => setUpgradeEditor("platform")}
                   onEditorClose={() => setUpgradeEditor(null)}
                 />

@@ -2724,6 +2724,11 @@ for (const { publishing, applied, renewProof, executing } of [
       });
     });
     const approvedContract = {
+      presentation: {
+        configurationName: "Pilot Landing Zone",
+        configurationRevision: "15",
+        appliedAt: "2026-11-05T18:38:47.461Z",
+      },
       document: {
         schema_version: 1,
         tenant_id: tenantId,
@@ -3388,6 +3393,16 @@ for (const { publishing, applied, renewProof, executing } of [
       await page
         .getByLabel("Freigegebener Plattformvertrag", { exact: true })
         .selectOption(platformRevision);
+      await expect(
+        page
+          .getByLabel("Freigegebener Plattformvertrag", { exact: true })
+          .locator("option:checked"),
+      ).toContainText("Pilot Landing Zone · Revision 15 · Apply");
+      await expect(
+        page
+          .getByLabel("Freigegebener Plattformvertrag", { exact: true })
+          .locator("option:checked"),
+      ).not.toContainText(platformRevision);
       await expect(
         page.getByLabel("Plattformziel", { exact: true }),
       ).toBeDisabled();

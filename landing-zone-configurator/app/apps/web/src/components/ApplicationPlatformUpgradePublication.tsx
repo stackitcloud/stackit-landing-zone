@@ -1,9 +1,13 @@
-import type { platformContractSchema } from "@lzc/domain";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 import { t } from "../i18n";
 import type { Session } from "./Account";
 import { useApplicationUpgradeRequest } from "./application-upgrade-request";
+import {
+  type ApprovedPlatformContract,
+  PlatformContractDetails,
+  platformContractLabel,
+} from "./platform-contract-label";
 
 const edgesSchema = z.object({
   edges: z.array(
@@ -24,7 +28,7 @@ export function ApplicationPlatformUpgradePublication({
   session: Session;
   onEditorOpen?: () => void;
   onEditorClose?: () => void;
-  contracts: z.infer<typeof platformContractSchema>[];
+  contracts: ApprovedPlatformContract[];
 }) {
   const policyGroup = useId();
   const [editRequest, setEditRequest] = useState(0);
@@ -57,14 +61,21 @@ export function ApplicationPlatformUpgradePublication({
   useEffect(() => {
     void load();
   }, [load]);
-  const previous = contracts.find((item) => item.revision === from),
+  const previous = contracts.find((item) => item.document.revision === from),
     targets = contracts.filter(
       (item) =>
         previous &&
-        item.revision !== from &&
-        item.organization_id === previous.organization_id &&
-        item.tenant_id === previous.tenant_id,
+        item.document.revision !== from &&
+        item.document.organization_id === previous.document.organization_id &&
+        item.document.tenant_id === previous.document.tenant_id,
     );
+  const targetContract = contracts.find(
+    (item) => item.document.revision === to,
+  );
+  const labelFor = (revision: string) => {
+    const found = contracts.find((item) => item.document.revision === revision);
+    return found ? platformContractLabel(found) : t("Früherer Plattformstand");
+  };
   const existing = edges.find(
     (item) =>
       item.fromPlatformRevision === from && item.toPlatformRevision === to,
@@ -81,7 +92,7 @@ export function ApplicationPlatformUpgradePublication({
       samePolicy ||
       !confirmed ||
       !previous ||
-      !targets.some((item) => item.revision === to)
+      !targets.some((item) => item.document.revision === to)
     )
       return;
     const result = await request("platform-upgrades", {
@@ -167,8 +178,11 @@ export function ApplicationPlatformUpgradePublication({
               >
                 <option value="">{t("Bitte auswählen")}</option>
                 {contracts.map((item) => (
-                  <option key={item.revision} value={item.revision}>
-                    {item.revision}
+                  <option
+                    key={item.document.revision}
+                    value={item.document.revision}
+                  >
+                    {platformContractLabel(item)}
                   </option>
                 ))}
               </select>
@@ -186,12 +200,19 @@ export function ApplicationPlatformUpgradePublication({
               >
                 <option value="">{t("Bitte auswählen")}</option>
                 {targets.map((item) => (
-                  <option key={item.revision} value={item.revision}>
-                    {item.revision}
+                  <option
+                    key={item.document.revision}
+                    value={item.document.revision}
+                  >
+                    {platformContractLabel(item)}
                   </option>
                 ))}
               </select>
             </label>
+            {previous && <PlatformContractDetails item={previous} />}
+            {targetContract && (
+              <PlatformContractDetails item={targetContract} />
+            )}
             <fieldset>
               <legend>{t("Ausführung des Upgrades")}</legend>
               <label className="checkbox">
@@ -255,13 +276,9 @@ export function ApplicationPlatformUpgradePublication({
             <ul aria-label={t("Veröffentlichte Plattform-Upgrade-Pfade")}>
               {edges.map((item) => (
                 <li key={item.id}>
-                  <abbr title={item.fromPlatformRevision}>
-                    {item.fromPlatformRevision.slice(0, 12)}
-                  </abbr>{" "}
-                  →{" "}
-                  <abbr title={item.toPlatformRevision}>
-                    {item.toPlatformRevision.slice(0, 12)}
-                  </abbr>
+                  {labelFor(item.fromPlatformRevision)}
+                  {" → "}
+                  {labelFor(item.toPlatformRevision)}
                   {" · "}
                   {t(
                     item.policy.sensitive === "direct"
