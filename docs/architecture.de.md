@@ -136,6 +136,48 @@ noch eine Audit-Konfiguration ist eine Compliance-Zertifizierung.
 Quelle: `src/modules/management/`
 
 <a id="connectivity"></a>
+#### Audit-Dashboard und Upgrades
+
+Wenn `audit_logs` und die zentrale Management-`observability` aktiviert sind,
+sendet der Telemetry Router zukünftige Audit-Ereignisse zusätzlich an den
+Observability-OTLP-Endpunkt. In Management-Grafana **Dashboards → STACKIT → Audit
+Logs Dashboard** öffnen; der nicht geheime Output `audit_grafana_url` öffnet die
+Dashboard-Suche. Zunächst **Letzte 24 Stunden** und alle Dienst-/Regions-/Aktionsfilter
+wählen. Ressourcen-UUIDs sind strukturierte Metadaten und stehen nicht zwingend im
+Meldungstext. Zustellung kann verzögert erfolgen; ein aktives Ziel allein ist kein
+Zustellnachweis.
+
+Dafür wird ein eigener technischer Observability-Zugang verwendet, kein
+Grafana-Admin und keine Configurator-Sitzung. Die bestehende Logs-Ablage und das
+S3-Archiv bleiben kompatibel erhalten. Observability speichert eine weitere Kopie
+mit eigener Tarifaufbewahrung und eigenen Kosten; `audit_logs.retention_days`
+steuert weiterhin nur Logs und S3. Ein Tarif mit Logs wie
+`Observability-Starter-EU01` ist nötig. Monitoring, Frontend und MetricsEndpoint
+werden zusammen mit der zentralen Audit-Zustellung vor der Ausführung abgelehnt.
+
+Die wirksame Observability-ACL erhält `observability.acl` und ergänzt dieselben
+Router-Netze wie die Logs-Ablage. Ein explizites `router_egress_cidrs` gilt für
+beide Ziele. Der Deployment-Host muss weiterhin die STACKIT-Service-APIs erreichen;
+eine Grafana-Provisionierungsverbindung oder ein Grafana-Admin sind nicht nötig.
+
+Bei bestehenden Plattformen Variablen und Backend beibehalten, die Accelerator-Quelle
+aktualisieren und einen neuen Plattform-**Plan → Apply** prüfen. Der Audit-Anteil
+legt einen technischen Zugang und ein Router-Ziel an und ergänzt bei Bedarf die
+Observability-ACL. Bestehende Logs-Instanz, Router, Links, Buckets und Projekte
+werden dadurch nicht umbenannt oder ersetzt. Andere Quelländerungen separat prüfen.
+State-Verschiebungen/Importe oder einzelne Application-Upgrades sind für bereits
+am zentralen Router angebundene Projekte nicht nötig. Neue Links beziehungsweise
+zusätzliche Abdeckung folgen weiterhin dem regulären Plattform-/Application-
+Vertragsupgrade. Alte Logs werden nicht nach Observability zurückgespielt: Nach
+Apply ein neues harmloses Ereignis erzeugen und im vorhandenen Dashboard prüfen.
+Im Configurator zunächst eine Version mit dieser Accelerator-Quelle verwenden,
+die gespeicherte Plattformkonfiguration vorbereiten und deren geprüften
+Plattform-Plan/Apply ausführen; allein eine Template-Veröffentlichung migriert nichts.
+
+Reines Audit (`observability = null`) behält Logs/S3 ohne Grafana-Abhängigkeit.
+Observability ohne Audit behält das bisherige ACL-Verhalten. Die Anbindung folgt
+der [STACKIT-Anleitung für Audit nach Observability](https://docs.stackit.cloud/products/logging-and-monitoring/observability/how-tos/push-audit-logs/).
+
 ### Konnektivität
 
 Erstellt ein Netzwerk-Hub-Projekt pro konfigurierter Konnektivitätsdomäne. Jede Corporate Landing Zone wird ausdrücklich einer Domäne zugeordnet. Dies ist das komplexeste Modul.

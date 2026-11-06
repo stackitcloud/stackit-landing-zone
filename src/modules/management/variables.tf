@@ -55,6 +55,13 @@ variable "observability" {
   default     = null
 
   validation {
+    condition = var.observability == null || var.audit_logs == null ? true : !can(regex(
+      "^Observability-(Monitoring-|Frontend|Metrics-?Endpoint)", var.observability.plan_name
+    ))
+    error_message = "Central audit dashboards require a logs-capable Observability plan (for example Observability-Starter-EU01). Monitoring, Frontend and MetricsEndpoint plans cannot receive audit logs. Choose a logs-capable plan or set observability to null to keep audit delivery to Logs/S3 only."
+  }
+
+  validation {
     condition = var.observability == null ? true : (
       !startswith(var.observability.plan_name, "Observability-Monitoring-") ||
       (var.observability.logs_retention_days == null && var.observability.traces_retention_days == null)
@@ -119,7 +126,7 @@ variable "audit_logs" {
       resource_id   = string
     })), null)
   })
-  description = "Audit logs configuration. The router forwards to two destinations: OTLP into the Logs instance for querying, and S3 into the audit bucket for long-term archive. retention_days applies to both, driving the Logs instance retention and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null); set false explicitly to opt out before creating an archive. link_scopes defaults to a single link for organization events only, without inherited project/folder coverage; set it to attach individual folders or projects instead. router_egress_cidrs defaults to the current public STACKIT IP ranges from the native provider data source; these are added to acl so the Telemetry Router can ingest. Supply a non-empty explicit IPv4 CIDR list for reviewed narrower Router egress. Authentication remains required."
+  description = "Audit logs configuration. The router forwards to Logs and the S3 archive, and additionally to management Observability when configured, feeding its built-in Grafana Audit Logs Dashboard. Observability uses its own plan retention; retention_days controls Logs and S3 only. retention_days applies to both, driving the Logs instance retention and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null); set false explicitly to opt out before creating an archive. link_scopes defaults to a single link for organization events only, without inherited project/folder coverage; set it to attach individual folders or projects instead. router_egress_cidrs defaults to the current public STACKIT IP ranges from the native provider data source; these are added to the Logs and, when enabled, management Observability ACLs so the Telemetry Router can ingest. Supply a non-empty explicit IPv4 CIDR list for reviewed narrower Router egress. Authentication remains required."
   default     = null
 
   validation {

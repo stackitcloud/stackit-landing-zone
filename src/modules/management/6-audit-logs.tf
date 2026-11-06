@@ -84,6 +84,34 @@ resource "stackit_telemetryrouter_destination" "audit_logs" {
   }
 }
 
+resource "stackit_observability_credential" "audit" {
+  count = var.audit_logs != null && var.observability != null ? 1 : 0
+
+  project_id  = stackit_resourcemanager_project.this.project_id
+  instance_id = stackit_observability_instance.this[0].instance_id
+  description = "Telemetry Router audit ingestion"
+}
+
+resource "stackit_telemetryrouter_destination" "audit_observability" {
+  count = var.audit_logs != null && var.observability != null ? 1 : 0
+
+  project_id   = stackit_resourcemanager_project.this.project_id
+  instance_id  = stackit_telemetryrouter_instance.audit[0].instance_id
+  display_name = "${substr(var.naming_pattern, 0, 18)}-audit-grafana"
+  description  = "Feeds the management Grafana built-in Audit Logs Dashboard"
+
+  config = {
+    config_type = "OpenTelemetry"
+    opentelemetry = {
+      uri = stackit_observability_instance.this[0].otlp_http_logs_url
+      basic_auth = {
+        username = stackit_observability_credential.audit[0].username
+        password = stackit_observability_credential.audit[0].password
+      }
+    }
+  }
+}
+
 resource "stackit_telemetryrouter_destination" "audit_archive" {
   count = var.audit_logs != null ? 1 : 0
 

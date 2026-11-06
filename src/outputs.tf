@@ -213,3 +213,8 @@ output "landing_zone_namespace_demo_samples" {
   description = "Demo sample references for namespace services."
   value       = nonsensitive(module.namespace_service_demo.samples)
 }
+
+output "audit_grafana_url" {
+  description = "Open management Grafana and select the built-in Audit Logs Dashboard. Null unless audit_logs and observability are enabled."
+  value       = module.management.audit_grafana_url
+}

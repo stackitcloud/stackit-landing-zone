@@ -63,3 +63,8 @@ output "audit_telemetry_router_token" {
   value       = try(stackit_telemetryrouter_access_token.audit_link[0].access_token, null)
   sensitive   = true
 }
+
+output "audit_grafana_url" {
+  description = "Management Grafana audit dashboard search. Null without audit logging or management Observability."
+  value       = var.audit_logs != null && var.observability != null ? "${stackit_observability_instance.this[0].grafana_url}/dashboards?query=Audit%20Logs" : null
+}
