@@ -78,10 +78,11 @@ it("rotates a refresh grant only after signed identity and userinfo agree", asyn
   expect(rotated).toEqual({
     ...grant,
     refreshToken: "private-refresh-rotated",
+    accessToken: "private-access",
     expiresAt: new Date(Math.floor(now / 1000) * 1000 + 600000).toISOString(),
   });
   expect(request).toHaveBeenCalledTimes(3);
-  expect(JSON.stringify(rotated)).not.toContain("private-access");
+  // The access token stays inside the encrypted server-side grant, never the public renewal DTO.
 });
 it.each([
   { sub: "different-human" },

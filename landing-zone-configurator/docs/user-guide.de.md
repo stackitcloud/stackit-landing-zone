@@ -169,11 +169,17 @@ erstellt eine neue Version und verwendet gelöschte Versionsnummern nicht erneut
 Als Platform Engineer im selben Arbeitsbereich die gespeicherte Plattformkonfiguration
 öffnen. Die Veröffentlichung lädt deren Template-Entwürfe aus dieser geöffneten
 Konfiguration; Plattformverträge und State-Backends werden unabhängig davon geladen.
-Unter **Plattformanbindung** bei leerer Apply-Auswahl den aktuellen persönlichen
-**STACKIT-Organisationsnachweis** erneuern. Ein technischer Service-Account ersetzt ihn
-nicht. Nur erfolgreiche Applies auf dem aktuellen, entsperrten State werden angezeigt.
+Bei bereits gebundenen Arbeitsbereichen wird der persönliche
+**STACKIT-Organisationsnachweis** beim Login und während der Sitzung automatisch
+geprüft. Fehlende Rechte und Providerfehler erscheinen als sichtbare Fehlermeldungen.
+Ein technischer Service-Account ersetzt ihn nicht. Nur erfolgreiche Applies auf dem aktuellen, entsperrten State werden angezeigt.
 Outputs und Zielordner des ausgewählten Applies prüfen und dessen Plattformvertrag mit
-dem technischen Zugangsprofil freigeben.
+dem technischen Zugangsprofil freigeben. Vertragsauswahlen zeigen den Namen der
+angewendeten Konfiguration, ihre Revision und das Apply-Datum. Importierte Verträge
+zeigen stattdessen ihr Freigabedatum. Beim ausgewählten Vertrag werden Ziele und
+Audit-Anbindung angezeigt; seine UUID steht unter den technischen Vertragsdetails.
+Dieselben Bezeichnungen gelten für Plattform-Ausführung, Template-Veröffentlichung
+und Plattform-Upgrade-Pfade.
 
 Unter **Veröffentlichung** Template, freigegebenen Vertrag, passendes Ziel und berechtigte
 Application-Owner-Gruppen auswählen. Eine neue unveränderliche Version veröffentlichen;

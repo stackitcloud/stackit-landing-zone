@@ -3033,6 +3033,13 @@ describe.skipIf(!enabled)(
         expect(output.body).not.toContain("do-not-publish");
         const candidates = await applications.listAppliedPlatforms(test.owner);
         expect(candidates.map((candidate) => candidate.id)).toEqual([run.id]);
+        expect(candidates[0]).toMatchObject({
+          configurationName:
+            (test.manifest.configuration.schemaVersion === 3
+              ? test.manifest.configuration.name
+              : test.manifest.configuration.draft.name) || "Plattform",
+          configurationRevision: "1",
+        });
         const preview = await applications.previewAppliedPlatform(
           test.owner,
           run.id,
@@ -3190,9 +3197,22 @@ describe.skipIf(!enabled)(
         });
         expect(retried.statusCode).toBe(200);
         expect(retried.json()).toEqual(approved[0]);
-        expect(
-          (await applications.listPlatformContracts(test.owner))[0],
-        ).toEqual(approved[0]);
+        {
+          const listed = (
+            await applications.listPlatformContracts(test.owner)
+          )[0];
+          if (!listed) throw new Error("Missing approved platform contract");
+          const { presentation, ...unchangedContract } = listed;
+          expect(unchangedContract).toEqual(approved[0]);
+          expect(presentation).toMatchObject({
+            configurationName:
+              (test.manifest.configuration.schemaVersion === 3
+                ? test.manifest.configuration.name
+                : test.manifest.configuration.draft.name) || "Plattform",
+            configurationRevision: "1",
+            appliedAt: expect.stringMatching(/Z$/),
+          });
+        }
         expect(
           (
             await migration!.query(
@@ -3252,9 +3272,22 @@ describe.skipIf(!enabled)(
         ).rejects.toMatchObject({
           code: "application_platform_source_unavailable",
         });
-        expect(
-          (await applications.listPlatformContracts(test.owner))[0],
-        ).toEqual(approved[0]);
+        {
+          const listed = (
+            await applications.listPlatformContracts(test.owner)
+          )[0];
+          if (!listed) throw new Error("Missing approved platform contract");
+          const { presentation, ...unchangedContract } = listed;
+          expect(unchangedContract).toEqual(approved[0]);
+          expect(presentation).toMatchObject({
+            configurationName:
+              (test.manifest.configuration.schemaVersion === 3
+                ? test.manifest.configuration.name
+                : test.manifest.configuration.draft.name) || "Plattform",
+            configurationRevision: "1",
+            appliedAt: expect.stringMatching(/Z$/),
+          });
+        }
         expect(
           (await app.inject({ url: "/api/runner/state", headers: backend }))
             .statusCode,

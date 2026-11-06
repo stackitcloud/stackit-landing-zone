@@ -914,7 +914,10 @@ it.each([401, 403, 500])(
     advance(5000);
     expect(await flow.poll()).toEqual({
       status: "failed",
-      code: "organization_permissions_denied",
+      code:
+        organizationPermissionsStatus >= 500
+          ? "organization_check_unavailable"
+          : "organization_permissions_denied",
     });
   },
 );
@@ -939,6 +942,13 @@ it.each([401, 403, 500])(
     await flow.begin();
     advance(5000);
     const state = await flow.poll();
+    if (organizationRolesStatus >= 500) {
+      expect(state).toEqual({
+        status: "failed",
+        code: "organization_check_unavailable",
+      });
+      return;
+    }
     expect(state).toMatchObject({
       status: "verified",
       identity: { organization: { permissions: ["organization.read"] } },

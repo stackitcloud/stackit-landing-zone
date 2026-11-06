@@ -8,6 +8,7 @@ import {
   stackitIssuer,
 } from "../apps/api/src/auth/stackit-device.js";
 import { StackitIdentities } from "../apps/api/src/auth/stackit-identities.js";
+import { StackitOrganizationProofs } from "../apps/api/src/auth/stackit-organization-proofs.js";
 import {
   StackitRefreshClient,
   StackitSessions,
@@ -308,4 +309,211 @@ it("rejects missing or revoked identity and invalid identity bindings without re
     status: "reauthentication-required",
   });
   expect(refresh).not.toHaveBeenCalled();
+});
+
+async function boundWorkspace() {
+  const first = await login();
+  const organisations = new PostgresOrganisations(pool);
+  const organizationId = randomUUID();
+  const tenantId = await organisations.create(
+    first.session,
+    "Automatic proof test",
+    organizationId,
+  );
+  await organisations.switch(first.session, tenantId);
+  const active = await store.resolveSession(first.secret.token);
+  if (!active) throw new Error("Missing test session");
+  const identities = new StackitIdentities(pool);
+  await identities.save(active, {
+    ...first.identity,
+    organization: {
+      id: organizationId,
+      name: "Synthetic organization",
+      permissions: ["organization.read", "organization.write"],
+      ownerPermissions: ["organization.write"],
+    },
+  });
+  await identities.bindOrganization(active, {
+    confirmOrganizationBinding: true,
+  });
+  await migration.query(
+    "DELETE FROM lzc.stackit_organization_access WHERE tenant_id=$1 AND user_id=$2",
+    [tenantId, active.userId],
+  );
+  const next = {
+    ...first.grant,
+    accessToken: "synthetic-personal-access",
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+  };
+  const fake = provider();
+  vi.spyOn(fake, "refresh").mockResolvedValue(next);
+  return { ...first, active, organizationId, identities, fake, next };
+}
+function organizationApi(
+  organizationId: string,
+  email: string,
+  mode: "owner" | "reader" | "denied" | "outage" = "owner",
+) {
+  return vi.fn<typeof fetch>(async (input, options) => {
+    const url = new URL(String(input));
+    expect(options?.headers).toEqual({
+      Authorization: "Bearer synthetic-personal-access",
+    });
+    expect(options?.redirect).toBe("error");
+    expect([
+      "resource-manager.api.stackit.cloud",
+      "authorization.api.stackit.cloud",
+    ]).toContain(url.hostname);
+    if (mode === "denied") return new Response("", { status: 403 });
+    if (mode === "outage") return new Response("", { status: 503 });
+    if (url.hostname === "resource-manager.api.stackit.cloud") {
+      expect(url.pathname).toBe(`/v2/organizations/${organizationId}`);
+      return Response.json({
+        organizationId,
+        containerId: "synthetic-org",
+        name: "Synthetic organization",
+        lifecycleState: "ACTIVE",
+      });
+    }
+    if (url.pathname.endsWith("/permissions")) {
+      expect(decodeURIComponent(url.pathname)).toBe(
+        `/v2/users/${email}/permissions`,
+      );
+      expect(url.searchParams.get("resource")).toBe("synthetic-org");
+      expect(url.searchParams.get("resourceType")).toBe("organization");
+      return Response.json({
+        items: [
+          {
+            resourceId: "synthetic-org",
+            resourceType: "organization",
+            permissions: (mode === "owner"
+              ? ["organization.read", "organization.write"]
+              : ["organization.read"]
+            ).map((name) => ({ name })),
+          },
+        ],
+      });
+    }
+    expect(url.pathname).toBe("/v2/organization/synthetic-org/roles");
+    return Response.json({
+      resourceId: "synthetic-org",
+      resourceType: "organization",
+      roles: [{ name: "owner", permissions: [{ name: "organization.write" }] }],
+    });
+  });
+}
+it("automatically renews bound-workspace authority with real API checks, runtime RLS and encrypted personal grants", async () => {
+  const f = await boundWorkspace();
+  const request = organizationApi(f.organizationId, f.identity.email);
+  let now = Date.now();
+  const proofs = new StackitOrganizationProofs(pool, request, () => now);
+  const sessions = new StackitSessions(
+    pool,
+    crypto,
+    clientId,
+    f.fake,
+    Date.now,
+    proofs,
+  );
+  await sessions.put(f.active, f.secret.hash, f.grant);
+  const result = await sessions.refresh(f.active, f.secret.token);
+  expect(result.status).toBe("active");
+  expect(result.organizationProof?.status).toBe("verified");
+  expect(request).toHaveBeenCalledTimes(3);
+  expect(JSON.stringify(result)).not.toContain("synthetic-personal-access");
+  expect(JSON.stringify(result)).not.toContain("synthetic-refresh");
+  const row = await stored(f.active.id);
+  expect(row.expires_at).toEqual(f.expiresAt);
+  expect(row.stackit_refresh_cipher?.toString("utf8")).not.toContain(
+    "synthetic-personal-access",
+  );
+  const proof = (
+    await migration.query(
+      "SELECT * FROM lzc.stackit_organization_access WHERE tenant_id=$1 AND user_id=$2",
+      [f.active.tenantId, f.active.userId],
+    )
+  ).rows[0];
+  expect(proof.organization_id).toBe(f.organizationId);
+  expect(proof.valid_until.getTime()).toBeLessThanOrEqual(Date.now() + 300000);
+  expect(proof.valid_until.getTime()).toBeGreaterThan(Date.now() + 120000);
+  expect(await sessions.refresh(f.active, f.secret.token)).toEqual(result);
+  expect(request).toHaveBeenCalledTimes(3);
+  now += 181000;
+  expect((await proofs.ensure(f.active, f.next)).status).toBe("verified");
+  expect(request).toHaveBeenCalledTimes(6);
+  const history = await migration.query(
+    "SELECT count(*)::int AS count FROM lzc.stackit_organization_authorizations WHERE tenant_id=$1 AND user_id=$2",
+    [f.active.tenantId, f.active.userId],
+  );
+  expect(history.rows[0].count).toBe(3);
+});
+it.each(["reader", "denied", "outage"] as const)(
+  "reports %s without granting authority or losing the app session",
+  async (mode) => {
+    const f = await boundWorkspace();
+    const request = organizationApi(f.organizationId, f.identity.email, mode);
+    const sessions = new StackitSessions(
+      pool,
+      crypto,
+      clientId,
+      f.fake,
+      Date.now,
+      new StackitOrganizationProofs(pool, request),
+    );
+    await sessions.put(f.active, f.secret.hash, f.grant);
+    const result = await sessions.refresh(f.active, f.secret.token);
+    expect(result.status).toBe("active");
+    expect(result.organizationProof?.status).toBe(
+      mode === "outage" ? "unavailable" : "denied",
+    );
+    expect(await store.resolveSession(f.secret.token)).not.toBeNull();
+    const proofs = await migration.query(
+      "SELECT valid_until FROM lzc.stackit_organization_access WHERE tenant_id=$1 AND user_id=$2",
+      [f.active.tenantId, f.active.userId],
+    );
+    expect(proofs.rowCount).toBe(0);
+  },
+);
+it("does not publish authority if the personal identity is revoked during the external check", async () => {
+  const f = await boundWorkspace();
+  const api = organizationApi(f.organizationId, f.identity.email);
+  const request: typeof fetch = async (...args) => {
+    const response = await api(...args);
+    if (String(args[0]).endsWith("/roles")) await f.identities.revoke(f.active);
+    return response;
+  };
+  const sessions = new StackitSessions(
+    pool,
+    crypto,
+    clientId,
+    f.fake,
+    Date.now,
+    new StackitOrganizationProofs(pool, request),
+  );
+  await sessions.put(f.active, f.secret.hash, f.grant);
+  expect(
+    (await sessions.refresh(f.active, f.secret.token)).organizationProof
+      ?.status,
+  ).toBe("reauthentication-required");
+  expect(
+    (
+      await migration.query(
+        "SELECT valid_until FROM lzc.stackit_organization_access WHERE tenant_id=$1 AND user_id=$2",
+        [f.active.tenantId, f.active.userId],
+      )
+    ).rowCount,
+  ).toBe(0);
+});
+
+it("does not query organization APIs for personal workspaces or reuse a different personal identity", async () => {
+  const f = await boundWorkspace();
+  const request = organizationApi(f.organizationId, f.identity.email);
+  const proofs = new StackitOrganizationProofs(pool, request);
+  expect(await proofs.ensure(f.session, f.next)).toEqual({
+    status: "not-required",
+  });
+  expect(
+    await proofs.ensure(f.active, { ...f.next, subject: randomUUID() }),
+  ).toEqual({ status: "reauthentication-required" });
+  expect(request).not.toHaveBeenCalled();
 });

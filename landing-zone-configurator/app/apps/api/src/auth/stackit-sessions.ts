@@ -3,11 +3,16 @@ import type pg from "pg";
 import { z } from "zod";
 import type { ArtifactCrypto } from "../plans/crypto.js";
 import { type StackitRefreshGrant, stackitIssuer } from "./stackit-device.js";
+import type {
+  OrganizationProofState,
+  StackitOrganizationProofs,
+} from "./stackit-organization-proofs.js";
 import { type Session, tokenHash } from "./store.js";
 
 const grantSchema = z.strictObject({
   clientId: z.string().min(1).max(255),
   refreshToken: z.string().min(1).max(32768),
+  accessToken: z.string().min(1).max(32768).optional(),
   nonce: z.string().min(1).max(128),
   issuer: z.literal(stackitIssuer),
   subject: z.string().min(1).max(255),
@@ -109,6 +114,7 @@ export class StackitRefreshClient {
       return {
         ...grant,
         refreshToken: tokens.data.refresh_token ?? grant.refreshToken,
+        accessToken: tokens.data.access_token,
         expiresAt: new Date(expiresAt).toISOString(),
       };
     } catch (error) {
@@ -151,6 +157,7 @@ type LockedSession = {
 export type StackitSessionState = {
   status: "active" | "reauthentication-required";
   verifiedUntil?: string;
+  organizationProof?: OrganizationProofState;
 };
 export class StackitSessions {
   constructor(
@@ -159,6 +166,7 @@ export class StackitSessions {
     private readonly clientId: string,
     private readonly provider = new StackitRefreshClient(),
     private readonly now = Date.now,
+    private readonly organizations?: StackitOrganizationProofs,
   ) {}
   private encrypt(
     session: Pick<Session, "id" | "userId" | "tenantId" | "tokenTenantId">,
@@ -245,7 +253,8 @@ export class StackitSessions {
     return grant;
   }
   async refresh(session: Session, token: string): Promise<StackitSessionState> {
-    return this.locked<StackitSessionState>(
+    let personalGrant: StackitRefreshGrant | null = null;
+    const state = await this.locked<StackitSessionState>(
       session,
       token,
       async (client, row, hash) => {
@@ -253,7 +262,11 @@ export class StackitSessions {
         const expires = grant
           ? Date.parse(grant.expiresAt)
           : row.proof_expires_at.getTime();
-        if (expires > this.now() + 120000)
+        personalGrant = grant;
+        if (
+          expires > this.now() + 120000 &&
+          (!this.organizations || grant?.accessToken || !grant)
+        )
           return {
             status: "active",
             verifiedUntil: new Date(expires).toISOString(),
@@ -269,6 +282,7 @@ export class StackitSessions {
           ]);
           return { status: "reauthentication-required" };
         }
+        personalGrant = next;
         const identity = {
           id: row.session_id,
           userId: row.user_id,
@@ -295,6 +309,12 @@ export class StackitSessions {
         return { status: "reauthentication-required" as const };
       throw error;
     });
+    if (!this.organizations) return state;
+    const organizationProof = await this.organizations.ensure(
+      session,
+      state.status === "active" ? personalGrant : null,
+    );
+    return { ...state, organizationProof };
   }
   async revoke(session: Session, token: string) {
     await this.locked(session, token, async (client, row, hash) => {

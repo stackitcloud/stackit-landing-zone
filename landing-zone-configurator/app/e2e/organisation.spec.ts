@@ -2724,6 +2724,11 @@ for (const { publishing, applied, renewProof, executing } of [
       });
     });
     const approvedContract = {
+      presentation: {
+        configurationName: "Pilot Landing Zone",
+        configurationRevision: "15",
+        appliedAt: "2026-11-05T18:38:47.461Z",
+      },
       document: {
         schema_version: 1,
         tenant_id: tenantId,
@@ -2828,9 +2833,31 @@ for (const { publishing, applied, renewProof, executing } of [
     );
     await page.route("**/auth/status", (route) =>
       route.fulfill({
-        json: { github: false, stackit: true, primary: "stackit" },
+        json: {
+          github: false,
+          stackit: true,
+          primary: "stackit",
+          stackitRenewal: renewProof,
+        },
       }),
     );
+    let automaticProofChecks = 0;
+    if (renewProof)
+      await page.route("**/auth/stackit/refresh", (route) => {
+        expect(route.request().method()).toBe("POST");
+        expect(route.request().headers()["x-lzc-csrf"]).toBe("test-csrf");
+        automaticProofChecks++;
+        ownerProofVerified = true;
+        return route.fulfill({
+          json: {
+            status: "active",
+            organizationProof: {
+              status: "verified",
+              verifiedUntil: new Date(Date.now() + 300000).toISOString(),
+            },
+          },
+        });
+      });
     await page.route("**/api/v1/session", (route) =>
       route.fulfill({
         json: {
@@ -3289,30 +3316,18 @@ for (const { publishing, applied, renewProof, executing } of [
         await page
           .getByRole("tab", { name: "Plattformanbindung", exact: true })
           .click();
-        if (renewProof) {
+        if (renewProof)
           await expect(
-            page.getByText(
-              /Die Auswahl benötigt einen aktuellen persönlichen STACKIT-Organisationsnachweis/,
-            ),
-          ).toBeVisible();
-          await expect(
-            page
-              .getByLabel("Erfolgreicher Plattform-Apply", { exact: true })
-              .locator("option"),
-          ).toHaveCount(1);
-          await page
-            .getByRole("button", { name: "Nachweis prüfen", exact: true })
-            .click();
-        }
+            page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
+          ).toHaveCount(0);
         const applyOption = page.getByRole("option", {
           name: /Pilot Landing Zone · Apply/,
         });
         await expect(applyOption).toHaveCount(1);
-        if (renewProof)
-          expect(proofMutations).toEqual([
-            "/api/v1/stackit/identity/start",
-            "/api/v1/stackit/identity/poll",
-          ]);
+        if (renewProof) {
+          expect(proofMutations).toEqual([]);
+          expect(automaticProofChecks).toBeGreaterThan(0);
+        }
         await expect(applyOption).not.toContainText(source.stateKey);
         await expect(
           page.getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true }),
@@ -3378,6 +3393,16 @@ for (const { publishing, applied, renewProof, executing } of [
       await page
         .getByLabel("Freigegebener Plattformvertrag", { exact: true })
         .selectOption(platformRevision);
+      await expect(
+        page
+          .getByLabel("Freigegebener Plattformvertrag", { exact: true })
+          .locator("option:checked"),
+      ).toContainText("Pilot Landing Zone · Revision 15 · Apply");
+      await expect(
+        page
+          .getByLabel("Freigegebener Plattformvertrag", { exact: true })
+          .locator("option:checked"),
+      ).not.toContainText(platformRevision);
       await expect(
         page.getByLabel("Plattformziel", { exact: true }),
       ).toBeDisabled();
@@ -4198,6 +4223,19 @@ for (const proofOutcome of [
     await page
       .getByRole("button", { name: "Benutzerverwaltung", exact: true })
       .click();
+    if (alreadyBound) {
+      await expect(
+        page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", {
+          name: "Organisation verbinden",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      expect(mutations).toEqual([]);
+      return;
+    }
     await expect(
       page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
     ).toBeEnabled();
@@ -4313,7 +4351,7 @@ for (const proofOutcome of [
     ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
-    ).toBeEnabled();
+    ).toHaveCount(0);
     expect(
       mutations.filter((path) => path.endsWith("/bind-organization")),
     ).toHaveLength(1);

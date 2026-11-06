@@ -48,6 +48,7 @@ export type DeviceIdentity = {
 export type StackitRefreshGrant = {
   clientId: string;
   refreshToken: string;
+  accessToken?: string | undefined;
   nonce: string;
   issuer: string;
   subject: string;
@@ -449,146 +450,16 @@ export class StackitDeviceFlow {
       )
         throw new DeviceFlowError("identity_binding_mismatch");
       let organization: DeviceIdentity["organization"] = null;
-      if (this.organizationId) {
-        stage = "organization_request";
-        const result = await this.request(
-          `https://resource-manager.api.stackit.cloud/v2/organizations/${this.organizationId}`,
-          {
-            redirect: "error",
-            signal: AbortSignal.timeout(15000),
-            headers: { Authorization: `Bearer ${tokens.access_token}` },
+      if (this.organizationId)
+        organization = await verifyStackitOrganization(
+          this.request,
+          this.organizationId,
+          user.email,
+          tokens.access_token,
+          (value) => {
+            stage = value;
           },
         );
-        if (!result.ok) throw new DeviceFlowError("organization_access_denied");
-        stage = "organization_response";
-        const record = z
-          .object({
-            organizationId: z.uuid(),
-            containerId: organizationResourceSchema.optional(),
-            name: z.string().min(1).max(256),
-            lifecycleState: z.literal("ACTIVE"),
-          })
-          .parse(await result.json());
-        if (record.organizationId !== this.organizationId)
-          throw new DeviceFlowError("organization_binding_mismatch");
-        const organizationResourceId =
-          record.containerId ?? record.organizationId;
-        stage = "organization_permissions_request";
-        const permissionsUrl = new URL(
-          `https://authorization.api.stackit.cloud/v2/users/${encodeURIComponent(user.email)}/permissions`,
-        );
-        permissionsUrl.searchParams.set("resourceType", "organization");
-        permissionsUrl.searchParams.set("resource", organizationResourceId);
-        const permissionsResponse = await this.request(permissionsUrl, {
-          redirect: "error",
-          signal: AbortSignal.timeout(15000),
-          headers: { Authorization: `Bearer ${tokens.access_token}` },
-        });
-        if (!permissionsResponse.ok)
-          throw new DeviceFlowError("organization_permissions_denied");
-        stage = "organization_permissions_response";
-        if (Number(permissionsResponse.headers.get("content-length")) > 1048576)
-          throw new DeviceFlowError(
-            "organization_permissions_response_invalid_response",
-          );
-        const permissionsText = await permissionsResponse.text();
-        if (Buffer.byteLength(permissionsText, "utf8") > 1048576)
-          throw new DeviceFlowError(
-            "organization_permissions_response_invalid_response",
-          );
-        const permissionsData: unknown = JSON.parse(permissionsText);
-        const permissions = z
-          .object({
-            items: z
-              .array(
-                z.object({
-                  resourceId: organizationResourceSchema,
-                  resourceType: z.literal("organization"),
-                  permissions: z
-                    .array(
-                      z.object({
-                        name: z.string().regex(/^[a-z](?:[-.]?[a-z]){1,63}$/),
-                      }),
-                    )
-                    .max(maxOrganizationPermissions),
-                }),
-              )
-              .max(1),
-          })
-          .parse(permissionsData);
-        if (
-          permissions.items.some(
-            (item) => item.resourceId !== organizationResourceId,
-          )
-        )
-          throw new DeviceFlowError(
-            "organization_permissions_binding_mismatch",
-          );
-        organization = {
-          id: record.organizationId,
-          name: record.name,
-          permissions: [
-            ...new Set(
-              permissions.items.flatMap((item) =>
-                item.permissions.map((permission) => permission.name),
-              ),
-            ),
-          ].sort(),
-        };
-        if (organization.permissions?.length) {
-          stage = "organization_roles_request";
-          const rolesResponse = await this.request(
-            `https://authorization.api.stackit.cloud/v2/organization/${organizationResourceId}/roles`,
-            {
-              redirect: "error",
-              signal: AbortSignal.timeout(15000),
-              headers: { Authorization: `Bearer ${tokens.access_token}` },
-            },
-          );
-          if (rolesResponse.ok) {
-            stage = "organization_roles_response";
-            if (Number(rolesResponse.headers.get("content-length")) > 1048576)
-              throw new DeviceFlowError(
-                "organization_roles_response_invalid_response",
-              );
-            const rolesText = await rolesResponse.text();
-            if (Buffer.byteLength(rolesText, "utf8") > 1048576)
-              throw new DeviceFlowError(
-                "organization_roles_response_invalid_response",
-              );
-            const roles = z
-              .object({
-                resourceId: z.literal(organizationResourceId),
-                resourceType: z.literal("organization"),
-                roles: z
-                  .array(
-                    z.object({
-                      name: z.string(),
-                      permissions: z
-                        .array(
-                          z.object({
-                            name: z
-                              .string()
-                              .regex(/^[a-z](?:[-.]?[a-z]){1,63}$/),
-                          }),
-                        )
-                        .max(maxOrganizationPermissions),
-                    }),
-                  )
-                  .max(128),
-              })
-              .parse(JSON.parse(rolesText));
-            const owners = roles.roles.filter((role) => role.name === "owner");
-            if (owners.length === 1 && owners[0]?.permissions.length) {
-              organization.ownerPermissions = [
-                ...new Set(
-                  owners[0].permissions.map((permission) => permission.name),
-                ),
-              ].sort();
-            }
-          }
-        }
-      }
       if (this.state().status !== "waiting") return this.state();
       this.deviceCode = null;
       if (
@@ -599,6 +470,7 @@ export class StackitDeviceFlow {
         this.refreshGrant = {
           clientId: this.clientId,
           refreshToken: tokens.refresh_token,
+          accessToken: tokens.access_token,
           nonce: authorizationNonce,
           issuer,
           subject: user.sub,
@@ -667,4 +539,153 @@ export class StackitDeviceFlow {
     }
     return this.state();
   }
+}
+
+export async function verifyStackitOrganization(
+  request: typeof fetch,
+  organizationId: string,
+  email: string,
+  accessToken: string,
+  observe: (stage: string) => void = () => {},
+): Promise<NonNullable<DeviceIdentity["organization"]>> {
+  let organization: NonNullable<DeviceIdentity["organization"]>;
+  observe("organization_request");
+  const result = await request(
+    `https://resource-manager.api.stackit.cloud/v2/organizations/${organizationId}`,
+    {
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  if (result.status === 429 || result.status >= 500)
+    throw new DeviceFlowError("organization_check_unavailable");
+  if (!result.ok) throw new DeviceFlowError("organization_access_denied");
+  observe("organization_response");
+  const record = z
+    .object({
+      organizationId: z.uuid(),
+      containerId: organizationResourceSchema.optional(),
+      name: z.string().min(1).max(256),
+      lifecycleState: z.literal("ACTIVE"),
+    })
+    .parse(await result.json());
+  if (record.organizationId !== organizationId)
+    throw new DeviceFlowError("organization_binding_mismatch");
+  const organizationResourceId = record.containerId ?? record.organizationId;
+  observe("organization_permissions_request");
+  const permissionsUrl = new URL(
+    `https://authorization.api.stackit.cloud/v2/users/${encodeURIComponent(email)}/permissions`,
+  );
+  permissionsUrl.searchParams.set("resourceType", "organization");
+  permissionsUrl.searchParams.set("resource", organizationResourceId);
+  const permissionsResponse = await request(permissionsUrl, {
+    redirect: "error",
+    signal: AbortSignal.timeout(15000),
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (permissionsResponse.status === 429 || permissionsResponse.status >= 500)
+    throw new DeviceFlowError("organization_check_unavailable");
+  if (!permissionsResponse.ok)
+    throw new DeviceFlowError("organization_permissions_denied");
+  observe("organization_permissions_response");
+  if (Number(permissionsResponse.headers.get("content-length")) > 1048576)
+    throw new DeviceFlowError(
+      "organization_permissions_response_invalid_response",
+    );
+  const permissionsText = await permissionsResponse.text();
+  if (Buffer.byteLength(permissionsText, "utf8") > 1048576)
+    throw new DeviceFlowError(
+      "organization_permissions_response_invalid_response",
+    );
+  const permissionsData: unknown = JSON.parse(permissionsText);
+  const permissions = z
+    .object({
+      items: z
+        .array(
+          z.object({
+            resourceId: organizationResourceSchema,
+            resourceType: z.literal("organization"),
+            permissions: z
+              .array(
+                z.object({
+                  name: z.string().regex(/^[a-z](?:[-.]?[a-z]){1,63}$/),
+                }),
+              )
+              .max(maxOrganizationPermissions),
+          }),
+        )
+        .max(1),
+    })
+    .parse(permissionsData);
+  if (
+    permissions.items.some((item) => item.resourceId !== organizationResourceId)
+  )
+    throw new DeviceFlowError("organization_permissions_binding_mismatch");
+  organization = {
+    id: record.organizationId,
+    name: record.name,
+    permissions: [
+      ...new Set(
+        permissions.items.flatMap((item) =>
+          item.permissions.map((permission) => permission.name),
+        ),
+      ),
+    ].sort(),
+  };
+  if (organization.permissions?.length) {
+    observe("organization_roles_request");
+    const rolesResponse = await request(
+      `https://authorization.api.stackit.cloud/v2/organization/${organizationResourceId}/roles`,
+      {
+        redirect: "error",
+        signal: AbortSignal.timeout(15000),
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
+    if (rolesResponse.status === 429 || rolesResponse.status >= 500)
+      throw new DeviceFlowError("organization_check_unavailable");
+    if (rolesResponse.ok) {
+      observe("organization_roles_response");
+      if (Number(rolesResponse.headers.get("content-length")) > 1048576)
+        throw new DeviceFlowError(
+          "organization_roles_response_invalid_response",
+        );
+      const rolesText = await rolesResponse.text();
+      if (Buffer.byteLength(rolesText, "utf8") > 1048576)
+        throw new DeviceFlowError(
+          "organization_roles_response_invalid_response",
+        );
+      const roles = z
+        .object({
+          resourceId: z.literal(organizationResourceId),
+          resourceType: z.literal("organization"),
+          roles: z
+            .array(
+              z.object({
+                name: z.string(),
+                permissions: z
+                  .array(
+                    z.object({
+                      name: z.string().regex(/^[a-z](?:[-.]?[a-z]){1,63}$/),
+                    }),
+                  )
+                  .max(maxOrganizationPermissions),
+              }),
+            )
+            .max(128),
+        })
+        .parse(JSON.parse(rolesText));
+      const owners = roles.roles.filter((role) => role.name === "owner");
+      if (owners.length === 1 && owners[0]?.permissions.length) {
+        organization.ownerPermissions = [
+          ...new Set(
+            owners[0].permissions.map((permission) => permission.name),
+          ),
+        ].sort();
+      }
+    }
+  }
+
+  return organization;
 }

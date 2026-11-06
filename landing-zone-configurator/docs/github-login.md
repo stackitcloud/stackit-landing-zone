@@ -18,8 +18,9 @@ tokens. While the tab is visible, a periodic check and checks on return to the t
 renew the identity proof shortly before expiry. Token rotation is serialized across
 tabs and API instances. Renewal verifies the signed ID token, issuer, audience,
 authorized party, subject and verified userinfo; a changed identity is rejected.
-It never extends the eight-hour app session, revives revoked identities, or extends
-organization-owner permission proofs. Those proofs still need separate confirmation.
+It never extends the eight-hour app session or revives revoked identities. Token renewal
+alone does not extend organization-owner proof: a separate automatic check calls the
+Resource Manager and IAM APIs with the encrypted personal access token.
 Logout removes the app session and attempts to revoke its provider refresh grant.
 Older sessions without a grant require signing in again when their proof expires.
 
@@ -191,15 +192,18 @@ multiple instances need shared storage or sticky routing before activation.
 <a id="autoritativer-organisationsnachweis"></a>
 ## Authoritative organization proof
 
-Login or Resource Manager read access is not administrator proof. In the active
-organization workspace, a Platform Engineer with membership management
-explicitly starts verification. Their previous current
-organization proof is removed; human identity and historical audits
-remain. A failed new proof must not reuse old
-owner approval.
+Login or Resource Manager read access is not administrator proof. For an already
+bound organization workspace, session checks automatically verify the personal
+Platform Engineer's organization permissions at login, workspace changes and before
+the proof expires. Successful proofs last at most five minutes and never outlive
+the personal token, identity or app session. Cached proofs are checked again when
+at most two minutes remain. Missing rights are shown explicitly and remove the
+current proof; temporary provider failures do not create or extend authority.
+Drafts remain editable and saveable. Missing personal grants require sign-in again.
+A deployment Service Account never substitutes for the personal proof.
 
-The new Device Grant verifies the same human identity and exact
-organization. The same short-lived human ****** queries the following APIs at the fixed
+The first organization binding still requires explicit verification and confirmation.
+The same short-lived personal access token queries the following APIs at the fixed
 IAM origin `https://authorization.api.stackit.cloud`:
 
 - `GET /v2/users/{verifiedEmail}/permissions?resourceType=organization&resource={verifiedOrganizationResourceId}`

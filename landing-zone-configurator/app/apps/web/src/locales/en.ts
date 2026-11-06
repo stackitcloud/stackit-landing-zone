@@ -1,4 +1,24 @@
 export const englishMessages: Record<string, string> = {
+  "Bereitgestellte Plattform": "Applied platform",
+  "Importierte Plattform": "Imported platform",
+  "Zentrale Audit-Anbindung verfügbar": "Central audit integration available",
+  "Keine zentrale Audit-Anbindung": "No central audit integration",
+  "Technische Vertragsdetails": "Technical contract details",
+  "Früherer Plattformstand": "Earlier platform version",
+  "Neuer Plattformstand": "New platform version",
+
+  "Die Apply-Auswahl ist wegen fehlender persönlicher Organisationsrechte gesperrt.":
+    "Apply selection is blocked because your personal account lacks the required organization permissions.",
+  "Die Apply-Auswahl wartet auf einen gültigen persönlichen Organisationsnachweis.":
+    "Apply selection is waiting for valid personal organization verification.",
+
+  "Deinem persönlichen STACKIT-Benutzer fehlen die erforderlichen Organisationsrechte. Plattformfreigaben sind gesperrt; dein Entwurf bleibt erhalten.":
+    "Your personal STACKIT user lacks the required organization permissions. Platform approvals are blocked; your draft is preserved.",
+  "Die Organisationsrechte konnten bei STACKIT gerade nicht geprüft werden. Die Prüfung wird automatisch wiederholt; dein Entwurf bleibt erhalten.":
+    "Organization permissions could not be checked with STACKIT. The check will be repeated automatically; your draft is preserved.",
+  "Die Organisationsrechte werden bei der Anmeldung und während der Sitzung automatisch geprüft. Hier erscheinen erfolgreiche Plattform-Applies auf dem aktuellen, entsperrten State.":
+    "Organization permissions are checked automatically at login and during the session. This list shows successful platform Applies on the current, unlocked State.",
+
   "Dieser Plan benötigt deine Bestätigung der Auswirkungen auf bestehende Application Landing Zones. Öffne den Schritt Apply und bestätige dort die Plattformauswirkungen. Danach kannst du denselben gültigen Plan freigeben.":
     "This plan requires your acknowledgement of its impact on existing Application Landing Zones. Open Apply and acknowledge the platform impact there. You can then approve the same valid plan.",
   "Die Plattformabhängigkeiten haben sich geändert. Lade den Planstatus und die Prüfung der Plattformauswirkungen erneut.":

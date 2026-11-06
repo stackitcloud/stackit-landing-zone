@@ -20,9 +20,10 @@ Solange der Tab sichtbar ist, erneuern regelmäßige Prüfungen und Prüfungen b
 Rückkehr zum Tab den Identitätsnachweis kurz vor Ablauf. Die Token-Rotation wird
 über Tabs und API-Instanzen hinweg serialisiert. Die Erneuerung prüft signiertes
 ID-Token, Issuer, Audience, Authorized Party, Subject und bestätigte Userinfo; eine
-geänderte Identität wird abgelehnt. Sie verlängert weder die achtstündige
-App-Sitzung noch Organisations-Owner-Rechtenachweise und hebt keine Widerrufe auf.
-Diese Rechtenachweise müssen weiterhin gesondert bestätigt werden. Logout entfernt
+geänderte Identität wird abgelehnt. Sie verlängert die achtstündige App-Sitzung nicht und hebt keine Widerrufe auf.
+Die Token-Erneuerung allein verlängert keinen Organisationsnachweis: Eine getrennte
+automatische Prüfung fragt Resource Manager und IAM mit dem verschlüsselten
+persönlichen Access-Token ab. Logout entfernt
 die App-Sitzung und versucht den zugehörigen Refresh-Zugang beim Provider zu
 widerrufen. Alte Sitzungen ohne diesen Zugang verlangen nach Ablauf ihres
 Nachweises eine erneute Anmeldung.
@@ -208,15 +209,20 @@ mehrere Instanzen benötigen vor Aktivierung eine gemeinsame Ablage oder Sticky 
 
 ## Autoritativer Organisationsnachweis
 
-Login oder Resource-Manager-Lesezugriff sind kein Adminnachweis. Im aktiven
-Organisationsarbeitsbereich startet ein Platform Engineer mit Mitgliederverwaltung
-die Pruefung ausdruecklich. Dabei wird sein bisheriger aktueller
-Organisationsnachweis entfernt; menschliche Identitaet und historische Audits
-bleiben erhalten. Ein fehlgeschlagener neuer Nachweis darf keine alte
-Owner-Freigabe wiederverwenden.
+Login oder Resource-Manager-Lesezugriff sind kein Adminnachweis. Bei einem bereits
+gebundenen Organisationsarbeitsbereich prüfen Sitzungsabfragen die persönlichen
+Organisationsrechte des Platform Engineers automatisch beim Login, beim
+Arbeitsbereichswechsel und vor Ablauf des Nachweises. Erfolgreiche Nachweise gelten
+höchstens fünf Minuten und nie länger als persönliches Token, Identität oder
+App-Sitzung. Sobald höchstens zwei Minuten verbleiben, wird erneut geprüft.
+Fehlende Rechte werden sichtbar gemeldet und entfernen den aktuellen Nachweis;
+vorübergehende Providerfehler erzeugen oder verlängern keine Berechtigung.
+Entwürfe bleiben bearbeitbar und speicherbar. Fehlt ein persönlicher Zugang,
+ist eine erneute Anmeldung erforderlich. Ein technischer Deployment-Service-Account
+ersetzt den persönlichen Nachweis nicht.
 
-Der neue Device Grant verifiziert dieselbe menschliche Identitaet und die exakte
-Organisation. Derselbe kurzlebige menschliche Bearer Token fragt am festen
+Die erste Organisationsbindung verlangt weiterhin eine ausdrückliche Prüfung und
+Bestätigung. Dasselbe kurzlebige persönliche Access-Token fragt am festen
 IAM-Origin `https://authorization.api.stackit.cloud` folgende APIs ab:
 
 - `GET /v2/users/{verifiedEmail}/permissions?resourceType=organization&resource={verifiedOrganizationResourceId}`
