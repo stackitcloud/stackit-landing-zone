@@ -173,7 +173,11 @@ for (const event of plans) {
       assert.equal(instance.logs_retention_days, 14, name);
     assert.deepEqual(
       instance.acl,
-      name === "combined" ? ["192.0.2.0/24"] : [],
+      name === "combined"
+        ? auditGrafanaRouting
+          ? ["192.0.2.0/24", "198.51.100.0/24"]
+          : ["192.0.2.0/24"]
+        : [],
       name,
     );
   }
