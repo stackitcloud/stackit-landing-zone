@@ -47,8 +47,11 @@ erhalten; Wiederherstellung verlangt denselben Benutzer und Arbeitsbereich.
 Ausdrücklicher Logout löscht den Checkpoint auch in abgelaufenen Tabs; ein Logout
 einer älteren Sitzung darf aber keine neuere Anmeldung löschen. Teste verzögerte
 Refresh-Ergebnisse mit einem neuen unveränderlichen Session-Wert auf Desktop und
-Mobilgeräten. Refresh-Zugänge bleiben serverseitig verschlüsselt; absolute
-App-Laufzeit und Organisations-Owner-Nachweis dürfen nicht verlängert werden.
+Mobilgeräten. Refresh-Zugänge bleiben serverseitig verschlüsselt; die absolute
+App-Laufzeit darf nicht verlängert werden. Organisations-Owner-Nachweise werden
+nicht blind verlängert: Gebundene Arbeitsbereiche prüfen Resource Manager und IAM
+erneut. Persönliches Token, Identität, App-Sitzung und fünf Minuten begrenzen
+den neuen Nachweis.
 Siehe [Anmeldeverhalten](github-login.de.md) für Erneuerung und den Ausweichpfad
 bei nicht verfügbarem Browserspeicher.
 

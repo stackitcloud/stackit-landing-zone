@@ -446,6 +446,7 @@ export function Organisation({
           {data?.organizationBindingEnabled &&
             session &&
             active.kind === "organisation" &&
+            !active.organizationVerified &&
             active.manageMembers &&
             active.roles.includes("platform-engineer") && (
               <OrganizationBinding

@@ -11,6 +11,7 @@ import type { AuthServices } from "./auth/routes.js";
 import { SecretsManagerTokenStore } from "./auth/secrets.js";
 import { configuredStackitFlow } from "./auth/stackit-device.js";
 import { StackitIdentities } from "./auth/stackit-identities.js";
+import { StackitOrganizationProofs } from "./auth/stackit-organization-proofs.js";
 import type { StackitServices } from "./auth/stackit-routes.js";
 import { StackitSessions } from "./auth/stackit-sessions.js";
 import { PostgresAuthStore } from "./auth/store.js";
@@ -239,6 +240,9 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
             pool,
             artifactCrypto,
             process.env.LZC_STACKIT_CLIENT_ID,
+            undefined,
+            undefined,
+            new StackitOrganizationProofs(pool),
           ),
         }
       : {}),

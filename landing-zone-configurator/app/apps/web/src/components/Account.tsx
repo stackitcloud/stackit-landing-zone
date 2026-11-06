@@ -1,5 +1,23 @@
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { t } from "../i18n";
+
+const renewalSchema = z.object({
+  status: z.enum(["active", "reauthentication-required"]),
+  verifiedUntil: z.string().datetime().optional(),
+  organizationProof: z
+    .object({
+      status: z.enum([
+        "verified",
+        "not-required",
+        "denied",
+        "unavailable",
+        "reauthentication-required",
+      ]),
+      verifiedUntil: z.string().datetime().optional(),
+    })
+    .optional(),
+});
 
 export type Session = {
   user: { id?: string; login: string };
@@ -13,6 +31,13 @@ export type Session = {
   csrfToken: string;
   expiresAt: string;
   stackitVerified?: boolean;
+  stackitOrganizationProof?:
+    | "verified"
+    | "not-required"
+    | "denied"
+    | "unavailable"
+    | "reauthentication-required";
+  stackitOrganizationVerifiedUntil?: string | undefined;
   development?: boolean;
 };
 export function Account({
@@ -286,7 +311,15 @@ export function Account({
           JSON.stringify({
             ...sessionRef.current,
             stackitVerified: undefined,
-          }) !== JSON.stringify({ ...current, stackitVerified: undefined })
+            stackitOrganizationProof: undefined,
+            stackitOrganizationVerifiedUntil: undefined,
+          }) !==
+            JSON.stringify({
+              ...current,
+              stackitVerified: undefined,
+              stackitOrganizationProof: undefined,
+              stackitOrganizationVerifiedUntil: undefined,
+            })
         )
           publishSession(current);
         if (primary === "stackit" && renewalEnabled) {
@@ -302,10 +335,17 @@ export function Account({
             return;
           }
           if (!refreshed.ok) throw new Error();
-          const renewal = await refreshed.json();
+          const renewal = renewalSchema.parse(await refreshed.json());
           current = {
             ...current,
             stackitVerified: renewal.status === "active",
+            ...(renewal.organizationProof
+              ? {
+                  stackitOrganizationProof: renewal.organizationProof.status,
+                  stackitOrganizationVerifiedUntil:
+                    renewal.organizationProof.verifiedUntil,
+                }
+              : {}),
           };
         }
         if (controller.signal.aborted) return;
@@ -463,7 +503,8 @@ export function Account({
         ))}
       {session &&
         primary === "stackit" &&
-        session.stackitVerified === false && (
+        (session.stackitVerified === false ||
+          session.stackitOrganizationProof === "reauthentication-required") && (
           <button
             type="button"
             className="button secondary"
@@ -478,13 +519,28 @@ export function Account({
         )}
       {session &&
         primary === "stackit" &&
-        session.stackitVerified === false && (
+        (session.stackitVerified === false ||
+          session.stackitOrganizationProof === "reauthentication-required") && (
           <p role="status">
             {t(
               "Die STACKIT-Anmeldung muss erneuert werden. Deinen Entwurf kannst du weiterhin speichern; Cloud-Aktionen benötigen die erneute Anmeldung.",
             )}
           </p>
         )}
+      {session?.stackitOrganizationProof === "denied" && (
+        <p role="alert">
+          {t(
+            "Deinem persönlichen STACKIT-Benutzer fehlen die erforderlichen Organisationsrechte. Plattformfreigaben sind gesperrt; dein Entwurf bleibt erhalten.",
+          )}
+        </p>
+      )}
+      {session?.stackitOrganizationProof === "unavailable" && (
+        <p role="alert">
+          {t(
+            "Die Organisationsrechte konnten bei STACKIT gerade nicht geprüft werden. Die Prüfung wird automatisch wiederholt; dein Entwurf bleibt erhalten.",
+          )}
+        </p>
+      )}
       {authorization && (
         <dialog
           ref={dialog}

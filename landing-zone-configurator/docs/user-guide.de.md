@@ -169,9 +169,10 @@ erstellt eine neue Version und verwendet gelöschte Versionsnummern nicht erneut
 Als Platform Engineer im selben Arbeitsbereich die gespeicherte Plattformkonfiguration
 öffnen. Die Veröffentlichung lädt deren Template-Entwürfe aus dieser geöffneten
 Konfiguration; Plattformverträge und State-Backends werden unabhängig davon geladen.
-Unter **Plattformanbindung** bei leerer Apply-Auswahl den aktuellen persönlichen
-**STACKIT-Organisationsnachweis** erneuern. Ein technischer Service-Account ersetzt ihn
-nicht. Nur erfolgreiche Applies auf dem aktuellen, entsperrten State werden angezeigt.
+Bei bereits gebundenen Arbeitsbereichen wird der persönliche
+**STACKIT-Organisationsnachweis** beim Login und während der Sitzung automatisch
+geprüft. Fehlende Rechte und Providerfehler erscheinen als sichtbare Fehlermeldungen.
+Ein technischer Service-Account ersetzt ihn nicht. Nur erfolgreiche Applies auf dem aktuellen, entsperrten State werden angezeigt.
 Outputs und Zielordner des ausgewählten Applies prüfen und dessen Plattformvertrag mit
 dem technischen Zugangsprofil freigeben.
 

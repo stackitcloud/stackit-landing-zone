@@ -24,6 +24,7 @@ async function setup(page: Page, renewalEnabled = true) {
   let refreshStatus = 200;
   let refreshes = 0;
   let renewalStatus = "active";
+  let organizationProof: { status: string } | undefined;
   let refreshGate: Promise<void> | null = null;
   let writes = 0;
   let configurationReads = 0;
@@ -55,7 +56,7 @@ async function setup(page: Page, renewalEnabled = true) {
     if (refreshGate) await refreshGate;
     return route.fulfill(
       refreshStatus === 200
-        ? { json: { status: renewalStatus } }
+        ? { json: { status: renewalStatus, organizationProof } }
         : { status: refreshStatus, json: { error: "provider_unavailable" } },
     );
   });
@@ -142,6 +143,9 @@ async function setup(page: Page, renewalEnabled = true) {
         refreshGate = null;
         release();
       };
+    },
+    setOrganizationProof: (status: string) => {
+      organizationProof = { status };
     },
     setRefreshStatus: (status: number) => {
       refreshStatus = status;
@@ -542,3 +546,33 @@ test("role revocation is applied before a delayed provider renewal finishes", as
     release();
   }
 });
+
+for (const status of ["denied", "unavailable"] as const) {
+  test(`automatic organization proof ${status} preserves an editable saved draft`, async ({
+    page,
+  }) => {
+    const state = await setup(page);
+    const name = page.getByLabel("Name der Konfiguration", { exact: true });
+    await name.fill("Unsaved organization proof draft");
+    state.setOrganizationProof(status);
+    await focusHeartbeat(page);
+    await expect(page.locator(".account")).toContainText(
+      status === "denied"
+        ? "fehlen die erforderlichen Organisationsrechte"
+        : "Organisationsrechte konnten bei STACKIT gerade nicht geprüft werden",
+    );
+    await expect(
+      page.getByRole("button", { name: "Abmelden", exact: true }),
+    ).toBeVisible();
+    await expect(name).toHaveValue("Unsaved organization proof draft");
+    await page
+      .locator("#configuration-save")
+      .getByRole("button", { name: "Konfiguration speichern", exact: true })
+      .click();
+    await expect.poll(state.writes).toBe(1);
+    state.setOrganizationProof("verified");
+    await focusHeartbeat(page);
+    await expect(page.locator(".account").getByRole("alert")).toHaveCount(0);
+    await expect(name).toHaveValue("Unsaved organization proof draft");
+  });
+}

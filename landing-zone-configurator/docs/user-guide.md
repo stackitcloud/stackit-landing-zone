@@ -153,8 +153,9 @@ Publishing again creates a new version and does not reuse deleted version number
 
 Open the saved platform configuration as Platform Engineer in the same workspace.
 Publication reads its template drafts from this open configuration; platform contracts
-and State backends are loaded independently. Under **Platform binding**, renew current
-personal **STACKIT organization proof** if the successful-Apply list is empty. A technical
+and State backends are loaded independently. For an already bound workspace, personal
+**STACKIT organization proof** is checked automatically at login and during the session.
+Missing permissions and provider failures appear as explicit errors. A technical
 service account does not replace that proof. Only successful Applies matching current,
 unlocked State appear. Review the selected Apply's outputs and folders and approve its
 platform contract using the technical credential profile.

@@ -42,7 +42,9 @@ saved baseline; restoration requires the same user and workspace. Explicit logou
 clears the checkpoint, including in expired tabs, but a logout from an older session
 must not clear a newer login. Test delayed refresh outcomes with a new immutable
 Session value and both desktop/mobile layouts. Refresh grants remain encrypted
-server-side; never extend the absolute app session or organization-owner proof.
+server-side; never extend the absolute app session or blindly extend organization-owner
+proof. Bound workspaces renew the latter through separate real Resource Manager/IAM
+checks, capped by the personal token, identity, app session and five-minute lifetime.
 See [login behavior](github-login.md) for renewal and unavailable-storage fallback.
 
 Application template drafts use the same controlled root draft, configuration binding

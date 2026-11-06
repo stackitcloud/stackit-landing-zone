@@ -61,7 +61,6 @@ import { ApplicationStateRecovery } from "./ApplicationStateRecovery";
 import { ApplicationUpgradeApproval } from "./ApplicationUpgradeApproval";
 import { ApplicationUpgradeProgress } from "./ApplicationUpgradeProgress";
 import { ApplicationUpgradePublication } from "./ApplicationUpgradePublication";
-import { OrganizationBinding } from "./OrganizationBinding";
 import { OutputConsole } from "./OutputConsole";
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
@@ -3439,24 +3438,20 @@ export function Applications({
                 <>
                   <p className="field-hint">
                     {t(
-                      "Die Auswahl benötigt einen aktuellen persönlichen STACKIT-Organisationsnachweis sowie einen abgeschlossenen Apply auf dem aktuellen, entsperrten State. Ein technischer Service-Account ersetzt den persönlichen Nachweis nicht.",
+                      "Die Organisationsrechte werden bei der Anmeldung und während der Sitzung automatisch geprüft. Hier erscheinen erfolgreiche Plattform-Applies auf dem aktuellen, entsperrten State.",
                     )}
                   </p>
                   <p role="status">
                     {t(
-                      "Kein aktueller erfolgreicher Plattform-Apply verfügbar.",
+                      session.stackitOrganizationProof === "denied"
+                        ? "Die Apply-Auswahl ist wegen fehlender persönlicher Organisationsrechte gesperrt."
+                        : session.stackitOrganizationProof === "unavailable" ||
+                            session.stackitOrganizationProof ===
+                              "reauthentication-required"
+                          ? "Die Apply-Auswahl wartet auf einen gültigen persönlichen Organisationsnachweis."
+                          : "Kein aktueller erfolgreicher Plattform-Apply verfügbar.",
                     )}
                   </p>
-                  {session.tenant?.kind === "organisation" &&
-                    session.tenant.manageMembers && (
-                      <OrganizationBinding
-                        session={session}
-                        tenantId={session.tenant.id}
-                        organizationVerified={true}
-                        onBound={load}
-                        onVerified={load}
-                      />
-                    )}
                 </>
               )}
               <button
