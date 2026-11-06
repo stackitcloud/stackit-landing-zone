@@ -284,6 +284,7 @@ export function registerApplications(
             "application_grant_consumed",
             "application_backend_binding_conflict",
             "application_upgrade_execution_active",
+            "application_upgrade_execution_unavailable",
             "application_execution_upgrade_changed",
             "application_execution_upgrade_unavailable",
             "application_execution_source_withdrawn",
@@ -323,6 +324,7 @@ export function registerApplications(
           "application_execution_source_withdrawn",
           "application_upgrade_confirmation_required",
           "application_upgrade_edge_invalid",
+          "application_platform_upgrade_edge_invalid",
         ].includes(error.message)
       )
         return reply

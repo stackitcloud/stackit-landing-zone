@@ -1,4 +1,6 @@
 export const englishMessages: Record<string, string> = {
+  "Der Plattform-Upgrade-Pfad konnte nicht freigegeben werden. Prüfe, dass der Zielstand aus einem erfolgreichen Apply derselben Plattform stammt und noch aktuell ist. Es wurde keine Ausführungsbindung geändert.":
+    "The platform upgrade path could not be released. Check that the target comes from a successful Apply of the same platform and is still current. No execution binding was changed.",
   "Upgrade-Pfad prüfen und freigeben": "Check and release upgrade path",
   "Ich gebe diesen Plattform-Upgrade-Pfad frei. Die bestehende Ausführungsbindung wird für den Zielstand geprüft und übernommen. Bestehende Bestellungen und States bleiben unverändert; es wird keine Infrastruktur geändert.":
     "I release this platform upgrade path. The existing execution binding is verified and adopted for the target. Existing orders and States remain unchanged; no infrastructure is modified.",

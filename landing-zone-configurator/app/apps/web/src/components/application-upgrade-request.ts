@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { Session } from "./Account";
 
 const failures: Record<string, string> = {
+  application_platform_upgrade_edge_invalid:
+    "Der Plattform-Upgrade-Pfad konnte nicht freigegeben werden. Prüfe, dass der Zielstand aus einem erfolgreichen Apply derselben Plattform stammt und noch aktuell ist. Es wurde keine Ausführungsbindung geändert.",
   application_upgrade_execution_unavailable:
     "Der bisherige Plattformstand hat keine aktive Ausführungsbindung. Richte diese unter Plattformanbindung ein und gib den Upgrade-Pfad anschließend erneut frei. Es wurde nichts veröffentlicht.",
   application_execution_unavailable:
