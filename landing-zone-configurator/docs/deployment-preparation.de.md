@@ -105,7 +105,7 @@ künftigen Plan/Apply müssen Zugriff, Secret-Version und Ziel erneut geprüft w
 
 Ergänzung vom 2026-10-06: Die gewöhnliche Vorbereitung bleibt auf `a256f68`
 gebunden. Für den Contract-Output kann eine zusätzliche Vorbereitung ausdrücklich
-den fest qualifizierten Commit `7c762548005ef28b31ead8aa6e9035a40efd287e` wählen.
+den fest qualifizierten Commit `bbae3459e69dbe3af362d3ef5ab2cb12bff06d1f` wählen.
 Das ist derzeit ein lokaler, opt-in Laufpfad, keine allgemeine Source-Auswahl und
 keine Produktionsfreigabe.
 
@@ -123,7 +123,7 @@ Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
 {
   "platformUpgrade": {
     "confirm": true,
-    "acceleratorCommit": "7c762548005ef28b31ead8aa6e9035a40efd287e"
+    "acceleratorCommit": "bbae3459e69dbe3af362d3ef5ab2cb12bff06d1f"
   }
 }
 ```

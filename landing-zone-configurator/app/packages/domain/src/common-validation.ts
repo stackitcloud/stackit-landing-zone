@@ -312,6 +312,30 @@ export function assessCommonConfiguration(
       "warning",
     );
   const audit = objectValue(values.audit_logs);
+  if (
+    audit.router_egress_cidrs != null &&
+    (!Array.isArray(audit.router_egress_cidrs) ||
+      audit.router_egress_cidrs.length === 0 ||
+      audit.router_egress_cidrs.some((cidr) => {
+        if (typeof cidr !== "string") return true;
+        const [address, prefix, extra] = cidr.split("/");
+        const octets = address?.split(".") ?? [];
+        return (
+          extra !== undefined ||
+          !/^(?:[0-9]|[12][0-9]|3[0-2])$/.test(prefix ?? "") ||
+          octets.length !== 4 ||
+          octets.some(
+            (part) =>
+              !/^(?:0|[1-9][0-9]{0,2})$/.test(part) || Number(part) > 255,
+          )
+        );
+      }))
+  )
+    add(
+      "audit_logs.router_egress_cidrs",
+      "invalid-router-egress-cidrs",
+      "Router-Quellnetze müssen eine nicht leere Liste gültiger IPv4-CIDRs sein. Verwende Automatisch für die aktuellen öffentlichen STACKIT-Netze.",
+    );
   if (audit.managed_resources === true) {
     if (audit.link_scopes != null)
       add(

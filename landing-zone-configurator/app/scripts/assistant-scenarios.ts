@@ -177,6 +177,7 @@ export type AssistantScenario = {
     | "literal-append"
     | "vm-default"
     | "workload-default"
+    | "server-operations"
     | "key-management"
     | "kubernetes-add"
     | "kubernetes-requester"
@@ -281,6 +282,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     applicationAccess: "advice",
     message:
       "Welche Projektberechtigungen soll ich für Application-Teams wählen? Erkläre das empfohlene granulare VM-Profil, den separaten zentralen initialen Owner, Automation und die weiterhin mögliche volle Owner-Kundenwahl. Hebt eine eingeschränkte Rolle geerbte Owner-Rechte auf? Welche Produkte/Grenzen sind tatsächlich abgedeckt? Nur beraten, nichts ändern.",
+  },
+  {
+    id: "application-server-operations-permissions-proposal",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "server-operations",
+    message:
+      "Ergänze im Template central für Besteller und Application-Service-Account alle offiziellen Rechte für Server Backup Management (server-backup), Server Update Management (server-update) und Server Agent/Run Command (run-command). Ich will Sicherungen, Wiederherstellung, Zeitpläne und Betriebssystemupdates verwalten. Vorhandene Kubernetes-Rechte, zentralen Owner und andere Rechte erhalten; keine IAM-Rollen oder Mitgliederverwaltung hinzufügen. Nur einen überprüfbaren Entwurf vorschlagen, nichts ausführen.",
   },
   {
     id: "application-service-account-key-management-proposal",
@@ -1087,7 +1096,10 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       },
     ];
   }
-  if (scenario.applicationAccess === "key-management") {
+  if (
+    scenario.applicationAccess === "key-management" ||
+    scenario.applicationAccess === "server-operations"
+  ) {
     draft.projectTemplates![0]!.accessProfile = {
       schemaVersion: 1,
       mode: "granular",
@@ -1469,8 +1481,8 @@ export function validateAssistantScenario(
       ["inherited", /geerbt|inherited|vererb/],
       ["automation", /automation|service.account/],
       ["vm-boundary", /vm|virtuelle|virtual machine/],
-      ["requester-key-management", /151/],
-      ["automation-workload-default", /144/],
+      ["requester-key-management", /191/],
+      ["automation-workload-default", /184/],
       ["project-key-scope", /projektweit|project.wide/],
       ["key-management", /schlüssel|key.management/],
     ] as const)
@@ -1629,6 +1641,23 @@ export function validateAssistantScenario(
               permissions: ["iaas.server.get", "resource-manager.project.get"],
               automationPermissions: ["iaas.server.get"],
             };
+    if (scenario.applicationAccess === "server-operations") {
+      const before = fixture.draft.projectTemplates?.find(
+        (t) => t.key === "central",
+      )?.accessProfile;
+      if (!before || before.mode !== "granular")
+        throw Error("missing server operations profile");
+      const additions = applicationProjectPermissionNames.filter((name) =>
+        /^(server-backup|server-update|run-command)\./.test(name),
+      );
+      central.accessProfile = {
+        ...before,
+        permissions: [...new Set([...before.permissions, ...additions])],
+        automationPermissions: [
+          ...new Set([...before.automationPermissions, ...additions]),
+        ],
+      };
+    }
     if (scenario.applicationAccess === "key-management") {
       const before = fixture.draft.projectTemplates?.find(
         (t) => t.key === "central",

@@ -96,6 +96,9 @@ mock_provider "vault" {}
 mock_provider "time" {}
 
 mock_provider "stackit" {
+  mock_data "stackit_public_ip_ranges" {
+    defaults = { cidr_list = ["192.0.2.0/24", "198.51.100.0/24"] }
+  }
   mock_resource "stackit_resourcemanager_folder" {
     defaults = {
       container_id = "platform-example-abc123"
@@ -837,4 +840,85 @@ run "automatic_audit_rejects_uncovered_regions" {
   }
 
   expect_failures = [stackit_telemetrylink.managed_audit]
+}
+
+
+run "audit_router_ranges_preserve_clients" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { acl = ["203.0.113.7/32", "192.0.2.0/24"], s3_object_lock = false }
+  }
+  assert {
+    condition     = toset(stackit_logs_instance.audit[0].acl) == toset(["192.0.2.0/24", "198.51.100.0/24", "203.0.113.7/32"])
+    error_message = "The Logs ACL must include current Router service ranges and preserve existing client access without duplicates."
+  }
+}
+
+run "audit_narrow_router_override" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { acl = ["203.0.113.7/32"], router_egress_cidrs = ["198.51.100.2/32"], s3_object_lock = false }
+  }
+  assert {
+    condition     = length(data.stackit_public_ip_ranges.audit) == 0 && toset(stackit_logs_instance.audit[0].acl) == toset(["198.51.100.2/32", "203.0.113.7/32"])
+    error_message = "A reviewed narrow override must avoid the public range lookup and preserve client access."
+  }
+}
+
+run "audit_disabled_avoids_lookup" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = null
+  }
+  assert {
+    condition     = length(data.stackit_public_ip_ranges.audit) == 0 && length(stackit_logs_instance.audit) == 0
+    error_message = "Disabled auditing must not query public ranges or create a Logs instance."
+  }
+}
+
+run "audit_empty_router_override_rejected" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { router_egress_cidrs = [] }
+  }
+  expect_failures = [var.audit_logs]
+}
+
+
+run "audit_empty_public_feed_fails_closed" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { acl = ["203.0.113.7/32"] }
+  }
+  override_data {
+    target = data.stackit_public_ip_ranges.audit
+    values = { cidr_list = [] }
+  }
+  expect_failures = [stackit_logs_instance.audit[0]]
+}
+
+run "audit_router_override_rejects_ipv6" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { router_egress_cidrs = ["2001:db8::/32"] }
+  }
+  expect_failures = [var.audit_logs]
 }

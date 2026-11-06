@@ -31,7 +31,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/providers.tf",
@@ -99,12 +99,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
+            "88682dcf3a3366053884da0bf5213927178b33c02da7b5c1bff8bc868f04e696",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
@@ -191,7 +191,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/providers.tf",
@@ -266,7 +266,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
+            "88682dcf3a3366053884da0bf5213927178b33c02da7b5c1bff8bc868f04e696",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -316,7 +316,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
+            "14f3f2367f5d8c53dfc91181fbc63976f512379eb6d14b864b976b81f127ffc0",
         },
         {
           path: "src/modules/management/1-project.tf",
@@ -387,12 +387,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
+            "14f3f2367f5d8c53dfc91181fbc63976f512379eb6d14b864b976b81f127ffc0",
         },
         {
           path: "src/modules/management/5-observability.tf",
@@ -460,8 +460,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "audit-logs",
       file: "audit-logs.md",
-      version: 2,
-      checkedOn: "2026-11-04",
+      version: 3,
+      checkedOn: "2026-11-06",
       qualification: "local-draft-not-reviewed-release",
       groups: ["management"],
       mandatory: false,
@@ -471,7 +471,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/main.tf",
@@ -481,12 +481,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
+            "14f3f2367f5d8c53dfc91181fbc63976f512379eb6d14b864b976b81f127ffc0",
         },
         {
           path: "src/modules/management/6-audit-logs.tf",
           sha256:
-            "cc7285016035ea5ec2ff6d0534275b2261d891851ffe9d24331b1cf77241f1a6",
+            "829b669e955e80600c195802d4256875c3e85ad9557b3a1fea68dc79a4d18575",
         },
         {
           path: "src/audit-coverage.tf",
@@ -536,13 +536,15 @@ export const assistantKnowledgeTopics = {
         "audit_logs.link_scopes[*].resource_type",
         "audit_logs.managed_resources",
         "audit_logs.retention_days",
+        "audit_logs.router_egress_cidrs",
+        "audit_logs.router_egress_cidrs[*]",
         "audit_logs.s3_object_lock",
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/audit-logs.md",
-      text: '# Audit Routing and Archive Retention\n\n## Purpose\n\nControl-plane audit events with chosen scope, access and retention.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not the archive bucket.\nSinks: Logs/OTLP and S3. Fields: retention_days, acl,\ns3_object_lock, managed_resources, link_scopes (resource_type/resource_id).\nObject Lock defaults true, including nested null; retention 180.\nExplicit false opts out before creation. With lock: 1..365 days,\nGOVERNANCE mode, not a reversible switch or compliance certification.\n\nOrganization links capture organization events ONLY, no folder/project\ninheritance. managed_resources defaults false; true adds all managed folders/\nprojects and new Application orders via the platform contract. Existing orders\nneed an approved platform upgrade and fresh Plan/Apply. No explicit link_scopes.\nManaged resources must share the platform region; other regions need reviewed\nrouters. Custom scopes support organization/folder/project;\nexisting external links need reviewed import, never silent takeover.\n\n## Dependencies\n\nManagement, central deployment identity, same-region router/link. Audit differs\nfrom Observability. Application ingestion tokens stay in the central project,\ninaccessible to default workload identities.\n\n## Dialogue\n\nAsk retention, ACL, Object Lock and organization-only/managed coverage. Preserve\nsaved choices; defaults are not consent.\nRequested managed coverage uses managed_resources=true with reviewed settings,\nnot invented IDs or link_scopes.\n\n## Examples\n\nSynthetic draft: audit_logs={ retention_days=90, acl=["203.0.113.0/24"],\ns3_object_lock=false, managed_resources=true }.\n\n## Limits\n\nEditor creation requires explicit retention, ACL and Object Lock decisions.\nLinks capture future events, not retroactive history. Defaults exclude audit\nmutation rights; effective Owner/inherited grants can still change routing.\nNo deny guarantee. Verify Logs/S3 delivery and access separately. Recovery\npreserves link identities;\na lost ingestion secret requires exact approved revocation and a fresh Plan/Apply\nfor replacement, never fabricated secret material.\n\n## Credentials\n\nNo router/OTLP tokens, S3 keys, State or audit contents in chat/public contracts.\nSecrets stay in protected execution and State storage.\n\n## Sources\n\nManifest binds native and recovery contracts. Re-review before generation;\nconfiguration proves no delivery/compliance.\n',
+      text: '# Audit Routing and Archive Retention\n\n## Purpose\n\nControl-plane audit events with chosen scope, access and retention.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not the archive bucket.\nSinks: Logs/OTLP and S3. Fields: retention_days, acl,\ns3_object_lock, managed_resources, link_scopes(resource_type/resource_id).\nLogs ACL unions clients+current public STACKIT feed (not Router-only).\nrouter_egress_cidrs=null uses native lookup; nonempty IPv4 list narrows. Token still required; empty feed fails.\nObject Lock defaults true, including nested null; retention 180.\nExplicit false opts out before creation. With lock: 1..365 days,\nGOVERNANCE mode, not a reversible switch or compliance certification.\n\nOrganization links capture organization events ONLY, no folder/project\ninheritance. managed_resources defaults false; true adds all managed folders/\nprojects and new Application orders via the platform contract. Existing orders\nneed an approved platform upgrade and fresh Plan/Apply. No explicit link_scopes.\nManaged resources must share the platform region; other regions need reviewed\nrouters. Custom scopes support organization/folder/project;\nexisting external links need reviewed import, never silent takeover.\n\n## Dependencies\n\nManagement, central deployment identity, same-region router/link. Audit differs\nfrom Observability. Application ingestion tokens stay in the central project,\ninaccessible to default workload identities.\n\n## Dialogue\n\nAsk retention, ACL, Object Lock and organization-only/managed coverage. Preserve\nsaved choices; defaults are not consent.\nRequested managed coverage uses managed_resources=true with reviewed settings,\nnot invented IDs or link_scopes.\n\n## Examples\n\nSynthetic draft: audit_logs={ retention_days=90, acl=["203.0.113.0/24"],\ns3_object_lock=false, managed_resources=true }.\n\n## Limits\n\nEditor creation requires explicit retention, ACL and Object Lock decisions.\nLinks capture future events, not retroactive history. Defaults exclude audit\nmutation rights; effective Owner/inherited grants can still change routing.\nNo deny guarantee. Verify Logs/S3 delivery and access separately. Recovery\npreserves link identities;\na lost ingestion secret requires exact approved revocation and a fresh Plan/Apply\nfor replacement, never fabricated secret material.\n\n## Credentials\n\nNo router/OTLP tokens, S3 keys, State or audit contents in chat/public contracts.\nSecrets stay in protected execution and State storage.\n\n## Sources\n\nManifest binds native and recovery contracts. Re-review before generation;\nconfiguration proves no delivery/compliance.\n',
       sha256:
-        "18a1e952ea00fd3ec57eb9dac4819597d639528957776bd6f4f9880435b89c77",
+        "68b0ddd488a708ef9c28cba88f27cb2da54844c7bf6eeab0e44cfe8b832cbcd1",
     },
     {
       id: "federated-identities",
@@ -558,7 +560,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/main.tf",
@@ -568,7 +570,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/variables.tf",
           sha256:
-            "9a0dce6dc694bdafc123f499b8208d7158478bfa664c5b63ddb9f0042121443e",
+            "14f3f2367f5d8c53dfc91181fbc63976f512379eb6d14b864b976b81f127ffc0",
         },
         {
           path: "src/modules/management/4-service-account.tf",
@@ -639,7 +641,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
+            "88682dcf3a3366053884da0bf5213927178b33c02da7b5c1bff8bc868f04e696",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -810,7 +812,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/main.tf",
@@ -987,7 +989,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/modules/firewall-config/variables.tf",
@@ -1111,7 +1113,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/_firewall-bootstrap.tf",
@@ -1161,7 +1163,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/modules/devops/variables.tf",
@@ -1215,7 +1217,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/modules/platform-kubernetes/variables.tf",
@@ -1240,7 +1242,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
+            "88682dcf3a3366053884da0bf5213927178b33c02da7b5c1bff8bc868f04e696",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1327,8 +1329,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "project-templates",
       file: "project-templates.md",
-      version: 7,
-      checkedOn: "2026-11-04",
+      version: 8,
+      checkedOn: "2026-11-06",
       qualification: "local-draft-not-reviewed-release",
       groups: ["projects"],
       mandatory: false,
@@ -1342,7 +1344,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/modules/landing-zone/variables.tf",
@@ -1362,7 +1364,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
+            "88682dcf3a3366053884da0bf5213927178b33c02da7b5c1bff8bc868f04e696",
         },
         {
           path: "src/modules/landing-zone/3-network.tf",
@@ -1377,17 +1379,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-access.ts",
           sha256:
-            "edb6dab74412d98cf00c8a3d8b5a1dedf08c65b023c5115ea2ebc78633a21d8c",
+            "855c2c9f1957e7ba2bdeb7bddde845d3f1286704a2103ebfb0d74988c9adf038",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-workload-permissions.ts",
           sha256:
-            "922b922d0c7f9e12f634f2dceced9a30983eacddd5b3ad7ce3b57770451793d6",
+            "a1d91532c36805a1ea1688424875b4ae1874de30d3a7f9d852569ab64afe2bc3",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/application-access.ts",
           sha256:
-            "84e13d0fee2503076fc2fa929cda49d3e1916147b858d57e586bc801fe793620",
+            "d7e549fa4ce8012e0fe0c93e03d71d9598dd32e51afe031073a4d0d2bc2664bc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/platform-owner-context.ts",
@@ -1397,7 +1399,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/project-permissions.generated.ts",
           sha256:
-            "bb01eb45f783a82bcac5499ab98dfc3eece4fd4304b8f8078eecec3bf4cfae93",
+            "becce60ebe4f33a0343f39ba0826dc570daaeee171976b3e05fe02f52a4e6991",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1445,9 +1447,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/project-templates.md",
-      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nTemplates/IAM.\n\n## Accelerator Contract\n\nlanding_zones: corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies only.\nAutomatic=null: Corporate reads regional SNA default_prefix_length before Plan;\nnumeric to Provider0.114, DNS preserved.\nProvider0.114: null prefix+DNS(even [])=>Invalid IPv4 configuration.\nResolved natively; overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional Corporate SNA; separate credentials.\nPublic!=Corporate. Namespaces:Platform Kubernetes only.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Preserve other settings. "100 projects"=capacity, not examples/quota; reserve platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile, not order input; schemaVersion=1,mode=granular:\ninitialOwnerEmail=user/SA, not requester; permissions/automationPermissions: official IDs,\ne.g. iaas.server.get. Workload requester151=base144+7 key rights; automation144.\nVM-only narrower +requester keys. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights,\nalso elsewhere; privileged Platform SAs stay outside. No SA create/delete/role/member admin.\nADD keys=only seven, default requester; preserve owner/SKE/automation. Old profiles unchanged.\nAll project rights selectable incl.IAM/admin.\nCatalogue only. ADD SKE=ske union into requested lists(default both);\nPreserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=Kubernetes RBAC; IAM role/member administration excluded from defaults.\nOwner={schemaVersion:1,mode:owner}: requester/automation have all project rights;\nIAM/project powers; no immutable central audit/routing claim.\nAtomic; no legacy roles. ADD preserves owners/rights.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email only; ambiguity asks.\nRecommend workload+service rights. Legacy conversion requires confirmation\nof removed role settings/context and native Owner defaults.\nPublication needs owner; grants additive. Nothing saved/executed.\n\n## Examples\n\n/28:Automatic+DNS.\n\n## Limits\n\nVersions/State bound; review migrations; never delete State.\nMatch region/area/DNS. Empty roles/ACLs prove no security; live acceptance required.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs in chat/exports.\n\n## Sources\n\nIaC.\n',
+      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nTemplates/IAM.\n\n## Accelerator Contract\n\nlanding_zones:corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies.\nAutomatic=null:Corporate resolves regional SNA default_prefix_length before Plan; numeric to Provider0.114; preserve DNS.\nProvider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional SNA; separate credentials. Public!=Corporate; namespaces:Platform K8s.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Preserve settings. "100 projects"=capacity!=examples/quota; reserve Platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile!=order input: schemaVersion=1,mode=granular;\ninitialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs. Default191=184+7 keys; automation184.\nVM-only narrower +keys. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Keys use ALL SA rights, also elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.\nADD keys=seven, requester default; preserve owner/SKE/automation.\nDefaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.\nAll project rights incl.IAM selectable.\nADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=K8s RBAC; no default IAM role/member admin.\nOwner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.\nAtomic; no legacy roles.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email; ambiguity asks.\nWorkload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.\nPublication needs owner; additive grants; nothing saved/executed.\n\n## Examples\n\n/28:Automatic+DNS.\n\n## Limits\n\nVersion/State bound; review migrations; never delete State. Match region/area/DNS. Empty roles/ACLs!=security; live acceptance.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs.\n\n## Sources\n\nIaC.\n',
       sha256:
-        "3304883ff3333f9943e0a0c9198bec2ea7990de2d7b266aa31f5720c66416900",
+        "61ba07a49d65dd834fe06833ad9446e395303b3421a61f6e0fae5c726ce41782",
     },
     {
       id: "sandbox-projects",
@@ -1463,7 +1465,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/modules/sandboxes/variables.tf",
@@ -1516,7 +1518,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+            "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
         },
         {
           path: "src/_landing-zone-kubernetes.tf",
@@ -1536,7 +1538,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
           sha256:
-            "12897d002ac676ad57130a2d4b5a90d49c644ece75fdc987d4ab05fa40ac9bca",
+            "88682dcf3a3366053884da0bf5213927178b33c02da7b5c1bff8bc868f04e696",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",

@@ -1,4 +1,7 @@
-import { applicationProjectPermissionNames } from "@lzc/domain";
+import {
+  applicationProjectPermissionNames,
+  defaultApplicationAccessProfile,
+} from "@lzc/domain";
 import {
   mockEmptyApplicationLists,
   openConfigurationStep,
@@ -49,6 +52,9 @@ test("new templates separate cloud project access from requester identity and re
   await expect(profile).toContainText("Plattform-Service-Account");
   await expect(profile).not.toContainText("Application-Team");
   await expect(profile).not.toContainText("Workload-Automation");
+  const defaults = defaultApplicationAccessProfile("central@example.test");
+  const requesterCount = defaults.permissions.length;
+  const automationCount = defaults.automationPermissions.length;
   const requester = profile.locator(":scope > details").nth(0);
   const automation = profile.locator(":scope > details").nth(1);
   await requester.locator(":scope > summary").click();
@@ -56,11 +62,11 @@ test("new templates separate cloud project access from requester identity and re
     applicationProjectPermissionNames.length,
   );
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    151,
+    requesterCount,
   );
   await expect(
     automation.locator('input[type="checkbox"]:checked'),
-  ).toHaveCount(144);
+  ).toHaveCount(automationCount);
   const storage = requester.locator("details").filter({
     has: page.locator("summary").filter({ hasText: /^Object Storage ·/ }),
   });
@@ -72,11 +78,11 @@ test("new templates separate cloud project access from requester identity and re
     })
     .uncheck();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    150,
+    requesterCount - 1,
   );
   await expect(
     automation.locator('input[type="checkbox"]:checked'),
-  ).toHaveCount(144);
+  ).toHaveCount(automationCount);
   await profile
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .fill(".bucket.");
@@ -92,7 +98,7 @@ test("new templates separate cloud project access from requester identity and re
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .clear();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    147,
+    requesterCount - 4,
   );
   await expect(
     storage.getByRole("checkbox", {
@@ -102,12 +108,12 @@ test("new templates separate cloud project access from requester identity and re
   ).toBeChecked();
   await expect(
     automation.locator('input[type="checkbox"]:checked'),
-  ).toHaveCount(144);
+  ).toHaveCount(automationCount);
   await storage
     .getByRole("button", { name: "Alle angezeigten auswählen", exact: true })
     .click();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    151,
+    requesterCount,
   );
   await profile
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
@@ -152,11 +158,11 @@ test("new templates separate cloud project access from requester identity and re
     .getByLabel("Berechtigungen durchsuchen", { exact: true })
     .clear();
   await expect(requester.locator('input[type="checkbox"]:checked')).toHaveCount(
-    162,
+    requesterCount + 11,
   );
   await expect(
     automation.locator('input[type="checkbox"]:checked'),
-  ).toHaveCount(144);
+  ).toHaveCount(automationCount);
   await profile
     .getByLabel("Projektberechtigungen", { exact: true })
     .selectOption("owner");

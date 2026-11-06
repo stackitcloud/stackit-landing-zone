@@ -1,4 +1,13 @@
 export const englishMessages: Record<string, string> = {
+  "Router-Quellnetze müssen eine nicht leere Liste gültiger IPv4-CIDRs sein. Verwende Automatisch für die aktuellen öffentlichen STACKIT-Netze.":
+    "Router source networks must be a non-empty list of valid IPv4 CIDRs. Use Automatic for current public STACKIT networks.",
+  "Optionale Router-Quellnetze für Audit-Eingang":
+    "Optional router source networks for audit ingestion",
+  "Automatisch ergänzt der Accelerator die aktuellen öffentlichen STACKIT-Netze zur Logs-ACL. Diese Netze sind nicht auf Router beschränkt; der Zugriff benötigt weiterhin ein Token. Nur für eine bewusst engere Freigabe geprüfte Router-CIDRs eintragen. Bestehende Client-Netze bleiben erhalten.":
+    "The Accelerator automatically adds current public STACKIT networks to the Logs ACL. These networks are not limited to routers; access still requires a token. Enter reviewed router CIDRs only for a deliberately narrower allowance. Existing client networks are preserved.",
+  "Server-Sicherungen": "Server backups",
+  "Server-Updates": "Server updates",
+  "Server Agent und Run Command": "Server Agent and Run Command",
   "Der Plattform-Upgrade-Pfad konnte nicht freigegeben werden. Prüfe, dass der Zielstand aus einem erfolgreichen Apply derselben Plattform stammt und noch aktuell ist. Es wurde keine Ausführungsbindung geändert.":
     "The platform upgrade path could not be released. Check that the target comes from a successful Apply of the same platform and is still current. No execution binding was changed.",
   "Upgrade-Pfad prüfen und freigeben": "Check and release upgrade path",
@@ -269,8 +278,8 @@ export const englishMessages: Record<string, string> = {
   "Template-Entwürfe bearbeitest du unter Application Landing Zones. Sie werden weiterhin mit dieser Konfiguration gespeichert.":
     "Edit template drafts under Application Landing Zones. They are still saved with this configuration.",
   "Zu den Application Landing Zones →": "Go to Application Landing Zones →",
-  "Der Workload-Standard enthält 151 Rechte für den Besteller: 144 Workload-Rechte und 7 Rechte zur Verwaltung von Service-Account-Schlüsseln. Der Application-Service-Account erhält weiterhin 144 Workload-Rechte. Weitere Rechte wie Kubernetes sind ergänzbar. Das Anlegen und Löschen von Service Accounts sowie Benutzer- und Rollenverwaltung gehören nicht zum Standard.":
-    "The workload default gives the requester 151 permissions: 144 workload permissions and 7 service account key management permissions. The Application service account still receives 144 workload permissions. Add further rights such as Kubernetes as needed. Creating and deleting service accounts and administering users or roles are excluded from the default.",
+  "Der Workload-Standard enthält 191 Rechte für den Besteller: 184 Workload-Rechte und 7 Rechte zur Verwaltung von Service-Account-Schlüsseln. Der Application-Service-Account erhält weiterhin 184 Workload-Rechte. Weitere Rechte wie Kubernetes sind ergänzbar. Das Anlegen und Löschen von Service Accounts sowie Benutzer- und Rollenverwaltung gehören nicht zum Standard.":
+    "The workload default gives the requester 191 permissions: 184 workload permissions and 7 service account key management permissions. The Application service account still receives 184 workload permissions. Add further rights such as Kubernetes as needed. Creating and deleting service accounts and administering users or roles are excluded from the default.",
   "Vollständiger Projektberechtigungskatalog vom {{date}} mit {{count}} Rechten; kein Nachweis der effektiven Rechte eines Benutzers.":
     "Complete project permission catalogue checked on {{date}}, with {{count}} permissions; not proof of a user's effective permissions.",
   "Kubernetes (SKE)": "Kubernetes (SKE)",

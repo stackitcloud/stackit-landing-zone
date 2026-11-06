@@ -150,7 +150,7 @@ erteilen keine Veröffentlichungs- oder Ausführungsberechtigung.
 
 ## Projektberechtigungen erweitern
 
-Unter **Application Landing Zones → Template-Entwürfe → Application-Rechteprofil** enthält der neue Workload-Standard 151 Rechte für den Besteller (144 Workload-Rechte plus sieben Schlüsselrechte) und 144 Workload-Rechte für den Application-Service-Account. Das ist eine Vorauswahl, keine Obergrenze. Der vollständige Projektkatalog umfasst auch Kubernetes, Datenbanken und IAM. Suchen Sie zum Beispiel nach **Kubernetes**, öffnen Sie **Kubernetes (SKE)** und wählen Sie einzelne Rechte oder **Alle angezeigten auswählen**. Die Listen für Besteller und Application-Service-Account sind getrennt; Gruppenaktionen ändern nur die gefiltert angezeigten Rechte.
+Unter **Application Landing Zones → Template-Entwürfe → Application-Rechteprofil** enthält der neue Workload-Standard 191 Rechte für den Besteller (184 Workload-Rechte plus sieben Schlüsselrechte) und 184 Workload-Rechte für den Application-Service-Account. Das ist eine Vorauswahl, keine Obergrenze. Der vollständige Projektkatalog umfasst auch Kubernetes, Datenbanken und IAM. Suchen Sie zum Beispiel nach **Kubernetes**, öffnen Sie **Kubernetes (SKE)** und wählen Sie einzelne Rechte oder **Alle angezeigten auswählen**. Die Listen für Besteller und Application-Service-Account sind getrennt; Gruppenaktionen ändern nur die gefiltert angezeigten Rechte.
 
 Live-Daten ergänzen den vollständigen mitgelieferten Katalog. Nicht mehr live gelistete und unbekannte importierte Kennungen werden nicht stillschweigend entfernt. Neue Kennungen außerhalb des statischen Katalogs muss der Server vor Veröffentlichung durch den offiziellen Live-Katalog bestätigen; ohne Bestätigung wird nicht veröffentlicht. Der Katalog beschreibt mögliche Rechte, nicht die effektiven Rechte oder Produktfreigabe einer Person.
 
@@ -451,3 +451,5 @@ Plan und Apply ändern ausgerollte Rechte. Beim Bearbeiten wird kein STACKIT-Pro
 verändert.
 
 Referenz: [STACKIT Service-Account-Rollen und Berechtigungen](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/).
+
+Der Serverbetrieb umfasst jetzt auch Server-Sicherungen und Wiederherstellung (einschließlich Zeitplänen), Server-Updates, Server Agent/Run Command sowie klassische Volume-Backups und Snapshots. Der Agent muss separat auf dem Server installiert werden. Run Command erlaubt Befehlsausführung auf dem Server; diese Rechte sind daher nur für Personen und Automation vorgesehen, die den Server verwalten dürfen. Bereits gespeicherte explizite Rechteprofile erhalten keine stillen Ergänzungen: die Rechte im Entwurf hinzufügen, eine neue Version veröffentlichen und bestehende Bestellungen über einen freigegebenen Upgrade-Pfad aktualisieren.

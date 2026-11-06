@@ -180,6 +180,15 @@ test("legacy access rules require reviewed atomic replacement and cancel leaves 
     { exact: true },
   );
   await expect(owner).toHaveValue("");
+  for (const label of [
+    "Server-Sicherungen",
+    "Server-Updates",
+    "Server Agent und Run Command",
+  ]) {
+    await expect(
+      page.locator("summary").filter({ hasText: new RegExp(`^${label} ·`) }),
+    ).toHaveCount(2);
+  }
   await expect(
     page.getByText(/Ein Rechteprofil kann nicht mit zusätzlichen Rollen/),
   ).toHaveCount(0);
@@ -628,7 +637,7 @@ test("explicitly appends requester key management to a saved profile without wid
     exact: true,
   });
   await expect(
-    page.getByText("Der Workload-Standard enthält 151 Rechte", {
+    page.getByText("Der Workload-Standard enthält 191 Rechte", {
       exact: false,
     }),
   ).toBeVisible();

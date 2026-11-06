@@ -1,6 +1,6 @@
 // Generated from the official STACKIT project permission catalogue; use permissions:generate.
 export default {
-  checkedAt: "2026-10-27",
+  checkedAt: "2026-11-06",
   source:
     "https://authorization.api.stackit.cloud/v2/permissions?resourceType=project",
   permissions: [
@@ -799,6 +799,14 @@ export default {
     {
       name: "git.instance.manage",
       description: "He can perform management tasks within a project.",
+    },
+    {
+      name: "git.instance.organization.get",
+      description: "Can read Instance Organizations and their Teams.",
+    },
+    {
+      name: "git.instance.organization.team.get",
+      description: "Can read the Teams of an Instance Organization.",
     },
     {
       name: "git.instance.update",

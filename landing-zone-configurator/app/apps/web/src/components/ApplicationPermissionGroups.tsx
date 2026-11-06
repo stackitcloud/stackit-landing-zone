@@ -50,6 +50,9 @@ export function ApplicationPermissionGroups({
 }) {
   const labels: Record<string, string> = {
     ske: "Kubernetes (SKE)",
+    "server-backup": "Server-Sicherungen",
+    "server-update": "Server-Updates",
+    "run-command": "Server Agent und Run Command",
     iam: "IAM und Zugriffsverwaltung",
     "service-account": "Service Accounts",
     "resource-manager": "Projektverwaltung",

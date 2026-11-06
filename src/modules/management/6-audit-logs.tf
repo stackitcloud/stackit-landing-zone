@@ -1,3 +1,19 @@
+# STACKIT recommends its current public IP ranges for Router destination ACLs.
+# A caller can supply reviewed narrower Router egress CIDRs instead.
+data "stackit_public_ip_ranges" "audit" {
+  count = var.audit_logs == null ? 0 : var.audit_logs.router_egress_cidrs == null ? 1 : 0
+}
+
+locals {
+  audit_router_egress_cidrs = var.audit_logs == null ? [] : (
+    var.audit_logs.router_egress_cidrs == null ? data.stackit_public_ip_ranges.audit[0].cidr_list : var.audit_logs.router_egress_cidrs
+  )
+  audit_logs_effective_acl = var.audit_logs == null ? [] : sort(distinct(concat(
+    var.audit_logs.acl == null ? [] : var.audit_logs.acl,
+    local.audit_router_egress_cidrs
+  )))
+}
+
 ###################
 ## LOGS INSTANCE ##
 ###################
@@ -8,8 +24,15 @@ resource "stackit_logs_instance" "audit" {
   project_id     = stackit_resourcemanager_project.this.project_id
   display_name   = "${var.naming_pattern}-audit"
   retention_days = var.audit_logs.retention_days
-  acl            = var.audit_logs.acl
+  acl            = local.audit_logs_effective_acl
   description    = "Audit log sink for ${var.naming_pattern}"
+
+  lifecycle {
+    precondition {
+      condition     = length(local.audit_router_egress_cidrs) > 0
+      error_message = "No Telemetry Router egress ranges are available. Refusing to create an audit sink that cannot receive logs; check the STACKIT range lookup or supply reviewed router_egress_cidrs."
+    }
+  }
 }
 
 resource "stackit_logs_access_token" "audit_write" {

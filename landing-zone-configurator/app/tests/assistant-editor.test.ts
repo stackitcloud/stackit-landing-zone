@@ -983,6 +983,7 @@ describe("shared native Editor proposal contract", () => {
   it("requires explicit creation decisions in the serving contract without changing partial-update semantics", () => {
     const value = {
       managed_resources: null,
+      router_egress_cidrs: null,
       link_scopes: null,
       retention_days: 90,
       acl: ["203.0.113.0/24"],
