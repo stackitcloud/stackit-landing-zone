@@ -982,7 +982,7 @@ test("Platform Owner publishes a path between actual approved platform contracts
   ).toHaveCount(2);
   await panel
     .getByRole("checkbox", {
-      name: /Ich veröffentliche nur den Plattform-Upgrade-Pfad/,
+      name: /Ich gebe diesen Plattform-Upgrade-Pfad frei/,
     })
     .check();
   await panel
@@ -1994,10 +1994,26 @@ test("editing a platform path opens and focuses its policy form", async ({
   await expect(editorHeading).toBeInViewport({ ratio: 1 });
   await expect(
     editor.getByRole("button", {
-      name: "Richtlinie aktualisieren",
+      name: "Upgrade-Pfad prüfen und freigeben",
       exact: true,
     }),
   ).toBeDisabled();
+  await editor
+    .getByRole("checkbox", {
+      name: /Ich gebe diesen Plattform-Upgrade-Pfad frei/,
+    })
+    .check();
+  await expect(
+    editor.getByRole("button", {
+      name: "Upgrade-Pfad prüfen und freigeben",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await editor
+    .getByRole("checkbox", {
+      name: /Ich gebe diesen Plattform-Upgrade-Pfad frei/,
+    })
+    .uncheck();
   await expect(editor).toBeInViewport();
   await expect(
     panel.getByRole("list", {
@@ -2030,11 +2046,14 @@ test("editing a platform path opens and focuses its policy form", async ({
     .check();
   await editor
     .getByRole("checkbox", {
-      name: /Ich veröffentliche nur den Plattform-Upgrade-Pfad/,
+      name: /Ich gebe diesen Plattform-Upgrade-Pfad frei/,
     })
     .check();
   await editor
-    .getByRole("button", { name: "Richtlinie aktualisieren", exact: true })
+    .getByRole("button", {
+      name: "Upgrade-Pfad prüfen und freigeben",
+      exact: true,
+    })
     .click();
   await expect(panel.getByRole("status")).toContainText(
     "Plattform-Upgrade-Pfad veröffentlicht",

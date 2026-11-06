@@ -171,6 +171,8 @@ it("distinguishes invalid publication policies and immutable path conflicts from
     for (const [code, message, status] of [
       ["42501", "application_upgrade_edge_invalid", 409],
       ["40001", "application_upgrade_edge_changed", 409],
+      ["40001", "application_upgrade_execution_unavailable", 409],
+      ["42501", "application_platform_upgrade_edge_invalid", 409],
       ["40001", "application_upgrade_binding_changed", 409],
       ["40001", "application_upgrade_platform_changed", 409],
       ["40001", "application_grant_consumed", 409],
@@ -204,7 +206,7 @@ it("distinguishes invalid publication policies and immutable path conflicts from
     });
     expect(unknown.statusCode).toBe(409);
     expect(unknown.json()).toEqual({ error: "application_request_conflict" });
-    expect(publishUpgradeEdge).toHaveBeenCalledTimes(8);
+    expect(publishUpgradeEdge).toHaveBeenCalledTimes(10);
     expect(applications.publish).not.toHaveBeenCalled();
     expect(auth.tokens.get).not.toHaveBeenCalled();
   } finally {

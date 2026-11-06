@@ -518,9 +518,7 @@ export async function previewApplicationPlatformUpgrade(
       edgePolicy: edge.policy,
       currentPlatformRevision: before.revision,
     }),
-    !!before.identity &&
-      !!after.identity &&
-      (await upgradePlatformCurrent(client, session, after.revision)),
+    await upgradePlatformCurrent(client, session, after.revision),
   );
   return {
     context,

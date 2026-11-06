@@ -1,7 +1,8 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
-import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
+import { Applications } from "../apps/api/src/applications/service.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 
@@ -1350,4 +1351,275 @@ it("moves an existing order to the reviewed audit-capable source when the reques
     platform_revision: f.to,
     state_key: inputs.stateKey,
   });
+});
+
+async function executionPublicationFixture() {
+  const f = await platformFixture("sensitive", "direct", true);
+  const metadata = (
+    await admin.query(
+      "SELECT c.credential_profile_id,c.organization_id,d.backend_id FROM lzc.application_platform_contracts c JOIN lzc.application_execution_delegations d ON d.platform_revision=c.revision WHERE c.revision=$1 AND d.revoked_at IS NULL",
+      [f.from],
+    )
+  ).rows[0];
+  const cipher = Buffer.alloc(29, 7);
+  const credentialsHash = createHash("md5")
+    .update(cipher.toString("hex"))
+    .digest("hex");
+  const descriptor = {
+    bucket: "synthetic-upgrade-state",
+    endpoint: "https://object.storage.eu01.onstackit.cloud" as const,
+    region: "eu01" as const,
+    key: "terraform.tfstate",
+    useLockfile: true as const,
+  };
+  await imported(async () => {
+    await admin.query(
+      "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id,state) VALUES($1,$2,$3,'Upgrade fixture','fixture@sa.stackit.cloud','key','stored')",
+      [metadata.credential_profile_id, engineer.tenantId, engineer.userId],
+    );
+    await admin.query(
+      "INSERT INTO lzc.state_backends(id,tenant_id,descriptor,identity_sha256,credentials_ciphertext) VALUES($1,$2,$3,$4,$5)",
+      [
+        metadata.backend_id,
+        engineer.tenantId,
+        descriptor,
+        randomBytes(32).toString("hex"),
+        cipher,
+      ],
+    );
+    await admin.query(
+      "UPDATE lzc.application_execution_delegations SET backend_identity=(SELECT identity_sha256 FROM lzc.state_backends WHERE id=$1),backend_credentials_hash=$2 WHERE platform_revision=ANY($3::uuid[])",
+      [metadata.backend_id, credentialsHash, [f.from, f.to]],
+    );
+  });
+  await scoped(engineer, (c) =>
+    c.query(
+      "SELECT lzc_auth.configure_application_execution($1,$2,NULL,true)",
+      [engineer.id, f.to],
+    ),
+  );
+  const verify = vi.fn(async () => ({
+    check: {
+      status: "passed" as const,
+      organizationId: metadata.organization_id as string,
+      organizationName: null,
+      checkedAt: new Date().toISOString(),
+      code: "organization_readable" as const,
+    },
+    version: 1,
+    keyId: "key",
+  }));
+  const service = new Applications(
+    runtime,
+    { list: async () => [], verifyForPreparation: verify },
+    undefined,
+    {
+      runner: async () => ({
+        kind: "s3",
+        descriptor,
+        credentials: { accessKeyId: "synthetic", secretAccessKey: "synthetic" },
+      }),
+    },
+  );
+  const publication = {
+    fromPlatformRevision: f.from,
+    toPlatformRevision: f.to,
+    policy: { sensitive: "direct" },
+    confirmPublication: true,
+  };
+  return { f, metadata, service, verify, publication };
+}
+it("repairs a published Platform path atomically so the Application Owner can select its audit update on the existing State", async () => {
+  const { f, service, publication, verify } =
+    await executionPublicationFixture();
+  const edge = await scoped(
+    engineer,
+    async (c) =>
+      (
+        await c.query(
+          "SELECT lzc_auth.publish_application_platform_upgrade_edge($1,$2,$3,$4,true) AS value",
+          [engineer.id, f.from, f.to, publication.policy],
+        )
+      ).rows[0].value,
+  );
+  const blocked = await service.previewPlatformUpgrade(owner, f.instance, {
+    edgeId: edge.id,
+    expectedVersionId: f.version,
+    expectedBindingId: null,
+    confirmUpgrade: true,
+  });
+  expect(blocked.assessment.reasons).toContainEqual({
+    code: "execution-binding-unavailable",
+    path: "stateBackend",
+    classification: "blocked",
+  });
+  expect(blocked.assessment.reasons.map((r) => r.code)).not.toContain(
+    "state-backend-migration",
+  );
+  expect(blocked.assessment.reasons.map((r) => r.code)).not.toContain(
+    "upgrade-target-not-qualified",
+  );
+  const before = (
+    await admin.query(
+      "SELECT to_jsonb(s) AS state FROM lzc.platform_states s WHERE state_key=$1",
+      [f.stateKey],
+    )
+  ).rows[0].state;
+  const published = await service.publishPlatformUpgradeEdge(
+    engineer,
+    publication,
+  );
+  expect(published.id).toBe(edge.id);
+  expect(verify).toHaveBeenCalledTimes(1);
+  expect(
+    await service.publishPlatformUpgradeEdge(engineer, publication),
+  ).toEqual(published);
+  const preview = await service.previewPlatformUpgrade(owner, f.instance, {
+    edgeId: edge.id,
+    expectedVersionId: f.version,
+    expectedBindingId: null,
+    confirmUpgrade: true,
+  });
+  expect(preview.assessment.classification).toBe("sensitive");
+  expect(preview.assessment.approvalPolicy).toBe("direct");
+  expect(preview.assessment.reasons.map((r) => r.code)).toContain(
+    "platform-audit-change",
+  );
+  const selected = await service.requestPlatformUpgrade(owner, f.instance, {
+    edgeId: edge.id,
+    expectedVersionId: f.version,
+    expectedBindingId: null,
+    confirmUpgrade: true,
+  });
+  expect(selected.effectivePlatformRevision).toBe(f.to);
+  expect(selected.effectiveVersionId).toBe(f.version);
+  expect(selected.effectiveSettings).toEqual(f.settings);
+  expect(
+    (
+      await admin.query(
+        "SELECT to_jsonb(s) AS state FROM lzc.platform_states s WHERE state_key=$1",
+        [f.stateKey],
+      )
+    ).rows[0].state,
+  ).toEqual(before);
+});
+it("does not create a target delegation when publication fails or the source is revoked during verification", async () => {
+  for (const failure of ["stale-platform", "revoked-source"] as const) {
+    const { f, service, publication, verify } =
+      await executionPublicationFixture();
+    if (failure === "stale-platform")
+      await imported(() =>
+        admin.query(
+          "UPDATE lzc.platform_states SET version=2 WHERE state_key=$1",
+          [f.stateKey],
+        ),
+      );
+    else
+      verify.mockImplementationOnce(async () => {
+        await scoped(engineer, (c) =>
+          c.query(
+            "SELECT lzc_auth.configure_application_execution($1,$2,NULL,true)",
+            [engineer.id, f.from],
+          ),
+        );
+        return {
+          check: {
+            status: "passed",
+            organizationId: (
+              await admin.query(
+                "SELECT organization_id FROM lzc.tenants WHERE id=$1",
+                [engineer.tenantId],
+              )
+            ).rows[0].organization_id,
+            organizationName: null,
+            checkedAt: new Date().toISOString(),
+            code: "organization_readable",
+          },
+          version: 1,
+          keyId: "key",
+        };
+      });
+    await expect(
+      service.publishPlatformUpgradeEdge(engineer, publication),
+    ).rejects.toThrow();
+    expect(
+      (
+        await admin.query(
+          "SELECT id FROM lzc.application_execution_delegations WHERE platform_revision=$1 AND revoked_at IS NULL",
+          [f.to],
+        )
+      ).rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await admin.query(
+          "SELECT id FROM lzc.application_platform_upgrade_edges WHERE to_revision=$1",
+          [f.to],
+        )
+      ).rows,
+    ).toHaveLength(0);
+  }
+});
+it("does not delegate execution for an Application Owner, a foreign user or an unverified target credential", async () => {
+  const { f, service, publication, verify } =
+    await executionPublicationFixture();
+  for (const session of [owner, outsider])
+    await expect(
+      service.publishPlatformUpgradeEdge(session, publication),
+    ).rejects.toThrow();
+  expect(verify).not.toHaveBeenCalled();
+  verify.mockResolvedValueOnce({
+    check: {
+      status: "passed",
+      organizationId: randomUUID(),
+      organizationName: null,
+      checkedAt: new Date().toISOString(),
+      code: "organization_readable",
+    },
+    version: 1,
+    keyId: "key",
+  });
+  await expect(
+    service.publishPlatformUpgradeEdge(engineer, publication),
+  ).rejects.toMatchObject({ code: "application_credential_changed" });
+  expect(
+    (
+      await admin.query(
+        "SELECT id FROM lzc.application_execution_delegations WHERE platform_revision=$1 AND revoked_at IS NULL",
+        [f.to],
+      )
+    ).rows,
+  ).toHaveLength(0);
+});
+it("preserves an explicitly different target backend instead of silently rebinding it", async () => {
+  const { f, service, publication } = await executionPublicationFixture();
+  await service.publishPlatformUpgradeEdge(engineer, publication);
+  const differentBackend = randomUUID();
+  await imported(async () => {
+    await admin.query(
+      "INSERT INTO lzc.state_backends(id,tenant_id,descriptor,identity_sha256,credentials_ciphertext) SELECT $1,b.tenant_id,jsonb_set(b.descriptor,'{bucket}','\"different-upgrade-state\"'),$2,b.credentials_ciphertext FROM lzc.state_backends b JOIN lzc.application_execution_delegations d ON d.backend_id=b.id WHERE d.platform_revision=$3 AND d.revoked_at IS NULL",
+      [differentBackend, randomBytes(32).toString("hex"), f.to],
+    );
+    await admin.query(
+      "UPDATE lzc.application_execution_delegations SET backend_id=$1 WHERE platform_revision=$2 AND revoked_at IS NULL",
+      [differentBackend, f.to],
+    );
+  });
+  const before = (
+    await admin.query(
+      "SELECT to_jsonb(d) AS value FROM lzc.application_execution_delegations d WHERE platform_revision=$1 AND revoked_at IS NULL",
+      [f.to],
+    )
+  ).rows[0].value;
+  await expect(
+    service.publishPlatformUpgradeEdge(engineer, publication),
+  ).rejects.toThrow("application_execution_binding_conflict");
+  expect(
+    (
+      await admin.query(
+        "SELECT to_jsonb(d) AS value FROM lzc.application_execution_delegations d WHERE platform_revision=$1 AND revoked_at IS NULL",
+        [f.to],
+      )
+    ).rows[0].value,
+  ).toEqual(before);
 });

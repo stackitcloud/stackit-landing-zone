@@ -682,3 +682,24 @@ it("groups repeated IAM preview notices without hiding a blocking reason", async
   ];
   expect(visibleUpgradeReasons(values)).toEqual([values[0], values[3]]);
 });
+
+it.each(["", "different"])(
+  "distinguishes missing execution setup from an actual backend change (%s)",
+  (identity) => {
+    const input = fixture();
+    input.targetPlatform.revision = newId;
+    const { target: _target, ...platformInput } = input;
+    const result = assessApplicationPlatformUpgrade({
+      ...platformInput,
+      targetBackendIdentity: identity,
+    });
+    expect(result.reasons).toContainEqual({
+      code: identity
+        ? "state-backend-migration"
+        : "execution-binding-unavailable",
+      path: "stateBackend",
+      classification: "blocked",
+    });
+    expect(result.classification).toBe("blocked");
+  },
+);

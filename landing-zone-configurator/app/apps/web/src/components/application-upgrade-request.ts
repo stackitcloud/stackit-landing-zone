@@ -3,6 +3,16 @@ import { z } from "zod";
 import type { Session } from "./Account";
 
 const failures: Record<string, string> = {
+  application_platform_upgrade_edge_invalid:
+    "Der Plattform-Upgrade-Pfad konnte nicht freigegeben werden. Prüfe, dass der Zielstand aus einem erfolgreichen Apply derselben Plattform stammt und noch aktuell ist. Es wurde keine Ausführungsbindung geändert.",
+  application_upgrade_execution_unavailable:
+    "Der bisherige Plattformstand hat keine aktive Ausführungsbindung. Richte diese unter Plattformanbindung ein und gib den Upgrade-Pfad anschließend erneut frei. Es wurde nichts veröffentlicht.",
+  application_execution_unavailable:
+    "Die technische Ausführung ist derzeit nicht verfügbar. Der Upgrade-Pfad wurde nicht freigegeben.",
+  application_execution_binding_conflict:
+    "Der Zielstand verwendet bereits ein anderes State-Backend. Dieser Pfad kann nicht freigegeben werden; die bestehenden Bindungen bleiben unverändert.",
+  application_credential_changed:
+    "Der technische STACKIT-Zugang des Zielstands konnte nicht bestätigt werden. Prüfe den Zugang unter Plattformanbindung. Der Upgrade-Pfad wurde nicht freigegeben.",
   application_upgrade_withdrawal_blocked:
     "Das Upgrade-Ziel kann derzeit nicht zurückgenommen werden. Eine Ausführung, eine Recovery oder ein bereits vorbereiteter Apply muss zuerst geklärt werden. Bestellung und State bleiben erhalten.",
   application_upgrade_edge_invalid:
