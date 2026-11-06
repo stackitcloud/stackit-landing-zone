@@ -10,7 +10,21 @@ Aufbewahrung erfassen.
 ## Accelerator-Vertrag
 
 `audit_logs=null` überspringt Routing und Aufbewahrung, nicht den bestehenden
-Archiv-Bucket. Die Ziele sind Logs über OTLP und ein S3-Archiv. Felder:
+Archiv-Bucket. Die Ziele sind S3 und genau eine abfragbare Ablage. Mit zentraler Observability
+wird deren OTLP-Ziel verwendet und das vorhandene Grafana Audit Logs Dashboard
+befüllt. Eine separate Logs-Instanz samt Tokens und Ziel entfällt. Ohne Observability
+bleibt STACKIT Logs die abfragbare Ablage. Ein technischer Zugang genügt, kein
+Grafana-Admin. Der Tarif muss Logs unterstützen; Monitoring, Frontend und
+MetricsEndpoint reichen nicht. Die Router-Netze ergänzen die Observability-ACL;
+bestehende Client-Einträge bleiben erhalten. Observability hat eigene Aufbewahrung
+und Kosten; `retention_days` steuert S3 und nur ohne Observability zusätzlich Logs.
+`audit_logs.acl` gilt für den Logs-Fallback, `observability.acl` für Observability.
+Bestehende Dev-Plattformen werden per geprüftem Plattform-Plan/Apply direkt umgestellt:
+Die separate Logs-Instanz mit Historie, Tokens und altem Ziel wird entfernt.
+S3, Router, Links und Projekte bleiben erhalten. Bereits angebundene Application-
+Projekte brauchen kein Bestellungs-Upgrade. Alte Logs werden nicht rückwirkend
+kopiert; nach Apply ein neues Ereignis im Dashboard prüfen. Zustellung kann
+verzögert sein; zunächst die letzten 24 Stunden und alle Filter wählen. Felder:
 `retention_days`, `acl`, `s3_object_lock`, `managed_resources`, `link_scopes`
 mit `resource_type/resource_id`. Object Lock verwendet standardmäßig `true`,
 auch bei verschachteltem `null`; die Aufbewahrung beträgt standardmäßig 180 Tage.

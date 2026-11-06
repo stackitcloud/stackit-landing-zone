@@ -586,3 +586,44 @@ it("preserves audit Router overrides in native export and validates explicit net
     expect(exportCommonTfvars(draft)).toContain("router_egress_cidrs");
   }
 });
+
+for (const plan of [
+  "Observability-Monitoring-Medium-EU01",
+  "Observability-Frontend-EU01",
+  "Observability-MetricsEndpoint-EU01",
+]) {
+  it(`rejects audit Grafana delivery to the logs-incompatible plan ${plan}`, () => {
+    const withAudit = setCommonInput(create(), "audit_logs", {
+      s3_object_lock: false,
+    });
+    const draft = setCommonInput(withAudit, "observability", {
+      plan_name: plan,
+    });
+    expect(assessCommonConfiguration(draft).findings).toContainEqual(
+      expect.objectContaining({
+        path: "observability.plan_name",
+        code: "audit-observability-requires-logs",
+      }),
+    );
+    const auditOnly = setCommonInput(withAudit, "observability", null);
+    expect(
+      assessCommonConfiguration(auditOnly).findings.some(
+        (f) => f.code === "audit-observability-requires-logs",
+      ),
+    ).toBe(false);
+    const monitoringOnly = setCommonInput(draft, "audit_logs", null);
+    expect(
+      assessCommonConfiguration(monitoringOnly).findings.some(
+        (f) => f.code === "audit-observability-requires-logs",
+      ),
+    ).toBe(false);
+    const full = setCommonInput(withAudit, "observability", {
+      plan_name: "Observability-Starter-EU01",
+    });
+    expect(
+      assessCommonConfiguration(full).findings.some(
+        (f) => f.code === "audit-observability-requires-logs",
+      ),
+    ).toBe(false);
+  });
+}

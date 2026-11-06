@@ -125,6 +125,44 @@ Neither this mode nor an audit configuration is a compliance certification.
 
 Source: `src/modules/management/`
 
+#### Audit dashboard and upgrades
+
+With `audit_logs` and central management `observability` enabled, the Telemetry
+Router sends audits to **Observability and S3**. Without management Observability,
+it sends to **dedicated STACKIT Logs and S3**. Exactly one query store is deployed.
+Open management Grafana → **Dashboards → STACKIT → Audit Logs Dashboard**, or use
+the non-secret `audit_grafana_url` output. Start with **Last 24 hours** and all
+filters; event delivery can lag. Resource UUIDs are structured metadata.
+
+The route uses a dedicated technical Observability credential, with no Grafana
+admin provisioning, browser session or Configurator runtime dependency. Choose a
+logs-capable plan, such as `Observability-Starter-EU01`; Monitoring, Frontend and
+MetricsEndpoint are rejected with audit delivery. Observability retention/cost is
+independent of `audit_logs.retention_days`, which controls the S3 archive and,
+only without Observability, the fallback Logs store. `audit_logs.acl` applies to
+the Logs fallback; `observability.acl` controls Observability clients. Both modes
+add Router egress to the selected store's ACL and preserve configured clients.
+
+**Direct Dev migration:** retain the platform variables/backend, update the
+Accelerator source and review a fresh platform **Plan → Apply**. When Observability
+is configured, the plan removes the old dedicated Logs instance, its history,
+read/write tokens and destination, adds the Observability credential/destination,
+and updates the ACL and protected audit secret. This deliberately avoids a second
+query store; no automatic historical replay or retention waiting period is provided.
+The existing S3 archive, central Router, Telemetry Links and projects retain their
+identities. Review any unrelated source changes separately. No State move/import
+or individual order upgrade is needed for **already linked** projects. Unlinked
+projects still follow the normal platform/Application contract upgrade for coverage.
+In the Configurator, adopt the release containing this native source and prepare
+the saved platform configuration before its reviewed Plan/Apply; template
+publication alone does not migrate the platform. After Apply, generate a fresh
+harmless audit event and confirm it in the built-in dashboard. The old dedicated
+Logs URL/token no longer works after removal. The protected audit secret identifies
+the active backend and supplies the matching query URL/authentication.
+
+Audit-only platforms retain Logs/S3 without Grafana. Observability without audit
+keeps its existing ACL behavior. This integration follows [STACKIT's audit guide](https://docs.stackit.cloud/products/logging-and-monitoring/observability/how-tos/push-audit-logs/).
+
 ### Connectivity
 
 Builds one network hub project per configured connectivity domain. Each corporate landing zone attaches explicitly to one domain. This is the most complex module.

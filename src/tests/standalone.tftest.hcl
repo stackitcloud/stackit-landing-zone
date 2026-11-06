@@ -922,3 +922,89 @@ run "audit_router_override_rejects_ipv6" {
   }
   expect_failures = [var.audit_logs]
 }
+
+run "audit_grafana_ingestion_for_existing_platform" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { acl = ["203.0.113.1/32"], retention_days = 90, s3_object_lock = false }
+    observability       = { plan_name = "Observability-Starter-EU01", acl = ["203.0.113.8/32"], logs_retention_days = 14 }
+  }
+  override_resource {
+    target = stackit_observability_instance.this
+    values = { instance_id = "55555555-5555-4555-8555-555555555555", otlp_http_logs_url = "https://observability.example.test/otlp/v1/logs", logs_url = "https://observability.example.test/loki", grafana_url = "https://grafana.example.test" }
+  }
+  override_resource {
+    target = stackit_observability_credential.audit
+    values = { username = "synthetic-router-user", password = "synthetic-router-password" }
+  }
+  assert {
+    condition     = stackit_telemetryrouter_destination.audit_observability[0].config.opentelemetry.uri == "https://observability.example.test/otlp/v1/logs" && stackit_telemetryrouter_destination.audit_observability[0].config.opentelemetry.basic_auth.username == "synthetic-router-user"
+    error_message = "Audit events must flow to the exact management OTLP endpoint using dedicated technical credentials, without Grafana admin credentials."
+  }
+  assert {
+    condition     = output.audit_logs_instance_id == null && output.audit_logs_datasource_url == "https://observability.example.test/loki" && length(stackit_telemetryrouter_destination.audit_logs) == 0 && length(stackit_logs_instance.audit) == 0 && length(stackit_logs_access_token.audit_read) == 0 && length(stackit_logs_access_token.audit_write) == 0 && length(stackit_telemetryrouter_destination.audit_archive) == 1 && stackit_observability_instance.this[0].logs_retention_days == 14
+    error_message = "Observability must be the only query store, with S3 retained and its own Observability retention unchanged."
+  }
+  assert {
+    condition     = toset(stackit_observability_instance.this[0].acl) == toset(["203.0.113.8/32", "192.0.2.0/24", "198.51.100.0/24"]) && output.audit_grafana_url == "https://grafana.example.test/dashboards?query=Audit%20Logs"
+    error_message = "Router egress must be allowed without removing existing Grafana client access, and an audit dashboard link must be exported."
+  }
+}
+
+run "audit_without_observability_has_no_grafana_destination" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { s3_object_lock = false }
+    observability       = null
+  }
+  assert {
+    condition     = length(stackit_telemetryrouter_destination.audit_observability) == 0 && length(stackit_observability_credential.audit) == 0 && length(stackit_logs_instance.audit) == 1 && length(stackit_telemetryrouter_destination.audit_logs) == 1 && length(stackit_telemetryrouter_destination.audit_archive) == 1 && output.audit_grafana_url == null
+    error_message = "Audit-only platforms retain Logs/S3 delivery without requiring Observability or Grafana."
+  }
+}
+
+run "observability_without_audit_preserves_acl" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = null
+    observability       = { acl = ["203.0.113.8/32"] }
+  }
+  assert {
+    condition     = length(stackit_telemetryrouter_destination.audit_observability) == 0 && length(stackit_observability_credential.audit) == 0 && stackit_observability_instance.this[0].acl == toset(["203.0.113.8/32"])
+    error_message = "Without audit, Observability credentials and client ACL behavior must remain unchanged."
+  }
+}
+
+run "audit_rejects_metrics_only_observability" {
+  command = plan
+  variables {
+    audit_logs    = { s3_object_lock = false }
+    observability = { plan_name = "Observability-Monitoring-Medium-EU01" }
+  }
+  expect_failures = [var.observability]
+}
+
+run "audit_observability_empty_public_feed_fails_closed" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { s3_object_lock = false }
+    observability       = {}
+  }
+  override_data {
+    target = data.stackit_public_ip_ranges.audit
+    values = { cidr_list = [] }
+  }
+  expect_failures = [stackit_telemetryrouter_destination.audit_observability[0]]
+}

@@ -336,6 +336,18 @@ export function assessCommonConfiguration(
       "invalid-router-egress-cidrs",
       "Router-Quellnetze müssen eine nicht leere Liste gültiger IPv4-CIDRs sein. Verwende Automatisch für die aktuellen öffentlichen STACKIT-Netze.",
     );
+  if (
+    values.audit_logs != null &&
+    observability != null &&
+    /^Observability-(Monitoring-|Frontend|Metrics-?Endpoint)/.test(
+      textValue(objectValue(observability).plan_name),
+    )
+  )
+    add(
+      "observability.plan_name",
+      "audit-observability-requires-logs",
+      "Das zentrale Audit-Dashboard benötigt einen Observability-Tarif mit Logs, zum Beispiel Observability-Starter-EU01. Monitoring, Frontend und MetricsEndpoint können keine Audit-Logs empfangen. Wähle einen Tarif mit Logs oder deaktiviere die zentrale Observability für eine reine Logs/S3-Ablage.",
+    );
   if (audit.managed_resources === true) {
     if (audit.link_scopes != null)
       add(

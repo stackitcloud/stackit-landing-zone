@@ -1,4 +1,7 @@
 export const englishMessages: Record<string, string> = {
+  "Das zentrale Audit-Dashboard benötigt einen Observability-Tarif mit Logs, zum Beispiel Observability-Starter-EU01. Monitoring, Frontend und MetricsEndpoint können keine Audit-Logs empfangen. Wähle einen Tarif mit Logs oder deaktiviere die zentrale Observability für eine reine Logs/S3-Ablage.":
+    "The central audit dashboard requires a logs-capable Observability plan, such as Observability-Starter-EU01. Monitoring, Frontend and MetricsEndpoint cannot receive audit logs. Choose a logs-capable plan or disable central Observability to keep Logs/S3 delivery only.",
+
   "Router-Quellnetze müssen eine nicht leere Liste gültiger IPv4-CIDRs sein. Verwende Automatisch für die aktuellen öffentlichen STACKIT-Netze.":
     "Router source networks must be a non-empty list of valid IPv4 CIDRs. Use Automatic for current public STACKIT networks.",
   "Optionale Router-Quellnetze für Audit-Eingang":

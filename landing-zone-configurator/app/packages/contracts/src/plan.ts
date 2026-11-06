@@ -20,7 +20,7 @@ export const applicationRunnerSourceSchema = z.strictObject({
   maintenanceEnabled: z.literal(true).optional(),
 });
 export const platformUpgradeAcceleratorCommit =
-  "bbae3459e69dbe3af362d3ef5ab2cb12bff06d1f";
+  "6f5c4c981f8820c826476c5a85ca4c23dc3948a9";
 export const platformFirewallImage = {
   url: "https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2",
   sha256: "5d0fb1cb4375eb258859cafc688f1e5e6f830f54f8d86b9e8bb815611bae1068",

@@ -206,6 +206,13 @@ variable "observability" {
   default     = null
 
   validation {
+    condition = var.observability == null || var.audit_logs == null ? true : !can(regex(
+      "^Observability-(Monitoring-|Frontend|Metrics-?Endpoint)", var.observability.plan_name
+    ))
+    error_message = "Central audit dashboards require a logs-capable Observability plan (for example Observability-Starter-EU01). Monitoring, Frontend and MetricsEndpoint plans cannot receive audit logs. Choose a logs-capable plan or set observability to null to keep audit delivery to Logs/S3 only."
+  }
+
+  validation {
     condition = var.observability == null ? true : (
       !startswith(var.observability.plan_name, "Observability-Monitoring-") ||
       (var.observability.logs_retention_days == null && var.observability.traces_retention_days == null)
@@ -248,7 +255,7 @@ variable "audit_logs" {
       resource_id   = string
     })), null)
   })
-  description = "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link_scopes defaults to a link for organization events only, without inherited project/folder coverage. managed_resources adds automatic links for all managed projects and folders in the platform region; it cannot be combined with explicit link_scopes or other deployment regions. retention_days applies to both the Logs instance and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null) and enables GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment. router_egress_cidrs defaults to the current public STACKIT IP ranges from the native provider data source; these are added to acl so the Telemetry Router can ingest. Supply a non-empty explicit IPv4 CIDR list to restrict that service allowance to reviewed Router egress addresses. These are network allowances, not identities; authentication remains required."
+  description = "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which sends them to S3 and exactly one query backend: management Observability when configured (feeding its built-in Grafana Audit Logs Dashboard), otherwise a dedicated Logs instance. Switching existing Dev platforms to Observability removes the dedicated Logs instance, its tokens, destination and historical records. audit_logs.acl controls fallback Logs client access; observability.acl controls Observability client access. link_scopes defaults to a link for organization events only, without inherited project/folder coverage. managed_resources adds automatic links for all managed projects and folders in the platform region; it cannot be combined with explicit link_scopes or other deployment regions. retention_days controls the protected archive and, only without Observability, the fallback Logs instance. Observability uses its own plan retention. s3_object_lock defaults to true (also when explicitly null) and enables GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment. router_egress_cidrs defaults to the current public STACKIT IP ranges from the native provider data source; these are added to the Logs and, when enabled, management Observability ACLs so the Telemetry Router can ingest. Supply a non-empty explicit IPv4 CIDR list to restrict that service allowance to reviewed Router egress addresses. These are network allowances, not identities; authentication remains required."
   default     = null
 
   validation {

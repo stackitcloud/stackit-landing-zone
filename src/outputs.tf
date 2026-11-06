@@ -34,12 +34,12 @@ output "management_bucket_name_tfstate" {
 }
 
 output "audit_logs_instance_id" {
-  description = "The ID of the Logs instance receiving audit logs. Null when audit_logs is not configured."
+  description = "The ID of the dedicated audit Logs fallback. Null with management Observability or disabled auditing."
   value       = module.management.audit_logs_instance_id
 }
 
 output "audit_logs_datasource_url" {
-  description = "Datasource URL of the audit Logs instance, usable as a Grafana datasource."
+  description = "URL of the active audit query backend: management Observability or dedicated Logs."
   value       = module.management.audit_logs_datasource_url
 }
 
@@ -212,4 +212,9 @@ output "landing_zone_projects" {
 output "landing_zone_namespace_demo_samples" {
   description = "Demo sample references for namespace services."
   value       = nonsensitive(module.namespace_service_demo.samples)
+}
+
+output "audit_grafana_url" {
+  description = "Open management Grafana and select the built-in Audit Logs Dashboard. Null unless audit_logs and observability are enabled."
+  value       = module.management.audit_grafana_url
 }
