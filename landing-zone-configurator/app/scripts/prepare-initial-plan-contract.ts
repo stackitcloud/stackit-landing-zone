@@ -22,6 +22,9 @@ const source = execFileSync(
 const mocks = source.slice(0, source.indexOf("variables {")).replace(
   'mock_provider "stackit" {',
   `mock_provider "stackit" {
+  mock_data "stackit_public_ip_ranges" {
+    defaults = { cidr_list = ["192.0.2.0/24", "198.51.100.0/24"] }
+  }
   mock_resource "stackit_vpn_gateway" {
     defaults = {
       gateway_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
