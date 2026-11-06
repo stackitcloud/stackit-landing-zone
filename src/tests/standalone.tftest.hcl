@@ -934,7 +934,7 @@ run "audit_grafana_ingestion_for_existing_platform" {
   }
   override_resource {
     target = stackit_observability_instance.this
-    values = { instance_id = "55555555-5555-4555-8555-555555555555", otlp_http_logs_url = "https://observability.example.test/otlp/v1/logs", grafana_url = "https://grafana.example.test" }
+    values = { instance_id = "55555555-5555-4555-8555-555555555555", otlp_http_logs_url = "https://observability.example.test/otlp/v1/logs", logs_url = "https://observability.example.test/loki", grafana_url = "https://grafana.example.test" }
   }
   override_resource {
     target = stackit_observability_credential.audit
@@ -945,7 +945,7 @@ run "audit_grafana_ingestion_for_existing_platform" {
     error_message = "Audit events must flow to the exact management OTLP endpoint using dedicated technical credentials, without Grafana admin credentials."
   }
   assert {
-    condition     = length(stackit_telemetryrouter_destination.audit_logs) == 0 && length(stackit_logs_instance.audit) == 0 && length(stackit_logs_access_token.audit_read) == 0 && length(stackit_logs_access_token.audit_write) == 0 && length(stackit_telemetryrouter_destination.audit_archive) == 1 && stackit_observability_instance.this[0].logs_retention_days == 14
+    condition     = output.audit_logs_instance_id == null && output.audit_logs_datasource_url == "https://observability.example.test/loki" && length(stackit_telemetryrouter_destination.audit_logs) == 0 && length(stackit_logs_instance.audit) == 0 && length(stackit_logs_access_token.audit_read) == 0 && length(stackit_logs_access_token.audit_write) == 0 && length(stackit_telemetryrouter_destination.audit_archive) == 1 && stackit_observability_instance.this[0].logs_retention_days == 14
     error_message = "Observability must be the only query store, with S3 retained and its own Observability retention unchanged."
   }
   assert {
