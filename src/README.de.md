@@ -113,8 +113,8 @@ maßgeblich ist die [kanonische englische Referenz](README.de.md).
 | Name | Description |
 | ---- | ----------- |
 | <a name="output_audit_grafana_url"></a> [audit\_grafana\_url](#output\_audit\_grafana\_url) | Open management Grafana and select the built-in Audit Logs Dashboard. Null unless audit\_logs and observability are enabled. |
-| <a name="output_audit_logs_datasource_url"></a> [audit\_logs\_datasource\_url](#output\_audit\_logs\_datasource\_url) | Datasource URL of the audit Logs instance, usable as a Grafana datasource. |
-| <a name="output_audit_logs_instance_id"></a> [audit\_logs\_instance\_id](#output\_audit\_logs\_instance\_id) | The ID of the Logs instance receiving audit logs. Null when audit\_logs is not configured. |
+| <a name="output_audit_logs_datasource_url"></a> [audit\_logs\_datasource\_url](#output\_audit\_logs\_datasource\_url) | URL of the active audit query backend: management Observability or dedicated Logs. |
+| <a name="output_audit_logs_instance_id"></a> [audit\_logs\_instance\_id](#output\_audit\_logs\_instance\_id) | The ID of the dedicated audit Logs fallback. Null with management Observability or disabled auditing. |
 | <a name="output_audit_telemetry_router_id"></a> [audit\_telemetry\_router\_id](#output\_audit\_telemetry\_router\_id) | The ID of the Telemetry Router collecting audit logs. |
 | <a name="output_connectivity_firewall_backup_public_ip"></a> [connectivity\_firewall\_backup\_public\_ip](#output\_connectivity\_firewall\_backup\_public\_ip) | The public IP of the legacy default area's backup firewall. Null without connectivity.firewall.ha. |
 | <a name="output_connectivity_firewall_next_hop_ip"></a> [connectivity\_firewall\_next\_hop\_ip](#output\_connectivity\_firewall\_next\_hop\_ip) | The legacy default area's next hop for corporate landing-zone routes. |

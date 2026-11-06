@@ -39,13 +39,13 @@ output "secretsmanager_instance_id" {
 }
 
 output "audit_logs_instance_id" {
-  description = "The ID of the Logs instance receiving audit logs."
+  description = "The ID of the dedicated Logs fallback; null when management Observability handles audit queries."
   value       = try(stackit_logs_instance.audit[0].instance_id, null)
 }
 
 output "audit_logs_datasource_url" {
-  description = "Datasource URL of the audit Logs instance, usable as a Grafana datasource."
-  value       = try(stackit_logs_instance.audit[0].datasource_url, null)
+  description = "URL of the active audit query backend (management Observability or dedicated Logs)."
+  value       = var.audit_logs == null ? null : var.observability != null ? stackit_observability_instance.this[0].logs_url : stackit_logs_instance.audit[0].datasource_url
 }
 
 output "audit_telemetry_router_id" {

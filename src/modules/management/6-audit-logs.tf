@@ -5,6 +5,7 @@ data "stackit_public_ip_ranges" "audit" {
 }
 
 locals {
+  audit_uses_logs = var.audit_logs != null && var.observability == null
   audit_router_egress_cidrs = var.audit_logs == null ? [] : (
     var.audit_logs.router_egress_cidrs == null ? data.stackit_public_ip_ranges.audit[0].cidr_list : var.audit_logs.router_egress_cidrs
   )
@@ -19,7 +20,7 @@ locals {
 ###################
 
 resource "stackit_logs_instance" "audit" {
-  count = var.audit_logs != null ? 1 : 0
+  count = local.audit_uses_logs ? 1 : 0
 
   project_id     = stackit_resourcemanager_project.this.project_id
   display_name   = "${var.naming_pattern}-audit"
@@ -36,7 +37,7 @@ resource "stackit_logs_instance" "audit" {
 }
 
 resource "stackit_logs_access_token" "audit_write" {
-  count = var.audit_logs != null ? 1 : 0
+  count = local.audit_uses_logs ? 1 : 0
 
   project_id   = stackit_resourcemanager_project.this.project_id
   instance_id  = stackit_logs_instance.audit[0].instance_id
@@ -46,7 +47,7 @@ resource "stackit_logs_access_token" "audit_write" {
 }
 
 resource "stackit_logs_access_token" "audit_read" {
-  count = var.audit_logs != null ? 1 : 0
+  count = local.audit_uses_logs ? 1 : 0
 
   project_id   = stackit_resourcemanager_project.this.project_id
   instance_id  = stackit_logs_instance.audit[0].instance_id
@@ -68,7 +69,7 @@ resource "stackit_telemetryrouter_instance" "audit" {
 }
 
 resource "stackit_telemetryrouter_destination" "audit_logs" {
-  count = var.audit_logs != null ? 1 : 0
+  count = local.audit_uses_logs ? 1 : 0
 
   project_id   = stackit_resourcemanager_project.this.project_id
   instance_id  = stackit_telemetryrouter_instance.audit[0].instance_id
@@ -108,6 +109,12 @@ resource "stackit_telemetryrouter_destination" "audit_observability" {
         username = stackit_observability_credential.audit[0].username
         password = stackit_observability_credential.audit[0].password
       }
+    }
+  }
+  lifecycle {
+    precondition {
+      condition     = length(local.audit_router_egress_cidrs) > 0
+      error_message = "No Telemetry Router egress ranges are available for Observability. Check the STACKIT range lookup or supply reviewed router_egress_cidrs."
     }
   }
 }
@@ -177,19 +184,23 @@ resource "vault_kv_secret_v2" "audit_logs" {
   name                = "audit_logs_${replace(var.naming_pattern, "-", "_")}"
   cas                 = 1
   delete_all_versions = true
-  data_json = jsonencode(
+  data_json = jsonencode(merge(
     {
-      # The API returns these without a scheme; store them ready to use.
-      INGEST_OTLP_URL = "https://${stackit_logs_instance.audit[0].ingest_otlp_url}"
-      QUERY_URL       = "https://${stackit_logs_instance.audit[0].query_url}"
-      DATASOURCE_URL  = "https://${stackit_logs_instance.audit[0].datasource_url}"
-      WRITE_TOKEN     = stackit_logs_access_token.audit_write[0].access_token
-      READ_TOKEN      = stackit_logs_access_token.audit_read[0].access_token
+      QUERY_BACKEND   = local.audit_uses_logs ? "logs" : "observability"
+      INGEST_OTLP_URL = local.audit_uses_logs ? "https://${stackit_logs_instance.audit[0].ingest_otlp_url}" : stackit_observability_instance.this[0].otlp_http_logs_url
+      QUERY_URL       = local.audit_uses_logs ? "https://${stackit_logs_instance.audit[0].query_url}" : stackit_observability_instance.this[0].logs_url
+      DATASOURCE_URL  = local.audit_uses_logs ? "https://${stackit_logs_instance.audit[0].datasource_url}" : stackit_observability_instance.this[0].logs_url
       ROUTER_TOKEN    = stackit_telemetryrouter_access_token.audit_link[0].access_token
 
-      # Credentials for this bucket are the project ones, already in object_storage_credentials_*.
       ARCHIVE_BUCKET   = stackit_objectstorage_bucket.audit_logs.name
       ARCHIVE_ENDPOINT = trimsuffix(stackit_objectstorage_bucket.audit_logs.url_path_style, "/${stackit_objectstorage_bucket.audit_logs.name}")
+    },
+    local.audit_uses_logs ? {
+      WRITE_TOKEN = stackit_logs_access_token.audit_write[0].access_token
+      READ_TOKEN  = stackit_logs_access_token.audit_read[0].access_token
+      } : {
+      USERNAME = stackit_observability_credential.audit[0].username
+      PASSWORD = stackit_observability_credential.audit[0].password
     }
-  )
+  ))
 }

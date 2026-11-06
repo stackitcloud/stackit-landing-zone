@@ -945,8 +945,8 @@ run "audit_grafana_ingestion_for_existing_platform" {
     error_message = "Audit events must flow to the exact management OTLP endpoint using dedicated technical credentials, without Grafana admin credentials."
   }
   assert {
-    condition     = length(stackit_telemetryrouter_destination.audit_logs) == 1 && length(stackit_telemetryrouter_destination.audit_archive) == 1 && stackit_logs_instance.audit[0].retention_days == 90 && stackit_observability_instance.this[0].logs_retention_days == 14
-    error_message = "Adding Grafana delivery must preserve the existing Logs and S3 sinks and their independent retention policies."
+    condition     = length(stackit_telemetryrouter_destination.audit_logs) == 0 && length(stackit_logs_instance.audit) == 0 && length(stackit_logs_access_token.audit_read) == 0 && length(stackit_logs_access_token.audit_write) == 0 && length(stackit_telemetryrouter_destination.audit_archive) == 1 && stackit_observability_instance.this[0].logs_retention_days == 14
+    error_message = "Observability must be the only query store, with S3 retained and its own Observability retention unchanged."
   }
   assert {
     condition     = toset(stackit_observability_instance.this[0].acl) == toset(["203.0.113.8/32", "192.0.2.0/24", "198.51.100.0/24"]) && output.audit_grafana_url == "https://grafana.example.test/dashboards?query=Audit%20Logs"
@@ -964,7 +964,7 @@ run "audit_without_observability_has_no_grafana_destination" {
     observability       = null
   }
   assert {
-    condition     = length(stackit_telemetryrouter_destination.audit_observability) == 0 && length(stackit_observability_credential.audit) == 0 && output.audit_grafana_url == null
+    condition     = length(stackit_telemetryrouter_destination.audit_observability) == 0 && length(stackit_observability_credential.audit) == 0 && length(stackit_logs_instance.audit) == 1 && length(stackit_telemetryrouter_destination.audit_logs) == 1 && length(stackit_telemetryrouter_destination.audit_archive) == 1 && output.audit_grafana_url == null
     error_message = "Audit-only platforms retain Logs/S3 delivery without requiring Observability or Grafana."
   }
 }
@@ -991,4 +991,20 @@ run "audit_rejects_metrics_only_observability" {
     observability = { plan_name = "Observability-Monitoring-Medium-EU01" }
   }
   expect_failures = [var.observability]
+}
+
+run "audit_observability_empty_public_feed_fails_closed" {
+  command = plan
+  module { source = "./modules/management" }
+  variables {
+    naming_pattern      = "tst-pltfm-mgmt-prod"
+    parent_container_id = "00000000-0000-0000-0000-000000000000"
+    audit_logs          = { s3_object_lock = false }
+    observability       = {}
+  }
+  override_data {
+    target = data.stackit_public_ip_ranges.audit
+    values = { cidr_list = [] }
+  }
+  expect_failures = [stackit_telemetryrouter_destination.audit_observability[0]]
 }
