@@ -64,6 +64,8 @@ Provisioniert das zentrale Automatisierungsprojekt (`<company_code>-pltfm-mgmt-p
 
 #### Audit-Abdeckung
 
+Die Logs-ACL vereinigt konfigurierte Client-Netze mit aktuellen öffentlichen STACKIT-Netzen aus der nativen Datenquelle `stackit_public_ip_ranges`. Diese Netze sind weiter gefasst als reine Telemetry-Router-Quelladressen; Bearer-Token bleiben erforderlich. `audit_logs.router_egress_cidrs` erlaubt eine geprüfte, nicht leere IPv4-CIDR-Liste für eine engere Dienstfreigabe. Ein leerer Netzfeed blockiert die Bereitstellung, statt ein unerreichbares Ziel anzulegen. Der Accelerator arbeitet dabei ohne Configurator-Abfrage. Änderungen benötigen einen geprüften Plattform-Plan/Apply; bloßes Speichern ändert bestehende ACLs nicht. Siehe die [Telemetry-Router-Netzwerk-FAQ](https://docs.stackit.cloud/products/logging-and-monitoring/telemetry-router/faq/).
+
 Ein Telemetry Link erfasst Ereignisse seiner eigenen Ressource; ein
 Organisations-Link deckt untergeordnete Ordner oder Projekte nicht ab.
 Bestehende `audit_logs`-Konfigurationen behalten diesen Organisations-Default.

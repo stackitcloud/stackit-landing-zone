@@ -110,16 +110,26 @@ variable "federated_identity_providers" {
 
 variable "audit_logs" {
   type = object({
-    retention_days = optional(number, 180)
-    acl            = optional(list(string), null)
-    s3_object_lock = optional(bool, true)
+    router_egress_cidrs = optional(list(string), null)
+    retention_days      = optional(number, 180)
+    acl                 = optional(list(string), null)
+    s3_object_lock      = optional(bool, true)
     link_scopes = optional(list(object({
       resource_type = string # organization, folder, project
       resource_id   = string
     })), null)
   })
-  description = "Audit logs configuration. The router forwards to two destinations: OTLP into the Logs instance for querying, and S3 into the audit bucket for long-term archive. retention_days applies to both, driving the Logs instance retention and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null); set false explicitly to opt out before creating an archive. link_scopes defaults to a single link for organization events only, without inherited project/folder coverage; set it to attach individual folders or projects instead."
+  description = "Audit logs configuration. The router forwards to two destinations: OTLP into the Logs instance for querying, and S3 into the audit bucket for long-term archive. retention_days applies to both, driving the Logs instance retention and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null); set false explicitly to opt out before creating an archive. link_scopes defaults to a single link for organization events only, without inherited project/folder coverage; set it to attach individual folders or projects instead. router_egress_cidrs defaults to the current public STACKIT IP ranges from the native provider data source; these are added to acl so the Telemetry Router can ingest. Supply a non-empty explicit IPv4 CIDR list for reviewed narrower Router egress. Authentication remains required."
   default     = null
+
+  validation {
+    condition = var.audit_logs == null ? true : var.audit_logs.router_egress_cidrs == null ? true : (
+      length(var.audit_logs.router_egress_cidrs) > 0 && alltrue([
+        for cidr in var.audit_logs.router_egress_cidrs : can(cidrnetmask(cidr))
+      ])
+    )
+    error_message = "audit_logs.router_egress_cidrs must be null for automatic STACKIT public ranges, or a non-empty list of IPv4 CIDRs for reviewed Telemetry Router egress."
+  }
 
   validation {
     condition = alltrue([

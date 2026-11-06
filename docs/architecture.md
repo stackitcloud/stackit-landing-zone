@@ -61,6 +61,8 @@ Provisions the central automation project (`<company_code>-pltfm-mgmt-prod`). Co
 
 #### Audit coverage
 
+The Logs ACL combines configured client networks with current public STACKIT networks from the native `stackit_public_ip_ranges` data source. These networks are broader than Telemetry Router egress alone; bearer-token authentication still applies. `audit_logs.router_egress_cidrs` accepts a reviewed non-empty IPv4 CIDR override for a narrower service allowance. An empty range feed blocks provisioning rather than creating an unreachable sink. This works with the Accelerator alone and needs no Configurator lookup. Changes require a reviewed Platform Plan/Apply; already deployed ACLs are not updated merely by saving configuration. See the [Telemetry Router networking FAQ](https://docs.stackit.cloud/products/logging-and-monitoring/telemetry-router/faq/).
+
 A Telemetry Link captures events of its own resource; an organization link does
 not cover child folders or projects. Existing `audit_logs` configurations retain
 that organization-only default. Set `audit_logs.managed_resources = true` to add
