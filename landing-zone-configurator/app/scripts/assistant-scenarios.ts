@@ -855,6 +855,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     message:
       "Meine bestehende Application-Bestellung kann nach einem Produktupdate wegen ihrer Accelerator-Revision keinen Drift mehr prüfen. Soll ich neu bestellen? Wie bleiben dieselbe Bestellung und der State nutzbar? Unterscheide ursprüngliche Template-Quelle, gewünschten Stand und zuletzt erfolgreich angewendete Revision. Wie funktioniert ein Upgrade, was passiert bei Apply-Fehler und bei einer zurückgezogenen Quelle? Nur beraten, nichts ändern oder ausführen.",
   },
+  {
+    id: "audit-grafana-upgrade-advice",
+    topic: "audit-logs",
+    fixture: "baseline",
+    requiredOverviewFields: ["grafana", "observability", "plan", "apply"],
+    message:
+      "Zentrale Audit-Ereignisse kommen in STACKIT Logs an, aber das vorhandene Grafana Audit Logs Dashboard ist leer. Erkläre die native Observability-Anbindung und den Upgrade-Weg für eine bestehende Plattform. Sind Grafana-Admin-Zugang oder Updates jeder bereits angebundenen Application-Bestellung nötig? Werden alte Logs rückwirkend kopiert, und gilt für Observability dieselbe Aufbewahrung wie für Logs/S3? Nur erklären, nichts ändern oder ausführen.",
+  },
   ...Object.entries(questions).map(
     ([topic, message]): AssistantScenario => ({
       id: `${topic}-advice`,

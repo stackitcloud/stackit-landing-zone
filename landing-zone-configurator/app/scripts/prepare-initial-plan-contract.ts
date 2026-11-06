@@ -25,6 +25,13 @@ const mocks = source.slice(0, source.indexOf("variables {")).replace(
   mock_data "stackit_public_ip_ranges" {
     defaults = { cidr_list = ["192.0.2.0/24", "198.51.100.0/24"] }
   }
+  mock_resource "stackit_observability_credential" {
+    defaults = {
+      username = "synthetic-observability-user"
+      password = "synthetic-observability-password"
+    }
+  }
+
   mock_resource "stackit_vpn_gateway" {
     defaults = {
       gateway_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
@@ -68,6 +75,10 @@ const mocks = source.slice(0, source.indexOf("variables {")).replace(
     }
   }
 `,
+);
+const qualifiedMocks = mocks.replace(
+  'instance_id = "55555555-5555-4555-8555-555555555555"',
+  'instance_id = "55555555-5555-4555-8555-555555555555"\n      otlp_http_logs_url = "https://observability.example.test/otlp/v1/logs"',
 );
 let base = createEditorConfiguration(
   "standalone",
@@ -204,7 +215,7 @@ ${serializeTfvars(recordValues(document))}
 mkdirSync(resolve(target, "tests"), { recursive: true });
 writeFileSync(
   resolve(target, "tests/initial_plan.tftest.hcl"),
-  `${mocks}
+  `${qualifiedMocks}
 mock_provider "vault" {}
 mock_provider "time" {}
 mock_provider "random" {}
@@ -247,7 +258,7 @@ ${serializeTfvars(recordValues(document))}
   }
 }`;
 });
-const mockDeclarations = `${mocks}
+const mockDeclarations = `${qualifiedMocks}
 mock_provider "vault" {}
 mock_provider "time" {}
 mock_provider "random" {}
@@ -265,7 +276,7 @@ ${blockedRuns.join("\n\n")}
 );
 writeFileSync(
   resolve(target, "tests/vpn_boundaries.tftest.hcl"),
-  `${mocks}
+  `${qualifiedMocks}
 mock_provider "time" {}
 mock_provider "random" {}
 run "vpn_missing_psks" {

@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "d8e8181b11b07706ba2fbf9efd1ba70a0bc51023b52380c8a71d743e514c925d",
+  "knowledgeSha256": "457a5e578c207aa248e221f5eb37886fde71c7efa8df153a4a49190ce0a3906e",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "8186360ec1502eabaf27858450e5d7bbced9761381724f847b30a148b2aa8140",
+    "scripts/assistant-scenarios.ts": "5487a8f5883c0c8eeca9d92a8e29f712d1b33a079958f2f0f0f60fa460154388",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "c279f0235dec605d199570020c78a97713da78c25ea7cd15e0e108458171ecab",
+  "suiteSha256": "a145597c8bf006b5c2090bdfae65a37ee014c6d4a6542b1456648350fe064de1",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1251,6 +1251,24 @@
             "compiler_accepts_proposal",
             "explicit_unsaved_notice",
             "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "audit-grafana-upgrade-advice",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "requiredOverviewFields": [
+            "grafana",
+            "observability",
+            "plan",
+            "apply"
+          ],
+          "message": "Zentrale Audit-Ereignisse kommen in STACKIT Logs an, aber das vorhandene Grafana Audit Logs Dashboard ist leer. Erkläre die native Observability-Anbindung und den Upgrade-Weg für eine bestehende Plattform. Sind Grafana-Admin-Zugang oder Updates jeder bereits angebundenen Application-Bestellung nötig? Werden alte Logs rückwirkend kopiert, und gilt für Observability dieselbe Aufbewahrung wie für Logs/S3? Nur erklären, nichts ändern oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "complete_native_field_overview",
+            "no_changes"
           ]
         },
         {

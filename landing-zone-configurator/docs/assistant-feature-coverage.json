@@ -4,11 +4,11 @@
   "status": "concept-coverage-not-ai-qualification",
   "sourceDigests": {
     "packages/domain/src/features.ts": "bf2506a3ba0bff45ce87c010a4a86e119dd07b0b9216dfea88e34e71d17c9ba6",
-    "packages/domain/src/accelerator-inputs.json": "bb3b55234cf5d621b84ee117700153e677fb347bd8f39cb8c0ff928e43af652f",
+    "packages/domain/src/accelerator-inputs.json": "0223c0f4d7621f8f8f6dd9f2cc983d30dd6aa5198b6426af21ae578936929678",
     "packages/domain/src/catalogue.json": "0c9fc73cbfff4eb0ea2e9956165646e409fbff107cbf9ca1eb3b78a25dca2059",
     "packages/domain/src/project-templates.ts": "dd7e1abfb945376e37f54e5126d110a28a2673fe9f4a5e6bb202dfd116560ff4",
     "packages/domain/src/template-parameters.ts": "ea2cb1e272f4f51da6bc68ea78895febe128b83f2b3022371a5aeeb666120e0a",
-    "packages/domain/src/common-validation.ts": "88682dcf3a3366053884da0bf5213927178b33c02da7b5c1bff8bc868f04e696",
+    "packages/domain/src/common-validation.ts": "fa801f254244eaf9124d7d406aeac95321f55b8d3c1750e9738a37f2d2d8291c",
     "packages/domain/src/observability-plans.ts": "04b12f2744c453ff44f7b386ba6d6b7052b53f66fc483d46e9d5af0f5f75bbe5",
     "packages/domain/src/common-document.ts": "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
     "packages/domain/src/editor-document.ts": "b807d40f04b7739cab026d43a412ed9252d22cb9bd1034fbad858825308c1345",

@@ -1148,3 +1148,20 @@ it("does not normalize dotted DNS identifiers as prose abbreviations", () => {
     ),
   ).toContain("corporate_ipv4_dns_preservation_missing");
 });
+
+it("binds audit Grafana advice to native routing, retention and upgrade boundaries", () => {
+  const topic = buildAssistantKnowledge().topics.find(
+    (t) => t.id === "audit-logs",
+  );
+  expect(topic?.text).toContain("built-in");
+  expect(topic?.text).toContain("no Grafana admin");
+  expect(topic?.text).toContain("own retention/cost");
+  expect(topic?.text).toContain("no order upgrade for linked");
+  expect(topic?.text).toContain("historical replay");
+  expect(topic?.sources.map((s) => s.path)).toContain(
+    "src/modules/management/5-observability.tf",
+  );
+  expect(topic?.sources.map((s) => s.path)).toContain(
+    "src/modules/management/6-audit-logs.tf",
+  );
+});

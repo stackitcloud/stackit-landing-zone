@@ -2,61 +2,59 @@
 
 ## Purpose
 
-Control-plane audit events with chosen scope, access and retention.
+Audit routing.
 
 ## Accelerator Contract
 
-audit_logs=null skips routing/retention, not the archive bucket.
-Sinks: Logs/OTLP and S3. Fields: retention_days, acl,
-s3_object_lock, managed_resources, link_scopes(resource_type/resource_id).
-Logs ACL unions clients+current public STACKIT feed (not Router-only).
-router_egress_cidrs=null uses native lookup; nonempty IPv4 list narrows. Token still required; empty feed fails.
-Object Lock defaults true, including nested null; retention 180.
-Explicit false opts out before creation. With lock: 1..365 days,
-GOVERNANCE mode, not a reversible switch or compliance certification.
-
-Organization links capture organization events ONLY, no folder/project
-inheritance. managed_resources defaults false; true adds all managed folders/
-projects and new Application orders via the platform contract. Existing orders
-need an approved platform upgrade and fresh Plan/Apply. No explicit link_scopes.
-Managed resources must share the platform region; other regions need reviewed
-routers. Custom scopes support organization/folder/project;
-existing external links need reviewed import, never silent takeover.
+audit_logs=null skips routing/retention, not archive bucket.
+Fields: retention_days, acl, s3_object_lock, managed_resources, link_scopes, router_egress_cidrs.
+Sinks: Logs/OTLP + S3. With central observability: extra OTLP route feeds built-in
+Grafana Audit Logs Dashboard via technical credential, no Grafana admin.
+Needs Logs plan; not Monitoring/Frontend/MetricsEndpoint. Observability
+stores another copy with own retention/cost; retention_days controls Logs/S3.
+Upgrade: reviewed platform Plan/Apply adds route/ACL, no order upgrade for linked
+projects or historical replay. Dashboard: 24h/all filters; delivery may lag.
+UUIDs are structured metadata.
+Router ranges join Logs/Observability ACLs; keep clients.
+router_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4
+list narrows. Authentication required; empty feed fails.
+Object Lock defaults true, including nested null; retention 180. Explicit false
+opts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible
+or compliance certification.
+Organization links capture ONLY organization events, no inheritance.
+managed_resources=false by default; true links managed folders/projects and new
+Application orders via platform contract. Existing unlinked orders need approved
+platform upgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.
+Same-region managed scopes; others need reviewed routers. Custom scopes:
+organization/folder/project. External links need reviewed import, no takeover.
 
 ## Dependencies
 
-Management, central deployment identity, same-region router/link. Audit differs
-from Observability. Application ingestion tokens stay in the central project,
-inaccessible to default workload identities.
+Management identity; same-region router/link. Audit ≠ Observability.
+Ingestion secrets stay central, inaccessible to default workload identities.
 
 ## Dialogue
 
-Ask retention, ACL, Object Lock and organization-only/managed coverage. Preserve
-saved choices; defaults are not consent.
-Requested managed coverage uses managed_resources=true with reviewed settings,
-not invented IDs or link_scopes.
+Ask retention/ACL/Lock/coverage; preserve choices. Defaults are not consent.
+Editor creation requires explicit retention/ACL/Lock decisions.
+Managed coverage: managed_resources=true; no invented IDs.
 
 ## Examples
 
-Synthetic draft: audit_logs={ retention_days=90, acl=["203.0.113.0/24"],
-s3_object_lock=false, managed_resources=true }.
+Draft: audit_logs={retention_days=90,s3_object_lock=false}.
 
 ## Limits
 
-Editor creation requires explicit retention, ACL and Object Lock decisions.
-Links capture future events, not retroactive history. Defaults exclude audit
-mutation rights; effective Owner/inherited grants can still change routing.
-No deny guarantee. Verify Logs/S3 delivery and access separately. Recovery
-preserves link identities;
-a lost ingestion secret requires exact approved revocation and a fresh Plan/Apply
-for replacement, never fabricated secret material.
+Future events only. Default workload rights exclude audit mutation; Owner/inherited
+grants can alter routing: no deny guarantee. Verify Logs/S3/dashboard delivery and
+access separately. Recovery preserves links; lost secrets require exact approved
+revocation + fresh Plan/Apply, never fabricated keys.
 
 ## Credentials
 
-No router/OTLP tokens, S3 keys, State or audit contents in chat/public contracts.
-Secrets stay in protected execution and State storage.
+No tokens, S3 keys, State or audit contents in chat/public contracts. Secrets stay
+in protected execution/State.
 
 ## Sources
 
-Manifest binds native and recovery contracts. Re-review before generation;
-configuration proves no delivery/compliance.
+Manifest binds sources; configuration proves no delivery/compliance.

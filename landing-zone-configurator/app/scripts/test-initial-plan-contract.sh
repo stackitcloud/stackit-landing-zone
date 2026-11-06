@@ -73,7 +73,7 @@ for phase in init validate test; do
     }
 done
 node "$app_dir/scripts/verify-runner-budget.mjs" "$runner_root" "$work_dir/root"
-node "$app_dir/scripts/verify-initial-plan-contract.mjs" "$work_dir/test.log"
+node "$app_dir/scripts/verify-initial-plan-contract.mjs" "$work_dir/test.log" "$runner_root"
 node "$app_dir/scripts/check-vault-bootstrap.mjs" "$runner_root"
 node "$app_dir/scripts/check-firewall-image-plan.mjs" "$runner_root"
 mkdir "$work_dir/worker"

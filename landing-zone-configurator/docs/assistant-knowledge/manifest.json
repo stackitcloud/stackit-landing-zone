@@ -210,7 +210,7 @@
     {
       "id": "audit-logs",
       "file": "audit-logs.md",
-      "version": 3,
+      "version": 4,
       "checkedOn": "2026-11-06",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
@@ -233,7 +233,9 @@
         "src/application/audit.tf",
         "src/application/variables.tf",
         "src/modules/management/3-object-storage.tf",
-        "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts"
+        "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
+        "src/modules/management/5-observability.tf",
+        "src/modules/management/outputs.tf"
       ],
       "externalSources": [],
       "scenarios": [

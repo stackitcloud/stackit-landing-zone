@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { platformUpgradeAcceleratorCommit } from "../packages/contracts/dist/index.js";
+
+const auditGrafanaRouting =
+  JSON.parse(readFileSync(`${process.argv[3]}/platform-source.json`, "utf8"))
+    .acceleratorCommit === platformUpgradeAcceleratorCommit;
 
 const events = readFileSync(process.argv[2], "utf8")
   .trim()
@@ -38,7 +43,8 @@ for (const event of plans) {
   );
   assert.equal(
     resources("stackit_observability_credential").length,
-    enabled("observability") ? 1 : 0,
+    (enabled("observability") ? 1 : 0) +
+      (auditGrafanaRouting && name === "combined" ? 1 : 0),
     name,
   );
   const audit = enabled("audit_logs") || name === "audit_defaults";
@@ -50,9 +56,27 @@ for (const event of plans) {
     assert.equal(resources(type).length, audit ? 1 : 0, `${name}: ${type}`);
   assert.equal(
     resources("stackit_telemetryrouter_destination").length,
-    audit ? 2 : 0,
+    (audit ? 2 : 0) + (auditGrafanaRouting && name === "combined" ? 1 : 0),
     name,
   );
+  if (auditGrafanaRouting && name === "combined") {
+    const destination = resources("stackit_telemetryrouter_destination").find(
+      (c) => c.name === "audit_observability",
+    );
+    assert.equal(
+      destination.change.after.config.opentelemetry.uri,
+      "https://observability.example.test/otlp/v1/logs",
+    );
+    assert.equal(
+      destination.change.after.config.opentelemetry.basic_auth.username,
+      "synthetic-observability-user",
+    );
+    assert.equal(
+      destination.change.after_sensitive.config.opentelemetry.basic_auth
+        .password,
+      true,
+    );
+  }
   assert.equal(
     resources("stackit_logs_access_token").length,
     audit ? 2 : 0,
