@@ -70,7 +70,7 @@ explicit acceptance and saving; they grant no publication or execution.
 
 ## Adding project permissions
 
-Under **Application Landing Zones → Template drafts → Application access profile**, the new workload default gives the requester 151 permissions (144 workload permissions plus seven service account key permissions); the Application service account receives 144 workload permissions. These are initial selections, not maxima. The complete project catalogue also includes Kubernetes, databases and IAM. For example, search for **Kubernetes**, open **Kubernetes (SKE)** and select individual permissions or **Select all displayed**. Requester and Application service account lists are edited separately; group actions change only the filtered, displayed permissions.
+Under **Application Landing Zones → Template drafts → Application access profile**, the new workload default gives the requester 191 permissions (184 workload permissions plus seven service account key permissions); the Application service account receives 184 workload permissions. These are initial selections, not maxima. The complete project catalogue also includes Kubernetes, databases and IAM. For example, search for **Kubernetes**, open **Kubernetes (SKE)** and select individual permissions or **Select all displayed**. Requester and Application service account lists are edited separately; group actions change only the filtered, displayed permissions.
 
 Live data supplements the complete bundled catalogue. Identifiers no longer listed live, and unknown imported identifiers, are never silently removed. Before publication, new identifiers outside the static catalogue must be confirmed by the official catalogue retrieved server-side; publication is blocked without confirmation. The catalogue describes possible permissions, not a person's effective permissions or product activation.
 
@@ -224,3 +224,5 @@ reviewed Plan and Apply change deployed rights. No direct STACKIT project
 mutation occurs while editing.
 
 Reference: [STACKIT service account roles and permissions](https://docs.stackit.cloud/platform/access-and-identity/service-accounts/).
+
+Server operations now also include scheduled server backups and restores, OS updates, Server Agent/Run Command, and classic volume backups and snapshots. The agent must be installed separately on the server. Run Command permits command execution on servers; grant it only to people and automation allowed to administer those servers. Existing explicit access profiles are not silently expanded: add the permissions to the draft, publish a new version and upgrade existing orders through a released path.

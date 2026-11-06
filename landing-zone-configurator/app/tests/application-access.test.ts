@@ -332,7 +332,7 @@ it("offers registered service permissions without turning the VM-only preset int
 
 it("compiles all current STACKIT project permissions with distinct requester and automation defaults", () => {
   expect(applicationProjectPermissionNames.length).toBeGreaterThan(900);
-  expect(defaultApplicationAccessProfile().permissions).toHaveLength(151);
+  expect(defaultApplicationAccessProfile().permissions).toHaveLength(191);
   for (const permission of applicationProjectPermissionNames)
     expect(
       unknownApplicationPermissions({
@@ -354,7 +354,7 @@ it("compiles all current STACKIT project permissions with distinct requester and
   expect(result.variables.application.custom_roles?.[0]?.permissions).toContain(
     "iam.role.add",
   );
-  expect(f.template.access_profile.automationPermissions).toHaveLength(144);
+  expect(f.template.access_profile.automationPermissions).toHaveLength(184);
   expect(
     unknownApplicationPermissions(
       {
@@ -458,3 +458,82 @@ it("keeps central audit mutation and token management out of both default worklo
     ).toEqual([]);
   }
 });
+
+it.each(["workload", "vm"] as const)(
+  "supports the complete reviewed server operations services in the %s default and native roles",
+  (preset) => {
+    const profile = defaultApplicationAccessProfile(
+      "platform@example.test",
+      preset,
+    );
+    const operations = applicationProjectPermissionNames.filter((name) =>
+      /^(server-backup|server-update|run-command)\./.test(name),
+    );
+    expect(operations).toHaveLength(33);
+    const required = [
+      ...operations,
+      "iaas.backup.create",
+      "iaas.backup.restore",
+      "iaas.snapshot.create",
+      "iaas.snapshot.delete",
+      "iaas.server.update",
+    ];
+    const native = resolveApplicationAccessProfile(
+      profile,
+      {},
+      "requester@example.test",
+    );
+    for (const permission of required) {
+      expect(applicationProjectPermissionNames).toContain(permission);
+      expect(profile.permissions).toContain(permission);
+      expect(profile.automationPermissions).toContain(permission);
+      for (const role of native.custom_roles ?? [])
+        expect(role.permissions).toContain(permission);
+    }
+    for (const forbidden of [
+      "iam.role.add",
+      "iam.member.add",
+      "iam.service-account.create",
+      "iaas.server.service-account.add",
+    ]) {
+      expect(profile.permissions).not.toContain(forbidden);
+      expect(profile.automationPermissions).not.toContain(forbidden);
+    }
+  },
+);
+
+it("preserves an older explicit profile rather than silently adding new server permissions", () => {
+  const older = {
+    ...defaultApplicationAccessProfile("platform@example.test"),
+    permissions: ["iaas.server.get"],
+    automationPermissions: ["iaas.server.get"],
+  };
+  const native = resolveApplicationAccessProfile(
+    older,
+    {},
+    "requester@example.test",
+  );
+  expect(native.custom_roles?.map((role) => role.permissions)).toEqual([
+    ["iaas.server.get"],
+    ["iaas.server.get"],
+  ]);
+});
+
+it.each([
+  ["server-backup", "Bitte Server-Sicherungen hinzufügen"],
+  ["server-update", "Bitte OS-Updates verwalten"],
+  ["run-command", "Bitte Server Agent nutzen"],
+])(
+  "recognizes %s requests without expanding into IAM administration",
+  (service, quote) => {
+    expect(applicationPermissionServiceMentioned(service, quote)).toBe(true);
+    const additions = applicationServicePermissionAdditions(
+      applicationProjectPermissionNames,
+      [service],
+      quote,
+    );
+    expect(additions.length).toBeGreaterThan(0);
+    expect(additions.every((p) => p.startsWith(`${service}.`))).toBe(true);
+    expect(additions.some((p) => p.startsWith("iam."))).toBe(false);
+  },
+);

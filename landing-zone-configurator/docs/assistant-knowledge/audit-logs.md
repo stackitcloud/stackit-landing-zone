@@ -8,7 +8,9 @@ Control-plane audit events with chosen scope, access and retention.
 
 audit_logs=null skips routing/retention, not the archive bucket.
 Sinks: Logs/OTLP and S3. Fields: retention_days, acl,
-s3_object_lock, managed_resources, link_scopes (resource_type/resource_id).
+s3_object_lock, managed_resources, link_scopes(resource_type/resource_id).
+Logs ACL unions clients+current public STACKIT feed (not Router-only).
+router_egress_cidrs=null uses native lookup; nonempty IPv4 list narrows. Token still required; empty feed fails.
 Object Lock defaults true, including nested null; retention 180.
 Explicit false opts out before creation. With lock: 1..365 days,
 GOVERNANCE mode, not a reversible switch or compliance certification.

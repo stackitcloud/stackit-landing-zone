@@ -72,3 +72,5 @@ State-Ablage.
 Das Manifest bindet Root-, Management-, Application- und Recovery-Verträge.
 Vor Generierung erneut prüfen. Konfiguration belegt weder Zustellung noch
 rechtliche Compliance.
+
+Die Logs-ACL ergänzt vorhandene Client-Netze automatisch um die aktuellen öffentlichen STACKIT-Netze aus der nativen API-Abfrage. Diese Netze sind nicht exklusiv für Telemetry Router. Ein gültiges Token bleibt erforderlich. Optional kann `router_egress_cidrs` eine geprüfte, nicht leere IPv4-CIDR-Liste für eine engere Freigabe vorgeben. Ohne verfügbare Router-Quellnetze wird das Deployment abgewiesen.

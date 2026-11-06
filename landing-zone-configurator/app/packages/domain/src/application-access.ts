@@ -40,6 +40,21 @@ export const applicationPermissionServices = [
 ].sort();
 export const applicationPermissionServiceAliases: Record<string, string[]> = {
   ske: ["kubernetes", "ske", "k8s"],
+  "server-backup": [
+    "server backup",
+    "server backups",
+    "server-sicherungen",
+    "serversicherungen",
+    "server-backups",
+  ],
+  "server-update": [
+    "server updates",
+    "server-updates",
+    "os updates",
+    "os-updates",
+    "betriebssystemupdates",
+  ],
+  "run-command": ["server agent", "server-agent", "run command"],
   iam: ["iam", "zugriffsverwaltung", "access management"],
   "postgres-flex": ["postgres", "postgresql"],
   mongodbflex: ["mongodb"],

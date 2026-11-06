@@ -549,3 +549,40 @@ it("uses project-qualified bucket naming by default and preserves explicit legac
     }),
   );
 });
+
+it("preserves audit Router overrides in native export and validates explicit network allowances", () => {
+  for (const cidrs of [
+    [],
+    ["2001:db8::/32"],
+    ["999.1.2.3/24"],
+    ["203.0.113.5"],
+    ["203.0.113.5/33"],
+  ]) {
+    const draft = setCommonInput(create(), "audit_logs", {
+      router_egress_cidrs: cidrs,
+    });
+    expect(
+      assessCommonConfiguration(draft).findings.some(
+        (f) => f.code === "invalid-router-egress-cidrs",
+      ),
+    ).toBe(true);
+  }
+  for (const cidrs of [null, ["198.51.100.1/32"]]) {
+    const draft = setCommonInput(create(), "audit_logs", {
+      acl: ["203.0.113.1/32"],
+      router_egress_cidrs: cidrs,
+      s3_object_lock: false,
+    });
+    expect(
+      assessCommonConfiguration(draft).findings.some(
+        (f) => f.code === "invalid-router-egress-cidrs",
+      ),
+    ).toBe(false);
+    expect(values(draft).audit_logs).toEqual({
+      acl: ["203.0.113.1/32"],
+      router_egress_cidrs: cidrs,
+      s3_object_lock: false,
+    });
+    expect(exportCommonTfvars(draft)).toContain("router_egress_cidrs");
+  }
+});

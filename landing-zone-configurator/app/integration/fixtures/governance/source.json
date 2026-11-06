@@ -1,5 +1,5 @@
 {
-  "acceleratorRevision": "7c762548005ef28b31ead8aa6e9035a40efd287e",
+  "acceleratorRevision": "bbae3459e69dbe3af362d3ef5ab2cb12bff06d1f",
   "files": {
     "src/main.tf": "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
     "src/variables.tf": "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",

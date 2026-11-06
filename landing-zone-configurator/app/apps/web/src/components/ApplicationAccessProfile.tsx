@@ -218,7 +218,7 @@ export function ApplicationAccessProfile({
           </p>
           <p>
             {t(
-              "Der Workload-Standard enthält 151 Rechte für den Besteller: 144 Workload-Rechte und 7 Rechte zur Verwaltung von Service-Account-Schlüsseln. Der Application-Service-Account erhält weiterhin 144 Workload-Rechte. Weitere Rechte wie Kubernetes sind ergänzbar. Das Anlegen und Löschen von Service Accounts sowie Benutzer- und Rollenverwaltung gehören nicht zum Standard.",
+              "Der Workload-Standard enthält 191 Rechte für den Besteller: 184 Workload-Rechte und 7 Rechte zur Verwaltung von Service-Account-Schlüsseln. Der Application-Service-Account erhält weiterhin 184 Workload-Rechte. Weitere Rechte wie Kubernetes sind ergänzbar. Das Anlegen und Löschen von Service Accounts sowie Benutzer- und Rollenverwaltung gehören nicht zum Standard.",
             )}
           </p>
           <p className="field-hint">

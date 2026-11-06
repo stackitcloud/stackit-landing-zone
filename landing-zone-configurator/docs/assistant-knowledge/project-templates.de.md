@@ -140,9 +140,9 @@ unveränderliche Template-Metadaten und kein Bestellparameter. Im granularen
 Modus (`schemaVersion: 1`, `mode: granular`) werden ein separater zentraler
 `initialOwnerEmail` sowie explizite `permissions` und `automationPermissions`
 festgelegt. Zwei getrennte eigene Rollen gelten für die verifizierte bestellende
-Person und den Application-Service-Account. Neu erhält der Besteller 151 Rechte:
-144 Workload-Rechte und sieben Rechte zur Schlüsselverwaltung. Die Automation
-behält 144 Workload-Rechte. Projektlöschung, zentrale Routing-Änderung,
+Person und den Application-Service-Account. Neu erhält der Besteller 191 Rechte:
+184 Workload-Rechte und sieben Rechte zur Schlüsselverwaltung. Die Automation
+behält 184 Workload-Rechte. Projektlöschung, zentrale Routing-Änderung,
 Service-Account-Erstellung/-Löschung, Rollen-/Mitgliederverwaltung und direkte
 Floating-IP-Anbindung gehören nicht zum Standard. Die Vorauswahl umfasst VMs, Object Storage, Observability und Secrets Manager; zusätzliche Rechte sind ergänzbar. Das
 separate VM-Preset bleibt enger. Die tatsächliche IAM-Wirkung bleibt separat zu prüfen.
@@ -169,7 +169,7 @@ Das ist keine Unterstützung für Projekte ohne initialen Owner (#69).
 
 ## Erweiterbare Projektberechtigungen
 
-Die 151 Rechte für den Besteller und 144 Rechte für die Automation sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Listen hinzugefügt (ohne Unterscheidung beiden). Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.
+Die 191 Rechte für den Besteller und 184 Rechte für die Automation sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Listen hinzugefügt (ohne Unterscheidung beiden). Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.
 
 Das Ergänzen von Dienstrechten in einem bestehenden granularen Entwurf bleibt auch
 bei noch leerem initialen Owner möglich. Der Assistant erhält dieses Feld unverändert
@@ -205,3 +205,5 @@ die Automation bleiben erhalten. Allgemeine Informationsfragen ändern nichts.
 Explizit gespeicherte Profile werden nicht automatisch erweitert. Bestehende
 Entwürfe können die Rechte gezielt ergänzen; veröffentlichte Versionen und
 Bestellungen benötigen weiterhin Veröffentlichung und geprüften Upgrade-Pfad.
+
+Der neue Standard umfasst Server-Sicherungen mit Zeitplänen, Wiederherstellung, Server-Updates mit Zeitplänen, Server Agent/Run Command sowie Volume-Backups und Snapshots. Der Agent muss auf dem Server installiert sein; IAM-Rechte allein installieren ihn nicht. Run Command erlaubt Befehlsausführung auf dem Server. Bereits veröffentlichte Versionen und explizite Rechteprofile werden nicht automatisch erweitert. Neue Rechte werden über eine neue Template-Version und einen freigegebenen Upgrade-Pfad übernommen.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceSha256": "a4e4fea53bd947f607d77ecaf125c5a1444e5ae026a533194f76da21df1ce592",
+  "sourceSha256": "89b9455355c8c89b764db80227bdf5eb3ddb7ab1ed06b5f595f0cdd580311608",
   "variables": [
     {
       "name": "bucket_naming",
@@ -561,7 +561,7 @@
     {
       "name": "audit_logs",
       "line": 239,
-      "description": "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link_scopes defaults to a link for organization events only, without inherited project/folder coverage. managed_resources adds automatic links for all managed projects and folders in the platform region; it cannot be combined with explicit link_scopes or other deployment regions. retention_days applies to both the Logs instance and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null) and enables GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment.",
+      "description": "Audit log routing for the management module. A Telemetry Link streams audit events into a Telemetry Router, which forwards them to a Logs instance and archives them to object storage. link_scopes defaults to a link for organization events only, without inherited project/folder coverage. managed_resources adds automatic links for all managed projects and folders in the platform region; it cannot be combined with explicit link_scopes or other deployment regions. retention_days applies to both the Logs instance and, when s3_object_lock is enabled, the archive bucket's default retention. s3_object_lock defaults to true (also when explicitly null) and enables GOVERNANCE-mode WORM protection for the archive bucket, which is not cleanly reversible. Set to null to skip audit logs deployment. router_egress_cidrs defaults to the current public STACKIT IP ranges from the native provider data source; these are added to acl so the Telemetry Router can ingest. Supply a non-empty explicit IPv4 CIDR list to restrict that service allowance to reviewed Router egress addresses. These are network allowances, not identities; authentication remains required.",
       "type": [
         "object",
         {
@@ -581,6 +581,10 @@
           ],
           "managed_resources": "bool",
           "retention_days": "number",
+          "router_egress_cidrs": [
+            "list",
+            "string"
+          ],
           "s3_object_lock": "bool"
         },
         [
@@ -588,6 +592,7 @@
           "link_scopes",
           "managed_resources",
           "retention_days",
+          "router_egress_cidrs",
           "s3_object_lock"
         ]
       ],
@@ -602,16 +607,18 @@
           "link_scopes": null,
           "managed_resources": false,
           "retention_days": 180,
+          "router_egress_cidrs": null,
           "s3_object_lock": true
         }
       },
       "validations": [
+        "validation {\n    condition = var.audit_logs == null ? true : var.audit_logs.router_egress_cidrs == null ? true : (\n      length(var.audit_logs.router_egress_cidrs) \u003e 0 \u0026\u0026 alltrue([\n        for cidr in var.audit_logs.router_egress_cidrs : can(cidrnetmask(cidr))\n      ])\n    )\n    error_message = \"audit_logs.router_egress_cidrs must be null for automatic STACKIT public ranges, or a non-empty list of IPv4 CIDRs for reviewed Telemetry Router egress.\"\n  }",
         "validation {\n    condition     = var.audit_logs == null ? true : !var.audit_logs.managed_resources || var.audit_logs.link_scopes == null\n    error_message = \"Automatic managed audit coverage cannot be combined with explicit link_scopes. Keep existing explicit scopes and review their State/imports before opting in.\"\n  }"
       ]
     },
     {
       "name": "federated_identity_providers",
-      "line": 260,
+      "line": 270,
       "description": "List of federated identity providers to configure for the management service account.",
       "type": [
         "list",
@@ -640,7 +647,7 @@
     },
     {
       "name": "rm_folders",
-      "line": 274,
+      "line": 284,
       "description": "Map of resource manager folders to create under the root organization. Folder descriptions are unsupported; omit description or leave it empty.",
       "type": [
         "map",
@@ -703,7 +710,7 @@
     },
     {
       "name": "connectivity",
-      "line": 320,
+      "line": 330,
       "description": "Connectivity configuration including DNS zones, network areas, firewalls, and VPN. Use network_areas with descriptive keys that reflect any business, security, tenant, or regional boundary; network_area and firewall remain supported for existing single-area configurations. Use firewalls for per-area appliance settings.",
       "type": [
         "object",
@@ -1301,7 +1308,7 @@
     },
     {
       "name": "connectivity_regions",
-      "line": 473,
+      "line": 483,
       "description": "Regional connectivity configuration for the statically supported eu01 and eu02 hubs. Set to null to use the single-region connectivity input.",
       "type": [
         "map",
@@ -1316,7 +1323,7 @@
     },
     {
       "name": "vpn_pre_shared_keys",
-      "line": 484,
+      "line": 494,
       "description": "Pre-shared keys per connectivity.vpn.connections key, one per tunnel. Kept out of the connectivity object so the topology stays committable; supply through TF_VAR_vpn_pre_shared_keys or a gitignored tfvars file. Minimum 20 characters.",
       "type": [
         "map",
@@ -1333,7 +1340,7 @@
     },
     {
       "name": "firewall_config",
-      "line": 498,
+      "line": 508,
       "description": "Policy pushed to one OPNsense appliance through its API. Requires connectivity.firewall to be deployed and firewall_api_credentials to be set. Set to null to leave the appliance untouched.",
       "type": [
         "object",
@@ -1619,7 +1626,7 @@
     },
     {
       "name": "firewall_admin_username",
-      "line": 586,
+      "line": 596,
       "description": "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root.",
       "type": "string",
       "required": false,
@@ -1628,7 +1635,7 @@
     },
     {
       "name": "firewall_admin_password",
-      "line": 592,
+      "line": 602,
       "description": "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead.",
       "type": "string",
       "required": false,
@@ -1636,7 +1643,7 @@
     },
     {
       "name": "firewall_bootstrap",
-      "line": 599,
+      "line": 609,
       "description": "Pass -var firewall_bootstrap=true on the two greenfield applies that create the OPNsense API key. It suppresses the Secrets Manager read, which would otherwise fail at plan time because the secret does not exist yet. Never set it on an established deployment: without the bootstrap cache file it plans the destruction of the policy and the stored key. The steady state needs no variable at all.",
       "type": "bool",
       "required": false,
@@ -1645,7 +1652,7 @@
     },
     {
       "name": "firewall_api_secret_version",
-      "line": 605,
+      "line": 615,
       "description": "Write version of the OPNsense API key in the Secrets Manager. The key is only transmitted when this number changes, so bump it by one after a re-bootstrap has produced a fresh key, otherwise the Secrets Manager keeps serving the old one.",
       "type": "number",
       "required": false,
@@ -1654,7 +1661,7 @@
     },
     {
       "name": "firewall_api_credentials",
-      "line": 611,
+      "line": 621,
       "description": "OPNsense API key and secret. Bootstrap them once from the appliance login with src/modules/firewall-config/scripts/bootstrap-api-key.sh, then supply through TF_VAR_firewall_api_credentials or a gitignored tfvars file. Kept out of firewall_config so the policy stays committable.",
       "type": [
         "object",
@@ -1668,7 +1675,7 @@
     },
     {
       "name": "sandboxes",
-      "line": 625,
+      "line": 635,
       "description": "List of sandboxes to create.",
       "type": [
         "list",
@@ -1693,7 +1700,7 @@
     },
     {
       "name": "landing_zones",
-      "line": 639,
+      "line": 649,
       "description": "Map of landing zones to create. Public landing zones can create a local network with network_enabled. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions.",
       "type": [
         "map",
@@ -1812,7 +1819,7 @@
     },
     {
       "name": "landing_zone_namespace_services",
-      "line": 694,
+      "line": 704,
       "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
       "type": [
         "map",

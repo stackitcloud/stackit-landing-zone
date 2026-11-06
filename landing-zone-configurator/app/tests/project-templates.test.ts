@@ -224,8 +224,8 @@ it.each(["public", "corporate"] as const)(
       (t) => t.key === "new-application",
     )?.accessProfile;
     if (profile?.mode !== "granular") throw Error("fixture");
-    expect(profile.permissions).toHaveLength(151);
-    expect(profile.automationPermissions).toHaveLength(144);
+    expect(profile.permissions).toHaveLength(191);
+    expect(profile.automationPermissions).toHaveLength(184);
     expect(
       profile.permissions.filter((p) => p.startsWith("iam.")).sort(),
     ).toEqual([...applicationServiceAccountKeyPermissions].sort());

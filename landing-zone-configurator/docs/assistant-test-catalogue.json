@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "e431ccf31890d4170a0419e89990bb603906d8e9ba4f2531040be40aa393f41d",
+  "knowledgeSha256": "d8e8181b11b07706ba2fbf9efd1ba70a0bc51023b52380c8a71d743e514c925d",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "82b1aea3652e49bf3255d89986d7bdff89978fbba2dfd9a993965f005e4be51c",
+    "scripts/assistant-scenarios.ts": "8186360ec1502eabaf27858450e5d7bbced9761381724f847b30a148b2aa8140",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "e0d917bb56bc030b679267ea4c837c855d423af4832bfecf1b281a0b0f846ed1",
+  "suiteSha256": "c279f0235dec605d199570020c78a97713da78c25ea7cd15e0e108458171ecab",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1099,6 +1099,24 @@
           "group": "management",
           "type": "number",
           "optional": true,
+          "proposalPath": "audit_logs",
+          "responsibility": "user",
+          "mode": "propose-validated-draft"
+        },
+        {
+          "path": "audit_logs.router_egress_cidrs",
+          "group": "management",
+          "type": "list",
+          "optional": true,
+          "proposalPath": "audit_logs",
+          "responsibility": "user",
+          "mode": "propose-validated-draft"
+        },
+        {
+          "path": "audit_logs.router_egress_cidrs[*]",
+          "group": "management",
+          "type": "string",
+          "optional": false,
           "proposalPath": "audit_logs",
           "responsibility": "user",
           "mode": "propose-validated-draft"
@@ -5363,6 +5381,20 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "no_changes"
+          ]
+        },
+        {
+          "id": "application-server-operations-permissions-proposal",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "server-operations",
+          "message": "Ergänze im Template central für Besteller und Application-Service-Account alle offiziellen Rechte für Server Backup Management (server-backup), Server Update Management (server-update) und Server Agent/Run Command (run-command). Ich will Sicherungen, Wiederherstellung, Zeitpläne und Betriebssystemupdates verwalten. Vorhandene Kubernetes-Rechte, zentralen Owner und andere Rechte erhalten; keine IAM-Rollen oder Mitgliederverwaltung hinzufügen. Nur einen überprüfbaren Entwurf vorschlagen, nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
           ]
         },
         {

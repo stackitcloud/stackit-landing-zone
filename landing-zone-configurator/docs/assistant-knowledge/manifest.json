@@ -210,8 +210,8 @@
     {
       "id": "audit-logs",
       "file": "audit-logs.md",
-      "version": 2,
-      "checkedOn": "2026-11-04",
+      "version": 3,
+      "checkedOn": "2026-11-06",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "management"
@@ -510,8 +510,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 7,
-      "checkedOn": "2026-11-04",
+      "version": 8,
+      "checkedOn": "2026-11-06",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"

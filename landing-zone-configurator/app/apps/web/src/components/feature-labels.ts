@@ -168,6 +168,7 @@ export const labels: Record<string, string> = {
   routing_type: "Routingverfahren",
   rules: "Zugriffsregeln",
   s3_object_lock: "Archiv gegen Änderungen und Löschung sperren",
+  router_egress_cidrs: "Optionale Router-Quellnetze für Audit-Eingang",
   sample_load: "Demo-Arbeitslast",
   scheme: "Übertragungsverfahren",
   scrape_interval: "Abfrageintervall",
@@ -232,6 +233,8 @@ export const hints: Record<string, string> = {
     "Die Kennungen müssen zu den Netzwerkbereichen passen. Richtlinien für mehrere Appliances sind noch eingeschränkt.",
   sna_enabled:
     "Die private Kubernetes-API ist vom aktuellen CF-Runner nicht nachweislich erreichbar. Siehe Issue #37.",
+  router_egress_cidrs:
+    "Automatisch ergänzt der Accelerator die aktuellen öffentlichen STACKIT-Netze zur Logs-ACL. Diese Netze sind nicht auf Router beschränkt; der Zugriff benötigt weiterhin ein Token. Nur für eine bewusst engere Freigabe geprüfte Router-CIDRs eintragen. Bestehende Client-Netze bleiben erhalten.",
   managed_resources:
     "Ergänzt Audit-Links für Plattformprojekte, Ordner und neue Application-Bestellungen in derselben Region. Ein Organisations-Link allein erfasst deren Ereignisse nicht. Bestehende Bestellungen benötigen einen freigegebenen Plattform-Upgrade-Pfad. Nicht mit manuellen Link-Zielen kombinieren.",
   s3_object_lock:
