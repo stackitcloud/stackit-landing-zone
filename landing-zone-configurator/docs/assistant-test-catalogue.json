@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "51a14ce0f0d3510c4165df04194984c6909512c11f273666e41659a7031fb11d",
+  "knowledgeSha256": "17660d780df7f01895143eaaf70f9c2457398fef0c9cf155a53995cdec3c2786",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "da983a74ab4ef7791c10ca780f6aeb5c54cacf845a7eb6516b83c09760991549",
+    "scripts/assistant-scenarios.ts": "2f734f582d1d1ea6543737449b8fb4809db68ec0a98eaf2982d69047070caeeb",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "426ce1537a4fc3f1cf45baacdf369fe1ebe2f713a6623b11dbfebae4f0649c6b",
+  "suiteSha256": "4be77b230320fbf8f0d553e3ef1e88f0a3d1e0521a7d21dad511ce8f17388ebd",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1290,6 +1290,45 @@
             }
           ],
           "message": "Deaktivieren",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-after-foundations",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte Organisation 00000000-0000-4000-8000-000000000001 für die Plattform verwenden."
+            },
+            {
+              "role": "assistant",
+              "content": "Grundlagen vorgeschlagen, noch nichts gespeichert."
+            },
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "90 Tage Aufbewahrung, Zugriff ausschließlich aus 203.0.113.0/24, Object Lock ausdrücklich nein. Organisationsweiter Telemetry Link. Bitte diese Entscheidungen als Entwurfsvorschlag übernehmen.",
           "editorExpected": {
             "path": "audit_logs",
             "value": {

@@ -2586,6 +2586,7 @@ it("rejects truncated model completions explicitly without retry or partial succ
 });
 
 it.each([
+  "federated-identities",
   "identity-foundations",
   "governance-folders",
   "firewall-policy",

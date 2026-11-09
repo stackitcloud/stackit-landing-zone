@@ -35,7 +35,9 @@ import {
 import {
   assistantAuditCreationChoices,
   assistantAuditCreationQuestions,
+  assistantAuditManagedCoverage,
   assistantAuditPendingReply,
+  assistantAuditUserSources,
   assistantEditorChangeSchema,
   assistantEditorCreationValue,
   assistantEditorInputs,
@@ -4397,7 +4399,7 @@ it("asks actual audit decisions even if a model supplies valid guessed defaults"
           retention_days: 180,
           acl: ["10.0.0.0/16"],
           s3_object_lock: true,
-          managed_resources: true,
+          managed_resources: false,
         },
         "replace",
       ),
@@ -4512,6 +4514,7 @@ it("binds confirmed Audit choices in the serving schema while retaining runtime 
     { retention_days: 180 },
     { acl: ["10.0.0.0/16"] },
     { s3_object_lock: true },
+    { managed_resources: true },
   ])
     expect(
       schema.safeParse(patch("audit_logs", { ...value, ...changed })).success,
@@ -4590,6 +4593,7 @@ it("resumes actual Audit answers without reclassifying partial or complete decis
         retention_days: 90,
         acl: ["203.0.113.0/24"],
         s3_object_lock: false,
+        managed_resources: false,
       });
     },
   );
@@ -4611,3 +4615,69 @@ it("resumes actual Audit answers without reclassifying partial or complete decis
     s3_object_lock: false,
   });
 });
+
+it("does not turn a foundation organization ID into manual audit scope consent", () => {
+  const organizationId = "00000000-0000-4000-8000-000000000001";
+  const history = [
+    {
+      role: "user" as const,
+      content: `Organisation ${organizationId} für die Plattform verwenden.`,
+    },
+    { role: "assistant" as const, content: "Grundlagen vorgeschlagen." },
+  ];
+  const sources = assistantAuditUserSources(
+    "Audit: Organisationsweiter Telemetry Link.",
+    history,
+  );
+  expect(sources.join(" ")).not.toContain(organizationId);
+  expect(
+    assistantEditorCreationValue(
+      "audit_logs",
+      {
+        retention_days: 90,
+        acl: [],
+        s3_object_lock: false,
+        link_scopes: [
+          { resource_type: "organization", resource_id: organizationId },
+        ],
+      },
+      null,
+      { organizationId, userSources: sources },
+    ),
+  ).not.toHaveProperty("link_scopes");
+  expect(
+    assistantEditorCreationValue(
+      "audit_logs",
+      {
+        link_scopes: [
+          { resource_type: "organization", resource_id: organizationId },
+        ],
+      },
+      null,
+      {
+        organizationId,
+        userSources: assistantAuditUserSources(
+          `Audit: link_scopes auf Organisation ${organizationId} setzen.`,
+          history,
+        ),
+      },
+    ),
+  ).toHaveProperty("link_scopes");
+});
+
+it.each([
+  ["Audit: Organisationsweiter Telemetry Link.", false],
+  [
+    "Alle vom Accelerator verwalteten Projekte und Ordner automatisch anbinden.",
+    true,
+  ],
+  ["Do not automatically link managed projects and folders.", false],
+  ["Automatically link all managed projects and folders. No deployment.", true],
+  ["Audit: managed_resources=true", true],
+  ["Audit: managed_resources=false", false],
+] as const)(
+  "requires actual managed Audit coverage consent: %s",
+  (message, expected) => {
+    expect(assistantAuditManagedCoverage(message, [])).toBe(expected);
+  },
+);

@@ -616,3 +616,10 @@ Themenklassifikation fort; nur unbeantwortete Fragen bleiben offen. Bestätigte 
 ausdrückliches Object Lock false. Vollständige Vorschläge durchlaufen weiterhin
 natives Editor-Schema und Quellenprüfung.
 Übernahme, Speichern und Ausführung bleiben getrennt.
+
+Audit-Quellennachweise verwenden Audit-bezogene Benutzerbeiträge: Eine Organisations-
+UUID aus den Grundlagen legt kein manuelles Audit-Linkziel fest. Automatische
+Abdeckung verwalteter Ressourcen braucht eine tatsächliche Benutzerentscheidung;
+sonst bleibt der native Default false erhalten. Feldübersichten zur Föderation
+verwenden geprüfte native Felder und grenzen Betriebsidentitäten von Benutzer-SSO
+ab. Entwurfsvorschläge behalten ihren typisierten Ablauf.

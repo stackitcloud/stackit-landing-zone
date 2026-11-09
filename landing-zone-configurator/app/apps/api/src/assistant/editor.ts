@@ -443,7 +443,7 @@ export function assistantEditorChangeSchema(
   current?: unknown,
   operation?: "merge" | "replace",
   requiredFieldsByKey?: Readonly<Record<string, readonly string[]>>,
-  auditChoices?: AssistantAuditChoices,
+  auditChoices?: AssistantAuditChoices & { managed_resources?: boolean },
 ): z.ZodType {
   if (root === "projectTemplates") {
     const template = templateProposalSchema(
@@ -585,6 +585,9 @@ export function assistantEditorChangeSchema(
     if (value instanceof z.ZodObject) {
       mergeValue = value
         .extend({
+          managed_resources: auditChoices.managed_resources
+            ? z.literal(true)
+            : z.literal(false).nullable(),
           ...(auditChoices.retention_days !== undefined
             ? { retention_days: z.literal(auditChoices.retention_days) }
             : {}),
@@ -982,6 +985,60 @@ const auditChoiceExplanations = {
   en: "The new audit draft needs your explicit retention, access-network and Object Lock decisions. Nothing has been saved or executed.",
   de: "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.",
 } as const;
+
+/** Audit-specific user provenance excludes foundation IDs and assistant suggestions. */
+export function assistantAuditUserSources(
+  message: string,
+  history: { role: "user" | "assistant"; content: string }[],
+) {
+  const sources: string[] = [];
+  const audit = (text: string) =>
+    /audit|object[-_ ]?lock|s3_object_lock|retention_days/i.test(text);
+  for (let i = 0; i < history.length; i++) {
+    const turn = history[i]!;
+    if (
+      turn.role === "assistant" &&
+      turn.content.startsWith(
+        "The user explicitly discarded the preceding proposal. This turn is closed:",
+      )
+    )
+      sources.length = 0;
+    if (
+      turn.role === "user" &&
+      (audit(turn.content) ||
+        (history[i - 1]?.role === "assistant" &&
+          audit(history[i - 1]!.content)))
+    )
+      sources.push(turn.content);
+  }
+  return [...sources, message];
+}
+
+export function assistantAuditManagedCoverage(
+  message: string,
+  history: { role: "user" | "assistant"; content: string }[],
+) {
+  const sources = assistantAuditUserSources(message, history);
+  let managed = false;
+  for (const source of sources) {
+    const native = source.match(/\bmanaged_resources\s*[:=]\s*(true|false)\b/i);
+    if (native) {
+      managed = native[1]!.toLowerCase() === "true";
+      continue;
+    }
+    for (const clause of source.split(/[.!?;\n]/)) {
+      if (
+        /automatisch|automatically/i.test(clause) &&
+        /verwaltet|managed/i.test(clause) &&
+        /Projekt|Ordner|projects?|folders?/i.test(clause)
+      ) {
+        // Negation concerns this coverage clause, not e.g. a later "No deployment".
+        managed = !/\b(?:nicht|kein\w*|ohne|not|no|without)\b/i.test(clause);
+      }
+    }
+  }
+  return managed;
+}
 
 /** Ground new audit choices in audit-related USER turns, never saved defaults,
  * another component's networks, or values asserted by an assistant. */

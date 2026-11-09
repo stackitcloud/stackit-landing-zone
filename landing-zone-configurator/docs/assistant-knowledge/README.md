@@ -457,3 +457,9 @@ set can resume literal answers without reclassifying the topic; only unanswered
 questions remain. Confirmed choices also narrow the model output schema, including an explicit
 Object Lock false. A complete proposal still passes the native Editor schema and
 source validation. Acceptance, saving and execution remain separate.
+
+Audit provenance uses Audit-related user turns: a foundation organization UUID
+does not pin a manual Audit link. Automatic managed-resource coverage requires
+an actual user decision and otherwise retains the native false default.
+Federation field-overview advice uses reviewed native fields and the explicit
+workload-federation/user-SSO boundary; draft proposals retain their typed flow.

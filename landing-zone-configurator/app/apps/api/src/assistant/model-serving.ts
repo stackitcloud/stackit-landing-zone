@@ -51,7 +51,9 @@ import {
   assertAssistantEditorValue,
   assistantAuditCreationChoices,
   assistantAuditCreationQuestions,
+  assistantAuditManagedCoverage,
   assistantAuditPendingReply,
+  assistantAuditUserSources,
   assistantEditorChangeSchema,
   assistantEditorCreationValue,
   assistantEditorInputs,
@@ -2701,7 +2703,13 @@ export class AssistantModelServing {
             : undefined;
       const auditCreationChoices =
         current.audit_logs == null && editorRoots.has("audit_logs")
-          ? assistantAuditCreationChoices(message, history)
+          ? {
+              ...assistantAuditCreationChoices(message, history),
+              managed_resources: assistantAuditManagedCoverage(
+                message,
+                history,
+              ),
+            }
           : undefined;
       const contracts = paths.map((path) =>
         assistantEditorChangeSchema(
@@ -2935,7 +2943,10 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
             ...change,
             value: assistantEditorCreationValue(change.path, value, before, {
               organizationId: current.organization_id,
-              userSources: [...namingSources.values()],
+              userSources:
+                change.path === "audit_logs"
+                  ? assistantAuditUserSources(message, history)
+                  : [...namingSources.values()],
             }),
           };
         });

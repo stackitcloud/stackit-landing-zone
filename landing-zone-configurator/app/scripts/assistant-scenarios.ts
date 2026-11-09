@@ -605,6 +605,32 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     },
   },
   {
+    id: "editor-audit-after-foundations",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: [
+      {
+        role: "user",
+        content: `Bitte Organisation ${syntheticOrganizationId} für die Plattform verwenden.`,
+      },
+      {
+        role: "assistant",
+        content: "Grundlagen vorgeschlagen, noch nichts gespeichert.",
+      },
+      ...sparseAuditHistory,
+    ],
+    message:
+      "90 Tage Aufbewahrung, Zugriff ausschließlich aus 203.0.113.0/24, Object Lock ausdrücklich nein. Organisationsweiter Telemetry Link. Bitte diese Entscheidungen als Entwurfsvorschlag übernehmen.",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+      },
+    },
+  },
+  {
     id: "editor-audit-followup",
     topic: "audit-logs",
     fixture: "baseline",
