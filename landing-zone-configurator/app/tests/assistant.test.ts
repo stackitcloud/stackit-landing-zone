@@ -678,6 +678,18 @@ it("rejects new DNS keys and cross-topic changes and removes unchanged DNS names
     [
       {
         path: "connectivity.dns_zones",
+        value: { default: { name: "Not a valid slug!" } },
+      },
+    ],
+    [
+      {
+        path: "connectivity.dns_zones",
+        value: { default: { name: "a".repeat(64) } },
+      },
+    ],
+    [
+      {
+        path: "connectivity.dns_zones",
         value: {
           default: { dns_name: "new.stackit.run", network_area_key: "other" },
         },
@@ -1180,11 +1192,7 @@ it("answers central HA firewall decision questions without enabling bootstrap or
   expect(questions.items.properties.path.enum).not.toContain(
     "firewall_bootstrap",
   );
-  const bootstrap = changes.items.anyOf.find(
-    (variant: { properties: { path: { const: string } } }) =>
-      variant.properties.path.const === "firewall_bootstrap",
-  );
-  expect(bootstrap).toBeUndefined();
+  expect(changes.items).toEqual({});
   expect(payload.messages[0].content).toContain(
     "Firewall requirements advice only",
   );
@@ -1270,12 +1278,7 @@ it("keeps central-network-first advice scoped to SNA and removes unchanged scala
   const payload = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
   const schema = payload.response_format.json_schema.schema.properties;
   expect(schema.changes.maxItems).toBe(0);
-  expect(
-    schema.changes.items.anyOf.map(
-      (variant: { properties: { path: { const: string } } }) =>
-        variant.properties.path.const,
-    ),
-  ).toContain("connectivity.network_areas");
+  expect(schema.changes.items).toEqual({});
   expect(schema.questions.items.properties.path.enum.length).toBeGreaterThan(0);
   expect(
     schema.questions.items.properties.path.enum.every((path: string) =>
@@ -2423,9 +2426,13 @@ it.each([
       expect(system).not.toContain(
         "CURRENT STEP: Firewall requirements advice only",
       );
+      const questions =
+        body.response_format.json_schema.schema.properties.questions;
       const paths =
-        body.response_format.json_schema.schema.properties.questions.items
-          .properties.path.enum;
+        questions.maxItems === 0
+          ? undefined
+          : questions.items.properties.path.enum;
+      if (questions.maxItems === 0) expect(questions.items).toEqual({});
       const fields = buildAssistantKnowledge().topics.find(
         (entry) => entry.id === topic,
       )?.fieldPaths as readonly string[];
@@ -3041,13 +3048,15 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
         ...topic
       }) => ({
         ...topic,
-        // The generator adds this mandatory source; it is not a manifest input entry.
+        // Shared transport/Editor sources are generated, not manifest input entries.
         sources: sources
           .map((entry) => entry.path)
           .filter(
             (path) =>
-              path !==
-              "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+              ![
+                "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+                "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
+              ].includes(path),
           ),
       }),
     ),
@@ -3489,6 +3498,7 @@ it.each([
   "template-upgrade",
   "platform-upgrade",
   "execution-source-upgrade",
+  "platform-impact-review",
 ] as const)(
   "keeps %s closed to current lifecycle advice instead of intercepting draft, wrong-topic, historical or other advice",
   async (adviceTask) => {
@@ -3577,5 +3587,88 @@ it.each([
     );
     expect(result.explanation).not.toContain("min_prefix_length=24");
     expect(request).toHaveBeenCalledTimes(2);
+  },
+);
+
+it("returns reviewed root-platform impact guidance without reading or executing a Plan", async () => {
+  const request = vi.fn<typeof fetch>(async (_url, options) => {
+    const body = JSON.parse(String(options?.body));
+    expect(body.response_format.json_schema.name).toBe("conversation_intent");
+    expect(body.messages[0].content).toContain("CURRENT LIFECYCLE ROUTING");
+    expect(body.messages[0].content).toContain("ROOT PLATFORM PLAN");
+    return answer({
+      topic: "configuration-lifecycle",
+      mode: "advice",
+      adviceTask: "platform-impact-review",
+      adviceTaskSource: "current",
+      requirements: [],
+    });
+  });
+  const result = await new AssistantModelServing(
+    configuration,
+    request,
+  ).converse(
+    selection(),
+    {},
+    [],
+    "Wie entscheide ich als Platform Owner über Löschungen im Plattform-Plan mit abhängigen Applications? Nur beraten.",
+  );
+  const { assistantApplicationUpgradeAdvice } = await import(
+    "../apps/api/src/assistant/knowledge.js"
+  );
+  const { assistantPlatformImpactReviewFailures } = await import(
+    "../scripts/assistant-scenarios.js"
+  );
+  expect(result.explanation).toBe(
+    assistantApplicationUpgradeAdvice["platform-impact-review"],
+  );
+  expect(assistantPlatformImpactReviewFailures(result.explanation)).toEqual([]);
+  expect(result.explanation.length).toBeLessThan(2400);
+  expect(result.questions).toEqual([]);
+  expect(result.changes).toEqual([]);
+  expect(result.references).toEqual(["configuration-lifecycle"]);
+  expect(request).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  { task: "template-upgrade", topic: "project-templates" },
+  { task: "platform-upgrade", topic: "firewall-infrastructure" },
+  { task: "execution-source-upgrade", topic: "project-templates" },
+  { task: "platform-impact-review", topic: "audit-logs" },
+])(
+  "uses the closed current $task task despite an inconsistent $topic component label",
+  async ({ task, topic }) => {
+    const request = vi.fn<typeof fetch>(async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      expect(body.response_format.json_schema.name).toBe("conversation_intent");
+      return answer({
+        topic,
+        mode: "advice",
+        adviceTask: task,
+        adviceTaskSource: "current",
+        requirements: [],
+      });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      {},
+      [],
+      "Wie funktioniert das aktuelle Aktualisierungsverfahren? Nur beraten.",
+    );
+    const { assistantApplicationUpgradeAdvice } = await import(
+      "../apps/api/src/assistant/knowledge.js"
+    );
+    expect(result.explanation).toBe(
+      assistantApplicationUpgradeAdvice[
+        task as keyof typeof assistantApplicationUpgradeAdvice
+      ],
+    );
+    expect(result.references).toEqual(["configuration-lifecycle"]);
+    expect(result.questions).toEqual([]);
+    expect(result.changes).toEqual([]);
+    expect(request).toHaveBeenCalledTimes(1);
   },
 );

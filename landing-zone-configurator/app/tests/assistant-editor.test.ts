@@ -1408,10 +1408,13 @@ describe("shared native Editor proposal contract", () => {
           key: "default",
           region: "eu01",
         });
-        expect(
-          body.response_format.json_schema.schema.properties.questions.items
-            .properties.path.const,
-        ).toBe("projectTemplates");
+        const questions =
+          body.response_format.json_schema.schema.properties.questions;
+        if (questions.maxItems === 0) expect(questions.items).toEqual({});
+        else
+          expect(questions.items.properties.path.const).toBe(
+            "projectTemplates",
+          );
       }
       return new Response(
         JSON.stringify({

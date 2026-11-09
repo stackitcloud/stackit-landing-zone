@@ -68,6 +68,22 @@ of a live model answer or execution qualification. DNS guidance distinguishes
 primary/secondary roles from visibility, explains that both are authoritative,
 and states the native module's incomplete secondary-server setup.
 
+The serving schema is a wire projection. Empty advice arrays omit unreachable
+proposal grammars; pattern/format intersections with string-length bounds use
+bounded strings on the wire. The original Zod contracts, native validation,
+permission catalogues and proposal-scope checks remain authoritative. This avoids
+vLLM's xgrammar-to-guidance fallback without changing the selected models or
+retrying rejected requests. See the [backend compatibility checks](https://github.com/vllm-project/vllm/blob/main/vllm/v1/structured_output/backend_xgrammar.py).
+Lifecycle intent distinguishes execution-source compatibility/recovery, a
+published template version, a platform contract and Platform Owner impact review
+of a saved root-platform Plan. Mentioning template
+origin while comparing desired/lastApplied execution does not imply a template
+upgrade; the latest request takes precedence over historical tasks. A closed
+current-turn workflow advice task selects its reviewed lifecycle answer even if
+the model also supplies an inconsistent related component label. Unrelated
+topics and historical tasks remain excluded. Draft/action requests
+do not enter this read-only path.
+
 ### Real-model qualification
 
 Changes to service facts, prompts, knowledge selection or component contracts

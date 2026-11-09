@@ -856,6 +856,46 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Meine bestehende Application-Bestellung kann nach einem Produktupdate wegen ihrer Accelerator-Revision keinen Drift mehr prüfen. Soll ich neu bestellen? Wie bleiben dieselbe Bestellung und der State nutzbar? Unterscheide ursprüngliche Template-Quelle, gewünschten Stand und zuletzt erfolgreich angewendete Revision. Wie funktioniert ein Upgrade, was passiert bei Apply-Fehler und bei einer zurückgezogenen Quelle? Nur beraten, nichts ändern oder ausführen.",
   },
   {
+    id: "execution-upgrade-after-template-history",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    executionLifecycle: true,
+    history: [
+      {
+        role: "user",
+        content:
+          "Wie übernehme ich eine neue Template-Version mit anderen Projektberechtigungen?",
+      },
+      {
+        role: "assistant",
+        content:
+          "Über den veröffentlichten Template-Upgrade-Pfad und einen frischen Plan.",
+      },
+    ],
+    message:
+      "Jetzt geht es um die technische Ausführung: Nach einem Produktrelease lehnt der Worker die gebundene Accelerator-Quelle meiner bisherigen Bestellung ab. Wie kann ich denselben State weiter verwenden? Erkläre ursprüngliche Template-Quelle, gewünschten Ausführungsstand, letzten erfolgreichen Apply, zurückgezogene Pakete und Recovery bei Teilfehlern. Nur beraten, keine Änderung oder Ausführung.",
+  },
+  {
+    id: "template-upgrade-after-execution-history",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    applicationUpgrade: "template",
+    history: [
+      {
+        role: "user",
+        content:
+          "Wie aktualisiere ich die technische Runner-Quelle bei einer zurückgezogenen Accelerator-Revision?",
+      },
+      {
+        role: "assistant",
+        content:
+          "Die technische Ausführung besitzt ihre eigene gewünschte Quellenbindung.",
+      },
+    ],
+    message:
+      "Nun möchte ich die neue veröffentlichte Public-Template-Version mit den zusätzlichen Kubernetes-Rechten nutzen. Wie übernimmt der Application Owner diese Template-Version in derselben Bestellung mit seinen bisherigen Antworten und demselben State? Erkläre Plan-/Apply-Freigabe und Löschschutz. Nur beraten, keine Änderung oder Ausführung.",
+  },
+  {
     id: "audit-query-migration-impact-advice",
     topic: "configuration-lifecycle",
     fixture: "baseline",

@@ -88,6 +88,23 @@ Secondary-Server-Setup.
 
 <a id="real-model-qualification"></a>
 
+Das Serving-Schema ist eine Transportprojektion. Leere Beratungslisten enthalten
+keine unerreichbaren Vorschlagsgrammatiken; Kombinationen aus Muster-/Format- und
+String-Längengrenzen verwenden begrenzte Strings im Transport. Ursprüngliche
+Zod-Verträge, native Validierung, Rechtekataloge und Vorschlagsgrenzen bleiben
+verbindlich. Dadurch wird der xgrammar-/guidance-Wechsel ohne Modellwechsel oder
+Wiederholung abgelehnter Anfragen vermieden. Siehe die
+[Backend-Kompatibilitätsprüfung](https://github.com/vllm-project/vllm/blob/main/vllm/v1/structured_output/backend_xgrammar.py).
+Der Lifecycle-Intent unterscheidet technische Quellenkompatibilität/Recovery,
+veröffentlichte Template-Version, Plattformvertrag und Platform-Owner-Prüfung der
+Auswirkungen eines gespeicherten Plattformplans. Eine erwähnte Template-
+Herkunft beim Vergleich von gewünschter/zuletzt angewendeter Ausführung bedeutet
+kein Template-Upgrade. Die aktuelle Frage hat Vorrang vor früheren Aufgaben. Eine geschlossene aktuelle
+Workflow-Beratungsaufgabe wählt ihre geprüfte Lifecycle-Antwort auch bei einem
+widersprüchlichen verwandten Komponententhema. Unverwandte Themen und historische
+Aufgaben bleiben ausgeschlossen. Entwurfs-/Aktionsaufträge gelangen nicht in
+diesen rein beratenden Pfad.
+
 ### Qualifikation mit echtem Modell
 
 Aenderungen an Servicefakten, Prompts, Wissensauswahl oder
@@ -272,6 +289,8 @@ anschließend nicht übernommen werden kann. Ein qualifizierter Release erforder
 weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
 quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
 Übernahmebedingungen bleiben unverändert.
+
+
 
 
 ## Vollstaendiger Themenkatalog

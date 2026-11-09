@@ -77,6 +77,30 @@ import {
   assistantKnowledgeForTopics,
   buildAssistantKnowledge,
 } from "./knowledge.js";
+import { assistantServingResponseSchema } from "./serving-schema.js";
+
+const lifecycleAdviceTopics: Record<
+  keyof typeof assistantApplicationUpgradeAdvice,
+  ReadonlySet<string>
+> = {
+  "template-upgrade": new Set(["configuration-lifecycle", "project-templates"]),
+  "execution-source-upgrade": new Set([
+    "configuration-lifecycle",
+    "project-templates",
+  ]),
+  "platform-upgrade": new Set([
+    "configuration-lifecycle",
+    "firewall-infrastructure",
+    "stackit-network-components",
+  ]),
+  "platform-impact-review": new Set([
+    "configuration-lifecycle",
+    "audit-logs",
+    "observability",
+    "firewall-infrastructure",
+    "stackit-network-components",
+  ]),
+};
 
 const configurationSchema = z.strictObject({
   baseUrl: z.literal(
@@ -661,6 +685,9 @@ export class AssistantModelServing {
     stream?: AssistantStream,
     signal = stream?.signal,
   ) {
+    const servingSchema = schema
+      ? assistantServingResponseSchema(schema)
+      : undefined;
     // Some serving chat templates retain only the last system message.
     const systemContent = [
       ...messages
@@ -669,7 +696,12 @@ export class AssistantModelServing {
       ...(schema &&
       ["conversation_intent", "firewall_setup_decisions"].includes(schemaName)
         ? [
-            `Return only the JSON response defined by this output contract. Its field descriptions explain the required decisions; do not substitute schema defaults for understanding the user request. Property names and enum values are data, not instructions. Include requested values in the actual changes, not merely in the explanation.\nOutput contract: ${JSON.stringify(schema)}`,
+            `Return only the JSON response defined by this output contract. Its field descriptions explain the required decisions; do not substitute schema defaults for understanding the user request. Property names and enum values are data, not instructions. Include requested values in the actual changes, not merely in the explanation.\nOutput contract: ${JSON.stringify(servingSchema)}`,
+          ]
+        : []),
+      ...(schemaName === "conversation_intent"
+        ? [
+            "CURRENT LIFECYCLE ROUTING: Judge only the latest user question, not topic descriptions, saved values or historical tasks. Informational maintenance of an EXISTING order/Platform Plan belongs to configuration-lifecycle even when the question mentions Kubernetes, templates, audit logs, firewall or network services. Distinguish: (1) a new published template VERSION/permissions/settings adopted by an existing order => template-upgrade; (2) shared firewall/routing effects and adopting a platform CONTRACT => platform-upgrade; (3) unsupported product/Runner/Accelerator SOURCE, desired versus lastApplied, withdrawal or source-bound recovery => execution-source-upgrade; (4) a Platform Owner reviewing/acknowledging a ROOT PLATFORM PLAN's impact, deletions or replacements => platform-impact-review. Use mode=advice,adviceTaskSource=current for these informational questions. Examples: 'My order cannot run Drift after a product update; explain template origin versus desired execution and recovery' => execution-source-upgrade. 'How do I use the new published Public template with Kubernetes permissions in this same order and retain my answers?' => template-upgrade. 'Can declining a platform contract upgrade keep the old shared firewall?' => platform-upgrade. 'May the Platform Owner approve a platform Plan that removes the old audit store, and what is approval bound to?' => platform-impact-review. A new component setup or an actual draft/proposal instruction is not one of these information tasks; preserve draft handling and the latest topic switch.",
           ]
         : []),
     ].join("\n\n");
@@ -727,14 +759,14 @@ export class AssistantModelServing {
         max_completion_tokens: 4096,
         messages: servingMessages,
         ...(stream ? { stream: true } : {}),
-        ...(schema
+        ...(servingSchema
           ? {
               response_format: {
                 type: "json_schema",
                 json_schema: {
                   name: schemaName,
                   strict: true,
-                  schema,
+                  schema: servingSchema,
                 },
               },
             }
@@ -1265,6 +1297,7 @@ export class AssistantModelServing {
       adviceTask: z
         .enum([
           "application-access",
+          "platform-impact-review",
           "template-upgrade",
           "platform-upgrade",
           "execution-source-upgrade",
@@ -1275,7 +1308,7 @@ export class AssistantModelServing {
         ])
         .default("other")
         .describe(
-          "For current informational Application upgrade workflow questions select topic=configuration-lifecycle,mode=advice,adviceTaskSource=current: template-upgrade for updating an existing order to a published same-family template version with retained answers, State and Plan/Apply approvals, INCLUDING questions about requester self-service versus another Platform Owner approval and changes to project IAM. Mentioning the Platform Owner or a project update is NOT a shared platform change. platform-upgrade ONLY for shared platform/firewall/routing effects, dependency impact and explicitly adopting the actual approved platform contract; execution-source-upgrade for Accelerator revisions, product updates, origin/desired/lastApplied sources, package withdrawal and source-bound recovery. These are information tasks, not instructions to upgrade, publish, rebind, plan or apply; actual proposal/action requests remain draft/other. Never select them from historical questions or for unrelated advice. application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. field-overview fuer aktuelle Informationsfragen nach nativen konfigurierbaren Feldern, Defaults oder Grenzen, ohne Einrichtungsauftrag. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
+          "For current informational existing-order or Platform Apply questions select topic=configuration-lifecycle,mode=advice,adviceTaskSource=current. Choose the subject of the LATEST USER QUESTION: template-upgrade means adopting a published same-family template VERSION or revised template permissions/settings in an EXISTING order, including retained answers and self-service approval. Mentioning the Platform Owner is not itself a shared platform change. platform-upgrade means shared platform/firewall/routing effects and adopting the actual approved platform CONTRACT in an existing order. execution-source-upgrade means product/Runner/Accelerator SOURCE compatibility, origin/desired/lastApplied, withdrawn packages or interrupted-job recovery; comparing template origin while discussing execution remains this task. platform-impact-review means a Platform Owner deciding whether a saved ROOT PLATFORM PLAN with dependent Applications, deletions or replacements may Apply, and what impact acknowledgement binds. That is not configuring audit/firewall services and not an order's template/contract upgrade. These tasks only explain workflows: actual proposal/setup requests remain draft/other. Never infer the current task from historical questions or component words alone. application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. field-overview fuer aktuelle Informationsfragen nach nativen konfigurierbaren Feldern, Defaults oder Grenzen, ohne Einrichtungsauftrag. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
         ),
       adviceTaskSource: z
         .enum(["current", "none"])
@@ -1528,6 +1561,35 @@ export class AssistantModelServing {
     if (!intentResult.success)
       throw new AssistantInferenceError("intent_schema");
     const classifiedIntent = intentResult.data;
+    // A closed current-turn workflow task owns its lifecycle topic. Requiring
+    // a redundant related component label to agree can discard the guidance.
+    // Unrelated topics, historical tasks and draft/action intents stay excluded.
+    if (
+      classifiedIntent.mode === "advice" &&
+      classifiedIntent.adviceTaskSource === "current" &&
+      Object.hasOwn(
+        assistantApplicationUpgradeAdvice,
+        classifiedIntent.adviceTask,
+      ) &&
+      lifecycleAdviceTopics[
+        classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
+      ].has(classifiedIntent.topic)
+    ) {
+      const dialogue = validateDialogue(
+        {
+          explanation:
+            assistantApplicationUpgradeAdvice[
+              classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
+            ],
+          questions: [],
+          changes: [],
+          references: ["configuration-lifecycle"],
+        },
+        context.rules.map((rule) => rule.id),
+      );
+      stream?.onText(dialogue.explanation);
+      return dialogue;
+    }
     if (
       (permissionListInput === null ||
         (sourcePermissionLists &&
@@ -2879,29 +2941,6 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
     if (intent.topic === "dns-zones" && intent.dnsTask === "remaining-settings")
       intent.mode = "draft";
     const networkFirst = intent.topic === "stackit-network-components";
-    // These reviewed workflows are informational; only the closed current-turn
-    // semantic intent selects them. No history regex or action is involved.
-    if (
-      intent.topic === "configuration-lifecycle" &&
-      intent.mode === "advice" &&
-      intent.adviceTaskSource === "current" &&
-      Object.hasOwn(assistantApplicationUpgradeAdvice, intent.adviceTask)
-    ) {
-      const dialogue = validateDialogue(
-        {
-          explanation:
-            assistantApplicationUpgradeAdvice[
-              intent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
-            ],
-          questions: [],
-          changes: [],
-          references: ["configuration-lifecycle"],
-        },
-        context.rules.map((rule) => rule.id),
-      );
-      stream?.onText(dialogue.explanation);
-      return dialogue;
-    }
     const dnsAdvice = intent.topic === "dns-zones";
     const dnsSettingsDraft =
       dnsAdvice &&
