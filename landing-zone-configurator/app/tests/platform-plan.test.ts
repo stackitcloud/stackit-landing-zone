@@ -450,6 +450,13 @@ describe.skipIf(!enabled)(
         targetPreparationId = preparationId,
       ) {
         const run = await plans.start(owner, token, targetPreparationId);
+        await vi.waitFor(async () => {
+          const recorded = await admin.query(
+            "SELECT runner_droplet_id FROM lzc.plan_runs WHERE id=$1",
+            [run.id],
+          );
+          expect(recorded.rows[0]?.runner_droplet_id).toBeTruthy();
+        });
         const ticket = tickets.get(run.id)!;
         await plans.input(ticket);
         await plans.stage(ticket, "validating");
