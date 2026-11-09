@@ -83,6 +83,16 @@ function docker(args: string[]) {
   return result.stdout.trim();
 }
 
+async function waitForRunnerBinding(ticket: string) {
+  await vi.waitFor(async () => {
+    const recorded = await admin!.query(
+      "SELECT runner_droplet_id FROM lzc.plan_runs WHERE ticket_hash=$1",
+      [tokenHash(ticket)],
+    );
+    expect(recorded.rows[0]?.runner_droplet_id).toBeTruthy();
+  });
+}
+
 describe.skipIf(!enabled)(
   "isolated PostgreSQL Platform Plan -> Apply broker",
   () => {
@@ -450,14 +460,8 @@ describe.skipIf(!enabled)(
         targetPreparationId = preparationId,
       ) {
         const run = await plans.start(owner, token, targetPreparationId);
-        await vi.waitFor(async () => {
-          const recorded = await admin.query(
-            "SELECT runner_droplet_id FROM lzc.plan_runs WHERE id=$1",
-            [run.id],
-          );
-          expect(recorded.rows[0]?.runner_droplet_id).toBeTruthy();
-        });
         const ticket = tickets.get(run.id)!;
+        await waitForRunnerBinding(ticket);
         await plans.input(ticket);
         await plans.stage(ticket, "validating");
         await plans.stage(ticket, "planning");
@@ -594,6 +598,7 @@ describe.skipIf(!enabled)(
       expect(test.runner.start).not.toHaveBeenCalled();
       const run = await test.plans.start(test.owner, test.token, prepared.id);
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       const input = await test.plans.input(ticket);
       expect(input.tfvars).toBe(
         serializeTfvars(recordValues(test.manifest.configuration)),
@@ -652,6 +657,7 @@ describe.skipIf(!enabled)(
       test.runner.firewallPlansEnabled = true;
       const run = await test.plans.start(test.owner, test.token, prepared.id);
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       const input = await test.plans.input(ticket);
       expect(input.firewallInfrastructure).toBe(true);
       expect(input.firewallAdministration).toEqual({
@@ -713,6 +719,7 @@ describe.skipIf(!enabled)(
       });
       const run = await test.plans.start(test.owner, test.token, prepared.id);
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       await test.plans.stage(ticket, "validating");
       await test.plans.stage(ticket, "planning");
@@ -852,6 +859,7 @@ describe.skipIf(!enabled)(
         );
         const run = await test.plans.start(test.owner, test.token, prepared.id);
         const ticket = test.tickets.get(run.id)!;
+        await waitForRunnerBinding(ticket);
         const input = await test.plans.input(ticket);
         expect(input.acceleratorCommit).toBe(platformUpgradeAcceleratorCommit);
         expect(input.tfvars).toBe(
@@ -1061,6 +1069,7 @@ describe.skipIf(!enabled)(
       expect(bindings.rows[1]).toEqual(bindings.rows[0]);
       const ticket = test.tickets.get(run.id);
       if (!ticket) throw new Error("Missing upgrade fixture ticket");
+      await waitForRunnerBinding(ticket);
       const worker = await test.plans.input(ticket);
       expect(worker.acceleratorCommit).toBe(platformUpgradeAcceleratorCommit);
       expect(worker.tfvars).toContain(test.owner.tenantId);
@@ -1443,6 +1452,7 @@ describe.skipIf(!enabled)(
       );
       await vi.waitFor(() => expect(test.tickets.has(run.id)).toBe(true));
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       let text = "$ tofu init\nInitializing backend...";
       for (const stage of ["initializing", "validating", "planning"] as const) {
@@ -1506,6 +1516,7 @@ describe.skipIf(!enabled)(
           truncated: false,
         }),
       ).rejects.toMatchObject({ code: "invalid_runner_transition" });
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       const text =
         "stackit_project.example: Creation complete\nApply complete! Resources: 1 added, 0 changed, 0 destroyed.";
@@ -1622,6 +1633,7 @@ describe.skipIf(!enabled)(
       await expect(
         test.plans.artifact(ticket, { data: "Zg==", summary }),
       ).rejects.toMatchObject({ code: "invalid_runner_transition" });
+      await waitForRunnerBinding(ticket);
       const input = await test.plans.input(ticket);
       expect(input).toMatchObject({
         mode: "platform-plan",
@@ -1881,6 +1893,7 @@ describe.skipIf(!enabled)(
         expect(recorded.rows[0]?.runner_droplet_id).toBeTruthy();
       });
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       await test.plans.stage(ticket, "validating");
       await test.plans.stage(ticket, "applying");
@@ -2054,6 +2067,7 @@ describe.skipIf(!enabled)(
         test.approval(saved.artifactSha256),
       );
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       await test.plans.stage(ticket, "validating");
       await test.plans.stage(ticket, "applying");
@@ -2630,6 +2644,7 @@ describe.skipIf(!enabled)(
         test.approval(saved.artifactSha256),
       );
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       const input = await test.plans.input(ticket);
       expect(input).toMatchObject({
         mode: "platform-apply",
@@ -2736,6 +2751,7 @@ describe.skipIf(!enabled)(
         test.preparationId,
       );
       const ticket = test.tickets.get(first.id)!;
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       await test.plans.state(ticket, "lock", undefined, "plan-lock");
       await expect(
@@ -2932,6 +2948,7 @@ describe.skipIf(!enabled)(
           (await app.inject({ url: "/api/runner/state", headers: backend }))
             .statusCode,
         ).toBe(409);
+        await waitForRunnerBinding(ticket);
         await test.plans.input(ticket);
         await test.plans.stage(ticket, "validating");
         await test.plans.stage(ticket, "applying");
@@ -3755,6 +3772,7 @@ describe.skipIf(!enabled)(
         test.approval(saved.artifactSha256),
       );
       const ticket = test.tickets.get(apply.id)!;
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       await test.plans.stage(ticket, "validating");
       await test.plans.stage(ticket, "applying");
@@ -4189,6 +4207,7 @@ describe.skipIf(!enabled)(
         test.approval(saved.artifactSha256),
       );
       const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
       await test.plans.input(ticket);
       await test.plans.stage(ticket, "validating");
       await test.plans.stage(ticket, "applying");
