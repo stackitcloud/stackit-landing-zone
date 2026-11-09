@@ -443,6 +443,7 @@ export function assistantEditorChangeSchema(
   current?: unknown,
   operation?: "merge" | "replace",
   requiredFieldsByKey?: Readonly<Record<string, readonly string[]>>,
+  auditChoices?: AssistantAuditChoices,
 ): z.ZodType {
   if (root === "projectTemplates") {
     const template = templateProposalSchema(
@@ -568,6 +569,41 @@ export function assistantEditorChangeSchema(
             ]),
           ),
         )
+        .nullable();
+    }
+  }
+  // Bind only source-checked choices for a fresh Audit constructor. This narrows
+  // the model contract; the original runtime/native validators still apply.
+  if (
+    mode === "serving" &&
+    root === "audit_logs" &&
+    current == null &&
+    auditChoices &&
+    mergeValue instanceof z.ZodNullable
+  ) {
+    const value = mergeValue.unwrap();
+    if (value instanceof z.ZodObject) {
+      mergeValue = value
+        .extend({
+          ...(auditChoices.retention_days !== undefined
+            ? { retention_days: z.literal(auditChoices.retention_days) }
+            : {}),
+          ...(auditChoices.acl !== undefined
+            ? {
+                acl: auditChoices.acl.length
+                  ? z.tuple(
+                      auditChoices.acl.map((cidr) => z.literal(cidr)) as [
+                        z.ZodLiteral<string>,
+                        ...z.ZodLiteral<string>[],
+                      ],
+                    )
+                  : z.tuple([]),
+              }
+            : {}),
+          ...(auditChoices.s3_object_lock !== undefined
+            ? { s3_object_lock: z.literal(auditChoices.s3_object_lock) }
+            : {}),
+        })
         .nullable();
     }
   }

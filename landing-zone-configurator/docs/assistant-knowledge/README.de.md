@@ -612,6 +612,7 @@ Neue Audit-Entwürfe benötigen ausdrückliche Benutzerentscheidungen zu Aufbewa
 Zugriffsnetzen und Object Lock. Native Defaults, Netze anderer Komponenten und
 frühere Assistant-Vorschläge ersetzen diese Entscheidungen nicht. Wörtliche
 Antworten auf den exakt noch offenen Fragensatz setzen den Dialog ohne erneute
-Themenklassifikation fort; nur unbeantwortete Fragen bleiben offen. Vollständige
-Vorschläge durchlaufen weiterhin natives Editor-Schema und Quellenprüfung.
+Themenklassifikation fort; nur unbeantwortete Fragen bleiben offen. Bestätigte Antworten begrenzen zusätzlich das Modellausgabeschema, auch ein
+ausdrückliches Object Lock false. Vollständige Vorschläge durchlaufen weiterhin
+natives Editor-Schema und Quellenprüfung.
 Übernahme, Speichern und Ausführung bleiben getrennt.

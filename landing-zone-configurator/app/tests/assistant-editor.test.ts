@@ -4485,3 +4485,129 @@ it("binds literal audit answers to the actual remaining question and allows topi
     acl: ["203.0.113.0/24"],
   });
 });
+
+it("binds confirmed Audit choices in the serving schema while retaining runtime validation", () => {
+  const choices = {
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+  };
+  const value = {
+    ...choices,
+    managed_resources: false,
+    router_egress_cidrs: null,
+    link_scopes: null,
+  };
+  const schema = assistantEditorChangeSchema(
+    "audit_logs",
+    undefined,
+    "serving",
+    null,
+    undefined,
+    undefined,
+    choices,
+  );
+  expect(schema.safeParse(patch("audit_logs", value)).success).toBe(true);
+  for (const changed of [
+    { retention_days: 180 },
+    { acl: ["10.0.0.0/16"] },
+    { s3_object_lock: true },
+  ])
+    expect(
+      schema.safeParse(patch("audit_logs", { ...value, ...changed })).success,
+    ).toBe(false);
+  expect(
+    assistantEditorChangeSchema("audit_logs").safeParse(
+      patch("audit_logs", value),
+    ).success,
+  ).toBe(true);
+});
+
+it("resumes actual Audit answers without reclassifying partial or complete decisions", async () => {
+  const current = assistantPublicValues(draft());
+  const history: { role: "user" | "assistant"; content: string }[] = [
+    { role: "user", content: "Bitte Audit-Entwurf vorbereiten." },
+  ];
+  const ask = (
+    choices: Parameters<typeof assistantAuditCreationQuestions>[0],
+  ) => {
+    const pending = assistantAuditCreationQuestions(choices);
+    history.push({
+      role: "assistant",
+      content:
+        pending.explanation +
+        "\n" +
+        pending.questions.map((q) => q.text).join("\n"),
+    });
+  };
+  ask({});
+  const unexpected = vi.fn<typeof fetch>(async () => {
+    throw new Error("Unexpected inference for a partial literal answer");
+  });
+  const model = new AssistantModelServing(
+    {
+      baseUrl:
+        "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+      model: "test-model",
+      token: "test-token",
+      timeoutMs: 1000,
+    },
+    unexpected,
+  );
+  const partial = await model.converse(
+    knowledgeSelection(),
+    current,
+    history,
+    "90 Tage",
+  );
+  expect(partial.questions.map((q) => q.path)).toEqual([
+    "audit_logs.acl",
+    "audit_logs.s3_object_lock",
+  ]);
+  expect(partial.changes).toEqual([]);
+  expect(unexpected).not.toHaveBeenCalled();
+  history.push({ role: "user", content: "90 Tage" });
+  ask({ retention_days: 90 });
+  history.push({ role: "user", content: "203.0.113.0/24" });
+  ask({ retention_days: 90, acl: ["203.0.113.0/24"] });
+  const value = {
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+    managed_resources: false,
+    router_egress_cidrs: null,
+    link_scopes: null,
+  };
+  const requested: string[] = [];
+  const complete = collectionModel(
+    {},
+    response([patch("audit_logs", value, "replace")]),
+    (request) => {
+      requested.push(request.response_format.json_schema.name);
+      expect(
+        JSON.parse(request.messages[1]!.content).auditCreationChoices,
+      ).toEqual({
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+      });
+    },
+  );
+  const result = await complete.converse(
+    knowledgeSelection(),
+    current,
+    history,
+    "Deaktivieren",
+  );
+  expect(requested).toEqual(["editor_dialogue"]);
+  expect(result.questions).toEqual([]);
+  expect(result.changes[0]!.value).toMatchObject({ s3_object_lock: false });
+  expect(
+    compileCommonConfiguration(applyAssistantChanges(draft(), result.changes))
+      .audit_logs,
+  ).toMatchObject({
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+  });
+});

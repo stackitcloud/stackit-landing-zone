@@ -454,5 +454,6 @@ New Audit drafts require explicit user decisions for retention, access networks
 and Object Lock. Native defaults, another component's networks and previous
 assistant suggestions do not supply those decisions. An exact pending question
 set can resume literal answers without reclassifying the topic; only unanswered
-questions remain. A complete proposal still passes the native Editor schema and
+questions remain. Confirmed choices also narrow the model output schema, including an explicit
+Object Lock false. A complete proposal still passes the native Editor schema and
 source validation. Acceptance, saving and execution remain separate.
