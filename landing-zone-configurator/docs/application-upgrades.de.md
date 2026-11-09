@@ -209,12 +209,27 @@ Plan. Änderungen gemeinsamer Firewalls oder Routen wirken bei diesem Plattform-
 auf diese Applications. Eine Application behält keine eigene alte Firewall, indem
 sie ein Vertragsupgrade ablehnt.
 
-Bei Abhängigkeiten blockieren destruktive gemeinsame Änderungen sowie unbekannte
-oder unvollständige Nachweise den Standard-Apply. Sensible gemeinsame Änderungen
-benötigen eine ausdrückliche Platform-Owner-Bestätigung für genau diesen Plan,
-Artefakt-Hash, State-Stand und Abhängigkeitssatz. Neue Abhängigkeiten oder geänderter
-State machen sie ungültig. Aktive Application-Ausführungen und Recovery verhindern
-ebenfalls widersprüchliche gemeinsame Änderungen.
+Bei abhängigen Applications benötigen vollständige bekannte Plattformänderungen –
+einschließlich Löschungen und Ersetzungen – eine ausdrückliche Bestätigung des
+Platform Owners. Der Apply-Schritt zeigt Anlegen/Ändern/Löschen/Ersetzen, betroffene
+Applications und einen Hinweis auf mögliche Datenverluste. Prüfe die einzelnen
+Ressourcenänderungen im gespeicherten Plan und entscheide, ob die Durchführung
+verantwortbar ist. Die Bestätigung bindet genau diesen Plan, Artefakt-Hash,
+State-Stand und Abhängigkeitssatz; sie startet keinen Apply. Die normale
+Planprüfung, Organisationsbestätigung und ausdrückliche Löschungsfreigabe bleiben nötig.
+Unbekannte oder unvollständige Nachweise, aktive Application-Ausführungen/Recovery
+und ein geänderter State bleiben Sperren. Für Template-/Plattform-Upgrades durch
+Application Owner gelten weiterhin die eigenen Schutzregeln für Infrastruktur.
+
+Die Audit-Umstellung von Logs auf Observability folgt derselben Prüfung. Alte
+Logs-Instanz, Historie, Tokens und Ziel werden bewusst entfernt; prüfe diesen
+Verlust zusammen mit den erhaltenen Routern, Links, Projekten und dem S3-Archiv.
+Eine Sonderregel anhand bestimmter Ressourcenadressen ist nicht nötig.
+
+Nach diesem Fix ist ein **neuer Cloud-Plan** mit der bestehenden gültigen
+Vorbereitung/Konfiguration erforderlich. Alte unveränderliche Pläne behalten ihre
+bisherige Bewertung und werden nicht nachträglich entsperrt. Eine Konfigurations-
+änderung oder neue Application-Template-Version ist für diese Korrektur nicht nötig.
 
 Nach erfolgreichem Plattform-Apply dessen tatsächlich entstandenen Vertrag freigeben.
 Ein veröffentlichter Plattform-Upgrade-Pfad kann diesen Vertrag anschließend für

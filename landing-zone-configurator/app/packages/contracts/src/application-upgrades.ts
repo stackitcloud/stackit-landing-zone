@@ -346,7 +346,10 @@ export function classifyPlatformApplicationImpactPlan(
   for (const [index, resource] of plan.resource_changes.entries()) {
     const path = `resource_changes.${index}`,
       actions = resource.change.actions,
-      known = platformTypes.has(resource.type);
+      known =
+        platformTypes.has(resource.type) ||
+        (resource.mode === "data" &&
+          resource.type === "stackit_public_ip_ranges");
     const add = (code: string, classification: "sensitive" | "blocked") =>
       reasons.push({ code, path, classification });
     if (!known) {
@@ -367,12 +370,18 @@ export function classifyPlatformApplicationImpactPlan(
       continue;
     sharedChanges = true;
     types.add(resource.type);
-    if (actions.includes("delete"))
+    if (
+      resource.mode !== "data" &&
+      ((actions.length === 1 && actions[0] === "delete") ||
+        (actions.length === 2 &&
+          actions.includes("delete") &&
+          actions.includes("create")))
+    )
       add(
         actions.includes("create")
           ? "platform-shared-replacement"
           : "platform-shared-deletion",
-        "blocked",
+        "sensitive",
       );
     else if (
       actions.length !== 1 ||

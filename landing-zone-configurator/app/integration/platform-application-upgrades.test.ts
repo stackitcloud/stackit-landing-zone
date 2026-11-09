@@ -1,10 +1,12 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { classifyPlatformApplicationImpactPlan } from "@lzc/contracts";
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 import { Applications } from "../apps/api/src/applications/service.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
+import { auditQueryMigrationPlan } from "../tests/fixtures/audit-query-migration.js";
 
 const address = process.env.LZC_TEST_DATABASE_URL;
 if (!address) throw new Error("LZC_TEST_DATABASE_URL required");
@@ -132,6 +134,7 @@ async function platformFixture(
   classification: "ordinary" | "sensitive" | "blocked" = "sensitive",
   orderPolicy: "direct" | "approval-required" = "direct",
   audit = false,
+  summaryOverride?: Record<string, unknown>,
 ) {
   const instance = randomUUID(),
     version = randomUUID(),
@@ -210,6 +213,7 @@ async function platformFixture(
       sharedChanges: classification !== "ordinary",
     },
   };
+  Object.assign(summary, summaryOverride);
   await imported(async () => {
     await admin.query(
       "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,name,manifest) VALUES($1,$2,$3,'Synthetic impact fixture',$4)",
@@ -467,8 +471,8 @@ it("keeps ordinary non-mutating plans available without additional acknowledgeme
   });
   await apply(f);
 });
-it("blocks destructive, unknown or absent shared impact evidence even after direct SQL attempts", async () => {
-  for (const corruption of ["blocked", "delete", "absent"]) {
+it("blocks unknown or absent shared impact evidence even after direct SQL attempts", async () => {
+  for (const corruption of ["blocked", "absent"]) {
     const f = await platformFixture(
       corruption === "blocked" ? "blocked" : "sensitive",
     );
@@ -1622,4 +1626,122 @@ it("preserves an explicitly different target backend instead of silently rebindi
       )
     ).rows[0].value,
   ).toEqual(before);
+});
+
+function auditedQueryStoreSummary() {
+  return {
+    resources: {
+      create: 2,
+      update: 2,
+      delete: 4,
+      replace: 0,
+      read: 1,
+      unchanged: 3,
+    },
+    destructive: true,
+    platformImpact: classifyPlatformApplicationImpactPlan(
+      auditQueryMigrationPlan(),
+    ),
+  };
+}
+it("admits the audit query migration after artifact-bound Platform Owner acknowledgement", async () => {
+  const f = await platformFixture(
+    "sensitive",
+    "direct",
+    false,
+    auditedQueryStoreSummary(),
+  );
+  expect(await impact(f)).toMatchObject({
+    classification: "sensitive",
+    canAcknowledge: true,
+    acknowledged: false,
+    blockers: [],
+  });
+  await expect(apply(f)).rejects.toThrow(
+    "platform_impact_acknowledgement_required",
+  );
+  expect(await acknowledge(f)).toMatchObject({ acknowledged: true });
+  const run = await apply(f);
+  const rows = await admin.query(
+    "SELECT plan_id,state_version FROM lzc.platform_application_apply_guards WHERE run_id=$1",
+    [run],
+  );
+  expect(rows.rows).toMatchObject([{ plan_id: f.plan, state_version: "1" }]);
+});
+it.each(["delete", "replace"] as const)(
+  "admits reviewed shared infrastructure %s only after exact acknowledgement",
+  async (kind) => {
+    const summary = auditedQueryStoreSummary();
+    summary.resources.delete = kind === "delete" ? 1 : 0;
+    summary.resources.replace = kind === "replace" ? 1 : 0;
+    summary.platformImpact = classifyPlatformApplicationImpactPlan({
+      ...auditQueryMigrationPlan(),
+      resource_changes: [
+        {
+          mode: "managed",
+          type: "stackit_network",
+          change: {
+            actions: kind === "delete" ? ["delete"] : ["delete", "create"],
+            before: {},
+            after: kind === "delete" ? null : {},
+          },
+        },
+      ],
+    });
+    const f = await platformFixture("sensitive", "direct", false, summary);
+    expect(await impact(f)).toMatchObject({
+      classification: "sensitive",
+      canAcknowledge: true,
+      resourceChanges: { [kind]: 1 },
+    });
+    await expect(apply(f)).rejects.toThrow(
+      "platform_impact_acknowledgement_required",
+    );
+    await acknowledge(f);
+    await apply(f);
+  },
+);
+it.each(["incomplete", "blocked-reason", "absent"])(
+  "keeps unavailable evidence blocked: %s",
+  async (kind) => {
+    const summary = auditedQueryStoreSummary();
+    if (kind === "incomplete")
+      Object.assign(summary, { completeness: "incomplete" });
+    if (kind === "absent") Object.assign(summary, { platformImpact: null });
+    if (kind === "blocked-reason")
+      summary.platformImpact.reasons.push({
+        code: "platform-plan-unknown-action",
+        classification: "blocked",
+        path: "resource_changes.8",
+      });
+    const f = await platformFixture("sensitive", "direct", false, summary);
+    expect(await impact(f)).toMatchObject({
+      classification: "blocked",
+      canAcknowledge: false,
+    });
+    await expect(acknowledge(f)).rejects.toThrow("platform_impact_changed");
+    await expect(apply(f)).rejects.toThrow();
+  },
+);
+it("invalidates an audit migration acknowledgement after the Platform State changes", async () => {
+  const f = await platformFixture(
+    "sensitive",
+    "direct",
+    false,
+    auditedQueryStoreSummary(),
+  );
+  await acknowledge(f);
+  await imported(() =>
+    admin.query(
+      "UPDATE lzc.platform_states SET version=version+1 WHERE state_key=$1",
+      [f.stateKey],
+    ),
+  );
+  expect(await impact(f)).toMatchObject({
+    classification: "sensitive",
+    canAcknowledge: false,
+  });
+  await expect(apply(f)).rejects.toThrow(
+    "platform_impact_acknowledgement_required",
+  );
 });

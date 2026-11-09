@@ -2404,6 +2404,12 @@ it.each([
       if (topic === "configuration-lifecycle") {
         expect(system).toContain("UPGRADE ADVICE:");
         expect(system).toContain(
+          "Owner decides known complete shared deletes/replacements",
+        );
+        expect(system).toContain("binds Plan/artifact/State/dependencies");
+        expect(system).toContain("Fresh Plan; never relabel old Plans");
+
+        expect(system).toContain(
           "TEMPLATE upgrade is not merely changing a Git source",
         );
         expect(system).toContain("retains previous parameter answers");

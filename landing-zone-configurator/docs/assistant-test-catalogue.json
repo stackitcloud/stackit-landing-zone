@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "a6c882ee64e654b48b394467e008755a56503d054c535489284fb995e36fce33",
+  "knowledgeSha256": "66e89d217bce9f3fd5ca6c5dc530c07ed67d7c2d68fd83cfa949f2da5b6f1a68",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "789a6f1c8a86bad2e5ecd46815f775c15850700fb2822a9f4da0579e787e7eb3",
+    "scripts/assistant-scenarios.ts": "79ce30f9123356f2f7581be242a335bee3fba92e31550424ecef6e55659ec529",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "99aa9b082e14e1dc43fba78d11b8bcaae85fc056da8b3eb67724a2d899920816",
+  "suiteSha256": "c29a9fadbca8239aafa8beb1345a6de3f6fd3e241eeef499097b5ccf49fda9b8",
   "topics": [
     {
       "id": "credential-foundations",
@@ -6258,6 +6258,23 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "pinned_source_same_order_state_fresh_plan_approval_withdrawal_no_reorder",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "audit-query-migration-impact-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "requiredOverviewFields": [
+            "observability",
+            "plan",
+            "apply"
+          ],
+          "message": "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, Wie entscheidet der Platform Owner bei anderen geplanten Löschungen und Ersetzungen, und lassen sich alte Pläne dadurch nachträglich entsperren? Nur beraten, nichts ändern oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "complete_native_field_overview",
             "no_changes"
           ]
         },

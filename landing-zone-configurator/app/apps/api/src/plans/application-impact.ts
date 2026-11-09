@@ -22,6 +22,14 @@ export const platformApplicationImpactViewSchema = z.strictObject({
     )
     .max(10000),
   blockers: z.array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/)).max(20),
+  resourceChanges: z
+    .object({
+      create: z.number().int().nonnegative(),
+      update: z.number().int().nonnegative(),
+      delete: z.number().int().nonnegative(),
+      replace: z.number().int().nonnegative(),
+    })
+    .optional(),
   acknowledged: z.boolean(),
   canAcknowledge: z.boolean(),
 });

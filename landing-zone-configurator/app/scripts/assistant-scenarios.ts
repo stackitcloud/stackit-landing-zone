@@ -856,6 +856,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Meine bestehende Application-Bestellung kann nach einem Produktupdate wegen ihrer Accelerator-Revision keinen Drift mehr prüfen. Soll ich neu bestellen? Wie bleiben dieselbe Bestellung und der State nutzbar? Unterscheide ursprüngliche Template-Quelle, gewünschten Stand und zuletzt erfolgreich angewendete Revision. Wie funktioniert ein Upgrade, was passiert bei Apply-Fehler und bei einer zurückgezogenen Quelle? Nur beraten, nichts ändern oder ausführen.",
   },
   {
+    id: "audit-query-migration-impact-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    requiredOverviewFields: ["observability", "plan", "apply"],
+    message:
+      "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, Wie entscheidet der Platform Owner bei anderen geplanten Löschungen und Ersetzungen, und lassen sich alte Pläne dadurch nachträglich entsperren? Nur beraten, nichts ändern oder ausführen.",
+  },
+  {
     id: "audit-grafana-upgrade-advice",
     topic: "audit-logs",
     fixture: "baseline",
@@ -2124,6 +2132,10 @@ export function validateAssistantScenario(
   }
   if (scenario.fixture === "baseline" && dialogue.changes.length)
     failures.push("advice_proposed_changes");
+  if (scenario.id === "audit-query-migration-impact-advice")
+    failures.push(
+      ...assistantPlatformImpactReviewFailures(dialogue.explanation),
+    );
   if (
     scenario.requiredOverviewFields?.some(
       (field) => !dialogue.explanation.toLowerCase().includes(field),
@@ -2787,4 +2799,27 @@ export function assistantUpgradePathPolicyFailures(text: string): string[] {
   )
     failures.push("upgrade_path_incorrect_template_policy_override");
   return failures;
+}
+
+/** Platform owners decide destructive shared changes; approvals stay artifact-bound. */
+export function assistantPlatformImpactReviewFailures(text: string): string[] {
+  const checks: [string, RegExp][] = [
+    [
+      "owner-decision",
+      /Platform.?Owner[\s\S]{0,180}(?:entscheid|bestätig|freig|prüf)/i,
+    ],
+    ["destructive-impact", /Lösch|Ersetz|delet|replac/i],
+    ["data-loss", /Datenverlust|Daten.{0,30}verlor|data.{0,20}loss/i],
+    ["artifact-binding", /Arte?i?f[aä]kt|Hash/i],
+    ["state-binding", /State|Zustand/i],
+    ["dependencies", /Abhängig|Application/i],
+    ["separate-apply", /Apply/i],
+    [
+      "fresh-plan",
+      /(?:neu|frisch)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch)/i,
+    ],
+  ];
+  return checks
+    .filter(([, pattern]) => !pattern.test(text))
+    .map(([name]) => `platform_impact_missing_${name}`);
 }
