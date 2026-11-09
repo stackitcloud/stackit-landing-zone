@@ -4202,3 +4202,86 @@ it("keeps automatic audit router ranges distinct from an empty override", () => 
     ).success,
   ).toBe(true);
 });
+
+it("describes default organization routing while preserving explicit manual scopes", () => {
+  const schema = assistantEditorValueSchema(
+    ["list", ["object", { resource_type: "string", resource_id: "string" }]],
+    "audit_logs.link_scopes",
+  );
+  const manual = [
+    {
+      resource_type: "project",
+      resource_id: "00000000-0000-4000-8000-000000000099",
+    },
+  ];
+  expect(schema.parse(null)).toBeNull();
+  expect(schema.parse([])).toEqual([]);
+  expect(schema.parse(manual)).toEqual(manual);
+  expect(assistantEditorResponseSchema(schema).description).toContain(
+    "native organization-level default",
+  );
+});
+
+it("omits only unpinned equivalent organization defaults on new audit drafts", () => {
+  const organizationId = "00000000-0000-4000-8000-000000000001";
+  const scope = { resource_type: "organization", resource_id: organizationId };
+  const base = {
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+  };
+  const value = { ...base, link_scopes: [scope] };
+  const context = {
+    organizationId,
+    userSources: ["Organisationsweiter Telemetry Link."],
+  };
+  const normalized = assistantEditorCreationValue(
+    "audit_logs",
+    value,
+    null,
+    context,
+  );
+  expect(normalized).toEqual(base);
+  // Both spellings select the exact same native resource key and target.
+  const nativeScopes = (
+    input: typeof base & { link_scopes?: (typeof scope)[] },
+  ) => input.link_scopes ?? [scope];
+  expect(nativeScopes(normalized as typeof base)).toEqual(nativeScopes(value));
+  for (const source of [
+    `Expliziter Scope ${organizationId}`,
+    "Setze link_scopes ausdrücklich",
+  ])
+    expect(
+      assistantEditorCreationValue("audit_logs", value, null, {
+        organizationId,
+        userSources: [source],
+      }),
+    ).toEqual(value);
+  for (const scopes of [
+    [],
+    [
+      {
+        resource_type: "project",
+        resource_id: "00000000-0000-4000-8000-000000000099",
+      },
+    ],
+    [
+      scope,
+      {
+        resource_type: "project",
+        resource_id: "00000000-0000-4000-8000-000000000099",
+      },
+    ],
+  ]) {
+    const manual = { ...base, link_scopes: scopes };
+    expect(
+      assistantEditorCreationValue("audit_logs", manual, null, context),
+    ).toEqual(manual);
+  }
+  expect(
+    assistantEditorCreationValue("audit_logs", value, base, context),
+  ).toEqual(value);
+  expect(assistantEditorCreationValue("audit_logs", value, null)).toEqual(
+    value,
+  );
+});

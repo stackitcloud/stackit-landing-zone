@@ -505,6 +505,27 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     },
   },
   {
+    id: "editor-audit-explicit-project",
+    topic: "audit-logs",
+    fixture: "baseline",
+    message:
+      "Bitte einen Audit-Entwurf erstellen: 90 Tage, nur ACL 203.0.113.0/24 und Object Lock aus. Explizit genau diesen manuellen Telemetry-Link-Scope setzen: resource_type=project und resource_id=00000000-0000-4000-8000-000000000099. Keinen Organisations-Link, keine automatische verwaltete Abdeckung, nichts ausführen.",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+        link_scopes: [
+          {
+            resource_type: "project",
+            resource_id: "00000000-0000-4000-8000-000000000099",
+          },
+        ],
+      },
+    },
+  },
+  {
     id: "editor-audit-managed",
     topic: "audit-logs",
     fixture: "baseline",

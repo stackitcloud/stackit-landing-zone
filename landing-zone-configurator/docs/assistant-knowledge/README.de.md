@@ -105,6 +105,19 @@ widersprüchlichen verwandten Komponententhema. Unverwandte Themen und historisc
 Aufgaben bleiben ausgeschlossen. Entwurfs-/Aktionsaufträge gelangen nicht in
 diesen rein beratenden Pfad.
 
+Die Klassifikation enthält kein ungenutztes Freitext-Assessment mehr und fordert
+kompaktes JSON. Ungültige, übergroße oder unvollständige Antworten bleiben
+abgewiesen; Grenzen werden nicht erhöht und Teil-JSON wird nicht übernommen.
+Eine mehrdeutige Plattformvertrags-Beratung wird vor der Auswahl der geprüften
+Anleitung mit einem kleinen geschlossenen Themenschema gegen die aktuelle Frage
+geprüft. Diese Prüfung erhält weder Entwurf, Plan noch historische Aufgaben.
+Die Audit-Anleitung belässt das native Organisationsrouting bei
+`link_scopes=null`, solange keine manuellen Scopes verlangt sind. Explizite
+manuelle Scopes und eine ausdrücklich leere Liste behalten ihre native Bedeutung.
+Neue Entwürfe lassen nur eine redundante Kopie des Organisationsstandards ohne
+ausdrücklich vorgegebene ID oder natives Scope-Feld weg. Bestehende und
+abweichende Scopes bleiben erhalten.
+
 ### Qualifikation mit echtem Modell
 
 Aenderungen an Servicefakten, Prompts, Wissensauswahl oder

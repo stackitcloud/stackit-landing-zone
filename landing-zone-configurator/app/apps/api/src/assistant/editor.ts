@@ -225,6 +225,26 @@ export function assistantEditorValueSchema(
     if (type === "number") return z.number().finite().nullable();
     throw new Error("assistant_unreviewed_input_type");
   }
+  if (
+    path === "audit_logs.link_scopes" &&
+    typeof type !== "string" &&
+    (type[0] === "list" || type[0] === "set")
+  )
+    return z
+      .array(
+        assistantEditorValueSchema(
+          type[1],
+          `${path}[*]`,
+          false,
+          fields,
+          options,
+        ),
+      )
+      .max(100)
+      .nullable()
+      .describe(
+        "null keeps the native organization-level default, with no project/folder inheritance. A request for an organization-wide Telemetry Link without explicit custom scope IDs uses null; do not materialize a redundant organization ID from saved context. [] explicitly disables those default links. Use explicit entries only for a requested manual scope selection and preserve user-supplied resource_type/resource_id values. With managed_resources=true, keep this null.",
+      );
   if (type[0] === "list" || type[0] === "set")
     return (
       z
@@ -602,17 +622,35 @@ export function assistantEditorCreationValue(
   path: string,
   value: JsonValue,
   current: unknown,
+  provenance?: { organizationId: unknown; userSources: readonly string[] },
 ): JsonValue {
   if (current != null || path.includes(".") || path === "projectTemplates")
     return value;
   const type = editorPath(path).type;
   if (typeof type === "string" || type[0] !== "object" || value == null)
     return value;
+  const constructorValue = objectValue(value);
+  const scopes = constructorValue.link_scopes;
+  // A generated copy of the native organization default adds no routing. Keep
+  // explicitly pinned native fields/IDs and all nondefault or existing scopes.
+  const defaultOrganizationScope =
+    path === "audit_logs" &&
+    typeof provenance?.organizationId === "string" &&
+    Array.isArray(scopes) &&
+    scopes.length === 1 &&
+    objectValue(scopes[0]).resource_type === "organization" &&
+    objectValue(scopes[0]).resource_id === provenance.organizationId &&
+    !provenance.userSources.some(
+      (source) =>
+        source.includes(provenance.organizationId as string) ||
+        /\blink_scopes\b/i.test(source),
+    );
   // Nullable optional constructor slots represent native defaults, not overrides.
   return Object.fromEntries(
     Object.entries(objectValue(value)).filter(
       ([key, item]) =>
         (item !== null || !type[2]?.includes(key)) &&
+        !(key === "link_scopes" && defaultOrganizationScope) &&
         // A fresh audit draft keeps legacy scope through its native false
         // default. Do not add an unrelated coverage override to old requests.
         !(

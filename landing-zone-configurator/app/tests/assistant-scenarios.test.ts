@@ -240,6 +240,16 @@ it.each(assistantScenarios)(
           ...(scenario.id === "editor-audit-managed"
             ? { managed_resources: true }
             : {}),
+          ...(scenario.id === "editor-audit-explicit-project"
+            ? {
+                link_scopes: [
+                  {
+                    resource_type: "project",
+                    resource_id: "00000000-0000-4000-8000-000000000099",
+                  },
+                ],
+              }
+            : {}),
         },
         observability: {
           metrics_retention_days: 30,
@@ -1181,4 +1191,34 @@ it("requires owner decision, data-loss information and exact-plan binding in pla
       text.replace("Artefakt-Hash", "Stand"),
     ),
   ).toContain("platform_impact_missing_artifact-binding");
+});
+
+it("rejects omitted or changed manually requested audit scopes", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "editor-audit-explicit-project",
+  )!;
+  for (const scopes of [
+    undefined,
+    [
+      {
+        resource_type: "project",
+        resource_id: "00000000-0000-4000-8000-000000000098",
+      },
+    ],
+  ]) {
+    const value = {
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+      ...(scopes === undefined ? {} : { link_scopes: scopes }),
+    };
+    expect(
+      validateAssistantScenario(scenario, {
+        explanation: "Reviewable local draft only.",
+        questions: [],
+        changes: [{ path: "audit_logs", operation: "replace", value }],
+        references: ["audit-logs"],
+      }).failures,
+    ).toContain("editor_expected_value_not_applied");
+  }
 });

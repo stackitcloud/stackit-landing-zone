@@ -3406,11 +3406,20 @@ it.each([
   "platform-upgrade",
   "execution-source-upgrade",
 ] as const)(
-  "returns reviewed %s steps after one semantic intent call with no second generation",
+  "returns reviewed %s steps without a free-form guide generation",
   async (adviceTask) => {
     const request = vi.fn<typeof fetch>(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
+      if (body.response_format.json_schema.name === "platform_advice_subject") {
+        expect(JSON.stringify(body.messages)).not.toContain(
+          "Private draft must not leak",
+        );
+        return answer({ task: adviceTask });
+      }
       expect(body.response_format.json_schema.name).toBe("conversation_intent");
+      expect(
+        body.response_format.json_schema.schema.properties,
+      ).not.toHaveProperty("assessment");
       expect(
         body.response_format.json_schema.schema.properties.adviceTask.enum,
       ).toEqual(
@@ -3453,7 +3462,9 @@ it.each([
     expect(result.changes).toEqual([]);
     expect(result.references).toEqual(["configuration-lifecycle"]);
     expect(streamed).toEqual([result.explanation]);
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(
+      adviceTask === "platform-upgrade" ? 2 : 1,
+    );
     const {
       assistantApplicationUpgradeFailures,
       assistantExecutionLifecycleFailures,
@@ -3640,6 +3651,8 @@ it.each([
   async ({ task, topic }) => {
     const request = vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
+      if (body.response_format.json_schema.name === "platform_advice_subject")
+        return answer({ task });
       expect(body.response_format.json_schema.name).toBe("conversation_intent");
       return answer({
         topic,
@@ -3669,7 +3682,7 @@ it.each([
     expect(result.references).toEqual(["configuration-lifecycle"]);
     expect(result.questions).toEqual([]);
     expect(result.changes).toEqual([]);
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(task === "platform-upgrade" ? 2 : 1);
   },
 );
 
@@ -3707,3 +3720,54 @@ it("resumes an exact pending folder choice without another model classification"
   expect(result.explanation).toContain("Plan");
   expect(result.explanation).toContain("Apply");
 });
+
+it.each(["platform-impact-review", "audit-observability"] as const)(
+  "verifies an ambiguous platform label against the current %s subject",
+  async (task) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      if (body.response_format.json_schema.name === "conversation_intent")
+        return answer({
+          topic: "configuration-lifecycle",
+          mode: "advice",
+          adviceTask: "platform-upgrade",
+          adviceTaskSource: "current",
+          requirements: [],
+        });
+      expect(body.response_format.json_schema.name).toBe(
+        "platform_advice_subject",
+      );
+      const input = JSON.parse(
+        body.messages.find((entry: { role: string }) => entry.role === "user")
+          .content,
+      );
+      expect(Object.keys(input)).toEqual(["message"]);
+      expect(JSON.stringify(input)).not.toContain("Private draft");
+      expect(JSON.stringify(input)).not.toContain("historical contract");
+      return answer({ task });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      { company_name: "Private draft" },
+      [{ role: "user", content: "historical contract" }],
+      task === "platform-impact-review"
+        ? "Mein Plattform-Plan löscht gemeinsame Ressourcen. Was bestätigt die Auswirkungsfreigabe?"
+        : "Wie stelle ich die native Audit-Ablage von Logs auf Observability und Grafana um?",
+      { regions: [] },
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toEqual([]);
+    expect(result.references).toEqual([
+      task === "audit-observability" ? "audit-logs" : "configuration-lifecycle",
+    ]);
+    expect(result.explanation).toContain("Plan");
+    expect(result.explanation).toContain("Apply");
+    if (task === "audit-observability")
+      expect(result.explanation).toContain("SSO");
+    else expect(result.explanation).toContain("State-Version");
+    expect(request).toHaveBeenCalledTimes(2);
+  },
+);

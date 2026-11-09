@@ -84,6 +84,17 @@ the model also supplies an inconsistent related component label. Unrelated
 topics and historical tasks remain excluded. Draft/action requests
 do not enter this read-only path.
 
+Classification omits unused free-text assessment output and requests compact JSON.
+Malformed, oversized or incomplete responses remain rejected; limits are not raised
+and partial JSON is never applied. An ambiguous platform-contract advice label is
+checked against the latest question in a small closed subject schema before a
+reviewed guide is selected. That check receives no draft, Plan or historical task.
+Audit constructor guidance keeps native organization routing as `link_scopes=null`
+unless manual scopes are explicitly requested; supplied manual scopes and an
+explicit empty list retain their native meaning. New drafts omit a redundant copy
+of the current organization default only when no user source pins its ID or the
+native scope field; existing and nondefault scopes are preserved.
+
 ### Real-model qualification
 
 Changes to service facts, prompts, knowledge selection or component contracts

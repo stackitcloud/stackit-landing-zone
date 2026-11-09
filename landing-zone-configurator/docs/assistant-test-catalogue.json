@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "e6c845ac0d8462069e4401075e03d093a55308b56b5a58b777f4487a5ff551da",
+  "knowledgeSha256": "3f603b69140b043d5d028e64eb91595cf12de3887a901cd0574f988398599acb",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "463f1cb60c63d285c1ff50ded726d6e251324914d54f597b76f7b99d9f6ddc10",
+    "scripts/assistant-scenarios.ts": "4cb3b38b851210970ef7e29eb1b0944a400cf7cf98c90bef88d76abfd8f76005",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "97bfdccc1ad0893c5478ea3cc33dcff8a115c382ed53b7b7da66239297f9c0cb",
+  "suiteSha256": "52e31608bace1b612436d2ddddff15d1612b22fe80ec849724b6605af1153d20",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1145,6 +1145,33 @@
                 "203.0.113.0/24"
               ],
               "s3_object_lock": false
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-explicit-project",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "message": "Bitte einen Audit-Entwurf erstellen: 90 Tage, nur ACL 203.0.113.0/24 und Object Lock aus. Explizit genau diesen manuellen Telemetry-Link-Scope setzen: resource_type=project und resource_id=00000000-0000-4000-8000-000000000099. Keinen Organisations-Link, keine automatische verwaltete Abdeckung, nichts ausführen.",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false,
+              "link_scopes": [
+                {
+                  "resource_type": "project",
+                  "resource_id": "00000000-0000-4000-8000-000000000099"
+                }
+              ]
             }
           },
           "assertions": [
