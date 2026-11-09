@@ -3672,3 +3672,38 @@ it.each([
     expect(request).toHaveBeenCalledTimes(1);
   },
 );
+
+it("resumes an exact pending folder choice without another model classification", async () => {
+  const { assistantScenarios, assistantScenarioFixture } = await import(
+    "../scripts/assistant-scenarios.js"
+  );
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "governance-folder-scope-followup",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const request = vi.fn<typeof fetch>();
+  const result = await new AssistantModelServing(
+    configuration,
+    request,
+  ).converse(
+    selection(),
+    fixture.values,
+    fixture.history,
+    scenario.message,
+    fixture.catalogues,
+  );
+  expect(request).not.toHaveBeenCalled();
+  expect(result.references).toContain("governance-folders");
+  expect(result.changes).toEqual([
+    {
+      path: "rm_folders",
+      value: {
+        platform: {
+          reader_emails: ["folder-reader@example.test", "owner@example.test"],
+        },
+      },
+    },
+  ]);
+  expect(result.explanation).toContain("Plan");
+  expect(result.explanation).toContain("Apply");
+});

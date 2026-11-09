@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "16ab00cac9914645dd990e9fe5edd3b544eab6a6e55c1f01de9ba05e3a594087",
+  "knowledgeSha256": "e6c845ac0d8462069e4401075e03d093a55308b56b5a58b777f4487a5ff551da",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "304d75cde4c6843e2ab63b123cd6921f38e53f288cc4f3b4c9f8c94af11c4e58",
+    "scripts/assistant-scenarios.ts": "463f1cb60c63d285c1ff50ded726d6e251324914d54f597b76f7b99d9f6ddc10",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "a02e1864a20ca60e6d892be4c0b8f436ba9ec7937afcdf8694722b98e0769a17",
+  "suiteSha256": "97bfdccc1ad0893c5478ea3cc33dcff8a115c382ed53b7b7da66239297f9c0cb",
   "topics": [
     {
       "id": "credential-foundations",
@@ -6308,8 +6308,22 @@
           ]
         },
         {
+          "id": "platform-impact-without-role-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "platformImpactReview": true,
+          "message": "Mein gespeicherter Plattformplan löscht und ersetzt gemeinsame Ressourcen, die mehrere Applications verwenden. Ich möchte die Auswirkungen beurteilen und den Apply danach freigeben. Woran ist die Bestätigung gebunden, wann muss ich neu planen und was passiert bei möglichen Datenverlusten? Nur beraten, nichts ändern oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
+            "no_changes"
+          ]
+        },
+        {
           "id": "audit-query-migration-impact-advice",
           "topic": "configuration-lifecycle",
+          "platformImpactReview": true,
           "fixture": "baseline",
           "requiredOverviewFields": [
             "observability",
@@ -6320,6 +6334,7 @@
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
+            "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
             "complete_native_field_overview",
             "no_changes"
           ]

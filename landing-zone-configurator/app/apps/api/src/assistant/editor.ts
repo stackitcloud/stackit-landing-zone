@@ -226,18 +226,23 @@ export function assistantEditorValueSchema(
     throw new Error("assistant_unreviewed_input_type");
   }
   if (type[0] === "list" || type[0] === "set")
-    return z
-      .array(
-        assistantEditorValueSchema(
-          type[1],
-          `${path}[*]`,
-          false,
-          fields,
-          options,
-        ),
-      )
-      .max(100)
-      .nullable();
+    return (
+      z
+        .array(
+          assistantEditorValueSchema(
+            type[1],
+            `${path}[*]`,
+            false,
+            fields,
+            options,
+          ),
+        )
+        // Native audit validation permits automatic ranges (null) or a reviewed
+        // nonempty override. An empty list is invalid and is not the default.
+        .min(path === "audit_logs.router_egress_cidrs" ? 1 : 0)
+        .max(100)
+        .nullable()
+    );
   if (type[0] === "map")
     return z
       .record(

@@ -175,16 +175,23 @@ IAM-Aenderungen bleiben an geprueften Plan und separate Apply-Freigabe gebunden.
 ```sh
 # Ohne Credentials: Inventar, Wissensfrische und Testfragen pruefen
 npm run assistant:check
-# Echter Modelllauf mit allen Themen; vorhandenen privaten lokalen Zugang nutzen
-LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials
+# Vollstaendige Abnahme mit der gleichen Modellauswahl wie Anwendung und CI
+npm run test:assistant:live -- --local-credentials --repeat 2
 # Nur ein Thema oder eine Regression
-LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials --topic dns-zones
-LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials --case foundations-restoration
-# Zusammenhaengender Dialog mit GPT-OSS 120B fuer beide Modellrollen
-LZC_MODEL_SERVING_MODEL=openai/gpt-oss-120b \
-  LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
-  npm run test:assistant:journey -- --local-credentials
+npm run test:assistant:live -- --local-credentials --topic dns-zones --repeat 2
+npm run test:assistant:live -- --local-credentials --case foundations-restoration --repeat 2
+# Zusammenhaengender Dialog mit derselben Modellauswahl
+npm run test:assistant:journey -- --local-credentials
+# Optionaler Vergleich: andere Intent-Auswahl, keine Qualifikation des Defaults
+LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
+  npm run test:assistant:live -- --local-credentials --repeat 2
 ```
+
+Ohne Modell-Overrides verwenden Anwendung und CI `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`
+fuer beide Rollen. Fuer die Abnahme muessen Modell und Intent-Modell exakt zur
+laufenden Anwendung passen. Vergleichslaeufe mit anderen Overrides sind getrennt
+zu dokumentieren; ihre Ergebnisse qualifizieren keine andere Modellauswahl.
+Diese Umgebungsvariablen aendern nur den lokalen Testprozess, nicht die Anwendung.
 
 Der Journey-Test durchlaeuft zwoelf Schritte von Grundlagen und Rollen ueber
 SNA/Firewall, den Policy-MVP-Hinweis und Audit-Rueckfragen bis Observability,

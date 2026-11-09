@@ -701,7 +701,7 @@ export class AssistantModelServing {
         : []),
       ...(schemaName === "conversation_intent"
         ? [
-            "CURRENT LIFECYCLE ROUTING: Judge only the latest user question, not topic descriptions, saved values or historical tasks. Informational maintenance of an EXISTING order/Platform Plan belongs to configuration-lifecycle even when the question mentions Kubernetes, templates, audit logs, firewall or network services. Distinguish: (1) a new published template VERSION/permissions/settings adopted by an existing order => template-upgrade; (2) shared firewall/routing effects and adopting a platform CONTRACT => platform-upgrade; (3) unsupported product/Runner/Accelerator SOURCE, desired versus lastApplied, withdrawal or source-bound recovery => execution-source-upgrade; (4) a Platform Owner reviewing/acknowledging a ROOT PLATFORM PLAN's impact, deletions or replacements => platform-impact-review. Use mode=advice,adviceTaskSource=current for these informational questions. Examples: 'My order cannot run Drift after a product update; explain template origin versus desired execution and recovery' => execution-source-upgrade. 'How do I use the new published Public template with Kubernetes permissions in this same order and retain my answers?' => template-upgrade. 'Can declining a platform contract upgrade keep the old shared firewall?' => platform-upgrade. 'May the Platform Owner approve a platform Plan that removes the old audit store, and what is approval bound to?' => platform-impact-review. A new component setup or an actual draft/proposal instruction is not one of these information tasks; preserve draft handling and the latest topic switch.",
+            "CURRENT LIFECYCLE ROUTING: Judge only the latest user question, not topic descriptions, saved values or historical tasks. Informational maintenance of an EXISTING order/Platform Plan belongs to configuration-lifecycle even when the question mentions Kubernetes, templates, audit logs, firewall or network services. Distinguish: (1) a new published template VERSION/permissions/settings adopted by an existing order => template-upgrade; (2) shared firewall/routing effects and adopting a platform CONTRACT => platform-upgrade; (3) unsupported product/Runner/Accelerator SOURCE, desired versus lastApplied, withdrawal or source-bound recovery => execution-source-upgrade; (4) reviewing/acknowledging a saved ROOT PLATFORM PLAN's impact, deletions or replacements => platform-impact-review, whether or not the user names their role. A root Plan approval question without adopting an order's platform contract is platform-impact-review, NOT platform-upgrade. Use mode=advice,adviceTaskSource=current for these informational questions. Examples: 'My order cannot run Drift after a product update; explain template origin versus desired execution and recovery' => execution-source-upgrade. 'How do I use the new published Public template with Kubernetes permissions in this same order and retain my answers?' => template-upgrade. 'Can declining a platform contract upgrade keep the old shared firewall?' => platform-upgrade. 'Mein Plattformplan entfernt die alte zentrale Audit-Ablage. Kann ich die Auswirkungen bestätigen, woran bindet das und brauche ich einen neuen Plan?' => platform-impact-review. The same applies to any known root-platform resource changes, not only audit logging. A component configuration migration is not an order platform-contract upgrade. In particular, explaining how native audit routing changes from Logs to existing Observability/Grafana belongs to topic=audit-logs, adviceTask=field-overview, even when the user calls this an upgrade and asks whether orders need updates. Reserve platform-upgrade for adopting a different order platform contract or shared firewall effects. A new component setup or an actual draft/proposal instruction is not one of these information tasks; preserve draft handling and the latest topic switch. CURRENT FOLLOW-UP ROUTING: A short direct answer to the latest unresolved configuration question continues its requested draft. For an exact existing folder choice after the server asks the target of a pending reader/owner assignment, use topic=governance-folders, mode=draft, and accessAssignment.source for the original USER assignment request, not the assistant question. Saved values alone never authorize assignments; no unresolved question means no continuation.",
           ]
         : []),
     ].join("\n\n");
@@ -850,6 +850,81 @@ export class AssistantModelServing {
         entry.role === "user" ? [[`template-${index}`, entry.content]] : [],
       ),
     ]);
+    // An exact answer to our own immediately pending folder question is
+    // already grounded. Do not ask a classifier to rediscover its mode/role.
+    if (
+      context.rules.some((rule) => rule.id === "governance-folders") &&
+      history.at(-1)?.role === "assistant" &&
+      history.at(-1)?.content.endsWith(`\n${folderScopeQuestion}`)
+    ) {
+      const validContact = (value: unknown): value is string =>
+        typeof value === "string" &&
+        z.email().safeParse(value).success &&
+        !/@sa\.stackit\.cloud$/i.test(value);
+      const owner = current.owner_email;
+      const contacts = {
+        saved:
+          validContact(owner) &&
+          (current["assistant.owner_email_is_template_default"] !== true ||
+            [...namingSources.values()].some((source) =>
+              source.includes(owner),
+            ))
+            ? [owner]
+            : [],
+        verified: validContact(current["assistant.user_email"])
+          ? [current["assistant.user_email"]]
+          : [],
+      };
+      const grounded = groundAssistantFolderScope(
+        current,
+        {
+          paths: ["rm_folders[*].reader_emails"],
+          source: "current",
+          emailSource: "saved-owner",
+          folderKeys: [],
+          allFolders: false,
+        },
+        "",
+        message,
+        history,
+        contacts,
+      );
+      if (
+        grounded.source === `history-${history.length - 2}` &&
+        grounded.folderKeys.length > 0
+      ) {
+        const emails =
+          grounded.emailSource === "saved-owner"
+            ? contacts.saved
+            : grounded.emailSource === "verified-user"
+              ? contacts.verified
+              : [
+                  ...new Set(
+                    (
+                      namingSources
+                        .get(grounded.source)
+                        ?.match(
+                          /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+                        ) ?? []
+                    ).filter(validContact),
+                  ),
+                ];
+        const proposal = proposeAssistantAccess(current, grounded, emails);
+        const origin =
+          grounded.emailSource === "saved-owner"
+            ? "den gespeicherten Grundlagen (owner_email)"
+            : grounded.emailSource === "verified-user"
+              ? "der aktuell verifizierten STACKIT-Benutzeridentität"
+              : "deiner ausdrücklichen E-Mail-Angabe";
+        proposal.explanation = `E-Mail-Quelle: ${origin} (${emails.join(", ")}).\n${proposal.explanation}`;
+        const dialogue = validateDialogue(
+          proposal,
+          context.rules.map((rule) => rule.id),
+        );
+        stream?.onText(dialogue.explanation);
+        return dialogue;
+      }
+    }
     const existingTemplateKeys = Object.keys(
       objectValue(
         current.projectTemplates as Parameters<typeof objectValue>[0],
@@ -1308,7 +1383,7 @@ export class AssistantModelServing {
         ])
         .default("other")
         .describe(
-          "For current informational existing-order or Platform Apply questions select topic=configuration-lifecycle,mode=advice,adviceTaskSource=current. Choose the subject of the LATEST USER QUESTION: template-upgrade means adopting a published same-family template VERSION or revised template permissions/settings in an EXISTING order, including retained answers and self-service approval. Mentioning the Platform Owner is not itself a shared platform change. platform-upgrade means shared platform/firewall/routing effects and adopting the actual approved platform CONTRACT in an existing order. execution-source-upgrade means product/Runner/Accelerator SOURCE compatibility, origin/desired/lastApplied, withdrawn packages or interrupted-job recovery; comparing template origin while discussing execution remains this task. platform-impact-review means a Platform Owner deciding whether a saved ROOT PLATFORM PLAN with dependent Applications, deletions or replacements may Apply, and what impact acknowledgement binds. That is not configuring audit/firewall services and not an order's template/contract upgrade. These tasks only explain workflows: actual proposal/setup requests remain draft/other. Never infer the current task from historical questions or component words alone. application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. field-overview fuer aktuelle Informationsfragen nach nativen konfigurierbaren Feldern, Defaults oder Grenzen, ohne Einrichtungsauftrag. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
+          "For current informational existing-order or Platform Apply questions select topic=configuration-lifecycle,mode=advice,adviceTaskSource=current. Choose the subject of the LATEST USER QUESTION: template-upgrade means adopting a published same-family template VERSION or revised template permissions/settings in an EXISTING order, including retained answers and self-service approval. Mentioning the Platform Owner is not itself a shared platform change. platform-upgrade means shared platform/firewall/routing effects and adopting the actual approved platform CONTRACT in an existing order. execution-source-upgrade means product/Runner/Accelerator SOURCE compatibility, origin/desired/lastApplied, withdrawn packages or interrupted-job recovery; comparing template origin while discussing execution remains this task. platform-impact-review means deciding whether a saved ROOT PLATFORM PLAN with dependent Applications, deletions or replacements may Apply, and what impact acknowledgement binds. The user need not name their role: the saved root Plan and its impact approval are the subject. That is not configuring audit/firewall services and not an order's template/contract upgrade. These tasks only explain workflows: actual proposal/setup requests remain draft/other. Never infer the current task from historical questions or component words alone. application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. field-overview fuer aktuelle Informationsfragen nach nativen konfigurierbaren Feldern, Defaults oder Grenzen, ohne Einrichtungsauftrag. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
         ),
       adviceTaskSource: z
         .enum(["current", "none"])
@@ -1527,7 +1602,7 @@ export class AssistantModelServing {
           {
             role: "system",
             content:
-              "Application project IAM profile advice uses topic=project-templates,mode=advice,adviceTask=application-access. Informational native-field questions use mode=advice, adviceTask=field-overview and adviceTaskSource=current: the USER asks about the native configuration contract, including fields, parameters, field meanings, enum roles, defaults, effects of null/default values, limits or prerequisites. A field overview is NOT restricted to listing field names. Questions whether a default enables/creates a component, or whether an assumed default is correct, still ask about native configuration semantics, not a live deployment. For example, Git flavor/default/no-instance and deliberate ACL questions are devops-git field-overview; DNS zone type primary/secondary, their authoritative roles versus visibility, and native Secondary prerequisites are dns-zones field-overview. This also applies when correcting earlier misleading field explanations. Do not classify these informational semantics as other. Available topics mark reviewedFieldOverview when a reviewed answer exists. Select that component's topic, not configuration-lifecycle. Explaining how protected inputs are supplied separately is still a field overview, not a credential request or setup task. This includes VPN gateway/connection fields, site networks, tunnel parameters and separate PSK handling. Do not default adviceTask to other for such questions. Actual configuration/proposal requests remain draft; never infer them from an informational question. Conversely, an explicit request to complete DNS settings or propose suitable remaining settings is topic=dns-zones, mode=draft, dnsTask=remaining-settings, adviceTask=other. It is NOT an informational overview or a request to ask all fields again. Missing contact values do not change that task classification: the downstream proposal flow resolves confirmed contact sources or asks only genuinely missing decisions.",
+              "Application project IAM profile advice uses topic=project-templates,mode=advice,adviceTask=application-access. Informational native-field questions use mode=advice, adviceTask=field-overview and adviceTaskSource=current: the USER asks about the native configuration contract, including fields, parameters, field meanings, enum roles, defaults, effects of null/default values, limits or prerequisites. A field overview is NOT restricted to listing field names. Questions whether a default enables/creates a component, or whether an assumed default is correct, still ask about native configuration semantics, not a live deployment. For example, Git flavor/default/no-instance and deliberate ACL questions are devops-git field-overview; DNS zone type primary/secondary, their authoritative roles versus visibility, and native Secondary prerequisites are dns-zones field-overview. This also applies when correcting earlier misleading field explanations. Do not classify these informational semantics as other. Available topics mark reviewedFieldOverview when a reviewed answer exists. Select that component's topic, not configuration-lifecycle. Explaining how protected inputs are supplied separately is still a field overview, not a credential request or setup task. This includes VPN gateway/connection fields, site networks, tunnel parameters and separate PSK handling. The native audit Logs-to-Observability migration, Grafana ingestion, existing linked versus unlinked orders, removal of Logs history and independent retention are audit-logs field-overview, even if called a platform upgrade. Do not default adviceTask to other for such questions. Actual configuration/proposal requests remain draft; never infer them from an informational question. Conversely, an explicit request to complete DNS settings or propose suitable remaining settings is topic=dns-zones, mode=draft, dnsTask=remaining-settings, adviceTask=other. It is NOT an informational overview or a request to ask all fields again. Missing contact values do not change that task classification: the downstream proposal flow resolves confirmed contact sources or asks only genuinely missing decisions.",
           },
           {
             role: "system",

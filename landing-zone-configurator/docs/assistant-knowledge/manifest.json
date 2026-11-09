@@ -210,8 +210,8 @@
     {
       "id": "audit-logs",
       "file": "audit-logs.md",
-      "version": 4,
-      "checkedOn": "2026-11-06",
+      "version": 5,
+      "checkedOn": "2026-11-09",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "management"

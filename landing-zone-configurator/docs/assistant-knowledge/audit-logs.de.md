@@ -2,6 +2,8 @@
 
 [English](audit-logs.md) | [Deutsch](audit-logs.de.md)
 
+Technische Observability-Credentials authentifizieren Ingestion/Abfragen, nicht den Grafana-SSO-Login. Die geprüfte Feldübersicht erklärt den zentralen Zielwechsel und unterscheidet bereits angebundene Bestellungen von fehlenden Projekt-Links.
+
 ## Zweck
 
 Control-Plane-Audit-Ereignisse mit bewusst gewähltem Umfang, Zugriff und

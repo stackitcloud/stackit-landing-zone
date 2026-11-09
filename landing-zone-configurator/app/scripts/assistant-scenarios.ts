@@ -194,6 +194,7 @@ export type AssistantScenario = {
     | "both-kubernetes-mixed-confirm";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
+  platformImpactReview?: boolean;
   applicationUpgrade?: "template" | "platform";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
@@ -896,8 +897,17 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Nun möchte ich die neue veröffentlichte Public-Template-Version mit den zusätzlichen Kubernetes-Rechten nutzen. Wie übernimmt der Application Owner diese Template-Version in derselben Bestellung mit seinen bisherigen Antworten und demselben State? Erkläre Plan-/Apply-Freigabe und Löschschutz. Nur beraten, keine Änderung oder Ausführung.",
   },
   {
+    id: "platform-impact-without-role-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    platformImpactReview: true,
+    message:
+      "Mein gespeicherter Plattformplan löscht und ersetzt gemeinsame Ressourcen, die mehrere Applications verwenden. Ich möchte die Auswirkungen beurteilen und den Apply danach freigeben. Woran ist die Bestätigung gebunden, wann muss ich neu planen und was passiert bei möglichen Datenverlusten? Nur beraten, nichts ändern oder ausführen.",
+  },
+  {
     id: "audit-query-migration-impact-advice",
     topic: "configuration-lifecycle",
+    platformImpactReview: true,
     fixture: "baseline",
     requiredOverviewFields: ["observability", "plan", "apply"],
     message:
@@ -2172,7 +2182,7 @@ export function validateAssistantScenario(
   }
   if (scenario.fixture === "baseline" && dialogue.changes.length)
     failures.push("advice_proposed_changes");
-  if (scenario.id === "audit-query-migration-impact-advice")
+  if (scenario.platformImpactReview)
     failures.push(
       ...assistantPlatformImpactReviewFailures(dialogue.explanation),
     );
@@ -2554,6 +2564,11 @@ export function buildAssistantScenarioInventory() {
                     "shared_effect_dependency_gate_before_apply_actual_contract_after_apply",
                   ]
                 : []),
+            ...(scenario.platformImpactReview
+              ? [
+                  "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
+                ]
+              : []),
             ...(scenario.requiredOverviewFields
               ? ["complete_native_field_overview"]
               : []),

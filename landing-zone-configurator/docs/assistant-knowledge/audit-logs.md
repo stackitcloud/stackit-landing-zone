@@ -7,16 +7,14 @@ Audit routing.
 ## Accelerator Contract
 
 audit_logs=null skips routing/retention, not archive bucket.
-Sinks: S3 + ONE query store. With central observability,
-use its OTLP endpoint and built-in Grafana Audit Logs Dashboard via technical
-credential, no Grafana admin; no separate Logs instance/tokens/destination.
+Sinks: S3 + ONE query store. With observability: OTLP to its built-in Grafana Audit Logs Dashboard.
+Technical credential for data; users log in with SSO; no admin; no separate Logs instance/tokens/destination.
 Without Observability: Logs. Needs logs-capable plan, not
 Monitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;
 retention_days controls S3 and, only in fallback, Logs.
 Dev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability
 target/credential. S3/Router/links/projects stay. No order upgrade for linked
-projects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are
-metadata. acl controls Logs clients, observability.acl Observability.
+projects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are metadata. acl controls Logs clients, observability.acl Observability.
 Router ranges join the selected store's ACL, preserving clients.
 router_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4
 list narrows. Authentication required; empty feed fails.

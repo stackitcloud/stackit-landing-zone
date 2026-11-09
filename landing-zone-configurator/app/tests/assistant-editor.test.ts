@@ -40,6 +40,7 @@ import {
   assistantEditorPolicies,
   assistantEditorProposalPath,
   assistantEditorResponseSchema,
+  assistantEditorValueSchema,
   validateAssistantEditorChange,
   validateAssistantEditorSources,
 } from "../apps/api/src/assistant/editor.js";
@@ -4178,4 +4179,26 @@ it("keeps new audit coverage opt-in without adding a false constructor override 
       managed_resources: true,
     }),
   ).toEqual(value);
+});
+
+it("keeps automatic audit router ranges distinct from an empty override", () => {
+  const schema = assistantEditorValueSchema(
+    ["list", "string"],
+    "audit_logs.router_egress_cidrs",
+  );
+  expect(schema.safeParse(null).success).toBe(true);
+  expect(schema.safeParse(["188.34.68.97/32"]).success).toBe(true);
+  expect(schema.safeParse([]).success).toBe(false);
+  const wire = assistantEditorResponseSchema(schema);
+  expect(wire).toMatchObject({
+    anyOf: expect.arrayContaining([
+      expect.objectContaining({ type: "array", minItems: 1 }),
+      { type: "null" },
+    ]),
+  });
+  expect(
+    assistantEditorValueSchema(["list", "string"], "audit_logs.acl").safeParse(
+      [],
+    ).success,
+  ).toBe(true);
 });
