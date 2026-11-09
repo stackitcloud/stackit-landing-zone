@@ -109,7 +109,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "948ef8a5d290adb57f431d16579c0f981231eb65dbd15780500d581ae4fca223",
+            "2ad13bfbf656875ce3d89631ab7cb5505879fbc45706116c7f402ab0298a7328",
         },
         {
           path: "src/modules/landing-zone/3-network.tf",
@@ -427,7 +427,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "89b6a8760c89c18c8a3f7de682d8cd2a9e51456fbe330b29344114aa28956b54",
+            "7cb7830953c356f9c6ec7341ed4e6e03e2134449d3d178147d0936e23d66a89e",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1612,6 +1612,11 @@ export const assistantKnowledgeTopics = {
       dependencies: ["credential-foundations"],
       sources: [
         {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
+          sha256:
+            "2ad13bfbf656875ce3d89631ab7cb5505879fbc45706116c7f402ab0298a7328",
+        },
+        {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
             "08d92c79105d2fd65e8e33863b6a8e310db37771ecb4f012a079b185ae069390",
@@ -1622,11 +1627,6 @@ export const assistantKnowledgeTopics = {
             "b0458a83022eaa535d687c705519b313bcdeede0b3869c6f88ab43ec1d697268",
         },
         {
-          path: "landing-zone-configurator/app/apps/api/src/assistant/firewall.ts",
-          sha256:
-            "5c91a8654be63f6d7b4458b56b6d902ee454fc3a497820e095e9194fbb8709a2",
-        },
-        {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
             "809c06ba3525286e5810b84e4287c418accec1df1a91192e7fc5bf23ffed2839",
@@ -1634,7 +1634,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "89b6a8760c89c18c8a3f7de682d8cd2a9e51456fbe330b29344114aa28956b54",
+            "7cb7830953c356f9c6ec7341ed4e6e03e2134449d3d178147d0936e23d66a89e",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",
@@ -1649,7 +1649,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/docs/application-upgrades.md",
           sha256:
-            "980a5901708529f29ba8885751c86fadd4be638afef6fd92cbd8aba7164db5f5",
+            "84500d34d9c29514d0b6aebe57de02ba32cd5cc6394e4d04a8e924c8d9a97ddb",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/application-upgrades.ts",
@@ -1664,12 +1664,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",
           sha256:
-            "5624e02b490f706d6a6a83522265b55c1732f4679109e7de75d53e16c9bd7ffc",
+            "50c9f8568bbd1657ca03c860f08b0488eb03d7cb5d542de968491aee0cb9b4bb",
         },
         {
-          path: "landing-zone-configurator/app/apps/api/db/093_platform_audit_query_migration.sql",
+          path: "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",
           sha256:
-            "947e0443d120a8dab79dcd23cd82b24c68d1ed75ec40f9b098c40ba1f671e531",
+            "64bc29316d0e28c021ad412ce1ef48cd771a6b9774b549482275f5a5dbdcb53b",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1693,9 +1693,9 @@ export const assistantKnowledgeTopics = {
       fieldPaths: [],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/configuration-lifecycle.md",
-      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nAuth; acceptance ≠ execution.\n\n## Accelerator Contract\n\nNative tfvars only; defaults/knowledge/catalogues enable nothing. Patches: company\nname/code/region, existing folders, native SNA. Naming consent is NAMES ONLY;\npreserve keys/metadata, never IDs/region/access/owners/roles. Save/publish/order/\nPlan/Apply/Destroy/Recovery separate. Apply=foundations+enabled inputs.\nPinned IaC/lock/tools+patched Worker.\n\nBindings: origin=template Git; desired=Accelerator, not draft; lastApplied=successful\nApply source, NOT State/Recovery.\nSource upgrade preserves order/project/State/backend/policy; then fresh\nPlan review (changes/replacements/deletions), explicit separate Apply approval.\nFailure keeps desired but MAY CHANGE State/resources; never promise no loss,\nunchanged failed State or reorder. Recovery=interrupted snapshot/source;\nPlan=actual State, not lastApplied. Withdrawn sources/unresolved Recovery block\nupgrades. Operator: reviewed recovery package; no bypass/invented hashes/\narbitrary Git.\n\nTemplate: Platform Owner publishes same-family forward path. Keep order/project/\nState/backend/answers; ask new required answers. Confirm desired snapshot; fresh\nPlan/separate Apply. Block disallowed infrastructure/service/account/credential\nremoval/replacement and unknown evidence; no checkbox override. Exact Plan may\npermit project custom-role/role-assignment removal/replacement as sensitive IAM.\nSensitive IAM/keys/network/services/availability follow PATH, not NEW-ORDER policy.\nSelf-service: Application Owner reviews fresh Plan, confirms Apply; NO extra\nPlatform Owner approval. Default separate approval binds Plan/artifact/candidate,\neven ordinary changes. Policy edit appends immutable publication; old targets/Plans\nretain policy. Reselect latest path+fresh Plan; no retroactive unlock.\nShared firewall/routes affect ALL Applications, no private old copy. Block unknowns\nand shared deletes/replacements EXCEPT Worker-verified audit Logs→existing\nObservability: same project/router, S3/links unchanged, four old Logs resources\nretired. Fresh Plan + Platform Owner ack bound to artifact/State/dependencies;\nnever relabel old Plans or bypass guards. Publish actual successful contract path;\nrequester adopts explicitly; same template allowed.\nOrg/placement/SNA/backend migration separate. Chat cannot Git/publish/order/upgrade/unlock/execute or expose raw State/Plan.\n\n## Dependencies\n\nReadiness ≠ execution.\n\n## Dialogue\n\nReuse history/requirements/unnamed follow-ups; topic switches win.\nState assumptions; later enables nothing. Split business/derived/operator choices;\nOne missing firewall question. Options ≠ consent. multiple=true: compatible answers,\nfree text. Revalidate subsets; save only whole-proposal acceptance. New configs inherit server revision-bound context; never retrofit. Groups/parameters restrict versions.\n\n## Examples\n\n"SNA first, firewall later": SNA only; disclose inherited firewall. No selective Apply; tfvars need external credentials/backend.\n\n## Limits\n\nRecheck auth/base/candidate on acceptance/inference/reauth.\nNo unknown imports. Chats expire three calendar months from\nCREATION; activity/deletion/late inference never extend expiry or restore derived\ncontext. Refresh knowledge; keep drafts on errors. 5 sessions=load target, not quota.\n\n## Credentials\n\nSession ≠ rights; no tokens/keys/raw errors/protected model data.\n\n## Sources\n\nManifest.\n',
+      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nAuth; acceptance ≠ execution.\n\n## Accelerator Contract\n\nNative tfvars; defaults/catalogues enable nothing. Patches: company\nname/code/region, existing folders, native SNA. Naming consent is NAMES ONLY;\npreserve keys/metadata, never IDs/region/access/owners/roles. Save/publish/order/Plan/Apply/Destroy/Recovery separate. Apply=foundations+enabled inputs.\nPinned IaC/lock/tools+patched Worker.\n\nOrigin=template Git; desired=Accelerator, not draft; lastApplied=successful\nApply source, NOT State/Recovery.\nSource upgrade preserves order/project/State/backend/policy; then fresh\nPlan review (changes/replacements/deletions), explicit separate Apply approval.\nFailure keeps desired but MAY CHANGE State/resources; never promise no loss,\nunchanged failed State or reorder. Recovery=interrupted snapshot/source;\nPlan=actual State, not lastApplied. Withdrawn sources/unresolved Recovery block\nupgrades. Operator: reviewed recovery package; no bypass/fake hashes/arbitrary Git.\n\nTemplate: Platform Owner publishes same-family forward path. Keep order/project/\nState/backend/answers; ask new required answers. Confirm desired snapshot; fresh\nPlan/separate Apply. Block disallowed infrastructure/service/account/credential\nremoval/replacement and unknown evidence; no checkbox override. Exact Plan may\npermit project custom-role/role-assignment removal/replacement as sensitive IAM.\nSensitive IAM/keys/network/services/availability follow PATH, not NEW-ORDER policy.\nSelf-service: Application Owner reviews fresh Plan, confirms Apply; NO extra\nPlatform Owner approval. Default separate approval binds Plan/artifact/candidate,\neven ordinary changes. Policy edit appends immutable publication; old targets/Plans\nretain policy. Reselect latest path+fresh Plan; no retroactive unlock.\nShared firewall/routes affect ALL Applications, no private old copy. Platform\nOwner decides known complete shared deletes/replacements from Plan changes,\ncounts, data-loss warning and affected Applications. Explicit impact ack\nbinds Plan/artifact/State/dependencies; separate normal/destructive Apply approval.\nBlock unknown/incomplete evidence, active execution/Recovery, changed State.\nAudit Logs→Observability: same review. Fresh Plan; never relabel old Plans.\nPublish actual successful contract path; requester adopts; same template allowed.\nOrg/placement/SNA/backend migration separate. Chat cannot Git/publish/order/upgrade/unlock/execute or expose raw State/Plan.\n\n## Dependencies\n\nReady ≠ executed.\n\n## Dialogue\n\nReuse history/requirements/follow-ups; topic switches win.\nState assumptions; later enables nothing. Split business/operator choices;\nOne missing firewall question. Options ≠ consent. multiple=true: compatible answers,\nfree text. Revalidate subsets; save only whole-proposal acceptance. New configs inherit server revision-bound context; no retrofit. Groups/parameters constrain versions.\n\n## Examples\n\n"SNA first, firewall later": SNA only; disclose inherited firewall. No selective Apply; tfvars need external credentials/backend.\n\n## Limits\n\nRecheck auth/base/candidate on acceptance/inference/reauth.\nChats expire three calendar months from\nCREATION; activity/deletion/late inference never extend expiry or restore derived\ncontext. Refresh knowledge; keep drafts on errors. 5 sessions=load target, not quota.\n\n## Credentials\n\nSession ≠ rights; no tokens/keys/raw errors/protected model data.\n\n## Sources\n\nManifest.\n',
       sha256:
-        "3bc8285a7bdf42581ca6870ef38ff8bde70423dc1768f4983a009b6c88d0ca9e",
+        "70a353e3705603d273d782bffd59d75bf26a78d2674aa2f9b6cafc11834a37e9",
     },
   ],
 } as const;

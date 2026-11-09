@@ -17,7 +17,14 @@ const schema = z.object({
     }),
   ),
   blockers: z.array(z.string()),
-  auditQueryMigration: z.boolean().optional(),
+  resourceChanges: z
+    .object({
+      create: z.number().int().nonnegative(),
+      update: z.number().int().nonnegative(),
+      delete: z.number().int().nonnegative(),
+      replace: z.number().int().nonnegative(),
+    })
+    .optional(),
   acknowledged: z.boolean(),
   canAcknowledge: z.boolean(),
 });
@@ -31,9 +38,9 @@ const messages: Record<string, string> = {
   "platform-plan-unknown-action":
     "Die Auswirkungen einer Aktion sind unbekannt. Apply bleibt bis zur Klärung gesperrt.",
   "platform-shared-replacement":
-    "Der Plan ersetzt gemeinsam genutzte Plattformressourcen. Diese Sperre kann nicht durch Bestätigung aufgehoben werden.",
+    "Der Plan ersetzt gemeinsam genutzte Plattformressourcen. Prüfe mögliche Datenverluste und Auswirkungen auf abhängige Applications.",
   "platform-shared-deletion":
-    "Der Plan löscht gemeinsam genutzte Plattformressourcen. Diese Sperre kann nicht durch Bestätigung aufgehoben werden.",
+    "Der Plan löscht gemeinsam genutzte Plattformressourcen. Prüfe mögliche Datenverluste und Auswirkungen auf abhängige Applications.",
   "platform-shared-resource-change":
     "Der Plan verändert gemeinsam genutzte Plattformressourcen. Prüfe die betroffenen Application Landing Zones.",
 };
@@ -135,12 +142,27 @@ export function PlatformApplicationImpact({
                   : "Keine prüfpflichtigen Plattformauswirkungen",
             )}
           </p>
-          {value.auditQueryMigration && (
-            <p>
-              {t(
-                "Dieser Plan stellt die zentrale Audit-Ablage auf Observability um. Die alte Logs-Instanz mit ihrer Historie und ihren Zugängen wird entfernt. Application-Projekte und ihre Ressourcen sowie das S3-Archiv bleiben erhalten.",
+          {value.resourceChanges && (
+            <>
+              <dl>
+                <dt>{t("Anlegen")}</dt>
+                <dd>{value.resourceChanges.create}</dd>
+                <dt>{t("Ändern")}</dt>
+                <dd>{value.resourceChanges.update}</dd>
+                <dt>{t("Ersetzen")}</dt>
+                <dd>{value.resourceChanges.replace}</dd>
+                <dt>{t("Löschen")}</dt>
+                <dd>{value.resourceChanges.delete}</dd>
+              </dl>
+              {(value.resourceChanges.delete > 0 ||
+                value.resourceChanges.replace > 0) && (
+                <p role="alert">
+                  {t(
+                    "Dieser Plan löscht oder ersetzt Plattformressourcen. Dabei können Daten verloren gehen und abhängige Application Landing Zones beeinträchtigt werden. Prüfe die Ressourcenänderungen im Plan; du entscheidest als Platform Owner über die Durchführung.",
+                  )}
+                </p>
               )}
-            </p>
+            </>
           )}
           <ul>
             {value.affectedApplications.map((app) => (
@@ -190,7 +212,7 @@ export function PlatformApplicationImpact({
           {hardBlocked && (
             <p role="alert">
               {t(
-                "Unbekannte Auswirkungen sowie nicht freigegebene Löschungen und Ersetzungen bleiben gesperrt. Eine Checkbox hebt diese Sperre nicht auf.",
+                "Fehlende oder unvollständige Planinformationen sowie ein geänderter State oder laufende Application-Ausführungen müssen zuerst geklärt werden. Eine Bestätigung hebt diese Sperren nicht auf.",
               )}
             </p>
           )}

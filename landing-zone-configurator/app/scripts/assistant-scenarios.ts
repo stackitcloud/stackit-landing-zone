@@ -861,7 +861,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     fixture: "baseline",
     requiredOverviewFields: ["observability", "plan", "apply"],
     message:
-      "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, und kann ich damit beliebige andere Löschungen oder einen alten Plan entsperren? Nur beraten, nichts ändern oder ausführen.",
+      "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, Wie entscheidet der Platform Owner bei anderen geplanten Löschungen und Ersetzungen, und lassen sich alte Pläne dadurch nachträglich entsperren? Nur beraten, nichts ändern oder ausführen.",
   },
   {
     id: "audit-grafana-upgrade-advice",

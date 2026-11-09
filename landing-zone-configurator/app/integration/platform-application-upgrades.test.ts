@@ -471,8 +471,8 @@ it("keeps ordinary non-mutating plans available without additional acknowledgeme
   });
   await apply(f);
 });
-it("blocks destructive, unknown or absent shared impact evidence even after direct SQL attempts", async () => {
-  for (const corruption of ["blocked", "delete", "absent"]) {
+it("blocks unknown or absent shared impact evidence even after direct SQL attempts", async () => {
+  for (const corruption of ["blocked", "absent"]) {
     const f = await platformFixture(
       corruption === "blocked" ? "blocked" : "sensitive",
     );
@@ -1644,7 +1644,7 @@ function auditedQueryStoreSummary() {
     ),
   };
 }
-it("admits the exact reviewed audit query migration only after artifact-bound Platform Owner acknowledgement", async () => {
+it("admits the audit query migration after artifact-bound Platform Owner acknowledgement", async () => {
   const f = await platformFixture(
     "sensitive",
     "direct",
@@ -1668,40 +1668,61 @@ it("admits the exact reviewed audit query migration only after artifact-bound Pl
   );
   expect(rows.rows).toMatchObject([{ plan_id: f.plan, state_version: "1" }]);
 });
-it.each([
-  "missing-proof",
-  "extra-delete",
-  "replacement",
-  "other-resource-types",
-  "wrong-retirement-count",
-  "blocked-reason",
-])("keeps invalid/destructive migration evidence blocked: %s", async (kind) => {
-  const summary = auditedQueryStoreSummary();
-  if (kind === "missing-proof") delete summary.platformImpact.auditMigration;
-  if (kind === "extra-delete") summary.resources.delete = 5;
-  if (kind === "replacement") summary.resources.replace = 1;
-  if (kind === "other-resource-types")
-    summary.platformImpact.changedResourceTypes.push("stackit_network");
-  if (kind === "wrong-retirement-count")
-    Object.assign(summary.platformImpact, {
-      auditMigration: { kind: "logs-to-observability", retiredResources: 5 },
+it.each(["delete", "replace"] as const)(
+  "admits reviewed shared infrastructure %s only after exact acknowledgement",
+  async (kind) => {
+    const summary = auditedQueryStoreSummary();
+    summary.resources.delete = kind === "delete" ? 1 : 0;
+    summary.resources.replace = kind === "replace" ? 1 : 0;
+    summary.platformImpact = classifyPlatformApplicationImpactPlan({
+      ...auditQueryMigrationPlan(),
+      resource_changes: [
+        {
+          mode: "managed",
+          type: "stackit_network",
+          change: {
+            actions: kind === "delete" ? ["delete"] : ["delete", "create"],
+            before: {},
+            after: kind === "delete" ? null : {},
+          },
+        },
+      ],
     });
-  if (kind === "blocked-reason")
-    summary.platformImpact.reasons.push({
-      code: "platform-shared-deletion",
+    const f = await platformFixture("sensitive", "direct", false, summary);
+    expect(await impact(f)).toMatchObject({
+      classification: "sensitive",
+      canAcknowledge: true,
+      resourceChanges: { [kind]: 1 },
+    });
+    await expect(apply(f)).rejects.toThrow(
+      "platform_impact_acknowledgement_required",
+    );
+    await acknowledge(f);
+    await apply(f);
+  },
+);
+it.each(["incomplete", "blocked-reason", "absent"])(
+  "keeps unavailable evidence blocked: %s",
+  async (kind) => {
+    const summary = auditedQueryStoreSummary();
+    if (kind === "incomplete")
+      Object.assign(summary, { completeness: "incomplete" });
+    if (kind === "absent") Object.assign(summary, { platformImpact: null });
+    if (kind === "blocked-reason")
+      summary.platformImpact.reasons.push({
+        code: "platform-plan-unknown-action",
+        classification: "blocked",
+        path: "resource_changes.8",
+      });
+    const f = await platformFixture("sensitive", "direct", false, summary);
+    expect(await impact(f)).toMatchObject({
       classification: "blocked",
-      path: "resource_changes.8",
+      canAcknowledge: false,
     });
-  const f = await platformFixture("sensitive", "direct", false, summary);
-  expect(await impact(f)).toMatchObject({
-    classification: "blocked",
-    canAcknowledge: false,
-  });
-  await expect(acknowledge(f)).rejects.toThrow("platform_impact_changed");
-  await expect(apply(f)).rejects.toThrow(
-    "platform_impact_acknowledgement_required",
-  );
-});
+    await expect(acknowledge(f)).rejects.toThrow("platform_impact_changed");
+    await expect(apply(f)).rejects.toThrow();
+  },
+);
 it("invalidates an audit migration acknowledgement after the Platform State changes", async () => {
   const f = await platformFixture(
     "sensitive",

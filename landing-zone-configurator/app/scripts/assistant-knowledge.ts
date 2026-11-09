@@ -155,7 +155,7 @@ export function buildAssistantKnowledgeTopics() {
             "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
             "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
             "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",
-            "landing-zone-configurator/app/apps/api/db/093_platform_audit_query_migration.sql",
+            "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",
           ].includes(path))
       )
         throw new Error("Knowledge source outside approved code/documentation");

@@ -186,31 +186,27 @@ A shared firewall or routing change affects those Applications when that Platfor
 Apply runs. An Application cannot keep a private copy of the old shared firewall
 by declining a contract upgrade.
 
-With dependents, destructive shared changes and unknown or incomplete evidence
-block the standard Platform Apply. Sensitive shared changes need explicit
-Platform Owner acknowledgement bound to the exact Plan, artifact, State version
-and dependency set. New dependencies or a different State invalidate it. Active
-Application execution and Recovery also prevent conflicting shared changes.
+With dependents, complete known platform changes—including deletions and
+replacements—need the Platform Owner's explicit impact acknowledgement. The
+Apply step shows create/update/delete/replace counts, affected Applications and
+a data-loss warning. Review the saved Plan's resource changes to decide whether
+the change is responsible. Acknowledgement binds the exact Plan, artifact hash,
+State version and dependency set; it does not start Apply. Normal Plan review,
+organization confirmation and explicit destructive-change approval remain required.
+Unknown or incomplete evidence, active Application executions/Recovery and changed
+State remain blockers. These are missing prerequisites, not a blanket prohibition
+on destructive changes. Application Owner template/platform upgrades retain their
+own infrastructure deletion/replacement protections.
 
-The reviewed central audit query migration is a narrow exception: the Worker
-must recognise exactly two creates, two in-place updates and four retirements of
-the old Logs instance, its read/write tokens and destination. It verifies resource
-addresses and types, the same project/router, the existing Observability target,
-and unchanged Router, S3 destination and archive bucket. Known computed retention
-and plan IDs may remain unknown, but a requested tariff or retention change does
-not qualify. The database admits only that exact signed-artifact summary and still
-requires Platform Owner acknowledgement bound to Plan, State and dependencies.
-Extra deletions, replacements, unknown resources and incomplete evidence remain
-blocked. The Apply page explains that Application projects/resources and S3 remain
-while the old Logs history is removed. Acknowledgement starts no Apply; normal
-review, organization confirmation and explicit destructive-change approval remain.
+The audit Logs-to-Observability migration follows this same review. Its old Logs
+instance, history, tokens and destination are intentionally removed; review that
+loss together with the preserved Router, links, projects and S3 archive. No special
+resource-address exception is needed.
 
 After adopting this fix, create a **new Cloud Plan** using the existing valid
-preparation/configuration. Previously saved plans are not reclassified or edited;
-they lack this Worker evidence. Review the fresh plan under Apply, acknowledge
-its platform impact and then separately approve Apply. No configuration change or
-new Application template version is needed for this admission correction.
-
+preparation/configuration. Old immutable Plans keep their original classification;
+they are not retroactively unlocked. No configuration edit or new Application
+template version is needed for this admission correction.
 
 After a successful Platform Apply, approve its actual resulting platform contract.
 A published platform upgrade path may then offer that contract to an existing

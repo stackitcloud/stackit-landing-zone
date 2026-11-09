@@ -1,4 +1,4 @@
--- Only the Worker-verified, artifact-bound audit query-store migration may retire four legacy Logs resources.
+-- Platform Owners decide complete known destructive changes through artifact-bound impact review.
 CREATE OR REPLACE FUNCTION lzc_auth.platform_application_impact(p_session uuid,p_plan uuid) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE planned lzc.plan_runs; artifact lzc.plan_artifacts; current_state lzc.platform_states; organization uuid;
@@ -30,21 +30,7 @@ BEGIN
   IF safety IS NULL OR jsonb_typeof(safety)<>'object' OR safety->>'classification' NOT IN ('ordinary','sensitive','blocked')
    OR jsonb_typeof(safety->'reasons') IS DISTINCT FROM 'array' OR jsonb_typeof(safety->'changedResourceTypes') IS DISTINCT FROM 'array'
    OR jsonb_typeof(safety->'sharedChanges') IS DISTINCT FROM 'boolean' OR artifact.summary->>'completeness' IS DISTINCT FROM 'complete'
-   OR (
-    (artifact.summary->>'destructive'='false' AND artifact.summary#>>'{resources,delete}'='0' AND artifact.summary#>>'{resources,replace}'='0')
-    OR (safety->>'classification'='sensitive'
-      AND safety->'auditMigration' = '{"kind":"logs-to-observability","retiredResources":4}'::jsonb
-      AND safety->>'sharedChanges'='true'
-      AND safety->'changedResourceTypes'='["stackit_logs_access_token","stackit_logs_instance","stackit_observability_credential","stackit_observability_instance","stackit_telemetryrouter_destination","vault_kv_secret_v2"]'::jsonb
-      AND jsonb_array_length(safety->'reasons')=8
-      AND artifact.summary->>'destructive'='true'
-      AND artifact.summary#>>'{resources,create}'='2' AND artifact.summary#>>'{resources,update}'='2'
-      AND artifact.summary#>>'{resources,delete}'='4' AND artifact.summary#>>'{resources,replace}'='0'
-      AND (SELECT count(*) FROM jsonb_array_elements(safety->'reasons') r WHERE r->>'code'='platform-audit-query-migration' AND r->>'classification'='sensitive')=4
-      AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(safety->'reasons') r WHERE r->>'classification' IS DISTINCT FROM 'sensitive'
-        OR coalesce(r->>'code','') NOT IN ('platform-audit-query-migration','platform-shared-resource-change')))
-   ) IS DISTINCT FROM true
-   OR (safety->>'classification'='ordinary' AND (safety->>'sharedChanges' IS DISTINCT FROM 'false' OR artifact.summary#>>'{resources,create}' IS DISTINCT FROM '0' OR artifact.summary#>>'{resources,update}' IS DISTINCT FROM '0'))
+   OR (safety->>'classification'='ordinary' AND (safety->>'sharedChanges' IS DISTINCT FROM 'false' OR artifact.summary#>>'{resources,create}' IS DISTINCT FROM '0' OR artifact.summary#>>'{resources,update}' IS DISTINCT FROM '0' OR artifact.summary#>>'{resources,delete}' IS DISTINCT FROM '0' OR artifact.summary#>>'{resources,replace}' IS DISTINCT FROM '0' OR artifact.summary->>'destructive' IS DISTINCT FROM 'false'))
    OR EXISTS(SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(safety->'reasons')='array' THEN safety->'reasons' ELSE '[]'::jsonb END) r WHERE r->>'classification'='blocked') THEN
    classification:='blocked';blockers:=blockers||jsonb_build_array('platform-impact-evidence-unavailable');
   ELSIF classification='blocked' THEN blockers:=blockers||jsonb_build_array('platform-impact-shared-migration-blocked'); END IF;
@@ -54,6 +40,6 @@ BEGIN
   AND a.approved_by=lzc.current_user_id() AND a.issuer_session_id=p_session);
  RETURN jsonb_build_object('planId',planned.id,'artifactSha256',artifact.sha256,'dependencyHash',dependency_digest,'classification',classification,
  'affectedApplications',coalesce((SELECT jsonb_agg(jsonb_build_object('instanceId',d->>'instanceId','name',d->>'name','targetKey',d->>'targetKey')) FROM jsonb_array_elements(dependencies) d),'[]'::jsonb),
- 'auditQueryMigration',classification='sensitive' AND coalesce(safety#>>'{auditMigration,kind}'='logs-to-observability',false) AND jsonb_array_length(blockers)=0,
+ 'resourceChanges',artifact.summary->'resources',
  'blockers',blockers,'acknowledged',acknowledged,'canAcknowledge',classification='sensitive' AND jsonb_array_length(blockers)=0 AND NOT acknowledged);
 END $$;

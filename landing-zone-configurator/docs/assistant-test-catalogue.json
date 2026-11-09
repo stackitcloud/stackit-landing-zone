@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "389d91d59f9d5b1a80f58efb34cb2ed67fa55c325e1fb2acbfc53a256e4019ac",
+  "knowledgeSha256": "9a8531d1678b846d85363dc49941409e2f43a9dd8262cd2eeb603c33b0bf7f61",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "5c3c89ee972b8ba48467a9484c8b61c84c8be97cb4bf9bea64bcb6573988bf54",
+    "scripts/assistant-scenarios.ts": "1a8a1b8fd5c54750995e860cc445b2c74d79603c08a848113fdd15b23be327f5",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "5f69825180e61a1b9be74900d4d73fd96fd031ccaba42d54ef40ac30f772e922",
+  "suiteSha256": "aebc721b42fb7586c327d4d824185cf9076a0a53f2fc00e2e25932183080d7d0",
   "topics": [
     {
       "id": "credential-foundations",
@@ -6270,7 +6270,7 @@
             "plan",
             "apply"
           ],
-          "message": "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, und kann ich damit beliebige andere Löschungen oder einen alten Plan entsperren? Nur beraten, nichts ändern oder ausführen.",
+          "message": "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, Wie entscheidet der Platform Owner bei anderen geplanten Löschungen und Ersetzungen, und lassen sich alte Pläne dadurch nachträglich entsperren? Nur beraten, nichts ändern oder ausführen.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

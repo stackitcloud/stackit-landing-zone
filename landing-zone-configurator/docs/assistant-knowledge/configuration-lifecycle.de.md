@@ -53,14 +53,14 @@ mit einem frischen Plan übernehmen, bestehende Pläne nicht nachträglich entsp
 
 Ein Plattform-Apply verändert gemeinsame Firewall und Routen für alle abhängigen
 Applications. Es gibt keine private alte Firewall je Application. Die
-Abhängigkeitsprüfung sperrt destruktive und unbekannte gemeinsame Änderungen;
-Eine Ausnahme ist ausschließlich der durch den Worker vollständig geprüfte Wechsel
-der zentralen Audit-Ablage von Logs zum bestehenden Observability-Ziel: dasselbe
-Projekt und derselbe Router, unverändertes S3/Links und genau vier entfernte alte
-Logs-Ressourcen. Ein neuer Plan und die Platform-Owner-Bestätigung für Artefakt,
-State und Abhängigkeiten bleiben nötig. Alte Pläne werden nicht umklassifiziert;
-keine Bestätigung umgeht andere Sperren. Sensible Bestätigungen binden Plan, State
-und Abhängigkeiten. Danach einen Pfad
+Platform Owner entscheidet anhand vollständiger bekannter Planänderungen,
+Anlegen/Ändern/Löschen/Ersetzen, betroffener Applications und Datenverlusthinweis
+auch über Löschungen und Ersetzungen. Die ausdrückliche Bestätigung bindet genau
+Plan, Artefakt, State und Abhängigkeiten; normale und destruktive Apply-Freigabe
+bleiben separat nötig. Unbekannte/unvollständige Nachweise, aktive Ausführungen,
+Recovery und geänderter State bleiben Sperren. Die Audit-Umstellung von Logs auf
+Observability folgt derselben Prüfung ohne Sonderregel für Ressourcenadressen.
+Frischen Plan erstellen; alte Pläne nicht umklassifizieren. Danach einen Pfad
 zwischen tatsächlich freigegebenen Plattformverträgen veröffentlichen; die
 Template-Version kann gleich bleiben. Die Bestellung übernimmt den neuen Vertrag nicht automatisch: Der Application Owner bestätigt diese Bindung ausdrücklich, obwohl die gemeinsame Infrastruktur bereits verändert ist. Organisations-, Platzierungs-, SNA- oder
 Backend-Migrationen benötigen ein separates Verfahren. Chat kann weder Pfade

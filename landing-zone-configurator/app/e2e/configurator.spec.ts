@@ -4065,8 +4065,13 @@ test.describe("explicit saved-plan approval", () => {
                 },
               ],
               blockers:
-                impact === "blocked" ? ["platform-shared-replacement"] : [],
-              auditQueryMigration: impact === "audit",
+                impact === "blocked" ? ["platform-plan-incomplete"] : [],
+              resourceChanges: {
+                create: 2,
+                update: 2,
+                delete: impact === "audit" ? 4 : 0,
+                replace: 0,
+              },
               acknowledged,
               canAcknowledge: true,
             },
@@ -4094,10 +4099,10 @@ test.describe("explicit saved-plan approval", () => {
       await expect(panel).toBeVisible();
       if (impact === "audit") {
         await expect(panel).toContainText(
-          "stellt die zentrale Audit-Ablage auf Observability um",
+          "Dieser Plan löscht oder ersetzt Plattformressourcen",
         );
         await expect(panel).toContainText(
-          "Application-Projekte und ihre Ressourcen sowie das S3-Archiv bleiben erhalten",
+          "du entscheidest als Platform Owner über die Durchführung",
         );
       }
       if (impact === "mismatch") {
@@ -4108,7 +4113,7 @@ test.describe("explicit saved-plan approval", () => {
         await expect(panel).toContainText("Corporate application");
         if (impact === "blocked") {
           await expect(panel).toContainText(
-            "ersetzt gemeinsam genutzte Plattformressourcen",
+            "Der Plattformplan ist unvollständig",
           );
           await expect(panel.getByRole("checkbox")).toHaveCount(0);
         } else {

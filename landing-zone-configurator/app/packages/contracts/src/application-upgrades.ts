@@ -109,7 +109,6 @@ const planSchema = z.object({
   resource_changes: z
     .array(
       z.object({
-        address: z.string().max(512).optional(),
         mode: z.enum(["managed", "data"]),
         type: z.string(),
         change: z
@@ -117,7 +116,6 @@ const planSchema = z.object({
             actions: z.array(z.string()).min(1).max(3),
             before: z.record(z.string(), z.unknown()).nullable(),
             after: z.record(z.string(), z.unknown()).nullable(),
-            after_unknown: z.record(z.string(), z.unknown()).optional(),
           })
           .refine(
             (value) =>
@@ -253,12 +251,6 @@ export const applicationPlatformImpactSchema =
       .array(z.string().regex(/^[a-z][a-z0-9_]{0,127}$/))
       .max(200),
     sharedChanges: z.boolean(),
-    auditMigration: z
-      .strictObject({
-        kind: z.literal("logs-to-observability"),
-        retiredResources: z.literal(4),
-      })
-      .optional(),
   });
 const platformTypes = new Set([
   ...managedTypes,
@@ -340,7 +332,6 @@ export function classifyPlatformApplicationImpactPlan(
   const plan = parsed.data,
     reasons: ApplicationUpgradeSafety["reasons"] = [],
     types = new Set<string>();
-  const auditMigration = reviewedAuditQueryMigration(plan.resource_changes);
   let sharedChanges = false;
   if (
     plan.complete === false ||
@@ -379,14 +370,18 @@ export function classifyPlatformApplicationImpactPlan(
       continue;
     sharedChanges = true;
     types.add(resource.type);
-    if (actions.includes("delete"))
+    if (
+      resource.mode !== "data" &&
+      ((actions.length === 1 && actions[0] === "delete") ||
+        (actions.length === 2 &&
+          actions.includes("delete") &&
+          actions.includes("create")))
+    )
       add(
-        auditMigration
-          ? "platform-audit-query-migration"
-          : actions.includes("create")
-            ? "platform-shared-replacement"
-            : "platform-shared-deletion",
-        auditMigration ? "sensitive" : "blocked",
+        actions.includes("create")
+          ? "platform-shared-replacement"
+          : "platform-shared-deletion",
+        "sensitive",
       );
     else if (
       actions.length !== 1 ||
@@ -405,226 +400,5 @@ export function classifyPlatformApplicationImpactPlan(
     reasons,
     changedResourceTypes: [...types].sort(),
     sharedChanges,
-    ...(auditMigration
-      ? {
-          auditMigration: {
-            kind: "logs-to-observability" as const,
-            retiredResources: 4 as const,
-          },
-        }
-      : {}),
   };
-}
-
-/** Private native-plan inspection: only the reviewed eight-action query-store switch. */
-function reviewedAuditQueryMigration(
-  resources: z.infer<typeof planSchema>["resource_changes"],
-): boolean {
-  const base = "module.management.";
-  const expected: Record<string, [string, string]> = {
-    "stackit_logs_instance.audit[0]": ["stackit_logs_instance", "delete"],
-    "stackit_logs_access_token.audit_read[0]": [
-      "stackit_logs_access_token",
-      "delete",
-    ],
-    "stackit_logs_access_token.audit_write[0]": [
-      "stackit_logs_access_token",
-      "delete",
-    ],
-    "stackit_telemetryrouter_destination.audit_logs[0]": [
-      "stackit_telemetryrouter_destination",
-      "delete",
-    ],
-    "stackit_observability_credential.audit[0]": [
-      "stackit_observability_credential",
-      "create",
-    ],
-    "stackit_telemetryrouter_destination.audit_observability[0]": [
-      "stackit_telemetryrouter_destination",
-      "create",
-    ],
-    "stackit_observability_instance.this[0]": [
-      "stackit_observability_instance",
-      "update",
-    ],
-    "vault_kv_secret_v2.audit_logs[0]": ["vault_kv_secret_v2", "update"],
-  };
-  const changed = resources.filter(
-    (r) =>
-      !(
-        r.change.actions.length === 1 &&
-        ["no-op", "read"].includes(r.change.actions[0] ?? "")
-      ),
-  );
-  if (changed.length !== 8) return false;
-  const indexed = new Map(resources.map((r) => [r.address, r]));
-  if (indexed.size !== resources.length) return false;
-  for (const [address, [type, action]] of Object.entries(expected)) {
-    const r = indexed.get(base + address);
-    if (
-      !r ||
-      r.mode !== "managed" ||
-      r.type !== type ||
-      r.change.actions.length !== 1 ||
-      r.change.actions[0] !== action
-    )
-      return false;
-    if (action === "delete" && (!r.change.before || r.change.after !== null))
-      return false;
-    if (action === "create" && (r.change.before !== null || !r.change.after))
-      return false;
-  }
-  const before = (name: string) =>
-    indexed.get(base + name)?.change.before ?? {};
-  const after = (name: string) => indexed.get(base + name)?.change.after ?? {};
-  const logs = before("stackit_logs_instance.audit[0]");
-  const old = before("stackit_telemetryrouter_destination.audit_logs[0]");
-  const next = after(
-    "stackit_telemetryrouter_destination.audit_observability[0]",
-  );
-  const obs = before("stackit_observability_instance.this[0]");
-  const obsAfter = after("stackit_observability_instance.this[0]");
-  const credential = after("stackit_observability_credential.audit[0]");
-  const uuid = (v: unknown) => z.uuid().safeParse(v).success;
-  if (
-    ![
-      logs.project_id,
-      logs.instance_id,
-      old.instance_id,
-      obs.instance_id,
-    ].every(uuid) ||
-    !["eu01", "eu02"].includes(String(logs.region))
-  )
-    return false;
-  const sameProject = (v: Record<string, unknown>) =>
-    v.project_id === logs.project_id;
-  if (
-    ![old, next, obs, obsAfter, credential].every(sameProject) ||
-    next.instance_id !== old.instance_id ||
-    next.region !== logs.region ||
-    old.region !== logs.region ||
-    credential.instance_id !== obs.instance_id ||
-    obsAfter.instance_id !== obs.instance_id ||
-    obsAfter.id !== obs.id ||
-    typeof obs.id !== "string"
-  )
-    return false;
-  for (const [name, permission] of [
-    ["audit_read", "read"],
-    ["audit_write", "write"],
-  ]) {
-    const token = before(`stackit_logs_access_token.${name}[0]`);
-    if (
-      !sameProject(token) ||
-      token.instance_id !== logs.instance_id ||
-      token.region !== logs.region ||
-      !sameJson(token.permissions, [permission])
-    )
-      return false;
-  }
-  const config = (v: Record<string, unknown>) =>
-    v.config as
-      | {
-          config_type?: unknown;
-          opentelemetry?: { uri?: unknown; basic_auth?: unknown };
-        }
-      | undefined;
-  if (
-    config(old)?.config_type !== "OpenTelemetry" ||
-    config(next)?.config_type !== "OpenTelemetry" ||
-    typeof logs.ingest_otlp_url !== "string" ||
-    config(old)?.opentelemetry?.uri !==
-      `https://${logs.ingest_otlp_url.replace(/^https:\/\//, "")}` ||
-    typeof obs.otlp_http_logs_url !== "string" ||
-    !obs.otlp_http_logs_url.startsWith("https://") ||
-    config(next)?.opentelemetry?.uri !== obs.otlp_http_logs_url ||
-    !config(next)?.opentelemetry?.basic_auth
-  )
-    return false;
-  const unknown =
-    indexed.get(base + "stackit_observability_instance.this[0]")?.change
-      .after_unknown ?? {};
-  for (const key of new Set([...Object.keys(obs), ...Object.keys(obsAfter)])) {
-    if (
-      key === "acl" ||
-      ((key === "plan_id" || key === "logs_retention_days") &&
-        unknown[key] === true &&
-        obsAfter[key] == null)
-    )
-      continue;
-    if (!sameJson(obs[key], obsAfter[key])) return false;
-  }
-  if (
-    !Array.isArray(obsAfter.acl) ||
-    obsAfter.acl.some((v) => typeof v !== "string")
-  )
-    return false;
-  const secret = before("vault_kv_secret_v2.audit_logs[0]"),
-    secretAfter = after("vault_kv_secret_v2.audit_logs[0]");
-  if (
-    typeof secret.name !== "string" ||
-    !secret.name.startsWith("audit_logs_") ||
-    !uuid(secret.mount) ||
-    !["id", "mount", "name"].every(
-      (k) => typeof secret[k] === "string" && secret[k] === secretAfter[k],
-    )
-  )
-    return false;
-  for (const [address, type] of [
-    [
-      "stackit_telemetryrouter_instance.audit[0]",
-      "stackit_telemetryrouter_instance",
-    ],
-    [
-      "stackit_telemetryrouter_destination.audit_archive[0]",
-      "stackit_telemetryrouter_destination",
-    ],
-    ["stackit_objectstorage_bucket.audit_logs", "stackit_objectstorage_bucket"],
-  ]) {
-    const r = indexed.get(base + address);
-    if (
-      !r ||
-      r.mode !== "managed" ||
-      r.type !== type ||
-      !sameJson(r.change.actions, ["no-op"]) ||
-      !r.change.before ||
-      !sameJson(r.change.before, r.change.after) ||
-      !sameProject(r.change.before)
-    )
-      return false;
-    if (
-      type === "stackit_telemetryrouter_instance" &&
-      (r.change.before.instance_id !== old.instance_id ||
-        r.change.before.region !== logs.region)
-    )
-      return false;
-    if (
-      type === "stackit_telemetryrouter_destination" &&
-      (r.change.before.instance_id !== old.instance_id ||
-        (r.change.before.config as { config_type?: unknown })?.config_type !==
-          "S3")
-    )
-      return false;
-  }
-  return true;
-}
-function sameJson(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (a == null || b == null || typeof a !== "object" || typeof b !== "object")
-    return false;
-  if (Array.isArray(a) || Array.isArray(b))
-    return (
-      Array.isArray(a) &&
-      Array.isArray(b) &&
-      a.length === b.length &&
-      a.every((v, i) => sameJson(v, b[i]))
-    );
-  const left = a as Record<string, unknown>,
-    right = b as Record<string, unknown>;
-  return (
-    Object.keys(left).length === Object.keys(right).length &&
-    Object.keys(left).every(
-      (k) => Object.hasOwn(right, k) && sameJson(left[k], right[k]),
-    )
-  );
 }

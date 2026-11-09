@@ -1,6 +1,6 @@
 export const englishMessages: Record<string, string> = {
-  "Dieser Plan stellt die zentrale Audit-Ablage auf Observability um. Die alte Logs-Instanz mit ihrer Historie und ihren Zugängen wird entfernt. Application-Projekte und ihre Ressourcen sowie das S3-Archiv bleiben erhalten.":
-    "This plan switches central audit storage to Observability. The old Logs instance, its history and credentials are removed. Application projects and their resources, and the S3 archive, are retained.",
+  "Dieser Plan löscht oder ersetzt Plattformressourcen. Dabei können Daten verloren gehen und abhängige Application Landing Zones beeinträchtigt werden. Prüfe die Ressourcenänderungen im Plan; du entscheidest als Platform Owner über die Durchführung.":
+    "This plan deletes or replaces platform resources. Data may be lost and dependent Application Landing Zones may be affected. Review the resource changes in the plan; as Platform Owner, you decide whether to proceed.",
 
   "Das zentrale Audit-Dashboard benötigt einen Observability-Tarif mit Logs, zum Beispiel Observability-Starter-EU01. Monitoring, Frontend und MetricsEndpoint können keine Audit-Logs empfangen. Wähle einen Tarif mit Logs oder deaktiviere die zentrale Observability für eine reine Logs/S3-Ablage.":
     "The central audit dashboard requires a logs-capable Observability plan, such as Observability-Starter-EU01. Monitoring, Frontend and MetricsEndpoint cannot receive audit logs. Choose a logs-capable plan or disable central Observability to keep Logs/S3 delivery only.",
@@ -249,10 +249,10 @@ export const englishMessages: Record<string, string> = {
     "The impact of a resource is unknown. Apply remains blocked until resolved.",
   "Die Auswirkungen einer Aktion sind unbekannt. Apply bleibt bis zur Klärung gesperrt.":
     "The impact of an action is unknown. Apply remains blocked until resolved.",
-  "Der Plan ersetzt gemeinsam genutzte Plattformressourcen. Diese Sperre kann nicht durch Bestätigung aufgehoben werden.":
-    "The plan replaces shared platform resources. Acknowledgment cannot override this block.",
-  "Der Plan löscht gemeinsam genutzte Plattformressourcen. Diese Sperre kann nicht durch Bestätigung aufgehoben werden.":
-    "The plan deletes shared platform resources. Acknowledgment cannot override this block.",
+  "Der Plan ersetzt gemeinsam genutzte Plattformressourcen. Prüfe mögliche Datenverluste und Auswirkungen auf abhängige Applications.":
+    "The plan replaces shared platform resources. Review potential data loss and effects on dependent Applications.",
+  "Der Plan löscht gemeinsam genutzte Plattformressourcen. Prüfe mögliche Datenverluste und Auswirkungen auf abhängige Applications.":
+    "The plan deletes shared platform resources. Review potential data loss and effects on dependent Applications.",
   "Der Plan verändert gemeinsam genutzte Plattformressourcen. Prüfe die betroffenen Application Landing Zones.":
     "The plan changes shared platform resources. Review the affected Application Landing Zones.",
   "Die Plattformauswirkungen konnten nicht sicher geprüft werden. Apply bleibt gesperrt.":
@@ -275,8 +275,8 @@ export const englishMessages: Record<string, string> = {
   "Ich habe die Auswirkungen dieses konkreten Plattformplans auf die aufgeführten Application Landing Zones geprüft. Diese Bestätigung startet keinen Apply.":
     "I reviewed the impact of this specific platform plan on the listed Application Landing Zones. This acknowledgment does not start Apply.",
   "Plattformauswirkungen bestätigen": "Acknowledge platform impact",
-  "Unbekannte Auswirkungen sowie nicht freigegebene Löschungen und Ersetzungen bleiben gesperrt. Eine Checkbox hebt diese Sperre nicht auf.":
-    "Unknown impacts and unapproved deletions or replacements remain blocked. A checkbox cannot override this block.",
+  "Fehlende oder unvollständige Planinformationen sowie ein geänderter State oder laufende Application-Ausführungen müssen zuerst geklärt werden. Eine Bestätigung hebt diese Sperren nicht auf.":
+    "Missing or incomplete plan information, changed State or running Application executions must be resolved first. Acknowledgment cannot override these blocks.",
 
   "Die ursprüngliche Recovery-Quelle wurde zurückgezogen oder ihr geprüftes Paket fehlt. Ein Operator muss ein geprüftes kompatibles Recovery-Paket bereitstellen. Bestellung, State und Sperre bleiben erhalten; Upgrade und Apply sind bis zum Abgleich gesperrt.":
     "The original recovery source was withdrawn or its reviewed package is missing. An operator must provide a reviewed compatible recovery package. The order, State and lock are preserved; upgrade and Apply remain blocked until reconciliation.",

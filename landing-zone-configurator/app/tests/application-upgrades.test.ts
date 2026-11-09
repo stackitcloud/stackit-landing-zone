@@ -509,7 +509,7 @@ it.each([
       classifyPlatformApplicationImpactPlan(
         plan([change(type, ["delete", "create"])]),
       ),
-    ).toMatchObject({ classification: "blocked", sharedChanges: true });
+    ).toMatchObject({ classification: "sensitive", sharedChanges: true });
   },
 );
 it("blocks unknown/partial shared Platform plans without echoing unknown type strings", () => {
