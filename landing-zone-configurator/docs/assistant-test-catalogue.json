@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "3f603b69140b043d5d028e64eb91595cf12de3887a901cd0574f988398599acb",
+  "knowledgeSha256": "b934f6632941698c990b264e2c530e5ecccf0ca006992442b491fcc813625899",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "4cb3b38b851210970ef7e29eb1b0944a400cf7cf98c90bef88d76abfd8f76005",
+    "scripts/assistant-scenarios.ts": "da983a74ab4ef7791c10ca780f6aeb5c54cacf845a7eb6516b83c09760991549",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "52e31608bace1b612436d2ddddff15d1612b22fe80ec849724b6605af1153d20",
+  "suiteSha256": "426ce1537a4fc3f1cf45baacdf369fe1ebe2f713a6623b11dbfebae4f0649c6b",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1194,6 +1194,110 @@
               ],
               "s3_object_lock": false,
               "managed_resources": true
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-partial-retention",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "90 Tage",
+          "auditQuestionPaths": [
+            "audit_logs.acl",
+            "audit_logs.s3_object_lock"
+          ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-partial-acl",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            },
+            {
+              "role": "user",
+              "content": "90 Tage"
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "203.0.113.0/24",
+          "auditQuestionPaths": [
+            "audit_logs.s3_object_lock"
+          ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-partial-lock",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            },
+            {
+              "role": "user",
+              "content": "90 Tage"
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            },
+            {
+              "role": "user",
+              "content": "203.0.113.0/24"
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "Deaktivieren",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false
             }
           },
           "assertions": [

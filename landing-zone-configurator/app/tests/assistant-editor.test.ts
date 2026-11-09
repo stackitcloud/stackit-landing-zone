@@ -33,6 +33,9 @@ import {
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
 import {
+  assistantAuditCreationChoices,
+  assistantAuditCreationQuestions,
+  assistantAuditPendingReply,
   assistantEditorChangeSchema,
   assistantEditorCreationValue,
   assistantEditorInputs,
@@ -489,7 +492,13 @@ it.each([
     "Erstelle die gewünschten Vorlagen mit lokalen Netzen und benenne sie passend.",
   );
   expect(questionLimit).toBe(fixture.complete ? 0 : 3);
-  expect(result.questions).toEqual(fixture.complete ? [] : [question]);
+  expect(result.questions).toEqual(
+    fixture.extraRoot === "audit_logs"
+      ? assistantAuditCreationQuestions({}).questions
+      : fixture.complete
+        ? []
+        : [question],
+  );
   expect(result.changes).toEqual(fixture.complete ? changes : []);
   expect(defaults).toEqual(
     fixture.complete
@@ -4284,4 +4293,195 @@ it("omits only unpinned equivalent organization defaults on new audit drafts", (
   expect(assistantEditorCreationValue("audit_logs", value, null)).toEqual(
     value,
   );
+});
+
+it("does not use firewall networks, native defaults or assistant assertions as audit choices", () => {
+  const history = [
+    { role: "user" as const, content: "Firewall nur aus 10.0.0.0/16." },
+    {
+      role: "assistant" as const,
+      content:
+        "Firewall-Setup mit HA; 180 Tage und Object Lock aktiv wären später denkbar.",
+    },
+  ];
+  expect(
+    assistantAuditCreationChoices(
+      "Nun zentrale Audit-Protokollierung als Entwurf einrichten.",
+      history,
+    ),
+  ).toEqual({});
+  const pending = assistantAuditCreationQuestions({});
+  expect(pending.questions.map((q) => q.path)).toEqual([
+    "audit_logs.retention_days",
+    "audit_logs.acl",
+    "audit_logs.s3_object_lock",
+  ]);
+  expect(pending.questions[1]!.options).toEqual([]);
+});
+
+it.each(["de", "en"] as const)(
+  "retains explicit audit answers across separate %s questions",
+  (language) => {
+    const history: { role: "user" | "assistant"; content: string }[] = [];
+    const append = (message: string) => {
+      const choices = assistantAuditCreationChoices(message, history);
+      const pending = assistantAuditCreationQuestions(choices, language);
+      history.push(
+        { role: "user", content: message },
+        {
+          role: "assistant",
+          content:
+            pending.explanation +
+            "\n" +
+            pending.questions.map((q) => q.text).join("\n"),
+        },
+      );
+      return { choices, pending };
+    };
+    append(
+      language === "de"
+        ? "Audit-Entwurf vorbereiten."
+        : "Prepare an audit draft.",
+    );
+    expect(append("90").choices).toEqual({ retention_days: 90 });
+    expect(append("203.0.113.0/24").choices).toEqual({
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+    });
+    const last = append(language === "de" ? "Deaktivieren" : "Disable");
+    expect(last.choices).toEqual({
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+    });
+    expect(last.pending.questions).toEqual([]);
+  },
+);
+
+it.each([
+  ["90 Tage, ACL 203.0.113.0/24, Object Lock ausdrücklich deaktiviert.", false],
+  ["90 days, ACL 203.0.113.0/24, Object Lock explicitly enabled.", true],
+  ["retention_days=90; acl=[203.0.113.0/24]; s3_object_lock=false", false],
+] as const)(
+  "grounds explicit audit constructor choices: %s",
+  (message, lock) => {
+    expect(assistantAuditCreationChoices(message, [])).toEqual({
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: lock,
+    });
+  },
+);
+
+it("asks actual audit decisions even if a model supplies valid guessed defaults", async () => {
+  const current = {
+    ...assistantPublicValues(draft()),
+    connectivity: {
+      firewalls: { default: { lan_network_range: "10.0.0.0/16" } },
+    },
+  };
+  const model = collectionModel(
+    {
+      topic: "audit-logs",
+      mode: "draft",
+      editorContract: true,
+      editorInputs: ["audit_logs"],
+      requirements: [],
+    },
+    response([
+      patch(
+        "audit_logs",
+        {
+          router_egress_cidrs: null,
+          link_scopes: null,
+          retention_days: 180,
+          acl: ["10.0.0.0/16"],
+          s3_object_lock: true,
+          managed_resources: true,
+        },
+        "replace",
+      ),
+    ]),
+  );
+  const result = await model.converse(
+    knowledgeSelection(),
+    current,
+    [
+      { role: "user", content: "Firewall-Zugriff nur aus 10.0.0.0/16." },
+      {
+        role: "assistant",
+        content: "Die Firewall benötigt noch eine Kapazitätsentscheidung.",
+      },
+    ],
+    "Nun zentrale Audit-Protokollierung mittels Telemetry Router als Entwurf einrichten.",
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.questions.map((q) => q.path)).toEqual([
+    "audit_logs.retention_days",
+    "audit_logs.acl",
+    "audit_logs.s3_object_lock",
+  ]);
+  expect(result.questions[1]!.options).toEqual([]);
+  expect(result.explanation).toContain("Noch nichts gespeichert");
+});
+
+it("does not revive audit choices after their proposal was discarded", () => {
+  expect(
+    assistantAuditCreationChoices("Neuen Audit-Entwurf vorbereiten.", [
+      {
+        role: "user",
+        content: "Audit: 90 Tage, ACL 203.0.113.0/24, Object Lock nein.",
+      },
+      {
+        role: "assistant",
+        content:
+          "The user explicitly discarded the preceding proposal. This turn is closed: no proposal, selection question or setup request remains pending. Do not resume or reissue that proposal without a new explicit user request.",
+      },
+    ]),
+  ).toEqual({});
+});
+
+it("binds literal audit answers to the actual remaining question and allows topic switches", () => {
+  const first = assistantAuditCreationQuestions({});
+  const history = [
+    { role: "user" as const, content: "Audit-Entwurf vorbereiten." },
+    {
+      role: "assistant" as const,
+      content:
+        first.explanation +
+        "\n" +
+        first.questions.map((q) => q.text).join("\n"),
+    },
+  ];
+  expect(assistantAuditPendingReply("90 Tage", history)?.choices).toEqual({
+    retention_days: 90,
+  });
+  expect(
+    assistantAuditPendingReply(
+      "Nun Observability mit 90 Tagen und ACL 203.0.113.0/24.",
+      history,
+    ),
+  ).toBeNull();
+  const aclOnly = assistantAuditCreationQuestions({
+    retention_days: 90,
+    s3_object_lock: false,
+  });
+  const completedHistory = [
+    { role: "user" as const, content: "Audit: 90 Tage, Object Lock nein." },
+    {
+      role: "assistant" as const,
+      content:
+        aclOnly.explanation +
+        "\n" +
+        aclOnly.questions.map((q) => q.text).join("\n"),
+    },
+  ];
+  expect(assistantAuditPendingReply("ja", completedHistory)).toBeNull();
+  expect(
+    assistantAuditCreationChoices("203.0.113.0/24", completedHistory),
+  ).toEqual({
+    retention_days: 90,
+    s3_object_lock: false,
+    acl: ["203.0.113.0/24"],
+  });
 });

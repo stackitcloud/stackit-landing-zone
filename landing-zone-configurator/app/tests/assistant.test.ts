@@ -3331,6 +3331,8 @@ it("selects bounded relevant metadata and rejects stale knowledge, foreign group
 it("answers source-bound Application lifecycle questions with the fixed review and recovery contract without an inference-selected approval policy", async () => {
   const request = vi.fn<typeof fetch>(async (_url, init) => {
     const body = JSON.parse(String(init?.body));
+    if (body.response_format.json_schema.name === "platform_advice_subject")
+      return answer({ task: "execution-source-upgrade" });
     expect(body.response_format.json_schema.name).toBe("conversation_intent");
     return answer({
       topic: "configuration-lifecycle",
@@ -3349,7 +3351,7 @@ it("answers source-bound Application lifecycle questions with the fixed review a
     [],
     "Meine Application-Bestellung hat eine alte Accelerator-Revision. Wie funktioniert ein Upgrade?",
   );
-  expect(request).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledTimes(2);
   expect(result.changes).toEqual([]);
   expect(result.questions).toEqual([]);
   expect(result.references).toEqual(["configuration-lifecycle"]);
@@ -3462,9 +3464,7 @@ it.each([
     expect(result.changes).toEqual([]);
     expect(result.references).toEqual(["configuration-lifecycle"]);
     expect(streamed).toEqual([result.explanation]);
-    expect(request).toHaveBeenCalledTimes(
-      adviceTask === "platform-upgrade" ? 2 : 1,
-    );
+    expect(request).toHaveBeenCalledTimes(2);
     const {
       assistantApplicationUpgradeFailures,
       assistantExecutionLifecycleFailures,
@@ -3604,6 +3604,8 @@ it.each([
 it("returns reviewed root-platform impact guidance without reading or executing a Plan", async () => {
   const request = vi.fn<typeof fetch>(async (_url, options) => {
     const body = JSON.parse(String(options?.body));
+    if (body.response_format.json_schema.name === "platform_advice_subject")
+      return answer({ task: "platform-impact-review" });
     expect(body.response_format.json_schema.name).toBe("conversation_intent");
     expect(body.messages[0].content).toContain("CURRENT LIFECYCLE ROUTING");
     expect(body.messages[0].content).toContain("ROOT PLATFORM PLAN");
@@ -3638,7 +3640,7 @@ it("returns reviewed root-platform impact guidance without reading or executing 
   expect(result.questions).toEqual([]);
   expect(result.changes).toEqual([]);
   expect(result.references).toEqual(["configuration-lifecycle"]);
-  expect(request).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledTimes(2);
 });
 
 it.each([
@@ -3682,7 +3684,7 @@ it.each([
     expect(result.references).toEqual(["configuration-lifecycle"]);
     expect(result.questions).toEqual([]);
     expect(result.changes).toEqual([]);
-    expect(request).toHaveBeenCalledTimes(task === "platform-upgrade" ? 2 : 1);
+    expect(request).toHaveBeenCalledTimes(2);
   },
 );
 

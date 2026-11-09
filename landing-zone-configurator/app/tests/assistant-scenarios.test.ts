@@ -230,7 +230,20 @@ it.each(assistantScenarios)(
     expect(JSON.stringify(fixture)).not.toMatch(
       /af026540|lukas|preshared_key/i,
     );
-    if (scenario.editorExpected) {
+    if (scenario.auditQuestionPaths) {
+      expect(
+        validateAssistantScenario(scenario, {
+          explanation: "Reviewable local draft only.",
+          changes: [],
+          references: [scenario.topic],
+          questions: scenario.auditQuestionPaths.map((path) => ({
+            path,
+            text: "Please supply your actual decision.",
+            options: [],
+          })),
+        }).failures,
+      ).toEqual([]);
+    } else if (scenario.editorExpected) {
       const root = scenario.editorExpected.path.split(".")[0] ?? "";
       const values: Record<string, JsonValue> = {
         audit_logs: {
@@ -1222,3 +1235,36 @@ it("rejects omitted or changed manually requested audit scopes", () => {
     ).toContain("editor_expected_value_not_applied");
   }
 });
+
+it.each(assistantScenarios.filter((s) => s.auditQuestionPaths))(
+  "requires the actual remaining audit decisions: $id",
+  (scenario) => {
+    const answer = {
+      explanation: "Noch nichts gespeichert.",
+      changes: [],
+      references: ["audit-logs"],
+      questions: scenario.auditQuestionPaths!.map((path) => ({
+        path,
+        text: "Bitte die tatsächliche Entscheidung angeben.",
+        options: [],
+      })),
+    };
+    expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+    expect(
+      validateAssistantScenario(scenario, { ...answer, questions: [] })
+        .failures,
+    ).toContain("audit_unanswered_decisions_not_preserved");
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        changes: [
+          {
+            path: "audit_logs",
+            operation: "replace",
+            value: { retention_days: 180, acl: [], s3_object_lock: true },
+          },
+        ],
+      }).failures,
+    ).toContain("audit_unanswered_decisions_not_preserved");
+  },
+);

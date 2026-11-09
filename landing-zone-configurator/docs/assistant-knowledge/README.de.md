@@ -108,7 +108,7 @@ diesen rein beratenden Pfad.
 Die Klassifikation enthält kein ungenutztes Freitext-Assessment mehr und fordert
 kompaktes JSON. Ungültige, übergroße oder unvollständige Antworten bleiben
 abgewiesen; Grenzen werden nicht erhöht und Teil-JSON wird nicht übernommen.
-Eine mehrdeutige Plattformvertrags-Beratung wird vor der Auswahl der geprüften
+Die geschlossenen aktuellen Upgrade-Beratungsarten werden vor der Auswahl der geprüften
 Anleitung mit einem kleinen geschlossenen Themenschema gegen die aktuelle Frage
 geprüft. Diese Prüfung erhält weder Entwurf, Plan noch historische Aufgaben.
 Die Audit-Anleitung belässt das native Organisationsrouting bei
@@ -607,3 +607,11 @@ SNA-Feld-/Default-Beratung verwendet denselben geprüften Übersichtspfad: nativ
 Öffentliche Owner-Auswahlen werden als gebundene Identitätsmetadaten geprüft, nicht als Zugangsdatenfragen. Nur exakt erzeugte deutsche/englische Owner-Auswahllabel mit einer vorbereiteten, an den aktuellen Schlüssel gebundenen Plattform-Service-Account-Adresse oder der verifiziert angemeldeten E-Mail-Adresse werden von den Schlüsselwortprüfungen für Fragen ausgenommen. Fragetext, unbekannte/veränderte Optionen, Prüfungen auf geschützte Werte und alle gewöhnlichen Aufrufer behalten die bestehenden Schranken. Senden, Vorschau/Rebase und Übernahme lesen den gebundenen Identitätskontext erneut; ein gewechselter Schlüssel oder fremdes Profil kann eine gespeicherte Auswahl nicht bestätigen. Synthetische Fälle für gemischte Templates prüfen auch Plattformkonten mit Bootstrap im Namen.
 
 Template-Rechteprofile werden pro Template als vollständige Einheit geprüft und ausgewählt: Schemaversion, Modus, initialer Owner und beide Rechtelisten bleiben zusammen. So bleiben Pflichtangaben in Vorschau und Übernahme erhalten und gleichzeitige Profiländerungen werden erkannt; andere Templates und Einstellungen bleiben separat auswählbar.
+
+Neue Audit-Entwürfe benötigen ausdrückliche Benutzerentscheidungen zu Aufbewahrung,
+Zugriffsnetzen und Object Lock. Native Defaults, Netze anderer Komponenten und
+frühere Assistant-Vorschläge ersetzen diese Entscheidungen nicht. Wörtliche
+Antworten auf den exakt noch offenen Fragensatz setzen den Dialog ohne erneute
+Themenklassifikation fort; nur unbeantwortete Fragen bleiben offen. Vollständige
+Vorschläge durchlaufen weiterhin natives Editor-Schema und Quellenprüfung.
+Übernahme, Speichern und Ausführung bleiben getrennt.

@@ -35,13 +35,13 @@ read central ingestion secrets.
 
 ## Dialogue
 
-Ask retention/ACL/Lock/coverage; preserve choices, defaults are not consent.
-Editor creation needs explicit retention/ACL/Lock. Managed coverage uses
-managed_resources=true, no invented IDs.
+Editor: ask retention/ACL/Lock/coverage. Only Audit USER answers authorize
+days/CIDRs/Lock; no defaults/other components. Managed: managed_resources=true,
+no invented IDs.
 
 ## Examples
 
-Draft: audit_logs={retention_days=90,s3_object_lock=false}.
+Missing ACL → ask; no borrowed Firewall net.
 
 ## Limits
 

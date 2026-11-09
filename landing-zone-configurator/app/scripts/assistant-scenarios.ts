@@ -28,6 +28,7 @@ import {
   proposeAssistantAccess,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
+import { assistantAuditCreationQuestions } from "../apps/api/src/assistant/editor.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import type { AssistantCatalogueContext } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
@@ -168,6 +169,7 @@ export type AssistantScenario = {
   acceptableReferences?: readonly string[];
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
+  auditQuestionPaths?: readonly string[];
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
   applicationAccess?:
@@ -198,6 +200,26 @@ export type AssistantScenario = {
   applicationUpgrade?: "template" | "platform";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
+
+function auditQuestionHistory(
+  choices: Parameters<typeof assistantAuditCreationQuestions>[0],
+) {
+  const pending = assistantAuditCreationQuestions(choices);
+  return {
+    role: "assistant" as const,
+    content:
+      pending.explanation +
+      "\n" +
+      pending.questions.map((q) => q.text).join("\n"),
+  };
+}
+const sparseAuditHistory = [
+  {
+    role: "user" as const,
+    content: "Bitte einen zentralen Audit-Entwurf vorbereiten.",
+  },
+  auditQuestionHistory({}),
+];
 
 const firewallDialogueHistory = [
   {
@@ -538,6 +560,47 @@ export const assistantScenarios: readonly AssistantScenario[] = [
         acl: ["203.0.113.0/24"],
         s3_object_lock: false,
         managed_resources: true,
+      },
+    },
+  },
+  {
+    id: "editor-audit-partial-retention",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: sparseAuditHistory,
+    message: "90 Tage",
+    auditQuestionPaths: ["audit_logs.acl", "audit_logs.s3_object_lock"],
+  },
+  {
+    id: "editor-audit-partial-acl",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: [
+      ...sparseAuditHistory,
+      { role: "user", content: "90 Tage" },
+      auditQuestionHistory({ retention_days: 90 }),
+    ],
+    message: "203.0.113.0/24",
+    auditQuestionPaths: ["audit_logs.s3_object_lock"],
+  },
+  {
+    id: "editor-audit-partial-lock",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: [
+      ...sparseAuditHistory,
+      { role: "user", content: "90 Tage" },
+      auditQuestionHistory({ retention_days: 90 }),
+      { role: "user", content: "203.0.113.0/24" },
+      auditQuestionHistory({ retention_days: 90, acl: ["203.0.113.0/24"] }),
+    ],
+    message: "Deaktivieren",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
       },
     },
   },
@@ -1901,6 +1964,23 @@ export function validateAssistantScenario(
       if (!(error instanceof Error)) throw error;
       failures.push("platform_template_proposal_not_applicable");
     }
+    return { dialogue, failures };
+  }
+  if (scenario.auditQuestionPaths) {
+    if (
+      dialogue.changes.length ||
+      !isDeepStrictEqual(
+        dialogue.questions.map((q) => q.path),
+        scenario.auditQuestionPaths,
+      )
+    )
+      failures.push("audit_unanswered_decisions_not_preserved");
+    if (
+      dialogue.questions.some(
+        (q) => q.path === "audit_logs.acl" && (q.options?.length ?? 0) > 0,
+      )
+    )
+      failures.push("audit_invented_network_options");
     return { dialogue, failures };
   }
   if (scenario.editorExpected) {

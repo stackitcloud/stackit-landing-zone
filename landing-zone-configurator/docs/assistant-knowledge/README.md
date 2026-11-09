@@ -86,7 +86,7 @@ do not enter this read-only path.
 
 Classification omits unused free-text assessment output and requests compact JSON.
 Malformed, oversized or incomplete responses remain rejected; limits are not raised
-and partial JSON is never applied. An ambiguous platform-contract advice label is
+and partial JSON is never applied. Closed current workflow-advice labels are
 checked against the latest question in a small closed subject schema before a
 reviewed guide is selected. That check receives no draft, Plan or historical task.
 Audit constructor guidance keeps native organization routing as `link_scopes=null`
@@ -449,3 +449,10 @@ Future topic partitioning should be explicit and testable before adding RAG.
 Public owner choices are validated as scoped identity metadata, not credential requests. Only exact German/English server owner-choice labels containing a prepared, current-key-bound platform service-account email or the verified signed-in email are excluded from question keyword checks. Question text, unknown/modified options, protected-value checks and all ordinary callers keep the existing guards. Send, preview/rebase and acceptance re-read the scoped identity context; a rotated key or unrelated profile cannot validate a stored choice. Synthetic mixed-template cases also cover bootstrap-named platform accounts.
 
 Template access profiles are reviewed and selected atomically per template: schema version, mode, initial owner and both permission lists stay together. This preserves required fields during preview/acceptance and detects concurrent profile edits; unrelated templates and settings remain separately selectable.
+
+New Audit drafts require explicit user decisions for retention, access networks
+and Object Lock. Native defaults, another component's networks and previous
+assistant suggestions do not supply those decisions. An exact pending question
+set can resume literal answers without reclassifying the topic; only unanswered
+questions remain. A complete proposal still passes the native Editor schema and
+source validation. Acceptance, saving and execution remain separate.
