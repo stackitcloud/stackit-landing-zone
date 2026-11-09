@@ -18,6 +18,7 @@ import {
   assistantDevOpsDefaultFailures,
   assistantDnsRoleFailures,
   assistantFirewallBootstrapFailures,
+  assistantPlatformImpactReviewFailures,
   assistantScenarioFixture,
   assistantScenarios,
   buildAssistantScenarioInventory,
@@ -1165,4 +1166,18 @@ it("binds audit Grafana advice to native routing, retention and upgrade boundari
   expect(topic?.sources.map((s) => s.path)).toContain(
     "src/modules/management/6-audit-logs.tf",
   );
+});
+
+it("requires owner decision, data-loss information and exact-plan binding in platform impact advice", () => {
+  const text =
+    "Der Platform Owner entscheidet nach Prüfung über Löschungen und Ersetzungen mit möglichen Datenverlusten. Die Bestätigung bindet Artefakt-Hash, State und abhängige Applications. Einen neuen Plan erstellen; Apply separat freigeben.";
+  expect(assistantPlatformImpactReviewFailures(text)).toEqual([]);
+  expect(
+    assistantPlatformImpactReviewFailures("Löschungen sind immer blockiert."),
+  ).toContain("platform_impact_missing_owner-decision");
+  expect(
+    assistantPlatformImpactReviewFailures(
+      text.replace("Artefakt-Hash", "Stand"),
+    ),
+  ).toContain("platform_impact_missing_artifact-binding");
 });

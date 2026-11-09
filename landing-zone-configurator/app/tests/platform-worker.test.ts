@@ -2109,7 +2109,7 @@ it.each(["application", "platform"])(
         ? artifact.summary.upgradeSafety
         : artifact.summary.platformImpact
       )?.classification,
-    ).toBe("blocked");
+    ).toBe(broker === "application" ? "blocked" : "sensitive");
     expect(JSON.stringify(artifact.summary)).not.toMatch(
       /private-address|private-before|private-after/,
     );
