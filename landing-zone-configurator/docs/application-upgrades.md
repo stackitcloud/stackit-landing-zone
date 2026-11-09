@@ -192,6 +192,26 @@ Platform Owner acknowledgement bound to the exact Plan, artifact, State version
 and dependency set. New dependencies or a different State invalidate it. Active
 Application execution and Recovery also prevent conflicting shared changes.
 
+The reviewed central audit query migration is a narrow exception: the Worker
+must recognise exactly two creates, two in-place updates and four retirements of
+the old Logs instance, its read/write tokens and destination. It verifies resource
+addresses and types, the same project/router, the existing Observability target,
+and unchanged Router, S3 destination and archive bucket. Known computed retention
+and plan IDs may remain unknown, but a requested tariff or retention change does
+not qualify. The database admits only that exact signed-artifact summary and still
+requires Platform Owner acknowledgement bound to Plan, State and dependencies.
+Extra deletions, replacements, unknown resources and incomplete evidence remain
+blocked. The Apply page explains that Application projects/resources and S3 remain
+while the old Logs history is removed. Acknowledgement starts no Apply; normal
+review, organization confirmation and explicit destructive-change approval remain.
+
+After adopting this fix, create a **new Cloud Plan** using the existing valid
+preparation/configuration. Previously saved plans are not reclassified or edited;
+they lack this Worker evidence. Review the fresh plan under Apply, acknowledge
+its platform impact and then separately approve Apply. No configuration change or
+new Application template version is needed for this admission correction.
+
+
 After a successful Platform Apply, approve its actual resulting platform contract.
 A published platform upgrade path may then offer that contract to an existing
 order while retaining the same template version. The binding uses real approved

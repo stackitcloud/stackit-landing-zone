@@ -856,6 +856,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Meine bestehende Application-Bestellung kann nach einem Produktupdate wegen ihrer Accelerator-Revision keinen Drift mehr prüfen. Soll ich neu bestellen? Wie bleiben dieselbe Bestellung und der State nutzbar? Unterscheide ursprüngliche Template-Quelle, gewünschten Stand und zuletzt erfolgreich angewendete Revision. Wie funktioniert ein Upgrade, was passiert bei Apply-Fehler und bei einer zurückgezogenen Quelle? Nur beraten, nichts ändern oder ausführen.",
   },
   {
+    id: "audit-query-migration-impact-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    requiredOverviewFields: ["observability", "plan", "apply"],
+    message:
+      "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, und kann ich damit beliebige andere Löschungen oder einen alten Plan entsperren? Nur beraten, nichts ändern oder ausführen.",
+  },
+  {
     id: "audit-grafana-upgrade-advice",
     topic: "audit-logs",
     fixture: "baseline",

@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "a6c882ee64e654b48b394467e008755a56503d054c535489284fb995e36fce33",
+  "knowledgeSha256": "389d91d59f9d5b1a80f58efb34cb2ed67fa55c325e1fb2acbfc53a256e4019ac",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "789a6f1c8a86bad2e5ecd46815f775c15850700fb2822a9f4da0579e787e7eb3",
+    "scripts/assistant-scenarios.ts": "5c3c89ee972b8ba48467a9484c8b61c84c8be97cb4bf9bea64bcb6573988bf54",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "99aa9b082e14e1dc43fba78d11b8bcaae85fc056da8b3eb67724a2d899920816",
+  "suiteSha256": "5f69825180e61a1b9be74900d4d73fd96fd031ccaba42d54ef40ac30f772e922",
   "topics": [
     {
       "id": "credential-foundations",
@@ -6258,6 +6258,23 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "pinned_source_same_order_state_fresh_plan_approval_withdrawal_no_reorder",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "audit-query-migration-impact-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "requiredOverviewFields": [
+            "observability",
+            "plan",
+            "apply"
+          ],
+          "message": "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, und kann ich damit beliebige andere Löschungen oder einen alten Plan entsperren? Nur beraten, nichts ändern oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "complete_native_field_overview",
             "no_changes"
           ]
         },

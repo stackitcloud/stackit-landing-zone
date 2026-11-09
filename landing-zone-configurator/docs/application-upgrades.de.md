@@ -216,6 +216,29 @@ Artefakt-Hash, State-Stand und Abhängigkeitssatz. Neue Abhängigkeiten oder ge�
 State machen sie ungültig. Aktive Application-Ausführungen und Recovery verhindern
 ebenfalls widersprüchliche gemeinsame Änderungen.
 
+Eine eng begrenzte Ausnahme ist die geprüfte Umstellung der zentralen Audit-Ablage.
+Der Worker muss genau zwei neue Ressourcen, zwei Änderungen vor Ort und vier
+Entfernungen der alten Logs-Instanz, ihrer Lese-/Schreib-Tokens und ihres Ziels
+erkennen. Er prüft Adressen und Ressourcentypen, dasselbe Projekt und denselben
+Router, das vorhandene Observability-Ziel sowie unveränderte Router-, S3-Ziel- und
+Archiv-Bucket-Ressourcen. Berechnete Retention und Plan-ID dürfen noch unbekannt
+sein; ein angeforderter Tarif- oder Retentionwechsel fällt nicht unter die Ausnahme.
+Die Datenbank lässt nur diese genaue, an das signierte Artefakt gebundene
+Zusammenfassung zu. Die Platform-Owner-Bestätigung für Plan, State und Abhängigkeiten
+bleibt erforderlich. Zusätzliche Löschungen, Ersetzungen, unbekannte Ressourcen
+und unvollständige Nachweise bleiben gesperrt. Im Apply-Schritt wird erklärt, dass
+Application-Projekte/-Ressourcen und S3 erhalten bleiben, die alte Logs-Historie
+jedoch entfernt wird. Die Bestätigung startet keinen Apply. Allgemeine Planprüfung,
+Bestätigung der Zielorganisation und ausdrückliche Löschungsfreigabe bleiben nötig.
+
+Nach diesem Fix einen **neuen Cloud-Plan** mit der vorhandenen gültigen
+Vorbereitung/Konfiguration erstellen. Alte gespeicherte Pläne werden nicht
+nachträglich verändert oder umklassifiziert; ihnen fehlt dieser Worker-Nachweis.
+Den neuen Plan unter Apply prüfen, seine Plattformauswirkungen bestätigen und
+anschließend Apply separat freigeben. Für diese Freigabekorrektur ist weder eine
+Konfigurationsänderung noch eine neue Application-Template-Version nötig.
+
+
 Nach erfolgreichem Plattform-Apply dessen tatsächlich entstandenen Vertrag freigeben.
 Ein veröffentlichter Plattform-Upgrade-Pfad kann diesen Vertrag anschließend für
 bestehende Bestellungen anbieten, auch bei unveränderter Template-Version.

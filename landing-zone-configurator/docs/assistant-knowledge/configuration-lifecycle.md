@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Workspace/config auth; acceptance ≠ execution.
+Auth; acceptance ≠ execution.
 
 ## Accelerator Contract
 
@@ -12,10 +12,10 @@ preserve keys/metadata, never IDs/region/access/owners/roles. Save/publish/order
 Plan/Apply/Destroy/Recovery separate. Apply=foundations+enabled inputs.
 Pinned IaC/lock/tools+patched Worker.
 
-Execution/template/platform bindings differ. Origin=template Git; desired=Accelerator,
-not platform draft; lastApplied=last successful Apply source, NOT State/Recovery.
-Source upgrade keeps order/project/State/backend/policy, executes nothing. Then NEW
-PLAN: review changes/replacements/deletions; NORMAL EXPLICIT APPLY APPROVAL.
+Bindings: origin=template Git; desired=Accelerator, not draft; lastApplied=successful
+Apply source, NOT State/Recovery.
+Source upgrade preserves order/project/State/backend/policy; then fresh
+Plan review (changes/replacements/deletions), explicit separate Apply approval.
 Failure keeps desired but MAY CHANGE State/resources; never promise no loss,
 unchanged failed State or reorder. Recovery=interrupted snapshot/source;
 Plan=actual State, not lastApplied. Withdrawn sources/unresolved Recovery block
@@ -32,10 +32,12 @@ Self-service: Application Owner reviews fresh Plan, confirms Apply; NO extra
 Platform Owner approval. Default separate approval binds Plan/artifact/candidate,
 even ordinary changes. Policy edit appends immutable publication; old targets/Plans
 retain policy. Reselect latest path+fresh Plan; no retroactive unlock.
-Platform Apply affects shared firewall/routes for ALL Applications; rejection
-keeps NO old firewall. Block destructive/unknown shared changes; sensitive ack
-binds Plan/State/dependencies. Publish actual successful contract path; requester
-explicitly adopts, NEVER automatically; same template allowed.
+Shared firewall/routes affect ALL Applications, no private old copy. Block unknowns
+and shared deletes/replacements EXCEPT Worker-verified audit Logs→existing
+Observability: same project/router, S3/links unchanged, four old Logs resources
+retired. Fresh Plan + Platform Owner ack bound to artifact/State/dependencies;
+never relabel old Plans or bypass guards. Publish actual successful contract path;
+requester adopts explicitly; same template allowed.
 Org/placement/SNA/backend migration separate. Chat cannot Git/publish/order/upgrade/unlock/execute or expose raw State/Plan.
 
 ## Dependencies
@@ -45,8 +47,8 @@ Readiness ≠ execution.
 ## Dialogue
 
 Reuse history/requirements/unnamed follow-ups; topic switches win.
-State assumptions; later never enables. Split business/derived/operator choices;
-one missing firewall question. Options ≠ consent. multiple=true: compatible answers,
+State assumptions; later enables nothing. Split business/derived/operator choices;
+One missing firewall question. Options ≠ consent. multiple=true: compatible answers,
 free text. Revalidate subsets; save only whole-proposal acceptance. New configs inherit server revision-bound context; never retrofit. Groups/parameters restrict versions.
 
 ## Examples
@@ -56,9 +58,9 @@ free text. Revalidate subsets; save only whole-proposal acceptance. New configs 
 ## Limits
 
 Recheck auth/base/candidate on acceptance/inference/reauth.
-No unknown imports in model. Chats expire three calendar months from
+No unknown imports. Chats expire three calendar months from
 CREATION; activity/deletion/late inference never extend expiry or restore derived
-context. Refresh knowledge. 5 sessions=load target, not quota; errors retain drafts.
+context. Refresh knowledge; keep drafts on errors. 5 sessions=load target, not quota.
 
 ## Credentials
 
@@ -66,4 +68,4 @@ Session ≠ rights; no tokens/keys/raw errors/protected model data.
 
 ## Sources
 
-Manifest: release/promotion/Plan separate; retention/restore/load; DE/EN, A01–A24.
+Manifest.

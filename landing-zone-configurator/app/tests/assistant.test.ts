@@ -2403,6 +2403,12 @@ it.each([
       expect(system).toContain(`The current topic is ${topic}`);
       if (topic === "configuration-lifecycle") {
         expect(system).toContain("UPGRADE ADVICE:");
+        expect(system).toContain("Worker-verified audit Logs→existing");
+        expect(system).toContain(
+          "Fresh Plan + Platform Owner ack bound to artifact/State/dependencies",
+        );
+        expect(system).toContain("never relabel old Plans or bypass guards");
+
         expect(system).toContain(
           "TEMPLATE upgrade is not merely changing a Git source",
         );

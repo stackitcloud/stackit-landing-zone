@@ -1,4 +1,7 @@
 export const englishMessages: Record<string, string> = {
+  "Dieser Plan stellt die zentrale Audit-Ablage auf Observability um. Die alte Logs-Instanz mit ihrer Historie und ihren Zugängen wird entfernt. Application-Projekte und ihre Ressourcen sowie das S3-Archiv bleiben erhalten.":
+    "This plan switches central audit storage to Observability. The old Logs instance, its history and credentials are removed. Application projects and their resources, and the S3 archive, are retained.",
+
   "Das zentrale Audit-Dashboard benötigt einen Observability-Tarif mit Logs, zum Beispiel Observability-Starter-EU01. Monitoring, Frontend und MetricsEndpoint können keine Audit-Logs empfangen. Wähle einen Tarif mit Logs oder deaktiviere die zentrale Observability für eine reine Logs/S3-Ablage.":
     "The central audit dashboard requires a logs-capable Observability plan, such as Observability-Starter-EU01. Monitoring, Frontend and MetricsEndpoint cannot receive audit logs. Choose a logs-capable plan or disable central Observability to keep Logs/S3 delivery only.",
 
@@ -49,8 +52,8 @@ export const englishMessages: Record<string, string> = {
   "Die Organisationsrechte werden bei der Anmeldung und während der Sitzung automatisch geprüft. Hier erscheinen erfolgreiche Plattform-Applies auf dem aktuellen, entsperrten State.":
     "Organization permissions are checked automatically at login and during the session. This list shows successful platform Applies on the current, unlocked State.",
 
-  "Dieser Plan benötigt deine Bestätigung der Auswirkungen auf bestehende Application Landing Zones. Öffne den Schritt Apply und bestätige dort die Plattformauswirkungen. Danach kannst du denselben gültigen Plan freigeben.":
-    "This plan requires your acknowledgement of its impact on existing Application Landing Zones. Open Apply and acknowledge the platform impact there. You can then approve the same valid plan.",
+  "Öffne den Schritt Apply und prüfe dort die Plattformauswirkungen. Freigabefähige Änderungen benötigen deine Bestätigung; aufgeführte Blocker müssen zuerst behoben werden. Eine Bestätigung hebt keine Sperren auf.":
+    "Open Apply and review the platform impact. Eligible changes require your acknowledgement; listed blockers must be resolved first. Acknowledgement does not override blocks.",
   "Die Plattformabhängigkeiten haben sich geändert. Lade den Planstatus und die Prüfung der Plattformauswirkungen erneut.":
     "Platform dependencies changed. Reload the plan status and platform impact assessment.",
   "Für die Prüfung der Plattformauswirkungen fehlt die Platform-Owner-Berechtigung oder eine aktuelle STACKIT-Anmeldung.":
@@ -272,8 +275,8 @@ export const englishMessages: Record<string, string> = {
   "Ich habe die Auswirkungen dieses konkreten Plattformplans auf die aufgeführten Application Landing Zones geprüft. Diese Bestätigung startet keinen Apply.":
     "I reviewed the impact of this specific platform plan on the listed Application Landing Zones. This acknowledgment does not start Apply.",
   "Plattformauswirkungen bestätigen": "Acknowledge platform impact",
-  "Unbekannte Auswirkungen, Löschungen und Ersetzungen bleiben gesperrt. Eine Checkbox hebt diese Sperre nicht auf.":
-    "Unknown impacts, deletions and replacements remain blocked. A checkbox cannot override this block.",
+  "Unbekannte Auswirkungen sowie nicht freigegebene Löschungen und Ersetzungen bleiben gesperrt. Eine Checkbox hebt diese Sperre nicht auf.":
+    "Unknown impacts and unapproved deletions or replacements remain blocked. A checkbox cannot override this block.",
 
   "Die ursprüngliche Recovery-Quelle wurde zurückgezogen oder ihr geprüftes Paket fehlt. Ein Operator muss ein geprüftes kompatibles Recovery-Paket bereitstellen. Bestellung, State und Sperre bleiben erhalten; Upgrade und Apply sind bis zum Abgleich gesperrt.":
     "The original recovery source was withdrawn or its reviewed package is missing. An operator must provide a reviewed compatible recovery package. The order, State and lock are preserved; upgrade and Apply remain blocked until reconciliation.",

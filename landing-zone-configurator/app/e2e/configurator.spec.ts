@@ -3998,10 +3998,11 @@ test.describe("explicit saved-plan approval", () => {
     );
     return githubRequests;
   }
-  for (const impact of ["sensitive", "blocked", "mismatch"] as const) {
+  for (const impact of ["sensitive", "audit", "blocked", "mismatch"] as const) {
     test(`platform application impact ${impact} binds acknowledgment to exact plan without Apply`, async ({
       page,
     }) => {
+      const eligible = impact === "sensitive" || impact === "audit";
       await setup(page);
       let acknowledged = false;
       const posts: unknown[] = [];
@@ -4011,6 +4012,20 @@ test.describe("explicit saved-plan approval", () => {
             runs: [
               {
                 ...savedPlan(),
+                ...(impact === "audit"
+                  ? {
+                      summary: {
+                        ...summary,
+                        resources: {
+                          ...summary.resources,
+                          create: 2,
+                          update: 2,
+                          delete: 4,
+                        },
+                        destructive: true,
+                      },
+                    }
+                  : {}),
                 applicationImpactEnabled: true,
                 applyAllowed: acknowledged,
                 applyBlocker: acknowledged
@@ -4051,18 +4066,19 @@ test.describe("explicit saved-plan approval", () => {
               ],
               blockers:
                 impact === "blocked" ? ["platform-shared-replacement"] : [],
+              auditQueryMigration: impact === "audit",
               acknowledged,
               canAcknowledge: true,
             },
           });
         },
       );
-      await page.goto(
-        impact === "sensitive" ? "/deployments/plan" : "/deployments/apply",
-      );
-      if (impact === "sensitive") {
+      await page.goto(eligible ? "/deployments/plan" : "/deployments/apply");
+      if (eligible) {
         await expect(
-          page.getByText(/Dieser Plan benötigt deine Bestätigung/),
+          page.getByText(
+            /Öffne den Schritt Apply und prüfe dort die Plattformauswirkungen/,
+          ),
         ).toBeVisible();
         await page
           .getByRole("button", {
@@ -4076,6 +4092,14 @@ test.describe("explicit saved-plan approval", () => {
       });
       await expect(panel).toHaveCount(1);
       await expect(panel).toBeVisible();
+      if (impact === "audit") {
+        await expect(panel).toContainText(
+          "stellt die zentrale Audit-Ablage auf Observability um",
+        );
+        await expect(panel).toContainText(
+          "Application-Projekte und ihre Ressourcen sowie das S3-Archiv bleiben erhalten",
+        );
+      }
       if (impact === "mismatch") {
         await expect(panel.getByRole("alert")).toContainText(
           "nicht sicher geprüft",
@@ -4117,6 +4141,20 @@ test.describe("explicit saved-plan approval", () => {
           await page
             .getByLabel("Zielorganisation UUID bestätigen", { exact: true })
             .fill(organizationId);
+          if (impact === "audit") {
+            await expect(
+              page.getByRole("button", {
+                name: "Freigegebenen Plan anwenden",
+                exact: true,
+              }),
+            ).toBeDisabled();
+            await page
+              .getByRole("checkbox", {
+                name: "Löschungen und Ersetzungen ausdrücklich freigegeben",
+                exact: true,
+              })
+              .check();
+          }
           await expect(
             page.getByRole("button", {
               name: "Freigegebenen Plan anwenden",
@@ -4126,7 +4164,7 @@ test.describe("explicit saved-plan approval", () => {
           await expect(panel).toHaveCount(1);
         }
       }
-      expect(posts).toHaveLength(impact === "sensitive" ? 1 : 0);
+      expect(posts).toHaveLength(eligible ? 1 : 0);
       await expect(page.getByText("Apply läuft", { exact: true })).toHaveCount(
         0,
       );

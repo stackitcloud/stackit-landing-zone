@@ -118,7 +118,7 @@ const failures: Record<string, string> = {
     "Die Sitzung ist nicht mehr aktuell. Bitte erneut anmelden und den Plan prüfen.",
   authentication_required: "Bitte erneut anmelden und den Plan prüfen.",
   platform_application_impact_required:
-    "Dieser Plan benötigt deine Bestätigung der Auswirkungen auf bestehende Application Landing Zones. Öffne den Schritt Apply und bestätige dort die Plattformauswirkungen. Danach kannst du denselben gültigen Plan freigeben.",
+    "Öffne den Schritt Apply und prüfe dort die Plattformauswirkungen. Freigabefähige Änderungen benötigen deine Bestätigung; aufgeführte Blocker müssen zuerst behoben werden. Eine Bestätigung hebt keine Sperren auf.",
   platform_impact_changed:
     "Die Plattformabhängigkeiten haben sich geändert. Lade den Planstatus und die Prüfung der Plattformauswirkungen erneut.",
   platform_impact_access_denied:

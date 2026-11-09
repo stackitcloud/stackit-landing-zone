@@ -22,6 +22,7 @@ export const platformApplicationImpactViewSchema = z.strictObject({
     )
     .max(10000),
   blockers: z.array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/)).max(20),
+  auditQueryMigration: z.boolean().optional(),
   acknowledged: z.boolean(),
   canAcknowledge: z.boolean(),
 });

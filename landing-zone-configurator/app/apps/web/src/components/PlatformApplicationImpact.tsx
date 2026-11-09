@@ -17,6 +17,7 @@ const schema = z.object({
     }),
   ),
   blockers: z.array(z.string()),
+  auditQueryMigration: z.boolean().optional(),
   acknowledged: z.boolean(),
   canAcknowledge: z.boolean(),
 });
@@ -134,6 +135,13 @@ export function PlatformApplicationImpact({
                   : "Keine prüfpflichtigen Plattformauswirkungen",
             )}
           </p>
+          {value.auditQueryMigration && (
+            <p>
+              {t(
+                "Dieser Plan stellt die zentrale Audit-Ablage auf Observability um. Die alte Logs-Instanz mit ihrer Historie und ihren Zugängen wird entfernt. Application-Projekte und ihre Ressourcen sowie das S3-Archiv bleiben erhalten.",
+              )}
+            </p>
+          )}
           <ul>
             {value.affectedApplications.map((app) => (
               <li key={app.instanceId}>
@@ -182,7 +190,7 @@ export function PlatformApplicationImpact({
           {hardBlocked && (
             <p role="alert">
               {t(
-                "Unbekannte Auswirkungen, Löschungen und Ersetzungen bleiben gesperrt. Eine Checkbox hebt diese Sperre nicht auf.",
+                "Unbekannte Auswirkungen sowie nicht freigegebene Löschungen und Ersetzungen bleiben gesperrt. Eine Checkbox hebt diese Sperre nicht auf.",
               )}
             </p>
           )}
