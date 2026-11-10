@@ -22,6 +22,22 @@ gemeinsam; jede API-Replik erzeugt keinen eigenen zusätzlichen Pool.
 Infrastrukturjobs und Release-Aktivierung verwenden
 `configurator-lzc-prod-mutation` als gemeinsamen einzelnen Schreiber.
 
+Laufende STACKIT-Anmeldungen und Organisationsnachweise verwenden denselben
+PostgreSQL-Dienst wie Sitzungen und werden mit dem dauerhaften
+Anwendungs-Artefaktschlüssel verschlüsselt. Der Geheimtext ist an öffentlichen
+Origin, Flow-Zweck und gehashte Browser-/Sitzungskennung gebunden. Jeder Vorgang
+belegt eine kurze Datenbank-Lease und gibt die Verbindung vor Aufrufen des
+Identitätsdienstes zurück. Anschließend wird der Flow gespeichert oder gelöscht.
+Keine zweite Instanz kann denselben Autorisierungscode gleichzeitig einlösen.
+Abgeschlossene Anmeldungen und abgebrochene Flows werden gelöscht; abgelaufene
+Datensätze sind sofort unzugänglich und werden beim nächsten Flow-Start entfernt.
+Geht ein Prozess während des Austauschs verloren, bleibt der Flow bis zum Ablauf
+(höchstens 15 Minuten) gesperrt. Dann mit einem neuen Browser-Flow anmelden,
+statt einen möglicherweise bereits ausgeführten Token-Austausch zu wiederholen.
+Das Schließen einer API-Instanz bricht gemeinsam gespeicherte Flows nicht ab.
+Lokale Aufbauten ohne Artefaktschlüssel behalten den Speicher-Fallback für einen
+Prozess.
+
 Login-Zustand, Sitzungen und Job-Datensätze liegen in PostgreSQL. Sitzungsbindung
 an eine bestimmte Web-Instanz ist nicht erforderlich. Laufzeitbenutzer besitzen
 keine Datenbank-Administrationsrechte. Anwendungs- und Runner-Zugänge entstehen

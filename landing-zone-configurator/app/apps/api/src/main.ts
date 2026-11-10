@@ -228,6 +228,9 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
     primaryStackit,
     githubEnabled: !!clientId,
     store: new PostgresAuthStore(pool),
+    ...(artifactCrypto
+      ? { pendingFlows: { pool, crypto: artifactCrypto } }
+      : {}),
     github: new GitHubClient({
       clientId,
       clientSecret,
@@ -248,6 +251,10 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       : {}),
   };
   if (process.env.LZC_STACKIT_DEVICE_ENABLED === "true") {
+    if (artifactCrypto)
+      await pool.query(
+        "SELECT scope,key_hash,payload,lease,expires_at FROM lzc_auth.pending_stackit_flows LIMIT 0",
+      );
     if (!createStackitFlow)
       throw new Error("Configured STACKIT PKCE flow required");
     await pool.query("SELECT user_id FROM lzc.stackit_identities LIMIT 0");

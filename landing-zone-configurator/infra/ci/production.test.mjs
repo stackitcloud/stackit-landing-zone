@@ -93,3 +93,12 @@ test("production preparation uses scoped bindings, exact PKCE origin and three r
   env.LZC_PUBLISHED_RELEASE="true";env.LZC_RELEASE_MODE="dev-skip-assistant-qualification";assert.notEqual(run("backend").status,0);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });
+
+test("space-scoped account creation waits for its provisioning principal's developer role",()=>{
+ const hcl=readFileSync(new URL("../runtime/2-deployment-identities.tf",import.meta.url),"utf8");
+ for(const [name,role] of [["release","deployer"],["dispatcher","runner_developer"]]){
+  const resource=hcl.split(`resource "cloudfoundry_service_instance" "${name}" {`)[1]?.split('\n}')[0];
+  assert.ok(resource,`missing ${name} service`);
+  assert.match(resource,new RegExp(`depends_on\\s*=\\s*\\[cloudfoundry_space_role\\.${role}\\]`));
+ }
+});

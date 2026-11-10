@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { OrganisationService } from "../organisation/service.js";
+import { type PendingFlow, PendingFlows } from "./pending-flows.js";
 import {
   type AuthServices,
   authenticatedSession,
@@ -32,27 +33,29 @@ export function registerStackitIdentity(
   service: StackitServices,
 ) {
   const sessions = new WeakMap<FastifyRequest, Session>();
-  const pending = new Map<
-    string,
-    {
-      flow: StackitDeviceFlow;
-      authorization?: Awaited<ReturnType<StackitDeviceFlow["begin"]>>;
-      expiresAt: number;
-      saved: boolean;
-      busy: boolean;
-    }
-  >();
-  app.addHook("onClose", async () => {
-    for (const entry of pending.values()) entry.flow.cancel();
-    pending.clear();
-  });
+  const factory =
+    service.createFlow ??
+    ((organizationId?: string) =>
+      new StackitDeviceFlow(fetch, Date.now, organizationId));
+  const pending = new PendingFlows(
+    auth.origin,
+    "proof",
+    factory,
+    auth.pendingFlows,
+  );
   app.get("/auth/stackit/proof-callback", async (request, reply) => {
     const session = await authenticatedSession(request, auth);
     const entry = session
-      ? pending.get(`${session.id}:${session.tenantId}`)
+      ? await pending.get(`${session.id}:${session.tenantId}`)
       : undefined;
-    if (!entry || entry.busy || !entry.flow.acceptAuthorization(request.query))
+    if (!session || !entry || entry.busy)
       return reply.code(400).send({ error: "invalid_stackit_callback" });
+    try {
+      if (!entry.flow.acceptAuthorization(request.query))
+        return reply.code(400).send({ error: "invalid_stackit_callback" });
+    } finally {
+      await pending.release(`${session.id}:${session.tenantId}`, entry);
+    }
     return reply
       .header("Referrer-Policy", "no-referrer")
       .redirect(`${auth.origin}/organisation#stackit-proof`);
@@ -94,18 +97,12 @@ export function registerStackitIdentity(
           ? z.strictObject({ confirmOrganizationBinding: z.literal(true) })
           : z.strictObject({})
         ).parse(request.body ?? {});
-      for (const [key, entry] of pending) {
-        if (Date.now() >= entry.expiresAt) {
-          entry.flow.cancel();
-          pending.delete(key);
-        }
-      }
     });
     routes.get("/api/v1/stackit/identity", async (request, reply) => {
       const session = sessions.get(request);
       if (!session)
         return reply.code(401).send({ error: "authentication_required" });
-      const entry = pending.get(`${session.id}:${session.tenantId}`);
+      const entry = await pending.read(`${session.id}:${session.tenantId}`);
       return {
         ...(await service.identities.status(session)),
         flow: entry?.flow.state() ?? { status: "idle" },
@@ -133,18 +130,20 @@ export function registerStackitIdentity(
         if (!session)
           return reply.code(401).send({ error: "authentication_required" });
         const key = `${session.id}:${session.tenantId}`;
-        const previous = pending.get(key);
-        if (previous?.busy || previous?.flow.state().status === "waiting")
+        const previous = await pending.get(key);
+        if (previous?.busy || previous?.flow.state().status === "waiting") {
+          if (previous && !previous.busy) await pending.release(key, previous);
           return reply.code(409).send({ error: "flow_already_started" });
-        if (!previous && pending.size >= 100)
-          return reply.code(429).send({ error: "stackit_flow_limit" });
+        }
+        if (previous) await pending.delete(key, previous);
         const entry = {
-          flow: new StackitDeviceFlow(),
+          flow: factory(undefined, "proof"),
           expiresAt: Date.now() + 900000,
           saved: false,
           busy: true,
-        } as NonNullable<ReturnType<typeof pending.get>>;
-        pending.set(key, entry);
+        } as PendingFlow;
+        if (!(await pending.set(key, entry)))
+          return reply.code(429).send({ error: "stackit_flow_limit" });
         try {
           const overview = await service.organisations.overview(session);
           const tenant = overview.tenants.find(
@@ -165,10 +164,10 @@ export function registerStackitIdentity(
           return entry.authorization;
         } catch (error) {
           entry.flow.cancel();
-          pending.delete(key);
+          await pending.delete(key, entry);
           throw error;
         } finally {
-          entry.busy = false;
+          await pending.release(key, entry);
         }
       },
     );
@@ -176,7 +175,7 @@ export function registerStackitIdentity(
       const session = sessions.get(request);
       if (!session)
         return reply.code(401).send({ error: "authentication_required" });
-      const entry = pending.get(`${session.id}:${session.tenantId}`);
+      const entry = await pending.get(`${session.id}:${session.tenantId}`);
       if (!entry)
         return reply.code(409).send({ error: "stackit_flow_missing" });
       if (entry.busy) return { status: "waiting", retryAfterMs: 1000 };
@@ -193,7 +192,7 @@ export function registerStackitIdentity(
         entry.flow.cancel();
         throw error;
       } finally {
-        entry.busy = false;
+        await pending.release(`${session.id}:${session.tenantId}`, entry);
       }
     });
     for (const action of ["cancel", "revoke"] as const) {
@@ -204,11 +203,11 @@ export function registerStackitIdentity(
           if (!session)
             return reply.code(401).send({ error: "authentication_required" });
           const key = `${session.id}:${session.tenantId}`;
-          const entry = pending.get(key);
+          const entry = await pending.get(key);
           if (entry?.busy)
             return reply.code(409).send({ error: "stackit_flow_busy" });
           entry?.flow.cancel();
-          pending.delete(key);
+          if (entry) await pending.delete(key, entry);
           if (action === "revoke") await service.identities.revoke(session);
           return { status: "cancelled" };
         },

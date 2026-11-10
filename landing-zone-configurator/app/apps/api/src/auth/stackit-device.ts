@@ -193,6 +193,48 @@ export class StackitDeviceFlow {
     });
   }
 
+  snapshot() {
+    if (this.polling || this.refreshGrant)
+      throw new DeviceFlowError("flow_busy");
+    return structuredClone({
+      version: 1,
+      clientId: this.clientId,
+      organizationId: this.organizationId,
+      codeOptions: this.codeOptions,
+      deviceCode: this.deviceCode,
+      expiresAt: this.expiresAt,
+      nextPollAt: this.nextPollAt,
+      intervalMs: this.intervalMs,
+      current: this.current,
+      codeVerifier: this.codeVerifier,
+      codeState: this.codeState,
+      nonce: this.nonce,
+      authorizationCode: this.authorizationCode,
+    });
+  }
+
+  restore(snapshot: ReturnType<StackitDeviceFlow["snapshot"]>) {
+    if (
+      this.current.status !== "idle" ||
+      snapshot.version !== 1 ||
+      snapshot.clientId !== this.clientId ||
+      snapshot.organizationId !== this.organizationId ||
+      JSON.stringify(snapshot.codeOptions) !== JSON.stringify(this.codeOptions)
+    )
+      throw new DeviceFlowError("flow_binding_mismatch");
+    this.deviceCode = snapshot.deviceCode;
+    this.expiresAt = snapshot.expiresAt;
+    this.nextPollAt = snapshot.nextPollAt;
+    this.intervalMs = snapshot.intervalMs;
+    this.current = structuredClone(snapshot.current);
+    this.codeVerifier = snapshot.codeVerifier;
+    this.codeState = snapshot.codeState;
+    this.nonce = snapshot.nonce;
+    this.authorizationCode = snapshot.authorizationCode;
+    this.state();
+    return this;
+  }
+
   private async call(path: string, init: RequestInit = {}) {
     const response = await this.request(`${issuer}${path}`, {
       ...init,
