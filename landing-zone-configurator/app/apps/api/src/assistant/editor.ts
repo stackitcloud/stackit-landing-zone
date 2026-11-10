@@ -3,7 +3,6 @@ import { isDeepStrictEqual } from "node:util";
 import { assistantProposalValue } from "@lzc/contracts";
 import {
   acceleratorInputs,
-  applicationPermissionName,
   assertBoundedJson,
   type CommonConfiguration,
   compileCommonConfiguration,
@@ -22,6 +21,7 @@ import {
   validateInputType,
 } from "@lzc/domain";
 import { z } from "zod";
+import { assistantServingResponseSchema } from "./serving-schema.js";
 
 export const assistantEditorOperations = [
   "merge",
@@ -225,7 +225,11 @@ export function assistantEditorValueSchema(
     if (type === "number") return z.number().finite().nullable();
     throw new Error("assistant_unreviewed_input_type");
   }
-  if (type[0] === "list" || type[0] === "set")
+  if (
+    path === "audit_logs.link_scopes" &&
+    typeof type !== "string" &&
+    (type[0] === "list" || type[0] === "set")
+  )
     return z
       .array(
         assistantEditorValueSchema(
@@ -237,7 +241,28 @@ export function assistantEditorValueSchema(
         ),
       )
       .max(100)
-      .nullable();
+      .nullable()
+      .describe(
+        "null keeps the native organization-level default, with no project/folder inheritance. A request for an organization-wide Telemetry Link without explicit custom scope IDs uses null; do not materialize a redundant organization ID from saved context. [] explicitly disables those default links. Use explicit entries only for a requested manual scope selection and preserve user-supplied resource_type/resource_id values. With managed_resources=true, keep this null.",
+      );
+  if (type[0] === "list" || type[0] === "set")
+    return (
+      z
+        .array(
+          assistantEditorValueSchema(
+            type[1],
+            `${path}[*]`,
+            false,
+            fields,
+            options,
+          ),
+        )
+        // Native audit validation permits automatic ranges (null) or a reviewed
+        // nonempty override. An empty list is invalid and is not the default.
+        .min(path === "audit_logs.router_egress_cidrs" ? 1 : 0)
+        .max(100)
+        .nullable()
+    );
   if (type[0] === "map")
     return z
       .record(
@@ -418,6 +443,7 @@ export function assistantEditorChangeSchema(
   current?: unknown,
   operation?: "merge" | "replace",
   requiredFieldsByKey?: Readonly<Record<string, readonly string[]>>,
+  auditChoices?: AssistantAuditChoices & { managed_resources?: boolean },
 ): z.ZodType {
   if (root === "projectTemplates") {
     const template = templateProposalSchema(
@@ -546,6 +572,44 @@ export function assistantEditorChangeSchema(
         .nullable();
     }
   }
+  // Bind only source-checked choices for a fresh Audit constructor. This narrows
+  // the model contract; the original runtime/native validators still apply.
+  if (
+    mode === "serving" &&
+    root === "audit_logs" &&
+    current == null &&
+    auditChoices &&
+    mergeValue instanceof z.ZodNullable
+  ) {
+    const value = mergeValue.unwrap();
+    if (value instanceof z.ZodObject) {
+      mergeValue = value
+        .extend({
+          managed_resources: auditChoices.managed_resources
+            ? z.literal(true)
+            : z.literal(false).nullable(),
+          ...(auditChoices.retention_days !== undefined
+            ? { retention_days: z.literal(auditChoices.retention_days) }
+            : {}),
+          ...(auditChoices.acl !== undefined
+            ? {
+                acl: auditChoices.acl.length
+                  ? z.tuple(
+                      auditChoices.acl.map((cidr) => z.literal(cidr)) as [
+                        z.ZodLiteral<string>,
+                        ...z.ZodLiteral<string>[],
+                      ],
+                    )
+                  : z.tuple([]),
+              }
+            : {}),
+          ...(auditChoices.s3_object_lock !== undefined
+            ? { s3_object_lock: z.literal(auditChoices.s3_object_lock) }
+            : {}),
+        })
+        .nullable();
+    }
+  }
   if (mode === "serving")
     return z.strictObject({
       path: z.literal(root),
@@ -590,55 +654,42 @@ export function assistantEditorChangeSchema(
 }
 
 export function assistantEditorResponseSchema(schema: z.ZodType) {
-  const result = z.toJSONSchema(schema);
-  const permissionPattern = z.toJSONSchema(applicationPermissionName).pattern;
-  // Serving lacks propertyNames; the original Zod schema still checks map keys.
-  const visit = (value: unknown): void => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return;
-    if ("propertyNames" in value) delete value.propertyNames;
-    // Serving cannot compile the permission regex intersected with maxLength.
-    // Keep bounded strings here; the original Zod schema and trusted catalogue
-    // still validate every returned profile before a proposal is accepted.
-    if ("pattern" in value && value.pattern === permissionPattern)
-      delete value.pattern;
-    for (const [key, child] of Object.entries(value)) {
-      if (
-        ["properties", "$defs", "definitions", "patternProperties"].includes(
-          key,
-        )
-      ) {
-        if (child && typeof child === "object")
-          for (const nested of Object.values(child)) visit(nested);
-      } else if (["anyOf", "oneOf", "allOf", "prefixItems"].includes(key)) {
-        if (Array.isArray(child)) for (const nested of child) visit(nested);
-      } else if (
-        ["items", "additionalProperties", "not", "if", "then", "else"].includes(
-          key,
-        )
-      ) {
-        visit(child);
-      }
-    }
-  };
-  visit(result);
-  return result;
+  return assistantServingResponseSchema(z.toJSONSchema(schema));
 }
 
 export function assistantEditorCreationValue(
   path: string,
   value: JsonValue,
   current: unknown,
+  provenance?: { organizationId: unknown; userSources: readonly string[] },
 ): JsonValue {
   if (current != null || path.includes(".") || path === "projectTemplates")
     return value;
   const type = editorPath(path).type;
   if (typeof type === "string" || type[0] !== "object" || value == null)
     return value;
+  const constructorValue = objectValue(value);
+  const scopes = constructorValue.link_scopes;
+  // A generated copy of the native organization default adds no routing. Keep
+  // explicitly pinned native fields/IDs and all nondefault or existing scopes.
+  const defaultOrganizationScope =
+    path === "audit_logs" &&
+    typeof provenance?.organizationId === "string" &&
+    Array.isArray(scopes) &&
+    scopes.length === 1 &&
+    objectValue(scopes[0]).resource_type === "organization" &&
+    objectValue(scopes[0]).resource_id === provenance.organizationId &&
+    !provenance.userSources.some(
+      (source) =>
+        source.includes(provenance.organizationId as string) ||
+        /\blink_scopes\b/i.test(source),
+    );
   // Nullable optional constructor slots represent native defaults, not overrides.
   return Object.fromEntries(
     Object.entries(objectValue(value)).filter(
       ([key, item]) =>
         (item !== null || !type[2]?.includes(key)) &&
+        !(key === "link_scopes" && defaultOrganizationScope) &&
         // A fresh audit draft keeps legacy scope through its native false
         // default. Do not add an unrelated coverage override to old requests.
         !(
@@ -907,4 +958,290 @@ export function applyAssistantEditorChange(
     return readCommonConfiguration(next);
   }
   return editCommonInput(input, path.root, rootValue);
+}
+
+export type AssistantAuditChoices = {
+  retention_days?: number;
+  acl?: string[];
+  s3_object_lock?: boolean;
+};
+const auditChoiceQuestions = {
+  de: {
+    retention_days:
+      "Wie viele Tage sollen die Audit-Protokolle aufbewahrt werden?",
+    acl: "Aus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.",
+    s3_object_lock:
+      "Soll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?",
+  },
+  en: {
+    retention_days: "For how many days should the audit logs be retained?",
+    acl: "Which IP networks should access the audit logs? Please provide your actual CIDRs.",
+    s3_object_lock:
+      "Should Object Lock for the audit archive explicitly be enabled or disabled?",
+  },
+} as const;
+
+const auditChoiceExplanations = {
+  en: "The new audit draft needs your explicit retention, access-network and Object Lock decisions. Nothing has been saved or executed.",
+  de: "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.",
+} as const;
+
+/** Audit-specific user provenance excludes foundation IDs and assistant suggestions. */
+export function assistantAuditUserSources(
+  message: string,
+  history: { role: "user" | "assistant"; content: string }[],
+) {
+  const sources: string[] = [];
+  const audit = (text: string) =>
+    /audit|object[-_ ]?lock|s3_object_lock|retention_days/i.test(text);
+  for (let i = 0; i < history.length; i++) {
+    const turn = history[i]!;
+    if (
+      turn.role === "assistant" &&
+      turn.content.startsWith(
+        "The user explicitly discarded the preceding proposal. This turn is closed:",
+      )
+    )
+      sources.length = 0;
+    if (
+      turn.role === "user" &&
+      (audit(turn.content) ||
+        (history[i - 1]?.role === "assistant" &&
+          audit(history[i - 1]!.content)))
+    )
+      sources.push(turn.content);
+  }
+  return [...sources, message];
+}
+
+export function assistantAuditManagedCoverage(
+  message: string,
+  history: { role: "user" | "assistant"; content: string }[],
+) {
+  const sources = assistantAuditUserSources(message, history);
+  let managed = false;
+  for (const source of sources) {
+    const native = source.match(/\bmanaged_resources\s*[:=]\s*(true|false)\b/i);
+    if (native) {
+      managed = native[1]!.toLowerCase() === "true";
+      continue;
+    }
+    for (const clause of source.split(/[.!?;\n]/)) {
+      if (
+        /automatisch|automatically/i.test(clause) &&
+        /verwaltet|managed/i.test(clause) &&
+        /Projekt|Ordner|projects?|folders?/i.test(clause)
+      ) {
+        // Negation concerns this coverage clause, not e.g. a later "No deployment".
+        managed = !/\b(?:nicht|kein\w*|ohne|not|no|without)\b/i.test(clause);
+      }
+    }
+  }
+  return managed;
+}
+
+/** Ground new audit choices in audit-related USER turns, never saved defaults,
+ * another component's networks, or values asserted by an assistant. */
+export function assistantAuditCreationChoices(
+  message: string,
+  history: { role: "user" | "assistant"; content: string }[],
+): AssistantAuditChoices {
+  const choices: AssistantAuditChoices = {};
+  const auditContext = (text: string) =>
+    /audit|object[-_ ]?lock|s3_object_lock|retention_days/i.test(text);
+  const turns = [...history, { role: "user" as const, content: message }];
+  for (let index = 0; index < turns.length; index++) {
+    const turn = turns[index];
+    if (
+      turn?.role === "assistant" &&
+      turn.content.startsWith(
+        "The user explicitly discarded the preceding proposal. This turn is closed:",
+      )
+    ) {
+      delete choices.retention_days;
+      delete choices.acl;
+      delete choices.s3_object_lock;
+      continue;
+    }
+    if (turn?.role !== "user") continue;
+    const previous =
+      turns[index - 1]?.role === "assistant" ? turns[index - 1]!.content : "";
+    if (
+      index !== turns.length - 1 &&
+      !auditContext(turn.content) &&
+      !auditContext(previous)
+    )
+      continue;
+    let text = turn.content.trim();
+    for (const questions of Object.values(auditChoiceQuestions))
+      for (const question of Object.values(questions))
+        for (const separator of ["\nMeine Antwort: ", "\nMy answer: "])
+          if (text.startsWith(question + separator))
+            text = text.slice((question + separator).length).trim();
+    const pending = (key: keyof AssistantAuditChoices) =>
+      Object.values(auditChoiceQuestions).some((q) =>
+        previous.includes(q[key]),
+      ) ||
+      (!Object.values(auditChoiceExplanations).some((explanation) =>
+        previous.startsWith(explanation + "\n"),
+      ) &&
+        auditContext(previous) &&
+        (key === "acl"
+          ? /\bACL\b|Zugriffsnetze|access networks/i.test(previous)
+          : key === "retention_days"
+            ? /Aufbewahrung|retention|retained/i.test(previous)
+            : /object[-_ ]?lock|s3_object_lock/i.test(previous)));
+    const days = [
+      ...text.matchAll(
+        /\b(\d+)\s*(?:Tage?n?|days?)\b|\bretention_days\s*[:=]\s*(\d+)\b/gi,
+      ),
+    ].map((m) => Number(m[1] ?? m[2]));
+    if (!days.length && pending("retention_days") && /^\d+$/.test(text))
+      days.push(Number(text));
+    if (days.length) {
+      const unique = [...new Set(days)];
+      if (
+        unique.length === 1 &&
+        Number.isSafeInteger(unique[0]) &&
+        unique[0]! > 0
+      )
+        choices.retention_days = unique[0]!;
+      else delete choices.retention_days;
+    }
+    const aclLabel =
+      /\bacl\b|Zugriffsnetze|Zugriff\s+(?:aus|nur|ausschließlich)|access\s+(?:networks?|from)/i;
+    if (aclLabel.test(text) || pending("acl")) {
+      const parts = text.split(
+        /object[-_ ]?lock|s3_object_lock|router_egress_cidrs|\bRouter\b|;|\n/i,
+      );
+      const aclText =
+        parts.find((part) => aclLabel.test(part)) ??
+        (pending("acl") ? text : "");
+      const candidates =
+        aclText.match(
+          /(?:[0-9a-fA-F:.]+\/\d{1,3})|(?:(?:\d{1,3}\.){3}\d{1,3})/g,
+        ) ?? [];
+      const networks = candidates.filter(
+        (value) =>
+          z.cidrv4().safeParse(value).success ||
+          z.cidrv6().safeParse(value).success ||
+          z.ipv4().safeParse(value).success,
+      );
+      if (candidates.length && networks.length === candidates.length)
+        choices.acl = [...new Set(networks)];
+      else if (candidates.length) delete choices.acl;
+      else if (
+        /\bacl\s*[:=]\s*\[\s*\]/i.test(text) ||
+        (pending("acl") && /^\[\s*\]$/.test(text))
+      )
+        choices.acl = [];
+    }
+    const label = "(?:object[-_ ]?lock|s3_object_lock)";
+    const prefix =
+      "(?:bitte\\s+|ausdrücklich\\s+|explicitly\\s+|please\\s+|ist\\s+|is\\s+|auf\\s+|to\\s+|soll\\s+){0,3}";
+    const direct = text.match(
+      new RegExp(
+        label +
+          "\\s*(?:[=:?]\\s*)?" +
+          prefix +
+          "(nicht\\s+|not\\s+)?(deaktivieren|deaktiviert|disabled|disable|aktivieren|aktiviert|enabled|enable|nein|false|off|aus|yes|true|on|ja|an|ein)\\b",
+        "i",
+      ),
+    );
+    if (direct) {
+      const negative = /^(?:deaktiv|disabl|nein|false|off|aus)/i.test(
+        direct[2] ?? "",
+      );
+      choices.s3_object_lock = direct[1] ? negative : !negative;
+    } else if (
+      new RegExp(
+        "\\b(?:ohne|kein(?:e[nr]?)?|without|no)\\s+" + label + "\\b",
+        "i",
+      ).test(text)
+    )
+      choices.s3_object_lock = false;
+    else if (new RegExp("\\b(?:mit|with)\\s+" + label + "\\b", "i").test(text))
+      choices.s3_object_lock = true;
+    else if (pending("s3_object_lock")) {
+      if (
+        /^(?:ja|yes|true|on|an|ein|enable|enabled|aktivieren|aktiviert)[.!]?$/i.test(
+          text,
+        )
+      )
+        choices.s3_object_lock = true;
+      if (
+        /^(?:nein|no|false|off|aus|disable|disabled|deaktivieren|deaktiviert)[.!]?$/i.test(
+          text,
+        )
+      )
+        choices.s3_object_lock = false;
+    }
+  }
+  return choices;
+}
+
+export function assistantAuditCreationQuestions(
+  choices: AssistantAuditChoices,
+  language: "de" | "en" = "de",
+) {
+  const labels = auditChoiceQuestions[language];
+  return {
+    explanation: auditChoiceExplanations[language],
+    questions: (Object.keys(labels) as (keyof AssistantAuditChoices)[])
+      .filter((key) => choices[key] === undefined)
+      .map((key) => ({
+        path: `audit_logs.${key}`,
+        text: labels[key],
+        options:
+          key === "s3_object_lock"
+            ? language === "en"
+              ? ["Enable", "Disable"]
+              : ["Aktivieren", "Deaktivieren"]
+            : [],
+      })),
+  };
+}
+
+/** Resume only a literal answer to an exact, still-open server question set. */
+export function assistantAuditPendingReply(
+  message: string,
+  history: { role: "user" | "assistant"; content: string }[],
+) {
+  const previous = history.at(-1);
+  if (previous?.role !== "assistant") return null;
+  const before = assistantAuditCreationChoices("", history);
+  for (const language of ["de", "en"] as const) {
+    const pending = assistantAuditCreationQuestions(before, language);
+    if (
+      !pending.questions.length ||
+      previous.content !==
+        pending.explanation +
+          "\n" +
+          pending.questions.map((q) => q.text).join("\n")
+    )
+      continue;
+    let answer = message.trim();
+    for (const question of pending.questions)
+      for (const separator of ["\nMeine Antwort: ", "\nMy answer: "])
+        if (answer.startsWith(question.text + separator))
+          answer = answer.slice((question.text + separator).length).trim();
+    const fields = new Set(pending.questions.map((q) => q.path));
+    const literal =
+      (fields.has("audit_logs.retention_days") &&
+        /^\d+(?:\s*(?:Tage?n?|days?))?[.!]?$/i.test(answer)) ||
+      (fields.has("audit_logs.acl") &&
+        (z.cidrv4().safeParse(answer).success ||
+          z.cidrv6().safeParse(answer).success ||
+          /^\[\s*\]$/.test(answer))) ||
+      (fields.has("audit_logs.s3_object_lock") &&
+        /^(?:ja|nein|yes|no|true|false|on|off|an|aus|enable|enabled|disable|disabled|aktivieren|aktiviert|deaktivieren|deaktiviert)[.!]?$/i.test(
+          answer,
+        ));
+    if (literal)
+      return {
+        language,
+        choices: assistantAuditCreationChoices(message, history),
+      };
+  }
+  return null;
 }

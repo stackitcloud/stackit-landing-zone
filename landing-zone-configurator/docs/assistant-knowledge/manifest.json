@@ -210,8 +210,8 @@
     {
       "id": "audit-logs",
       "file": "audit-logs.md",
-      "version": 4,
-      "checkedOn": "2026-11-06",
+      "version": 6,
+      "checkedOn": "2026-11-09",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "management"
@@ -248,8 +248,8 @@
     {
       "id": "federated-identities",
       "file": "federated-identities.md",
-      "version": 1,
-      "checkedOn": "2026-10-10",
+      "version": 2,
+      "checkedOn": "2026-11-09",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "management"
@@ -621,7 +621,7 @@
     {
       "id": "configuration-lifecycle",
       "file": "configuration-lifecycle.md",
-      "version": 13,
+      "version": 14,
       "checkedOn": "2026-11-09",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [],
