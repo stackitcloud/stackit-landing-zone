@@ -4,11 +4,12 @@
 
 This is the entry point for choosing and starting a pipeline. Workflow names link
 directly to their **Actions** pages; **source** links show the executable definition.
-The ten current repository workflows are listed below. Historical entries and
+The eleven current repository workflows are listed below. Historical entries and
 GitHub-managed workflows are [listed separately](#other-entries-in-the-actions-sidebar).
 
 **A merge does not deploy the Configurator.** Configurator provisioning and
-application releases are manual and currently target development, not production.
+infrastructure runs are manual. Production activation uses published GitHub Releases
+and requires manual approval in its own protected Environment.
 Starting a workflow is not the same as approving its protected deployment job.
 
 ## Which workflow do I need?
@@ -18,7 +19,8 @@ Starting a workflow is not the same as approving its protected deployment job.
 | Check Accelerator changes without provisioning resources | **Validate** |
 | Check Configurator, catalogue, database, browser and operator-IaC changes | **Validate Configurator** |
 | Test Assistant answers against the real model | **Assistant live regression** |
-| Deploy a new Configurator version, including API/UI and Runner | **Configurator Release**, not Publish Release |
+| Build or deploy a Configurator Dev version, including API/UI and Runner | **Configurator Release** |
+| Publish a stable product release and activate production | **Configurator Production Release** |
 | Change the Configurator's own state storage, managed services or CF identities | **Configurator Bootstrap**, **Platform** or **Runtime** |
 | Exercise a real Accelerator deployment and cleanup | **Verify Deployment** |
 | Publish an Accelerator GitHub release after real deployment verification | **Publish Release** |
@@ -52,25 +54,34 @@ the complete source-bound live qualification. The default **qualified** path
 and its promotion requirements are unchanged.
 
 
+### Production release and infrastructure
+
+[Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [source](../.github/workflows/configurator-production.yml) publishes a stable release and deploys only after manual `lzc-prod-release` approval. It accepts `version` (default `v2.0.0`), `publish` (default `true`), `release_run_id` (required for publication) and `release_mode` (`qualified` or `accepted-assistant-limitations`). Build first with **Configurator Release**, `build_only=true`, on the same `main` revision. `accepted-assistant-limitations` explicitly records unqualified Assistant status and issue #225; it does not qualify a Dev-skip artifact. All non-inference checks remain mandatory.
+
+A published stable GitHub Release with the required source-bound assets also triggers this workflow. Publication with `GITHUB_TOKEN` continues within the same run, avoiding reliance on another event. `publish=false` redeploys an existing compatible published release under a fresh manual approval. Pre-releases and arbitrary artifacts are rejected. Production uses immutable attached application/Runner assets, scoped CF credentials and rolling deployment of three web replicas.
+
+The Bootstrap, Platform and Runtime inputs now include `environment` (`lzc-dev` by default, or `lzc-prod`). Their plan/apply Environments and mutation queues follow the selected stage. Prod platform inputs select the replica-set database; Prod runtime adds the dedicated DNS zone, public domain and space-scoped identities. The local encrypted `operator-project` bootstrap imports an existing operator project and provisions its dedicated project-limited identity. See the [complete production runbook](../landing-zone-configurator/docs/production.md) for bootstrap, bindings, credential rotation and recovery.
+
 ## Current repository workflows
 
 **Automatic** describes repository events, not a manual click. **Reusable** means
 another workflow can call it through `workflow_call`; it is not a separate UI
-approval. All ten definitions expose `workflow_dispatch`, but permissions,
+approval. All eleven definitions expose `workflow_dispatch`, but permissions,
 branch restrictions, operator switches and environment protection still apply.
 
 | Workflow and definition | Purpose | Automatic start | Manual start in Actions | Reusable / effects |
 | --- | --- | --- | --- | --- |
 | [Validate](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/validate.yml) · [source](../.github/workflows/validate.yml) | Accelerator formatting, lint, validation and mocked configuration tests | Every PR; push to `main`. Heavy jobs run only for relevant native/tooling changes; manual dispatch forces them to run. | **Run workflow**, no inputs | No real infrastructure provisioning |
-| [Validate Configurator](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/validate-configurator.yml) · [source](../.github/workflows/validate-configurator.yml) | Native download examples against Accelerator variables and modules, HCL/catalogue freshness, app lint/build/unit tests, PostgreSQL, real HTTP/database upgrade browser journey, desktop/mobile browser tests and six mocked operator-IaC roots | PRs and pushes to `main` affecting `landing-zone-configurator/**`, `src/**` or its explicitly listed workflow files | **Run workflow**, no inputs; manually runs without the path filter | No real infrastructure provisioning or real-model qualification |
+| [Validate Configurator](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/validate-configurator.yml) · [source](../.github/workflows/validate-configurator.yml) | Native download examples against Accelerator variables and modules, HCL/catalogue freshness, app lint/build/unit tests, PostgreSQL, real HTTP/database upgrade browser journey, desktop/mobile browser tests and seven mocked operator-IaC roots | PRs and pushes to `main` affecting `landing-zone-configurator/**`, `src/**` or its explicitly listed workflow files | **Run workflow**, no inputs; manually runs without the path filter | No real infrastructure provisioning or real-model qualification |
 | [Validate STACKIT Flavors](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/validate-stackit-flavors.yml) · [source](../.github/workflows/validate-stackit-flavors.yml) | Compare configured flavors against live STACKIT SKUs | Mondays, **05:17 UTC**, on the default branch (`17 5 * * 1`); scheduled runs may be delayed by GitHub | **Run workflow**, no inputs | Reads an external catalogue; no deployment |
 | [Assistant live regression](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/assistant-live.yml) · [source](../.github/workflows/assistant-live.yml) | Repeated factual cases and a continuous multi-topic dialogue using real Model Serving | None on push/PR; called by a fresh Configurator Release | **Run workflow** with topic and repetition count | Reusable by **Configurator Release**. Inference costs; no cloud Plan/Apply. Uses `assistant-tests`. |
 | [Verify Deployment](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/verify-deployment.yml) · [source](../.github/workflows/verify-deployment.yml) | Real Accelerator Plan, Apply and cleanup in the configured test organization | None on push/PR; called by Publish Release | **Run workflow** with a variable-file path | Reusable by **Publish Release**. **Creates and destroys real cloud resources** using `terraform-plan`. Retains the governance folder skeleton; failed cleanup can leave resources. |
 | [Publish Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/publish-release.yml) · [source](../.github/workflows/publish-release.yml) | Verify the Accelerator, then create a GitHub release/tag with source archives and provenance | None; not triggered by pushing a tag | **Run workflow** on `main`, with a version | Calls **Verify Deployment** first: **real cloud changes and costs**, followed by GitHub release publication. Does not deploy the Configurator. |
-| [Configurator Bootstrap](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-bootstrap.yml) · [source](../.github/workflows/configurator-bootstrap.yml) | Plan the workload-state bucket/access (`bootstrap`) or its versioning (`backend`) | None | **Run workflow** on `main`; choose root and optionally Apply | Real backend/credential access for Plan; `apply=true` enables cloud changes after protected environment approval |
-| [Configurator Platform](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-platform.yml) · [source](../.github/workflows/configurator-platform.yml) | Plan shared Configurator services: CF organization, database, Secrets Manager, artifact storage and model token | None | **Run workflow** on `main`; optionally Apply; requires `LZC_PLATFORM_CI_ENABLED=true` | Real backend/credential access for Plan; optional approved cloud Apply |
-| [Configurator Runtime](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-runtime.yml) · [source](../.github/workflows/configurator-runtime.yml) | Plan CF space/roles and database/Secrets runtime users | None | **Run workflow** on `main`; optionally Apply; requires `LZC_RUNTIME_CI_ENABLED=true` | Real backend/credential access for Plan; optional approved cloud Apply. Does not publish application code. |
+| [Configurator Bootstrap](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-bootstrap.yml) · [source](../.github/workflows/configurator-bootstrap.yml) | Plan the workload-state bucket/access (`bootstrap`) or its versioning (`backend`) | None | **Run workflow** on `main`; choose `environment=lzc-dev` or `lzc-prod`, root and optionally Apply | Real backend/credential access for Plan; `apply=true` enables cloud changes after protected environment approval |
+| [Configurator Platform](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-platform.yml) · [source](../.github/workflows/configurator-platform.yml) | Plan shared Configurator services: CF organization, database, Secrets Manager, artifact storage and model token | None | **Run workflow** on `main`; choose environment, optionally Apply; requires `LZC_PLATFORM_CI_ENABLED=true` | Real backend/credential access for Plan; optional approved cloud Apply |
+| [Configurator Runtime](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-runtime.yml) · [source](../.github/workflows/configurator-runtime.yml) | Plan CF space/roles and database/Secrets runtime users | None | **Run workflow** on `main`; choose environment, optionally Apply; requires `LZC_RUNTIME_CI_ENABLED=true` | Real backend/credential access for Plan; optional approved cloud Apply. Does not publish application code. |
 | [Configurator Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-release.yml) · [source](../.github/workflows/configurator-release.yml) | Qualify, build and package API/UI and Runner together, or promote an existing qualified build | None; a merge does not start it | **Run workflow** on `main`; choose build-only, new release or promotion; requires `LZC_RELEASE_CI_ENABLED=true` | Fresh `qualified` builds call **Assistant live regression** and publish a protected buildpack tag. Unless build-only, deploys development after `lzc-dev-release` approval, including migrations and runtime checks. |
+| [Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [source](../.github/workflows/configurator-production.yml) | Publish immutable product release and activate production | Published stable GitHub Release with required assets | **Run workflow** on `main`; see production inputs above | GitHub publication; protected manual production deployment, migrations, rolling activation and runtime checks |
 
 The exact Configurator path filter is in the linked YAML. A skipped
 Accelerator-only job on a Configurator PR is intentional, not a deployment.
@@ -101,9 +112,9 @@ it reports a result for every relevant PR.
 | Assistant live regression | `topic=all` by default, or a knowledge topic ID; `repetitions=2` by default, supported range 1-3. The continuous dialogue also runs for a topic-selected qualification. The protected `assistant-tests` environment currently permits `main` and the explicitly allowed legacy Configurator feature branch. |
 | Verify Deployment | `var_file=config/hub-and-spoke-firewall.tfvars` by default; must be an existing relative path below `src/`. Manual runs use the selected revision. The reusable call also accepts `ref`; that is not a dispatch input. |
 | Publish Release | `version` is required. Select `main`; other branches do not pass the verification-job guard. |
-| Configurator Bootstrap | `root=bootstrap` by default, or `backend`; `apply=false` by default. Apply uses `lzc-dev-bootstrap-apply`. |
-| Configurator Platform | `root=platform`; `apply=false` by default. Requires the platform operator switch above; Apply uses `lzc-dev-platform-apply`. |
-| Configurator Runtime | `root=runtime`; `apply=false` by default. Requires the runtime operator switch above; Apply uses `lzc-dev-runtime-apply`. |
+| Configurator Bootstrap | `root=bootstrap` by default, or `backend`; `apply=false` by default. `environment=lzc-dev|lzc-prod`; Apply uses the selected stage's bootstrap-apply Environment. |
+| Configurator Platform | `root=platform`; `apply=false` by default. Requires the platform operator switch above; `environment=lzc-dev|lzc-prod`; Apply uses the matching platform-apply Environment. |
+| Configurator Runtime | `root=runtime`; `apply=false` by default. Requires the runtime operator switch above; `environment=lzc-dev|lzc-prod`; Apply uses the matching runtime-apply Environment. |
 | Configurator Release | `release_mode=qualified` and `build_only=false` by default; `release_run_id` empty means a fresh build under the selected mode. Set `build_only=true` to build without CF deployment; protected tag publication still occurs; live-model calls run in `qualified` mode. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
 
 Release build browser acceptance and native packaging run concurrently; deployment
@@ -126,8 +137,8 @@ encrypted Plan from that same run, not an older run's Plan. A fresh promotion ru
 can reuse an existing qualified release build; do not confuse this with re-running
 the original deployment. Failed qualifications remain failures.
 
-All four mutating Configurator workflows share the
-`configurator-lzc-dev-mutation` queue and do not cancel an active mutation.
+Mutating Configurator workflows share a queue per environment:
+`configurator-lzc-dev-mutation` or `configurator-lzc-prod-mutation` and do not cancel an active mutation.
 Assistant model runs have their own serialized queue. Never start parallel local
 cloud writes to bypass these safeguards.
 

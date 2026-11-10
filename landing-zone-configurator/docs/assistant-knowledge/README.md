@@ -68,6 +68,33 @@ of a live model answer or execution qualification. DNS guidance distinguishes
 primary/secondary roles from visibility, explains that both are authoritative,
 and states the native module's incomplete secondary-server setup.
 
+The serving schema is a wire projection. Empty advice arrays omit unreachable
+proposal grammars; pattern/format intersections with string-length bounds use
+bounded strings on the wire. The original Zod contracts, native validation,
+permission catalogues and proposal-scope checks remain authoritative. This avoids
+vLLM's xgrammar-to-guidance fallback without changing the selected models or
+retrying rejected requests. See the [backend compatibility checks](https://github.com/vllm-project/vllm/blob/main/vllm/v1/structured_output/backend_xgrammar.py).
+Lifecycle intent distinguishes execution-source compatibility/recovery, a
+published template version, a platform contract and Platform Owner impact review
+of a saved root-platform Plan. Mentioning template
+origin while comparing desired/lastApplied execution does not imply a template
+upgrade; the latest request takes precedence over historical tasks. A closed
+current-turn workflow advice task selects its reviewed lifecycle answer even if
+the model also supplies an inconsistent related component label. Unrelated
+topics and historical tasks remain excluded. Draft/action requests
+do not enter this read-only path.
+
+Classification omits unused free-text assessment output and requests compact JSON.
+Malformed, oversized or incomplete responses remain rejected; limits are not raised
+and partial JSON is never applied. Closed current workflow-advice labels are
+checked against the latest question in a small closed subject schema before a
+reviewed guide is selected. That check receives no draft, Plan or historical task.
+Audit constructor guidance keeps native organization routing as `link_scopes=null`
+unless manual scopes are explicitly requested; supplied manual scopes and an
+explicit empty list retain their native meaning. New drafts omit a redundant copy
+of the current organization default only when no user source pins its ID or the
+native scope field; existing and nondefault scopes are preserved.
+
 ### Real-model qualification
 
 Changes to service facts, prompts, knowledge selection or component contracts
@@ -422,3 +449,17 @@ Future topic partitioning should be explicit and testable before adding RAG.
 Public owner choices are validated as scoped identity metadata, not credential requests. Only exact German/English server owner-choice labels containing a prepared, current-key-bound platform service-account email or the verified signed-in email are excluded from question keyword checks. Question text, unknown/modified options, protected-value checks and all ordinary callers keep the existing guards. Send, preview/rebase and acceptance re-read the scoped identity context; a rotated key or unrelated profile cannot validate a stored choice. Synthetic mixed-template cases also cover bootstrap-named platform accounts.
 
 Template access profiles are reviewed and selected atomically per template: schema version, mode, initial owner and both permission lists stay together. This preserves required fields during preview/acceptance and detects concurrent profile edits; unrelated templates and settings remain separately selectable.
+
+New Audit drafts require explicit user decisions for retention, access networks
+and Object Lock. Native defaults, another component's networks and previous
+assistant suggestions do not supply those decisions. An exact pending question
+set can resume literal answers without reclassifying the topic; only unanswered
+questions remain. Confirmed choices also narrow the model output schema, including an explicit
+Object Lock false. A complete proposal still passes the native Editor schema and
+source validation. Acceptance, saving and execution remain separate.
+
+Audit provenance uses Audit-related user turns: a foundation organization UUID
+does not pin a manual Audit link. Automatic managed-resource coverage requires
+an actual user decision and otherwise retains the native false default.
+Federation field-overview advice uses reviewed native fields and the explicit
+workload-federation/user-SSO boundary; draft proposals retain their typed flow.

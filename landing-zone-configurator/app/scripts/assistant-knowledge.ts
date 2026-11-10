@@ -140,6 +140,7 @@ export function buildAssistantKnowledgeTopics() {
       ...new Set([
         ...topic.sources,
         "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
       ]),
     ].map((path) => {
       const absolute = resolve(root, path);

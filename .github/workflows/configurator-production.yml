@@ -1,0 +1,231 @@
+name: Configurator Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a new release; false redeploys an existing published release
+        type: boolean
+        default: true
+      version:
+        description: Stable GitHub Release tag
+        type: string
+        default: v2.0.0
+        required: true
+      release_run_id:
+        description: Successful build-only run; required when publishing a new release
+        type: string
+        required: false
+      release_mode:
+        description: Assistant qualification policy recorded in the published manifest
+        type: choice
+        default: accepted-assistant-limitations
+        options: [qualified, accepted-assistant-limitations]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  actions: read
+  attestations: read
+
+concurrency:
+  group: configurator-lzc-prod-mutation
+  cancel-in-progress: false
+
+env:
+  LZC_ENVIRONMENT: lzc-prod
+  LZC_RELEASE_TAG: ${{ inputs.version || github.event.release.tag_name }}
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LZC_RELEASE_MODE: ${{ inputs.release_mode }}
+      LZC_RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.21.0'
+      - name: Install pinned GitHub CLI for attestation verification
+        run: bash infra/ci/install-github-cli.sh
+      - name: Resolve trusted immutable build
+        id: source
+        run: node infra/ci/release-artifact.mjs source
+      - name: Bind publication to this reviewed main revision
+        env:
+          REVISION: ${{ steps.source.outputs.release_revision }}
+        run: test "$REVISION" = "$GITHUB_SHA"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.source.outputs.artifact_id }}
+          run-id: ${{ inputs.release_run_id }}
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: landing-zone-configurator/.local
+      - name: Verify and bind release assets
+        env:
+          LZC_RELEASE_REVISION: ${{ steps.source.outputs.release_revision }}
+        run: |
+          (cd .local && sha256sum --check configurator-release.sha256)
+          tar -xzf .local/configurator-release.tar.gz -C .local
+          node infra/ci/production-release.mjs metadata
+          node infra/ci/buildpack-source.mjs
+      - name: Attest exact release assets
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-path: |
+            landing-zone-configurator/.local/configurator-release.tar.gz
+            landing-zone-configurator/.local/production-release.json
+      - name: Publish versioned release with concise notes
+        env:
+          REVISION: ${{ steps.source.outputs.release_revision }}
+        run: |
+          node infra/ci/release-notes.mjs > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$LZC_RELEASE_TAG" .local/configurator-release.tar.gz .local/configurator-release.sha256 .local/production-release.json --target "$REVISION" --title "$LZC_RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+
+  source:
+    needs: publish
+    if: always() && !cancelled() && github.run_attempt == 1 && (needs.publish.result == 'success' || github.event_name == 'workflow_dispatch' && !inputs.publish && github.ref == 'refs/heads/main' || github.event_name == 'release' && github.event.release.prerelease == false && github.event.release.draft == false)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+      run_id: ${{ steps.source.outputs.run_id }}
+      mode: ${{ steps.source.outputs.mode }}
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.21.0'
+      - name: Install pinned GitHub CLI for attestation verification
+        run: bash infra/ci/install-github-cli.sh
+      - name: Read published release binding
+        id: source
+        run: |
+          mkdir -p .local
+          gh release download "$LZC_RELEASE_TAG" --pattern production-release.json --dir .local
+          node infra/ci/production-release.mjs source
+
+  deploy:
+    needs: source
+    if: needs.source.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: lzc-prod-release
+      url: https://app.landing-zone.runs.onstackit.cloud
+    defaults:
+      run:
+        working-directory: landing-zone-configurator
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LZC_PUBLISHED_RELEASE: 'true'
+      LZC_RELEASE_REVISION: ${{ needs.source.outputs.revision }}
+      LZC_RELEASE_RUN_ID: ${{ needs.source.outputs.run_id }}
+      LZC_RELEASE_MODE: ${{ needs.source.outputs.mode }}
+      CF_STAGING_TIMEOUT: '15'
+      CF_STARTUP_TIMEOUT: '5'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.21.0'
+      - name: Install pinned GitHub CLI for attestation verification
+        run: bash infra/ci/install-github-cli.sh
+      - name: Download immutable published assets
+        run: |
+          mkdir -p .local
+          gh release download "$LZC_RELEASE_TAG" --pattern configurator-release.tar.gz --pattern configurator-release.sha256 --dir .local
+          (cd .local && sha256sum --check configurator-release.sha256)
+          gh attestation verify .local/configurator-release.tar.gz --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/configurator-production.yml" --source-ref refs/heads/main --source-digest "$LZC_RELEASE_REVISION" --signer-digest "$LZC_RELEASE_REVISION" --deny-self-hosted-runners
+          tar -xzf .local/configurator-release.tar.gz -C .local
+          node infra/ci/release-artifact.mjs verify .local
+          node infra/ci/buildpack-source.mjs
+          (cd .local && sha256sum --check release.sha256 && sha256sum --check runner.sha256)
+          mkdir -p .local/release .local/runner
+          tar -xzf .local/release.tar.gz -C .local/release
+          tar -xzf .local/runner.tar.gz -C .local/runner
+          diff -qr .local/release/inspection .local/runner
+          node infra/ci/package-migration.mjs .local/release .local/migration
+      - name: Install pinned CF CLI
+        run: |
+          curl --fail --silent --show-error --location --retry 3 https://github.com/cloudfoundry/cli/releases/download/v8.17.0/cf8-cli_8.17.0_linux_x86-64.tgz -o "$RUNNER_TEMP/cf.tgz"
+          echo "922b91e5651d141ff8756e631adc613c820610c84dcae6cb59f57e22ae073112  $RUNNER_TEMP/cf.tgz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/cf-bin"
+          tar -xzf "$RUNNER_TEMP/cf.tgz" -C "$RUNNER_TEMP/cf-bin" cf8
+          ln -s cf8 "$RUNNER_TEMP/cf-bin/cf"
+          echo "$RUNNER_TEMP/cf-bin" >> "$GITHUB_PATH"
+      - name: Prepare only scoped published bindings
+        run: node infra/ci/prepare-release.mjs backend
+        env:
+          # Release holds no state keys, S3 credentials or organization-manager accounts.
+          LZC_RELEASE_BINDINGS: ${{ secrets.LZC_RELEASE_BINDINGS }}
+          LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+      - name: Prepare authenticated production runtime
+        run: node infra/ci/prepare-release.mjs application
+        env:
+          LZC_AUTH_ENABLED: 'true'
+          LZC_ASSISTANT_ENABLED: 'true'
+          LZC_STACKIT_DEVICE_ENABLED: 'true'
+          LZC_STACKIT_CLI_CLIENT_APPROVED: 'false'
+          LZC_STACKIT_AUTH_FLOW: authorization-code
+          LZC_STACKIT_CLIENT_ID: ${{ vars.LZC_STACKIT_CLIENT_ID }}
+          LZC_STACKIT_REDIRECT_URI: https://app.landing-zone.runs.onstackit.cloud/auth/stackit/callback
+          LZC_EXECUTION_ENABLED: 'true'
+          LZC_APPLICATION_EXECUTION_ENABLED: 'true'
+          LZC_RUNNER_POOL_SIZE: '2'
+          LZC_DEPLOYMENT_ARTIFACT_KEY: ${{ secrets.LZC_DEPLOYMENT_ARTIFACT_KEY }}
+      - name: Login with application-space deployer
+        run: |
+          cf api "$CF_API_URL"
+          cf auth
+          cf target -o "$LZC_CF_ORG_NAME" -s configurator
+          test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
+      - name: Stage runner, migration and application
+        run: node infra/ci/run-parallel.mjs runner 'bash infra/ci/stage-release-runner.sh' migration 'bash infra/ci/stage-release-migration.sh' application 'bash infra/ci/stage-release-application.sh'
+      - name: Activate verified droplet with rolling deployment
+        run: node infra/ci/activate-release.mjs
+      - name: Check public TLS, authentication and tenant boundary
+        run: node infra/ci/check-production-route.mjs
+      - name: Verify runtime service and isolated Runner connections
+        run: |
+          cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+          cf run-task landing-zone-configurator --command "./runtime/bin/node apps/api/dist/check-plan-runner.js $GITHUB_RUN_ID" --name "runner-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+          for attempt in 1 2 3; do
+            if cf logs landing-zone-configurator --recent | node infra/ci/runner-evidence.mjs "$GITHUB_RUN_ID" 2; then break; fi
+            test "$attempt" -lt 3 || exit 1
+            sleep 5
+          done
+      - name: Remove private inputs and privileged migration application
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/lzc-release/cf-migration" ]; then
+            CF_HOME="$RUNNER_TEMP/lzc-release/cf-migration" cf delete landing-zone-configurator-migrate -f
+          fi
+          rm -rf -- "$RUNNER_TEMP/lzc-release"

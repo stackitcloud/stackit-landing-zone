@@ -90,3 +90,27 @@ run "separate_service_networks" {
     error_message = "Database must use its own ACL, independently of Secrets Manager."
   }
 }
+
+run "reject_single_node_production_database" {
+  command = plan
+  variables { production = true }
+  expect_failures = [stackit_postgresflex_instance.configurator]
+}
+run "production_replica_set" {
+  command = plan
+  variables {
+    production = true
+    database = {
+      flavor_id       = "2.4-replica"
+      version         = "17"
+      storage_class   = "premium-perf2-stackit"
+      storage_size_gb = 20
+      backup_schedule = "0 2 * * *"
+      retention_days  = 32
+    }
+  }
+  assert {
+    condition     = stackit_postgresflex_instance.configurator.flavor_id == "2.4-replica"
+    error_message = "Production needs the selected replica-set flavor."
+  }
+}

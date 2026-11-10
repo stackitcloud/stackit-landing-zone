@@ -4,11 +4,11 @@
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
 This reference describes the implemented components and their
-trust boundaries. The development environment uses STACKIT OIDC; custom
-password management is not planned. Operation in development
-is not evidence of a production-qualified environment. The separate
-[MVP limitations](mvp-scope.md) and [development references](development.md) identify
-remaining tasks.
+trust boundaries. Both hosted environments use STACKIT OIDC; custom password management is not
+planned. Production has independent infrastructure, three web/API replicas,
+a PostgreSQL replica set and protected release activation. See
+[production operations and qualification boundaries](production.md),
+[scope and limits](mvp-scope.md) and [development references](development.md).
 
 <a id="technische-praesentationssicht"></a>
 ## Technical presentation view
@@ -258,13 +258,17 @@ A production-ready operational architecture must also define:
 - Verified DB backups, secret/artifact key recovery, S3 versioning
   and restore tests. Loss of the existing artifact key
   must not be concealed by spontaneous rotation.
-- Scaling/HA and shared storage or sticky routing for ongoing
-  OIDC flows. The current single-instance application is not HA evidence.
+- Production uses three web/API processes, shared PostgreSQL login/session/job
+  storage, a replica-set database and rolling application activation. Dev remains
+  a single-instance environment. Placement, failure exercises and measured
+  recovery targets require separate operational evidence; topology alone is not
+  an availability guarantee. See [production operations](production.md).
 - Network paths, ACLs and egress rules. A CF Runner does not automatically
   have access to private Kubernetes/Helm/firewall endpoints in customer SNAs.
   This execution boundary remains separately resolvable (#37).
-- Narrowly scoped operational/deployment identities, controlled CF space rights
-  and least-privilege qualification of the OIDC client.
+- Production deployment uses separate space-scoped application/Runner identities
+  and an allowlisted release binding. The project-scoped provisioning identity
+  remains separate. Qualify the registered OIDC client and its exact redirects.
 
 **No** additional queue service is assumed: job metadata
 resides in PostgreSQL, and the broker dispatches CF tasks. A general scheduler

@@ -3,6 +3,11 @@ name: Configurator Platform
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Target environment
+        type: choice
+        default: lzc-dev
+        options: [lzc-dev, lzc-prod]
       root:
         description: 'Platform services'
         type: choice
@@ -17,11 +22,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: configurator-lzc-dev-mutation
+  group: configurator-${{ inputs.environment || 'lzc-dev' }}-mutation
   cancel-in-progress: false
 
 env:
-  LZC_ENVIRONMENT: lzc-dev
+  LZC_ENVIRONMENT: ${{ inputs.environment || 'lzc-dev' }}
   LZC_ROOT: platform
 
 jobs:
@@ -29,7 +34,7 @@ jobs:
     if: vars.LZC_PLATFORM_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: lzc-dev-platform-plan
+    environment: ${{ format('{0}-platform-plan', inputs.environment || 'lzc-dev') }}
     defaults:
       run:
         working-directory: landing-zone-configurator
@@ -49,6 +54,9 @@ jobs:
         run: node infra/ci/prepare.mjs management
         env:
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+          LZC_CF_PLATFORM_ID: ${{ vars.LZC_CF_PLATFORM_ID }}
+          LZC_CF_QUOTA_ID: ${{ vars.LZC_CF_QUOTA_ID }}
+          LZC_OPERATOR_OWNER_EMAIL: ${{ vars.LZC_OPERATOR_OWNER_EMAIL }}
           LZC_REGION: ${{ vars.LZC_REGION }}
           LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
           LZC_MANAGEMENT_BUCKET: ${{ vars.LZC_MANAGEMENT_BUCKET }}
@@ -89,7 +97,7 @@ jobs:
           timeout --foreground --signal=INT --kill-after=2m 15m
           tofu -chdir="infra/$LZC_ROOT" plan
           -input=false -no-color -lock-timeout=60s
-          -var-file=../environments/lzc-dev.tfvars.json
+          -var-file=../environments/${LZC_ENVIRONMENT}.tfvars.json
           -out="$LZC_PLAN"
       - name: Bind encrypted plan to commit and workflow run
         run: node infra/ci/review.mjs seal
@@ -112,7 +120,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.apply
     runs-on: ubuntu-latest
     timeout-minutes: 100
-    environment: lzc-dev-platform-apply
+    environment: ${{ format('{0}-platform-apply', inputs.environment || 'lzc-dev') }}
     defaults:
       run:
         working-directory: landing-zone-configurator
@@ -132,6 +140,9 @@ jobs:
         run: node infra/ci/prepare.mjs management
         env:
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
+          LZC_CF_PLATFORM_ID: ${{ vars.LZC_CF_PLATFORM_ID }}
+          LZC_CF_QUOTA_ID: ${{ vars.LZC_CF_QUOTA_ID }}
+          LZC_OPERATOR_OWNER_EMAIL: ${{ vars.LZC_OPERATOR_OWNER_EMAIL }}
           LZC_REGION: ${{ vars.LZC_REGION }}
           LZC_NAME_PREFIX: ${{ vars.LZC_NAME_PREFIX }}
           LZC_MANAGEMENT_BUCKET: ${{ vars.LZC_MANAGEMENT_BUCKET }}

@@ -28,6 +28,7 @@ import {
   proposeAssistantAccess,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
+import { assistantAuditCreationQuestions } from "../apps/api/src/assistant/editor.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import type { AssistantCatalogueContext } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
@@ -168,6 +169,7 @@ export type AssistantScenario = {
   acceptableReferences?: readonly string[];
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
+  auditQuestionPaths?: readonly string[];
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
   applicationAccess?:
@@ -194,9 +196,30 @@ export type AssistantScenario = {
     | "both-kubernetes-mixed-confirm";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
+  platformImpactReview?: boolean;
   applicationUpgrade?: "template" | "platform";
   history?: readonly { role: "user" | "assistant"; content: string }[];
 };
+
+function auditQuestionHistory(
+  choices: Parameters<typeof assistantAuditCreationQuestions>[0],
+) {
+  const pending = assistantAuditCreationQuestions(choices);
+  return {
+    role: "assistant" as const,
+    content:
+      pending.explanation +
+      "\n" +
+      pending.questions.map((q) => q.text).join("\n"),
+  };
+}
+const sparseAuditHistory = [
+  {
+    role: "user" as const,
+    content: "Bitte einen zentralen Audit-Entwurf vorbereiten.",
+  },
+  auditQuestionHistory({}),
+];
 
 const firewallDialogueHistory = [
   {
@@ -504,6 +527,27 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     },
   },
   {
+    id: "editor-audit-explicit-project",
+    topic: "audit-logs",
+    fixture: "baseline",
+    message:
+      "Bitte einen Audit-Entwurf erstellen: 90 Tage, nur ACL 203.0.113.0/24 und Object Lock aus. Explizit genau diesen manuellen Telemetry-Link-Scope setzen: resource_type=project und resource_id=00000000-0000-4000-8000-000000000099. Keinen Organisations-Link, keine automatische verwaltete Abdeckung, nichts ausführen.",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+        link_scopes: [
+          {
+            resource_type: "project",
+            resource_id: "00000000-0000-4000-8000-000000000099",
+          },
+        ],
+      },
+    },
+  },
+  {
     id: "editor-audit-managed",
     topic: "audit-logs",
     fixture: "baseline",
@@ -516,6 +560,73 @@ export const assistantScenarios: readonly AssistantScenario[] = [
         acl: ["203.0.113.0/24"],
         s3_object_lock: false,
         managed_resources: true,
+      },
+    },
+  },
+  {
+    id: "editor-audit-partial-retention",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: sparseAuditHistory,
+    message: "90 Tage",
+    auditQuestionPaths: ["audit_logs.acl", "audit_logs.s3_object_lock"],
+  },
+  {
+    id: "editor-audit-partial-acl",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: [
+      ...sparseAuditHistory,
+      { role: "user", content: "90 Tage" },
+      auditQuestionHistory({ retention_days: 90 }),
+    ],
+    message: "203.0.113.0/24",
+    auditQuestionPaths: ["audit_logs.s3_object_lock"],
+  },
+  {
+    id: "editor-audit-partial-lock",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: [
+      ...sparseAuditHistory,
+      { role: "user", content: "90 Tage" },
+      auditQuestionHistory({ retention_days: 90 }),
+      { role: "user", content: "203.0.113.0/24" },
+      auditQuestionHistory({ retention_days: 90, acl: ["203.0.113.0/24"] }),
+    ],
+    message: "Deaktivieren",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+      },
+    },
+  },
+  {
+    id: "editor-audit-after-foundations",
+    topic: "audit-logs",
+    fixture: "baseline",
+    history: [
+      {
+        role: "user",
+        content: `Bitte Organisation ${syntheticOrganizationId} für die Plattform verwenden.`,
+      },
+      {
+        role: "assistant",
+        content: "Grundlagen vorgeschlagen, noch nichts gespeichert.",
+      },
+      ...sparseAuditHistory,
+    ],
+    message:
+      "90 Tage Aufbewahrung, Zugriff ausschließlich aus 203.0.113.0/24, Object Lock ausdrücklich nein. Organisationsweiter Telemetry Link. Bitte diese Entscheidungen als Entwurfsvorschlag übernehmen.",
+    editorExpected: {
+      path: "audit_logs",
+      value: {
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
       },
     },
   },
@@ -856,8 +967,57 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Meine bestehende Application-Bestellung kann nach einem Produktupdate wegen ihrer Accelerator-Revision keinen Drift mehr prüfen. Soll ich neu bestellen? Wie bleiben dieselbe Bestellung und der State nutzbar? Unterscheide ursprüngliche Template-Quelle, gewünschten Stand und zuletzt erfolgreich angewendete Revision. Wie funktioniert ein Upgrade, was passiert bei Apply-Fehler und bei einer zurückgezogenen Quelle? Nur beraten, nichts ändern oder ausführen.",
   },
   {
+    id: "execution-upgrade-after-template-history",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    executionLifecycle: true,
+    history: [
+      {
+        role: "user",
+        content:
+          "Wie übernehme ich eine neue Template-Version mit anderen Projektberechtigungen?",
+      },
+      {
+        role: "assistant",
+        content:
+          "Über den veröffentlichten Template-Upgrade-Pfad und einen frischen Plan.",
+      },
+    ],
+    message:
+      "Jetzt geht es um die technische Ausführung: Nach einem Produktrelease lehnt der Worker die gebundene Accelerator-Quelle meiner bisherigen Bestellung ab. Wie kann ich denselben State weiter verwenden? Erkläre ursprüngliche Template-Quelle, gewünschten Ausführungsstand, letzten erfolgreichen Apply, zurückgezogene Pakete und Recovery bei Teilfehlern. Nur beraten, keine Änderung oder Ausführung.",
+  },
+  {
+    id: "template-upgrade-after-execution-history",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    applicationUpgrade: "template",
+    history: [
+      {
+        role: "user",
+        content:
+          "Wie aktualisiere ich die technische Runner-Quelle bei einer zurückgezogenen Accelerator-Revision?",
+      },
+      {
+        role: "assistant",
+        content:
+          "Die technische Ausführung besitzt ihre eigene gewünschte Quellenbindung.",
+      },
+    ],
+    message:
+      "Nun möchte ich die neue veröffentlichte Public-Template-Version mit den zusätzlichen Kubernetes-Rechten nutzen. Wie übernimmt der Application Owner diese Template-Version in derselben Bestellung mit seinen bisherigen Antworten und demselben State? Erkläre Plan-/Apply-Freigabe und Löschschutz. Nur beraten, keine Änderung oder Ausführung.",
+  },
+  {
+    id: "platform-impact-without-role-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    platformImpactReview: true,
+    message:
+      "Mein gespeicherter Plattformplan löscht und ersetzt gemeinsame Ressourcen, die mehrere Applications verwenden. Ich möchte die Auswirkungen beurteilen und den Apply danach freigeben. Woran ist die Bestätigung gebunden, wann muss ich neu planen und was passiert bei möglichen Datenverlusten? Nur beraten, nichts ändern oder ausführen.",
+  },
+  {
     id: "audit-query-migration-impact-advice",
     topic: "configuration-lifecycle",
+    platformImpactReview: true,
     fixture: "baseline",
     requiredOverviewFields: ["observability", "plan", "apply"],
     message:
@@ -1832,6 +1992,23 @@ export function validateAssistantScenario(
     }
     return { dialogue, failures };
   }
+  if (scenario.auditQuestionPaths) {
+    if (
+      dialogue.changes.length ||
+      !isDeepStrictEqual(
+        dialogue.questions.map((q) => q.path),
+        scenario.auditQuestionPaths,
+      )
+    )
+      failures.push("audit_unanswered_decisions_not_preserved");
+    if (
+      dialogue.questions.some(
+        (q) => q.path === "audit_logs.acl" && (q.options?.length ?? 0) > 0,
+      )
+    )
+      failures.push("audit_invented_network_options");
+    return { dialogue, failures };
+  }
   if (scenario.editorExpected) {
     if (
       !dialogue.changes.length ||
@@ -1900,7 +2077,7 @@ export function validateAssistantScenario(
       !dialogue.explanation.includes("nicht das komplexe Regel-/NAT-Objekt") ||
       !dialogue.explanation.includes("noch keine Regeln konfiguriert") ||
       !dialogue.explanation.includes("kann aktuell keine Firewall-Regeln") ||
-      !dialogue.explanation.includes("nicht Teil des MVP") ||
+      !dialogue.explanation.includes("wird derzeit nicht unterstützt") ||
       !dialogue.explanation.includes("GitHub-Issue #101") ||
       !dialogue.explanation.includes("Firewall-Admin")
     )
@@ -2132,7 +2309,7 @@ export function validateAssistantScenario(
   }
   if (scenario.fixture === "baseline" && dialogue.changes.length)
     failures.push("advice_proposed_changes");
-  if (scenario.id === "audit-query-migration-impact-advice")
+  if (scenario.platformImpactReview)
     failures.push(
       ...assistantPlatformImpactReviewFailures(dialogue.explanation),
     );
@@ -2514,6 +2691,11 @@ export function buildAssistantScenarioInventory() {
                     "shared_effect_dependency_gate_before_apply_actual_contract_after_apply",
                   ]
                 : []),
+            ...(scenario.platformImpactReview
+              ? [
+                  "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
+                ]
+              : []),
             ...(scenario.requiredOverviewFields
               ? ["complete_native_field_overview"]
               : []),

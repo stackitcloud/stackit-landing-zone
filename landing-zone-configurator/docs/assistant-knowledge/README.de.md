@@ -88,6 +88,36 @@ Secondary-Server-Setup.
 
 <a id="real-model-qualification"></a>
 
+Das Serving-Schema ist eine Transportprojektion. Leere Beratungslisten enthalten
+keine unerreichbaren Vorschlagsgrammatiken; Kombinationen aus Muster-/Format- und
+String-Längengrenzen verwenden begrenzte Strings im Transport. Ursprüngliche
+Zod-Verträge, native Validierung, Rechtekataloge und Vorschlagsgrenzen bleiben
+verbindlich. Dadurch wird der xgrammar-/guidance-Wechsel ohne Modellwechsel oder
+Wiederholung abgelehnter Anfragen vermieden. Siehe die
+[Backend-Kompatibilitätsprüfung](https://github.com/vllm-project/vllm/blob/main/vllm/v1/structured_output/backend_xgrammar.py).
+Der Lifecycle-Intent unterscheidet technische Quellenkompatibilität/Recovery,
+veröffentlichte Template-Version, Plattformvertrag und Platform-Owner-Prüfung der
+Auswirkungen eines gespeicherten Plattformplans. Eine erwähnte Template-
+Herkunft beim Vergleich von gewünschter/zuletzt angewendeter Ausführung bedeutet
+kein Template-Upgrade. Die aktuelle Frage hat Vorrang vor früheren Aufgaben. Eine geschlossene aktuelle
+Workflow-Beratungsaufgabe wählt ihre geprüfte Lifecycle-Antwort auch bei einem
+widersprüchlichen verwandten Komponententhema. Unverwandte Themen und historische
+Aufgaben bleiben ausgeschlossen. Entwurfs-/Aktionsaufträge gelangen nicht in
+diesen rein beratenden Pfad.
+
+Die Klassifikation enthält kein ungenutztes Freitext-Assessment mehr und fordert
+kompaktes JSON. Ungültige, übergroße oder unvollständige Antworten bleiben
+abgewiesen; Grenzen werden nicht erhöht und Teil-JSON wird nicht übernommen.
+Die geschlossenen aktuellen Upgrade-Beratungsarten werden vor der Auswahl der geprüften
+Anleitung mit einem kleinen geschlossenen Themenschema gegen die aktuelle Frage
+geprüft. Diese Prüfung erhält weder Entwurf, Plan noch historische Aufgaben.
+Die Audit-Anleitung belässt das native Organisationsrouting bei
+`link_scopes=null`, solange keine manuellen Scopes verlangt sind. Explizite
+manuelle Scopes und eine ausdrücklich leere Liste behalten ihre native Bedeutung.
+Neue Entwürfe lassen nur eine redundante Kopie des Organisationsstandards ohne
+ausdrücklich vorgegebene ID oder natives Scope-Feld weg. Bestehende und
+abweichende Scopes bleiben erhalten.
+
 ### Qualifikation mit echtem Modell
 
 Aenderungen an Servicefakten, Prompts, Wissensauswahl oder
@@ -272,6 +302,8 @@ anschließend nicht übernommen werden kann. Ein qualifizierter Release erforder
 weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
 quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
 Übernahmebedingungen bleiben unverändert.
+
+
 
 
 ## Vollstaendiger Themenkatalog
@@ -575,3 +607,19 @@ SNA-Feld-/Default-Beratung verwendet denselben geprüften Übersichtspfad: nativ
 Öffentliche Owner-Auswahlen werden als gebundene Identitätsmetadaten geprüft, nicht als Zugangsdatenfragen. Nur exakt erzeugte deutsche/englische Owner-Auswahllabel mit einer vorbereiteten, an den aktuellen Schlüssel gebundenen Plattform-Service-Account-Adresse oder der verifiziert angemeldeten E-Mail-Adresse werden von den Schlüsselwortprüfungen für Fragen ausgenommen. Fragetext, unbekannte/veränderte Optionen, Prüfungen auf geschützte Werte und alle gewöhnlichen Aufrufer behalten die bestehenden Schranken. Senden, Vorschau/Rebase und Übernahme lesen den gebundenen Identitätskontext erneut; ein gewechselter Schlüssel oder fremdes Profil kann eine gespeicherte Auswahl nicht bestätigen. Synthetische Fälle für gemischte Templates prüfen auch Plattformkonten mit Bootstrap im Namen.
 
 Template-Rechteprofile werden pro Template als vollständige Einheit geprüft und ausgewählt: Schemaversion, Modus, initialer Owner und beide Rechtelisten bleiben zusammen. So bleiben Pflichtangaben in Vorschau und Übernahme erhalten und gleichzeitige Profiländerungen werden erkannt; andere Templates und Einstellungen bleiben separat auswählbar.
+
+Neue Audit-Entwürfe benötigen ausdrückliche Benutzerentscheidungen zu Aufbewahrung,
+Zugriffsnetzen und Object Lock. Native Defaults, Netze anderer Komponenten und
+frühere Assistant-Vorschläge ersetzen diese Entscheidungen nicht. Wörtliche
+Antworten auf den exakt noch offenen Fragensatz setzen den Dialog ohne erneute
+Themenklassifikation fort; nur unbeantwortete Fragen bleiben offen. Bestätigte Antworten begrenzen zusätzlich das Modellausgabeschema, auch ein
+ausdrückliches Object Lock false. Vollständige Vorschläge durchlaufen weiterhin
+natives Editor-Schema und Quellenprüfung.
+Übernahme, Speichern und Ausführung bleiben getrennt.
+
+Audit-Quellennachweise verwenden Audit-bezogene Benutzerbeiträge: Eine Organisations-
+UUID aus den Grundlagen legt kein manuelles Audit-Linkziel fest. Automatische
+Abdeckung verwalteter Ressourcen braucht eine tatsächliche Benutzerentscheidung;
+sonst bleibt der native Default false erhalten. Feldübersichten zur Föderation
+verwenden geprüfte native Felder und grenzen Betriebsidentitäten von Benutzer-SSO
+ab. Entwurfsvorschläge behalten ihren typisierten Ablauf.

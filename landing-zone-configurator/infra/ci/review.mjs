@@ -8,14 +8,15 @@ const infra = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const [command] = process.argv.slice(2);
 if (!["seal", "verify"].includes(command)) throw new Error("Usage: review.mjs seal|verify");
 const inputs = deploymentInputs(process.env);
-if (command === "verify") assertApplyExecution(JSON.parse(readFileSync(resolve(infra,"ci/backend-safety.json"))), process.env);
+if (command === "verify") assertApplyExecution(JSON.parse(readFileSync(resolve(infra,inputs.environment === "lzc-dev" ? "ci/backend-safety.json" : "ci/backend-safety.prod.json"))), process.env);
 const pieces = [];
 for (const root of ["bootstrap", "backend", "platform", "runtime"]) {
   for (const file of readdirSync(resolve(infra,root)).filter(f => f.endsWith(".tf") || f === ".terraform.lock.hcl").sort()) {
     pieces.push(`${root}/${file}:${digest(readFileSync(resolve(infra,root,file)))}`);
   }
 }
-if (inputs.root === "platform") pieces.push(digest(readFileSync(resolve(infra,"environments/lzc-dev.tfvars.json"))));
+if (inputs.root === "platform") pieces.push(digest(readFileSync(resolve(infra,`environments/${inputs.environment}.tfvars.json`))));
+for (const file of ["context.mjs", "stages.mjs"]) pieces.push(`ci/${file}:${digest(readFileSync(resolve(infra,"ci",file)))}`);
 const contextHash = planContext(inputs, digest(pieces.join("\n")));
 const plan = process.env.LZC_PLAN ?? resolve(infra,"../.local/ci-plan/review.tfplan");
 const manifest = resolve(dirname(plan),"review.json");

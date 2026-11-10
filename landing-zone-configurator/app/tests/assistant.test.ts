@@ -678,6 +678,18 @@ it("rejects new DNS keys and cross-topic changes and removes unchanged DNS names
     [
       {
         path: "connectivity.dns_zones",
+        value: { default: { name: "Not a valid slug!" } },
+      },
+    ],
+    [
+      {
+        path: "connectivity.dns_zones",
+        value: { default: { name: "a".repeat(64) } },
+      },
+    ],
+    [
+      {
+        path: "connectivity.dns_zones",
         value: {
           default: { dns_name: "new.stackit.run", network_area_key: "other" },
         },
@@ -1180,11 +1192,7 @@ it("answers central HA firewall decision questions without enabling bootstrap or
   expect(questions.items.properties.path.enum).not.toContain(
     "firewall_bootstrap",
   );
-  const bootstrap = changes.items.anyOf.find(
-    (variant: { properties: { path: { const: string } } }) =>
-      variant.properties.path.const === "firewall_bootstrap",
-  );
-  expect(bootstrap).toBeUndefined();
+  expect(changes.items).toEqual({});
   expect(payload.messages[0].content).toContain(
     "Firewall requirements advice only",
   );
@@ -1270,12 +1278,7 @@ it("keeps central-network-first advice scoped to SNA and removes unchanged scala
   const payload = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
   const schema = payload.response_format.json_schema.schema.properties;
   expect(schema.changes.maxItems).toBe(0);
-  expect(
-    schema.changes.items.anyOf.map(
-      (variant: { properties: { path: { const: string } } }) =>
-        variant.properties.path.const,
-    ),
-  ).toContain("connectivity.network_areas");
+  expect(schema.changes.items).toEqual({});
   expect(schema.questions.items.properties.path.enum.length).toBeGreaterThan(0);
   expect(
     schema.questions.items.properties.path.enum.every((path: string) =>
@@ -2423,9 +2426,13 @@ it.each([
       expect(system).not.toContain(
         "CURRENT STEP: Firewall requirements advice only",
       );
+      const questions =
+        body.response_format.json_schema.schema.properties.questions;
       const paths =
-        body.response_format.json_schema.schema.properties.questions.items
-          .properties.path.enum;
+        questions.maxItems === 0
+          ? undefined
+          : questions.items.properties.path.enum;
+      if (questions.maxItems === 0) expect(questions.items).toEqual({});
       const fields = buildAssistantKnowledge().topics.find(
         (entry) => entry.id === topic,
       )?.fieldPaths as readonly string[];
@@ -2579,6 +2586,7 @@ it("rejects truncated model completions explicitly without retry or partial succ
 });
 
 it.each([
+  "federated-identities",
   "identity-foundations",
   "governance-folders",
   "firewall-policy",
@@ -3041,13 +3049,15 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
         ...topic
       }) => ({
         ...topic,
-        // The generator adds this mandatory source; it is not a manifest input entry.
+        // Shared transport/Editor sources are generated, not manifest input entries.
         sources: sources
           .map((entry) => entry.path)
           .filter(
             (path) =>
-              path !==
-              "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+              ![
+                "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+                "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
+              ].includes(path),
           ),
       }),
     ),
@@ -3322,6 +3332,8 @@ it("selects bounded relevant metadata and rejects stale knowledge, foreign group
 it("answers source-bound Application lifecycle questions with the fixed review and recovery contract without an inference-selected approval policy", async () => {
   const request = vi.fn<typeof fetch>(async (_url, init) => {
     const body = JSON.parse(String(init?.body));
+    if (body.response_format.json_schema.name === "platform_advice_subject")
+      return answer({ task: "execution-source-upgrade" });
     expect(body.response_format.json_schema.name).toBe("conversation_intent");
     return answer({
       topic: "configuration-lifecycle",
@@ -3340,7 +3352,7 @@ it("answers source-bound Application lifecycle questions with the fixed review a
     [],
     "Meine Application-Bestellung hat eine alte Accelerator-Revision. Wie funktioniert ein Upgrade?",
   );
-  expect(request).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledTimes(2);
   expect(result.changes).toEqual([]);
   expect(result.questions).toEqual([]);
   expect(result.references).toEqual(["configuration-lifecycle"]);
@@ -3397,11 +3409,20 @@ it.each([
   "platform-upgrade",
   "execution-source-upgrade",
 ] as const)(
-  "returns reviewed %s steps after one semantic intent call with no second generation",
+  "returns reviewed %s steps without a free-form guide generation",
   async (adviceTask) => {
     const request = vi.fn<typeof fetch>(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
+      if (body.response_format.json_schema.name === "platform_advice_subject") {
+        expect(JSON.stringify(body.messages)).not.toContain(
+          "Private draft must not leak",
+        );
+        return answer({ task: adviceTask });
+      }
       expect(body.response_format.json_schema.name).toBe("conversation_intent");
+      expect(
+        body.response_format.json_schema.schema.properties,
+      ).not.toHaveProperty("assessment");
       expect(
         body.response_format.json_schema.schema.properties.adviceTask.enum,
       ).toEqual(
@@ -3444,7 +3465,7 @@ it.each([
     expect(result.changes).toEqual([]);
     expect(result.references).toEqual(["configuration-lifecycle"]);
     expect(streamed).toEqual([result.explanation]);
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(2);
     const {
       assistantApplicationUpgradeFailures,
       assistantExecutionLifecycleFailures,
@@ -3489,6 +3510,7 @@ it.each([
   "template-upgrade",
   "platform-upgrade",
   "execution-source-upgrade",
+  "platform-impact-review",
 ] as const)(
   "keeps %s closed to current lifecycle advice instead of intercepting draft, wrong-topic, historical or other advice",
   async (adviceTask) => {
@@ -3576,6 +3598,179 @@ it.each([
       "Current scoped answer; no changes or execution.",
     );
     expect(result.explanation).not.toContain("min_prefix_length=24");
+    expect(request).toHaveBeenCalledTimes(2);
+  },
+);
+
+it("returns reviewed root-platform impact guidance without reading or executing a Plan", async () => {
+  const request = vi.fn<typeof fetch>(async (_url, options) => {
+    const body = JSON.parse(String(options?.body));
+    if (body.response_format.json_schema.name === "platform_advice_subject")
+      return answer({ task: "platform-impact-review" });
+    expect(body.response_format.json_schema.name).toBe("conversation_intent");
+    expect(body.messages[0].content).toContain("CURRENT LIFECYCLE ROUTING");
+    expect(body.messages[0].content).toContain("ROOT PLATFORM PLAN");
+    return answer({
+      topic: "configuration-lifecycle",
+      mode: "advice",
+      adviceTask: "platform-impact-review",
+      adviceTaskSource: "current",
+      requirements: [],
+    });
+  });
+  const result = await new AssistantModelServing(
+    configuration,
+    request,
+  ).converse(
+    selection(),
+    {},
+    [],
+    "Wie entscheide ich als Platform Owner über Löschungen im Plattform-Plan mit abhängigen Applications? Nur beraten.",
+  );
+  const { assistantApplicationUpgradeAdvice } = await import(
+    "../apps/api/src/assistant/knowledge.js"
+  );
+  const { assistantPlatformImpactReviewFailures } = await import(
+    "../scripts/assistant-scenarios.js"
+  );
+  expect(result.explanation).toBe(
+    assistantApplicationUpgradeAdvice["platform-impact-review"],
+  );
+  expect(assistantPlatformImpactReviewFailures(result.explanation)).toEqual([]);
+  expect(result.explanation.length).toBeLessThan(2400);
+  expect(result.questions).toEqual([]);
+  expect(result.changes).toEqual([]);
+  expect(result.references).toEqual(["configuration-lifecycle"]);
+  expect(request).toHaveBeenCalledTimes(2);
+});
+
+it.each([
+  { task: "template-upgrade", topic: "project-templates" },
+  { task: "platform-upgrade", topic: "firewall-infrastructure" },
+  { task: "execution-source-upgrade", topic: "project-templates" },
+  { task: "platform-impact-review", topic: "audit-logs" },
+])(
+  "uses the closed current $task task despite an inconsistent $topic component label",
+  async ({ task, topic }) => {
+    const request = vi.fn<typeof fetch>(async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      if (body.response_format.json_schema.name === "platform_advice_subject")
+        return answer({ task });
+      expect(body.response_format.json_schema.name).toBe("conversation_intent");
+      return answer({
+        topic,
+        mode: "advice",
+        adviceTask: task,
+        adviceTaskSource: "current",
+        requirements: [],
+      });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      {},
+      [],
+      "Wie funktioniert das aktuelle Aktualisierungsverfahren? Nur beraten.",
+    );
+    const { assistantApplicationUpgradeAdvice } = await import(
+      "../apps/api/src/assistant/knowledge.js"
+    );
+    expect(result.explanation).toBe(
+      assistantApplicationUpgradeAdvice[
+        task as keyof typeof assistantApplicationUpgradeAdvice
+      ],
+    );
+    expect(result.references).toEqual(["configuration-lifecycle"]);
+    expect(result.questions).toEqual([]);
+    expect(result.changes).toEqual([]);
+    expect(request).toHaveBeenCalledTimes(2);
+  },
+);
+
+it("resumes an exact pending folder choice without another model classification", async () => {
+  const { assistantScenarios, assistantScenarioFixture } = await import(
+    "../scripts/assistant-scenarios.js"
+  );
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "governance-folder-scope-followup",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const request = vi.fn<typeof fetch>();
+  const result = await new AssistantModelServing(
+    configuration,
+    request,
+  ).converse(
+    selection(),
+    fixture.values,
+    fixture.history,
+    scenario.message,
+    fixture.catalogues,
+  );
+  expect(request).not.toHaveBeenCalled();
+  expect(result.references).toContain("governance-folders");
+  expect(result.changes).toEqual([
+    {
+      path: "rm_folders",
+      value: {
+        platform: {
+          reader_emails: ["folder-reader@example.test", "owner@example.test"],
+        },
+      },
+    },
+  ]);
+  expect(result.explanation).toContain("Plan");
+  expect(result.explanation).toContain("Apply");
+});
+
+it.each(["platform-impact-review", "audit-observability"] as const)(
+  "verifies an ambiguous platform label against the current %s subject",
+  async (task) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      if (body.response_format.json_schema.name === "conversation_intent")
+        return answer({
+          topic: "configuration-lifecycle",
+          mode: "advice",
+          adviceTask: "platform-upgrade",
+          adviceTaskSource: "current",
+          requirements: [],
+        });
+      expect(body.response_format.json_schema.name).toBe(
+        "platform_advice_subject",
+      );
+      const input = JSON.parse(
+        body.messages.find((entry: { role: string }) => entry.role === "user")
+          .content,
+      );
+      expect(Object.keys(input)).toEqual(["message"]);
+      expect(JSON.stringify(input)).not.toContain("Private draft");
+      expect(JSON.stringify(input)).not.toContain("historical contract");
+      return answer({ task });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      { company_name: "Private draft" },
+      [{ role: "user", content: "historical contract" }],
+      task === "platform-impact-review"
+        ? "Mein Plattform-Plan löscht gemeinsame Ressourcen. Was bestätigt die Auswirkungsfreigabe?"
+        : "Wie stelle ich die native Audit-Ablage von Logs auf Observability und Grafana um?",
+      { regions: [] },
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toEqual([]);
+    expect(result.references).toEqual([
+      task === "audit-observability" ? "audit-logs" : "configuration-lifecycle",
+    ]);
+    expect(result.explanation).toContain("Plan");
+    expect(result.explanation).toContain("Apply");
+    if (task === "audit-observability")
+      expect(result.explanation).toContain("SSO");
+    else expect(result.explanation).toContain("State-Version");
     expect(request).toHaveBeenCalledTimes(2);
   },
 );

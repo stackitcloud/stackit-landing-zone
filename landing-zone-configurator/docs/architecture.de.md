@@ -5,11 +5,11 @@
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
 Diese Referenz beschreibt die implementierten Komponenten und ihre
-Vertrauensgrenzen. Die Entwicklungsumgebung verwendet STACKIT OIDC; eine eigene
-Passwortverwaltung ist nicht vorgesehen. Der Betrieb in der Entwicklungsumgebung
-ist kein Nachweis einer produktiv qualifizierten Umgebung. Die getrennten
-[MVP-Grenzen](mvp-scope.de.md) und [Entwicklungsreferenzen](development.de.md) benennen
-verbleibende Aufgaben.
+Vertrauensgrenzen. Beide gehosteten Umgebungen verwenden STACKIT OIDC; eine eigene
+Passwortverwaltung ist nicht vorgesehen. Produktion hat getrennte Infrastruktur,
+drei Web/API-Repliken, ein PostgreSQL-Replica-Set und geschützte Release-Aktivierung.
+Siehe [Produktionsbetrieb und Qualifikationsgrenzen](production.de.md),
+[Umfang und Grenzen](mvp-scope.de.md) sowie [Entwicklungsreferenzen](development.de.md).
 
 <a id="technical-presentation-view"></a>
 
@@ -279,13 +279,18 @@ Fuer eine produktionsreife Betriebsarchitektur sind ausserdem festzulegen:
 - Verifizierte DB-Backups, Secret-/Artefaktschluessel-Recovery, S3-Versionierung
   und Wiederherstellungstests. Der Verlust des bestehenden Artefaktschluessels
   darf nicht durch spontane Rotation verdeckt werden.
-- Skalierung/HA sowie gemeinsame Ablage oder Sticky Routing fuer laufende
-  OIDC-Flows. Die aktuelle Ein-Instanz-Anwendung ist kein HA-Nachweis.
+- Produktion verwendet drei Web/API-Prozesse, PostgreSQL für gemeinsamen Login-/
+  Sitzungs-/Job-Zustand, ein Datenbank-Replica-Set und Rolling-Aktivierung. Dev
+  bleibt eine Einzelinstanz. Platzierung, Ausfallübungen und gemessene
+  Wiederherstellungsziele benötigen gesonderte Nachweise; siehe
+  [Produktionsbetrieb](production.de.md).
 - Netzwerkpfade, ACLs und Egress-Regeln. Ein CF-Runner hat nicht automatisch
   Zugriff auf private Kubernetes-/Helm-/Firewall-Endpunkte in Kunden-SNAs.
   Diese Ausfuehrungsgrenze bleibt separat zu loesen (#37).
-- Eng begrenzte Betriebs-/Deployment-Identitaeten, kontrollierte CF-Space-Rechte
-  und eine Least-Privilege-Qualifikation des OIDC-Clients.
+- Produktionsdeployments verwenden getrennte Space-begrenzte Anwendungs-/Runner-
+  Identitäten und ein auf erlaubte Felder begrenztes Release-Binding. Die
+  projektbegrenzte Provisionierungsidentität bleibt getrennt. Den registrierten
+  OIDC-Client und seine exakten Redirects gesondert qualifizieren.
 
 Es wird **kein** zusaetzlicher Queue-Service vorausgesetzt: Auftragsmetadaten
 liegen in PostgreSQL, der Broker dispatcht CF-Tasks. Ein allgemeiner Scheduler

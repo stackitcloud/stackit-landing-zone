@@ -11,6 +11,7 @@ on:
       - '.github/workflows/configurator-platform.yml'
       - '.github/workflows/configurator-runtime.yml'
       - '.github/workflows/configurator-release.yml'
+      - '.github/workflows/configurator-production.yml'
   push:
     branches: [main]
     paths:
@@ -22,6 +23,7 @@ on:
       - '.github/workflows/configurator-platform.yml'
       - '.github/workflows/configurator-runtime.yml'
       - '.github/workflows/configurator-release.yml'
+      - '.github/workflows/configurator-production.yml'
   workflow_dispatch:
 
 permissions:
@@ -99,7 +101,7 @@ jobs:
       - name: Check release configuration with the built API validators
         run: node --test ../infra/ci/prepare-release.test.mjs
       - name: Check parallel release lifecycle and slim migration payload
-        run: node --test ../infra/ci/release-lifecycle.test.mjs
+        run: node --test ../infra/ci/release-lifecycle.test.mjs ../infra/ci/production.test.mjs
       - name: Check release configuration under the explicit Dev exception
         run: node --test ../infra/ci/prepare-release.test.mjs
         env:
@@ -180,7 +182,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        root: [seed, seed-protection, bootstrap, backend, platform, runtime]
+        root: [operator-project, seed, seed-protection, bootstrap, backend, platform, runtime]
     defaults:
       run:
         working-directory: landing-zone-configurator

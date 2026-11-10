@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "66e89d217bce9f3fd5ca6c5dc530c07ed67d7c2d68fd83cfa949f2da5b6f1a68",
+  "knowledgeSha256": "4b628e0b4346142116f677e14b5cf0d3c6769352b6d51690b754dfc2568ba586",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "79ce30f9123356f2f7581be242a335bee3fba92e31550424ecef6e55659ec529",
+    "scripts/assistant-scenarios.ts": "f28d9788be3fa39d58e59c44bbdb8c98a9999da8227d1efc6479bb5347f1baa7",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "c29a9fadbca8239aafa8beb1345a6de3f6fd3e241eeef499097b5ccf49fda9b8",
+  "suiteSha256": "7b4a157bcac47dd13df0bf133ae1903a0f63b45b69723d088a9ef3c2831ad5a0",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1154,6 +1154,33 @@
           ]
         },
         {
+          "id": "editor-audit-explicit-project",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "message": "Bitte einen Audit-Entwurf erstellen: 90 Tage, nur ACL 203.0.113.0/24 und Object Lock aus. Explizit genau diesen manuellen Telemetry-Link-Scope setzen: resource_type=project und resource_id=00000000-0000-4000-8000-000000000099. Keinen Organisations-Link, keine automatische verwaltete Abdeckung, nichts ausführen.",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false,
+              "link_scopes": [
+                {
+                  "resource_type": "project",
+                  "resource_id": "00000000-0000-4000-8000-000000000099"
+                }
+              ]
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
           "id": "editor-audit-managed",
           "topic": "audit-logs",
           "fixture": "baseline",
@@ -1167,6 +1194,149 @@
               ],
               "s3_object_lock": false,
               "managed_resources": true
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-partial-retention",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "90 Tage",
+          "auditQuestionPaths": [
+            "audit_logs.acl",
+            "audit_logs.s3_object_lock"
+          ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-partial-acl",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            },
+            {
+              "role": "user",
+              "content": "90 Tage"
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "203.0.113.0/24",
+          "auditQuestionPaths": [
+            "audit_logs.s3_object_lock"
+          ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-partial-lock",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            },
+            {
+              "role": "user",
+              "content": "90 Tage"
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            },
+            {
+              "role": "user",
+              "content": "203.0.113.0/24"
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "Deaktivieren",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-audit-after-foundations",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte Organisation 00000000-0000-4000-8000-000000000001 für die Plattform verwenden."
+            },
+            {
+              "role": "assistant",
+              "content": "Grundlagen vorgeschlagen, noch nichts gespeichert."
+            },
+            {
+              "role": "user",
+              "content": "Bitte einen zentralen Audit-Entwurf vorbereiten."
+            },
+            {
+              "role": "assistant",
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+            }
+          ],
+          "message": "90 Tage Aufbewahrung, Zugriff ausschließlich aus 203.0.113.0/24, Object Lock ausdrücklich nein. Organisationsweiter Telemetry Link. Bitte diese Entscheidungen als Entwurfsvorschlag übernehmen.",
+          "editorExpected": {
+            "path": "audit_logs",
+            "value": {
+              "retention_days": 90,
+              "acl": [
+                "203.0.113.0/24"
+              ],
+              "s3_object_lock": false
             }
           },
           "assertions": [
@@ -6262,8 +6432,68 @@
           ]
         },
         {
+          "id": "execution-upgrade-after-template-history",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "executionLifecycle": true,
+          "history": [
+            {
+              "role": "user",
+              "content": "Wie übernehme ich eine neue Template-Version mit anderen Projektberechtigungen?"
+            },
+            {
+              "role": "assistant",
+              "content": "Über den veröffentlichten Template-Upgrade-Pfad und einen frischen Plan."
+            }
+          ],
+          "message": "Jetzt geht es um die technische Ausführung: Nach einem Produktrelease lehnt der Worker die gebundene Accelerator-Quelle meiner bisherigen Bestellung ab. Wie kann ich denselben State weiter verwenden? Erkläre ursprüngliche Template-Quelle, gewünschten Ausführungsstand, letzten erfolgreichen Apply, zurückgezogene Pakete und Recovery bei Teilfehlern. Nur beraten, keine Änderung oder Ausführung.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "pinned_source_same_order_state_fresh_plan_approval_withdrawal_no_reorder",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "template-upgrade-after-execution-history",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "applicationUpgrade": "template",
+          "history": [
+            {
+              "role": "user",
+              "content": "Wie aktualisiere ich die technische Runner-Quelle bei einer zurückgezogenen Accelerator-Revision?"
+            },
+            {
+              "role": "assistant",
+              "content": "Die technische Ausführung besitzt ihre eigene gewünschte Quellenbindung."
+            }
+          ],
+          "message": "Nun möchte ich die neue veröffentlichte Public-Template-Version mit den zusätzlichen Kubernetes-Rechten nutzen. Wie übernimmt der Application Owner diese Template-Version in derselben Bestellung mit seinen bisherigen Antworten und demselben State? Erkläre Plan-/Apply-Freigabe und Löschschutz. Nur beraten, keine Änderung oder Ausführung.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "published_same_family_path_retained_answers_same_state_fresh_plan_separate_apply_destructive_block",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "platform-impact-without-role-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "platformImpactReview": true,
+          "message": "Mein gespeicherter Plattformplan löscht und ersetzt gemeinsame Ressourcen, die mehrere Applications verwenden. Ich möchte die Auswirkungen beurteilen und den Apply danach freigeben. Woran ist die Bestätigung gebunden, wann muss ich neu planen und was passiert bei möglichen Datenverlusten? Nur beraten, nichts ändern oder ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
+            "no_changes"
+          ]
+        },
+        {
           "id": "audit-query-migration-impact-advice",
           "topic": "configuration-lifecycle",
+          "platformImpactReview": true,
           "fixture": "baseline",
           "requiredOverviewFields": [
             "observability",
@@ -6274,6 +6504,7 @@
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
+            "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
             "complete_native_field_overview",
             "no_changes"
           ]

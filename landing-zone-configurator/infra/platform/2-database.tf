@@ -14,6 +14,10 @@ resource "stackit_postgresflex_instance" "configurator" {
   }
   lifecycle {
     prevent_destroy = true
+    precondition {
+      condition     = !var.production || endswith(var.database.flavor_id, "-replica")
+      error_message = "Production requires an explicitly selected PostgreSQL replica-set flavor."
+    }
   }
 }
 

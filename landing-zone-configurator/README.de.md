@@ -13,14 +13,16 @@ Terraform/OpenTofu nutzbar.
 
 | Zielgruppe | Dokumentation |
 | --- | --- |
-| Benutzer | [Benutzerhandbuch](docs/user-guide.de.md) und [MVP-Umfang und Grenzen](docs/mvp-scope.de.md) |
+| Benutzer | [Benutzerhandbuch](docs/user-guide.de.md) und [Umfang und Grenzen](docs/mvp-scope.de.md) |
 | Architekten | [Komponenten, Diagramme und Vertrauensgrenzen](docs/architecture.de.md) |
 | Mitwirkende | [Entwicklungsübersicht](docs/development.de.md), [lokale Einrichtung](app/README.de.md) und [Mitwirken](../CONTRIBUTING.de.md) |
 | Betreiber | [Infrastruktur](infra/README.de.md), [manueller CI-Betrieb](infra/ci/README.de.md) und [CF-Releases](deploy/cloud-foundry/README.de.md) |
 
-Die [Entwicklungsumgebung](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud)
-ist kein Produktionsdienst. Produktionsbereitstellung und betriebliche Abnahme
-sind separate Folgeaufgaben; das Zusammenführen von Quellcode deployt die Anwendung nicht.
+Produktion wird unabhängig provisioniert und aus einem veröffentlichten GitHub
+Release nach manueller Freigabe aktiviert. Siehe [Produktionsaufbau, Verfügbarkeit
+und Wiederherstellung](docs/production.de.md). Die getrennte
+[Entwicklungsumgebung](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud)
+bleibt verfügbar; ein Quellcode-Merge deployt keine der beiden Umgebungen.
 
 <a id="how-it-fits-together"></a>
 ## Zusammenspiel

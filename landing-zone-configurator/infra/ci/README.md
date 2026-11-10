@@ -2,6 +2,12 @@
 
 [English](README.md) | [Deutsch](README.de.md)
 
+Production uses the same four infrastructure workflows with `environment=lzc-prod`
+and independent protected Environments. [Configurator Production Release](../../../.github/workflows/configurator-production.yml)
+publishes stable GitHub Releases and requires manual approval before activation.
+It receives an allowlisted binding of space-scoped credentials, no full state
+access or organization-manager accounts. See [production operations](../../docs/production.md).
+
 The central [workflow overview](../../../docs/workflows.md) describes all
 pipelines, automatic and manual triggers, inputs and starting them in the
 GitHub UI. This page expands on operator and approval contracts.
@@ -12,7 +18,7 @@ Executable deployments are defined directly in the workflows:
 - [Configurator Platform](../../../.github/workflows/configurator-platform.yml): `platform`.
 - [Configurator Runtime](../../../.github/workflows/configurator-runtime.yml): `runtime`.
 - [Configurator Release](../../../.github/workflows/configurator-release.yml): deliver the built Web/API package with direct `cf` commands.
-- [Validation](../../../.github/workflows/validate-configurator.yml): formatting, validation and mock tests for all six roots without cloud credentials.
+- [Validation](../../../.github/workflows/validate-configurator.yml): formatting, validation and mock tests for all seven roots without cloud credentials.
 
 Each deployment job shows the individual steps: credential preparation, reading previous backend outputs if applicable, `tofu init`, `tofu validate`, `tofu plan` or `tofu apply`. There is no custom JavaScript deployment runner. One-time recovery operations do not belong in this normal process.
 

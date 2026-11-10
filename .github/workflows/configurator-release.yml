@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release_mode:
-        description: Qualified release (default) or Dev only without live Assistant qualification
+        description: Qualification policy; accepted limitations records issue 225 for a manually approved production release
         type: choice
         default: qualified
-        options: ['qualified', 'dev-skip-assistant-qualification']
+        options: ['qualified', 'dev-skip-assistant-qualification', 'accepted-assistant-limitations']
       build_only:
         description: Build and publish the immutable release and buildpack tag without deploying
         type: boolean
@@ -36,7 +36,7 @@ concurrency:
 jobs:
   assistant:
     name: assistant
-    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.release_mode != 'dev-skip-assistant-qualification' && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    if: vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.release_mode == 'qualified' && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
     uses: ./.github/workflows/assistant-live.yml
     with:
       topic: all
@@ -44,9 +44,9 @@ jobs:
     secrets: inherit
 
   build:
-    name: ${{ inputs.release_mode == 'dev-skip-assistant-qualification' && 'build-dev-skip-assistant-qualification' || 'build' }}
+    name: ${{ inputs.release_mode == 'dev-skip-assistant-qualification' && 'build-dev-skip-assistant-qualification' || inputs.release_mode == 'accepted-assistant-limitations' && 'build-accepted-assistant-limitations' || 'build' }}
     needs: assistant
-    if: always() && !cancelled() && ((inputs.release_mode == 'dev-skip-assistant-qualification' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped') || (inputs.release_mode != 'dev-skip-assistant-qualification' && needs.assistant.result == 'success')) && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
+    if: always() && !cancelled() && ((inputs.release_mode == 'accepted-assistant-limitations' && inputs.build_only && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped') || (inputs.release_mode == 'dev-skip-assistant-qualification' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped') || (inputs.release_mode != 'dev-skip-assistant-qualification' && needs.assistant.result == 'success')) && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && !inputs.release_run_id && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -79,7 +79,7 @@ jobs:
           node --test ../infra/ci/prepare-release.test.mjs
           node --test ../infra/ci/buildpack-source.test.mjs
           node --test ../infra/ci/image-staging.test.mjs
-          node --test ../infra/ci/release-lifecycle.test.mjs
+          node --test ../infra/ci/release-lifecycle.test.mjs ../infra/ci/production.test.mjs
       - name: Test first preparations and stateful platform Plan/Apply broker
         run: npm run test:platform-database
       - name: Test database migrations and tenant isolation
@@ -146,6 +146,9 @@ jobs:
           if [ "$LZC_RELEASE_MODE" = dev-skip-assistant-qualification ]; then
             echo 'Dev only; live Assistant qualification NOT performed; runtime Assistant setting unchanged. Promotion is prohibited.' >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [ "$LZC_RELEASE_MODE" = accepted-assistant-limitations ]; then
+            echo 'Assistant is NOT fully qualified. Known intermittent HTTP 400 failures: issue #225. Production requires published GitHub Release and manual approval.' >> "$GITHUB_STEP_SUMMARY"
+          fi
           tar -czf ../.local/configurator-release.tar.gz -C ../.local release.tar.gz release.sha256 runner.tar.gz runner.sha256 release-manifest.json
           (cd ../.local && sha256sum configurator-release.tar.gz > configurator-release.sha256)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -203,7 +206,7 @@ jobs:
 
   deploy:
     needs: [build, publish_buildpack]
-    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && ((needs.build.result == 'success' && needs.publish_buildpack.result == 'success') || (needs.build.result == 'skipped' && needs.publish_buildpack.result == 'skipped' && inputs.release_run_id != ''))
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && !inputs.build_only && inputs.release_mode != 'accepted-assistant-limitations' && vars.LZC_RELEASE_CI_ENABLED == 'true' && github.run_attempt == 1 && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/landing-zone-configurator') && ((needs.build.result == 'success' && needs.publish_buildpack.result == 'success') || (needs.build.result == 'skipped' && needs.publish_buildpack.result == 'skipped' && inputs.release_run_id != ''))
     permissions:
       actions: read
       contents: read

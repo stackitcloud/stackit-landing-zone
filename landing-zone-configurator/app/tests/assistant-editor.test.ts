@@ -33,6 +33,11 @@ import {
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
 import {
+  assistantAuditCreationChoices,
+  assistantAuditCreationQuestions,
+  assistantAuditManagedCoverage,
+  assistantAuditPendingReply,
+  assistantAuditUserSources,
   assistantEditorChangeSchema,
   assistantEditorCreationValue,
   assistantEditorInputs,
@@ -40,6 +45,7 @@ import {
   assistantEditorPolicies,
   assistantEditorProposalPath,
   assistantEditorResponseSchema,
+  assistantEditorValueSchema,
   validateAssistantEditorChange,
   validateAssistantEditorSources,
 } from "../apps/api/src/assistant/editor.js";
@@ -488,7 +494,13 @@ it.each([
     "Erstelle die gewünschten Vorlagen mit lokalen Netzen und benenne sie passend.",
   );
   expect(questionLimit).toBe(fixture.complete ? 0 : 3);
-  expect(result.questions).toEqual(fixture.complete ? [] : [question]);
+  expect(result.questions).toEqual(
+    fixture.extraRoot === "audit_logs"
+      ? assistantAuditCreationQuestions({}).questions
+      : fixture.complete
+        ? []
+        : [question],
+  );
   expect(result.changes).toEqual(fixture.complete ? changes : []);
   expect(defaults).toEqual(
     fixture.complete
@@ -1408,10 +1420,13 @@ describe("shared native Editor proposal contract", () => {
           key: "default",
           region: "eu01",
         });
-        expect(
-          body.response_format.json_schema.schema.properties.questions.items
-            .properties.path.const,
-        ).toBe("projectTemplates");
+        const questions =
+          body.response_format.json_schema.schema.properties.questions;
+        if (questions.maxItems === 0) expect(questions.items).toEqual({});
+        else
+          expect(questions.items.properties.path.const).toBe(
+            "projectTemplates",
+          );
       }
       return new Response(
         JSON.stringify({
@@ -4176,3 +4191,493 @@ it("keeps new audit coverage opt-in without adding a false constructor override 
     }),
   ).toEqual(value);
 });
+
+it("keeps automatic audit router ranges distinct from an empty override", () => {
+  const schema = assistantEditorValueSchema(
+    ["list", "string"],
+    "audit_logs.router_egress_cidrs",
+  );
+  expect(schema.safeParse(null).success).toBe(true);
+  expect(schema.safeParse(["188.34.68.97/32"]).success).toBe(true);
+  expect(schema.safeParse([]).success).toBe(false);
+  const wire = assistantEditorResponseSchema(schema);
+  expect(wire).toMatchObject({
+    anyOf: expect.arrayContaining([
+      expect.objectContaining({ type: "array", minItems: 1 }),
+      { type: "null" },
+    ]),
+  });
+  expect(
+    assistantEditorValueSchema(["list", "string"], "audit_logs.acl").safeParse(
+      [],
+    ).success,
+  ).toBe(true);
+});
+
+it("describes default organization routing while preserving explicit manual scopes", () => {
+  const schema = assistantEditorValueSchema(
+    ["list", ["object", { resource_type: "string", resource_id: "string" }]],
+    "audit_logs.link_scopes",
+  );
+  const manual = [
+    {
+      resource_type: "project",
+      resource_id: "00000000-0000-4000-8000-000000000099",
+    },
+  ];
+  expect(schema.parse(null)).toBeNull();
+  expect(schema.parse([])).toEqual([]);
+  expect(schema.parse(manual)).toEqual(manual);
+  expect(assistantEditorResponseSchema(schema).description).toContain(
+    "native organization-level default",
+  );
+});
+
+it("omits only unpinned equivalent organization defaults on new audit drafts", () => {
+  const organizationId = "00000000-0000-4000-8000-000000000001";
+  const scope = { resource_type: "organization", resource_id: organizationId };
+  const base = {
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+  };
+  const value = { ...base, link_scopes: [scope] };
+  const context = {
+    organizationId,
+    userSources: ["Organisationsweiter Telemetry Link."],
+  };
+  const normalized = assistantEditorCreationValue(
+    "audit_logs",
+    value,
+    null,
+    context,
+  );
+  expect(normalized).toEqual(base);
+  // Both spellings select the exact same native resource key and target.
+  const nativeScopes = (
+    input: typeof base & { link_scopes?: (typeof scope)[] },
+  ) => input.link_scopes ?? [scope];
+  expect(nativeScopes(normalized as typeof base)).toEqual(nativeScopes(value));
+  for (const source of [
+    `Expliziter Scope ${organizationId}`,
+    "Setze link_scopes ausdrücklich",
+  ])
+    expect(
+      assistantEditorCreationValue("audit_logs", value, null, {
+        organizationId,
+        userSources: [source],
+      }),
+    ).toEqual(value);
+  for (const scopes of [
+    [],
+    [
+      {
+        resource_type: "project",
+        resource_id: "00000000-0000-4000-8000-000000000099",
+      },
+    ],
+    [
+      scope,
+      {
+        resource_type: "project",
+        resource_id: "00000000-0000-4000-8000-000000000099",
+      },
+    ],
+  ]) {
+    const manual = { ...base, link_scopes: scopes };
+    expect(
+      assistantEditorCreationValue("audit_logs", manual, null, context),
+    ).toEqual(manual);
+  }
+  expect(
+    assistantEditorCreationValue("audit_logs", value, base, context),
+  ).toEqual(value);
+  expect(assistantEditorCreationValue("audit_logs", value, null)).toEqual(
+    value,
+  );
+});
+
+it("does not use firewall networks, native defaults or assistant assertions as audit choices", () => {
+  const history = [
+    { role: "user" as const, content: "Firewall nur aus 10.0.0.0/16." },
+    {
+      role: "assistant" as const,
+      content:
+        "Firewall-Setup mit HA; 180 Tage und Object Lock aktiv wären später denkbar.",
+    },
+  ];
+  expect(
+    assistantAuditCreationChoices(
+      "Nun zentrale Audit-Protokollierung als Entwurf einrichten.",
+      history,
+    ),
+  ).toEqual({});
+  const pending = assistantAuditCreationQuestions({});
+  expect(pending.questions.map((q) => q.path)).toEqual([
+    "audit_logs.retention_days",
+    "audit_logs.acl",
+    "audit_logs.s3_object_lock",
+  ]);
+  expect(pending.questions[1]!.options).toEqual([]);
+});
+
+it.each(["de", "en"] as const)(
+  "retains explicit audit answers across separate %s questions",
+  (language) => {
+    const history: { role: "user" | "assistant"; content: string }[] = [];
+    const append = (message: string) => {
+      const choices = assistantAuditCreationChoices(message, history);
+      const pending = assistantAuditCreationQuestions(choices, language);
+      history.push(
+        { role: "user", content: message },
+        {
+          role: "assistant",
+          content:
+            pending.explanation +
+            "\n" +
+            pending.questions.map((q) => q.text).join("\n"),
+        },
+      );
+      return { choices, pending };
+    };
+    append(
+      language === "de"
+        ? "Audit-Entwurf vorbereiten."
+        : "Prepare an audit draft.",
+    );
+    expect(append("90").choices).toEqual({ retention_days: 90 });
+    expect(append("203.0.113.0/24").choices).toEqual({
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+    });
+    const last = append(language === "de" ? "Deaktivieren" : "Disable");
+    expect(last.choices).toEqual({
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+    });
+    expect(last.pending.questions).toEqual([]);
+  },
+);
+
+it.each([
+  ["90 Tage, ACL 203.0.113.0/24, Object Lock ausdrücklich deaktiviert.", false],
+  ["90 days, ACL 203.0.113.0/24, Object Lock explicitly enabled.", true],
+  ["retention_days=90; acl=[203.0.113.0/24]; s3_object_lock=false", false],
+] as const)(
+  "grounds explicit audit constructor choices: %s",
+  (message, lock) => {
+    expect(assistantAuditCreationChoices(message, [])).toEqual({
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: lock,
+    });
+  },
+);
+
+it("asks actual audit decisions even if a model supplies valid guessed defaults", async () => {
+  const current = {
+    ...assistantPublicValues(draft()),
+    connectivity: {
+      firewalls: { default: { lan_network_range: "10.0.0.0/16" } },
+    },
+  };
+  const model = collectionModel(
+    {
+      topic: "audit-logs",
+      mode: "draft",
+      editorContract: true,
+      editorInputs: ["audit_logs"],
+      requirements: [],
+    },
+    response([
+      patch(
+        "audit_logs",
+        {
+          router_egress_cidrs: null,
+          link_scopes: null,
+          retention_days: 180,
+          acl: ["10.0.0.0/16"],
+          s3_object_lock: true,
+          managed_resources: false,
+        },
+        "replace",
+      ),
+    ]),
+  );
+  const result = await model.converse(
+    knowledgeSelection(),
+    current,
+    [
+      { role: "user", content: "Firewall-Zugriff nur aus 10.0.0.0/16." },
+      {
+        role: "assistant",
+        content: "Die Firewall benötigt noch eine Kapazitätsentscheidung.",
+      },
+    ],
+    "Nun zentrale Audit-Protokollierung mittels Telemetry Router als Entwurf einrichten.",
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.questions.map((q) => q.path)).toEqual([
+    "audit_logs.retention_days",
+    "audit_logs.acl",
+    "audit_logs.s3_object_lock",
+  ]);
+  expect(result.questions[1]!.options).toEqual([]);
+  expect(result.explanation).toContain("Noch nichts gespeichert");
+});
+
+it("does not revive audit choices after their proposal was discarded", () => {
+  expect(
+    assistantAuditCreationChoices("Neuen Audit-Entwurf vorbereiten.", [
+      {
+        role: "user",
+        content: "Audit: 90 Tage, ACL 203.0.113.0/24, Object Lock nein.",
+      },
+      {
+        role: "assistant",
+        content:
+          "The user explicitly discarded the preceding proposal. This turn is closed: no proposal, selection question or setup request remains pending. Do not resume or reissue that proposal without a new explicit user request.",
+      },
+    ]),
+  ).toEqual({});
+});
+
+it("binds literal audit answers to the actual remaining question and allows topic switches", () => {
+  const first = assistantAuditCreationQuestions({});
+  const history = [
+    { role: "user" as const, content: "Audit-Entwurf vorbereiten." },
+    {
+      role: "assistant" as const,
+      content:
+        first.explanation +
+        "\n" +
+        first.questions.map((q) => q.text).join("\n"),
+    },
+  ];
+  expect(assistantAuditPendingReply("90 Tage", history)?.choices).toEqual({
+    retention_days: 90,
+  });
+  expect(
+    assistantAuditPendingReply(
+      "Nun Observability mit 90 Tagen und ACL 203.0.113.0/24.",
+      history,
+    ),
+  ).toBeNull();
+  const aclOnly = assistantAuditCreationQuestions({
+    retention_days: 90,
+    s3_object_lock: false,
+  });
+  const completedHistory = [
+    { role: "user" as const, content: "Audit: 90 Tage, Object Lock nein." },
+    {
+      role: "assistant" as const,
+      content:
+        aclOnly.explanation +
+        "\n" +
+        aclOnly.questions.map((q) => q.text).join("\n"),
+    },
+  ];
+  expect(assistantAuditPendingReply("ja", completedHistory)).toBeNull();
+  expect(
+    assistantAuditCreationChoices("203.0.113.0/24", completedHistory),
+  ).toEqual({
+    retention_days: 90,
+    s3_object_lock: false,
+    acl: ["203.0.113.0/24"],
+  });
+});
+
+it("binds confirmed Audit choices in the serving schema while retaining runtime validation", () => {
+  const choices = {
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+  };
+  const value = {
+    ...choices,
+    managed_resources: false,
+    router_egress_cidrs: null,
+    link_scopes: null,
+  };
+  const schema = assistantEditorChangeSchema(
+    "audit_logs",
+    undefined,
+    "serving",
+    null,
+    undefined,
+    undefined,
+    choices,
+  );
+  expect(schema.safeParse(patch("audit_logs", value)).success).toBe(true);
+  for (const changed of [
+    { retention_days: 180 },
+    { acl: ["10.0.0.0/16"] },
+    { s3_object_lock: true },
+    { managed_resources: true },
+  ])
+    expect(
+      schema.safeParse(patch("audit_logs", { ...value, ...changed })).success,
+    ).toBe(false);
+  expect(
+    assistantEditorChangeSchema("audit_logs").safeParse(
+      patch("audit_logs", value),
+    ).success,
+  ).toBe(true);
+});
+
+it("resumes actual Audit answers without reclassifying partial or complete decisions", async () => {
+  const current = assistantPublicValues(draft());
+  const history: { role: "user" | "assistant"; content: string }[] = [
+    { role: "user", content: "Bitte Audit-Entwurf vorbereiten." },
+  ];
+  const ask = (
+    choices: Parameters<typeof assistantAuditCreationQuestions>[0],
+  ) => {
+    const pending = assistantAuditCreationQuestions(choices);
+    history.push({
+      role: "assistant",
+      content:
+        pending.explanation +
+        "\n" +
+        pending.questions.map((q) => q.text).join("\n"),
+    });
+  };
+  ask({});
+  const unexpected = vi.fn<typeof fetch>(async () => {
+    throw new Error("Unexpected inference for a partial literal answer");
+  });
+  const model = new AssistantModelServing(
+    {
+      baseUrl:
+        "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+      model: "test-model",
+      token: "test-token",
+      timeoutMs: 1000,
+    },
+    unexpected,
+  );
+  const partial = await model.converse(
+    knowledgeSelection(),
+    current,
+    history,
+    "90 Tage",
+  );
+  expect(partial.questions.map((q) => q.path)).toEqual([
+    "audit_logs.acl",
+    "audit_logs.s3_object_lock",
+  ]);
+  expect(partial.changes).toEqual([]);
+  expect(unexpected).not.toHaveBeenCalled();
+  history.push({ role: "user", content: "90 Tage" });
+  ask({ retention_days: 90 });
+  history.push({ role: "user", content: "203.0.113.0/24" });
+  ask({ retention_days: 90, acl: ["203.0.113.0/24"] });
+  const value = {
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+    managed_resources: false,
+    router_egress_cidrs: null,
+    link_scopes: null,
+  };
+  const requested: string[] = [];
+  const complete = collectionModel(
+    {},
+    response([patch("audit_logs", value, "replace")]),
+    (request) => {
+      requested.push(request.response_format.json_schema.name);
+      expect(
+        JSON.parse(request.messages[1]!.content).auditCreationChoices,
+      ).toEqual({
+        retention_days: 90,
+        acl: ["203.0.113.0/24"],
+        s3_object_lock: false,
+        managed_resources: false,
+      });
+    },
+  );
+  const result = await complete.converse(
+    knowledgeSelection(),
+    current,
+    history,
+    "Deaktivieren",
+  );
+  expect(requested).toEqual(["editor_dialogue"]);
+  expect(result.questions).toEqual([]);
+  expect(result.changes[0]!.value).toMatchObject({ s3_object_lock: false });
+  expect(
+    compileCommonConfiguration(applyAssistantChanges(draft(), result.changes))
+      .audit_logs,
+  ).toMatchObject({
+    retention_days: 90,
+    acl: ["203.0.113.0/24"],
+    s3_object_lock: false,
+  });
+});
+
+it("does not turn a foundation organization ID into manual audit scope consent", () => {
+  const organizationId = "00000000-0000-4000-8000-000000000001";
+  const history = [
+    {
+      role: "user" as const,
+      content: `Organisation ${organizationId} für die Plattform verwenden.`,
+    },
+    { role: "assistant" as const, content: "Grundlagen vorgeschlagen." },
+  ];
+  const sources = assistantAuditUserSources(
+    "Audit: Organisationsweiter Telemetry Link.",
+    history,
+  );
+  expect(sources.join(" ")).not.toContain(organizationId);
+  expect(
+    assistantEditorCreationValue(
+      "audit_logs",
+      {
+        retention_days: 90,
+        acl: [],
+        s3_object_lock: false,
+        link_scopes: [
+          { resource_type: "organization", resource_id: organizationId },
+        ],
+      },
+      null,
+      { organizationId, userSources: sources },
+    ),
+  ).not.toHaveProperty("link_scopes");
+  expect(
+    assistantEditorCreationValue(
+      "audit_logs",
+      {
+        link_scopes: [
+          { resource_type: "organization", resource_id: organizationId },
+        ],
+      },
+      null,
+      {
+        organizationId,
+        userSources: assistantAuditUserSources(
+          `Audit: link_scopes auf Organisation ${organizationId} setzen.`,
+          history,
+        ),
+      },
+    ),
+  ).toHaveProperty("link_scopes");
+});
+
+it.each([
+  ["Audit: Organisationsweiter Telemetry Link.", false],
+  [
+    "Alle vom Accelerator verwalteten Projekte und Ordner automatisch anbinden.",
+    true,
+  ],
+  ["Do not automatically link managed projects and folders.", false],
+  ["Automatically link all managed projects and folders. No deployment.", true],
+  ["Audit: managed_resources=true", true],
+  ["Audit: managed_resources=false", false],
+] as const)(
+  "requires actual managed Audit coverage consent: %s",
+  (message, expected) => {
+    expect(assistantAuditManagedCoverage(message, [])).toBe(expected);
+  },
+);

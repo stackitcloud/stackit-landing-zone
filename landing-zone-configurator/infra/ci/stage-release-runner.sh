@@ -3,8 +3,8 @@ set -euo pipefail
 export CF_HOME="$LZC_PRIVATE/cf-runner"
 cf api "$CF_API_URL"
 CF_USERNAME="$LZC_RUNNER_CF_USERNAME" CF_PASSWORD="$LZC_RUNNER_CF_PASSWORD" cf auth
-cf target -o lzc-dev-runners -s plans
-test "$(cf org lzc-dev-runners --guid)" = "$LZC_RUNNER_ORG_ID"
+cf target -o "${LZC_RUNNER_ORG_NAME:-lzc-dev-runners}" -s plans
+test "$(cf org "${LZC_RUNNER_ORG_NAME:-lzc-dev-runners}" --guid)" = "$LZC_RUNNER_ORG_ID"
 test "$(cf space plans --guid)" = "$LZC_RUNNER_SPACE_ID"
 cf push --task -f deploy/runner/manifest.yml -p .local/runner --vars-file "$LZC_PRIVATE/runner-vars.json" --redact-env
 export LZC_RUNNER_TEMPLATE_ID="$(cf app lzc-plan-template --guid)"

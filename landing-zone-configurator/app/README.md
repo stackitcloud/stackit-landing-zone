@@ -173,18 +173,25 @@ Acceptance saves only configuration, not STACKIT IAM or Configurator roles;
 IAM changes remain bound to a reviewed Plan and separate Apply approval.
 
 ```sh
-# Ohne Credentials: Inventar, Wissensfrische und Testfragen pruefen
+# Check inventory, knowledge freshness and scenarios without credentials
 npm run assistant:check
-# Echter Modelllauf mit allen Themen; vorhandenen privaten lokalen Zugang nutzen
-LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials
-# Nur ein Thema oder eine Regression
-LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials --topic dns-zones
-LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b npm run test:assistant:live -- --local-credentials --case foundations-restoration
-# Zusammenhaengender Dialog mit GPT-OSS 120B fuer beide Modellrollen
-LZC_MODEL_SERVING_MODEL=openai/gpt-oss-120b \
-  LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
-  npm run test:assistant:journey -- --local-credentials
+# Full acceptance using the same model selection as the application and CI
+npm run test:assistant:live -- --local-credentials --repeat 2
+# One topic or regression
+npm run test:assistant:live -- --local-credentials --topic dns-zones --repeat 2
+npm run test:assistant:live -- --local-credentials --case foundations-restoration --repeat 2
+# Continuous dialogue using that same model selection
+npm run test:assistant:journey -- --local-credentials
+# Optional comparison: different intent model, not qualification of the defaults
+LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
+  npm run test:assistant:live -- --local-credentials --repeat 2
 ```
+
+Without model overrides, the application and CI use `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`
+for both roles. Acceptance must match the deployed model and intent-model selection
+exactly. Record comparison runs with other overrides separately; their results do
+not qualify another selection. These environment variables affect the local test
+process only; they do not change the running application.
 
 The journey test goes through twelve steps from foundations and roles through
 SNA/firewall, the policy MVP notice and audit follow-up questions to observability,

@@ -275,7 +275,7 @@ it.each([
     "capability-boundary",
   ],
 ] as const)(
-  "discloses the post-MVP policy boundary for %s without proposals or a questionnaire",
+  "discloses the current policy boundary for %s without proposals or a questionnaire",
   async (message, mode, topic, adviceTask) => {
     const f = fixture();
     const before = structuredClone(f.values);
@@ -298,7 +298,7 @@ it.each([
       { onText: (value) => text.push(value) },
     );
     expect(result.explanation).toContain("kann aktuell keine Firewall-Regeln");
-    expect(result.explanation).toContain("nicht Teil des MVP");
+    expect(result.explanation).toContain("wird derzeit nicht unterstützt");
     expect(result.explanation).toContain("GitHub-Issue #101");
     expect(result.explanation).toContain("Firewall-Admin");
     expect(result.changes).toEqual([]);

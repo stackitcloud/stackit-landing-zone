@@ -78,3 +78,9 @@ variable "credential_generation" {
   description = "Increment intentionally to rotate supported platform credentials, followed by binding updates."
   default     = "initial"
 }
+
+variable "production" {
+  type        = bool
+  description = "Enable production availability requirements without changing existing Dev resources."
+  default     = false
+}

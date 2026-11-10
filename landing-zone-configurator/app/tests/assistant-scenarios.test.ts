@@ -230,7 +230,20 @@ it.each(assistantScenarios)(
     expect(JSON.stringify(fixture)).not.toMatch(
       /af026540|lukas|preshared_key/i,
     );
-    if (scenario.editorExpected) {
+    if (scenario.auditQuestionPaths) {
+      expect(
+        validateAssistantScenario(scenario, {
+          explanation: "Reviewable local draft only.",
+          changes: [],
+          references: [scenario.topic],
+          questions: scenario.auditQuestionPaths.map((path) => ({
+            path,
+            text: "Please supply your actual decision.",
+            options: [],
+          })),
+        }).failures,
+      ).toEqual([]);
+    } else if (scenario.editorExpected) {
       const root = scenario.editorExpected.path.split(".")[0] ?? "";
       const values: Record<string, JsonValue> = {
         audit_logs: {
@@ -239,6 +252,16 @@ it.each(assistantScenarios)(
           s3_object_lock: false,
           ...(scenario.id === "editor-audit-managed"
             ? { managed_resources: true }
+            : {}),
+          ...(scenario.id === "editor-audit-explicit-project"
+            ? {
+                link_scopes: [
+                  {
+                    resource_type: "project",
+                    resource_id: "00000000-0000-4000-8000-000000000099",
+                  },
+                ],
+              }
             : {}),
         },
         observability: {
@@ -277,30 +300,29 @@ it.each(assistantScenarios)(
     } else if (scenario.fixture === "baseline") {
       expect(
         validateAssistantScenario(scenario, {
-          explanation:
-            scenario.id === "audit-query-migration-impact-advice"
-              ? "Der Platform Owner entscheidet über Löschungen und Ersetzungen nach Prüfung möglicher Datenverluste und betroffener Applications. Bestätigung bindet Artefakt-Hash, State und Abhängigkeiten. Neuer Plan, Apply separat; Observability bleibt Ziel."
-              : scenario.id === "application-upgrade-self-service-advice"
-                ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen bestehender Infrastruktur werden blockiert. Bei eigenständiger Durchführung ist keine zusätzliche Platform-Owner-Freigabe erforderlich."
-                : scenario.applicationUpgrade === "template"
-                  ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen werden blockiert."
-                  : scenario.applicationUpgrade === "platform"
-                    ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag und den Pfad veröffentlichen. Die Vertragsbindung wechselt nicht automatisch. Der Application Owner übernimmt ihn ausdrücklich. Keine private alte Firewall."
-                    : scenario.executionLifecycle
-                      ? "Ursprüngliche Template-Revision bleibt erhalten. Die gewünschte Quelle bleibt gebunden; zuletzt angewendet ändert sich erst nach erfolgreichem Apply. Bestehende Bestellung und State bleiben erhalten. Ein neuer Plan und die normale Apply-Freigabe sind erforderlich. Zurückgezogene Quellen brauchen einen geprüften Ersatz, keine Neubestellung; der Chat führt kein Upgrade aus."
-                      : scenario.applicationAccess === "advice"
-                        ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv. Der Besteller erhält 191 Rechte mit projektweiter Schlüsselverwaltung; Automation erhält 184 Workload-Rechte."
-                        : scenario.corporateIpv4 === "advice"
-                          ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
-                          : [
-                                "vpn",
-                                "platform-kubernetes",
-                                "firewall-access-bootstrap",
-                              ].includes(scenario.topic)
-                            ? buildAssistantKnowledge().topics.find(
-                                (topic) => topic.id === scenario.topic,
-                              )?.fieldOverview
-                            : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
+          explanation: scenario.platformImpactReview
+            ? "Der Platform Owner entscheidet über Löschungen und Ersetzungen nach Prüfung möglicher Datenverluste und betroffener Applications. Bestätigung bindet Artefakt-Hash, State und Abhängigkeiten. Neuer Plan, Apply separat; Observability bleibt Ziel."
+            : scenario.id === "application-upgrade-self-service-advice"
+              ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen bestehender Infrastruktur werden blockiert. Bei eigenständiger Durchführung ist keine zusätzliche Platform-Owner-Freigabe erforderlich."
+              : scenario.applicationUpgrade === "template"
+                ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen werden blockiert."
+                : scenario.applicationUpgrade === "platform"
+                  ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag und den Pfad veröffentlichen. Die Vertragsbindung wechselt nicht automatisch. Der Application Owner übernimmt ihn ausdrücklich. Keine private alte Firewall."
+                  : scenario.executionLifecycle
+                    ? "Ursprüngliche Template-Revision bleibt erhalten. Die gewünschte Quelle bleibt gebunden; zuletzt angewendet ändert sich erst nach erfolgreichem Apply. Bestehende Bestellung und State bleiben erhalten. Ein neuer Plan und die normale Apply-Freigabe sind erforderlich. Zurückgezogene Quellen brauchen einen geprüften Ersatz, keine Neubestellung; der Chat führt kein Upgrade aus."
+                    : scenario.applicationAccess === "advice"
+                      ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv. Der Besteller erhält 191 Rechte mit projektweiter Schlüsselverwaltung; Automation erhält 184 Workload-Rechte."
+                      : scenario.corporateIpv4 === "advice"
+                        ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
+                        : [
+                              "vpn",
+                              "platform-kubernetes",
+                              "firewall-access-bootstrap",
+                            ].includes(scenario.topic)
+                          ? buildAssistantKnowledge().topics.find(
+                              (topic) => topic.id === scenario.topic,
+                            )?.fieldOverview
+                          : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
           changes: [],
           references: [scenario.topic],
@@ -1157,7 +1179,7 @@ it("binds audit Grafana advice to native routing, retention and upgrade boundari
     (t) => t.id === "audit-logs",
   );
   expect(topic?.text).toContain("built-in");
-  expect(topic?.text).toContain("no Grafana admin");
+  expect(topic?.text).toContain("users log in with SSO; no admin");
   expect(topic?.text).toContain("own retention/cost");
   expect(topic?.text).toContain("No order upgrade");
   expect(topic?.text).toContain("historical replay");
@@ -1183,3 +1205,66 @@ it("requires owner decision, data-loss information and exact-plan binding in pla
     ),
   ).toContain("platform_impact_missing_artifact-binding");
 });
+
+it("rejects omitted or changed manually requested audit scopes", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "editor-audit-explicit-project",
+  )!;
+  for (const scopes of [
+    undefined,
+    [
+      {
+        resource_type: "project",
+        resource_id: "00000000-0000-4000-8000-000000000098",
+      },
+    ],
+  ]) {
+    const value = {
+      retention_days: 90,
+      acl: ["203.0.113.0/24"],
+      s3_object_lock: false,
+      ...(scopes === undefined ? {} : { link_scopes: scopes }),
+    };
+    expect(
+      validateAssistantScenario(scenario, {
+        explanation: "Reviewable local draft only.",
+        questions: [],
+        changes: [{ path: "audit_logs", operation: "replace", value }],
+        references: ["audit-logs"],
+      }).failures,
+    ).toContain("editor_expected_value_not_applied");
+  }
+});
+
+it.each(assistantScenarios.filter((s) => s.auditQuestionPaths))(
+  "requires the actual remaining audit decisions: $id",
+  (scenario) => {
+    const answer = {
+      explanation: "Noch nichts gespeichert.",
+      changes: [],
+      references: ["audit-logs"],
+      questions: scenario.auditQuestionPaths!.map((path) => ({
+        path,
+        text: "Bitte die tatsächliche Entscheidung angeben.",
+        options: [],
+      })),
+    };
+    expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+    expect(
+      validateAssistantScenario(scenario, { ...answer, questions: [] })
+        .failures,
+    ).toContain("audit_unanswered_decisions_not_preserved");
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        changes: [
+          {
+            path: "audit_logs",
+            operation: "replace",
+            value: { retention_days: 180, acl: [], s3_object_lock: true },
+          },
+        ],
+      }).failures,
+    ).toContain("audit_unanswered_decisions_not_preserved");
+  },
+);
