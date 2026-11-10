@@ -163,6 +163,11 @@ unlesbar.
 
 ## Version veröffentlichen und aktivieren
 
+Vor der Veröffentlichung kurze, versionsbezogene Änderungen in
+`infra/ci/release-notes.mjs` ergänzen. Versionen ohne kuratierte Hinweise werden
+nicht veröffentlicht. Patch-Releases beschreiben ihre eigenen Änderungen, statt
+die Ankündigung des ersten Produktionsrelease zu wiederholen.
+
 1. Geprüfte Quelle nach `main` zusammenführen.
 2. **Configurator Release** mit `build_only=true` und ausgewähltem `release_mode`
    starten. Alle Prüfungen für Anwendung, Browser, Datenbank, native Verträge und

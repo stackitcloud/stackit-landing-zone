@@ -149,6 +149,11 @@ without recovering/re-encrypting existing artifacts makes them unreadable.
 
 ## Publish and activate a version
 
+Before publishing, add concise, version-specific changes to
+`infra/ci/release-notes.mjs`. Publication rejects a version without curated notes;
+patch releases must describe their own changes rather than repeat the initial
+production-release announcement.
+
 1. Merge the checked source to `main`.
 2. Run **Configurator Release** with `build_only=true` and the selected
    `release_mode`. All non-inference application, browser, database, native and

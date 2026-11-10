@@ -627,7 +627,6 @@ function App() {
         </button>
         <span className="header-divider" />
         <span className="product-name">{t("Landing Zone Configurator")}</span>
-        <span className="header-badge">{t("Entwicklung")}</span>
         <select
           className="language-switch"
           aria-label={t("Sprache")}

@@ -678,12 +678,7 @@ small {
 .product-name {
   font-size: 0.9375rem;
 }
-.header-badge {
-  font-size: var(--nds-viewport-font-size-label-small);
-  border: 1px solid #ffffff65;
-  border-radius: var(--nds-viewport-border-radius-component-small);
-  padding: 0.125rem 0.5rem;
-}
+
 .header-user {
   margin-left: auto;
   display: flex;
@@ -1370,7 +1365,6 @@ pre {
     width: auto;
     margin: 0;
   }
-  .header-badge,
   .header-divider {
     display: none;
   }
