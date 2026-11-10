@@ -2077,7 +2077,7 @@ export function validateAssistantScenario(
       !dialogue.explanation.includes("nicht das komplexe Regel-/NAT-Objekt") ||
       !dialogue.explanation.includes("noch keine Regeln konfiguriert") ||
       !dialogue.explanation.includes("kann aktuell keine Firewall-Regeln") ||
-      !dialogue.explanation.includes("nicht Teil des MVP") ||
+      !dialogue.explanation.includes("wird derzeit nicht unterstützt") ||
       !dialogue.explanation.includes("GitHub-Issue #101") ||
       !dialogue.explanation.includes("Firewall-Admin")
     )
