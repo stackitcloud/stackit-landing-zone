@@ -28,12 +28,19 @@ Each deployment job shows the individual steps: credential preparation, reading 
 
 Plan and Apply are separate jobs. The Plan is saved with `-out` and encrypted by the native OpenTofu configuration. Apply downloads exactly the Plan artifact from the same run. After reviewing the Plan, approval is granted in the protected GitHub Environment. A small integrity check binds the artifact to its hash, commit, repository, run, root, inputs and IaC files; Plans are valid for at most 24 hours. OpenTofu additionally checks whether state has changed since planning. Re-runs are blocked: start a new run with a fresh Plan.
 
+Immediately before applying the saved plan, `apply-env.sh` clears external
+`TF_VAR_*` inputs. The encrypted, reviewed plan already contains their typed
+values. This avoids OpenTofu 1.12.6 rejecting a planned boolean against a raw
+environment value. Backend authentication, provider credentials and
+`TF_ENCRYPTION` remain available; source/run/hash approval checks are unchanged.
+
 The central commands are visible in the workflow, for example:
 
 ```sh
 tofu -chdir="infra/$LZC_ROOT" init -input=false -lockfile=readonly -backend-config="$LZC_PRIVATE/$LZC_ROOT.backend.hcl"
 tofu -chdir="infra/$LZC_ROOT" validate -no-color
 tofu -chdir=infra/platform plan -input=false -no-color -var-file=../environments/lzc-dev.tfvars.json -out="$LZC_PLAN"
+source infra/ci/apply-env.sh
 timeout --foreground --signal=INT --kill-after=10m 70m \
   tofu -chdir=infra/platform apply -input=false -no-color "$LZC_PLAN"
 ```
