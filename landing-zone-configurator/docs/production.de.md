@@ -53,6 +53,11 @@ Diese Konfiguration allein belegt weder die Verteilung über Verfügbarkeitszone
 noch Datenbank-Failover oder eine getestete Wiederherstellungszeit. Solche Übungen
 vor Zusage eines Verfügbarkeitsziels protokollieren.
 
+Die Bereitschaftsprüfung wartet nach Start oder rollender Aktivierung bis zu fünf
+Minuten: CF kann `start` beenden, während eine Instanz noch startet. Alle drei Instanzen
+müssen laufen. Eine geänderte Instanzanzahl, ungültige Statusdaten oder das abgelaufene
+Zeitlimit lassen den Release fehlschlagen.
+
 ## Bestehendes Projekt initialisieren
 
 OpenTofu 1.12.6 und die im Anwendungs-README gepinnten Node/npm-Versionen verwenden.

@@ -79,7 +79,7 @@ jobs:
           node --test ../infra/ci/prepare-release.test.mjs
           node --test ../infra/ci/buildpack-source.test.mjs
           node --test ../infra/ci/image-staging.test.mjs
-          node --test ../infra/ci/release-lifecycle.test.mjs ../infra/ci/production.test.mjs
+          node --test ../infra/ci/release-lifecycle.test.mjs ../infra/ci/production.test.mjs ../infra/ci/production-readiness.test.mjs
       - name: Test first preparations and stateful platform Plan/Apply broker
         run: npm run test:platform-database
       - name: Test database migrations and tenant isolation
