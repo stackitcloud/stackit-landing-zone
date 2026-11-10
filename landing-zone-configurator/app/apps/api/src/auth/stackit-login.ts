@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { newSessionToken, sessionCookie } from "./github-flow.js";
+import { PendingFlows } from "./pending-flows.js";
 import {
   type AuthServices,
   authenticatedSession,
@@ -15,15 +16,12 @@ export function registerStackitLogin(
   auth: AuthServices,
   createFlow: () => StackitDeviceFlow = () => new StackitDeviceFlow(),
 ) {
-  const pending = new Map<
-    string,
-    {
-      flow: StackitDeviceFlow;
-      busy: boolean;
-      expiresAt: number;
-      existingSessionId: string | null;
-    }
-  >();
+  const pending = new PendingFlows(
+    auth.origin,
+    "login",
+    createFlow,
+    auth.pendingFlows,
+  );
   let starts = 0;
   let windowStart = Date.now();
   const clear =
@@ -32,16 +30,18 @@ export function registerStackitLogin(
     cookie(request, "__Host-lzc-device");
   app.get("/auth/stackit/callback", async (request, reply) => {
     const key = requestKey(request);
-    const entry = key ? pending.get(key) : undefined;
-    if (!entry || entry.busy || !entry.flow.acceptAuthorization(request.query))
+    const entry = key ? await pending.get(key) : undefined;
+    if (!key || !entry || entry.busy)
       return reply.code(400).send({ error: "invalid_stackit_callback" });
+    try {
+      if (!entry.flow.acceptAuthorization(request.query))
+        return reply.code(400).send({ error: "invalid_stackit_callback" });
+    } finally {
+      await pending.release(key, entry);
+    }
     return reply
       .header("Referrer-Policy", "no-referrer")
       .redirect(new URL("/#stackit-login", auth.origin).toString());
-  });
-  app.addHook("onClose", async () => {
-    for (const entry of pending.values()) entry.flow.cancel();
-    pending.clear();
   });
   app.register(async (routes) => {
     routes.setErrorHandler((_error, _request, reply) =>
@@ -55,11 +55,6 @@ export function registerStackitLogin(
         !z.strictObject({}).safeParse(request.query ?? {}).success
       )
         return reply.code(400).send({ error: "invalid_login_request" });
-      for (const [key, entry] of pending)
-        if (Date.now() >= entry.expiresAt && !entry.busy) {
-          entry.flow.cancel();
-          pending.delete(key);
-        }
     });
     routes.post(
       "/auth/stackit/start",
@@ -73,13 +68,13 @@ export function registerStackitLogin(
             .code(403)
             .send({ error: "invalid_request_origin_or_csrf" });
         const previous = requestKey(request);
-        if (previous && pending.has(previous))
+        if (previous && (await pending.read(previous)))
           return reply.code(409).send({ error: "flow_already_started" });
         if (Date.now() - windowStart >= 60000) {
           starts = 0;
           windowStart = Date.now();
         }
-        if (++starts > 300 || pending.size >= 100)
+        if (++starts > 300)
           return reply
             .header("Retry-After", "60")
             .code(429)
@@ -91,7 +86,11 @@ export function registerStackitLogin(
           expiresAt: Date.now() + 900000,
           existingSessionId: existing?.id ?? null,
         };
-        pending.set(key, entry);
+        if (!(await pending.set(key, entry)))
+          return reply
+            .header("Retry-After", "60")
+            .code(429)
+            .send({ error: "login_rate_limited" });
         try {
           const authorization = await entry.flow.begin();
           entry.expiresAt = Date.parse(authorization.expiresAt);
@@ -102,16 +101,16 @@ export function registerStackitLogin(
           return authorization;
         } catch (error) {
           entry.flow.cancel();
-          pending.delete(key);
+          await pending.delete(key, entry);
           throw error;
         } finally {
-          entry.busy = false;
+          await pending.release(key, entry);
         }
       },
     );
     routes.post("/auth/stackit/poll", async (request, reply) => {
       const key = requestKey(request);
-      const entry = key ? pending.get(key) : undefined;
+      const entry = key ? await pending.get(key) : undefined;
       if (!key || !entry)
         return reply.code(409).send({ error: "stackit_flow_missing" });
       if (entry.busy) return { status: "waiting", retryAfterMs: 1000 };
@@ -170,15 +169,15 @@ export function registerStackitLogin(
         return { status: "verified" };
       } catch (error) {
         entry.flow.cancel();
-        pending.delete(key);
+        await pending.delete(key, entry);
         reply.header("Set-Cookie", clear);
         throw error;
       } finally {
-        entry.busy = false;
         if (entry.flow.state().status === "verified") {
           entry.flow.cancel();
-          pending.delete(key);
+          await pending.delete(key, entry);
         }
+        await pending.release(key, entry);
       }
     });
     routes.post("/auth/stackit/refresh", async (request, reply) => {
@@ -195,11 +194,11 @@ export function registerStackitLogin(
     });
     routes.post("/auth/stackit/cancel", async (request, reply) => {
       const key = requestKey(request);
-      const entry = key ? pending.get(key) : undefined;
+      const entry = key ? await pending.get(key) : undefined;
       if (entry?.busy)
         return reply.code(409).send({ error: "stackit_flow_busy" });
       entry?.flow.cancel();
-      if (key) pending.delete(key);
+      if (key && entry) await pending.delete(key, entry);
       reply.header("Set-Cookie", clear);
       return { status: "cancelled" };
     });

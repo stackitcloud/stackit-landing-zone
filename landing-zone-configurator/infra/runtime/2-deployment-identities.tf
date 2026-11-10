@@ -1,6 +1,7 @@
 # Org managers provision these broker services; release receives only their space-scoped keys.
 resource "cloudfoundry_service_instance" "release" {
-  count = var.production ? 1 : 0
+  depends_on = [cloudfoundry_space_role.deployer]
+  count      = var.production ? 1 : 0
 
   name                  = "configurator-release"
   space                 = cloudfoundry_space.configurator.id
@@ -18,8 +19,9 @@ resource "cloudfoundry_service_credential_binding" "release" {
 }
 
 resource "cloudfoundry_service_instance" "dispatcher" {
-  count    = var.production ? 1 : 0
-  provider = cloudfoundry.runners
+  depends_on = [cloudfoundry_space_role.runner_developer]
+  count      = var.production ? 1 : 0
+  provider   = cloudfoundry.runners
 
   name                  = "configurator-dispatcher"
   space                 = cloudfoundry_space.plan_runners.id

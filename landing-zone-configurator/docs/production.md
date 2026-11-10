@@ -19,6 +19,19 @@ web process during rolling deployment. Warm reserves are shared through PostgreS
 locks, not multiplied by the web replica count. Infrastructure jobs and release
 activation share `configurator-lzc-prod-mutation` as their single writer.
 
+Pending STACKIT login and organization-proof flows use the same PostgreSQL
+service as sessions, encrypted with the durable application artifact key. Their
+ciphertext is bound to the public origin, flow purpose and hashed browser/session
+identifier. Each operation takes a short database lease, returns its connection
+before calling the identity provider, then persists or deletes the flow. No other
+replica can exchange the same authorization code concurrently. Completed login
+flows and cancelled flows are deleted; expired rows are excluded immediately and
+removed when another flow starts. A process lost during an exchange leaves the
+flow unavailable until its expiry (at most 15 minutes); restart the login with a
+fresh browser flow rather than replaying an ambiguous token exchange. Closing an
+API instance does not cancel flows held in shared storage. Local setups without
+an artifact key retain the single-process in-memory fallback.
+
 Login state, sessions and job records use PostgreSQL; no sticky browser session
 is required. Runtime users lack database administration privileges. Application
 and Runner credentials are separate `space-scoped-service-account` services with

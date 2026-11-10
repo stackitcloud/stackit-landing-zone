@@ -8,11 +8,13 @@ import {
   sessionCookie,
   validGitHubCallback,
 } from "./github-flow.js";
+import type { PendingFlowStorage } from "./pending-flows.js";
 import type { UserTokenStore } from "./secrets.js";
 import type { StackitSessions } from "./stackit-sessions.js";
 import type { AuthStore, Session } from "./store.js";
 
 export type AuthServices = {
+  pendingFlows?: PendingFlowStorage;
   origin: string;
   clientId: string;
   store: AuthStore;
