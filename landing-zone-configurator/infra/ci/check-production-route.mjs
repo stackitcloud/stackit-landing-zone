@@ -2,7 +2,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { deploymentStage } from "./stages.mjs";
 const origin=deploymentStage("lzc-prod").publicOrigin;
 // STACKIT issues a custom-domain certificate asynchronously after route mapping.
-const deadline=Date.now()+45*60_000;
+const deadline=Date.now()+65*60_000;
 for (;;) {
   let ready=false;
   try {
