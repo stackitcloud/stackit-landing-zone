@@ -23,6 +23,7 @@ export const labels: Record<string, string> = {
   connectivity_regions: "Connectivity je Region",
   firewall_config: "Firewall-Regeln",
   firewall_admin_username: "Firewall-Administrator",
+  firewall_bootstrap_username: "Vorhandener Image-Administrator",
   firewall_bootstrap: "Firewall-Zugang initialisieren",
   firewall_api_secret_version: "Version des Firewall-Zugangs",
   landing_zones: "Landing-Zone-Projekte",

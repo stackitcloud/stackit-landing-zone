@@ -5,8 +5,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "credential-foundations",
       file: "credential-foundations.md",
-      version: 3,
-      checkedOn: "2026-10-29",
+      version: 4,
+      checkedOn: "2026-11-10",
       qualification: "local-draft-not-reviewed-release",
       groups: [],
       mandatory: true,
@@ -15,6 +15,8 @@ export const assistantKnowledgeTopics = {
         "vpn_pre_shared_keys",
         "firewall_admin_password",
         "firewall_api_credentials",
+        "firewall_bootstrap_username",
+        "firewall_bootstrap_password",
       ],
       dependencies: [],
       sources: [
@@ -31,7 +33,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/providers.tf",
@@ -70,6 +72,7 @@ export const assistantKnowledgeTopics = {
         "vpn_pre_shared_keys[*].tunnel1",
         "vpn_pre_shared_keys[*].tunnel2",
         "firewall_admin_password",
+        "firewall_bootstrap_password",
         "firewall_api_credentials",
         "firewall_api_credentials.api_key",
         "firewall_api_credentials.api_secret",
@@ -94,7 +97,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/connectivity/variables.tf",
           sha256:
-            "c9e31385e7a17d36e1752ad14d5b424435212f2d67b140d2f6166f1bf6344af5",
+            "66038ac51f0d9d8cd66b05cde7e6ae9ab48937a3ffd8d686d69df81b8aec67ad",
         },
         {
           path: "src/modules/connectivity/1-network-area.tf",
@@ -104,7 +107,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -114,7 +117,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "2682ed10d4f0f087390b34c9a5d939ca257cbed8d6b694e8edbe6a6081ec6392",
+            "8548b2866c39a15590d12fc02372b99776cf2f8494962faaf32fd3205049414d",
         },
         {
           path: "src/modules/landing-zone/3-network.tf",
@@ -201,7 +204,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/providers.tf",
@@ -211,7 +214,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -276,7 +279,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -331,7 +334,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -412,7 +415,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -501,12 +504,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -605,12 +608,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "src/modules/management/variables.tf",
@@ -666,7 +669,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/connectivity/variables.tf",
           sha256:
-            "c9e31385e7a17d36e1752ad14d5b424435212f2d67b140d2f6166f1bf6344af5",
+            "66038ac51f0d9d8cd66b05cde7e6ae9ab48937a3ffd8d686d69df81b8aec67ad",
         },
         {
           path: "src/modules/connectivity/6-dns-zones.tf",
@@ -686,7 +689,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-validation.ts",
@@ -752,12 +755,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/connectivity/variables.tf",
           sha256:
-            "c9e31385e7a17d36e1752ad14d5b424435212f2d67b140d2f6166f1bf6344af5",
+            "66038ac51f0d9d8cd66b05cde7e6ae9ab48937a3ffd8d686d69df81b8aec67ad",
         },
         {
           path: "src/modules/connectivity/5-firewall.tf",
           sha256:
-            "e2d3186eed0e4ddb5ac6158b75ca037e3ce3bc05650d598e18b68ce5ae9a7e1e",
+            "592d2334621db1878119ebb82ae4728e8b6456c5c62bf35488e874bed3e014b3",
         },
         {
           path: "src/modules/connectivity/3-external-network.tf",
@@ -782,7 +785,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -872,17 +875,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "src/modules/connectivity/variables.tf",
           sha256:
-            "c9e31385e7a17d36e1752ad14d5b424435212f2d67b140d2f6166f1bf6344af5",
+            "66038ac51f0d9d8cd66b05cde7e6ae9ab48937a3ffd8d686d69df81b8aec67ad",
         },
         {
           path: "src/modules/connectivity/7-vpn.tf",
@@ -1054,7 +1057,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/modules/firewall-config/variables.tf",
@@ -1064,7 +1067,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "src/providers.tf",
@@ -1166,8 +1169,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "firewall-access-bootstrap",
       file: "firewall-access-bootstrap.md",
-      version: 1,
-      checkedOn: "2026-10-10",
+      version: 2,
+      checkedOn: "2026-11-10",
       qualification: "local-draft-not-reviewed-release",
       groups: ["firewall", "credentials"],
       mandatory: false,
@@ -1177,13 +1180,15 @@ export const assistantKnowledgeTopics = {
         "firewall_api_credentials",
         "firewall_bootstrap",
         "firewall_api_secret_version",
+        "firewall_bootstrap_username",
+        "firewall_bootstrap_password",
       ],
       dependencies: ["firewall-infrastructure", "management-state"],
       sources: [
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/_firewall-bootstrap.tf",
@@ -1201,6 +1206,11 @@ export const assistantKnowledgeTopics = {
             "e003def890db3ea64fff99593d8dae7d2cb635541bb5eb2be5a71abea04322e2",
         },
         {
+          path: "src/modules/connectivity/5-firewall.tf",
+          sha256:
+            "592d2334621db1878119ebb82ae4728e8b6456c5c62bf35488e874bed3e014b3",
+        },
+        {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
             "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
@@ -1215,14 +1225,15 @@ export const assistantKnowledgeTopics = {
       scenarios: ["A13", "A16", "A23"],
       fieldPaths: [
         "firewall_admin_username",
+        "firewall_bootstrap_username",
         "firewall_bootstrap",
         "firewall_api_secret_version",
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/firewall-access-bootstrap.md",
-      text: "# Firewall Access and Bootstrap Phases\n\n## Purpose\n\nPrepare secure appliance access for supported bootstrap and policy operations\nwithout embedding secrets in conversations, configuration documents or exports.\n\n## Accelerator Contract\n\nNative roots: firewall_admin_username, firewall_admin_password,\nfirewall_api_credentials, firewall_bootstrap and firewall_api_secret_version.\nBootstrap is a boolean phase control, not an invented object. Current root\nbootstrap handles the single connectivity.firewall path, can create local API\ncredentials and use management Secrets Manager/Vault in later phases. Existing\nfile/secret/provider paths are native execution concerns, not instructions for\nthe model to read them. Policy activation follows the actual bootstrap predicates.\n\n## Dependencies\n\nAn explicitly required supported firewall, management secret storage, provider\nand appliance connectivity. HA access requirements cover primary and backup.\nCredential foundations stay mandatory even when discussing only infrastructure.\n\n## Dialogue\n\nAsk whether this is infrastructure creation, bootstrap or policy maintenance,\nwhich authorized runner can reach the appliance and who owns credentials.\nDirect users to secure binding controls. Never ask for password/API values or\ninternal secret-version IDs. Defaults in an image/schema are not a safe access\ndecision or approval to initialize an appliance.\n\n## Examples\n\nSynthetic native phase fragment: firewall_bootstrap = false. It is not alone a\ncomplete policy prerequisite; external credentials, secret availability and\nthe enabled firewall_config contract must be checked independently.\n\n## Limits\n\nDo not claim generic regional/multi-appliance bootstrap parity, automatic\ncredential rotation or fully qualified execution outside the Configurator.\nCurrent chat cannot alter secrets, bootstrap access or execution grants.\nLocal credential-file creation is a sensitive execution side effect; it must\nnot be triggered merely by selecting a template or accepting an SNA proposal.\n\n## Credentials\n\nPasswords/API keys stay in secure external bindings; never echo defaults from\nsource code. Secret-version metadata is not a value to infer. No token rotation,\ncredential-file reads, raw state or plan transfer to model context.\n\n## Sources\n\nRoot variables, bootstrap logic, providers and deployment credentials document\nthe native phase boundary. Re-review precedence, write-only/ephemeral secrets\nand scope before regeneration; this text does not certify safe bootstrap runs.",
+      text: "# Firewall Access and Bootstrap Phases\n\n## Purpose\n\nPrepare appliance access without secrets in conversations or exports.\n\n## Accelerator Contract\n\nNative roots: firewall_admin_username, firewall_admin_password,\nfirewall_api_credentials, firewall_bootstrap, firewall_api_secret_version,\nfirewall_bootstrap_username and firewall_bootstrap_password.\nNew native VMs initialize the configured admin before API/HA setup when\nfirewall_admin_password is non-null; null skips preconfigured images. Separate\nbootstrap credentials authenticate the image account. Verify a custom admin before\ngiving the retained image account the same password. Upgrades/variable changes\nnever reset existing VMs. Packaged Hosted Runners require a new native source pin.\nfirewall_bootstrap is a separate boolean API-key phase for single\nconnectivity.firewall, with local credentials and later management Vault use.\nFile/provider paths are native execution details. Policy follows actual predicates.\n\n## Dependencies\n\nRequire a supported firewall, management secrets and provider/appliance access;\nHA covers both nodes. Credential foundations remain mandatory.\n\n## Dialogue\n\nClarify creation/bootstrap/policy, authorized Runner reachability and credential\nownership. Use secure bindings; never request password/API values or internal\nsecret-version IDs. Image defaults do not authorize initialization.\n\n## Examples\n\nSynthetic native phase fragment: firewall_bootstrap = false. It is not alone a\ncomplete policy prerequisite; external credentials, secret availability and\nthe enabled firewall_config contract must be checked independently.\n\n## Limits\n\nDo not claim generic regional/multi-appliance bootstrap parity, automatic\ncredential rotation or fully qualified execution outside the Configurator.\nCurrent chat cannot alter secrets, bootstrap access or execution grants.\nLocal credential-file creation is a sensitive execution side effect; it must\nnot be triggered merely by selecting a template or accepting an SNA proposal.\n\n## Credentials\n\nPasswords/API keys stay in secure external bindings; never echo defaults from\nsource code. Secret-version metadata is not a value to infer. No token rotation,\ncredential-file reads, raw state or plan transfer to model context.\n\n## Sources\n\nRoot variables, creation provisioners, bootstrap logic and providers define scope;\nreview secret precedence before regeneration. This text is not certification.\n",
       sha256:
-        "e786ad8faafdf15955a05a37f61c2090c22606b545491d3ccf84b66958db94e8",
+        "909657e6143fe2a57e0def7eb74c7b877c2726602f3d3806add4bf3c8b104e13",
     },
     {
       id: "devops-git",
@@ -1238,7 +1249,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/modules/devops/variables.tf",
@@ -1248,7 +1259,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "src/providers.tf",
@@ -1297,7 +1308,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/modules/platform-kubernetes/variables.tf",
@@ -1312,7 +1323,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "src/providers.tf",
@@ -1429,7 +1440,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/modules/landing-zone/variables.tf",
@@ -1555,7 +1566,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/modules/sandboxes/variables.tf",
@@ -1565,7 +1576,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/main.tf",
           sha256:
-            "300c357f9f3eb5e296f77f5a5ebfb1556e8e3f886c0cecfd335810bcddb4d951",
+            "1c191d74f5e6b04d12e4c821b6ca2a796169af6433b537e831f5528676f2d1d3",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/common-document.ts",
@@ -1613,7 +1624,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/variables.tf",
           sha256:
-            "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+            "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
         },
         {
           path: "src/_landing-zone-kubernetes.tf",
@@ -1704,7 +1715,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "2682ed10d4f0f087390b34c9a5d939ca257cbed8d6b694e8edbe6a6081ec6392",
+            "8548b2866c39a15590d12fc02372b99776cf2f8494962faaf32fd3205049414d",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",

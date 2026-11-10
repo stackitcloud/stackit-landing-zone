@@ -19,7 +19,18 @@ einzubetten.
 ## Accelerator-Vertrag
 
 Native Root-Eingaben: `firewall_admin_username`, `firewall_admin_password`,
-`firewall_api_credentials`, `firewall_bootstrap`, `firewall_api_secret_version`.
+`firewall_api_credentials`, `firewall_bootstrap`, `firewall_api_secret_version`,
+`firewall_bootstrap_username` und `firewall_bootstrap_password`.
+Bei neuen Appliances initialisiert ein nicht-null `firewall_admin_password`
+den konfigurierten Administrator beim Erstellen des Servers, vor API- und HA-Setup.
+Die separaten Bootstrap-Zugangsdaten authentifizieren das bestehende Image-Konto.
+Ein eigener Administrator wird verifiziert, bevor das Image-Konto dasselbe
+konfigurierte Passwort erhaelt; es bleibt zur Wiederherstellung bestehen.
+Bestehende VMs werden bei Upgrades oder Variablenaenderungen nicht zurueckgesetzt.
+Ein null-Admin-Passwort ueberspringt die Initialisierung vorkonfigurierter Images.
+Dies ist getrennt von `firewall_bootstrap`, das die API-Schluesselerzeugung steuert.
+Gehostete Runner verwenden festgelegte native Quellstaende; ein Merge aktualisiert
+keinen bereits paketierten Runner.
 Bootstrap ist ein boolescher Phasenschalter, kein erfundenes Objekt.
 Aktueller Root-Bootstrap behandelt den einzelnen Pfad `connectivity.firewall`,
 kann lokale API-Zugangsdaten erzeugen und in spaeteren Phasen Management

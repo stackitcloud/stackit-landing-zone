@@ -2,32 +2,32 @@
 
 ## Purpose
 
-Prepare secure appliance access for supported bootstrap and policy operations
-without embedding secrets in conversations, configuration documents or exports.
+Prepare appliance access without secrets in conversations or exports.
 
 ## Accelerator Contract
 
 Native roots: firewall_admin_username, firewall_admin_password,
-firewall_api_credentials, firewall_bootstrap and firewall_api_secret_version.
-Bootstrap is a boolean phase control, not an invented object. Current root
-bootstrap handles the single connectivity.firewall path, can create local API
-credentials and use management Secrets Manager/Vault in later phases. Existing
-file/secret/provider paths are native execution concerns, not instructions for
-the model to read them. Policy activation follows the actual bootstrap predicates.
+firewall_api_credentials, firewall_bootstrap, firewall_api_secret_version,
+firewall_bootstrap_username and firewall_bootstrap_password.
+New native VMs initialize the configured admin before API/HA setup when
+firewall_admin_password is non-null; null skips preconfigured images. Separate
+bootstrap credentials authenticate the image account. Verify a custom admin before
+giving the retained image account the same password. Upgrades/variable changes
+never reset existing VMs. Packaged Hosted Runners require a new native source pin.
+firewall_bootstrap is a separate boolean API-key phase for single
+connectivity.firewall, with local credentials and later management Vault use.
+File/provider paths are native execution details. Policy follows actual predicates.
 
 ## Dependencies
 
-An explicitly required supported firewall, management secret storage, provider
-and appliance connectivity. HA access requirements cover primary and backup.
-Credential foundations stay mandatory even when discussing only infrastructure.
+Require a supported firewall, management secrets and provider/appliance access;
+HA covers both nodes. Credential foundations remain mandatory.
 
 ## Dialogue
 
-Ask whether this is infrastructure creation, bootstrap or policy maintenance,
-which authorized runner can reach the appliance and who owns credentials.
-Direct users to secure binding controls. Never ask for password/API values or
-internal secret-version IDs. Defaults in an image/schema are not a safe access
-decision or approval to initialize an appliance.
+Clarify creation/bootstrap/policy, authorized Runner reachability and credential
+ownership. Use secure bindings; never request password/API values or internal
+secret-version IDs. Image defaults do not authorize initialization.
 
 ## Examples
 
@@ -51,6 +51,5 @@ credential-file reads, raw state or plan transfer to model context.
 
 ## Sources
 
-Root variables, bootstrap logic, providers and deployment credentials document
-the native phase boundary. Re-review precedence, write-only/ephemeral secrets
-and scope before regeneration; this text does not certify safe bootstrap runs.
+Root variables, creation provisioners, bootstrap logic and providers define scope;
+review secret precedence before regeneration. This text is not certification.

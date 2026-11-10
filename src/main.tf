@@ -73,11 +73,13 @@ module "connectivity" {
   vpn                 = var.connectivity.vpn
   vpn_pre_shared_keys = var.vpn_pre_shared_keys
 
-  # Only read when connectivity.firewall.ha is set, to log into both appliances and push
-  # their node-local CARP settings. Unset endpoint means the primary's public IP.
-  firewall_admin_endpoint = try(var.firewall_config.endpoint, null)
-  firewall_admin_username = var.firewall_admin_username
-  firewall_admin_password = var.firewall_admin_password
+  # Desired credentials initialize new VMs and authenticate HA setup. Image credentials
+  # are creation-only; the optional endpoint override applies to HA, not initialization.
+  firewall_admin_endpoint     = try(var.firewall_config.endpoint, null)
+  firewall_admin_username     = var.firewall_admin_username
+  firewall_admin_password     = var.firewall_admin_password
+  firewall_bootstrap_username = var.firewall_bootstrap_username
+  firewall_bootstrap_password = var.firewall_bootstrap_password
 }
 
 module "connectivity_eu01" {
@@ -97,9 +99,11 @@ module "connectivity_eu01" {
   vpn                 = try(var.connectivity_regions["eu01"].vpn, null)
   vpn_pre_shared_keys = var.vpn_pre_shared_keys
 
-  firewall_admin_endpoint = try(var.firewall_config.endpoint, null)
-  firewall_admin_username = var.firewall_admin_username
-  firewall_admin_password = var.firewall_admin_password
+  firewall_admin_endpoint     = try(var.firewall_config.endpoint, null)
+  firewall_admin_username     = var.firewall_admin_username
+  firewall_admin_password     = var.firewall_admin_password
+  firewall_bootstrap_username = var.firewall_bootstrap_username
+  firewall_bootstrap_password = var.firewall_bootstrap_password
 }
 
 module "connectivity_eu02" {
@@ -119,9 +123,11 @@ module "connectivity_eu02" {
   vpn                 = try(var.connectivity_regions["eu02"].vpn, null)
   vpn_pre_shared_keys = var.vpn_pre_shared_keys
 
-  firewall_admin_endpoint = try(var.firewall_config.endpoint, null)
-  firewall_admin_username = var.firewall_admin_username
-  firewall_admin_password = var.firewall_admin_password
+  firewall_admin_endpoint     = try(var.firewall_config.endpoint, null)
+  firewall_admin_username     = var.firewall_admin_username
+  firewall_admin_password     = var.firewall_admin_password
+  firewall_bootstrap_username = var.firewall_bootstrap_username
+  firewall_bootstrap_password = var.firewall_bootstrap_password
 }
 
 #####################

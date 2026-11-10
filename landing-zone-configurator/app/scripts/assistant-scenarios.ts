@@ -2908,11 +2908,20 @@ export function assistantFirewallBootstrapFailures(text: string): string[] {
     "firewall_api_credentials",
     "firewall_bootstrap",
     "firewall_api_secret_version",
+    "firewall_bootstrap_username",
+    "firewall_bootstrap_password",
   ])
     if (!text.includes(field))
       failures.push(`bootstrap_overview_missing_${field}`);
   if (!/geschützt|geschuetzt|sicher|secure|extern/i.test(text))
     failures.push("bootstrap_overview_missing_secure_binding");
+  if (
+    !/neu[^.!?\n]{0,35}(?:Appliance|Firewall|erstellt)/i.test(text) ||
+    !/bestehend[^.!?\n]{0,120}(?:nicht|kein)[^.!?\n]{0,50}(?:zurück|reset|rotier)/i.test(
+      text,
+    )
+  )
+    failures.push("bootstrap_overview_missing_creation_only_boundary");
   if (
     !/Infrastruktur|infrastructure/i.test(text) ||
     !/Bootstrap/i.test(text) ||

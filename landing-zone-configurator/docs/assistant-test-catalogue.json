@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "4b628e0b4346142116f677e14b5cf0d3c6769352b6d51690b754dfc2568ba586",
+  "knowledgeSha256": "772ca720d3ff6dbf39d7b49fd3a67ae836ddea39cc022e3c303c138870abd6e9",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "f28d9788be3fa39d58e59c44bbdb8c98a9999da8227d1efc6479bb5347f1baa7",
+    "scripts/assistant-scenarios.ts": "b1c09da0d5bc47f8260807aed1c4ed4e9af8090b375fc3c9b0093be584f2dc8f",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "7b4a157bcac47dd13df0bf133ae1903a0f63b45b69723d088a9ef3c2831ad5a0",
+  "suiteSha256": "9d0aaa5777345b4b6db11723b7ac7d0242604c2cdff515b52101bc6d1508a130",
   "topics": [
     {
       "id": "credential-foundations",
@@ -59,6 +59,15 @@
         },
         {
           "path": "firewall_admin_password",
+          "group": "credentials",
+          "type": "string",
+          "optional": true,
+          "proposalPath": null,
+          "responsibility": "operator",
+          "mode": "requirements-only"
+        },
+        {
+          "path": "firewall_bootstrap_password",
           "group": "credentials",
           "type": "string",
           "optional": true,
@@ -4535,6 +4544,15 @@
           "proposalPath": null,
           "responsibility": "operator",
           "mode": "requirements-only"
+        },
+        {
+          "path": "firewall_bootstrap_username",
+          "group": "firewall",
+          "type": "string",
+          "optional": true,
+          "proposalPath": "firewall_bootstrap_username",
+          "responsibility": "user",
+          "mode": "propose-validated-draft"
         },
         {
           "path": "firewall_bootstrap",

@@ -16,6 +16,8 @@ output "firewall_next_hop_ip" {
 output "firewall_public_ip" {
   description = "Map of network area keys to primary firewall WAN public IPs."
   value       = { for key, address in stackit_public_ip.wan-ip : key => address.ip }
+
+  depends_on = [stackit_server.firewall, stackit_server.firewall_backup]
 }
 
 output "firewall_backup_public_ip" {

@@ -152,6 +152,36 @@ curl -o firewall-image.qcow2 https://opnsense.object.storage.eu01.onstackit.clou
 ```
 
 <a id="3-authenticate-with-stackit"></a>
+Für eine neue Firewall die gewünschte Administrator-Anmeldung **vor dem ersten
+Apply** festlegen. Das Passwort außerhalb versionierter tfvars halten:
+
+```bash
+export TF_VAR_firewall_admin_username=root
+read -rsp 'Neues Firewall-Administratorpasswort: ' TF_VAR_firewall_admin_password
+export TF_VAR_firewall_admin_password
+printf '\n'
+```
+
+Der VM-Erstellungsschritt meldet sich mit dem vorhandenen Image-Zugang an,
+initialisiert und verifiziert den gewünschten Administrator und endet vor
+API-Schlüssel-Erzeugung und HA-Konfiguration. Bei eigenem Benutzernamen legt er
+einen vollberechtigten Administrator an und setzt auch das beibehaltene
+`root`-/Image-Konto auf das konfigurierte Passwort. Das bekannte Image-Passwort
+funktioniert danach nicht mehr. Bestehende VMs werden weder durch ein normales
+Apply noch durch Änderungen dieser Variablen zurückgesetzt. Ihre Passwörter
+explizit auf der Appliance rotieren. Bei Ersatz einer VM läuft die
+Initialisierung erneut.
+
+`firewall_bootstrap_username` und `firewall_bootstrap_password` wählen die
+vorhandene Image-Anmeldung, wenn sie vom ausgelieferten Image abweicht. Sie sind
+von den gewünschten `firewall_admin_*`-Werten getrennt. Mit
+`firewall_admin_password = null` entfällt die Initialisierung für ein bereits
+konfiguriertes Image mit separat bereitgestellten API-Zugängen. Eigene Passwörter
+dürfen höchstens 72 UTF-8-Bytes umfassen, da OPNsense standardmäßig bcrypt nutzt.
+Die Initialisierung benötigt Python 3 und Zugriff auf den öffentlichen
+HTTPS-Endpunkt der neuen Appliance. Sie verwendet wie der API-Schlüssel-Bootstrap
+das selbstsignierte Zertifikat des Images.
+
 ### 3. Bei STACKIT authentifizieren
 
 Melden Sie sich interaktiv über den Browser an:
@@ -397,10 +427,7 @@ Das erste `tofu apply` leitet den API-Schlüssel ab (und wartet dabei auf den Ab
 
 Zwei Läufe sind unvermeidbar: Der Provider benötigt den Schlüssel zur Plan-Zeit, und ein während eines Apply erstellter Wert kann keinen Provider im selben Lauf konfigurieren.
 
-Die verwendete Appliance-Anmeldung stammt aus `firewall_admin_password`, standardmäßig dem im STACKIT-OPNsense-Image hinterlegten `root`-Passwort. Für eine neue Bereitstellung muss deshalb nichts exportiert werden.
-
-> [!IMPORTANT]
-> Ändern Sie das Passwort auf der Appliance (**System → Access → Users**). Das Passwort wird nur zur Ableitung des API-Schlüssels verwendet. Sobald der Schlüssel existiert, wird es überhaupt nicht mehr gelesen.
+Der API-Schlüssel-Bootstrap verwendet die bei der VM-Erstellung initialisierte Administrator-Anmeldung. `firewall_admin_username` und `firewall_admin_password` müssen zur Appliance passen. Bei bestehenden Appliances ändert eine Anpassung der Variablen das Passwort nicht: zuerst explizit auf der Appliance rotieren, danach die geschützte Bindung aktualisieren. Die HA-Konfiguration verwendet diese Administrator-Anmeldung weiterhin.
 
 **3. Bootstrap-Variable weglassen und Cache-Datei löschen**
 
@@ -444,7 +471,7 @@ Zwei Folgen sollten Sie vor der Aktivierung kennen:
 Was genau umschaltet und was gemessen wurde, steht unter [Hochverfügbarkeit](architecture.de.md#high-availability-optional).
 
 > [!IMPORTANT]
-> Die Backup-Appliance startet mit demselben Image-Standardpasswort wie der Primary, und ihre Web-GUI antwortet auf ihrer eigenen öffentlichen IP, bis die Richtlinie übertragen ist. Die obige Aussperrwarnung gilt für beide Knoten.
+> Die Backup-Appliance erhält bei der Erstellung dieselben konfigurierten Administrator-Zugangsdaten; ihre Web-GUI antwortet auf ihrer eigenen öffentlichen IP, bis die Richtlinie übertragen ist. Die obige Aussperrwarnung gilt für beide Knoten.
 
 <a id="kubernetes-dns-automation-for-gateway-api-resources"></a>
 ### Kubernetes: DNS-Automatisierung für Gateway-API-Ressourcen
