@@ -20,9 +20,9 @@ explicit HA sync. Firewall routing alone does not prove tenant isolation.
 ## Dialogue
 
 Disclose immediately: chat cannot define/propose rules or NAT. Guided editor
-policy management and chat proposals are outside MVP (#101). Existing generic
+policy management and chat proposals are currently unsupported (#101). Existing generic
 fields remain under Operations / Firewall rules, not a qualified workflow.
-The MVP firewall admin configures policy manually in OPNsense after provisioning.
+The firewall admin configures policy manually in OPNsense after provisioning.
 No questionnaire promising rules. Traffic requirements inform infrastructure,
 not policy. Never insert allow-any, wildcard aliases or public management.
 

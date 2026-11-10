@@ -51,7 +51,7 @@ const rules = [
 ] as const;
 
 export const assistantFirewallPolicyLimit =
-  "Der Assistant kann aktuell keine Firewall-Regeln, NAT, Aliase oder Routen definieren oder als Vorschlag übernehmen. Die geführte Policy-Bearbeitung in Editor und Chat ist nicht Teil des MVP (GitHub-Issue #101). Im MVP pflegt der Firewall-Admin die Policy nach Bereitstellung manuell in OPNsense.";
+  "Der Assistant kann aktuell keine Firewall-Regeln, NAT, Aliase oder Routen definieren oder als Vorschlag übernehmen. Die geführte Policy-Bearbeitung in Editor und Chat wird derzeit nicht unterstützt (GitHub-Issue #101). Der Firewall-Admin pflegt die Policy nach Bereitstellung manuell in OPNsense.";
 
 /** Reviewed workflow information only: it never reads or changes an order. */
 export const assistantApplicationUpgradeAdvice = {

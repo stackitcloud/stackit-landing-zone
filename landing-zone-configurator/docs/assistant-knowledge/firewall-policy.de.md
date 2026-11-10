@@ -37,10 +37,10 @@ Firewall-Routing allein beweist keine Tenant-Isolation.
 ## Dialog
 
 Sofort offenlegen: Der Chat kann keine Regeln oder NAT definieren/vorschlagen.
-Gefuehrte Editor-Policy-Verwaltung und Chat-Vorschlaege liegen ausserhalb
-des MVP (#101). Bestehende generische Felder bleiben unter
+Gefuehrte Editor-Policy-Verwaltung und Chat-Vorschlaege werden derzeit
+nicht unterstuetzt (#101). Bestehende generische Felder bleiben unter
 Operations / Firewall rules, nicht als qualifizierter Ablauf.
-Der MVP-Firewall-Administrator konfiguriert Policy nach Provisionierung
+Der Firewall-Administrator konfiguriert Policy nach Provisionierung
 manuell in OPNsense. Kein Fragebogen, der Regeln verspricht.
 Traffic-Anforderungen informieren Infrastruktur, nicht Policy.
 Niemals Allow-Any, Wildcard-Aliases oder oeffentliches Management einfuegen.

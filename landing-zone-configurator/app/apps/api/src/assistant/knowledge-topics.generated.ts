@@ -114,7 +114,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "28e791f5e0a4b679b2a00d26fcfa72fcd276cd1f31cb93101a5ec21ed0df678d",
+            "2682ed10d4f0f087390b34c9a5d939ca257cbed8d6b694e8edbe6a6081ec6392",
         },
         {
           path: "src/modules/landing-zone/3-network.tf",
@@ -452,7 +452,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "10457791701d801c9293cbb5ad2d9f9c4112f09a7c4a3a19538bbafa5a86f5f6",
+            "a9f0b1ed2aa59abe43e3286866f9c88ae06670bb8e6c79ca0357affb08b592f1",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1159,9 +1159,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/firewall-policy.md",
-      text: "# OPNsense Policy, Routes and NAT\n\n## Purpose\n\nExplain native OPNsense policy; distinguish filtering, routes and NAT.\n\n## Accelerator Contract\n\nNative firewall_config has endpoint/TLS and aliases, routes, rules, outbound_nat,\nport_forwards maps. Rules use pass/block/reject, in/out, sequence, interfaces,\naddresses, ports and protocols. Alias/gateway references must resolve;\nurltable aliases need update_freq. Root bootstrap/provider wiring controls\navailability. The singleton policy path does not manage every area/appliance.\n\n## Dependencies\n\nInfrastructure/access/bootstrap are prerequisites. API-written policy needs\nexplicit HA sync. Firewall routing alone does not prove tenant isolation.\n\n## Dialogue\n\nDisclose immediately: chat cannot define/propose rules or NAT. Guided editor\npolicy management and chat proposals are outside MVP (#101). Existing generic\nfields remain under Operations / Firewall rules, not a qualified workflow.\nThe MVP firewall admin configures policy manually in OPNsense after provisioning.\nNo questionnaire promising rules. Traffic requirements inform infrastructure,\nnot policy. Never insert allow-any, wildcard aliases or public management.\n\n## Examples\n\nfirewall_config = null is native opt-out. HTTPS rules need explicit source,\ndestination and interface. Empty maps do not prove deny-all or absence of\nunmanaged rules; fragments do not automatically replace live policy.\n\n## Limits\n\nSubnet/alias/gateway references and rule ordering need dedicated validation and\npacket tests. Saved policy or HA sync is not isolation, reachability or live-state\nproof. No automatic apply; takeover needs manual-policy/state reconciliation.\n\n## Credentials\n\nAPI credentials, admin access and private reachability are external bindings.\nNever request or show keys/secrets.\n\n## Sources\n\nModule variables, root provider/bootstrap and module calls define behavior.\nRe-review API/schema/HA changes; production packet tests remain separate.",
+      text: "# OPNsense Policy, Routes and NAT\n\n## Purpose\n\nExplain native OPNsense policy; distinguish filtering, routes and NAT.\n\n## Accelerator Contract\n\nNative firewall_config has endpoint/TLS and aliases, routes, rules, outbound_nat,\nport_forwards maps. Rules use pass/block/reject, in/out, sequence, interfaces,\naddresses, ports and protocols. Alias/gateway references must resolve;\nurltable aliases need update_freq. Root bootstrap/provider wiring controls\navailability. The singleton policy path does not manage every area/appliance.\n\n## Dependencies\n\nInfrastructure/access/bootstrap are prerequisites. API-written policy needs\nexplicit HA sync. Firewall routing alone does not prove tenant isolation.\n\n## Dialogue\n\nDisclose immediately: chat cannot define/propose rules or NAT. Guided editor\npolicy management and chat proposals are currently unsupported (#101). Existing generic\nfields remain under Operations / Firewall rules, not a qualified workflow.\nThe firewall admin configures policy manually in OPNsense after provisioning.\nNo questionnaire promising rules. Traffic requirements inform infrastructure,\nnot policy. Never insert allow-any, wildcard aliases or public management.\n\n## Examples\n\nfirewall_config = null is native opt-out. HTTPS rules need explicit source,\ndestination and interface. Empty maps do not prove deny-all or absence of\nunmanaged rules; fragments do not automatically replace live policy.\n\n## Limits\n\nSubnet/alias/gateway references and rule ordering need dedicated validation and\npacket tests. Saved policy or HA sync is not isolation, reachability or live-state\nproof. No automatic apply; takeover needs manual-policy/state reconciliation.\n\n## Credentials\n\nAPI credentials, admin access and private reachability are external bindings.\nNever request or show keys/secrets.\n\n## Sources\n\nModule variables, root provider/bootstrap and module calls define behavior.\nRe-review API/schema/HA changes; production packet tests remain separate.",
       sha256:
-        "be59069139954e7ed83e69766a4f9182c5280b6770a75fd4331eea778e4599d4",
+        "6a812b80465cc12061936237b32b52ccf47c563a39135e37171f2855715ca6f7",
     },
     {
       id: "firewall-access-bootstrap",
@@ -1704,7 +1704,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
           sha256:
-            "28e791f5e0a4b679b2a00d26fcfa72fcd276cd1f31cb93101a5ec21ed0df678d",
+            "2682ed10d4f0f087390b34c9a5d939ca257cbed8d6b694e8edbe6a6081ec6392",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
@@ -1724,7 +1724,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "10457791701d801c9293cbb5ad2d9f9c4112f09a7c4a3a19538bbafa5a86f5f6",
+            "a9f0b1ed2aa59abe43e3286866f9c88ae06670bb8e6c79ca0357affb08b592f1",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",

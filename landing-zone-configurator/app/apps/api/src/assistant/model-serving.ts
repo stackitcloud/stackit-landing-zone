@@ -4588,7 +4588,7 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
           > = {
             traffic: {
               path: decisionPaths.traffic,
-              text: "Welche Verkehrswege sollen über die zentrale Firewall laufen? Gleicher Subnetzverkehr ist nicht automatisch ein gerouteter Firewall-Pfad. Die Antwort beschreibt den Infrastrukturbedarf, nicht Firewall-Regeln; diese pflegt im MVP der Firewall-Admin.",
+              text: "Welche Verkehrswege sollen über die zentrale Firewall laufen? Gleicher Subnetzverkehr ist nicht automatisch ein gerouteter Firewall-Pfad. Die Antwort beschreibt den Infrastrukturbedarf, nicht Firewall-Regeln; diese pflegt der Firewall-Admin.",
               options: [
                 "Internet-Verkehr",
                 "Zwischen Projekten",
