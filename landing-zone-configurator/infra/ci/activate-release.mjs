@@ -2,13 +2,14 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
+import { waitForProductionReplicas } from "./production-readiness.mjs";
 
 const receipt = JSON.parse(readFileSync(join(process.env.LZC_PRIVATE, "app-stage.json"), "utf8"));
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 if (![receipt.app, receipt.package, receipt.build, receipt.droplet].every(x => typeof x === "string" && uuid.test(x)))
   throw new Error("Invalid staged application binding");
 function cf(args, json = false) {
-  const result = spawnSync("cf", args, { encoding: "utf8", ...(json ? {} : { stdio: "inherit" }) });
+  const result = spawnSync("cf", args, { encoding: "utf8", ...(json ? { timeout: 45_000 } : { stdio: "inherit" }) });
   if (result.status !== 0) throw new Error("CF release activation failed");
   return json ? JSON.parse(result.stdout) : undefined;
 }
@@ -42,9 +43,8 @@ if (process.env.LZC_ENVIRONMENT === "lzc-prod" && app.state === "STARTED") {
   cf(["start", "landing-zone-configurator"]);
 }
 if (process.env.LZC_ENVIRONMENT === "lzc-prod") {
-  const processes = cf(["curl", `/v3/apps/${receipt.app}/processes`], true);
-  const web = processes.resources?.filter(process => process.type === "web");
-  if (web?.length !== 1 || web[0].instances !== 3 || !uuid.test(web[0].guid)) throw new Error("Production web replica count does not match the reviewed stage");
-  const stats = cf(["curl", `/v3/processes/${web[0].guid}/stats`], true);
-  if (stats.resources?.length !== 3 || stats.resources.some(instance => instance.state !== "RUNNING")) throw new Error("Production web replicas are not all running");
+  await waitForProductionReplicas({
+    readProcesses: () => cf(["curl", `/v3/apps/${receipt.app}/processes`], true),
+    readStats: guid => cf(["curl", `/v3/processes/${guid}/stats`], true),
+  });
 }

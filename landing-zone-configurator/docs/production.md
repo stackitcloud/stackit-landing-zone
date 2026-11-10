@@ -46,6 +46,11 @@ This configuration does not itself demonstrate zone-level placement, database
 failover, or a tested disaster-recovery time: record those operational exercises
 before promising an availability target.
 
+The readiness check polls for up to five minutes after startup or rolling activation: CF
+may return from `start` while one replica is still starting. All three replicas must be
+running; a changed replica count, malformed status or expired deadline fails the
+release.
+
 ## Bootstrap an existing project
 
 Use pinned OpenTofu 1.12.6 and the pinned Node/npm versions from the app README.
