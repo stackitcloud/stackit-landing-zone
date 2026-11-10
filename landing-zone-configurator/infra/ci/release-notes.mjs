@@ -14,6 +14,7 @@ const notes={
   introduction:"Production fixes for the Landing Zone Configurator.",
   changes:[
    "Remove the obsolete Development badge from the application header.",
+   "Enable Runner callbacks and shared warm reserves for the explicitly trusted production address.",
    "Wait for all three API replicas to become ready after activation, with a bounded timeout and unchanged availability checks.",
   ],
  },

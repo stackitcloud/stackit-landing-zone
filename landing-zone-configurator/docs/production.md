@@ -32,6 +32,11 @@ fresh browser flow rather than replaying an ambiguous token exchange. Closing an
 API instance does not cancel flows held in shared storage. Local setups without
 an artifact key retain the single-process in-memory fallback.
 
+Hosted Runner packages accept only the exact Dev and production broker origins.
+The runtime-selected origin governs both job callbacks and warm-pool claims;
+foreign hosts, noncanonical URLs and redirects remain rejected. Loopback use is
+reserved for the separately enabled local Runner mode.
+
 Login state, sessions and job records use PostgreSQL; no sticky browser session
 is required. Runtime users lack database administration privileges. Application
 and Runner credentials are separate `space-scoped-service-account` services with

@@ -42,6 +42,7 @@ import {
   applicationProviderLockHash,
   brokerOrigin,
   localBrokerOrigin,
+  productionBrokerOrigin,
   providerLockHash,
   runWorker,
   type WorkerOptions,
@@ -261,9 +262,9 @@ LZC_FAKE_TOFU
       ? {
           backend: {
             kind: "bootstrap",
-            address: `${brokerOrigin}/api/runner/state`,
-            lockAddress: `${brokerOrigin}/api/runner/state/lock`,
-            unlockAddress: `${brokerOrigin}/api/runner/state/unlock`,
+            address: `${expectedOrigin}/api/runner/state`,
+            lockAddress: `${expectedOrigin}/api/runner/state/lock`,
+            unlockAddress: `${expectedOrigin}/api/runner/state/unlock`,
             username: "runner",
             password: ticket,
           },
@@ -1992,6 +1993,42 @@ it("authenticates broker requests without forwarding credentials in bodies or ac
   ).toBe("succeeded");
   expect(fetchMock).toHaveBeenCalledTimes(12);
 });
+
+it.each(["platform", "application"] as const)(
+  "authenticates %s worker callbacks only to the exact production broker",
+  async (broker) => {
+    const test = await fixture(
+      "platform-plan",
+      "success",
+      productionBrokerOrigin,
+    );
+    if (broker === "application") applicationInput(test);
+    const request = vi.fn(async (url: string, init: RequestInit) => {
+      const prefix = `${productionBrokerOrigin}/api/${broker === "application" ? "application-runner" : "runner"}/`;
+      expect(url.startsWith(prefix)).toBe(true);
+      expect(init.redirect).toBe("error");
+      expect(init.headers).toMatchObject({ Authorization: `Bearer ${ticket}` });
+      const response = await test.report(
+        url.slice(prefix.length),
+        JSON.parse(init.body as string),
+      );
+      return response === null
+        ? new Response(null, { status: 204 })
+        : Response.json(response);
+    });
+    vi.stubGlobal("fetch", request);
+    expect(
+      await runWorker({
+        root: test.root,
+        id: "run-id",
+        ticket,
+        brokerOrigin: productionBrokerOrigin,
+        broker,
+      }),
+    ).toBe("succeeded");
+    expect(request).toHaveBeenCalled();
+  },
+);
 
 it("refuses an untrusted broker origin before any network or engine execution", async () => {
   const test = await fixture("platform-apply");

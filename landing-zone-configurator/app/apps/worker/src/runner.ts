@@ -55,6 +55,15 @@ import {
 
 export const brokerOrigin =
   "https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud";
+export const productionBrokerOrigin =
+  "https://app.landing-zone.runs.onstackit.cloud";
+export function hostedBrokerOrigin(
+  value: string | undefined,
+): string | undefined {
+  return value === brokerOrigin || value === productionBrokerOrigin
+    ? value
+    : undefined;
+}
 export const localBrokerOrigin = "http://127.0.0.1:3000";
 export const acceleratorCommit = "a256f6896d11134fdc351786f1be5eba4e56b2e2";
 export const applicationAcceleratorCommit = applicationMvpAcceleratorCommit;
@@ -167,7 +176,9 @@ export async function runWorker(
     phaseStarted = now;
     await publishOutput();
   };
-  const expectedOrigin = options.local ? localBrokerOrigin : brokerOrigin;
+  const expectedOrigin = options.local
+    ? localBrokerOrigin
+    : hostedBrokerOrigin(options.brokerOrigin);
   const broker = options.broker ?? "platform";
   const brokerPath = broker === "application" ? "application-runner" : "runner";
   const deadline = Date.now() + (options.timeoutMilliseconds ?? 18 * 60 * 1000);
@@ -175,6 +186,7 @@ export async function runWorker(
     options.report ??
     (async (path, body) => {
       if (
+        !expectedOrigin ||
         options.brokerOrigin !== expectedOrigin ||
         !options.ticket ||
         !/^[A-Za-z0-9_-]{43}$/.test(options.ticket)
@@ -203,6 +215,7 @@ export async function runWorker(
   try {
     process.umask(0o077);
     if (
+      !expectedOrigin ||
       options.brokerOrigin !== expectedOrigin ||
       !["platform", "application"].includes(broker) ||
       !options.ticket ||

@@ -38,6 +38,12 @@ Das Schließen einer API-Instanz bricht gemeinsam gespeicherte Flows nicht ab.
 Lokale Aufbauten ohne Artefaktschlüssel behalten den Speicher-Fallback für einen
 Prozess.
 
+Gehostete Runner-Pakete akzeptieren ausschließlich die exakten Broker-Origins
+von Dev und Produktion. Der zur Laufzeit gewählte Origin gilt sowohl für
+Job-Rückmeldungen als auch für Abrufe aus dem Warm-Pool. Fremde Hosts,
+nichtkanonische URLs und Weiterleitungen bleiben gesperrt. Loopback ist dem
+separat aktivierten lokalen Runner-Modus vorbehalten.
+
 Login-Zustand, Sitzungen und Job-Datensätze liegen in PostgreSQL. Sitzungsbindung
 an eine bestimmte Web-Instanz ist nicht erforderlich. Laufzeitbenutzer besitzen
 keine Datenbank-Administrationsrechte. Anwendungs- und Runner-Zugänge entstehen
