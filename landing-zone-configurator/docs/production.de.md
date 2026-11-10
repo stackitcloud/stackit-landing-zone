@@ -38,6 +38,12 @@ Das Schließen einer API-Instanz bricht gemeinsam gespeicherte Flows nicht ab.
 Lokale Aufbauten ohne Artefaktschlüssel behalten den Speicher-Fallback für einen
 Prozess.
 
+Gehostete Runner-Pakete akzeptieren ausschließlich die exakten Broker-Origins
+von Dev und Produktion. Der zur Laufzeit gewählte Origin gilt sowohl für
+Job-Rückmeldungen als auch für Abrufe aus dem Warm-Pool. Fremde Hosts,
+nichtkanonische URLs und Weiterleitungen bleiben gesperrt. Loopback ist dem
+separat aktivierten lokalen Runner-Modus vorbehalten.
+
 Login-Zustand, Sitzungen und Job-Datensätze liegen in PostgreSQL. Sitzungsbindung
 an eine bestimmte Web-Instanz ist nicht erforderlich. Laufzeitbenutzer besitzen
 keine Datenbank-Administrationsrechte. Anwendungs- und Runner-Zugänge entstehen
@@ -162,6 +168,11 @@ Rotation ohne Wiederherstellung/Neuverschlüsselung macht bestehende Artefakte
 unlesbar.
 
 ## Version veröffentlichen und aktivieren
+
+Vor der Veröffentlichung kurze, versionsbezogene Änderungen in
+`infra/ci/release-notes.mjs` ergänzen. Versionen ohne kuratierte Hinweise werden
+nicht veröffentlicht. Patch-Releases beschreiben ihre eigenen Änderungen, statt
+die Ankündigung des ersten Produktionsrelease zu wiederholen.
 
 1. Geprüfte Quelle nach `main` zusammenführen.
 2. **Configurator Release** mit `build_only=true` und ausgewähltem `release_mode`

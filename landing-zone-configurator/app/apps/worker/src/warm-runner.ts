@@ -3,7 +3,7 @@ import {
   type RunnerPoolAssignment,
   runnerPoolAssignmentSchema,
 } from "@lzc/contracts";
-import { brokerOrigin, runWorker } from "./runner.js";
+import { hostedBrokerOrigin, runWorker } from "./runner.js";
 
 const idleLifetimeMilliseconds = 15 * 60 * 1000;
 const claimTimeoutMilliseconds = 10000;
@@ -48,6 +48,7 @@ export async function runWarmRunner(
   dependencies: WarmRunnerDependencies = {},
 ): Promise<"succeeded" | "failed"> {
   const env = options.env ?? process.env;
+  const brokerOrigin = hostedBrokerOrigin(env.LZC_BROKER_ORIGIN);
   const poolId = env.LZC_POOL_RUNNER_ID;
   const ticket = env.LZC_POOL_TICKET;
   if (
@@ -56,6 +57,7 @@ export async function runWarmRunner(
     env.LZC_RUN_ID !== undefined ||
     env.LZC_RUN_TICKET !== undefined ||
     env.LZC_LOCAL_RUNNER === "true" ||
+    !brokerOrigin ||
     env.LZC_BROKER_ORIGIN !== brokerOrigin
   )
     throw new Error("Warm runner configuration invalid");

@@ -13,6 +13,8 @@ const required = (key: string) => {
   return value;
 };
 let database: pg.Pool | undefined;
+let phase: "configuration" | "platform" | "application" | "warm" =
+  "configuration";
 try {
   const config = {
     username: required("LZC_RUNNER_CF_USERNAME"),
@@ -25,10 +27,12 @@ try {
   };
   const runner = new CloudFoundryPlanRunner(config);
   const application = JSON.parse(required("VCAP_APPLICATION"));
+  phase = "platform";
   const timing = await runner.probe(
     required("LZC_PUBLIC_ORIGIN"),
     application.application_id,
   );
+  phase = "application";
   const applicationTiming =
     process.env.LZC_APPLICATION_EXECUTION_ENABLED === "true"
       ? await new CloudFoundryPlanRunner({
@@ -39,6 +43,7 @@ try {
   const size = runnerPoolSize(process.env.LZC_RUNNER_POOL_SIZE);
   let warm: Awaited<ReturnType<RunnerPool["probe"]>> | undefined;
   if (size > 0) {
+    phase = "warm";
     database = new pg.Pool(databaseConfig());
     database.on("error", () => {
       console.error(JSON.stringify({ event: "runner_probe_database_error" }));
@@ -71,6 +76,7 @@ try {
     JSON.stringify({
       service: "plan-runner-isolation",
       ok: false,
+      phase,
       ...(error instanceof RunnerRequestError
         ? { operation: error.operation, httpStatus: error.status }
         : {}),

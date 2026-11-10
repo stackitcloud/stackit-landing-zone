@@ -6,8 +6,8 @@ import { runWarmRunner } from "../apps/worker/src/warm-runner.js";
 
 const trusted = vi.hoisted(() => ({ origin: "" }));
 vi.mock("../apps/worker/src/runner.js", () => ({
-  get brokerOrigin() {
-    return trusted.origin;
+  hostedBrokerOrigin(value: string | undefined) {
+    return value === trusted.origin ? value : undefined;
   },
   runWorker: vi.fn(() => {
     throw new Error("Unexpected real worker invocation");

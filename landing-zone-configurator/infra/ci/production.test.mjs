@@ -102,3 +102,10 @@ test("space-scoped account creation waits for its provisioning principal's devel
   assert.match(resource,new RegExp(`depends_on\\s*=\\s*\\[cloudfoundry_space_role\\.${role}\\]`));
  }
 });
+
+test("patch release notes describe their changes and unknown versions require curation",()=>{
+ const run=tag=>spawnSync(process.execPath,[new URL("./release-notes.mjs",import.meta.url).pathname],{env:{...process.env,LZC_RELEASE_TAG:tag,LZC_RELEASE_MODE:"accepted-assistant-limitations"},encoding:"utf8"});
+ const patch=run("v2.0.1");assert.equal(patch.status,0,patch.stderr);assert.match(patch.stdout,/obsolete Development badge/);assert.match(patch.stdout,/all three API replicas/);assert.match(patch.stdout,/#225/);assert.doesNotMatch(patch.stdout,/First production release/);assert.ok(patch.stdout.split(/\s+/).length<150);
+ assert.match(run("v2.0.0").stdout,/First production release/);
+ const future=run("v2.0.2");assert.notEqual(future.status,0);assert.match(future.stderr,/Curated release notes required/);
+});
