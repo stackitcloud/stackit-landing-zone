@@ -12,14 +12,15 @@ Terraform/OpenTofu.
 
 | Audience | Documentation |
 | --- | --- |
-| Users | [User guide](docs/user-guide.md) and [MVP scope and limits](docs/mvp-scope.md) |
+| Users | [User guide](docs/user-guide.md) and [Scope and limits](docs/mvp-scope.md) |
 | Architects | [Components, diagrams and trust boundaries](docs/architecture.md) |
 | Contributors | [Development map](docs/development.md), [local setup](app/README.md) and [contributing](../CONTRIBUTING.md) |
 | Operators | [Infrastructure](infra/README.md), [manual CI operations](infra/ci/README.md) and [CF releases](deploy/cloud-foundry/README.md) |
 
-The [development environment](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud)
-is not a production service. Production provisioning and operational acceptance
-are a separate follow-up; merging source code does not deploy the application.
+Production is independently provisioned and activated from a published GitHub
+Release after manual approval. See [production setup, availability and recovery](docs/production.md).
+The separate [development environment](https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud)
+remains available; merging source code does not deploy either environment.
 
 ## How it fits together
 

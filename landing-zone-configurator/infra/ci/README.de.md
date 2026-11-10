@@ -2,6 +2,14 @@
 
 [English](README.md) | [Deutsch](README.de.md)
 
+Produktion verwendet dieselben vier Infrastruktur-Workflows mit
+`environment=lzc-prod` und eigenen geschützten Environments.
+[Configurator Production Release](../../../.github/workflows/configurator-production.yml)
+veröffentlicht stabile GitHub Releases und benötigt vor Aktivierung eine manuelle
+Freigabe. Es erhält ein auf erlaubte Felder begrenztes Binding mit Space-Zugängen,
+keinen vollständigen State-Zugriff und keine Organisationsmanager.
+Siehe [Produktionsbetrieb](../../docs/production.de.md).
+
 Die zentrale [Workflow-Uebersicht](../../../docs/workflows.de.md) beschreibt alle
 Pipelines, automatische und manuelle Ausloeser, Eingaben und den Start im
 GitHub-UI. Diese Seite vertieft die Operator- und Freigabevertraege.

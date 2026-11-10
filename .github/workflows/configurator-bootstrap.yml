@@ -3,6 +3,11 @@ name: Configurator Bootstrap
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Target environment
+        type: choice
+        default: lzc-dev
+        options: [lzc-dev, lzc-prod]
       root:
         description: 'First bootstrap, then backend (bucket versioning)'
         type: choice
@@ -17,11 +22,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: configurator-lzc-dev-mutation
+  group: configurator-${{ inputs.environment || 'lzc-dev' }}-mutation
   cancel-in-progress: false
 
 env:
-  LZC_ENVIRONMENT: lzc-dev
+  LZC_ENVIRONMENT: ${{ inputs.environment || 'lzc-dev' }}
   LZC_ROOT: ${{ inputs.root || vars.LZC_BOOTSTRAP_ROOT || 'bootstrap' }}
 
 jobs:
@@ -29,7 +34,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: lzc-dev-bootstrap-plan
+    environment: ${{ format('{0}-bootstrap-plan', inputs.environment || 'lzc-dev') }}
     defaults:
       run:
         working-directory: landing-zone-configurator
@@ -102,7 +107,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && inputs.apply
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    environment: lzc-dev-bootstrap-apply
+    environment: ${{ format('{0}-bootstrap-apply', inputs.environment || 'lzc-dev') }}
     defaults:
       run:
         working-directory: landing-zone-configurator

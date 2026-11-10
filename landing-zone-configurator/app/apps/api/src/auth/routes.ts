@@ -90,8 +90,7 @@ export function registerAuth(app: FastifyInstance, services: AuthServices) {
       return reply
         .code(409)
         .send({ error: "github_connection_requires_session" });
-    // Coarse per-instance cap, independent of untrusted forwarded headers. A
-    // distributed abuse limit is needed before expanding beyond the MVP.
+    // Per-instance cap, independent of untrusted forwarded client addresses.
     if (Date.now() - windowStart > 60000) {
       starts = 0;
       windowStart = Date.now();

@@ -44,6 +44,7 @@ import {
   sha256,
   stableStateKey,
 } from "../apps/api/src/plans/execution.js";
+import { RunnerPool } from "../apps/api/src/plans/runner-pool.js";
 import { Plans } from "../apps/api/src/plans/service.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
@@ -167,6 +168,80 @@ describe.skipIf(!enabled)(
       await migration?.end();
       await admin?.end();
       if (enabled) docker(["rm", "--force", "--volumes", container]);
+    });
+
+    it("shares warm capacity and single-use dispatch across three API controllers", async () => {
+      const config = {
+        size: 2,
+        origin: `https://${randomUUID()}.example`,
+        spaceId: randomUUID(),
+        templateId: randomUUID(),
+        dropletId: randomUUID(),
+      };
+      const crypto = new ArtifactCrypto(randomBytes(32).toString("base64"));
+      const tickets = new Map<string, string>();
+      const driver = {
+        prepareWarm: vi.fn(
+          async (
+            id: string,
+            ticket: string,
+            _origin: string,
+            record: (appId: string, dropletId: string) => Promise<void>,
+          ) => {
+            tickets.set(id, ticket);
+            await record(randomUUID(), config.dropletId);
+            await controllers[0]!.claim(id, ticket);
+          },
+        ),
+        removeWarm: vi.fn(async () => {}),
+      };
+      const controllers = Array.from(
+        { length: 3 },
+        () => new RunnerPool(pool, crypto, driver, config),
+      );
+      try {
+        await Promise.all(
+          controllers.map((controller) => controller.maintain()),
+        );
+        const rows = await admin!.query(
+          "SELECT id,status FROM lzc.runner_pool_slots WHERE origin=$1",
+          [config.origin],
+        );
+        expect(rows.rows).toHaveLength(2);
+        expect(rows.rows.every((row) => row.status === "ready")).toBe(true);
+        expect(driver.prepareWarm).toHaveBeenCalledTimes(2);
+        const job = randomUUID(),
+          ticket = randomBytes(32).toString("base64url"),
+          record = vi.fn(async () => {});
+        const results = await Promise.allSettled(
+          controllers.map((controller) =>
+            controller.start(job, ticket, config.origin, "platform", record),
+          ),
+        );
+        expect(
+          results.filter(
+            (result) => result.status === "fulfilled" && result.value === true,
+          ),
+        ).toHaveLength(1);
+        expect(record).toHaveBeenCalledTimes(1);
+        const assigned = await admin!.query(
+          "SELECT id FROM lzc.runner_pool_slots WHERE job_id=$1",
+          [job],
+        );
+        expect(assigned.rows).toHaveLength(1);
+        const slotId = assigned.rows[0].id as string;
+        expect(
+          await controllers[2]!.claim(slotId, tickets.get(slotId)!),
+        ).toEqual({ id: job, ticket, broker: "platform" });
+        await expect(
+          controllers[1]!.claim(slotId, tickets.get(slotId)!),
+        ).rejects.toBeDefined();
+      } finally {
+        await admin!.query(
+          "DELETE FROM lzc.runner_pool_slots WHERE origin=$1",
+          [config.origin],
+        );
+      }
     });
 
     async function session(): Promise<Session> {

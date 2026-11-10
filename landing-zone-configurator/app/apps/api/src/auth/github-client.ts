@@ -51,7 +51,7 @@ export class GitHubClient implements GitHubLoginClient {
       token.expires_in > 28800
     )
       throw new Error("Expiring GitHub user token required");
-    // Refresh tokens are deliberately not retained: this MVP requires re-login after at most 8h.
+    // Refresh tokens are deliberately not retained: GitHub sessions require re-login after at most 8h.
     const identity = await this.request("https://api.github.com/user", {
       redirect: "error",
       signal: AbortSignal.timeout(15000),

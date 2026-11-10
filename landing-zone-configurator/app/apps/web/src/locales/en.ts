@@ -1663,8 +1663,6 @@ export const englishMessages: Record<string, string> = {
   "Der Katalog konnte nicht geladen werden.": "Could not load the catalogue.",
   "Der letzte Arbeitsbereich konnte nicht geladen werden.":
     "Could not load the last workspace.",
-  "Der MVP-Plan unterstützt Public-Projekte mit lokalem Netz, optionaler Observability und ohne Namespace-Dienste.":
-    "The MVP plan supports public projects with a local network, optional Observability and no namespace services.",
   "Der persönliche Zugang ist nicht mehr verfügbar.":
     "The personal credentials are no longer available.",
   "Der Plan enthält Löschungen oder Ersetzungen.":
@@ -1998,8 +1996,6 @@ export const englishMessages: Record<string, string> = {
   "Entfernte Subnetze": "Remote subnets",
   Entrypoint: "Entrypoint",
   Entwicklung: "Development",
-  "Entwicklungsstand · Cloud-Änderungen nur nach Apply-Freigabe":
-    "Development version · Cloud changes only after Apply approval",
   Entwurf: "Draft",
   "Entwurf ·": "Draft ·",
   "Entwurf bearbeiten": "Edit draft",

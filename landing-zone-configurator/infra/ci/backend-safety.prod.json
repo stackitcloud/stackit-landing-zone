@@ -1,0 +1,8 @@
+{
+  "environment": "lzc-prod",
+  "region": "eu01",
+  "s3LockingVerified": false,
+  "reason": "Serialize infrastructure Plan/Apply workflows per environment; retain native locks and never assume unavailable locking evidence.",
+  "mode": "github-actions-single-writer",
+  "concurrencyGroup": "configurator-lzc-prod-mutation"
+}

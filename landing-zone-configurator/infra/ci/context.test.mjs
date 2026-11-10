@@ -8,6 +8,22 @@ const env={LZC_ROOT:"bootstrap",LZC_ENVIRONMENT:"lzc-dev",GITHUB_REF:"refs/heads
   LZC_REGION:"eu01",LZC_NAME_PREFIX:"lzc-dev",LZC_MANAGEMENT_BUCKET:"lzc-dev-management-00000000",
   LZC_CREDENTIAL_EXPIRATION:"2026-12-28T00:00:00Z",GITHUB_REPOSITORY:"stackitcloud/stackit-landing-zone",GITHUB_RUN_ID:"123"};
 test("trusted manual main context accepted",()=>assert.equal(deploymentInputs(env).root,"bootstrap"));
+test("production context cannot reuse a Dev prefix or backend",()=>{
+  const prod={...env,LZC_ENVIRONMENT:"lzc-prod",LZC_NAME_PREFIX:"lzc-prod",LZC_MANAGEMENT_BUCKET:"lzc-prod-management-00000000"};
+  assert.equal(deploymentInputs(prod).environment,"lzc-prod");
+  for(const patch of [{LZC_NAME_PREFIX:"lzc-dev"},{LZC_MANAGEMENT_BUCKET:env.LZC_MANAGEMENT_BUCKET},{LZC_ENVIRONMENT:"lzc-dev"}])
+    assert.throws(()=>deploymentInputs({...prod,...patch}));
+  assert.notEqual(planContext(deploymentInputs(prod),"source"),planContext(deploymentInputs(env),"source"));
+});
+test("production apply requires its own writer group and stage-bound safety policy",()=>{
+  const trusted={...env,LZC_ENVIRONMENT:"lzc-prod",GITHUB_ACTIONS:"true",GITHUB_WORKFLOW_REF:"stackitcloud/stackit-landing-zone/.github/workflows/configurator-bootstrap.yml@refs/heads/main"};
+  const safety={environment:"lzc-prod",mode:"github-actions-single-writer",concurrencyGroup:"configurator-lzc-prod-mutation"};
+  assert.doesNotThrow(()=>assertApplyExecution(safety,trusted));
+  assert.throws(()=>assertApplyExecution({...safety,concurrencyGroup:"configurator-lzc-dev-mutation"},trusted));
+  assert.throws(()=>assertApplyExecution({...safety,environment:"lzc-dev"},trusted));
+  assert.throws(()=>assertApplyExecution(safety,{...trusted,LZC_ENVIRONMENT:"lzc-dev"}));
+  assert.throws(()=>assertApplyExecution(safety,{...trusted,GITHUB_EVENT_NAME:"release"}));
+});
 test("reject untrusted source, retry and wrong backend",()=>{
   for(const patch of [{GITHUB_REF:"refs/pull/1/merge"},{GITHUB_EVENT_NAME:"pull_request_target"},
     {GITHUB_REPOSITORY:"other/repository"},{GITHUB_RUN_ATTEMPT:"2"},{LZC_ROOT:"seed"},{LZC_ENVIRONMENT:"production"},{LZC_MANAGEMENT_BUCKET:"other"}]) {

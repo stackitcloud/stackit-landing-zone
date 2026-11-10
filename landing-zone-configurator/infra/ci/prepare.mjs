@@ -36,7 +36,7 @@ function backend(root, bucket, inputs) {
 }
 if (mode === "validation") {
   const root = required("LZC_ROOT");
-  if (!["seed", "seed-protection", "bootstrap", "backend", "platform", "runtime"].includes(root)) throw new Error("Invalid validation root");
+  if (!["operator-project", "seed", "seed-protection", "bootstrap", "backend", "platform", "runtime"].includes(root)) throw new Error("Invalid validation root");
   publish("TF_ENCRYPTION", encryption(root, randomBytes(48).toString("base64url")), true);
   publish("TF_DATA_DIR", resolve(privateDir, `${root}-data`));
 } else {
@@ -45,6 +45,10 @@ if (mode === "validation") {
     // Environment-scoped GitHub variables are read in this step, then passed to
     // subsequent steps through GITHUB_ENV (not evaluated at workflow scope).
     for (const name of ["LZC_PROJECT_ID", "LZC_REGION", "LZC_NAME_PREFIX", "LZC_MANAGEMENT_BUCKET", "LZC_CREDENTIAL_EXPIRATION"]) publish(name, required(name));
+    if (inputs.environment === "lzc-prod" && inputs.root === "platform") {
+      for (const name of ["LZC_CF_PLATFORM_ID", "LZC_CF_QUOTA_ID"]) publish(name, required(name));
+    }
+    if (inputs.environment === "lzc-prod" && inputs.root === "runtime") publish("LZC_OPERATOR_OWNER_EMAIL", required("LZC_OPERATOR_OWNER_EMAIL"));
     const key = required("LZC_SERVICE_ACCOUNT_KEY");
     try { JSON.parse(key); } catch { throw new Error("Invalid service account JSON"); }
     writeFileSync(resolve(privateDir, "service-account.json"), key, { mode: 0o600 });
@@ -60,6 +64,16 @@ if (mode === "validation") {
     publish("TF_VAR_project_id", inputs.project);
     publish("TF_VAR_region", inputs.region);
     publish("TF_VAR_name_prefix", inputs.prefix);
+    if (["platform", "runtime"].includes(inputs.root)) publish("TF_VAR_production", String(inputs.environment === "lzc-prod"));
+    if (inputs.environment === "lzc-prod" && inputs.root === "platform") {
+      publish("TF_VAR_cf_platform_id", inputs.parameters.LZC_CF_PLATFORM_ID);
+      publish("TF_VAR_cf_quota_id", inputs.parameters.LZC_CF_QUOTA_ID);
+    }
+    if (inputs.environment === "lzc-prod" && inputs.root === "runtime") {
+      publish("TF_VAR_public_domain", inputs.parameters.publicDomain);
+      publish("TF_VAR_dns_zone", inputs.parameters.dnsZone);
+      publish("TF_VAR_dns_contact_email", inputs.parameters.contact);
+    }
     publish("TF_VAR_state_credential_expiration", inputs.expiration);
     publish("TF_DATA_DIR", resolve(privateDir, `${inputs.root}-data`));
     publish("LZC_PLAN", resolve(".local/ci-plan/review.tfplan"));

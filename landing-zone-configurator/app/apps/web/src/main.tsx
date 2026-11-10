@@ -1373,11 +1373,6 @@ function App() {
           </CloudCatalogueProvider>
           <footer className="page-footer">
             <span>{t("Landing Zone Configurator")}</span>
-            <span>
-              {t(
-                "Entwicklungsstand · Cloud-Änderungen nur nach Apply-Freigabe",
-              )}
-            </span>
           </footer>
         </main>
       </div>

@@ -1,4 +1,5 @@
 output "space" {
+  description = "Application CF space identity."
   value = {
     id   = cloudfoundry_space.configurator.id
     name = cloudfoundry_space.configurator.name
@@ -19,4 +20,25 @@ output "app_environment" {
     LZC_SECRETS_PASSWORD    = stackit_secretsmanager_user.application.password
     LZC_MODEL_SERVING_TOKEN = var.model_serving_token
   }
+}
+
+output "release_credentials" {
+  description = "Space-scoped application deployer; never publish organization-manager credentials to release."
+  value       = var.production ? jsondecode(cloudfoundry_service_credential_binding.release[0].credential_binding) : null
+  sensitive   = true
+}
+
+output "dispatcher_credentials" {
+  description = "Space-scoped Runner dispatcher; has no access to application bindings."
+  value       = var.production ? jsondecode(cloudfoundry_service_credential_binding.dispatcher[0].credential_binding) : null
+  sensitive   = true
+}
+
+output "public_endpoint" {
+  description = "DNS and private CF domain; TLS issuance is checked independently after route mapping."
+  value = var.production ? {
+    origin = "https://${var.public_domain}"
+    zone   = stackit_dns_zone.application[0].dns_name
+    route  = cloudfoundry_domain.application[0].name
+  } : null
 }

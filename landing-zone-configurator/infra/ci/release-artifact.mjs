@@ -11,7 +11,7 @@ function checksum(path) {
 }
 
 export function releaseMode(value = "qualified") {
-  if (!["qualified", "dev-skip-assistant-qualification"].includes(value))
+  if (!["qualified", "dev-skip-assistant-qualification", "accepted-assistant-limitations"].includes(value))
     throw new Error("Unknown release mode");
   return value;
 }
@@ -29,7 +29,8 @@ function validSource(source) {
 export function createReleaseManifest(directory, source) {
   validSource(source);
   const manifest = {
-    schemaVersion: source.mode === "dev-skip-assistant-qualification" ? 2 : 1,
+    schemaVersion: source.mode === "accepted-assistant-limitations" ? 3 : source.mode === "dev-skip-assistant-qualification" ? 2 : 1,
+    ...(source.mode === "accepted-assistant-limitations" ? { releaseMode: source.mode, target: "lzc-prod", assistantQualified: false, knownLimitations: ["https://github.com/stackitcloud/stackit-landing-zone/issues/225"] } : {}),
     ...(source.mode === "dev-skip-assistant-qualification"
       ? {
           releaseMode: source.mode,
@@ -57,7 +58,9 @@ export function verifyReleaseManifest(directory, source) {
     readFileSync(resolve(directory, "release-manifest.json"), "utf8"),
   );
   if (
-    (source.mode === "dev-skip-assistant-qualification"
+    (source.mode === "accepted-assistant-limitations"
+      ? manifest.schemaVersion !== 3 || manifest.releaseMode !== source.mode || manifest.target !== "lzc-prod" || manifest.assistantQualified !== false || JSON.stringify(manifest.knownLimitations) !== JSON.stringify(["https://github.com/stackitcloud/stackit-landing-zone/issues/225"])
+      : source.mode === "dev-skip-assistant-qualification"
       ? manifest.schemaVersion !== 2 ||
         manifest.releaseMode !== source.mode ||
         manifest.target !== "lzc-dev" ||
@@ -99,6 +102,7 @@ export function approvedReleaseSource(
     throw new Error(
       "Unqualified Assistant builds are Dev-only fresh releases, never promotions",
     );
+  if (mode === "accepted-assistant-limitations" && (run.head_branch !== "main" || run.event !== "workflow_dispatch" || jobs.some(job => job.name.startsWith("assistant") && job.conclusion !== "skipped"))) throw new Error("Accepted Assistant limitations require a fresh main build with explicit provenance");
   validSource({ revision: run.head_sha, runId });
   if (
     run.id !== Number(runId) ||
@@ -110,7 +114,7 @@ export function approvedReleaseSource(
     !(
       unqualified
         ? ["build-dev-skip-assistant-qualification"]
-        : ["build", "assistant / assistant-live-qualification"]
+        : mode === "accepted-assistant-limitations" ? ["build-accepted-assistant-limitations"] : ["build", "assistant / assistant-live-qualification"]
     ).every((name) =>
       jobs.some(
         (job) =>

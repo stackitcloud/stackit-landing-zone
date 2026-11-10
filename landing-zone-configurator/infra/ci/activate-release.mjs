@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
 
 const receipt = JSON.parse(readFileSync(join(process.env.LZC_PRIVATE, "app-stage.json"), "utf8"));
@@ -19,6 +20,31 @@ if (app.name !== "landing-zone-configurator" || app.relationships.space.data.gui
     droplet.state !== "STAGED" || droplet.relationships.app.data.guid !== receipt.app)
   throw new Error("Staged application no longer matches the verified release");
 cf(["apply-manifest", "-f", "deploy/cloud-foundry/manifest.yml", "--vars-file", join(process.env.LZC_PRIVATE, "app-vars.json"), "--redact-env"]);
-cf(["stop", "landing-zone-configurator"]);
-cf(["set-droplet", "landing-zone-configurator", receipt.droplet]);
-cf(["start", "landing-zone-configurator"]);
+if (process.env.LZC_ENVIRONMENT === "lzc-prod" && app.state === "STARTED") {
+  const deployment = cf(["curl", "/v3/deployments", "-X", "POST", "-d", JSON.stringify({
+    relationships: {app: {data: {guid: receipt.app}}}, droplet: {guid: receipt.droplet}, strategy: "rolling", options: {max_in_flight: 1},
+  })], true);
+  if (!uuid.test(deployment.guid)) throw new Error("Missing rolling deployment identity");
+  const deadline = Date.now() + 20 * 60_000;
+  for (;;) {
+    const current = cf(["curl", `/v3/deployments/${deployment.guid}`], true);
+    if (current.relationships?.app?.data?.guid !== receipt.app) throw new Error("Rolling deployment destination changed");
+    if (current.status?.value === "FINALIZED") {
+      if (current.status.reason !== "DEPLOYED") throw new Error("Rolling deployment did not complete successfully");
+      break;
+    }
+    if (Date.now() >= deadline) throw new Error("Rolling deployment timed out; inspect CF before another release");
+    await delay(5_000);
+  }
+} else {
+  if (process.env.LZC_ENVIRONMENT !== "lzc-prod") cf(["stop", "landing-zone-configurator"]);
+  cf(["set-droplet", "landing-zone-configurator", receipt.droplet]);
+  cf(["start", "landing-zone-configurator"]);
+}
+if (process.env.LZC_ENVIRONMENT === "lzc-prod") {
+  const processes = cf(["curl", `/v3/apps/${receipt.app}/processes`], true);
+  const web = processes.resources?.filter(process => process.type === "web");
+  if (web?.length !== 1 || web[0].instances !== 3 || !uuid.test(web[0].guid)) throw new Error("Production web replica count does not match the reviewed stage");
+  const stats = cf(["curl", `/v3/processes/${web[0].guid}/stats`], true);
+  if (stats.resources?.length !== 3 || stats.resources.some(instance => instance.state !== "RUNNING")) throw new Error("Production web replicas are not all running");
+}

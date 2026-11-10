@@ -1,7 +1,7 @@
 ---
 applications:
   - name: landing-zone-configurator
-    instances: 1
+    instances: ((LZC_APP_INSTANCES))
     memory: 1024M
     disk_quota: 6144M
     stack: cflinuxfs4
@@ -11,7 +11,7 @@ applications:
     health-check-http-endpoint: /healthz
     timeout: 120
     routes:
-      - route: lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud
+      - route: ((LZC_APP_ROUTE))
     env:
       NODE_ENV: production
       HOST: 0.0.0.0

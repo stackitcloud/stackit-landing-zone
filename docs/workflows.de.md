@@ -5,14 +5,14 @@
 
 Dies ist der Einstieg zum Auswählen und Starten einer Pipeline. Workflow-Namen
 verlinken direkt auf ihre **Actions**-Seiten; **Quelltext**-Links zeigen die
-ausführbare Definition. Die zehn aktuellen Repository-Workflows sind unten
+ausführbare Definition. Die elf aktuellen Repository-Workflows sind unten
 aufgeführt. Historische Einträge und von GitHub verwaltete Workflows sind
 [separat aufgeführt](#other-entries-in-the-actions-sidebar).
 
-**Ein Merge stellt den Configurator nicht bereit.** Configurator-Provisionierung
-und Anwendungs-Releases erfolgen manuell und zielen derzeit auf Entwicklung, nicht
-Produktion. Einen Workflow zu starten ist nicht dasselbe wie seinen geschützten
-Bereitstellungsjob freizugeben.
+**Ein Merge deployt den Configurator nicht.** Infrastrukturläufe starten manuell.
+Produktion verwendet veröffentlichte GitHub Releases und benötigt eine manuelle
+Freigabe im eigenen geschützten Environment. Workflow-Start und Freigabe seines
+geschützten Deployment-Jobs sind getrennte Schritte.
 
 <a id="which-workflow-do-i-need"></a>
 ## Welchen Workflow benötige ich?
@@ -59,11 +59,19 @@ quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und des
 Übernahmebedingungen bleiben unverändert.
 
 
+### Produktionsrelease und Infrastruktur
+
+[Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [Quelle](../.github/workflows/configurator-production.yml) veröffentlicht ein stabiles Release und deployt erst nach manueller Freigabe von `lzc-prod-release`. Eingaben: `version` (Standard `v2.0.0`), `publish` (Standard `true`), `release_run_id` (für Veröffentlichung erforderlich) und `release_mode` (`qualified` oder `accepted-assistant-limitations`). Zuerst **Configurator Release** mit `build_only=true` auf derselben `main`-Revision ausführen. `accepted-assistant-limitations` dokumentiert ausdrücklich den unqualifizierten Assistant und Issue #225; es qualifiziert kein Dev-skip-Artefakt. Alle Prüfungen außerhalb der Inferenz bleiben verpflichtend.
+
+Ein veröffentlichtes stabiles GitHub Release mit den erforderlichen quellgebundenen Assets startet den Workflow ebenfalls. Veröffentlichung über `GITHUB_TOKEN` setzt im selben Lauf fort und benötigt kein zweites Ereignis. `publish=false` deployt ein bestehendes kompatibles veröffentlichtes Release nach neuer manueller Freigabe. Pre-Releases und beliebige Artefakte werden abgelehnt. Produktion verwendet unveränderliche angehängte Anwendungs-/Runner-Assets, begrenzte CF-Zugänge und Rolling Deployment mit drei Web-Repliken.
+
+Bootstrap, Platform und Runtime akzeptieren jetzt `environment` (Standard `lzc-dev`, alternativ `lzc-prod`). Plan-/Apply-Environments und Schreibwarteschlangen folgen der ausgewählten Stage. Prod Platform wählt die Replica-Set-Datenbank; Prod Runtime ergänzt eigene DNS-Zone, öffentliche Domain und Space-begrenzte Konten. Der lokale verschlüsselte Bootstrap `operator-project` importiert ein bestehendes Betreiberprojekt und provisioniert seine eigene projektbegrenzte Identität. Siehe [vollständiges Produktionshandbuch](../landing-zone-configurator/docs/production.de.md) für Bootstrap, Bindings, Zugangsrotation und Wiederherstellung.
+
 ## Aktuelle Repository-Workflows
 
 **Automatisch** beschreibt Repository-Ereignisse, keinen manuellen Klick.
 **Wiederverwendbar** bedeutet, dass ein anderer Workflow ihn über `workflow_call`
-aufrufen kann; dies ist keine separate UI-Freigabe. Alle zehn Definitionen bieten
+aufrufen kann; dies ist keine separate UI-Freigabe. Alle elf Definitionen bieten
 `workflow_dispatch`, aber Berechtigungen, Branch-Beschränkungen, Operatorschalter
 und Umgebungsschutz gelten weiterhin.
 
@@ -79,6 +87,7 @@ und Umgebungsschutz gelten weiterhin.
 | [Configurator Platform](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-platform.yml) · [Quelltext](../.github/workflows/configurator-platform.yml) | Gemeinsame Configurator-Dienste planen: CF-Organisation, Datenbank, Secrets Manager, Artefaktspeicher und Modell-Token | Keiner | **Run workflow** auf `main`; optional Apply; benötigt `LZC_PLATFORM_CI_ENABLED=true` | Echter Backend-/Zugangsdatenzugriff für Plan; optionaler freigegebener Cloud-Apply |
 | [Configurator Runtime](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-runtime.yml) · [Quelltext](../.github/workflows/configurator-runtime.yml) | CF-Space/-Rollen und Datenbank-/Secrets-Laufzeitnutzer planen | Keiner | **Run workflow** auf `main`; optional Apply; benötigt `LZC_RUNTIME_CI_ENABLED=true` | Echter Backend-/Zugangsdatenzugriff für Plan; optionaler freigegebener Cloud-Apply. Veröffentlicht keinen Anwendungscode. |
 | [Configurator Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-release.yml) · [Quelltext](../.github/workflows/configurator-release.yml) | API/UI und Runner gemeinsam qualifizieren, bauen und paketieren oder einen bestehenden qualifizierten Build übernehmen | Keiner; ein Merge startet ihn nicht | **Run workflow** auf `main`; Build-only, neues Release oder Promotion wählen; benötigt `LZC_RELEASE_CI_ENABLED=true` | Neue Builds rufen **Assistant live regression** auf und veröffentlichen einen geschützten Buildpack-Tag. Außer bei Build-only erfolgt nach Freigabe von `lzc-dev-release` die Entwicklungsbereitstellung einschließlich Migrationen und Laufzeitprüfungen. |
+| [Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [Quelle](../.github/workflows/configurator-production.yml) | Unveränderliches Produktrelease veröffentlichen und Produktion aktivieren | Veröffentlichtes stabiles GitHub Release mit erforderlichen Assets | **Run workflow** auf `main`; Produktionseingaben siehe oben | GitHub-Veröffentlichung; geschützte manuelle Produktionsbereitstellung, Migrationen, Rolling-Aktivierung und Laufzeitprüfungen |
 
 Der genaue Configurator-Pfadfilter steht im verlinkten YAML. Ein übersprungener
 reiner Accelerator-Job bei einem Configurator-PR ist beabsichtigt und keine
@@ -112,9 +121,9 @@ Pflichtprüfung, ohne sicherzustellen, dass er für jeden relevanten PR ein Erge
 | Assistant live regression | Standardmäßig `topic=all` oder eine Wissensthemen-ID; standardmäßig `repetitions=2`, unterstützter Bereich 1-3. Der durchgängige Dialog läuft auch bei themenbezogener Qualifikation. Die geschützte Umgebung `assistant-tests` erlaubt derzeit `main` und den ausdrücklich zugelassenen bisherigen Configurator-Feature-Branch. |
 | Verify Deployment | Standardmäßig `var_file=config/hub-and-spoke-firewall.tfvars`; muss ein existierender relativer Pfad unter `src/` sein. Manuelle Läufe verwenden die ausgewählte Revision. Der wiederverwendbare Aufruf akzeptiert zusätzlich `ref`; das ist keine Dispatch-Eingabe. |
 | Publish Release | `version` ist erforderlich. Wählen Sie `main`; andere Branches bestehen die Schranke des Prüfjobs nicht. |
-| Configurator Bootstrap | Standardmäßig `root=bootstrap` oder `backend`; standardmäßig `apply=false`. Apply verwendet `lzc-dev-bootstrap-apply`. |
-| Configurator Platform | `root=platform`; standardmäßig `apply=false`. Benötigt den obigen Plattform-Operatorschalter; Apply verwendet `lzc-dev-platform-apply`. |
-| Configurator Runtime | `root=runtime`; standardmäßig `apply=false`. Benötigt den obigen Laufzeit-Operatorschalter; Apply verwendet `lzc-dev-runtime-apply`. |
+| Configurator Bootstrap | Standardmäßig `root=bootstrap` oder `backend`; standardmäßig `apply=false`. `environment=lzc-dev|lzc-prod`; Apply verwendet das Bootstrap-Apply-Environment der ausgewählten Stage. |
+| Configurator Platform | `root=platform`; standardmäßig `apply=false`. Benötigt den obigen Plattform-Operatorschalter; `environment=lzc-dev|lzc-prod`; Apply verwendet das passende Platform-Apply-Environment. |
+| Configurator Runtime | `root=runtime`; standardmäßig `apply=false`. Benötigt den obigen Laufzeit-Operatorschalter; `environment=lzc-dev|lzc-prod`; Apply verwendet das passende Runtime-Apply-Environment. |
 | Configurator Release | Standardmäßig `release_mode=qualified` und `build_only=false`; leere `release_run_id` bedeutet einen neuen Build im gewählten Modus. Setzen Sie `build_only=true` für einen Build ohne CF-Bereitstellung; die Veröffentlichung des geschützten Tags erfolgt trotzdem; echte Modellaufrufe laufen im Modus `qualified`. Um einen bestehenden qualifizierten Build zu übernehmen, lassen Sie Build-only deaktiviert und geben Sie dessen numerische Run-ID an; das aufbewahrte Artefakt/Tag muss weiterhin gültig sein. |
 
 Browser-Abnahme und native Paketierung laufen im Release-Build parallel; die
@@ -140,8 +149,8 @@ Laufs. Ein neuer Promotion-Lauf kann einen bestehenden qualifizierten Release-Bu
 wiederverwenden; verwechseln Sie dies nicht mit der erneuten Ausführung der
 ursprünglichen Bereitstellung. Fehlgeschlagene Qualifikationen bleiben Fehlschläge.
 
-Alle vier verändernden Configurator-Workflows teilen sich die Warteschlange
-`configurator-lzc-dev-mutation` und brechen eine aktive Änderung nicht ab.
+Verändernde Configurator-Workflows teilen sich je Umgebung die Warteschlange
+`configurator-lzc-dev-mutation` oder `configurator-lzc-prod-mutation` und brechen eine aktive Änderung nicht ab.
 Assistant-Modellläufe haben eine eigene serialisierte Warteschlange. Starten Sie
 niemals parallele lokale Cloud-Schreibvorgänge, um diese Schutzmaßnahmen zu umgehen.
 

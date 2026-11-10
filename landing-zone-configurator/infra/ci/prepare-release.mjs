@@ -4,18 +4,28 @@ import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { buildpackTag } from "./buildpack-source.mjs";
+import { validateProductionBindings } from "./production-bindings.mjs";
+import { deploymentStage } from "./stages.mjs";
 import { releaseMode } from "./release-artifact.mjs";
+const stage=deploymentStage(process.env.LZC_ENVIRONMENT??"lzc-dev");
+if(stage.name==="lzc-prod" && (process.env.LZC_PUBLISHED_RELEASE !== "true" || !(process.env.GITHUB_REF==="refs/heads/main" || process.env.GITHUB_EVENT_NAME==="release" && /^refs\/tags\/v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(process.env.GITHUB_REF??"")) || process.env.LZC_RELEASE_MODE === "dev-skip-assistant-qualification")) throw new Error("Production requires an approved published release from main");
 const unqualifiedAssistantRelease=releaseMode(process.env.LZC_RELEASE_MODE)==="dev-skip-assistant-qualification";
 if(unqualifiedAssistantRelease && process.env.GITHUB_REF!=="refs/heads/main")throw new Error("Unqualified Assistant release requires Dev main source");
 const mode=process.argv[2];
 if(!["backend","application","runner"].includes(mode)) throw new Error("Expected backend or application");
 const required=name=>{if(!process.env[name])throw new Error(`Missing ${name}`);return process.env[name];};
-if(required("GITHUB_REPOSITORY")!=="stackitcloud/stackit-landing-zone" || !["refs/heads/main","refs/heads/feature/landing-zone-configurator"].includes(required("GITHUB_REF")))throw new Error("Unexpected release source");
+if(required("GITHUB_REPOSITORY")!=="stackitcloud/stackit-landing-zone" || (stage.name==="lzc-dev" && !["refs/heads/main","refs/heads/feature/landing-zone-configurator"].includes(required("GITHUB_REF"))))throw new Error("Unexpected release source");
 process.umask(0o077);
 const dir=resolve(required("RUNNER_TEMP"),"lzc-release");mkdirSync(dir,{recursive:true,mode:0o700});
 const mask=value=>console.log(`::add-mask::${String(value).replaceAll("%","%25").replaceAll("\r","%0D").replaceAll("\n","%0A")}`);
 function publish(name,value,secret=false){if(secret)mask(value);const d=`lzc_${randomUUID()}`;appendFileSync(required("GITHUB_ENV"),`${name}<<${d}\n${value}\n${d}\n`);}
-if(mode==="backend") {
+if(mode==="backend" && stage.name==="lzc-prod") {
+  const binding=validateProductionBindings(JSON.parse(required("LZC_RELEASE_BINDINGS")),required("LZC_PROJECT_ID"));
+  for(const value of [binding.cf.username,binding.cf.password,binding.runner.username,binding.runner.password,...Object.values(binding.values),binding.migration.password]) mask(value);
+  writeFileSync(resolve(dir,"platform-outputs.json"),JSON.stringify({cf_runtime:{value:binding.cf},plan_runner_cf:{value:binding.runner},database_migration:{value:binding.migration}}),{mode:0o600});
+  writeFileSync(resolve(dir,"runtime-outputs.json"),JSON.stringify({space:{value:binding.space},runner_space:{value:binding.runnerSpace},app_environment:{value:binding.values}}),{mode:0o600});
+  publish("CF_HOME",resolve(dir,"cf"));
+} else if(mode==="backend") {
   const bucket=required("LZC_WORKLOAD_BUCKET");
   if(bucket!=="lzc-dev-state-7dbff805")throw new Error("Unexpected workload bucket");
   for(const root of ["platform","runtime"]){
@@ -43,9 +53,9 @@ if(mode==="backend") {
   const platform=JSON.parse(readFileSync(resolve(dir,"platform-outputs.json"),"utf8"));
   const runtime=JSON.parse(readFileSync(resolve(dir,"runtime-outputs.json"),"utf8"));
   const cf=platform.cf_runtime?.value, space=runtime.space?.value, values=runtime.app_environment?.value;
-  if(cf?.api_url!=="https://api.system.01.cf.eu01.stackit.cloud" || cf?.org_id!=="a4514c42-d378-4e36-90eb-a3a1e3017e65" || space?.name!=="configurator" || !space.id || !cf.username || !cf.password || !values)throw new Error("Unexpected CF destination or incomplete runtime");
+  if(cf?.api_url!=="https://api.system.01.cf.eu01.stackit.cloud" || (stage.name==="lzc-dev" ? cf?.org_id!=="a4514c42-d378-4e36-90eb-a3a1e3017e65" : !/^[a-f0-9-]{36}$/.test(cf?.org_id??"")) || space?.name!=="configurator" || !space.id || !cf.username || !cf.password || !values)throw new Error("Unexpected CF destination or incomplete runtime");
   const keys=["LZC_DATABASE_HOST","LZC_DATABASE_PORT","LZC_DATABASE_NAME","LZC_DATABASE_USER","LZC_DATABASE_PASSWORD","LZC_SECRETS_ADDRESS","LZC_SECRETS_INSTANCE_ID","LZC_SECRETS_USERNAME","LZC_SECRETS_PASSWORD","LZC_MODEL_SERVING_TOKEN"];
-  const vars={};for(const key of keys){if(typeof values[key]!=="string"||!values[key])throw new Error(`Missing runtime input ${key}`);if(/_(PASSWORD|TOKEN|USERNAME|USER)$/.test(key))mask(values[key]);vars[key]=values[key];}
+  const vars={LZC_APP_INSTANCES:stage.appInstances,LZC_APP_ROUTE:stage.route};for(const key of keys){if(typeof values[key]!=="string"||!values[key])throw new Error(`Missing runtime input ${key}`);if(/_(PASSWORD|TOKEN|USERNAME|USER)$/.test(key))mask(values[key]);vars[key]=values[key];}
   const migration=platform.database_migration?.value;
   if(migration?.username!=="configurator_migration" || migration?.database!=="configurator" || migration?.host!==values.LZC_DATABASE_HOST || String(migration?.port)!==values.LZC_DATABASE_PORT || !migration?.password)throw new Error("Migration identity or destination invalid");
   const migrationVars={LZC_DATABASE_HOST:migration.host,LZC_DATABASE_PORT:String(migration.port),LZC_DATABASE_NAME:migration.database,LZC_DATABASE_USER:migration.username,LZC_DATABASE_PASSWORD:migration.password};
@@ -54,25 +64,27 @@ if(mode==="backend") {
   const enabled=process.env.LZC_AUTH_ENABLED==="true";
   const assistantEnabled=process.env.LZC_ASSISTANT_ENABLED==="true";
   if(assistantEnabled&&!enabled)throw new Error("Assistant requires authentication");
+  if(stage.name==="lzc-prod" && (!enabled || !assistantEnabled || process.env.LZC_STACKIT_DEVICE_ENABLED!=="true" || process.env.LZC_STACKIT_AUTH_FLOW!=="authorization-code")) throw new Error("Production requires STACKIT PKCE authentication and the enabled Assistant");
   const stackitEnabled=process.env.LZC_STACKIT_DEVICE_ENABLED==="true";
   const clientApproved=process.env.LZC_STACKIT_CLI_CLIENT_APPROVED==="true";
   if(stackitEnabled && !enabled)throw new Error("STACKIT login requires authentication");
   const stackitConfiguration={LZC_STACKIT_AUTH_FLOW:process.env.LZC_STACKIT_AUTH_FLOW??"",LZC_STACKIT_CLIENT_ID:process.env.LZC_STACKIT_CLIENT_ID??"",LZC_STACKIT_REDIRECT_URI:process.env.LZC_STACKIT_REDIRECT_URI??""};
   if(stackitEnabled){
     const {configuredStackitFlow}=await import(pathToFileURL(resolve(".local/release/apps/api/dist/auth/stackit-device.js")));
-    configuredStackitFlow({...stackitConfiguration,LZC_STACKIT_CLI_CLIENT_APPROVED:String(clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud"});
+    configuredStackitFlow({...stackitConfiguration,LZC_STACKIT_CLI_CLIENT_APPROVED:String(clientApproved),LZC_PUBLIC_ORIGIN:stage.publicOrigin});
   }
   const clientId=enabled?(process.env.LZC_GITHUB_CLIENT_ID??""):"";
   const clientSecret=enabled?(process.env.LZC_GITHUB_CLIENT_SECRET??""):"";
   if(enabled && ((!stackitEnabled && (!clientId || !clientSecret)) || !!clientId!==!!clientSecret))throw new Error("GitHub configuration incomplete");
-  Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_ASSISTANT_ENABLED:String(assistantEnabled),LZC_STACKIT_DEVICE_ENABLED:String(stackitEnabled),LZC_STACKIT_CLI_CLIENT_APPROVED:String(stackitEnabled && clientApproved),LZC_PUBLIC_ORIGIN:"https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud",LZC_GITHUB_CLIENT_ID:clientId,LZC_GITHUB_CLIENT_SECRET:clientSecret});
+  Object.assign(vars,{LZC_AUTH_ENABLED:String(enabled),LZC_ASSISTANT_ENABLED:String(assistantEnabled),LZC_STACKIT_DEVICE_ENABLED:String(stackitEnabled),LZC_STACKIT_CLI_CLIENT_APPROVED:String(stackitEnabled && clientApproved),LZC_PUBLIC_ORIGIN:stage.publicOrigin,LZC_GITHUB_CLIENT_ID:clientId,LZC_GITHUB_CLIENT_SECRET:clientSecret});
   Object.assign(vars,stackitConfiguration);
   const executionEnabled=process.env.LZC_EXECUTION_ENABLED==="true";
   const applicationExecutionEnabled=process.env.LZC_APPLICATION_EXECUTION_ENABLED==="true";
   if((executionEnabled&&!enabled)||(applicationExecutionEnabled&&!executionEnabled))throw new Error("Execution requires authentication and platform execution");
-  const runnerPoolSize=process.env.LZC_RUNNER_POOL_SIZE??"0";
+  const runnerPoolSize=process.env.LZC_RUNNER_POOL_SIZE??String(stage.name==="lzc-prod" ? stage.runnerPoolSize : 0);
   if(!/^[0-4]$/.test(runnerPoolSize))throw new Error("Runner pool size invalid");
   if(runnerPoolSize!=="0"&&(!executionEnabled||!existsSync(resolve(".local/release/apps/api/dist/plans/runner-pool.js"))))throw new Error("Runner pool requires execution and a compatible release");
+  if(stage.name==="lzc-prod" && (!executionEnabled || !applicationExecutionEnabled || runnerPoolSize!==String(stage.runnerPoolSize))) throw new Error("Production execution and shared warm capacity must match the reviewed stage");
   const artifactKey=executionEnabled?required("LZC_DEPLOYMENT_ARTIFACT_KEY"):"";
   if(executionEnabled&&(Buffer.from(artifactKey,"base64").length!==32||Buffer.from(artifactKey,"base64").toString("base64")!==artifactKey))throw new Error("Artifact key invalid");
   if(artifactKey)mask(artifactKey);
@@ -92,6 +104,7 @@ if(mode==="backend") {
   writeFileSync(resolve(dir,"runner-vars.json"),JSON.stringify({LZC_IMAGE_BUILDPACK:vars.LZC_IMAGE_BUILDPACK}),{mode:0o600});
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
   writeFileSync(resolve(dir,"app-stage-vars.json"),JSON.stringify({...vars,LZC_EXECUTION_ENABLED:"false",LZC_APPLICATION_EXECUTION_ENABLED:"false",LZC_RUNNER_POOL_SIZE:"0"}),{mode:0o600});
+  publish("LZC_CF_ORG_NAME",stage.prefix);publish("LZC_RUNNER_ORG_NAME",`${stage.prefix}-runners`);
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);
 }
 publish("LZC_PRIVATE",dir);

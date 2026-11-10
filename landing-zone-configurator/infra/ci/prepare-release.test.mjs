@@ -18,7 +18,7 @@ test("migration task retains its disk budget and web routes match the registered
  const applicationTasks=workflow.split("\n").filter(line=>line.trim().startsWith("cf run-task landing-zone-configurator ")||line.trim().startsWith("run: cf run-task landing-zone-configurator "));
  assert.equal(applicationTasks.length,3);
  for(const task of applicationTasks)assert.match(task,/ -m 128M -k 4096M --wait$/);
- assert.match(web,/\n    routes:\n      - route: lzc-dev-configurator\.apps\.01\.cf\.eu01\.stackit\.cloud\n    env:/);
+ assert.match(web,/\n    routes:\n      - route: \(\(LZC_APP_ROUTE\)\)\n    env:/);
  assert.ok(!web.includes("lzc-dev-configurator-7dbff805"));
  assert.ok(workflow.indexOf("Retire previous suffixed route after canonical checks")>workflow.indexOf("Public route checks"));
  assert.match(workflow,/cf unmap-route landing-zone-configurator apps\.01\.cf\.eu01\.stackit\.cloud --hostname lzc-dev-configurator-7dbff805/);
@@ -221,7 +221,7 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   const result=run("application");assert.equal(result.status,0,result.stderr);
   const vars=join(privateDir,"app-vars.json");assert.equal(statSync(vars).mode&0o777,0o600);
   const app=JSON.parse(readFileSync(vars));
-    assert.deepEqual(Object.keys(app),[...keys,"LZC_AUTH_ENABLED","LZC_ASSISTANT_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_STACKIT_AUTH_FLOW","LZC_STACKIT_CLIENT_ID","LZC_STACKIT_REDIRECT_URI","LZC_EXECUTION_ENABLED","LZC_APPLICATION_EXECUTION_ENABLED","LZC_DEPLOYMENT_ARTIFACT_KEY","LZC_RUNNER_DROPLET_ID","LZC_RUNNER_POOL_SIZE","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID","LZC_IMAGE_BUILDPACK"]);
+    assert.deepEqual(Object.keys(app),["LZC_APP_INSTANCES","LZC_APP_ROUTE",...keys,"LZC_AUTH_ENABLED","LZC_ASSISTANT_ENABLED","LZC_STACKIT_DEVICE_ENABLED","LZC_STACKIT_CLI_CLIENT_APPROVED","LZC_PUBLIC_ORIGIN","LZC_GITHUB_CLIENT_ID","LZC_GITHUB_CLIENT_SECRET","LZC_STACKIT_AUTH_FLOW","LZC_STACKIT_CLIENT_ID","LZC_STACKIT_REDIRECT_URI","LZC_EXECUTION_ENABLED","LZC_APPLICATION_EXECUTION_ENABLED","LZC_DEPLOYMENT_ARTIFACT_KEY","LZC_RUNNER_DROPLET_ID","LZC_RUNNER_POOL_SIZE","LZC_PLANS_ENABLED","LZC_RUNNER_CF_USERNAME","LZC_RUNNER_CF_PASSWORD","LZC_RUNNER_SPACE_ID","LZC_RUNNER_TEMPLATE_ID","LZC_IMAGE_BUILDPACK"]);
   assert.equal(app.LZC_RUNNER_POOL_SIZE,"0");
   env.LZC_RUNNER_POOL_SIZE="5";
   assert.notEqual(run("application").status,0);

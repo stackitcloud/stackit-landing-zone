@@ -1,8 +1,8 @@
-# MVP scope and limits
+# Scope and limits
 
 [English](mvp-scope.md) | [Deutsch](mvp-scope.de.md)
 
-The MVP connects the independently usable Accelerator to a tenant-aware editor,
+The Configurator connects the independently usable Accelerator to a tenant-aware editor,
 reviewed Assistant proposals and explicitly authorized execution. It does not
 turn a configuration draft into an autonomous deployment agent.
 
@@ -26,10 +26,11 @@ customer configuration or network topology.
 
 ## Deliberate boundaries
 
-- **Production is deferred.** No production environment is created as part of
-  the MVP source merge. Production needs its own identity, network, backup,
-  recovery, observability, capacity and operational acceptance.
-- **Firewall policy is post-MVP** ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
+- **Production is a separate operational environment.** It has independent
+  infrastructure and protected release activation. A source merge does not deploy
+  it. Availability and recovery exercises remain explicit acceptance evidence;
+  see [production operations](production.md).
+- **Guided firewall policy is planned** ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
   Appliance/HA proposals are supported, but guided policy/NAT/route management
   is not. The firewall administrator maintains policy in OPNsense.
 - **Private execution paths need separate qualification**
@@ -44,8 +45,11 @@ customer configuration or network topology.
 - **Cloud facts remain external.** Availability, entitlement, throughput, usable
   networks and effective permissions require current authoritative verification.
 - **Assistant qualification is bounded.** Passing synthetic scenarios does not
-  prove universal factual correctness. Every failed repetition remains blocking;
-  changing the qualified source requires new evidence.
+  prove universal factual correctness. Failed repetitions remain failed
+  qualification evidence; changing qualified source requires new evidence. The
+  initial production release explicitly accepts the known Assistant limitations
+  in issue #225 and records `assistantQualified: false`, without relabeling them
+  as successful qualification.
 
 Open work is tracked in [GitHub issues](https://github.com/stackitcloud/stackit-landing-zone/issues),
 not in dated public handoff or acceptance ledgers. See the

@@ -5,7 +5,9 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 const infra = dirname(fileURLToPath(import.meta.url));
-const local = resolve(infra, "../.local");
+const stage=process.env.LZC_ENVIRONMENT??"lzc-dev";
+if(!["lzc-dev","lzc-prod"].includes(stage))throw new Error("Unexpected backend check environment");
+const local = resolve(infra, stage==="lzc-prod"?"../.local/lzc-prod":"../.local");
 const binary = process.env.LZC_TOFU_BIN ?? "tofu";
 const baseEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(AWS_|TF_|STACKIT_|LZC_STATE_KEY_)/.test(k)));
 const seedEnv = { ...baseEnv, TF_DATA_DIR: resolve(local, "seed/data"),
@@ -18,6 +20,7 @@ function run(command, args, env) {
 }
 const outputs = JSON.parse(run(binary, [`-chdir=${resolve(infra, "seed")}`, "output", "-json"], seedEnv));
 const { bucket, endpoint, region } = outputs.backend.value;
+if(!bucket.startsWith(`${stage}-management-`)||region!=="eu01")throw new Error("Backend check stage mismatch");
 const credentials = outputs.backend_credentials.value;
 const env = { ...baseEnv, AWS_ACCESS_KEY_ID: credentials.access_key,
   AWS_SECRET_ACCESS_KEY: credentials.secret_key, AWS_DEFAULT_REGION: region, AWS_PAGER: "" };
@@ -43,7 +46,7 @@ try {
   s3("get-object", ["--key", key, "--version-id", versions[0], restored]);
   if (readFileSync(restored, "utf8") !== "first-version") throw new Error("Version restore mismatch");
   console.log("PASS: previous object version restored and verified");
-  for (const root of ["seed", "seed-protection"]) {
+  for (const root of [...(stage==="lzc-prod"?["operator-project"]:[]), "seed", "seed-protection"]) {
     const path = resolve(local, root, "terraform.tfstate");
     const contents = readFileSync(path);
     const envelope = JSON.parse(contents);

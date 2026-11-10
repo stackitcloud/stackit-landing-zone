@@ -1,9 +1,9 @@
 <a id="mvp-scope-and-limits"></a>
-# MVP-Umfang und Grenzen
+# Umfang und Grenzen
 
 [English](mvp-scope.md) | [Deutsch](mvp-scope.de.md)
 
-Das MVP verbindet den unabhängig nutzbaren Accelerator mit einem mandantenfähigen
+Der Configurator verbindet den unabhängig nutzbaren Accelerator mit einem mandantenfähigen
 Editor, geprüften Assistant-Vorschlägen und ausdrücklich autorisierter Ausführung.
 Es macht aus einem Konfigurationsentwurf keinen autonomen Deployment-Agenten.
 
@@ -29,10 +29,11 @@ jede mögliche Kundenkonfiguration oder Netzwerktopologie.
 <a id="deliberate-boundaries"></a>
 ## Bewusste Grenzen
 
-- **Produktion ist zurückgestellt.** Im Rahmen des MVP-Quellmerges wird keine
-  Produktionsumgebung erstellt. Produktion benötigt eigene Identität, Netzwerk,
-  Backup, Recovery, Observability, Kapazität und betriebliche Abnahme.
-- **Firewall-Policy folgt nach dem MVP** ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
+- **Produktion ist eine eigene Betriebsumgebung.** Sie erhält getrennte
+  Infrastruktur und geschützte Release-Aktivierung. Ein Quellcode-Merge deployt
+  sie nicht. Verfügbarkeits- und Wiederherstellungsübungen bleiben ausdrückliche
+  Abnahmenachweise; siehe [Produktionsbetrieb](production.de.md).
+- **Geführte Firewall-Policy ist geplant** ([#101](https://github.com/stackitcloud/stackit-landing-zone/issues/101)).
   Appliance-/HA-Vorschläge werden unterstützt, geführte Policy-/NAT-/Routenverwaltung
   jedoch nicht. Der Firewall-Administrator pflegt die Policy in OPNsense.
 - **Private Ausführungspfade benötigen separate Qualifikation**
@@ -47,8 +48,11 @@ jede mögliche Kundenkonfiguration oder Netzwerktopologie.
 - **Cloud-Fakten bleiben extern.** Verfügbarkeit, Berechtigung, Durchsatz, nutzbare
   Netze und effektive Rechte erfordern eine aktuelle verbindliche Prüfung.
 - **Assistant-Qualifikation ist begrenzt.** Bestandene synthetische Szenarien beweisen
-  keine universelle sachliche Korrektheit. Jede fehlgeschlagene Wiederholung bleibt blockierend;
-  Änderungen an der qualifizierten Quelle benötigen neue Nachweise.
+  keine universelle sachliche Korrektheit. Fehlgeschlagene Wiederholungen bleiben
+  gescheiterte Qualifikationsnachweise; geänderte qualifizierte Quellen benötigen
+  neue Nachweise. Das erste Produktionsrelease akzeptiert die bekannten Assistant-
+  Einschränkungen aus Issue #225 ausdrücklich und dokumentiert
+  `assistantQualified: false`, ohne sie zu bestandener Qualifikation umzudeuten.
 
 Offene Arbeit wird in [GitHub-Issues](https://github.com/stackitcloud/stackit-landing-zone/issues)
 verfolgt, nicht in datierten öffentlichen Übergabe- oder Abnahmeprotokollen. Siehe

@@ -3,7 +3,7 @@ set -euo pipefail
 export CF_HOME="$LZC_PRIVATE/cf-migration"
 cf api "$CF_API_URL"
 cf auth
-cf target -o lzc-dev -s configurator
+cf target -o "${LZC_CF_ORG_NAME:-lzc-dev}" -s configurator
 test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
 trap 'cf delete landing-zone-configurator-migrate -f' EXIT
 cf push --task -f deploy/cloud-foundry/migration-manifest.yml -p .local/migration --vars-file "$LZC_PRIVATE/migration-vars.json" --redact-env
