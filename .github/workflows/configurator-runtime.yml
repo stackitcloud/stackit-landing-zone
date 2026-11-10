@@ -208,10 +208,11 @@ jobs:
       - name: OpenTofu apply reviewed plan
         id: apply
         # One SIGINT allows OpenTofu to save state before the outer job deadline.
-        run: >-
-          timeout --foreground --signal=INT --kill-after=10m 70m
-          tofu -chdir="infra/$LZC_ROOT" apply
-          -input=false -no-color -lock-timeout=60s "$LZC_PLAN"
+        run: |
+          source infra/ci/apply-env.sh
+          timeout --foreground --signal=INT --kill-after=10m 70m \
+            tofu -chdir="infra/$LZC_ROOT" apply \
+            -input=false -no-color -lock-timeout=60s "$LZC_PLAN"
       - name: Capture and encrypt recovery state
         if: always() && steps.apply.outcome != '' && steps.apply.outcome != 'skipped'
         run: |

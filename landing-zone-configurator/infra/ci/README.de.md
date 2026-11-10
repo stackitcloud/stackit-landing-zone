@@ -30,12 +30,20 @@ Jeder Deployment-Job zeigt die einzelnen Schritte: Credential-Vorbereitung, gege
 
 Plan und Apply sind getrennte Jobs. Der Plan wird mit `-out` gespeichert und durch die native OpenTofu-Konfiguration verschlüsselt. Der Apply lädt genau das Plan-Artefakt desselben Runs herunter. Nach Prüfung des Plans erfolgt die Freigabe im geschützten GitHub Environment. Eine kleine Integritätsprüfung bindet das Artefakt an Hash, Commit, Repository, Run, Root, Eingaben und IaC-Dateien; Pläne sind höchstens 24 Stunden gültig. OpenTofu prüft zusätzlich, ob der State seit der Planung verändert wurde. Re-runs sind gesperrt: einen neuen Run mit frischem Plan starten.
 
+Unmittelbar vor dem Apply des gespeicherten Plans entfernt `apply-env.sh` externe
+`TF_VAR_*`-Eingaben. Der verschlüsselte, geprüfte Plan enthält ihre typisierten
+Werte bereits. So lehnt OpenTofu 1.12.6 einen geplanten Boolean nicht wegen eines
+zusätzlichen rohen Umgebungswerts ab. Backend-Anmeldung, Provider-Zugänge und
+`TF_ENCRYPTION` bleiben verfügbar; Quell-/Lauf-/Hash- und Freigabeprüfungen bleiben
+unverändert.
+
 Die zentralen Befehle stehen sichtbar im Workflow, beispielsweise:
 
 ```sh
 tofu -chdir="infra/$LZC_ROOT" init -input=false -lockfile=readonly -backend-config="$LZC_PRIVATE/$LZC_ROOT.backend.hcl"
 tofu -chdir="infra/$LZC_ROOT" validate -no-color
 tofu -chdir=infra/platform plan -input=false -no-color -var-file=../environments/lzc-dev.tfvars.json -out="$LZC_PLAN"
+source infra/ci/apply-env.sh
 timeout --foreground --signal=INT --kill-after=10m 70m \
   tofu -chdir=infra/platform apply -input=false -no-color "$LZC_PLAN"
 ```
