@@ -418,3 +418,10 @@ upgrades block deletions, replacements and unknown evidence.
 Shared platform changes affect dependent Applications when Platform Apply runs;
 they cannot be delayed per Application. See [template and platform upgrades](application-upgrades.md)
 for impact acknowledgement, sensitive-change policies and Recovery.
+
+## Notifications
+
+Use the header bell to open your workspace inbox and personally select email topics
+and German/English under **My email preferences**. The inviter can optionally email
+a recipient-bound invitation. See [Notifications and email](notifications.md) for
+events, delivery states and retained access checks.

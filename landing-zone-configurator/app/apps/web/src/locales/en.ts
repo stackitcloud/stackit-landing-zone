@@ -1,4 +1,66 @@
 export const englishMessages: Record<string, string> = {
+  "Du hast das Limit von 20 E-Mail-Einladungen pro Stunde erreicht. Bitte versuche es später erneut.":
+    "You have reached the limit of 20 emailed invitations per hour. Please try again later.",
+  "Arbeitsbereich der Nachricht öffnen": "Open notification workspace",
+  "Diese Nachricht gehört zu einem anderen Arbeitsbereich. Wechsle nach Prüfung deiner Mitgliedschaft, um den Vorgang zu sehen.":
+    "This notification belongs to another workspace. Switch after checking your membership to view the workflow.",
+  "Der Arbeitsbereich ist für deine aktuelle Mitgliedschaft nicht verfügbar.":
+    "This workspace is unavailable with your current membership.",
+  "E-Mail-Status:": "Email status:",
+  "Versand vorgemerkt": "Queued for sending",
+  "Versand läuft": "Sending",
+  "An den Mailserver übergeben": "Accepted by the mail server",
+  "Versand unterdrückt": "Sending suppressed",
+  "Versand fehlgeschlagen": "Sending failed",
+  "Versandergebnis unklar – keine automatische Wiederholung":
+    "Sending outcome uncertain — no automatic retry",
+  "Diese Einladung gehört zu einer anderen verifizierten STACKIT-E-Mail-Adresse. Bitte melde dich mit dem eingeladenen Konto an.":
+    "This invitation is bound to a different verified STACKIT email address. Sign in with the invited account.",
+
+  Benachrichtigungen: "Notifications",
+  ungelesen: "unread",
+  "Bitte melde dich an, um deine Benachrichtigungen zu sehen.":
+    "Sign in to see your notifications.",
+  "Benachrichtigungen konnten nicht geladen oder gespeichert werden. Bitte prüfe die Anmeldung und den aktiven Arbeitsbereich.":
+    "Notifications could not be loaded or saved. Check your sign-in and active workspace.",
+  "Aufgaben und Statusmeldungen für deinen aktiven Arbeitsbereich. Der Verlauf bleibt unabhängig von deinen E-Mail-Einstellungen sichtbar.":
+    "Tasks and status updates for your active workspace. History remains visible independently of your email preferences.",
+  "Alle als gelesen markieren": "Mark all as read",
+  "Du hast noch keine Benachrichtigungen.": "You have no notifications yet.",
+  "Ältere Nachrichten laden": "Load older notifications",
+  "Nachrichten werden 90 Tage aufbewahrt. Links öffnen geschützte Ansichten und erteilen keine Freigabe.":
+    "Notifications are retained for 90 days. Links open authenticated views and do not grant authorization.",
+  "Meine E-Mail-Einstellungen": "My email preferences",
+  "Du entscheidest für jedes Thema selbst. Einladungen verschickt die einladende Person unabhängig von diesen Einstellungen.":
+    "You choose each topic yourself. The inviter decides whether to email an invitation independently of these preferences.",
+  "E-Mail-Versand ist auf dieser Instanz noch nicht eingerichtet. Deine Einstellungen werden trotzdem gespeichert.":
+    "Email delivery is not configured on this instance yet. Your preferences are still saved.",
+  "Für E-Mails fehlt eine verifizierte STACKIT-E-Mail-Adresse. Melde dich über STACKIT an.":
+    "A verified STACKIT email address is required for email delivery. Sign in through STACKIT.",
+  "Sprache für Nachrichten": "Notification language",
+  "E-Mails zu diesen Themen erhalten": "Receive email for these topics",
+  "Deine Benachrichtigungseinstellungen wurden gespeichert.":
+    "Your notification preferences have been saved.",
+  "Bestellungen und Freigaben": "Orders and approvals",
+  "Erfolgreiche Ausführungen": "Successful executions",
+  "Fehlgeschlagene Ausführungen": "Failed executions",
+  "Wiederherstellung und erforderliche Aktionen":
+    "Recovery and actions requiring attention",
+  "Mitgliedschaften und Zugriffe": "Membership and access",
+  "Erinnerungen an offene Aufgaben": "Outstanding task reminders",
+  "Vorgang öffnen": "Open workflow",
+  "Als gelesen markieren": "Mark as read",
+  "Die E-Mail konnte nicht bestätigt werden. Der Vorgang in der Anwendung ist davon unabhängig.":
+    "Email acceptance could not be confirmed. This does not change the workflow in the application.",
+  "Einladung zusätzlich per E-Mail senden": "Also send invitation by email",
+  "E-Mail-Adresse der eingeladenen Person": "Invitee email address",
+  "Die E-Mail-Einladung kann nur mit der passenden verifizierten STACKIT-E-Mail-Adresse angenommen werden.":
+    "The emailed invitation can only be accepted with the matching verified STACKIT email address.",
+  "Die Einladung wurde für den E-Mail-Versand vorgemerkt. Dies bestätigt noch keine Zustellung.":
+    "The invitation was queued for email sending. This does not confirm delivery.",
+  "E-Mail-Versand ist auf dieser Instanz noch nicht verfügbar. Erstelle einen Link ohne E-Mail-Versand.":
+    "Email delivery is not available on this instance yet. Create a link without sending email.",
+
   "Dieser Plan löscht oder ersetzt Plattformressourcen. Dabei können Daten verloren gehen und abhängige Application Landing Zones beeinträchtigt werden. Prüfe die Ressourcenänderungen im Plan; du entscheidest als Platform Owner über die Durchführung.":
     "This plan deletes or replaces platform resources. Data may be lost and dependent Application Landing Zones may be affected. Review the resource changes in the plan; as Platform Owner, you decide whether to proceed.",
 

@@ -786,6 +786,18 @@ export function PlanRuns({
     const data = await response.json();
     if (currentScope.current !== requestScope || signal?.aborted) return;
     setRuns(data.runs);
+    const linkedRun = new URLSearchParams(window.location.search).get(
+      "resource",
+    );
+    if (linkedRun && data.runs.some((run: Run) => run.id === linkedRun)) {
+      setHistoryOpen(true);
+      setExpanded((previous) => [...new Set([...previous, linkedRun])]);
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`notification-run-${linkedRun}`)
+          ?.scrollIntoView({ block: "center" }),
+      );
+    }
     setNow(Date.now());
     setEnabled(true);
   }
@@ -1022,6 +1034,8 @@ export function PlanRuns({
         <Container
           className="project-form"
           key={run.id}
+          id={`notification-run-${run.id}`}
+          {...(historical ? { open: expanded.includes(run.id) } : {})}
           onToggle={
             historical
               ? (event) => {

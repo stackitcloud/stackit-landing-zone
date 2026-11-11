@@ -12,6 +12,7 @@ Referenzen; das [Benutzerhandbuch](user-guide.de.md) beschreibt die Produktnutzu
 
 | Bereich | Referenz |
 | --- | --- |
+| Benachrichtigungen und E-Mail | [Benachrichtigungen](notifications.de.md), [MailOut-Betrieb](../infra/mailout/README.de.md) |
 | Komponenten, Vertrauensgrenzen und Diagramme | [Architektur](architecture.de.md) |
 | Native Schemas und Compiler | [Gemeinsames Funktionsmodell](common-feature-model.de.md), [gemeinsamer Editor](common-editor.de.md) |
 | Vorlagenentwürfe und Parameter | [Projektvorlagenentwürfe](project-template-drafts.de.md), [Parameter und Bindungen](template-parameters-and-bindings.de.md) |

@@ -37,6 +37,8 @@ import type { Preparations } from "./deployments/preparations.js";
 import { registerPreparations } from "./deployments/routes.js";
 import type { Repositories } from "./github/repositories.js";
 import { registerRepositories } from "./github/routes.js";
+import { registerNotifications } from "./notifications/routes.js";
+import type { Notifications } from "./notifications/service.js";
 import {
   type Invitations,
   registerInvitations,
@@ -50,6 +52,7 @@ import { registerRunnerPool } from "./plans/runner-pool-routes.js";
 export function buildApp(
   options: {
     webRoot?: string;
+    notifications?: Pick<Notifications, "list" | "read" | "preferences">;
     developmentLogin?: DevelopmentLogin;
     assistant?: Pick<
       AssistantConversations,
@@ -169,6 +172,8 @@ export function buildApp(
       options.applicationRunner.applications,
       options.applicationRunner.binding,
     );
+  if (options.notifications && options.auth)
+    registerNotifications(app, options.auth, options.notifications);
   if (options.auth) {
     registerAuth(app, options.auth);
     if (options.developmentLogin)
@@ -290,6 +295,7 @@ export function buildApp(
       "/deployments/apply",
       "/deployments/history",
       "/organisation",
+      "/notifications",
       "/applications",
       "/configurations/edit",
       "/configurations/edit/basics",

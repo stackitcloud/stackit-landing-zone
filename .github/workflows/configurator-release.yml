@@ -102,7 +102,7 @@ jobs:
           mkdir -p ../.local/release/apps/api ../.local/release/packages/contracts ../.local/release/packages/domain ../.local/release/public ../.local/release/runtime
           cp package.json package-lock.json ../.local/release/
           cp apps/api/package.json ../.local/release/apps/api/
-          cp -R apps/api/dist apps/api/db ../.local/release/apps/api/
+          cp -R apps/api/dist apps/api/db apps/api/assets ../.local/release/apps/api/
           cp packages/contracts/package.json ../.local/release/packages/contracts/
           cp -R packages/contracts/dist ../.local/release/packages/contracts/
           cp packages/domain/package.json ../.local/release/packages/domain/
@@ -334,6 +334,7 @@ jobs:
           LZC_APPLICATION_EXECUTION_ENABLED: ${{ vars.LZC_APPLICATION_EXECUTION_ENABLED }}
           LZC_RUNNER_POOL_SIZE: ${{ inputs.runner_pool_size }}
           LZC_DEPLOYMENT_ARTIFACT_KEY: ${{ secrets.LZC_DEPLOYMENT_ARTIFACT_KEY }}
+          LZC_MAILOUT_BINDINGS: ${{ secrets.LZC_MAILOUT_BINDINGS }}
           LZC_GITHUB_CLIENT_ID: ${{ secrets.LZC_GITHUB_CLIENT_ID }}
           LZC_GITHUB_CLIENT_SECRET: ${{ secrets.LZC_GITHUB_CLIENT_SECRET }}
       - name: CF login and target

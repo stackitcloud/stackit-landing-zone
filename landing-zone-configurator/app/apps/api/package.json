@@ -15,6 +15,7 @@
     "eventsource-parser": "4.1.1",
     "fastify": "5.12.5",
     "jose": "6.2.12",
+    "nodemailer": "10.5.0",
     "partial-json": "0.1.7",
     "pg": "8.23.0",
     "zod": "4.6.5"

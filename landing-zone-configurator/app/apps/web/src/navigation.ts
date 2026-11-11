@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { standaloneTemplate, templates } from "./templates";
 export type View =
+  | "notifications"
   | "workspaces"
   | "templates"
   | "preview"
@@ -36,27 +37,30 @@ function readRoute() {
             : path.endsWith("/review")
               ? "review"
               : "basics";
-  const view: View = template
-    ? "preview"
-    : path === "/applications"
-      ? "applications"
-      : /^\/configurations\/edit(?:\/(basics|folders|network|platform|projects|operations|review))?$/.test(
-            path,
-          )
-        ? "editor"
-        : path === "/organisation"
-          ? "organisation"
-          : path === "/deployments/history"
-            ? "history"
-            : /^\/deployments(?:\/(preparation|plan|apply))?$/.test(path)
-              ? "deployments"
-              : path === "/credentials"
-                ? "credentials"
-                : path === "/repositories" || path === "/configurations"
-                  ? "repositories"
-                  : path === "/templates"
-                    ? "templates"
-                    : "workspaces";
+  const view: View =
+    path === "/notifications"
+      ? "notifications"
+      : template
+        ? "preview"
+        : path === "/applications"
+          ? "applications"
+          : /^\/configurations\/edit(?:\/(basics|folders|network|platform|projects|operations|review))?$/.test(
+                path,
+              )
+            ? "editor"
+            : path === "/organisation"
+              ? "organisation"
+              : path === "/deployments/history"
+                ? "history"
+                : /^\/deployments(?:\/(preparation|plan|apply))?$/.test(path)
+                  ? "deployments"
+                  : path === "/credentials"
+                    ? "credentials"
+                    : path === "/repositories" || path === "/configurations"
+                      ? "repositories"
+                      : path === "/templates"
+                        ? "templates"
+                        : "workspaces";
   const deploymentStep: DeploymentStep =
     path === "/deployments/history"
       ? "history"
@@ -99,27 +103,29 @@ export function useNavigation(restoreEditor: boolean) {
   const navigate = useCallback(
     (view: View, detail?: string, replace = false) => {
       const path =
-        view === "preview"
-          ? `/templates/${detail ?? "standalone"}`
-          : view === "applications"
-            ? "/applications"
-            : view === "editor"
-              ? `/configurations/edit/${detail ?? "basics"}`
-              : view === "organisation"
-                ? "/organisation"
-                : view === "history"
-                  ? "/deployments/history"
-                  : view === "deployments"
-                    ? detail === "plan" || detail === "apply"
-                      ? `/deployments/${detail}`
-                      : "/deployments"
-                    : view === "credentials"
-                      ? "/credentials"
-                      : view === "repositories"
-                        ? "/configurations"
-                        : view === "workspaces"
-                          ? "/workspaces"
-                          : "/templates";
+        view === "notifications"
+          ? "/notifications"
+          : view === "preview"
+            ? `/templates/${detail ?? "standalone"}`
+            : view === "applications"
+              ? "/applications"
+              : view === "editor"
+                ? `/configurations/edit/${detail ?? "basics"}`
+                : view === "organisation"
+                  ? "/organisation"
+                  : view === "history"
+                    ? "/deployments/history"
+                    : view === "deployments"
+                      ? detail === "plan" || detail === "apply"
+                        ? `/deployments/${detail}`
+                        : "/deployments"
+                      : view === "credentials"
+                        ? "/credentials"
+                        : view === "repositories"
+                          ? "/configurations"
+                          : view === "workspaces"
+                            ? "/workspaces"
+                            : "/templates";
       if (
         window.location.pathname !== path ||
         window.location.search ||

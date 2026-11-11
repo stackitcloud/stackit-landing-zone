@@ -39,8 +39,14 @@ const names = (roles: string[]) =>
     )
     .join(", ");
 const messages: Record<string, string> = {
+  invitation_recipient_mismatch:
+    "Diese Einladung gehört zu einer anderen verifizierten STACKIT-E-Mail-Adresse. Bitte melde dich mit dem eingeladenen Konto an.",
+  invitation_email_rate_limit:
+    "Du hast das Limit von 20 E-Mail-Einladungen pro Stunde erreicht. Bitte versuche es später erneut.",
   invitation_unavailable:
     "Diese Einladung ist abgelaufen, widerrufen oder bereits verwendet. Bitte fordere eine neue Einladung an.",
+  invitation_email_unavailable:
+    "E-Mail-Versand ist auf dieser Instanz noch nicht verfügbar. Erstelle einen Link ohne E-Mail-Versand.",
   already_member:
     "Du bist bereits Mitglied. Bestehende Rollen werden durch eine Einladung nicht geändert.",
   membership_management_forbidden:
@@ -182,6 +188,7 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
   );
 }
 type Item = {
+  mailStatus?: string | null;
   id: string;
   roles: string[];
   manageMembers: boolean;
@@ -192,6 +199,10 @@ export function Invitations({ session }: { session: Session }) {
   const [owner, setOwner] = useState(true);
   const [engineer, setEngineer] = useState(false);
   const [manage, setManage] = useState(false);
+  const [sendMail, setSendMail] = useState(false);
+  const [email, setEmail] = useState("");
+  const [locale, setLocale] = useState<"de" | "en">("de");
+  const [emailQueued, setEmailQueued] = useState(false);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -233,9 +244,11 @@ export function Invitations({ session }: { session: Session }) {
               ...(owner ? ["application-owner"] : []),
             ],
             manageMembers: engineer && manage,
+            ...(sendMail ? { mail: { email, locale } } : {}),
           })
             .then(async (v) => {
               setLink(v.url);
+              setEmailQueued(v.emailQueued === true);
               await load();
             })
             .catch((e) => setError(e.message))
@@ -270,6 +283,45 @@ export function Invitations({ session }: { session: Session }) {
           />{" "}
           {t("Mitglieder verwalten")}
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={sendMail}
+            onChange={(e) => setSendMail(e.target.checked)}
+          />
+          {t("Einladung zusätzlich per E-Mail senden")}
+        </label>
+        {sendMail && (
+          <>
+            <label>
+              {t("E-Mail-Adresse der eingeladenen Person")}
+              <input
+                type="email"
+                maxLength={254}
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            <label>
+              {t("Sprache für Nachrichten")}
+              <select
+                value={locale}
+                onChange={(e) =>
+                  setLocale(e.target.value === "en" ? "en" : "de")
+                }
+              >
+                <option value="de">Deutsch</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <p>
+              {t(
+                "Die E-Mail-Einladung kann nur mit der passenden verifizierten STACKIT-E-Mail-Adresse angenommen werden.",
+              )}
+            </p>
+          </>
+        )}
         <button
           type="submit"
           className="button primary"
@@ -286,7 +338,9 @@ export function Invitations({ session }: { session: Session }) {
           <input id="invitation-link" readOnly value={link} />
           <p>
             {t(
-              "Der vollständige Link wird nur jetzt angezeigt. Es wird keine E-Mail verschickt.",
+              emailQueued
+                ? "Die Einladung wurde für den E-Mail-Versand vorgemerkt. Dies bestätigt noch keine Zustellung."
+                : "Der vollständige Link wird nur jetzt angezeigt. Es wird keine E-Mail verschickt.",
             )}
           </p>
           <button
@@ -310,6 +364,25 @@ export function Invitations({ session }: { session: Session }) {
       {items.length === 0 && <p>{t("Keine offenen Einladungen.")}</p>}
       {items.map((i) => (
         <article key={i.id} className="panel">
+          {i.mailStatus && (
+            <p>
+              {t("E-Mail-Status:")}{" "}
+              {t(
+                (
+                  {
+                    pending: "Versand vorgemerkt",
+                    sending: "Versand läuft",
+                    accepted: "An den Mailserver übergeben",
+                    suppressed: "Versand unterdrückt",
+                    failed: "Versand fehlgeschlagen",
+                    uncertain:
+                      "Versandergebnis unklar – keine automatische Wiederholung",
+                  } as Record<string, string>
+                )[i.mailStatus] ??
+                  "Versandergebnis unklar – keine automatische Wiederholung",
+              )}
+            </p>
+          )}
           <p>
             {names(i.roles)}
             {i.manageMembers ? " · Mitglieder verwalten" : ""}

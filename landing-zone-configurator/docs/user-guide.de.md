@@ -476,3 +476,10 @@ Gemeinsame Plattformänderungen wirken beim Plattform-Apply auf abhängige
 Applications; sie lassen sich nicht je Application verschieben. Details zu
 Auswirkungsbestätigung, sensiblen Änderungen und Recovery stehen unter
 [Template- und Plattform-Upgrades](application-upgrades.de.md).
+
+## Benachrichtigungen
+
+Die Glocke im Kopfbereich öffnet den Posteingang. Unter **Meine E-Mail-Einstellungen**
+wählt jeder Benutzer Themen und Deutsch/Englisch selbst. Einladende können eine
+empfängergebundene Einladung per E-Mail senden. Ereignisse, Versandzustände und
+Zugriffsprüfungen stehen unter [Benachrichtigungen und E-Mail](notifications.de.md).
